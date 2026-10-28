@@ -1,0 +1,22 @@
+{
+  "name": "zhuda-laya-engine",
+  "version": "1.0.0",
+  "engineBaseVersion": "3.4.2",
+  "upstreamOfficial": {
+    "name": "LayaAir Engine (Layabox Official)",
+    "website": "https://layaair.com/",
+    "repository": "https://github.com/layabox/LayaAir",
+    "baseVersion": "3.4.2",
+    "edition": "豬大 (zhudaandzhuer) AI-Agent-Friendly 開源分支版本"
+  },
+  "repository": "https://github.com/zhudaandzhuer/zhuda-laya-engine",
+  "title": "豬大 LayaAir (zhuda-laya-engine) · AI-Native Agent-Friendly 遊戲引擎工作台",
+  "profile": "full-all-in-one",
+  "entry": "src/Main.ts",
+  "outDir": "dist/web",
+  "viewport": {
+    "width": 1280,
+    "height": 720,
+    "scaleMode": "showall"
+  }
+}

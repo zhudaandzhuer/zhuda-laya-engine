@@ -1,0 +1,171 @@
+{
+  "_$ver": 1,
+  "_$id": "nine_slice_dialog_root",
+  "_$type": "Image",
+  "name": "NineSliceDialogFrame",
+  "x": 10,
+  "y": 10,
+  "width": 320,
+  "height": 140,
+  "sizeGrid": "16,16,16,16,0",
+  "_gcmds": [
+    {
+      "_$type": "DrawRoundRectCmd",
+      "x": 0,
+      "y": 0,
+      "width": 320,
+      "height": 140,
+      "lt": 10,
+      "rt": 10,
+      "lb": 10,
+      "rb": 10,
+      "fillColor": "#132036",
+      "lineColor": "#38bdf8",
+      "lineWidth": 2,
+      "percent": false
+    },
+    {
+      "_$type": "DrawRectCmd",
+      "x": 16,
+      "y": 16,
+      "width": 288,
+      "height": 108,
+      "fillColor": "#0c1524",
+      "lineColor": "#233858",
+      "lineWidth": 1,
+      "percent": false
+    },
+    {
+      "_$type": "DrawRoundRectCmd",
+      "x": 0,
+      "y": 0,
+      "width": 16,
+      "height": 16,
+      "lt": 8,
+      "rt": 2,
+      "lb": 2,
+      "rb": 2,
+      "fillColor": "#2dd4bf",
+      "lineColor": "#38bdf8",
+      "lineWidth": 1.5,
+      "percent": false
+    },
+    {
+      "_$type": "DrawRoundRectCmd",
+      "x": 304,
+      "y": 0,
+      "width": 16,
+      "height": 16,
+      "lt": 2,
+      "rt": 8,
+      "lb": 2,
+      "rb": 2,
+      "fillColor": "#2dd4bf",
+      "lineColor": "#38bdf8",
+      "lineWidth": 1.5,
+      "percent": false
+    },
+    {
+      "_$type": "DrawRoundRectCmd",
+      "x": 0,
+      "y": 124,
+      "width": 16,
+      "height": 16,
+      "lt": 2,
+      "rt": 2,
+      "lb": 8,
+      "rb": 2,
+      "fillColor": "#2dd4bf",
+      "lineColor": "#38bdf8",
+      "lineWidth": 1.5,
+      "percent": false
+    },
+    {
+      "_$type": "DrawRoundRectCmd",
+      "x": 304,
+      "y": 124,
+      "width": 16,
+      "height": 16,
+      "lt": 2,
+      "rt": 2,
+      "lb": 2,
+      "rb": 8,
+      "fillColor": "#2dd4bf",
+      "lineColor": "#38bdf8",
+      "lineWidth": 1.5,
+      "percent": false
+    }
+  ],
+  "_$child": [
+    {
+      "_$id": "nine_slice_title_txt",
+      "_$type": "Text",
+      "name": "NineSliceHeader",
+      "x": 16,
+      "y": 36,
+      "width": 288,
+      "height": 24,
+      "text": "9-SLICE (sizeGrid: 16,16,16,16,0)",
+      "fontSize": 14,
+      "bold": true,
+      "color": "#2dd4bf",
+      "align": "center"
+    },
+    {
+      "_$id": "nine_slice_sub_txt",
+      "_$type": "Text",
+      "name": "NineSliceSubtitle",
+      "x": 16,
+      "y": 70,
+      "width": 288,
+      "height": 22,
+      "text": "Stretched 320×140px · 4 Corners Locked 16×16px",
+      "fontSize": 12,
+      "color": "#e2f1ff",
+      "align": "center"
+    }
+  ],
+  "_zhudaMeta": {
+    "assetId": "assets/prefabs/NineSliceDialogFrame.lh",
+    "category": "nine-slice-ui",
+    "version": "3.4.2-zhuda-static-v1",
+    "designCanvas": {
+      "width": 340,
+      "height": 160,
+      "padding": 10
+    },
+    "targetSpec": {
+      "assetName": "NineSliceDialogFrame.lh",
+      "expectedBox": {
+        "x": 10,
+        "y": 10,
+        "width": 320,
+        "height": 140
+      },
+      "expectedPadding": {
+        "left": 10,
+        "top": 10,
+        "right": 10,
+        "bottom": 10
+      },
+      "targetColors": {
+        "primaryFill": "#132036",
+        "borderStroke": "#38bdf8",
+        "accentOrText": "#2dd4bf"
+      },
+      "tolerancePx": 0,
+      "toleranceDeltaE": 1.5
+    },
+    "nineSliceSpec": {
+      "sizeGrid": [
+        16,
+        16,
+        16,
+        16,
+        0
+      ],
+      "baseWidth": 160,
+      "baseHeight": 80
+    }
+  }
+}

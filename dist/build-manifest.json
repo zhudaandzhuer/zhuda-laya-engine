@@ -1,0 +1,256 @@
+{
+  "packageName": "zhuda-laya-engine",
+  "version": "1.0.0",
+  "repositoryUrl": "https://github.com/zhudaandzhuer/zhuda-laya-engine",
+  "upstreamOfficial": {
+    "name": "LayaAir Official Engine (Layabox)",
+    "website": "https://layaair.com/",
+    "repository": "https://github.com/layabox/LayaAir",
+    "baseVersion": "3.4.2",
+    "edition": "豬大 (zhudaandzhuer) AI-Agent-Friendly 開源分支版本"
+  },
+  "engine": "zhuda-laya-engine (Zhuda-LayaAir · Agent-Friendly Fork of LayaAir 3.4.2)",
+  "baseVersion": "3.4.2",
+  "zeroIdeBuild": true,
+  "buildTimeMs": 79.7,
+  "activeProfile": "full-all-in-one",
+  "bundleSizeKB": 205.9,
+  "sdkArtifacts": {
+    "esmPath": "dist/sdk/zhuda-laya-engine.esm.js",
+    "esmSizeKB": 132.1,
+    "cjsPath": "dist/sdk/zhuda-laya-engine.cjs",
+    "cjsSizeKB": 133.9,
+    "typesPath": "packages/types/index.d.ts"
+  },
+  "enginePayloadSizeKB": 6578.3,
+  "prunedRatioPercent": 0,
+  "orderedLibrariesCount": 29,
+  "orderedLibraries": [
+    "laya.core.js",
+    "laya.d3.js",
+    "laya.webgl_2D.js",
+    "laya.webgl_3D.js",
+    "laya.ui.js",
+    "laya.physics2D.js",
+    "laya.box2D.js",
+    "laya.bullet.js",
+    "laya.physics3D.js",
+    "spine-core-4.2.js",
+    "laya.spine.js",
+    "laya.spine3D.js",
+    "laya.navMeshCommon.js",
+    "laya.navMesh2d.js",
+    "laya.navMesh3d.js",
+    "laya.particleCommon.js",
+    "laya.particle.js",
+    "laya.particle3D.js",
+    "laya.trailCommon.js",
+    "laya.trail2D.js",
+    "laya.trail3D.js",
+    "laya.light2D.js",
+    "laya.line2D.js",
+    "laya.tilemap.js",
+    "laya.ani.js",
+    "laya.gltf.js",
+    "laya.ik.js",
+    "laya.postProcess.js",
+    "laya.device.js"
+  ],
+  "reflectedComponents": [
+    {
+      "className": "BoardCameraController",
+      "filePath": "/Users/yaowei/Desktop/Zhuda-LayaAir/src/components/BoardCameraController.ts",
+      "baseClass": "Laya.Script",
+      "decorator": "zhudaComponent",
+      "assetId": "zhuda://BoardCameraController"
+    },
+    {
+      "className": "Spine42PhysicsRigComponent",
+      "filePath": "/Users/yaowei/Desktop/Zhuda-LayaAir/src/components/StaticAssetComponents.ts",
+      "baseClass": "Laya.Script",
+      "decorator": "zhudaComponent",
+      "assetId": "zhuda://Spine42PhysicsRigComponent"
+    },
+    {
+      "className": "ZhudaParticleEmitterComponent",
+      "filePath": "/Users/yaowei/Desktop/Zhuda-LayaAir/src/components/StaticAssetComponents.ts",
+      "baseClass": "Laya.Script",
+      "decorator": "zhudaComponent",
+      "assetId": "zhuda://ZhudaParticleEmitterComponent"
+    },
+    {
+      "className": "ZhudaAnimatorControllerComponent",
+      "filePath": "/Users/yaowei/Desktop/Zhuda-LayaAir/src/components/StaticAssetComponents.ts",
+      "baseClass": "Laya.Script",
+      "decorator": "zhudaComponent",
+      "assetId": "zhuda://ZhudaAnimatorControllerComponent"
+    },
+    {
+      "className": "TilePhysicsBehavior",
+      "filePath": "/Users/yaowei/Desktop/Zhuda-LayaAir/src/components/TilePhysicsBehavior.ts",
+      "baseClass": "Laya.Script",
+      "decorator": "zhudaComponent",
+      "assetId": "zhuda://TilePhysicsBehavior"
+    }
+  ],
+  "staticAssets": [
+    {
+      "fileName": "ConfirmActionButton.lh",
+      "category": "ui-prefab",
+      "sizeBytes": 1743,
+      "path": "assets/prefabs/ConfirmActionButton.lh"
+    },
+    {
+      "fileName": "NineSliceDialogFrame.lh",
+      "category": "nine-slice-ui",
+      "sizeBytes": 3410,
+      "path": "assets/prefabs/NineSliceDialogFrame.lh"
+    },
+    {
+      "fileName": "TacticalHudBar.lh",
+      "category": "ui-prefab",
+      "sizeBytes": 2663,
+      "path": "assets/prefabs/TacticalHudBar.lh"
+    },
+    {
+      "fileName": "ZhudaSpine42Mascot.lh",
+      "category": "spine42-rig",
+      "sizeBytes": 3814,
+      "path": "assets/prefabs/ZhudaSpine42Mascot.lh"
+    },
+    {
+      "fileName": "MineExplosionParticle.lh",
+      "category": "particle-emitter",
+      "sizeBytes": 7206,
+      "path": "assets/prefabs/MineExplosionParticle.lh"
+    },
+    {
+      "fileName": "CoinFountainVfx.lh",
+      "category": "vfx-blueprint",
+      "sizeBytes": 4052,
+      "path": "assets/prefabs/CoinFountainVfx.lh"
+    },
+    {
+      "fileName": "SwordSlashTrailVfx.lh",
+      "category": "vfx-blueprint",
+      "sizeBytes": 2414,
+      "path": "assets/prefabs/SwordSlashTrailVfx.lh"
+    },
+    {
+      "fileName": "LevelUpAuraVfx.lh",
+      "category": "vfx-blueprint",
+      "sizeBytes": 2763,
+      "path": "assets/prefabs/LevelUpAuraVfx.lh"
+    },
+    {
+      "fileName": "UnityCrystalGuardian.lh",
+      "category": "unity-migrated",
+      "sizeBytes": 4281,
+      "path": "assets/prefabs/UnityCrystalGuardian.lh"
+    },
+    {
+      "fileName": "TelemetryDashboard.lh",
+      "category": "ui-prefab",
+      "sizeBytes": 1964,
+      "path": "assets/prefabs/TelemetryDashboard.lh"
+    },
+    {
+      "fileName": "MinesweeperStage.ls",
+      "category": "scene-lh",
+      "sizeBytes": 30149,
+      "path": "assets/scenes/MinesweeperStage.ls"
+    }
+  ],
+  "staticCalibrationSummary": {
+    "totalAssets": 11,
+    "calibratedPrefabs": 10,
+    "allPassed": true,
+    "selfConvergenceElapsedMs": 0.38,
+    "beforePxError": 3,
+    "afterPxError": 0,
+    "beforeDeltaE2000": 8.98,
+    "afterDeltaE2000": 0
+  },
+  "profileComparisons": {
+    "2d-light": {
+      "moduleCount": 3,
+      "totalSizeKB": 1233.1,
+      "prunedRatioPercent": 81.3,
+      "files": [
+        "laya.core.js",
+        "laya.webgl_2D.js",
+        "laya.ui.js"
+      ]
+    },
+    "3d-standard": {
+      "moduleCount": 9,
+      "totalSizeKB": 3406.8,
+      "prunedRatioPercent": 48.2,
+      "files": [
+        "laya.core.js",
+        "laya.d3.js",
+        "laya.webgl_2D.js",
+        "laya.webgl_3D.js",
+        "laya.ui.js",
+        "laya.bullet.js",
+        "laya.physics3D.js",
+        "laya.gltf.js",
+        "laya.postProcess.js"
+      ]
+    },
+    "spine-hybrid": {
+      "moduleCount": 10,
+      "totalSizeKB": 3851.1,
+      "prunedRatioPercent": 41.5,
+      "files": [
+        "laya.core.js",
+        "laya.d3.js",
+        "laya.webgl_2D.js",
+        "laya.webgl_3D.js",
+        "laya.ui.js",
+        "laya.bullet.js",
+        "laya.physics3D.js",
+        "spine-core-4.2.js",
+        "laya.spine.js",
+        "laya.spine3D.js"
+      ]
+    },
+    "full-all-in-one": {
+      "moduleCount": 29,
+      "totalSizeKB": 6578.3,
+      "prunedRatioPercent": 0,
+      "files": [
+        "laya.core.js",
+        "laya.d3.js",
+        "laya.webgl_2D.js",
+        "laya.webgl_3D.js",
+        "laya.ui.js",
+        "laya.physics2D.js",
+        "laya.box2D.js",
+        "laya.bullet.js",
+        "laya.physics3D.js",
+        "spine-core-4.2.js",
+        "laya.spine.js",
+        "laya.spine3D.js",
+        "laya.navMeshCommon.js",
+        "laya.navMesh2d.js",
+        "laya.navMesh3d.js",
+        "laya.particleCommon.js",
+        "laya.particle.js",
+        "laya.particle3D.js",
+        "laya.trailCommon.js",
+        "laya.trail2D.js",
+        "laya.trail3D.js",
+        "laya.light2D.js",
+        "laya.line2D.js",
+        "laya.tilemap.js",
+        "laya.ani.js",
+        "laya.gltf.js",
+        "laya.ik.js",
+        "laya.postProcess.js",
+        "laya.device.js"
+      ]
+    }
+  },
+  "timestamp": "2026-10-28T09:16:38.762Z"
+}

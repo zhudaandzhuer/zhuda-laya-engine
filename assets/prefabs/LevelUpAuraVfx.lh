@@ -1,0 +1,136 @@
+{
+  "_$ver": 1,
+  "_$id": "vfx_levelup_aura_root",
+  "_$type": "Sprite",
+  "name": "LevelUpAuraVfx",
+  "x": 12,
+  "y": 12,
+  "width": 176,
+  "height": 176,
+  "_gcmds": [
+    {
+      "_$type": "DrawRoundRectCmd",
+      "x": 0,
+      "y": 0,
+      "width": 176,
+      "height": 176,
+      "lt": 16,
+      "rt": 16,
+      "lb": 16,
+      "rb": 16,
+      "fillColor": "#13162b",
+      "lineColor": "#a855f7",
+      "lineWidth": 2,
+      "percent": false
+    },
+    {
+      "_$type": "DrawCircleCmd",
+      "x": 88,
+      "y": 88,
+      "radius": 62,
+      "fillColor": null,
+      "lineColor": "#c084fc",
+      "lineWidth": 2.5,
+      "percent": false
+    },
+    {
+      "_$type": "DrawCircleCmd",
+      "x": 88,
+      "y": 88,
+      "radius": 34,
+      "fillColor": "#581c87",
+      "lineColor": "#e9d5ff",
+      "lineWidth": 2,
+      "percent": false
+    },
+    {
+      "_$type": "DrawLineCmd",
+      "fromX": 52,
+      "fromY": 132,
+      "toX": 52,
+      "toY": 36,
+      "lineColor": "#64ffda",
+      "lineWidth": 2.5,
+      "percent": false
+    },
+    {
+      "_$type": "DrawLineCmd",
+      "fromX": 88,
+      "fromY": 140,
+      "toX": 88,
+      "toY": 24,
+      "lineColor": "#e9d5ff",
+      "lineWidth": 3,
+      "percent": false
+    },
+    {
+      "_$type": "DrawLineCmd",
+      "fromX": 124,
+      "fromY": 132,
+      "toX": 124,
+      "toY": 36,
+      "lineColor": "#64ffda",
+      "lineWidth": 2.5,
+      "percent": false
+    }
+  ],
+  "_$comp": [
+    {
+      "_$type": "ZhudaParticleEmitterComponent",
+      "emitterName": "AscensionHaloAura_v1",
+      "burstCount": 18,
+      "previewTimestampMs": 320,
+      "primaryColor": "#a855f7",
+      "secondaryColor": "#e9d5ff",
+      "sparkColor": "#64ffda"
+    }
+  ],
+  "_$child": [
+    {
+      "_$id": "vfx_aura_label",
+      "_$type": "Text",
+      "name": "VfxAuraTitle",
+      "x": 0,
+      "y": 152,
+      "width": 176,
+      "height": 18,
+      "text": "VFX: LevelUpAura @ 320ms",
+      "fontSize": 11,
+      "bold": true,
+      "color": "#e9d5ff",
+      "align": "center"
+    }
+  ],
+  "_zhudaMeta": {
+    "assetId": "assets/prefabs/LevelUpAuraVfx.lh",
+    "category": "vfx-blueprint",
+    "version": "3.4.2-zhuda-static-v1",
+    "designCanvas": {
+      "width": 200,
+      "height": 200,
+      "padding": 12
+    },
+    "targetSpec": {
+      "assetName": "LevelUpAuraVfx.lh",
+      "expectedBox": {
+        "x": 12,
+        "y": 12,
+        "width": 176,
+        "height": 176
+      },
+      "expectedPadding": {
+        "left": 12,
+        "top": 12,
+        "right": 12,
+        "bottom": 12
+      },
+      "targetColors": {
+        "primaryFill": "#13162b",
+        "borderStroke": "#a855f7",
+        "accentOrText": "#e9d5ff"
+      },
+      "tolerancePx": 0,
+      "toleranceDeltaE": 1.5
+    }
+  }
+}

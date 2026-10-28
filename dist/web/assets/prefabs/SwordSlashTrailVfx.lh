@@ -1,0 +1,117 @@
+{
+  "_$ver": 1,
+  "_$id": "vfx_sword_slash_root",
+  "_$type": "Sprite",
+  "name": "SwordSlashTrailVfx",
+  "x": 12,
+  "y": 12,
+  "width": 176,
+  "height": 176,
+  "_gcmds": [
+    {
+      "_$type": "DrawRoundRectCmd",
+      "x": 0,
+      "y": 0,
+      "width": 176,
+      "height": 176,
+      "lt": 16,
+      "rt": 16,
+      "lb": 16,
+      "rb": 16,
+      "fillColor": "#0d1b2a",
+      "lineColor": "#00e5ff",
+      "lineWidth": 2,
+      "percent": false
+    },
+    {
+      "_$type": "DrawPieCmd",
+      "x": 88,
+      "y": 88,
+      "radius": 66,
+      "startAngle": -55,
+      "endAngle": 75,
+      "fillColor": "#00e5ff",
+      "lineColor": "#ffffff",
+      "lineWidth": 2
+    },
+    {
+      "_$type": "DrawCircleCmd",
+      "x": 74,
+      "y": 88,
+      "radius": 48,
+      "fillColor": "#0d1b2a",
+      "lineColor": "#38bdf8",
+      "lineWidth": 1.5,
+      "percent": false
+    },
+    {
+      "_$type": "DrawLineCmd",
+      "fromX": 28,
+      "fromY": 132,
+      "toX": 148,
+      "toY": 36,
+      "lineColor": "#ffffff",
+      "lineWidth": 3,
+      "percent": false
+    }
+  ],
+  "_$comp": [
+    {
+      "_$type": "ZhudaParticleEmitterComponent",
+      "emitterName": "CyberBladeSlash_v1",
+      "burstCount": 16,
+      "previewTimestampMs": 120,
+      "primaryColor": "#00e5ff",
+      "secondaryColor": "#7df9ff",
+      "sparkColor": "#ffffff"
+    }
+  ],
+  "_$child": [
+    {
+      "_$id": "vfx_slash_label",
+      "_$type": "Text",
+      "name": "VfxSlashTitle",
+      "x": 0,
+      "y": 152,
+      "width": 176,
+      "height": 18,
+      "text": "VFX: SwordSlashTrail @ 120ms",
+      "fontSize": 11,
+      "bold": true,
+      "color": "#7df9ff",
+      "align": "center"
+    }
+  ],
+  "_zhudaMeta": {
+    "assetId": "assets/prefabs/SwordSlashTrailVfx.lh",
+    "category": "vfx-blueprint",
+    "version": "3.4.2-zhuda-static-v1",
+    "designCanvas": {
+      "width": 200,
+      "height": 200,
+      "padding": 12
+    },
+    "targetSpec": {
+      "assetName": "SwordSlashTrailVfx.lh",
+      "expectedBox": {
+        "x": 12,
+        "y": 12,
+        "width": 176,
+        "height": 176
+      },
+      "expectedPadding": {
+        "left": 12,
+        "top": 12,
+        "right": 12,
+        "bottom": 12
+      },
+      "targetColors": {
+        "primaryFill": "#0d1b2a",
+        "borderStroke": "#00e5ff",
+        "accentOrText": "#7df9ff"
+      },
+      "tolerancePx": 0,
+      "toleranceDeltaE": 1.5
+    }
+  }
+}

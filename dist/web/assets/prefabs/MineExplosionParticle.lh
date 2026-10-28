@@ -1,0 +1,352 @@
+{
+  "_$ver": 1,
+  "_$id": "particle_explosion_root",
+  "_$type": "Sprite",
+  "name": "MineExplosionParticle",
+  "x": 12,
+  "y": 12,
+  "width": 176,
+  "height": 176,
+  "_gcmds": [
+    {
+      "_$type": "DrawRoundRectCmd",
+      "x": 0,
+      "y": 0,
+      "width": 176,
+      "height": 176,
+      "lt": 16,
+      "rt": 16,
+      "lb": 16,
+      "rb": 16,
+      "fillColor": "#231424",
+      "lineColor": "#ff5533",
+      "lineWidth": 2,
+      "percent": false
+    },
+    {
+      "_$type": "DrawCircleCmd",
+      "x": 88,
+      "y": 88,
+      "radius": 68,
+      "fillColor": null,
+      "lineColor": "#ffaa00",
+      "lineWidth": 2,
+      "percent": false
+    },
+    {
+      "_$type": "DrawCircleCmd",
+      "x": 88,
+      "y": 88,
+      "radius": 26,
+      "fillColor": "#ff5533",
+      "lineColor": "#ffaa00",
+      "lineWidth": 3,
+      "percent": false
+    },
+    {
+      "_$type": "DrawCircleCmd",
+      "x": 128.1,
+      "y": 87.6,
+      "radius": 3.2,
+      "fillColor": "#ffaa00",
+      "lineColor": null,
+      "lineWidth": 0,
+      "percent": false
+    },
+    {
+      "_$type": "DrawCircleCmd",
+      "x": 118.2,
+      "y": 94.9,
+      "radius": 4.8,
+      "fillColor": "#ff5533",
+      "lineColor": null,
+      "lineWidth": 0,
+      "percent": false
+    },
+    {
+      "_$type": "DrawCircleCmd",
+      "x": 115.8,
+      "y": 106.8,
+      "radius": 6.4,
+      "fillColor": "#64ffda",
+      "lineColor": null,
+      "lineWidth": 0,
+      "percent": false
+    },
+    {
+      "_$type": "DrawCircleCmd",
+      "x": 110.9,
+      "y": 112.8,
+      "radius": 3.2,
+      "fillColor": "#ffaa00",
+      "lineColor": null,
+      "lineWidth": 0,
+      "percent": false
+    },
+    {
+      "_$type": "DrawCircleCmd",
+      "x": 103.7,
+      "y": 111,
+      "radius": 4.8,
+      "fillColor": "#ff5533",
+      "lineColor": null,
+      "lineWidth": 0,
+      "percent": false
+    },
+    {
+      "_$type": "DrawCircleCmd",
+      "x": 94,
+      "y": 118.2,
+      "radius": 6.4,
+      "fillColor": "#64ffda",
+      "lineColor": null,
+      "lineWidth": 0,
+      "percent": false
+    },
+    {
+      "_$type": "DrawCircleCmd",
+      "x": 88,
+      "y": 120.7,
+      "radius": 3.2,
+      "fillColor": "#ffaa00",
+      "lineColor": null,
+      "lineWidth": 0,
+      "percent": false
+    },
+    {
+      "_$type": "DrawCircleCmd",
+      "x": 79,
+      "y": 128.9,
+      "radius": 4.8,
+      "fillColor": "#ff5533",
+      "lineColor": null,
+      "lineWidth": 0,
+      "percent": false
+    },
+    {
+      "_$type": "DrawCircleCmd",
+      "x": 72.9,
+      "y": 114.2,
+      "radius": 6.4,
+      "fillColor": "#64ffda",
+      "lineColor": null,
+      "lineWidth": 0,
+      "percent": false
+    },
+    {
+      "_$type": "DrawCircleCmd",
+      "x": 59.8,
+      "y": 116.4,
+      "radius": 3.2,
+      "fillColor": "#ffaa00",
+      "lineColor": null,
+      "lineWidth": 0,
+      "percent": false
+    },
+    {
+      "_$type": "DrawCircleCmd",
+      "x": 60.7,
+      "y": 105.3,
+      "radius": 4.8,
+      "fillColor": "#ff5533",
+      "lineColor": null,
+      "lineWidth": 0,
+      "percent": false
+    },
+    {
+      "_$type": "DrawCircleCmd",
+      "x": 49.8,
+      "y": 96.5,
+      "radius": 6.4,
+      "fillColor": "#64ffda",
+      "lineColor": null,
+      "lineWidth": 0,
+      "percent": false
+    },
+    {
+      "_$type": "DrawCircleCmd",
+      "x": 61.1,
+      "y": 87.9,
+      "radius": 3.2,
+      "fillColor": "#ffaa00",
+      "lineColor": null,
+      "lineWidth": 0,
+      "percent": false
+    },
+    {
+      "_$type": "DrawCircleCmd",
+      "x": 58.1,
+      "y": 82.7,
+      "radius": 4.8,
+      "fillColor": "#ff5533",
+      "lineColor": null,
+      "lineWidth": 0,
+      "percent": false
+    },
+    {
+      "_$type": "DrawCircleCmd",
+      "x": 51.8,
+      "y": 68,
+      "radius": 6.4,
+      "fillColor": "#64ffda",
+      "lineColor": null,
+      "lineWidth": 0,
+      "percent": false
+    },
+    {
+      "_$type": "DrawCircleCmd",
+      "x": 64.3,
+      "y": 62.9,
+      "radius": 3.2,
+      "fillColor": "#ffaa00",
+      "lineColor": null,
+      "lineWidth": 0,
+      "percent": false
+    },
+    {
+      "_$type": "DrawCircleCmd",
+      "x": 66.3,
+      "y": 53.5,
+      "radius": 4.8,
+      "fillColor": "#ff5533",
+      "lineColor": null,
+      "lineWidth": 0,
+      "percent": false
+    },
+    {
+      "_$type": "DrawCircleCmd",
+      "x": 75.9,
+      "y": 48.2,
+      "radius": 6.4,
+      "fillColor": "#64ffda",
+      "lineColor": null,
+      "lineWidth": 0,
+      "percent": false
+    },
+    {
+      "_$type": "DrawCircleCmd",
+      "x": 86,
+      "y": 48.5,
+      "radius": 3.2,
+      "fillColor": "#ffaa00",
+      "lineColor": null,
+      "lineWidth": 0,
+      "percent": false
+    },
+    {
+      "_$type": "DrawCircleCmd",
+      "x": 99.8,
+      "y": 46.6,
+      "radius": 4.8,
+      "fillColor": "#ff5533",
+      "lineColor": null,
+      "lineWidth": 0,
+      "percent": false
+    },
+    {
+      "_$type": "DrawCircleCmd",
+      "x": 102.4,
+      "y": 63.6,
+      "radius": 6.4,
+      "fillColor": "#64ffda",
+      "lineColor": null,
+      "lineWidth": 0,
+      "percent": false
+    },
+    {
+      "_$type": "DrawCircleCmd",
+      "x": 119.4,
+      "y": 60.3,
+      "radius": 3.2,
+      "fillColor": "#ffaa00",
+      "lineColor": null,
+      "lineWidth": 0,
+      "percent": false
+    },
+    {
+      "_$type": "DrawCircleCmd",
+      "x": 115.3,
+      "y": 70.9,
+      "radius": 4.8,
+      "fillColor": "#ff5533",
+      "lineColor": null,
+      "lineWidth": 0,
+      "percent": false
+    },
+    {
+      "_$type": "DrawCircleCmd",
+      "x": 130.5,
+      "y": 80.4,
+      "radius": 6.4,
+      "fillColor": "#64ffda",
+      "lineColor": null,
+      "lineWidth": 0,
+      "percent": false
+    }
+  ],
+  "_$comp": [
+    {
+      "_$type": "ZhudaParticleEmitterComponent",
+      "emitterName": "TacticalMineBurst_v1",
+      "burstCount": 24,
+      "emissionRate": 36,
+      "lifetimeMs": 850,
+      "startSpeed": 165,
+      "gravityY": 220,
+      "seed": 20261028,
+      "previewTimestampMs": 240,
+      "primaryColor": "#ff5533",
+      "secondaryColor": "#ffaa00",
+      "sparkColor": "#64ffda",
+      "coreGlowColor": "#231424"
+    }
+  ],
+  "_$child": [
+    {
+      "_$id": "particle_badge_txt",
+      "_$type": "Text",
+      "name": "ParticleSnapshotLabel",
+      "x": 0,
+      "y": 152,
+      "width": 176,
+      "height": 18,
+      "text": "Particle Snapshot @ 240ms",
+      "fontSize": 11,
+      "bold": true,
+      "color": "#ffaa00",
+      "align": "center"
+    }
+  ],
+  "_zhudaMeta": {
+    "assetId": "assets/prefabs/MineExplosionParticle.lh",
+    "category": "particle-emitter",
+    "version": "3.4.2-zhuda-static-v1",
+    "designCanvas": {
+      "width": 200,
+      "height": 200,
+      "padding": 12
+    },
+    "targetSpec": {
+      "assetName": "MineExplosionParticle.lh",
+      "expectedBox": {
+        "x": 12,
+        "y": 12,
+        "width": 176,
+        "height": 176
+      },
+      "expectedPadding": {
+        "left": 12,
+        "top": 12,
+        "right": 12,
+        "bottom": 12
+      },
+      "targetColors": {
+        "primaryFill": "#231424",
+        "borderStroke": "#ff5533",
+        "accentOrText": "#ffaa00"
+      },
+      "tolerancePx": 0,
+      "toleranceDeltaE": 1.5
+    }
+  }
+}

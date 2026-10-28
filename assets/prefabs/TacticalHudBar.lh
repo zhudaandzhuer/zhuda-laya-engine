@@ -1,0 +1,134 @@
+{
+  "_$ver": 1,
+  "_$id": "hud_bar_root",
+  "_$type": "Sprite",
+  "name": "TacticalHudBar",
+  "x": 10,
+  "y": 10,
+  "width": 310,
+  "height": 64,
+  "_gcmds": [
+    {
+      "_$type": "DrawRoundRectCmd",
+      "x": 0,
+      "y": 0,
+      "width": 310,
+      "height": 64,
+      "lt": 12,
+      "rt": 12,
+      "lb": 12,
+      "rb": 12,
+      "fillColor": "#141d2c",
+      "lineColor": "#304565",
+      "lineWidth": 2,
+      "percent": false
+    },
+    {
+      "_$type": "DrawRoundRectCmd",
+      "x": 14,
+      "y": 10,
+      "width": 96,
+      "height": 44,
+      "lt": 6,
+      "rt": 6,
+      "lb": 6,
+      "rb": 6,
+      "fillColor": "#0b0f17",
+      "lineColor": "#ff3366",
+      "lineWidth": 1.5,
+      "percent": false
+    },
+    {
+      "_$type": "DrawRoundRectCmd",
+      "x": 200,
+      "y": 10,
+      "width": 96,
+      "height": 44,
+      "lt": 6,
+      "rt": 6,
+      "lb": 6,
+      "rb": 6,
+      "fillColor": "#0b0f17",
+      "lineColor": "#00ff88",
+      "lineWidth": 1.5,
+      "percent": false
+    }
+  ],
+  "_$child": [
+    {
+      "_$id": "hud_mine_led",
+      "_$type": "Text",
+      "name": "MineCounterLED",
+      "x": 14,
+      "y": 17,
+      "width": 96,
+      "height": 32,
+      "text": "010",
+      "font": "Courier New, monospace",
+      "fontSize": 25,
+      "bold": true,
+      "color": "#ff3366",
+      "align": "center"
+    },
+    {
+      "_$id": "hud_face_badge",
+      "_$type": "Text",
+      "name": "CenterFaceIcon",
+      "x": 126,
+      "y": 16,
+      "width": 58,
+      "height": 36,
+      "text": "🙂",
+      "fontSize": 24,
+      "color": "#e2f1ff",
+      "align": "center"
+    },
+    {
+      "_$id": "hud_timer_led",
+      "_$type": "Text",
+      "name": "TimerCounterLED",
+      "x": 200,
+      "y": 17,
+      "width": 96,
+      "height": 32,
+      "text": "042",
+      "font": "Courier New, monospace",
+      "fontSize": 25,
+      "bold": true,
+      "color": "#00ff88",
+      "align": "center"
+    }
+  ],
+  "_zhudaMeta": {
+    "assetId": "assets/prefabs/TacticalHudBar.lh",
+    "category": "ui-prefab",
+    "version": "3.4.2-zhuda-static-v1",
+    "designCanvas": {
+      "width": 330,
+      "height": 84,
+      "padding": 10
+    },
+    "targetSpec": {
+      "assetName": "TacticalHudBar.lh",
+      "expectedBox": {
+        "x": 10,
+        "y": 10,
+        "width": 310,
+        "height": 64
+      },
+      "expectedPadding": {
+        "left": 10,
+        "top": 10,
+        "right": 10,
+        "bottom": 10
+      },
+      "targetColors": {
+        "primaryFill": "#141d2c",
+        "borderStroke": "#304565",
+        "accentOrText": "#ff3366"
+      },
+      "tolerancePx": 0,
+      "toleranceDeltaE": 1.5
+    }
+  }
+}

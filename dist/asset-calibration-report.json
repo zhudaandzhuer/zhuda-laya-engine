@@ -1,0 +1,971 @@
+{
+  "generatedAt": "2026-10-28T09:16:38.710Z",
+  "totalStaticAssets": 11,
+  "calibratedPrefabsCount": 10,
+  "allPassed": true,
+  "selfConvergenceDemo": {
+    "assetName": "ConfirmActionButton.lh",
+    "elapsedMs": 0.38,
+    "before": {
+      "measuredBox": {
+        "x": 12,
+        "y": 10,
+        "width": 163,
+        "height": 48
+      },
+      "expectedBox": {
+        "x": 10,
+        "y": 10,
+        "width": 160,
+        "height": 48
+      },
+      "pixelErrors": {
+        "xDiffPx": 2,
+        "yDiffPx": 0,
+        "widthDiffPx": 3,
+        "heightDiffPx": 0,
+        "maxAbsErrorPx": 3
+      },
+      "colorMetrics": {
+        "measuredPrimaryFill": "#2c4c7e",
+        "targetPrimaryFill": "#1e3a5f",
+        "primaryDeltaE76": 10.86,
+        "primaryDeltaE2000": 6.59,
+        "measuredBorderStroke": "#5278a8",
+        "targetBorderStroke": "#3b82f6",
+        "borderDeltaE2000": 8.72,
+        "measuredAccentOrText": "#b8d0eb",
+        "targetAccentOrText": "#e2f1ff",
+        "accentDeltaE2000": 8.98,
+        "maxDeltaE2000": 8.98
+      }
+    },
+    "appliedPatches": [
+      {
+        "targetPath": "root",
+        "property": "x",
+        "currentValue": 12,
+        "suggestedValue": 10,
+        "reason": "X 座標偏移 +2px (預期 10px)"
+      },
+      {
+        "targetPath": "root",
+        "property": "width",
+        "currentValue": 163,
+        "suggestedValue": 160,
+        "reason": "節點寬度誤差 +3px (預期 160px)"
+      },
+      {
+        "targetPath": "_gcmds[0]",
+        "property": "width",
+        "currentValue": 163,
+        "suggestedValue": 160,
+        "reason": "底圖指令 DrawRoundRectCmd 寬度誤差 +3px"
+      },
+      {
+        "targetPath": "_gcmds[0]",
+        "property": "fillColor",
+        "currentValue": "#2c4c7e",
+        "suggestedValue": "#1e3a5f",
+        "reason": "主填充色差 ΔE00 = 6.59 超出容許值 1.5 (目標 #1e3a5f)"
+      },
+      {
+        "targetPath": "_gcmds[0]",
+        "property": "lineColor",
+        "currentValue": "#5278a8",
+        "suggestedValue": "#3b82f6",
+        "reason": "邊框色差 ΔE00 = 8.72 超出容許值 1.5 (目標 #3b82f6)"
+      },
+      {
+        "targetPath": "_$child[0]",
+        "property": "color",
+        "currentValue": "#b8d0eb",
+        "suggestedValue": "#e2f1ff",
+        "reason": "文字/強調色差 ΔE00 = 8.98 超出容許值 1.5 (目標 #e2f1ff)"
+      }
+    ],
+    "after": {
+      "measuredBox": {
+        "x": 10,
+        "y": 10,
+        "width": 160,
+        "height": 48
+      },
+      "expectedBox": {
+        "x": 10,
+        "y": 10,
+        "width": 160,
+        "height": 48
+      },
+      "pixelErrors": {
+        "xDiffPx": 0,
+        "yDiffPx": 0,
+        "widthDiffPx": 0,
+        "heightDiffPx": 0,
+        "maxAbsErrorPx": 0
+      },
+      "colorMetrics": {
+        "measuredPrimaryFill": "#1e3a5f",
+        "targetPrimaryFill": "#1e3a5f",
+        "primaryDeltaE76": 0,
+        "primaryDeltaE2000": 0,
+        "measuredBorderStroke": "#3b82f6",
+        "targetBorderStroke": "#3b82f6",
+        "borderDeltaE2000": 0,
+        "measuredAccentOrText": "#e2f1ff",
+        "targetAccentOrText": "#e2f1ff",
+        "accentDeltaE2000": 0,
+        "maxDeltaE2000": 0
+      },
+      "passed": true
+    }
+  },
+  "nineSliceVerification": {
+    "assetName": "NineSliceDialogFrame.lh",
+    "sizeGrid": [
+      16,
+      16,
+      16,
+      16,
+      0
+    ],
+    "baseSize": {
+      "width": 160,
+      "height": 80
+    },
+    "stretchedSize": {
+      "width": 320,
+      "height": 140
+    },
+    "stretchRatioX": 2,
+    "stretchRatioY": 1.75,
+    "cornerPins": {
+      "topLeft": {
+        "x": 0,
+        "y": 0,
+        "width": 16,
+        "height": 16
+      },
+      "topRight": {
+        "x": 304,
+        "y": 0,
+        "width": 16,
+        "height": 16
+      },
+      "bottomLeft": {
+        "x": 0,
+        "y": 124,
+        "width": 16,
+        "height": 16
+      },
+      "bottomRight": {
+        "x": 304,
+        "y": 124,
+        "width": 16,
+        "height": 16
+      }
+    },
+    "maxCornerDistortionPx": 0,
+    "centerSliceSize": {
+      "width": 288,
+      "height": 108
+    },
+    "passed": true
+  },
+  "viewportMatrixVerification": {
+    "totalProfiles": 5,
+    "allPassed": true,
+    "reports": [
+      {
+        "deviceId": "desktop-fhd-16-9",
+        "deviceName": "Desktop FHD (16:9)",
+        "aspectLabel": "16:9",
+        "viewportWidth": 1280,
+        "viewportHeight": 720,
+        "safeArea": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "safeZoneRect": {
+          "x": 0,
+          "y": 0,
+          "width": 1280,
+          "height": 720
+        },
+        "orientation": "landscape",
+        "scaleFactor": 1,
+        "recommendedCameraFov": 45,
+        "recommendedCameraDist": 14,
+        "hudTopBarRect": {
+          "x": 16,
+          "y": 16,
+          "width": 1248,
+          "height": 72
+        },
+        "mascotRect": {
+          "x": 1039,
+          "y": 104,
+          "width": 225,
+          "height": 172
+        },
+        "telemetryRect": {
+          "x": 1039,
+          "y": 292,
+          "width": 225,
+          "height": 412
+        },
+        "boardViewportRect": {
+          "x": 16,
+          "y": 104,
+          "width": 1007,
+          "height": 600
+        },
+        "safeAreaCompliant": true,
+        "zeroOverflowPassed": true
+      },
+      {
+        "deviceId": "iphone-15-pro-portrait",
+        "deviceName": "iPhone 15 Pro 直向 (9:19.5 靈動島)",
+        "aspectLabel": "9:19.5",
+        "viewportWidth": 393,
+        "viewportHeight": 852,
+        "safeArea": {
+          "top": 59,
+          "right": 0,
+          "bottom": 34,
+          "left": 0
+        },
+        "safeZoneRect": {
+          "x": 0,
+          "y": 59,
+          "width": 393,
+          "height": 759
+        },
+        "orientation": "portrait",
+        "scaleFactor": 1,
+        "recommendedCameraFov": 68,
+        "recommendedCameraDist": 19.2,
+        "hudTopBarRect": {
+          "x": 10,
+          "y": 69,
+          "width": 373,
+          "height": 60
+        },
+        "mascotRect": {
+          "x": 10,
+          "y": 660,
+          "width": 181,
+          "height": 148
+        },
+        "telemetryRect": {
+          "x": 201,
+          "y": 660,
+          "width": 182,
+          "height": 148
+        },
+        "boardViewportRect": {
+          "x": 10,
+          "y": 139,
+          "width": 373,
+          "height": 511
+        },
+        "safeAreaCompliant": true,
+        "zeroOverflowPassed": true
+      },
+      {
+        "deviceId": "iphone-15-pro-landscape",
+        "deviceName": "iPhone 15 Pro 橫向 (19.5:9 安全區)",
+        "aspectLabel": "19.5:9",
+        "viewportWidth": 852,
+        "viewportHeight": 393,
+        "safeArea": {
+          "top": 0,
+          "right": 59,
+          "bottom": 21,
+          "left": 59
+        },
+        "safeZoneRect": {
+          "x": 59,
+          "y": 0,
+          "width": 734,
+          "height": 372
+        },
+        "orientation": "landscape",
+        "scaleFactor": 0.517,
+        "recommendedCameraFov": 45,
+        "recommendedCameraDist": 14,
+        "hudTopBarRect": {
+          "x": 75,
+          "y": 16,
+          "width": 702,
+          "height": 45
+        },
+        "mascotRect": {
+          "x": 623,
+          "y": 77,
+          "width": 154,
+          "height": 95
+        },
+        "telemetryRect": {
+          "x": 623,
+          "y": 188,
+          "width": 154,
+          "height": 168
+        },
+        "boardViewportRect": {
+          "x": 75,
+          "y": 77,
+          "width": 532,
+          "height": 279
+        },
+        "safeAreaCompliant": true,
+        "zeroOverflowPassed": true
+      },
+      {
+        "deviceId": "ipad-air-4-3",
+        "deviceName": "iPad Air 平板 (4:3)",
+        "aspectLabel": "4:3",
+        "viewportWidth": 1024,
+        "viewportHeight": 768,
+        "safeArea": {
+          "top": 24,
+          "right": 0,
+          "bottom": 20,
+          "left": 0
+        },
+        "safeZoneRect": {
+          "x": 0,
+          "y": 24,
+          "width": 1024,
+          "height": 724
+        },
+        "orientation": "landscape",
+        "scaleFactor": 0.8,
+        "recommendedCameraFov": 50,
+        "recommendedCameraDist": 15.6,
+        "hudTopBarRect": {
+          "x": 16,
+          "y": 40,
+          "width": 992,
+          "height": 72
+        },
+        "mascotRect": {
+          "x": 793,
+          "y": 128,
+          "width": 215,
+          "height": 172
+        },
+        "telemetryRect": {
+          "x": 793,
+          "y": 316,
+          "width": 215,
+          "height": 416
+        },
+        "boardViewportRect": {
+          "x": 16,
+          "y": 128,
+          "width": 761,
+          "height": 604
+        },
+        "safeAreaCompliant": true,
+        "zeroOverflowPassed": true
+      },
+      {
+        "deviceId": "ultrawide-21-9",
+        "deviceName": "Ultrawide 超寬電競螢幕 (21:9)",
+        "aspectLabel": "21:9",
+        "viewportWidth": 1680,
+        "viewportHeight": 720,
+        "safeArea": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "safeZoneRect": {
+          "x": 0,
+          "y": 0,
+          "width": 1680,
+          "height": 720
+        },
+        "orientation": "landscape",
+        "scaleFactor": 1,
+        "recommendedCameraFov": 45,
+        "recommendedCameraDist": 14,
+        "hudTopBarRect": {
+          "x": 16,
+          "y": 16,
+          "width": 1648,
+          "height": 72
+        },
+        "mascotRect": {
+          "x": 1439,
+          "y": 104,
+          "width": 225,
+          "height": 172
+        },
+        "telemetryRect": {
+          "x": 1439,
+          "y": 292,
+          "width": 225,
+          "height": 412
+        },
+        "boardViewportRect": {
+          "x": 16,
+          "y": 104,
+          "width": 1407,
+          "height": 600
+        },
+        "safeAreaCompliant": true,
+        "zeroOverflowPassed": true
+      }
+    ]
+  },
+  "unityMigrationVerification": {
+    "sourceSceneName": "UnityCyberShrine (2022.3.42f1-LTS)",
+    "targetSceneAsset": "assets/scenes/MinesweeperStage.ls",
+    "targetPrefabAsset": "assets/prefabs/UnityCrystalGuardian.lh",
+    "convertedNodesCount": 5,
+    "handednessConvertedNodes": [
+      {
+        "name": "MainCamera",
+        "unityPosLH": [
+          0,
+          8.5,
+          -11.5
+        ],
+        "layaPosRH": [
+          0,
+          8.5,
+          -11.5
+        ],
+        "unityEulerLH": [
+          32,
+          0,
+          0
+        ],
+        "layaEulerRH": [
+          32,
+          0,
+          0
+        ]
+      },
+      {
+        "name": "DirectionalLight",
+        "unityPosLH": [
+          4.2,
+          12,
+          -6
+        ],
+        "layaPosRH": [
+          -4.2,
+          12,
+          -6
+        ],
+        "unityEulerLH": [
+          50,
+          -30,
+          0
+        ],
+        "layaEulerRH": [
+          50,
+          30,
+          0
+        ]
+      },
+      {
+        "name": "ShrineAltarPedestal",
+        "unityPosLH": [
+          -2.2,
+          0.4,
+          1.5
+        ],
+        "layaPosRH": [
+          2.2,
+          0.4,
+          1.5
+        ],
+        "unityEulerLH": [
+          0,
+          25,
+          0
+        ],
+        "layaEulerRH": [
+          0,
+          -25,
+          0
+        ]
+      },
+      {
+        "name": "UnityCrystalGuardian",
+        "unityPosLH": [
+          -2.2,
+          1.8,
+          1.5
+        ],
+        "layaPosRH": [
+          2.2,
+          1.8,
+          1.5
+        ],
+        "unityEulerLH": [
+          15,
+          45,
+          15
+        ],
+        "layaEulerRH": [
+          15,
+          -45,
+          -15
+        ]
+      },
+      {
+        "name": "Spine42GuardianMount",
+        "unityPosLH": [
+          2.4,
+          1.2,
+          0.5
+        ],
+        "layaPosRH": [
+          -2.4,
+          1.2,
+          0.5
+        ],
+        "unityEulerLH": [
+          0,
+          -15,
+          0
+        ],
+        "layaEulerRH": [
+          0,
+          15,
+          0
+        ]
+      }
+    ],
+    "mappedMaterials": [
+      {
+        "nodeName": "ShrineAltarPedestal",
+        "unityShader": "Universal Render Pipeline/Lit",
+        "layaMaterialClass": "Laya.BlinnPhongMaterial (PBR-Bridged)"
+      },
+      {
+        "nodeName": "UnityCrystalGuardian",
+        "unityShader": "Standard",
+        "layaMaterialClass": "Laya.BlinnPhongMaterial (PBR-Bridged)"
+      }
+    ],
+    "animatorVerification": {
+      "controllerName": "CrystalGuardian.controller",
+      "statesCount": 3,
+      "transitionsCount": 3,
+      "simulatedTransitionTrace": [
+        "Idle",
+        "Charge",
+        "Burst",
+        "Idle"
+      ],
+      "transitionPassed": true
+    },
+    "spine42Verification": {
+      "skeletonFile": "ZhudaGuardianPig_v4.2.skel",
+      "physicsConstraintsMounted": 2,
+      "compatibleWithRuntime42": true
+    },
+    "passed": true
+  },
+  "assets": [
+    {
+      "assetName": "ConfirmActionButton.lh",
+      "category": "ui-prefab",
+      "passed": true,
+      "measuredBox": {
+        "x": 10,
+        "y": 10,
+        "width": 160,
+        "height": 48
+      },
+      "expectedBox": {
+        "x": 10,
+        "y": 10,
+        "width": 160,
+        "height": 48
+      },
+      "pixelErrors": {
+        "xDiffPx": 0,
+        "yDiffPx": 0,
+        "widthDiffPx": 0,
+        "heightDiffPx": 0,
+        "maxAbsErrorPx": 0
+      },
+      "colorMetrics": {
+        "measuredPrimaryFill": "#1e3a5f",
+        "targetPrimaryFill": "#1e3a5f",
+        "primaryDeltaE76": 0,
+        "primaryDeltaE2000": 0,
+        "measuredBorderStroke": "#3b82f6",
+        "targetBorderStroke": "#3b82f6",
+        "borderDeltaE2000": 0,
+        "measuredAccentOrText": "#e2f1ff",
+        "targetAccentOrText": "#e2f1ff",
+        "accentDeltaE2000": 0,
+        "maxDeltaE2000": 0
+      },
+      "autoFixPatches": [],
+      "summary": "✅ 像素邊界誤差 0px 且色差 ΔE00=0 (通過校準)"
+    },
+    {
+      "assetName": "NineSliceDialogFrame.lh",
+      "category": "nine-slice-ui",
+      "passed": true,
+      "measuredBox": {
+        "x": 10,
+        "y": 10,
+        "width": 320,
+        "height": 140
+      },
+      "expectedBox": {
+        "x": 10,
+        "y": 10,
+        "width": 320,
+        "height": 140
+      },
+      "pixelErrors": {
+        "xDiffPx": 0,
+        "yDiffPx": 0,
+        "widthDiffPx": 0,
+        "heightDiffPx": 0,
+        "maxAbsErrorPx": 0
+      },
+      "colorMetrics": {
+        "measuredPrimaryFill": "#132036",
+        "targetPrimaryFill": "#132036",
+        "primaryDeltaE76": 0,
+        "primaryDeltaE2000": 0,
+        "measuredBorderStroke": "#38bdf8",
+        "targetBorderStroke": "#38bdf8",
+        "borderDeltaE2000": 0,
+        "measuredAccentOrText": "#2dd4bf",
+        "targetAccentOrText": "#2dd4bf",
+        "accentDeltaE2000": 0,
+        "maxDeltaE2000": 0
+      },
+      "autoFixPatches": [],
+      "summary": "✅ 像素邊界誤差 0px 且色差 ΔE00=0 (通過校準)"
+    },
+    {
+      "assetName": "TacticalHudBar.lh",
+      "category": "ui-prefab",
+      "passed": true,
+      "measuredBox": {
+        "x": 10,
+        "y": 10,
+        "width": 310,
+        "height": 64
+      },
+      "expectedBox": {
+        "x": 10,
+        "y": 10,
+        "width": 310,
+        "height": 64
+      },
+      "pixelErrors": {
+        "xDiffPx": 0,
+        "yDiffPx": 0,
+        "widthDiffPx": 0,
+        "heightDiffPx": 0,
+        "maxAbsErrorPx": 0
+      },
+      "colorMetrics": {
+        "measuredPrimaryFill": "#141d2c",
+        "targetPrimaryFill": "#141d2c",
+        "primaryDeltaE76": 0,
+        "primaryDeltaE2000": 0,
+        "measuredBorderStroke": "#304565",
+        "targetBorderStroke": "#304565",
+        "borderDeltaE2000": 0,
+        "measuredAccentOrText": "#ff3366",
+        "targetAccentOrText": "#ff3366",
+        "accentDeltaE2000": 0,
+        "maxDeltaE2000": 0
+      },
+      "autoFixPatches": [],
+      "summary": "✅ 像素邊界誤差 0px 且色差 ΔE00=0 (通過校準)"
+    },
+    {
+      "assetName": "ZhudaSpine42Mascot.lh",
+      "category": "spine42-rig",
+      "passed": true,
+      "measuredBox": {
+        "x": 10,
+        "y": 10,
+        "width": 210,
+        "height": 172
+      },
+      "expectedBox": {
+        "x": 10,
+        "y": 10,
+        "width": 210,
+        "height": 172
+      },
+      "pixelErrors": {
+        "xDiffPx": 0,
+        "yDiffPx": 0,
+        "widthDiffPx": 0,
+        "heightDiffPx": 0,
+        "maxAbsErrorPx": 0
+      },
+      "colorMetrics": {
+        "measuredPrimaryFill": "#141d2b",
+        "targetPrimaryFill": "#141d2b",
+        "primaryDeltaE76": 0,
+        "primaryDeltaE2000": 0,
+        "measuredBorderStroke": "#2c415e",
+        "targetBorderStroke": "#2c415e",
+        "borderDeltaE2000": 0,
+        "measuredAccentOrText": "#ff9ebb",
+        "targetAccentOrText": "#ff9ebb",
+        "accentDeltaE2000": 0,
+        "maxDeltaE2000": 0
+      },
+      "autoFixPatches": [],
+      "summary": "✅ 像素邊界誤差 0px 且色差 ΔE00=0 (通過校準)"
+    },
+    {
+      "assetName": "MineExplosionParticle.lh",
+      "category": "particle-emitter",
+      "passed": true,
+      "measuredBox": {
+        "x": 12,
+        "y": 12,
+        "width": 176,
+        "height": 176
+      },
+      "expectedBox": {
+        "x": 12,
+        "y": 12,
+        "width": 176,
+        "height": 176
+      },
+      "pixelErrors": {
+        "xDiffPx": 0,
+        "yDiffPx": 0,
+        "widthDiffPx": 0,
+        "heightDiffPx": 0,
+        "maxAbsErrorPx": 0
+      },
+      "colorMetrics": {
+        "measuredPrimaryFill": "#231424",
+        "targetPrimaryFill": "#231424",
+        "primaryDeltaE76": 0,
+        "primaryDeltaE2000": 0,
+        "measuredBorderStroke": "#ff5533",
+        "targetBorderStroke": "#ff5533",
+        "borderDeltaE2000": 0,
+        "measuredAccentOrText": "#ffaa00",
+        "targetAccentOrText": "#ffaa00",
+        "accentDeltaE2000": 0,
+        "maxDeltaE2000": 0
+      },
+      "autoFixPatches": [],
+      "summary": "✅ 像素邊界誤差 0px 且色差 ΔE00=0 (通過校準)"
+    },
+    {
+      "assetName": "CoinFountainVfx.lh",
+      "category": "vfx-blueprint",
+      "passed": true,
+      "measuredBox": {
+        "x": 12,
+        "y": 12,
+        "width": 176,
+        "height": 176
+      },
+      "expectedBox": {
+        "x": 12,
+        "y": 12,
+        "width": 176,
+        "height": 176
+      },
+      "pixelErrors": {
+        "xDiffPx": 0,
+        "yDiffPx": 0,
+        "widthDiffPx": 0,
+        "heightDiffPx": 0,
+        "maxAbsErrorPx": 0
+      },
+      "colorMetrics": {
+        "measuredPrimaryFill": "#1f1a10",
+        "targetPrimaryFill": "#1f1a10",
+        "primaryDeltaE76": 0,
+        "primaryDeltaE2000": 0,
+        "measuredBorderStroke": "#fbbf24",
+        "targetBorderStroke": "#fbbf24",
+        "borderDeltaE2000": 0,
+        "measuredAccentOrText": "#fef08a",
+        "targetAccentOrText": "#fef08a",
+        "accentDeltaE2000": 0,
+        "maxDeltaE2000": 0
+      },
+      "autoFixPatches": [],
+      "summary": "✅ 像素邊界誤差 0px 且色差 ΔE00=0 (通過校準)"
+    },
+    {
+      "assetName": "SwordSlashTrailVfx.lh",
+      "category": "vfx-blueprint",
+      "passed": true,
+      "measuredBox": {
+        "x": 12,
+        "y": 12,
+        "width": 176,
+        "height": 176
+      },
+      "expectedBox": {
+        "x": 12,
+        "y": 12,
+        "width": 176,
+        "height": 176
+      },
+      "pixelErrors": {
+        "xDiffPx": 0,
+        "yDiffPx": 0,
+        "widthDiffPx": 0,
+        "heightDiffPx": 0,
+        "maxAbsErrorPx": 0
+      },
+      "colorMetrics": {
+        "measuredPrimaryFill": "#0d1b2a",
+        "targetPrimaryFill": "#0d1b2a",
+        "primaryDeltaE76": 0,
+        "primaryDeltaE2000": 0,
+        "measuredBorderStroke": "#00e5ff",
+        "targetBorderStroke": "#00e5ff",
+        "borderDeltaE2000": 0,
+        "measuredAccentOrText": "#7df9ff",
+        "targetAccentOrText": "#7df9ff",
+        "accentDeltaE2000": 0,
+        "maxDeltaE2000": 0
+      },
+      "autoFixPatches": [],
+      "summary": "✅ 像素邊界誤差 0px 且色差 ΔE00=0 (通過校準)"
+    },
+    {
+      "assetName": "LevelUpAuraVfx.lh",
+      "category": "vfx-blueprint",
+      "passed": true,
+      "measuredBox": {
+        "x": 12,
+        "y": 12,
+        "width": 176,
+        "height": 176
+      },
+      "expectedBox": {
+        "x": 12,
+        "y": 12,
+        "width": 176,
+        "height": 176
+      },
+      "pixelErrors": {
+        "xDiffPx": 0,
+        "yDiffPx": 0,
+        "widthDiffPx": 0,
+        "heightDiffPx": 0,
+        "maxAbsErrorPx": 0
+      },
+      "colorMetrics": {
+        "measuredPrimaryFill": "#13162b",
+        "targetPrimaryFill": "#13162b",
+        "primaryDeltaE76": 0,
+        "primaryDeltaE2000": 0,
+        "measuredBorderStroke": "#a855f7",
+        "targetBorderStroke": "#a855f7",
+        "borderDeltaE2000": 0,
+        "measuredAccentOrText": "#e9d5ff",
+        "targetAccentOrText": "#e9d5ff",
+        "accentDeltaE2000": 0,
+        "maxDeltaE2000": 0
+      },
+      "autoFixPatches": [],
+      "summary": "✅ 像素邊界誤差 0px 且色差 ΔE00=0 (通過校準)"
+    },
+    {
+      "assetName": "UnityCrystalGuardian.lh",
+      "category": "unity-migrated",
+      "passed": true,
+      "measuredBox": {
+        "x": 10,
+        "y": 10,
+        "width": 200,
+        "height": 168
+      },
+      "expectedBox": {
+        "x": 10,
+        "y": 10,
+        "width": 200,
+        "height": 168
+      },
+      "pixelErrors": {
+        "xDiffPx": 0,
+        "yDiffPx": 0,
+        "widthDiffPx": 0,
+        "heightDiffPx": 0,
+        "maxAbsErrorPx": 0
+      },
+      "colorMetrics": {
+        "measuredPrimaryFill": "#111c2d",
+        "targetPrimaryFill": "#111c2d",
+        "primaryDeltaE76": 0,
+        "primaryDeltaE2000": 0,
+        "measuredBorderStroke": "#38bdf8",
+        "targetBorderStroke": "#38bdf8",
+        "borderDeltaE2000": 0,
+        "measuredAccentOrText": "#4ade80",
+        "targetAccentOrText": "#4ade80",
+        "accentDeltaE2000": 0,
+        "maxDeltaE2000": 0
+      },
+      "autoFixPatches": [],
+      "summary": "✅ 像素邊界誤差 0px 且色差 ΔE00=0 (通過校準)"
+    },
+    {
+      "assetName": "TelemetryDashboard.lh",
+      "category": "ui-prefab",
+      "passed": true,
+      "measuredBox": {
+        "x": 10,
+        "y": 10,
+        "width": 225,
+        "height": 392
+      },
+      "expectedBox": {
+        "x": 10,
+        "y": 10,
+        "width": 225,
+        "height": 392
+      },
+      "pixelErrors": {
+        "xDiffPx": 0,
+        "yDiffPx": 0,
+        "widthDiffPx": 0,
+        "heightDiffPx": 0,
+        "maxAbsErrorPx": 0
+      },
+      "colorMetrics": {
+        "measuredPrimaryFill": "#121a28",
+        "targetPrimaryFill": "#121a28",
+        "primaryDeltaE76": 0,
+        "primaryDeltaE2000": 0,
+        "measuredBorderStroke": "#2d4464",
+        "targetBorderStroke": "#2d4464",
+        "borderDeltaE2000": 0,
+        "measuredAccentOrText": "#64ffda",
+        "targetAccentOrText": "#64ffda",
+        "accentDeltaE2000": 0,
+        "maxDeltaE2000": 0
+      },
+      "autoFixPatches": [],
+      "summary": "✅ 像素邊界誤差 0px 且色差 ΔE00=0 (通過校準)"
+    }
+  ]
+}

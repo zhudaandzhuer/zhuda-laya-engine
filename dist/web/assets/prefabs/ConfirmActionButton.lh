@@ -1,0 +1,87 @@
+{
+  "_$ver": 1,
+  "_$id": "confirm_btn_root",
+  "_$type": "Sprite",
+  "name": "ConfirmActionButton",
+  "x": 10,
+  "y": 10,
+  "width": 160,
+  "height": 48,
+  "mouseEnabled": true,
+  "_gcmds": [
+    {
+      "_$type": "DrawRoundRectCmd",
+      "x": 0,
+      "y": 0,
+      "width": 160,
+      "height": 48,
+      "lt": 10,
+      "rt": 10,
+      "lb": 10,
+      "rb": 10,
+      "fillColor": "#1e3a5f",
+      "lineColor": "#3b82f6",
+      "lineWidth": 2,
+      "percent": false
+    },
+    {
+      "_$type": "DrawCircleCmd",
+      "x": 24,
+      "y": 24,
+      "radius": 5,
+      "fillColor": "#64ffda",
+      "lineColor": null,
+      "lineWidth": 0,
+      "percent": false
+    }
+  ],
+  "_$child": [
+    {
+      "_$id": "confirm_btn_label",
+      "_$type": "Text",
+      "name": "ActionLabel",
+      "x": 12,
+      "y": 0,
+      "width": 148,
+      "height": 48,
+      "text": "⚡ DEPLOY PREFAB",
+      "fontSize": 14,
+      "bold": true,
+      "color": "#e2f1ff",
+      "align": "center",
+      "valign": "middle"
+    }
+  ],
+  "_zhudaMeta": {
+    "assetId": "assets/prefabs/ConfirmActionButton.lh",
+    "category": "ui-prefab",
+    "version": "3.4.2-zhuda-static-v1",
+    "designCanvas": {
+      "width": 180,
+      "height": 68,
+      "padding": 10
+    },
+    "targetSpec": {
+      "assetName": "ConfirmActionButton.lh",
+      "expectedBox": {
+        "x": 10,
+        "y": 10,
+        "width": 160,
+        "height": 48
+      },
+      "expectedPadding": {
+        "left": 10,
+        "top": 10,
+        "right": 10,
+        "bottom": 10
+      },
+      "targetColors": {
+        "primaryFill": "#1e3a5f",
+        "borderStroke": "#3b82f6",
+        "accentOrText": "#e2f1ff"
+      },
+      "tolerancePx": 0,
+      "toleranceDeltaE": 1.5
+    }
+  }
+}

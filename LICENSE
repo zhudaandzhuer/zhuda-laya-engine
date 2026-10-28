@@ -1,0 +1,37 @@
+MIT License
+
+Copyright (c) 2026 豬大 (zhudaandzhuer) — https://github.com/zhudaandzhuer/zhuda-laya-engine
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+================================================================================
+UPSTREAM OFFICIAL ATTRIBUTION & OPEN-SOURCE NOTICE (上游官方致謝與聲明)
+================================================================================
+
+本專案 `zhuda-laya-engine` 為 **豬大 (@zhudaandzhuer)** 基於 **LayaAir 官方引擎 (3.4.2)**
+所打造的 **AI-Agent-Friendly 開源分支版本 (Agent-Friendly Fork / Branch Edition)**。
+
+1. LayaAir Official Engine (Layabox / LayaAir 3.4.2)
+   - 官方網站 (Official Website): https://layaair.com/
+   - 官方開源倉庫 (Official GitHub): https://github.com/layabox/LayaAir
+   - 授權條款 (License): MIT License (Copyright (c) Layabox Inc.)
+   - 位於 `vendor/laya-3.4.2/libs/` 與 `packages/types/vendor/` 之底層渲染、物理與 UI 執行期庫版權歸屬 LayaAir 官方團隊所有。
+
+2. Spine Runtimes (`spine-core-3.8.js` / `spine-core-4.2.js`)
+   - 授權條款依循 Esoteric Software Spine Runtimes License (https://esotericsoftware.com/spine-runtimes-license)。

@@ -1,0 +1,144 @@
+{
+  "_$ver": 1,
+  "_$id": "unity_crystal_guardian_root",
+  "_$type": "Sprite",
+  "name": "UnityCrystalGuardian",
+  "x": 10,
+  "y": 10,
+  "width": 200,
+  "height": 168,
+  "_gcmds": [
+    {
+      "_$type": "DrawRoundRectCmd",
+      "x": 0,
+      "y": 0,
+      "width": 200,
+      "height": 168,
+      "lt": 12,
+      "rt": 12,
+      "lb": 12,
+      "rb": 12,
+      "fillColor": "#111c2d",
+      "lineColor": "#38bdf8",
+      "lineWidth": 2,
+      "percent": false
+    },
+    {
+      "_$type": "DrawCircleCmd",
+      "x": 100,
+      "y": 74,
+      "radius": 46,
+      "fillColor": "#0a1220",
+      "lineColor": "#0284c7",
+      "lineWidth": 2,
+      "percent": false
+    },
+    {
+      "_$type": "DrawPolyCmd",
+      "x": 100,
+      "y": 74,
+      "points": [
+        0,
+        -34,
+        26,
+        -12,
+        20,
+        26,
+        0,
+        36,
+        -20,
+        26,
+        -26,
+        -12
+      ],
+      "fillColor": "#38bdf8",
+      "lineColor": "#e0f2fe",
+      "lineWidth": 2
+    },
+    {
+      "_$type": "DrawCircleCmd",
+      "x": 100,
+      "y": 74,
+      "radius": 12,
+      "fillColor": "#4ade80",
+      "lineColor": "#ffffff",
+      "lineWidth": 1.5,
+      "percent": false
+    }
+  ],
+  "_$comp": [
+    {
+      "_$type": "ZhudaAnimatorControllerComponent",
+      "controllerName": "CrystalGuardian.controller",
+      "defaultState": "Idle",
+      "unityGuid": "u-crystal-004",
+      "layaPosRH": "2.2,1.8,1.5",
+      "layaEulerRH": "15,-45,-15",
+      "spine42RigFile": "ZhudaGuardianPig_v4.2.skel",
+      "statesJson": "[{\"name\":\"Idle\",\"motionClip\":\"Crystal_Idle.anim\",\"speed\":1,\"loop\":true,\"spineAnimationName\":\"idle\",\"scalePulseAmplitude\":0.04,\"rotationSpeedDeg\":35,\"tintHex\":\"#38bdf8\"},{\"name\":\"Charge\",\"motionClip\":\"Crystal_Charge.anim\",\"speed\":1.8,\"loop\":true,\"spineAnimationName\":\"thinking\",\"scalePulseAmplitude\":0.14,\"rotationSpeedDeg\":140,\"tintHex\":\"#fbbf24\"},{\"name\":\"Burst\",\"motionClip\":\"Crystal_Burst.anim\",\"speed\":2.5,\"loop\":false,\"spineAnimationName\":\"cheer\",\"scalePulseAmplitude\":0.28,\"rotationSpeedDeg\":320,\"tintHex\":\"#4ade80\"}]",
+      "transitionsJson": "[{\"fromState\":\"Idle\",\"toState\":\"Charge\",\"durationSec\":0.2,\"hasExitTime\":false,\"conditions\":[{\"parameter\":\"Speed\",\"mode\":\"Greater\",\"threshold\":0.5}]},{\"fromState\":\"Charge\",\"toState\":\"Burst\",\"durationSec\":0.15,\"hasExitTime\":false,\"conditions\":[{\"parameter\":\"Overcharge\",\"mode\":\"If\"}]},{\"fromState\":\"Burst\",\"toState\":\"Idle\",\"durationSec\":0.25,\"hasExitTime\":true,\"conditions\":[{\"parameter\":\"Speed\",\"mode\":\"Less\",\"threshold\":0.1}]}]",
+      "parametersJson": "[{\"name\":\"Speed\",\"type\":\"float\",\"defaultValue\":0},{\"name\":\"Overcharge\",\"type\":\"bool\",\"defaultValue\":false},{\"name\":\"BurstTrigger\",\"type\":\"trigger\",\"defaultValue\":false}]"
+    }
+  ],
+  "_$child": [
+    {
+      "_$id": "unity_guardian_title",
+      "_$type": "Text",
+      "name": "UnityNodeBadge",
+      "x": 0,
+      "y": 126,
+      "width": 200,
+      "height": 18,
+      "text": "Unity → Laya [CrystalGuardian]",
+      "fontSize": 12,
+      "bold": true,
+      "color": "#4ade80",
+      "align": "center"
+    },
+    {
+      "_$id": "unity_animator_status",
+      "_$type": "Text",
+      "name": "AnimatorStateLabel",
+      "x": 0,
+      "y": 145,
+      "width": 200,
+      "height": 16,
+      "text": "Animator: Idle (RH: 2.2, 1.8, 1.5)",
+      "fontSize": 11,
+      "color": "#7df9ff",
+      "align": "center"
+    }
+  ],
+  "_zhudaMeta": {
+    "assetId": "assets/prefabs/UnityCrystalGuardian.lh",
+    "category": "unity-migrated",
+    "version": "3.4.2-zhuda-static-v1",
+    "designCanvas": {
+      "width": 220,
+      "height": 188,
+      "padding": 10
+    },
+    "targetSpec": {
+      "assetName": "UnityCrystalGuardian.lh",
+      "expectedBox": {
+        "x": 10,
+        "y": 10,
+        "width": 200,
+        "height": 168
+      },
+      "expectedPadding": {
+        "left": 10,
+        "top": 10,
+        "right": 10,
+        "bottom": 10
+      },
+      "targetColors": {
+        "primaryFill": "#111c2d",
+        "borderStroke": "#38bdf8",
+        "accentOrText": "#4ade80"
+      },
+      "tolerancePx": 0,
+      "toleranceDeltaE": 1.5
+    }
+  }
+}

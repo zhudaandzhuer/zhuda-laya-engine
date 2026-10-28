@@ -1,0 +1,197 @@
+{
+  "_$ver": 1,
+  "_$id": "vfx_coin_fountain_root",
+  "_$type": "Sprite",
+  "name": "CoinFountainVfx",
+  "x": 12,
+  "y": 12,
+  "width": 176,
+  "height": 176,
+  "_gcmds": [
+    {
+      "_$type": "DrawRoundRectCmd",
+      "x": 0,
+      "y": 0,
+      "width": 176,
+      "height": 176,
+      "lt": 16,
+      "rt": 16,
+      "lb": 16,
+      "rb": 16,
+      "fillColor": "#1f1a10",
+      "lineColor": "#fbbf24",
+      "lineWidth": 2,
+      "percent": false
+    },
+    {
+      "_$type": "DrawEllipseCmd",
+      "x": 88,
+      "y": 138,
+      "width": 54,
+      "height": 14,
+      "fillColor": "#f59e0b",
+      "lineColor": "#fef08a",
+      "lineWidth": 2,
+      "percent": false
+    },
+    {
+      "_$type": "DrawCircleCmd",
+      "x": 88,
+      "y": 42,
+      "radius": 11,
+      "fillColor": "#fbbf24",
+      "lineColor": "#fef08a",
+      "lineWidth": 1.5,
+      "percent": false
+    },
+    {
+      "_$type": "DrawCircleCmd",
+      "x": 62,
+      "y": 54,
+      "radius": 9.5,
+      "fillColor": "#fbbf24",
+      "lineColor": "#fef08a",
+      "lineWidth": 1.5,
+      "percent": false
+    },
+    {
+      "_$type": "DrawCircleCmd",
+      "x": 114,
+      "y": 54,
+      "radius": 9.5,
+      "fillColor": "#fbbf24",
+      "lineColor": "#fef08a",
+      "lineWidth": 1.5,
+      "percent": false
+    },
+    {
+      "_$type": "DrawCircleCmd",
+      "x": 44,
+      "y": 78,
+      "radius": 8.5,
+      "fillColor": "#fbbf24",
+      "lineColor": "#fef08a",
+      "lineWidth": 1.5,
+      "percent": false
+    },
+    {
+      "_$type": "DrawCircleCmd",
+      "x": 132,
+      "y": 78,
+      "radius": 8.5,
+      "fillColor": "#fbbf24",
+      "lineColor": "#fef08a",
+      "lineWidth": 1.5,
+      "percent": false
+    },
+    {
+      "_$type": "DrawCircleCmd",
+      "x": 74,
+      "y": 82,
+      "radius": 10,
+      "fillColor": "#fbbf24",
+      "lineColor": "#fef08a",
+      "lineWidth": 1.5,
+      "percent": false
+    },
+    {
+      "_$type": "DrawCircleCmd",
+      "x": 102,
+      "y": 82,
+      "radius": 10,
+      "fillColor": "#fbbf24",
+      "lineColor": "#fef08a",
+      "lineWidth": 1.5,
+      "percent": false
+    },
+    {
+      "_$type": "DrawCircleCmd",
+      "x": 54,
+      "y": 110,
+      "radius": 7.5,
+      "fillColor": "#fbbf24",
+      "lineColor": "#fef08a",
+      "lineWidth": 1.5,
+      "percent": false
+    },
+    {
+      "_$type": "DrawCircleCmd",
+      "x": 122,
+      "y": 110,
+      "radius": 7.5,
+      "fillColor": "#fbbf24",
+      "lineColor": "#fef08a",
+      "lineWidth": 1.5,
+      "percent": false
+    },
+    {
+      "_$type": "DrawCircleCmd",
+      "x": 88,
+      "y": 112,
+      "radius": 9,
+      "fillColor": "#fbbf24",
+      "lineColor": "#fef08a",
+      "lineWidth": 1.5,
+      "percent": false
+    }
+  ],
+  "_$comp": [
+    {
+      "_$type": "ZhudaParticleEmitterComponent",
+      "emitterName": "GoldenCoinFountain_v1",
+      "burstCount": 20,
+      "previewTimestampMs": 280,
+      "primaryColor": "#fbbf24",
+      "secondaryColor": "#fef08a",
+      "sparkColor": "#38bdf8"
+    }
+  ],
+  "_$child": [
+    {
+      "_$id": "vfx_coin_label",
+      "_$type": "Text",
+      "name": "VfxCoinTitle",
+      "x": 0,
+      "y": 152,
+      "width": 176,
+      "height": 18,
+      "text": "VFX: CoinFountain @ 280ms",
+      "fontSize": 11,
+      "bold": true,
+      "color": "#fef08a",
+      "align": "center"
+    }
+  ],
+  "_zhudaMeta": {
+    "assetId": "assets/prefabs/CoinFountainVfx.lh",
+    "category": "vfx-blueprint",
+    "version": "3.4.2-zhuda-static-v1",
+    "designCanvas": {
+      "width": 200,
+      "height": 200,
+      "padding": 12
+    },
+    "targetSpec": {
+      "assetName": "CoinFountainVfx.lh",
+      "expectedBox": {
+        "x": 12,
+        "y": 12,
+        "width": 176,
+        "height": 176
+      },
+      "expectedPadding": {
+        "left": 12,
+        "top": 12,
+        "right": 12,
+        "bottom": 12
+      },
+      "targetColors": {
+        "primaryFill": "#1f1a10",
+        "borderStroke": "#fbbf24",
+        "accentOrText": "#fef08a"
+      },
+      "tolerancePx": 0,
+      "toleranceDeltaE": 1.5
+    }
+  }
+}

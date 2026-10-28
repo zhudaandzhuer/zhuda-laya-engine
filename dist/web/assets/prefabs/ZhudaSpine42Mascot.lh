@@ -1,0 +1,183 @@
+{
+  "_$ver": 1,
+  "_$id": "spine42_mascot_root",
+  "_$type": "Sprite",
+  "name": "ZhudaSpine42Mascot",
+  "x": 10,
+  "y": 10,
+  "width": 210,
+  "height": 172,
+  "_gcmds": [
+    {
+      "_$type": "DrawRoundRectCmd",
+      "x": 0,
+      "y": 0,
+      "width": 210,
+      "height": 172,
+      "lt": 12,
+      "rt": 12,
+      "lb": 12,
+      "rb": 12,
+      "fillColor": "#141d2b",
+      "lineColor": "#2c415e",
+      "lineWidth": 2,
+      "percent": false
+    },
+    {
+      "_$type": "DrawCircleCmd",
+      "x": 105,
+      "y": 114,
+      "radius": 34,
+      "fillColor": "#090d14",
+      "lineColor": null,
+      "lineWidth": 0,
+      "percent": false
+    },
+    {
+      "_$type": "DrawCircleCmd",
+      "x": 105,
+      "y": 66,
+      "radius": 36,
+      "fillColor": "#ff9ebb",
+      "lineColor": "#ff6b98",
+      "lineWidth": 2,
+      "percent": false
+    },
+    {
+      "_$type": "DrawCircleCmd",
+      "x": 105,
+      "y": 75,
+      "radius": 20,
+      "fillColor": "#ffd0df",
+      "lineColor": null,
+      "lineWidth": 0,
+      "percent": false
+    },
+    {
+      "_$type": "DrawCircleCmd",
+      "x": 82,
+      "y": 34,
+      "radius": 11,
+      "fillColor": "#ff6b98",
+      "lineColor": null,
+      "lineWidth": 0,
+      "percent": false
+    },
+    {
+      "_$type": "DrawCircleCmd",
+      "x": 128,
+      "y": 34,
+      "radius": 11,
+      "fillColor": "#ff6b98",
+      "lineColor": null,
+      "lineWidth": 0,
+      "percent": false
+    },
+    {
+      "_$type": "DrawCircleCmd",
+      "x": 105,
+      "y": 69,
+      "radius": 13,
+      "fillColor": "#ffa6c2",
+      "lineColor": "#e05882",
+      "lineWidth": 1.5,
+      "percent": false
+    },
+    {
+      "_$type": "DrawCircleCmd",
+      "x": 91,
+      "y": 56,
+      "radius": 4.2,
+      "fillColor": "#222222",
+      "lineColor": null,
+      "lineWidth": 0,
+      "percent": false
+    },
+    {
+      "_$type": "DrawCircleCmd",
+      "x": 119,
+      "y": 56,
+      "radius": 4.2,
+      "fillColor": "#222222",
+      "lineColor": null,
+      "lineWidth": 0,
+      "percent": false
+    }
+  ],
+  "_$comp": [
+    {
+      "_$type": "Spine42PhysicsRigComponent",
+      "rigName": "ZhudaGuardianPig_v4.2",
+      "defaultPose": "idle",
+      "stiffness": 95,
+      "damping": 0.88,
+      "windAmplitude": 1.8,
+      "earAngleRad": 0,
+      "skinPrimaryColor": "#ff9ebb",
+      "skinBorderColor": "#ff6b98",
+      "bellyHighlightColor": "#ffd0df",
+      "snoutColor": "#ffa6c2"
+    }
+  ],
+  "_$child": [
+    {
+      "_$id": "spine42_status_label",
+      "_$type": "Text",
+      "name": "StatusLabel",
+      "x": 0,
+      "y": 128,
+      "width": 210,
+      "height": 18,
+      "text": "Spine 4.2 豬大精靈 · [靜態預製體]",
+      "fontSize": 13,
+      "bold": true,
+      "color": "#7df9ff",
+      "align": "center"
+    },
+    {
+      "_$id": "spine42_physics_badge",
+      "_$type": "Text",
+      "name": "PhysicsBadge",
+      "x": 0,
+      "y": 148,
+      "width": 210,
+      "height": 16,
+      "text": "✔ PhysicsConstraint (k=95, d=0.88)",
+      "fontSize": 11,
+      "color": "#64ffda",
+      "align": "center"
+    }
+  ],
+  "_zhudaMeta": {
+    "assetId": "assets/prefabs/ZhudaSpine42Mascot.lh",
+    "category": "spine42-rig",
+    "version": "3.4.2-zhuda-static-v1",
+    "designCanvas": {
+      "width": 230,
+      "height": 192,
+      "padding": 10
+    },
+    "targetSpec": {
+      "assetName": "ZhudaSpine42Mascot.lh",
+      "expectedBox": {
+        "x": 10,
+        "y": 10,
+        "width": 210,
+        "height": 172
+      },
+      "expectedPadding": {
+        "left": 10,
+        "top": 10,
+        "right": 10,
+        "bottom": 10
+      },
+      "targetColors": {
+        "primaryFill": "#141d2b",
+        "borderStroke": "#2c415e",
+        "accentOrText": "#ff9ebb"
+      },
+      "tolerancePx": 0,
+      "toleranceDeltaE": 1.5
+    }
+  }
+}

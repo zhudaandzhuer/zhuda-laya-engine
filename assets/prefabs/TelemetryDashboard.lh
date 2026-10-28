@@ -1,0 +1,87 @@
+{
+  "_$ver": 1,
+  "_$id": "telemetry_dash_root",
+  "_$type": "Sprite",
+  "name": "TelemetryDashboard",
+  "x": 10,
+  "y": 10,
+  "width": 225,
+  "height": 392,
+  "_gcmds": [
+    {
+      "_$type": "DrawRoundRectCmd",
+      "x": 0,
+      "y": 0,
+      "width": 225,
+      "height": 392,
+      "lt": 12,
+      "rt": 12,
+      "lb": 12,
+      "rb": 12,
+      "fillColor": "#121a28",
+      "lineColor": "#2d4464",
+      "lineWidth": 2,
+      "percent": false
+    }
+  ],
+  "_$child": [
+    {
+      "_$id": "telemetry_header_txt",
+      "_$type": "Text",
+      "name": "HeaderTitle",
+      "x": 14,
+      "y": 12,
+      "width": 198,
+      "height": 20,
+      "text": "🛡️ 豬大引擎 · 6 大基建遙測",
+      "fontSize": 13,
+      "bold": true,
+      "color": "#64ffda"
+    },
+    {
+      "_$id": "telemetry_body_txt",
+      "_$type": "Text",
+      "name": "TelemetryBody",
+      "x": 14,
+      "y": 36,
+      "width": 198,
+      "height": 340,
+      "text": "[1] 拓撲載入器 (29/29 庫)\n[2] AST 自動類別反射\n[3] 原型解毒與準備守衛\n[4] Spine 4.2 PhysicsConstraint\n[5] 合批 DrawCall 對標 Three.js\n[6] 靜態資產 (.lh) & ΔE 校準",
+      "fontSize": 12,
+      "leading": 5,
+      "color": "#cbd5e1"
+    }
+  ],
+  "_zhudaMeta": {
+    "assetId": "assets/prefabs/TelemetryDashboard.lh",
+    "category": "ui-prefab",
+    "version": "3.4.2-zhuda-static-v1",
+    "designCanvas": {
+      "width": 245,
+      "height": 412,
+      "padding": 10
+    },
+    "targetSpec": {
+      "assetName": "TelemetryDashboard.lh",
+      "expectedBox": {
+        "x": 10,
+        "y": 10,
+        "width": 225,
+        "height": 392
+      },
+      "expectedPadding": {
+        "left": 10,
+        "top": 10,
+        "right": 10,
+        "bottom": 10
+      },
+      "targetColors": {
+        "primaryFill": "#121a28",
+        "borderStroke": "#2d4464",
+        "accentOrText": "#64ffda"
+      },
+      "tolerancePx": 0,
+      "toleranceDeltaE": 1.5
+    }
+  }
+}
