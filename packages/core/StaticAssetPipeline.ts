@@ -17,7 +17,7 @@ import type {
   PixelCalibrationSpec,
   Spine42StaticRigConfig,
   StaticAssetCategory
-} from '../types/index';
+} from '../types/index.ts';
 import { UnityBridgePipeline } from './UnityBridgePipeline.ts';
 
 export class ZhudaAssetSerializer {

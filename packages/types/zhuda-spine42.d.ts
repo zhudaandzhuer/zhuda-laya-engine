@@ -14,7 +14,6 @@ export interface Spine42PhysicsTelemetry {
   pendulumVelocity: number;
   springTension: number;
 }
-
 export interface Spine42SpringConfig {
   inertia: number;
   strength: number;

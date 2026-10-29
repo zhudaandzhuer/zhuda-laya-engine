@@ -16,7 +16,7 @@ import type {
   NineSliceCalibrationReport,
   PixelCalibrationReport,
   PixelCalibrationSpec
-} from '../types/index';
+} from '../types/index.ts';
 import { ZhudaAssetSerializer } from './StaticAssetPipeline.ts';
 
 export class PixelCalibrationEngine {

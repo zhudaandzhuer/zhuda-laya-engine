@@ -17,7 +17,7 @@ import type {
   UnityAnimatorState,
   UnityMigrationReport,
   UnitySceneDescriptor
-} from '../types/index';
+} from '../types/index.ts';
 
 export const UNITY_CYBER_SHRINE_SCENE: UnitySceneDescriptor = {
   sceneName: 'UnityCyberShrine',

@@ -18,6 +18,8 @@ import { ZhudaAssetSerializer } from '../core/StaticAssetPipeline.ts';
 import { PixelCalibrationEngine } from '../core/PixelCalibrationEngine.ts';
 import { ViewportMatrixEngine } from '../core/ViewportMatrixEngine.ts';
 import { UnityBridgePipeline } from '../core/UnityBridgePipeline.ts';
+import { auditVisualAssetMigration } from '../compiler/visual-asset-audit.mjs';
+import { auditVisualPresentationContracts } from '../compiler/visual-contract-audit.mjs';
 import { API_GUARDRAILS, ERROR_DIAGNOSTICS_DB, GOLDEN_EXAMPLES } from './corpus.mjs';
 
 export const MCP_TOOLS_MANIFEST = [
@@ -148,6 +150,32 @@ export const MCP_TOOLS_MANIFEST = [
     inputSchema: {
       type: 'object',
       properties: {}
+    }
+  },
+  {
+    name: 'audit_visual_migration',
+    description: '盤點 Unity 與 Laya 視覺資產，驗證 Spine 4.2 動畫/骨骼/皮膚/約束、Atlas、貼圖與 Unity 動畫包裝是否有對應；可用 strict 阻擋未映射材質與動畫。',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        sourceRoot: { type: 'string', description: 'Unity 專案或 Game 資產根目錄的絕對路徑' },
+        targetRoot: { type: 'string', description: 'Laya 專案 assets 根目錄或專案根目錄的絕對路徑' },
+        contractPath: { type: 'string', description: '可選的 visual-migration-manifest.json 絕對路徑' },
+        strict: { type: 'boolean', description: '是否把未映射 Unity 動畫包裝與材質契約列為阻斷錯誤' }
+      },
+      required: ['sourceRoot', 'targetRoot']
+    }
+  },
+  {
+    name: 'audit_visual_contract',
+    description: '驗證移植專案的視覺演出契約，確認每個演出已定義作用域、狀態、非中獎目標處理與清除還原規則。',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        projectRoot: { type: 'string', description: '包含 visual-presentation-manifest.json 的專案絕對路徑' },
+        manifestPath: { type: 'string', description: '可選的契約檔相對或絕對路徑' }
+      },
+      required: ['projectRoot']
     }
   }
 ];
@@ -303,6 +331,30 @@ export function executeMcpTool(toolName, args = {}) {
       return {
         tool: 'verify_unity_migration',
         report
+      };
+    }
+
+    case 'audit_visual_migration': {
+      const report = auditVisualAssetMigration({
+        sourceRoot: args.sourceRoot,
+        targetRoot: args.targetRoot,
+        contractPath: args.contractPath,
+        strict: Boolean(args.strict)
+      });
+      return {
+        tool: 'audit_visual_migration',
+        report
+      };
+    }
+
+    case 'audit_visual_contract': {
+      const report = auditVisualPresentationContracts({
+        projectRoot: args.projectRoot,
+        manifestPath: args.manifestPath
+      });
+      return {
+        tool: 'audit_visual_contract',
+        ...report
       };
     }
 

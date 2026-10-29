@@ -32,7 +32,7 @@
 | **組件類別反射** | 依賴 IDE 隱藏產出 `regClass` 映射表 | **AST 靜態掃描 (`ast-scanner.mjs`)**：自動掃描 `@zhudaComponent` 與 `Laya.Script` 子類並注入 `ClassUtils.regClass()` |
 | **運行期防崩潰** | 純代碼自繪 `Laya.Button` 易觸發 `this._graphics.setState is not a function` | **`EngineGuard.installPrototypeDetox()`**：啟動時自動完成原型解毒修補與宣告式 `ZhudaEngine` / `Zhuda3D` / `ZhudaUI` 封裝 |
 | **UI / 預製體校準** | 必須進 GUI 肉眼對齊，且 `DrawRoundRectCmd` 預設 `percent: true` 易放大百倍 | **先設計後組裝 (`ZhudaAssetSerializer` + `PixelCalibrationEngine`)**：離線計算 Tight Bounding Box 與 CIEDE2000 ($\Delta E_{00}$) 色差並自動產生 `AutoFixPatch` 收斂至 **0px / $\Delta E_{00}=0$** |
-| **AI 語料與防幻覺** | 大模型常混用 Laya 1.x / 2.x 廢棄 API | **內建 11 工具 MCP Server (`zhuda-laya-mcp`) + `zhuda-laya-doctor` 靜態守衛** |
+| **AI 語料與防幻覺** | 大模型常混用 Laya 1.x / 2.x 廢棄 API | **內建 13 工具 MCP Server (`zhuda-laya-mcp`) + `zhuda-laya-doctor` 靜態守衛** |
 
 ---
 
@@ -42,8 +42,8 @@
 | :--- | :--- | :--- |
 | **1. 拓撲載入器與按需剪枝** | `packages/core/TopologyGraph.ts` | 建立 29 個 LayaAir 3.4.2 引擎庫的完整 DAG 有向無環圖與 Kahn's 拓撲排序；確保 `physics2D -> box2D`、`bullet -> physics3D`、`spine-core-4.2 -> laya.spine -> laya.spine3D` 順序零死鎖，並支援按需 Feature Pruning（`2d-light` 縮減 **83.2%** 體積）。 |
 | **2. Zero-IDE AST 自動類別反射** | `packages/compiler/ast-scanner.mjs`<br>`packages/compiler/zhuda-build.mjs` | 使用 TypeScript 官方 AST 掃描 `@zhudaComponent` 與 `Laya.Script` 子類別，自動生成 `src/.generated/zhuda-registry.ts` 並注入 `ClassUtils.regClass()`，結合 `esbuild` 同步產出應用程式與 `dist/sdk/zhuda-laya-engine.{esm.js,cjs}`。 |
-| **3. 原型解毒與宣告式 SDK** | `packages/core/RuntimeGuards.ts`<br>`packages/core/DeclarativeSDK.ts` | `EngineGuard.installPrototypeDetox()` 自動修補 `Laya.Graphics.prototype.setState`；提供對標 Three.js / R3F 的 `ZhudaEngine.boot`、`Zhuda3D`、`ZhudaUI` 與 `ZhudaPrefab` 宣告式純代碼 API。 |
-| **4. 模組化型別與 11 工具 MCP Server** | `packages/types/*.d.ts`<br>`packages/mcp-server/index.mjs` | 剝離 IDE 專屬污染型別（`editor.d.ts`），分為乾淨 `.d.ts`；內建可執行之 **Model Context Protocol (MCP) Server**，提供拓撲解析、API 護欄、錯誤診斷、Golden Examples、像素校準、九宮格驗測、SafeArea 矩陣與 Unity 移植驗證共 **11 項 AI 工具**。 |
+| **3. 原型解毒與宣告式 SDK** | `packages/core/RuntimeGuards.ts`<br>`packages/core/DeclarativeSDK.ts`<br>`packages/core/SpineVisualContract.ts`<br>`packages/core/VisualFocusContract.ts` | `EngineGuard.installPrototypeDetox()` 自動修補 `Laya.Graphics.prototype.setState`；提供對標 Three.js / R3F 的 `ZhudaEngine.boot`、`Zhuda3D`、`ZhudaUI` 與 `ZhudaPrefab` 宣告式純代碼 API；`SpineVisualContract` 會拒絕 fallback 物件並檢查 Spine 4.2 動畫、皮膚、插槽、事件、約束與 bounds；`VisualFocusContract` 將 clear/focus/空集合的全盤作用域語意明確化。 |
+| **4. 模組化型別與 13 工具 MCP Server** | `packages/types/*.d.ts`<br>`packages/mcp-server/index.mjs` | 剝離 IDE 專屬污染型別（`editor.d.ts`），分為乾淨 `.d.ts`；內建可執行之 **Model Context Protocol (MCP) Server**，提供拓撲解析、API 護欄、錯誤診斷、Golden Examples、像素校準、九宮格驗測、SafeArea 矩陣、Unity 移植驗證、視覺資產審計與視覺演出契約共 **13 項 AI 工具**。 |
 | **5. Headless Chrome 首幀守衛** | `packages/ci-gate/verify-first-frame.mjs` | 自動啟動受管理無頭瀏覽器驗證 WebGL 上下文、29 模組載入狀態、AST 組件反射、Spine 4.2 `PhysicsConstraint` 彈簧求解器與首幀自動截圖。 |
 | **6. 靜態資產 (`.lh`/`.ls`) 與 $\Delta E_{00}$ 校準** | `packages/core/StaticAssetPipeline.ts`<br>`packages/core/PixelCalibrationEngine.ts` | 實現「先設計靜態資產、孤立微預覽 (`preview.html`)、後組裝」工作流，自動強制 `DrawRoundRectCmd` `percent: false`，並執行 Tight Bounding Box 0px 邊界與 CIEDE2000 色差單步自動修補。 |
 | **7. 商業化支柱 M1~M5** | `packages/core/IframeSoundAdapter.ts`<br>`packages/core/ViewportMatrixEngine.ts`<br>`packages/core/UnityBridgePipeline.ts` | **M1** 九宮格 `sizeGrid` 四角 16×16px 0px 變形鎖定 · **M2** `IframeSoundAdapter` 首觸手勢解鎖、失焦靜音與 `postMessage` 音訊橋 · **M3** 5 大主流終端 SafeArea 與靈動島 3D FOV 自動補償 · **M4** 4 套決定性 VFX 特效藍圖 · **M5** Unity 左手系轉右手系 (`LH -> RH`) + `AnimatorController` 狀態機 + Spine 4.2 移植管線。 |
@@ -56,8 +56,8 @@
 zhuda-laya-engine/
 ├── packages/
 │   ├── core/                  # 核心 SDK (TopologyGraph, RuntimeGuards, DeclarativeSDK, StaticAssetPipeline, PixelCalibrationEngine, IframeSoundAdapter, ViewportMatrixEngine, UnityBridgePipeline)
-│   ├── compiler/              # Zero-IDE 編譯器 (zhuda-build.mjs, ast-scanner.mjs, zhuda-doctor.mjs)
-│   ├── mcp-server/            # AI-Native MCP 語料與診斷伺服器 (11 Tools, stdio + CLI 雙模)
+│   ├── compiler/              # Zero-IDE 編譯器 (含 visual-contract-audit.mjs 視覺演出閘門)
+│   ├── mcp-server/            # AI-Native MCP 語料與診斷伺服器 (13 Tools, stdio + CLI 雙模)
 │   ├── types/                 # 去 IDE 污染之分層 TypeScript 型別宣告 (.d.ts)
 │   └── ci-gate/               # Headless Chrome 首幀遙測與 HTML 視覺報告產生器
 ├── vendor/laya-3.4.2/libs/    # LayaAir 3.4.2 官方 29 個核心與擴充模組 (含 Spine 4.2 / Bullet / Box2D)
@@ -103,10 +103,13 @@ npm run doctor
 # 4. 執行完整單元與整合測試 (14 項測試涵蓋拓撲、AST、MCP、ΔE00 校準與商業化 M1~M5)
 npm run test
 
-# 5. 一鍵執行完整驗證管線 (build + typecheck + doctor + test)
+# 5. 一鍵執行完整引擎驗證管線 (build + typecheck + doctor + test)
 npm run verify
 
-# 6. 封裝開源發布 Tarball (產出 dist/zhuda-laya-engine-1.0.0.tgz)
+# 6. 驗證移植專案的視覺演出契約 (作用域、狀態與還原規則)
+node packages/compiler/visual-contract-audit.mjs --project /absolute/path/to/laya-project
+
+# 7. 封裝開源發布 Tarball (產出 dist/zhuda-laya-engine-1.0.0.tgz)
 npm run pack:tarball
 ```
 
@@ -138,6 +141,43 @@ node packages/mcp-server/index.mjs --tool calibrate_asset_pixels --args '{"simul
 
 # 驗證 Unity 場景 (LH->RH) + AnimatorController + Spine 4.2 完整移植
 node packages/mcp-server/index.mjs --tool verify_unity_migration --args '{}'
+
+# 先驗證 Unity 視覺資產，再接遊戲規則（strict 會阻擋未映射材質/動畫包裝）
+node packages/compiler/visual-asset-audit.mjs \
+  --source /absolute/path/to/Unity/Assets/BDL/Games/Game100002 \
+  --target /absolute/path/to/laya-project/assets \
+  --strict \
+  --report /absolute/path/to/laya-project/dist/visual-asset-migration.json
+
+# 同一能力也可由 MCP 呼叫
+node packages/mcp-server/index.mjs --tool audit_visual_migration --args '{"sourceRoot":"/absolute/path/to/unity/assets","targetRoot":"/absolute/path/to/laya/assets","strict":true}'
+```
+
+`visual-asset-audit` 是移植前的資產閘門。它會盤點來源與目標檔案，逐個比對 Spine 4.2 的動畫、皮膚、骨骼、插槽、約束、Atlas 與貼圖，並把 Unity `.anim`、`.controller`、`.mat` 包裝標記為「已由 Spine 表達」或「需要明確的 Laya 材質/演出契約」。`strict` 模式會在尚未完成這些契約時失敗，避免以靜態 fallback 或畫面存在誤判為移植完成。
+
+`visual-contract-audit` 是第二道閘門，專門驗證「演出怎麼表現」。目標專案放置 `visual-presentation-manifest.json` 後，`zhuda-build` 會在打包前檢查每個演出是否寫明 source/target、board/reel/cell 作用域、明確 runtime states、非中獎目標處理、以及 clear 後的視覺還原規則。執行期可使用 `VisualFocusContract`，避免把 `null` 同時當成「清除」與「空選擇」。
+
+```ts
+import { VisualFocusContract } from 'zhuda-laya-engine';
+
+VisualFocusContract.apply(targets, VisualFocusContract.focus(winningIds));
+VisualFocusContract.apply(targets, VisualFocusContract.clear());
+```
+
+遊戲專案若在 `zhuda.config.json` 宣告 `visualContract`，契約不通過時建置會直接失敗；同一檢查也可由 MCP `audit_visual_contract` 呼叫，讓代理先完成資產與演出規格再進入 gameplay 實作。
+
+若 Unity 的 `.anim` 或 `.mat` 是由 Laya 的演出元件承接，可在目標根目錄放置 `visual-migration-manifest.json`，或透過 `--contract` 指定它：
+
+```json
+{
+  "schemaVersion": 1,
+  "animations": [
+    { "sourcePath": "Art/VendorArt/Animation/BigWin/Ani_BigWin_in.anim", "targetAnimation": "BigWin_in" }
+  ],
+  "materials": [
+    { "sourcePath": "Art/VendorArt/Animation/BigWin/BigWin_Additive.mat", "targetMaterial": "SpineStandard", "blendMode": "additive" }
+  ]
+}
 ```
 
 ---

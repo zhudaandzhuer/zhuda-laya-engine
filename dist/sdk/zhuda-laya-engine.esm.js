@@ -602,6 +602,16 @@ var ZhudaEngine = class {
     const features = options.features ?? "all";
     const topology = TopologyResolver.resolveByFeatures(features);
     EngineGuard.installPrototypeDetox();
+    const hasSpine42 = features === "all" || Array.isArray(features) && features.includes("spine42");
+    if (hasSpine42) {
+      const spineConst = Laya.SpineConst;
+      if (spineConst) {
+        spineConst.VERSION = "4.2";
+        spineConst.VersionFirst = 4;
+        spineConst.VersionSecond = 2;
+        spineConst.NEED_SLOT = true;
+      }
+    }
     if (options.beforeInit) {
       options.beforeInit();
     }
@@ -4077,17 +4087,189 @@ var ZhudaBenchmarkEngine = class {
     };
   }
 };
+
+// packages/core/SpineVisualContract.ts
+function uniqueStrings(value) {
+  if (!Array.isArray(value)) return [];
+  return [...new Set(value.filter((item) => typeof item === "string"))].sort();
+}
+function readCollection(source, methodNames, fallback = []) {
+  for (const methodName of methodNames) {
+    try {
+      const method = source?.[methodName];
+      if (typeof method === "function") {
+        const result = method.call(source);
+        const values = uniqueStrings(result);
+        if (values.length > 0) return values;
+      }
+    } catch {
+    }
+  }
+  return uniqueStrings(fallback);
+}
+function readIndexedCollection(source, countMethod, nameMethod) {
+  try {
+    if (typeof source?.[countMethod] !== "function" || typeof source?.[nameMethod] !== "function") return [];
+    const count = Number(source[countMethod]());
+    if (!Number.isFinite(count) || count < 0) return [];
+    const values = [];
+    for (let index = 0; index < count; index += 1) {
+      const value = source[nameMethod](index);
+      if (typeof value === "string" && value) values.push(value);
+    }
+    return uniqueStrings(values);
+  } catch {
+    return [];
+  }
+}
+function getSkeletonData(templet) {
+  return templet?._skeleton?.data || templet?.skeletonData || templet?.data || null;
+}
+function getNamedCollection(data, key) {
+  const value = data?.[key];
+  if (Array.isArray(value)) return value.map((item) => typeof item === "string" ? item : item?.name).filter(Boolean);
+  if (value && typeof value === "object") return Object.keys(value);
+  return [];
+}
+function getVersion(templet, data) {
+  const value = templet?.version || templet?.SpineConst?.VERSION || data?.version || data?.skeleton?.spine;
+  return typeof value === "string" ? value : null;
+}
+function getBounds(templet, data) {
+  const width = Number.isFinite(Number(templet?.width)) ? Number(templet.width) : Number(data?.width);
+  const height = Number.isFinite(Number(templet?.height)) ? Number(templet.height) : Number(data?.height);
+  return {
+    width: Number.isFinite(width) ? width : null,
+    height: Number.isFinite(height) ? height : null
+  };
+}
+var SpineVisualContract = class {
+  static inspect(templet) {
+    const data = getSkeletonData(templet);
+    const animations = readCollection(
+      templet,
+      ["getAnimationNames", "getAniNameList", "getAllAnimationNames"],
+      readIndexedCollection(templet, "getAnimationCount", "getAniNameByIndex").length > 0 ? readIndexedCollection(templet, "getAnimationCount", "getAniNameByIndex") : getNamedCollection(data, "animations")
+    );
+    const skins = readCollection(
+      templet,
+      ["getSkinNames", "getSkinNameList", "getAllSkinNames"],
+      readIndexedCollection(templet, "getSkinCount", "getSkinNameByIndex").length > 0 ? readIndexedCollection(templet, "getSkinCount", "getSkinNameByIndex") : getNamedCollection(data, "skins")
+    );
+    const slots = readCollection(templet, ["getSlotNames", "getSlotNameList"], getNamedCollection(data, "slots"));
+    const events = readCollection(templet, ["getEventNames", "getEventNameList"], getNamedCollection(data, "events"));
+    const constraints = data?.physics || data?.physicsConstraints || templet?.physicsConstraints;
+    const physicsConstraints = Array.isArray(constraints) ? constraints.length : Number(constraints) || (templet?.optimize?.hasPhysics ? 1 : 0);
+    return {
+      isSpineTemplet: Boolean(templet && (typeof templet.buildArmature === "function" || templet._skeleton || templet.skeletonData || typeof templet.getAnimationCount === "function" && typeof templet.getAniNameByIndex === "function" || templet.optimize)),
+      runtimeVersion: getVersion(templet, data),
+      animations,
+      skins,
+      slots,
+      events,
+      physicsConstraints,
+      bounds: getBounds(templet, data)
+    };
+  }
+  static validate(templet, spec) {
+    const snapshot = this.inspect(templet);
+    const requiredAnimations = uniqueStrings(spec.requiredAnimations);
+    const requiredSkins = uniqueStrings(spec.requiredSkins);
+    const requiredSlots = uniqueStrings(spec.requiredSlots);
+    const requiredEvents = uniqueStrings(spec.requiredEvents);
+    const missingAnimations = requiredAnimations.filter((name) => !snapshot.animations.includes(name));
+    const missingSkins = requiredSkins.filter((name) => !snapshot.skins.includes(name));
+    const missingSlots = requiredSlots.filter((name) => !snapshot.slots.includes(name));
+    const missingEvents = requiredEvents.filter((name) => !snapshot.events.includes(name));
+    const issues = [];
+    if (!snapshot.isSpineTemplet) issues.push("Loaded object is not a Spine templet; a Sprite/image fallback cannot satisfy this contract.");
+    if (spec.runtimeVersion && snapshot.runtimeVersion && !snapshot.runtimeVersion.startsWith(spec.runtimeVersion)) {
+      issues.push(`Spine runtime version ${snapshot.runtimeVersion} does not satisfy ${spec.runtimeVersion}.`);
+    }
+    if (spec.runtimeVersion && !snapshot.runtimeVersion) issues.push(`Spine runtime version is not observable; expected ${spec.runtimeVersion}.`);
+    if (missingAnimations.length) issues.push(`Missing animations: ${missingAnimations.join(", ")}`);
+    if (missingSkins.length) issues.push(`Missing skins: ${missingSkins.join(", ")}`);
+    if (missingSlots.length) issues.push(`Missing slots: ${missingSlots.join(", ")}`);
+    if (missingEvents.length) issues.push(`Missing events: ${missingEvents.join(", ")}`);
+    if (spec.requiredPhysicsConstraints !== void 0 && snapshot.physicsConstraints < spec.requiredPhysicsConstraints) {
+      issues.push(`Physics constraints ${snapshot.physicsConstraints} < required ${spec.requiredPhysicsConstraints}.`);
+    }
+    if (spec.expectedBounds) {
+      const tolerance = spec.expectedBounds.tolerancePx ?? 0;
+      const widthDelta = snapshot.bounds.width === null ? Infinity : Math.abs(snapshot.bounds.width - spec.expectedBounds.width);
+      const heightDelta = snapshot.bounds.height === null ? Infinity : Math.abs(snapshot.bounds.height - spec.expectedBounds.height);
+      if (widthDelta > tolerance || heightDelta > tolerance) {
+        issues.push(`Bounds differ from contract: runtime ${snapshot.bounds.width}x${snapshot.bounds.height}, expected ${spec.expectedBounds.width}x${spec.expectedBounds.height} \xB1${tolerance}px.`);
+      }
+    }
+    return {
+      assetId: spec.assetId,
+      passed: issues.length === 0,
+      snapshot,
+      missingAnimations,
+      missingSkins,
+      missingSlots,
+      missingEvents,
+      issues
+    };
+  }
+  static assert(templet, spec) {
+    const report = this.validate(templet, spec);
+    if (!report.passed) {
+      throw new Error(`[SpineVisualContract] ${spec.assetId} failed: ${report.issues.join(" | ")}`);
+    }
+    return report;
+  }
+};
+
+// packages/core/VisualFocusContract.ts
+var VisualFocusContract = class {
+  static clear() {
+    return { mode: "clear" };
+  }
+  static focus(winningIds = []) {
+    return { mode: "focus", winningIds: [...winningIds] };
+  }
+  static apply(targets, request) {
+    const winningIds = request.mode === "focus" ? [...new Set(request.winningIds || [])] : [];
+    const winningSet = new Set(winningIds);
+    const dimmedIds = [];
+    for (const target of targets) {
+      const dimmed = request.mode === "focus" && !winningSet.has(target.id);
+      target.setDimmed(dimmed);
+      if (dimmed) dimmedIds.push(target.id);
+    }
+    return {
+      mode: request.mode,
+      active: request.mode === "focus" && winningIds.length > 0,
+      targetCount: targets.length,
+      winningIds,
+      dimmedIds
+    };
+  }
+  static assert(targets, request, expectedDimmedCount) {
+    const report = this.apply(targets, request);
+    if (expectedDimmedCount !== void 0 && report.dimmedIds.length !== expectedDimmedCount) {
+      throw new Error(
+        `[VisualFocusContract] Expected ${expectedDimmedCount} dimmed targets, got ${report.dimmedIds.length}.`
+      );
+    }
+    return report;
+  }
+};
 export {
   ENGINE_PRESET_PROFILES,
   EngineGuard,
   IframeSoundAdapter,
   PixelCalibrationEngine,
+  SpineVisualContract,
   TopologyResolver,
   UNITY_CYBER_SHRINE_SCENE,
   UnityAnimatorStateMachine,
   UnityBridgePipeline,
   VIEWPORT_DEVICE_PROFILES,
   ViewportMatrixEngine,
+  VisualFocusContract,
   ZHUDA_ENGINE_MODULES,
   Zhuda3D,
   ZhudaAssetSerializer,

@@ -13,7 +13,7 @@ import type {
   ViewportDeviceId,
   ViewportDeviceSpec,
   ViewportLayoutReport
-} from '../types/index';
+} from '../types/index.ts';
 
 export const VIEWPORT_DEVICE_PROFILES: Record<ViewportDeviceId, ViewportDeviceSpec> = {
   'desktop-fhd-16-9': {

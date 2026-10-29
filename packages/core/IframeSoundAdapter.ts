@@ -7,7 +7,7 @@
  * 3. 母殼跨域通訊橋 (postMessage Bridge)：支援父視窗發送 zhuda:audio:mute / unmute / setVolume / lifecycle:pause 指令並回傳遙測
  */
 
-import type { IframeAudioChannel, IframeSoundDiagnostics } from '../types/index';
+import type { IframeAudioChannel, IframeSoundDiagnostics } from '../types/index.ts';
 
 export interface QueuedAudioTask {
   id: string;

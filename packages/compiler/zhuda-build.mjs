@@ -23,16 +23,39 @@ import { ZhudaAssetSerializer } from '../core/StaticAssetPipeline.ts';
 import { PixelCalibrationEngine } from '../core/PixelCalibrationEngine.ts';
 import { ViewportMatrixEngine } from '../core/ViewportMatrixEngine.ts';
 import { UnityBridgePipeline } from '../core/UnityBridgePipeline.ts';
+import { auditVisualPresentationContracts } from './visual-contract-audit.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const projectRoot = path.resolve(__dirname, '../..');
+const defaultEngineRoot = path.resolve(__dirname, '../..');
 
 export async function runZhudaBuild(options = {}) {
   const startTime = performance.now();
+  const projectRoot = options.projectRoot || (fs.existsSync(path.join(process.cwd(), 'zhuda.config.json')) ? process.cwd() : defaultEngineRoot);
   const configPath = path.join(projectRoot, 'zhuda.config.json');
   const config = fs.existsSync(configPath)
     ? JSON.parse(fs.readFileSync(configPath, 'utf8'))
     : {};
+  const engineRoot = options.engineRoot || config.engineRoot || defaultEngineRoot;
+
+  // A project that declares a visual presentation manifest must pass its
+  // semantic state/scope gate before gameplay code is bundled. Engine-only
+  // builds without a manifest remain valid, while migrated games cannot
+  // silently skip the contract phase.
+  const visualContractConfigured = typeof config.visualContract === 'string';
+  const visualContractReport = auditVisualPresentationContracts({
+    projectRoot,
+    manifestPath: visualContractConfigured ? config.visualContract : undefined
+  });
+  if (visualContractConfigured || visualContractReport.manifestPath) {
+    if (!visualContractReport.passed) {
+      throw new Error(
+        `[Zhuda-Compiler] 視覺演出契約閘門失敗:\n${visualContractReport.issues.map((issue) => `- ${issue}`).join('\n')}`
+      );
+    }
+    console.log(
+      `  ✔ [Visual Contract Gate] 已驗證 ${visualContractReport.contractCount} 個演出契約 (${visualContractReport.contractIds.join(', ')})`
+    );
+  }
 
   const requestedProfile = options.profile || config.profile || 'full-all-in-one';
   const features =
@@ -41,7 +64,7 @@ export async function runZhudaBuild(options = {}) {
     ENGINE_PRESET_PROFILES[requestedProfile] ||
     'all';
 
-  console.log(`\n🚀 [Zhuda-Compiler] 啟動 Zero-IDE 建置管線 (Profile: ${requestedProfile})...`);
+  console.log(`\n🚀 [Zhuda-Compiler] 啟動 Zero-IDE 建置管線 (Project: ${projectRoot}, Profile: ${requestedProfile})...`);
 
   // Step 1: AST 掃描並生成自動類別反射註冊表
   const reflectionResult = scanAndGenerateRegistry(projectRoot);
@@ -67,7 +90,7 @@ export async function runZhudaBuild(options = {}) {
   const outWebDir = path.join(projectRoot, config.outDir || 'dist/web');
   const outLibsDir = path.join(outWebDir, 'libs');
   const outJsDir = path.join(outWebDir, 'js');
-  const vendorLibsDir = path.join(projectRoot, 'vendor/laya-3.4.2/libs');
+  const vendorLibsDir = path.join(engineRoot, 'vendor/laya-3.4.2/libs');
 
   fs.mkdirSync(outLibsDir, { recursive: true });
   fs.mkdirSync(outJsDir, { recursive: true });
@@ -160,6 +183,15 @@ export async function runZhudaBuild(options = {}) {
     fs.copyFileSync(srcLib, destLib);
   }
 
+  // 複製專案自帶 assets/ 至 dist/web/assets
+  const projectAssetsDir = path.join(projectRoot, 'assets');
+  if (fs.existsSync(projectAssetsDir)) {
+    fs.cpSync(projectAssetsDir, path.join(outWebDir, 'assets'), {
+      recursive: true,
+      filter: (src) => !src.includes('.DS_Store')
+    });
+  }
+
   // Step 4: 使用 esbuild 極速打包業務與 SDK 程式碼
   const entryFile = path.join(projectRoot, config.entry || 'src/Main.ts');
   const bundleOutFile = path.join(outJsDir, 'bundle.js');
@@ -179,48 +211,52 @@ export async function runZhudaBuild(options = {}) {
 
   const bundleSizeKB = Number((fs.statSync(bundleOutFile).size / 1024).toFixed(1));
 
-  // Step 4.2: 打包開源獨立 SDK 產物 (dist/sdk/zhuda-laya-engine.esm.js & .cjs)
-  const sdkOutDir = path.join(projectRoot, 'dist/sdk');
-  fs.mkdirSync(sdkOutDir, { recursive: true });
-  const sdkEntryFile = path.join(projectRoot, 'packages/core/index.ts');
-  const sdkEsmFile = path.join(sdkOutDir, 'zhuda-laya-engine.esm.js');
-  const sdkCjsFile = path.join(sdkOutDir, 'zhuda-laya-engine.cjs');
-  const sdkBanner = `/**
+  // Step 4.2: 打包開源獨立 SDK 產物 (僅在母庫或顯式要求時輸出)
+  let sdkEsmSizeKB = 0;
+  let sdkCjsSizeKB = 0;
+  const sdkEntryFile = path.join(engineRoot, 'packages/core/index.ts');
+  if (fs.existsSync(sdkEntryFile) && (projectRoot === engineRoot || config.buildSdk)) {
+    const sdkOutDir = path.join(projectRoot, 'dist/sdk');
+    fs.mkdirSync(sdkOutDir, { recursive: true });
+    const sdkEsmFile = path.join(sdkOutDir, 'zhuda-laya-engine.esm.js');
+    const sdkCjsFile = path.join(sdkOutDir, 'zhuda-laya-engine.cjs');
+    const sdkBanner = `/**
  * zhuda-laya-engine v1.0.0 — 豬大 LayaAir (AI-Agent-Friendly Fork Edition)
  * Repository: https://github.com/zhudaandzhuer/zhuda-laya-engine
  * Upstream Official: LayaAir Engine 3.4.2 by Layabox (https://layaair.com/ | https://github.com/layabox/LayaAir)
  * License: MIT
  */`;
 
-  await esbuild.build({
-    entryPoints: [sdkEntryFile],
-    bundle: true,
-    outfile: sdkEsmFile,
-    format: 'esm',
-    platform: 'neutral',
-    target: ['es2020'],
-    sourcemap: true,
-    banner: { js: sdkBanner },
-    logLevel: 'silent'
-  });
+    await esbuild.build({
+      entryPoints: [sdkEntryFile],
+      bundle: true,
+      outfile: sdkEsmFile,
+      format: 'esm',
+      platform: 'neutral',
+      target: ['es2020'],
+      sourcemap: true,
+      banner: { js: sdkBanner },
+      logLevel: 'silent'
+    });
 
-  await esbuild.build({
-    entryPoints: [sdkEntryFile],
-    bundle: true,
-    outfile: sdkCjsFile,
-    format: 'cjs',
-    platform: 'node',
-    target: ['es2020'],
-    sourcemap: true,
-    banner: { js: sdkBanner },
-    logLevel: 'silent'
-  });
+    await esbuild.build({
+      entryPoints: [sdkEntryFile],
+      bundle: true,
+      outfile: sdkCjsFile,
+      format: 'cjs',
+      platform: 'node',
+      target: ['es2020'],
+      sourcemap: true,
+      banner: { js: sdkBanner },
+      logLevel: 'silent'
+    });
 
-  const sdkEsmSizeKB = Number((fs.statSync(sdkEsmFile).size / 1024).toFixed(1));
-  const sdkCjsSizeKB = Number((fs.statSync(sdkCjsFile).size / 1024).toFixed(1));
-  console.log(
-    `  ✔ [SDK Package] 產出 dist/sdk/zhuda-laya-engine.esm.js (${sdkEsmSizeKB} KB) & .cjs (${sdkCjsSizeKB} KB)`
-  );
+    sdkEsmSizeKB = Number((fs.statSync(sdkEsmFile).size / 1024).toFixed(1));
+    sdkCjsSizeKB = Number((fs.statSync(sdkCjsFile).size / 1024).toFixed(1));
+    console.log(
+      `  ✔ [SDK Package] 產出 dist/sdk/zhuda-laya-engine.esm.js (${sdkEsmSizeKB} KB) & .cjs (${sdkCjsSizeKB} KB)`
+    );
+  }
 
   // Step 4.5: 打包「孤立靜態資產微預覽與像素/ΔE 校準工作台」 (PreviewMain.ts -> preview-bundle.js & preview.html)
   const previewEntryFile = path.join(projectRoot, 'src/PreviewMain.ts');
@@ -241,9 +277,13 @@ export async function runZhudaBuild(options = {}) {
   }
 
   // Step 5: 生成嚴格拓撲順序的 dist/web/index.html 與孤立微預覽 dist/web/preview.html
-  const scriptTags = topology.orderedFiles
+  let scriptTags = topology.orderedFiles
     .map((file, idx) => `    <!-- [${idx + 1}/${topology.orderedFiles.length}] -->\n    <script type="text/javascript" src="libs/${file}"></script>`)
     .join('\n');
+
+  if (topology.orderedFiles.includes('laya.spine.js') || topology.orderedFiles.includes('spine-core-4.2.js')) {
+    scriptTags += `\n    <!-- Spine 4.2 Runtime Specification Alignment -->\n    <script>if (window.Laya && window.Laya.SpineConst) { window.Laya.SpineConst.VERSION = '4.2'; window.Laya.SpineConst.VersionFirst = 4; window.Laya.SpineConst.VersionSecond = 2; window.Laya.SpineConst.NEED_SLOT = true; }</script>`;
+  }
 
   const htmlTitle =
     config.title ||
@@ -271,6 +311,23 @@ export async function runZhudaBuild(options = {}) {
         user-select: none;
       }
     </style>
+    <script>
+      window.onerror = function(msg, url, line, col, error) {
+        var errStr = '[Fatal Error] ' + msg + ' at ' + url + ':' + line;
+        console.error(errStr, error);
+        document.body.setAttribute('data-zhuda-error', errStr);
+        var box = document.getElementById('zhudaFatalErrorBox') || document.createElement('div');
+        box.id = 'zhudaFatalErrorBox';
+        box.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#e11d48;color:#fff;padding:12px;z-index:999999;font-size:13px;word-break:break-all;font-family:monospace;';
+        box.textContent = errStr;
+        if (!box.parentNode && document.body) document.body.appendChild(box);
+      };
+      window.onunhandledrejection = function(e) {
+        var errStr = '[Unhandled Promise] ' + (e.reason ? (e.reason.stack || e.reason) : e);
+        console.error(errStr);
+        document.body.setAttribute('data-zhuda-error', errStr);
+      };
+    </script>
 </head>
 <body>
 ${scriptTags}
@@ -519,6 +576,14 @@ ${previewScriptTags}
       beforeDeltaE2000: convergenceDemo.beforeReport.colorMetrics.maxDeltaE2000,
       afterDeltaE2000: convergenceDemo.afterReport.colorMetrics.maxDeltaE2000
     },
+    visualPresentationContract: visualContractReport.manifestPath
+      ? {
+          path: visualContractReport.manifestPath,
+          contractCount: visualContractReport.contractCount,
+          contractIds: visualContractReport.contractIds,
+          passed: visualContractReport.passed
+        }
+      : null,
     profileComparisons,
     timestamp: new Date().toISOString()
   };
@@ -537,7 +602,9 @@ ${previewScriptTags}
 if (import.meta.url === `file://${process.argv[1]}`) {
   const argProfileIdx = process.argv.indexOf('--profile');
   const profile = argProfileIdx !== -1 ? process.argv[argProfileIdx + 1] : undefined;
-  runZhudaBuild({ profile }).catch((err) => {
+  const argProjectIdx = process.argv.indexOf('--project');
+  const projectRoot = argProjectIdx !== -1 ? path.resolve(process.argv[argProjectIdx + 1]) : undefined;
+  runZhudaBuild({ profile, projectRoot }).catch((err) => {
     console.error(err);
     process.exit(1);
   });

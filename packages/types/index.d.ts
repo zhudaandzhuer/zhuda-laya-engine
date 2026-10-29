@@ -6,3 +6,4 @@ export * from './zhuda-2d-ui';
 export * from './zhuda-3d-physics';
 export * from './zhuda-spine42';
 export * from './zhuda-static-assets';
+export * from './zhuda-visual-contract';

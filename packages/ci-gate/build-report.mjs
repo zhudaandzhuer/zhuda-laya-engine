@@ -271,7 +271,7 @@ const html = `<!DOCTYPE html>
         <p class="subtitle">
           GitHub 開源倉庫：<a href="https://github.com/zhudaandzhuer/zhuda-laya-engine" target="_blank" style="color:var(--accent);font-weight:700;">https://github.com/zhudaandzhuer/zhuda-laya-engine</a> · 本機工作區：<code>/Users/yaowei/Desktop/Zhuda-LayaAir</code><br/>
           上游官方致謝：基於 <a href="https://layaair.com/" target="_blank" style="color:var(--teal);font-weight:700;">LayaAir 官方引擎 (layaair.com)</a> / <a href="https://github.com/layabox/LayaAir" target="_blank" style="color:var(--teal);font-weight:700;">github.com/layabox/LayaAir (3.4.2)</a> 渲染與物理內核，由 <b>豬大 (@zhudaandzhuer)</b> 進行 <b>AI-Agent-Friendly 分支改造與 SDK 封裝</b>。<br/>
-          內建 <b>Zero-IDE 極速打包 (<code>dist/sdk/zhuda-laya-engine.{esm.js,cjs}</code>)</b>、<b>29 庫 DAG 拓撲守衛</b>、<b>AST 自動類別反射</b>、<b>10 份靜態資產 (.lh/.ls) 0px / ΔE00=0 像素色差校準</b>、<b>11 工具 MCP Server</b> 以及 <b>M1 九宮格 · M2 iframe 音訊 · M3 5 視口 SafeArea · M4 VFX 藍圖 · M5 Unity 移植管線</b>。
+          內建 <b>Zero-IDE 極速打包 (<code>dist/sdk/zhuda-laya-engine.{esm.js,cjs}</code>)</b>、<b>29 庫 DAG 拓撲守衛</b>、<b>AST 自動類別反射</b>、<b>10 份靜態資產 (.lh/.ls) 0px / ΔE00=0 像素色差校準</b>、<b>12 工具 MCP Server</b> 以及 <b>M1 九宮格 · M2 iframe 音訊 · M3 5 視口 SafeArea · M4 VFX 藍圖 · M5 Unity 移植管線</b>。
         </p>
         <div class="cta-row">
           <a class="btn btn-primary" href="https://github.com/zhudaandzhuer/zhuda-laya-engine" target="_blank">📦 前往 GitHub 開源倉庫 (zhudaandzhuer/zhuda-laya-engine)</a>
@@ -344,7 +344,7 @@ const html = `<!DOCTYPE html>
         <div class="infra-card">
           <h3>🤖 為什麼是「豬大的 Agent-Friendly 分支版本」？</h3>
           <p>
-            針對 AI Coding Agent（Claude Code / Cursor / Windsurf / AGY / Codex）在無 GUI 終端環境開發 LayaAir 遊戲時的五大痛點，提供 <b>Zero-IDE AST 自動類別反射</b>、<b>DAG 拓撲載入器</b>、<b>Graphics.setState 原型解毒</b>、<b>離線 .lh 像素與 ΔE00 色差校準</b> 及 <b>內建 11 工具 MCP Server</b>。
+            針對 AI Coding Agent（Claude Code / Cursor / Windsurf / AGY / Codex）在無 GUI 終端環境開發 LayaAir 遊戲時的五大痛點，提供 <b>Zero-IDE AST 自動類別反射</b>、<b>DAG 拓撲載入器</b>、<b>Graphics.setState 原型解毒</b>、<b>離線 .lh 像素與 ΔE00 色差校準</b> 及 <b>內建 12 工具 MCP Server</b>。
           </p>
           <span class="code-path">packages/mcp-server/index.mjs</span>
           <span class="code-path">README.md</span>

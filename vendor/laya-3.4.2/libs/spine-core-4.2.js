@@ -3600,6 +3600,9 @@ var spine;
             let attachment = new spine.RegionAttachment(name, path);
             if (sequence != null) {
                 this.loadSequence(name, path, sequence);
+                if (sequence.regions && sequence.regions.length > 0) {
+                    attachment.region = sequence.regions[0];
+                }
             }
             else {
                 let region = this.atlas.findRegion(path);
@@ -3613,6 +3616,9 @@ var spine;
             let attachment = new spine.MeshAttachment(name, path);
             if (sequence != null) {
                 this.loadSequence(name, path, sequence);
+                if (sequence.regions && sequence.regions.length > 0) {
+                    attachment.region = sequence.regions[0];
+                }
             }
             else {
                 let region = this.atlas.findRegion(path);

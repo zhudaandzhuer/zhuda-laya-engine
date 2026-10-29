@@ -39,7 +39,15 @@ test('MCP Server resolves topology, diagnoses Laya crashes, and serves Golden Ex
     params: {}
   });
   assert.equal(rpcRes.id, 42);
-  assert.equal(rpcRes.result.tools.length, 11);
+  assert.equal(rpcRes.result.tools.length, 13);
+  assert.ok(rpcRes.result.tools.some((tool) => tool.name === 'audit_visual_migration'));
+  assert.ok(rpcRes.result.tools.some((tool) => tool.name === 'audit_visual_contract'));
+
+  const visualContractRes = executeMcpTool('audit_visual_contract', {
+    projectRoot: '/Users/yaowei/Desktop/天堂老虎機'
+  });
+  assert.equal(visualContractRes.passed, true);
+  assert.deepEqual(visualContractRes.contractIds, ['win-focus']);
 
   const calibRes = executeMcpTool('calibrate_asset_pixels', { simulateDriftAndAutoFix: true });
   assert.equal(calibRes.beforeReport.passed, false);
@@ -78,4 +86,5 @@ test('zhuda-laya-engine SDK bundles (ESM & CJS) and upstream LayaAir Official at
   assert.ok(sdkMod.IframeSoundAdapter, 'ESM SDK should export IframeSoundAdapter');
   assert.ok(sdkMod.ViewportMatrixEngine, 'ESM SDK should export ViewportMatrixEngine');
   assert.ok(sdkMod.UnityBridgePipeline, 'ESM SDK should export UnityBridgePipeline');
+  assert.ok(sdkMod.VisualFocusContract, 'ESM SDK should export VisualFocusContract');
 });

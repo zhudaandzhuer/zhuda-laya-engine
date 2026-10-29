@@ -607,6 +607,16 @@ var ZhudaPreviewBundle = (() => {
       const features = options.features ?? "all";
       const topology = TopologyResolver.resolveByFeatures(features);
       EngineGuard.installPrototypeDetox();
+      const hasSpine42 = features === "all" || Array.isArray(features) && features.includes("spine42");
+      if (hasSpine42) {
+        const spineConst = Laya.SpineConst;
+        if (spineConst) {
+          spineConst.VERSION = "4.2";
+          spineConst.VersionFirst = 4;
+          spineConst.VersionSecond = 2;
+          spineConst.NEED_SLOT = true;
+        }
+      }
       if (options.beforeInit) {
         options.beforeInit();
       }

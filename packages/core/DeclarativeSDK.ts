@@ -19,7 +19,7 @@ import type {
   PrimitiveType3D,
   VectorButtonStyle,
   ZhudaClassMetadata
-} from '../types/index';
+} from '../types/index.ts';
 
 export interface ZhudaBootOptions {
   width?: number;
@@ -67,6 +67,18 @@ export class ZhudaEngine {
 
     // 2. 安裝原型解毒補丁 (修復 Button AutoBitmap.setState 與反射攔截)
     EngineGuard.installPrototypeDetox();
+
+    // 2.1 Spine 4.2 核心規格設定 (保證 NEED_SLOT=true 與 VersionFirst=4，消除世界頂點計算異常)
+    const hasSpine42 = features === 'all' || (Array.isArray(features) && features.includes('spine42'));
+    if (hasSpine42) {
+      const spineConst = (Laya as unknown as { SpineConst?: { VERSION: string; VersionFirst: number; VersionSecond: number; NEED_SLOT: boolean } }).SpineConst;
+      if (spineConst) {
+        spineConst.VERSION = '4.2';
+        spineConst.VersionFirst = 4;
+        spineConst.VersionSecond = 2;
+        spineConst.NEED_SLOT = true;
+      }
+    }
 
     if (options.beforeInit) {
       options.beforeInit();

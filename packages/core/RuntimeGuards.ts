@@ -12,7 +12,7 @@ import type {
   Physics2DGuardStatus,
   Physics3DGuardStatus,
   Spine42PhysicsTelemetry
-} from '../types/index';
+} from '../types/index.ts';
 
 export interface EngineHealthReport {
   timestamp: number;

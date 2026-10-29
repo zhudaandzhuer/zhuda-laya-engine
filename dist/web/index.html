@@ -20,6 +20,23 @@
         user-select: none;
       }
     </style>
+    <script>
+      window.onerror = function(msg, url, line, col, error) {
+        var errStr = '[Fatal Error] ' + msg + ' at ' + url + ':' + line;
+        console.error(errStr, error);
+        document.body.setAttribute('data-zhuda-error', errStr);
+        var box = document.getElementById('zhudaFatalErrorBox') || document.createElement('div');
+        box.id = 'zhudaFatalErrorBox';
+        box.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#e11d48;color:#fff;padding:12px;z-index:999999;font-size:13px;word-break:break-all;font-family:monospace;';
+        box.textContent = errStr;
+        if (!box.parentNode && document.body) document.body.appendChild(box);
+      };
+      window.onunhandledrejection = function(e) {
+        var errStr = '[Unhandled Promise] ' + (e.reason ? (e.reason.stack || e.reason) : e);
+        console.error(errStr);
+        document.body.setAttribute('data-zhuda-error', errStr);
+      };
+    </script>
 </head>
 <body>
     <!-- [1/29] -->
@@ -80,6 +97,8 @@
     <script type="text/javascript" src="libs/laya.postProcess.js"></script>
     <!-- [29/29] -->
     <script type="text/javascript" src="libs/laya.device.js"></script>
+    <!-- Spine 4.2 Runtime Specification Alignment -->
+    <script>if (window.Laya && window.Laya.SpineConst) { window.Laya.SpineConst.VERSION = '4.2'; window.Laya.SpineConst.VersionFirst = 4; window.Laya.SpineConst.VersionSecond = 2; window.Laya.SpineConst.NEED_SLOT = true; }</script>
     <!-- Zero-IDE AST Reflected Application Bundle -->
     <script type="text/javascript" src="js/bundle.js"></script>
 </body>
