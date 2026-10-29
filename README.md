@@ -8,6 +8,16 @@
 > **基於 [LayaAir 官方引擎 (3.4.2)](https://github.com/layabox/LayaAir) 渲染與物理內核，由 [豬大 (@zhudaandzhuer)](https://github.com/zhudaandzhuer) 打造的 AI-Agent-Friendly 開源分支版本 (`zhuda-laya-engine`)。**
 > 完全脫離 LayaAir IDE 黑盒與 GUI 鎖定，專為 **AI Coding Agent（Claude Code / Cursor / Windsurf / AGY / Codex）** 與現代自動化前端工程打造的模組化 **2D / 3D / Spine 4.2** 遊戲引擎工作台與 SDK。
 
+## 粒子實際渲染展示 · 100 種場景
+
+[![車身包覆氣流、魔法與爆破展示](https://raw.githubusercontent.com/zhudaandzhuer/zhuda-particle-lab/main/docs/media/showcase-preview.gif)](https://zhudaandzhuer.github.io/zhuda-particle-lab/showcase.html)
+
+**[▶ 觀看 60 FPS 展示](https://zhudaandzhuer.github.io/zhuda-particle-lab/showcase.html)** · **[立即試玩 100 種效果](https://zhudaandzhuer.github.io/zhuda-particle-lab/)** · [瀏覽效果圖鑑](https://zhudaandzhuer.github.io/zhuda-particle-lab/catalog.html)
+
+3D 賽車氣流從車頭包覆車頂與兩側，沿彎道留下尾流；另展示魔法、爆破、天候、水體與介面回饋，共 91 種 2D、9 種真實 3D 效果。影片為實際 WebGL 畫面逐幀錄製，完整版 17 秒、60 FPS；上方 GIF 為 24 FPS 縮小預覽。
+
+展示應用、100 種配方、場景、美術與影片完整保存在獨立的 **[zhuda-particle-lab](https://github.com/zhudaandzhuer/zhuda-particle-lab)**。本引擎提供通用 SDK；[驗收結果](https://github.com/zhudaandzhuer/zhuda-particle-lab/blob/main/VERIFICATION-100.md)涵蓋逐項渲染與重播、資源釋放及 4,000 粒子負載。
+
 ---
 
 ## 🏛️ 官方致謝與分支定位聲明 (Upstream Attribution & Fork Notice)
