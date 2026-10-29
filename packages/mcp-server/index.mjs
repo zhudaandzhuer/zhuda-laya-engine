@@ -18,11 +18,21 @@ import { ZhudaAssetSerializer } from '../core/StaticAssetPipeline.ts';
 import { PixelCalibrationEngine } from '../core/PixelCalibrationEngine.ts';
 import { ViewportMatrixEngine } from '../core/ViewportMatrixEngine.ts';
 import { UnityBridgePipeline } from '../core/UnityBridgePipeline.ts';
+import { validateParticleEffect } from '../core/particles/ParticleTypes.ts';
 import { auditVisualAssetMigration } from '../compiler/visual-asset-audit.mjs';
 import { auditVisualPresentationContracts } from '../compiler/visual-contract-audit.mjs';
 import { API_GUARDRAILS, ERROR_DIAGNOSTICS_DB, GOLDEN_EXAMPLES } from './corpus.mjs';
 
 export const MCP_TOOLS_MANIFEST = [
+  {
+    name: 'validate_particle_effect',
+    description: '驗證可序列化的 2D 粒子設定：發射器、池容量、生命曲線、顏色、空間與週期。只驗證設定，不宣稱已完成畫面或效能驗收。',
+    inputSchema: {
+      type: 'object',
+      properties: { effect: { type: 'object', description: 'schemaVersion: 1 的 ParticleEffectSpec；貼圖 key 由應用程式解析。' } },
+      required: ['effect']
+    }
+  },
   {
     name: 'resolve_topology',
     description: '給定遊戲所需功能標籤 (如 ["3d", "spine42", "physics3d"])，計算最小按需剪枝模組清單與嚴格 DAG 拓撲載入順序。',
@@ -182,6 +192,10 @@ export const MCP_TOOLS_MANIFEST = [
 
 export function executeMcpTool(toolName, args = {}) {
   switch (toolName) {
+    case 'validate_particle_effect': {
+      const issues = validateParticleEffect(args.effect);
+      return { tool: 'validate_particle_effect', passed: issues.length === 0, issues };
+    }
     case 'resolve_topology': {
       const features =
         !args.features || args.features.includes('all') ? 'all' : args.features;

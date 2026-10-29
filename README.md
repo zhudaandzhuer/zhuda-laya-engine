@@ -32,7 +32,7 @@
 | **組件類別反射** | 依賴 IDE 隱藏產出 `regClass` 映射表 | **AST 靜態掃描 (`ast-scanner.mjs`)**：自動掃描 `@zhudaComponent` 與 `Laya.Script` 子類並注入 `ClassUtils.regClass()` |
 | **運行期防崩潰** | 純代碼自繪 `Laya.Button` 易觸發 `this._graphics.setState is not a function` | **`EngineGuard.installPrototypeDetox()`**：啟動時自動完成原型解毒修補與宣告式 `ZhudaEngine` / `Zhuda3D` / `ZhudaUI` 封裝 |
 | **UI / 預製體校準** | 必須進 GUI 肉眼對齊，且 `DrawRoundRectCmd` 預設 `percent: true` 易放大百倍 | **先設計後組裝 (`ZhudaAssetSerializer` + `PixelCalibrationEngine`)**：離線計算 Tight Bounding Box 與 CIEDE2000 ($\Delta E_{00}$) 色差並自動產生 `AutoFixPatch` 收斂至 **0px / $\Delta E_{00}=0$** |
-| **AI 語料與防幻覺** | 大模型常混用 Laya 1.x / 2.x 廢棄 API | **內建 13 工具 MCP Server (`zhuda-laya-mcp`) + `zhuda-laya-doctor` 靜態守衛** |
+| **AI 語料與防幻覺** | 大模型常混用 Laya 1.x / 2.x 廢棄 API | **內建 14 工具 MCP Server (`zhuda-laya-mcp`) + `zhuda-laya-doctor` 靜態守衛** |
 
 ---
 
@@ -43,7 +43,7 @@
 | **1. 拓撲載入器與按需剪枝** | `packages/core/TopologyGraph.ts` | 建立 29 個 LayaAir 3.4.2 引擎庫的完整 DAG 有向無環圖與 Kahn's 拓撲排序；確保 `physics2D -> box2D`、`bullet -> physics3D`、`spine-core-4.2 -> laya.spine -> laya.spine3D` 順序零死鎖，並支援按需 Feature Pruning（`2d-light` 縮減 **83.2%** 體積）。 |
 | **2. Zero-IDE AST 自動類別反射** | `packages/compiler/ast-scanner.mjs`<br>`packages/compiler/zhuda-build.mjs` | 使用 TypeScript 官方 AST 掃描 `@zhudaComponent` 與 `Laya.Script` 子類別，自動生成 `src/.generated/zhuda-registry.ts` 並注入 `ClassUtils.regClass()`，結合 `esbuild` 同步產出應用程式與 `dist/sdk/zhuda-laya-engine.{esm.js,cjs}`。 |
 | **3. 原型解毒與宣告式 SDK** | `packages/core/RuntimeGuards.ts`<br>`packages/core/DeclarativeSDK.ts`<br>`packages/core/SpineVisualContract.ts`<br>`packages/core/VisualFocusContract.ts` | `EngineGuard.installPrototypeDetox()` 自動修補 `Laya.Graphics.prototype.setState`；提供對標 Three.js / R3F 的 `ZhudaEngine.boot`、`Zhuda3D`、`ZhudaUI` 與 `ZhudaPrefab` 宣告式純代碼 API；`SpineVisualContract` 會拒絕 fallback 物件並檢查 Spine 4.2 動畫、皮膚、插槽、事件、約束與 bounds；`VisualFocusContract` 將 clear/focus/空集合的全盤作用域語意明確化。 |
-| **4. 模組化型別與 13 工具 MCP Server** | `packages/types/*.d.ts`<br>`packages/mcp-server/index.mjs` | 剝離 IDE 專屬污染型別（`editor.d.ts`），分為乾淨 `.d.ts`；內建可執行之 **Model Context Protocol (MCP) Server**，提供拓撲解析、API 護欄、錯誤診斷、Golden Examples、像素校準、九宮格驗測、SafeArea 矩陣、Unity 移植驗證、視覺資產審計與視覺演出契約共 **13 項 AI 工具**。 |
+| **4. 模組化型別與 14 工具 MCP Server** | `packages/types/*.d.ts`<br>`packages/mcp-server/index.mjs` | 剝離 IDE 專屬污染型別（`editor.d.ts`），分為乾淨 `.d.ts`；內建可執行之 **Model Context Protocol (MCP) Server**，提供拓撲解析、API 護欄、錯誤診斷、Golden Examples、像素校準、九宮格驗測、SafeArea 矩陣、Unity 移植驗證、視覺資產審計、視覺演出契約與粒子設定驗證共 **14 項 AI 工具**。 |
 | **5. Headless Chrome 首幀守衛** | `packages/ci-gate/verify-first-frame.mjs` | 自動啟動受管理無頭瀏覽器驗證 WebGL 上下文、29 模組載入狀態、AST 組件反射、Spine 4.2 `PhysicsConstraint` 彈簧求解器與首幀自動截圖。 |
 | **6. 靜態資產 (`.lh`/`.ls`) 與 $\Delta E_{00}$ 校準** | `packages/core/StaticAssetPipeline.ts`<br>`packages/core/PixelCalibrationEngine.ts` | 實現「先設計靜態資產、孤立微預覽 (`preview.html`)、後組裝」工作流，自動強制 `DrawRoundRectCmd` `percent: false`，並執行 Tight Bounding Box 0px 邊界與 CIEDE2000 色差單步自動修補。 |
 | **7. 商業化支柱 M1~M5** | `packages/core/IframeSoundAdapter.ts`<br>`packages/core/ViewportMatrixEngine.ts`<br>`packages/core/UnityBridgePipeline.ts` | **M1** 九宮格 `sizeGrid` 四角 16×16px 0px 變形鎖定 · **M2** `IframeSoundAdapter` 首觸手勢解鎖、失焦靜音與 `postMessage` 音訊橋 · **M3** 5 大主流終端 SafeArea 與靈動島 3D FOV 自動補償 · **M4** 4 套決定性 VFX 特效藍圖 · **M5** Unity 左手系轉右手系 (`LH -> RH`) + `AnimatorController` 狀態機 + Spine 4.2 移植管線。 |
@@ -57,7 +57,7 @@ zhuda-laya-engine/
 ├── packages/
 │   ├── core/                  # 核心 SDK (TopologyGraph, RuntimeGuards, DeclarativeSDK, StaticAssetPipeline, PixelCalibrationEngine, IframeSoundAdapter, ViewportMatrixEngine, UnityBridgePipeline)
 │   ├── compiler/              # Zero-IDE 編譯器 (含 visual-contract-audit.mjs 視覺演出閘門)
-│   ├── mcp-server/            # AI-Native MCP 語料與診斷伺服器 (13 Tools, stdio + CLI 雙模)
+│   ├── mcp-server/            # AI-Native MCP 語料與診斷伺服器 (14 Tools, stdio + CLI 雙模)
 │   ├── types/                 # 去 IDE 污染之分層 TypeScript 型別宣告 (.d.ts)
 │   └── ci-gate/               # Headless Chrome 首幀遙測與 HTML 視覺報告產生器
 ├── vendor/laya-3.4.2/libs/    # LayaAir 3.4.2 官方 29 個核心與擴充模組 (含 Spine 4.2 / Bullet / Box2D)
@@ -100,7 +100,7 @@ npm run typecheck
 # 3. 執行 Zhuda-Doctor 拓撲與防幻覺靜態體檢
 npm run doctor
 
-# 4. 執行完整單元與整合測試 (14 項測試涵蓋拓撲、AST、MCP、ΔE00 校準與商業化 M1~M5)
+# 4. 執行完整單元與整合測試 (涵蓋拓撲、AST、MCP、粒子、視覺契約、ΔE00 校準與商業化 M1~M5)
 npm run test
 
 # 5. 一鍵執行完整引擎驗證管線 (build + typecheck + doctor + test)
@@ -182,8 +182,13 @@ VisualFocusContract.apply(targets, VisualFocusContract.clear());
 
 ---
 
+## 2D 粒子與路徑拖尾
+
+公開 SDK 提供 `ZhudaParticleSystem`、`ZhudaLayaParticleRenderer`、`ZhudaRibbonTrail`、`ZhudaLayaRibbonRenderer` 與 `ZhudaEffectEnvelope`。支援貼圖、生命曲線、定種子重播、物件池、世界／本地空間、距離發射及彎曲路徑。MCP `validate_particle_effect` 可先檢查 JSON 設定。
+
+完整 API、限制與接入方式見 [packages/core/particles/README.md](packages/core/particles/README.md)。展示場景、遊戲預設及美術資產由獨立應用程式管理，引擎不依賴任何展示專案。
+
 ## 📄 開源授權與致謝 (License & Credits)
 
 - **分支整理與 AI-Native 架構研發**：[豬大 (@zhudaandzhuer)](https://github.com/zhudaandzhuer) — MIT License
 - **上游底層引擎致謝**：[LayaAir 官方引擎 (Layabox Inc.)](https://layaair.com/) · [https://github.com/layabox/LayaAir](https://github.com/layabox/LayaAir)
-

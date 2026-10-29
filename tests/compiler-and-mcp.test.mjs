@@ -2,6 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
+import ts from 'typescript';
 import { fileURLToPath } from 'node:url';
 import { scanAndGenerateRegistry } from '../packages/compiler/ast-scanner.mjs';
 import { runDoctorAudit } from '../packages/compiler/zhuda-doctor.mjs';
@@ -39,9 +41,15 @@ test('MCP Server resolves topology, diagnoses Laya crashes, and serves Golden Ex
     params: {}
   });
   assert.equal(rpcRes.id, 42);
-  assert.equal(rpcRes.result.tools.length, 13);
+  assert.equal(rpcRes.result.tools.length, 14);
   assert.ok(rpcRes.result.tools.some((tool) => tool.name === 'audit_visual_migration'));
   assert.ok(rpcRes.result.tools.some((tool) => tool.name === 'audit_visual_contract'));
+  assert.ok(rpcRes.result.tools.some((tool) => tool.name === 'validate_particle_effect'));
+  assert.equal(executeMcpTool('validate_particle_effect', { effect: null }).passed, false);
+  assert.equal(executeMcpTool('validate_particle_effect', { effect: { schemaVersion: 1, emitters: [{
+    id: 'neutral', texture: 'external-key', seed: 1, space: 'world', blend: 'alpha',
+    maxParticles: 16, shape: { type: 'point' }, rate: 10, lifetime: 1, speed: 0, angle: 0, size: 4
+  }] } }).passed, true);
 
   const visualContractRes = executeMcpTool('audit_visual_contract', {
     projectRoot,
@@ -88,4 +96,47 @@ test('zhuda-laya-engine SDK bundles (ESM & CJS) and upstream LayaAir Official at
   assert.ok(sdkMod.ViewportMatrixEngine, 'ESM SDK should export ViewportMatrixEngine');
   assert.ok(sdkMod.UnityBridgePipeline, 'ESM SDK should export UnityBridgePipeline');
   assert.ok(sdkMod.VisualFocusContract, 'ESM SDK should export VisualFocusContract');
+  const cjsMod = (await import('node:module')).createRequire(import.meta.url)(cjsPath);
+  for (const name of ['ZhudaParticleSystem', 'ZhudaRibbonTrail', 'ZhudaEffectEnvelope', 'ZhudaLayaParticleRenderer',
+    'ZhudaLayaRibbonRenderer', 'validateParticleEffect']) {
+    assert.equal(typeof sdkMod[name], 'function', `ESM SDK should export ${name}`);
+    assert.equal(typeof cjsMod[name], 'function', `CJS SDK should export ${name}`);
+  }
+});
+
+test('particle public types compile in a strict consumer without importing implementation files', () => {
+  const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'zhuda-particle-types-'));
+  try {
+    fs.mkdirSync(path.join(temporary, 'node_modules'));
+    fs.symlinkSync(projectRoot, path.join(temporary, 'node_modules/zhuda-laya-engine'), 'dir');
+    const fixture = path.join(temporary, 'consumer.ts');
+    fs.writeFileSync(fixture, `import { ZhudaParticleSystem, ZhudaLayaParticleRenderer, ZhudaRibbonTrail,
+      ZhudaLayaRibbonRenderer, ZhudaEffectEnvelope, validateParticleEffect } from 'zhuda-laya-engine';
+      import type { ParticleEffectSpec, ParticleState } from 'zhuda-laya-engine';
+      const spec: ParticleEffectSpec = {schemaVersion:1,emitters:[{id:'test',texture:'external',maxParticles:32,
+        seed:1,space:'world',blend:'alpha',shape:{type:'point'},rate:10,lifetime:1,speed:20,angle:0,size:5}]};
+      const s = new ZhudaParticleSystem(spec.emitters[0]);
+      s.forEach((p: ParticleState) => { const x: number = p.x; });
+      const r = new ZhudaLayaParticleRenderer(s, {}, key => ({}));
+      const t = new ZhudaRibbonTrail({maxPoints:8,lifetime:1,width:5,minDistance:1,teleportDistance:20});
+      new ZhudaLayaRibbonRenderer(t, {}, {}).render();
+      new ZhudaEffectEnvelope().start();
+      const issues: string[] = validateParticleEffect(spec); r.dispose();
+      // @ts-expect-error unknown emitter spaces must be rejected by the public types
+      spec.emitters[0].space = 'screen';
+    `);
+    for (const standalone of [false, true]) {
+      // The package's pre-existing vendor declarations require skipLibCheck, as in tsconfig.json.
+      // Also check the new particle contract alone without skipping declaration checks.
+      const program = ts.createProgram([fixture], { noEmit: true, strict: true, skipLibCheck: !standalone,
+        types: [], target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.ESNext,
+        moduleResolution: ts.ModuleResolutionKind.Bundler,
+        ...(standalone ? { paths: { 'zhuda-laya-engine': [path.join(projectRoot, 'packages/types/zhuda-particles.d.ts')] } } : {}) });
+      const diagnostics = ts.getPreEmitDiagnostics(program);
+      assert.equal(diagnostics.length, 0, ts.formatDiagnosticsWithColorAndContext(diagnostics.slice(0, 5), {
+        getCurrentDirectory: () => temporary, getCanonicalFileName: f => f, getNewLine: () => '\n'
+      }));
+      assert.equal(program.getSourceFiles().some(f => f.fileName.includes('/core/particles/')), false);
+    }
+  } finally { fs.rmSync(temporary, { recursive: true, force: true }); }
 });

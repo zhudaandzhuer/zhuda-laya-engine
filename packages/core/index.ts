@@ -9,6 +9,7 @@ export * from './ViewportMatrixEngine';
 export * from './UnityBridgePipeline';
 export * from './SpineVisualContract';
 export * from './VisualFocusContract';
+export * from './particles/index.ts';
 export type * from '../types/zhuda-core.ts';
 export type * from '../types/zhuda-2d-ui.ts';
 export type * from '../types/zhuda-3d-physics.ts';

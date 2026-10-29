@@ -41,9 +41,17 @@ __export(index_exports, {
   Zhuda3D: () => Zhuda3D,
   ZhudaAssetSerializer: () => ZhudaAssetSerializer,
   ZhudaBenchmarkEngine: () => ZhudaBenchmarkEngine,
+  ZhudaEffectEnvelope: () => ZhudaEffectEnvelope,
   ZhudaEngine: () => ZhudaEngine,
+  ZhudaLayaParticleRenderer: () => ZhudaLayaParticleRenderer,
+  ZhudaLayaRibbonRenderer: () => ZhudaLayaRibbonRenderer,
+  ZhudaParticleSystem: () => ZhudaParticleSystem,
   ZhudaPrefab: () => ZhudaPrefab,
+  ZhudaRibbonTrail: () => ZhudaRibbonTrail,
   ZhudaUI: () => ZhudaUI,
+  sampleParticleColor: () => sampleParticleColor,
+  sampleParticleCurve: () => sampleParticleCurve,
+  validateParticleEffect: () => validateParticleEffect,
   zhudaComponent: () => zhudaComponent
 });
 module.exports = __toCommonJS(index_exports);
@@ -4300,6 +4308,568 @@ var VisualFocusContract = class {
     return report;
   }
 };
+
+// packages/core/particles/ParticleTypes.ts
+function sampleParticleCurve(keys, time, fallback = 1) {
+  if (!keys?.length) return fallback;
+  if (time <= keys[0].time) return keys[0].value;
+  for (let i = 1; i < keys.length; i++) {
+    if (time <= keys[i].time) {
+      const a = keys[i - 1], b = keys[i];
+      return a.value + (b.value - a.value) * (time - a.time) / (b.time - a.time);
+    }
+  }
+  return keys[keys.length - 1].value;
+}
+function sampleParticleColor(keys, time) {
+  if (!keys?.length) return "#ffffff";
+  if (time <= keys[0].time) return keys[0].color;
+  for (let i = 1; i < keys.length; i++) {
+    if (time <= keys[i].time) {
+      const a = keys[i - 1], b = keys[i];
+      const t = (time - a.time) / (b.time - a.time);
+      let hex = "#";
+      for (let c = 1; c < 7; c += 2) {
+        const av = parseInt(a.color.slice(c, c + 2), 16), bv = parseInt(b.color.slice(c, c + 2), 16);
+        hex += Math.round(av + (bv - av) * t).toString(16).padStart(2, "0");
+      }
+      return hex;
+    }
+  }
+  return keys[keys.length - 1].color;
+}
+function validateParticleEffect(value) {
+  const issues = [];
+  const spec = value;
+  if (!spec || spec.schemaVersion !== 1 || !Array.isArray(spec.emitters) || !spec.emitters.length) {
+    return ["Expected schemaVersion: 1 and a non-empty emitters array."];
+  }
+  const ids = /* @__PURE__ */ new Set();
+  const finite = (v) => typeof v === "number" && Number.isFinite(v);
+  for (const e of spec.emitters) {
+    if (!e || typeof e !== "object") {
+      issues.push("Emitter must be an object.");
+      continue;
+    }
+    const id = e.id || "(unnamed)";
+    if (typeof e.id !== "string" || !e.id || ids.has(e.id)) issues.push(`${id}: id must be unique and non-empty.`);
+    ids.add(e.id);
+    if (typeof e.texture !== "string" || !e.texture) issues.push(`${id}: texture is required.`);
+    if (!Number.isInteger(e.maxParticles) || e.maxParticles < 1 || e.maxParticles > 16383) issues.push(`${id}: maxParticles must be 1..16383.`);
+    if (!Number.isInteger(e.seed)) issues.push(`${id}: seed must be an integer.`);
+    if (!["world", "local"].includes(e.space) || !["alpha", "additive"].includes(e.blend)) issues.push(`${id}: explicit space and blend are required.`);
+    if (!finite(e.rate) || e.rate < 0) issues.push(`${id}: rate must be non-negative.`);
+    for (const key of ["lifetime", "speed", "angle", "size", "rotation", "angularVelocity"]) {
+      const v = e[key];
+      if (v === void 0 && ["rotation", "angularVelocity"].includes(key)) continue;
+      const range = Array.isArray(v) ? v : [v, v];
+      if (range.length !== 2 || !range.every(finite) || range[0] > range[1]) issues.push(`${id}: invalid ${key} range.`);
+      else if ((key === "lifetime" || key === "size") && range[0] <= 0) issues.push(`${id}: ${key} must be positive.`);
+    }
+    if (!e.shape || !["point", "box", "circle"].includes(e.shape.type)) issues.push(`${id}: invalid shape.`);
+    else if (e.shape.type === "box" && (![e.shape.width, e.shape.height].every(finite) || e.shape.width < 0 || e.shape.height < 0)) issues.push(`${id}: invalid box dimensions.`);
+    else if (e.shape.type === "circle" && (!finite(e.shape.radius) || e.shape.radius < 0)) issues.push(`${id}: invalid circle radius.`);
+    for (const key of ["drag", "rateOverDistance", "stretch"]) {
+      if (e[key] !== void 0 && (!finite(e[key]) || e[key] < 0)) issues.push(`${id}: ${key} must be non-negative.`);
+    }
+    if (e.duration !== void 0 && (!finite(e.duration) || e.duration <= 0)) issues.push(`${id}: duration must be positive.`);
+    if (e.loop !== void 0 && typeof e.loop !== "boolean") issues.push(`${id}: loop must be boolean.`);
+    if (e.loop && e.duration !== void 0 && e.duration < 1 / 120) issues.push(`${id}: looping duration must be at least 1/120 second.`);
+    if (e.acceleration && ![e.acceleration.x, e.acceleration.y].every(finite)) issues.push(`${id}: acceleration must be finite.`);
+    if (e.turbulence && (![e.turbulence.strength, e.turbulence.frequency].every(finite) || e.turbulence.strength < 0 || e.turbulence.frequency < 0)) issues.push(`${id}: invalid turbulence.`);
+    if (e.bursts !== void 0 && (!Array.isArray(e.bursts) || e.bursts.some((b) => !b || !finite(b.time) || b.time < 0 || !Number.isInteger(b.count) || b.count < 0))) issues.push(`${id}: invalid bursts.`);
+    if (Array.isArray(e.bursts) && finite(e.duration) && e.bursts.some((b) => b && b.time > e.duration)) issues.push(`${id}: burst time exceeds duration.`);
+    for (const key of ["sizeOverLife", "alphaOverLife", "colorOverLife"]) {
+      const keys = e[key];
+      if (keys === void 0) continue;
+      if (!Array.isArray(keys) || !keys.length) {
+        issues.push(`${id}: ${key} must be non-empty.`);
+        continue;
+      }
+      let previous = -1;
+      for (const k of keys) {
+        if (!k || !finite(k.time) || k.time < 0 || k.time > 1 || k.time <= previous) {
+          issues.push(`${id}: ${key} times must increase within 0..1.`);
+          break;
+        }
+        previous = k.time;
+        if (key === "colorOverLife") {
+          if (!/^#[0-9a-f]{6}$/i.test(k.color)) issues.push(`${id}: colors must use #rrggbb.`);
+        } else if (!finite(k.value) || k.value < 0 || key === "alphaOverLife" && k.value > 1) issues.push(`${id}: invalid ${key} value.`);
+      }
+    }
+  }
+  return issues;
+}
+
+// packages/core/particles/ParticleSystem.ts
+var _ZhudaParticleSystem = class _ZhudaParticleSystem {
+  constructor(spec) {
+    this.transform = { x: 0, y: 0, rotation: 0 };
+    this.intensity = 1;
+    this.emitting = false;
+    this.time = 0;
+    this.droppedParticles = 0;
+    this.droppedSeconds = 0;
+    this.count = 0;
+    this.accumulator = 0;
+    this.emitRemainder = 0;
+    this.distanceRemainder = 0;
+    this.cycleTime = 0;
+    this.firstStep = true;
+    this.previousX = 0;
+    this.previousY = 0;
+    this.positioned = false;
+    const issues = validateParticleEffect({ schemaVersion: 1, emitters: [spec] });
+    if (issues.length) throw new Error(`[ZhudaParticles] ${issues.join(" | ")}`);
+    this.spec = JSON.parse(JSON.stringify(spec));
+    this.rng = spec.seed >>> 0;
+    this.active = new Int32Array(spec.maxParticles);
+    this.free = new Int32Array(spec.maxParticles);
+    this.freeCount = spec.maxParticles;
+    this.pool = Array.from({ length: spec.maxParticles }, (_, i) => {
+      this.free[i] = spec.maxParticles - 1 - i;
+      return { x: 0, y: 0, vx: 0, vy: 0, age: 0, lifetime: 1, baseSize: 1, size: 1, rotation: 0, angularVelocity: 0, phase: 0 };
+    });
+  }
+  get aliveCount() {
+    return this.count;
+  }
+  get capacity() {
+    return this.pool.length;
+  }
+  setTransform(x, y, rotation = 0) {
+    if (![x, y, rotation].every(Number.isFinite)) throw new Error("Particle transform must be finite.");
+    this.transform.x = x;
+    this.transform.y = y;
+    this.transform.rotation = rotation;
+    if (!this.positioned) {
+      this.previousX = x;
+      this.previousY = y;
+      this.positioned = true;
+    }
+  }
+  play(restart = false) {
+    if (restart) this.clear();
+    if (!this.emitting) {
+      this.cycleTime = 0;
+      this.firstStep = true;
+    }
+    this.emitting = true;
+  }
+  stop(clear = false) {
+    this.emitting = false;
+    if (clear) this.clear();
+  }
+  clear() {
+    this.count = 0;
+    this.freeCount = this.capacity;
+    for (let i = 0; i < this.capacity; i++) this.free[i] = this.capacity - 1 - i;
+    this.rng = this.spec.seed >>> 0;
+    this.time = 0;
+    this.cycleTime = 0;
+    this.accumulator = 0;
+    this.emitRemainder = 0;
+    this.distanceRemainder = 0;
+    this.firstStep = true;
+    this.droppedParticles = 0;
+    this.droppedSeconds = 0;
+    this.previousX = this.transform.x;
+    this.previousY = this.transform.y;
+  }
+  burst(count, x = this.transform.x, y = this.transform.y) {
+    if (!Number.isInteger(count) || count < 0 || !Number.isFinite(x) || !Number.isFinite(y)) throw new Error("Invalid particle burst.");
+    const accepted = Math.min(count, this.freeCount);
+    this.droppedParticles += count - accepted;
+    for (let i = 0; i < accepted; i++) this.spawn(x, y);
+  }
+  forEach(visitor) {
+    for (let i = 0; i < this.count; i++) visitor(this.pool[this.active[i]], i);
+  }
+  snapshot() {
+    const result = [];
+    this.forEach((p) => result.push({ ...p }));
+    return result;
+  }
+  update(deltaSeconds) {
+    if (!Number.isFinite(deltaSeconds) || deltaSeconds < 0) throw new Error("Particle delta must be finite and non-negative.");
+    const accepted = Math.min(deltaSeconds, 0.25);
+    this.droppedSeconds += deltaSeconds - accepted;
+    this.accumulator += accepted;
+    const steps = Math.floor((this.accumulator + 1e-10) / _ZhudaParticleSystem.STEP);
+    const startX = this.previousX, startY = this.previousY;
+    for (let i = 0; i < steps; i++) {
+      const x = startX + (this.transform.x - startX) * ((i + 1) / steps);
+      const y = startY + (this.transform.y - startY) * ((i + 1) / steps);
+      this.step(_ZhudaParticleSystem.STEP, x, y);
+      this.previousX = x;
+      this.previousY = y;
+    }
+    this.accumulator = Math.max(0, this.accumulator - steps * _ZhudaParticleSystem.STEP);
+  }
+  random() {
+    this.rng = Math.imul(this.rng, 1664525) + 1013904223 >>> 0;
+    return this.rng / 4294967296;
+  }
+  range(value, fallback = 0) {
+    if (value === void 0) return fallback;
+    return typeof value === "number" ? value : value[0] + this.random() * (value[1] - value[0]);
+  }
+  spawn(x, y) {
+    const s = this.spec, index = this.free[--this.freeCount], p = this.pool[index];
+    const shape = s.shape;
+    let sx = 0, sy = 0;
+    if (shape.type === "box") {
+      sx = (this.random() - 0.5) * shape.width;
+      sy = (this.random() - 0.5) * shape.height;
+    } else if (shape.type === "circle") {
+      const a = this.random() * Math.PI * 2, r = shape.radius * (shape.edge ? 1 : Math.sqrt(this.random()));
+      sx = Math.cos(a) * r;
+      sy = Math.sin(a) * r;
+    }
+    const angle = this.range(s.angle) + (s.space === "world" ? this.transform.rotation : 0);
+    const speed = this.range(s.speed), c = Math.cos(this.transform.rotation), sn = Math.sin(this.transform.rotation);
+    p.x = s.space === "world" ? x + sx * c - sy * sn : sx;
+    p.y = s.space === "world" ? y + sx * sn + sy * c : sy;
+    p.vx = Math.cos(angle) * speed;
+    p.vy = Math.sin(angle) * speed;
+    p.age = 0;
+    p.lifetime = this.range(s.lifetime);
+    p.baseSize = this.range(s.size);
+    p.size = p.baseSize * sampleParticleCurve(s.sizeOverLife, 0);
+    p.rotation = this.range(s.rotation) + (s.space === "world" ? this.transform.rotation : 0);
+    p.angularVelocity = this.range(s.angularVelocity);
+    p.phase = this.random() * Math.PI * 2;
+    this.active[this.count++] = index;
+  }
+  step(dt, x, y) {
+    const s = this.spec;
+    for (let i = this.count - 1; i >= 0; i--) {
+      const index = this.active[i], p = this.pool[index];
+      p.age += dt;
+      if (p.age + 1e-10 >= p.lifetime) {
+        this.free[this.freeCount++] = index;
+        this.active[i] = this.active[--this.count];
+        continue;
+      }
+      let ax = s.acceleration?.x || 0, ay = s.acceleration?.y || 0;
+      if (s.turbulence) {
+        const t = p.age * s.turbulence.frequency;
+        ax += Math.sin(t + p.phase) * s.turbulence.strength;
+        ay += Math.cos(t * 0.83 + p.phase) * s.turbulence.strength;
+      }
+      const damping = Math.exp(-(s.drag || 0) * dt);
+      p.vx = (p.vx + ax * dt) * damping;
+      p.vy = (p.vy + ay * dt) * damping;
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.rotation += p.angularVelocity * dt;
+      p.size = p.baseSize * sampleParticleCurve(s.sizeOverLife, p.age / p.lifetime);
+    }
+    if (this.emitting) {
+      const strength = Math.max(0, Math.min(2, Number.isFinite(this.intensity) ? this.intensity : 0));
+      const duration = s.duration || Infinity;
+      let remaining = dt, elapsed = 0;
+      while (remaining > 1e-10 && this.emitting) {
+        const span = Math.min(remaining, duration - this.cycleTime);
+        const end = this.cycleTime + span;
+        const sx = this.previousX + (x - this.previousX) * (elapsed / dt);
+        const sy = this.previousY + (y - this.previousY) * (elapsed / dt);
+        elapsed += span;
+        const ex = this.previousX + (x - this.previousX) * (elapsed / dt);
+        const ey = this.previousY + (y - this.previousY) * (elapsed / dt);
+        for (const b of s.bursts || []) {
+          if ((b.time > this.cycleTime + 1e-10 || this.firstStep && b.time === 0) && b.time <= end + 1e-10) {
+            this.burst(Math.round(b.count * strength), ex, ey);
+          }
+        }
+        this.emitRemainder += s.rate * strength * span;
+        const count = Math.floor(this.emitRemainder + 1e-10);
+        this.emitRemainder = Math.max(0, this.emitRemainder - count);
+        this.burst(count, ex, ey);
+        this.distanceRemainder += Math.hypot(ex - sx, ey - sy) * (s.rateOverDistance || 0) * strength;
+        const byDistance = Math.floor(this.distanceRemainder + 1e-10);
+        this.distanceRemainder = Math.max(0, this.distanceRemainder - byDistance);
+        const accepted = Math.min(byDistance, this.freeCount);
+        this.droppedParticles += byDistance - accepted;
+        for (let j = 0; j < accepted; j++) this.spawn(sx + (ex - sx) * (j + 1) / byDistance, sy + (ey - sy) * (j + 1) / byDistance);
+        this.firstStep = false;
+        this.cycleTime = end;
+        remaining -= span;
+        if (this.cycleTime + 1e-10 >= duration) {
+          if (s.loop) {
+            this.cycleTime = 0;
+            this.firstStep = true;
+          } else this.emitting = false;
+        }
+      }
+    }
+    this.time += dt;
+  }
+};
+_ZhudaParticleSystem.STEP = 1 / 120;
+var ZhudaParticleSystem = _ZhudaParticleSystem;
+
+// packages/core/particles/RibbonTrail.ts
+var ZhudaRibbonTrail = class {
+  constructor(spec) {
+    this.head = 0;
+    this.count = 0;
+    this.time = 0;
+    if (!Number.isInteger(spec.maxPoints) || spec.maxPoints < 2 || spec.maxPoints > 32767 || ![spec.lifetime, spec.width, spec.minDistance, spec.teleportDistance].every(Number.isFinite) || spec.lifetime <= 0 || spec.width <= 0 || spec.minDistance <= 0 || spec.teleportDistance <= spec.minDistance) {
+      throw new Error("[ZhudaRibbonTrail] Invalid point budget, lifetime, width or distance limits.");
+    }
+    if (spec.widthOverLife?.some((k, i, a) => !Number.isFinite(k.time) || !Number.isFinite(k.value) || k.time < 0 || k.time > 1 || k.value < 0 || i > 0 && k.time <= a[i - 1].time)) throw new Error("[ZhudaRibbonTrail] Invalid width curve.");
+    this.spec = JSON.parse(JSON.stringify(spec));
+    this.points = Array.from({ length: spec.maxPoints }, () => ({ x: 0, y: 0, born: 0 }));
+    this.mesh = {
+      vertices: new Float32Array(spec.maxPoints * 4),
+      uvs: new Float32Array(spec.maxPoints * 4),
+      indices: new Uint16Array((spec.maxPoints - 1) * 6),
+      pointCount: 0,
+      indexCount: 0
+    };
+    for (let i = 0; i < spec.maxPoints - 1; i++) {
+      const v = i * 2;
+      this.mesh.indices.set([v, v + 1, v + 2, v + 1, v + 3, v + 2], i * 6);
+    }
+  }
+  get pointCount() {
+    return this.count;
+  }
+  clear() {
+    this.head = 0;
+    this.count = 0;
+    this.time = 0;
+    this.mesh.pointCount = 0;
+    this.mesh.indexCount = 0;
+  }
+  update(dt, x, y, emitting = true) {
+    if (![dt, x, y].every(Number.isFinite) || dt < 0) throw new Error("Trail delta and position must be finite.");
+    this.time += dt;
+    while (this.count > 0 && this.time - this.at(0).born >= this.spec.lifetime) {
+      this.head = (this.head + 1) % this.points.length;
+      this.count--;
+    }
+    if (!emitting) return;
+    if (this.count) {
+      const last = this.at(this.count - 1), distance = Math.hypot(x - last.x, y - last.y);
+      if (distance > this.spec.teleportDistance) {
+        this.head = 0;
+        this.count = 0;
+      } else if (distance < this.spec.minDistance) return;
+    }
+    if (this.count === this.points.length) {
+      this.head = (this.head + 1) % this.points.length;
+      this.count--;
+    }
+    const p = this.at(this.count++);
+    p.x = x;
+    p.y = y;
+    p.born = this.time;
+  }
+  /** Reuses storage; UV.x encodes age, UV.y crosses the ribbon width. */
+  buildMesh() {
+    const m = this.mesh;
+    m.pointCount = this.count;
+    m.indexCount = Math.max(0, this.count - 1) * 6;
+    for (let i = 0; i < this.count; i++) {
+      const p = this.at(i), previous = this.at(Math.max(0, i - 1)), next = this.at(Math.min(this.count - 1, i + 1));
+      let dx = next.x - previous.x, dy = next.y - previous.y;
+      const length = Math.hypot(dx, dy);
+      if (length < 1e-6) {
+        dx = 1;
+        dy = 0;
+      } else {
+        dx /= length;
+        dy /= length;
+      }
+      const life = Math.min(1, Math.max(0, (this.time - p.born) / this.spec.lifetime));
+      const half = this.spec.width * 0.5 * sampleParticleCurve(this.spec.widthOverLife, life, 1 - life);
+      m.vertices.set([p.x - dy * half, p.y + dx * half, p.x + dy * half, p.y - dx * half], i * 4);
+      m.uvs.set([life, 0, life, 1], i * 4);
+    }
+    return m;
+  }
+  snapshot() {
+    return Array.from({ length: this.count }, (_, i) => ({ x: this.at(i).x, y: this.at(i).y, age: this.time - this.at(i).born }));
+  }
+  at(index) {
+    return this.points[(this.head + index) % this.points.length];
+  }
+};
+
+// packages/core/particles/EffectEnvelope.ts
+var ZhudaEffectEnvelope = class {
+  constructor(attack = 0.14, release = 0.45) {
+    this.phase = "idle";
+    this.value = 0;
+    this.target = 1;
+    this.from = 0;
+    this.elapsed = 0;
+    if (![attack, release].every((v) => Number.isFinite(v) && v > 0)) throw new Error("Envelope durations must be positive.");
+    this.attack = attack;
+    this.release = release;
+  }
+  start(strength = 1) {
+    this.setStrength(strength);
+    this.from = this.value;
+    this.elapsed = 0;
+    this.phase = "attack";
+  }
+  setStrength(strength) {
+    if (!Number.isFinite(strength) || strength < 0 || strength > 2) throw new Error("Envelope strength must be 0..2.");
+    this.target = strength;
+  }
+  stop() {
+    if (this.phase === "idle" || this.phase === "release") return;
+    this.from = this.value;
+    this.elapsed = 0;
+    this.phase = "release";
+  }
+  reset() {
+    this.phase = "idle";
+    this.value = 0;
+    this.elapsed = 0;
+  }
+  update(dt) {
+    if (!Number.isFinite(dt) || dt < 0) throw new Error("Envelope delta must be non-negative.");
+    this.elapsed += dt;
+    if (this.phase === "sustain") this.value = this.target;
+    else if (this.phase === "attack" || this.phase === "release") {
+      const t = Math.min(1, this.elapsed / (this.phase === "attack" ? this.attack : this.release));
+      const smooth = t * t * (3 - 2 * t);
+      this.value = this.from + ((this.phase === "attack" ? this.target : 0) - this.from) * smooth;
+      if (t === 1) this.phase = this.phase === "attack" ? "sustain" : "idle";
+    }
+    return this.value;
+  }
+};
+
+// packages/core/particles/LayaParticleRenderer.ts
+var ZhudaLayaParticleRenderer = class {
+  constructor(system, parent, resolveTexture, lifeBands = 12) {
+    this.submittedBatches = 0;
+    this.appendParticle = (p) => {
+      const s = this.system.spec, t = Math.min(0.999999, p.age / p.lifetime);
+      const batch = this.batches[Math.floor(t * this.batches.length)];
+      const i = batch.count++ * 8;
+      let x = p.x, y = p.y;
+      let angle = s.alignToVelocity ? Math.atan2(p.vy, p.vx) : p.rotation;
+      if (s.space === "local") {
+        const c2 = Math.cos(this.system.transform.rotation), sn2 = Math.sin(this.system.transform.rotation);
+        x = this.system.transform.x + p.x * c2 - p.y * sn2;
+        y = this.system.transform.y + p.x * sn2 + p.y * c2;
+        angle += this.system.transform.rotation;
+      }
+      const c = Math.cos(angle), sn = Math.sin(angle), hx = p.size * (s.stretch || 1) * 0.5, hy = p.size * 0.5;
+      batch.vertices[i] = x - c * hx + sn * hy;
+      batch.vertices[i + 1] = y - sn * hx - c * hy;
+      batch.vertices[i + 2] = x + c * hx + sn * hy;
+      batch.vertices[i + 3] = y + sn * hx - c * hy;
+      batch.vertices[i + 4] = x + c * hx - sn * hy;
+      batch.vertices[i + 5] = y + sn * hx + c * hy;
+      batch.vertices[i + 6] = x - c * hx - sn * hy;
+      batch.vertices[i + 7] = y - sn * hx + c * hy;
+    };
+    this.system = system;
+    if (!Number.isInteger(lifeBands) || lifeBands < 1 || lifeBands > 64) throw new Error("lifeBands must be 1..64.");
+    const laya = globalThis.Laya;
+    if (!laya?.Sprite) throw new Error("[ZhudaParticles] Laya must be booted before creating a renderer.");
+    this.texture = resolveTexture(system.spec.texture);
+    if (!this.texture) throw new Error(`[ZhudaParticles] Missing texture: ${system.spec.texture}`);
+    this.uv = this.texture.uv || [0, 0, 1, 0, 1, 1, 0, 1];
+    this.node = new laya.Sprite();
+    this.node.name = `Particles:${system.spec.id}`;
+    this.node.mouseEnabled = false;
+    parent.addChild(this.node);
+    this.batches = Array.from({ length: lifeBands }, (_, band) => {
+      const capacity = system.capacity;
+      const batch = {
+        vertices: new Float32Array(capacity * 8),
+        uvs: new Float32Array(capacity * 8),
+        indices: new Uint16Array(capacity * 6),
+        count: 0,
+        color: sampleParticleColor(system.spec.colorOverLife, (band + 0.5) / lifeBands),
+        alpha: sampleParticleCurve(system.spec.alphaOverLife, (band + 0.5) / lifeBands)
+      };
+      for (let i = 0; i < capacity; i++) {
+        batch.uvs.set(this.uv, i * 8);
+        const v = i * 4;
+        batch.indices.set([v, v + 1, v + 2, v, v + 2, v + 3], i * 6);
+      }
+      return batch;
+    });
+  }
+  render(opacity = 1) {
+    if (this.node.destroyed) return;
+    const g = this.node.graphics;
+    g.clear();
+    this.submittedBatches = 0;
+    for (const batch of this.batches) batch.count = 0;
+    if (opacity <= 0) return;
+    this.system.forEach(this.appendParticle);
+    for (const b of this.batches) {
+      if (!b.count || b.alpha <= 0) continue;
+      g.drawTriangles(
+        this.texture,
+        0,
+        0,
+        b.vertices.subarray(0, b.count * 8),
+        b.uvs.subarray(0, b.count * 8),
+        b.indices.subarray(0, b.count * 6),
+        null,
+        Math.min(1, b.alpha * opacity),
+        b.color,
+        this.system.spec.blend === "additive" ? "lighter" : "normal"
+      );
+      this.submittedBatches++;
+    }
+  }
+  dispose() {
+    this.node.destroy(true);
+    this.texture = null;
+  }
+};
+var ZhudaLayaRibbonRenderer = class {
+  constructor(trail, parent, texture, color = "#ffffff", blend = "additive") {
+    this.submittedBatches = 0;
+    this.trail = trail;
+    this.texture = texture;
+    this.color = color;
+    this.blend = blend;
+    const laya = globalThis.Laya;
+    if (!laya?.Sprite || !texture) throw new Error("Ribbon renderer requires Laya and a texture.");
+    this.node = new laya.Sprite();
+    this.node.name = "RibbonTrail";
+    this.node.mouseEnabled = false;
+    parent.addChild(this.node);
+  }
+  render(opacity = 1) {
+    if (this.node.destroyed) return;
+    this.node.graphics.clear();
+    this.submittedBatches = 0;
+    const mesh = this.trail.buildMesh();
+    if (mesh.indexCount === 0 || opacity <= 0) return;
+    this.node.graphics.drawTriangles(
+      this.texture,
+      0,
+      0,
+      mesh.vertices.subarray(0, mesh.pointCount * 4),
+      mesh.uvs.subarray(0, mesh.pointCount * 4),
+      mesh.indices.subarray(0, mesh.indexCount),
+      null,
+      Math.min(1, opacity),
+      this.color,
+      this.blend === "additive" ? "lighter" : "normal"
+    );
+    this.submittedBatches = 1;
+  }
+  dispose() {
+    this.node.destroy(true);
+    this.texture = null;
+  }
+};
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
   ENGINE_PRESET_PROFILES,
@@ -4318,9 +4888,17 @@ var VisualFocusContract = class {
   Zhuda3D,
   ZhudaAssetSerializer,
   ZhudaBenchmarkEngine,
+  ZhudaEffectEnvelope,
   ZhudaEngine,
+  ZhudaLayaParticleRenderer,
+  ZhudaLayaRibbonRenderer,
+  ZhudaParticleSystem,
   ZhudaPrefab,
+  ZhudaRibbonTrail,
   ZhudaUI,
+  sampleParticleColor,
+  sampleParticleCurve,
+  validateParticleEffect,
   zhudaComponent
 });
 //# sourceMappingURL=zhuda-laya-engine.cjs.map
