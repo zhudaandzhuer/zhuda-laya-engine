@@ -4687,8 +4687,8 @@ var ZhudaEffectEnvelope = class {
     if (this.phase === "sustain") this.value = this.target;
     else if (this.phase === "attack" || this.phase === "release") {
       const t = Math.min(1, this.elapsed / (this.phase === "attack" ? this.attack : this.release));
-      const smooth = t * t * (3 - 2 * t);
-      this.value = this.from + ((this.phase === "attack" ? this.target : 0) - this.from) * smooth;
+      const smooth2 = t * t * (3 - 2 * t);
+      this.value = this.from + ((this.phase === "attack" ? this.target : 0) - this.from) * smooth2;
       if (t === 1) this.phase = this.phase === "attack" ? "sustain" : "idle";
     }
     return this.value;
@@ -4819,6 +4819,696 @@ var ZhudaLayaRibbonRenderer = class {
     this.texture = null;
   }
 };
+
+// packages/core/particles/ParticleTypes3D.ts
+function rotateParticleVector3(v, q, out) {
+  const tx = 2 * (q.y * v.z - q.z * v.y), ty = 2 * (q.z * v.x - q.x * v.z), tz = 2 * (q.x * v.y - q.y * v.x);
+  out.x = v.x + q.w * tx + q.y * tz - q.z * ty;
+  out.y = v.y + q.w * ty + q.z * tx - q.x * tz;
+  out.z = v.z + q.w * tz + q.x * ty - q.y * tx;
+}
+function validateParticleEffect3D(value) {
+  const spec = value;
+  if (!spec || spec.dimension !== 3 || spec.schemaVersion !== 1 || !Array.isArray(spec.emitters) || !spec.emitters.length) {
+    return ["Expected dimension: 3, schemaVersion: 1 and a non-empty emitters array."];
+  }
+  const issues = validateParticleEffect({ schemaVersion: 1, emitters: spec.emitters.map((e) => e && { ...e, angle: 0, shape: { type: "point" } }) });
+  const vector = (v) => v && [v.x, v.y, v.z].every(Number.isFinite);
+  for (const e of spec.emitters) {
+    if (!e || typeof e !== "object") continue;
+    if (!vector(e.direction) || Math.hypot(e.direction.x, e.direction.y, e.direction.z) < 1e-8) issues.push(`${e.id}: direction must be a finite non-zero vector.`);
+    if (!Number.isFinite(e.spread) || e.spread < 0 || e.spread > Math.PI) issues.push(`${e.id}: spread must be 0..PI radians.`);
+    if (e.acceleration && !vector(e.acceleration)) issues.push(`${e.id}: acceleration must have finite XYZ components.`);
+    if (e.velocityInheritance !== void 0 && (!Number.isFinite(e.velocityInheritance) || e.velocityInheritance < 0 || e.velocityInheritance > 2)) issues.push(`${e.id}: velocityInheritance must be 0..2.`);
+    if (e.billboard !== void 0 && !["camera", "velocity", "ground"].includes(e.billboard)) issues.push(`${e.id}: invalid billboard mode.`);
+    const shape = e.shape;
+    if (!shape || !["point", "box", "sphere"].includes(shape.type)) issues.push(`${e.id}: invalid 3D shape.`);
+    else if (shape.type === "box" && ![shape.width, shape.height, shape.depth].every((v) => Number.isFinite(v) && v >= 0)) issues.push(`${e.id}: invalid 3D box dimensions.`);
+    else if (shape.type === "sphere" && (!Number.isFinite(shape.radius) || shape.radius < 0)) issues.push(`${e.id}: invalid sphere radius.`);
+  }
+  return issues;
+}
+
+// packages/core/particles/ParticleSystem3D.ts
+var _ZhudaParticleSystem3D = class _ZhudaParticleSystem3D {
+  constructor(spec) {
+    this.transform = { x: 0, y: 0, z: 0, rotation: { x: 0, y: 0, z: 0, w: 1 } };
+    this.emitterVelocity = { x: 0, y: 0, z: 0 };
+    this.intensity = 1;
+    this.emitting = false;
+    this.time = 0;
+    this.droppedParticles = 0;
+    this.droppedSeconds = 0;
+    this.count = 0;
+    this.accumulator = 0;
+    this.remainder = 0;
+    this.distanceRemainder = 0;
+    this.cycle = 0;
+    this.first = true;
+    this.positioned = false;
+    this.previous = { x: 0, y: 0, z: 0 };
+    this.scratch = { x: 0, y: 0, z: 0 };
+    const issues = validateParticleEffect3D({ schemaVersion: 1, dimension: 3, emitters: [spec] });
+    if (issues.length) throw new Error(`[ZhudaParticles3D] ${issues.join(" | ")}`);
+    this.spec = JSON.parse(JSON.stringify(spec));
+    this.rng = spec.seed >>> 0;
+    this.active = new Int32Array(spec.maxParticles);
+    this.free = new Int32Array(spec.maxParticles);
+    this.freeCount = spec.maxParticles;
+    this.pool = Array.from({ length: spec.maxParticles }, (_, i) => {
+      this.free[i] = spec.maxParticles - 1 - i;
+      return { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, age: 0, lifetime: 1, baseSize: 1, size: 1, rotation: 0, angularVelocity: 0, phase: 0 };
+    });
+    const d = spec.direction, n = Math.hypot(d.x, d.y, d.z);
+    this.direction = { x: d.x / n, y: d.y / n, z: d.z / n };
+    const axis = Math.abs(this.direction.y) < 0.9 ? { x: 0, y: 1, z: 0 } : { x: 1, y: 0, z: 0 };
+    const x = axis.y * this.direction.z - axis.z * this.direction.y, y = axis.z * this.direction.x - axis.x * this.direction.z, z = axis.x * this.direction.y - axis.y * this.direction.x, length = Math.hypot(x, y, z);
+    this.basisU = { x: x / length, y: y / length, z: z / length };
+    this.basisV = {
+      x: this.direction.y * this.basisU.z - this.direction.z * this.basisU.y,
+      y: this.direction.z * this.basisU.x - this.direction.x * this.basisU.z,
+      z: this.direction.x * this.basisU.y - this.direction.y * this.basisU.x
+    };
+  }
+  get aliveCount() {
+    return this.count;
+  }
+  get capacity() {
+    return this.pool.length;
+  }
+  setTransform(x, y, z, rotation, velocity) {
+    if (![x, y, z].every(Number.isFinite)) throw new Error("3D emitter position must be finite.");
+    if (rotation && (![rotation.x, rotation.y, rotation.z, rotation.w].every(Number.isFinite) || Math.hypot(rotation.x, rotation.y, rotation.z, rotation.w) < 1e-8)) throw new Error("Invalid emitter quaternion.");
+    if (velocity && ![velocity.x, velocity.y, velocity.z].every(Number.isFinite)) throw new Error("Invalid emitter velocity.");
+    Object.assign(this.transform, { x, y, z });
+    if (rotation) {
+      const n = Math.hypot(rotation.x, rotation.y, rotation.z, rotation.w);
+      Object.assign(this.transform.rotation, { x: rotation.x / n, y: rotation.y / n, z: rotation.z / n, w: rotation.w / n });
+    }
+    if (velocity) Object.assign(this.emitterVelocity, velocity);
+    if (!this.positioned) {
+      Object.assign(this.previous, { x, y, z });
+      this.positioned = true;
+    }
+  }
+  play(restart = false) {
+    if (restart) this.clear();
+    if (!this.emitting) {
+      this.cycle = 0;
+      this.first = true;
+    }
+    this.emitting = true;
+  }
+  stop(clear = false) {
+    this.emitting = false;
+    if (clear) this.clear();
+  }
+  clear() {
+    this.count = 0;
+    this.freeCount = this.capacity;
+    for (let i = 0; i < this.capacity; i++) this.free[i] = this.capacity - 1 - i;
+    this.rng = this.spec.seed >>> 0;
+    this.time = this.cycle = this.accumulator = this.remainder = this.distanceRemainder = 0;
+    this.first = true;
+    this.droppedParticles = this.droppedSeconds = 0;
+    Object.assign(this.previous, { x: this.transform.x, y: this.transform.y, z: this.transform.z });
+  }
+  burst(count, x = this.transform.x, y = this.transform.y, z = this.transform.z) {
+    if (!Number.isInteger(count) || count < 0 || ![x, y, z].every(Number.isFinite)) throw new Error("Invalid 3D burst.");
+    const accepted = Math.min(count, this.freeCount);
+    this.droppedParticles += count - accepted;
+    for (let i = 0; i < accepted; i++) this.spawn(x, y, z);
+  }
+  forEach(visitor) {
+    for (let i = 0; i < this.count; i++) visitor(this.pool[this.active[i]], i);
+  }
+  snapshot() {
+    const result = [];
+    this.forEach((p) => result.push({ ...p }));
+    return result;
+  }
+  update(delta) {
+    if (!Number.isFinite(delta) || delta < 0) throw new Error("Invalid 3D particle delta.");
+    const accepted = Math.min(delta, 0.25);
+    this.droppedSeconds += delta - accepted;
+    this.accumulator += accepted;
+    const steps = Math.floor((this.accumulator + 1e-10) / _ZhudaParticleSystem3D.STEP);
+    const sx = this.previous.x, sy = this.previous.y, sz = this.previous.z;
+    for (let i = 0; i < steps; i++) {
+      const t = (i + 1) / steps;
+      const x = sx + (this.transform.x - sx) * t, y = sy + (this.transform.y - sy) * t, z = sz + (this.transform.z - sz) * t;
+      this.step(_ZhudaParticleSystem3D.STEP, x, y, z);
+      Object.assign(this.previous, { x, y, z });
+    }
+    this.accumulator = Math.max(0, this.accumulator - steps * _ZhudaParticleSystem3D.STEP);
+  }
+  random() {
+    this.rng = Math.imul(this.rng, 1664525) + 1013904223 >>> 0;
+    return this.rng / 4294967296;
+  }
+  range(v, fallback = 0) {
+    return v === void 0 ? fallback : typeof v === "number" ? v : v[0] + this.random() * (v[1] - v[0]);
+  }
+  spawn(x, y, z) {
+    const s = this.spec, slot = this.free[--this.freeCount], p = this.pool[slot], v = this.scratch;
+    v.x = v.y = v.z = 0;
+    if (s.shape.type === "box") {
+      v.x = (this.random() - 0.5) * s.shape.width;
+      v.y = (this.random() - 0.5) * s.shape.height;
+      v.z = (this.random() - 0.5) * s.shape.depth;
+    } else if (s.shape.type === "sphere") {
+      const h = this.random() * 2 - 1, a2 = this.random() * Math.PI * 2, r = s.shape.radius * (s.shape.surface ? 1 : Math.cbrt(this.random()));
+      v.x = Math.sqrt(1 - h * h) * Math.cos(a2) * r;
+      v.y = h * r;
+      v.z = Math.sqrt(1 - h * h) * Math.sin(a2) * r;
+    }
+    if (s.space === "world") rotateParticleVector3(v, this.transform.rotation, v);
+    p.x = v.x + (s.space === "world" ? x : 0);
+    p.y = v.y + (s.space === "world" ? y : 0);
+    p.z = v.z + (s.space === "world" ? z : 0);
+    const a = this.random() * Math.PI * 2, cos = 1 - this.random() * (1 - Math.cos(s.spread)), sin = Math.sqrt(1 - cos * cos), speed = this.range(s.speed);
+    v.x = (this.direction.x * cos + sin * (this.basisU.x * Math.cos(a) + this.basisV.x * Math.sin(a))) * speed;
+    v.y = (this.direction.y * cos + sin * (this.basisU.y * Math.cos(a) + this.basisV.y * Math.sin(a))) * speed;
+    v.z = (this.direction.z * cos + sin * (this.basisU.z * Math.cos(a) + this.basisV.z * Math.sin(a))) * speed;
+    if (s.space === "world") rotateParticleVector3(v, this.transform.rotation, v);
+    const inherit = s.space === "world" ? s.velocityInheritance || 0 : 0;
+    p.vx = v.x + this.emitterVelocity.x * inherit;
+    p.vy = v.y + this.emitterVelocity.y * inherit;
+    p.vz = v.z + this.emitterVelocity.z * inherit;
+    p.age = 0;
+    p.lifetime = this.range(s.lifetime);
+    p.baseSize = this.range(s.size);
+    p.size = p.baseSize * sampleParticleCurve(s.sizeOverLife, 0);
+    p.rotation = this.range(s.rotation);
+    p.angularVelocity = this.range(s.angularVelocity);
+    p.phase = this.random() * Math.PI * 2;
+    this.active[this.count++] = slot;
+  }
+  step(dt, x, y, z) {
+    const s = this.spec, damp = Math.exp(-(s.drag || 0) * dt);
+    for (let i = this.count - 1; i >= 0; i--) {
+      const slot = this.active[i], p = this.pool[slot];
+      p.age += dt;
+      if (p.age + 1e-10 >= p.lifetime) {
+        this.free[this.freeCount++] = slot;
+        this.active[i] = this.active[--this.count];
+        continue;
+      }
+      const t = p.age * (s.turbulence?.frequency || 0), force = s.turbulence?.strength || 0;
+      p.vx = (p.vx + ((s.acceleration?.x || 0) + Math.sin(t + p.phase) * force) * dt) * damp;
+      p.vy = (p.vy + ((s.acceleration?.y || 0) + Math.cos(t * 0.83 + p.phase) * force) * dt) * damp;
+      p.vz = (p.vz + ((s.acceleration?.z || 0) + Math.sin(t * 0.71 + p.phase) * force) * dt) * damp;
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.z += p.vz * dt;
+      p.rotation += p.angularVelocity * dt;
+      p.size = p.baseSize * sampleParticleCurve(s.sizeOverLife, p.age / p.lifetime);
+    }
+    let remaining = dt, elapsed = 0;
+    const strength = Math.max(0, Math.min(2, Number.isFinite(this.intensity) ? this.intensity : 0)), duration = s.duration || Infinity;
+    while (remaining > 1e-10 && this.emitting) {
+      const span = Math.min(remaining, duration - this.cycle), end = this.cycle + span;
+      const start = elapsed / dt;
+      elapsed += span;
+      const fraction = elapsed / dt;
+      const ex = this.previous.x + (x - this.previous.x) * fraction, ey = this.previous.y + (y - this.previous.y) * fraction, ez = this.previous.z + (z - this.previous.z) * fraction;
+      for (const b of s.bursts || []) if ((b.time > this.cycle + 1e-10 || this.first && b.time === 0) && b.time <= end + 1e-10) this.burst(Math.round(b.count * strength), ex, ey, ez);
+      this.remainder += s.rate * strength * span;
+      const count = Math.floor(this.remainder + 1e-10);
+      this.remainder = Math.max(0, this.remainder - count);
+      this.burst(count, ex, ey, ez);
+      const dx = (x - this.previous.x) * (fraction - start), dy = (y - this.previous.y) * (fraction - start), dz = (z - this.previous.z) * (fraction - start);
+      this.distanceRemainder += Math.hypot(dx, dy, dz) * (s.rateOverDistance || 0) * strength;
+      const distanceCount = Math.floor(this.distanceRemainder + 1e-10), accepted = Math.min(distanceCount, this.freeCount);
+      this.distanceRemainder = Math.max(0, this.distanceRemainder - distanceCount);
+      this.droppedParticles += distanceCount - accepted;
+      for (let i = 0; i < accepted; i++) this.spawn(ex - dx + dx * (i + 1) / distanceCount, ey - dy + dy * (i + 1) / distanceCount, ez - dz + dz * (i + 1) / distanceCount);
+      this.first = false;
+      this.cycle = end;
+      remaining -= span;
+      if (this.cycle + 1e-10 >= duration) {
+        if (s.loop) {
+          this.cycle = 0;
+          this.first = true;
+        } else this.emitting = false;
+      }
+    }
+    this.time += dt;
+  }
+};
+_ZhudaParticleSystem3D.STEP = 1 / 120;
+var ZhudaParticleSystem3D = _ZhudaParticleSystem3D;
+
+// packages/core/particles/ParticleMesh3D.ts
+var ZhudaParticleMesh3D = class {
+  constructor(system) {
+    this.items = [];
+    this.colors = new Float32Array(256 * 4);
+    this.position = { x: 0, y: 0, z: 0 };
+    this.velocity = { x: 0, y: 0, z: 0 };
+    this.sortForward = { x: 0, y: 0, z: 0 };
+    this.collect = (p) => {
+      this.items.push(p);
+    };
+    this.compare = (a, b) => (b.x - a.x) * this.sortForward.x + (b.y - a.y) * this.sortForward.y + (b.z - a.z) * this.sortForward.z;
+    this.system = system;
+    this.geometry = { vertices: new Float32Array(system.capacity * 36), indices: new Uint16Array(system.capacity * 6), vertexCount: 0, indexCount: 0 };
+    for (let i = 0; i < system.capacity; i++) {
+      const v = i * 4;
+      this.geometry.indices.set([v, v + 1, v + 2, v, v + 2, v + 3], i * 6);
+    }
+    for (let i = 0; i < 256; i++) {
+      const color = sampleParticleColor(system.spec.colorOverLife, i / 255);
+      this.colors.set([
+        parseInt(color.slice(1, 3), 16) / 255,
+        parseInt(color.slice(3, 5), 16) / 255,
+        parseInt(color.slice(5, 7), 16) / 255,
+        sampleParticleCurve(system.spec.alphaOverLife, i / 255)
+      ], i * 4);
+    }
+  }
+  build(view, opacity = 1) {
+    const s = this.system, spec = s.spec, g = this.geometry;
+    g.vertices.fill(0);
+    this.items.length = 0;
+    s.forEach(this.collect);
+    Object.assign(this.sortForward, view.forward);
+    if (spec.space === "local") {
+      const q = s.transform.rotation;
+      rotateParticleVector3(this.sortForward, { x: -q.x, y: -q.y, z: -q.z, w: q.w }, this.sortForward);
+    }
+    if (spec.blend === "alpha") this.items.sort(this.compare);
+    for (let i = 0; i < this.items.length; i++) {
+      const p = this.items[i], center = this.position, velocity = this.velocity;
+      center.x = p.x;
+      center.y = p.y;
+      center.z = p.z;
+      velocity.x = p.vx;
+      velocity.y = p.vy;
+      velocity.z = p.vz;
+      if (spec.space === "local") {
+        rotateParticleVector3(center, s.transform.rotation, center);
+        rotateParticleVector3(velocity, s.transform.rotation, velocity);
+        center.x += s.transform.x;
+        center.y += s.transform.y;
+        center.z += s.transform.z;
+      }
+      let rx = view.right.x, ry = view.right.y, rz = view.right.z, ux = view.up.x, uy = view.up.y, uz = view.up.z;
+      if (spec.billboard === "ground") {
+        rx = 1;
+        ry = 0;
+        rz = 0;
+        ux = 0;
+        uy = 0;
+        uz = 1;
+      } else if (spec.billboard === "velocity") {
+        const depth = velocity.x * view.forward.x + velocity.y * view.forward.y + velocity.z * view.forward.z;
+        const x = velocity.x - depth * view.forward.x, y = velocity.y - depth * view.forward.y, z = velocity.z - depth * view.forward.z;
+        const length = Math.hypot(x, y, z);
+        if (length > 1e-6) {
+          rx = x / length;
+          ry = y / length;
+          rz = z / length;
+          ux = ry * view.forward.z - rz * view.forward.y;
+          uy = rz * view.forward.x - rx * view.forward.z;
+          uz = rx * view.forward.y - ry * view.forward.x;
+        }
+      }
+      const c = Math.cos(p.rotation), sn = Math.sin(p.rotation), hx = p.size * (spec.stretch ?? 1) * 0.5, hy = p.size * 0.5;
+      const ax = (rx * c + ux * sn) * hx, ay = (ry * c + uy * sn) * hx, az = (rz * c + uz * sn) * hx;
+      const bx = (ux * c - rx * sn) * hy, by = (uy * c - ry * sn) * hy, bz = (uz * c - rz * sn) * hy;
+      const ci = Math.min(255, Math.floor(p.age / p.lifetime * 255)) * 4;
+      const r = this.colors[ci], green = this.colors[ci + 1], b = this.colors[ci + 2], alpha = this.colors[ci + 3] * Math.max(0, Math.min(1, opacity));
+      for (let corner = 0; corner < 4; corner++) {
+        const sx = corner === 0 || corner === 3 ? -1 : 1, sy = corner < 2 ? -1 : 1, base = i * 36 + corner * 9;
+        const v = g.vertices;
+        v[base] = center.x + sx * ax + sy * bx;
+        v[base + 1] = center.y + sx * ay + sy * by;
+        v[base + 2] = center.z + sx * az + sy * bz;
+        v[base + 3] = r;
+        v[base + 4] = green;
+        v[base + 5] = b;
+        v[base + 6] = alpha;
+        v[base + 7] = sx > 0 ? 1 : 0;
+        v[base + 8] = sy > 0 ? 0 : 1;
+      }
+    }
+    g.vertexCount = this.items.length * 4;
+    g.indexCount = this.items.length * 6;
+    return g;
+  }
+};
+
+// packages/core/particles/RibbonTrail3D.ts
+var ZhudaRibbonTrail3D = class {
+  constructor(spec) {
+    this.head = 0;
+    this.count = 0;
+    this.time = 0;
+    if (!Number.isInteger(spec.maxPoints) || spec.maxPoints < 2 || spec.maxPoints > 32767 || ![spec.lifetime, spec.width, spec.minDistance, spec.teleportDistance].every(Number.isFinite) || spec.lifetime <= 0 || spec.width <= 0 || spec.minDistance <= 0 || spec.teleportDistance <= spec.minDistance || spec.widthOverLife?.some((k, i, a) => !k || !Number.isFinite(k.time) || !Number.isFinite(k.value) || k.time < 0 || k.time > 1 || k.value < 0 || i > 0 && k.time <= a[i - 1].time)) throw new Error("Invalid 3D ribbon specification.");
+    this.spec = JSON.parse(JSON.stringify(spec));
+    this.points = Array.from({ length: spec.maxPoints }, () => ({ x: 0, y: 0, z: 0, born: 0 }));
+    this.geometry = { vertices: new Float32Array(spec.maxPoints * 18), indices: new Uint16Array((spec.maxPoints - 1) * 6), vertexCount: 0, indexCount: 0 };
+    for (let i = 0; i < spec.maxPoints - 1; i++) {
+      const v = i * 2;
+      this.geometry.indices.set([v, v + 1, v + 2, v + 1, v + 3, v + 2], i * 6);
+    }
+  }
+  get pointCount() {
+    return this.count;
+  }
+  clear() {
+    this.head = this.count = this.time = 0;
+    this.geometry.vertexCount = this.geometry.indexCount = 0;
+  }
+  update(dt, x, y, z, emitting = true) {
+    if (![dt, x, y, z].every(Number.isFinite) || dt < 0) throw new Error("3D ribbon delta and positions must be finite.");
+    this.time += dt;
+    while (this.count && this.time - this.at(0).born >= this.spec.lifetime) {
+      this.head = (this.head + 1) % this.points.length;
+      this.count--;
+    }
+    if (!emitting) return;
+    if (this.count) {
+      const p = this.at(this.count - 1), distance = Math.hypot(x - p.x, y - p.y, z - p.z);
+      if (distance > this.spec.teleportDistance) this.head = this.count = 0;
+      else if (distance < this.spec.minDistance) return;
+    }
+    if (this.count === this.points.length) {
+      this.head = (this.head + 1) % this.points.length;
+      this.count--;
+    }
+    Object.assign(this.at(this.count++), { x, y, z, born: this.time });
+  }
+  buildMesh(cameraPosition, opacity = 1) {
+    const g = this.geometry;
+    g.vertices.fill(0);
+    g.indices.fill(0);
+    let px = 0, py = 0, pz = 0;
+    for (let i = 0; i < this.count; i++) {
+      const p = this.at(i), a = this.at(Math.max(0, i - 1)), b = this.at(Math.min(this.count - 1, i + 1));
+      const tx = b.x - a.x, ty = b.y - a.y, tz = b.z - a.z;
+      const vx = cameraPosition.x - p.x, vy = cameraPosition.y - p.y, vz = cameraPosition.z - p.z;
+      let nx = ty * vz - tz * vy, ny = tz * vx - tx * vz, nz = tx * vy - ty * vx, n = Math.hypot(nx, ny, nz);
+      if (n < 1e-7) {
+        nx = -tz;
+        ny = 0;
+        nz = tx;
+        n = Math.hypot(nx, ny, nz);
+      }
+      if (n < 1e-7) {
+        nx = 1;
+        ny = 0;
+        nz = 0;
+        n = 1;
+      }
+      nx /= n;
+      ny /= n;
+      nz /= n;
+      if (nx * px + ny * py + nz * pz < 0) {
+        nx = -nx;
+        ny = -ny;
+        nz = -nz;
+      }
+      px = nx;
+      py = ny;
+      pz = nz;
+      const life = Math.max(0, Math.min(1, (this.time - p.born) / this.spec.lifetime));
+      const width = this.spec.width * 0.5 * sampleParticleCurve(this.spec.widthOverLife, life, 1 - life), alpha = (1 - life) * Math.max(0, Math.min(1, opacity));
+      for (let side = 0; side < 2; side++) {
+        const sign = side ? 1 : -1, base = i * 18 + side * 9, v = g.vertices;
+        v[base] = p.x + sign * nx * width;
+        v[base + 1] = p.y + sign * ny * width;
+        v[base + 2] = p.z + sign * nz * width;
+        v[base + 3] = 1;
+        v[base + 4] = 1;
+        v[base + 5] = 1;
+        v[base + 6] = alpha;
+        v[base + 7] = life;
+        v[base + 8] = side;
+      }
+      if (i < this.count - 1) {
+        const v = i * 2, offset = i * 6, indices = g.indices;
+        indices[offset] = v;
+        indices[offset + 1] = v + 1;
+        indices[offset + 2] = v + 2;
+        indices[offset + 3] = v + 1;
+        indices[offset + 4] = v + 3;
+        indices[offset + 5] = v + 2;
+      }
+    }
+    g.vertexCount = this.count * 2;
+    g.indexCount = Math.max(0, this.count - 1) * 6;
+    return g;
+  }
+  snapshot() {
+    return Array.from({ length: this.count }, (_, i) => {
+      const p = this.at(i);
+      return { x: p.x, y: p.y, z: p.z, age: this.time - p.born };
+    });
+  }
+  at(i) {
+    return this.points[(this.head + i) % this.points.length];
+  }
+};
+
+// packages/core/particles/RibbonPath3D.ts
+var ZhudaRibbonPath3D = class {
+  constructor(spec) {
+    this.hasWidthDirections = false;
+    this.count = 0;
+    this.uvOffset = 0;
+    this.uvTiles = 1;
+    this.visibleStart = 0;
+    this.visibleEnd = 1;
+    this.edgeFade = 0.08;
+    if (!Number.isInteger(spec.maxPoints) || spec.maxPoints < 2 || spec.maxPoints > 32767 || !Number.isFinite(spec.width) || spec.width <= 0) throw new Error("Invalid 3D ribbon path budget or width.");
+    for (const keys of [spec.widthOverPath, spec.alphaOverPath]) if (keys && (!keys.length || keys.some((k, i, a) => !k || ![k.time, k.value].every(Number.isFinite) || k.time < 0 || k.time > 1 || k.value < 0 || i > 0 && k.time <= a[i - 1].time))) throw new Error("Invalid path curve.");
+    if (spec.colorOverPath && (!spec.colorOverPath.length || spec.colorOverPath.some((k, i, a) => !k || !Number.isFinite(k.time) || k.time < 0 || k.time > 1 || !/^#[0-9a-f]{6}$/i.test(k.color) || i > 0 && k.time <= a[i - 1].time))) throw new Error("Invalid path color curve.");
+    this.spec = JSON.parse(JSON.stringify(spec));
+    this.points = Array.from({ length: spec.maxPoints }, () => ({ x: 0, y: 0, z: 0 }));
+    this.widthDirections = Array.from({ length: spec.maxPoints }, () => ({ x: 0, y: 0, z: 0 }));
+    this.distances = new Float32Array(spec.maxPoints);
+    this.geometry = { vertices: new Float32Array(spec.maxPoints * 18), indices: new Uint16Array((spec.maxPoints - 1) * 6), vertexCount: 0, indexCount: 0 };
+  }
+  get pointCount() {
+    return this.count;
+  }
+  clear() {
+    this.count = 0;
+  }
+  setPoints(points, widthDirections) {
+    if (points.length > this.points.length || points.some((p) => !p || ![p.x, p.y, p.z].every(Number.isFinite))) throw new Error("Path points exceed budget or contain invalid XYZ positions.");
+    if (widthDirections && (widthDirections.length !== points.length || widthDirections.some((v) => !v || ![v.x, v.y, v.z].every(Number.isFinite) || Math.hypot(v.x, v.y, v.z) < 1e-8))) throw new Error("Width directions must match the path and contain finite non-zero vectors.");
+    this.hasWidthDirections = widthDirections !== void 0;
+    if (widthDirections) for (let i = 0; i < points.length; i++) Object.assign(this.widthDirections[i], widthDirections[i]);
+    this.count = points.length;
+    for (let i = 0; i < points.length; i++) Object.assign(this.points[i], points[i]);
+  }
+  snapshot() {
+    return this.points.slice(0, this.count).map((p) => ({ ...p }));
+  }
+  buildMesh(camera, opacity = 1) {
+    const g = this.geometry;
+    g.vertices.fill(0);
+    g.indices.fill(0);
+    if (![this.uvOffset, this.uvTiles, opacity, this.visibleStart, this.visibleEnd, this.edgeFade].every(Number.isFinite) || this.visibleStart < 0 || this.visibleEnd > 1 || this.visibleStart > this.visibleEnd || this.edgeFade <= 0) throw new Error("Invalid flow UV/opacity/reveal window.");
+    let total = 0;
+    for (let i = 0; i < this.count; i++) {
+      if (i) {
+        const a = this.points[i - 1], b = this.points[i];
+        total += Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z);
+      }
+      this.distances[i] = total;
+    }
+    let px = 0, py = 0, pz = 0;
+    for (let i = 0; i < this.count; i++) {
+      const p = this.points[i], a = this.points[Math.max(0, i - 1)], b = this.points[Math.min(this.count - 1, i + 1)];
+      const tx = b.x - a.x, ty = b.y - a.y, tz = b.z - a.z, vx = camera.x - p.x, vy = camera.y - p.y, vz = camera.z - p.z;
+      let nx = ty * vz - tz * vy, ny = tz * vx - tx * vz, nz = tx * vy - ty * vx, length = Math.hypot(nx, ny, nz);
+      if (this.hasWidthDirections) {
+        const d = this.widthDirections[i], tt = tx * tx + ty * ty + tz * tz;
+        const projection = tt > 1e-14 ? (d.x * tx + d.y * ty + d.z * tz) / tt : 0;
+        nx = d.x - projection * tx;
+        ny = d.y - projection * ty;
+        nz = d.z - projection * tz;
+        length = Math.hypot(nx, ny, nz);
+      }
+      if (length < 1e-7) {
+        nx = -tz;
+        ny = 0;
+        nz = tx;
+        length = Math.hypot(nx, ny, nz);
+      }
+      if (length < 1e-7) {
+        nx = 1;
+        ny = 0;
+        nz = 0;
+        length = 1;
+      }
+      nx /= length;
+      ny /= length;
+      nz /= length;
+      if (nx * px + ny * py + nz * pz < 0) {
+        nx = -nx;
+        ny = -ny;
+        nz = -nz;
+      }
+      px = nx;
+      py = ny;
+      pz = nz;
+      const t = total > 1e-7 ? this.distances[i] / total : 0;
+      const width = this.spec.width * 0.5 * sampleParticleCurve(this.spec.widthOverPath, t);
+      const mask = smooth((t - this.visibleStart) / this.edgeFade) * smooth((this.visibleEnd - t) / this.edgeFade);
+      const alpha = Math.max(0, Math.min(1, opacity * sampleParticleCurve(this.spec.alphaOverPath, t))) * mask;
+      const color = sampleParticleColor(this.spec.colorOverPath, t), r = parseInt(color.slice(1, 3), 16) / 255, green = parseInt(color.slice(3, 5), 16) / 255, blue = parseInt(color.slice(5, 7), 16) / 255;
+      const u = t * this.uvTiles + this.uvOffset;
+      for (let side = 0; side < 2; side++) {
+        const sign = side ? 1 : -1, base = i * 18 + side * 9, v = g.vertices;
+        v[base] = p.x + sign * nx * width;
+        v[base + 1] = p.y + sign * ny * width;
+        v[base + 2] = p.z + sign * nz * width;
+        v[base + 3] = r;
+        v[base + 4] = green;
+        v[base + 5] = blue;
+        v[base + 6] = alpha;
+        v[base + 7] = u;
+        v[base + 8] = side;
+      }
+      if (i < this.count - 1) {
+        const v = i * 2, offset = i * 6, indices = g.indices;
+        indices[offset] = v;
+        indices[offset + 1] = v + 1;
+        indices[offset + 2] = v + 2;
+        indices[offset + 3] = v + 1;
+        indices[offset + 4] = v + 3;
+        indices[offset + 5] = v + 2;
+      }
+    }
+    g.vertexCount = this.count * 2;
+    g.indexCount = Math.max(0, this.count - 1) * 6;
+    return g;
+  }
+};
+function smooth(v) {
+  const f = Math.max(0, Math.min(1, v));
+  return f * f * (3 - 2 * f);
+}
+
+// packages/core/particles/LayaParticleRenderer3D.ts
+var DynamicParticleMesh3D = class {
+  constructor(parent, geometry, texture, blend, color) {
+    this.disposed = false;
+    const l = globalThis.Laya;
+    if (!l?.PrimitiveMesh?._createMesh || !l?.MeshSprite3D || !texture) throw new Error("3D particle rendering requires booted Laya 3.4.2 3D modules and a texture.");
+    this.mesh = l.PrimitiveMesh._createMesh(l.VertexMesh.getVertexDeclaration("POSITION,COLOR,UV"), geometry.vertices, geometry.indices);
+    this.material = new l.UnlitMaterial();
+    this.material.enableVertexColor = true;
+    this.material.albedoTexture = texture.bitmap || texture;
+    if (color) {
+      const c = parseInt(color.slice(1), 16);
+      this.material.albedoColor = new l.Color((c >> 16 & 255) / 255, (c >> 8 & 255) / 255, (c & 255) / 255, 1);
+    }
+    this.material.renderQueue = 3e3;
+    this.material.depthWrite = false;
+    this.material.depthTest = l.RenderState.DEPTHTEST_LEQUAL;
+    this.material.cull = l.RenderState.CULL_NONE;
+    this.material.blend = l.RenderState.BLEND_ENABLE_ALL;
+    this.material.blendSrc = l.RenderState.BLENDPARAM_SRC_ALPHA;
+    this.material.blendDst = blend === "additive" ? l.RenderState.BLENDPARAM_ONE : l.RenderState.BLENDPARAM_ONE_MINUS_SRC_ALPHA;
+    this.node = new l.MeshSprite3D(this.mesh);
+    this.node.name = "ZhudaParticles3D";
+    this.node.meshRenderer.sharedMaterial = this.material;
+    parent.addChild(this.node);
+    this.min = new l.Vector3();
+    this.max = new l.Vector3();
+  }
+  submit(g, visible) {
+    if (this.disposed) return;
+    this.node.active = visible && g.indexCount > 0;
+    if (!this.node.active) return;
+    this.mesh.setVertices(g.vertices.buffer);
+    this.mesh.setIndices(g.indices);
+    this.min.setValue(Infinity, Infinity, Infinity);
+    this.max.setValue(-Infinity, -Infinity, -Infinity);
+    for (let i = 0; i < g.vertexCount; i++) {
+      const offset = i * 9;
+      this.min.x = Math.min(this.min.x, g.vertices[offset]);
+      this.max.x = Math.max(this.max.x, g.vertices[offset]);
+      this.min.y = Math.min(this.min.y, g.vertices[offset + 1]);
+      this.max.y = Math.max(this.max.y, g.vertices[offset + 1]);
+      this.min.z = Math.min(this.min.z, g.vertices[offset + 2]);
+      this.max.z = Math.max(this.max.z, g.vertices[offset + 2]);
+    }
+    const bounds = this.mesh.bounds;
+    bounds.setMin(this.min);
+    bounds.setMax(this.max);
+    this.mesh.bounds = bounds;
+    this.node.meshRenderer.boundsChange = true;
+  }
+  dispose() {
+    if (this.disposed) return;
+    this.disposed = true;
+    this.material.albedoTexture = null;
+    this.node.destroy(true);
+    this.mesh.destroy();
+    this.material.destroy();
+  }
+};
+function cameraView(camera, out) {
+  const e = camera.transform.worldMatrix.elements, p = camera.transform.position;
+  Object.assign(out.position, { x: p.x, y: p.y, z: p.z });
+  Object.assign(out.right, { x: e[0], y: e[1], z: e[2] });
+  Object.assign(out.up, { x: e[4], y: e[5], z: e[6] });
+  Object.assign(out.forward, { x: -e[8], y: -e[9], z: -e[10] });
+  return out;
+}
+function emptyView() {
+  return { position: { x: 0, y: 0, z: 0 }, right: { x: 1, y: 0, z: 0 }, up: { x: 0, y: 1, z: 0 }, forward: { x: 0, y: 0, z: -1 } };
+}
+var ZhudaLayaParticleRenderer3D = class {
+  constructor(system, parent, resolveTexture) {
+    this.submittedBatches = 0;
+    this.view = emptyView();
+    this.disposed = false;
+    this.system = system;
+    this.builder = new ZhudaParticleMesh3D(system);
+    this.backend = new DynamicParticleMesh3D(parent, this.builder.geometry, resolveTexture(system.spec.texture), system.spec.blend);
+    this.node = this.backend.node;
+  }
+  render(camera, opacity = 1) {
+    this.submittedBatches = 0;
+    if (this.disposed) return;
+    const g = this.builder.build(cameraView(camera, this.view), opacity);
+    this.backend.submit(g, opacity > 0);
+    this.submittedBatches = opacity > 0 && g.indexCount > 0 ? 1 : 0;
+  }
+  dispose() {
+    this.disposed = true;
+    this.backend.dispose();
+  }
+};
+var ZhudaLayaRibbonRenderer3D = class {
+  constructor(trail, parent, texture, color = "#ffffff", blend = "additive") {
+    this.submittedBatches = 0;
+    this.disposed = false;
+    this.trail = trail;
+    this.backend = new DynamicParticleMesh3D(parent, trail.buildMesh({ x: 0, y: 0, z: 1 }), texture, blend, color);
+    this.node = this.backend.node;
+    this.node.name = "ZhudaRibbon3D";
+  }
+  render(camera, opacity = 1) {
+    this.submittedBatches = 0;
+    if (this.disposed) return;
+    const g = this.trail.buildMesh(camera.transform.position, opacity);
+    this.backend.submit(g, opacity > 0);
+    this.submittedBatches = opacity > 0 && g.indexCount > 0 ? 1 : 0;
+  }
+  dispose() {
+    this.disposed = true;
+    this.backend.dispose();
+  }
+};
 export {
   ENGINE_PRESET_PROFILES,
   EngineGuard,
@@ -4839,14 +5529,22 @@ export {
   ZhudaEffectEnvelope,
   ZhudaEngine,
   ZhudaLayaParticleRenderer,
+  ZhudaLayaParticleRenderer3D,
   ZhudaLayaRibbonRenderer,
+  ZhudaLayaRibbonRenderer3D,
+  ZhudaParticleMesh3D,
   ZhudaParticleSystem,
+  ZhudaParticleSystem3D,
   ZhudaPrefab,
+  ZhudaRibbonPath3D,
   ZhudaRibbonTrail,
+  ZhudaRibbonTrail3D,
   ZhudaUI,
+  rotateParticleVector3,
   sampleParticleColor,
   sampleParticleCurve,
   validateParticleEffect,
+  validateParticleEffect3D,
   zhudaComponent
 };
 //# sourceMappingURL=zhuda-laya-engine.esm.js.map

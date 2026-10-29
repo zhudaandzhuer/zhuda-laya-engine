@@ -184,7 +184,7 @@ VisualFocusContract.apply(targets, VisualFocusContract.clear());
 
 ## 2D 粒子與路徑拖尾
 
-公開 SDK 提供 `ZhudaParticleSystem`、`ZhudaLayaParticleRenderer`、`ZhudaRibbonTrail`、`ZhudaLayaRibbonRenderer` 與 `ZhudaEffectEnvelope`。支援貼圖、生命曲線、定種子重播、物件池、世界／本地空間、距離發射及彎曲路徑。MCP `validate_particle_effect` 可先檢查 JSON 設定。
+公開 SDK 提供 `ZhudaParticleSystem`、`ZhudaLayaParticleRenderer`、`ZhudaRibbonTrail`、`ZhudaLayaRibbonRenderer` 與 `ZhudaEffectEnvelope`，另提供 3D XYZ 粒子、相機／速度／地面 billboard、歷史拖尾及可沿路徑漸顯的 `ZhudaRibbonPath3D`。支援貼圖、生命曲線、定種子重播、物件池、世界／本地空間、距離發射及彎曲路徑。MCP `validate_particle_effect` 可先檢查 JSON 設定。
 
 完整 API、限制與接入方式見 [packages/core/particles/README.md](packages/core/particles/README.md)。展示場景、遊戲預設及美術資產由獨立應用程式管理，引擎不依賴任何展示專案。
 

@@ -19,6 +19,7 @@ import { PixelCalibrationEngine } from '../core/PixelCalibrationEngine.ts';
 import { ViewportMatrixEngine } from '../core/ViewportMatrixEngine.ts';
 import { UnityBridgePipeline } from '../core/UnityBridgePipeline.ts';
 import { validateParticleEffect } from '../core/particles/ParticleTypes.ts';
+import { validateParticleEffect3D } from '../core/particles/ParticleTypes3D.ts';
 import { auditVisualAssetMigration } from '../compiler/visual-asset-audit.mjs';
 import { auditVisualPresentationContracts } from '../compiler/visual-contract-audit.mjs';
 import { API_GUARDRAILS, ERROR_DIAGNOSTICS_DB, GOLDEN_EXAMPLES } from './corpus.mjs';
@@ -26,10 +27,10 @@ import { API_GUARDRAILS, ERROR_DIAGNOSTICS_DB, GOLDEN_EXAMPLES } from './corpus.
 export const MCP_TOOLS_MANIFEST = [
   {
     name: 'validate_particle_effect',
-    description: '驗證可序列化的 2D 粒子設定：發射器、池容量、生命曲線、顏色、空間與週期。只驗證設定，不宣稱已完成畫面或效能驗收。',
+    description: '驗證可序列化的 2D／3D 粒子設定：發射器、池容量、生命曲線、顏色、空間與週期。只驗證設定，不宣稱已完成畫面或效能驗收。',
     inputSchema: {
       type: 'object',
-      properties: { effect: { type: 'object', description: 'schemaVersion: 1 的 ParticleEffectSpec；貼圖 key 由應用程式解析。' } },
+      properties: { effect: { type: 'object', description: 'schemaVersion: 1 的 ParticleEffectSpec 或 dimension: 3 的 ParticleEffectSpec3D；貼圖 key 由應用程式解析。' } },
       required: ['effect']
     }
   },
@@ -193,7 +194,7 @@ export const MCP_TOOLS_MANIFEST = [
 export function executeMcpTool(toolName, args = {}) {
   switch (toolName) {
     case 'validate_particle_effect': {
-      const issues = validateParticleEffect(args.effect);
+      const issues = args.effect?.dimension === 3 ? validateParticleEffect3D(args.effect) : validateParticleEffect(args.effect);
       return { tool: 'validate_particle_effect', passed: issues.length === 0, issues };
     }
     case 'resolve_topology': {

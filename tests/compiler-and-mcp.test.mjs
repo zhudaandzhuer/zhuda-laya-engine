@@ -98,7 +98,8 @@ test('zhuda-laya-engine SDK bundles (ESM & CJS) and upstream LayaAir Official at
   assert.ok(sdkMod.VisualFocusContract, 'ESM SDK should export VisualFocusContract');
   const cjsMod = (await import('node:module')).createRequire(import.meta.url)(cjsPath);
   for (const name of ['ZhudaParticleSystem', 'ZhudaRibbonTrail', 'ZhudaEffectEnvelope', 'ZhudaLayaParticleRenderer',
-    'ZhudaLayaRibbonRenderer', 'validateParticleEffect']) {
+    'ZhudaLayaRibbonRenderer', 'validateParticleEffect', 'ZhudaParticleSystem3D', 'ZhudaParticleMesh3D',
+    'ZhudaRibbonTrail3D', 'ZhudaRibbonPath3D', 'ZhudaLayaParticleRenderer3D', 'ZhudaLayaRibbonRenderer3D', 'validateParticleEffect3D']) {
     assert.equal(typeof sdkMod[name], 'function', `ESM SDK should export ${name}`);
     assert.equal(typeof cjsMod[name], 'function', `CJS SDK should export ${name}`);
   }
@@ -111,8 +112,9 @@ test('particle public types compile in a strict consumer without importing imple
     fs.symlinkSync(projectRoot, path.join(temporary, 'node_modules/zhuda-laya-engine'), 'dir');
     const fixture = path.join(temporary, 'consumer.ts');
     fs.writeFileSync(fixture, `import { ZhudaParticleSystem, ZhudaLayaParticleRenderer, ZhudaRibbonTrail,
-      ZhudaLayaRibbonRenderer, ZhudaEffectEnvelope, validateParticleEffect } from 'zhuda-laya-engine';
-      import type { ParticleEffectSpec, ParticleState } from 'zhuda-laya-engine';
+      ZhudaLayaRibbonRenderer, ZhudaEffectEnvelope, validateParticleEffect, ZhudaParticleSystem3D, ZhudaParticleMesh3D,
+      ZhudaLayaParticleRenderer3D, ZhudaRibbonPath3D, ZhudaRibbonTrail3D, ZhudaLayaRibbonRenderer3D, validateParticleEffect3D } from 'zhuda-laya-engine';
+      import type { ParticleEffectSpec, ParticleState, ParticleEffectSpec3D } from 'zhuda-laya-engine';
       const spec: ParticleEffectSpec = {schemaVersion:1,emitters:[{id:'test',texture:'external',maxParticles:32,
         seed:1,space:'world',blend:'alpha',shape:{type:'point'},rate:10,lifetime:1,speed:20,angle:0,size:5}]};
       const s = new ZhudaParticleSystem(spec.emitters[0]);
@@ -122,6 +124,16 @@ test('particle public types compile in a strict consumer without importing imple
       new ZhudaLayaRibbonRenderer(t, {}, {}).render();
       new ZhudaEffectEnvelope().start();
       const issues: string[] = validateParticleEffect(spec); r.dispose();
+      // Exercise the 3D package contract without reaching into implementation files.
+      const s3 = new ZhudaParticleSystem3D({id:'xyz',texture:'external',maxParticles:8,seed:2,space:'world',blend:'additive',
+        shape:{type:'sphere',radius:1},direction:{x:0,y:0,z:-1},spread:0,rate:10,lifetime:1,speed:2,size:.1});
+      s3.setTransform(0,0,0,{x:0,y:0,z:0,w:1},{x:0,y:0,z:-5});
+      new ZhudaParticleMesh3D(s3); new ZhudaLayaParticleRenderer3D(s3, {}, key=>({}));
+      const path = new ZhudaRibbonPath3D({maxPoints:8,width:.2}); path.visibleEnd=.5;
+      path.setPoints([{x:0,y:0,z:0},{x:0,y:1,z:2}]);new ZhudaLayaRibbonRenderer3D(path, {}, {});
+      new ZhudaRibbonTrail3D({maxPoints:8,lifetime:1,width:.2,minDistance:.01,teleportDistance:5});
+      const spec3: ParticleEffectSpec3D = {schemaVersion:1,dimension:3,emitters:[s3.spec]};
+      const errors3: string[] = validateParticleEffect3D(spec3);
       // @ts-expect-error unknown emitter spaces must be rejected by the public types
       spec.emitters[0].space = 'screen';
     `);
@@ -139,4 +151,11 @@ test('particle public types compile in a strict consumer without importing imple
       assert.equal(program.getSourceFiles().some(f => f.fileName.includes('/core/particles/')), false);
     }
   } finally { fs.rmSync(temporary, { recursive: true, force: true }); }
+});
+
+test('MCP validates 3D particle descriptors with XYZ direction and cone constraints', () => {
+  const effect={schemaVersion:1,dimension:3,emitters:[{id:'xyz',texture:'external',maxParticles:8,seed:1,space:'world',blend:'alpha',
+    shape:{type:'point'},direction:{x:0,y:0,z:-1},spread:.2,rate:10,lifetime:1,speed:2,size:.1}]};
+  assert.equal(executeMcpTool('validate_particle_effect',{effect}).passed,true);
+  effect.emitters[0].direction.z=0;assert.equal(executeMcpTool('validate_particle_effect',{effect}).passed,false);
 });
