@@ -1,13 +1,19 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { auditVisualPresentationContracts } from '../packages/compiler/visual-contract-audit.mjs';
+
+const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const fixtureManifest = 'tests/fixtures/visual-presentation-manifest.json';
 
 test('visual presentation manifest passes the strict contract gate', () => {
   const report = auditVisualPresentationContracts({
-    projectRoot: '/Users/yaowei/Desktop/天堂老虎機'
+    projectRoot,
+    manifestPath: fixtureManifest
   });
   assert.equal(report.passed, true, report.issues.join('\n'));
-  assert.deepEqual(report.contractIds, ['win-focus']);
+  assert.deepEqual(report.contractIds, ['sample-focus']);
 });
 
 test('visual presentation gate rejects a missing manifest', () => {

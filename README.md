@@ -144,7 +144,7 @@ node packages/mcp-server/index.mjs --tool verify_unity_migration --args '{}'
 
 # 先驗證 Unity 視覺資產，再接遊戲規則（strict 會阻擋未映射材質/動畫包裝）
 node packages/compiler/visual-asset-audit.mjs \
-  --source /absolute/path/to/Unity/Assets/BDL/Games/Game100002 \
+  --source /absolute/path/to/unity-project/Assets/Game \
   --target /absolute/path/to/laya-project/assets \
   --strict \
   --report /absolute/path/to/laya-project/dist/visual-asset-migration.json

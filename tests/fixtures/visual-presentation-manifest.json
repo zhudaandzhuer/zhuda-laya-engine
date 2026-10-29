@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "contract": "zhuda-laya-engine.visual-presentation-contract",
+  "sourceEngine": "source-engine",
+  "targetEngine": "zhuda-laya-engine",
+  "contracts": [
+    {
+      "id": "sample-focus",
+      "scope": "board",
+      "source": "source/presentation/BoardPresenter.ApplyFocus",
+      "target": "target/presentation/BoardView.applyFocus",
+      "invariants": [
+        "winningTargetsRemainBright",
+        "nonWinningTargetsAreDimmed",
+        "clearRestoresOriginalVisuals"
+      ],
+      "evidence": [
+        "tests/visual-focus-contract.test.mjs",
+        "tests/visual-contract-audit.test.mjs"
+      ],
+      "states": [
+        {
+          "name": "clear",
+          "expectedBehavior": "Restore every target to its original visual state."
+        },
+        {
+          "name": "focus",
+          "expectedBehavior": "Keep winning targets bright and dim every target outside the winning set."
+        },
+        {
+          "name": "empty-scope",
+          "expectedBehavior": "An empty focus set dims every target in the declared scope."
+        }
+      ]
+    }
+  ]
+}

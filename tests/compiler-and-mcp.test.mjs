@@ -44,10 +44,11 @@ test('MCP Server resolves topology, diagnoses Laya crashes, and serves Golden Ex
   assert.ok(rpcRes.result.tools.some((tool) => tool.name === 'audit_visual_contract'));
 
   const visualContractRes = executeMcpTool('audit_visual_contract', {
-    projectRoot: '/Users/yaowei/Desktop/天堂老虎機'
+    projectRoot,
+    manifestPath: 'tests/fixtures/visual-presentation-manifest.json'
   });
   assert.equal(visualContractRes.passed, true);
-  assert.deepEqual(visualContractRes.contractIds, ['win-focus']);
+  assert.deepEqual(visualContractRes.contractIds, ['sample-focus']);
 
   const calibRes = executeMcpTool('calibrate_asset_pixels', { simulateDriftAndAutoFix: true });
   assert.equal(calibRes.beforeReport.passed, false);
