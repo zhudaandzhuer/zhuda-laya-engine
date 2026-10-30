@@ -8,6 +8,22 @@
 > **基於 [LayaAir 官方引擎 (3.4.2)](https://github.com/layabox/LayaAir) 渲染與物理內核，由 [豬大 (@zhudaandzhuer)](https://github.com/zhudaandzhuer) 打造的 AI-Agent-Friendly 開源分支版本 (`zhuda-laya-engine`)。**
 > 完全脫離 LayaAir IDE 黑盒與 GUI 鎖定，專為 **AI Coding Agent（Claude Code / Cursor / Windsurf / AGY / Codex）** 與現代自動化前端工程打造的模組化 **2D / 3D / Spine 4.2** 遊戲引擎工作台與 SDK。
 
+## 完整遊戲 · 豬大遊戲館
+
+[![豬大遊戲館 · 四款新作與霓虹疾線](https://raw.githubusercontent.com/zhudaandzhuer/zhuda-arcade/main/docs/collection.jpg)](https://zhudaandzhuer.github.io/zhuda-arcade/)
+
+**[進入遊戲館 →](https://zhudaandzhuer.github.io/zhuda-arcade/)** · 共用「豬大 × LayaAir」標題啟動畫面，鍵盤與觸控操作、關卡解鎖、勝負結算、永久強化及進度備份。
+
+| 遊戲 | 玩法 | 遊玩 |
+| --- | --- | --- |
+| 星港突圍 STARFALL | 太空彈幕、震波清彈、巨型主艦；四關 | [開始](https://zhudaandzhuer.github.io/zhuda-arcade/?game=starfall) |
+| 燼火遠征 EMBERBOUND | 競技場生存、升級三選一、衝刺與獸潮首領；四關 | [開始](https://zhudaandzhuer.github.io/zhuda-arcade/?game=ember) |
+| 晶核守衛 COREKEEP | 四張路線、三類防禦塔、升級出售、六波守城 | [開始](https://zhudaandzhuer.github.io/zhuda-arcade/?game=corekeep) |
+| 潮汐碎光 TIDEBREAK | 角度反彈、裝甲晶礁、多球／寬板／雷射；四關 | [開始](https://zhudaandzhuer.github.io/zhuda-arcade/?game=tidebreak) |
+| 霓虹疾線 NEON APEX | 四條賽道、電腦車手、漂移、氮氣與車庫 | [開始](https://zhudaandzhuer.github.io/zhuda-neon-racer/) |
+
+遊戲規則、關卡、UI、美術、存檔和部署分別保存在獨立的 **[zhuda-arcade](https://github.com/zhudaandzhuer/zhuda-arcade)** 與 **[zhuda-neon-racer](https://github.com/zhudaandzhuer/zhuda-neon-racer)**，以公開 SDK 消費本引擎。新作有 21 項規則測試，含操作輸入通關全部 16 關；另檢查實際 WebGL、鍵盤／滑鼠／觸控模擬、結算保存與三種版面，詳見[驗證紀錄](https://github.com/zhudaandzhuer/zhuda-arcade/blob/main/docs/browser-verification.json)。
+
 ## 粒子實際渲染展示 · 100 種場景
 
 [![車身包覆氣流、魔法與爆破展示](https://raw.githubusercontent.com/zhudaandzhuer/zhuda-particle-lab/main/docs/media/showcase-preview.gif)](https://zhudaandzhuer.github.io/zhuda-particle-lab/showcase.html)
