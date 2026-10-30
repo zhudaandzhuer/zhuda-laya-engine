@@ -18,11 +18,11 @@ E4ZEhFCYy4b5pYXJUbMC9KjRitkypyqtZvpSRerLWHCb
 
 [English](../../README.md) · 简体中文
 
-[![NEON APEX：立体城市赛道、漂移与氮气超车，实际 3D 游戏录制](https://raw.githubusercontent.com/zhudaandzhuer/zhuda-neon-racer/main/docs/media/skyline-gameplay.gif)](https://zhudaandzhuer.github.io/zhuda-neon-racer/)
+[![NEON APEX：导入 S800 车模、氮气拖尾与实际 3D 游戏录制](https://raw.githubusercontent.com/zhudaandzhuer/zhuda-neon-racer/main/docs/media/skyline-gameplay.gif?v=s800-2.1)](https://zhudaandzhuer.github.io/zhuda-neon-racer/)
 
 ### NEON APEX · Skyline Tour
 
-**漂移，氮气，把地平线甩在身后。** 在城市高架赛道上与三位对手竞速，出弯加速，赢取奖金并升级赛车。四条赛道、车库与进度保存，均可实际游玩。
+**漂移，氮气，把地平线甩在身后。** 驾驶导入的银黑 S800 车模，使用 PBR 材质，在城市高架赛道上与三位对手竞速，赢取奖金并升级调校。四条赛道、车库与进度保存，均可实际游玩。
 
 **[免费开跑 →](https://zhudaandzhuer.github.io/zhuda-neon-racer/)** · [观看游戏影片](https://zhudaandzhuer.github.io/zhuda-neon-racer/showcase.html)
 
