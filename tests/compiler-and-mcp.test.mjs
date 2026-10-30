@@ -113,10 +113,17 @@ test('effects and migration public types compose with particle systems in a stri
   try {
     fs.mkdirSync(path.join(temporary,'node_modules'));fs.symlinkSync(projectRoot,path.join(temporary,'node_modules/zhuda-laya-engine'),'dir');
     const fixture=path.join(temporary,'consumer.ts');
-    fs.writeFileSync(fixture,`import { ZhudaEffectDirector, ZhudaEffectBudget, ZhudaRuntimeProfiler, ZhudaVfxCamera,
+    fs.writeFileSync(fixture,`import { ZhudaEngine, ZhudaEffectDirector, ZhudaEffectBudget, ZhudaRuntimeProfiler, ZhudaVfxCamera,
       ZhudaVfxMaterial, ZhudaParticleSystem3D, ZhudaParticleEventLink, convertUnityVisualMaterial,
       instantiateMigratedMaterial, compareVisualFrames } from 'zhuda-laya-engine';
       import type { VfxMaterialSpec, EffectTimelineSpec, ParticleEmitterSpec3D } from 'zhuda-laya-engine';
+      ZhudaEngine.boot({width:800,height:600,features:['core','2d']}).then(context=>{
+        const stage:Laya.Stage=context.stage;const size:number=context.topology.totalSizeBytes;
+        const version:string=context.health.engineVersion;
+      });
+      ZhudaEngine.getContext();ZhudaEngine.flushRenderFrames(2);
+      // @ts-expect-error feature names must match the runtime topology
+      ZhudaEngine.boot({features:['unknown-renderer']});
       const material: VfxMaterialSpec={version:1,dissolve:.2,softDistance:.3};
       const spec: ParticleEmitterSpec3D={id:'fx',texture:'atlas',seed:1,maxParticles:16,space:'world',blend:'alpha',
         shape:{type:'point'},rate:1,lifetime:1,speed:2,size:.1,direction:{x:0,y:1,z:0},spread:.2,material,
