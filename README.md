@@ -18,7 +18,7 @@
 
 引擎現在提供可序列化的 `ZhudaTerrain2D` tile map、分塊／視野 streaming、palette atlas UV、blocked metadata，以及 `ZhudaHeightfield`／`ZhudaTerrain3D` 高度場、brush／patch、LOD 1／2／4、精確三角形採樣、世界 raycast、穩定 cell ID 與資源報告。`ZhudaShaderMaterial` 將 LayaAir 3.4.2 的 2D clipping／atlas／premultiplied alpha／gamma 和 3D world transform／normal／fog／output transform 收進明確的 2D／3D shader recipe；MCP 可先驗證 JSON，真正 GPU 編譯仍由 WebGL draw 驗收。詳見 [地形與 Shader 契約](docs/terrain-shader.md)。
 
-iPhone14 的固定小場景持續採樣超過10分鐘，P95 20ms（low／DPR1）。完整遊戲地圖與Android仍須另驗；遊戲資產和規則留在獨立專案。
+iPhone14 的固定海域小場景持續採樣超過10分鐘，P95 20ms（low／DPR1）；另有雙平台2D／3D地形約20分鐘rolling樣本，iPhone14／vivo V40的P95為22／19.6ms。完整遊戲地圖與不中斷長時間壓測仍須另驗；遊戲資產和規則留在獨立專案。
 
 ## 完整遊戲 · 豬大遊戲館
 
@@ -70,7 +70,7 @@ iPhone14 的固定小場景持續採樣超過10分鐘，P95 20ms（low／DPR1）
 | **組件類別反射** | 依賴 IDE 隱藏產出 `regClass` 映射表 | **AST 靜態掃描 (`ast-scanner.mjs`)**：自動掃描 `@zhudaComponent` 與 `Laya.Script` 子類並注入 `ClassUtils.regClass()` |
 | **運行期防崩潰** | 純代碼自繪 `Laya.Button` 易觸發 `this._graphics.setState is not a function` | **`EngineGuard.installPrototypeDetox()`**：啟動時自動完成原型解毒修補與宣告式 `ZhudaEngine` / `Zhuda3D` / `ZhudaUI` 封裝 |
 | **UI / 預製體校準** | 必須進 GUI 肉眼對齊，且 `DrawRoundRectCmd` 預設 `percent: true` 易放大百倍 | **先設計後組裝 (`ZhudaAssetSerializer` + `PixelCalibrationEngine`)**：離線計算 Tight Bounding Box 與 CIEDE2000 ($\Delta E_{00}$) 色差並自動產生 `AutoFixPatch` 收斂至 **0px / $\Delta E_{00}=0$** |
-| **AI 語料與防幻覺** | 大模型常混用 Laya 1.x / 2.x 廢棄 API | **內建 14 工具 MCP Server (`zhuda-laya-mcp`) + `zhuda-laya-doctor` 靜態守衛** |
+| **AI 語料與防幻覺** | 大模型常混用 Laya 1.x / 2.x 廢棄 API | **內建 16 工具 MCP Server (`zhuda-laya-mcp`) + `zhuda-laya-doctor` 靜態守衛** |
 
 ---
 
@@ -81,7 +81,7 @@ iPhone14 的固定小場景持續採樣超過10分鐘，P95 20ms（low／DPR1）
 | **1. 拓撲載入器與按需剪枝** | `packages/core/TopologyGraph.ts` | 建立 29 個 LayaAir 3.4.2 引擎庫的完整 DAG 有向無環圖與 Kahn's 拓撲排序；確保 `physics2D -> box2D`、`bullet -> physics3D`、`spine-core-4.2 -> laya.spine -> laya.spine3D` 順序零死鎖，並支援按需 Feature Pruning（`2d-light` 縮減 **83.2%** 體積）。 |
 | **2. Zero-IDE AST 自動類別反射** | `packages/compiler/ast-scanner.mjs`<br>`packages/compiler/zhuda-build.mjs` | 使用 TypeScript 官方 AST 掃描 `@zhudaComponent` 與 `Laya.Script` 子類別，自動生成 `src/.generated/zhuda-registry.ts` 並注入 `ClassUtils.regClass()`，結合 `esbuild` 同步產出應用程式與 `dist/sdk/zhuda-laya-engine.{esm.js,cjs}`。 |
 | **3. 原型解毒與宣告式 SDK** | `packages/core/RuntimeGuards.ts`<br>`packages/core/DeclarativeSDK.ts`<br>`packages/core/SpineVisualContract.ts`<br>`packages/core/VisualFocusContract.ts` | `EngineGuard.installPrototypeDetox()` 自動修補 `Laya.Graphics.prototype.setState`；提供對標 Three.js / R3F 的 `ZhudaEngine.boot`、`Zhuda3D`、`ZhudaUI` 與 `ZhudaPrefab` 宣告式純代碼 API；`SpineVisualContract` 會拒絕 fallback 物件並檢查 Spine 4.2 動畫、皮膚、插槽、事件、約束與 bounds；`VisualFocusContract` 將 clear/focus/空集合的全盤作用域語意明確化。 |
-| **4. 模組化型別與 14 工具 MCP Server** | `packages/types/*.d.ts`<br>`packages/mcp-server/index.mjs` | 剝離 IDE 專屬污染型別（`editor.d.ts`），分為乾淨 `.d.ts`；內建可執行之 **Model Context Protocol (MCP) Server**，提供拓撲解析、API 護欄、錯誤診斷、Golden Examples、像素校準、九宮格驗測、SafeArea 矩陣、Unity 移植驗證、視覺資產審計、視覺演出契約與粒子設定驗證共 **14 項 AI 工具**。 |
+| **4. 模組化型別與 16 工具 MCP Server** | `packages/types/*.d.ts`<br>`packages/mcp-server/index.mjs` | 剝離 IDE 專屬污染型別（`editor.d.ts`），分為乾淨 `.d.ts`；內建可執行之 **Model Context Protocol (MCP) Server**，提供拓撲解析、API 護欄、錯誤診斷、Golden Examples、像素校準、九宮格驗測、SafeArea 矩陣、Unity 移植驗證、視覺資產審計、視覺演出契約與粒子設定驗證共 **16 項 AI 工具**。 |
 | **5. Headless Chrome 首幀守衛** | `packages/ci-gate/verify-first-frame.mjs` | 自動啟動受管理無頭瀏覽器驗證 WebGL 上下文、29 模組載入狀態、AST 組件反射、Spine 4.2 `PhysicsConstraint` 彈簧求解器與首幀自動截圖。 |
 | **6. 靜態資產 (`.lh`/`.ls`) 與 $\Delta E_{00}$ 校準** | `packages/core/StaticAssetPipeline.ts`<br>`packages/core/PixelCalibrationEngine.ts` | 實現「先設計靜態資產、孤立微預覽 (`preview.html`)、後組裝」工作流，自動強制 `DrawRoundRectCmd` `percent: false`，並執行 Tight Bounding Box 0px 邊界與 CIEDE2000 色差單步自動修補。 |
 | **7. 商業化支柱 M1~M5** | `packages/core/IframeSoundAdapter.ts`<br>`packages/core/ViewportMatrixEngine.ts`<br>`packages/core/UnityBridgePipeline.ts` | **M1** 九宮格 `sizeGrid` 四角 16×16px 0px 變形鎖定 · **M2** `IframeSoundAdapter` 首觸手勢解鎖、失焦靜音與 `postMessage` 音訊橋 · **M3** 5 大主流終端 SafeArea 與靈動島 3D FOV 自動補償 · **M4** 4 套決定性 VFX 特效藍圖 · **M5** Unity 左手系轉右手系 (`LH -> RH`) + `AnimatorController` 狀態機 + Spine 4.2 移植管線。 |
@@ -95,7 +95,7 @@ zhuda-laya-engine/
 ├── packages/
 │   ├── core/                  # 核心 SDK (TopologyGraph, RuntimeGuards, DeclarativeSDK, StaticAssetPipeline, PixelCalibrationEngine, IframeSoundAdapter, ViewportMatrixEngine, UnityBridgePipeline)
 │   ├── compiler/              # Zero-IDE 編譯器 (含 visual-contract-audit.mjs 視覺演出閘門)
-│   ├── mcp-server/            # AI-Native MCP 語料與診斷伺服器 (14 Tools, stdio + CLI 雙模)
+│   ├── mcp-server/            # AI-Native MCP 語料與診斷伺服器 (16 Tools, stdio + CLI 雙模)
 │   ├── types/                 # 去 IDE 污染之分層 TypeScript 型別宣告 (.d.ts)
 │   └── ci-gate/               # Headless Chrome 首幀遙測與 HTML 視覺報告產生器
 ├── vendor/laya-3.4.2/libs/    # LayaAir 3.4.2 官方 29 個核心與擴充模組 (含 Spine 4.2 / Bullet / Box2D)

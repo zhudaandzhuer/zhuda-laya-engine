@@ -6,7 +6,7 @@
 | --- | --- | --- |
 | P0.1 外部建置／runtime | 獨立 HTML/CSS、無來源寫入、相對資源、ZIP/解壓上限、依賴雜湊、container/DPR/AA/FPS、pause、realm context loss 重建 | source hash／ZIP／錯誤路徑自動測試；真實 WebGL 的 root/subpath／opaque sandbox／狀態重建。正式遊戲站 iframe/CORS 仍需部署後驗收 |
 | P0.2 網格／材質 | PBR/Unlit/custom shader、MR 貼圖轉換、動態 buffer/bounds、穩定 ID instance、深度/opaque pass 預算 | 真實海面／斜坡島／浮體／屋頂；256 個 GPU 波浪採樣，最大高度差 0.000011753 m；受擊、晴雨與擋雨。完整原場景視覺對照及風動植被仍在遊戲方 |
-| P0.2a 2D／3D terrain + shader | `ZhudaTerrain2D` tile palette／atlas／blocked metadata；`ZhudaHeightfield`／`ZhudaTerrain3D` chunk streaming、局部 patch、LOD 1／2／4、精確三角形 query、stable cell ID；`ZhudaShaderMaterial` 2D／3D templates 與 typed uniforms | Node terrain/shader tests 8 項；消費端真實 WebGL 驗證 2D atlas tint、3D terrain、dissolve、edit seam、負 origin、region unload、旋轉＋非均勻縮放 ray distance、錯誤 GLSL diagnostic；契約與限制見 [terrain-shader.md](terrain-shader.md) |
+| P0.2a 2D／3D terrain + shader | `ZhudaTerrain2D` tile palette／atlas／blocked metadata；`ZhudaHeightfield`／`ZhudaTerrain3D` chunk streaming、局部 patch、LOD 1／2／4、精確三角形 query、stable cell ID；`ZhudaShaderMaterial` 2D／3D templates 與 typed uniforms | Node terrain/shader tests 8 項；消費端 18 項真實 WebGL 檢查，含 2D atlas UV/tint/alpha/clipping、3D textured/fog/dissolve、edit seam、負 origin、region unload、旋轉＋非均勻縮放 ray distance、錯誤 GLSL diagnostic；契約與限制見 [terrain-shader.md](terrain-shader.md) |
 | P0.3 模型／生命週期 | 去重/retry/abort/lease、`.bin` GLB/relative JPG、獨立材質、命名節點、隔離預覽、過期結果丟棄 | 三款真實模型；30 次完整小場景建立/拆除保持有界；共享 JPG 存活。模型無 animation，含動畫/骨骼資產仍需另驗 |
 | P0.4 查詢／座標／輸入 | 最近 hit/layer/instance ID、可注入 ray/sweep/surface、CSS projection/ray、相機 rig、多指角色/capture/cancel | AABB 最近遮擋測試；DPR1/2/3 × 桌面/直橫屏回投；雙指移動/轉向/放開；DOM 控制保留。完整魚鉤/建造判定仍沿用 shared gameplay |
 | P0.5 時間／掛點 | fixed clock、snapshot interpolation/bounded extrapolation、epoch/sequence、TTL event gate、3D matrix/quaternion anchor | 10Hz snapshot 的 30/60/120FPS 自動測試；重複/亂序/新局/抑制 replay；旋轉與非均勻縮放掛點。真實斷線重連、天氣存檔與音訊仍由遊戲測試接收 |
@@ -29,6 +29,8 @@
 獨立消費專案 `evidence/iphone14-10min.json`：Safari27.0.1／iPhone14，low、DPR1，有效採樣614.525秒、36,545幀，P50=17ms／P95=20ms／P99=24ms，>50ms長幀0，interruption0。每45秒晴雨切換；4角色、1木筏、1船、1屋頂、48物資、0..160雨滴。原始 viewport／UA／draws／triangles 也在報告。此報告在後續純 API／型別／opaque storage 收尾之前擷取，low 的渲染預算一致；消費端最終版另跑桌面回歸。
 
 不能由這個負載推導百人伺服器或全地圖幀率。GPU時間不可用，保持null；記憶體數字明確是估算。
+
+本輪地形／shader 路線另外在 iPhone14／vivo V40 各保存最近72,000筆 frame interval，約1,203／1,214秒樣本，low／DPR1，每30個 active 秒交替2D／3D與動態dissolve。P50/P95/P99 分別為17/22/23ms、16.7/19.6/21.6ms；>50ms長幀4／85。原始與截圖在消費端 `evidence/terrain-mobile-acceptance.json`、`iphone14-terrain-sample.json`、`vivo40-terrain-sample.json`。超過5秒的長中斷未納入統計，不能宣稱不中斷壓測；modeFrames是整個session累計，與rolling window不同。手機採樣在最後的ray-distance整理前執行，最終固定SDK另通過桌面回歸。iPhone實際觸控LOD按鈕後由1切到2。
 
 ## 正式遊戲切換之前
 
