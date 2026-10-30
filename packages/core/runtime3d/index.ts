@@ -7,4 +7,5 @@ export * from "./SceneQueries.ts";
 export * from "./SceneLifecycle.ts";
 export * from "./CameraRig.ts";
 export * from "./CameraCollision.ts";
+export * from "./Filmic.ts";
 export * from "./Laya342Adapters.ts";

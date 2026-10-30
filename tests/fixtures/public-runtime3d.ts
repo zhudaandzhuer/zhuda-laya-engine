@@ -129,3 +129,42 @@ const terrainMiss = renderer3D.raycast({
 console.log(terrainMiss?.position, renderer2D.residentChunks);
 // @ts-expect-error the public spec preserves the dimension discriminator
 new ZhudaTerrain2D({ schemaVersion: 1, dimension: 3, width: 1 });
+
+import {
+  ZhudaLitSurfaceMaterial,
+  ZhudaFilmicPipeline,
+  ZhudaPlanarReflection,
+  computeMeshTangents,
+  createPrefilteredEnvironment,
+} from "zhuda-laya-engine";
+const lit = new ZhudaLitSurfaceMaterial({
+  name: "PublicWetStone",
+  normalConvention: "opengl",
+  uniforms: { u_ZhudaWet: { type: "float", value: 0.5 } },
+  material: { roughness: 0.8, clearCoat: 0.2 },
+  surface: `void zhudaSurface(inout ZhudaLitSurface s,vec2 uv,vec3 p,vec3 n){s.roughness=mix(.8,.2,u_ZhudaWet);}`,
+});
+lit.set("u_ZhudaWet", 0.7);
+const pipeline = new ZhudaFilmicPipeline({}, { temporalAA: true });
+pipeline.resetHistory();
+pipeline.dispose();
+const reflection = new ZhudaPlanarReflection(
+  {},
+  { width: 512, height: 512, excludedLayer: 2 },
+);
+const columns = reflection.update([0, 2, 4], [0, 0, 0], 45, 16 / 9);
+computeMeshTangents({
+  positions: new Float32Array(9),
+  normals: new Float32Array(9),
+  uvs: new Float32Array(6),
+  indices: new Uint16Array([0, 1, 2]),
+});
+createPrefilteredEnvironment(
+  {
+    size: 1,
+    levels: [{ size: 1, offset: 0, elements: 24 }],
+    ambientSH: Array(27).fill(0),
+  },
+  new Float32Array(24),
+);
+console.log(columns);

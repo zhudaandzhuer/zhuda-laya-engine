@@ -109,6 +109,7 @@ FogHandle(gl_Position.z);
 }`;
 const fragment3D = (surface: string, fog = true) => `#include "Color.glsl";
 #include "Scene.glsl";
+#include "Camera.glsl";
 #include "SceneFog.glsl";
 varying vec2 v_ZhudaUV;varying vec3 v_ZhudaPosition;varying vec3 v_ZhudaNormal;
 ${surface}

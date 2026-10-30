@@ -173,13 +173,93 @@ export interface MeshData {
   positions: Float32Array;
   normals?: Float32Array;
   uvs?: Float32Array;
+  tangents?: Float32Array;
   indices: Uint16Array | Uint32Array;
+}
+/** UV-derived tangent frames for normal-mapped procedural geometry. Degenerate UVs use a stable orthogonal frame. */
+export function computeMeshTangents(data: MeshData): Float32Array {
+  const n = data.positions.length / 3;
+  if (
+    !data.normals ||
+    !data.uvs ||
+    !Number.isInteger(n) ||
+    data.normals.length !== n * 3 ||
+    data.uvs.length !== n * 2 ||
+    data.indices.length % 3 ||
+    [...data.indices].some((i) => i >= n) ||
+    ![...data.positions, ...data.normals, ...data.uvs].every(Number.isFinite)
+  )
+    throw Error("Tangents require finite position/normal/UV triangles");
+  const a = new Float64Array(n * 3),
+    b = new Float64Array(n * 3);
+  for (let i = 0; i < data.indices.length; i += 3) {
+    const [i0, i1, i2] = [
+      data.indices[i],
+      data.indices[i + 1],
+      data.indices[i + 2],
+    ];
+    const du1 = data.uvs[i1 * 2] - data.uvs[i0 * 2],
+      dv1 = data.uvs[i1 * 2 + 1] - data.uvs[i0 * 2 + 1],
+      du2 = data.uvs[i2 * 2] - data.uvs[i0 * 2],
+      dv2 = data.uvs[i2 * 2 + 1] - data.uvs[i0 * 2 + 1];
+    const determinant = du1 * dv2 - du2 * dv1;
+    if (Math.abs(determinant) < 1e-12) continue;
+    for (let k = 0; k < 3; k++) {
+      const e1 = data.positions[i1 * 3 + k] - data.positions[i0 * 3 + k],
+        e2 = data.positions[i2 * 3 + k] - data.positions[i0 * 3 + k];
+      for (const index of [i0, i1, i2]) {
+        a[index * 3 + k] += (e1 * dv2 - e2 * dv1) / determinant;
+        b[index * 3 + k] += (e2 * du1 - e1 * du2) / determinant;
+      }
+    }
+  }
+  const out = new Float32Array(n * 4);
+  for (let i = 0; i < n; i++) {
+    let nx = data.normals[i * 3],
+      ny = data.normals[i * 3 + 1],
+      nz = data.normals[i * 3 + 2],
+      length = Math.hypot(nx, ny, nz);
+    if (length < 1e-9) throw Error("Zero mesh normal");
+    nx /= length;
+    ny /= length;
+    nz /= length;
+    const dot = nx * a[i * 3] + ny * a[i * 3 + 1] + nz * a[i * 3 + 2];
+    let x = a[i * 3] - nx * dot,
+      y = a[i * 3 + 1] - ny * dot,
+      z = a[i * 3 + 2] - nz * dot;
+    length = Math.hypot(x, y, z);
+    if (length < 1e-9) {
+      if (Math.abs(ny) < 0.99) {
+        x = -nz;
+        y = 0;
+        z = nx;
+      } else {
+        x = 0;
+        y = nz;
+        z = -ny;
+      }
+      length = Math.hypot(x, y, z);
+    }
+    x /= length;
+    y /= length;
+    z /= length;
+    const sign =
+      (ny * z - nz * y) * b[i * 3] +
+        (nz * x - nx * z) * b[i * 3 + 1] +
+        (nx * y - ny * x) * b[i * 3 + 2] <
+      0
+        ? -1
+        : 1;
+    out.set([x, y, z, sign], i * 4);
+  }
+  return out;
 }
 /** Laya 3.4.2 buffer adapter; POSITION/NORMAL/UV, local range uploads and refreshed bounds. */
 export class ZhudaDynamicMesh {
   readonly data: MeshData;
   readonly mesh: any;
   readonly vertices: Float32Array;
+  readonly stride: number;
   readonly node: any;
   private disposed = false;
   constructor(data: MeshData, parent?: any) {
@@ -191,27 +271,39 @@ export class ZhudaDynamicMesh {
     if (
       (data.normals && data.normals.length !== n * 3) ||
       (data.uvs && data.uvs.length !== n * 2) ||
+      (data.tangents && data.tangents.length !== n * 4) ||
       !data.indices.length ||
       data.indices.length % 3 ||
       [...data.indices].some((i) => i >= n)
     )
       throw Error("Invalid mesh attributes or indices");
-    this.vertices = new Float32Array(n * 8);
+    this.stride = data.tangents ? 12 : 8;
+    this.vertices = new Float32Array(n * this.stride);
     for (let i = 0; i < n; i++) {
-      this.vertices.set(data.positions.subarray(i * 3, i * 3 + 3), i * 8);
+      this.vertices.set(
+        data.positions.subarray(i * 3, i * 3 + 3),
+        i * this.stride,
+      );
       this.vertices.set(
         data.normals?.subarray(i * 3, i * 3 + 3) || [0, 1, 0],
-        i * 8 + 3,
+        i * this.stride + 3,
       );
       this.vertices.set(
         data.uvs?.subarray(i * 2, i * 2 + 2) || [0, 0],
-        i * 8 + 6,
+        i * this.stride + 6,
       );
+      if (data.tangents)
+        this.vertices.set(
+          data.tangents.subarray(i * 4, i * 4 + 4),
+          i * this.stride + 8,
+        );
     }
     if (!this.vertices.every(Number.isFinite))
       throw Error("Non-finite mesh data");
     this.mesh = l.PrimitiveMesh._createMesh(
-      l.VertexMesh.getVertexDeclaration("POSITION,NORMAL,UV"),
+      l.VertexMesh.getVertexDeclaration(
+        data.tangents ? "POSITION,NORMAL,UV,TANGENT" : "POSITION,NORMAL,UV",
+      ),
       this.vertices,
       new Uint16Array(data.indices),
     );
@@ -226,17 +318,17 @@ export class ZhudaDynamicMesh {
       !Number.isInteger(count) ||
       first < 0 ||
       count < 1 ||
-      (first + count) * 8 > this.vertices.length
+      (first + count) * this.stride > this.vertices.length
     )
       throw Error("Invalid vertex range");
     if (
       !this.vertices
-        .subarray(first * 8, (first + count) * 8)
+        .subarray(first * this.stride, (first + count) * this.stride)
         .every(Number.isFinite)
     )
       throw Error("Non-finite mesh update");
-    const bytes = first * 8 * 4,
-      length = count * 8 * 4;
+    const bytes = first * this.stride * 4,
+      length = count * this.stride * 4;
     this.mesh._vertexBuffer.setData(this.vertices.buffer, bytes, bytes, length);
     this.refreshBounds();
   }
@@ -244,17 +336,17 @@ export class ZhudaDynamicMesh {
     if (
       !Number.isInteger(i) ||
       i < 0 ||
-      i * 8 >= this.vertices.length ||
+      i * this.stride >= this.vertices.length ||
       ![x, y, z].every(Number.isFinite)
     )
       throw Error("Invalid vertex");
-    this.vertices.set([x, y, z], i * 8);
+    this.vertices.set([x, y, z], i * this.stride);
   }
   refreshBounds() {
     const l = (globalThis as any).Laya,
       min = new l.Vector3(Infinity, Infinity, Infinity),
       max = new l.Vector3(-Infinity, -Infinity, -Infinity);
-    for (let i = 0; i < this.vertices.length; i += 8) {
+    for (let i = 0; i < this.vertices.length; i += this.stride) {
       min.x = Math.min(min.x, this.vertices[i]);
       min.y = Math.min(min.y, this.vertices[i + 1]);
       min.z = Math.min(min.z, this.vertices[i + 2]);

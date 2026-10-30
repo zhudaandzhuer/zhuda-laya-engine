@@ -53,17 +53,20 @@ __export(index_exports, {
   ZhudaEffectEnvelope: () => ZhudaEffectEnvelope,
   ZhudaEngine: () => ZhudaEngine,
   ZhudaEventGate: () => ZhudaEventGate,
+  ZhudaFilmicPipeline: () => ZhudaFilmicPipeline,
   ZhudaHeightfield: () => ZhudaHeightfield,
   ZhudaInstanceGroup: () => ZhudaInstanceGroup,
   ZhudaLayaParticleRenderer: () => ZhudaLayaParticleRenderer,
   ZhudaLayaParticleRenderer3D: () => ZhudaLayaParticleRenderer3D,
   ZhudaLayaRibbonRenderer: () => ZhudaLayaRibbonRenderer,
   ZhudaLayaRibbonRenderer3D: () => ZhudaLayaRibbonRenderer3D,
+  ZhudaLitSurfaceMaterial: () => ZhudaLitSurfaceMaterial,
   ZhudaModelLibrary: () => ZhudaModelLibrary,
   ZhudaParticleEventLink: () => ZhudaParticleEventLink,
   ZhudaParticleMesh3D: () => ZhudaParticleMesh3D,
   ZhudaParticleSystem: () => ZhudaParticleSystem,
   ZhudaParticleSystem3D: () => ZhudaParticleSystem3D,
+  ZhudaPlanarReflection: () => ZhudaPlanarReflection,
   ZhudaPointerInput: () => ZhudaPointerInput,
   ZhudaPrefab: () => ZhudaPrefab,
   ZhudaRequestSlot: () => ZhudaRequestSlot,
@@ -90,10 +93,12 @@ __export(index_exports, {
   applySceneQuality: () => applySceneQuality,
   compareVisualFrames: () => compareVisualFrames,
   compose4: () => compose4,
+  computeMeshTangents: () => computeMeshTangents,
   configureSurfacePasses: () => configureSurfacePasses,
   convertUnityAnimationCurve: () => convertUnityAnimationCurve,
   convertUnityVisualMaterial: () => convertUnityVisualMaterial,
   createCustomSurfaceMaterial: () => createCustomSurfaceMaterial,
+  createPrefilteredEnvironment: () => createPrefilteredEnvironment,
   createSurfaceMaterial: () => createSurfaceMaterial,
   createSurfaceTexture: () => createSurfaceTexture,
   disposeMigratedMaterial: () => disposeMigratedMaterial,
@@ -1025,11 +1030,11 @@ function createCustomSurfaceMaterial(s) {
   const l = globalThis.Laya;
   if (!s.name || !s.vertex || !s.fragment)
     throw Error("Incomplete custom shader");
-  let registry = registeredShaders.get(l.Shader3D);
-  if (!registry) registeredShaders.set(l.Shader3D, registry = /* @__PURE__ */ new Map());
+  let registry2 = registeredShaders.get(l.Shader3D);
+  if (!registry2) registeredShaders.set(l.Shader3D, registry2 = /* @__PURE__ */ new Map());
   const signature = JSON.stringify(s);
   if (l.Shader3D.find(s.name)) {
-    if (registry.get(s.name) !== signature)
+    if (registry2.get(s.name) !== signature)
       throw Error("Shader name has a different contract");
   } else {
     const shader = l.Shader3D.add(s.name, !!s.instancing, false);
@@ -1049,11 +1054,63 @@ function createCustomSurfaceMaterial(s) {
       }
     );
     sub.addShaderPass(source(s.vertex), source(s.fragment));
-    registry.set(s.name, signature);
+    registry2.set(s.name, signature);
   }
   const material = new l.Material();
   material.setShaderName(s.name);
   return material;
+}
+function computeMeshTangents(data) {
+  const n = data.positions.length / 3;
+  if (!data.normals || !data.uvs || !Number.isInteger(n) || data.normals.length !== n * 3 || data.uvs.length !== n * 2 || data.indices.length % 3 || [...data.indices].some((i) => i >= n) || ![...data.positions, ...data.normals, ...data.uvs].every(Number.isFinite))
+    throw Error("Tangents require finite position/normal/UV triangles");
+  const a = new Float64Array(n * 3), b = new Float64Array(n * 3);
+  for (let i = 0; i < data.indices.length; i += 3) {
+    const [i0, i1, i2] = [
+      data.indices[i],
+      data.indices[i + 1],
+      data.indices[i + 2]
+    ];
+    const du1 = data.uvs[i1 * 2] - data.uvs[i0 * 2], dv1 = data.uvs[i1 * 2 + 1] - data.uvs[i0 * 2 + 1], du2 = data.uvs[i2 * 2] - data.uvs[i0 * 2], dv2 = data.uvs[i2 * 2 + 1] - data.uvs[i0 * 2 + 1];
+    const determinant = du1 * dv2 - du2 * dv1;
+    if (Math.abs(determinant) < 1e-12) continue;
+    for (let k = 0; k < 3; k++) {
+      const e1 = data.positions[i1 * 3 + k] - data.positions[i0 * 3 + k], e2 = data.positions[i2 * 3 + k] - data.positions[i0 * 3 + k];
+      for (const index of [i0, i1, i2]) {
+        a[index * 3 + k] += (e1 * dv2 - e2 * dv1) / determinant;
+        b[index * 3 + k] += (e2 * du1 - e1 * du2) / determinant;
+      }
+    }
+  }
+  const out = new Float32Array(n * 4);
+  for (let i = 0; i < n; i++) {
+    let nx = data.normals[i * 3], ny = data.normals[i * 3 + 1], nz = data.normals[i * 3 + 2], length = Math.hypot(nx, ny, nz);
+    if (length < 1e-9) throw Error("Zero mesh normal");
+    nx /= length;
+    ny /= length;
+    nz /= length;
+    const dot = nx * a[i * 3] + ny * a[i * 3 + 1] + nz * a[i * 3 + 2];
+    let x = a[i * 3] - nx * dot, y = a[i * 3 + 1] - ny * dot, z = a[i * 3 + 2] - nz * dot;
+    length = Math.hypot(x, y, z);
+    if (length < 1e-9) {
+      if (Math.abs(ny) < 0.99) {
+        x = -nz;
+        y = 0;
+        z = nx;
+      } else {
+        x = 0;
+        y = nz;
+        z = -ny;
+      }
+      length = Math.hypot(x, y, z);
+    }
+    x /= length;
+    y /= length;
+    z /= length;
+    const sign = (ny * z - nz * y) * b[i * 3] + (nz * x - nx * z) * b[i * 3 + 1] + (nx * y - ny * x) * b[i * 3 + 2] < 0 ? -1 : 1;
+    out.set([x, y, z, sign], i * 4);
+  }
+  return out;
 }
 var ZhudaDynamicMesh = class {
   constructor(data, parent) {
@@ -1062,24 +1119,35 @@ var ZhudaDynamicMesh = class {
     const l = globalThis.Laya, n = data.positions.length / 3;
     if (!Number.isInteger(n) || n < 3 || n > 65535)
       throw Error("Mesh requires 3..65535 vertices per chunk");
-    if (data.normals && data.normals.length !== n * 3 || data.uvs && data.uvs.length !== n * 2 || !data.indices.length || data.indices.length % 3 || [...data.indices].some((i) => i >= n))
+    if (data.normals && data.normals.length !== n * 3 || data.uvs && data.uvs.length !== n * 2 || data.tangents && data.tangents.length !== n * 4 || !data.indices.length || data.indices.length % 3 || [...data.indices].some((i) => i >= n))
       throw Error("Invalid mesh attributes or indices");
-    this.vertices = new Float32Array(n * 8);
+    this.stride = data.tangents ? 12 : 8;
+    this.vertices = new Float32Array(n * this.stride);
     for (let i = 0; i < n; i++) {
-      this.vertices.set(data.positions.subarray(i * 3, i * 3 + 3), i * 8);
+      this.vertices.set(
+        data.positions.subarray(i * 3, i * 3 + 3),
+        i * this.stride
+      );
       this.vertices.set(
         data.normals?.subarray(i * 3, i * 3 + 3) || [0, 1, 0],
-        i * 8 + 3
+        i * this.stride + 3
       );
       this.vertices.set(
         data.uvs?.subarray(i * 2, i * 2 + 2) || [0, 0],
-        i * 8 + 6
+        i * this.stride + 6
       );
+      if (data.tangents)
+        this.vertices.set(
+          data.tangents.subarray(i * 4, i * 4 + 4),
+          i * this.stride + 8
+        );
     }
     if (!this.vertices.every(Number.isFinite))
       throw Error("Non-finite mesh data");
     this.mesh = l.PrimitiveMesh._createMesh(
-      l.VertexMesh.getVertexDeclaration("POSITION,NORMAL,UV"),
+      l.VertexMesh.getVertexDeclaration(
+        data.tangents ? "POSITION,NORMAL,UV,TANGENT" : "POSITION,NORMAL,UV"
+      ),
       this.vertices,
       new Uint16Array(data.indices)
     );
@@ -1089,22 +1157,22 @@ var ZhudaDynamicMesh = class {
   }
   updateRange(first, count) {
     if (this.disposed) throw Error("Disposed mesh");
-    if (!Number.isInteger(first) || !Number.isInteger(count) || first < 0 || count < 1 || (first + count) * 8 > this.vertices.length)
+    if (!Number.isInteger(first) || !Number.isInteger(count) || first < 0 || count < 1 || (first + count) * this.stride > this.vertices.length)
       throw Error("Invalid vertex range");
-    if (!this.vertices.subarray(first * 8, (first + count) * 8).every(Number.isFinite))
+    if (!this.vertices.subarray(first * this.stride, (first + count) * this.stride).every(Number.isFinite))
       throw Error("Non-finite mesh update");
-    const bytes = first * 8 * 4, length = count * 8 * 4;
+    const bytes = first * this.stride * 4, length = count * this.stride * 4;
     this.mesh._vertexBuffer.setData(this.vertices.buffer, bytes, bytes, length);
     this.refreshBounds();
   }
   setPosition(i, x, y, z) {
-    if (!Number.isInteger(i) || i < 0 || i * 8 >= this.vertices.length || ![x, y, z].every(Number.isFinite))
+    if (!Number.isInteger(i) || i < 0 || i * this.stride >= this.vertices.length || ![x, y, z].every(Number.isFinite))
       throw Error("Invalid vertex");
-    this.vertices.set([x, y, z], i * 8);
+    this.vertices.set([x, y, z], i * this.stride);
   }
   refreshBounds() {
     const l = globalThis.Laya, min = new l.Vector3(Infinity, Infinity, Infinity), max = new l.Vector3(-Infinity, -Infinity, -Infinity);
-    for (let i = 0; i < this.vertices.length; i += 8) {
+    for (let i = 0; i < this.vertices.length; i += this.stride) {
       min.x = Math.min(min.x, this.vertices[i]);
       min.y = Math.min(min.y, this.vertices[i + 1]);
       min.z = Math.min(min.z, this.vertices[i + 2]);
@@ -7931,6 +7999,226 @@ var ZhudaCameraRig = class {
   }
 };
 
+// packages/core/runtime3d/Filmic.ts
+function requireCapabilities(l, names) {
+  for (const name of names)
+    if (!l.LayaGL.renderEngine.getCapable(l.RenderCapable[name]))
+      throw Error("Filmic rendering requires " + name);
+}
+function createPrefilteredEnvironment(spec, pixels) {
+  if (!Number.isInteger(spec.size) || spec.size < 1 || spec.size & spec.size - 1 || spec.ambientSH.length !== 27 || !spec.ambientSH.every(Number.isFinite))
+    throw Error("Invalid environment descriptor");
+  if (spec.levels.length !== Math.log2(spec.size) + 1)
+    throw Error("Incomplete GGX mip chain");
+  let offset = 0;
+  for (const [i, level] of spec.levels.entries()) {
+    const size = Math.max(1, spec.size >> i), elements = size * size * 4 * 6;
+    if (level.size !== size || level.offset !== offset || level.elements !== elements)
+      throw Error("Invalid environment mip layout");
+    offset += elements;
+  }
+  if (offset !== pixels.length || !pixels.every((v) => Number.isFinite(v) && v >= 0))
+    throw Error("Invalid environment pixels");
+  const l = globalThis.Laya;
+  requireCapabilities(l, [
+    "TextureFormat_R32G32B32A32",
+    "Texture_FloatLinearFiltering"
+  ]);
+  const texture = new l.TextureCube(
+    spec.size,
+    l.TextureFormat.R32G32B32A32,
+    true,
+    false
+  );
+  const faces = (level) => [4, 5, 0, 1, 2, 3].map(
+    (i) => pixels.subarray(
+      level.offset + i * level.size * level.size * 4,
+      level.offset + (i + 1) * level.size * level.size * 4
+    )
+  );
+  texture.setPixelsData(faces(spec.levels[0]), false, false);
+  for (let i = 1; i < spec.levels.length; i++) {
+    const level = spec.levels[i];
+    texture.updateSubPixelsData(
+      faces(level),
+      0,
+      0,
+      level.size,
+      level.size,
+      i,
+      false,
+      false,
+      false
+    );
+  }
+  return {
+    texture,
+    apply(scene) {
+      scene.iblTex = texture;
+      scene.iblTexRGBD = false;
+      scene.ambientMode = l.AmbientMode.SphericalHarmonics;
+      scene.ambientSH = new Float32Array(spec.ambientSH);
+    },
+    dispose() {
+      texture.destroy();
+    }
+  };
+}
+var ZhudaFilmicPipeline = class {
+  constructor(camera, options = {}) {
+    this.disposed = false;
+    this.ownsTAA = false;
+    this.camera = camera;
+    const l = globalThis.Laya;
+    for (const k of [
+      "exposure",
+      "contrast",
+      "saturation",
+      "aoIntensity",
+      "aoRadius",
+      "bloomIntensity"
+    ])
+      if (options[k] !== void 0 && (!Number.isFinite(options[k]) || options[k] < 0))
+        throw Error("Invalid filmic option " + k);
+    if (camera.postProcess)
+      throw Error("Camera already owns a postprocess chain");
+    requireCapabilities(l, ["RenderTextureFormat_R16G16B16A16"]);
+    this.previous = camera.postProcess;
+    this.previousHDR = camera.enableHDR;
+    this.previousMSAA = camera.msaa;
+    this.previousDepth = camera.depthTextureMode;
+    const post = this.post = new l.PostProcess();
+    this.ao = new l.ScalableAO();
+    this.ao.intensity = options.aoIntensity ?? 0.65;
+    this.ao.radius = options.aoRadius ?? 0.7;
+    this.ao.aoQuality = l.AOQUALITY.High;
+    this.ao.active = options.ao !== false;
+    this.bloom = new l.BloomEffect();
+    this.bloom.intensity = options.bloomIntensity ?? 0.12;
+    this.bloom.threshold = 1.2;
+    this.bloom.diffusion = 4;
+    this.bloom.active = options.bloom !== false;
+    this.grade = new l.ColorGradEffect();
+    this.grade.toneMapping = l.ToneMappingType.ACES;
+    this.grade.enableColorAdjust = true;
+    this.grade.postExposure = options.exposure ?? 1;
+    this.grade.contrast = options.contrast ?? 1.04;
+    this.grade.saturation = options.saturation ?? 0.96;
+    post.addEffect(this.ao);
+    post.addEffect(this.bloom);
+    post.addEffect(this.grade);
+    camera.enableHDR = true;
+    camera.postProcess = post;
+    if (options.temporalAA) {
+      this.ownsTAA = true;
+      camera.taa = true;
+      camera.taaSettings.quality = l.TemporalAAQuality.High;
+    }
+  }
+  /** Call on camera cuts, teleports and timeline seeks, not on ordinary movement. */
+  resetHistory() {
+    if (this.disposed) throw Error("Disposed filmic pipeline");
+    if (this.ownsTAA) this.camera.taaSettings.resetHistory();
+  }
+  dispose() {
+    if (this.disposed) return;
+    this.disposed = true;
+    if (this.ownsTAA) this.camera.taa = false;
+    if (this.camera.postProcess === this.post) {
+      this.camera.postProcess = this.previous;
+      this.camera.enableHDR = this.previousHDR;
+      this.camera.msaa = this.previousMSAA;
+      this.camera.depthTextureMode = this.previousDepth;
+    }
+    this.post.clearEffect();
+    this.post._context.command.clear();
+    const owned = /* @__PURE__ */ new Set([
+      this.grade._lutBuilderMat,
+      this.grade._lutTex,
+      this.grade._lutShaderData,
+      this.ao._shaderData,
+      this.bloom._shaderData,
+      this.bloom._compositeShaderData,
+      this.post._compositeShaderData
+    ]);
+    for (const resource of owned)
+      if (resource && !resource.destroyed) {
+        if ("lock" in resource) resource.lock = false;
+        resource.destroy();
+      }
+    this.post._context.camera = null;
+  }
+};
+var ZhudaPlanarReflection = class {
+  constructor(scene, options) {
+    this.disposed = false;
+    const l = globalThis.Laya;
+    if (![options.width, options.height].every(
+      (v) => Number.isInteger(v) && v > 0 && v <= 8192
+    ) || !Number.isInteger(options.excludedLayer) || options.excludedLayer < 0 || options.excludedLayer > 30 || !Number.isFinite(options.planeY ?? 0))
+      throw Error("Invalid planar reflection options");
+    const near = options.near ?? 0.08, far = options.far ?? 1500;
+    if (!Number.isFinite(near) || !Number.isFinite(far) || near <= 0 || far <= near)
+      throw Error("Invalid reflection clipping range");
+    requireCapabilities(l, ["RenderTextureFormat_R16G16B16A16"]);
+    this.planeY = options.planeY ?? 0;
+    this.texture = new l.RenderTexture(
+      options.width,
+      options.height,
+      l.RenderTargetFormat.R16G16B16A16,
+      l.RenderTargetFormat.DEPTH_16,
+      false,
+      1
+    );
+    this.camera = new l.Camera(options.width / options.height, near, far);
+    this.camera.name = "zhuda-planar-reflection";
+    this.camera.enableHDR = true;
+    this.camera.renderTarget = this.texture;
+    this.camera.renderingOrder = -100;
+    this.camera.cullingMask = ~(1 << options.excludedLayer);
+    scene.addChild(this.camera);
+  }
+  update(eye, target, fieldOfView, aspect) {
+    if (this.disposed) throw Error("Disposed reflection");
+    if (eye.length !== 3 || target.length !== 3 || ![...eye, ...target, fieldOfView].every(Number.isFinite) || fieldOfView <= 0 || fieldOfView >= 179)
+      throw Error("Invalid reflection pose");
+    if (Math.hypot(...eye.map((v, i) => v - target[i])) < 1e-9)
+      throw Error("Reflection eye and target must differ");
+    const l = globalThis.Laya;
+    if (aspect !== void 0) {
+      if (!Number.isFinite(aspect) || aspect <= 0)
+        throw Error("Invalid reflection aspect");
+      this.camera.aspectRatio = aspect;
+    }
+    this.camera.fieldOfView = fieldOfView;
+    this.camera.transform.position = new l.Vector3(
+      eye[0],
+      2 * this.planeY - eye[1],
+      eye[2]
+    );
+    const vertical = Math.hypot(eye[0] - target[0], eye[2] - target[2]) < 1e-9;
+    this.camera.transform.lookAt(
+      new l.Vector3(target[0], 2 * this.planeY - target[1], target[2]),
+      vertical ? new l.Vector3(0, 0, 1) : new l.Vector3(0, -1, 0),
+      false
+    );
+    const e = this.camera.projectionViewMatrix.elements;
+    return Array.from({ length: 4 }, (_, i) => [
+      e[i * 4],
+      e[i * 4 + 1],
+      e[i * 4 + 2],
+      e[i * 4 + 3]
+    ]);
+  }
+  dispose() {
+    if (this.disposed) return;
+    this.disposed = true;
+    this.camera.renderTarget = null;
+    this.camera.destroy(true);
+    this.texture.destroy();
+  }
+};
+
 // packages/core/terrain/Terrain2D.ts
 function validateTerrain2D(spec) {
   const s = spec, e = [];
@@ -8880,6 +9168,7 @@ FogHandle(gl_Position.z);
 }`;
 var fragment3D = (surface, fog = true) => `#include "Color.glsl";
 #include "Scene.glsl";
+#include "Camera.glsl";
 #include "SceneFog.glsl";
 varying vec2 v_ZhudaUV;varying vec3 v_ZhudaPosition;varying vec3 v_ZhudaNormal;
 ${surface}
@@ -9027,6 +9316,182 @@ var shaderRecipes = {
     surface: "vec4 zhudaSurface(vec2 uv,vec4 color){return vec4(color.rgb*u_ZhudaTint.rgb*u_ZhudaTint.a,color.a*u_ZhudaTint.a);}"
   }
 };
+
+// packages/core/shaders/LitSurfaceTemplates.ts
+var litVertex = '#define SHADER_NAME PBRStandardVS\n#include "Math.glsl";\n#include "Scene.glsl";\n#include "SceneFogInput.glsl";\n#include "Camera.glsl";\n#include "Sprite3DVertex.glsl";\n#include "VertexCommon.glsl";\n#include "PBRVertex.glsl";\n#if defined(DETAILTEXTURE) || defined(DETAILNORMAL)\nvarying vec2 v_DetailUV;\n#endif\nvoid main(){Vertex vertex;getVertexParams(vertex);PixelParams pixel;initPixelParams(pixel,vertex);\n#if defined(DETAILTEXTURE) || defined(DETAILNORMAL)\n#ifdef UV\nv_DetailUV=transformUV(vertex.texCoord0,u_DetailTillingOffset);\n#else\nv_DetailUV=vec2(0.0);\n#endif\n#endif\ngl_Position=getPositionCS(pixel.positionWS);gl_Position=remapPositionZ(gl_Position);\n#ifdef FOG\nFogHandle(gl_Position.z);\n#endif\n}';
+var litFragment = '#define SHADER_NAME PBRStandardFS\n#include "Color.glsl";\n#include "Scene.glsl";\n#include "SceneFog.glsl";\n#include "Camera.glsl";\n#include "Sprite3DFrag.glsl";\n#include "PBRMetallicFrag.glsl";\n#if defined(DETAILTEXTURE) || defined(DETAILNORMAL)\nvarying vec2 v_DetailUV;\n#define ColorSpaceDouble vec3(4.59479380, 4.59479380, 4.59479380);\nvec3 BlendNormals(vec3 n1,vec3 n2){return normalize(vec3(n1.xy+n2.xy,n1.z*n2.z));}\n#endif\nvoid initSurfaceInputs(inout SurfaceInputs inputs,const in PixelParams pixel){\n#ifdef UV\nvec2 uv=transformUV(pixel.uv0,u_TilingOffset);\n#else\nvec2 uv=vec2(0.0);\n#endif\ninputs.diffuseColor=u_AlbedoColor.rgb;inputs.alpha=u_AlbedoColor.a;\n#ifdef COLOR\n#ifdef ENABLEVERTEXCOLOR\ninputs.diffuseColor*=pixel.vertexColor.xyz;inputs.alpha*=pixel.vertexColor.a;\n#endif\n#endif\ninputs.alphaTest=u_AlphaTestValue;\n#ifdef ALBEDOTEXTURE\nvec4 albedoSampler=texture2D(u_AlbedoTexture,uv);\n#ifdef Gamma_u_AlbedoTexture\nalbedoSampler=gammaToLinear(albedoSampler);\n#endif\ninputs.diffuseColor*=albedoSampler.rgb;inputs.alpha*=albedoSampler.a;\n#endif\n#ifdef DETAILTEXTURE\nvec3 detailSampler=texture2D(u_DetailAlbedoTexture,v_DetailUV).rgb;\n#ifdef Gamma_u_DetailAlbedoTexture\ndetailSampler=gammaToLinear(detailSampler);\n#endif\ndetailSampler*=ColorSpaceDouble;inputs.diffuseColor*=detailSampler;\n#endif\ninputs.normalTS=vec3(0.0,0.0,1.0);\n#ifdef NORMALTEXTURE\nvec3 normalSampler=texture2D(u_NormalTexture,uv).rgb;normalSampler=normalize(normalSampler*2.0-1.0);normalSampler.y*=-1.0;inputs.normalTS=normalScale(normalSampler,u_NormalScale);\n#endif\n#ifdef DETAILNORMAL\nvec3 detailnormalSampler=texture2D(u_DetailNormalTexture,v_DetailUV).rgb;detailnormalSampler=normalize(detailnormalSampler*2.0-1.0);detailnormalSampler.y*=-1.0;detailnormalSampler=normalScale(detailnormalSampler,u_DetailNormalScale);inputs.normalTS=BlendNormals(inputs.normalTS,detailnormalSampler);\n#endif\ninputs.metallic=u_Metallic;inputs.smoothness=u_Smoothness;\n#ifdef METALLICGLOSSTEXTURE\nvec4 metallicSampler=texture2D(u_MetallicGlossTexture,uv);\n#ifdef Gamma_u_MetallicGlossTexture\nmetallicSampler=gammaToLinear(metallicSampler);\n#endif\ninputs.metallic=metallicSampler.x;\n#ifdef SMOOTHNESSSOURCE_ALBEDOTEXTURE_ALPHA\n#ifdef ALBEDOTEXTURE\ninputs.smoothness=(albedoSampler.a*u_Smoothness);\n#endif\n#else\ninputs.smoothness=(metallicSampler.a*u_Smoothness);\n#endif\n#endif\ninputs.occlusion=1.0;\n#ifdef OCCLUSIONTEXTURE\nvec4 occlusionSampler=texture2D(u_OcclusionTexture,uv);\n#ifdef Gamma_u_OcclusionTexture\nocclusionSampler=gammaToLinear(occlusionSampler);\n#endif\nfloat occlusion=occlusionSampler.g;inputs.occlusion=(1.0-u_OcclusionStrength)+occlusion*u_OcclusionStrength;\n#endif\ninputs.emissionColor=vec3(0.0);\n#ifdef EMISSION\ninputs.emissionColor=u_EmissionColor.rgb*u_EmissionIntensity;\n#ifdef EMISSIONTEXTURE\nvec4 emissionSampler=texture2D(u_EmissionTexture,uv);\n#ifdef Gamma_u_EmissionTexture\nemissionSampler=gammaToLinear(emissionSampler);\n#endif\ninputs.emissionColor*=emissionSampler.rgb;\n#endif\n#endif\n#ifdef CLEARCOAT\ninputs.clearCoat=u_ClearCoatFactor;inputs.clearCoatRoughness=u_ClearCoatRoughness;\n#ifdef CLEARCOATMAP\nvec4 clearCoatSampler=texture2D(u_ClearCoatTexture,uv);inputs.clearCoat*=clearCoatSampler.r;\n#endif\n#ifdef CLEARCOAT_ROUGHNESSMAP\nvec4 clearcoatSampleRoughness=texture2D(u_ClearCoatRoughnessTexture,uv);inputs.clearCoatRoughness*=clearcoatSampleRoughness.g;\n#endif\n#ifdef CLEARCOAT_NORMAL\nvec3 clearCoatNormalSampler=texture2D(u_ClearCoatNormalTexture,uv).rgb;clearCoatNormalSampler=normalize(clearCoatNormalSampler*2.0-1.0);clearCoatNormalSampler.y*=-1.0;inputs.clearCoatNormalTS=clearCoatNormalSampler;\n#endif\n#endif\n#ifdef ANISOTROPIC\ninputs.anisotropy=u_AnisotropyStrength;vec2 direction=vec2(1.0,0.0);\n#ifdef ANISOTROPYMAP\nvec3 anisotropySampler=texture2D(u_AnisotropyTexture,uv).rgb;inputs.anisotropy*=anisotropySampler.b;direction=anisotropySampler.xy*2.0-1.0;\n#endif\nvec2 anisotropyRotation=vec2(cos(u_AnisotropyRotation),sin(u_AnisotropyRotation));mat2 rotationMatrix=mat2(anisotropyRotation.x,anisotropyRotation.y,-anisotropyRotation.y,anisotropyRotation.x);inputs.anisotropyDirection=rotationMatrix*direction;\n#endif\n}void main(){PixelParams pixel;getPixelParams(pixel);SurfaceInputs inputs;initSurfaceInputs(inputs,pixel);vec4 surfaceColor=PBR_Metallic_Flow(inputs,pixel);\n#ifdef FOG\nsurfaceColor.rgb=sceneLitFog(surfaceColor.rgb);\n#endif\ngl_FragColor=surfaceColor;gl_FragColor=outputTransform(gl_FragColor);}';
+var litShadowFragment = '#define SHADER_NAME PBRDepthFS\n#include "DepthFrag.glsl";\n#include "Sprite3DFrag.glsl";\n#ifdef ALPHATEST\nvarying vec2 v_AlphaTestUV;varying float v_AlphaTestVertexAlpha;\n#endif\nvoid main(){\n#ifdef ALPHATEST\nfloat alpha=u_AlbedoColor.a*v_AlphaTestVertexAlpha;\n#ifdef ALBEDOTEXTURE\n#ifdef UV\nvec2 uv=transformUV(v_AlphaTestUV,u_TilingOffset);\n#else\nvec2 uv=vec2(0.0);\n#endif\nalpha*=texture2D(u_AlbedoTexture,uv).a;\n#endif\nif(alpha<u_AlphaTestValue)discard;\n#endif\ngl_FragColor=getDepthColor();}';
+var litDepthVertex = '#define SHADER_NAME PBRStandardDepthNormalVS\n#include "Math.glsl";\n#include "Camera.glsl";\n#include "Sprite3DVertex.glsl";\n#include "VertexCommon.glsl";\n#include "PBRVertex.glsl";\nvarying vec4 v_PositionCS;void main(){Vertex vertex;getVertexParams(vertex);PixelParams pixel;initPixelParams(pixel,vertex);sharePixelParams(pixel);vec4 positionCS=getPositionCS(pixel.positionWS);v_PositionCS=positionCS;gl_Position=positionCS;gl_Position=remapPositionZ(gl_Position);}';
+var litDepthFragment = '#define SHADER_NAME PBRStandardDepthNormalFS\n#include "Color.glsl";\n#include "Scene.glsl";\n#include "Camera.glsl";\n#include "Sprite3DFrag.glsl";\n#include "ShadingFrag.glsl";\n#include "DepthNormalFrag.glsl";\nvarying vec4 v_PositionCS;void main(){PixelParams pixel;getPixelParams(pixel);\n#ifdef ALPHATEST\nfloat alpha=u_AlbedoColor.a;\n#if defined(COLOR) && defined(ENABLEVERTEXCOLOR)\nalpha*=pixel.vertexColor.a;\n#endif\n#ifdef ALBEDOTEXTURE\n#ifdef UV\nvec2 alphaUV=transformUV(pixel.uv0,u_TilingOffset);\n#else\nvec2 alphaUV=vec2(0.0);\n#endif\nalpha*=texture2D(u_AlbedoTexture,alphaUV).a;\n#endif\nif(alpha<u_AlphaTestValue)discard;\n#endif\nvec3 normalWS=pixel.normalWS;\n#ifdef NORMALTEXTURE\n#ifdef UV\nvec2 uv=transformUV(pixel.uv0,u_TilingOffset);vec3 normalSampler=texture2D(u_NormalTexture,uv).rgb;normalSampler=normalize(normalSampler*2.0-1.0);normalSampler.y*=-1.0;vec3 normalTS=normalScale(normalSampler,u_NormalScale);normalWS=normalize(pixel.TBN*normalTS);\n#endif\n#endif\nvec4 positionCS=v_PositionCS;vec4 dephtNormal=encodeDepthNormal(positionCS,normalWS);gl_FragColor=dephtNormal;}';
+var litShadowVertex = '#define SHADER_NAME DepthVS\n#include "DepthVertex.glsl";\n#ifdef ALPHATEST\nvarying vec2 v_AlphaTestUV;varying float v_AlphaTestVertexAlpha;\n#endif\nvoid main(){Vertex vertex;getVertexParams(vertex);\n#ifdef ALPHATEST\n#ifdef UV\nv_AlphaTestUV=vertex.texCoord0;\n#else\nv_AlphaTestUV=vec2(0.0);\n#endif\n#if defined(COLOR) && defined(ENABLEVERTEXCOLOR)\nv_AlphaTestVertexAlpha=vertex.vertexColor.a;\n#else\nv_AlphaTestVertexAlpha=1.0;\n#endif\n#endif\nmat4 worldMat=getWorldMatrix();vec4 pos=(worldMat*vec4(vertex.positionOS,1.0));vec3 positionWS=pos.xyz/pos.w;mat4 normalMat=transpose(inverse(worldMat));vec3 normalWS=normalize((normalMat*vec4(vertex.normalOS,0.0)).xyz);vec4 positionCS=DepthPositionCS(positionWS,normalWS);gl_Position=remapPositionZ(positionCS);}';
+
+// packages/core/shaders/LitSurfaceMaterial.ts
+var registry = /* @__PURE__ */ new WeakMap();
+var fields = {
+  u_AlbedoColor: "Color",
+  u_TilingOffset: "Vector4",
+  u_NormalScale: "Float",
+  u_Metallic: "Float",
+  u_Smoothness: "Float",
+  u_OcclusionStrength: "Float",
+  u_AlphaTestValue: "Float",
+  u_EmissionColor: "Color",
+  u_EmissionIntensity: "Float",
+  u_AlbedoTexture: "Texture2D",
+  u_NormalTexture: "Texture2D",
+  u_OcclusionTexture: "Texture2D",
+  u_EmissionTexture: "Texture2D",
+  u_MetallicGlossTexture: "Texture2D",
+  u_ClearCoatFactor: "Float",
+  u_ClearCoatTexture: "Texture2D",
+  u_ClearCoatRoughness: "Float",
+  u_ClearCoatRoughnessTexture: "Texture2D",
+  u_ClearCoatNormalTexture: "Texture2D"
+};
+var ZhudaLitSurfaceMaterial = class {
+  constructor(spec, textures = {}) {
+    this.disposed = false;
+    const uniforms = spec.uniforms || {};
+    const errors = validateShaderSpec({
+      schemaVersion: 1,
+      dimension: 3,
+      name: spec.name,
+      surface: spec.surface,
+      uniforms
+    });
+    if (errors.length) throw Error(errors.join("; "));
+    if (spec.normalConvention && !["directx", "opengl"].includes(spec.normalConvention))
+      throw Error("Invalid normal map convention");
+    for (const v of [
+      spec.material?.clearCoat ?? 0,
+      spec.material?.clearCoatRoughness ?? 0.1
+    ])
+      if (!Number.isFinite(v) || v < 0 || v > 1)
+        throw Error("Invalid clear coat factor");
+    for (const [k, u] of Object.entries(uniforms))
+      if (u.type === "texture2D" && !textures[k])
+        throw Error("Missing texture binding " + k);
+    this.spec = {
+      ...spec,
+      uniforms: JSON.parse(JSON.stringify(uniforms)),
+      material: spec.material ? { ...spec.material } : void 0
+    };
+    const l = globalThis.Laya;
+    let records = registry.get(l.Shader3D);
+    if (!records) registry.set(l.Shader3D, records = /* @__PURE__ */ new Map());
+    const signature = JSON.stringify({
+      surface: spec.surface,
+      uniforms,
+      normalConvention: spec.normalConvention || "directx"
+    });
+    if (l.Shader3D.find(spec.name)) {
+      if (records.get(spec.name) !== signature)
+        throw Error("Shader name has a different contract");
+    } else {
+      const types = {
+        float: "Float",
+        vec2: "Vector2",
+        vec3: "Vector3",
+        vec4: "Vector4",
+        texture2D: "Texture2D"
+      };
+      const map = Object.fromEntries(
+        Object.entries(fields).map(([k, v]) => [k, l.ShaderDataType[v]])
+      );
+      for (const [k, u] of Object.entries(uniforms))
+        map[k] = l.ShaderDataType[types[u.type]];
+      const helper = Object.entries(uniforms).filter(([, u]) => u.type === "texture2D").map(
+        ([k]) => `vec4 zhudaSample_${k}(vec2 uv){vec4 c=texture2D(${k},uv);
+#ifdef Gamma_${k}
+c=gammaToLinear(c);
+#endif
+return c;}`
+      ).join("\n");
+      const hook = `struct ZhudaLitSurface {vec3 baseColor;float metallic;float roughness;float occlusion;vec3 emission;};
+${helper}
+${spec.surface}
+`;
+      const call = `initSurfaceInputs(inputs,pixel);ZhudaLitSurface s;s.baseColor=inputs.diffuseColor;s.metallic=inputs.metallic;s.roughness=1.0-inputs.smoothness;s.occlusion=inputs.occlusion;s.emission=inputs.emissionColor;
+#ifdef UV
+vec2 zhudaUV=pixel.uv0;
+#else
+vec2 zhudaUV=vec2(0.0);
+#endif
+zhudaSurface(s,zhudaUV,pixel.positionWS,pixel.normalWS);inputs.diffuseColor=max(s.baseColor,vec3(0.0));inputs.metallic=clamp(s.metallic,0.0,1.0);inputs.smoothness=1.0-clamp(s.roughness,0.04,1.0);inputs.occlusion=clamp(s.occlusion,0.0,1.0);inputs.emissionColor=max(s.emission,vec3(0.0));`;
+      const normals = (source) => spec.normalConvention === "opengl" ? source.replace(
+        /\b(?:normalSampler|detailnormalSampler|clearCoatNormalSampler)\.y\*=-1\.0;/g,
+        ""
+      ) : source;
+      const fragment = normals(litFragment).replace("void main(){", hook + "void main(){").replace("initSurfaceInputs(inputs,pixel);", call);
+      const shader = l.Shader3D.add(spec.name, true, true);
+      shader.shaderType = l.ShaderFeatureType.D3;
+      const sub = new l.SubShader(l.SubShader.DefaultAttributeMap, map, {});
+      shader.addSubShader(sub);
+      sub.addShaderPass(litVertex, fragment);
+      sub.addShaderPass(litShadowVertex, litShadowFragment, "ShadowCaster");
+      sub.addShaderPass(
+        litDepthVertex,
+        normals(litDepthFragment),
+        "DepthNormal"
+      );
+      records.set(spec.name, signature);
+    }
+    const m = createSurfaceMaterial({ type: "pbr", ...spec.material });
+    m.setShaderName(spec.name);
+    const settings = spec.material || {};
+    m.albedoColor = new l.Color(...settings.color || [1, 1, 1, 1]);
+    m.metallic = settings.metallic ?? 0;
+    m.smoothness = 1 - (settings.roughness ?? 0.5);
+    const slots = {
+      albedo: "albedoTexture",
+      normal: "normalTexture",
+      metallicGloss: "metallicGlossTexture",
+      emission: "emissionTexture"
+    };
+    for (const [k, value] of Object.entries(settings.textures || {}))
+      m[slots[k]] = value?.bitmap || value;
+    m.emissionColor = new l.Color(...settings.emission || [0, 0, 0], 1);
+    m.tilingOffset = new l.Vector4(1, 1, 0, 0);
+    m.normalTextureScale = 1;
+    m.occlusionTextureStrength = 1;
+    m.emissionIntensity = 1;
+    m.clearCoatEnable = (spec.material?.clearCoat ?? 0) > 0;
+    m.clearCoat = spec.material?.clearCoat ?? 0;
+    m.clearCoatRoughness = spec.material?.clearCoatRoughness ?? 0.1;
+    m.enableEmission = true;
+    this.material = m;
+    for (const [k, u] of Object.entries(uniforms))
+      this.set(
+        k,
+        u.type === "texture2D" ? textures[k] : u.value ?? (u.type === "float" ? 0 : Array(Number(u.type.slice(-1))).fill(0))
+      );
+  }
+  set(name, value) {
+    if (this.disposed) throw Error("Disposed material");
+    const u = this.spec.uniforms?.[name];
+    if (!u) throw Error("Unknown uniform " + name);
+    const l = globalThis.Laya;
+    if (u.type === "texture2D")
+      this.material.setTexture(name, value?.bitmap || value);
+    else if (u.type === "float") {
+      if (!Number.isFinite(value)) throw Error("Expected finite float");
+      this.material.setFloat(name, value);
+    } else {
+      const n = Number(u.type.slice(-1));
+      if (!Array.isArray(value) || value.length !== n || !value.every(Number.isFinite))
+        throw Error("Invalid vector");
+      this.material[{ 2: "setVector2", 3: "setVector3", 4: "setVector4" }[n]](name, new l["Vector" + n](...value));
+    }
+  }
+  dispose() {
+    if (this.disposed) return;
+    this.disposed = true;
+    const l = globalThis.Laya;
+    for (const [k, u] of Object.entries(this.spec.uniforms || {}))
+      if (u.type === "texture2D") this.material.setTexture(k, null);
+    disposeSurfaceMaterial(this.material);
+  }
+};
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
   ENGINE_PRESET_PROFILES,
@@ -9057,17 +9522,20 @@ var shaderRecipes = {
   ZhudaEffectEnvelope,
   ZhudaEngine,
   ZhudaEventGate,
+  ZhudaFilmicPipeline,
   ZhudaHeightfield,
   ZhudaInstanceGroup,
   ZhudaLayaParticleRenderer,
   ZhudaLayaParticleRenderer3D,
   ZhudaLayaRibbonRenderer,
   ZhudaLayaRibbonRenderer3D,
+  ZhudaLitSurfaceMaterial,
   ZhudaModelLibrary,
   ZhudaParticleEventLink,
   ZhudaParticleMesh3D,
   ZhudaParticleSystem,
   ZhudaParticleSystem3D,
+  ZhudaPlanarReflection,
   ZhudaPointerInput,
   ZhudaPrefab,
   ZhudaRequestSlot,
@@ -9094,10 +9562,12 @@ var shaderRecipes = {
   applySceneQuality,
   compareVisualFrames,
   compose4,
+  computeMeshTangents,
   configureSurfacePasses,
   convertUnityAnimationCurve,
   convertUnityVisualMaterial,
   createCustomSurfaceMaterial,
+  createPrefilteredEnvironment,
   createSurfaceMaterial,
   createSurfaceTexture,
   disposeMigratedMaterial,
