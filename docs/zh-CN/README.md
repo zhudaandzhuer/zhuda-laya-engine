@@ -14,19 +14,19 @@ E4ZEhFCYy4b5pYXJUbMC9KjRitkypyqtZvpSRerLWHCb
 
 ---
 
-# 把地平线甩在身后。
+# 驾车进入这片滨水港湾。
 
 [English](../../README.md) · 简体中文
 
-[![NEON APEX：导入 S800 车模、氮气拖尾与实际 3D 游戏录制](https://raw.githubusercontent.com/zhudaandzhuer/zhuda-neon-racer/main/docs/media/skyline-gameplay.gif?v=s800-2.1)](https://zhudaandzhuer.github.io/zhuda-neon-racer/)
+<a href="https://zhudaandzhuer.github.io/zhuda-neon-racer/harbor-film.html"><picture><source type="image/webp" srcset="https://raw.githubusercontent.com/zhudaandzhuer/zhuda-neon-racer/main/docs/media/harbor-preview.webp?v=harbor-01" /><img src="https://raw.githubusercontent.com/zhudaandzhuer/zhuda-neon-racer/main/docs/media/harbor-preview.gif?v=harbor-01" alt="HARBOR / 01：High 画质的实际 WebGL 渲染、S800 驾驶、湿路反射与码头仓库" width="1280" /></picture></a>
 
-### NEON APEX · Skyline Tour
+### HARBOR / 01 · 使用 zhuda-laya-engine 制作
 
-**漂移，氮气，把地平线甩在身后。** 驾驶导入的银黑 S800 车模，使用 PBR 材质，在城市高架赛道上与三位对手竞速，赢取奖金并升级调校。四条赛道、车库与进度保存，均可实际游玩。
+**光照、材质与动态，组成可以进入的港湾。** 驾驶 S800 探索滨水场景：实拍 PBR 表面、HDR 光照、柔和阴影、湿路反射与专门制作的码头仓库。车辆具有惯性、转向、独立车轮动画和跟随相机。
 
-**[免费开跑 →](https://zhudaandzhuer.github.io/zhuda-neon-racer/)** · [观看游戏影片](https://zhudaandzhuer.github.io/zhuda-neon-racer/showcase.html)
+**[进入港湾驾驶 →](https://zhudaandzhuer.github.io/zhuda-neon-racer/visual.html?view=dock)** · **[观看 4K / 60 FPS 影片 →](https://zhudaandzhuer.github.io/zhuda-neon-racer/harbor-film.html)**
 
-支持键盘和触控，无需下载或注册。上方动图来自实际游戏；完整版影片为 1280 × 720 / 60 FPS。
+支持键盘和触控，以及自动、效能、平衡、高画质设置。影片使用实际 High 画质，以 **3840 × 2160 / 60 FPS** 逐帧采集；影片播放帧率不代表设备实时运行帧率。播放页另提供较轻的 1080p / 60 FPS 版本。[录制记录](https://github.com/zhudaandzhuer/zhuda-neon-racer/blob/main/docs/media/harbor-recording.json)。
 
 ---
 
@@ -44,10 +44,11 @@ E4ZEhFCYy4b5pYXJUbMC9KjRitkypyqtZvpSRerLWHCb
 
 ## 更多游戏
 
-四款小型街机游戏作为辅助案例，均包含操作、关卡、胜负与进度保存。
+独立赛车游戏和四款小型街机游戏作为辅助案例，均包含操作、关卡、胜负与进度保存。
 
 | 游戏 | 入口 |
 | --- | --- |
+| NEON APEX · 四条赛道、车库与升级 | [开跑](https://zhudaandzhuer.github.io/zhuda-neon-racer/) |
 | 星港突围 STARFALL · 太空弹幕 | [开始](https://zhudaandzhuer.github.io/zhuda-arcade/?game=starfall) |
 | 烬火远征 EMBERBOUND · 竞技场生存 | [开始](https://zhudaandzhuer.github.io/zhuda-arcade/?game=ember) |
 | 晶核守卫 COREKEEP · 塔防 | [开始](https://zhudaandzhuer.github.io/zhuda-arcade/?game=corekeep) |

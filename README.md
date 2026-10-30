@@ -14,19 +14,19 @@ E4ZEhFCYy4b5pYXJUbMC9KjRitkypyqtZvpSRerLWHCb
 
 ---
 
-# Play the skyline.
+# Drive the waterfront.
 
 English · [简体中文](docs/zh-CN/README.md)
 
-[![NEON APEX: imported S800, nitro trails and actual 3D gameplay.](https://raw.githubusercontent.com/zhudaandzhuer/zhuda-neon-racer/main/docs/media/skyline-gameplay.gif?v=s800-2.1)](https://zhudaandzhuer.github.io/zhuda-neon-racer/)
+<a href="https://zhudaandzhuer.github.io/zhuda-neon-racer/harbor-film.html"><picture><source type="image/webp" srcset="https://raw.githubusercontent.com/zhudaandzhuer/zhuda-neon-racer/main/docs/media/harbor-preview.webp?v=harbor-01" /><img src="https://raw.githubusercontent.com/zhudaandzhuer/zhuda-neon-racer/main/docs/media/harbor-preview.gif?v=harbor-01" alt="HARBOR / 01: actual High-preset WebGL rendering, S800 driving, wet-road reflections and an authored dock warehouse." width="1280" /></picture></a>
 
-### NEON APEX · Skyline Tour
+### HARBOR / 01 · built with zhuda-laya-engine
 
-**Drift. Boost. Own the skyline.** Drive an imported silver/black S800 with PBR materials, race three rivals on elevated city circuits, and upgrade your sedan. A playable 3D game with four circuits, a garage and saved progress.
+**Light, surface and motion in a world you can enter.** Drive the S800 across the waterfront: photographed PBR surfaces, HDR lighting, soft shadows, wet-road reflections and an authored dock warehouse. Explore with momentum, steering, independently animated wheels and a chase camera.
 
-**[PLAY FREE →](https://zhudaandzhuer.github.io/zhuda-neon-racer/)** · [Watch the gameplay film](https://zhudaandzhuer.github.io/zhuda-neon-racer/showcase.html)
+**[EXPLORE THE HARBOR →](https://zhudaandzhuer.github.io/zhuda-neon-racer/visual.html?view=dock)** · **[WATCH IN 4K / 60 FPS →](https://zhudaandzhuer.github.io/zhuda-neon-racer/harbor-film.html)**
 
-Keyboard and touch controls. No download or account. The animation above is captured from the actual game; the film is available at 1280 × 720 / 60 FPS.
+Keyboard and touch controls. Auto / Performance / Balanced / High settings. The film uses the actual High preset at **3840 × 2160 / 60 FPS**, captured frame by frame; playback cadence is not a live-performance claim. The page also offers a lighter 1080p / 60 FPS version. [Capture details](https://github.com/zhudaandzhuer/zhuda-neon-racer/blob/main/docs/media/harbor-recording.json).
 
 ---
 
@@ -44,10 +44,11 @@ Maintained by [Zhuda](https://github.com/zhudaandzhuer). Rendering and physics c
 
 ## More games
 
-Four more arcade games, each with keyboard/touch input, levels, a win/loss state and saved progress.
+The separate racer and four arcade games offer keyboard/touch input, levels, a win/loss state and saved progress.
 
 | Game | Play |
 | --- | --- |
+| NEON APEX · four racing circuits, garage and upgrades | [Race](https://zhudaandzhuer.github.io/zhuda-neon-racer/) |
 | STARFALL · space combat | [Launch](https://zhudaandzhuer.github.io/zhuda-arcade/?game=starfall) |
 | EMBERBOUND · arena survival | [Enter](https://zhudaandzhuer.github.io/zhuda-arcade/?game=ember) |
 | COREKEEP · tower defense | [Defend](https://zhudaandzhuer.github.io/zhuda-arcade/?game=corekeep) |
