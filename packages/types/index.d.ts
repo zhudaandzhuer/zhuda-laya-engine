@@ -10,3 +10,6 @@ export * from './zhuda-static-assets';
 export * from './zhuda-visual-contract';
 export * from './zhuda-particles';
 export * from './zhuda-effects';
+
+export * from './runtime3d/index';
+export * from './zhuda-declarative';

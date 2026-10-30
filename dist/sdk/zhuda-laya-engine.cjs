@@ -41,38 +41,75 @@ __export(index_exports, {
   ZHUDA_VFX_FRAGMENT: () => ZHUDA_VFX_FRAGMENT,
   ZHUDA_VFX_VERTEX: () => ZHUDA_VFX_VERTEX,
   Zhuda3D: () => Zhuda3D,
+  ZhudaAssetCache: () => ZhudaAssetCache,
   ZhudaAssetSerializer: () => ZhudaAssetSerializer,
   ZhudaBenchmarkEngine: () => ZhudaBenchmarkEngine,
+  ZhudaCameraCoordinates: () => ZhudaCameraCoordinates,
+  ZhudaCameraRig: () => ZhudaCameraRig,
+  ZhudaDistanceLOD: () => ZhudaDistanceLOD,
+  ZhudaDynamicMesh: () => ZhudaDynamicMesh,
   ZhudaEffectBudget: () => ZhudaEffectBudget,
   ZhudaEffectDirector: () => ZhudaEffectDirector,
   ZhudaEffectEnvelope: () => ZhudaEffectEnvelope,
   ZhudaEngine: () => ZhudaEngine,
+  ZhudaEventGate: () => ZhudaEventGate,
+  ZhudaInstanceGroup: () => ZhudaInstanceGroup,
   ZhudaLayaParticleRenderer: () => ZhudaLayaParticleRenderer,
   ZhudaLayaParticleRenderer3D: () => ZhudaLayaParticleRenderer3D,
   ZhudaLayaRibbonRenderer: () => ZhudaLayaRibbonRenderer,
   ZhudaLayaRibbonRenderer3D: () => ZhudaLayaRibbonRenderer3D,
+  ZhudaModelLibrary: () => ZhudaModelLibrary,
   ZhudaParticleEventLink: () => ZhudaParticleEventLink,
   ZhudaParticleMesh3D: () => ZhudaParticleMesh3D,
   ZhudaParticleSystem: () => ZhudaParticleSystem,
   ZhudaParticleSystem3D: () => ZhudaParticleSystem3D,
+  ZhudaPointerInput: () => ZhudaPointerInput,
   ZhudaPrefab: () => ZhudaPrefab,
+  ZhudaRequestSlot: () => ZhudaRequestSlot,
+  ZhudaResourceScope: () => ZhudaResourceScope,
   ZhudaRibbonPath3D: () => ZhudaRibbonPath3D,
   ZhudaRibbonTrail: () => ZhudaRibbonTrail,
   ZhudaRibbonTrail3D: () => ZhudaRibbonTrail3D,
+  ZhudaRuntimeHost: () => ZhudaRuntimeHost,
   ZhudaRuntimeProfiler: () => ZhudaRuntimeProfiler,
+  ZhudaRuntimeSession: () => ZhudaRuntimeSession,
+  ZhudaSceneBudget: () => ZhudaSceneBudget,
+  ZhudaSceneQueries: () => ZhudaSceneQueries,
+  ZhudaSceneRegions: () => ZhudaSceneRegions,
+  ZhudaSimulationClock: () => ZhudaSimulationClock,
+  ZhudaSnapshotBuffer: () => ZhudaSnapshotBuffer,
+  ZhudaSurfaceQuery: () => ZhudaSurfaceQuery,
   ZhudaUI: () => ZhudaUI,
   ZhudaVfxCamera: () => ZhudaVfxCamera,
   ZhudaVfxMaterial: () => ZhudaVfxMaterial,
+  applySceneQuality: () => applySceneQuality,
   compareVisualFrames: () => compareVisualFrames,
+  compose4: () => compose4,
+  configureSurfacePasses: () => configureSurfacePasses,
   convertUnityAnimationCurve: () => convertUnityAnimationCurve,
   convertUnityVisualMaterial: () => convertUnityVisualMaterial,
+  createCustomSurfaceMaterial: () => createCustomSurfaceMaterial,
+  createSurfaceMaterial: () => createSurfaceMaterial,
+  createSurfaceTexture: () => createSurfaceTexture,
   disposeMigratedMaterial: () => disposeMigratedMaterial,
+  disposeSurfaceMaterial: () => disposeSurfaceMaterial,
+  identity4: () => identity4,
+  inspectSceneResources: () => inspectSceneResources,
+  installLaya342LifecycleFix: () => installLaya342LifecycleFix,
+  installSandboxStorageFallback: () => installSandboxStorageFallback,
   instantiateMigratedMaterial: () => instantiateMigratedMaterial,
+  inverse4: () => inverse4,
+  multiply4: () => multiply4,
+  normalized: () => normalized,
+  packMetallicRoughness: () => packMetallicRoughness,
+  rayBox: () => rayBox,
   resolveParticleCollision: () => resolveParticleCollision,
   rotateParticleVector3: () => rotateParticleVector3,
   sampleParticleColor: () => sampleParticleColor,
   sampleParticleCurve: () => sampleParticleCurve,
   sampleParticleUV: () => sampleParticleUV,
+  sceneQuality: () => sceneQuality,
+  transformPoint: () => transformPoint,
   validateEffectTimeline: () => validateEffectTimeline,
   validateParticleEffect: () => validateParticleEffect,
   validateParticleEffect3D: () => validateParticleEffect3D,
@@ -412,7 +449,7 @@ var TopologyResolver = class {
   static resolveByModuleIds(seedModuleIds) {
     const closure = /* @__PURE__ */ new Set();
     const diagnostics = [];
-    const visit = (id, chain) => {
+    const visit2 = (id, chain) => {
       if (chain.includes(id)) {
         throw new Error(`[ZhudaTopology] \u5075\u6E2C\u5230\u5FAA\u74B0\u4F9D\u8CF4 (Cycle Detected): ${[...chain, id].join(" -> ")}`);
       }
@@ -424,12 +461,12 @@ var TopologyResolver = class {
         if (!closure.has(depId)) {
           diagnostics.push(`[Auto-Dependency] \u6A21\u7D44 "${node.file}" \u81EA\u52D5\u62C9\u5165\u524D\u7F6E\u4F9D\u8CF4 "${this.moduleMap.get(depId)?.file}"`);
         }
-        visit(depId, [...chain, id]);
+        visit2(depId, [...chain, id]);
       }
       closure.add(id);
     };
     for (const seed of seedModuleIds) {
-      visit(seed, []);
+      visit2(seed, []);
     }
     for (const id of closure) {
       const node = this.moduleMap.get(id);
@@ -663,6 +700,502 @@ var EngineGuard = class {
 EngineGuard.detoxInstalled = false;
 EngineGuard.registeredComponentNames = /* @__PURE__ */ new Set();
 
+// packages/core/runtime3d/Runtime.ts
+function installSandboxStorageFallback() {
+  const modes = {};
+  for (const name of ["localStorage", "sessionStorage"]) {
+    try {
+      void window[name];
+      modes[name] = "persistent";
+    } catch {
+      const values = /* @__PURE__ */ new Map();
+      const memory = {
+        get length() {
+          return values.size;
+        },
+        key: (i) => [...values.keys()][i] ?? null,
+        getItem: (k) => values.get(String(k)) ?? null,
+        setItem: (k, v) => {
+          values.set(String(k), String(v));
+        },
+        removeItem: (k) => {
+          values.delete(String(k));
+        },
+        clear: () => values.clear()
+      };
+      Object.defineProperty(window, name, {
+        configurable: true,
+        value: memory
+      });
+      modes[name] = "memory";
+    }
+  }
+  return modes;
+}
+var ZhudaRuntimeSession = class {
+  constructor(canvas, options = {}) {
+    this.paused = false;
+    this.contextLost = false;
+    this.disposed = false;
+    this.cleanups = [];
+    this.frame = 0;
+    this.previous = 0;
+    this.task = null;
+    this.canvas = canvas;
+    this.options = options;
+    const listen = (target, event, fn) => {
+      target.addEventListener(event, fn);
+      this.cleanups.push(() => target.removeEventListener(event, fn));
+    };
+    listen(document, "visibilitychange", () => this.setPaused(document.hidden));
+    listen(window, "blur", () => this.setPaused(true));
+    listen(window, "focus", () => {
+      if (!document.hidden && !this.contextLost) this.setPaused(false);
+    });
+    listen(canvas, "webglcontextlost", (e) => {
+      e.preventDefault();
+      this.contextLost = true;
+      this.setPaused(true);
+      options.onContextLost?.();
+    });
+    try {
+      if (options.container) {
+        this.observer = new ResizeObserver(() => this.resize());
+        this.observer.observe(options.container);
+      } else listen(window, "resize", () => this.resize());
+      this.resize();
+    } catch (error) {
+      this.dispose();
+      throw error;
+    }
+  }
+  setPaused(value) {
+    this.options.clearInput?.();
+    this.paused = value || this.contextLost;
+    this.previous = 0;
+    this.options.onPause?.(this.paused);
+  }
+  resize() {
+    if (this.disposed) return;
+    const l = globalThis.Laya, c = this.options.container;
+    if (!c && !this.options.dprCap) return;
+    const rect = c?.getBoundingClientRect(), width = rect?.width || innerWidth, height = rect?.height || innerHeight, dpr = Math.min(devicePixelRatio || 1, this.options.dprCap ?? 2);
+    if (width < 2 || height < 2) return;
+    l.Config.useRetinalCanvas = false;
+    l.stage.screenAdaptationEnabled = false;
+    l.stage.scaleMode = l.Stage.SCALE_SHOWALL;
+    l.stage.alignH = l.Stage.ALIGN_LEFT;
+    l.stage.alignV = l.Stage.ALIGN_TOP;
+    l.stage.size(Math.round(width * dpr), Math.round(height * dpr));
+    l.stage.setScreenSize(
+      width * l.Browser.pixelRatio,
+      height * l.Browser.pixelRatio
+    );
+    this.options.onResize?.({ width, height, dpr });
+  }
+  start(update) {
+    if (this.disposed) throw Error("Disposed runtime");
+    this.task = update;
+    if (this.frame) return;
+    const tick = (now) => {
+      this.frame = 0;
+      if (this.disposed) return;
+      if (!this.paused) {
+        const elapsed = this.previous ? now - this.previous : 0;
+        if (!this.previous || elapsed >= 1e3 / (this.options.targetFPS || 60) - 2) {
+          this.previous = now;
+          this.task?.(Math.min(0.1, elapsed / 1e3));
+        }
+      }
+      this.frame = requestAnimationFrame(tick);
+    };
+    this.frame = requestAnimationFrame(tick);
+  }
+  dispose() {
+    if (this.disposed) return;
+    this.disposed = true;
+    cancelAnimationFrame(this.frame);
+    this.frame = 0;
+    this.task = null;
+    this.observer?.disconnect();
+    for (const f of this.cleanups) f();
+    this.cleanups = [];
+    this.options.clearInput?.();
+  }
+};
+var ZhudaRuntimeHost = class {
+  constructor(container, url, options = {}) {
+    this.frame = null;
+    this.generation = 0;
+    this.restarts = 0;
+    this.disposed = false;
+    this.state = null;
+    this.container = container;
+    this.url = url;
+    this.options = options;
+    const receive = (e) => {
+      if (e.source !== this.frame?.contentWindow || !e.data || typeof e.data !== "object")
+        return;
+      const message = e.data;
+      if (message.type === "zhuda:ready") {
+        this.send("zhuda:restore", this.state);
+        options.onReady?.(this.generation);
+      } else if (message.type === "zhuda:snapshot") this.state = message.state;
+      else if (message.type === "zhuda:context-lost") {
+        this.state = message.state;
+        this.restarts++;
+        this.restart(this.state);
+      }
+      options.onMessage?.(message);
+    };
+    window.addEventListener("message", receive);
+    this.cleanup = () => window.removeEventListener("message", receive);
+    this.restart();
+  }
+  send(type, state) {
+    this.frame?.contentWindow?.postMessage({ type, state }, "*");
+  }
+  restart(state = this.state) {
+    if (this.disposed) throw Error("Disposed host");
+    this.state = state;
+    this.generation++;
+    this.frame?.remove();
+    const f = document.createElement("iframe");
+    f.title = "3D runtime";
+    f.style.cssText = "display:block;width:100%;height:100%;border:0";
+    if (this.options.sandbox) f.setAttribute("sandbox", this.options.sandbox);
+    f.src = this.url;
+    this.container.appendChild(f);
+    this.frame = f;
+  }
+  dispose() {
+    if (this.disposed) return;
+    this.disposed = true;
+    this.cleanup();
+    this.frame?.remove();
+    this.frame = null;
+  }
+};
+var ZhudaPointerInput = class {
+  constructor(element, chooseRole, changed) {
+    this.pointers = /* @__PURE__ */ new Map();
+    this.cleanup = [];
+    this.element = element;
+    this.chooseRole = chooseRole;
+    this.changed = changed;
+    const on = (target, name, fn) => {
+      target.addEventListener(name, fn);
+      this.cleanup.push(() => target.removeEventListener(name, fn));
+    };
+    on(element, "pointerdown", ((e) => {
+      const role = chooseRole(e);
+      if (!role || [...this.pointers.values()].some((p) => p.role === role))
+        return;
+      this.pointers.set(e.pointerId, {
+        pointerId: e.pointerId,
+        role,
+        x: e.clientX,
+        y: e.clientY,
+        dx: 0,
+        dy: 0
+      });
+      element.setPointerCapture(e.pointerId);
+      e.preventDefault();
+      changed(this.pointers);
+    }));
+    on(element, "pointermove", ((e) => {
+      const p = this.pointers.get(e.pointerId);
+      if (!p) return;
+      p.dx = e.clientX - p.x;
+      p.dy = e.clientY - p.y;
+      p.x = e.clientX;
+      p.y = e.clientY;
+      changed(this.pointers);
+    }));
+    const up = ((e) => {
+      if (this.pointers.delete(e.pointerId)) changed(this.pointers);
+    });
+    for (const name of ["pointerup", "pointercancel", "lostpointercapture"])
+      on(element, name, up);
+    on(window, "blur", () => this.clear());
+    on(document, "visibilitychange", () => {
+      if (document.hidden) this.clear();
+    });
+  }
+  clear() {
+    for (const id of this.pointers.keys())
+      if (this.element.hasPointerCapture(id))
+        this.element.releasePointerCapture(id);
+    this.pointers.clear();
+    this.changed(this.pointers);
+  }
+  dispose() {
+    this.clear();
+    for (const f of this.cleanup) f();
+    this.cleanup = [];
+  }
+};
+
+// packages/core/runtime3d/Surfaces.ts
+function packMetallicRoughness(rgba) {
+  if (rgba.length % 4) throw Error("RGBA data required");
+  const out = new Uint8Array(rgba.length);
+  for (let i = 0; i < out.length; i += 4) {
+    out[i] = rgba[i + 2];
+    out[i + 3] = 255 - rgba[i + 1];
+  }
+  return out;
+}
+function createSurfaceTexture(width, height, pixels, role) {
+  if (!Number.isInteger(width) || !Number.isInteger(height) || width < 1 || height < 1 || pixels.length !== width * height * 4)
+    throw Error("Invalid texture payload");
+  const l = globalThis.Laya, t = new l.Texture2D(
+    width,
+    height,
+    l.TextureFormat.R8G8B8A8,
+    false,
+    true,
+    role === "color" || role === "emission"
+  );
+  t.setPixelsData(pixels, false, false);
+  return t;
+}
+function createSurfaceMaterial(s) {
+  const l = globalThis.Laya;
+  if (!["pbr", "unlit"].includes(s.type)) throw Error("Unknown material type");
+  if ([s.metallic ?? 0, s.roughness ?? 0.5, s.alphaCutoff ?? 0.5].some(
+    (v) => !Number.isFinite(v) || v < 0 || v > 1
+  ))
+    throw Error("Invalid material factors");
+  const m = s.type === "pbr" ? new l.PBRStandardMaterial() : new l.UnlitMaterial();
+  m.albedoColor = new l.Color(...s.color || [1, 1, 1, 1]);
+  if (s.type === "pbr") {
+    m.metallic = s.metallic ?? 0;
+    m.smoothness = 1 - (s.roughness ?? 0.5);
+    if (s.emission) {
+      m.enableEmission = true;
+      m.emissionColor = new l.Color(...s.emission, 1);
+    }
+  }
+  for (const [key, value] of Object.entries(s.textures || {}))
+    m[{
+      albedo: "albedoTexture",
+      normal: "normalTexture",
+      metallicGloss: "metallicGlossTexture",
+      emission: "emissionTexture"
+    }[key]] = value?.bitmap || value;
+  const blend = s.blend || "opaque", Class = s.type === "pbr" ? l.PBRStandardMaterial : l.UnlitMaterial;
+  if (blend === "alpha") m.renderMode = Class.RENDERMODE_TRANSPARENT;
+  else if (blend === "cutout") {
+    m.alphaTest = true;
+    m.alphaTestValue = s.alphaCutoff ?? 0.5;
+  } else if (blend === "additive") {
+    m.renderQueue = 3e3;
+    m.blend = l.RenderState.BLEND_ENABLE_ALL;
+    m.blendSrc = l.RenderState.BLENDPARAM_SRC_ALPHA;
+    m.blendDst = l.RenderState.BLENDPARAM_ONE;
+  }
+  if (s.doubleSided) m.cull = l.RenderState.CULL_NONE;
+  m.depthWrite = s.depthWrite ?? (blend === "opaque" || blend === "cutout");
+  return m;
+}
+function disposeSurfaceMaterial(m) {
+  for (const k of [
+    "albedoTexture",
+    "normalTexture",
+    "metallicGlossTexture",
+    "emissionTexture"
+  ])
+    if (k in m) m[k] = null;
+  m.destroy();
+}
+var registeredShaders = /* @__PURE__ */ new WeakMap();
+function createCustomSurfaceMaterial(s) {
+  const l = globalThis.Laya;
+  if (!s.name || !s.vertex || !s.fragment)
+    throw Error("Incomplete custom shader");
+  let registry = registeredShaders.get(l.Shader3D);
+  if (!registry) registeredShaders.set(l.Shader3D, registry = /* @__PURE__ */ new Map());
+  const signature = JSON.stringify(s);
+  if (l.Shader3D.find(s.name)) {
+    if (registry.get(s.name) !== signature)
+      throw Error("Shader name has a different contract");
+  } else {
+    const shader = l.Shader3D.add(s.name, !!s.instancing, false);
+    shader.shaderType = l.ShaderFeatureType.D3;
+    const sub = new l.SubShader(
+      s.attributes || l.SubShader.DefaultAttributeMap,
+      s.uniforms
+    );
+    shader.addSubShader(sub);
+    const source = (code) => code.replace(
+      /\buniform\s+((?:(?:lowp|mediump|highp)\s+)?\w+)\s+([^;]+);/g,
+      (original, type, names) => {
+        const retained = names.split(",").map((n) => n.trim()).filter(
+          (n) => !Object.prototype.hasOwnProperty.call(s.uniforms, n)
+        );
+        return retained.length ? `uniform ${type} ${retained.join(",")};` : "";
+      }
+    );
+    sub.addShaderPass(source(s.vertex), source(s.fragment));
+    registry.set(s.name, signature);
+  }
+  const material = new l.Material();
+  material.setShaderName(s.name);
+  return material;
+}
+var ZhudaDynamicMesh = class {
+  constructor(data, parent) {
+    this.disposed = false;
+    this.data = data;
+    const l = globalThis.Laya, n = data.positions.length / 3;
+    if (!Number.isInteger(n) || n < 3 || n > 65535)
+      throw Error("Mesh requires 3..65535 vertices per chunk");
+    if (data.normals && data.normals.length !== n * 3 || data.uvs && data.uvs.length !== n * 2 || !data.indices.length || data.indices.length % 3 || [...data.indices].some((i) => i >= n))
+      throw Error("Invalid mesh attributes or indices");
+    this.vertices = new Float32Array(n * 8);
+    for (let i = 0; i < n; i++) {
+      this.vertices.set(data.positions.subarray(i * 3, i * 3 + 3), i * 8);
+      this.vertices.set(
+        data.normals?.subarray(i * 3, i * 3 + 3) || [0, 1, 0],
+        i * 8 + 3
+      );
+      this.vertices.set(
+        data.uvs?.subarray(i * 2, i * 2 + 2) || [0, 0],
+        i * 8 + 6
+      );
+    }
+    if (!this.vertices.every(Number.isFinite))
+      throw Error("Non-finite mesh data");
+    this.mesh = l.PrimitiveMesh._createMesh(
+      l.VertexMesh.getVertexDeclaration("POSITION,NORMAL,UV"),
+      this.vertices,
+      new Uint16Array(data.indices)
+    );
+    this.node = new l.MeshSprite3D(this.mesh);
+    parent?.addChild(this.node);
+    this.refreshBounds();
+  }
+  updateRange(first, count) {
+    if (this.disposed) throw Error("Disposed mesh");
+    if (!Number.isInteger(first) || !Number.isInteger(count) || first < 0 || count < 1 || (first + count) * 8 > this.vertices.length)
+      throw Error("Invalid vertex range");
+    if (!this.vertices.subarray(first * 8, (first + count) * 8).every(Number.isFinite))
+      throw Error("Non-finite mesh update");
+    const bytes = first * 8 * 4, length = count * 8 * 4;
+    this.mesh._vertexBuffer.setData(this.vertices.buffer, bytes, bytes, length);
+    this.refreshBounds();
+  }
+  setPosition(i, x, y, z) {
+    if (!Number.isInteger(i) || i < 0 || i * 8 >= this.vertices.length || ![x, y, z].every(Number.isFinite))
+      throw Error("Invalid vertex");
+    this.vertices.set([x, y, z], i * 8);
+  }
+  refreshBounds() {
+    const l = globalThis.Laya, min = new l.Vector3(Infinity, Infinity, Infinity), max = new l.Vector3(-Infinity, -Infinity, -Infinity);
+    for (let i = 0; i < this.vertices.length; i += 8) {
+      min.x = Math.min(min.x, this.vertices[i]);
+      min.y = Math.min(min.y, this.vertices[i + 1]);
+      min.z = Math.min(min.z, this.vertices[i + 2]);
+      max.x = Math.max(max.x, this.vertices[i]);
+      max.y = Math.max(max.y, this.vertices[i + 1]);
+      max.z = Math.max(max.z, this.vertices[i + 2]);
+    }
+    this.mesh.bounds = new l.Bounds(min, max);
+    this.node.meshRenderer.boundsChange = true;
+  }
+  dispose() {
+    if (this.disposed) return;
+    this.disposed = true;
+    this.node.destroy(true);
+    this.mesh.destroy();
+  }
+};
+var ZhudaInstanceGroup = class {
+  constructor(parent, mesh, material) {
+    this.nodes = /* @__PURE__ */ new Map();
+    this.parent = parent;
+    this.mesh = mesh;
+    this.material = material;
+    material.enableInstancing = true;
+  }
+  set(id, matrix) {
+    if (!id || matrix.length !== 16 || !Array.from(matrix).every(Number.isFinite))
+      throw Error("Invalid instance");
+    const l = globalThis.Laya;
+    let node = this.nodes.get(id);
+    if (!node) {
+      node = new l.MeshSprite3D(this.mesh, id);
+      node.meshRenderer.sharedMaterial = this.material;
+      this.parent.addChild(node);
+      this.nodes.set(id, node);
+    }
+    node.transform.worldMatrix = new l.Matrix4x4(...Array.from(matrix));
+    return node;
+  }
+  remove(id) {
+    const node = this.nodes.get(id);
+    if (!node) return false;
+    node.destroy(true);
+    this.nodes.delete(id);
+    return true;
+  }
+  get(id) {
+    return this.nodes.get(id);
+  }
+  get size() {
+    return this.nodes.size;
+  }
+  dispose() {
+    for (const n of this.nodes.values()) n.destroy(true);
+    this.nodes.clear();
+  }
+};
+function configureSurfacePasses(camera, requirements, maxAdditionalPasses) {
+  if (!Number.isInteger(maxAdditionalPasses) || maxAdditionalPasses < 0)
+    throw Error("Invalid additional pass budget");
+  const l = globalThis.Laya;
+  const depth = requirements.some((r) => r.depth), opaqueColor = requirements.some((r) => r.opaqueColor);
+  const requestedPasses = Number(depth) + Number(opaqueColor);
+  const withinBudget = requestedPasses <= maxAdditionalPasses;
+  camera.depthTextureMode = withinBudget && depth ? l.DepthTextureMode.Depth : l.DepthTextureMode.None;
+  camera.opaquePass = withinBudget && opaqueColor;
+  const supported = !depth || !!(camera.depthTextureMode & l.DepthTextureMode.Depth);
+  if (!supported) {
+    camera.depthTextureMode = l.DepthTextureMode.None;
+    camera.opaquePass = false;
+  }
+  return {
+    requested: { depth, opaqueColor },
+    requestedPasses,
+    enabledPasses: withinBudget && supported ? requestedPasses : 0,
+    ready: withinBudget && supported,
+    reason: !withinBudget ? "budget" : !supported ? "depth-unsupported" : null
+  };
+}
+
+// packages/core/runtime3d/Laya342Adapters.ts
+var patched = /* @__PURE__ */ new WeakSet();
+function installLaya342LifecycleFix(runtime = globalThis.Laya) {
+  const prototype = runtime?.WebRender3DProcess?.prototype;
+  if (!prototype || patched.has(prototype)) return;
+  const destroy = prototype.destroy;
+  if (typeof destroy !== "function") return;
+  const retired = /* @__PURE__ */ new WeakSet();
+  prototype.destroy = function(...args) {
+    if (retired.has(this)) return;
+    retired.add(this);
+    const shadow = this._defaultShadowMap;
+    try {
+      return destroy.apply(this, args);
+    } finally {
+      if (shadow && !shadow.destroyed) shadow.destroy();
+      this._defaultShadowMap = null;
+    }
+  };
+  patched.add(prototype);
+}
+
 // packages/core/DeclarativeSDK.ts
 function zhudaComponent(meta) {
   return function(ctor) {
@@ -673,59 +1206,105 @@ function zhudaComponent(meta) {
 }
 var ZhudaEngine = class {
   static async boot(options = {}) {
-    const width = options.width ?? 1280;
-    const height = options.height ?? 720;
-    const bgColor = options.bgColor ?? "#0d1117";
-    const features = options.features ?? "all";
-    const topology = TopologyResolver.resolveByFeatures(features);
-    EngineGuard.installPrototypeDetox();
-    const hasSpine42 = features === "all" || Array.isArray(features) && features.includes("spine42");
-    if (hasSpine42) {
-      const spineConst = Laya.SpineConst;
-      if (spineConst) {
-        spineConst.VERSION = "4.2";
-        spineConst.VersionFirst = 4;
-        spineConst.VersionSecond = 2;
-        spineConst.NEED_SLOT = true;
+    if (this.activeContext || this.booting)
+      throw new Error(
+        "An engine session is already active; dispose it or use a separate runtime realm."
+      );
+    const container = typeof options.container === "string" ? document.querySelector(options.container) : options.container;
+    if (options.container && !container)
+      throw new Error("Canvas container not found");
+    if (options.dprCap !== void 0 && (!Number.isFinite(options.dprCap) || options.dprCap < 0.5 || options.dprCap > 4))
+      throw new Error("DPR cap must be .5..4");
+    this.booting = true;
+    let allocatedScene;
+    try {
+      const width = options.width ?? 1280;
+      const height = options.height ?? 720;
+      const bgColor = options.bgColor ?? "#0d1117";
+      const features = options.features ?? "all";
+      const topology = TopologyResolver.resolveByFeatures(features);
+      if (typeof window !== "undefined") installSandboxStorageFallback();
+      EngineGuard.installPrototypeDetox();
+      const hasSpine42 = features === "all" || Array.isArray(features) && features.includes("spine42");
+      if (hasSpine42) {
+        const spineConst = Laya.SpineConst;
+        if (spineConst) {
+          spineConst.VERSION = "4.2";
+          spineConst.VersionFirst = 4;
+          spineConst.VersionSecond = 2;
+          spineConst.NEED_SLOT = true;
+        }
       }
+      const layaConfig = Laya.Config;
+      if (layaConfig) {
+        if (options.preserveDrawingBuffer !== void 0)
+          layaConfig.preserveDrawingBuffer = options.preserveDrawingBuffer;
+        if (options.antialias !== void 0)
+          layaConfig.isAntialias = options.antialias;
+      }
+      options.beforeInit?.();
+      await Laya.init(width, height);
+      installLaya342LifecycleFix();
+      EngineGuard.installPrototypeDetox();
+      Laya.stage.scaleMode = options.scaleMode ?? Laya.Stage.SCALE_SHOWALL;
+      Laya.stage.screenMode = options.screenMode ?? Laya.Stage.SCREEN_NONE;
+      Laya.stage.alignV = Laya.Stage.ALIGN_MIDDLE;
+      Laya.stage.alignH = Laya.Stage.ALIGN_CENTER;
+      Laya.stage.bgColor = bgColor;
+      const rootScene = allocatedScene = new Laya.Scene();
+      rootScene.name = "ZhudaRootScene";
+      Laya.stage.addChild(rootScene);
+      const health = EngineGuard.inspectEngineHealth();
+      const win = globalThis;
+      win.__ZHUDA_ENGINE_BOOTED__ = true;
+      win.__ZHUDA_ENGINE_HEALTH__ = health;
+      win.__ZHUDA_TOPOLOGY__ = topology;
+      if (typeof document !== "undefined" && document.body) {
+        document.body.dataset.zhudaBooted = "true";
+        document.body.dataset.zhudaModules = String(
+          topology.orderedFiles.length
+        );
+        document.body.dataset.zhudaReflected = health.registeredComponents.join(",");
+        document.body.dataset.zhudaSpine42 = String(
+          health.spine42.hasPhysicsConstraint
+        );
+        document.body.dataset.zhudaDetox = String(health.buttonSetStateGuarded);
+      }
+      const canvas = Laya.Browser.mainCanvas.source;
+      if (container) container.appendChild(canvas);
+      if (options.targetFPS)
+        Laya.stage.frameRate = options.targetFPS === 30 ? "slow" : "fast";
+      const runtime = new ZhudaRuntimeSession(canvas, {
+        ...options,
+        container
+      });
+      let disposed = false;
+      this.activeContext = {
+        stage: Laya.stage,
+        rootScene,
+        topology,
+        health,
+        canvas,
+        runtime,
+        resize: () => runtime.resize(),
+        dispose: () => {
+          if (disposed) return;
+          disposed = true;
+          runtime.dispose();
+          rootScene.destroy(true);
+          this.activeContext = null;
+        }
+      };
+      return this.activeContext;
+    } catch (error) {
+      allocatedScene?.destroy(true);
+      globalThis.__ZHUDA_ENGINE_BOOTED__ = false;
+      if (typeof document !== "undefined" && document.body)
+        document.body.dataset.zhudaBooted = "false";
+      throw error;
+    } finally {
+      this.booting = false;
     }
-    if (options.beforeInit) {
-      options.beforeInit();
-    }
-    const layaConfig = Laya.Config;
-    if (layaConfig) {
-      layaConfig.preserveDrawingBuffer = true;
-      layaConfig.isAntialias = true;
-    }
-    await Laya.init(width, height);
-    EngineGuard.installPrototypeDetox();
-    Laya.stage.scaleMode = options.scaleMode ?? Laya.Stage.SCALE_SHOWALL;
-    Laya.stage.screenMode = options.screenMode ?? Laya.Stage.SCREEN_NONE;
-    Laya.stage.alignV = Laya.Stage.ALIGN_MIDDLE;
-    Laya.stage.alignH = Laya.Stage.ALIGN_CENTER;
-    Laya.stage.bgColor = bgColor;
-    const rootScene = new Laya.Scene();
-    rootScene.name = "ZhudaRootScene";
-    Laya.stage.addChild(rootScene);
-    const health = EngineGuard.inspectEngineHealth();
-    const win = globalThis;
-    win.__ZHUDA_ENGINE_BOOTED__ = true;
-    win.__ZHUDA_ENGINE_HEALTH__ = health;
-    win.__ZHUDA_TOPOLOGY__ = topology;
-    if (typeof document !== "undefined" && document.body) {
-      document.body.dataset.zhudaBooted = "true";
-      document.body.dataset.zhudaModules = String(topology.orderedFiles.length);
-      document.body.dataset.zhudaReflected = health.registeredComponents.join(",");
-      document.body.dataset.zhudaSpine42 = String(health.spine42.hasPhysicsConstraint);
-      document.body.dataset.zhudaDetox = String(health.buttonSetStateGuarded);
-    }
-    this.activeContext = {
-      stage: Laya.stage,
-      rootScene,
-      topology,
-      health
-    };
-    return this.activeContext;
   }
   static getContext() {
     return this.activeContext;
@@ -738,12 +1317,16 @@ var ZhudaEngine = class {
     if (typeof renderLoop === "function") {
       const baseNow = typeof performance !== "undefined" ? performance.now() : Date.now();
       for (let i = 1; i <= frameCount; i++) {
-        renderLoop.call(Laya.Render, baseNow + i * 16.67);
+        renderLoop.call(
+          Laya.Render,
+          baseNow + i * 16.67
+        );
       }
     }
   }
 };
 ZhudaEngine.activeContext = null;
+ZhudaEngine.booting = false;
 var Zhuda3D = class {
   static createScene3D(parent, options = {}) {
     const scene3D = new Laya.Scene3D();
@@ -773,7 +1356,9 @@ var Zhuda3D = class {
   static createDirectionalLight(scene3D, options = {}) {
     const node = new Laya.Sprite3D("ZhudaDirectionalLight");
     scene3D.addChild(node);
-    const light = node.addComponent(Laya.DirectionLightCom);
+    const light = node.addComponent(
+      Laya.DirectionLightCom
+    );
     const [r, g, b, a] = options.color ?? [1, 0.98, 0.92, 1];
     light.color = new Laya.Color(r, g, b, a);
     light.intensity = options.intensity ?? 1.3;
@@ -782,6 +1367,13 @@ var Zhuda3D = class {
     return { node, light };
   }
   static createMaterial(options) {
+    if (options.type === "pbr" || options.type === "unlit")
+      return createSurfaceMaterial({
+        type: options.type,
+        color: options.albedoColor,
+        metallic: options.metallic,
+        roughness: 1 - (options.smoothness ?? 0.5)
+      });
     const mat = new Laya.BlinnPhongMaterial();
     const [r, g, b, a] = options.albedoColor;
     mat.albedoColor = new Laya.Color(r, g, b, a);
@@ -791,18 +1383,34 @@ var Zhuda3D = class {
   static createPrimitiveMesh(type, dims = {}) {
     switch (type) {
       case "box":
-        return Laya.PrimitiveMesh.createBox(dims.width ?? 1, dims.height ?? 1, dims.depth ?? 1);
+        return Laya.PrimitiveMesh.createBox(
+          dims.width ?? 1,
+          dims.height ?? 1,
+          dims.depth ?? 1
+        );
       case "sphere":
         return Laya.PrimitiveMesh.createSphere(dims.radius ?? 0.5);
       case "cylinder":
-        return Laya.PrimitiveMesh.createCylinder(dims.radius ?? 0.2, dims.height ?? 1);
+        return Laya.PrimitiveMesh.createCylinder(
+          dims.radius ?? 0.2,
+          dims.height ?? 1
+        );
       case "capsule":
-        return Laya.PrimitiveMesh.createCapsule(dims.radius ?? 0.25, dims.height ?? 1);
+        return Laya.PrimitiveMesh.createCapsule(
+          dims.radius ?? 0.25,
+          dims.height ?? 1
+        );
       case "cone":
-        return Laya.PrimitiveMesh.createCone(dims.radius ?? 0.5, dims.height ?? 1);
+        return Laya.PrimitiveMesh.createCone(
+          dims.radius ?? 0.5,
+          dims.height ?? 1
+        );
       case "plane":
       default:
-        return Laya.PrimitiveMesh.createPlane(dims.width ?? 10, dims.depth ?? 10);
+        return Laya.PrimitiveMesh.createPlane(
+          dims.width ?? 10,
+          dims.depth ?? 10
+        );
     }
   }
 };
@@ -842,7 +1450,19 @@ var ZhudaUI = class {
     const borderWidth = style.borderWidth ?? 1.2;
     const drawBg = (fill, stroke) => {
       const g = new Laya.Graphics();
-      g.drawRoundRect(0, 0, style.width, style.height, radius, radius, radius, radius, fill, stroke, borderWidth);
+      g.drawRoundRect(
+        0,
+        0,
+        style.width,
+        style.height,
+        radius,
+        radius,
+        radius,
+        radius,
+        fill,
+        stroke,
+        borderWidth
+      );
       root.graphics = g;
     };
     drawBg(bgColor, borderColor);
@@ -863,14 +1483,20 @@ var ZhudaUI = class {
       label.color = style.hoverTextColor ?? "#ffffff";
     });
     root.on(Laya.Event.MOUSE_OUT, root, () => {
-      drawBg(isActive ? activeBgColor : bgColor, isActive ? "#00e5ff" : borderColor);
+      drawBg(
+        isActive ? activeBgColor : bgColor,
+        isActive ? "#00e5ff" : borderColor
+      );
       label.color = isActive ? "#64ffda" : style.textColor ?? "#d6e6fa";
     });
     root.on(Laya.Event.CLICK, root, onClick);
     parent.addChild(root);
     const setStyleState = (active) => {
       isActive = active;
-      drawBg(isActive ? activeBgColor : bgColor, isActive ? "#00e5ff" : borderColor);
+      drawBg(
+        isActive ? activeBgColor : bgColor,
+        isActive ? "#00e5ff" : borderColor
+      );
       label.color = isActive ? "#64ffda" : style.textColor ?? "#d6e6fa";
     };
     return { root, label, setStyleState };
@@ -937,14 +1563,74 @@ var ZhudaUI = class {
       const cornerColor = opts.cornerAccentColor ?? "#2dd4bf";
       const innerColor = opts.innerSurfaceColor ?? "#0c1524";
       const g = new Laya.Graphics();
-      g.drawRoundRect(0, 0, w, h, radius, radius, radius, radius, fill, border, 2);
+      g.drawRoundRect(
+        0,
+        0,
+        w,
+        h,
+        radius,
+        radius,
+        radius,
+        radius,
+        fill,
+        border,
+        2
+      );
       const cw = Math.max(4, w - left - right);
       const ch = Math.max(4, h - top - bottom);
       g.drawRect(left, top, cw, ch, innerColor, "#233858", 1);
-      g.drawRoundRect(0, 0, left, top, radius, 2, 2, 2, cornerColor, border, 1.5);
-      g.drawRoundRect(w - right, 0, right, top, 2, radius, 2, 2, cornerColor, border, 1.5);
-      g.drawRoundRect(0, h - bottom, left, bottom, 2, 2, 2, radius, cornerColor, border, 1.5);
-      g.drawRoundRect(w - right, h - bottom, right, bottom, 2, 2, radius, 2, cornerColor, border, 1.5);
+      g.drawRoundRect(
+        0,
+        0,
+        left,
+        top,
+        radius,
+        2,
+        2,
+        2,
+        cornerColor,
+        border,
+        1.5
+      );
+      g.drawRoundRect(
+        w - right,
+        0,
+        right,
+        top,
+        2,
+        radius,
+        2,
+        2,
+        cornerColor,
+        border,
+        1.5
+      );
+      g.drawRoundRect(
+        0,
+        h - bottom,
+        left,
+        bottom,
+        2,
+        2,
+        2,
+        radius,
+        cornerColor,
+        border,
+        1.5
+      );
+      g.drawRoundRect(
+        w - right,
+        h - bottom,
+        right,
+        bottom,
+        2,
+        2,
+        radius,
+        2,
+        cornerColor,
+        border,
+        1.5
+      );
       root.graphics = g;
       if (titleNode) {
         titleNode.pos(left, 0);
@@ -5916,12 +6602,92 @@ var ZhudaLayaRibbonRenderer3D = class {
   }
 };
 
+// packages/core/runtime3d/Math3D.ts
+var identity4 = () => new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
+function multiply4(a, b) {
+  const o = new Float32Array(16);
+  for (let c = 0; c < 4; c++)
+    for (let r = 0; r < 4; r++)
+      for (let k = 0; k < 4; k++) o[c * 4 + r] += a[k * 4 + r] * b[c * 4 + k];
+  return o;
+}
+function compose4(p = { x: 0, y: 0, z: 0 }, q = { x: 0, y: 0, z: 0, w: 1 }, s = { x: 1, y: 1, z: 1 }) {
+  const n = Math.hypot(q.x, q.y, q.z, q.w);
+  if (!n || ![p.x, p.y, p.z, s.x, s.y, s.z, n].every(Number.isFinite))
+    throw Error("Invalid transform");
+  const x = q.x / n, y = q.y / n, z = q.z / n, w = q.w / n;
+  return new Float32Array([
+    (1 - 2 * (y * y + z * z)) * s.x,
+    2 * (x * y + z * w) * s.x,
+    2 * (x * z - y * w) * s.x,
+    0,
+    2 * (x * y - z * w) * s.y,
+    (1 - 2 * (x * x + z * z)) * s.y,
+    2 * (y * z + x * w) * s.y,
+    0,
+    2 * (x * z + y * w) * s.z,
+    2 * (y * z - x * w) * s.z,
+    (1 - 2 * (x * x + y * y)) * s.z,
+    0,
+    p.x,
+    p.y,
+    p.z,
+    1
+  ]);
+}
+function transformPoint(m, p) {
+  const w = m[3] * p.x + m[7] * p.y + m[11] * p.z + m[15];
+  if (Math.abs(w) < 1e-12) throw Error("Point projects to infinity");
+  return {
+    x: (m[0] * p.x + m[4] * p.y + m[8] * p.z + m[12]) / w,
+    y: (m[1] * p.x + m[5] * p.y + m[9] * p.z + m[13]) / w,
+    z: (m[2] * p.x + m[6] * p.y + m[10] * p.z + m[14]) / w
+  };
+}
+function inverse4(a) {
+  const rows = Array.from(
+    { length: 4 },
+    (_, r) => Array.from(
+      { length: 8 },
+      (_2, c) => c < 4 ? a[c * 4 + r] : Number(c - 4 === r)
+    )
+  );
+  for (let i = 0; i < 4; i++) {
+    let p = i;
+    for (let r = i + 1; r < 4; r++)
+      if (Math.abs(rows[r][i]) > Math.abs(rows[p][i])) p = r;
+    if (Math.abs(rows[p][i]) < 1e-12) throw Error("Singular transform");
+    [rows[i], rows[p]] = [rows[p], rows[i]];
+    const d = rows[i][i];
+    for (let c = 0; c < 8; c++) rows[i][c] /= d;
+    for (let r = 0; r < 4; r++)
+      if (r !== i) {
+        const k = rows[r][i];
+        for (let c = 0; c < 8; c++) rows[r][c] -= k * rows[i][c];
+      }
+  }
+  return Float32Array.from(
+    { length: 16 },
+    (_, i) => rows[i % 4][4 + Math.floor(i / 4)]
+  );
+}
+function normalized(v) {
+  const n = Math.hypot(v.x, v.y, v.z);
+  if (!Number.isFinite(n) || n < 1e-12)
+    throw Error("Zero/non-finite direction");
+  return { x: v.x / n, y: v.y / n, z: v.z / n };
+}
+
 // packages/core/effects/EffectDirector.ts
 function validateEffectTimeline(s) {
   const errors = [];
-  if (!s || s.version !== 1 || !Number.isFinite(s.duration) || s.duration < 1 / 120) return ["Timeline requires version 1 and duration >= 1/120."];
-  for (const key of ["tracks", "cues", "attachments"]) if (s[key] !== void 0 && !Array.isArray(s[key])) return [`${key} must be an array.`];
-  if (s.loop !== void 0 && typeof s.loop !== "boolean") errors.push("loop must be boolean.");
+  if (!s || s.version !== 1 || !Number.isFinite(s.duration) || s.duration < 1 / 120)
+    return ["Timeline requires version 1 and duration >= 1/120."];
+  for (const key of ["tracks", "cues", "attachments"])
+    if (s[key] !== void 0 && !Array.isArray(s[key]))
+      return [`${key} must be an array.`];
+  if (s.loop !== void 0 && typeof s.loop !== "boolean")
+    errors.push("loop must be boolean.");
   for (const t of s.tracks || []) {
     if (!t.target || !t.parameter || !Array.isArray(t.keys) || !t.keys.length) {
       errors.push("Track needs target, parameter and keys.");
@@ -5929,12 +6695,25 @@ function validateEffectTimeline(s) {
     }
     let previous = -1;
     for (const k of t.keys) {
-      if (!Number.isFinite(k.time) || k.time < 0 || k.time > s.duration || k.time <= previous || !Number.isFinite(k.value)) errors.push("Invalid or unordered track key.");
+      if (!Number.isFinite(k.time) || k.time < 0 || k.time > s.duration || k.time <= previous || !Number.isFinite(k.value))
+        errors.push("Invalid or unordered track key.");
       previous = k.time;
     }
   }
-  for (const c of s.cues || []) if (!c.target || !["start", "stop", "event"].includes(c.action) || !Number.isFinite(c.time) || c.time < 0 || c.time > s.duration || c.action === "event" && !c.name) errors.push("Invalid cue.");
-  for (const a of s.attachments || []) if (!a.target || !a.source || !a.anchor || a.offset && ![a.offset.x, a.offset.y, a.offset.z ?? 0, a.offset.rotation ?? 0].every(Number.isFinite)) errors.push("Invalid attachment.");
+  for (const c of s.cues || [])
+    if (!c.target || !["start", "stop", "event"].includes(c.action) || !Number.isFinite(c.time) || c.time < 0 || c.time > s.duration || c.action === "event" && !c.name)
+      errors.push("Invalid cue.");
+  for (const a of s.attachments || [])
+    if (!a.target || !a.source || !a.anchor || a.offset && (![
+      a.offset.x,
+      a.offset.y,
+      a.offset.z ?? 0,
+      a.offset.rotation ?? 0,
+      ...Object.values(a.offset.quaternion || { x: 0, y: 0, z: 0, w: 1 }),
+      ...Object.values(a.offset.scale || { x: 1, y: 1, z: 1 }),
+      ...Array.from(a.offset.worldMatrix || [])
+    ].every(Number.isFinite) || a.offset.worldMatrix && a.offset.worldMatrix.length !== 16 || a.offset.quaternion && Math.hypot(...Object.values(a.offset.quaternion)) < 1e-12))
+      errors.push("Invalid attachment.");
   return errors;
 }
 var ZhudaEffectDirector = class {
@@ -5947,9 +6726,15 @@ var ZhudaEffectDirector = class {
     if (errors.length) throw new Error(errors.join(" | "));
     this.spec = JSON.parse(JSON.stringify(spec));
     this.bindings = bindings;
-    for (const t of spec.tracks || []) if (!bindings[t.target]?.setParameter) throw new Error(`Missing parameter binding: ${t.target}`);
-    for (const c of spec.cues || []) if (!bindings[c.target]?.[c.action]) throw new Error(`Missing ${c.action} binding: ${c.target}`);
-    for (const a of spec.attachments || []) if (!bindings[a.source]?.resolveAnchor || !bindings[a.target]?.setTransform) throw new Error("Missing attachment binding.");
+    for (const t of spec.tracks || [])
+      if (!bindings[t.target]?.setParameter)
+        throw new Error(`Missing parameter binding: ${t.target}`);
+    for (const c of spec.cues || [])
+      if (!bindings[c.target]?.[c.action])
+        throw new Error(`Missing ${c.action} binding: ${c.target}`);
+    for (const a of spec.attachments || [])
+      if (!bindings[a.source]?.resolveAnchor || !bindings[a.target]?.setTransform)
+        throw new Error("Missing attachment binding.");
   }
   reset() {
     for (const b of Object.values(this.bindings)) b.reset();
@@ -5971,12 +6756,14 @@ var ZhudaEffectDirector = class {
     for (const b of Object.values(this.bindings)) b.stop?.();
   }
   update(dt) {
-    if (!Number.isFinite(dt) || dt < 0 || dt > 10) throw new Error("Timeline delta must be 0..10 seconds.");
+    if (!Number.isFinite(dt) || dt < 0 || dt > 10)
+      throw new Error("Timeline delta must be 0..10 seconds.");
     if (this.playing) this.advance(dt, true);
     else this.apply();
   }
   seek(time, dispatchEvents = false) {
-    if (!Number.isFinite(time) || time < 0 || time > this.spec.duration) throw new Error("Seek outside timeline.");
+    if (!Number.isFinite(time) || time < 0 || time > this.spec.duration)
+      throw new Error("Seek outside timeline.");
     this.reset();
     this.advance(time, dispatchEvents);
     this.playing = false;
@@ -5985,7 +6772,9 @@ var ZhudaEffectDirector = class {
     let remaining = dt, events = 0;
     do {
       const end = Math.min(this.spec.duration, this.time + remaining);
-      const cues = (this.spec.cues || []).filter((c) => (c.time > this.time || this.initial && c.time === 0) && c.time <= end).sort((a, b) => a.time - b.time);
+      const cues = (this.spec.cues || []).filter(
+        (c) => (c.time > this.time || this.initial && c.time === 0) && c.time <= end
+      ).sort((a, b) => a.time - b.time);
       for (const c of cues) {
         if (++events > 4096) throw new Error("Timeline cue budget exceeded.");
         if (c.action !== "event" || dispatchEvents) {
@@ -6016,15 +6805,47 @@ var ZhudaEffectDirector = class {
       let value = t.keys[0].value;
       for (let i = 0; i < t.keys.length; i++) {
         const a = t.keys[i], b = t.keys[i + 1];
-        if (this.time >= a.time) value = !b || this.time >= b.time ? a.value : a.value + (b.value - a.value) * (this.time - a.time) / (b.time - a.time);
+        if (this.time >= a.time)
+          value = !b || this.time >= b.time ? a.value : a.value + (b.value - a.value) * (this.time - a.time) / (b.time - a.time);
       }
       this.bindings[t.target].setParameter(t.parameter, value);
     }
     for (const a of this.spec.attachments || []) {
       const p = this.bindings[a.source].resolveAnchor(a.anchor);
-      if (!p) continue;
+      if (!p) {
+        this.bindings[a.target].stop?.();
+        continue;
+      }
+      if (p.worldMatrix || p.quaternion || p.scale || a.offset?.worldMatrix || a.offset?.quaternion || a.offset?.scale) {
+        const matrix = (v) => v.worldMatrix || compose4(
+          { x: v.x, y: v.y, z: v.z ?? 0 },
+          v.quaternion || {
+            x: 0,
+            y: 0,
+            z: Math.sin((v.rotation ?? 0) / 2),
+            w: Math.cos((v.rotation ?? 0) / 2)
+          },
+          v.scale
+        );
+        const worldMatrix = multiply4(
+          matrix(p),
+          matrix(a.offset || { x: 0, y: 0 })
+        );
+        this.bindings[a.target].setTransform({
+          x: worldMatrix[12],
+          y: worldMatrix[13],
+          z: worldMatrix[14],
+          worldMatrix
+        });
+        continue;
+      }
       const o = a.offset || { x: 0, y: 0 }, r = p.rotation || 0, c = Math.cos(r), s = Math.sin(r);
-      this.bindings[a.target].setTransform({ x: p.x + o.x * c - o.y * s, y: p.y + o.x * s + o.y * c, z: (p.z || 0) + (o.z || 0), rotation: r + (o.rotation || 0) });
+      this.bindings[a.target].setTransform({
+        x: p.x + o.x * c - o.y * s,
+        y: p.y + o.x * s + o.y * c,
+        z: (p.z || 0) + (o.z || 0),
+        rotation: r + (o.rotation || 0)
+      });
     }
   }
 };
@@ -6247,6 +7068,783 @@ function compareVisualFrames(source, target, width, height, options = {}) {
   const iou = union ? intersection / union : 1, center = a && b ? Math.hypot(ax / a - bx / b, ay / a - by / b) : a === b ? 0 : Infinity;
   return { passed: a > 0 && b > 0 && iou >= minIoU && center <= maxCenter, intersectionOverUnion: iou, sourcePixels: a, targetPixels: b, centroidErrorPx: center };
 }
+
+// packages/core/runtime3d/Clocks.ts
+var ZhudaSimulationClock = class {
+  constructor(step = 1 / 60, maxCatchup = 8) {
+    this.tick = 0;
+    this.renderTime = 0;
+    this.paused = false;
+    this.accumulator = 0;
+    this.step = step;
+    this.maxCatchup = maxCatchup;
+    if (!(step > 0 && Number.isFinite(step) && Number.isInteger(maxCatchup) && maxCatchup > 0))
+      throw Error("Invalid fixed clock");
+  }
+  advance(dt, simulate) {
+    if (!Number.isFinite(dt) || dt < 0) throw Error("Invalid clock delta");
+    if (this.paused) return 0;
+    this.renderTime += dt;
+    this.accumulator = Math.min(
+      this.accumulator + dt,
+      this.step * this.maxCatchup
+    );
+    let n = 0;
+    while (this.accumulator + 1e-10 >= this.step) {
+      this.accumulator -= this.step;
+      simulate(this.step, ++this.tick);
+      n++;
+    }
+    return n;
+  }
+  get simulationTime() {
+    return this.tick * this.step;
+  }
+  get alpha() {
+    return Math.max(0, this.accumulator / this.step);
+  }
+  reset(tick = 0) {
+    if (!Number.isSafeInteger(tick) || tick < 0) throw Error("Invalid tick");
+    this.tick = tick;
+    this.renderTime = tick * this.step;
+    this.accumulator = 0;
+  }
+};
+var ZhudaSnapshotBuffer = class {
+  constructor(epoch, interpolate, maxExtrapolation = 0.15, capacity = 32) {
+    this.items = [];
+    this.sequence = -1;
+    this.epoch = epoch;
+    this.interpolate = interpolate;
+    this.maxExtrapolation = maxExtrapolation;
+    this.capacity = capacity;
+    if (!Number.isFinite(maxExtrapolation) || maxExtrapolation < 0 || capacity < 2 || !Number.isInteger(capacity))
+      throw Error("Invalid snapshot bounds");
+  }
+  push(s) {
+    if (s.epoch !== this.epoch || !Number.isSafeInteger(s.sequence) || s.sequence <= this.sequence || !Number.isFinite(s.time))
+      return false;
+    if (this.items.length && s.time <= this.items[this.items.length - 1].time)
+      return false;
+    this.sequence = s.sequence;
+    this.items.push(s);
+    if (this.items.length > this.capacity) this.items.shift();
+    return true;
+  }
+  sample(time) {
+    if (!Number.isFinite(time)) throw Error("Invalid sample time");
+    const a = this.items;
+    if (!a.length) return null;
+    if (a.length === 1 || time <= a[0].time)
+      return { value: a[0].value, time: a[0].time, mode: "held" };
+    for (let i = 1; i < a.length; i++)
+      if (time <= a[i].time) {
+        const x2 = a[i - 1], y2 = a[i];
+        return {
+          value: this.interpolate(
+            x2.value,
+            y2.value,
+            (time - x2.time) / (y2.time - x2.time)
+          ),
+          time,
+          mode: "interpolated"
+        };
+      }
+    const x = a[a.length - 2], y = a[a.length - 1], t = Math.min(time, y.time + this.maxExtrapolation);
+    return {
+      value: this.interpolate(
+        x.value,
+        y.value,
+        (t - x.time) / (y.time - x.time)
+      ),
+      time: t,
+      mode: "extrapolated"
+    };
+  }
+  reset(epoch) {
+    this.epoch = epoch;
+    this.items = [];
+    this.sequence = -1;
+  }
+  get size() {
+    return this.items.length;
+  }
+};
+var ZhudaEventGate = class {
+  constructor(epoch, ttl = 30, capacity = 2048) {
+    this.seen = /* @__PURE__ */ new Map();
+    this.epoch = epoch;
+    this.ttl = ttl;
+    this.capacity = capacity;
+    if (!(ttl > 0 && Number.isFinite(ttl) && Number.isInteger(capacity) && capacity > 0))
+      throw Error("Invalid event bounds");
+  }
+  dispatch(id, now, action, options = {}) {
+    if (!id || !Number.isFinite(now)) throw Error("Invalid event");
+    if (options.replay || options.epoch && options.epoch !== this.epoch)
+      return false;
+    for (const [k, t] of this.seen) if (now - t > this.ttl) this.seen.delete(k);
+    if (this.seen.has(id)) return false;
+    this.seen.set(id, now);
+    while (this.seen.size > this.capacity)
+      this.seen.delete(this.seen.keys().next().value);
+    action();
+    return true;
+  }
+  reset(epoch) {
+    this.epoch = epoch;
+    this.seen.clear();
+  }
+  get size() {
+    return this.seen.size;
+  }
+};
+
+// packages/core/runtime3d/Assets.ts
+var abortError = () => new DOMException("Asset request cancelled", "AbortError");
+var ZhudaAssetCache = class {
+  constructor(load, destroy, maxIdle = 0) {
+    this.entries = /* @__PURE__ */ new Map();
+    this.disposed = false;
+    this.serial = 0;
+    this.loads = 0;
+    this.load = load;
+    this.destroy = destroy;
+    this.maxIdle = maxIdle;
+    if (!Number.isInteger(maxIdle) || maxIdle < 0)
+      throw Error("Invalid warm asset bound");
+  }
+  async acquire(key, options = {}) {
+    if (this.disposed) throw Error("Disposed asset cache");
+    if (options.signal?.aborted) throw abortError();
+    if (!key || options.retries !== void 0 && (!Number.isInteger(options.retries) || options.retries < 0 || options.retries > 3))
+      throw Error("Invalid asset request");
+    let e = this.entries.get(key);
+    if (!e) {
+      const controller = new AbortController();
+      e = {
+        refs: 0,
+        ready: false,
+        abort: controller,
+        phase: "downloading",
+        used: ++this.serial,
+        promise: null
+      };
+      const created = e;
+      this.entries.set(key, e);
+      this.loads++;
+      e.promise = (async () => {
+        let last;
+        for (let i = 0; i <= Math.max(0, Math.min(3, options.retries ?? 0)); i++) {
+          try {
+            return await this.load(
+              key,
+              controller.signal,
+              (p) => created.phase = p
+            );
+          } catch (error) {
+            last = error;
+            if (controller.signal.aborted) throw error;
+          }
+        }
+        throw last;
+      })().then(
+        (value) => {
+          created.value = value;
+          created.ready = true;
+          created.phase = "ready";
+          if (controller.signal.aborted || this.disposed || this.entries.get(key) !== created) {
+            this.destroy(value);
+            throw abortError();
+          }
+          return value;
+        },
+        (error) => {
+          if (this.entries.get(key) === created) this.entries.delete(key);
+          throw error;
+        }
+      );
+    }
+    const target = e;
+    target.refs++;
+    target.used = ++this.serial;
+    let released = false;
+    const release = () => {
+      if (released) return;
+      released = true;
+      target.refs--;
+      target.used = ++this.serial;
+      this.evict();
+    };
+    let cancel;
+    try {
+      const value = await new Promise((resolve, reject) => {
+        cancel = () => {
+          release();
+          reject(abortError());
+        };
+        options.signal?.addEventListener("abort", cancel, { once: true });
+        target.promise.then(resolve, reject);
+      });
+      if (released) throw abortError();
+      return { value, release };
+    } catch (error) {
+      release();
+      throw error;
+    } finally {
+      if (cancel) options.signal?.removeEventListener("abort", cancel);
+    }
+  }
+  evict() {
+    for (const [k, e] of this.entries)
+      if (!e.refs && !e.ready) {
+        this.entries.delete(k);
+        e.abort.abort();
+      }
+    const idle = [...this.entries].filter(([, e]) => !e.refs && e.ready).sort((a, b) => a[1].used - b[1].used);
+    while (idle.length > this.maxIdle) {
+      const [k, e] = idle.shift();
+      this.entries.delete(k);
+      this.destroy(e.value);
+    }
+  }
+  report() {
+    return {
+      entries: this.entries.size,
+      references: [...this.entries.values()].reduce((n, e) => n + e.refs, 0),
+      pending: [...this.entries.values()].filter((e) => !e.ready).length,
+      loads: this.loads,
+      phases: [...this.entries].map(([key, e]) => ({
+        key,
+        phase: e.phase,
+        references: e.refs
+      })),
+      gpuReady: "requires-first-draw"
+    };
+  }
+  dispose() {
+    if (this.disposed) return;
+    if ([...this.entries.values()].some((e) => e.refs > 0))
+      throw Error("Release all asset leases before disposing cache");
+    this.disposed = true;
+    for (const e of this.entries.values()) {
+      e.abort.abort();
+      if (e.ready) this.destroy(e.value);
+    }
+    this.entries.clear();
+  }
+};
+var ZhudaRequestSlot = class {
+  constructor() {
+    this.generation = 0;
+    this.active = null;
+  }
+  async replace(load, commit, discard) {
+    this.cancel();
+    const n = this.generation, c = this.active = new AbortController();
+    try {
+      const value = await load(c.signal);
+      if (n !== this.generation || c.signal.aborted) {
+        discard(value);
+        return false;
+      }
+      try {
+        commit(value);
+      } catch (error) {
+        discard(value);
+        throw error;
+      }
+      return true;
+    } catch (e) {
+      if (c.signal.aborted) return false;
+      throw e;
+    }
+  }
+  cancel() {
+    this.generation++;
+    this.active?.abort();
+    this.active = null;
+  }
+};
+function visit(node, fn) {
+  fn(node);
+  for (let i = 0; i < (node.numChildren || 0); i++)
+    visit(node.getChildAt(i), fn);
+}
+var ZhudaModelLibrary = class {
+  constructor(maxIdle = 3) {
+    this.instances = /* @__PURE__ */ new Set();
+    this.cache = new ZhudaAssetCache(
+      async (url, signal, phase) => {
+        const l = globalThis.Laya;
+        if (!l?.glTFResource)
+          throw Error("Load Laya glTF module before models");
+        const response = await fetch(url, { signal });
+        if (!response.ok) throw Error(`Model HTTP ${response.status}`);
+        const bytes = await response.arrayBuffer();
+        if (signal.aborted) throw abortError();
+        phase("parsing");
+        const resource = new l.glTFResource();
+        try {
+          const view = new DataView(bytes);
+          if (bytes.byteLength >= 12 && view.getUint32(0, true) === 1179937895)
+            await resource._parseglb(bytes, url);
+          else
+            await resource._parse(
+              JSON.parse(new TextDecoder().decode(bytes)),
+              url
+            );
+          if (signal.aborted) {
+            resource.destroy();
+            throw abortError();
+          }
+          resource._addReference();
+          return resource;
+        } catch (e) {
+          if (!resource.destroyed) resource.destroy();
+          throw e;
+        }
+      },
+      (r) => {
+        r._removeReference();
+        r.destroy();
+      },
+      maxIdle
+    );
+  }
+  async instantiate(url, options = {}) {
+    const lease = await this.cache.acquire(url, options);
+    let node;
+    const materials = [];
+    try {
+      if (options.signal?.aborted) throw abortError();
+      node = lease.value.create();
+      if (options.independentMaterials)
+        visit(node, (n) => {
+          const l = globalThis.Laya;
+          const renderer = n.meshRenderer || n.skinnedMeshRenderer || n.getComponent?.(l.SkinnedMeshRenderer) || n.getComponent?.(l.MeshRenderer);
+          if (renderer) {
+            renderer.sharedMaterials = renderer.sharedMaterials.map(
+              (m) => {
+                const copy = m.clone();
+                materials.push(copy);
+                return copy;
+              }
+            );
+          }
+        });
+    } catch (e) {
+      node?.destroy(true);
+      lease.release();
+      throw e;
+    }
+    this.instances.add(node);
+    let disposed = false;
+    return {
+      node,
+      materials,
+      setTint: (color) => {
+        if (disposed) throw Error("Disposed model instance");
+        if (!options.independentMaterials)
+          throw Error("Tint requires independent materials");
+        if (color.length !== 4 || !color.every((n) => Number.isFinite(n) && n >= 0 && n <= 1))
+          throw Error("Invalid linear tint");
+        const l = globalThis.Laya;
+        for (const m of materials) {
+          if ("albedoColor" in m) m.albedoColor = new l.Color(...color);
+          else if (m.getVector4("u_BaseColorFactor"))
+            m.setVector4("u_BaseColorFactor", new l.Vector4(...color));
+          else throw Error("Model material does not expose a base color");
+        }
+      },
+      find: (name) => {
+        let found = null;
+        visit(node, (n) => {
+          if (n.name === name) found = n;
+        });
+        return found;
+      },
+      dispose: () => {
+        if (disposed) return;
+        disposed = true;
+        node.destroy(true);
+        for (const m of materials) if (!m.destroyed) m.destroy();
+        this.instances.delete(node);
+        lease.release();
+      }
+    };
+  }
+  report() {
+    return { ...this.cache.report(), instances: this.instances.size };
+  }
+  dispose() {
+    if (this.instances.size)
+      throw Error("Dispose model instances before library");
+    this.cache.dispose();
+  }
+};
+
+// packages/core/runtime3d/SceneQueries.ts
+var ZhudaSceneQueries = class {
+  constructor() {
+    this.providers = /* @__PURE__ */ new Map();
+  }
+  register(p) {
+    const key = p.entityId + "\0" + (p.instanceId ?? "");
+    if (!p.entityId || this.providers.has(key))
+      throw Error("Duplicate/missing stable query ID");
+    this.providers.set(key, p);
+    return () => this.providers.delete(key);
+  }
+  raycast(ray, maxDistance = Infinity, layerMask = 4294967295) {
+    if (!(maxDistance >= 0)) throw Error("Invalid ray distance");
+    const r = { origin: ray.origin, direction: normalized(ray.direction) };
+    let hit = null;
+    for (const p of this.providers.values()) {
+      if (!((p.layer ?? 1) & layerMask)) continue;
+      const h = p.raycast(r, hit?.distance ?? maxDistance);
+      if (h && Number.isFinite(h.distance) && h.distance >= 0 && h.distance <= maxDistance && (!hit || h.distance < hit.distance))
+        hit = { ...h, entityId: p.entityId, instanceId: p.instanceId };
+    }
+    return hit;
+  }
+  sweepSphere(from, to, radius, layerMask = 4294967295) {
+    if (!Number.isFinite(radius) || radius < 0)
+      throw Error("Invalid sweep radius");
+    let hit = null;
+    for (const p of this.providers.values()) {
+      if (!((p.layer ?? 1) & layerMask) || !p.sweepSphere) continue;
+      const h = p.sweepSphere(from, to, radius);
+      if (h && h.distance >= 0 && Number.isFinite(h.distance) && (!hit || h.distance < hit.distance))
+        hit = { ...h, entityId: p.entityId, instanceId: p.instanceId };
+    }
+    return hit;
+  }
+  clear() {
+    this.providers.clear();
+  }
+  get size() {
+    return this.providers.size;
+  }
+};
+function rayBox(ray, min, max, maxDistance = Infinity) {
+  let near = 0, far = maxDistance;
+  let normal = { x: 0, y: 0, z: 0 };
+  for (const axis of ["x", "y", "z"]) {
+    const d = ray.direction[axis], o = ray.origin[axis];
+    if (Math.abs(d) < 1e-10) {
+      if (o < min[axis] || o > max[axis]) return null;
+      continue;
+    }
+    let a = (min[axis] - o) / d, b = (max[axis] - o) / d, sign = -1;
+    if (a > b) {
+      [a, b] = [b, a];
+      sign = 1;
+    }
+    if (a > near) {
+      near = a;
+      normal = { x: 0, y: 0, z: 0 };
+      normal[axis] = sign;
+    }
+    far = Math.min(far, b);
+    if (near > far) return null;
+  }
+  if (far < 0) return null;
+  return {
+    distance: near,
+    normal,
+    position: {
+      x: ray.origin.x + ray.direction.x * near,
+      y: ray.origin.y + ray.direction.y * near,
+      z: ray.origin.z + ray.direction.z * near
+    }
+  };
+}
+var ZhudaCameraCoordinates = class {
+  constructor(camera, viewport) {
+    this.camera = camera;
+    this.viewport = viewport;
+  }
+  matrices() {
+    return multiply4(
+      this.camera.projectionMatrix.elements,
+      this.camera.viewMatrix.elements
+    );
+  }
+  rect() {
+    const v = this.viewport(), n = this.camera.normalizedViewport || { x: 0, y: 0, width: 1, height: 1 };
+    if (!(v.width > 0 && v.height > 0 && n.width > 0 && n.height > 0))
+      throw Error("Empty camera viewport");
+    return {
+      left: v.left + n.x * v.width,
+      top: v.top + n.y * v.height,
+      width: v.width * n.width,
+      height: v.height * n.height
+    };
+  }
+  screenToRay(x, y) {
+    if (![x, y].every(Number.isFinite)) throw Error("Invalid screen point");
+    const r = this.rect(), inv = inverse4(this.matrices()), nx = (x - r.left) / r.width * 2 - 1, ny = 1 - (y - r.top) / r.height * 2;
+    const origin = transformPoint(inv, { x: nx, y: ny, z: -1 }), far = transformPoint(inv, { x: nx, y: ny, z: 1 });
+    return {
+      origin,
+      direction: normalized({
+        x: far.x - origin.x,
+        y: far.y - origin.y,
+        z: far.z - origin.z
+      })
+    };
+  }
+  worldToScreen(p) {
+    const m = this.matrices(), v = transformPoint(m, p), r = this.rect(), w = m[3] * p.x + m[7] * p.y + m[11] * p.z + m[15];
+    return {
+      x: r.left + (v.x + 1) * 0.5 * r.width,
+      y: r.top + (1 - v.y) * 0.5 * r.height,
+      depth: (v.z + 1) * 0.5,
+      visible: w > 0 && Math.abs(v.x) <= 1 && Math.abs(v.y) <= 1 && Math.abs(v.z) <= 1
+    };
+  }
+};
+var ZhudaSurfaceQuery = class {
+  constructor(sample) {
+    this.sample = sample;
+  }
+  at(x, z, time) {
+    if (![x, z, time].every(Number.isFinite))
+      throw Error("Invalid surface query");
+    return this.sample(x, z, time);
+  }
+};
+
+// packages/core/runtime3d/SceneLifecycle.ts
+var ZhudaResourceScope = class {
+  constructor() {
+    this.releases = [];
+    this.disposed = false;
+  }
+  own(value, release) {
+    if (this.disposed) {
+      release(value);
+      throw Error("Disposed resource scope");
+    }
+    this.releases.push(() => release(value));
+    return value;
+  }
+  defer(release) {
+    this.own(release, (f) => f());
+  }
+  dispose() {
+    if (this.disposed) return;
+    this.disposed = true;
+    const errors = [];
+    for (const release of this.releases.reverse())
+      try {
+        release();
+      } catch (e) {
+        errors.push(e);
+      }
+    this.releases = [];
+    if (errors.length)
+      throw Object.assign(Error("Resource release failed"), { errors });
+  }
+};
+var ZhudaSceneRegions = class {
+  constructor() {
+    this.regions = /* @__PURE__ */ new Map();
+  }
+  async enter(id, create) {
+    if (!id) throw Error("Missing region ID");
+    this.leave(id);
+    const record = {
+      slot: new ZhudaRequestSlot(),
+      value: void 0
+    };
+    this.regions.set(id, record);
+    try {
+      return await record.slot.replace(
+        create,
+        (value) => record.value = value,
+        (value) => value.dispose()
+      );
+    } catch (e) {
+      if (this.regions.get(id) === record) this.regions.delete(id);
+      throw e;
+    }
+  }
+  leave(id) {
+    const r = this.regions.get(id);
+    if (!r) return;
+    this.regions.delete(id);
+    r.slot.cancel();
+    r.value?.dispose();
+  }
+  clear() {
+    for (const id of [...this.regions.keys()]) this.leave(id);
+  }
+  get size() {
+    return this.regions.size;
+  }
+};
+var ZhudaSceneBudget = class {
+  constructor() {
+    this.resources = /* @__PURE__ */ new Map();
+  }
+  track(id, kind, estimatedBytes) {
+    if (!id || this.resources.has(id) || !Number.isFinite(estimatedBytes) || estimatedBytes < 0)
+      throw Error("Invalid/duplicate resource budget");
+    this.resources.set(id, { kind, estimatedBytes });
+    return () => this.resources.delete(id);
+  }
+  report() {
+    const counts = { mesh: 0, texture: 0, renderTarget: 0 };
+    let estimatedBytes = 0;
+    for (const r of this.resources.values()) {
+      counts[r.kind]++;
+      estimatedBytes += r.estimatedBytes;
+    }
+    return { counts, estimatedBytes, memoryMeasurement: "estimate" };
+  }
+};
+var sceneQuality = {
+  low: {
+    dprCap: 1,
+    shadowDistance: 0,
+    shadowResolution: 512,
+    extraPasses: 0,
+    lodDistance: 20
+  },
+  medium: {
+    dprCap: 1.5,
+    shadowDistance: 30,
+    shadowResolution: 1024,
+    extraPasses: 0,
+    lodDistance: 40
+  },
+  high: {
+    dprCap: 2,
+    shadowDistance: 60,
+    shadowResolution: 2048,
+    extraPasses: 2,
+    lodDistance: 80
+  }
+};
+var ZhudaDistanceLOD = class {
+  constructor(distance, hysteresis = 2) {
+    this.near = true;
+    this.distance = distance;
+    this.hysteresis = hysteresis;
+    if (!(distance > hysteresis && hysteresis >= 0))
+      throw Error("Invalid LOD bounds");
+  }
+  update(camera, object) {
+    const d = Math.hypot(
+      camera.x - object.x,
+      camera.y - object.y,
+      camera.z - object.z
+    );
+    if (d > this.distance + this.hysteresis) this.near = false;
+    else if (d < this.distance - this.hysteresis) this.near = true;
+    return this.near;
+  }
+};
+function inspectSceneResources(runtime = globalThis.Laya) {
+  const map = runtime.Resource._idResourcesMap, items = map instanceof Map ? [...map.values()] : Object.values(map || {});
+  const counts = { mesh: 0, texture: 0, renderTarget: 0 };
+  let meshBytes = 0, textureBytes = 0, renderTargetBytes = 0;
+  for (const r of items) {
+    if (r.destroyed) continue;
+    if (r instanceof runtime.Mesh) {
+      counts.mesh++;
+      meshBytes += r.gpuMemory || 0;
+    } else if (runtime.RenderTexture && r instanceof runtime.RenderTexture || runtime.RenderTexture2D && r instanceof runtime.RenderTexture2D) {
+      counts.renderTarget++;
+      renderTargetBytes += (r.width || 0) * (r.height || 0) * 8 * Math.max(1, r.samples || 1);
+    } else if (r instanceof runtime.BaseTexture) {
+      counts.texture++;
+      textureBytes += (r.width || 0) * (r.height || 0) * 4 * (r.mipmap ? 4 / 3 : 1) * (r.isCube ? 6 : 1);
+    }
+  }
+  return {
+    counts,
+    resources: items.filter((r) => !r.destroyed).length,
+    estimatedBytes: meshBytes + textureBytes + renderTargetBytes,
+    meshBytes,
+    textureBytes,
+    renderTargetBytes,
+    memoryMeasurement: "estimate",
+    assumptions: "Texture RGBA8, render target RGBA8 + 32-bit depth; vendor mesh accounting. Excludes driver overhead and compressed/HDR format corrections."
+  };
+}
+function applySceneQuality(quality, session, camera, lights = []) {
+  const l = globalThis.Laya;
+  if (![quality.dprCap, quality.shadowDistance, quality.extraPasses].every(
+    Number.isFinite
+  ) || quality.dprCap < 0.5 || quality.dprCap > 4 || quality.shadowDistance < 0 || quality.extraPasses < 0 || !Number.isFinite(quality.lodDistance) || quality.lodDistance <= 0 || ![512, 1024, 2048].includes(quality.shadowResolution))
+    throw Error("Invalid scene quality");
+  session.options.dprCap = quality.dprCap;
+  session.resize();
+  camera.msaa = false;
+  for (const light of lights) {
+    light.shadowDistance = quality.shadowDistance;
+    light.shadowResolution = quality.shadowResolution;
+    light.shadowMode = quality.shadowDistance > 0 ? l.ShadowMode.SoftLow : l.ShadowMode.None;
+  }
+  return { ...quality, additionalPassBudget: quality.extraPasses };
+}
+
+// packages/core/runtime3d/CameraRig.ts
+var ZhudaCameraRig = class {
+  constructor(camera, options = {}) {
+    this.yaw = 0;
+    this.pitch = 0.48;
+    this.distance = 16;
+    this.camera = camera;
+    this.options = options;
+  }
+  rotate(dx, dy) {
+    if (![dx, dy].every(Number.isFinite)) throw Error("Invalid camera input");
+    const s = this.options.sensitivity ?? 5e-3;
+    this.yaw -= dx * s;
+    this.pitch = Math.max(-1.4, Math.min(1.4, this.pitch + dy * s));
+  }
+  zoom(delta) {
+    if (!Number.isFinite(delta)) throw Error("Invalid camera zoom");
+    this.distance = Math.max(
+      this.options.minDistance ?? 2,
+      Math.min(
+        this.options.maxDistance ?? 80,
+        this.distance * Math.exp(delta * 1e-3)
+      )
+    );
+  }
+  update(target) {
+    const l = globalThis.Laya, first = this.options.mode === "firstPerson", d = first ? 1 : this.distance;
+    const offset = {
+      x: Math.sin(this.yaw) * Math.cos(this.pitch) * d,
+      y: Math.sin(this.pitch) * d,
+      z: Math.cos(this.yaw) * Math.cos(this.pitch) * d
+    };
+    const position = first ? target : {
+      x: target.x + offset.x,
+      y: target.y + offset.y,
+      z: target.z + offset.z
+    };
+    const look = first ? {
+      x: target.x - offset.x,
+      y: target.y - offset.y,
+      z: target.z - offset.z
+    } : target;
+    this.camera.transform.position = new l.Vector3(
+      position.x,
+      position.y,
+      position.z
+    );
+    this.camera.transform.lookAt(
+      new l.Vector3(look.x, look.y, look.z),
+      new l.Vector3(0, 1, 0)
+    );
+  }
+};
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
   ENGINE_PRESET_PROFILES,
@@ -6265,38 +7863,75 @@ function compareVisualFrames(source, target, width, height, options = {}) {
   ZHUDA_VFX_FRAGMENT,
   ZHUDA_VFX_VERTEX,
   Zhuda3D,
+  ZhudaAssetCache,
   ZhudaAssetSerializer,
   ZhudaBenchmarkEngine,
+  ZhudaCameraCoordinates,
+  ZhudaCameraRig,
+  ZhudaDistanceLOD,
+  ZhudaDynamicMesh,
   ZhudaEffectBudget,
   ZhudaEffectDirector,
   ZhudaEffectEnvelope,
   ZhudaEngine,
+  ZhudaEventGate,
+  ZhudaInstanceGroup,
   ZhudaLayaParticleRenderer,
   ZhudaLayaParticleRenderer3D,
   ZhudaLayaRibbonRenderer,
   ZhudaLayaRibbonRenderer3D,
+  ZhudaModelLibrary,
   ZhudaParticleEventLink,
   ZhudaParticleMesh3D,
   ZhudaParticleSystem,
   ZhudaParticleSystem3D,
+  ZhudaPointerInput,
   ZhudaPrefab,
+  ZhudaRequestSlot,
+  ZhudaResourceScope,
   ZhudaRibbonPath3D,
   ZhudaRibbonTrail,
   ZhudaRibbonTrail3D,
+  ZhudaRuntimeHost,
   ZhudaRuntimeProfiler,
+  ZhudaRuntimeSession,
+  ZhudaSceneBudget,
+  ZhudaSceneQueries,
+  ZhudaSceneRegions,
+  ZhudaSimulationClock,
+  ZhudaSnapshotBuffer,
+  ZhudaSurfaceQuery,
   ZhudaUI,
   ZhudaVfxCamera,
   ZhudaVfxMaterial,
+  applySceneQuality,
   compareVisualFrames,
+  compose4,
+  configureSurfacePasses,
   convertUnityAnimationCurve,
   convertUnityVisualMaterial,
+  createCustomSurfaceMaterial,
+  createSurfaceMaterial,
+  createSurfaceTexture,
   disposeMigratedMaterial,
+  disposeSurfaceMaterial,
+  identity4,
+  inspectSceneResources,
+  installLaya342LifecycleFix,
+  installSandboxStorageFallback,
   instantiateMigratedMaterial,
+  inverse4,
+  multiply4,
+  normalized,
+  packMetallicRoughness,
+  rayBox,
   resolveParticleCollision,
   rotateParticleVector3,
   sampleParticleColor,
   sampleParticleCurve,
   sampleParticleUV,
+  sceneQuality,
+  transformPoint,
   validateEffectTimeline,
   validateParticleEffect,
   validateParticleEffect3D,

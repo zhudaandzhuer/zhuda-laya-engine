@@ -8,6 +8,14 @@
 > **基於 [LayaAir 官方引擎 (3.4.2)](https://github.com/layabox/LayaAir) 渲染與物理內核，由 [豬大 (@zhudaandzhuer)](https://github.com/zhudaandzhuer) 打造的 AI-Agent-Friendly 開源分支版本 (`zhuda-laya-engine`)。**
 > 完全脫離 LayaAir IDE 黑盒與 GUI 鎖定，專為 **AI Coding Agent（Claude Code / Cursor / Windsurf / AGY / Codex）** 與現代自動化前端工程打造的模組化 **2D / 3D / Spine 4.2** 遊戲引擎工作台與 SDK。
 
+## 3D 接入補強與實測
+
+新增獨立消費端建置、PBR／自訂 shader／動態網格、模型 lease 與材質隔離、CSS 座標與多指輸入、快照時鐘、3D 掛點，以及場景品質／資源預算。修正 DPR 重複放大與 Laya342 相機拆除的陰影貼圖遺漏。
+
+[3D 接入文件](docs/3d-integration.md) · [驗收矩陣與限制](docs/3d-acceptance.md) · [獨立 3D 場景](https://zhudaandzhuer.github.io/zhuda-3d-lab/) · [消費端原始碼與實測報告](https://github.com/zhudaandzhuer/zhuda-3d-lab)
+
+iPhone14 的固定小場景持續採樣超過10分鐘，P95 20ms（low／DPR1）。完整遊戲地圖與Android仍須另驗；遊戲資產和規則留在獨立專案。
+
 ## 完整遊戲 · 豬大遊戲館
 
 [![豬大遊戲館 · 四款新作與霓虹疾線](https://raw.githubusercontent.com/zhudaandzhuer/zhuda-arcade/main/docs/collection.jpg)](https://zhudaandzhuer.github.io/zhuda-arcade/)

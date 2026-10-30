@@ -10,6 +10,193 @@ var ZhudaAppBundle = (() => {
     return result;
   };
 
+  // packages/core/runtime3d/Runtime.ts
+  function installSandboxStorageFallback() {
+    const modes = {};
+    for (const name of ["localStorage", "sessionStorage"]) {
+      try {
+        void window[name];
+        modes[name] = "persistent";
+      } catch {
+        const values = /* @__PURE__ */ new Map();
+        const memory = {
+          get length() {
+            return values.size;
+          },
+          key: (i) => [...values.keys()][i] ?? null,
+          getItem: (k) => values.get(String(k)) ?? null,
+          setItem: (k, v) => {
+            values.set(String(k), String(v));
+          },
+          removeItem: (k) => {
+            values.delete(String(k));
+          },
+          clear: () => values.clear()
+        };
+        Object.defineProperty(window, name, {
+          configurable: true,
+          value: memory
+        });
+        modes[name] = "memory";
+      }
+    }
+    return modes;
+  }
+  var ZhudaRuntimeSession = class {
+    constructor(canvas, options = {}) {
+      this.paused = false;
+      this.contextLost = false;
+      this.disposed = false;
+      this.cleanups = [];
+      this.frame = 0;
+      this.previous = 0;
+      this.task = null;
+      this.canvas = canvas;
+      this.options = options;
+      const listen = (target, event, fn) => {
+        target.addEventListener(event, fn);
+        this.cleanups.push(() => target.removeEventListener(event, fn));
+      };
+      listen(document, "visibilitychange", () => this.setPaused(document.hidden));
+      listen(window, "blur", () => this.setPaused(true));
+      listen(window, "focus", () => {
+        if (!document.hidden && !this.contextLost) this.setPaused(false);
+      });
+      listen(canvas, "webglcontextlost", (e) => {
+        e.preventDefault();
+        this.contextLost = true;
+        this.setPaused(true);
+        options.onContextLost?.();
+      });
+      try {
+        if (options.container) {
+          this.observer = new ResizeObserver(() => this.resize());
+          this.observer.observe(options.container);
+        } else listen(window, "resize", () => this.resize());
+        this.resize();
+      } catch (error) {
+        this.dispose();
+        throw error;
+      }
+    }
+    setPaused(value) {
+      this.options.clearInput?.();
+      this.paused = value || this.contextLost;
+      this.previous = 0;
+      this.options.onPause?.(this.paused);
+    }
+    resize() {
+      if (this.disposed) return;
+      const l = globalThis.Laya, c = this.options.container;
+      if (!c && !this.options.dprCap) return;
+      const rect = c?.getBoundingClientRect(), width = rect?.width || innerWidth, height = rect?.height || innerHeight, dpr = Math.min(devicePixelRatio || 1, this.options.dprCap ?? 2);
+      if (width < 2 || height < 2) return;
+      l.Config.useRetinalCanvas = false;
+      l.stage.screenAdaptationEnabled = false;
+      l.stage.scaleMode = l.Stage.SCALE_SHOWALL;
+      l.stage.alignH = l.Stage.ALIGN_LEFT;
+      l.stage.alignV = l.Stage.ALIGN_TOP;
+      l.stage.size(Math.round(width * dpr), Math.round(height * dpr));
+      l.stage.setScreenSize(
+        width * l.Browser.pixelRatio,
+        height * l.Browser.pixelRatio
+      );
+      this.options.onResize?.({ width, height, dpr });
+    }
+    start(update) {
+      if (this.disposed) throw Error("Disposed runtime");
+      this.task = update;
+      if (this.frame) return;
+      const tick = (now) => {
+        this.frame = 0;
+        if (this.disposed) return;
+        if (!this.paused) {
+          const elapsed = this.previous ? now - this.previous : 0;
+          if (!this.previous || elapsed >= 1e3 / (this.options.targetFPS || 60) - 2) {
+            this.previous = now;
+            this.task?.(Math.min(0.1, elapsed / 1e3));
+          }
+        }
+        this.frame = requestAnimationFrame(tick);
+      };
+      this.frame = requestAnimationFrame(tick);
+    }
+    dispose() {
+      if (this.disposed) return;
+      this.disposed = true;
+      cancelAnimationFrame(this.frame);
+      this.frame = 0;
+      this.task = null;
+      this.observer?.disconnect();
+      for (const f of this.cleanups) f();
+      this.cleanups = [];
+      this.options.clearInput?.();
+    }
+  };
+
+  // packages/core/runtime3d/Surfaces.ts
+  function createSurfaceMaterial(s) {
+    const l = globalThis.Laya;
+    if (!["pbr", "unlit"].includes(s.type)) throw Error("Unknown material type");
+    if ([s.metallic ?? 0, s.roughness ?? 0.5, s.alphaCutoff ?? 0.5].some(
+      (v) => !Number.isFinite(v) || v < 0 || v > 1
+    ))
+      throw Error("Invalid material factors");
+    const m = s.type === "pbr" ? new l.PBRStandardMaterial() : new l.UnlitMaterial();
+    m.albedoColor = new l.Color(...s.color || [1, 1, 1, 1]);
+    if (s.type === "pbr") {
+      m.metallic = s.metallic ?? 0;
+      m.smoothness = 1 - (s.roughness ?? 0.5);
+      if (s.emission) {
+        m.enableEmission = true;
+        m.emissionColor = new l.Color(...s.emission, 1);
+      }
+    }
+    for (const [key, value] of Object.entries(s.textures || {}))
+      m[{
+        albedo: "albedoTexture",
+        normal: "normalTexture",
+        metallicGloss: "metallicGlossTexture",
+        emission: "emissionTexture"
+      }[key]] = value?.bitmap || value;
+    const blend = s.blend || "opaque", Class = s.type === "pbr" ? l.PBRStandardMaterial : l.UnlitMaterial;
+    if (blend === "alpha") m.renderMode = Class.RENDERMODE_TRANSPARENT;
+    else if (blend === "cutout") {
+      m.alphaTest = true;
+      m.alphaTestValue = s.alphaCutoff ?? 0.5;
+    } else if (blend === "additive") {
+      m.renderQueue = 3e3;
+      m.blend = l.RenderState.BLEND_ENABLE_ALL;
+      m.blendSrc = l.RenderState.BLENDPARAM_SRC_ALPHA;
+      m.blendDst = l.RenderState.BLENDPARAM_ONE;
+    }
+    if (s.doubleSided) m.cull = l.RenderState.CULL_NONE;
+    m.depthWrite = s.depthWrite ?? (blend === "opaque" || blend === "cutout");
+    return m;
+  }
+
+  // packages/core/runtime3d/Laya342Adapters.ts
+  var patched = /* @__PURE__ */ new WeakSet();
+  function installLaya342LifecycleFix(runtime = globalThis.Laya) {
+    const prototype = runtime?.WebRender3DProcess?.prototype;
+    if (!prototype || patched.has(prototype)) return;
+    const destroy = prototype.destroy;
+    if (typeof destroy !== "function") return;
+    const retired = /* @__PURE__ */ new WeakSet();
+    prototype.destroy = function(...args) {
+      if (retired.has(this)) return;
+      retired.add(this);
+      const shadow = this._defaultShadowMap;
+      try {
+        return destroy.apply(this, args);
+      } finally {
+        if (shadow && !shadow.destroyed) shadow.destroy();
+        this._defaultShadowMap = null;
+      }
+    };
+    patched.add(prototype);
+  }
+
   // packages/core/TopologyGraph.ts
   var ZHUDA_ENGINE_MODULES = [
     {
@@ -601,59 +788,105 @@ var ZhudaAppBundle = (() => {
   }
   var ZhudaEngine = class {
     static async boot(options = {}) {
-      const width = options.width ?? 1280;
-      const height = options.height ?? 720;
-      const bgColor = options.bgColor ?? "#0d1117";
-      const features = options.features ?? "all";
-      const topology = TopologyResolver.resolveByFeatures(features);
-      EngineGuard.installPrototypeDetox();
-      const hasSpine42 = features === "all" || Array.isArray(features) && features.includes("spine42");
-      if (hasSpine42) {
-        const spineConst = Laya.SpineConst;
-        if (spineConst) {
-          spineConst.VERSION = "4.2";
-          spineConst.VersionFirst = 4;
-          spineConst.VersionSecond = 2;
-          spineConst.NEED_SLOT = true;
+      if (this.activeContext || this.booting)
+        throw new Error(
+          "An engine session is already active; dispose it or use a separate runtime realm."
+        );
+      const container = typeof options.container === "string" ? document.querySelector(options.container) : options.container;
+      if (options.container && !container)
+        throw new Error("Canvas container not found");
+      if (options.dprCap !== void 0 && (!Number.isFinite(options.dprCap) || options.dprCap < 0.5 || options.dprCap > 4))
+        throw new Error("DPR cap must be .5..4");
+      this.booting = true;
+      let allocatedScene;
+      try {
+        const width = options.width ?? 1280;
+        const height = options.height ?? 720;
+        const bgColor = options.bgColor ?? "#0d1117";
+        const features = options.features ?? "all";
+        const topology = TopologyResolver.resolveByFeatures(features);
+        if (typeof window !== "undefined") installSandboxStorageFallback();
+        EngineGuard.installPrototypeDetox();
+        const hasSpine42 = features === "all" || Array.isArray(features) && features.includes("spine42");
+        if (hasSpine42) {
+          const spineConst = Laya.SpineConst;
+          if (spineConst) {
+            spineConst.VERSION = "4.2";
+            spineConst.VersionFirst = 4;
+            spineConst.VersionSecond = 2;
+            spineConst.NEED_SLOT = true;
+          }
         }
+        const layaConfig = Laya.Config;
+        if (layaConfig) {
+          if (options.preserveDrawingBuffer !== void 0)
+            layaConfig.preserveDrawingBuffer = options.preserveDrawingBuffer;
+          if (options.antialias !== void 0)
+            layaConfig.isAntialias = options.antialias;
+        }
+        options.beforeInit?.();
+        await Laya.init(width, height);
+        installLaya342LifecycleFix();
+        EngineGuard.installPrototypeDetox();
+        Laya.stage.scaleMode = options.scaleMode ?? Laya.Stage.SCALE_SHOWALL;
+        Laya.stage.screenMode = options.screenMode ?? Laya.Stage.SCREEN_NONE;
+        Laya.stage.alignV = Laya.Stage.ALIGN_MIDDLE;
+        Laya.stage.alignH = Laya.Stage.ALIGN_CENTER;
+        Laya.stage.bgColor = bgColor;
+        const rootScene = allocatedScene = new Laya.Scene();
+        rootScene.name = "ZhudaRootScene";
+        Laya.stage.addChild(rootScene);
+        const health = EngineGuard.inspectEngineHealth();
+        const win = globalThis;
+        win.__ZHUDA_ENGINE_BOOTED__ = true;
+        win.__ZHUDA_ENGINE_HEALTH__ = health;
+        win.__ZHUDA_TOPOLOGY__ = topology;
+        if (typeof document !== "undefined" && document.body) {
+          document.body.dataset.zhudaBooted = "true";
+          document.body.dataset.zhudaModules = String(
+            topology.orderedFiles.length
+          );
+          document.body.dataset.zhudaReflected = health.registeredComponents.join(",");
+          document.body.dataset.zhudaSpine42 = String(
+            health.spine42.hasPhysicsConstraint
+          );
+          document.body.dataset.zhudaDetox = String(health.buttonSetStateGuarded);
+        }
+        const canvas = Laya.Browser.mainCanvas.source;
+        if (container) container.appendChild(canvas);
+        if (options.targetFPS)
+          Laya.stage.frameRate = options.targetFPS === 30 ? "slow" : "fast";
+        const runtime = new ZhudaRuntimeSession(canvas, {
+          ...options,
+          container
+        });
+        let disposed = false;
+        this.activeContext = {
+          stage: Laya.stage,
+          rootScene,
+          topology,
+          health,
+          canvas,
+          runtime,
+          resize: () => runtime.resize(),
+          dispose: () => {
+            if (disposed) return;
+            disposed = true;
+            runtime.dispose();
+            rootScene.destroy(true);
+            this.activeContext = null;
+          }
+        };
+        return this.activeContext;
+      } catch (error) {
+        allocatedScene?.destroy(true);
+        globalThis.__ZHUDA_ENGINE_BOOTED__ = false;
+        if (typeof document !== "undefined" && document.body)
+          document.body.dataset.zhudaBooted = "false";
+        throw error;
+      } finally {
+        this.booting = false;
       }
-      if (options.beforeInit) {
-        options.beforeInit();
-      }
-      const layaConfig = Laya.Config;
-      if (layaConfig) {
-        layaConfig.preserveDrawingBuffer = true;
-        layaConfig.isAntialias = true;
-      }
-      await Laya.init(width, height);
-      EngineGuard.installPrototypeDetox();
-      Laya.stage.scaleMode = options.scaleMode ?? Laya.Stage.SCALE_SHOWALL;
-      Laya.stage.screenMode = options.screenMode ?? Laya.Stage.SCREEN_NONE;
-      Laya.stage.alignV = Laya.Stage.ALIGN_MIDDLE;
-      Laya.stage.alignH = Laya.Stage.ALIGN_CENTER;
-      Laya.stage.bgColor = bgColor;
-      const rootScene = new Laya.Scene();
-      rootScene.name = "ZhudaRootScene";
-      Laya.stage.addChild(rootScene);
-      const health = EngineGuard.inspectEngineHealth();
-      const win = globalThis;
-      win.__ZHUDA_ENGINE_BOOTED__ = true;
-      win.__ZHUDA_ENGINE_HEALTH__ = health;
-      win.__ZHUDA_TOPOLOGY__ = topology;
-      if (typeof document !== "undefined" && document.body) {
-        document.body.dataset.zhudaBooted = "true";
-        document.body.dataset.zhudaModules = String(topology.orderedFiles.length);
-        document.body.dataset.zhudaReflected = health.registeredComponents.join(",");
-        document.body.dataset.zhudaSpine42 = String(health.spine42.hasPhysicsConstraint);
-        document.body.dataset.zhudaDetox = String(health.buttonSetStateGuarded);
-      }
-      this.activeContext = {
-        stage: Laya.stage,
-        rootScene,
-        topology,
-        health
-      };
-      return this.activeContext;
     }
     static getContext() {
       return this.activeContext;
@@ -666,12 +899,16 @@ var ZhudaAppBundle = (() => {
       if (typeof renderLoop === "function") {
         const baseNow = typeof performance !== "undefined" ? performance.now() : Date.now();
         for (let i = 1; i <= frameCount; i++) {
-          renderLoop.call(Laya.Render, baseNow + i * 16.67);
+          renderLoop.call(
+            Laya.Render,
+            baseNow + i * 16.67
+          );
         }
       }
     }
   };
   ZhudaEngine.activeContext = null;
+  ZhudaEngine.booting = false;
   var Zhuda3D = class {
     static createScene3D(parent, options = {}) {
       const scene3D = new Laya.Scene3D();
@@ -701,7 +938,9 @@ var ZhudaAppBundle = (() => {
     static createDirectionalLight(scene3D, options = {}) {
       const node = new Laya.Sprite3D("ZhudaDirectionalLight");
       scene3D.addChild(node);
-      const light = node.addComponent(Laya.DirectionLightCom);
+      const light = node.addComponent(
+        Laya.DirectionLightCom
+      );
       const [r, g, b, a] = options.color ?? [1, 0.98, 0.92, 1];
       light.color = new Laya.Color(r, g, b, a);
       light.intensity = options.intensity ?? 1.3;
@@ -710,6 +949,13 @@ var ZhudaAppBundle = (() => {
       return { node, light };
     }
     static createMaterial(options) {
+      if (options.type === "pbr" || options.type === "unlit")
+        return createSurfaceMaterial({
+          type: options.type,
+          color: options.albedoColor,
+          metallic: options.metallic,
+          roughness: 1 - (options.smoothness ?? 0.5)
+        });
       const mat = new Laya.BlinnPhongMaterial();
       const [r, g, b, a] = options.albedoColor;
       mat.albedoColor = new Laya.Color(r, g, b, a);
@@ -719,18 +965,34 @@ var ZhudaAppBundle = (() => {
     static createPrimitiveMesh(type, dims = {}) {
       switch (type) {
         case "box":
-          return Laya.PrimitiveMesh.createBox(dims.width ?? 1, dims.height ?? 1, dims.depth ?? 1);
+          return Laya.PrimitiveMesh.createBox(
+            dims.width ?? 1,
+            dims.height ?? 1,
+            dims.depth ?? 1
+          );
         case "sphere":
           return Laya.PrimitiveMesh.createSphere(dims.radius ?? 0.5);
         case "cylinder":
-          return Laya.PrimitiveMesh.createCylinder(dims.radius ?? 0.2, dims.height ?? 1);
+          return Laya.PrimitiveMesh.createCylinder(
+            dims.radius ?? 0.2,
+            dims.height ?? 1
+          );
         case "capsule":
-          return Laya.PrimitiveMesh.createCapsule(dims.radius ?? 0.25, dims.height ?? 1);
+          return Laya.PrimitiveMesh.createCapsule(
+            dims.radius ?? 0.25,
+            dims.height ?? 1
+          );
         case "cone":
-          return Laya.PrimitiveMesh.createCone(dims.radius ?? 0.5, dims.height ?? 1);
+          return Laya.PrimitiveMesh.createCone(
+            dims.radius ?? 0.5,
+            dims.height ?? 1
+          );
         case "plane":
         default:
-          return Laya.PrimitiveMesh.createPlane(dims.width ?? 10, dims.depth ?? 10);
+          return Laya.PrimitiveMesh.createPlane(
+            dims.width ?? 10,
+            dims.depth ?? 10
+          );
       }
     }
   };
@@ -770,7 +1032,19 @@ var ZhudaAppBundle = (() => {
       const borderWidth = style.borderWidth ?? 1.2;
       const drawBg = (fill, stroke) => {
         const g = new Laya.Graphics();
-        g.drawRoundRect(0, 0, style.width, style.height, radius, radius, radius, radius, fill, stroke, borderWidth);
+        g.drawRoundRect(
+          0,
+          0,
+          style.width,
+          style.height,
+          radius,
+          radius,
+          radius,
+          radius,
+          fill,
+          stroke,
+          borderWidth
+        );
         root.graphics = g;
       };
       drawBg(bgColor, borderColor);
@@ -791,14 +1065,20 @@ var ZhudaAppBundle = (() => {
         label.color = style.hoverTextColor ?? "#ffffff";
       });
       root.on(Laya.Event.MOUSE_OUT, root, () => {
-        drawBg(isActive ? activeBgColor : bgColor, isActive ? "#00e5ff" : borderColor);
+        drawBg(
+          isActive ? activeBgColor : bgColor,
+          isActive ? "#00e5ff" : borderColor
+        );
         label.color = isActive ? "#64ffda" : style.textColor ?? "#d6e6fa";
       });
       root.on(Laya.Event.CLICK, root, onClick);
       parent.addChild(root);
       const setStyleState = (active) => {
         isActive = active;
-        drawBg(isActive ? activeBgColor : bgColor, isActive ? "#00e5ff" : borderColor);
+        drawBg(
+          isActive ? activeBgColor : bgColor,
+          isActive ? "#00e5ff" : borderColor
+        );
         label.color = isActive ? "#64ffda" : style.textColor ?? "#d6e6fa";
       };
       return { root, label, setStyleState };
@@ -865,14 +1145,74 @@ var ZhudaAppBundle = (() => {
         const cornerColor = opts.cornerAccentColor ?? "#2dd4bf";
         const innerColor = opts.innerSurfaceColor ?? "#0c1524";
         const g = new Laya.Graphics();
-        g.drawRoundRect(0, 0, w, h, radius, radius, radius, radius, fill, border, 2);
+        g.drawRoundRect(
+          0,
+          0,
+          w,
+          h,
+          radius,
+          radius,
+          radius,
+          radius,
+          fill,
+          border,
+          2
+        );
         const cw = Math.max(4, w - left - right);
         const ch = Math.max(4, h - top - bottom);
         g.drawRect(left, top, cw, ch, innerColor, "#233858", 1);
-        g.drawRoundRect(0, 0, left, top, radius, 2, 2, 2, cornerColor, border, 1.5);
-        g.drawRoundRect(w - right, 0, right, top, 2, radius, 2, 2, cornerColor, border, 1.5);
-        g.drawRoundRect(0, h - bottom, left, bottom, 2, 2, 2, radius, cornerColor, border, 1.5);
-        g.drawRoundRect(w - right, h - bottom, right, bottom, 2, 2, radius, 2, cornerColor, border, 1.5);
+        g.drawRoundRect(
+          0,
+          0,
+          left,
+          top,
+          radius,
+          2,
+          2,
+          2,
+          cornerColor,
+          border,
+          1.5
+        );
+        g.drawRoundRect(
+          w - right,
+          0,
+          right,
+          top,
+          2,
+          radius,
+          2,
+          2,
+          cornerColor,
+          border,
+          1.5
+        );
+        g.drawRoundRect(
+          0,
+          h - bottom,
+          left,
+          bottom,
+          2,
+          2,
+          2,
+          radius,
+          cornerColor,
+          border,
+          1.5
+        );
+        g.drawRoundRect(
+          w - right,
+          h - bottom,
+          right,
+          bottom,
+          2,
+          2,
+          radius,
+          2,
+          cornerColor,
+          border,
+          1.5
+        );
         root.graphics = g;
         if (titleNode) {
           titleNode.pos(left, 0);

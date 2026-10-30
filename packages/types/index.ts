@@ -9,3 +9,6 @@ export * from './zhuda-static-assets.ts';
 export * from './zhuda-visual-contract.ts';
 export * from './zhuda-particles.ts';
 export * from './zhuda-effects';
+
+export * from './runtime3d/index';
+export * from './zhuda-declarative';

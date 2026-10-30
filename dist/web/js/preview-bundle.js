@@ -145,6 +145,152 @@ var ZhudaPreviewBundle = (() => {
   EngineGuard.detoxInstalled = false;
   EngineGuard.registeredComponentNames = /* @__PURE__ */ new Set();
 
+  // packages/core/runtime3d/Runtime.ts
+  function installSandboxStorageFallback() {
+    const modes = {};
+    for (const name of ["localStorage", "sessionStorage"]) {
+      try {
+        void window[name];
+        modes[name] = "persistent";
+      } catch {
+        const values = /* @__PURE__ */ new Map();
+        const memory = {
+          get length() {
+            return values.size;
+          },
+          key: (i) => [...values.keys()][i] ?? null,
+          getItem: (k) => values.get(String(k)) ?? null,
+          setItem: (k, v) => {
+            values.set(String(k), String(v));
+          },
+          removeItem: (k) => {
+            values.delete(String(k));
+          },
+          clear: () => values.clear()
+        };
+        Object.defineProperty(window, name, {
+          configurable: true,
+          value: memory
+        });
+        modes[name] = "memory";
+      }
+    }
+    return modes;
+  }
+  var ZhudaRuntimeSession = class {
+    constructor(canvas, options = {}) {
+      this.paused = false;
+      this.contextLost = false;
+      this.disposed = false;
+      this.cleanups = [];
+      this.frame = 0;
+      this.previous = 0;
+      this.task = null;
+      this.canvas = canvas;
+      this.options = options;
+      const listen = (target, event, fn) => {
+        target.addEventListener(event, fn);
+        this.cleanups.push(() => target.removeEventListener(event, fn));
+      };
+      listen(document, "visibilitychange", () => this.setPaused(document.hidden));
+      listen(window, "blur", () => this.setPaused(true));
+      listen(window, "focus", () => {
+        if (!document.hidden && !this.contextLost) this.setPaused(false);
+      });
+      listen(canvas, "webglcontextlost", (e) => {
+        e.preventDefault();
+        this.contextLost = true;
+        this.setPaused(true);
+        options.onContextLost?.();
+      });
+      try {
+        if (options.container) {
+          this.observer = new ResizeObserver(() => this.resize());
+          this.observer.observe(options.container);
+        } else listen(window, "resize", () => this.resize());
+        this.resize();
+      } catch (error) {
+        this.dispose();
+        throw error;
+      }
+    }
+    setPaused(value) {
+      this.options.clearInput?.();
+      this.paused = value || this.contextLost;
+      this.previous = 0;
+      this.options.onPause?.(this.paused);
+    }
+    resize() {
+      if (this.disposed) return;
+      const l = globalThis.Laya, c = this.options.container;
+      if (!c && !this.options.dprCap) return;
+      const rect = c?.getBoundingClientRect(), width = rect?.width || innerWidth, height = rect?.height || innerHeight, dpr = Math.min(devicePixelRatio || 1, this.options.dprCap ?? 2);
+      if (width < 2 || height < 2) return;
+      l.Config.useRetinalCanvas = false;
+      l.stage.screenAdaptationEnabled = false;
+      l.stage.scaleMode = l.Stage.SCALE_SHOWALL;
+      l.stage.alignH = l.Stage.ALIGN_LEFT;
+      l.stage.alignV = l.Stage.ALIGN_TOP;
+      l.stage.size(Math.round(width * dpr), Math.round(height * dpr));
+      l.stage.setScreenSize(
+        width * l.Browser.pixelRatio,
+        height * l.Browser.pixelRatio
+      );
+      this.options.onResize?.({ width, height, dpr });
+    }
+    start(update) {
+      if (this.disposed) throw Error("Disposed runtime");
+      this.task = update;
+      if (this.frame) return;
+      const tick = (now) => {
+        this.frame = 0;
+        if (this.disposed) return;
+        if (!this.paused) {
+          const elapsed = this.previous ? now - this.previous : 0;
+          if (!this.previous || elapsed >= 1e3 / (this.options.targetFPS || 60) - 2) {
+            this.previous = now;
+            this.task?.(Math.min(0.1, elapsed / 1e3));
+          }
+        }
+        this.frame = requestAnimationFrame(tick);
+      };
+      this.frame = requestAnimationFrame(tick);
+    }
+    dispose() {
+      if (this.disposed) return;
+      this.disposed = true;
+      cancelAnimationFrame(this.frame);
+      this.frame = 0;
+      this.task = null;
+      this.observer?.disconnect();
+      for (const f of this.cleanups) f();
+      this.cleanups = [];
+      this.options.clearInput?.();
+    }
+  };
+
+  // packages/core/runtime3d/Laya342Adapters.ts
+  var patched = /* @__PURE__ */ new WeakSet();
+  function installLaya342LifecycleFix(runtime = globalThis.Laya) {
+    const prototype = runtime?.WebRender3DProcess?.prototype;
+    if (!prototype || patched.has(prototype)) return;
+    const destroy = prototype.destroy;
+    if (typeof destroy !== "function") return;
+    const retired = /* @__PURE__ */ new WeakSet();
+    prototype.destroy = function(...args) {
+      if (retired.has(this)) return;
+      retired.add(this);
+      const shadow = this._defaultShadowMap;
+      try {
+        return destroy.apply(this, args);
+      } finally {
+        if (shadow && !shadow.destroyed) shadow.destroy();
+        this._defaultShadowMap = null;
+      }
+    };
+    patched.add(prototype);
+  }
+
   // packages/core/TopologyGraph.ts
   var ZHUDA_ENGINE_MODULES = [
     {
@@ -601,59 +747,105 @@ var ZhudaPreviewBundle = (() => {
   }
   var ZhudaEngine = class {
     static async boot(options = {}) {
-      const width = options.width ?? 1280;
-      const height = options.height ?? 720;
-      const bgColor = options.bgColor ?? "#0d1117";
-      const features = options.features ?? "all";
-      const topology = TopologyResolver.resolveByFeatures(features);
-      EngineGuard.installPrototypeDetox();
-      const hasSpine42 = features === "all" || Array.isArray(features) && features.includes("spine42");
-      if (hasSpine42) {
-        const spineConst = Laya.SpineConst;
-        if (spineConst) {
-          spineConst.VERSION = "4.2";
-          spineConst.VersionFirst = 4;
-          spineConst.VersionSecond = 2;
-          spineConst.NEED_SLOT = true;
+      if (this.activeContext || this.booting)
+        throw new Error(
+          "An engine session is already active; dispose it or use a separate runtime realm."
+        );
+      const container = typeof options.container === "string" ? document.querySelector(options.container) : options.container;
+      if (options.container && !container)
+        throw new Error("Canvas container not found");
+      if (options.dprCap !== void 0 && (!Number.isFinite(options.dprCap) || options.dprCap < 0.5 || options.dprCap > 4))
+        throw new Error("DPR cap must be .5..4");
+      this.booting = true;
+      let allocatedScene;
+      try {
+        const width = options.width ?? 1280;
+        const height = options.height ?? 720;
+        const bgColor = options.bgColor ?? "#0d1117";
+        const features = options.features ?? "all";
+        const topology = TopologyResolver.resolveByFeatures(features);
+        if (typeof window !== "undefined") installSandboxStorageFallback();
+        EngineGuard.installPrototypeDetox();
+        const hasSpine42 = features === "all" || Array.isArray(features) && features.includes("spine42");
+        if (hasSpine42) {
+          const spineConst = Laya.SpineConst;
+          if (spineConst) {
+            spineConst.VERSION = "4.2";
+            spineConst.VersionFirst = 4;
+            spineConst.VersionSecond = 2;
+            spineConst.NEED_SLOT = true;
+          }
         }
+        const layaConfig = Laya.Config;
+        if (layaConfig) {
+          if (options.preserveDrawingBuffer !== void 0)
+            layaConfig.preserveDrawingBuffer = options.preserveDrawingBuffer;
+          if (options.antialias !== void 0)
+            layaConfig.isAntialias = options.antialias;
+        }
+        options.beforeInit?.();
+        await Laya.init(width, height);
+        installLaya342LifecycleFix();
+        EngineGuard.installPrototypeDetox();
+        Laya.stage.scaleMode = options.scaleMode ?? Laya.Stage.SCALE_SHOWALL;
+        Laya.stage.screenMode = options.screenMode ?? Laya.Stage.SCREEN_NONE;
+        Laya.stage.alignV = Laya.Stage.ALIGN_MIDDLE;
+        Laya.stage.alignH = Laya.Stage.ALIGN_CENTER;
+        Laya.stage.bgColor = bgColor;
+        const rootScene = allocatedScene = new Laya.Scene();
+        rootScene.name = "ZhudaRootScene";
+        Laya.stage.addChild(rootScene);
+        const health = EngineGuard.inspectEngineHealth();
+        const win = globalThis;
+        win.__ZHUDA_ENGINE_BOOTED__ = true;
+        win.__ZHUDA_ENGINE_HEALTH__ = health;
+        win.__ZHUDA_TOPOLOGY__ = topology;
+        if (typeof document !== "undefined" && document.body) {
+          document.body.dataset.zhudaBooted = "true";
+          document.body.dataset.zhudaModules = String(
+            topology.orderedFiles.length
+          );
+          document.body.dataset.zhudaReflected = health.registeredComponents.join(",");
+          document.body.dataset.zhudaSpine42 = String(
+            health.spine42.hasPhysicsConstraint
+          );
+          document.body.dataset.zhudaDetox = String(health.buttonSetStateGuarded);
+        }
+        const canvas = Laya.Browser.mainCanvas.source;
+        if (container) container.appendChild(canvas);
+        if (options.targetFPS)
+          Laya.stage.frameRate = options.targetFPS === 30 ? "slow" : "fast";
+        const runtime = new ZhudaRuntimeSession(canvas, {
+          ...options,
+          container
+        });
+        let disposed = false;
+        this.activeContext = {
+          stage: Laya.stage,
+          rootScene,
+          topology,
+          health,
+          canvas,
+          runtime,
+          resize: () => runtime.resize(),
+          dispose: () => {
+            if (disposed) return;
+            disposed = true;
+            runtime.dispose();
+            rootScene.destroy(true);
+            this.activeContext = null;
+          }
+        };
+        return this.activeContext;
+      } catch (error) {
+        allocatedScene?.destroy(true);
+        globalThis.__ZHUDA_ENGINE_BOOTED__ = false;
+        if (typeof document !== "undefined" && document.body)
+          document.body.dataset.zhudaBooted = "false";
+        throw error;
+      } finally {
+        this.booting = false;
       }
-      if (options.beforeInit) {
-        options.beforeInit();
-      }
-      const layaConfig = Laya.Config;
-      if (layaConfig) {
-        layaConfig.preserveDrawingBuffer = true;
-        layaConfig.isAntialias = true;
-      }
-      await Laya.init(width, height);
-      EngineGuard.installPrototypeDetox();
-      Laya.stage.scaleMode = options.scaleMode ?? Laya.Stage.SCALE_SHOWALL;
-      Laya.stage.screenMode = options.screenMode ?? Laya.Stage.SCREEN_NONE;
-      Laya.stage.alignV = Laya.Stage.ALIGN_MIDDLE;
-      Laya.stage.alignH = Laya.Stage.ALIGN_CENTER;
-      Laya.stage.bgColor = bgColor;
-      const rootScene = new Laya.Scene();
-      rootScene.name = "ZhudaRootScene";
-      Laya.stage.addChild(rootScene);
-      const health = EngineGuard.inspectEngineHealth();
-      const win = globalThis;
-      win.__ZHUDA_ENGINE_BOOTED__ = true;
-      win.__ZHUDA_ENGINE_HEALTH__ = health;
-      win.__ZHUDA_TOPOLOGY__ = topology;
-      if (typeof document !== "undefined" && document.body) {
-        document.body.dataset.zhudaBooted = "true";
-        document.body.dataset.zhudaModules = String(topology.orderedFiles.length);
-        document.body.dataset.zhudaReflected = health.registeredComponents.join(",");
-        document.body.dataset.zhudaSpine42 = String(health.spine42.hasPhysicsConstraint);
-        document.body.dataset.zhudaDetox = String(health.buttonSetStateGuarded);
-      }
-      this.activeContext = {
-        stage: Laya.stage,
-        rootScene,
-        topology,
-        health
-      };
-      return this.activeContext;
     }
     static getContext() {
       return this.activeContext;
@@ -666,12 +858,16 @@ var ZhudaPreviewBundle = (() => {
       if (typeof renderLoop === "function") {
         const baseNow = typeof performance !== "undefined" ? performance.now() : Date.now();
         for (let i = 1; i <= frameCount; i++) {
-          renderLoop.call(Laya.Render, baseNow + i * 16.67);
+          renderLoop.call(
+            Laya.Render,
+            baseNow + i * 16.67
+          );
         }
       }
     }
   };
   ZhudaEngine.activeContext = null;
+  ZhudaEngine.booting = false;
 
   // src/components/BoardCameraController.ts
   var BoardCameraController = class extends Laya.Script {
