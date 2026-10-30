@@ -7686,6 +7686,66 @@ function applySceneQuality(quality, session, camera, lights = []) {
   return { ...quality, additionalPassBudget: quality.extraPasses };
 }
 
+// packages/core/runtime3d/CameraCollision.ts
+function resolveCameraBoom(focus, desired, options) {
+  const radius = options.radius ?? 0.25, clearance = options.clearance ?? 0.1;
+  if (![
+    ...Object.values(focus),
+    ...Object.values(desired),
+    radius,
+    clearance
+  ].every(Number.isFinite) || radius < 0 || clearance < 0)
+    throw Error("Invalid camera collision parameters");
+  const delta = {
+    x: desired.x - focus.x,
+    y: desired.y - focus.y,
+    z: desired.z - focus.z
+  }, length = Math.hypot(delta.x, delta.y, delta.z);
+  if (length < 1e-8)
+    return { position: { ...focus }, distance: 0, blocked: false };
+  const direction = normalized(delta), axis = Math.abs(direction.y) < 0.95 ? { x: 0, y: 1, z: 0 } : { x: 1, y: 0, z: 0 }, cross = (a, b) => ({
+    x: a.y * b.z - a.z * b.y,
+    y: a.z * b.x - a.x * b.z,
+    z: a.x * b.y - a.y * b.x
+  }), right = normalized(cross(direction, axis)), up = cross(right, direction);
+  let distance = length;
+  for (const [x, y] of [
+    [0, 0],
+    [1, 0],
+    [-1, 0],
+    [0, 1],
+    [0, -1],
+    [0.707, 0.707],
+    [-0.707, 0.707],
+    [0.707, -0.707],
+    [-0.707, -0.707]
+  ]) {
+    const origin = {
+      x: focus.x + (right.x * x + up.x * y) * radius,
+      y: focus.y + (right.y * x + up.y * y) * radius,
+      z: focus.z + (right.z * x + up.z * y) * radius
+    }, hit = options.queries.raycast(
+      { origin, direction },
+      length + radius,
+      options.layerMask
+    );
+    if (hit)
+      distance = Math.min(
+        distance,
+        Math.max(0, hit.distance - radius - clearance)
+      );
+  }
+  return {
+    position: {
+      x: focus.x + direction.x * distance,
+      y: focus.y + direction.y * distance,
+      z: focus.z + direction.z * distance
+    },
+    distance,
+    blocked: distance < length
+  };
+}
+
 // packages/core/runtime3d/CameraRig.ts
 var ZhudaCameraRig = class {
   constructor(camera, options = {}) {
@@ -7718,11 +7778,17 @@ var ZhudaCameraRig = class {
       y: Math.sin(this.pitch) * d,
       z: Math.cos(this.yaw) * Math.cos(this.pitch) * d
     };
-    const position = first ? target : {
+    let position = first ? target : {
       x: target.x + offset.x,
       y: target.y + offset.y,
       z: target.z + offset.z
     };
+    if (!first && this.options.collision)
+      position = resolveCameraBoom(
+        target,
+        position,
+        this.options.collision
+      ).position;
     const look = first ? {
       x: target.x - offset.x,
       y: target.y - offset.y,
@@ -8243,6 +8309,61 @@ function triangle(r, a, b, c) {
   return distance >= -1e-8 ? Math.max(0, distance) : null;
 }
 
+// packages/core/terrain/TerrainShell.ts
+function shellTriangleDistance(ray, p, a, b, c) {
+  a *= 3;
+  b *= 3;
+  c *= 3;
+  const ax = p[b] - p[a], ay = p[b + 1] - p[a + 1], az = p[b + 2] - p[a + 2], bx = p[c] - p[a], by = p[c + 1] - p[a + 1], bz = p[c + 2] - p[a + 2], d = ray.direction, px = d.y * bz - d.z * by, py = d.z * bx - d.x * bz, pz = d.x * by - d.y * bx, det = ax * px + ay * py + az * pz;
+  if (Math.abs(det) < 1e-10) return null;
+  const tx = ray.origin.x - p[a], ty = ray.origin.y - p[a + 1], tz = ray.origin.z - p[a + 2], u = (tx * px + ty * py + tz * pz) / det;
+  if (u < -1e-7 || u > 1 + 1e-7) return null;
+  const qx = ty * az - tz * ay, qy = tz * ax - tx * az, qz = tx * ay - ty * ax, v = (d.x * qx + d.y * qy + d.z * qz) / det;
+  if (v < -1e-7 || u + v > 1 + 1e-7) return null;
+  const t = (bx * qx + by * qy + bz * qz) / det;
+  return t >= 0 ? t : null;
+}
+function buildTerrainShell(top, xs, zs, depth) {
+  if (!Number.isFinite(depth) || depth <= 0)
+    throw Error("Terrain solid depth must be positive");
+  const nx = xs.length, nz = zs.length, n = nx * nz;
+  const edges = [];
+  for (let x = 0; x < nx - 1; x++) edges.push([x, x + 1]);
+  for (let z = 0; z < nz - 1; z++)
+    edges.push([z * nx + nx - 1, (z + 1) * nx + nx - 1]);
+  for (let x = nx - 1; x > 0; x--)
+    edges.push([(nz - 1) * nx + x, (nz - 1) * nx + x - 1]);
+  for (let z = nz - 1; z > 0; z--) edges.push([z * nx, (z - 1) * nx]);
+  const count = n + edges.length * 4, positions = new Float32Array(count * 3), normals = new Float32Array(count * 3), uvs = new Float32Array(count * 2), indices = new Uint16Array((nx - 1) * (nz - 1) * 6 + edges.length * 6);
+  for (let i = 0; i < n; i++) {
+    positions.set([top[i * 8], top[i * 8 + 1] - depth, top[i * 8 + 2]], i * 3);
+    normals.set([-top[i * 8 + 3], -top[i * 8 + 4], -top[i * 8 + 5]], i * 3);
+    uvs.set([top[i * 8 + 6], top[i * 8 + 7]], i * 2);
+  }
+  let k = 0;
+  for (let z = 0; z < nz - 1; z++)
+    for (let x = 0; x < nx - 1; x++) {
+      const a = z * nx + x, b = a + 1, c = a + nx, d = c + 1;
+      indices.set([c, d, a, a, d, b], k);
+      k += 6;
+    }
+  edges.forEach(([a, b], j) => {
+    const i = n + j * 4, dx = top[b * 8] - top[a * 8], dz = top[b * 8 + 2] - top[a * 8 + 2], len = Math.hypot(dx, dz);
+    for (let v = 0; v < 4; v++) {
+      const src = (v % 2 ? b : a) * 8;
+      positions.set(
+        [top[src], top[src + 1] - (v >= 2 ? depth : 0), top[src + 2]],
+        (i + v) * 3
+      );
+      normals.set([dz / len, 0, -dx / len], (i + v) * 3);
+      uvs.set([v % 2 ? len : 0, v >= 2 ? depth : 0], (i + v) * 2);
+    }
+    indices.set([i, i + 2, i + 1, i + 1, i + 2, i + 3], k);
+    k += 6;
+  });
+  return { positions, normals, uvs, indices };
+}
+
 // packages/core/terrain/Terrain3D.ts
 var ZhudaTerrain3D = class {
   constructor(field, options) {
@@ -8251,7 +8372,10 @@ var ZhudaTerrain3D = class {
     this.stride = 1;
     this.field = field;
     this.options = options;
-    if (!options.material || options.material.destroyed) throw Error("A live terrain material is required");
+    if (!options.material || options.material.destroyed)
+      throw Error("A live terrain material is required");
+    if (options.solid && (!Number.isFinite(options.solid.depth) || options.solid.depth <= 0 || options.solid.material?.destroyed))
+      throw Error("Invalid terrain solid depth/material");
     const size = options.chunkCells ?? 32;
     if (!Number.isInteger(size) || size < 4 || size > 128 || size % 4)
       throw Error("chunkCells must be a multiple of 4 within 4..128");
@@ -8302,6 +8426,7 @@ var ZhudaTerrain3D = class {
     for (const [key, c] of this.chunks)
       if (!required.has(key) || this.stride !== stride) {
         c.mesh.dispose();
+        c.shell?.dispose();
         this.chunks.delete(key);
       }
     this.stride = stride;
@@ -8336,7 +8461,9 @@ var ZhudaTerrain3D = class {
           mesh.node.name = "terrain:" + key;
           mesh.node.meshRenderer.sharedMaterial = this.options.material;
           mesh.node.meshRenderer.receiveShadow = true;
-          this.chunks.set(key, { mesh, xs, zs });
+          const chunk = { mesh, xs, zs };
+          this.chunks.set(key, chunk);
+          this.rebuildShell(chunk);
         }
       this.flush();
     } catch (e) {
@@ -8357,6 +8484,23 @@ var ZhudaTerrain3D = class {
       pz * (this.options.uvScale?.[1] ?? 1)
     ];
   }
+  rebuildShell(chunk) {
+    if (!this.options.solid) return;
+    const shell = new ZhudaDynamicMesh(
+      buildTerrainShell(
+        chunk.mesh.vertices,
+        chunk.xs,
+        chunk.zs,
+        this.options.solid.depth
+      ),
+      this.root
+    );
+    shell.node.name = "terrain-solid";
+    shell.node.meshRenderer.sharedMaterial = this.options.solid.material ?? this.options.material;
+    shell.node.meshRenderer.receiveShadow = true;
+    chunk.shell?.dispose();
+    chunk.shell = shell;
+  }
   flush() {
     if (this.disposed) throw Error("Disposed terrain");
     for (const chunk of this.chunks.values()) {
@@ -8374,7 +8518,10 @@ var ZhudaTerrain3D = class {
             first = Math.min(first, k);
             last = Math.max(last, k);
           }
-      if (last >= first) chunk.mesh.updateRange(first, last - first + 1);
+      if (last >= first) {
+        chunk.mesh.updateRange(first, last - first + 1);
+        this.rebuildShell(chunk);
+      }
       chunk.dirty = void 0;
     }
   }
@@ -8384,6 +8531,67 @@ var ZhudaTerrain3D = class {
   chunkKeyForCell(x, z) {
     const size = this.options.chunkCells ?? 32;
     return Math.floor(x / size) + ":" + Math.floor(z / size);
+  }
+  raycastLocal(ray, maxDistance) {
+    const accept = (x, z) => this.chunks.has(this.chunkKeyForCell(x, z));
+    let hit = this.field.raycast(ray, maxDistance, this.stride, accept);
+    if (!this.options.solid) return hit;
+    const depth = this.options.solid.depth, bottom = this.field.raycast(
+      {
+        origin: { ...ray.origin, y: ray.origin.y + depth },
+        direction: ray.direction
+      },
+      hit?.distance ?? maxDistance,
+      this.stride,
+      accept
+    );
+    if (bottom)
+      hit = {
+        ...bottom,
+        position: { ...bottom.position, y: bottom.position.y - depth },
+        normal: {
+          x: -bottom.normal.x,
+          y: -bottom.normal.y,
+          z: -bottom.normal.z
+        }
+      };
+    for (const chunk of this.chunks.values()) {
+      const shell = chunk.shell;
+      const data = shell.data, start = (chunk.xs.length - 1) * (chunk.zs.length - 1) * 6;
+      for (let i = start; i < data.indices.length; i += 3) {
+        const a = data.indices[i], t = shellTriangleDistance(
+          ray,
+          data.positions,
+          a,
+          data.indices[i + 1],
+          data.indices[i + 2]
+        );
+        if (t === null || t > (hit?.distance ?? maxDistance)) continue;
+        const position = {
+          x: ray.origin.x + ray.direction.x * t,
+          y: ray.origin.y + ray.direction.y * t,
+          z: ray.origin.z + ray.direction.z * t
+        }, f = this.field;
+        hit = {
+          distance: t,
+          position,
+          normal: {
+            x: data.normals[a * 3],
+            y: data.normals[a * 3 + 1],
+            z: data.normals[a * 3 + 2]
+          },
+          cellX: Math.min(
+            f.cellsX - 1,
+            Math.max(0, Math.floor((position.x - f.origin[0]) / f.cellSize))
+          ),
+          cellZ: Math.min(
+            f.cellsZ - 1,
+            Math.max(0, Math.floor((position.z - f.origin[1]) / f.cellSize))
+          )
+        };
+      }
+    }
+    return hit;
   }
   raycast(ray, maxDistance = Infinity) {
     if (this.disposed) throw Error("Disposed terrain");
@@ -8398,13 +8606,9 @@ var ZhudaTerrain3D = class {
       x: end.x - origin.x,
       y: end.y - origin.y,
       z: end.z - origin.z
-    }, localScale = Math.hypot(
-      rawDirection.x,
-      rawDirection.y,
-      rawDirection.z
-    );
+    }, localScale = Math.hypot(rawDirection.x, rawDirection.y, rawDirection.z);
     if (!Number.isFinite(localScale) || localScale < 1e-12) return null;
-    const hit = this.field.raycast(
+    const hit = this.raycastLocal(
       {
         origin,
         direction: {
@@ -8413,9 +8617,7 @@ var ZhudaTerrain3D = class {
           z: rawDirection.z / localScale
         }
       },
-      Number.isFinite(maxDistance) ? maxDistance * localScale : Infinity,
-      this.stride,
-      (x, z) => this.chunks.has(this.chunkKeyForCell(x, z))
+      Number.isFinite(maxDistance) ? maxDistance * localScale : Infinity
     );
     if (!hit) return null;
     const n = hit.normal, normal = normalized({
@@ -8448,13 +8650,15 @@ var ZhudaTerrain3D = class {
   report() {
     return {
       residentChunks: this.chunks.size,
+      renderMeshes: this.chunks.size + [...this.chunks.values()].filter((c) => c.shell).length,
+      solidDepth: this.options.solid?.depth ?? 0,
       stride: this.stride,
       vertices: [...this.chunks.values()].reduce(
-        (n, c) => n + c.mesh.vertices.length / 8,
+        (n, c) => n + c.mesh.vertices.length / 8 + (c.shell?.vertices.length ?? 0) / 8,
         0
       ),
       estimatedBufferBytes: [...this.chunks.values()].reduce(
-        (n, c) => n + c.mesh.vertices.byteLength + c.mesh.data.indices.byteLength,
+        (n, c) => n + c.mesh.vertices.byteLength + c.mesh.data.indices.byteLength + (c.shell ? c.shell.vertices.byteLength + c.shell.data.indices.byteLength : 0),
         0
       )
     };
@@ -8466,14 +8670,22 @@ var ZhudaTerrain3D = class {
       xs: [...c.xs],
       zs: [...c.zs],
       vertices: new Float32Array(c.mesh.vertices),
-      bounds: c.mesh.mesh.bounds
+      bounds: c.mesh.mesh.bounds,
+      shell: c.shell ? {
+        vertices: new Float32Array(c.shell.vertices),
+        indices: new Uint16Array(c.shell.data.indices),
+        bounds: c.shell.mesh.bounds
+      } : null
     } : null;
   }
   dispose() {
     if (this.disposed) return;
     this.disposed = true;
     this.unsubscribe();
-    for (const c of this.chunks.values()) c.mesh.dispose();
+    for (const c of this.chunks.values()) {
+      c.mesh.dispose();
+      c.shell?.dispose();
+    }
     this.chunks.clear();
     this.root.destroy(true);
   }
@@ -8490,6 +8702,8 @@ function validateShaderSpec(spec) {
     return ["Expected schemaVersion:1 and dimension:2|3"];
   if (typeof s.name !== "string" || !/^Zhuda[A-Za-z0-9_]{1,100}$/.test(s.name))
     e.push("Shader name must start with Zhuda, then letters/digits/_");
+  if (s.fog !== void 0 && typeof s.fog !== "boolean")
+    e.push("fog must be boolean");
   if (typeof s.surface !== "string" || s.surface.length > 65536 || !s.surface.includes("zhudaSurface"))
     e.push("surface must define zhudaSurface (at most 65536 characters)");
   if (!s.uniforms || typeof s.uniforms !== "object" || Array.isArray(s.uniforms) || Object.keys(s.uniforms).length > 64)
@@ -8539,15 +8753,15 @@ gl_Position=remapPositionZ(getPositionCS(p.xyz));
 FogHandle(gl_Position.z);
 #endif
 }`;
-var fragment3D = (surface) => `#include "Color.glsl";
+var fragment3D = (surface, fog = true) => `#include "Color.glsl";
 #include "Scene.glsl";
 #include "SceneFog.glsl";
 varying vec2 v_ZhudaUV;varying vec3 v_ZhudaPosition;varying vec3 v_ZhudaNormal;
 ${surface}
 void main(){gl_FragColor=outputTransform(zhudaSurface(v_ZhudaUV,v_ZhudaPosition,normalize(v_ZhudaNormal)));
-#ifdef FOG
+${fog ? `#ifdef FOG
 gl_FragColor.rgb=scenUnlitFog(gl_FragColor.rgb);
-#endif
+#endif` : ""}
 }`;
 var ZhudaShaderMaterial = class {
   constructor(spec, textures = {}) {
@@ -8581,7 +8795,7 @@ return c;}`
       name: spec.name,
       dimension: spec.dimension,
       vertex: spec.dimension === 2 ? graphicsVertex : vertex3D,
-      fragment: spec.dimension === 2 ? graphicsFragment.replace("__ZHUDA_FUNCTION__", surface) : fragment3D(surface),
+      fragment: spec.dimension === 2 ? graphicsFragment.replace("__ZHUDA_FUNCTION__", surface) : fragment3D(surface, spec.fog !== false),
       uniforms,
       instancing: spec.dimension === 3
     });
@@ -8772,6 +8986,7 @@ export {
   normalized,
   packMetallicRoughness,
   rayBox,
+  resolveCameraBoom,
   resolveParticleCollision,
   rotateParticleVector3,
   sampleParticleColor,

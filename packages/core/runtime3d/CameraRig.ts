@@ -1,4 +1,8 @@
 import { type Vec3 } from "./Math3D.ts";
+import {
+  resolveCameraBoom,
+  type CameraCollisionOptions,
+} from "./CameraCollision.ts";
 /** Camera presentation only: movement/support authority remains in the consumer's simulation. */
 export class ZhudaCameraRig {
   readonly camera: any;
@@ -7,6 +11,7 @@ export class ZhudaCameraRig {
     minDistance?: number;
     maxDistance?: number;
     sensitivity?: number;
+    collision?: CameraCollisionOptions;
   };
   yaw = 0;
   pitch = 0.48;
@@ -18,6 +23,7 @@ export class ZhudaCameraRig {
       minDistance?: number;
       maxDistance?: number;
       sensitivity?: number;
+      collision?: CameraCollisionOptions;
     } = {},
   ) {
     this.camera = camera;
@@ -48,13 +54,19 @@ export class ZhudaCameraRig {
       y: Math.sin(this.pitch) * d,
       z: Math.cos(this.yaw) * Math.cos(this.pitch) * d,
     };
-    const position = first
+    let position = first
       ? target
       : {
           x: target.x + offset.x,
           y: target.y + offset.y,
           z: target.z + offset.z,
         };
+    if (!first && this.options.collision)
+      position = resolveCameraBoom(
+        target,
+        position,
+        this.options.collision,
+      ).position;
     const look = first
       ? {
           x: target.x - offset.x,

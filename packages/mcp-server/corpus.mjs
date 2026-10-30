@@ -119,12 +119,26 @@ const scene3D=Zhuda3D.createScene3D(rootScene);
 Zhuda3D.createCamera(scene3D,{position:[32,55,70],rotationEuler:[-55,0,0],far:300});
 const field=ZhudaHeightfield.generate({cellsX:64,cellsZ:64,cellSize:1,seed:42,amplitude:8});
 const shader=new ZhudaShaderMaterial(shaderRecipes.terrain3D);
-const terrain=new ZhudaTerrain3D(field,{parent:scene3D,material:shader.material});
+const terrain=new ZhudaTerrain3D(field,{parent:scene3D,material:shader.material,solid:{depth:12}});
 terrain.setRegion({minX:0,minZ:0,maxX:64,maxZ:64},1);
 field.brush(32,32,4,2);terrain.flush();shader.setUniform('u_ZhudaSnowLine',6);
 const hit=terrain.raycast({origin:{x:32,y:30,z:32},direction:{x:0,y:-1,z:0}});
 console.log(hit?.position);
 // terrain.dispose(); shader.dispose();
+`},
+  'terrain-solid-camera': {title:'Closed terrain and camera boom collision',features:['core','3d'],code:`import {ZhudaEngine,Zhuda3D,ZhudaHeightfield,ZhudaTerrain3D,ZhudaShaderMaterial,shaderRecipes,ZhudaSceneQueries,ZhudaCameraRig} from 'zhuda-laya-engine';
+const ctx=await ZhudaEngine.boot({features:['core','3d'],dprCap:1.5});
+const scene=Zhuda3D.createScene3D(ctx.rootScene),camera=Zhuda3D.createCamera(scene,{far:300});
+const field=ZhudaHeightfield.generate({cellsX:64,cellsZ:64,cellSize:1,seed:42,amplitude:8});
+const shader=new ZhudaShaderMaterial(shaderRecipes.terrain3D);
+const terrain=new ZhudaTerrain3D(field,{parent:scene,material:shader.material,solid:{depth:12}});
+terrain.setRegion({minX:0,minZ:0,maxX:64,maxZ:64});
+const queries=new ZhudaSceneQueries();queries.register(terrain.queryProvider('ground',4));
+const rig=new ZhudaCameraRig(camera,{collision:{queries,radius:.4,clearance:.2,layerMask:4}});
+// Focus and near-plane probes must begin outside solids. This is not a physics sphere sweep.
+ctx.runtime.start(()=>rig.update({x:32,y:field.sample(32,32).height+2,z:32}));
+// Inspector-only underside view: rig.options.collision=undefined; rig.pitch=-.5;
+// Stop runtime before terrain.dispose(); shader.dispose(); ctx.dispose();
 `},
   'boot-declarative-3d': {
     title: 'Zero-IDE 宣告式 3D 場景與相機燈光初始化',

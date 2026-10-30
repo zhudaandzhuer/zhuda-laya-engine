@@ -22,6 +22,8 @@ export interface ZhudaShaderSpec {
   blend?: "opaque" | "alpha" | "additive";
   doubleSided?: boolean;
   depthWrite?: boolean;
+  /** Opt out for sky domes/backgrounds; scene fog remains enabled for other surfaces. */
+  fog?: boolean;
   passes?: SurfacePassRequirements;
 }
 export function validateShaderSpec(spec: unknown): string[] {
@@ -31,6 +33,8 @@ export function validateShaderSpec(spec: unknown): string[] {
     return ["Expected schemaVersion:1 and dimension:2|3"];
   if (typeof s.name !== "string" || !/^Zhuda[A-Za-z0-9_]{1,100}$/.test(s.name))
     e.push("Shader name must start with Zhuda, then letters/digits/_");
+  if (s.fog !== undefined && typeof s.fog !== "boolean")
+    e.push("fog must be boolean");
   if (
     typeof s.surface !== "string" ||
     s.surface.length > 65536 ||
@@ -103,15 +107,19 @@ gl_Position=remapPositionZ(getPositionCS(p.xyz));
 FogHandle(gl_Position.z);
 #endif
 }`;
-const fragment3D = (surface: string) => `#include "Color.glsl";
+const fragment3D = (surface: string, fog = true) => `#include "Color.glsl";
 #include "Scene.glsl";
 #include "SceneFog.glsl";
 varying vec2 v_ZhudaUV;varying vec3 v_ZhudaPosition;varying vec3 v_ZhudaNormal;
 ${surface}
 void main(){gl_FragColor=outputTransform(zhudaSurface(v_ZhudaUV,v_ZhudaPosition,normalize(v_ZhudaNormal)));
-#ifdef FOG
+${
+  fog
+    ? `#ifdef FOG
 gl_FragColor.rgb=scenUnlitFog(gl_FragColor.rgb);
-#endif
+#endif`
+    : ""
+}
 }`;
 /** Named and typed uniforms; built-in transforms, clipping and output remain in tested templates.
  * Surface validation is structural. Actual GLSL compilation/variants require a real rendered draw. */
@@ -159,7 +167,7 @@ return c;}`,
       fragment:
         spec.dimension === 2
           ? graphicsFragment.replace("__ZHUDA_FUNCTION__", surface)
-          : fragment3D(surface),
+          : fragment3D(surface, spec.fog !== false),
       uniforms,
       instancing: spec.dimension === 3,
     });

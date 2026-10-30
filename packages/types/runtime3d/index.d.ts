@@ -6,4 +6,5 @@ export * from "./Runtime";
 export * from "./SceneQueries";
 export * from "./SceneLifecycle";
 export * from "./CameraRig";
+export * from "./CameraCollision";
 export * from "./Laya342Adapters";

@@ -92,3 +92,22 @@ mat.setUniform("u_ZhudaTint", [0.05, .3, .7, 1]);
 5. 先釋放 instance／renderer，再釋放 material／texture owner；重複建立／銷毀至少 30 次後，資源數應回到有界穩態。
 
 完整可執行 fixture 在獨立消費端的 `tests/terrain.mjs`；展示與遊戲資產留在消費專案，不放入引擎 repo。
+
+## Closed terrain and camera collision
+
+`new ZhudaTerrain3D(field, { material, solid: { depth: 12, material: rockMaterial } })` adds sides and an underside. Depth is a positive distance along **local -Y**: the underside follows the heightfield, rather than creating a flat foundation. Each resident chunk is closed independently, so streaming, edits and LOD changes cannot expose an open cut edge. Internal shared walls are duplicated; this adds an extra mesh per chunk plus underside/edge triangles. `report()` includes this buffer cost and `renderMeshes`. Both supplied materials are borrowed.
+
+The same `terrain.raycast()` / query provider returns the nearest top, side or underside hit, including after a parent transform. `sampleLocal()` still means the top support surface. `flush()` updates the top and rebuilds the affected shells. A heightfield and its vertical extrusion cannot represent caves or overhangs; use authored meshes for those structures.
+
+```ts
+const queries = new ZhudaSceneQueries();
+queries.register(terrain.queryProvider('ground', 4));
+const rig = new ZhudaCameraRig(camera, {
+  collision: { queries, radius: 0.4, clearance: 0.2, layerMask: 4 },
+});
+rig.update({ x: player.x, y: player.y + 2, z: player.z });
+```
+
+`resolveCameraBoom(focus, desired, options)` is also available without the camera rig. Nine probe rays check the boom and near-plane margin, and shorten the camera distance immediately when blocked. This is a conservative presentation aid, **not a continuous physics sphere sweep**. The focus/probe origins must start outside solids; narrow geometry between probes can require a game-specific sweep adapter. Registered providers determine occlusion; gameplay movement is unchanged. Inspection tools may deliberately disable the collision option for an underside view. Double-sided rendering alone does not create a solid volume or prevent camera penetration.
+
+A 3D shader can set `fog: false` for a sky dome or background while keeping scene fog enabled for the road and other objects. The default remains `true`. All surface colors use the existing linear/output-transform contract.

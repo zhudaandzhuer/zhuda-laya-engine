@@ -1,4 +1,5 @@
 import { type Vec3 } from "./Math3D";
+import { type CameraCollisionOptions } from "./CameraCollision";
 /** Camera presentation only: movement/support authority remains in the consumer's simulation. */
 export declare class ZhudaCameraRig {
     readonly camera: any;
@@ -7,6 +8,7 @@ export declare class ZhudaCameraRig {
         minDistance?: number;
         maxDistance?: number;
         sensitivity?: number;
+        collision?: CameraCollisionOptions;
     };
     yaw: number;
     pitch: number;
@@ -16,6 +18,7 @@ export declare class ZhudaCameraRig {
         minDistance?: number;
         maxDistance?: number;
         sensitivity?: number;
+        collision?: CameraCollisionOptions;
     });
     rotate(dx: number, dy: number): void;
     zoom(delta: number): void;

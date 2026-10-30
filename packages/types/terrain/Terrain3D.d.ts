@@ -4,6 +4,11 @@ export type Terrain3DOptions = {
     chunkCells?: number;
     maxResidentChunks?: number;
     uvScale?: [number, number];
+    /** Optional closed volume, extruded along local -Y. Material is borrowed. */
+    solid?: {
+        depth: number;
+        material?: any;
+    };
 };
 import { ZhudaHeightfield, type HeightRegion } from "./Heightfield";
 import { type Vec3 } from "../runtime3d/Math3D";
@@ -21,6 +26,7 @@ export declare class ZhudaTerrain3D {
     /** Local x/z bounds; uniform stride avoids neighboring chunks with incompatible edge LODs. */
     setRegion(region: HeightRegion, stride?: 1 | 2 | 4): void;
     private vertex;
+    private rebuildShell;
     flush(): void;
     sampleLocal(x: number, z: number): {
         height: number;
@@ -29,6 +35,7 @@ export declare class ZhudaTerrain3D {
         cellZ: number;
     } | null;
     private chunkKeyForCell;
+    private raycastLocal;
     raycast(ray: QueryRay, maxDistance?: number): {
         distance: number;
         position: Vec3;
@@ -39,6 +46,8 @@ export declare class ZhudaTerrain3D {
     queryProvider(entityId: string, layer?: number): QueryProvider;
     report(): {
         residentChunks: number;
+        renderMeshes: number;
+        solidDepth: number;
         stride: 4 | 1 | 2;
         vertices: number;
         estimatedBufferBytes: number;
@@ -49,6 +58,11 @@ export declare class ZhudaTerrain3D {
         zs: number[];
         vertices: Float32Array<ArrayBuffer>;
         bounds: any;
+        shell: {
+            vertices: Float32Array<ArrayBuffer>;
+            indices: Uint16Array<ArrayBuffer>;
+            bounds: any;
+        } | null;
     } | null;
     dispose(): void;
 }

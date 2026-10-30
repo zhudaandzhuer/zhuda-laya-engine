@@ -13,6 +13,8 @@ export interface ZhudaShaderSpec {
     blend?: "opaque" | "alpha" | "additive";
     doubleSided?: boolean;
     depthWrite?: boolean;
+    /** Opt out for sky domes/backgrounds; scene fog remains enabled for other surfaces. */
+    fog?: boolean;
     passes?: SurfacePassRequirements;
 }
 export declare function validateShaderSpec(spec: unknown): string[];

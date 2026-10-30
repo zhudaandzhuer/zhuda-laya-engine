@@ -8,6 +8,8 @@ import {
   ZhudaSnapshotBuffer,
   ZhudaEventGate,
   ZhudaCameraCoordinates,
+  ZhudaCameraRig,
+  resolveCameraBoom,
   ZhudaResourceScope,
   sceneQuality,
   applySceneQuality,
@@ -44,6 +46,16 @@ async function consume() {
     backingHeight: 1688,
   }));
   const queries = new ZhudaSceneQueries();
+  const rig = new ZhudaCameraRig(camera, {
+    collision: { queries, radius: 0.4, clearance: 0.2 },
+  });
+  rig.update({ x: 0, y: 3, z: 0 });
+  const safe = resolveCameraBoom(
+    { x: 0, y: 3, z: 0 },
+    { x: 0, y: 4, z: 8 },
+    { queries },
+  );
+  console.log(safe.blocked);
   const hit: QueryHit | null = queries.raycast(coordinates.screenToRay(10, 20));
   // A miss must remain nullable in the generated public declarations.
   // @ts-expect-error a hit needs a null check
@@ -100,10 +112,14 @@ const field = ZhudaHeightfield.generate({
   cellSize: 1,
   seed: 42,
 });
-const shader = new ZhudaShaderMaterial(shaderRecipes.terrain3D);
+const shader = new ZhudaShaderMaterial({
+  ...shaderRecipes.terrain3D,
+  fog: false,
+});
 const renderer3D = new ZhudaTerrain3D(field, {
   material: shader.material,
   chunkCells: 4,
+  solid: { depth: 12 },
 });
 renderer3D.setRegion({ minX: 0, minZ: 0, maxX: 4, maxZ: 4 });
 const terrainMiss = renderer3D.raycast({
