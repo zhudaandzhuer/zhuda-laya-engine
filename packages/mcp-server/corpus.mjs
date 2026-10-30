@@ -116,6 +116,7 @@ map.setTile('ground',15,15,0);renderer.flush();
  'terrain-3d-shader':{title:'定種子高度場、地形Shader、筆刷與查詢',features:['core','3d'],code:`import {ZhudaEngine,Zhuda3D,ZhudaHeightfield,ZhudaTerrain3D,ZhudaShaderMaterial,shaderRecipes} from 'zhuda-laya-engine';
 const {rootScene}=await ZhudaEngine.boot({features:['core','3d']});
 const scene3D=Zhuda3D.createScene3D(rootScene);
+Zhuda3D.createCamera(scene3D,{position:[32,55,70],rotationEuler:[-55,0,0],far:300});
 const field=ZhudaHeightfield.generate({cellsX:64,cellsZ:64,cellSize:1,seed:42,amplitude:8});
 const shader=new ZhudaShaderMaterial(shaderRecipes.terrain3D);
 const terrain=new ZhudaTerrain3D(field,{parent:scene3D,material:shader.material});
