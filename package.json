@@ -51,6 +51,7 @@
     "dist/build-manifest.json",
     "dist/asset-calibration-report.json",
     "zhuda.config.json",
+    "docs",
     "README.md",
     "LICENSE"
   ],
