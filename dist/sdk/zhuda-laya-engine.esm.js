@@ -1115,12 +1115,13 @@ var UnityBridgePipeline = class {
     switch (shaderName) {
       case "Universal Render Pipeline/Lit":
       case "Standard":
-        return "Laya.BlinnPhongMaterial (PBR-Bridged)";
+        return "Laya.PBRStandardMaterial";
       case "Unlit/Color":
         return "Laya.UnlitMaterial";
       case "Legacy Shaders/BlinnPhong":
-      default:
         return "Laya.BlinnPhongMaterial";
+      default:
+        throw new Error(`Unmapped Unity shader: ${shaderName}`);
     }
   }
   /**
@@ -4009,8 +4010,9 @@ var ZhudaBenchmarkEngine = class {
     }
     const t1 = typeof performance !== "undefined" ? performance.now() : Date.now();
     const elapsedMs = Math.max(0.05, t1 - t0 + angle * 1e-6);
-    const spinePhysicsOpsPerMs = Math.round(iterations / elapsedMs);
-    const zeroGcPoolSpeedupRatio = 3.8;
+    const springMathOpsPerMs = Math.round(iterations / elapsedMs);
+    const spinePhysicsOpsPerMs = null;
+    const zeroGcPoolSpeedupRatio = null;
     const estimatedDrawCallsZhuda = 9;
     const estimatedDrawCallsThreeAssembled = activeTileNodesCount + 28;
     const pruningProfiles = {};
@@ -4042,6 +4044,8 @@ var ZhudaBenchmarkEngine = class {
     const unityReport = UnityBridgePipeline.runFullMigrationVerification();
     return {
       timestamp: Date.now(),
+      springMathOpsPerMs,
+      measurementScope: "Spring arithmetic microbenchmark only; draw calls below are estimates, and no pool speedup or Spine runtime result is claimed.",
       spinePhysicsOpsPerMs,
       zeroGcPoolSpeedupRatio,
       sharedMeshBatchNodes: activeTileNodesCount,
@@ -4258,6 +4262,66 @@ var VisualFocusContract = class {
   }
 };
 
+// packages/core/particles/ParticleExtras.ts
+function validateParticleExtras(e, dimension = 2) {
+  const errors = [], r = e.textureRect, f = e.flipbook, c = e.collision;
+  if (r && (![r.x, r.y, r.width, r.height].every(Number.isFinite) || r.x < 0 || r.y < 0 || r.width <= 0 || r.height <= 0 || r.x + r.width > 1.000001 || r.y + r.height > 1.000001)) errors.push("textureRect must be a normalized rectangle inside the texture.");
+  if (f) {
+    if (!Number.isInteger(f.columns) || !Number.isInteger(f.rows) || f.columns < 1 || f.rows < 1 || f.columns * f.rows > 65536) errors.push("Invalid flipbook grid.");
+    const start = f.startFrame ?? 0, count = f.frameCount ?? f.columns * f.rows;
+    if (!Number.isInteger(start) || !Number.isInteger(count) || start < 0 || count < 1 || start + count > f.columns * f.rows) errors.push("Invalid flipbook frame range.");
+    if (f.fps !== void 0 && (!Number.isFinite(f.fps) || f.fps <= 0) || f.cycles !== void 0 && (!Number.isFinite(f.cycles) || f.cycles <= 0) || f.loop !== void 0 && typeof f.loop !== "boolean") errors.push("Invalid flipbook timing.");
+  }
+  if (c) {
+    if (!Array.isArray(c.planes) || c.planes.length < 1 || c.planes.length > 16) errors.push("collision requires 1..16 planes.");
+    else for (const p of c.planes) if (!p?.normal || ![p.normal.x, p.normal.y, p.normal.z ?? 0, p.offset].every(Number.isFinite) || Math.hypot(p.normal.x, p.normal.y, p.normal.z ?? 0) < 1e-8 || dimension === 2 && (p.normal.z ?? 0) !== 0) errors.push("Invalid collision plane.");
+    for (const k of ["restitution", "friction"]) if (c[k] !== void 0 && (!Number.isFinite(c[k]) || c[k] < 0 || c[k] > 1)) errors.push(`collision.${k} must be 0..1.`);
+    if (c.radius !== void 0 && (!Number.isFinite(c.radius) || c.radius < 0)) errors.push("Invalid collision radius.");
+    if (c.killOnCollision !== void 0 && typeof c.killOnCollision !== "boolean") errors.push("Invalid collision response.");
+  }
+  return errors;
+}
+function sampleParticleUV(spec, age, lifetime, out) {
+  const r = spec.textureRect || { x: 0, y: 0, width: 1, height: 1 }, f = spec.flipbook;
+  Object.assign(out, r);
+  if (!f) return out;
+  const count = f.frameCount ?? f.columns * f.rows, progress = f.fps !== void 0 ? age * f.fps : age / lifetime * (f.cycles ?? 1) * count;
+  const step = Math.max(0, Math.floor(progress + 1e-8)), frame = (f.startFrame ?? 0) + (f.loop === false ? Math.min(count - 1, step) : step % count);
+  out.x = r.x + frame % f.columns * r.width / f.columns;
+  out.y = r.y + Math.floor(frame / f.columns) * r.height / f.rows;
+  out.width = r.width / f.columns;
+  out.height = r.height / f.rows;
+  return out;
+}
+function resolveParticleCollision(p, spec, dimension, hit) {
+  let killed = false;
+  for (let i = 0; i < spec.planes.length; i++) {
+    const plane = spec.planes[i], n = plane.normal, length = Math.hypot(n.x, n.y, dimension === 3 ? n.z || 0 : 0), nx = n.x / length, ny = n.y / length, nz = dimension === 3 ? (n.z || 0) / length : 0;
+    const penetration = plane.offset / length + (spec.radius || 0) - (p.x * nx + p.y * ny + (p.z || 0) * nz);
+    if (penetration <= 0) continue;
+    p.x += nx * penetration;
+    p.y += ny * penetration;
+    if (dimension === 3) p.z += nz * penetration;
+    const vn = p.vx * nx + p.vy * ny + (p.vz || 0) * nz;
+    if (vn < 0) {
+      const bounce = (1 + (spec.restitution ?? 0.5)) * vn;
+      p.vx -= bounce * nx;
+      p.vy -= bounce * ny;
+      if (dimension === 3) p.vz -= bounce * nz;
+      const normal = p.vx * nx + p.vy * ny + (p.vz || 0) * nz, keep = 1 - (spec.friction ?? 0);
+      p.vx = nx * normal + (p.vx - nx * normal) * keep;
+      p.vy = ny * normal + (p.vy - ny * normal) * keep;
+      if (dimension === 3) p.vz = nz * normal + (p.vz - nz * normal) * keep;
+      hit(i);
+      if (spec.killOnCollision) {
+        killed = true;
+        break;
+      }
+    }
+  }
+  return killed;
+}
+
 // packages/core/particles/ParticleTypes.ts
 function sampleParticleCurve(keys, time, fallback = 1) {
   if (!keys?.length) return fallback;
@@ -4301,6 +4365,7 @@ function validateParticleEffect(value) {
       continue;
     }
     const id = e.id || "(unnamed)";
+    issues.push(...validateParticleExtras(e).map((message) => `${id}: ${message}`));
     if (typeof e.id !== "string" || !e.id || ids.has(e.id)) issues.push(`${id}: id must be unique and non-empty.`);
     ids.add(e.id);
     if (typeof e.texture !== "string" || !e.texture) issues.push(`${id}: texture is required.`);
@@ -4360,6 +4425,10 @@ var _ZhudaParticleSystem = class _ZhudaParticleSystem {
     this.time = 0;
     this.droppedParticles = 0;
     this.droppedSeconds = 0;
+    /** Future births respect this cap; existing particles drain naturally. */
+    this.limit = Infinity;
+    this.droppedEvents = 0;
+    this.events = [];
     this.count = 0;
     this.accumulator = 0;
     this.emitRemainder = 0;
@@ -4380,6 +4449,27 @@ var _ZhudaParticleSystem = class _ZhudaParticleSystem {
       this.free[i] = spec.maxParticles - 1 - i;
       return { x: 0, y: 0, vx: 0, vy: 0, age: 0, lifetime: 1, baseSize: 1, size: 1, rotation: 0, angularVelocity: 0, phase: 0 };
     });
+  }
+  get particleLimit() {
+    return this.limit;
+  }
+  set particleLimit(value) {
+    if (value !== Infinity && (!Number.isInteger(value) || value < 0)) throw new Error("Particle limit must be a non-negative integer.");
+    this.limit = value;
+  }
+  queueEvent(type, p, plane = -1) {
+    if (!this.onEvent) return;
+    if (this.events.length >= this.capacity * 2) {
+      this.droppedEvents++;
+      return;
+    }
+    this.events.push({ type, x: p.x, y: p.y, z: p.z || 0, vx: p.vx, vy: p.vy, vz: p.vz || 0, age: p.age, plane });
+  }
+  flushEvents() {
+    if (!this.events.length) return;
+    const events = this.events;
+    this.events = [];
+    for (const e of events) this.onEvent?.(e);
   }
   get aliveCount() {
     return this.count;
@@ -4413,6 +4503,8 @@ var _ZhudaParticleSystem = class _ZhudaParticleSystem {
   clear() {
     this.count = 0;
     this.freeCount = this.capacity;
+    this.events.length = 0;
+    this.droppedEvents = 0;
     for (let i = 0; i < this.capacity; i++) this.free[i] = this.capacity - 1 - i;
     this.rng = this.spec.seed >>> 0;
     this.time = 0;
@@ -4428,7 +4520,7 @@ var _ZhudaParticleSystem = class _ZhudaParticleSystem {
   }
   burst(count, x = this.transform.x, y = this.transform.y) {
     if (!Number.isInteger(count) || count < 0 || !Number.isFinite(x) || !Number.isFinite(y)) throw new Error("Invalid particle burst.");
-    const accepted = Math.min(count, this.freeCount);
+    const accepted = Math.min(count, this.freeCount, Math.max(0, Math.floor(this.particleLimit) - this.count));
     this.droppedParticles += count - accepted;
     for (let i = 0; i < accepted; i++) this.spawn(x, y);
   }
@@ -4455,6 +4547,7 @@ var _ZhudaParticleSystem = class _ZhudaParticleSystem {
       this.previousY = y;
     }
     this.accumulator = Math.max(0, this.accumulator - steps * _ZhudaParticleSystem.STEP);
+    this.flushEvents();
   }
   random() {
     this.rng = Math.imul(this.rng, 1664525) + 1013904223 >>> 0;
@@ -4497,6 +4590,7 @@ var _ZhudaParticleSystem = class _ZhudaParticleSystem {
       const index = this.active[i], p = this.pool[index];
       p.age += dt;
       if (p.age + 1e-10 >= p.lifetime) {
+        this.queueEvent("death", p);
         this.free[this.freeCount++] = index;
         this.active[i] = this.active[--this.count];
         continue;
@@ -4512,6 +4606,12 @@ var _ZhudaParticleSystem = class _ZhudaParticleSystem {
       p.vy = (p.vy + ay * dt) * damping;
       p.x += p.vx * dt;
       p.y += p.vy * dt;
+      if (s.collision && resolveParticleCollision(p, s.collision, 2, (plane) => this.queueEvent("collision", p, plane))) {
+        this.queueEvent("death", p);
+        this.free[this.freeCount++] = index;
+        this.active[i] = this.active[--this.count];
+        continue;
+      }
       p.rotation += p.angularVelocity * dt;
       p.size = p.baseSize * sampleParticleCurve(s.sizeOverLife, p.age / p.lifetime);
     }
@@ -4539,7 +4639,7 @@ var _ZhudaParticleSystem = class _ZhudaParticleSystem {
         this.distanceRemainder += Math.hypot(ex - sx, ey - sy) * (s.rateOverDistance || 0) * strength;
         const byDistance = Math.floor(this.distanceRemainder + 1e-10);
         this.distanceRemainder = Math.max(0, this.distanceRemainder - byDistance);
-        const accepted = Math.min(byDistance, this.freeCount);
+        const accepted = Math.min(byDistance, this.freeCount, Math.max(0, Math.floor(this.particleLimit) - this.count));
         this.droppedParticles += byDistance - accepted;
         for (let j = 0; j < accepted; j++) this.spawn(sx + (ex - sx) * (j + 1) / byDistance, sy + (ey - sy) * (j + 1) / byDistance);
         this.firstStep = false;
@@ -4699,10 +4799,18 @@ var ZhudaEffectEnvelope = class {
 var ZhudaLayaParticleRenderer = class {
   constructor(system, parent, resolveTexture, lifeBands = 12) {
     this.submittedBatches = 0;
+    this.frameUV = { x: 0, y: 0, width: 1, height: 1 };
     this.appendParticle = (p) => {
       const s = this.system.spec, t = Math.min(0.999999, p.age / p.lifetime);
       const batch = this.batches[Math.floor(t * this.batches.length)];
       const i = batch.count++ * 8;
+      const rect = sampleParticleUV(s, p.age, p.lifetime, this.frameUV), source = this.uv;
+      const uv = batch.uvs;
+      for (let corner = 0; corner < 4; corner++) {
+        const u = rect.x + (corner === 1 || corner === 2 ? rect.width : 0), v = rect.y + (corner >= 2 ? rect.height : 0);
+        uv[i + corner * 2] = source[0] + (source[2] - source[0]) * u + (source[6] - source[0]) * v;
+        uv[i + corner * 2 + 1] = source[1] + (source[3] - source[1]) * u + (source[7] - source[1]) * v;
+      }
       let x = p.x, y = p.y;
       let angle = s.alignToVelocity ? Math.atan2(p.vy, p.vx) : p.rotation;
       if (s.space === "local") {
@@ -4820,6 +4928,182 @@ var ZhudaLayaRibbonRenderer = class {
   }
 };
 
+// packages/core/effects/VfxMaterial.ts
+function validateVfxMaterial(s) {
+  if (!s || s.version !== 1) return ["VFX material requires version 1."];
+  const errors = [];
+  for (const k of ["dissolve", "edgeWidth", "uvDistortion", "refraction"]) if (s[k] !== void 0 && (!Number.isFinite(s[k]) || s[k] < 0 || s[k] > 1)) errors.push(`${k} must be 0..1.`);
+  for (const k of ["intensity", "softDistance"]) if (s[k] !== void 0 && (!Number.isFinite(s[k]) || s[k] < 0 || s[k] > 100)) errors.push(`${k} must be 0..100.`);
+  if (s.uvScroll && ![s.uvScroll.x, s.uvScroll.y].every(Number.isFinite)) errors.push("Invalid UV scroll.");
+  if (s.edgeColor !== void 0 && !/^#[0-9a-f]{6}$/i.test(s.edgeColor)) errors.push("Invalid edge color.");
+  for (const key of ["maskTexture", "noiseTexture"]) if (s[key] !== void 0 && (typeof s[key] !== "string" || !s[key].length)) errors.push(`Invalid ${key}.`);
+  return errors;
+}
+var ZHUDA_VFX_VERTEX = `
+#define SHADER_NAME ZhudaVfxVS
+#include "Camera.glsl";
+#include "Sprite3DVertex.glsl";
+#include "VertexCommon.glsl";
+varying vec2 v_UV; varying vec4 v_Color; varying vec4 v_Clip; varying float v_EyeDepth;
+void main(){
+  Vertex vertex; getVertexParams(vertex);
+  v_UV=vertex.texCoord0; v_Color=vertex.vertexColor;
+  vec4 world=getWorldMatrix()*vec4(vertex.positionOS,1.0);
+  vec4 clip=getPositionCS(world.xyz/world.w); v_Clip=clip;
+  v_EyeDepth=-(u_View*world).z;
+  gl_Position=remapPositionZ(clip);
+}`;
+var ZHUDA_VFX_FRAGMENT = `
+#define SHADER_NAME ZhudaVfxFS
+#include "Camera.glsl";
+varying vec2 v_UV; varying vec4 v_Color; varying vec4 v_Clip; varying float v_EyeDepth;
+uniform sampler2D u_BaseTexture; uniform sampler2D u_MaskTexture; uniform sampler2D u_NoiseTexture;
+uniform vec4 u_VfxParams; uniform vec4 u_UVParams; uniform vec4 u_EdgeColor; uniform vec4 u_VfxFlags; uniform float u_VfxTime;
+void main(){
+  vec2 uv=v_UV+u_UVParams.xy*u_VfxTime;
+  vec2 flow=texture2D(u_NoiseTexture,uv).rg*2.0-1.0;
+  vec4 base=texture2D(u_BaseTexture,uv+flow*u_UVParams.z)*v_Color;
+  float noise=texture2D(u_NoiseTexture,uv).r;
+  float visible=1.0; float edge=0.0;
+  if(u_VfxParams.x>0.0){
+    visible=smoothstep(u_VfxParams.x,u_VfxParams.x+max(0.001,u_VfxParams.y),noise);
+    edge=visible*(1.0-smoothstep(u_VfxParams.x+u_VfxParams.y,u_VfxParams.x+2.0*max(0.001,u_VfxParams.y),noise));
+  }
+  if(u_VfxParams.x>=1.0)visible=0.0;
+  base.a*=texture2D(u_MaskTexture,v_UV).r*visible;
+  base.rgb=base.rgb*u_VfxParams.z+u_EdgeColor.rgb*edge*u_EdgeColor.a;
+  vec2 screen=v_Clip.xy/v_Clip.w*0.5+0.5;
+  screen.y=mix(screen.y,1.0-screen.y,u_VfxFlags.y);
+  if(u_UVParams.w>0.0){vec3 scene=texture2D(u_CameraOpaqueTexture,clamp(screen+flow*u_UVParams.w,0.001,0.999)).rgb;base.rgb=mix(base.rgb,scene,0.85);}
+  if(u_VfxParams.w>0.0){float d=texture2D(u_CameraDepthTexture,screen).r;float eye=1.0/(u_ZBufferParams.z*d+u_ZBufferParams.w);base.a*=clamp((eye-v_EyeDepth)/u_VfxParams.w,0.0,1.0);}
+  gl_FragColor=base;
+}`;
+var ZhudaVfxMaterial = class {
+  constructor(spec, baseTexture, resolveTexture, blend = "alpha") {
+    this.disposed = false;
+    const errors = validateVfxMaterial(spec);
+    if (errors.length) throw new Error(errors.join(" | "));
+    const l = globalThis.Laya;
+    if (!l?.Shader3D || !baseTexture) throw new Error("Boot Laya 3D and load a base texture before creating VFX materials.");
+    if (!l.Shader3D.find("ZhudaVfx")) {
+      const shader = l.Shader3D.add("ZhudaVfx", true, false);
+      shader.shaderType = l.ShaderFeatureType.D3;
+      const uniforms = {
+        u_BaseTexture: l.ShaderDataType.Texture2D,
+        u_MaskTexture: l.ShaderDataType.Texture2D,
+        u_NoiseTexture: l.ShaderDataType.Texture2D,
+        u_VfxParams: l.ShaderDataType.Vector4,
+        u_UVParams: l.ShaderDataType.Vector4,
+        u_EdgeColor: l.ShaderDataType.Vector4,
+        u_VfxFlags: l.ShaderDataType.Vector4,
+        u_VfxTime: l.ShaderDataType.Float
+      };
+      const sub = new l.SubShader(l.SubShader.DefaultAttributeMap, uniforms);
+      shader.addSubShader(sub);
+      sub.addShaderPass(ZHUDA_VFX_VERTEX, ZHUDA_VFX_FRAGMENT);
+    }
+    this.resolveTexture = resolveTexture;
+    this.baseTexture = baseTexture.bitmap || baseTexture;
+    this.material = new l.Material();
+    this.material.setShaderName("ZhudaVfx");
+    this.material.renderQueue = 3e3;
+    this.material.depthWrite = false;
+    this.material.depthTest = l.RenderState.DEPTHTEST_LEQUAL;
+    this.material.cull = l.RenderState.CULL_NONE;
+    this.material.blend = l.RenderState.BLEND_ENABLE_ALL;
+    this.material.blendSrc = l.RenderState.BLENDPARAM_SRC_ALPHA;
+    this.material.blendDst = blend === "additive" ? l.RenderState.BLENDPARAM_ONE : l.RenderState.BLENDPARAM_ONE_MINUS_SRC_ALPHA;
+    this.spec = JSON.parse(JSON.stringify(spec));
+    try {
+      this.apply(this.spec);
+    } catch (error) {
+      this.dispose();
+      throw error;
+    }
+  }
+  descriptor() {
+    return JSON.parse(JSON.stringify(this.spec));
+  }
+  configure(patch) {
+    if (this.disposed) throw new Error("Disposed VFX material.");
+    const next = { ...this.spec, ...patch };
+    const errors = validateVfxMaterial(next);
+    if (errors.length) throw new Error(errors.join(" | "));
+    this.apply(next);
+    this.spec = JSON.parse(JSON.stringify(next));
+  }
+  setTime(seconds) {
+    if (!Number.isFinite(seconds)) throw new Error("Invalid material time.");
+    this.material.setFloat("u_VfxTime", seconds);
+  }
+  setScreenFlipY(flip) {
+    const l = globalThis.Laya;
+    this.material.setVector4("u_VfxFlags", new l.Vector4(0, flip ? 1 : 0, 0, 0));
+  }
+  apply(s) {
+    const l = globalThis.Laya, m = this.material;
+    const texture = (key) => {
+      if (!key) return l.Texture2D.whiteTexture;
+      const value = this.resolveTexture(key);
+      if (!value) throw new Error(`Missing VFX texture: ${key}`);
+      return value.bitmap || value;
+    };
+    const mask = texture(s.maskTexture), noise = texture(s.noiseTexture);
+    m.setTexture("u_BaseTexture", this.baseTexture);
+    m.setTexture("u_MaskTexture", mask);
+    m.setTexture("u_NoiseTexture", noise);
+    m.setVector4("u_VfxParams", new l.Vector4(s.dissolve ?? 0, s.edgeWidth ?? 0.04, s.intensity ?? 1, s.softDistance ?? 0));
+    m.setVector4("u_UVParams", new l.Vector4(s.uvScroll?.x ?? 0, s.uvScroll?.y ?? 0, s.uvDistortion ?? 0, s.refraction ?? 0));
+    const color = parseInt((s.edgeColor || "#ffbb44").slice(1), 16);
+    m.setVector4("u_EdgeColor", new l.Vector4((color >> 16 & 255) / 255, (color >> 8 & 255) / 255, (color & 255) / 255, 1));
+    m.setVector4("u_VfxFlags", new l.Vector4());
+    m.setFloat("u_VfxTime", 0);
+  }
+  dispose() {
+    if (this.disposed) return;
+    this.disposed = true;
+    for (const name of ["u_BaseTexture", "u_MaskTexture", "u_NoiseTexture"]) this.material.setTexture(name, null);
+    this.material.destroy();
+  }
+};
+var _ZhudaVfxCamera = class _ZhudaVfxCamera {
+  constructor(camera, options = {}) {
+    this.disposed = false;
+    const runtime = globalThis.Laya;
+    if (_ZhudaVfxCamera.owners.has(camera)) throw new Error("This camera already has a VFX pass owner.");
+    if (options.bloomIntensity !== void 0 && (!runtime?.PostProcess || !runtime?.BloomEffect || !Number.isFinite(options.bloomIntensity) || options.bloomIntensity < 0)) throw new Error("Bloom requires the Laya postProcess module and a non-negative intensity.");
+    _ZhudaVfxCamera.owners.add(camera);
+    this.camera = camera;
+    const l = globalThis.Laya;
+    this.depth = camera.depthTextureMode;
+    this.opaque = camera.opaquePass;
+    this.post = camera.postProcess;
+    if (options.softParticles) camera.depthTextureMode |= l.DepthTextureMode.Depth;
+    if (options.refraction) camera.opaquePass = true;
+    if (options.bloomIntensity !== void 0) {
+      if (!l.PostProcess || !l.BloomEffect || !Number.isFinite(options.bloomIntensity) || options.bloomIntensity < 0) throw new Error("Bloom requires the Laya postProcess module and a non-negative intensity.");
+      this.ownedPost = this.post || new l.PostProcess();
+      camera.postProcess = this.ownedPost;
+      this.bloom = new l.BloomEffect();
+      this.bloom.intensity = options.bloomIntensity;
+      this.ownedPost.addEffect(this.bloom);
+    }
+  }
+  dispose() {
+    if (this.disposed) return;
+    this.disposed = true;
+    _ZhudaVfxCamera.owners.delete(this.camera);
+    this.camera.depthTextureMode = this.depth;
+    this.camera.opaquePass = this.opaque;
+    if (this.bloom) {
+      this.ownedPost.removeEffect(this.bloom);
+      if (this.camera.postProcess === this.ownedPost && !this.post) this.camera.postProcess = this.post;
+    }
+  }
+};
+_ZhudaVfxCamera.owners = /* @__PURE__ */ new WeakSet();
+var ZhudaVfxCamera = _ZhudaVfxCamera;
+
 // packages/core/particles/ParticleTypes3D.ts
 function rotateParticleVector3(v, q, out) {
   const tx = 2 * (q.y * v.z - q.z * v.y), ty = 2 * (q.z * v.x - q.x * v.z), tz = 2 * (q.x * v.y - q.y * v.x);
@@ -4832,15 +5116,17 @@ function validateParticleEffect3D(value) {
   if (!spec || spec.dimension !== 3 || spec.schemaVersion !== 1 || !Array.isArray(spec.emitters) || !spec.emitters.length) {
     return ["Expected dimension: 3, schemaVersion: 1 and a non-empty emitters array."];
   }
-  const issues = validateParticleEffect({ schemaVersion: 1, emitters: spec.emitters.map((e) => e && { ...e, angle: 0, shape: { type: "point" } }) });
+  const issues = validateParticleEffect({ schemaVersion: 1, emitters: spec.emitters.map((e) => e && { ...e, collision: void 0, angle: 0, shape: { type: "point" } }) });
   const vector = (v) => v && [v.x, v.y, v.z].every(Number.isFinite);
   for (const e of spec.emitters) {
     if (!e || typeof e !== "object") continue;
+    issues.push(...validateParticleExtras(e, 3).map((message) => `${e.id}: ${message}`));
     if (!vector(e.direction) || Math.hypot(e.direction.x, e.direction.y, e.direction.z) < 1e-8) issues.push(`${e.id}: direction must be a finite non-zero vector.`);
     if (!Number.isFinite(e.spread) || e.spread < 0 || e.spread > Math.PI) issues.push(`${e.id}: spread must be 0..PI radians.`);
     if (e.acceleration && !vector(e.acceleration)) issues.push(`${e.id}: acceleration must have finite XYZ components.`);
     if (e.velocityInheritance !== void 0 && (!Number.isFinite(e.velocityInheritance) || e.velocityInheritance < 0 || e.velocityInheritance > 2)) issues.push(`${e.id}: velocityInheritance must be 0..2.`);
     if (e.billboard !== void 0 && !["camera", "velocity", "ground"].includes(e.billboard)) issues.push(`${e.id}: invalid billboard mode.`);
+    if (e.material) issues.push(...validateVfxMaterial(e.material));
     const shape = e.shape;
     if (!shape || !["point", "box", "sphere"].includes(shape.type)) issues.push(`${e.id}: invalid 3D shape.`);
     else if (shape.type === "box" && ![shape.width, shape.height, shape.depth].every((v) => Number.isFinite(v) && v >= 0)) issues.push(`${e.id}: invalid 3D box dimensions.`);
@@ -4859,6 +5145,10 @@ var _ZhudaParticleSystem3D = class _ZhudaParticleSystem3D {
     this.time = 0;
     this.droppedParticles = 0;
     this.droppedSeconds = 0;
+    /** Future births respect this cap; existing particles drain naturally. */
+    this.limit = Infinity;
+    this.droppedEvents = 0;
+    this.events = [];
     this.count = 0;
     this.accumulator = 0;
     this.remainder = 0;
@@ -4889,6 +5179,27 @@ var _ZhudaParticleSystem3D = class _ZhudaParticleSystem3D {
       y: this.direction.z * this.basisU.x - this.direction.x * this.basisU.z,
       z: this.direction.x * this.basisU.y - this.direction.y * this.basisU.x
     };
+  }
+  get particleLimit() {
+    return this.limit;
+  }
+  set particleLimit(value) {
+    if (value !== Infinity && (!Number.isInteger(value) || value < 0)) throw new Error("Particle limit must be a non-negative integer.");
+    this.limit = value;
+  }
+  queueEvent(type, p, plane = -1) {
+    if (!this.onEvent) return;
+    if (this.events.length >= this.capacity * 2) {
+      this.droppedEvents++;
+      return;
+    }
+    this.events.push({ type, x: p.x, y: p.y, z: p.z || 0, vx: p.vx, vy: p.vy, vz: p.vz || 0, age: p.age, plane });
+  }
+  flushEvents() {
+    if (!this.events.length) return;
+    const events = this.events;
+    this.events = [];
+    for (const e of events) this.onEvent?.(e);
   }
   get aliveCount() {
     return this.count;
@@ -4926,6 +5237,8 @@ var _ZhudaParticleSystem3D = class _ZhudaParticleSystem3D {
   clear() {
     this.count = 0;
     this.freeCount = this.capacity;
+    this.events.length = 0;
+    this.droppedEvents = 0;
     for (let i = 0; i < this.capacity; i++) this.free[i] = this.capacity - 1 - i;
     this.rng = this.spec.seed >>> 0;
     this.time = this.cycle = this.accumulator = this.remainder = this.distanceRemainder = 0;
@@ -4935,7 +5248,7 @@ var _ZhudaParticleSystem3D = class _ZhudaParticleSystem3D {
   }
   burst(count, x = this.transform.x, y = this.transform.y, z = this.transform.z) {
     if (!Number.isInteger(count) || count < 0 || ![x, y, z].every(Number.isFinite)) throw new Error("Invalid 3D burst.");
-    const accepted = Math.min(count, this.freeCount);
+    const accepted = Math.min(count, this.freeCount, Math.max(0, Math.floor(this.particleLimit) - this.count));
     this.droppedParticles += count - accepted;
     for (let i = 0; i < accepted; i++) this.spawn(x, y, z);
   }
@@ -4961,6 +5274,7 @@ var _ZhudaParticleSystem3D = class _ZhudaParticleSystem3D {
       Object.assign(this.previous, { x, y, z });
     }
     this.accumulator = Math.max(0, this.accumulator - steps * _ZhudaParticleSystem3D.STEP);
+    this.flushEvents();
   }
   random() {
     this.rng = Math.imul(this.rng, 1664525) + 1013904223 >>> 0;
@@ -5010,6 +5324,7 @@ var _ZhudaParticleSystem3D = class _ZhudaParticleSystem3D {
       const slot = this.active[i], p = this.pool[slot];
       p.age += dt;
       if (p.age + 1e-10 >= p.lifetime) {
+        this.queueEvent("death", p);
         this.free[this.freeCount++] = slot;
         this.active[i] = this.active[--this.count];
         continue;
@@ -5021,6 +5336,12 @@ var _ZhudaParticleSystem3D = class _ZhudaParticleSystem3D {
       p.x += p.vx * dt;
       p.y += p.vy * dt;
       p.z += p.vz * dt;
+      if (s.collision && resolveParticleCollision(p, s.collision, 3, (plane) => this.queueEvent("collision", p, plane))) {
+        this.queueEvent("death", p);
+        this.free[this.freeCount++] = slot;
+        this.active[i] = this.active[--this.count];
+        continue;
+      }
       p.rotation += p.angularVelocity * dt;
       p.size = p.baseSize * sampleParticleCurve(s.sizeOverLife, p.age / p.lifetime);
     }
@@ -5039,7 +5360,7 @@ var _ZhudaParticleSystem3D = class _ZhudaParticleSystem3D {
       this.burst(count, ex, ey, ez);
       const dx = (x - this.previous.x) * (fraction - start), dy = (y - this.previous.y) * (fraction - start), dz = (z - this.previous.z) * (fraction - start);
       this.distanceRemainder += Math.hypot(dx, dy, dz) * (s.rateOverDistance || 0) * strength;
-      const distanceCount = Math.floor(this.distanceRemainder + 1e-10), accepted = Math.min(distanceCount, this.freeCount);
+      const distanceCount = Math.floor(this.distanceRemainder + 1e-10), accepted = Math.min(distanceCount, this.freeCount, Math.max(0, Math.floor(this.particleLimit) - this.count));
       this.distanceRemainder = Math.max(0, this.distanceRemainder - distanceCount);
       this.droppedParticles += distanceCount - accepted;
       for (let i = 0; i < accepted; i++) this.spawn(ex - dx + dx * (i + 1) / distanceCount, ey - dy + dy * (i + 1) / distanceCount, ez - dz + dz * (i + 1) / distanceCount);
@@ -5062,6 +5383,7 @@ var ZhudaParticleSystem3D = _ZhudaParticleSystem3D;
 // packages/core/particles/ParticleMesh3D.ts
 var ZhudaParticleMesh3D = class {
   constructor(system) {
+    this.frameUV = { x: 0, y: 0, width: 1, height: 1 };
     this.items = [];
     this.colors = new Float32Array(256 * 4);
     this.position = { x: 0, y: 0, z: 0 };
@@ -5139,6 +5461,7 @@ var ZhudaParticleMesh3D = class {
       const bx = (ux * c - rx * sn) * hy, by = (uy * c - ry * sn) * hy, bz = (uz * c - rz * sn) * hy;
       const ci = Math.min(255, Math.floor(p.age / p.lifetime * 255)) * 4;
       const r = this.colors[ci], green = this.colors[ci + 1], b = this.colors[ci + 2], alpha = this.colors[ci + 3] * Math.max(0, Math.min(1, opacity));
+      const rect = sampleParticleUV(spec, p.age, p.lifetime, this.frameUV);
       for (let corner = 0; corner < 4; corner++) {
         const sx = corner === 0 || corner === 3 ? -1 : 1, sy = corner < 2 ? -1 : 1, base = i * 36 + corner * 9;
         const v = g.vertices;
@@ -5149,8 +5472,8 @@ var ZhudaParticleMesh3D = class {
         v[base + 4] = green;
         v[base + 5] = b;
         v[base + 6] = alpha;
-        v[base + 7] = sx > 0 ? 1 : 0;
-        v[base + 8] = sy > 0 ? 0 : 1;
+        v[base + 7] = rect.x + (sx > 0 ? rect.width : 0);
+        v[base + 8] = rect.y + (sy > 0 ? 0 : rect.height);
       }
     }
     g.vertexCount = this.items.length * 4;
@@ -5397,14 +5720,15 @@ function smooth(v) {
 
 // packages/core/particles/LayaParticleRenderer3D.ts
 var DynamicParticleMesh3D = class {
-  constructor(parent, geometry, texture, blend, color) {
+  constructor(parent, geometry, texture, blend, color, vfxSpec, resolver) {
     this.disposed = false;
     const l = globalThis.Laya;
     if (!l?.PrimitiveMesh?._createMesh || !l?.MeshSprite3D || !texture) throw new Error("3D particle rendering requires booted Laya 3.4.2 3D modules and a texture.");
     this.mesh = l.PrimitiveMesh._createMesh(l.VertexMesh.getVertexDeclaration("POSITION,COLOR,UV"), geometry.vertices, geometry.indices);
-    this.material = new l.UnlitMaterial();
+    this.vfx = vfxSpec ? new ZhudaVfxMaterial(vfxSpec, texture, resolver, blend) : void 0;
+    this.material = this.vfx?.material || new l.UnlitMaterial();
     this.material.enableVertexColor = true;
-    this.material.albedoTexture = texture.bitmap || texture;
+    if (!this.vfx) this.material.albedoTexture = texture.bitmap || texture;
     if (color) {
       const c = parseInt(color.slice(1), 16);
       this.material.albedoColor = new l.Color((c >> 16 & 255) / 255, (c >> 8 & 255) / 255, (c & 255) / 255, 1);
@@ -5452,7 +5776,8 @@ var DynamicParticleMesh3D = class {
     this.material.albedoTexture = null;
     this.node.destroy(true);
     this.mesh.destroy();
-    this.material.destroy();
+    if (this.vfx) this.vfx.dispose();
+    else this.material.destroy();
   }
 };
 function cameraView(camera, out) {
@@ -5473,12 +5798,16 @@ var ZhudaLayaParticleRenderer3D = class {
     this.disposed = false;
     this.system = system;
     this.builder = new ZhudaParticleMesh3D(system);
-    this.backend = new DynamicParticleMesh3D(parent, this.builder.geometry, resolveTexture(system.spec.texture), system.spec.blend);
+    this.backend = new DynamicParticleMesh3D(parent, this.builder.geometry, resolveTexture(system.spec.texture), system.spec.blend, void 0, system.spec.material, resolveTexture);
     this.node = this.backend.node;
+  }
+  get vfxMaterial() {
+    return this.backend.vfx;
   }
   render(camera, opacity = 1) {
     this.submittedBatches = 0;
     if (this.disposed) return;
+    this.backend.vfx?.setTime(this.system.time);
     const g = this.builder.build(cameraView(camera, this.view), opacity);
     this.backend.submit(g, opacity > 0);
     this.submittedBatches = opacity > 0 && g.indexCount > 0 ? 1 : 0;
@@ -5509,6 +5838,338 @@ var ZhudaLayaRibbonRenderer3D = class {
     this.backend.dispose();
   }
 };
+
+// packages/core/effects/EffectDirector.ts
+function validateEffectTimeline(s) {
+  const errors = [];
+  if (!s || s.version !== 1 || !Number.isFinite(s.duration) || s.duration < 1 / 120) return ["Timeline requires version 1 and duration >= 1/120."];
+  for (const key of ["tracks", "cues", "attachments"]) if (s[key] !== void 0 && !Array.isArray(s[key])) return [`${key} must be an array.`];
+  if (s.loop !== void 0 && typeof s.loop !== "boolean") errors.push("loop must be boolean.");
+  for (const t of s.tracks || []) {
+    if (!t.target || !t.parameter || !Array.isArray(t.keys) || !t.keys.length) {
+      errors.push("Track needs target, parameter and keys.");
+      continue;
+    }
+    let previous = -1;
+    for (const k of t.keys) {
+      if (!Number.isFinite(k.time) || k.time < 0 || k.time > s.duration || k.time <= previous || !Number.isFinite(k.value)) errors.push("Invalid or unordered track key.");
+      previous = k.time;
+    }
+  }
+  for (const c of s.cues || []) if (!c.target || !["start", "stop", "event"].includes(c.action) || !Number.isFinite(c.time) || c.time < 0 || c.time > s.duration || c.action === "event" && !c.name) errors.push("Invalid cue.");
+  for (const a of s.attachments || []) if (!a.target || !a.source || !a.anchor || a.offset && ![a.offset.x, a.offset.y, a.offset.z ?? 0, a.offset.rotation ?? 0].every(Number.isFinite)) errors.push("Invalid attachment.");
+  return errors;
+}
+var ZhudaEffectDirector = class {
+  constructor(spec, bindings) {
+    this.time = 0;
+    this.playing = false;
+    this.cycle = 0;
+    this.initial = true;
+    const errors = validateEffectTimeline(spec);
+    if (errors.length) throw new Error(errors.join(" | "));
+    this.spec = JSON.parse(JSON.stringify(spec));
+    this.bindings = bindings;
+    for (const t of spec.tracks || []) if (!bindings[t.target]?.setParameter) throw new Error(`Missing parameter binding: ${t.target}`);
+    for (const c of spec.cues || []) if (!bindings[c.target]?.[c.action]) throw new Error(`Missing ${c.action} binding: ${c.target}`);
+    for (const a of spec.attachments || []) if (!bindings[a.source]?.resolveAnchor || !bindings[a.target]?.setTransform) throw new Error("Missing attachment binding.");
+  }
+  reset() {
+    for (const b of Object.values(this.bindings)) b.reset();
+    this.time = this.cycle = 0;
+    this.initial = true;
+    this.playing = false;
+    this.apply();
+  }
+  play(restart = false) {
+    if (restart || this.time >= this.spec.duration) this.reset();
+    this.playing = true;
+    this.advance(0, true);
+  }
+  pause() {
+    this.playing = false;
+  }
+  stop() {
+    this.playing = false;
+    for (const b of Object.values(this.bindings)) b.stop?.();
+  }
+  update(dt) {
+    if (!Number.isFinite(dt) || dt < 0 || dt > 10) throw new Error("Timeline delta must be 0..10 seconds.");
+    if (this.playing) this.advance(dt, true);
+    else this.apply();
+  }
+  seek(time, dispatchEvents = false) {
+    if (!Number.isFinite(time) || time < 0 || time > this.spec.duration) throw new Error("Seek outside timeline.");
+    this.reset();
+    this.advance(time, dispatchEvents);
+    this.playing = false;
+  }
+  advance(dt, dispatchEvents) {
+    let remaining = dt, events = 0;
+    do {
+      const end = Math.min(this.spec.duration, this.time + remaining);
+      const cues = (this.spec.cues || []).filter((c) => (c.time > this.time || this.initial && c.time === 0) && c.time <= end).sort((a, b) => a.time - b.time);
+      for (const c of cues) {
+        if (++events > 4096) throw new Error("Timeline cue budget exceeded.");
+        if (c.action !== "event" || dispatchEvents) {
+          const b = this.bindings[c.target];
+          if (c.action === "event") b.event(c.name);
+          else if (c.action === "start") b.start(c.name);
+          else b.stop();
+        }
+      }
+      remaining -= end - this.time;
+      this.time = end;
+      this.initial = false;
+      this.apply();
+      if (this.time >= this.spec.duration) {
+        if (this.spec.loop && remaining > 1e-10) {
+          this.cycle++;
+          this.time = 0;
+          this.initial = true;
+        } else {
+          if (!this.spec.loop) this.playing = false;
+          break;
+        }
+      }
+    } while (remaining > 1e-10);
+  }
+  apply() {
+    for (const t of this.spec.tracks || []) {
+      let value = t.keys[0].value;
+      for (let i = 0; i < t.keys.length; i++) {
+        const a = t.keys[i], b = t.keys[i + 1];
+        if (this.time >= a.time) value = !b || this.time >= b.time ? a.value : a.value + (b.value - a.value) * (this.time - a.time) / (b.time - a.time);
+      }
+      this.bindings[t.target].setParameter(t.parameter, value);
+    }
+    for (const a of this.spec.attachments || []) {
+      const p = this.bindings[a.source].resolveAnchor(a.anchor);
+      if (!p) continue;
+      const o = a.offset || { x: 0, y: 0 }, r = p.rotation || 0, c = Math.cos(r), s = Math.sin(r);
+      this.bindings[a.target].setTransform({ x: p.x + o.x * c - o.y * s, y: p.y + o.x * s + o.y * c, z: (p.z || 0) + (o.z || 0), rotation: r + (o.rotation || 0) });
+    }
+  }
+};
+
+// packages/core/effects/EffectBudget.ts
+var ZhudaEffectBudget = class {
+  constructor(spec) {
+    this.quality = 1;
+    this.slow = 0;
+    this.fast = 0;
+    if (!Number.isInteger(spec.maxParticles) || spec.maxParticles < 0 || !Number.isFinite(spec.maxCoverage) || spec.maxCoverage < 0 || spec.targetFrameMs !== void 0 && (!Number.isFinite(spec.targetFrameMs) || spec.targetFrameMs <= 0) || spec.minQuality !== void 0 && (!Number.isFinite(spec.minQuality) || spec.minQuality <= 0 || spec.minQuality > 1)) throw new Error("Invalid effect budget.");
+    this.spec = { ...spec };
+  }
+  observeFrame(ms) {
+    if (!Number.isFinite(ms) || ms <= 0) throw new Error("Invalid frame measurement.");
+    const target = this.spec.targetFrameMs || 16.67;
+    this.slow = ms > target * 1.25 ? this.slow + 1 : 0;
+    this.fast = ms < target * 0.9 ? this.fast + 1 : 0;
+    if (this.slow >= 15) {
+      this.quality = Math.max(this.spec.minQuality ?? 0.25, this.quality - 0.1);
+      this.slow = 0;
+    }
+    if (this.fast >= 120) {
+      this.quality = Math.min(1, this.quality + 0.05);
+      this.fast = 0;
+    }
+  }
+  allocate(requests) {
+    const seen = /* @__PURE__ */ new Set();
+    for (const r of requests) {
+      if (!r.id || seen.has(r.id) || !Number.isInteger(r.particles) || r.particles < 0 || ![r.coverage, r.priority, r.distance ?? 0].every(Number.isFinite) || r.coverage < 0 || (r.distance ?? 0) < 0) throw new Error("Invalid or duplicate effect request.");
+      seen.add(r.id);
+    }
+    let particles = Math.floor(this.spec.maxParticles * this.quality), coverage = this.spec.maxCoverage * this.quality;
+    const result = /* @__PURE__ */ new Map();
+    for (const r of [...requests].sort((a, b) => b.priority - a.priority || (a.distance || 0) - (b.distance || 0) || a.id.localeCompare(b.id))) {
+      const scale = r.visible === false ? 0 : Math.max(0, Math.min(1, r.particles ? particles / r.particles : 1, r.coverage ? coverage / r.coverage : 1));
+      const limit = Math.floor(r.particles * scale), effective = r.particles ? limit / r.particles : scale;
+      particles -= limit;
+      coverage -= r.coverage * effective;
+      result.set(r.id, { id: r.id, particleLimit: limit, emissionScale: effective });
+    }
+    return requests.map((r) => result.get(r.id));
+  }
+};
+var ZhudaRuntimeProfiler = class {
+  constructor() {
+    this.calls = 0;
+    this.triangles = 0;
+    this.contexts = /* @__PURE__ */ new WeakSet();
+    this.restore = [];
+    this.samples = [];
+  }
+  attach(gl) {
+    if (!gl) throw new Error("A WebGL context is required.");
+    if (this.contexts.has(gl)) return;
+    this.contexts.add(gl);
+    for (const name of ["drawArrays", "drawElements", "drawArraysInstanced", "drawElementsInstanced"]) {
+      if (typeof gl[name] !== "function") continue;
+      const original = gl[name], profiler = this;
+      const wrapper = function(...args) {
+        profiler.calls++;
+        const count = name.startsWith("drawElements") ? args[1] : args[2];
+        const instances = name.endsWith("Instanced") ? args[name === "drawArraysInstanced" ? 3 : 4] : 1;
+        if (args[0] === gl.TRIANGLES) profiler.triangles += Math.floor(count / 3) * instances;
+        return original.apply(gl, args);
+      };
+      gl[name] = wrapper;
+      this.restore.push(() => {
+        if (gl[name] === wrapper) gl[name] = original;
+      });
+    }
+  }
+  beginFrame() {
+    this.calls = this.triangles = 0;
+  }
+  endFrame(frameMs, cpuMs) {
+    if (![frameMs, cpuMs].every((v) => Number.isFinite(v) && v >= 0)) throw new Error("Invalid frame timing.");
+    const sample = { frameMs, cpuMs, drawCalls: this.calls, triangles: this.triangles };
+    this.samples.push(sample);
+    if (this.samples.length > 600) this.samples.shift();
+    return sample;
+  }
+  report() {
+    const sorted = this.samples.map((s) => s.frameMs).sort((a, b) => a - b);
+    return { measured: true, gpuTimeMs: null, gpuTimeReason: "GPU timer queries are not collected by this profiler.", samples: this.samples.map((s) => ({ ...s })), frameP95Ms: sorted.length ? sorted[Math.ceil(sorted.length * 0.95) - 1] : null };
+  }
+  dispose() {
+    this.restore.forEach((fn) => fn());
+    this.restore = [];
+    this.contexts = /* @__PURE__ */ new WeakSet();
+  }
+};
+
+// packages/core/effects/ParticleEventLink.ts
+var ZhudaParticleEventLink = class {
+  constructor(source, child, options) {
+    this.disposed = false;
+    this.source = source;
+    this.child = child;
+    if (source === child || child.spec.space !== "world" || !Number.isInteger(options.count) || options.count < 0 || options.count > child.capacity) throw new Error("Event links need a separate world-space child and a bounded count.");
+    this.previous = source.onEvent;
+    this.listener = (e) => {
+      this.previous?.(e);
+      if (this.disposed || e.type !== options.event) return;
+      const point = { x: e.x, y: e.y, z: e.z };
+      if (source.spec.space === "local") {
+        const transform = source.transform;
+        if (typeof transform.rotation === "number") {
+          const c = Math.cos(transform.rotation), s = Math.sin(transform.rotation), x = point.x;
+          point.x = x * c - point.y * s;
+          point.y = x * s + point.y * c;
+        } else rotateParticleVector3(point, transform.rotation, point);
+        point.x += transform.x;
+        point.y += transform.y;
+        point.z += transform.z || 0;
+      }
+      child.burst.call(child, options.count, point.x, point.y, point.z);
+    };
+    source.onEvent = this.listener;
+  }
+  dispose() {
+    this.disposed = true;
+    if (this.source.onEvent === this.listener) this.source.onEvent = this.previous;
+  }
+};
+
+// packages/core/VisualMigrationPipeline.ts
+function convertUnityVisualMaterial(input) {
+  if (!input?.id || !input.shader) throw new Error("Material needs a source id and shader.");
+  const pbr = ["Standard", "Universal Render Pipeline/Lit"].includes(input.shader), unlit = ["Unlit/Color", "Unlit/Texture", "Universal Render Pipeline/Unlit"].includes(input.shader);
+  if (!pbr && !unlit && !input.vfx) throw new Error(`Unmapped Unity shader ${input.shader}; supply an explicit VFX material contract.`);
+  if (input.vfx) {
+    const errors = validateVfxMaterial(input.vfx);
+    if (errors.length) throw new Error(errors.join(" | "));
+  }
+  const color = input.color || [1, 1, 1, 1];
+  if (color.length !== 4 || !color.every((v) => Number.isFinite(v) && v >= 0) || [input.metallic ?? 0, input.smoothness ?? 0.5].some((v) => !Number.isFinite(v) || v < 0 || v > 1) || input.emission && (input.emission.length !== 3 || !input.emission.every((v) => Number.isFinite(v) && v >= 0))) throw new Error("Invalid source material values.");
+  const textures = {};
+  for (const [name, key] of Object.entries(input.textures || {})) {
+    if (!["albedo", "normal", "metallicGloss", "emission"].includes(name) || typeof key !== "string" || !key) throw new Error("Unknown texture semantic.");
+    textures[name] = key;
+  }
+  if (!pbr && (textures.normal || textures.metallicGloss)) throw new Error("PBR texture semantics cannot be applied to an unlit material.");
+  return { id: input.id, target: input.vfx ? "ZhudaVfx" : pbr ? "PBRStandardMaterial" : "UnlitMaterial", properties: { albedoColor: [...color], metallic: input.metallic ?? 0, smoothness: input.smoothness ?? 0.5, emission: input.emission ? [...input.emission] : [0, 0, 0], transparent: !!input.transparent }, textures, ...input.vfx ? { vfx: JSON.parse(JSON.stringify(input.vfx)) } : {} };
+}
+function instantiateMigratedMaterial(spec, resolve) {
+  const l = globalThis.Laya;
+  if (spec.target === "ZhudaVfx") throw new Error("Construct ZhudaVfxMaterial with this contract and the resolved albedo texture.");
+  if (!l?.[spec.target]) throw new Error(`Missing Laya material class ${spec.target}.`);
+  const textures = {};
+  for (const [name, key] of Object.entries(spec.textures)) {
+    const t = resolve(key);
+    if (!t) throw new Error(`Missing migrated texture ${key}`);
+    textures[name] = t.bitmap || t;
+  }
+  const m = new l[spec.target](), p = spec.properties;
+  m.albedoColor = new l.Color(...p.albedoColor);
+  if (spec.target === "PBRStandardMaterial") {
+    m.metallic = p.metallic;
+    m.smoothness = p.smoothness;
+    m.enableEmission = p.emission.some((v) => v > 0);
+    m.emissionColor = new l.Color(...p.emission, 1);
+  }
+  const map = { albedo: "albedoTexture", normal: "normalTexture", metallicGloss: "metallicGlossTexture", emission: "emissionTexture" };
+  for (const [name, t] of Object.entries(textures)) m[map[name]] = t;
+  if (p.transparent) m.renderMode = l[spec.target].RENDERMODE_TRANSPARENT;
+  return m;
+}
+function disposeMigratedMaterial(material) {
+  for (const key of ["albedoTexture", "normalTexture", "metallicGlossTexture", "emissionTexture"]) if (key in material) material[key] = null;
+  material.destroy();
+}
+function convertUnityAnimationCurve(keys, tolerance = 1e-3) {
+  if (!keys.length || keys.length > 4096 || !Number.isFinite(tolerance) || tolerance <= 0) throw new Error("Invalid source curve.");
+  keys.forEach((k, i) => {
+    if (![k.time, k.value, k.inTangent ?? 0, k.outTangent ?? 0].every(Number.isFinite) || k.time < 0 || i > 0 && k.time <= keys[i - 1].time || k.weightedMode) throw new Error("Unordered, non-finite or weighted curve; bake unsupported tangent modes before import.");
+  });
+  const out = [{ time: keys[0].time, value: keys[0].value }];
+  for (let i = 1; i < keys.length; i++) {
+    const a = keys[i - 1], b = keys[i], span = b.time - a.time;
+    const sample = (t) => {
+      const u = (t - a.time) / span, u2 = u * u, u3 = u2 * u;
+      return (2 * u3 - 3 * u2 + 1) * a.value + (u3 - 2 * u2 + u) * (a.outTangent ?? (b.value - a.value) / span) * span + (-2 * u3 + 3 * u2) * b.value + (u3 - u2) * (b.inTangent ?? (b.value - a.value) / span) * span;
+    };
+    const split = (lo, hi, lv, hv, depth) => {
+      let error = 0;
+      for (const f of [0.25, 0.5, 0.75]) error = Math.max(error, Math.abs(sample(lo + (hi - lo) * f) - (lv + (hv - lv) * f)));
+      if (error > tolerance) {
+        if (depth >= 16 || out.length > 65530) throw new Error("Curve exceeds baking budget.");
+        const mid = (lo + hi) / 2, mv = sample(mid);
+        split(lo, mid, lv, mv, depth + 1);
+        split(mid, hi, mv, hv, depth + 1);
+      } else out.push({ time: hi, value: hv });
+    };
+    split(a.time, b.time, a.value, b.value, 0);
+  }
+  return out;
+}
+function compareVisualFrames(source, target, width, height, options = {}) {
+  if (!Number.isInteger(width) || !Number.isInteger(height) || width < 1 || height < 1 || source.length !== width * height * 4 || target.length !== source.length) throw new Error("Frames must share an explicit RGBA viewport.");
+  const threshold = options.alphaThreshold ?? 16, minIoU = options.minIoU ?? 0.95, maxCenter = options.maxCentroidErrorPx ?? 1;
+  if (!Number.isFinite(threshold) || threshold < 0 || threshold > 255 || !Number.isFinite(minIoU) || minIoU < 0 || minIoU > 1 || !Number.isFinite(maxCenter) || maxCenter < 0) throw new Error("Invalid visual comparison thresholds.");
+  let a = 0, b = 0, intersection = 0, union = 0, ax = 0, ay = 0, bx = 0, by = 0;
+  for (let i = 0; i < width * height; i++) {
+    const sa = source[i * 4 + 3] > threshold, tb = target[i * 4 + 3] > threshold, x = i % width, y = Math.floor(i / width);
+    if (sa) {
+      a++;
+      ax += x;
+      ay += y;
+    }
+    if (tb) {
+      b++;
+      bx += x;
+      by += y;
+    }
+    if (sa && tb) intersection++;
+    if (sa || tb) union++;
+  }
+  const iou = union ? intersection / union : 1, center = a && b ? Math.hypot(ax / a - bx / b, ay / a - by / b) : a === b ? 0 : Infinity;
+  return { passed: a > 0 && b > 0 && iou >= minIoU && center <= maxCenter, intersectionOverUnion: iou, sourcePixels: a, targetPixels: b, centroidErrorPx: center };
+}
 export {
   ENGINE_PRESET_PROFILES,
   EngineGuard,
@@ -5523,15 +6184,20 @@ export {
   ViewportMatrixEngine,
   VisualFocusContract,
   ZHUDA_ENGINE_MODULES,
+  ZHUDA_VFX_FRAGMENT,
+  ZHUDA_VFX_VERTEX,
   Zhuda3D,
   ZhudaAssetSerializer,
   ZhudaBenchmarkEngine,
+  ZhudaEffectBudget,
+  ZhudaEffectDirector,
   ZhudaEffectEnvelope,
   ZhudaEngine,
   ZhudaLayaParticleRenderer,
   ZhudaLayaParticleRenderer3D,
   ZhudaLayaRibbonRenderer,
   ZhudaLayaRibbonRenderer3D,
+  ZhudaParticleEventLink,
   ZhudaParticleMesh3D,
   ZhudaParticleSystem,
   ZhudaParticleSystem3D,
@@ -5539,12 +6205,25 @@ export {
   ZhudaRibbonPath3D,
   ZhudaRibbonTrail,
   ZhudaRibbonTrail3D,
+  ZhudaRuntimeProfiler,
   ZhudaUI,
+  ZhudaVfxCamera,
+  ZhudaVfxMaterial,
+  compareVisualFrames,
+  convertUnityAnimationCurve,
+  convertUnityVisualMaterial,
+  disposeMigratedMaterial,
+  instantiateMigratedMaterial,
+  resolveParticleCollision,
   rotateParticleVector3,
   sampleParticleColor,
   sampleParticleCurve,
+  sampleParticleUV,
+  validateEffectTimeline,
   validateParticleEffect,
   validateParticleEffect3D,
+  validateParticleExtras,
+  validateVfxMaterial,
   zhudaComponent
 };
 //# sourceMappingURL=zhuda-laya-engine.esm.js.map

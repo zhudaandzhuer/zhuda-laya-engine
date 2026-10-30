@@ -1,3 +1,5 @@
+import { resolveParticleCollision } from './ParticleExtras.ts';
+import type { ParticleEvent } from './ParticleExtras.ts';
 import { sampleParticleCurve } from './ParticleTypes.ts';
 import type { ParticleRange } from './ParticleTypes.ts';
 import { rotateParticleVector3, validateParticleEffect3D } from './ParticleTypes3D.ts';
@@ -9,6 +11,19 @@ export class ZhudaParticleSystem3D {
   readonly transform: ParticleTransform3D = { x: 0, y: 0, z: 0, rotation: { x: 0, y: 0, z: 0, w: 1 } };
   readonly emitterVelocity: ParticleVector3 = { x: 0, y: 0, z: 0 };
   intensity = 1; emitting = false; time = 0; droppedParticles = 0; droppedSeconds = 0;
+  /** Future births respect this cap; existing particles drain naturally. */
+  private limit = Infinity;
+  get particleLimit(): number { return this.limit; }
+  set particleLimit(value: number) { if (value !== Infinity && (!Number.isInteger(value) || value < 0)) throw new Error('Particle limit must be a non-negative integer.'); this.limit = value; }
+  onEvent?: (event: ParticleEvent) => void;
+  droppedEvents = 0;
+  private events: ParticleEvent[] = [];
+  private queueEvent(type: 'collision' | 'death', p: any, plane = -1): void {
+    if (!this.onEvent) return;
+    if (this.events.length >= this.capacity * 2) { this.droppedEvents++; return; }
+    this.events.push({type,x:p.x,y:p.y,z:p.z||0,vx:p.vx,vy:p.vy,vz:p.vz||0,age:p.age,plane});
+  }
+  private flushEvents(): void { if (!this.events.length) return; const events = this.events; this.events = []; for (const e of events) this.onEvent?.(e); }
   private readonly pool: ParticleState3D[];
   private readonly active: Int32Array;
   private readonly free: Int32Array;
@@ -56,7 +71,7 @@ export class ZhudaParticleSystem3D {
   play(restart = false): void { if (restart) this.clear(); if (!this.emitting) { this.cycle = 0; this.first = true; } this.emitting = true; }
   stop(clear = false): void { this.emitting = false; if (clear) this.clear(); }
   clear(): void {
-    this.count = 0; this.freeCount = this.capacity;
+    this.count = 0; this.freeCount = this.capacity; this.events.length = 0; this.droppedEvents = 0;
     for (let i = 0; i < this.capacity; i++) this.free[i] = this.capacity - 1 - i;
     this.rng = this.spec.seed >>> 0; this.time = this.cycle = this.accumulator = this.remainder = this.distanceRemainder = 0;
     this.first = true; this.droppedParticles = this.droppedSeconds = 0;
@@ -64,7 +79,7 @@ export class ZhudaParticleSystem3D {
   }
   burst(count: number, x = this.transform.x, y = this.transform.y, z = this.transform.z): void {
     if (!Number.isInteger(count) || count < 0 || ![x, y, z].every(Number.isFinite)) throw new Error('Invalid 3D burst.');
-    const accepted = Math.min(count, this.freeCount); this.droppedParticles += count - accepted;
+    const accepted = Math.min(count, this.freeCount, Math.max(0, Math.floor(this.particleLimit) - this.count)); this.droppedParticles += count - accepted;
     for (let i = 0; i < accepted; i++) this.spawn(x, y, z);
   }
   forEach(visitor: (particle: ParticleState3D, index: number) => void): void { for (let i = 0; i < this.count; i++) visitor(this.pool[this.active[i]], i); }
@@ -80,6 +95,7 @@ export class ZhudaParticleSystem3D {
       this.step(ZhudaParticleSystem3D.STEP, x, y, z); Object.assign(this.previous, { x, y, z });
     }
     this.accumulator = Math.max(0, this.accumulator - steps * ZhudaParticleSystem3D.STEP);
+    this.flushEvents();
   }
   private random(): number { this.rng = (Math.imul(this.rng, 1664525) + 1013904223) >>> 0; return this.rng / 4294967296; }
   private range(v: ParticleRange | undefined, fallback = 0): number { return v === undefined ? fallback : typeof v === 'number' ? v : v[0] + this.random() * (v[1] - v[0]); }
@@ -108,12 +124,14 @@ export class ZhudaParticleSystem3D {
     const s = this.spec, damp = Math.exp(-(s.drag || 0) * dt);
     for (let i = this.count - 1; i >= 0; i--) {
       const slot = this.active[i], p = this.pool[slot]; p.age += dt;
-      if (p.age + 1e-10 >= p.lifetime) { this.free[this.freeCount++] = slot; this.active[i] = this.active[--this.count]; continue; }
+      if (p.age + 1e-10 >= p.lifetime) { this.queueEvent('death', p); this.free[this.freeCount++] = slot; this.active[i] = this.active[--this.count]; continue; }
       const t = p.age * (s.turbulence?.frequency || 0), force = s.turbulence?.strength || 0;
       p.vx = (p.vx + ((s.acceleration?.x || 0) + Math.sin(t + p.phase) * force) * dt) * damp;
       p.vy = (p.vy + ((s.acceleration?.y || 0) + Math.cos(t * .83 + p.phase) * force) * dt) * damp;
       p.vz = (p.vz + ((s.acceleration?.z || 0) + Math.sin(t * .71 + p.phase) * force) * dt) * damp;
-      p.x += p.vx * dt; p.y += p.vy * dt; p.z += p.vz * dt; p.rotation += p.angularVelocity * dt;
+      p.x += p.vx * dt; p.y += p.vy * dt; p.z += p.vz * dt;
+      if (s.collision && resolveParticleCollision(p, s.collision, 3, plane => this.queueEvent('collision', p, plane))) { this.queueEvent('death', p); this.free[this.freeCount++] = slot; this.active[i] = this.active[--this.count]; continue; }
+      p.rotation += p.angularVelocity * dt;
       p.size = p.baseSize * sampleParticleCurve(s.sizeOverLife, p.age / p.lifetime);
     }
     let remaining = dt, elapsed = 0;
@@ -127,7 +145,7 @@ export class ZhudaParticleSystem3D {
       const count = Math.floor(this.remainder + 1e-10); this.remainder = Math.max(0, this.remainder - count); this.burst(count, ex, ey, ez);
       const dx = (x - this.previous.x) * (fraction - start), dy = (y - this.previous.y) * (fraction - start), dz = (z - this.previous.z) * (fraction - start);
       this.distanceRemainder += Math.hypot(dx, dy, dz) * (s.rateOverDistance || 0) * strength;
-      const distanceCount = Math.floor(this.distanceRemainder + 1e-10), accepted = Math.min(distanceCount, this.freeCount);
+      const distanceCount = Math.floor(this.distanceRemainder + 1e-10), accepted = Math.min(distanceCount, this.freeCount, Math.max(0, Math.floor(this.particleLimit) - this.count));
       this.distanceRemainder = Math.max(0, this.distanceRemainder - distanceCount); this.droppedParticles += distanceCount - accepted;
       for (let i = 0; i < accepted; i++) this.spawn(ex - dx + dx * (i + 1) / distanceCount, ey - dy + dy * (i + 1) / distanceCount, ez - dz + dz * (i + 1) / distanceCount);
       this.first = false; this.cycle = end; remaining -= span;

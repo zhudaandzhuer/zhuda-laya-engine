@@ -196,7 +196,9 @@ VisualFocusContract.apply(targets, VisualFocusContract.clear());
 
 公開 SDK 提供 `ZhudaParticleSystem`、`ZhudaLayaParticleRenderer`、`ZhudaRibbonTrail`、`ZhudaLayaRibbonRenderer` 與 `ZhudaEffectEnvelope`，另提供 3D XYZ 粒子、相機／速度／地面 billboard、歷史拖尾及可沿路徑漸顯的 `ZhudaRibbonPath3D`。支援貼圖、生命曲線、定種子重播、物件池、世界／本地空間、距離發射及彎曲路徑。MCP `validate_particle_effect` 可先檢查 JSON 設定。
 
-完整 API、限制與接入方式見 [packages/core/particles/README.md](packages/core/particles/README.md)。展示場景、遊戲預設及美術資產由獨立應用程式管理，引擎不依賴任何展示專案。
+公開 SDK 另外提供 VFX 材質合約（溶解、遮罩、噪聲、UV 扭曲、折射、柔化深度）、相機 pass、Flipbook 圖集 UV、平面碰撞與事件鏈、全域粒子／覆蓋預算、時間軸／掛點、Unity Standard／URP Lit 到 PBR 的移植，以及實際 WebGL draw-call profiler。未知 Unity shader 會被明確阻擋，避免把畫面差異藏在 fallback 裡。
+
+完整 API、限制與接入方式見 [packages/core/particles/README.md](packages/core/particles/README.md) 與 [packages/core/effects](packages/core/effects)。展示場景、遊戲預設及美術資產由獨立的 [zhuda-particle-lab](https://github.com/zhudaandzhuer/zhuda-particle-lab) 管理；引擎只提供通用 SDK，不依賴展示專案。
 
 ## 📄 開源授權與致謝 (License & Credits)
 

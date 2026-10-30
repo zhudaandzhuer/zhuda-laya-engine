@@ -1,13 +1,4 @@
-/**
- * @zhuda-laya/core — Phase 3: Performance & Architecture Benchmark Suite
- *
- * 針對「豬大 LayaAir (AI-Friendly)」與傳統「Three.js 多庫拼裝 (Three + Pixi-Spine + DOM UI)」
- * 進行真實執行期基準測試：
- * 1. 單一 WebGL Context 2D/3D/Spine 穿插合批 vs 跨 Context 切換開銷
- * 2. Spine 4.2 PhysicsConstraint 彈簧擺物理求解吞吐量 (ops/ms)
- * 3. ReusableStructList 零 GC 結構池 vs 傳統 Array 動態配置
- * 4. 拓撲按需剪枝 (Tree-Pruning) 包體縮減率
- */
+/** Legacy showcase telemetry. Estimates are labeled; runtime WebGL measurements use ZhudaRuntimeProfiler. */
 
 import { ENGINE_PRESET_PROFILES, type PresetProfileName, TopologyResolver } from './TopologyGraph.ts';
 import { PixelCalibrationEngine } from './PixelCalibrationEngine.ts';
@@ -18,8 +9,11 @@ import { UnityBridgePipeline } from './UnityBridgePipeline.ts';
 
 export interface BenchmarkReport {
   timestamp: number;
-  spinePhysicsOpsPerMs: number;
-  zeroGcPoolSpeedupRatio: number;
+  /** @deprecated No actual Spine runtime benchmark is performed here. */
+  spinePhysicsOpsPerMs: number | null;
+  springMathOpsPerMs: number;
+  measurementScope: string;
+  zeroGcPoolSpeedupRatio: number | null;
   sharedMeshBatchNodes: number;
   estimatedDrawCallsZhuda: number;
   estimatedDrawCallsThreeAssembled: number;
@@ -74,7 +68,7 @@ export class ZhudaBenchmarkEngine {
    * 執行即時微基準測試並回傳量化性能數據
    */
   public static runSuite(activeTileNodesCount: number = 81): BenchmarkReport {
-    // 1. 測試 Spine 4.2 PhysicsConstraint 二階彈簧阻尼求解吞吐量
+    // 1. Scalar spring arithmetic only; this does not execute the Spine runtime.
     const iterations = 10000;
     const t0 = typeof performance !== 'undefined' ? performance.now() : Date.now();
     let angle = 0.25;
@@ -89,10 +83,11 @@ export class ZhudaBenchmarkEngine {
     }
     const t1 = typeof performance !== 'undefined' ? performance.now() : Date.now();
     const elapsedMs = Math.max(0.05, t1 - t0 + (angle * 0.000001));
-    const spinePhysicsOpsPerMs = Math.round(iterations / elapsedMs);
+    const springMathOpsPerMs = Math.round(iterations / elapsedMs);
+    const spinePhysicsOpsPerMs = null;
 
-    // 2. 評估 3.4.2 ReusableStructList 線性游標重用 vs 傳統陣列 GC 分配加速比
-    const zeroGcPoolSpeedupRatio = 3.8;
+    // 2. No pool-versus-allocation comparison has been measured here.
+    const zeroGcPoolSpeedupRatio = null; // No measured comparison available.
 
     // 3. 計算同屏 3D 棋盤 + 2D 投影標籤 + Spine 4.2 精靈 + 向量 HUD 的 DrawCall 對比
     // Zhuda-LayaAir 透過 sharedMesh + sharedMaterial 動態合批與同一 WebGL Context 2D/3D 混排：
@@ -135,6 +130,8 @@ export class ZhudaBenchmarkEngine {
 
     return {
       timestamp: Date.now(),
+      springMathOpsPerMs,
+      measurementScope: 'Spring arithmetic microbenchmark only; draw calls below are estimates, and no pool speedup or Spine runtime result is claimed.',
       spinePhysicsOpsPerMs,
       zeroGcPoolSpeedupRatio,
       sharedMeshBatchNodes: activeTileNodesCount,

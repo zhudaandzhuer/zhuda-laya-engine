@@ -1,3 +1,5 @@
+import { ZhudaVfxMaterial } from '../effects/VfxMaterial.ts';
+import type { VfxMaterialSpec } from '../effects/VfxMaterial.ts';
 import { ZhudaParticleMesh3D } from './ParticleMesh3D.ts';
 import type { ParticleGeometry3D } from './ParticleMesh3D.ts';
 import type { ParticleView3D } from './ParticleTypes3D.ts';
@@ -10,13 +12,15 @@ import type { ParticleTextureResolver } from './LayaParticleRenderer.ts';
 class DynamicParticleMesh3D {
   readonly node: any; readonly material: any; readonly mesh: any;
   private disposed = false;
+  readonly vfx?: ZhudaVfxMaterial;
   private readonly min: any; private readonly max: any;
-  constructor(parent: any, geometry: ParticleGeometry3D, texture: any, blend: 'alpha' | 'additive', color?: string) {
+  constructor(parent: any, geometry: ParticleGeometry3D, texture: any, blend: 'alpha' | 'additive', color?: string, vfxSpec?: VfxMaterialSpec, resolver?: ParticleTextureResolver) {
     const l = (globalThis as any).Laya;
     if (!l?.PrimitiveMesh?._createMesh || !l?.MeshSprite3D || !texture) throw new Error('3D particle rendering requires booted Laya 3.4.2 3D modules and a texture.');
     this.mesh = l.PrimitiveMesh._createMesh(l.VertexMesh.getVertexDeclaration('POSITION,COLOR,UV'), geometry.vertices, geometry.indices);
-    this.material = new l.UnlitMaterial(); this.material.enableVertexColor = true;
-    this.material.albedoTexture = texture.bitmap || texture;
+    this.vfx = vfxSpec ? new ZhudaVfxMaterial(vfxSpec, texture, resolver!, blend) : undefined;
+    this.material = this.vfx?.material || new l.UnlitMaterial(); this.material.enableVertexColor = true;
+    if (!this.vfx) this.material.albedoTexture = texture.bitmap || texture;
     if (color) { const c = parseInt(color.slice(1), 16); this.material.albedoColor = new l.Color((c >> 16 & 255) / 255, (c >> 8 & 255) / 255, (c & 255) / 255, 1); }
     this.material.renderQueue = 3000; this.material.depthWrite = false;
     this.material.depthTest = l.RenderState.DEPTHTEST_LEQUAL; this.material.cull = l.RenderState.CULL_NONE;
@@ -49,7 +53,7 @@ class DynamicParticleMesh3D {
     // Laya destroys zero-reference texture dependencies during Material.destroy().
     // Detach outside that cascade so shared application textures survive rebuilding.
     this.material.albedoTexture = null;
-    this.node.destroy(true); this.mesh.destroy(); this.material.destroy();
+    this.node.destroy(true); this.mesh.destroy(); if (this.vfx) this.vfx.dispose(); else this.material.destroy();
   }
 }
 
@@ -64,6 +68,7 @@ function emptyView(): ParticleView3D { return { position: { x: 0, y: 0, z: 0 }, 
 export class ZhudaLayaParticleRenderer3D {
   readonly node: any;
   readonly system: ZhudaParticleSystem3D;
+  get vfxMaterial(): ZhudaVfxMaterial | undefined { return this.backend.vfx; }
   submittedBatches = 0;
   private readonly builder: ZhudaParticleMesh3D;
   private readonly backend: DynamicParticleMesh3D;
@@ -71,11 +76,12 @@ export class ZhudaLayaParticleRenderer3D {
   private disposed = false;
   constructor(system: ZhudaParticleSystem3D, parent: any, resolveTexture: ParticleTextureResolver) {
     this.system = system; this.builder = new ZhudaParticleMesh3D(system);
-    this.backend = new DynamicParticleMesh3D(parent, this.builder.geometry, resolveTexture(system.spec.texture), system.spec.blend);
+    this.backend = new DynamicParticleMesh3D(parent, this.builder.geometry, resolveTexture(system.spec.texture), system.spec.blend, undefined, system.spec.material, resolveTexture);
     this.node = this.backend.node;
   }
   render(camera: any, opacity = 1): void {
     this.submittedBatches = 0; if (this.disposed) return;
+    this.backend.vfx?.setTime(this.system.time);
     const g = this.builder.build(cameraView(camera, this.view), opacity);
     this.backend.submit(g, opacity > 0); this.submittedBatches = opacity > 0 && g.indexCount > 0 ? 1 : 0;
   }

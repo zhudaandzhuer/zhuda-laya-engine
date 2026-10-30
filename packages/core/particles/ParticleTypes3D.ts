@@ -1,3 +1,6 @@
+import { validateVfxMaterial } from '../effects/VfxMaterial.ts';
+import type { VfxMaterialSpec } from '../effects/VfxMaterial.ts';
+import { validateParticleExtras } from './ParticleExtras.ts';
 import { validateParticleEffect } from './ParticleTypes.ts';
 import type { ParticleEmitterSpec, ParticleState } from './ParticleTypes.ts';
 
@@ -11,6 +14,7 @@ export interface ParticleState3D extends ParticleState { z: number; vz: number; 
 export type ParticleShape3D = { type: 'point' } | { type: 'box'; width: number; height: number; depth: number }
   | { type: 'sphere'; radius: number; surface?: boolean };
 export interface ParticleEmitterSpec3D extends Omit<ParticleEmitterSpec, 'shape' | 'angle' | 'acceleration'> {
+  material?: VfxMaterialSpec;
   shape: ParticleShape3D;
   direction: ParticleVector3;
   /** Half-angle in radians. Directions are sampled uniformly within this cone. */
@@ -34,15 +38,17 @@ export function validateParticleEffect3D(value: unknown): string[] {
     return ['Expected dimension: 3, schemaVersion: 1 and a non-empty emitters array.'];
   }
   // Reuse the shared timing, pool, range and lifetime-curve contract.
-  const issues = validateParticleEffect({ schemaVersion: 1, emitters: spec.emitters.map(e => e && ({ ...e, angle: 0, shape: { type: 'point' } })) });
+  const issues = validateParticleEffect({ schemaVersion: 1, emitters: spec.emitters.map(e => e && ({ ...e, collision: undefined, angle: 0, shape: { type: 'point' } })) });
   const vector = (v: ParticleVector3) => v && [v.x, v.y, v.z].every(Number.isFinite);
   for (const e of spec.emitters) {
     if (!e || typeof e !== 'object') continue;
+    issues.push(...validateParticleExtras(e, 3).map(message => `${e.id}: ${message}`));
     if (!vector(e.direction) || Math.hypot(e.direction.x, e.direction.y, e.direction.z) < 1e-8) issues.push(`${e.id}: direction must be a finite non-zero vector.`);
     if (!Number.isFinite(e.spread) || e.spread < 0 || e.spread > Math.PI) issues.push(`${e.id}: spread must be 0..PI radians.`);
     if (e.acceleration && !vector(e.acceleration)) issues.push(`${e.id}: acceleration must have finite XYZ components.`);
     if (e.velocityInheritance !== undefined && (!Number.isFinite(e.velocityInheritance) || e.velocityInheritance < 0 || e.velocityInheritance > 2)) issues.push(`${e.id}: velocityInheritance must be 0..2.`);
     if (e.billboard !== undefined && !['camera', 'velocity', 'ground'].includes(e.billboard)) issues.push(`${e.id}: invalid billboard mode.`);
+    if (e.material) issues.push(...validateVfxMaterial(e.material));
     const shape = e.shape;
     if (!shape || !['point', 'box', 'sphere'].includes(shape.type)) issues.push(`${e.id}: invalid 3D shape.`);
     else if (shape.type === 'box' && ![shape.width, shape.height, shape.depth].every(v => Number.isFinite(v) && v >= 0)) issues.push(`${e.id}: invalid 3D box dimensions.`);

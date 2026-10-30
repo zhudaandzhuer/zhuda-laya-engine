@@ -1,3 +1,5 @@
+import { validateParticleExtras } from './ParticleExtras.ts';
+import type { ParticleUVRect, ParticleFlipbook, ParticleCollisionSpec } from './ParticleExtras.ts';
 /** Serializable, renderer-independent particle descriptors. Units: pixels, seconds, radians. */
 export type ParticleRange = number | [number, number];
 export interface ParticleCurveKey { time: number; value: number; }
@@ -9,6 +11,9 @@ export type ParticleShape = { type: 'point' } | { type: 'box'; width: number; he
 export interface ParticleEmitterSpec {
   id: string;
   texture: string;
+  textureRect?: ParticleUVRect;
+  flipbook?: ParticleFlipbook;
+  collision?: ParticleCollisionSpec;
   maxParticles: number;
   seed: number;
   space: 'world' | 'local';
@@ -88,6 +93,7 @@ export function validateParticleEffect(value: unknown): string[] {
   for (const e of spec.emitters) {
     if (!e || typeof e !== 'object') { issues.push('Emitter must be an object.'); continue; }
     const id = e.id || '(unnamed)';
+    issues.push(...validateParticleExtras(e).map(message => `${id}: ${message}`));
     if (typeof e.id !== 'string' || !e.id || ids.has(e.id)) issues.push(`${id}: id must be unique and non-empty.`);
     ids.add(e.id);
     if (typeof e.texture !== 'string' || !e.texture) issues.push(`${id}: texture is required.`);

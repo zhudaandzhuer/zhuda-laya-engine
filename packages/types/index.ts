@@ -8,3 +8,4 @@ export * from './zhuda-spine42.ts';
 export * from './zhuda-static-assets.ts';
 export * from './zhuda-visual-contract.ts';
 export * from './zhuda-particles.ts';
+export * from './zhuda-effects';

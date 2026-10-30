@@ -1,12 +1,9 @@
 /**
  * @zhuda-laya/core — M5 跨引擎基建：Unity 場景 + AnimatorController 狀態機 + Spine 4.2 轉換管線 (UnityBridgePipeline)
  *
- * 支援將 Unity (Left-Handed Y-Up) 場景、PBR/BlinnPhong 材質、AnimatorController 狀態機與 Spine 4.2 骨骼資產
- * 1:1 無損轉換為 LayaAir 3.4.2 (Right-Handed Y-Up) .ls / .lh 靜態資產與可執行狀態機組件：
- * 1. 座標系轉換：Unity LH [x, y, z] -> LayaAir RH [-x, y, z]；Euler LH [rx, ry, rz] -> RH [rx, -ry, -rz]
- * 2. 材質映射：URP/Lit & Standard -> PBRStandardMaterial / BlinnPhongMaterial；Unlit/Color -> UnlitMaterial
- * 3. AnimatorController 狀態機：支援 Float / Int / Bool / Trigger 參數與 Greater / Less / If / IfNot 條件轉移
- * 4. Spine 4.2 PhysicsConstraint：原樣保留骨骼物理彈簧係數 (stiffness / damping) 與動作映射
+ * Legacy descriptor demonstration for a fixed showcase prefab. This is not a general Unity file importer.
+ * Production material and curve conversion lives in VisualMigrationPipeline.ts; unknown shaders must block migration.
+
  */
 
 import type {
@@ -269,12 +266,13 @@ export class UnityBridgePipeline {
     switch (shaderName) {
       case 'Universal Render Pipeline/Lit':
       case 'Standard':
-        return 'Laya.BlinnPhongMaterial (PBR-Bridged)';
+        return 'Laya.PBRStandardMaterial';
       case 'Unlit/Color':
         return 'Laya.UnlitMaterial';
       case 'Legacy Shaders/BlinnPhong':
-      default:
         return 'Laya.BlinnPhongMaterial';
+      default:
+        throw new Error(`Unmapped Unity shader: ${shaderName}`);
     }
   }
 

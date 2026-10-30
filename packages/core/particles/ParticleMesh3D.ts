@@ -1,3 +1,4 @@
+import { sampleParticleUV } from './ParticleExtras.ts';
 import { sampleParticleColor, sampleParticleCurve } from './ParticleTypes.ts';
 import { rotateParticleVector3 } from './ParticleTypes3D.ts';
 import type { ParticleState3D, ParticleVector3, ParticleView3D } from './ParticleTypes3D.ts';
@@ -8,6 +9,7 @@ export interface ParticleGeometry3D { vertices: Float32Array; indices: Uint16Arr
 
 export class ZhudaParticleMesh3D {
   readonly geometry: ParticleGeometry3D;
+  private readonly frameUV = {x:0,y:0,width:1,height:1};
   private readonly items: ParticleState3D[] = [];
   private readonly colors = new Float32Array(256 * 4);
   private position: ParticleVector3 = { x: 0, y: 0, z: 0 };
@@ -59,12 +61,13 @@ export class ZhudaParticleMesh3D {
       const bx = (ux * c - rx * sn) * hy, by = (uy * c - ry * sn) * hy, bz = (uz * c - rz * sn) * hy;
       const ci = Math.min(255, Math.floor(p.age / p.lifetime * 255)) * 4;
       const r = this.colors[ci], green = this.colors[ci + 1], b = this.colors[ci + 2], alpha = this.colors[ci + 3] * Math.max(0, Math.min(1, opacity));
+      const rect = sampleParticleUV(spec, p.age, p.lifetime, this.frameUV);
       for (let corner = 0; corner < 4; corner++) {
         const sx = corner === 0 || corner === 3 ? -1 : 1, sy = corner < 2 ? -1 : 1, base = i * 36 + corner * 9;
         const v = g.vertices;
         v[base] = center.x + sx * ax + sy * bx; v[base + 1] = center.y + sx * ay + sy * by; v[base + 2] = center.z + sx * az + sy * bz;
         v[base + 3] = r; v[base + 4] = green; v[base + 5] = b; v[base + 6] = alpha;
-        v[base + 7] = sx > 0 ? 1 : 0; v[base + 8] = sy > 0 ? 0 : 1;
+        v[base + 7] = rect.x + (sx > 0 ? rect.width : 0); v[base + 8] = rect.y + (sy > 0 ? 0 : rect.height);
       }
     }
     g.vertexCount = this.items.length * 4; g.indexCount = this.items.length * 6; return g;

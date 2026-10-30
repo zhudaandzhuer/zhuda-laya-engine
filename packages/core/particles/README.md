@@ -61,7 +61,7 @@ The Laya renderer groups particles into lifetime bands (default 12, configurable
 
 Texture resolution is supplied externally. Particle renderers use the texture UV rectangle and render a square quad before stretch; author transparent margins and aspect into the texture or the stretch parameter. Do not mutate a live descriptor; construct a new simulator/renderer after editing it. Pool storage and precomputed bands are sized at construction.
 
-This module implements 2D and 3D CPU particles, billboards and mesh trails. It does not implement collision, flipbook animation, bloom, heat distortion or a graphical node editor. Such features require additional rendering/asset workflows. Large translucent sprites can be GPU fill-rate limited even with few draw calls.
+This module implements 2D and 3D CPU particles, billboards, mesh trails, bounded admission limits, atlas flipbooks and plane collisions with collision/death callbacks. The effects package adds dissolve/mask/noise, UV distortion/refraction, soft-particle camera passes and bloom configuration; `EffectDirector` adds timelines and attachments, while `EffectBudget` adds global particle/coverage admission. The SDK does not include a graphical node editor or application-specific scene authoring: use the separate Particle Lab as a reference or build your own editor. Large translucent sprites can be GPU fill-rate limited even with few draw calls, and the profiler reports WebGL submissions while GPU completion time remains unmeasured.
 
 ## World-space ribbons and envelopes
 
@@ -112,7 +112,7 @@ renderer.render(camera);
 
 The scene parent must have an identity world transform: geometry is submitted in world coordinates. The Laya 3.4.2 adapter uses its version-specific `PrimitiveMesh._createMesh` helper and `UnlitMaterial`, depth tests against opaque scene geometry (LEQUAL), disables transparent depth writes and renders both faces. Alpha particles sort back to front within each emitter; sorting across emitters or intersecting translucent surfaces is approximate. Additive particles do not require sorting. Each emitter is one mesh submission; actual draw calls depend on the scene/runtime. `ZhudaParticleMesh3D` also exposes renderer-independent POSITION(3), COLOR(4), UV(2) geometry.
 
-Textures must be full, untrimmed `Texture2D` or full 2D textures backed by one. Atlas regions are unsupported by the 3D adapter. Upload straight alpha textures for SRC_ALPHA blending; repeat U for scrolling paths. Textures remain owned by the application. Each billboard reserves `156 * maxParticles` bytes of typed geometry (144 vertex + 12 index bytes per particle), in addition to the CPU pool, sorting references and native mesh storage. Buffers remain capacity sized; inactive triangles are degenerate. Large transparent surfaces may be limited by GPU fill rate.
+Textures must be full, untrimmed `Texture2D` or full 2D textures backed by one. 2D and 3D particle descriptors can select an atlas `textureRect` and flipbook frame layout; the 3D mesh adapter still expects the resolved texture to be a full `Texture2D`. Upload straight alpha textures for SRC_ALPHA blending; repeat U for scrolling paths. Textures remain owned by the application. Each billboard reserves `156 * maxParticles` bytes of typed geometry (144 vertex + 12 index bytes per particle), in addition to the CPU pool, sorting references and native mesh storage. Buffers remain capacity sized; inactive triangles are degenerate. Large transparent surfaces may be limited by GPU fill rate.
 
 ## 3D historical trails and authored flow paths
 

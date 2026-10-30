@@ -945,12 +945,13 @@ var ZhudaPreviewBundle = (() => {
       switch (shaderName) {
         case "Universal Render Pipeline/Lit":
         case "Standard":
-          return "Laya.BlinnPhongMaterial (PBR-Bridged)";
+          return "Laya.PBRStandardMaterial";
         case "Unlit/Color":
           return "Laya.UnlitMaterial";
         case "Legacy Shaders/BlinnPhong":
-        default:
           return "Laya.BlinnPhongMaterial";
+        default:
+          throw new Error(`Unmapped Unity shader: ${shaderName}`);
       }
     }
     /**

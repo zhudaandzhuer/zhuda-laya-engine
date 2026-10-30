@@ -99,10 +99,42 @@ test('zhuda-laya-engine SDK bundles (ESM & CJS) and upstream LayaAir Official at
   const cjsMod = (await import('node:module')).createRequire(import.meta.url)(cjsPath);
   for (const name of ['ZhudaParticleSystem', 'ZhudaRibbonTrail', 'ZhudaEffectEnvelope', 'ZhudaLayaParticleRenderer',
     'ZhudaLayaRibbonRenderer', 'validateParticleEffect', 'ZhudaParticleSystem3D', 'ZhudaParticleMesh3D',
-    'ZhudaRibbonTrail3D', 'ZhudaRibbonPath3D', 'ZhudaLayaParticleRenderer3D', 'ZhudaLayaRibbonRenderer3D', 'validateParticleEffect3D']) {
+    'ZhudaRibbonTrail3D', 'ZhudaRibbonPath3D', 'ZhudaLayaParticleRenderer3D', 'ZhudaLayaRibbonRenderer3D', 'validateParticleEffect3D',
+    'ZhudaEffectDirector', 'ZhudaEffectBudget', 'ZhudaRuntimeProfiler', 'ZhudaVfxMaterial', 'ZhudaVfxCamera',
+    'ZhudaParticleEventLink', 'sampleParticleUV', 'convertUnityVisualMaterial', 'instantiateMigratedMaterial',
+    'disposeMigratedMaterial', 'convertUnityAnimationCurve', 'compareVisualFrames']) {
     assert.equal(typeof sdkMod[name], 'function', `ESM SDK should export ${name}`);
     assert.equal(typeof cjsMod[name], 'function', `CJS SDK should export ${name}`);
   }
+});
+
+test('effects and migration public types compose with particle systems in a strict consumer', () => {
+  const temporary=fs.mkdtempSync(path.join(os.tmpdir(),'zhuda-effects-types-'));
+  try {
+    fs.mkdirSync(path.join(temporary,'node_modules'));fs.symlinkSync(projectRoot,path.join(temporary,'node_modules/zhuda-laya-engine'),'dir');
+    const fixture=path.join(temporary,'consumer.ts');
+    fs.writeFileSync(fixture,`import { ZhudaEffectDirector, ZhudaEffectBudget, ZhudaRuntimeProfiler, ZhudaVfxCamera,
+      ZhudaVfxMaterial, ZhudaParticleSystem3D, ZhudaParticleEventLink, convertUnityVisualMaterial,
+      instantiateMigratedMaterial, compareVisualFrames } from 'zhuda-laya-engine';
+      import type { VfxMaterialSpec, EffectTimelineSpec, ParticleEmitterSpec3D } from 'zhuda-laya-engine';
+      const material: VfxMaterialSpec={version:1,dissolve:.2,softDistance:.3};
+      const spec: ParticleEmitterSpec3D={id:'fx',texture:'atlas',seed:1,maxParticles:16,space:'world',blend:'alpha',
+        shape:{type:'point'},rate:1,lifetime:1,speed:2,size:.1,direction:{x:0,y:1,z:0},spread:.2,material,
+        flipbook:{columns:4,rows:4},collision:{planes:[{normal:{x:0,y:1,z:0},offset:0}]}};
+      const source=new ZhudaParticleSystem3D(spec),child=new ZhudaParticleSystem3D(spec);
+      source.onEvent=e=>{const age:number=e.age;};new ZhudaParticleEventLink(source,child,{event:'collision',count:2});
+      const timeline:EffectTimelineSpec={version:1,duration:2};new ZhudaEffectDirector(timeline,{}).seek(1);
+      const budget=new ZhudaEffectBudget({maxParticles:100,maxCoverage:2});source.particleLimit=budget.allocate([{id:'fx',particles:16,coverage:1,priority:1}])[0].particleLimit;
+      new ZhudaVfxCamera({}, {softParticles:true}).dispose();new ZhudaVfxMaterial(material,{},key=>({})).configure({dissolve:.5});
+      const gpu:null=new ZhudaRuntimeProfiler().report().gpuTimeMs;
+      instantiateMigratedMaterial(convertUnityVisualMaterial({id:'metal',shader:'Standard',metallic:.8}),key=>({}));
+      const passed:boolean=compareVisualFrames(new Uint8Array(4),new Uint8Array(4),1,1).passed;
+      // @ts-expect-error version must match the material contract
+      const invalid:VfxMaterialSpec={version:2};`);
+    const program=ts.createProgram([fixture],{noEmit:true,strict:true,skipLibCheck:true,types:[],target:ts.ScriptTarget.ES2020,module:ts.ModuleKind.ESNext,moduleResolution:ts.ModuleResolutionKind.Bundler});
+    const diagnostics=ts.getPreEmitDiagnostics(program);assert.equal(diagnostics.length,0,ts.formatDiagnosticsWithColorAndContext(diagnostics,{getCurrentDirectory:()=>temporary,getCanonicalFileName:f=>f,getNewLine:()=> '\n'}));
+    assert.equal(program.getSourceFiles().some(f=>f.fileName.includes('/core/effects/')),false);
+  } finally {fs.rmSync(temporary,{recursive:true,force:true});}
 });
 
 test('particle public types compile in a strict consumer without importing implementation files', () => {

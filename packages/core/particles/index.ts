@@ -9,3 +9,4 @@ export * from './ParticleMesh3D.ts';
 export * from './RibbonTrail3D.ts';
 export * from './RibbonPath3D.ts';
 export * from './LayaParticleRenderer3D.ts';
+export * from './ParticleExtras.ts';

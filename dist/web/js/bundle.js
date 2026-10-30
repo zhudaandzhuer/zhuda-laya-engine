@@ -1161,12 +1161,13 @@ var ZhudaAppBundle = (() => {
       switch (shaderName) {
         case "Universal Render Pipeline/Lit":
         case "Standard":
-          return "Laya.BlinnPhongMaterial (PBR-Bridged)";
+          return "Laya.PBRStandardMaterial";
         case "Unlit/Color":
           return "Laya.UnlitMaterial";
         case "Legacy Shaders/BlinnPhong":
-        default:
           return "Laya.BlinnPhongMaterial";
+        default:
+          throw new Error(`Unmapped Unity shader: ${shaderName}`);
       }
     }
     /**
@@ -5494,8 +5495,9 @@ var ZhudaAppBundle = (() => {
       }
       const t1 = typeof performance !== "undefined" ? performance.now() : Date.now();
       const elapsedMs = Math.max(0.05, t1 - t0 + angle * 1e-6);
-      const spinePhysicsOpsPerMs = Math.round(iterations / elapsedMs);
-      const zeroGcPoolSpeedupRatio = 3.8;
+      const springMathOpsPerMs = Math.round(iterations / elapsedMs);
+      const spinePhysicsOpsPerMs = null;
+      const zeroGcPoolSpeedupRatio = null;
       const estimatedDrawCallsZhuda = 9;
       const estimatedDrawCallsThreeAssembled = activeTileNodesCount + 28;
       const pruningProfiles = {};
@@ -5527,6 +5529,8 @@ var ZhudaAppBundle = (() => {
       const unityReport = UnityBridgePipeline.runFullMigrationVerification();
       return {
         timestamp: Date.now(),
+        springMathOpsPerMs,
+        measurementScope: "Spring arithmetic microbenchmark only; draw calls below are estimates, and no pool speedup or Spine runtime result is claimed.",
         spinePhysicsOpsPerMs,
         zeroGcPoolSpeedupRatio,
         sharedMeshBatchNodes: activeTileNodesCount,

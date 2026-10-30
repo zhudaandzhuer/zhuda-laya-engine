@@ -15,3 +15,8 @@ export type * from '../types/zhuda-2d-ui.ts';
 export type * from '../types/zhuda-3d-physics.ts';
 export type * from '../types/zhuda-spine42.ts';
 export type * from '../types/zhuda-static-assets.ts';
+export * from './effects/EffectDirector.ts';
+export * from './effects/EffectBudget.ts';
+export * from './effects/VfxMaterial.ts';
+export * from './effects/ParticleEventLink.ts';
+export * from './VisualMigrationPipeline.ts';

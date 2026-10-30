@@ -1,3 +1,5 @@
+import { resolveParticleCollision } from './ParticleExtras.ts';
+import type { ParticleEvent } from './ParticleExtras.ts';
 import { sampleParticleCurve, validateParticleEffect } from './ParticleTypes.ts';
 import type { ParticleEmitterSpec, ParticleRange, ParticleState, ParticleTransform } from './ParticleTypes.ts';
 
@@ -10,6 +12,19 @@ export class ZhudaParticleSystem {
   public time = 0;
   public droppedParticles = 0;
   public droppedSeconds = 0;
+  /** Future births respect this cap; existing particles drain naturally. */
+  private limit = Infinity;
+  get particleLimit(): number { return this.limit; }
+  set particleLimit(value: number) { if (value !== Infinity && (!Number.isInteger(value) || value < 0)) throw new Error('Particle limit must be a non-negative integer.'); this.limit = value; }
+  onEvent?: (event: ParticleEvent) => void;
+  droppedEvents = 0;
+  private events: ParticleEvent[] = [];
+  private queueEvent(type: 'collision' | 'death', p: any, plane = -1): void {
+    if (!this.onEvent) return;
+    if (this.events.length >= this.capacity * 2) { this.droppedEvents++; return; }
+    this.events.push({type,x:p.x,y:p.y,z:p.z||0,vx:p.vx,vy:p.vy,vz:p.vz||0,age:p.age,plane});
+  }
+  private flushEvents(): void { if (!this.events.length) return; const events = this.events; this.events = []; for (const e of events) this.onEvent?.(e); }
   private readonly pool: ParticleState[];
   private readonly active: Int32Array;
   private readonly free: Int32Array;
@@ -54,7 +69,7 @@ export class ZhudaParticleSystem {
   }
   stop(clear = false): void { this.emitting = false; if (clear) this.clear(); }
   clear(): void {
-    this.count = 0; this.freeCount = this.capacity;
+    this.count = 0; this.freeCount = this.capacity; this.events.length = 0; this.droppedEvents = 0;
     for (let i = 0; i < this.capacity; i++) this.free[i] = this.capacity - 1 - i;
     this.rng = this.spec.seed >>> 0; this.time = 0; this.cycleTime = 0;
     this.accumulator = 0; this.emitRemainder = 0; this.distanceRemainder = 0;
@@ -64,7 +79,7 @@ export class ZhudaParticleSystem {
   burst(count: number, x = this.transform.x, y = this.transform.y): void {
     if (!Number.isInteger(count) || count < 0 || !Number.isFinite(x) || !Number.isFinite(y)) throw new Error('Invalid particle burst.');
     // Cap work as well as memory when a caller requests an oversized burst.
-    const accepted = Math.min(count, this.freeCount);
+    const accepted = Math.min(count, this.freeCount, Math.max(0, Math.floor(this.particleLimit) - this.count));
     this.droppedParticles += count - accepted;
     for (let i = 0; i < accepted; i++) this.spawn(x, y);
   }
@@ -90,6 +105,7 @@ export class ZhudaParticleSystem {
       this.previousX = x; this.previousY = y;
     }
     this.accumulator = Math.max(0, this.accumulator - steps * ZhudaParticleSystem.STEP);
+    this.flushEvents();
   }
 
   private random(): number {
@@ -126,7 +142,7 @@ export class ZhudaParticleSystem {
       const index = this.active[i], p = this.pool[index];
       p.age += dt;
       if (p.age + 1e-10 >= p.lifetime) {
-        this.free[this.freeCount++] = index; this.active[i] = this.active[--this.count]; continue;
+        this.queueEvent('death', p); this.free[this.freeCount++] = index; this.active[i] = this.active[--this.count]; continue;
       }
       let ax = s.acceleration?.x || 0, ay = s.acceleration?.y || 0;
       if (s.turbulence) {
@@ -137,6 +153,7 @@ export class ZhudaParticleSystem {
       const damping = Math.exp(-(s.drag || 0) * dt);
       p.vx = (p.vx + ax * dt) * damping; p.vy = (p.vy + ay * dt) * damping;
       p.x += p.vx * dt; p.y += p.vy * dt;
+      if (s.collision && resolveParticleCollision(p, s.collision, 2, plane => this.queueEvent('collision', p, plane))) { this.queueEvent('death', p); this.free[this.freeCount++] = index; this.active[i] = this.active[--this.count]; continue; }
       p.rotation += p.angularVelocity * dt;
       p.size = p.baseSize * sampleParticleCurve(s.sizeOverLife, p.age / p.lifetime);
     }
@@ -165,7 +182,7 @@ export class ZhudaParticleSystem {
         this.distanceRemainder += Math.hypot(ex - sx, ey - sy) * (s.rateOverDistance || 0) * strength;
         const byDistance = Math.floor(this.distanceRemainder + 1e-10);
         this.distanceRemainder = Math.max(0, this.distanceRemainder - byDistance);
-        const accepted = Math.min(byDistance, this.freeCount);
+        const accepted = Math.min(byDistance, this.freeCount, Math.max(0, Math.floor(this.particleLimit) - this.count));
         this.droppedParticles += byDistance - accepted;
         for (let j = 0; j < accepted; j++) this.spawn(sx + (ex - sx) * (j + 1) / byDistance, sy + (ey - sy) * (j + 1) / byDistance);
         this.firstStep = false; this.cycleTime = end; remaining -= span;

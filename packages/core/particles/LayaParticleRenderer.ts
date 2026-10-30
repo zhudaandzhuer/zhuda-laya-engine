@@ -1,3 +1,4 @@
+import { sampleParticleUV } from './ParticleExtras.ts';
 import { sampleParticleColor, sampleParticleCurve } from './ParticleTypes.ts';
 import type { ParticleState } from './ParticleTypes.ts';
 import type { ZhudaParticleSystem } from './ParticleSystem.ts';
@@ -14,10 +15,18 @@ export class ZhudaLayaParticleRenderer {
   private texture: any;
   public readonly system: ZhudaParticleSystem;
   private readonly uv: ArrayLike<number>;
+  private readonly frameUV = {x:0,y:0,width:1,height:1};
   private readonly appendParticle = (p: ParticleState) => {
     const s = this.system.spec, t = Math.min(0.999999, p.age / p.lifetime);
     const batch = this.batches[Math.floor(t * this.batches.length)];
     const i = batch.count++ * 8;
+    const rect = sampleParticleUV(s, p.age, p.lifetime, this.frameUV), source = this.uv;
+    const uv = batch.uvs;
+    for (let corner = 0; corner < 4; corner++) {
+      const u = rect.x + (corner === 1 || corner === 2 ? rect.width : 0), v = rect.y + (corner >= 2 ? rect.height : 0);
+      uv[i+corner*2] = source[0] + (source[2]-source[0])*u + (source[6]-source[0])*v;
+      uv[i+corner*2+1] = source[1] + (source[3]-source[1])*u + (source[7]-source[1])*v;
+    }
     let x = p.x, y = p.y;
     let angle = s.alignToVelocity ? Math.atan2(p.vy, p.vx) : p.rotation;
     if (s.space === 'local') {
