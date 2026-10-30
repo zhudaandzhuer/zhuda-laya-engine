@@ -13,3 +13,6 @@ export * from './zhuda-effects';
 
 export * from './runtime3d/index';
 export * from './zhuda-declarative';
+
+export * from "./terrain/index";
+export * from "./shaders/index";

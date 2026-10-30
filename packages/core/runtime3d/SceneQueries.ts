@@ -54,7 +54,11 @@ export class ZhudaSceneQueries {
         h.distance <= maxDistance &&
         (!hit || h.distance < hit.distance)
       )
-        hit = { ...h, entityId: p.entityId, instanceId: p.instanceId };
+        hit = {
+          ...h,
+          entityId: p.entityId,
+          instanceId: p.instanceId ?? h.instanceId,
+        };
     }
     return hit;
   }
@@ -71,7 +75,11 @@ export class ZhudaSceneQueries {
         Number.isFinite(h.distance) &&
         (!hit || h.distance < hit.distance)
       )
-        hit = { ...h, entityId: p.entityId, instanceId: p.instanceId };
+        hit = {
+          ...h,
+          entityId: p.entityId,
+          instanceId: p.instanceId ?? h.instanceId,
+        };
     }
     return hit;
   }

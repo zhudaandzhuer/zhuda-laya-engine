@@ -110,6 +110,7 @@ export function disposeSurfaceMaterial(m: any) {
   m.destroy();
 }
 export interface CustomSurfaceShader {
+  dimension?: 2 | 3;
   name: string;
   vertex: string;
   fragment: string;
@@ -130,9 +131,15 @@ export function createCustomSurfaceMaterial(s: CustomSurfaceShader) {
       throw Error("Shader name has a different contract");
   } else {
     const shader = l.Shader3D.add(s.name, !!s.instancing, false);
-    shader.shaderType = l.ShaderFeatureType.D3;
+    shader.shaderType =
+      s.dimension === 2
+        ? l.ShaderFeatureType.D2_TextureSV
+        : l.ShaderFeatureType.D3;
     const sub = new l.SubShader(
-      s.attributes || l.SubShader.DefaultAttributeMap,
+      s.attributes ||
+        (s.dimension === 2
+          ? l.Shader2D.graphicsAttribute
+          : l.SubShader.DefaultAttributeMap),
       s.uniforms,
     );
     shader.addSubShader(sub);

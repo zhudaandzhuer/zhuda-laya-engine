@@ -22,6 +22,7 @@ export declare function createSurfaceMaterial(s: SurfaceMaterialSpec): any;
 /** Detach borrowed texture slots before destroying an owned material. */
 export declare function disposeSurfaceMaterial(m: any): void;
 export interface CustomSurfaceShader {
+    dimension?: 2 | 3;
     name: string;
     vertex: string;
     fragment: string;

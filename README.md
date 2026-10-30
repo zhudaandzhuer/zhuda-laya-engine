@@ -14,6 +14,10 @@
 
 [3D 接入文件](docs/3d-integration.md) · [驗收矩陣與限制](docs/3d-acceptance.md) · [獨立 3D 場景](https://zhudaandzhuer.github.io/zhuda-3d-lab/) · [消費端原始碼與實測報告](https://github.com/zhudaandzhuer/zhuda-3d-lab)
 
+### Agent-friendly 地形與 Shader
+
+引擎現在提供可序列化的 `ZhudaTerrain2D` tile map、分塊／視野 streaming、palette atlas UV、blocked metadata，以及 `ZhudaHeightfield`／`ZhudaTerrain3D` 高度場、brush／patch、LOD 1／2／4、精確三角形採樣、世界 raycast、穩定 cell ID 與資源報告。`ZhudaShaderMaterial` 將 LayaAir 3.4.2 的 2D clipping／atlas／premultiplied alpha／gamma 和 3D world transform／normal／fog／output transform 收進明確的 2D／3D shader recipe；MCP 可先驗證 JSON，真正 GPU 編譯仍由 WebGL draw 驗收。詳見 [地形與 Shader 契約](docs/terrain-shader.md)。
+
 iPhone14 的固定小場景持續採樣超過10分鐘，P95 20ms（low／DPR1）。完整遊戲地圖與Android仍須另驗；遊戲資產和規則留在獨立專案。
 
 ## 完整遊戲 · 豬大遊戲館

@@ -12,19 +12,14 @@
  */
 
 import readline from 'node:readline';
-import { TopologyResolver } from '../core/TopologyGraph.ts';
-import { ZhudaBenchmarkEngine } from '../core/BenchmarkEngine.ts';
-import { ZhudaAssetSerializer } from '../core/StaticAssetPipeline.ts';
-import { PixelCalibrationEngine } from '../core/PixelCalibrationEngine.ts';
-import { ViewportMatrixEngine } from '../core/ViewportMatrixEngine.ts';
-import { UnityBridgePipeline } from '../core/UnityBridgePipeline.ts';
-import { validateParticleEffect } from '../core/particles/ParticleTypes.ts';
-import { validateParticleEffect3D } from '../core/particles/ParticleTypes3D.ts';
+import {TopologyResolver,ZhudaBenchmarkEngine,ZhudaAssetSerializer,PixelCalibrationEngine,ViewportMatrixEngine,UnityBridgePipeline,validateParticleEffect,validateParticleEffect3D,validateTerrain2D,validateHeightfield,validateShaderSpec} from './runtime.mjs';
 import { auditVisualAssetMigration } from '../compiler/visual-asset-audit.mjs';
 import { auditVisualPresentationContracts } from '../compiler/visual-contract-audit.mjs';
 import { API_GUARDRAILS, ERROR_DIAGNOSTICS_DB, GOLDEN_EXAMPLES } from './corpus.mjs';
 
 export const MCP_TOOLS_MANIFEST = [
+ {name:'validate_terrain_spec',description:'驗證可序列化的2D tile地形或3D高度場；回報尺寸、圖層、atlas、高度與配置錯誤，不代替實際渲染驗收。',inputSchema:{type:'object',properties:{terrain:{type:'object'}},required:['terrain']}},
+ {name:'validate_shader_spec',description:'驗證ZhudaShaderSpec的2D/3D surface函式契約與uniform型別；GLSL編譯、fog、instancing、clipping及畫面須實際WebGL驗收。',inputSchema:{type:'object',properties:{shader:{type:'object'}},required:['shader']}},
   {
     name: 'validate_particle_effect',
     description: '驗證可序列化的 2D／3D 粒子設定：發射器、池容量、生命曲線、顏色、空間與週期。只驗證設定，不宣稱已完成畫面或效能驗收。',
@@ -193,6 +188,8 @@ export const MCP_TOOLS_MANIFEST = [
 
 export function executeMcpTool(toolName, args = {}) {
   switch (toolName) {
+    case 'validate_terrain_spec': {const issues=args.terrain?.dimension===3?validateHeightfield(args.terrain):validateTerrain2D(args.terrain);return{tool:toolName,passed:issues.length===0,issues};}
+    case 'validate_shader_spec': {const issues=validateShaderSpec(args.shader);return{tool:toolName,passed:issues.length===0,issues,gpuValidation:'requires-real-draw'};}
     case 'validate_particle_effect': {
       const issues = args.effect?.dimension === 3 ? validateParticleEffect3D(args.effect) : validateParticleEffect(args.effect);
       return { tool: 'validate_particle_effect', passed: issues.length === 0, issues };

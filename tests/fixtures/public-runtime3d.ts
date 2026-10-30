@@ -72,3 +72,44 @@ async function consume() {
   context.dispose();
 }
 void consume;
+
+import {
+  ZhudaTerrain2D,
+  ZhudaTerrain2DRenderer,
+  ZhudaHeightfield,
+  ZhudaTerrain3D,
+  ZhudaShaderMaterial,
+  shaderRecipes,
+  type Terrain2DSpec,
+} from "zhuda-laya-engine";
+const tiles: Terrain2DSpec = {
+  schemaVersion: 1,
+  dimension: 2,
+  width: 1,
+  height: 1,
+  tileSize: 20,
+  palette: [{ id: 1, color: "#339955" }],
+  layers: [{ id: "ground", tiles: [1] }],
+};
+const tileData = new ZhudaTerrain2D(tiles);
+const renderer2D = new ZhudaTerrain2DRenderer(tileData);
+renderer2D.setView({ x: 0, y: 0, width: 20, height: 20 });
+const field = ZhudaHeightfield.generate({
+  cellsX: 4,
+  cellsZ: 4,
+  cellSize: 1,
+  seed: 42,
+});
+const shader = new ZhudaShaderMaterial(shaderRecipes.terrain3D);
+const renderer3D = new ZhudaTerrain3D(field, {
+  material: shader.material,
+  chunkCells: 4,
+});
+renderer3D.setRegion({ minX: 0, minZ: 0, maxX: 4, maxZ: 4 });
+const terrainMiss = renderer3D.raycast({
+  origin: { x: 0, y: 10, z: 0 },
+  direction: { x: 0, y: -1, z: 0 },
+});
+console.log(terrainMiss?.position, renderer2D.residentChunks);
+// @ts-expect-error the public spec preserves the dimension discriminator
+new ZhudaTerrain2D({ schemaVersion: 1, dimension: 3, width: 1 });

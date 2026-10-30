@@ -40,6 +40,8 @@ opaque-origin 無法讀取 storage 時，boot 安裝 realm 內記憶體替代。
 
 ## 材質、shader 與網格
 
+完整的 agent-friendly 2D／3D terrain schema、chunk／LOD／query contract 與 shader 範例見 [terrain-shader.md](terrain-shader.md)。地形 renderer 是引擎通用能力；波浪、島嶼生成、碰撞與遊戲規則仍由消費端提供。
+
 `createSurfaceMaterial` 支援 PBR／Unlit、金屬度／粗糙度／發光、opaque／alpha／additive／cutout、深度寫入與雙面。`Zhuda3D.createMaterial` 也會依 `type` 建立正確類別；未指定時維持 BlinnPhong。
 
 `createSurfaceTexture` 的 color／emission 使用 sRGB，normal／data 使用線性。輸入像素方向保持來源約定；法線使用 Laya／glTF 的切線空間，不自動猜測 DirectX 綠色通道。glTF MR 貼圖的 G=roughness、B=metallic；`packMetallicRoughness` 轉為 Laya 的 R=metallic、A=smoothness。GLB loader 自行處理 glTF 材質，不能再轉一次。

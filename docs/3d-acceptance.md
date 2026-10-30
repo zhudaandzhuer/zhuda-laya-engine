@@ -6,11 +6,12 @@
 | --- | --- | --- |
 | P0.1 外部建置／runtime | 獨立 HTML/CSS、無來源寫入、相對資源、ZIP/解壓上限、依賴雜湊、container/DPR/AA/FPS、pause、realm context loss 重建 | source hash／ZIP／錯誤路徑自動測試；真實 WebGL 的 root/subpath／opaque sandbox／狀態重建。正式遊戲站 iframe/CORS 仍需部署後驗收 |
 | P0.2 網格／材質 | PBR/Unlit/custom shader、MR 貼圖轉換、動態 buffer/bounds、穩定 ID instance、深度/opaque pass 預算 | 真實海面／斜坡島／浮體／屋頂；256 個 GPU 波浪採樣，最大高度差 0.000011753 m；受擊、晴雨與擋雨。完整原場景視覺對照及風動植被仍在遊戲方 |
+| P0.2a 2D／3D terrain + shader | `ZhudaTerrain2D` tile palette／atlas／blocked metadata；`ZhudaHeightfield`／`ZhudaTerrain3D` chunk streaming、局部 patch、LOD 1／2／4、精確三角形 query、stable cell ID；`ZhudaShaderMaterial` 2D／3D templates 與 typed uniforms | Node terrain/shader tests 8 項；消費端真實 WebGL 驗證 2D atlas tint、3D terrain、dissolve、edit seam、負 origin、region unload、旋轉＋非均勻縮放 ray distance、錯誤 GLSL diagnostic；契約與限制見 [terrain-shader.md](terrain-shader.md) |
 | P0.3 模型／生命週期 | 去重/retry/abort/lease、`.bin` GLB/relative JPG、獨立材質、命名節點、隔離預覽、過期結果丟棄 | 三款真實模型；30 次完整小場景建立/拆除保持有界；共享 JPG 存活。模型無 animation，含動畫/骨骼資產仍需另驗 |
 | P0.4 查詢／座標／輸入 | 最近 hit/layer/instance ID、可注入 ray/sweep/surface、CSS projection/ray、相機 rig、多指角色/capture/cancel | AABB 最近遮擋測試；DPR1/2/3 × 桌面/直橫屏回投；雙指移動/轉向/放開；DOM 控制保留。完整魚鉤/建造判定仍沿用 shared gameplay |
 | P0.5 時間／掛點 | fixed clock、snapshot interpolation/bounded extrapolation、epoch/sequence、TTL event gate、3D matrix/quaternion anchor | 10Hz snapshot 的 30/60/120FPS 自動測試；重複/亂序/新局/抑制 replay；旋轉與非均勻縮放掛點。真實斷線重連、天氣存檔與音訊仍由遊戲測試接收 |
 | P1.6 大場景／品質 | region ownership、instance group、LOD hysteresis、DPR/shadow/pass 品質預算、資源清單與容量估算 | 小場景有界拆除及可切畫質已驗；兩模式的完整生成、密集建築/戰鬥/決勝與長距航行尚未驗收 |
-| P1.7 消費端／手機 | 獨立固定版 SDK 消費專案、公開型別測試、真實 WebGL/CDP/CI、裝置原始報告 | iPhone14 ≥10分鐘通過本切片門檻；Android 佔用，尚未測；263項遊戲測試分類尚未執行 |
+| P1.7 消費端／手機 | 獨立固定版 SDK 消費專案、公開型別測試、真實 WebGL/CDP/CI、裝置原始報告 | iPhone14 ≥10分鐘通過本切片門檻；本輪 iPhone terrain 2D 與 vivo V40 terrain 3D 已實機載入並目視驗證；Android 十分鐘長壓、263項遊戲測試分類尚未執行 |
 
 ## 實際修正
 

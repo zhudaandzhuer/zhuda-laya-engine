@@ -908,9 +908,9 @@ function createCustomSurfaceMaterial(s) {
       throw Error("Shader name has a different contract");
   } else {
     const shader = l.Shader3D.add(s.name, !!s.instancing, false);
-    shader.shaderType = l.ShaderFeatureType.D3;
+    shader.shaderType = s.dimension === 2 ? l.ShaderFeatureType.D2_TextureSV : l.ShaderFeatureType.D3;
     const sub = new l.SubShader(
-      s.attributes || l.SubShader.DefaultAttributeMap,
+      s.attributes || (s.dimension === 2 ? l.Shader2D.graphicsAttribute : l.SubShader.DefaultAttributeMap),
       s.uniforms
     );
     shader.addSubShader(sub);
@@ -7390,7 +7390,11 @@ var ZhudaSceneQueries = class {
       if (!((p.layer ?? 1) & layerMask)) continue;
       const h = p.raycast(r, hit?.distance ?? maxDistance);
       if (h && Number.isFinite(h.distance) && h.distance >= 0 && h.distance <= maxDistance && (!hit || h.distance < hit.distance))
-        hit = { ...h, entityId: p.entityId, instanceId: p.instanceId };
+        hit = {
+          ...h,
+          entityId: p.entityId,
+          instanceId: p.instanceId ?? h.instanceId
+        };
     }
     return hit;
   }
@@ -7402,7 +7406,11 @@ var ZhudaSceneQueries = class {
       if (!((p.layer ?? 1) & layerMask) || !p.sweepSphere) continue;
       const h = p.sweepSphere(from, to, radius);
       if (h && h.distance >= 0 && Number.isFinite(h.distance) && (!hit || h.distance < hit.distance))
-        hit = { ...h, entityId: p.entityId, instanceId: p.instanceId };
+        hit = {
+          ...h,
+          entityId: p.entityId,
+          instanceId: p.instanceId ?? h.instanceId
+        };
     }
     return hit;
   }
@@ -7731,6 +7739,955 @@ var ZhudaCameraRig = class {
     );
   }
 };
+
+// packages/core/terrain/Terrain2D.ts
+function validateTerrain2D(spec) {
+  const s = spec, e = [];
+  if (!s || s.schemaVersion !== 1 || s.dimension !== 2)
+    return ["Expected schemaVersion:1, dimension:2"];
+  if (![s.width, s.height].every(
+    (n) => Number.isInteger(n) && n > 0 && n <= 4096
+  ) || s.width * s.height > 1048576)
+    e.push("width/height must be 1..4096 and at most 1048576 cells");
+  if (!Number.isFinite(s.tileSize) || s.tileSize <= 0)
+    e.push("tileSize must be positive");
+  if (s.origin && (!Array.isArray(s.origin) || s.origin.length !== 2 || !s.origin.every(Number.isFinite)))
+    e.push("Invalid origin");
+  const ids = /* @__PURE__ */ new Set([0]);
+  if (!Array.isArray(s.palette) || s.palette.length > 65535)
+    e.push("Invalid palette");
+  else
+    for (const t of s.palette) {
+      if (!t || !Number.isInteger(t.id) || t.id < 1 || t.id > 65535 || ids.has(t.id)) {
+        e.push("Palette IDs must be unique integers 1..65535");
+        continue;
+      }
+      ids.add(t.id);
+      if (t.color !== void 0 && !/^#[0-9a-f]{6}([0-9a-f]{2})?$/i.test(t.color))
+        e.push("Tile color must be #RRGGBB or #RRGGBBAA");
+      if (t.uv && (!Array.isArray(t.uv) || t.uv.length !== 4 || !t.uv.every((n) => Number.isFinite(n) && n >= 0 && n <= 1) || t.uv[0] >= t.uv[2] || t.uv[1] >= t.uv[3]))
+        e.push("Invalid normalized atlas rectangle");
+    }
+  if (!Array.isArray(s.layers) || !s.layers.length || s.layers.length > 8 || s.layers.length * s.width * s.height > 2097152)
+    e.push("Expected 1..8 layers and at most 2097152 total cells");
+  else {
+    const names = /* @__PURE__ */ new Set();
+    for (const l of s.layers) {
+      if (!l || typeof l.id !== "string" || !l.id || names.has(l.id)) {
+        e.push("Layer IDs must be unique nonempty strings");
+        continue;
+      }
+      names.add(l.id);
+      if (!Array.isArray(l.tiles) || l.tiles.length !== s.width * s.height || l.tiles.some((id) => !ids.has(id)))
+        e.push(`Invalid tiles for layer ${l.id}`);
+    }
+  }
+  return e;
+}
+var ZhudaTerrain2D = class {
+  constructor(spec) {
+    this.layers = /* @__PURE__ */ new Map();
+    this.listeners = /* @__PURE__ */ new Set();
+    const errors = validateTerrain2D(spec);
+    if (errors.length) throw Error(errors.join("; "));
+    this.width = spec.width;
+    this.height = spec.height;
+    this.tileSize = spec.tileSize;
+    this.origin = Object.freeze([...spec.origin || [0, 0]]);
+    this.palette = new Map(
+      spec.palette.map((t) => [
+        t.id,
+        Object.freeze({
+          ...t,
+          uv: t.uv ? Object.freeze([...t.uv]) : void 0
+        })
+      ])
+    );
+    for (const layer of spec.layers)
+      this.layers.set(layer.id, new Uint16Array(layer.tiles));
+  }
+  get layerIds() {
+    return [...this.layers.keys()];
+  }
+  index(x, y) {
+    if (!Number.isInteger(x) || !Number.isInteger(y) || x < 0 || y < 0 || x >= this.width || y >= this.height)
+      throw Error("Tile outside terrain");
+    return y * this.width + x;
+  }
+  layer(id) {
+    const l = this.layers.get(id);
+    if (!l) throw Error("Unknown layer " + id);
+    return l;
+  }
+  getTile(layer, x, y) {
+    return this.layer(layer)[this.index(x, y)];
+  }
+  setTile(layer, x, y, id) {
+    this.paintRect(layer, { x, y, width: 1, height: 1 }, id);
+  }
+  paintRect(layer, r, id) {
+    const l = this.layer(layer);
+    if (id !== 0 && !this.palette.has(id)) throw Error("Unknown tile ID");
+    if (![r.x, r.y, r.width, r.height].every(Number.isInteger) || r.width < 1 || r.height < 1)
+      throw Error("Invalid tile rectangle");
+    this.index(r.x, r.y);
+    this.index(r.x + r.width - 1, r.y + r.height - 1);
+    for (let y = r.y; y < r.y + r.height; y++)
+      l.fill(id, y * this.width + r.x, y * this.width + r.x + r.width);
+    for (const f of this.listeners) f({ ...r });
+  }
+  localToTile(x, y) {
+    if (![x, y].every(Number.isFinite)) throw Error("Invalid terrain point");
+    const col = Math.floor((x - this.origin[0]) / this.tileSize), row = Math.floor((y - this.origin[1]) / this.tileSize);
+    return col >= 0 && row >= 0 && col < this.width && row < this.height ? { col, row } : null;
+  }
+  tileToLocal(col, row) {
+    this.index(col, row);
+    return {
+      x: this.origin[0] + (col + 0.5) * this.tileSize,
+      y: this.origin[1] + (row + 0.5) * this.tileSize
+    };
+  }
+  isBlocked(col, row) {
+    const i = this.index(col, row);
+    return [...this.layers.values()].some(
+      (l) => this.palette.get(l[i])?.blocked === true
+    );
+  }
+  onChange(f) {
+    this.listeners.add(f);
+    return () => this.listeners.delete(f);
+  }
+  toJSON() {
+    return {
+      schemaVersion: 1,
+      dimension: 2,
+      width: this.width,
+      height: this.height,
+      tileSize: this.tileSize,
+      origin: [...this.origin],
+      palette: [...this.palette.values()].map((t) => ({
+        ...t,
+        uv: t.uv ? [...t.uv] : void 0
+      })),
+      layers: [...this.layers].map(([id, tiles]) => ({
+        id,
+        tiles: [...tiles]
+      }))
+    };
+  }
+};
+var ZhudaTerrain2DRenderer = class {
+  constructor(terrain, options = {}) {
+    this.chunks = /* @__PURE__ */ new Map();
+    this.disposed = false;
+    this.terrain = terrain;
+    this.options = options;
+    const c = options.chunkCells ?? 16;
+    if (!Number.isInteger(c) || c < 1 || c > 128)
+      throw Error("chunkCells must be 1..128");
+    if (!Number.isInteger(options.maxResidentChunks ?? 128) || (options.maxResidentChunks ?? 128) < 1)
+      throw Error("Invalid chunk budget");
+    if ([...terrain.palette.values()].some((tile) => tile.uv) && !options.atlas) throw Error("Atlas texture required for UV tiles");
+    if (options.atlas?.destroyed) throw Error("Atlas texture is destroyed");
+    const l = globalThis.Laya;
+    this.root = new l.Sprite();
+    options.parent?.addChild(this.root);
+    this.unsubscribe = terrain.onChange((r) => {
+      for (const chunk of this.chunks.values())
+        if (chunk.x * c < r.x + r.width && (chunk.x + 1) * c > r.x && chunk.y * c < r.y + r.height && (chunk.y + 1) * c > r.y)
+          chunk.dirty = true;
+    });
+  }
+  setView(r) {
+    if (this.disposed) throw Error("Disposed terrain renderer");
+    if (!Object.values(r).every(Number.isFinite) || r.width <= 0 || r.height <= 0)
+      throw Error("Invalid local view");
+    const t = this.terrain, c = this.options.chunkCells ?? 16, size = t.tileSize * c;
+    const x0 = Math.max(0, Math.floor((r.x - t.origin[0]) / size)), x1 = Math.min(
+      Math.ceil(t.width / c) - 1,
+      Math.ceil((r.x + r.width - t.origin[0]) / size) - 1
+    ), y0 = Math.max(0, Math.floor((r.y - t.origin[1]) / size)), y1 = Math.min(
+      Math.ceil(t.height / c) - 1,
+      Math.ceil((r.y + r.height - t.origin[1]) / size) - 1
+    );
+    if (Math.max(0, x1 - x0 + 1) * Math.max(0, y1 - y0 + 1) > (this.options.maxResidentChunks ?? 128))
+      throw Error("Visible terrain exceeds chunk budget");
+    const needed = /* @__PURE__ */ new Set();
+    for (let y = y0; y <= y1; y++)
+      for (let x = x0; x <= x1; x++) needed.add(x + ":" + y);
+    for (const [key, r2] of this.chunks)
+      if (!needed.has(key)) {
+        r2.node.destroy(true);
+        this.chunks.delete(key);
+      }
+    const l = globalThis.Laya;
+    for (const key of needed)
+      if (!this.chunks.has(key)) {
+        const [x, y] = key.split(":").map(Number), node = new l.Sprite();
+        node.pos(t.origin[0] + x * size, t.origin[1] + y * size);
+        node.graphics.material = this.options.material || null;
+        this.root.addChild(node);
+        this.chunks.set(key, { node, x, y, dirty: true });
+      }
+    this.flush();
+  }
+  flush() {
+    if (this.disposed) throw Error("Disposed terrain renderer");
+    const t = this.terrain, c = this.options.chunkCells ?? 16;
+    for (const chunk of this.chunks.values()) {
+      if (!chunk.dirty) continue;
+      const g = chunk.node.graphics;
+      g.clear();
+      for (const layer of t.layerIds)
+        for (let y = chunk.y * c; y < Math.min(t.height, (chunk.y + 1) * c); y++)
+          for (let x = chunk.x * c; x < Math.min(t.width, (chunk.x + 1) * c); x++) {
+            const tile = t.palette.get(t.getTile(layer, x, y));
+            if (!tile) continue;
+            const px = (x - chunk.x * c) * t.tileSize, py = (y - chunk.y * c) * t.tileSize;
+            if (tile.uv && this.options.atlas) {
+              const [u0, v0, u1, v1] = tile.uv;
+              g.drawTexture(
+                this.options.atlas,
+                px,
+                py,
+                t.tileSize,
+                t.tileSize,
+                null,
+                1,
+                tile.color || "#ffffff",
+                null,
+                [u0, v0, u1, v0, u1, v1, u0, v1]
+              );
+            } else
+              g.drawRect(
+                px,
+                py,
+                t.tileSize,
+                t.tileSize,
+                tile.color || "#ffffff"
+              );
+          }
+      chunk.dirty = false;
+    }
+  }
+  get residentChunks() {
+    return this.chunks.size;
+  }
+  dispose() {
+    if (this.disposed) return;
+    this.disposed = true;
+    this.unsubscribe();
+    this.root.destroy(true);
+    this.chunks.clear();
+  }
+};
+
+// packages/core/terrain/Heightfield.ts
+function validateHeightfield(spec) {
+  const s = spec, e = [];
+  if (!s || s.schemaVersion !== 1 || s.dimension !== 3)
+    return ["Expected schemaVersion:1, dimension:3"];
+  if (![s.cellsX, s.cellsZ].every(
+    (n) => Number.isInteger(n) && n > 0 && n <= 2048
+  ) || (s.cellsX + 1) * (s.cellsZ + 1) > 4194304)
+    e.push(
+      "Invalid heightfield dimensions (1..2048, at most 4194304 vertices)"
+    );
+  if (!Number.isFinite(s.cellSize) || s.cellSize <= 0)
+    e.push("cellSize must be positive");
+  if (s.origin && (!Array.isArray(s.origin) || s.origin.length !== 2 || !s.origin.every(Number.isFinite)))
+    e.push("Invalid origin");
+  if (!Array.isArray(s.heights) || s.heights.length !== (s.cellsX + 1) * (s.cellsZ + 1) || s.heights.some((h) => !Number.isFinite(h) || Math.abs(h) > 1e6))
+    e.push("Invalid finite height data");
+  return e;
+}
+function terrainNoise(seed, x, z) {
+  if (![seed, x, z].every(Number.isFinite))
+    throw Error("Invalid noise coordinates");
+  const hash = (a2, b2) => {
+    let h = Math.imul(a2 ^ seed, 374761393) ^ Math.imul(b2, 668265263);
+    h = Math.imul(h ^ h >>> 13, 1274126177);
+    return ((h ^ h >>> 16) >>> 0) / 4294967295;
+  };
+  const ix = Math.floor(x), iz = Math.floor(z), fx = x - ix, fz = z - iz, u = fx * fx * (3 - 2 * fx), v = fz * fz * (3 - 2 * fz), a = hash(ix, iz) * (1 - u) + hash(ix + 1, iz) * u, b = hash(ix, iz + 1) * (1 - u) + hash(ix + 1, iz + 1) * u;
+  return a * (1 - v) + b * v;
+}
+var ZhudaHeightfield = class _ZhudaHeightfield {
+  constructor(spec) {
+    this.listeners = /* @__PURE__ */ new Set();
+    const e = validateHeightfield(spec);
+    if (e.length) throw Error(e.join("; "));
+    this.cellsX = spec.cellsX;
+    this.cellsZ = spec.cellsZ;
+    this.cellSize = spec.cellSize;
+    this.origin = Object.freeze([...spec.origin || [0, 0]]);
+    this.heights = new Float32Array(spec.heights);
+  }
+  static generate(options) {
+    const count = (options.cellsX + 1) * (options.cellsZ + 1);
+    if (!Number.isSafeInteger(count) || count < 4 || count > 4194304 || ![options.seed, options.amplitude ?? 4, options.frequency ?? 0.1].every(
+      Number.isFinite
+    ))
+      throw Error("Invalid generation bounds");
+    const heights = Array.from(
+      { length: count },
+      (_, i) => terrainNoise(
+        options.seed,
+        i % (options.cellsX + 1) * (options.frequency ?? 0.1),
+        Math.floor(i / (options.cellsX + 1)) * (options.frequency ?? 0.1)
+      ) * (options.amplitude ?? 4)
+    );
+    return new _ZhudaHeightfield({
+      schemaVersion: 1,
+      dimension: 3,
+      ...options,
+      heights
+    });
+  }
+  index(x, z) {
+    if (!Number.isInteger(x) || !Number.isInteger(z) || x < 0 || z < 0 || x > this.cellsX || z > this.cellsZ)
+      throw Error("Vertex outside heightfield");
+    return z * (this.cellsX + 1) + x;
+  }
+  heightAtVertex(x, z) {
+    return this.heights[this.index(x, z)];
+  }
+  normalAtVertex(x, z) {
+    this.index(x, z);
+    const ax = Math.max(0, x - 1), bx = Math.min(this.cellsX, x + 1), az = Math.max(0, z - 1), bz = Math.min(this.cellsZ, z + 1);
+    return normalized({
+      x: -(this.heightAtVertex(bx, z) - this.heightAtVertex(ax, z)) / ((bx - ax) * this.cellSize),
+      y: 1,
+      z: -(this.heightAtVertex(x, bz) - this.heightAtVertex(x, az)) / ((bz - az) * this.cellSize)
+    });
+  }
+  setHeight(x, z, height) {
+    this.applyPatch(x, z, 1, 1, [height]);
+  }
+  applyPatch(x, z, width, depth, values) {
+    if (![x, z, width, depth].every(Number.isInteger) || width < 1 || depth < 1 || values.length !== width * depth || Array.from(values).some((h) => !Number.isFinite(h) || Math.abs(h) > 1e6))
+      throw Error("Invalid height patch");
+    this.index(x, z);
+    this.index(x + width - 1, z + depth - 1);
+    for (let j = 0; j < depth; j++)
+      for (let i = 0; i < width; i++)
+        this.heights[(z + j) * (this.cellsX + 1) + x + i] = values[j * width + i];
+    this.emit({ minX: x, minZ: z, maxX: x + width - 1, maxZ: z + depth - 1 });
+  }
+  brush(x, z, radius, delta) {
+    if (![x, z, radius, delta].every(Number.isFinite) || radius <= 0)
+      throw Error("Invalid height brush");
+    const cx = (x - this.origin[0]) / this.cellSize, cz = (z - this.origin[1]) / this.cellSize, r = radius / this.cellSize;
+    const minX = Math.max(0, Math.ceil(cx - r)), maxX = Math.min(this.cellsX, Math.floor(cx + r)), minZ = Math.max(0, Math.ceil(cz - r)), maxZ = Math.min(this.cellsZ, Math.floor(cz + r));
+    const patch = [];
+    for (let j = minZ; j <= maxZ; j++)
+      for (let i = minX; i <= maxX; i++) {
+        const d = Math.hypot(i - cx, j - cz) / r;
+        if (d > 1) continue;
+        const a = 1 - d, h = this.heightAtVertex(i, j) + delta * a * a * (3 - 2 * a);
+        if (Math.abs(h) > 1e6) throw Error("Brush exceeds height bound");
+        patch.push({ i: j * (this.cellsX + 1) + i, h });
+      }
+    if (!patch.length) return;
+    for (const p of patch) this.heights[p.i] = p.h;
+    this.emit({ minX, minZ, maxX, maxZ });
+  }
+  emit(r) {
+    for (const f of this.listeners) f(r);
+  }
+  onChange(f) {
+    this.listeners.add(f);
+    return () => this.listeners.delete(f);
+  }
+  /** Exact same diagonal and barycentric interpolation as rendered triangles. */
+  sample(x, z, stride = 1) {
+    if (![1, 2, 4].includes(stride)) throw Error("Invalid terrain stride");
+    if (![x, z].every(Number.isFinite)) throw Error("Invalid sample");
+    const gx = (x - this.origin[0]) / this.cellSize, gz = (z - this.origin[1]) / this.cellSize;
+    if (gx < 0 || gz < 0 || gx > this.cellsX || gz > this.cellsZ) return null;
+    const ix = Math.min(
+      Math.floor((this.cellsX - 1) / stride) * stride,
+      Math.floor(gx / stride) * stride
+    ), iz = Math.min(
+      Math.floor((this.cellsZ - 1) / stride) * stride,
+      Math.floor(gz / stride) * stride
+    ), bx = Math.min(this.cellsX, ix + stride), bz = Math.min(this.cellsZ, iz + stride), u = (gx - ix) / (bx - ix), v = (gz - iz) / (bz - iz), a = this.heightAtVertex(ix, iz), b = this.heightAtVertex(bx, iz), c = this.heightAtVertex(ix, bz), d = this.heightAtVertex(bx, bz);
+    const height = u >= v ? a * (1 - u) + b * (u - v) + d * v : a * (1 - v) + c * (v - u) + d * u;
+    const normal = u >= v ? normalized({
+      x: -(b - a) / ((bx - ix) * this.cellSize),
+      y: 1,
+      z: -(d - b) / ((bz - iz) * this.cellSize)
+    }) : normalized({
+      x: -(d - c) / ((bx - ix) * this.cellSize),
+      y: 1,
+      z: -(c - a) / ((bz - iz) * this.cellSize)
+    });
+    return { height, normal, cellX: ix, cellZ: iz };
+  }
+  /** Local ray direction may be unnormalized, preserving world-distance parameter after inverse transform. */
+  raycast(ray, maxDistance = Infinity, stride = 1, acceptCell) {
+    if (![1, 2, 4].includes(stride)) throw Error("Invalid terrain stride");
+    if (!(maxDistance >= 0) || ![...Object.values(ray.origin), ...Object.values(ray.direction)].every(
+      Number.isFinite
+    ) || Math.hypot(...Object.values(ray.direction)) < 1e-12)
+      throw Error("Invalid terrain ray");
+    const o = ray.origin, d = ray.direction, minX = this.origin[0], minZ = this.origin[1], maxX = minX + this.cellsX * this.cellSize, maxZ = minZ + this.cellsZ * this.cellSize;
+    let near = 0, far = maxDistance;
+    for (const [key, min, max] of [
+      ["x", minX, maxX],
+      ["z", minZ, maxZ]
+    ]) {
+      if (Math.abs(d[key]) < 1e-12) {
+        if (o[key] < min || o[key] > max) return null;
+      } else {
+        const a = (min - o[key]) / d[key], b = (max - o[key]) / d[key];
+        near = Math.max(near, Math.min(a, b));
+        far = Math.min(far, Math.max(a, b));
+      }
+    }
+    if (far < near) return null;
+    let t = near;
+    const epsilon = 1e-7 * this.cellSize;
+    let x = Math.min(
+      this.cellsX - 1,
+      Math.max(
+        0,
+        Math.floor((o.x + d.x * (t + epsilon) - minX) / this.cellSize)
+      )
+    ), z = Math.min(
+      this.cellsZ - 1,
+      Math.max(
+        0,
+        Math.floor((o.z + d.z * (t + epsilon) - minZ) / this.cellSize)
+      )
+    );
+    const stepX = Math.sign(d.x), stepZ = Math.sign(d.z), dtX = stepX ? this.cellSize / Math.abs(d.x) : Infinity, dtZ = stepZ ? this.cellSize / Math.abs(d.z) : Infinity;
+    let nextX = stepX ? (minX + (x + (stepX > 0 ? 1 : 0)) * this.cellSize - o.x) / d.x : Infinity, nextZ = stepZ ? (minZ + (z + (stepZ > 0 ? 1 : 0)) * this.cellSize - o.z) / d.z : Infinity;
+    for (let n = 0; n < this.cellsX + this.cellsZ + 4 && x >= 0 && z >= 0 && x < this.cellsX && z < this.cellsZ && t <= far + 1e-8; n++) {
+      const v = (i, j) => ({
+        x: minX + i * this.cellSize,
+        y: this.heightAtVertex(i, j),
+        z: minZ + j * this.cellSize
+      }), sx = Math.floor(x / stride) * stride, sz = Math.floor(z / stride) * stride, bx = Math.min(this.cellsX, sx + stride), bz = Math.min(this.cellsZ, sz + stride), a = v(sx, sz), b = v(bx, sz), c = v(sx, bz), q = v(bx, bz);
+      let hit = null;
+      for (const tri of acceptCell && !acceptCell(x, z) ? [] : [
+        [a, b, q],
+        [a, q, c]
+      ]) {
+        const h = triangle(ray, tri[0], tri[1], tri[2]);
+        if (h !== null && h >= near - 1e-7 && h <= Math.min(nextX, nextZ, far) + 1e-7 && (hit === null || h < hit))
+          hit = h;
+      }
+      if (hit !== null) {
+        const position = {
+          x: o.x + d.x * hit,
+          y: o.y + d.y * hit,
+          z: o.z + d.z * hit
+        }, s = this.sample(
+          Math.max(minX, Math.min(maxX, position.x)),
+          Math.max(minZ, Math.min(maxZ, position.z)),
+          stride
+        );
+        return {
+          distance: hit,
+          position,
+          normal: s.normal,
+          cellX: x,
+          cellZ: z
+        };
+      }
+      if (!stepX && !stepZ) break;
+      const boundary = Math.min(nextX, nextZ);
+      t = boundary;
+      if (nextX <= boundary + 1e-9) {
+        x += stepX;
+        nextX += dtX;
+      }
+      if (nextZ <= boundary + 1e-9) {
+        z += stepZ;
+        nextZ += dtZ;
+      }
+    }
+    return null;
+  }
+  toJSON() {
+    return {
+      schemaVersion: 1,
+      dimension: 3,
+      cellsX: this.cellsX,
+      cellsZ: this.cellsZ,
+      cellSize: this.cellSize,
+      origin: [...this.origin],
+      heights: [...this.heights]
+    };
+  }
+};
+function triangle(r, a, b, c) {
+  const sub = (x, y) => ({
+    x: x.x - y.x,
+    y: x.y - y.y,
+    z: x.z - y.z
+  }), cross = (x, y) => ({
+    x: x.y * y.z - x.z * y.y,
+    y: x.z * y.x - x.x * y.z,
+    z: x.x * y.y - x.y * y.x
+  }), dot = (x, y) => x.x * y.x + x.y * y.y + x.z * y.z;
+  const e1 = sub(b, a), e2 = sub(c, a), p = cross(r.direction, e2), det = dot(e1, p);
+  if (Math.abs(det) < 1e-10) return null;
+  const t = sub(r.origin, a), u = dot(t, p) / det;
+  if (u < -1e-8 || u > 1 + 1e-8) return null;
+  const q = cross(t, e1), v = dot(r.direction, q) / det;
+  if (v < -1e-8 || u + v > 1 + 1e-8) return null;
+  const distance = dot(e2, q) / det;
+  return distance >= -1e-8 ? Math.max(0, distance) : null;
+}
+
+// packages/core/terrain/Terrain3D.ts
+var ZhudaTerrain3D = class {
+  constructor(field, options) {
+    this.chunks = /* @__PURE__ */ new Map();
+    this.disposed = false;
+    this.stride = 1;
+    this.field = field;
+    this.options = options;
+    if (!options.material || options.material.destroyed) throw Error("A live terrain material is required");
+    const size = options.chunkCells ?? 32;
+    if (!Number.isInteger(size) || size < 4 || size > 128 || size % 4)
+      throw Error("chunkCells must be a multiple of 4 within 4..128");
+    if (!Number.isInteger(options.maxResidentChunks ?? 64) || (options.maxResidentChunks ?? 64) < 1)
+      throw Error("Invalid chunk budget");
+    if (options.uvScale && (!options.uvScale.every(Number.isFinite) || options.uvScale.length !== 2))
+      throw Error("Invalid UV scale");
+    const l = globalThis.Laya;
+    this.root = new l.Sprite3D("ZhudaTerrain");
+    options.parent?.addChild(this.root);
+    this.unsubscribe = field.onChange((r) => {
+      for (const chunk of this.chunks.values()) {
+        const expanded = {
+          minX: r.minX - 1,
+          minZ: r.minZ - 1,
+          maxX: r.maxX + 1,
+          maxZ: r.maxZ + 1
+        };
+        if (chunk.xs[0] > expanded.maxX || chunk.xs[chunk.xs.length - 1] < expanded.minX || chunk.zs[0] > expanded.maxZ || chunk.zs[chunk.zs.length - 1] < expanded.minZ)
+          continue;
+        const old = chunk.dirty;
+        chunk.dirty = old ? {
+          minX: Math.min(old.minX, expanded.minX),
+          minZ: Math.min(old.minZ, expanded.minZ),
+          maxX: Math.max(old.maxX, expanded.maxX),
+          maxZ: Math.max(old.maxZ, expanded.maxZ)
+        } : expanded;
+      }
+    });
+  }
+  /** Local x/z bounds; uniform stride avoids neighboring chunks with incompatible edge LODs. */
+  setRegion(region, stride = 1) {
+    if (this.disposed) throw Error("Disposed terrain");
+    if (![1, 2, 4].includes(stride) || !Object.values(region).every(Number.isFinite) || region.maxX <= region.minX || region.maxZ <= region.minZ)
+      throw Error("Invalid terrain region/stride");
+    const f = this.field, size = this.options.chunkCells ?? 32, span = size * f.cellSize, x0 = Math.max(0, Math.floor((region.minX - f.origin[0]) / span)), x1 = Math.min(
+      Math.ceil(f.cellsX / size) - 1,
+      Math.ceil((region.maxX - f.origin[0]) / span) - 1
+    ), z0 = Math.max(0, Math.floor((region.minZ - f.origin[1]) / span)), z1 = Math.min(
+      Math.ceil(f.cellsZ / size) - 1,
+      Math.ceil((region.maxZ - f.origin[1]) / span) - 1
+    );
+    if (Math.max(0, x1 - x0 + 1) * Math.max(0, z1 - z0 + 1) > (this.options.maxResidentChunks ?? 64))
+      throw Error("Terrain region exceeds resident chunk budget");
+    const required = /* @__PURE__ */ new Set();
+    for (let z = z0; z <= z1; z++)
+      for (let x = x0; x <= x1; x++) required.add(x + ":" + z);
+    for (const [key, c] of this.chunks)
+      if (!required.has(key) || this.stride !== stride) {
+        c.mesh.dispose();
+        this.chunks.delete(key);
+      }
+    this.stride = stride;
+    try {
+      for (const key of required)
+        if (!this.chunks.has(key)) {
+          const [x, z] = key.split(":").map(Number), axis = (start, end) => {
+            const a = [];
+            for (let i = start; i < end; i += stride) a.push(i);
+            a.push(end);
+            return a;
+          }, xs = axis(x * size, Math.min(f.cellsX, (x + 1) * size)), zs = axis(z * size, Math.min(f.cellsZ, (z + 1) * size));
+          const n = xs.length * zs.length, positions = new Float32Array(n * 3), normals = new Float32Array(n * 3), uvs = new Float32Array(n * 2), indices = new Uint16Array((xs.length - 1) * (zs.length - 1) * 6);
+          for (let j = 0; j < zs.length; j++)
+            for (let i = 0; i < xs.length; i++) {
+              const k2 = j * xs.length + i, p = this.vertex(xs[i], zs[j]);
+              positions.set(p.slice(0, 3), k2 * 3);
+              normals.set(p.slice(3, 6), k2 * 3);
+              uvs.set(p.slice(6), k2 * 2);
+            }
+          let k = 0;
+          for (let j = 0; j < zs.length - 1; j++)
+            for (let i = 0; i < xs.length - 1; i++) {
+              const a = j * xs.length + i, b = a + 1, c = a + xs.length, d = c + 1;
+              indices.set([c, a, d, a, b, d], k);
+              k += 6;
+            }
+          const mesh = new ZhudaDynamicMesh(
+            { positions, normals, uvs, indices },
+            this.root
+          );
+          mesh.node.name = "terrain:" + key;
+          mesh.node.meshRenderer.sharedMaterial = this.options.material;
+          mesh.node.meshRenderer.receiveShadow = true;
+          this.chunks.set(key, { mesh, xs, zs });
+        }
+      this.flush();
+    } catch (e) {
+      this.dispose();
+      throw e;
+    }
+  }
+  vertex(x, z) {
+    const f = this.field, n = f.normalAtVertex(x, z), px = f.origin[0] + x * f.cellSize, pz = f.origin[1] + z * f.cellSize;
+    return [
+      px,
+      f.heightAtVertex(x, z),
+      pz,
+      n.x,
+      n.y,
+      n.z,
+      px * (this.options.uvScale?.[0] ?? 1),
+      pz * (this.options.uvScale?.[1] ?? 1)
+    ];
+  }
+  flush() {
+    if (this.disposed) throw Error("Disposed terrain");
+    for (const chunk of this.chunks.values()) {
+      const r = chunk.dirty;
+      if (!r) continue;
+      let first = Infinity, last = -1;
+      for (let j = 0; j < chunk.zs.length; j++)
+        for (let i = 0; i < chunk.xs.length; i++)
+          if (chunk.xs[i] >= r.minX && chunk.xs[i] <= r.maxX && chunk.zs[j] >= r.minZ && chunk.zs[j] <= r.maxZ) {
+            const k = j * chunk.xs.length + i;
+            chunk.mesh.vertices.set(
+              this.vertex(chunk.xs[i], chunk.zs[j]),
+              k * 8
+            );
+            first = Math.min(first, k);
+            last = Math.max(last, k);
+          }
+      if (last >= first) chunk.mesh.updateRange(first, last - first + 1);
+      chunk.dirty = void 0;
+    }
+  }
+  sampleLocal(x, z) {
+    return this.field.sample(x, z, this.stride);
+  }
+  chunkKeyForCell(x, z) {
+    const size = this.options.chunkCells ?? 32;
+    return Math.floor(x / size) + ":" + Math.floor(z / size);
+  }
+  raycast(ray, maxDistance = Infinity) {
+    if (this.disposed) throw Error("Disposed terrain");
+    if (maxDistance !== Infinity && (!Number.isFinite(maxDistance) || maxDistance < 0))
+      throw Error("Invalid terrain ray distance");
+    const world = this.root.transform.worldMatrix.elements, inv = inverse4(world), direction = normalized(ray.direction), origin = transformPoint(inv, ray.origin), end = transformPoint(inv, {
+      x: ray.origin.x + direction.x,
+      y: ray.origin.y + direction.y,
+      z: ray.origin.z + direction.z
+    });
+    const rawDirection = {
+      x: end.x - origin.x,
+      y: end.y - origin.y,
+      z: end.z - origin.z
+    }, localScale = Math.hypot(
+      rawDirection.x,
+      rawDirection.y,
+      rawDirection.z
+    );
+    if (!Number.isFinite(localScale) || localScale < 1e-12) return null;
+    const hit = this.field.raycast(
+      {
+        origin,
+        direction: {
+          x: rawDirection.x / localScale,
+          y: rawDirection.y / localScale,
+          z: rawDirection.z / localScale
+        }
+      },
+      Number.isFinite(maxDistance) ? maxDistance * localScale : Infinity,
+      this.stride,
+      (x, z) => this.chunks.has(this.chunkKeyForCell(x, z))
+    );
+    if (!hit) return null;
+    const n = hit.normal, normal = normalized({
+      x: inv[0] * n.x + inv[1] * n.y + inv[2] * n.z,
+      y: inv[4] * n.x + inv[5] * n.y + inv[6] * n.z,
+      z: inv[8] * n.x + inv[9] * n.y + inv[10] * n.z
+    });
+    const position = transformPoint(world, hit.position);
+    return {
+      ...hit,
+      distance: Math.hypot(
+        position.x - ray.origin.x,
+        position.y - ray.origin.y,
+        position.z - ray.origin.z
+      ),
+      position,
+      normal
+    };
+  }
+  queryProvider(entityId, layer = 1) {
+    return {
+      entityId,
+      layer,
+      raycast: (ray, distance) => {
+        const h = this.raycast(ray, distance);
+        return h ? { ...h, instanceId: h.cellX + ":" + h.cellZ } : null;
+      }
+    };
+  }
+  report() {
+    return {
+      residentChunks: this.chunks.size,
+      stride: this.stride,
+      vertices: [...this.chunks.values()].reduce(
+        (n, c) => n + c.mesh.vertices.length / 8,
+        0
+      ),
+      estimatedBufferBytes: [...this.chunks.values()].reduce(
+        (n, c) => n + c.mesh.vertices.byteLength + c.mesh.data.indices.byteLength,
+        0
+      )
+    };
+  }
+  /** Diagnostic copy prevents callers from accidentally bypassing edits/dirty propagation. */
+  chunkSnapshot(key) {
+    const c = this.chunks.get(key);
+    return c ? {
+      xs: [...c.xs],
+      zs: [...c.zs],
+      vertices: new Float32Array(c.mesh.vertices),
+      bounds: c.mesh.mesh.bounds
+    } : null;
+  }
+  dispose() {
+    if (this.disposed) return;
+    this.disposed = true;
+    this.unsubscribe();
+    for (const c of this.chunks.values()) c.mesh.dispose();
+    this.chunks.clear();
+    this.root.destroy(true);
+  }
+};
+
+// packages/core/shaders/Laya342ShaderTemplates.ts
+var graphicsVertex = "#define SHADER_NAME TextureVS2D\n#ifdef CAMERA2D\nuniform mat3 u_view2D;\n#endif\n#ifdef SPRITE2DGLOBAL\n#endif\n#ifdef RENDERTEXTURE\nuniform vec3 u_InvertMat_0;uniform vec3 u_InvertMat_1;\n#endif\n#ifdef VERTEX_SIZE\nuniform vec4 u_vertexSize;uniform vec3 u_NMatrix_0;uniform vec3 u_NMatrix_1;\n#endif\n#ifdef UNIFORMCLIP\nuniform vec2 u_clipOffset;\n#endif\nuniform vec2 u_size;\n#ifndef VERTEXALPHA\nuniform float u_VertAlpha;\n#endif\nvarying vec4 v_texcoordAlpha;varying vec4 v_color;varying float v_useTex;\n#ifdef UV_CLIP_GPU\nvarying float v_useClip;\n#endif\n#if defined(UV_CLIP_GPU) || defined(FILLTEXTURE)\nvarying vec4 v_customs;\n#endif\n#ifdef USE_TEX_ARRAY\nvarying float v_texLayer;\n#endif\nvoid main(){vec4 color=a_attribColor;\n#ifdef VERTEXALPHA\ncolor.a*=a_attribFlags.z;\n#else\ncolor.a*=u_VertAlpha;\n#endif\ncolor.rgb*=color.a;v_texcoordAlpha=vec4(a_posuv.zw,0.0,0.0);v_color=color;v_useTex=a_attribFlags.r;\n#ifdef UV_CLIP_GPU\nv_useClip=a_attribFlags.g;\n#endif\n#if defined(UV_CLIP_GPU) || defined(FILLTEXTURE)\nv_customs=a_customs;\n#endif\n#ifdef USE_TEX_ARRAY\nv_texLayer=a_attribFlags.w;\n#endif\n#ifdef VERTEX_SIZE\nvec2 localPos=a_posuv.xy*u_vertexSize.zw+u_vertexSize.xy;vec2 globalPos=vec2(u_NMatrix_0.x*localPos.x+u_NMatrix_0.y*localPos.y+u_NMatrix_0.z,u_NMatrix_1.x*localPos.x+u_NMatrix_1.y*localPos.y+u_NMatrix_1.z);\n#else\nvec2 globalPos=a_posuv.xy;\n#endif\n#ifdef UNIFORMCLIP\nglobalPos+=u_clipOffset;\n#endif\n#ifdef RENDERTEXTURE\nvec2 viewSource=vec2(u_InvertMat_0.x*globalPos.x+u_InvertMat_0.y*globalPos.y+u_InvertMat_0.z,u_InvertMat_1.x*globalPos.x+u_InvertMat_1.y*globalPos.y+u_InvertMat_1.z);\n#else\nvec2 viewSource=globalPos;\n#endif\n#ifdef CAMERA2D\nvec2 viewPos=(u_view2D*vec3(viewSource,1.0)).xy+u_size/2.0;\n#else\nvec2 viewPos=viewSource;\n#endif\nvec4 pos=vec4((viewPos.x/u_size.x-0.5)*2.0,(0.5-viewPos.y/u_size.y)*2.0,0.0,1.0);\n#ifdef INVERTY\npos.y=-pos.y;\n#endif\ngl_Position=pos;}";
+var graphicsFragment = "#define SHADER_NAME TextureFS2D\n#if defined(GL_FRAGMENT_PRECISION_HIGH)\nprecision highp float;\n#else\nprecision mediump float;\n#endif\nvarying vec4 v_texcoordAlpha;varying vec4 v_color;varying float v_useTex;\n#ifdef UV_CLIP_GPU\nvarying float v_useClip;\n#endif\n#if defined(UV_CLIP_GPU) || defined(FILLTEXTURE)\nvarying vec4 v_customs;\n#endif\n#ifdef USE_TEX_ARRAY\nvarying float v_texLayer;uniform sampler2DArray u_spriteTextureArray;\n#else\nuniform sampler2D u_spriteTexture;\n#endif\n#ifdef FILLTEXTURE\nuniform vec4 u_TexRange;\n#endif\nvec3 linearToGamma(in vec3 value){return vec3(mix(pow(value.rgb,vec3(0.41666))*1.055-vec3(0.055),value.rgb*12.92,vec3(lessThanEqual(value.rgb,vec3(0.0031308)))));}vec4 linearToGamma(in vec4 value){return vec4(linearToGamma(value.rgb),value.a);}vec3 gammaToLinear(in vec3 value){return pow((value+0.055)/1.055,vec3(2.4));}vec4 gammaToLinear(in vec4 value){return vec4(gammaToLinear(value.rgb),value.a);}__ZHUDA_FUNCTION__\nvoid main(){\n#ifdef FILLTEXTURE\nvec2 tileUV=fract(v_texcoordAlpha.xy);vec4 trimRect=v_customs;if(tileUV.x<trimRect.x||tileUV.x>trimRect.x+trimRect.z||tileUV.y<trimRect.y||tileUV.y>trimRect.y+trimRect.w)discard;vec2 contentUV=(tileUV-trimRect.xy)/trimRect.zw;vec2 uv=contentUV*u_TexRange.zw+u_TexRange.xy;\n#else\nvec2 uv=v_texcoordAlpha.xy;\n#endif\n#ifdef USE_TEX_ARRAY\nvec4 color=texture(u_spriteTextureArray,vec3(uv,v_texLayer));\n#else\nvec4 color=texture2D(u_spriteTexture,uv);\n#endif\n#ifndef GAMMATEXTURE\n#ifdef GAMMASPACE\ncolor.rgb=linearToGamma(color.xyz);\n#endif\n#else\n#ifndef GAMMASPACE\ncolor.rgb=gammaToLinear(color.xyz);\n#endif\n#endif\nfloat useTex=step(1.0,v_useTex);color=color*useTex+(1.0-useTex);\n#if defined(UV_CLIP_GPU) && !defined(FILLTEXTURE)\nif(v_useClip>=1.0){vec2 srcUV=v_texcoordAlpha.xy;vec4 clipRect=v_customs;if(srcUV.x<clipRect.x||srcUV.x>clipRect.x+clipRect.z||srcUV.y<clipRect.y||srcUV.y>clipRect.y+clipRect.w)discard;}\n#endif\ncolor.a*=v_color.w;\n#ifdef GAMMASPACE\nvec4 transColor=v_color;\n#else\nvec4 transColor=vec4(gammaToLinear(v_color.rgb),v_color.a);\n#endif\ncolor.rgb*=transColor.rgb;gl_FragColor=zhudaSurface(uv,color);}";
+
+// packages/core/shaders/ShaderMaterials.ts
+function validateShaderSpec(spec) {
+  const s = spec, e = [];
+  if (!s || s.schemaVersion !== 1 || ![2, 3].includes(s.dimension))
+    return ["Expected schemaVersion:1 and dimension:2|3"];
+  if (typeof s.name !== "string" || !/^Zhuda[A-Za-z0-9_]{1,100}$/.test(s.name))
+    e.push("Shader name must start with Zhuda, then letters/digits/_");
+  if (typeof s.surface !== "string" || s.surface.length > 65536 || !s.surface.includes("zhudaSurface"))
+    e.push("surface must define zhudaSurface (at most 65536 characters)");
+  if (!s.uniforms || typeof s.uniforms !== "object" || Array.isArray(s.uniforms) || Object.keys(s.uniforms).length > 64)
+    e.push("Expected at most 64 uniform descriptors");
+  else
+    for (const [name, u] of Object.entries(s.uniforms)) {
+      if (!/^u_Zhuda[A-Za-z0-9_]+$/.test(name))
+        e.push("Custom uniforms must use u_Zhuda prefix");
+      if (!u || !["float", "vec2", "vec3", "vec4", "texture2D"].includes(u.type)) {
+        e.push("Invalid uniform type " + name);
+        continue;
+      }
+      const n = { float: 1, vec2: 2, vec3: 3, vec4: 4, texture2D: 0 }[u.type];
+      if (n && u.value !== void 0 && (n === 1 ? typeof u.value !== "number" || !Number.isFinite(u.value) : !Array.isArray(u.value) || u.value.length !== n || !u.value.every(Number.isFinite)))
+        e.push("Invalid uniform value " + name);
+      if (!n && u.value !== void 0)
+        e.push(
+          "Texture uniforms use the external texture bindings, not JSON values"
+        );
+    }
+  if (s.blend && !["opaque", "alpha", "additive"].includes(s.blend))
+    e.push("Invalid blend");
+  if (s.dimension === 2 && s.passes && (s.passes.depth || s.passes.opaqueColor))
+    e.push("2D graphics shaders cannot request 3D camera passes");
+  if (typeof s.surface === "string" && /\b(?:uniform|attribute|varying)\b|#\s*(?:version|include)|\bvoid\s+main\s*\(/.test(
+    s.surface.replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, "")
+  ))
+    e.push(
+      "surface is a function body contract; declarations/includes/main belong to the engine template"
+    );
+  return e;
+}
+var vertex3D = `#include "Scene.glsl";
+#include "SceneFogInput.glsl";
+#include "Camera.glsl";
+#include "Sprite3DVertex.glsl";
+#include "VertexCommon.glsl";
+varying vec2 v_ZhudaUV;varying vec3 v_ZhudaPosition;varying vec3 v_ZhudaNormal;
+void main(){Vertex v;getVertexParams(v);mat4 w=getWorldMatrix();vec4 p=w*vec4(v.positionOS,1.0);v_ZhudaPosition=p.xyz;
+v_ZhudaUV=vec2(0.0);
+#ifdef UV
+v_ZhudaUV=v.texCoord0;
+#endif
+vec3 a=w[0].xyz,b=w[1].xyz,c=w[2].xyz;v_ZhudaNormal=normalize(mat3(cross(b,c),cross(c,a),cross(a,b))*v.normalOS)*sign(dot(a,cross(b,c)));
+gl_Position=remapPositionZ(getPositionCS(p.xyz));
+#ifdef FOG
+FogHandle(gl_Position.z);
+#endif
+}`;
+var fragment3D = (surface) => `#include "Color.glsl";
+#include "Scene.glsl";
+#include "SceneFog.glsl";
+varying vec2 v_ZhudaUV;varying vec3 v_ZhudaPosition;varying vec3 v_ZhudaNormal;
+${surface}
+void main(){gl_FragColor=outputTransform(zhudaSurface(v_ZhudaUV,v_ZhudaPosition,normalize(v_ZhudaNormal)));
+#ifdef FOG
+gl_FragColor.rgb=scenUnlitFog(gl_FragColor.rgb);
+#endif
+}`;
+var ZhudaShaderMaterial = class {
+  constructor(spec, textures = {}) {
+    this.disposed = false;
+    const e = validateShaderSpec(spec);
+    if (e.length) throw Error(e.join("; "));
+    this.spec = JSON.parse(JSON.stringify(spec));
+    for (const [name, u] of Object.entries(spec.uniforms))
+      if (u.type === "texture2D" && !textures[name])
+        throw Error("Missing texture binding " + name);
+    const l = globalThis.Laya, types = {
+      float: l.ShaderDataType.Float,
+      vec2: l.ShaderDataType.Vector2,
+      vec3: l.ShaderDataType.Vector3,
+      vec4: l.ShaderDataType.Vector4,
+      texture2D: l.ShaderDataType.Texture2D
+    }, uniforms = Object.fromEntries(
+      Object.keys(spec.uniforms).sort().map((name) => [name, types[spec.uniforms[name].type]])
+    );
+    const textureHelpers = Object.entries(spec.uniforms).filter(([, u]) => u.type === "texture2D").map(
+      ([
+        name
+      ]) => `vec4 zhudaSample_${name}(vec2 uv){vec4 c=texture2D(${name},uv);
+#ifdef Gamma_${name}
+c=gammaToLinear(c);
+#endif
+return c;}`
+    ).join("\n");
+    const surface = textureHelpers + "\n" + spec.surface;
+    this.material = createCustomSurfaceMaterial({
+      name: spec.name,
+      dimension: spec.dimension,
+      vertex: spec.dimension === 2 ? graphicsVertex : vertex3D,
+      fragment: spec.dimension === 2 ? graphicsFragment.replace("__ZHUDA_FUNCTION__", surface) : fragment3D(surface),
+      uniforms,
+      instancing: spec.dimension === 3
+    });
+    try {
+      const m = this.material, blend = spec.blend || (spec.dimension === 2 ? "alpha" : "opaque");
+      m.depthWrite = spec.depthWrite ?? (spec.dimension === 3 && blend === "opaque");
+      m.depthTest = spec.dimension === 2 ? l.RenderState.DEPTHTEST_ALWAYS : l.RenderState.DEPTHTEST_LESS;
+      m.cull = spec.dimension === 2 || spec.doubleSided ? l.RenderState.CULL_NONE : l.RenderState.CULL_BACK;
+      m.renderQueue = blend === "opaque" ? l.Material.RENDERQUEUE_OPAQUE : l.Material.RENDERQUEUE_TRANSPARENT;
+      m.blend = blend === "opaque" ? l.RenderState.BLEND_DISABLE : l.RenderState.BLEND_ENABLE_ALL;
+      m.blendSrc = spec.dimension === 2 ? l.RenderState.BLENDPARAM_ONE : l.RenderState.BLENDPARAM_SRC_ALPHA;
+      m.blendDst = blend === "additive" ? l.RenderState.BLENDPARAM_ONE : l.RenderState.BLENDPARAM_ONE_MINUS_SRC_ALPHA;
+      for (const [name, u] of Object.entries(spec.uniforms)) {
+        if (u.type === "texture2D") this.setTexture(name, textures[name]);
+        else
+          this.setUniform(
+            name,
+            u.value ?? (u.type === "float" ? 0 : Array(Number(u.type.slice(-1))).fill(0))
+          );
+      }
+    } catch (error) {
+      this.dispose();
+      throw error;
+    }
+  }
+  setUniform(name, value) {
+    if (this.disposed) throw Error("Disposed shader");
+    const u = this.spec.uniforms[name];
+    if (!u || u.type === "texture2D")
+      throw Error("Unknown numeric uniform " + name);
+    const n = u.type === "float" ? 1 : Number(u.type.slice(-1));
+    if (n === 1 ? typeof value !== "number" || !Number.isFinite(value) : typeof value === "number" || value.length !== n || !Array.from(value).every(Number.isFinite))
+      throw Error("Invalid uniform " + name);
+    const l = globalThis.Laya;
+    if (u.type === "float") this.material.setFloat(name, value);
+    else
+      this.material["setVector" + n](
+        name,
+        new l["Vector" + n](...value)
+      );
+  }
+  setTexture(name, texture) {
+    if (this.disposed || this.spec.uniforms[name]?.type !== "texture2D" || !texture || texture.destroyed)
+      throw Error("Invalid texture binding " + name);
+    this.material.setTexture(name, texture.bitmap || texture);
+  }
+  report() {
+    return {
+      name: this.spec.name,
+      dimension: this.spec.dimension,
+      uniforms: Object.keys(this.spec.uniforms),
+      passes: this.spec.passes || {},
+      gpuStatus: "requires-first-draw",
+      disposed: this.disposed
+    };
+  }
+  dispose() {
+    if (this.disposed) return;
+    this.disposed = true;
+    for (const [name, u] of Object.entries(this.spec.uniforms))
+      if (u.type === "texture2D") this.material.setTexture(name, null);
+    this.material.destroy();
+  }
+};
+var shaderRecipes = {
+  terrain3D: {
+    schemaVersion: 1,
+    name: "ZhudaTerrainHeightSlope",
+    dimension: 3,
+    uniforms: {
+      u_ZhudaGrass: { type: "vec3", value: [0.15, 0.42, 0.13] },
+      u_ZhudaRock: { type: "vec3", value: [0.38, 0.32, 0.26] },
+      u_ZhudaSnow: { type: "vec3", value: [0.85, 0.91, 0.96] },
+      u_ZhudaSnowLine: { type: "float", value: 5 }
+    },
+    surface: `vec4 zhudaSurface(vec2 uv,vec3 p,vec3 n){float slope=1.0-abs(n.y);vec3 color=mix(u_ZhudaGrass,u_ZhudaRock,smoothstep(.12,.5,slope));color=mix(color,u_ZhudaSnow,smoothstep(u_ZhudaSnowLine-.5,u_ZhudaSnowLine+.5,p.y));float grid=.95+.05*sin(uv.x*3.14159)*sin(uv.y*3.14159);float light=.35+.65*max(0.0,dot(n,normalize(vec3(.3,1.0,.2))));return vec4(color*light*grid,1.0);}`
+  },
+  textured3D: {
+    schemaVersion: 1,
+    name: "ZhudaTexturedSurface",
+    dimension: 3,
+    uniforms: {
+      u_ZhudaTexture: { type: "texture2D" },
+      u_ZhudaTint: { type: "vec4", value: [1, 1, 1, 1] }
+    },
+    surface: "vec4 zhudaSurface(vec2 uv,vec3 p,vec3 n){return zhudaSample_u_ZhudaTexture(uv)*u_ZhudaTint;}"
+  },
+  dissolve3D: {
+    schemaVersion: 1,
+    name: "ZhudaDissolveSurface",
+    dimension: 3,
+    doubleSided: true,
+    uniforms: {
+      u_ZhudaAmount: { type: "float", value: 0.4 },
+      u_ZhudaTint: { type: "vec4", value: [0.1, 0.7, 1, 1] }
+    },
+    surface: "vec4 zhudaSurface(vec2 uv,vec3 p,vec3 n){float noise=fract(sin(dot(floor(uv*40.0),vec2(12.98,78.23)))*43758.54);if(noise<u_ZhudaAmount)discard;float edge=1.0-smoothstep(u_ZhudaAmount,u_ZhudaAmount+.08,noise);return vec4(mix(u_ZhudaTint.rgb,vec3(1.0,.7,.05),edge),u_ZhudaTint.a);}"
+  },
+  tint2D: {
+    schemaVersion: 1,
+    name: "ZhudaGraphicsTint",
+    dimension: 2,
+    uniforms: { u_ZhudaTint: { type: "vec4", value: [1, 1, 1, 1] } },
+    surface: "vec4 zhudaSurface(vec2 uv,vec4 color){return vec4(color.rgb*u_ZhudaTint.rgb*u_ZhudaTint.a,color.a*u_ZhudaTint.a);}"
+  }
+};
 export {
   ENGINE_PRESET_PROFILES,
   EngineGuard,
@@ -7760,6 +8717,7 @@ export {
   ZhudaEffectEnvelope,
   ZhudaEngine,
   ZhudaEventGate,
+  ZhudaHeightfield,
   ZhudaInstanceGroup,
   ZhudaLayaParticleRenderer,
   ZhudaLayaParticleRenderer3D,
@@ -7783,9 +8741,13 @@ export {
   ZhudaSceneBudget,
   ZhudaSceneQueries,
   ZhudaSceneRegions,
+  ZhudaShaderMaterial,
   ZhudaSimulationClock,
   ZhudaSnapshotBuffer,
   ZhudaSurfaceQuery,
+  ZhudaTerrain2D,
+  ZhudaTerrain2DRenderer,
+  ZhudaTerrain3D,
   ZhudaUI,
   ZhudaVfxCamera,
   ZhudaVfxMaterial,
@@ -7816,11 +8778,16 @@ export {
   sampleParticleCurve,
   sampleParticleUV,
   sceneQuality,
+  shaderRecipes,
+  terrainNoise,
   transformPoint,
   validateEffectTimeline,
+  validateHeightfield,
   validateParticleEffect,
   validateParticleEffect3D,
   validateParticleExtras,
+  validateShaderSpec,
+  validateTerrain2D,
   validateVfxMaterial,
   zhudaComponent
 };
