@@ -35,13 +35,17 @@ export interface MeshData {
     positions: Float32Array;
     normals?: Float32Array;
     uvs?: Float32Array;
+    tangents?: Float32Array;
     indices: Uint16Array | Uint32Array;
 }
+/** UV-derived tangent frames for normal-mapped procedural geometry. Degenerate UVs use a stable orthogonal frame. */
+export declare function computeMeshTangents(data: MeshData): Float32Array;
 /** Laya 3.4.2 buffer adapter; POSITION/NORMAL/UV, local range uploads and refreshed bounds. */
 export declare class ZhudaDynamicMesh {
     readonly data: MeshData;
     readonly mesh: any;
     readonly vertices: Float32Array;
+    readonly stride: number;
     readonly node: any;
     private disposed;
     constructor(data: MeshData, parent?: any);

@@ -7,4 +7,5 @@ export * from "./SceneQueries";
 export * from "./SceneLifecycle";
 export * from "./CameraRig";
 export * from "./CameraCollision";
+export * from "./Filmic";
 export * from "./Laya342Adapters";
