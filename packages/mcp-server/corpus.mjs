@@ -8,6 +8,9 @@
  */
 
 export const API_GUARDRAILS = [
+ {id:'GUARD_TERRAIN_2D',topic:'2D terrain tile atlas chunks',hallucinatedLegacyApi:'Tiled JSON automatically supplies game collision rules',zhudaCanonicalApi:'new ZhudaTerrain2D(spec); new ZhudaTerrain2DRenderer(data,{parent,atlas,material}); renderer.setView(localRect); renderer.flush();',reason:'零為空tile；atlas/material是借用；blocked為資料。畫面chunk可卸載，遊戲規則仍由消費端決定。'},
+ {id:'GUARD_TERRAIN_3D',topic:'3D terrain heightfield raycast LOD seam',hallucinatedLegacyApi:'bilinear height equals triangle mesh; per-chunk arbitrary LOD needs no seams',zhudaCanonicalApi:'ZhudaHeightfield.generate(config); new ZhudaTerrain3D(field,{parent,material}); terrain.setRegion(localXZBounds,1); field.brush(x,z,radius,delta); terrain.flush();',reason:'高度沿a-d三角對角線插值；同region統一stride1/2/4；field為全解析度權威資料，renderer query符合目前載入區域與stride。'},
+ {id:'GUARD_SHADER_CONTRACT',topic:'shader uniform GLSL 2D 3D material',hallucinatedLegacyApi:'ShaderMaterial.ready means GPU compiled; raw shader globals can be copied from Three.js',zhudaCanonicalApi:'new ZhudaShaderMaterial(shaderRecipes.terrain3D); shader.setUniform("u_ZhudaSnowLine",6);',reason:'2D保留graphics premultiplied alpha/clipping/gamma；3D模板處理world normal/fog/output。surface不是完整main。JSON驗證不等於GPU編譯。'},
   {
     id: 'GUARD_INIT_BOOT',
     topic: '引擎啟動與 Stage 初始化',
@@ -18,10 +21,10 @@ export const API_GUARDRAILS = [
   {
     id: 'GUARD_3D_MESH_CREATE',
     topic: '3D 網格與材質建立',
-    hallucinatedLegacyApi: 'new Laya.MeshSprite3D(Laya.PrimitiveMesh.createBox(1, 1, 1));',
+    hallucinatedLegacyApi: 'new Laya.MeshSprite3D(new THREE.BoxGeometry());',
     zhudaCanonicalApi:
       'const sp = new Laya.MeshSprite3D();\nsp.meshFilter.sharedMesh = Zhuda3D.createPrimitiveMesh("box", { width: 1, height: 1, depth: 1 });\nsp.meshRenderer.sharedMaterial = Zhuda3D.createMaterial({ albedoColor: [0.2, 0.5, 0.9, 1], shininess: 32 });',
-    reason: 'Laya 3.4.2 的 MeshSprite3D 建構子不再直接接收 Mesh，必須透過 meshFilter.sharedMesh 與 meshRenderer.sharedMaterial 指定以啟動動態合批。'
+    reason: 'Laya 3.4.2 支援 new MeshSprite3D(mesh,name)，也可另設 meshFilter.sharedMesh。必須使用 Laya.Mesh，不能直接塞 Three.js Geometry；材質由 meshRenderer.sharedMaterial 指定。'
   },
   {
     id: 'GUARD_DIRECTIONAL_LIGHT',
@@ -102,10 +105,45 @@ export const ERROR_DIAGNOSTICS_DB = [
 ];
 
 export const GOLDEN_EXAMPLES = {
+ 'terrain-2d':{title:'分塊2D地形與局部繪製',features:['core'],code:`import {ZhudaEngine,ZhudaTerrain2D,ZhudaTerrain2DRenderer} from 'zhuda-laya-engine';
+const {rootScene}=await ZhudaEngine.boot({features:['core']});
+const map=new ZhudaTerrain2D({schemaVersion:1,dimension:2,width:32,height:32,tileSize:20,palette:[{id:1,color:'#339955'}],layers:[{id:'ground',tiles:Array(1024).fill(1)}]});
+const renderer=new ZhudaTerrain2DRenderer(map,{parent:rootScene});
+renderer.setView({x:0,y:0,width:320,height:320});
+map.setTile('ground',15,15,0);renderer.flush();
+// renderer.dispose(); // release graphics commands; borrowed atlas stays owned by caller
+`},
+ 'terrain-3d-shader':{title:'定種子高度場、地形Shader、筆刷與查詢',features:['core','3d'],code:`import {ZhudaEngine,Zhuda3D,ZhudaHeightfield,ZhudaTerrain3D,ZhudaShaderMaterial,shaderRecipes} from 'zhuda-laya-engine';
+const {rootScene}=await ZhudaEngine.boot({features:['core','3d']});
+const scene3D=Zhuda3D.createScene3D(rootScene);
+Zhuda3D.createCamera(scene3D,{position:[32,55,70],rotationEuler:[-55,0,0],far:300});
+const field=ZhudaHeightfield.generate({cellsX:64,cellsZ:64,cellSize:1,seed:42,amplitude:8});
+const shader=new ZhudaShaderMaterial(shaderRecipes.terrain3D);
+const terrain=new ZhudaTerrain3D(field,{parent:scene3D,material:shader.material,solid:{depth:12}});
+terrain.setRegion({minX:0,minZ:0,maxX:64,maxZ:64},1);
+field.brush(32,32,4,2);terrain.flush();shader.setUniform('u_ZhudaSnowLine',6);
+const hit=terrain.raycast({origin:{x:32,y:30,z:32},direction:{x:0,y:-1,z:0}});
+console.log(hit?.position);
+// terrain.dispose(); shader.dispose();
+`},
+  'terrain-solid-camera': {title:'Closed terrain and camera boom collision',features:['core','3d'],code:`import {ZhudaEngine,Zhuda3D,ZhudaHeightfield,ZhudaTerrain3D,ZhudaShaderMaterial,shaderRecipes,ZhudaSceneQueries,ZhudaCameraRig} from 'zhuda-laya-engine';
+const ctx=await ZhudaEngine.boot({features:['core','3d'],dprCap:1.5});
+const scene=Zhuda3D.createScene3D(ctx.rootScene),camera=Zhuda3D.createCamera(scene,{far:300});
+const field=ZhudaHeightfield.generate({cellsX:64,cellsZ:64,cellSize:1,seed:42,amplitude:8});
+const shader=new ZhudaShaderMaterial(shaderRecipes.terrain3D);
+const terrain=new ZhudaTerrain3D(field,{parent:scene,material:shader.material,solid:{depth:12}});
+terrain.setRegion({minX:0,minZ:0,maxX:64,maxZ:64});
+const queries=new ZhudaSceneQueries();queries.register(terrain.queryProvider('ground',4));
+const rig=new ZhudaCameraRig(camera,{collision:{queries,radius:.4,clearance:.2,layerMask:4}});
+// Focus and near-plane probes must begin outside solids. This is not a physics sphere sweep.
+ctx.runtime.start(()=>rig.update({x:32,y:field.sample(32,32).height+2,z:32}));
+// Inspector-only underside view: rig.options.collision=undefined; rig.pitch=-.5;
+// Stop runtime before terrain.dispose(); shader.dispose(); ctx.dispose();
+`},
   'boot-declarative-3d': {
     title: 'Zero-IDE 宣告式 3D 場景與相機燈光初始化',
     features: ['core', '2d', '3d', 'ui'],
-    code: `import { ZhudaEngine, Zhuda3D, zhudaComponent } from '@zhuda-laya/core';
+    code: `import { ZhudaEngine, Zhuda3D, zhudaComponent } from 'zhuda-laya-engine';
 
 @zhudaComponent({ className: 'SpinCubeScript', category: '3d' })
 export class SpinCubeScript extends Laya.Script {
@@ -134,7 +172,7 @@ main();`
   'spine42-physics-companion': {
     title: 'Spine 4.2 PhysicsConstraint 物理骨骼約束與動態渲染',
     features: ['core', '2d', 'spine42'],
-    code: `import { EngineGuard } from '@zhuda-laya/core';
+    code: `import { EngineGuard } from 'zhuda-laya-engine';
 
 export function verifySpine42Physics() {
   const telemetry = EngineGuard.checkSpine42();
@@ -147,7 +185,7 @@ export function verifySpine42Physics() {
   'safe-vector-ui-hud': {
     title: '免疫 AutoBitmap 崩潰的玻璃擬態 2D 向量 HUD',
     features: ['core', '2d', 'ui'],
-    code: `import { ZhudaUI } from '@zhuda-laya/core';
+    code: `import { ZhudaUI } from 'zhuda-laya-engine';
 
 export function buildHud(stage: Laya.Stage) {
   const panel = ZhudaUI.createGlassPanel(stage, { x: 20, y: 20, width: 420, height: 64 });
@@ -159,7 +197,7 @@ export function buildHud(stage: Laya.Stage) {
   'static-prefab-pixel-calibration': {
     title: '先設計後組裝：動態節點轉靜態 .lh 預製體與像素/色差 (ΔE00) 自動校準',
     features: ['core', '2d', 'ui', 'spine42'],
-    code: `import { ZhudaAssetSerializer, ZhudaPrefab, PixelCalibrationEngine } from '@zhuda-laya/core';
+    code: `import { ZhudaAssetSerializer, ZhudaPrefab, PixelCalibrationEngine } from 'zhuda-laya-engine';
 
 export function calibrateAndAssembleButton(stage: Laya.Stage) {
   // 1. 載入或建立未校準之靜態 .lh 資產 (包含 +3px 寬度誤差與 ΔE00 色差)

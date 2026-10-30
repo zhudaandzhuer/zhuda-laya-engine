@@ -15,14 +15,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import esbuild from 'esbuild';
 import { scanAndGenerateRegistry, zhudaReflectionPlugin } from './ast-scanner.mjs';
-import {
-  ENGINE_PRESET_PROFILES,
-  TopologyResolver
-} from '../core/TopologyGraph.ts';
-import { ZhudaAssetSerializer } from '../core/StaticAssetPipeline.ts';
-import { PixelCalibrationEngine } from '../core/PixelCalibrationEngine.ts';
-import { ViewportMatrixEngine } from '../core/ViewportMatrixEngine.ts';
-import { UnityBridgePipeline } from '../core/UnityBridgePipeline.ts';
+import {ENGINE_PRESET_PROFILES,TopologyResolver,ZhudaAssetSerializer,PixelCalibrationEngine,ViewportMatrixEngine,UnityBridgePipeline} from './compiler-runtime.mjs';
+import { runConsumerBuild } from './consumer-build.mjs';
 import { auditVisualPresentationContracts } from './visual-contract-audit.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -36,6 +30,8 @@ export async function runZhudaBuild(options = {}) {
     ? JSON.parse(fs.readFileSync(configPath, 'utf8'))
     : {};
   const engineRoot = options.engineRoot || config.engineRoot || defaultEngineRoot;
+
+  if (projectRoot !== engineRoot && config.demoAssets !== true) return runConsumerBuild({projectRoot,engineRoot,config});
 
   // A project that declares a visual presentation manifest must pass its
   // semantic state/scope gate before gameplay code is bundled. Engine-only
@@ -114,7 +110,7 @@ export async function runZhudaBuild(options = {}) {
     const srcTarget = path.join(isScene ? scenesSrcDir : prefabsSrcDir, fileName);
     const outTarget = path.join(isScene ? scenesOutDir : prefabsOutDir, fileName);
     const jsonText = JSON.stringify(hierarchyData, null, 2);
-    fs.writeFileSync(srcTarget, jsonText, 'utf8');
+    // Demo sources are checked in; builds only emit into the output directory.
     fs.writeFileSync(outTarget, jsonText, 'utf8');
     staticAssetFiles.push({
       fileName,

@@ -41,7 +41,7 @@ test('MCP Server resolves topology, diagnoses Laya crashes, and serves Golden Ex
     params: {}
   });
   assert.equal(rpcRes.id, 42);
-  assert.equal(rpcRes.result.tools.length, 14);
+  assert.equal(rpcRes.result.tools.length, 16);
   assert.ok(rpcRes.result.tools.some((tool) => tool.name === 'audit_visual_migration'));
   assert.ok(rpcRes.result.tools.some((tool) => tool.name === 'audit_visual_contract'));
   assert.ok(rpcRes.result.tools.some((tool) => tool.name === 'validate_particle_effect'));

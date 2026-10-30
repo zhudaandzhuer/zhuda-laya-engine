@@ -14,11 +14,25 @@ E4ZEhFCYy4b5pYXJUbMC9KjRitkypyqtZvpSRerLWHCb
 
 ---
 
+# 把地平线甩在身后。
+
+[English](../../README.md) · 简体中文
+
+[![NEON APEX：立体城市赛道、漂移与氮气超车，实际 3D 游戏录制](https://raw.githubusercontent.com/zhudaandzhuer/zhuda-neon-racer/main/docs/media/skyline-gameplay.gif)](https://zhudaandzhuer.github.io/zhuda-neon-racer/)
+
+### NEON APEX · Skyline Tour
+
+**漂移，氮气，把地平线甩在身后。** 在城市高架赛道上与三位对手竞速，出弯加速，赢取奖金并升级赛车。四条赛道、车库与进度保存，均可实际游玩。
+
+**[免费开跑 →](https://zhudaandzhuer.github.io/zhuda-neon-racer/)** · [观看游戏影片](https://zhudaandzhuer.github.io/zhuda-neon-racer/showcase.html)
+
+支持键盘和触控，无需下载或注册。上方动图来自实际游戏；完整版影片为 1280 × 720 / 60 FPS。
+
+---
+
 # zhuda-laya-engine
 
 **基于 LayaAir 3.4.2，为 AI 编程代理打造的游戏 SDK 与工具链。**
-
-[English](../../README.md) · 简体中文
 
 [![LayaAir 3.4.2](https://img.shields.io/badge/LayaAir-3.4.2-0ea5e9)](https://github.com/layabox/LayaAir) [![MIT](https://img.shields.io/badge/license-MIT-4ade80)](../../LICENSE) [![Node.js 24+](https://img.shields.io/badge/Node.js-24%2B-6cc24a)](../../package.json)
 
@@ -28,29 +42,36 @@ E4ZEhFCYy4b5pYXJUbMC9KjRitkypyqtZvpSRerLWHCb
 
 [进入游戏馆](https://zhudaandzhuer.github.io/zhuda-arcade/) · [体验 100 种粒子效果](https://zhudaandzhuer.github.io/zhuda-particle-lab/) · [操作 3D 地形工坊](https://zhudaandzhuer.github.io/zhuda-3d-lab/?terrain=1)
 
-## 用它制作的游戏
+## 更多游戏
 
-[![五款使用公开 SDK 制作的游戏](https://raw.githubusercontent.com/zhudaandzhuer/zhuda-arcade/main/docs/collection.jpg)](https://zhudaandzhuer.github.io/zhuda-arcade/)
+四款小型街机游戏作为辅助案例，均包含操作、关卡、胜负与进度保存。
 
-| 游戏 | 玩法 | 入口 |
-| --- | --- | --- |
-| 星港突围 STARFALL | 太空弹幕、震波清弹与主舰首领 | [开始](https://zhudaandzhuer.github.io/zhuda-arcade/?game=starfall) |
-| 烬火远征 EMBERBOUND | 生存竞技场、升级三选一、冲刺与兽潮首领 | [开始](https://zhudaandzhuer.github.io/zhuda-arcade/?game=ember) |
-| 晶核守卫 COREKEEP | 四条路线、三类防御塔、升级出售与六波守城 | [开始](https://zhudaandzhuer.github.io/zhuda-arcade/?game=corekeep) |
-| 潮汐碎光 TIDEBREAK | 角度反弹、装甲晶礁、多球与激光 | [开始](https://zhudaandzhuer.github.io/zhuda-arcade/?game=tidebreak) |
-| 霓虹疾线 NEON APEX | 四条赛道、电脑车手、漂移、氮气与车库 | [开始](https://zhudaandzhuer.github.io/zhuda-neon-racer/) |
+| 游戏 | 入口 |
+| --- | --- |
+| 星港突围 STARFALL · 太空弹幕 | [开始](https://zhudaandzhuer.github.io/zhuda-arcade/?game=starfall) |
+| 烬火远征 EMBERBOUND · 竞技场生存 | [开始](https://zhudaandzhuer.github.io/zhuda-arcade/?game=ember) |
+| 晶核守卫 COREKEEP · 塔防 | [开始](https://zhudaandzhuer.github.io/zhuda-arcade/?game=corekeep) |
+| 潮汐碎光 TIDEBREAK · 弹球破礁 | [开始](https://zhudaandzhuer.github.io/zhuda-arcade/?game=tidebreak) |
 
-这些游戏包含键盘与触控操作、关卡、胜负结算及进度保存。游戏规则、美术和部署保存在独立的 [zhuda-arcade](https://github.com/zhudaandzhuer/zhuda-arcade) 与 [zhuda-neon-racer](https://github.com/zhudaandzhuer/zhuda-neon-racer)。游戏馆有 21 项规则测试，包含通过实际操作输入完成全部 16 关；另见[浏览器验收报告](https://github.com/zhudaandzhuer/zhuda-arcade/blob/main/docs/browser-verification.json)。
+游戏规则、美术、媒体与发布保存在独立的 [Neon Apex](https://github.com/zhudaandzhuer/zhuda-neon-racer) 和 [Arcade](https://github.com/zhudaandzhuer/zhuda-arcade) 仓库。[赛车验收](https://github.com/zhudaandzhuer/zhuda-neon-racer/blob/main/docs/browser-verification.json) 覆盖实时完赛、存档、触控与场景资源释放。
 
-### 100 种真实 WebGL 粒子效果
+## 探索引擎能力
 
-[![赛车包覆气流、魔法与爆破](https://raw.githubusercontent.com/zhudaandzhuer/zhuda-particle-lab/main/docs/media/showcase-preview.gif)](https://zhudaandzhuer.github.io/zhuda-particle-lab/showcase.html)
+### 100 种粒子效果
 
-[观看 60 FPS 影片](https://zhudaandzhuer.github.io/zhuda-particle-lab/showcase.html) · [体验全部效果](https://zhudaandzhuer.github.io/zhuda-particle-lab/) · [效果图鉴](https://zhudaandzhuer.github.io/zhuda-particle-lab/catalog.html)
+[![赛车包覆气流、魔法与爆破，实际 WebGL 渲染](https://raw.githubusercontent.com/zhudaandzhuer/zhuda-particle-lab/main/docs/media/showcase-preview.gif)](https://zhudaandzhuer.github.io/zhuda-particle-lab/showcase.html)
 
-91 种 2D、9 种真实 3D 效果，覆盖赛车气流、魔法、爆破、天气、水体和界面反馈。赛车气流从车头逐渐显现，包裹车身并在弯道留下尾流。完整版影片为实际 WebGL 画面的 17 秒、60 FPS 录制；GIF 为缩小的 24 FPS 预览。
+91 种 2D 与 9 种真实 3D 效果，覆盖车身包覆气流、魔法、爆破、天气、水体与界面反馈。
 
-配方、场景、美术与影片保存在 [zhuda-particle-lab](https://github.com/zhudaandzhuer/zhuda-particle-lab)。[验证记录](https://github.com/zhudaandzhuer/zhuda-particle-lab/blob/main/VERIFICATION-100.md)覆盖逐项渲染、重播、资源释放与 4,000 粒子负载。
+[体验全部效果](https://zhudaandzhuer.github.io/zhuda-particle-lab/) · [观看 60 FPS 影片](https://zhudaandzhuer.github.io/zhuda-particle-lab/showcase.html) · [验证记录](https://github.com/zhudaandzhuer/zhuda-particle-lab/blob/main/VERIFICATION-100.md)
+
+### 地形与 Shader
+
+[![从上到下都有完整表面：地形侧壁、底面与相机防穿透](https://raw.githubusercontent.com/zhudaandzhuer/zhuda-3d-lab/main/docs/terrain-solid.jpg)](https://zhudaandzhuer.github.io/zhuda-3d-lab/?terrain=1)
+
+可编辑的 2D tile 地图与 3D 高度场，支持分块载卸、LOD 1/2/4、封闭侧壁/底面及相机 boom 避障射线。检视器提供明确的地下观察模式。PBR、贴图、雾、溶解、2D tint/atlas 均通过实际 WebGL draw 检查，天空材质可以单独关闭场景雾。
+
+[打开地形 / Shader 工坊](https://zhudaandzhuer.github.io/zhuda-3d-lab/?terrain=1) · [API 用法](../terrain-shader.md) · [验收范围](../3d-acceptance.md)
 
 ## 分支增加了什么
 
@@ -67,11 +88,11 @@ E4ZEhFCYy4b5pYXJUbMC9KjRitkypyqtZvpSRerLWHCb
 | 静态资产与 UI | `.lh` / `.ls` 序列化、明确 `percent:false`、像素边界/颜色对照、九宫格与安全区检查。 |
 | 特效 | 定种子 2D/3D 粒子、对象池、拖尾、序列帧、碰撞事件、VFX 材质、时间轴、挂点与质量预算。 |
 
-### 3D 接入预览
+### 3D 地形、Shader 与接入
 
-下一版 3D SDK 已发布在 [PR #1](https://github.com/zhudaandzhuer/zhuda-laya-engine/pull/1)，与当前 `main` 版本分开。它补充独立消费端构建、资源 lease、PBR/自定义材质、动态网格、相机/输入/查询契约、时钟、2D tile 地图与支持分块载卸、编辑、LOD 1/2/4 的 3D 高度场。
+公开 3D SDK 补充独立消费端构建、资源 lease、PBR/自定义材质、动态网格、相机/输入/查询契约、时钟、2D tile 地图与支持分块载卸、编辑、LOD 1/2/4 的 3D 高度场。
 
-该预览通过 79 项引擎测试与 38 项真实 WebGL 检查。Shader 验证包含图集 UV、染色、透明度、裁切、贴图/雾/溶解变体与真实编译诊断。具体用法和范围见[3D 接入文档](https://github.com/zhudaandzhuer/zhuda-laya-engine/blob/codex/3d-integration/docs/3d-integration.md)、[地形/Shader 契约](https://github.com/zhudaandzhuer/zhuda-laya-engine/blob/codex/3d-integration/docs/terrain-shader.md)与[验收限制](https://github.com/zhudaandzhuer/zhuda-laya-engine/blob/codex/3d-integration/docs/3d-acceptance.md)。[独立消费端](https://github.com/zhudaandzhuer/zhuda-3d-lab)固定引擎 commit，并保存实机报告；小场景数据不能推导完整游戏地图与服务器性能。
+该接入通过 81 项引擎测试与 41 项真实 WebGL 检查。Shader 验证包含图集 UV、染色、透明度、裁切、贴图/雾/溶解变体与真实编译诊断。具体用法和范围见[3D 接入文档](../3d-integration.md)、[地形/Shader 契约](../terrain-shader.md)与[验收限制](../3d-acceptance.md)。[独立消费端](https://github.com/zhudaandzhuer/zhuda-3d-lab)固定引擎 commit，并保存实机报告；小场景数据不能推导完整游戏地图与服务器性能。
 
 ## 快速开始
 

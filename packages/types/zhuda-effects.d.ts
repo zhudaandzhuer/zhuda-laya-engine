@@ -20,6 +20,9 @@ export interface EffectAnchor {
     y: number;
     z?: number;
     rotation?: number;
+    quaternion?: {x:number;y:number;z:number;w:number};
+    scale?: {x:number;y:number;z:number};
+    worldMatrix?: ArrayLike<number>;
 }
 export interface EffectAttachment {
     target: string;

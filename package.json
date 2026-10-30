@@ -35,7 +35,8 @@
     "./compiler": "./packages/compiler/zhuda-build.mjs",
     "./doctor": "./packages/compiler/zhuda-doctor.mjs",
     "./mcp-server": "./packages/mcp-server/index.mjs",
-    "./types": "./packages/types/index.d.ts"
+    "./types": "./packages/types/index.d.ts",
+    "./compiler/consumer": "./packages/compiler/consumer-build.mjs"
   },
   "bin": {
     "zhuda-laya-build": "./packages/compiler/zhuda-build.mjs",
@@ -69,8 +70,8 @@
   ],
   "scripts": {
     "ast:scan": "node -e \"import('./packages/compiler/ast-scanner.mjs').then(m => m.scanAndGenerateRegistry(process.cwd()))\"",
-    "typecheck": "npm run ast:scan && tsc --noEmit -p tsconfig.json",
-    "build": "node packages/compiler/zhuda-build.mjs",
+    "typecheck": "npm run types:runtime3d && npm run ast:scan && tsc --noEmit -p tsconfig.json",
+    "build": "npm run types:runtime3d && node packages/compiler/zhuda-build.mjs",
     "doctor": "node packages/compiler/zhuda-doctor.mjs",
     "visual:audit": "node packages/compiler/visual-asset-audit.mjs",
     "visual:contract": "node packages/compiler/visual-contract-audit.mjs",
@@ -78,10 +79,14 @@
     "test": "node --test tests/*.test.mjs",
     "pack:tarball": "npm pack --pack-destination dist",
     "verify": "npm run build && npm run typecheck && npm run doctor && npm run test",
-    "start": "python3 -m http.server 8890 --bind 127.0.0.1 --directory dist/web"
+    "start": "python3 -m http.server 8890 --bind 127.0.0.1 --directory dist/web",
+    "types:runtime3d": "node packages/compiler/runtime3d-types.mjs"
   },
-  "devDependencies": {
+  "dependencies": {
     "esbuild": "^0.24.0",
     "typescript": "^5.6.0"
+  },
+  "engines": {
+    "node": ">=24"
   }
 }

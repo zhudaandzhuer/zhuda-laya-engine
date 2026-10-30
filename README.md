@@ -14,11 +14,25 @@ E4ZEhFCYy4b5pYXJUbMC9KjRitkypyqtZvpSRerLWHCb
 
 ---
 
+# Play the skyline.
+
+English · [简体中文](docs/zh-CN/README.md)
+
+[![NEON APEX: drift, boost and race above a neon skyline. Actual 3D gameplay.](https://raw.githubusercontent.com/zhudaandzhuer/zhuda-neon-racer/main/docs/media/skyline-gameplay.gif)](https://zhudaandzhuer.github.io/zhuda-neon-racer/)
+
+### NEON APEX · Skyline Tour
+
+**Drift. Boost. Own the skyline.** Race three rivals on elevated city circuits, chain nitro out of corners, and earn your next car. A playable 3D game with four circuits, a garage and saved progress.
+
+**[PLAY FREE →](https://zhudaandzhuer.github.io/zhuda-neon-racer/)** · [Watch the gameplay film](https://zhudaandzhuer.github.io/zhuda-neon-racer/showcase.html)
+
+Keyboard and touch controls. No download or account. The animation above is captured from the actual game; the film is available at 1280 × 720 / 60 FPS.
+
+---
+
 # zhuda-laya-engine
 
 **An agent-friendly game SDK and toolchain built on LayaAir 3.4.2.**
-
-English · [简体中文](docs/zh-CN/README.md)
 
 [![LayaAir 3.4.2](https://img.shields.io/badge/LayaAir-3.4.2-0ea5e9)](https://github.com/layabox/LayaAir) [![MIT](https://img.shields.io/badge/license-MIT-4ade80)](LICENSE) [![Node.js 24+](https://img.shields.io/badge/Node.js-24%2B-6cc24a)](package.json) [![Support on Solana](https://img.shields.io/badge/Support-Solana-9945ff)](#support-this-engine)
 
@@ -26,31 +40,38 @@ Build 2D, 3D and Spine 4.2 projects with TypeScript, a CLI and coding agents. Th
 
 Maintained by [Zhuda](https://github.com/zhudaandzhuer). Rendering and physics come from [LayaAir / Layabox](https://layaair.com/). This is an independent fork; donations support Zhuda's work on this repository.
 
-[Play the games](https://zhudaandzhuer.github.io/zhuda-arcade/) · [Explore 100 particle effects](https://zhudaandzhuer.github.io/zhuda-particle-lab/) · [Try the 3D terrain lab](https://zhudaandzhuer.github.io/zhuda-3d-lab/?terrain=1)
+[Play Neon Apex](https://zhudaandzhuer.github.io/zhuda-neon-racer/) · [Explore 100 particle effects](https://zhudaandzhuer.github.io/zhuda-particle-lab/) · [Try the 3D terrain lab](https://zhudaandzhuer.github.io/zhuda-3d-lab/?terrain=1)
 
-## See what it builds
+## More games
 
-[![Five playable games built with the public SDK](https://raw.githubusercontent.com/zhudaandzhuer/zhuda-arcade/main/docs/collection.jpg)](https://zhudaandzhuer.github.io/zhuda-arcade/)
+Four more arcade games, each with keyboard/touch input, levels, a win/loss state and saved progress.
 
-| Game | What you play | Link |
-| --- | --- | --- |
-| STARFALL | Space combat, bullet patterns, shockwaves and a flagship boss | [Play](https://zhudaandzhuer.github.io/zhuda-arcade/?game=starfall) |
-| EMBERBOUND | Arena survival, upgrade choices, dashes and a horde boss | [Play](https://zhudaandzhuer.github.io/zhuda-arcade/?game=ember) |
-| COREKEEP | Four routes, three tower types, upgrades and six defense waves | [Play](https://zhudaandzhuer.github.io/zhuda-arcade/?game=corekeep) |
-| TIDEBREAK | Angled rebounds, armored reefs, multiball and lasers | [Play](https://zhudaandzhuer.github.io/zhuda-arcade/?game=tidebreak) |
-| NEON APEX | Four tracks, AI opponents, drifting, nitro and a garage | [Play](https://zhudaandzhuer.github.io/zhuda-neon-racer/) |
+| Game | Play |
+| --- | --- |
+| STARFALL · space combat | [Launch](https://zhudaandzhuer.github.io/zhuda-arcade/?game=starfall) |
+| EMBERBOUND · arena survival | [Enter](https://zhudaandzhuer.github.io/zhuda-arcade/?game=ember) |
+| COREKEEP · tower defense | [Defend](https://zhudaandzhuer.github.io/zhuda-arcade/?game=corekeep) |
+| TIDEBREAK · arcade rebounds | [Dive in](https://zhudaandzhuer.github.io/zhuda-arcade/?game=tidebreak) |
 
-These games include keyboard and touch input, levels, win/loss results and saved progress. Game rules, artwork and deployment live in separate consumer repositories: [zhuda-arcade](https://github.com/zhudaandzhuer/zhuda-arcade) and [zhuda-neon-racer](https://github.com/zhudaandzhuer/zhuda-neon-racer). The arcade has 21 rule tests, including input-driven completion of all 16 levels; see its [browser verification report](https://github.com/zhudaandzhuer/zhuda-arcade/blob/main/docs/browser-verification.json).
+Game rules, art, media and deployment live in separate consumer repositories: [Neon Apex](https://github.com/zhudaandzhuer/zhuda-neon-racer) and [Arcade](https://github.com/zhudaandzhuer/zhuda-arcade). [Racing verification](https://github.com/zhudaandzhuer/zhuda-neon-racer/blob/main/docs/browser-verification.json) covers a complete live race, progress, touch input and bounded scene resources.
 
-### 100 particle effects, rendered in WebGL
+## Explore the engine
 
-[![Body-wrapping racing airflow, magic and explosions](https://raw.githubusercontent.com/zhudaandzhuer/zhuda-particle-lab/main/docs/media/showcase-preview.gif)](https://zhudaandzhuer.github.io/zhuda-particle-lab/showcase.html)
+### 100 particle effects
 
-[Watch the 60 FPS showcase](https://zhudaandzhuer.github.io/zhuda-particle-lab/showcase.html) · [Try all effects](https://zhudaandzhuer.github.io/zhuda-particle-lab/) · [Browse the catalog](https://zhudaandzhuer.github.io/zhuda-particle-lab/catalog.html)
+[![Racing airflow, magic and explosions, rendered in WebGL](https://raw.githubusercontent.com/zhudaandzhuer/zhuda-particle-lab/main/docs/media/showcase-preview.gif)](https://zhudaandzhuer.github.io/zhuda-particle-lab/showcase.html)
 
-91 2D and 9 true 3D effects cover racing airflow, magic, explosions, weather, water and UI feedback. The racing flow reveals from the nose, wraps the vehicle and leaves a curved wake. The full video is a 17-second, 60 FPS capture of actual WebGL output; the GIF is a smaller 24 FPS preview.
+91 2D and 9 true 3D effects: body-wrapping racing airflow, magic, explosions, weather, water and UI feedback.
 
-Recipes, scenes, artwork and media live in [zhuda-particle-lab](https://github.com/zhudaandzhuer/zhuda-particle-lab). Its [verification record](https://github.com/zhudaandzhuer/zhuda-particle-lab/blob/main/VERIFICATION-100.md) covers rendering, replay, teardown and a 4,000-particle workload.
+[Try the effects](https://zhudaandzhuer.github.io/zhuda-particle-lab/) · [Watch the 60 FPS film](https://zhudaandzhuer.github.io/zhuda-particle-lab/showcase.html) · [Verification](https://github.com/zhudaandzhuer/zhuda-particle-lab/blob/main/VERIFICATION-100.md)
+
+### Terrain and shaders
+
+[![Terrain above and below: closed sides, underside and camera collision](https://raw.githubusercontent.com/zhudaandzhuer/zhuda-3d-lab/main/docs/terrain-solid.jpg)](https://zhudaandzhuer.github.io/zhuda-3d-lab/?terrain=1)
+
+Editable 2D tile maps and 3D heightfields, chunk streaming, LOD 1/2/4, closed sides/undersides and camera boom collision probes. The inspector includes an explicit underground view. PBR, textured, fog, dissolve and 2D tint/atlas variants are checked in real WebGL draws; sky materials can opt out of scene fog.
+
+[Open the terrain / shader lab](https://zhudaandzhuer.github.io/zhuda-3d-lab/?terrain=1) · [Terrain and shader API](docs/terrain-shader.md) · [Verification scope](docs/3d-acceptance.md)
 
 ## What the fork adds
 
@@ -67,11 +88,11 @@ Recipes, scenes, artwork and media live in [zhuda-particle-lab](https://github.c
 | Static assets and UI | `.lh` / `.ls` serialization, explicit `percent:false`, pixel bounds and color comparison, nine-slice checks and safe-area fixtures. |
 | Effects | Seeded 2D/3D particles, pooling, ribbons, flipbooks, collision events, VFX materials, timelines, anchors and quality budgets. |
 
-### 3D integration preview
+### 3D terrain, shaders and integration
 
-The next 3D SDK changes are published in [PR #1](https://github.com/zhudaandzhuer/zhuda-laya-engine/pull/1), separately from the current `main` release. They add independent consumer builds, resource leases, PBR/custom surfaces, dynamic meshes, camera/input/query contracts, clocks, 2D tile terrain and 3D heightfields with chunk streaming, editing and LOD 1/2/4.
+The public 3D SDK adds independent consumer builds, resource leases, PBR/custom surfaces, dynamic meshes, camera/input/query contracts, clocks, 2D tile terrain and 3D heightfields with chunk streaming, editing and LOD 1/2/4.
 
-The preview passes 79 engine tests and 38 real WebGL checks. Shader checks exercise atlas UVs, tint, alpha, clipping, textured/fog/dissolve variants and actual compiler diagnostics. [Documentation](https://github.com/zhudaandzhuer/zhuda-laya-engine/blob/codex/3d-integration/docs/3d-integration.md), [terrain/shader contracts](https://github.com/zhudaandzhuer/zhuda-laya-engine/blob/codex/3d-integration/docs/terrain-shader.md) and [acceptance limits](https://github.com/zhudaandzhuer/zhuda-laya-engine/blob/codex/3d-integration/docs/3d-acceptance.md) describe the tested scope. The [independent consumer](https://github.com/zhudaandzhuer/zhuda-3d-lab) pins a specific engine commit and stores its device reports. Small-scene results do not establish full-game map or server performance.
+The integration passes 81 engine tests and 41 real WebGL checks. Shader checks exercise atlas UVs, tint, alpha, clipping, textured/fog/dissolve variants and actual compiler diagnostics. [Documentation](docs/3d-integration.md), [terrain/shader contracts](docs/terrain-shader.md) and [acceptance limits](docs/3d-acceptance.md) describe the tested scope. The [independent consumer](https://github.com/zhudaandzhuer/zhuda-3d-lab) pins a specific engine commit and stores its device reports. Small-scene results do not establish full-game map or server performance.
 
 ## Quick start
 

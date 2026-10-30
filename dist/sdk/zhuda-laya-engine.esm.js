@@ -335,7 +335,7 @@ var TopologyResolver = class {
   static resolveByModuleIds(seedModuleIds) {
     const closure = /* @__PURE__ */ new Set();
     const diagnostics = [];
-    const visit = (id, chain) => {
+    const visit2 = (id, chain) => {
       if (chain.includes(id)) {
         throw new Error(`[ZhudaTopology] \u5075\u6E2C\u5230\u5FAA\u74B0\u4F9D\u8CF4 (Cycle Detected): ${[...chain, id].join(" -> ")}`);
       }
@@ -347,12 +347,12 @@ var TopologyResolver = class {
         if (!closure.has(depId)) {
           diagnostics.push(`[Auto-Dependency] \u6A21\u7D44 "${node.file}" \u81EA\u52D5\u62C9\u5165\u524D\u7F6E\u4F9D\u8CF4 "${this.moduleMap.get(depId)?.file}"`);
         }
-        visit(depId, [...chain, id]);
+        visit2(depId, [...chain, id]);
       }
       closure.add(id);
     };
     for (const seed of seedModuleIds) {
-      visit(seed, []);
+      visit2(seed, []);
     }
     for (const id of closure) {
       const node = this.moduleMap.get(id);
@@ -586,6 +586,502 @@ var EngineGuard = class {
 EngineGuard.detoxInstalled = false;
 EngineGuard.registeredComponentNames = /* @__PURE__ */ new Set();
 
+// packages/core/runtime3d/Runtime.ts
+function installSandboxStorageFallback() {
+  const modes = {};
+  for (const name of ["localStorage", "sessionStorage"]) {
+    try {
+      void window[name];
+      modes[name] = "persistent";
+    } catch {
+      const values = /* @__PURE__ */ new Map();
+      const memory = {
+        get length() {
+          return values.size;
+        },
+        key: (i) => [...values.keys()][i] ?? null,
+        getItem: (k) => values.get(String(k)) ?? null,
+        setItem: (k, v) => {
+          values.set(String(k), String(v));
+        },
+        removeItem: (k) => {
+          values.delete(String(k));
+        },
+        clear: () => values.clear()
+      };
+      Object.defineProperty(window, name, {
+        configurable: true,
+        value: memory
+      });
+      modes[name] = "memory";
+    }
+  }
+  return modes;
+}
+var ZhudaRuntimeSession = class {
+  constructor(canvas, options = {}) {
+    this.paused = false;
+    this.contextLost = false;
+    this.disposed = false;
+    this.cleanups = [];
+    this.frame = 0;
+    this.previous = 0;
+    this.task = null;
+    this.canvas = canvas;
+    this.options = options;
+    const listen = (target, event, fn) => {
+      target.addEventListener(event, fn);
+      this.cleanups.push(() => target.removeEventListener(event, fn));
+    };
+    listen(document, "visibilitychange", () => this.setPaused(document.hidden));
+    listen(window, "blur", () => this.setPaused(true));
+    listen(window, "focus", () => {
+      if (!document.hidden && !this.contextLost) this.setPaused(false);
+    });
+    listen(canvas, "webglcontextlost", (e) => {
+      e.preventDefault();
+      this.contextLost = true;
+      this.setPaused(true);
+      options.onContextLost?.();
+    });
+    try {
+      if (options.container) {
+        this.observer = new ResizeObserver(() => this.resize());
+        this.observer.observe(options.container);
+      } else listen(window, "resize", () => this.resize());
+      this.resize();
+    } catch (error) {
+      this.dispose();
+      throw error;
+    }
+  }
+  setPaused(value) {
+    this.options.clearInput?.();
+    this.paused = value || this.contextLost;
+    this.previous = 0;
+    this.options.onPause?.(this.paused);
+  }
+  resize() {
+    if (this.disposed) return;
+    const l = globalThis.Laya, c = this.options.container;
+    if (!c && !this.options.dprCap) return;
+    const rect = c?.getBoundingClientRect(), width = rect?.width || innerWidth, height = rect?.height || innerHeight, dpr = Math.min(devicePixelRatio || 1, this.options.dprCap ?? 2);
+    if (width < 2 || height < 2) return;
+    l.Config.useRetinalCanvas = false;
+    l.stage.screenAdaptationEnabled = false;
+    l.stage.scaleMode = l.Stage.SCALE_SHOWALL;
+    l.stage.alignH = l.Stage.ALIGN_LEFT;
+    l.stage.alignV = l.Stage.ALIGN_TOP;
+    l.stage.size(Math.round(width * dpr), Math.round(height * dpr));
+    l.stage.setScreenSize(
+      width * l.Browser.pixelRatio,
+      height * l.Browser.pixelRatio
+    );
+    this.options.onResize?.({ width, height, dpr });
+  }
+  start(update) {
+    if (this.disposed) throw Error("Disposed runtime");
+    this.task = update;
+    if (this.frame) return;
+    const tick = (now) => {
+      this.frame = 0;
+      if (this.disposed) return;
+      if (!this.paused) {
+        const elapsed = this.previous ? now - this.previous : 0;
+        if (!this.previous || elapsed >= 1e3 / (this.options.targetFPS || 60) - 2) {
+          this.previous = now;
+          this.task?.(Math.min(0.1, elapsed / 1e3));
+        }
+      }
+      this.frame = requestAnimationFrame(tick);
+    };
+    this.frame = requestAnimationFrame(tick);
+  }
+  dispose() {
+    if (this.disposed) return;
+    this.disposed = true;
+    cancelAnimationFrame(this.frame);
+    this.frame = 0;
+    this.task = null;
+    this.observer?.disconnect();
+    for (const f of this.cleanups) f();
+    this.cleanups = [];
+    this.options.clearInput?.();
+  }
+};
+var ZhudaRuntimeHost = class {
+  constructor(container, url, options = {}) {
+    this.frame = null;
+    this.generation = 0;
+    this.restarts = 0;
+    this.disposed = false;
+    this.state = null;
+    this.container = container;
+    this.url = url;
+    this.options = options;
+    const receive = (e) => {
+      if (e.source !== this.frame?.contentWindow || !e.data || typeof e.data !== "object")
+        return;
+      const message = e.data;
+      if (message.type === "zhuda:ready") {
+        this.send("zhuda:restore", this.state);
+        options.onReady?.(this.generation);
+      } else if (message.type === "zhuda:snapshot") this.state = message.state;
+      else if (message.type === "zhuda:context-lost") {
+        this.state = message.state;
+        this.restarts++;
+        this.restart(this.state);
+      }
+      options.onMessage?.(message);
+    };
+    window.addEventListener("message", receive);
+    this.cleanup = () => window.removeEventListener("message", receive);
+    this.restart();
+  }
+  send(type, state) {
+    this.frame?.contentWindow?.postMessage({ type, state }, "*");
+  }
+  restart(state = this.state) {
+    if (this.disposed) throw Error("Disposed host");
+    this.state = state;
+    this.generation++;
+    this.frame?.remove();
+    const f = document.createElement("iframe");
+    f.title = "3D runtime";
+    f.style.cssText = "display:block;width:100%;height:100%;border:0";
+    if (this.options.sandbox) f.setAttribute("sandbox", this.options.sandbox);
+    f.src = this.url;
+    this.container.appendChild(f);
+    this.frame = f;
+  }
+  dispose() {
+    if (this.disposed) return;
+    this.disposed = true;
+    this.cleanup();
+    this.frame?.remove();
+    this.frame = null;
+  }
+};
+var ZhudaPointerInput = class {
+  constructor(element, chooseRole, changed) {
+    this.pointers = /* @__PURE__ */ new Map();
+    this.cleanup = [];
+    this.element = element;
+    this.chooseRole = chooseRole;
+    this.changed = changed;
+    const on = (target, name, fn) => {
+      target.addEventListener(name, fn);
+      this.cleanup.push(() => target.removeEventListener(name, fn));
+    };
+    on(element, "pointerdown", ((e) => {
+      const role = chooseRole(e);
+      if (!role || [...this.pointers.values()].some((p) => p.role === role))
+        return;
+      this.pointers.set(e.pointerId, {
+        pointerId: e.pointerId,
+        role,
+        x: e.clientX,
+        y: e.clientY,
+        dx: 0,
+        dy: 0
+      });
+      element.setPointerCapture(e.pointerId);
+      e.preventDefault();
+      changed(this.pointers);
+    }));
+    on(element, "pointermove", ((e) => {
+      const p = this.pointers.get(e.pointerId);
+      if (!p) return;
+      p.dx = e.clientX - p.x;
+      p.dy = e.clientY - p.y;
+      p.x = e.clientX;
+      p.y = e.clientY;
+      changed(this.pointers);
+    }));
+    const up = ((e) => {
+      if (this.pointers.delete(e.pointerId)) changed(this.pointers);
+    });
+    for (const name of ["pointerup", "pointercancel", "lostpointercapture"])
+      on(element, name, up);
+    on(window, "blur", () => this.clear());
+    on(document, "visibilitychange", () => {
+      if (document.hidden) this.clear();
+    });
+  }
+  clear() {
+    for (const id of this.pointers.keys())
+      if (this.element.hasPointerCapture(id))
+        this.element.releasePointerCapture(id);
+    this.pointers.clear();
+    this.changed(this.pointers);
+  }
+  dispose() {
+    this.clear();
+    for (const f of this.cleanup) f();
+    this.cleanup = [];
+  }
+};
+
+// packages/core/runtime3d/Surfaces.ts
+function packMetallicRoughness(rgba) {
+  if (rgba.length % 4) throw Error("RGBA data required");
+  const out = new Uint8Array(rgba.length);
+  for (let i = 0; i < out.length; i += 4) {
+    out[i] = rgba[i + 2];
+    out[i + 3] = 255 - rgba[i + 1];
+  }
+  return out;
+}
+function createSurfaceTexture(width, height, pixels, role) {
+  if (!Number.isInteger(width) || !Number.isInteger(height) || width < 1 || height < 1 || pixels.length !== width * height * 4)
+    throw Error("Invalid texture payload");
+  const l = globalThis.Laya, t = new l.Texture2D(
+    width,
+    height,
+    l.TextureFormat.R8G8B8A8,
+    false,
+    true,
+    role === "color" || role === "emission"
+  );
+  t.setPixelsData(pixels, false, false);
+  return t;
+}
+function createSurfaceMaterial(s) {
+  const l = globalThis.Laya;
+  if (!["pbr", "unlit"].includes(s.type)) throw Error("Unknown material type");
+  if ([s.metallic ?? 0, s.roughness ?? 0.5, s.alphaCutoff ?? 0.5].some(
+    (v) => !Number.isFinite(v) || v < 0 || v > 1
+  ))
+    throw Error("Invalid material factors");
+  const m = s.type === "pbr" ? new l.PBRStandardMaterial() : new l.UnlitMaterial();
+  m.albedoColor = new l.Color(...s.color || [1, 1, 1, 1]);
+  if (s.type === "pbr") {
+    m.metallic = s.metallic ?? 0;
+    m.smoothness = 1 - (s.roughness ?? 0.5);
+    if (s.emission) {
+      m.enableEmission = true;
+      m.emissionColor = new l.Color(...s.emission, 1);
+    }
+  }
+  for (const [key, value] of Object.entries(s.textures || {}))
+    m[{
+      albedo: "albedoTexture",
+      normal: "normalTexture",
+      metallicGloss: "metallicGlossTexture",
+      emission: "emissionTexture"
+    }[key]] = value?.bitmap || value;
+  const blend = s.blend || "opaque", Class = s.type === "pbr" ? l.PBRStandardMaterial : l.UnlitMaterial;
+  if (blend === "alpha") m.renderMode = Class.RENDERMODE_TRANSPARENT;
+  else if (blend === "cutout") {
+    m.alphaTest = true;
+    m.alphaTestValue = s.alphaCutoff ?? 0.5;
+  } else if (blend === "additive") {
+    m.renderQueue = 3e3;
+    m.blend = l.RenderState.BLEND_ENABLE_ALL;
+    m.blendSrc = l.RenderState.BLENDPARAM_SRC_ALPHA;
+    m.blendDst = l.RenderState.BLENDPARAM_ONE;
+  }
+  if (s.doubleSided) m.cull = l.RenderState.CULL_NONE;
+  m.depthWrite = s.depthWrite ?? (blend === "opaque" || blend === "cutout");
+  return m;
+}
+function disposeSurfaceMaterial(m) {
+  for (const k of [
+    "albedoTexture",
+    "normalTexture",
+    "metallicGlossTexture",
+    "emissionTexture"
+  ])
+    if (k in m) m[k] = null;
+  m.destroy();
+}
+var registeredShaders = /* @__PURE__ */ new WeakMap();
+function createCustomSurfaceMaterial(s) {
+  const l = globalThis.Laya;
+  if (!s.name || !s.vertex || !s.fragment)
+    throw Error("Incomplete custom shader");
+  let registry = registeredShaders.get(l.Shader3D);
+  if (!registry) registeredShaders.set(l.Shader3D, registry = /* @__PURE__ */ new Map());
+  const signature = JSON.stringify(s);
+  if (l.Shader3D.find(s.name)) {
+    if (registry.get(s.name) !== signature)
+      throw Error("Shader name has a different contract");
+  } else {
+    const shader = l.Shader3D.add(s.name, !!s.instancing, false);
+    shader.shaderType = s.dimension === 2 ? l.ShaderFeatureType.D2_TextureSV : l.ShaderFeatureType.D3;
+    const sub = new l.SubShader(
+      s.attributes || (s.dimension === 2 ? l.Shader2D.graphicsAttribute : l.SubShader.DefaultAttributeMap),
+      s.uniforms
+    );
+    shader.addSubShader(sub);
+    const source = (code) => code.replace(
+      /\buniform\s+((?:(?:lowp|mediump|highp)\s+)?\w+)\s+([^;]+);/g,
+      (original, type, names) => {
+        const retained = names.split(",").map((n) => n.trim()).filter(
+          (n) => !Object.prototype.hasOwnProperty.call(s.uniforms, n)
+        );
+        return retained.length ? `uniform ${type} ${retained.join(",")};` : "";
+      }
+    );
+    sub.addShaderPass(source(s.vertex), source(s.fragment));
+    registry.set(s.name, signature);
+  }
+  const material = new l.Material();
+  material.setShaderName(s.name);
+  return material;
+}
+var ZhudaDynamicMesh = class {
+  constructor(data, parent) {
+    this.disposed = false;
+    this.data = data;
+    const l = globalThis.Laya, n = data.positions.length / 3;
+    if (!Number.isInteger(n) || n < 3 || n > 65535)
+      throw Error("Mesh requires 3..65535 vertices per chunk");
+    if (data.normals && data.normals.length !== n * 3 || data.uvs && data.uvs.length !== n * 2 || !data.indices.length || data.indices.length % 3 || [...data.indices].some((i) => i >= n))
+      throw Error("Invalid mesh attributes or indices");
+    this.vertices = new Float32Array(n * 8);
+    for (let i = 0; i < n; i++) {
+      this.vertices.set(data.positions.subarray(i * 3, i * 3 + 3), i * 8);
+      this.vertices.set(
+        data.normals?.subarray(i * 3, i * 3 + 3) || [0, 1, 0],
+        i * 8 + 3
+      );
+      this.vertices.set(
+        data.uvs?.subarray(i * 2, i * 2 + 2) || [0, 0],
+        i * 8 + 6
+      );
+    }
+    if (!this.vertices.every(Number.isFinite))
+      throw Error("Non-finite mesh data");
+    this.mesh = l.PrimitiveMesh._createMesh(
+      l.VertexMesh.getVertexDeclaration("POSITION,NORMAL,UV"),
+      this.vertices,
+      new Uint16Array(data.indices)
+    );
+    this.node = new l.MeshSprite3D(this.mesh);
+    parent?.addChild(this.node);
+    this.refreshBounds();
+  }
+  updateRange(first, count) {
+    if (this.disposed) throw Error("Disposed mesh");
+    if (!Number.isInteger(first) || !Number.isInteger(count) || first < 0 || count < 1 || (first + count) * 8 > this.vertices.length)
+      throw Error("Invalid vertex range");
+    if (!this.vertices.subarray(first * 8, (first + count) * 8).every(Number.isFinite))
+      throw Error("Non-finite mesh update");
+    const bytes = first * 8 * 4, length = count * 8 * 4;
+    this.mesh._vertexBuffer.setData(this.vertices.buffer, bytes, bytes, length);
+    this.refreshBounds();
+  }
+  setPosition(i, x, y, z) {
+    if (!Number.isInteger(i) || i < 0 || i * 8 >= this.vertices.length || ![x, y, z].every(Number.isFinite))
+      throw Error("Invalid vertex");
+    this.vertices.set([x, y, z], i * 8);
+  }
+  refreshBounds() {
+    const l = globalThis.Laya, min = new l.Vector3(Infinity, Infinity, Infinity), max = new l.Vector3(-Infinity, -Infinity, -Infinity);
+    for (let i = 0; i < this.vertices.length; i += 8) {
+      min.x = Math.min(min.x, this.vertices[i]);
+      min.y = Math.min(min.y, this.vertices[i + 1]);
+      min.z = Math.min(min.z, this.vertices[i + 2]);
+      max.x = Math.max(max.x, this.vertices[i]);
+      max.y = Math.max(max.y, this.vertices[i + 1]);
+      max.z = Math.max(max.z, this.vertices[i + 2]);
+    }
+    this.mesh.bounds = new l.Bounds(min, max);
+    this.node.meshRenderer.boundsChange = true;
+  }
+  dispose() {
+    if (this.disposed) return;
+    this.disposed = true;
+    this.node.destroy(true);
+    this.mesh.destroy();
+  }
+};
+var ZhudaInstanceGroup = class {
+  constructor(parent, mesh, material) {
+    this.nodes = /* @__PURE__ */ new Map();
+    this.parent = parent;
+    this.mesh = mesh;
+    this.material = material;
+    material.enableInstancing = true;
+  }
+  set(id, matrix) {
+    if (!id || matrix.length !== 16 || !Array.from(matrix).every(Number.isFinite))
+      throw Error("Invalid instance");
+    const l = globalThis.Laya;
+    let node = this.nodes.get(id);
+    if (!node) {
+      node = new l.MeshSprite3D(this.mesh, id);
+      node.meshRenderer.sharedMaterial = this.material;
+      this.parent.addChild(node);
+      this.nodes.set(id, node);
+    }
+    node.transform.worldMatrix = new l.Matrix4x4(...Array.from(matrix));
+    return node;
+  }
+  remove(id) {
+    const node = this.nodes.get(id);
+    if (!node) return false;
+    node.destroy(true);
+    this.nodes.delete(id);
+    return true;
+  }
+  get(id) {
+    return this.nodes.get(id);
+  }
+  get size() {
+    return this.nodes.size;
+  }
+  dispose() {
+    for (const n of this.nodes.values()) n.destroy(true);
+    this.nodes.clear();
+  }
+};
+function configureSurfacePasses(camera, requirements, maxAdditionalPasses) {
+  if (!Number.isInteger(maxAdditionalPasses) || maxAdditionalPasses < 0)
+    throw Error("Invalid additional pass budget");
+  const l = globalThis.Laya;
+  const depth = requirements.some((r) => r.depth), opaqueColor = requirements.some((r) => r.opaqueColor);
+  const requestedPasses = Number(depth) + Number(opaqueColor);
+  const withinBudget = requestedPasses <= maxAdditionalPasses;
+  camera.depthTextureMode = withinBudget && depth ? l.DepthTextureMode.Depth : l.DepthTextureMode.None;
+  camera.opaquePass = withinBudget && opaqueColor;
+  const supported = !depth || !!(camera.depthTextureMode & l.DepthTextureMode.Depth);
+  if (!supported) {
+    camera.depthTextureMode = l.DepthTextureMode.None;
+    camera.opaquePass = false;
+  }
+  return {
+    requested: { depth, opaqueColor },
+    requestedPasses,
+    enabledPasses: withinBudget && supported ? requestedPasses : 0,
+    ready: withinBudget && supported,
+    reason: !withinBudget ? "budget" : !supported ? "depth-unsupported" : null
+  };
+}
+
+// packages/core/runtime3d/Laya342Adapters.ts
+var patched = /* @__PURE__ */ new WeakSet();
+function installLaya342LifecycleFix(runtime = globalThis.Laya) {
+  const prototype = runtime?.WebRender3DProcess?.prototype;
+  if (!prototype || patched.has(prototype)) return;
+  const destroy = prototype.destroy;
+  if (typeof destroy !== "function") return;
+  const retired = /* @__PURE__ */ new WeakSet();
+  prototype.destroy = function(...args) {
+    if (retired.has(this)) return;
+    retired.add(this);
+    const shadow = this._defaultShadowMap;
+    try {
+      return destroy.apply(this, args);
+    } finally {
+      if (shadow && !shadow.destroyed) shadow.destroy();
+      this._defaultShadowMap = null;
+    }
+  };
+  patched.add(prototype);
+}
+
 // packages/core/DeclarativeSDK.ts
 function zhudaComponent(meta) {
   return function(ctor) {
@@ -596,59 +1092,105 @@ function zhudaComponent(meta) {
 }
 var ZhudaEngine = class {
   static async boot(options = {}) {
-    const width = options.width ?? 1280;
-    const height = options.height ?? 720;
-    const bgColor = options.bgColor ?? "#0d1117";
-    const features = options.features ?? "all";
-    const topology = TopologyResolver.resolveByFeatures(features);
-    EngineGuard.installPrototypeDetox();
-    const hasSpine42 = features === "all" || Array.isArray(features) && features.includes("spine42");
-    if (hasSpine42) {
-      const spineConst = Laya.SpineConst;
-      if (spineConst) {
-        spineConst.VERSION = "4.2";
-        spineConst.VersionFirst = 4;
-        spineConst.VersionSecond = 2;
-        spineConst.NEED_SLOT = true;
+    if (this.activeContext || this.booting)
+      throw new Error(
+        "An engine session is already active; dispose it or use a separate runtime realm."
+      );
+    const container = typeof options.container === "string" ? document.querySelector(options.container) : options.container;
+    if (options.container && !container)
+      throw new Error("Canvas container not found");
+    if (options.dprCap !== void 0 && (!Number.isFinite(options.dprCap) || options.dprCap < 0.5 || options.dprCap > 4))
+      throw new Error("DPR cap must be .5..4");
+    this.booting = true;
+    let allocatedScene;
+    try {
+      const width = options.width ?? 1280;
+      const height = options.height ?? 720;
+      const bgColor = options.bgColor ?? "#0d1117";
+      const features = options.features ?? "all";
+      const topology = TopologyResolver.resolveByFeatures(features);
+      if (typeof window !== "undefined") installSandboxStorageFallback();
+      EngineGuard.installPrototypeDetox();
+      const hasSpine42 = features === "all" || Array.isArray(features) && features.includes("spine42");
+      if (hasSpine42) {
+        const spineConst = Laya.SpineConst;
+        if (spineConst) {
+          spineConst.VERSION = "4.2";
+          spineConst.VersionFirst = 4;
+          spineConst.VersionSecond = 2;
+          spineConst.NEED_SLOT = true;
+        }
       }
+      const layaConfig = Laya.Config;
+      if (layaConfig) {
+        if (options.preserveDrawingBuffer !== void 0)
+          layaConfig.preserveDrawingBuffer = options.preserveDrawingBuffer;
+        if (options.antialias !== void 0)
+          layaConfig.isAntialias = options.antialias;
+      }
+      options.beforeInit?.();
+      await Laya.init(width, height);
+      installLaya342LifecycleFix();
+      EngineGuard.installPrototypeDetox();
+      Laya.stage.scaleMode = options.scaleMode ?? Laya.Stage.SCALE_SHOWALL;
+      Laya.stage.screenMode = options.screenMode ?? Laya.Stage.SCREEN_NONE;
+      Laya.stage.alignV = Laya.Stage.ALIGN_MIDDLE;
+      Laya.stage.alignH = Laya.Stage.ALIGN_CENTER;
+      Laya.stage.bgColor = bgColor;
+      const rootScene = allocatedScene = new Laya.Scene();
+      rootScene.name = "ZhudaRootScene";
+      Laya.stage.addChild(rootScene);
+      const health = EngineGuard.inspectEngineHealth();
+      const win = globalThis;
+      win.__ZHUDA_ENGINE_BOOTED__ = true;
+      win.__ZHUDA_ENGINE_HEALTH__ = health;
+      win.__ZHUDA_TOPOLOGY__ = topology;
+      if (typeof document !== "undefined" && document.body) {
+        document.body.dataset.zhudaBooted = "true";
+        document.body.dataset.zhudaModules = String(
+          topology.orderedFiles.length
+        );
+        document.body.dataset.zhudaReflected = health.registeredComponents.join(",");
+        document.body.dataset.zhudaSpine42 = String(
+          health.spine42.hasPhysicsConstraint
+        );
+        document.body.dataset.zhudaDetox = String(health.buttonSetStateGuarded);
+      }
+      const canvas = Laya.Browser.mainCanvas.source;
+      if (container) container.appendChild(canvas);
+      if (options.targetFPS)
+        Laya.stage.frameRate = options.targetFPS === 30 ? "slow" : "fast";
+      const runtime = new ZhudaRuntimeSession(canvas, {
+        ...options,
+        container
+      });
+      let disposed = false;
+      this.activeContext = {
+        stage: Laya.stage,
+        rootScene,
+        topology,
+        health,
+        canvas,
+        runtime,
+        resize: () => runtime.resize(),
+        dispose: () => {
+          if (disposed) return;
+          disposed = true;
+          runtime.dispose();
+          rootScene.destroy(true);
+          this.activeContext = null;
+        }
+      };
+      return this.activeContext;
+    } catch (error) {
+      allocatedScene?.destroy(true);
+      globalThis.__ZHUDA_ENGINE_BOOTED__ = false;
+      if (typeof document !== "undefined" && document.body)
+        document.body.dataset.zhudaBooted = "false";
+      throw error;
+    } finally {
+      this.booting = false;
     }
-    if (options.beforeInit) {
-      options.beforeInit();
-    }
-    const layaConfig = Laya.Config;
-    if (layaConfig) {
-      layaConfig.preserveDrawingBuffer = true;
-      layaConfig.isAntialias = true;
-    }
-    await Laya.init(width, height);
-    EngineGuard.installPrototypeDetox();
-    Laya.stage.scaleMode = options.scaleMode ?? Laya.Stage.SCALE_SHOWALL;
-    Laya.stage.screenMode = options.screenMode ?? Laya.Stage.SCREEN_NONE;
-    Laya.stage.alignV = Laya.Stage.ALIGN_MIDDLE;
-    Laya.stage.alignH = Laya.Stage.ALIGN_CENTER;
-    Laya.stage.bgColor = bgColor;
-    const rootScene = new Laya.Scene();
-    rootScene.name = "ZhudaRootScene";
-    Laya.stage.addChild(rootScene);
-    const health = EngineGuard.inspectEngineHealth();
-    const win = globalThis;
-    win.__ZHUDA_ENGINE_BOOTED__ = true;
-    win.__ZHUDA_ENGINE_HEALTH__ = health;
-    win.__ZHUDA_TOPOLOGY__ = topology;
-    if (typeof document !== "undefined" && document.body) {
-      document.body.dataset.zhudaBooted = "true";
-      document.body.dataset.zhudaModules = String(topology.orderedFiles.length);
-      document.body.dataset.zhudaReflected = health.registeredComponents.join(",");
-      document.body.dataset.zhudaSpine42 = String(health.spine42.hasPhysicsConstraint);
-      document.body.dataset.zhudaDetox = String(health.buttonSetStateGuarded);
-    }
-    this.activeContext = {
-      stage: Laya.stage,
-      rootScene,
-      topology,
-      health
-    };
-    return this.activeContext;
   }
   static getContext() {
     return this.activeContext;
@@ -661,12 +1203,16 @@ var ZhudaEngine = class {
     if (typeof renderLoop === "function") {
       const baseNow = typeof performance !== "undefined" ? performance.now() : Date.now();
       for (let i = 1; i <= frameCount; i++) {
-        renderLoop.call(Laya.Render, baseNow + i * 16.67);
+        renderLoop.call(
+          Laya.Render,
+          baseNow + i * 16.67
+        );
       }
     }
   }
 };
 ZhudaEngine.activeContext = null;
+ZhudaEngine.booting = false;
 var Zhuda3D = class {
   static createScene3D(parent, options = {}) {
     const scene3D = new Laya.Scene3D();
@@ -696,7 +1242,9 @@ var Zhuda3D = class {
   static createDirectionalLight(scene3D, options = {}) {
     const node = new Laya.Sprite3D("ZhudaDirectionalLight");
     scene3D.addChild(node);
-    const light = node.addComponent(Laya.DirectionLightCom);
+    const light = node.addComponent(
+      Laya.DirectionLightCom
+    );
     const [r, g, b, a] = options.color ?? [1, 0.98, 0.92, 1];
     light.color = new Laya.Color(r, g, b, a);
     light.intensity = options.intensity ?? 1.3;
@@ -705,6 +1253,13 @@ var Zhuda3D = class {
     return { node, light };
   }
   static createMaterial(options) {
+    if (options.type === "pbr" || options.type === "unlit")
+      return createSurfaceMaterial({
+        type: options.type,
+        color: options.albedoColor,
+        metallic: options.metallic,
+        roughness: 1 - (options.smoothness ?? 0.5)
+      });
     const mat = new Laya.BlinnPhongMaterial();
     const [r, g, b, a] = options.albedoColor;
     mat.albedoColor = new Laya.Color(r, g, b, a);
@@ -714,18 +1269,34 @@ var Zhuda3D = class {
   static createPrimitiveMesh(type, dims = {}) {
     switch (type) {
       case "box":
-        return Laya.PrimitiveMesh.createBox(dims.width ?? 1, dims.height ?? 1, dims.depth ?? 1);
+        return Laya.PrimitiveMesh.createBox(
+          dims.width ?? 1,
+          dims.height ?? 1,
+          dims.depth ?? 1
+        );
       case "sphere":
         return Laya.PrimitiveMesh.createSphere(dims.radius ?? 0.5);
       case "cylinder":
-        return Laya.PrimitiveMesh.createCylinder(dims.radius ?? 0.2, dims.height ?? 1);
+        return Laya.PrimitiveMesh.createCylinder(
+          dims.radius ?? 0.2,
+          dims.height ?? 1
+        );
       case "capsule":
-        return Laya.PrimitiveMesh.createCapsule(dims.radius ?? 0.25, dims.height ?? 1);
+        return Laya.PrimitiveMesh.createCapsule(
+          dims.radius ?? 0.25,
+          dims.height ?? 1
+        );
       case "cone":
-        return Laya.PrimitiveMesh.createCone(dims.radius ?? 0.5, dims.height ?? 1);
+        return Laya.PrimitiveMesh.createCone(
+          dims.radius ?? 0.5,
+          dims.height ?? 1
+        );
       case "plane":
       default:
-        return Laya.PrimitiveMesh.createPlane(dims.width ?? 10, dims.depth ?? 10);
+        return Laya.PrimitiveMesh.createPlane(
+          dims.width ?? 10,
+          dims.depth ?? 10
+        );
     }
   }
 };
@@ -765,7 +1336,19 @@ var ZhudaUI = class {
     const borderWidth = style.borderWidth ?? 1.2;
     const drawBg = (fill, stroke) => {
       const g = new Laya.Graphics();
-      g.drawRoundRect(0, 0, style.width, style.height, radius, radius, radius, radius, fill, stroke, borderWidth);
+      g.drawRoundRect(
+        0,
+        0,
+        style.width,
+        style.height,
+        radius,
+        radius,
+        radius,
+        radius,
+        fill,
+        stroke,
+        borderWidth
+      );
       root.graphics = g;
     };
     drawBg(bgColor, borderColor);
@@ -786,14 +1369,20 @@ var ZhudaUI = class {
       label.color = style.hoverTextColor ?? "#ffffff";
     });
     root.on(Laya.Event.MOUSE_OUT, root, () => {
-      drawBg(isActive ? activeBgColor : bgColor, isActive ? "#00e5ff" : borderColor);
+      drawBg(
+        isActive ? activeBgColor : bgColor,
+        isActive ? "#00e5ff" : borderColor
+      );
       label.color = isActive ? "#64ffda" : style.textColor ?? "#d6e6fa";
     });
     root.on(Laya.Event.CLICK, root, onClick);
     parent.addChild(root);
     const setStyleState = (active) => {
       isActive = active;
-      drawBg(isActive ? activeBgColor : bgColor, isActive ? "#00e5ff" : borderColor);
+      drawBg(
+        isActive ? activeBgColor : bgColor,
+        isActive ? "#00e5ff" : borderColor
+      );
       label.color = isActive ? "#64ffda" : style.textColor ?? "#d6e6fa";
     };
     return { root, label, setStyleState };
@@ -860,14 +1449,74 @@ var ZhudaUI = class {
       const cornerColor = opts.cornerAccentColor ?? "#2dd4bf";
       const innerColor = opts.innerSurfaceColor ?? "#0c1524";
       const g = new Laya.Graphics();
-      g.drawRoundRect(0, 0, w, h, radius, radius, radius, radius, fill, border, 2);
+      g.drawRoundRect(
+        0,
+        0,
+        w,
+        h,
+        radius,
+        radius,
+        radius,
+        radius,
+        fill,
+        border,
+        2
+      );
       const cw = Math.max(4, w - left - right);
       const ch = Math.max(4, h - top - bottom);
       g.drawRect(left, top, cw, ch, innerColor, "#233858", 1);
-      g.drawRoundRect(0, 0, left, top, radius, 2, 2, 2, cornerColor, border, 1.5);
-      g.drawRoundRect(w - right, 0, right, top, 2, radius, 2, 2, cornerColor, border, 1.5);
-      g.drawRoundRect(0, h - bottom, left, bottom, 2, 2, 2, radius, cornerColor, border, 1.5);
-      g.drawRoundRect(w - right, h - bottom, right, bottom, 2, 2, radius, 2, cornerColor, border, 1.5);
+      g.drawRoundRect(
+        0,
+        0,
+        left,
+        top,
+        radius,
+        2,
+        2,
+        2,
+        cornerColor,
+        border,
+        1.5
+      );
+      g.drawRoundRect(
+        w - right,
+        0,
+        right,
+        top,
+        2,
+        radius,
+        2,
+        2,
+        cornerColor,
+        border,
+        1.5
+      );
+      g.drawRoundRect(
+        0,
+        h - bottom,
+        left,
+        bottom,
+        2,
+        2,
+        2,
+        radius,
+        cornerColor,
+        border,
+        1.5
+      );
+      g.drawRoundRect(
+        w - right,
+        h - bottom,
+        right,
+        bottom,
+        2,
+        2,
+        radius,
+        2,
+        cornerColor,
+        border,
+        1.5
+      );
       root.graphics = g;
       if (titleNode) {
         titleNode.pos(left, 0);
@@ -5839,12 +6488,92 @@ var ZhudaLayaRibbonRenderer3D = class {
   }
 };
 
+// packages/core/runtime3d/Math3D.ts
+var identity4 = () => new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
+function multiply4(a, b) {
+  const o = new Float32Array(16);
+  for (let c = 0; c < 4; c++)
+    for (let r = 0; r < 4; r++)
+      for (let k = 0; k < 4; k++) o[c * 4 + r] += a[k * 4 + r] * b[c * 4 + k];
+  return o;
+}
+function compose4(p = { x: 0, y: 0, z: 0 }, q = { x: 0, y: 0, z: 0, w: 1 }, s = { x: 1, y: 1, z: 1 }) {
+  const n = Math.hypot(q.x, q.y, q.z, q.w);
+  if (!n || ![p.x, p.y, p.z, s.x, s.y, s.z, n].every(Number.isFinite))
+    throw Error("Invalid transform");
+  const x = q.x / n, y = q.y / n, z = q.z / n, w = q.w / n;
+  return new Float32Array([
+    (1 - 2 * (y * y + z * z)) * s.x,
+    2 * (x * y + z * w) * s.x,
+    2 * (x * z - y * w) * s.x,
+    0,
+    2 * (x * y - z * w) * s.y,
+    (1 - 2 * (x * x + z * z)) * s.y,
+    2 * (y * z + x * w) * s.y,
+    0,
+    2 * (x * z + y * w) * s.z,
+    2 * (y * z - x * w) * s.z,
+    (1 - 2 * (x * x + y * y)) * s.z,
+    0,
+    p.x,
+    p.y,
+    p.z,
+    1
+  ]);
+}
+function transformPoint(m, p) {
+  const w = m[3] * p.x + m[7] * p.y + m[11] * p.z + m[15];
+  if (Math.abs(w) < 1e-12) throw Error("Point projects to infinity");
+  return {
+    x: (m[0] * p.x + m[4] * p.y + m[8] * p.z + m[12]) / w,
+    y: (m[1] * p.x + m[5] * p.y + m[9] * p.z + m[13]) / w,
+    z: (m[2] * p.x + m[6] * p.y + m[10] * p.z + m[14]) / w
+  };
+}
+function inverse4(a) {
+  const rows = Array.from(
+    { length: 4 },
+    (_, r) => Array.from(
+      { length: 8 },
+      (_2, c) => c < 4 ? a[c * 4 + r] : Number(c - 4 === r)
+    )
+  );
+  for (let i = 0; i < 4; i++) {
+    let p = i;
+    for (let r = i + 1; r < 4; r++)
+      if (Math.abs(rows[r][i]) > Math.abs(rows[p][i])) p = r;
+    if (Math.abs(rows[p][i]) < 1e-12) throw Error("Singular transform");
+    [rows[i], rows[p]] = [rows[p], rows[i]];
+    const d = rows[i][i];
+    for (let c = 0; c < 8; c++) rows[i][c] /= d;
+    for (let r = 0; r < 4; r++)
+      if (r !== i) {
+        const k = rows[r][i];
+        for (let c = 0; c < 8; c++) rows[r][c] -= k * rows[i][c];
+      }
+  }
+  return Float32Array.from(
+    { length: 16 },
+    (_, i) => rows[i % 4][4 + Math.floor(i / 4)]
+  );
+}
+function normalized(v) {
+  const n = Math.hypot(v.x, v.y, v.z);
+  if (!Number.isFinite(n) || n < 1e-12)
+    throw Error("Zero/non-finite direction");
+  return { x: v.x / n, y: v.y / n, z: v.z / n };
+}
+
 // packages/core/effects/EffectDirector.ts
 function validateEffectTimeline(s) {
   const errors = [];
-  if (!s || s.version !== 1 || !Number.isFinite(s.duration) || s.duration < 1 / 120) return ["Timeline requires version 1 and duration >= 1/120."];
-  for (const key of ["tracks", "cues", "attachments"]) if (s[key] !== void 0 && !Array.isArray(s[key])) return [`${key} must be an array.`];
-  if (s.loop !== void 0 && typeof s.loop !== "boolean") errors.push("loop must be boolean.");
+  if (!s || s.version !== 1 || !Number.isFinite(s.duration) || s.duration < 1 / 120)
+    return ["Timeline requires version 1 and duration >= 1/120."];
+  for (const key of ["tracks", "cues", "attachments"])
+    if (s[key] !== void 0 && !Array.isArray(s[key]))
+      return [`${key} must be an array.`];
+  if (s.loop !== void 0 && typeof s.loop !== "boolean")
+    errors.push("loop must be boolean.");
   for (const t of s.tracks || []) {
     if (!t.target || !t.parameter || !Array.isArray(t.keys) || !t.keys.length) {
       errors.push("Track needs target, parameter and keys.");
@@ -5852,12 +6581,25 @@ function validateEffectTimeline(s) {
     }
     let previous = -1;
     for (const k of t.keys) {
-      if (!Number.isFinite(k.time) || k.time < 0 || k.time > s.duration || k.time <= previous || !Number.isFinite(k.value)) errors.push("Invalid or unordered track key.");
+      if (!Number.isFinite(k.time) || k.time < 0 || k.time > s.duration || k.time <= previous || !Number.isFinite(k.value))
+        errors.push("Invalid or unordered track key.");
       previous = k.time;
     }
   }
-  for (const c of s.cues || []) if (!c.target || !["start", "stop", "event"].includes(c.action) || !Number.isFinite(c.time) || c.time < 0 || c.time > s.duration || c.action === "event" && !c.name) errors.push("Invalid cue.");
-  for (const a of s.attachments || []) if (!a.target || !a.source || !a.anchor || a.offset && ![a.offset.x, a.offset.y, a.offset.z ?? 0, a.offset.rotation ?? 0].every(Number.isFinite)) errors.push("Invalid attachment.");
+  for (const c of s.cues || [])
+    if (!c.target || !["start", "stop", "event"].includes(c.action) || !Number.isFinite(c.time) || c.time < 0 || c.time > s.duration || c.action === "event" && !c.name)
+      errors.push("Invalid cue.");
+  for (const a of s.attachments || [])
+    if (!a.target || !a.source || !a.anchor || a.offset && (![
+      a.offset.x,
+      a.offset.y,
+      a.offset.z ?? 0,
+      a.offset.rotation ?? 0,
+      ...Object.values(a.offset.quaternion || { x: 0, y: 0, z: 0, w: 1 }),
+      ...Object.values(a.offset.scale || { x: 1, y: 1, z: 1 }),
+      ...Array.from(a.offset.worldMatrix || [])
+    ].every(Number.isFinite) || a.offset.worldMatrix && a.offset.worldMatrix.length !== 16 || a.offset.quaternion && Math.hypot(...Object.values(a.offset.quaternion)) < 1e-12))
+      errors.push("Invalid attachment.");
   return errors;
 }
 var ZhudaEffectDirector = class {
@@ -5870,9 +6612,15 @@ var ZhudaEffectDirector = class {
     if (errors.length) throw new Error(errors.join(" | "));
     this.spec = JSON.parse(JSON.stringify(spec));
     this.bindings = bindings;
-    for (const t of spec.tracks || []) if (!bindings[t.target]?.setParameter) throw new Error(`Missing parameter binding: ${t.target}`);
-    for (const c of spec.cues || []) if (!bindings[c.target]?.[c.action]) throw new Error(`Missing ${c.action} binding: ${c.target}`);
-    for (const a of spec.attachments || []) if (!bindings[a.source]?.resolveAnchor || !bindings[a.target]?.setTransform) throw new Error("Missing attachment binding.");
+    for (const t of spec.tracks || [])
+      if (!bindings[t.target]?.setParameter)
+        throw new Error(`Missing parameter binding: ${t.target}`);
+    for (const c of spec.cues || [])
+      if (!bindings[c.target]?.[c.action])
+        throw new Error(`Missing ${c.action} binding: ${c.target}`);
+    for (const a of spec.attachments || [])
+      if (!bindings[a.source]?.resolveAnchor || !bindings[a.target]?.setTransform)
+        throw new Error("Missing attachment binding.");
   }
   reset() {
     for (const b of Object.values(this.bindings)) b.reset();
@@ -5894,12 +6642,14 @@ var ZhudaEffectDirector = class {
     for (const b of Object.values(this.bindings)) b.stop?.();
   }
   update(dt) {
-    if (!Number.isFinite(dt) || dt < 0 || dt > 10) throw new Error("Timeline delta must be 0..10 seconds.");
+    if (!Number.isFinite(dt) || dt < 0 || dt > 10)
+      throw new Error("Timeline delta must be 0..10 seconds.");
     if (this.playing) this.advance(dt, true);
     else this.apply();
   }
   seek(time, dispatchEvents = false) {
-    if (!Number.isFinite(time) || time < 0 || time > this.spec.duration) throw new Error("Seek outside timeline.");
+    if (!Number.isFinite(time) || time < 0 || time > this.spec.duration)
+      throw new Error("Seek outside timeline.");
     this.reset();
     this.advance(time, dispatchEvents);
     this.playing = false;
@@ -5908,7 +6658,9 @@ var ZhudaEffectDirector = class {
     let remaining = dt, events = 0;
     do {
       const end = Math.min(this.spec.duration, this.time + remaining);
-      const cues = (this.spec.cues || []).filter((c) => (c.time > this.time || this.initial && c.time === 0) && c.time <= end).sort((a, b) => a.time - b.time);
+      const cues = (this.spec.cues || []).filter(
+        (c) => (c.time > this.time || this.initial && c.time === 0) && c.time <= end
+      ).sort((a, b) => a.time - b.time);
       for (const c of cues) {
         if (++events > 4096) throw new Error("Timeline cue budget exceeded.");
         if (c.action !== "event" || dispatchEvents) {
@@ -5939,15 +6691,47 @@ var ZhudaEffectDirector = class {
       let value = t.keys[0].value;
       for (let i = 0; i < t.keys.length; i++) {
         const a = t.keys[i], b = t.keys[i + 1];
-        if (this.time >= a.time) value = !b || this.time >= b.time ? a.value : a.value + (b.value - a.value) * (this.time - a.time) / (b.time - a.time);
+        if (this.time >= a.time)
+          value = !b || this.time >= b.time ? a.value : a.value + (b.value - a.value) * (this.time - a.time) / (b.time - a.time);
       }
       this.bindings[t.target].setParameter(t.parameter, value);
     }
     for (const a of this.spec.attachments || []) {
       const p = this.bindings[a.source].resolveAnchor(a.anchor);
-      if (!p) continue;
+      if (!p) {
+        this.bindings[a.target].stop?.();
+        continue;
+      }
+      if (p.worldMatrix || p.quaternion || p.scale || a.offset?.worldMatrix || a.offset?.quaternion || a.offset?.scale) {
+        const matrix = (v) => v.worldMatrix || compose4(
+          { x: v.x, y: v.y, z: v.z ?? 0 },
+          v.quaternion || {
+            x: 0,
+            y: 0,
+            z: Math.sin((v.rotation ?? 0) / 2),
+            w: Math.cos((v.rotation ?? 0) / 2)
+          },
+          v.scale
+        );
+        const worldMatrix = multiply4(
+          matrix(p),
+          matrix(a.offset || { x: 0, y: 0 })
+        );
+        this.bindings[a.target].setTransform({
+          x: worldMatrix[12],
+          y: worldMatrix[13],
+          z: worldMatrix[14],
+          worldMatrix
+        });
+        continue;
+      }
       const o = a.offset || { x: 0, y: 0 }, r = p.rotation || 0, c = Math.cos(r), s = Math.sin(r);
-      this.bindings[a.target].setTransform({ x: p.x + o.x * c - o.y * s, y: p.y + o.x * s + o.y * c, z: (p.z || 0) + (o.z || 0), rotation: r + (o.rotation || 0) });
+      this.bindings[a.target].setTransform({
+        x: p.x + o.x * c - o.y * s,
+        y: p.y + o.x * s + o.y * c,
+        z: (p.z || 0) + (o.z || 0),
+        rotation: r + (o.rotation || 0)
+      });
     }
   }
 };
@@ -6170,6 +6954,1954 @@ function compareVisualFrames(source, target, width, height, options = {}) {
   const iou = union ? intersection / union : 1, center = a && b ? Math.hypot(ax / a - bx / b, ay / a - by / b) : a === b ? 0 : Infinity;
   return { passed: a > 0 && b > 0 && iou >= minIoU && center <= maxCenter, intersectionOverUnion: iou, sourcePixels: a, targetPixels: b, centroidErrorPx: center };
 }
+
+// packages/core/runtime3d/Clocks.ts
+var ZhudaSimulationClock = class {
+  constructor(step = 1 / 60, maxCatchup = 8) {
+    this.tick = 0;
+    this.renderTime = 0;
+    this.paused = false;
+    this.accumulator = 0;
+    this.step = step;
+    this.maxCatchup = maxCatchup;
+    if (!(step > 0 && Number.isFinite(step) && Number.isInteger(maxCatchup) && maxCatchup > 0))
+      throw Error("Invalid fixed clock");
+  }
+  advance(dt, simulate) {
+    if (!Number.isFinite(dt) || dt < 0) throw Error("Invalid clock delta");
+    if (this.paused) return 0;
+    this.renderTime += dt;
+    this.accumulator = Math.min(
+      this.accumulator + dt,
+      this.step * this.maxCatchup
+    );
+    let n = 0;
+    while (this.accumulator + 1e-10 >= this.step) {
+      this.accumulator -= this.step;
+      simulate(this.step, ++this.tick);
+      n++;
+    }
+    return n;
+  }
+  get simulationTime() {
+    return this.tick * this.step;
+  }
+  get alpha() {
+    return Math.max(0, this.accumulator / this.step);
+  }
+  reset(tick = 0) {
+    if (!Number.isSafeInteger(tick) || tick < 0) throw Error("Invalid tick");
+    this.tick = tick;
+    this.renderTime = tick * this.step;
+    this.accumulator = 0;
+  }
+};
+var ZhudaSnapshotBuffer = class {
+  constructor(epoch, interpolate, maxExtrapolation = 0.15, capacity = 32) {
+    this.items = [];
+    this.sequence = -1;
+    this.epoch = epoch;
+    this.interpolate = interpolate;
+    this.maxExtrapolation = maxExtrapolation;
+    this.capacity = capacity;
+    if (!Number.isFinite(maxExtrapolation) || maxExtrapolation < 0 || capacity < 2 || !Number.isInteger(capacity))
+      throw Error("Invalid snapshot bounds");
+  }
+  push(s) {
+    if (s.epoch !== this.epoch || !Number.isSafeInteger(s.sequence) || s.sequence <= this.sequence || !Number.isFinite(s.time))
+      return false;
+    if (this.items.length && s.time <= this.items[this.items.length - 1].time)
+      return false;
+    this.sequence = s.sequence;
+    this.items.push(s);
+    if (this.items.length > this.capacity) this.items.shift();
+    return true;
+  }
+  sample(time) {
+    if (!Number.isFinite(time)) throw Error("Invalid sample time");
+    const a = this.items;
+    if (!a.length) return null;
+    if (a.length === 1 || time <= a[0].time)
+      return { value: a[0].value, time: a[0].time, mode: "held" };
+    for (let i = 1; i < a.length; i++)
+      if (time <= a[i].time) {
+        const x2 = a[i - 1], y2 = a[i];
+        return {
+          value: this.interpolate(
+            x2.value,
+            y2.value,
+            (time - x2.time) / (y2.time - x2.time)
+          ),
+          time,
+          mode: "interpolated"
+        };
+      }
+    const x = a[a.length - 2], y = a[a.length - 1], t = Math.min(time, y.time + this.maxExtrapolation);
+    return {
+      value: this.interpolate(
+        x.value,
+        y.value,
+        (t - x.time) / (y.time - x.time)
+      ),
+      time: t,
+      mode: "extrapolated"
+    };
+  }
+  reset(epoch) {
+    this.epoch = epoch;
+    this.items = [];
+    this.sequence = -1;
+  }
+  get size() {
+    return this.items.length;
+  }
+};
+var ZhudaEventGate = class {
+  constructor(epoch, ttl = 30, capacity = 2048) {
+    this.seen = /* @__PURE__ */ new Map();
+    this.epoch = epoch;
+    this.ttl = ttl;
+    this.capacity = capacity;
+    if (!(ttl > 0 && Number.isFinite(ttl) && Number.isInteger(capacity) && capacity > 0))
+      throw Error("Invalid event bounds");
+  }
+  dispatch(id, now, action, options = {}) {
+    if (!id || !Number.isFinite(now)) throw Error("Invalid event");
+    if (options.replay || options.epoch && options.epoch !== this.epoch)
+      return false;
+    for (const [k, t] of this.seen) if (now - t > this.ttl) this.seen.delete(k);
+    if (this.seen.has(id)) return false;
+    this.seen.set(id, now);
+    while (this.seen.size > this.capacity)
+      this.seen.delete(this.seen.keys().next().value);
+    action();
+    return true;
+  }
+  reset(epoch) {
+    this.epoch = epoch;
+    this.seen.clear();
+  }
+  get size() {
+    return this.seen.size;
+  }
+};
+
+// packages/core/runtime3d/Assets.ts
+var abortError = () => new DOMException("Asset request cancelled", "AbortError");
+var ZhudaAssetCache = class {
+  constructor(load, destroy, maxIdle = 0) {
+    this.entries = /* @__PURE__ */ new Map();
+    this.disposed = false;
+    this.serial = 0;
+    this.loads = 0;
+    this.load = load;
+    this.destroy = destroy;
+    this.maxIdle = maxIdle;
+    if (!Number.isInteger(maxIdle) || maxIdle < 0)
+      throw Error("Invalid warm asset bound");
+  }
+  async acquire(key, options = {}) {
+    if (this.disposed) throw Error("Disposed asset cache");
+    if (options.signal?.aborted) throw abortError();
+    if (!key || options.retries !== void 0 && (!Number.isInteger(options.retries) || options.retries < 0 || options.retries > 3))
+      throw Error("Invalid asset request");
+    let e = this.entries.get(key);
+    if (!e) {
+      const controller = new AbortController();
+      e = {
+        refs: 0,
+        ready: false,
+        abort: controller,
+        phase: "downloading",
+        used: ++this.serial,
+        promise: null
+      };
+      const created = e;
+      this.entries.set(key, e);
+      this.loads++;
+      e.promise = (async () => {
+        let last;
+        for (let i = 0; i <= Math.max(0, Math.min(3, options.retries ?? 0)); i++) {
+          try {
+            return await this.load(
+              key,
+              controller.signal,
+              (p) => created.phase = p
+            );
+          } catch (error) {
+            last = error;
+            if (controller.signal.aborted) throw error;
+          }
+        }
+        throw last;
+      })().then(
+        (value) => {
+          created.value = value;
+          created.ready = true;
+          created.phase = "ready";
+          if (controller.signal.aborted || this.disposed || this.entries.get(key) !== created) {
+            this.destroy(value);
+            throw abortError();
+          }
+          return value;
+        },
+        (error) => {
+          if (this.entries.get(key) === created) this.entries.delete(key);
+          throw error;
+        }
+      );
+    }
+    const target = e;
+    target.refs++;
+    target.used = ++this.serial;
+    let released = false;
+    const release = () => {
+      if (released) return;
+      released = true;
+      target.refs--;
+      target.used = ++this.serial;
+      this.evict();
+    };
+    let cancel;
+    try {
+      const value = await new Promise((resolve, reject) => {
+        cancel = () => {
+          release();
+          reject(abortError());
+        };
+        options.signal?.addEventListener("abort", cancel, { once: true });
+        target.promise.then(resolve, reject);
+      });
+      if (released) throw abortError();
+      return { value, release };
+    } catch (error) {
+      release();
+      throw error;
+    } finally {
+      if (cancel) options.signal?.removeEventListener("abort", cancel);
+    }
+  }
+  evict() {
+    for (const [k, e] of this.entries)
+      if (!e.refs && !e.ready) {
+        this.entries.delete(k);
+        e.abort.abort();
+      }
+    const idle = [...this.entries].filter(([, e]) => !e.refs && e.ready).sort((a, b) => a[1].used - b[1].used);
+    while (idle.length > this.maxIdle) {
+      const [k, e] = idle.shift();
+      this.entries.delete(k);
+      this.destroy(e.value);
+    }
+  }
+  report() {
+    return {
+      entries: this.entries.size,
+      references: [...this.entries.values()].reduce((n, e) => n + e.refs, 0),
+      pending: [...this.entries.values()].filter((e) => !e.ready).length,
+      loads: this.loads,
+      phases: [...this.entries].map(([key, e]) => ({
+        key,
+        phase: e.phase,
+        references: e.refs
+      })),
+      gpuReady: "requires-first-draw"
+    };
+  }
+  dispose() {
+    if (this.disposed) return;
+    if ([...this.entries.values()].some((e) => e.refs > 0))
+      throw Error("Release all asset leases before disposing cache");
+    this.disposed = true;
+    for (const e of this.entries.values()) {
+      e.abort.abort();
+      if (e.ready) this.destroy(e.value);
+    }
+    this.entries.clear();
+  }
+};
+var ZhudaRequestSlot = class {
+  constructor() {
+    this.generation = 0;
+    this.active = null;
+  }
+  async replace(load, commit, discard) {
+    this.cancel();
+    const n = this.generation, c = this.active = new AbortController();
+    try {
+      const value = await load(c.signal);
+      if (n !== this.generation || c.signal.aborted) {
+        discard(value);
+        return false;
+      }
+      try {
+        commit(value);
+      } catch (error) {
+        discard(value);
+        throw error;
+      }
+      return true;
+    } catch (e) {
+      if (c.signal.aborted) return false;
+      throw e;
+    }
+  }
+  cancel() {
+    this.generation++;
+    this.active?.abort();
+    this.active = null;
+  }
+};
+function visit(node, fn) {
+  fn(node);
+  for (let i = 0; i < (node.numChildren || 0); i++)
+    visit(node.getChildAt(i), fn);
+}
+var ZhudaModelLibrary = class {
+  constructor(maxIdle = 3) {
+    this.instances = /* @__PURE__ */ new Set();
+    this.cache = new ZhudaAssetCache(
+      async (url, signal, phase) => {
+        const l = globalThis.Laya;
+        if (!l?.glTFResource)
+          throw Error("Load Laya glTF module before models");
+        const response = await fetch(url, { signal });
+        if (!response.ok) throw Error(`Model HTTP ${response.status}`);
+        const bytes = await response.arrayBuffer();
+        if (signal.aborted) throw abortError();
+        phase("parsing");
+        const resource = new l.glTFResource();
+        try {
+          const view = new DataView(bytes);
+          if (bytes.byteLength >= 12 && view.getUint32(0, true) === 1179937895)
+            await resource._parseglb(bytes, url);
+          else
+            await resource._parse(
+              JSON.parse(new TextDecoder().decode(bytes)),
+              url
+            );
+          if (signal.aborted) {
+            resource.destroy();
+            throw abortError();
+          }
+          resource._addReference();
+          return resource;
+        } catch (e) {
+          if (!resource.destroyed) resource.destroy();
+          throw e;
+        }
+      },
+      (r) => {
+        r._removeReference();
+        r.destroy();
+      },
+      maxIdle
+    );
+  }
+  async instantiate(url, options = {}) {
+    const lease = await this.cache.acquire(url, options);
+    let node;
+    const materials = [];
+    try {
+      if (options.signal?.aborted) throw abortError();
+      node = lease.value.create();
+      if (options.independentMaterials)
+        visit(node, (n) => {
+          const l = globalThis.Laya;
+          const renderer = n.meshRenderer || n.skinnedMeshRenderer || n.getComponent?.(l.SkinnedMeshRenderer) || n.getComponent?.(l.MeshRenderer);
+          if (renderer) {
+            renderer.sharedMaterials = renderer.sharedMaterials.map(
+              (m) => {
+                const copy = m.clone();
+                materials.push(copy);
+                return copy;
+              }
+            );
+          }
+        });
+    } catch (e) {
+      node?.destroy(true);
+      lease.release();
+      throw e;
+    }
+    this.instances.add(node);
+    let disposed = false;
+    return {
+      node,
+      materials,
+      setTint: (color) => {
+        if (disposed) throw Error("Disposed model instance");
+        if (!options.independentMaterials)
+          throw Error("Tint requires independent materials");
+        if (color.length !== 4 || !color.every((n) => Number.isFinite(n) && n >= 0 && n <= 1))
+          throw Error("Invalid linear tint");
+        const l = globalThis.Laya;
+        for (const m of materials) {
+          if ("albedoColor" in m) m.albedoColor = new l.Color(...color);
+          else if (m.getVector4("u_BaseColorFactor"))
+            m.setVector4("u_BaseColorFactor", new l.Vector4(...color));
+          else throw Error("Model material does not expose a base color");
+        }
+      },
+      find: (name) => {
+        let found = null;
+        visit(node, (n) => {
+          if (n.name === name) found = n;
+        });
+        return found;
+      },
+      dispose: () => {
+        if (disposed) return;
+        disposed = true;
+        node.destroy(true);
+        for (const m of materials) if (!m.destroyed) m.destroy();
+        this.instances.delete(node);
+        lease.release();
+      }
+    };
+  }
+  report() {
+    return { ...this.cache.report(), instances: this.instances.size };
+  }
+  dispose() {
+    if (this.instances.size)
+      throw Error("Dispose model instances before library");
+    this.cache.dispose();
+  }
+};
+
+// packages/core/runtime3d/SceneQueries.ts
+var ZhudaSceneQueries = class {
+  constructor() {
+    this.providers = /* @__PURE__ */ new Map();
+  }
+  register(p) {
+    const key = p.entityId + "\0" + (p.instanceId ?? "");
+    if (!p.entityId || this.providers.has(key))
+      throw Error("Duplicate/missing stable query ID");
+    this.providers.set(key, p);
+    return () => this.providers.delete(key);
+  }
+  raycast(ray, maxDistance = Infinity, layerMask = 4294967295) {
+    if (!(maxDistance >= 0)) throw Error("Invalid ray distance");
+    const r = { origin: ray.origin, direction: normalized(ray.direction) };
+    let hit = null;
+    for (const p of this.providers.values()) {
+      if (!((p.layer ?? 1) & layerMask)) continue;
+      const h = p.raycast(r, hit?.distance ?? maxDistance);
+      if (h && Number.isFinite(h.distance) && h.distance >= 0 && h.distance <= maxDistance && (!hit || h.distance < hit.distance))
+        hit = {
+          ...h,
+          entityId: p.entityId,
+          instanceId: p.instanceId ?? h.instanceId
+        };
+    }
+    return hit;
+  }
+  sweepSphere(from, to, radius, layerMask = 4294967295) {
+    if (!Number.isFinite(radius) || radius < 0)
+      throw Error("Invalid sweep radius");
+    let hit = null;
+    for (const p of this.providers.values()) {
+      if (!((p.layer ?? 1) & layerMask) || !p.sweepSphere) continue;
+      const h = p.sweepSphere(from, to, radius);
+      if (h && h.distance >= 0 && Number.isFinite(h.distance) && (!hit || h.distance < hit.distance))
+        hit = {
+          ...h,
+          entityId: p.entityId,
+          instanceId: p.instanceId ?? h.instanceId
+        };
+    }
+    return hit;
+  }
+  clear() {
+    this.providers.clear();
+  }
+  get size() {
+    return this.providers.size;
+  }
+};
+function rayBox(ray, min, max, maxDistance = Infinity) {
+  let near = 0, far = maxDistance;
+  let normal = { x: 0, y: 0, z: 0 };
+  for (const axis of ["x", "y", "z"]) {
+    const d = ray.direction[axis], o = ray.origin[axis];
+    if (Math.abs(d) < 1e-10) {
+      if (o < min[axis] || o > max[axis]) return null;
+      continue;
+    }
+    let a = (min[axis] - o) / d, b = (max[axis] - o) / d, sign = -1;
+    if (a > b) {
+      [a, b] = [b, a];
+      sign = 1;
+    }
+    if (a > near) {
+      near = a;
+      normal = { x: 0, y: 0, z: 0 };
+      normal[axis] = sign;
+    }
+    far = Math.min(far, b);
+    if (near > far) return null;
+  }
+  if (far < 0) return null;
+  return {
+    distance: near,
+    normal,
+    position: {
+      x: ray.origin.x + ray.direction.x * near,
+      y: ray.origin.y + ray.direction.y * near,
+      z: ray.origin.z + ray.direction.z * near
+    }
+  };
+}
+var ZhudaCameraCoordinates = class {
+  constructor(camera, viewport) {
+    this.camera = camera;
+    this.viewport = viewport;
+  }
+  matrices() {
+    return multiply4(
+      this.camera.projectionMatrix.elements,
+      this.camera.viewMatrix.elements
+    );
+  }
+  rect() {
+    const v = this.viewport(), n = this.camera.normalizedViewport || { x: 0, y: 0, width: 1, height: 1 };
+    if (!(v.width > 0 && v.height > 0 && n.width > 0 && n.height > 0))
+      throw Error("Empty camera viewport");
+    return {
+      left: v.left + n.x * v.width,
+      top: v.top + n.y * v.height,
+      width: v.width * n.width,
+      height: v.height * n.height
+    };
+  }
+  screenToRay(x, y) {
+    if (![x, y].every(Number.isFinite)) throw Error("Invalid screen point");
+    const r = this.rect(), inv = inverse4(this.matrices()), nx = (x - r.left) / r.width * 2 - 1, ny = 1 - (y - r.top) / r.height * 2;
+    const origin = transformPoint(inv, { x: nx, y: ny, z: -1 }), far = transformPoint(inv, { x: nx, y: ny, z: 1 });
+    return {
+      origin,
+      direction: normalized({
+        x: far.x - origin.x,
+        y: far.y - origin.y,
+        z: far.z - origin.z
+      })
+    };
+  }
+  worldToScreen(p) {
+    const m = this.matrices(), v = transformPoint(m, p), r = this.rect(), w = m[3] * p.x + m[7] * p.y + m[11] * p.z + m[15];
+    return {
+      x: r.left + (v.x + 1) * 0.5 * r.width,
+      y: r.top + (1 - v.y) * 0.5 * r.height,
+      depth: (v.z + 1) * 0.5,
+      visible: w > 0 && Math.abs(v.x) <= 1 && Math.abs(v.y) <= 1 && Math.abs(v.z) <= 1
+    };
+  }
+};
+var ZhudaSurfaceQuery = class {
+  constructor(sample) {
+    this.sample = sample;
+  }
+  at(x, z, time) {
+    if (![x, z, time].every(Number.isFinite))
+      throw Error("Invalid surface query");
+    return this.sample(x, z, time);
+  }
+};
+
+// packages/core/runtime3d/SceneLifecycle.ts
+var ZhudaResourceScope = class {
+  constructor() {
+    this.releases = [];
+    this.disposed = false;
+  }
+  own(value, release) {
+    if (this.disposed) {
+      release(value);
+      throw Error("Disposed resource scope");
+    }
+    this.releases.push(() => release(value));
+    return value;
+  }
+  defer(release) {
+    this.own(release, (f) => f());
+  }
+  dispose() {
+    if (this.disposed) return;
+    this.disposed = true;
+    const errors = [];
+    for (const release of this.releases.reverse())
+      try {
+        release();
+      } catch (e) {
+        errors.push(e);
+      }
+    this.releases = [];
+    if (errors.length)
+      throw Object.assign(Error("Resource release failed"), { errors });
+  }
+};
+var ZhudaSceneRegions = class {
+  constructor() {
+    this.regions = /* @__PURE__ */ new Map();
+  }
+  async enter(id, create) {
+    if (!id) throw Error("Missing region ID");
+    this.leave(id);
+    const record = {
+      slot: new ZhudaRequestSlot(),
+      value: void 0
+    };
+    this.regions.set(id, record);
+    try {
+      return await record.slot.replace(
+        create,
+        (value) => record.value = value,
+        (value) => value.dispose()
+      );
+    } catch (e) {
+      if (this.regions.get(id) === record) this.regions.delete(id);
+      throw e;
+    }
+  }
+  leave(id) {
+    const r = this.regions.get(id);
+    if (!r) return;
+    this.regions.delete(id);
+    r.slot.cancel();
+    r.value?.dispose();
+  }
+  clear() {
+    for (const id of [...this.regions.keys()]) this.leave(id);
+  }
+  get size() {
+    return this.regions.size;
+  }
+};
+var ZhudaSceneBudget = class {
+  constructor() {
+    this.resources = /* @__PURE__ */ new Map();
+  }
+  track(id, kind, estimatedBytes) {
+    if (!id || this.resources.has(id) || !Number.isFinite(estimatedBytes) || estimatedBytes < 0)
+      throw Error("Invalid/duplicate resource budget");
+    this.resources.set(id, { kind, estimatedBytes });
+    return () => this.resources.delete(id);
+  }
+  report() {
+    const counts = { mesh: 0, texture: 0, renderTarget: 0 };
+    let estimatedBytes = 0;
+    for (const r of this.resources.values()) {
+      counts[r.kind]++;
+      estimatedBytes += r.estimatedBytes;
+    }
+    return { counts, estimatedBytes, memoryMeasurement: "estimate" };
+  }
+};
+var sceneQuality = {
+  low: {
+    dprCap: 1,
+    shadowDistance: 0,
+    shadowResolution: 512,
+    extraPasses: 0,
+    lodDistance: 20
+  },
+  medium: {
+    dprCap: 1.5,
+    shadowDistance: 30,
+    shadowResolution: 1024,
+    extraPasses: 0,
+    lodDistance: 40
+  },
+  high: {
+    dprCap: 2,
+    shadowDistance: 60,
+    shadowResolution: 2048,
+    extraPasses: 2,
+    lodDistance: 80
+  }
+};
+var ZhudaDistanceLOD = class {
+  constructor(distance, hysteresis = 2) {
+    this.near = true;
+    this.distance = distance;
+    this.hysteresis = hysteresis;
+    if (!(distance > hysteresis && hysteresis >= 0))
+      throw Error("Invalid LOD bounds");
+  }
+  update(camera, object) {
+    const d = Math.hypot(
+      camera.x - object.x,
+      camera.y - object.y,
+      camera.z - object.z
+    );
+    if (d > this.distance + this.hysteresis) this.near = false;
+    else if (d < this.distance - this.hysteresis) this.near = true;
+    return this.near;
+  }
+};
+function inspectSceneResources(runtime = globalThis.Laya) {
+  const map = runtime.Resource._idResourcesMap, items = map instanceof Map ? [...map.values()] : Object.values(map || {});
+  const counts = { mesh: 0, texture: 0, renderTarget: 0 };
+  let meshBytes = 0, textureBytes = 0, renderTargetBytes = 0;
+  for (const r of items) {
+    if (r.destroyed) continue;
+    if (r instanceof runtime.Mesh) {
+      counts.mesh++;
+      meshBytes += r.gpuMemory || 0;
+    } else if (runtime.RenderTexture && r instanceof runtime.RenderTexture || runtime.RenderTexture2D && r instanceof runtime.RenderTexture2D) {
+      counts.renderTarget++;
+      renderTargetBytes += (r.width || 0) * (r.height || 0) * 8 * Math.max(1, r.samples || 1);
+    } else if (r instanceof runtime.BaseTexture) {
+      counts.texture++;
+      textureBytes += (r.width || 0) * (r.height || 0) * 4 * (r.mipmap ? 4 / 3 : 1) * (r.isCube ? 6 : 1);
+    }
+  }
+  return {
+    counts,
+    resources: items.filter((r) => !r.destroyed).length,
+    estimatedBytes: meshBytes + textureBytes + renderTargetBytes,
+    meshBytes,
+    textureBytes,
+    renderTargetBytes,
+    memoryMeasurement: "estimate",
+    assumptions: "Texture RGBA8, render target RGBA8 + 32-bit depth; vendor mesh accounting. Excludes driver overhead and compressed/HDR format corrections."
+  };
+}
+function applySceneQuality(quality, session, camera, lights = []) {
+  const l = globalThis.Laya;
+  if (![quality.dprCap, quality.shadowDistance, quality.extraPasses].every(
+    Number.isFinite
+  ) || quality.dprCap < 0.5 || quality.dprCap > 4 || quality.shadowDistance < 0 || quality.extraPasses < 0 || !Number.isFinite(quality.lodDistance) || quality.lodDistance <= 0 || ![512, 1024, 2048].includes(quality.shadowResolution))
+    throw Error("Invalid scene quality");
+  session.options.dprCap = quality.dprCap;
+  session.resize();
+  camera.msaa = false;
+  for (const light of lights) {
+    light.shadowDistance = quality.shadowDistance;
+    light.shadowResolution = quality.shadowResolution;
+    light.shadowMode = quality.shadowDistance > 0 ? l.ShadowMode.SoftLow : l.ShadowMode.None;
+  }
+  return { ...quality, additionalPassBudget: quality.extraPasses };
+}
+
+// packages/core/runtime3d/CameraCollision.ts
+function resolveCameraBoom(focus, desired, options) {
+  const radius = options.radius ?? 0.25, clearance = options.clearance ?? 0.1;
+  if (![
+    ...Object.values(focus),
+    ...Object.values(desired),
+    radius,
+    clearance
+  ].every(Number.isFinite) || radius < 0 || clearance < 0)
+    throw Error("Invalid camera collision parameters");
+  const delta = {
+    x: desired.x - focus.x,
+    y: desired.y - focus.y,
+    z: desired.z - focus.z
+  }, length = Math.hypot(delta.x, delta.y, delta.z);
+  if (length < 1e-8)
+    return { position: { ...focus }, distance: 0, blocked: false };
+  const direction = normalized(delta), axis = Math.abs(direction.y) < 0.95 ? { x: 0, y: 1, z: 0 } : { x: 1, y: 0, z: 0 }, cross = (a, b) => ({
+    x: a.y * b.z - a.z * b.y,
+    y: a.z * b.x - a.x * b.z,
+    z: a.x * b.y - a.y * b.x
+  }), right = normalized(cross(direction, axis)), up = cross(right, direction);
+  let distance = length;
+  for (const [x, y] of [
+    [0, 0],
+    [1, 0],
+    [-1, 0],
+    [0, 1],
+    [0, -1],
+    [0.707, 0.707],
+    [-0.707, 0.707],
+    [0.707, -0.707],
+    [-0.707, -0.707]
+  ]) {
+    const origin = {
+      x: focus.x + (right.x * x + up.x * y) * radius,
+      y: focus.y + (right.y * x + up.y * y) * radius,
+      z: focus.z + (right.z * x + up.z * y) * radius
+    }, hit = options.queries.raycast(
+      { origin, direction },
+      length + radius,
+      options.layerMask
+    );
+    if (hit)
+      distance = Math.min(
+        distance,
+        Math.max(0, hit.distance - radius - clearance)
+      );
+  }
+  return {
+    position: {
+      x: focus.x + direction.x * distance,
+      y: focus.y + direction.y * distance,
+      z: focus.z + direction.z * distance
+    },
+    distance,
+    blocked: distance < length
+  };
+}
+
+// packages/core/runtime3d/CameraRig.ts
+var ZhudaCameraRig = class {
+  constructor(camera, options = {}) {
+    this.yaw = 0;
+    this.pitch = 0.48;
+    this.distance = 16;
+    this.camera = camera;
+    this.options = options;
+  }
+  rotate(dx, dy) {
+    if (![dx, dy].every(Number.isFinite)) throw Error("Invalid camera input");
+    const s = this.options.sensitivity ?? 5e-3;
+    this.yaw -= dx * s;
+    this.pitch = Math.max(-1.4, Math.min(1.4, this.pitch + dy * s));
+  }
+  zoom(delta) {
+    if (!Number.isFinite(delta)) throw Error("Invalid camera zoom");
+    this.distance = Math.max(
+      this.options.minDistance ?? 2,
+      Math.min(
+        this.options.maxDistance ?? 80,
+        this.distance * Math.exp(delta * 1e-3)
+      )
+    );
+  }
+  update(target) {
+    const l = globalThis.Laya, first = this.options.mode === "firstPerson", d = first ? 1 : this.distance;
+    const offset = {
+      x: Math.sin(this.yaw) * Math.cos(this.pitch) * d,
+      y: Math.sin(this.pitch) * d,
+      z: Math.cos(this.yaw) * Math.cos(this.pitch) * d
+    };
+    let position = first ? target : {
+      x: target.x + offset.x,
+      y: target.y + offset.y,
+      z: target.z + offset.z
+    };
+    if (!first && this.options.collision)
+      position = resolveCameraBoom(
+        target,
+        position,
+        this.options.collision
+      ).position;
+    const look = first ? {
+      x: target.x - offset.x,
+      y: target.y - offset.y,
+      z: target.z - offset.z
+    } : target;
+    this.camera.transform.position = new l.Vector3(
+      position.x,
+      position.y,
+      position.z
+    );
+    this.camera.transform.lookAt(
+      new l.Vector3(look.x, look.y, look.z),
+      new l.Vector3(0, 1, 0)
+    );
+  }
+};
+
+// packages/core/terrain/Terrain2D.ts
+function validateTerrain2D(spec) {
+  const s = spec, e = [];
+  if (!s || s.schemaVersion !== 1 || s.dimension !== 2)
+    return ["Expected schemaVersion:1, dimension:2"];
+  if (![s.width, s.height].every(
+    (n) => Number.isInteger(n) && n > 0 && n <= 4096
+  ) || s.width * s.height > 1048576)
+    e.push("width/height must be 1..4096 and at most 1048576 cells");
+  if (!Number.isFinite(s.tileSize) || s.tileSize <= 0)
+    e.push("tileSize must be positive");
+  if (s.origin && (!Array.isArray(s.origin) || s.origin.length !== 2 || !s.origin.every(Number.isFinite)))
+    e.push("Invalid origin");
+  const ids = /* @__PURE__ */ new Set([0]);
+  if (!Array.isArray(s.palette) || s.palette.length > 65535)
+    e.push("Invalid palette");
+  else
+    for (const t of s.palette) {
+      if (!t || !Number.isInteger(t.id) || t.id < 1 || t.id > 65535 || ids.has(t.id)) {
+        e.push("Palette IDs must be unique integers 1..65535");
+        continue;
+      }
+      ids.add(t.id);
+      if (t.color !== void 0 && !/^#[0-9a-f]{6}([0-9a-f]{2})?$/i.test(t.color))
+        e.push("Tile color must be #RRGGBB or #RRGGBBAA");
+      if (t.uv && (!Array.isArray(t.uv) || t.uv.length !== 4 || !t.uv.every((n) => Number.isFinite(n) && n >= 0 && n <= 1) || t.uv[0] >= t.uv[2] || t.uv[1] >= t.uv[3]))
+        e.push("Invalid normalized atlas rectangle");
+    }
+  if (!Array.isArray(s.layers) || !s.layers.length || s.layers.length > 8 || s.layers.length * s.width * s.height > 2097152)
+    e.push("Expected 1..8 layers and at most 2097152 total cells");
+  else {
+    const names = /* @__PURE__ */ new Set();
+    for (const l of s.layers) {
+      if (!l || typeof l.id !== "string" || !l.id || names.has(l.id)) {
+        e.push("Layer IDs must be unique nonempty strings");
+        continue;
+      }
+      names.add(l.id);
+      if (!Array.isArray(l.tiles) || l.tiles.length !== s.width * s.height || l.tiles.some((id) => !ids.has(id)))
+        e.push(`Invalid tiles for layer ${l.id}`);
+    }
+  }
+  return e;
+}
+var ZhudaTerrain2D = class {
+  constructor(spec) {
+    this.layers = /* @__PURE__ */ new Map();
+    this.listeners = /* @__PURE__ */ new Set();
+    const errors = validateTerrain2D(spec);
+    if (errors.length) throw Error(errors.join("; "));
+    this.width = spec.width;
+    this.height = spec.height;
+    this.tileSize = spec.tileSize;
+    this.origin = Object.freeze([...spec.origin || [0, 0]]);
+    this.palette = new Map(
+      spec.palette.map((t) => [
+        t.id,
+        Object.freeze({
+          ...t,
+          uv: t.uv ? Object.freeze([...t.uv]) : void 0
+        })
+      ])
+    );
+    for (const layer of spec.layers)
+      this.layers.set(layer.id, new Uint16Array(layer.tiles));
+  }
+  get layerIds() {
+    return [...this.layers.keys()];
+  }
+  index(x, y) {
+    if (!Number.isInteger(x) || !Number.isInteger(y) || x < 0 || y < 0 || x >= this.width || y >= this.height)
+      throw Error("Tile outside terrain");
+    return y * this.width + x;
+  }
+  layer(id) {
+    const l = this.layers.get(id);
+    if (!l) throw Error("Unknown layer " + id);
+    return l;
+  }
+  getTile(layer, x, y) {
+    return this.layer(layer)[this.index(x, y)];
+  }
+  setTile(layer, x, y, id) {
+    this.paintRect(layer, { x, y, width: 1, height: 1 }, id);
+  }
+  paintRect(layer, r, id) {
+    const l = this.layer(layer);
+    if (id !== 0 && !this.palette.has(id)) throw Error("Unknown tile ID");
+    if (![r.x, r.y, r.width, r.height].every(Number.isInteger) || r.width < 1 || r.height < 1)
+      throw Error("Invalid tile rectangle");
+    this.index(r.x, r.y);
+    this.index(r.x + r.width - 1, r.y + r.height - 1);
+    for (let y = r.y; y < r.y + r.height; y++)
+      l.fill(id, y * this.width + r.x, y * this.width + r.x + r.width);
+    for (const f of this.listeners) f({ ...r });
+  }
+  localToTile(x, y) {
+    if (![x, y].every(Number.isFinite)) throw Error("Invalid terrain point");
+    const col = Math.floor((x - this.origin[0]) / this.tileSize), row = Math.floor((y - this.origin[1]) / this.tileSize);
+    return col >= 0 && row >= 0 && col < this.width && row < this.height ? { col, row } : null;
+  }
+  tileToLocal(col, row) {
+    this.index(col, row);
+    return {
+      x: this.origin[0] + (col + 0.5) * this.tileSize,
+      y: this.origin[1] + (row + 0.5) * this.tileSize
+    };
+  }
+  isBlocked(col, row) {
+    const i = this.index(col, row);
+    return [...this.layers.values()].some(
+      (l) => this.palette.get(l[i])?.blocked === true
+    );
+  }
+  onChange(f) {
+    this.listeners.add(f);
+    return () => this.listeners.delete(f);
+  }
+  toJSON() {
+    return {
+      schemaVersion: 1,
+      dimension: 2,
+      width: this.width,
+      height: this.height,
+      tileSize: this.tileSize,
+      origin: [...this.origin],
+      palette: [...this.palette.values()].map((t) => ({
+        ...t,
+        uv: t.uv ? [...t.uv] : void 0
+      })),
+      layers: [...this.layers].map(([id, tiles]) => ({
+        id,
+        tiles: [...tiles]
+      }))
+    };
+  }
+};
+var ZhudaTerrain2DRenderer = class {
+  constructor(terrain, options = {}) {
+    this.chunks = /* @__PURE__ */ new Map();
+    this.disposed = false;
+    this.terrain = terrain;
+    this.options = options;
+    const c = options.chunkCells ?? 16;
+    if (!Number.isInteger(c) || c < 1 || c > 128)
+      throw Error("chunkCells must be 1..128");
+    if (!Number.isInteger(options.maxResidentChunks ?? 128) || (options.maxResidentChunks ?? 128) < 1)
+      throw Error("Invalid chunk budget");
+    if ([...terrain.palette.values()].some((tile) => tile.uv) && !options.atlas) throw Error("Atlas texture required for UV tiles");
+    if (options.atlas?.destroyed) throw Error("Atlas texture is destroyed");
+    const l = globalThis.Laya;
+    this.root = new l.Sprite();
+    options.parent?.addChild(this.root);
+    this.unsubscribe = terrain.onChange((r) => {
+      for (const chunk of this.chunks.values())
+        if (chunk.x * c < r.x + r.width && (chunk.x + 1) * c > r.x && chunk.y * c < r.y + r.height && (chunk.y + 1) * c > r.y)
+          chunk.dirty = true;
+    });
+  }
+  setView(r) {
+    if (this.disposed) throw Error("Disposed terrain renderer");
+    if (!Object.values(r).every(Number.isFinite) || r.width <= 0 || r.height <= 0)
+      throw Error("Invalid local view");
+    const t = this.terrain, c = this.options.chunkCells ?? 16, size = t.tileSize * c;
+    const x0 = Math.max(0, Math.floor((r.x - t.origin[0]) / size)), x1 = Math.min(
+      Math.ceil(t.width / c) - 1,
+      Math.ceil((r.x + r.width - t.origin[0]) / size) - 1
+    ), y0 = Math.max(0, Math.floor((r.y - t.origin[1]) / size)), y1 = Math.min(
+      Math.ceil(t.height / c) - 1,
+      Math.ceil((r.y + r.height - t.origin[1]) / size) - 1
+    );
+    if (Math.max(0, x1 - x0 + 1) * Math.max(0, y1 - y0 + 1) > (this.options.maxResidentChunks ?? 128))
+      throw Error("Visible terrain exceeds chunk budget");
+    const needed = /* @__PURE__ */ new Set();
+    for (let y = y0; y <= y1; y++)
+      for (let x = x0; x <= x1; x++) needed.add(x + ":" + y);
+    for (const [key, r2] of this.chunks)
+      if (!needed.has(key)) {
+        r2.node.destroy(true);
+        this.chunks.delete(key);
+      }
+    const l = globalThis.Laya;
+    for (const key of needed)
+      if (!this.chunks.has(key)) {
+        const [x, y] = key.split(":").map(Number), node = new l.Sprite();
+        node.pos(t.origin[0] + x * size, t.origin[1] + y * size);
+        node.graphics.material = this.options.material || null;
+        this.root.addChild(node);
+        this.chunks.set(key, { node, x, y, dirty: true });
+      }
+    this.flush();
+  }
+  flush() {
+    if (this.disposed) throw Error("Disposed terrain renderer");
+    const t = this.terrain, c = this.options.chunkCells ?? 16;
+    for (const chunk of this.chunks.values()) {
+      if (!chunk.dirty) continue;
+      const g = chunk.node.graphics;
+      g.clear();
+      for (const layer of t.layerIds)
+        for (let y = chunk.y * c; y < Math.min(t.height, (chunk.y + 1) * c); y++)
+          for (let x = chunk.x * c; x < Math.min(t.width, (chunk.x + 1) * c); x++) {
+            const tile = t.palette.get(t.getTile(layer, x, y));
+            if (!tile) continue;
+            const px = (x - chunk.x * c) * t.tileSize, py = (y - chunk.y * c) * t.tileSize;
+            if (tile.uv && this.options.atlas) {
+              const [u0, v0, u1, v1] = tile.uv;
+              g.drawTexture(
+                this.options.atlas,
+                px,
+                py,
+                t.tileSize,
+                t.tileSize,
+                null,
+                1,
+                tile.color || "#ffffff",
+                null,
+                [u0, v0, u1, v0, u1, v1, u0, v1]
+              );
+            } else
+              g.drawRect(
+                px,
+                py,
+                t.tileSize,
+                t.tileSize,
+                tile.color || "#ffffff"
+              );
+          }
+      chunk.dirty = false;
+    }
+  }
+  get residentChunks() {
+    return this.chunks.size;
+  }
+  dispose() {
+    if (this.disposed) return;
+    this.disposed = true;
+    this.unsubscribe();
+    this.root.destroy(true);
+    this.chunks.clear();
+  }
+};
+
+// packages/core/terrain/Heightfield.ts
+function validateHeightfield(spec) {
+  const s = spec, e = [];
+  if (!s || s.schemaVersion !== 1 || s.dimension !== 3)
+    return ["Expected schemaVersion:1, dimension:3"];
+  if (![s.cellsX, s.cellsZ].every(
+    (n) => Number.isInteger(n) && n > 0 && n <= 2048
+  ) || (s.cellsX + 1) * (s.cellsZ + 1) > 4194304)
+    e.push(
+      "Invalid heightfield dimensions (1..2048, at most 4194304 vertices)"
+    );
+  if (!Number.isFinite(s.cellSize) || s.cellSize <= 0)
+    e.push("cellSize must be positive");
+  if (s.origin && (!Array.isArray(s.origin) || s.origin.length !== 2 || !s.origin.every(Number.isFinite)))
+    e.push("Invalid origin");
+  if (!Array.isArray(s.heights) || s.heights.length !== (s.cellsX + 1) * (s.cellsZ + 1) || s.heights.some((h) => !Number.isFinite(h) || Math.abs(h) > 1e6))
+    e.push("Invalid finite height data");
+  return e;
+}
+function terrainNoise(seed, x, z) {
+  if (![seed, x, z].every(Number.isFinite))
+    throw Error("Invalid noise coordinates");
+  const hash = (a2, b2) => {
+    let h = Math.imul(a2 ^ seed, 374761393) ^ Math.imul(b2, 668265263);
+    h = Math.imul(h ^ h >>> 13, 1274126177);
+    return ((h ^ h >>> 16) >>> 0) / 4294967295;
+  };
+  const ix = Math.floor(x), iz = Math.floor(z), fx = x - ix, fz = z - iz, u = fx * fx * (3 - 2 * fx), v = fz * fz * (3 - 2 * fz), a = hash(ix, iz) * (1 - u) + hash(ix + 1, iz) * u, b = hash(ix, iz + 1) * (1 - u) + hash(ix + 1, iz + 1) * u;
+  return a * (1 - v) + b * v;
+}
+var ZhudaHeightfield = class _ZhudaHeightfield {
+  constructor(spec) {
+    this.listeners = /* @__PURE__ */ new Set();
+    const e = validateHeightfield(spec);
+    if (e.length) throw Error(e.join("; "));
+    this.cellsX = spec.cellsX;
+    this.cellsZ = spec.cellsZ;
+    this.cellSize = spec.cellSize;
+    this.origin = Object.freeze([...spec.origin || [0, 0]]);
+    this.heights = new Float32Array(spec.heights);
+  }
+  static generate(options) {
+    const count = (options.cellsX + 1) * (options.cellsZ + 1);
+    if (!Number.isSafeInteger(count) || count < 4 || count > 4194304 || ![options.seed, options.amplitude ?? 4, options.frequency ?? 0.1].every(
+      Number.isFinite
+    ))
+      throw Error("Invalid generation bounds");
+    const heights = Array.from(
+      { length: count },
+      (_, i) => terrainNoise(
+        options.seed,
+        i % (options.cellsX + 1) * (options.frequency ?? 0.1),
+        Math.floor(i / (options.cellsX + 1)) * (options.frequency ?? 0.1)
+      ) * (options.amplitude ?? 4)
+    );
+    return new _ZhudaHeightfield({
+      schemaVersion: 1,
+      dimension: 3,
+      ...options,
+      heights
+    });
+  }
+  index(x, z) {
+    if (!Number.isInteger(x) || !Number.isInteger(z) || x < 0 || z < 0 || x > this.cellsX || z > this.cellsZ)
+      throw Error("Vertex outside heightfield");
+    return z * (this.cellsX + 1) + x;
+  }
+  heightAtVertex(x, z) {
+    return this.heights[this.index(x, z)];
+  }
+  normalAtVertex(x, z) {
+    this.index(x, z);
+    const ax = Math.max(0, x - 1), bx = Math.min(this.cellsX, x + 1), az = Math.max(0, z - 1), bz = Math.min(this.cellsZ, z + 1);
+    return normalized({
+      x: -(this.heightAtVertex(bx, z) - this.heightAtVertex(ax, z)) / ((bx - ax) * this.cellSize),
+      y: 1,
+      z: -(this.heightAtVertex(x, bz) - this.heightAtVertex(x, az)) / ((bz - az) * this.cellSize)
+    });
+  }
+  setHeight(x, z, height) {
+    this.applyPatch(x, z, 1, 1, [height]);
+  }
+  applyPatch(x, z, width, depth, values) {
+    if (![x, z, width, depth].every(Number.isInteger) || width < 1 || depth < 1 || values.length !== width * depth || Array.from(values).some((h) => !Number.isFinite(h) || Math.abs(h) > 1e6))
+      throw Error("Invalid height patch");
+    this.index(x, z);
+    this.index(x + width - 1, z + depth - 1);
+    for (let j = 0; j < depth; j++)
+      for (let i = 0; i < width; i++)
+        this.heights[(z + j) * (this.cellsX + 1) + x + i] = values[j * width + i];
+    this.emit({ minX: x, minZ: z, maxX: x + width - 1, maxZ: z + depth - 1 });
+  }
+  brush(x, z, radius, delta) {
+    if (![x, z, radius, delta].every(Number.isFinite) || radius <= 0)
+      throw Error("Invalid height brush");
+    const cx = (x - this.origin[0]) / this.cellSize, cz = (z - this.origin[1]) / this.cellSize, r = radius / this.cellSize;
+    const minX = Math.max(0, Math.ceil(cx - r)), maxX = Math.min(this.cellsX, Math.floor(cx + r)), minZ = Math.max(0, Math.ceil(cz - r)), maxZ = Math.min(this.cellsZ, Math.floor(cz + r));
+    const patch = [];
+    for (let j = minZ; j <= maxZ; j++)
+      for (let i = minX; i <= maxX; i++) {
+        const d = Math.hypot(i - cx, j - cz) / r;
+        if (d > 1) continue;
+        const a = 1 - d, h = this.heightAtVertex(i, j) + delta * a * a * (3 - 2 * a);
+        if (Math.abs(h) > 1e6) throw Error("Brush exceeds height bound");
+        patch.push({ i: j * (this.cellsX + 1) + i, h });
+      }
+    if (!patch.length) return;
+    for (const p of patch) this.heights[p.i] = p.h;
+    this.emit({ minX, minZ, maxX, maxZ });
+  }
+  emit(r) {
+    for (const f of this.listeners) f(r);
+  }
+  onChange(f) {
+    this.listeners.add(f);
+    return () => this.listeners.delete(f);
+  }
+  /** Exact same diagonal and barycentric interpolation as rendered triangles. */
+  sample(x, z, stride = 1) {
+    if (![1, 2, 4].includes(stride)) throw Error("Invalid terrain stride");
+    if (![x, z].every(Number.isFinite)) throw Error("Invalid sample");
+    const gx = (x - this.origin[0]) / this.cellSize, gz = (z - this.origin[1]) / this.cellSize;
+    if (gx < 0 || gz < 0 || gx > this.cellsX || gz > this.cellsZ) return null;
+    const ix = Math.min(
+      Math.floor((this.cellsX - 1) / stride) * stride,
+      Math.floor(gx / stride) * stride
+    ), iz = Math.min(
+      Math.floor((this.cellsZ - 1) / stride) * stride,
+      Math.floor(gz / stride) * stride
+    ), bx = Math.min(this.cellsX, ix + stride), bz = Math.min(this.cellsZ, iz + stride), u = (gx - ix) / (bx - ix), v = (gz - iz) / (bz - iz), a = this.heightAtVertex(ix, iz), b = this.heightAtVertex(bx, iz), c = this.heightAtVertex(ix, bz), d = this.heightAtVertex(bx, bz);
+    const height = u >= v ? a * (1 - u) + b * (u - v) + d * v : a * (1 - v) + c * (v - u) + d * u;
+    const normal = u >= v ? normalized({
+      x: -(b - a) / ((bx - ix) * this.cellSize),
+      y: 1,
+      z: -(d - b) / ((bz - iz) * this.cellSize)
+    }) : normalized({
+      x: -(d - c) / ((bx - ix) * this.cellSize),
+      y: 1,
+      z: -(c - a) / ((bz - iz) * this.cellSize)
+    });
+    return { height, normal, cellX: ix, cellZ: iz };
+  }
+  /** Local ray direction may be unnormalized, preserving world-distance parameter after inverse transform. */
+  raycast(ray, maxDistance = Infinity, stride = 1, acceptCell) {
+    if (![1, 2, 4].includes(stride)) throw Error("Invalid terrain stride");
+    if (!(maxDistance >= 0) || ![...Object.values(ray.origin), ...Object.values(ray.direction)].every(
+      Number.isFinite
+    ) || Math.hypot(...Object.values(ray.direction)) < 1e-12)
+      throw Error("Invalid terrain ray");
+    const o = ray.origin, d = ray.direction, minX = this.origin[0], minZ = this.origin[1], maxX = minX + this.cellsX * this.cellSize, maxZ = minZ + this.cellsZ * this.cellSize;
+    let near = 0, far = maxDistance;
+    for (const [key, min, max] of [
+      ["x", minX, maxX],
+      ["z", minZ, maxZ]
+    ]) {
+      if (Math.abs(d[key]) < 1e-12) {
+        if (o[key] < min || o[key] > max) return null;
+      } else {
+        const a = (min - o[key]) / d[key], b = (max - o[key]) / d[key];
+        near = Math.max(near, Math.min(a, b));
+        far = Math.min(far, Math.max(a, b));
+      }
+    }
+    if (far < near) return null;
+    let t = near;
+    const epsilon = 1e-7 * this.cellSize;
+    let x = Math.min(
+      this.cellsX - 1,
+      Math.max(
+        0,
+        Math.floor((o.x + d.x * (t + epsilon) - minX) / this.cellSize)
+      )
+    ), z = Math.min(
+      this.cellsZ - 1,
+      Math.max(
+        0,
+        Math.floor((o.z + d.z * (t + epsilon) - minZ) / this.cellSize)
+      )
+    );
+    const stepX = Math.sign(d.x), stepZ = Math.sign(d.z), dtX = stepX ? this.cellSize / Math.abs(d.x) : Infinity, dtZ = stepZ ? this.cellSize / Math.abs(d.z) : Infinity;
+    let nextX = stepX ? (minX + (x + (stepX > 0 ? 1 : 0)) * this.cellSize - o.x) / d.x : Infinity, nextZ = stepZ ? (minZ + (z + (stepZ > 0 ? 1 : 0)) * this.cellSize - o.z) / d.z : Infinity;
+    for (let n = 0; n < this.cellsX + this.cellsZ + 4 && x >= 0 && z >= 0 && x < this.cellsX && z < this.cellsZ && t <= far + 1e-8; n++) {
+      const v = (i, j) => ({
+        x: minX + i * this.cellSize,
+        y: this.heightAtVertex(i, j),
+        z: minZ + j * this.cellSize
+      }), sx = Math.floor(x / stride) * stride, sz = Math.floor(z / stride) * stride, bx = Math.min(this.cellsX, sx + stride), bz = Math.min(this.cellsZ, sz + stride), a = v(sx, sz), b = v(bx, sz), c = v(sx, bz), q = v(bx, bz);
+      let hit = null;
+      for (const tri of acceptCell && !acceptCell(x, z) ? [] : [
+        [a, b, q],
+        [a, q, c]
+      ]) {
+        const h = triangle(ray, tri[0], tri[1], tri[2]);
+        if (h !== null && h >= near - 1e-7 && h <= Math.min(nextX, nextZ, far) + 1e-7 && (hit === null || h < hit))
+          hit = h;
+      }
+      if (hit !== null) {
+        const position = {
+          x: o.x + d.x * hit,
+          y: o.y + d.y * hit,
+          z: o.z + d.z * hit
+        }, s = this.sample(
+          Math.max(minX, Math.min(maxX, position.x)),
+          Math.max(minZ, Math.min(maxZ, position.z)),
+          stride
+        );
+        return {
+          distance: hit,
+          position,
+          normal: s.normal,
+          cellX: x,
+          cellZ: z
+        };
+      }
+      if (!stepX && !stepZ) break;
+      const boundary = Math.min(nextX, nextZ);
+      t = boundary;
+      if (nextX <= boundary + 1e-9) {
+        x += stepX;
+        nextX += dtX;
+      }
+      if (nextZ <= boundary + 1e-9) {
+        z += stepZ;
+        nextZ += dtZ;
+      }
+    }
+    return null;
+  }
+  toJSON() {
+    return {
+      schemaVersion: 1,
+      dimension: 3,
+      cellsX: this.cellsX,
+      cellsZ: this.cellsZ,
+      cellSize: this.cellSize,
+      origin: [...this.origin],
+      heights: [...this.heights]
+    };
+  }
+};
+function triangle(r, a, b, c) {
+  const sub = (x, y) => ({
+    x: x.x - y.x,
+    y: x.y - y.y,
+    z: x.z - y.z
+  }), cross = (x, y) => ({
+    x: x.y * y.z - x.z * y.y,
+    y: x.z * y.x - x.x * y.z,
+    z: x.x * y.y - x.y * y.x
+  }), dot = (x, y) => x.x * y.x + x.y * y.y + x.z * y.z;
+  const e1 = sub(b, a), e2 = sub(c, a), p = cross(r.direction, e2), det = dot(e1, p);
+  if (Math.abs(det) < 1e-10) return null;
+  const t = sub(r.origin, a), u = dot(t, p) / det;
+  if (u < -1e-8 || u > 1 + 1e-8) return null;
+  const q = cross(t, e1), v = dot(r.direction, q) / det;
+  if (v < -1e-8 || u + v > 1 + 1e-8) return null;
+  const distance = dot(e2, q) / det;
+  return distance >= -1e-8 ? Math.max(0, distance) : null;
+}
+
+// packages/core/terrain/TerrainShell.ts
+function shellTriangleDistance(ray, p, a, b, c) {
+  a *= 3;
+  b *= 3;
+  c *= 3;
+  const ax = p[b] - p[a], ay = p[b + 1] - p[a + 1], az = p[b + 2] - p[a + 2], bx = p[c] - p[a], by = p[c + 1] - p[a + 1], bz = p[c + 2] - p[a + 2], d = ray.direction, px = d.y * bz - d.z * by, py = d.z * bx - d.x * bz, pz = d.x * by - d.y * bx, det = ax * px + ay * py + az * pz;
+  if (Math.abs(det) < 1e-10) return null;
+  const tx = ray.origin.x - p[a], ty = ray.origin.y - p[a + 1], tz = ray.origin.z - p[a + 2], u = (tx * px + ty * py + tz * pz) / det;
+  if (u < -1e-7 || u > 1 + 1e-7) return null;
+  const qx = ty * az - tz * ay, qy = tz * ax - tx * az, qz = tx * ay - ty * ax, v = (d.x * qx + d.y * qy + d.z * qz) / det;
+  if (v < -1e-7 || u + v > 1 + 1e-7) return null;
+  const t = (bx * qx + by * qy + bz * qz) / det;
+  return t >= 0 ? t : null;
+}
+function buildTerrainShell(top, xs, zs, depth) {
+  if (!Number.isFinite(depth) || depth <= 0)
+    throw Error("Terrain solid depth must be positive");
+  const nx = xs.length, nz = zs.length, n = nx * nz;
+  const edges = [];
+  for (let x = 0; x < nx - 1; x++) edges.push([x, x + 1]);
+  for (let z = 0; z < nz - 1; z++)
+    edges.push([z * nx + nx - 1, (z + 1) * nx + nx - 1]);
+  for (let x = nx - 1; x > 0; x--)
+    edges.push([(nz - 1) * nx + x, (nz - 1) * nx + x - 1]);
+  for (let z = nz - 1; z > 0; z--) edges.push([z * nx, (z - 1) * nx]);
+  const count = n + edges.length * 4, positions = new Float32Array(count * 3), normals = new Float32Array(count * 3), uvs = new Float32Array(count * 2), indices = new Uint16Array((nx - 1) * (nz - 1) * 6 + edges.length * 6);
+  for (let i = 0; i < n; i++) {
+    positions.set([top[i * 8], top[i * 8 + 1] - depth, top[i * 8 + 2]], i * 3);
+    normals.set([-top[i * 8 + 3], -top[i * 8 + 4], -top[i * 8 + 5]], i * 3);
+    uvs.set([top[i * 8 + 6], top[i * 8 + 7]], i * 2);
+  }
+  let k = 0;
+  for (let z = 0; z < nz - 1; z++)
+    for (let x = 0; x < nx - 1; x++) {
+      const a = z * nx + x, b = a + 1, c = a + nx, d = c + 1;
+      indices.set([c, d, a, a, d, b], k);
+      k += 6;
+    }
+  edges.forEach(([a, b], j) => {
+    const i = n + j * 4, dx = top[b * 8] - top[a * 8], dz = top[b * 8 + 2] - top[a * 8 + 2], len = Math.hypot(dx, dz);
+    for (let v = 0; v < 4; v++) {
+      const src = (v % 2 ? b : a) * 8;
+      positions.set(
+        [top[src], top[src + 1] - (v >= 2 ? depth : 0), top[src + 2]],
+        (i + v) * 3
+      );
+      normals.set([dz / len, 0, -dx / len], (i + v) * 3);
+      uvs.set([v % 2 ? len : 0, v >= 2 ? depth : 0], (i + v) * 2);
+    }
+    indices.set([i, i + 2, i + 1, i + 1, i + 2, i + 3], k);
+    k += 6;
+  });
+  return { positions, normals, uvs, indices };
+}
+
+// packages/core/terrain/Terrain3D.ts
+var ZhudaTerrain3D = class {
+  constructor(field, options) {
+    this.chunks = /* @__PURE__ */ new Map();
+    this.disposed = false;
+    this.stride = 1;
+    this.field = field;
+    this.options = options;
+    if (!options.material || options.material.destroyed)
+      throw Error("A live terrain material is required");
+    if (options.solid && (!Number.isFinite(options.solid.depth) || options.solid.depth <= 0 || options.solid.material?.destroyed))
+      throw Error("Invalid terrain solid depth/material");
+    const size = options.chunkCells ?? 32;
+    if (!Number.isInteger(size) || size < 4 || size > 128 || size % 4)
+      throw Error("chunkCells must be a multiple of 4 within 4..128");
+    if (!Number.isInteger(options.maxResidentChunks ?? 64) || (options.maxResidentChunks ?? 64) < 1)
+      throw Error("Invalid chunk budget");
+    if (options.uvScale && (!options.uvScale.every(Number.isFinite) || options.uvScale.length !== 2))
+      throw Error("Invalid UV scale");
+    const l = globalThis.Laya;
+    this.root = new l.Sprite3D("ZhudaTerrain");
+    options.parent?.addChild(this.root);
+    this.unsubscribe = field.onChange((r) => {
+      for (const chunk of this.chunks.values()) {
+        const expanded = {
+          minX: r.minX - 1,
+          minZ: r.minZ - 1,
+          maxX: r.maxX + 1,
+          maxZ: r.maxZ + 1
+        };
+        if (chunk.xs[0] > expanded.maxX || chunk.xs[chunk.xs.length - 1] < expanded.minX || chunk.zs[0] > expanded.maxZ || chunk.zs[chunk.zs.length - 1] < expanded.minZ)
+          continue;
+        const old = chunk.dirty;
+        chunk.dirty = old ? {
+          minX: Math.min(old.minX, expanded.minX),
+          minZ: Math.min(old.minZ, expanded.minZ),
+          maxX: Math.max(old.maxX, expanded.maxX),
+          maxZ: Math.max(old.maxZ, expanded.maxZ)
+        } : expanded;
+      }
+    });
+  }
+  /** Local x/z bounds; uniform stride avoids neighboring chunks with incompatible edge LODs. */
+  setRegion(region, stride = 1) {
+    if (this.disposed) throw Error("Disposed terrain");
+    if (![1, 2, 4].includes(stride) || !Object.values(region).every(Number.isFinite) || region.maxX <= region.minX || region.maxZ <= region.minZ)
+      throw Error("Invalid terrain region/stride");
+    const f = this.field, size = this.options.chunkCells ?? 32, span = size * f.cellSize, x0 = Math.max(0, Math.floor((region.minX - f.origin[0]) / span)), x1 = Math.min(
+      Math.ceil(f.cellsX / size) - 1,
+      Math.ceil((region.maxX - f.origin[0]) / span) - 1
+    ), z0 = Math.max(0, Math.floor((region.minZ - f.origin[1]) / span)), z1 = Math.min(
+      Math.ceil(f.cellsZ / size) - 1,
+      Math.ceil((region.maxZ - f.origin[1]) / span) - 1
+    );
+    if (Math.max(0, x1 - x0 + 1) * Math.max(0, z1 - z0 + 1) > (this.options.maxResidentChunks ?? 64))
+      throw Error("Terrain region exceeds resident chunk budget");
+    const required = /* @__PURE__ */ new Set();
+    for (let z = z0; z <= z1; z++)
+      for (let x = x0; x <= x1; x++) required.add(x + ":" + z);
+    for (const [key, c] of this.chunks)
+      if (!required.has(key) || this.stride !== stride) {
+        c.mesh.dispose();
+        c.shell?.dispose();
+        this.chunks.delete(key);
+      }
+    this.stride = stride;
+    try {
+      for (const key of required)
+        if (!this.chunks.has(key)) {
+          const [x, z] = key.split(":").map(Number), axis = (start, end) => {
+            const a = [];
+            for (let i = start; i < end; i += stride) a.push(i);
+            a.push(end);
+            return a;
+          }, xs = axis(x * size, Math.min(f.cellsX, (x + 1) * size)), zs = axis(z * size, Math.min(f.cellsZ, (z + 1) * size));
+          const n = xs.length * zs.length, positions = new Float32Array(n * 3), normals = new Float32Array(n * 3), uvs = new Float32Array(n * 2), indices = new Uint16Array((xs.length - 1) * (zs.length - 1) * 6);
+          for (let j = 0; j < zs.length; j++)
+            for (let i = 0; i < xs.length; i++) {
+              const k2 = j * xs.length + i, p = this.vertex(xs[i], zs[j]);
+              positions.set(p.slice(0, 3), k2 * 3);
+              normals.set(p.slice(3, 6), k2 * 3);
+              uvs.set(p.slice(6), k2 * 2);
+            }
+          let k = 0;
+          for (let j = 0; j < zs.length - 1; j++)
+            for (let i = 0; i < xs.length - 1; i++) {
+              const a = j * xs.length + i, b = a + 1, c = a + xs.length, d = c + 1;
+              indices.set([c, a, d, a, b, d], k);
+              k += 6;
+            }
+          const mesh = new ZhudaDynamicMesh(
+            { positions, normals, uvs, indices },
+            this.root
+          );
+          mesh.node.name = "terrain:" + key;
+          mesh.node.meshRenderer.sharedMaterial = this.options.material;
+          mesh.node.meshRenderer.receiveShadow = true;
+          const chunk = { mesh, xs, zs };
+          this.chunks.set(key, chunk);
+          this.rebuildShell(chunk);
+        }
+      this.flush();
+    } catch (e) {
+      this.dispose();
+      throw e;
+    }
+  }
+  vertex(x, z) {
+    const f = this.field, n = f.normalAtVertex(x, z), px = f.origin[0] + x * f.cellSize, pz = f.origin[1] + z * f.cellSize;
+    return [
+      px,
+      f.heightAtVertex(x, z),
+      pz,
+      n.x,
+      n.y,
+      n.z,
+      px * (this.options.uvScale?.[0] ?? 1),
+      pz * (this.options.uvScale?.[1] ?? 1)
+    ];
+  }
+  rebuildShell(chunk) {
+    if (!this.options.solid) return;
+    const shell = new ZhudaDynamicMesh(
+      buildTerrainShell(
+        chunk.mesh.vertices,
+        chunk.xs,
+        chunk.zs,
+        this.options.solid.depth
+      ),
+      this.root
+    );
+    shell.node.name = "terrain-solid";
+    shell.node.meshRenderer.sharedMaterial = this.options.solid.material ?? this.options.material;
+    shell.node.meshRenderer.receiveShadow = true;
+    chunk.shell?.dispose();
+    chunk.shell = shell;
+  }
+  flush() {
+    if (this.disposed) throw Error("Disposed terrain");
+    for (const chunk of this.chunks.values()) {
+      const r = chunk.dirty;
+      if (!r) continue;
+      let first = Infinity, last = -1;
+      for (let j = 0; j < chunk.zs.length; j++)
+        for (let i = 0; i < chunk.xs.length; i++)
+          if (chunk.xs[i] >= r.minX && chunk.xs[i] <= r.maxX && chunk.zs[j] >= r.minZ && chunk.zs[j] <= r.maxZ) {
+            const k = j * chunk.xs.length + i;
+            chunk.mesh.vertices.set(
+              this.vertex(chunk.xs[i], chunk.zs[j]),
+              k * 8
+            );
+            first = Math.min(first, k);
+            last = Math.max(last, k);
+          }
+      if (last >= first) {
+        chunk.mesh.updateRange(first, last - first + 1);
+        this.rebuildShell(chunk);
+      }
+      chunk.dirty = void 0;
+    }
+  }
+  sampleLocal(x, z) {
+    return this.field.sample(x, z, this.stride);
+  }
+  chunkKeyForCell(x, z) {
+    const size = this.options.chunkCells ?? 32;
+    return Math.floor(x / size) + ":" + Math.floor(z / size);
+  }
+  raycastLocal(ray, maxDistance) {
+    const accept = (x, z) => this.chunks.has(this.chunkKeyForCell(x, z));
+    let hit = this.field.raycast(ray, maxDistance, this.stride, accept);
+    if (!this.options.solid) return hit;
+    const depth = this.options.solid.depth, bottom = this.field.raycast(
+      {
+        origin: { ...ray.origin, y: ray.origin.y + depth },
+        direction: ray.direction
+      },
+      hit?.distance ?? maxDistance,
+      this.stride,
+      accept
+    );
+    if (bottom)
+      hit = {
+        ...bottom,
+        position: { ...bottom.position, y: bottom.position.y - depth },
+        normal: {
+          x: -bottom.normal.x,
+          y: -bottom.normal.y,
+          z: -bottom.normal.z
+        }
+      };
+    for (const chunk of this.chunks.values()) {
+      const shell = chunk.shell;
+      const data = shell.data, start = (chunk.xs.length - 1) * (chunk.zs.length - 1) * 6;
+      for (let i = start; i < data.indices.length; i += 3) {
+        const a = data.indices[i], t = shellTriangleDistance(
+          ray,
+          data.positions,
+          a,
+          data.indices[i + 1],
+          data.indices[i + 2]
+        );
+        if (t === null || t > (hit?.distance ?? maxDistance)) continue;
+        const position = {
+          x: ray.origin.x + ray.direction.x * t,
+          y: ray.origin.y + ray.direction.y * t,
+          z: ray.origin.z + ray.direction.z * t
+        }, f = this.field;
+        hit = {
+          distance: t,
+          position,
+          normal: {
+            x: data.normals[a * 3],
+            y: data.normals[a * 3 + 1],
+            z: data.normals[a * 3 + 2]
+          },
+          cellX: Math.min(
+            f.cellsX - 1,
+            Math.max(0, Math.floor((position.x - f.origin[0]) / f.cellSize))
+          ),
+          cellZ: Math.min(
+            f.cellsZ - 1,
+            Math.max(0, Math.floor((position.z - f.origin[1]) / f.cellSize))
+          )
+        };
+      }
+    }
+    return hit;
+  }
+  raycast(ray, maxDistance = Infinity) {
+    if (this.disposed) throw Error("Disposed terrain");
+    if (maxDistance !== Infinity && (!Number.isFinite(maxDistance) || maxDistance < 0))
+      throw Error("Invalid terrain ray distance");
+    const world = this.root.transform.worldMatrix.elements, inv = inverse4(world), direction = normalized(ray.direction), origin = transformPoint(inv, ray.origin), end = transformPoint(inv, {
+      x: ray.origin.x + direction.x,
+      y: ray.origin.y + direction.y,
+      z: ray.origin.z + direction.z
+    });
+    const rawDirection = {
+      x: end.x - origin.x,
+      y: end.y - origin.y,
+      z: end.z - origin.z
+    }, localScale = Math.hypot(rawDirection.x, rawDirection.y, rawDirection.z);
+    if (!Number.isFinite(localScale) || localScale < 1e-12) return null;
+    const hit = this.raycastLocal(
+      {
+        origin,
+        direction: {
+          x: rawDirection.x / localScale,
+          y: rawDirection.y / localScale,
+          z: rawDirection.z / localScale
+        }
+      },
+      Number.isFinite(maxDistance) ? maxDistance * localScale : Infinity
+    );
+    if (!hit) return null;
+    const n = hit.normal, normal = normalized({
+      x: inv[0] * n.x + inv[1] * n.y + inv[2] * n.z,
+      y: inv[4] * n.x + inv[5] * n.y + inv[6] * n.z,
+      z: inv[8] * n.x + inv[9] * n.y + inv[10] * n.z
+    });
+    const position = transformPoint(world, hit.position);
+    return {
+      ...hit,
+      distance: Math.hypot(
+        position.x - ray.origin.x,
+        position.y - ray.origin.y,
+        position.z - ray.origin.z
+      ),
+      position,
+      normal
+    };
+  }
+  queryProvider(entityId, layer = 1) {
+    return {
+      entityId,
+      layer,
+      raycast: (ray, distance) => {
+        const h = this.raycast(ray, distance);
+        return h ? { ...h, instanceId: h.cellX + ":" + h.cellZ } : null;
+      }
+    };
+  }
+  report() {
+    return {
+      residentChunks: this.chunks.size,
+      renderMeshes: this.chunks.size + [...this.chunks.values()].filter((c) => c.shell).length,
+      solidDepth: this.options.solid?.depth ?? 0,
+      stride: this.stride,
+      vertices: [...this.chunks.values()].reduce(
+        (n, c) => n + c.mesh.vertices.length / 8 + (c.shell?.vertices.length ?? 0) / 8,
+        0
+      ),
+      estimatedBufferBytes: [...this.chunks.values()].reduce(
+        (n, c) => n + c.mesh.vertices.byteLength + c.mesh.data.indices.byteLength + (c.shell ? c.shell.vertices.byteLength + c.shell.data.indices.byteLength : 0),
+        0
+      )
+    };
+  }
+  /** Diagnostic copy prevents callers from accidentally bypassing edits/dirty propagation. */
+  chunkSnapshot(key) {
+    const c = this.chunks.get(key);
+    return c ? {
+      xs: [...c.xs],
+      zs: [...c.zs],
+      vertices: new Float32Array(c.mesh.vertices),
+      bounds: c.mesh.mesh.bounds,
+      shell: c.shell ? {
+        vertices: new Float32Array(c.shell.vertices),
+        indices: new Uint16Array(c.shell.data.indices),
+        bounds: c.shell.mesh.bounds
+      } : null
+    } : null;
+  }
+  dispose() {
+    if (this.disposed) return;
+    this.disposed = true;
+    this.unsubscribe();
+    for (const c of this.chunks.values()) {
+      c.mesh.dispose();
+      c.shell?.dispose();
+    }
+    this.chunks.clear();
+    this.root.destroy(true);
+  }
+};
+
+// packages/core/shaders/Laya342ShaderTemplates.ts
+var graphicsVertex = "#define SHADER_NAME TextureVS2D\n#ifdef CAMERA2D\nuniform mat3 u_view2D;\n#endif\n#ifdef SPRITE2DGLOBAL\n#endif\n#ifdef RENDERTEXTURE\nuniform vec3 u_InvertMat_0;uniform vec3 u_InvertMat_1;\n#endif\n#ifdef VERTEX_SIZE\nuniform vec4 u_vertexSize;uniform vec3 u_NMatrix_0;uniform vec3 u_NMatrix_1;\n#endif\n#ifdef UNIFORMCLIP\nuniform vec2 u_clipOffset;\n#endif\nuniform vec2 u_size;\n#ifndef VERTEXALPHA\nuniform float u_VertAlpha;\n#endif\nvarying vec4 v_texcoordAlpha;varying vec4 v_color;varying float v_useTex;\n#ifdef UV_CLIP_GPU\nvarying float v_useClip;\n#endif\n#if defined(UV_CLIP_GPU) || defined(FILLTEXTURE)\nvarying vec4 v_customs;\n#endif\n#ifdef USE_TEX_ARRAY\nvarying float v_texLayer;\n#endif\nvoid main(){vec4 color=a_attribColor;\n#ifdef VERTEXALPHA\ncolor.a*=a_attribFlags.z;\n#else\ncolor.a*=u_VertAlpha;\n#endif\ncolor.rgb*=color.a;v_texcoordAlpha=vec4(a_posuv.zw,0.0,0.0);v_color=color;v_useTex=a_attribFlags.r;\n#ifdef UV_CLIP_GPU\nv_useClip=a_attribFlags.g;\n#endif\n#if defined(UV_CLIP_GPU) || defined(FILLTEXTURE)\nv_customs=a_customs;\n#endif\n#ifdef USE_TEX_ARRAY\nv_texLayer=a_attribFlags.w;\n#endif\n#ifdef VERTEX_SIZE\nvec2 localPos=a_posuv.xy*u_vertexSize.zw+u_vertexSize.xy;vec2 globalPos=vec2(u_NMatrix_0.x*localPos.x+u_NMatrix_0.y*localPos.y+u_NMatrix_0.z,u_NMatrix_1.x*localPos.x+u_NMatrix_1.y*localPos.y+u_NMatrix_1.z);\n#else\nvec2 globalPos=a_posuv.xy;\n#endif\n#ifdef UNIFORMCLIP\nglobalPos+=u_clipOffset;\n#endif\n#ifdef RENDERTEXTURE\nvec2 viewSource=vec2(u_InvertMat_0.x*globalPos.x+u_InvertMat_0.y*globalPos.y+u_InvertMat_0.z,u_InvertMat_1.x*globalPos.x+u_InvertMat_1.y*globalPos.y+u_InvertMat_1.z);\n#else\nvec2 viewSource=globalPos;\n#endif\n#ifdef CAMERA2D\nvec2 viewPos=(u_view2D*vec3(viewSource,1.0)).xy+u_size/2.0;\n#else\nvec2 viewPos=viewSource;\n#endif\nvec4 pos=vec4((viewPos.x/u_size.x-0.5)*2.0,(0.5-viewPos.y/u_size.y)*2.0,0.0,1.0);\n#ifdef INVERTY\npos.y=-pos.y;\n#endif\ngl_Position=pos;}";
+var graphicsFragment = "#define SHADER_NAME TextureFS2D\n#if defined(GL_FRAGMENT_PRECISION_HIGH)\nprecision highp float;\n#else\nprecision mediump float;\n#endif\nvarying vec4 v_texcoordAlpha;varying vec4 v_color;varying float v_useTex;\n#ifdef UV_CLIP_GPU\nvarying float v_useClip;\n#endif\n#if defined(UV_CLIP_GPU) || defined(FILLTEXTURE)\nvarying vec4 v_customs;\n#endif\n#ifdef USE_TEX_ARRAY\nvarying float v_texLayer;uniform sampler2DArray u_spriteTextureArray;\n#else\nuniform sampler2D u_spriteTexture;\n#endif\n#ifdef FILLTEXTURE\nuniform vec4 u_TexRange;\n#endif\nvec3 linearToGamma(in vec3 value){return vec3(mix(pow(value.rgb,vec3(0.41666))*1.055-vec3(0.055),value.rgb*12.92,vec3(lessThanEqual(value.rgb,vec3(0.0031308)))));}vec4 linearToGamma(in vec4 value){return vec4(linearToGamma(value.rgb),value.a);}vec3 gammaToLinear(in vec3 value){return pow((value+0.055)/1.055,vec3(2.4));}vec4 gammaToLinear(in vec4 value){return vec4(gammaToLinear(value.rgb),value.a);}__ZHUDA_FUNCTION__\nvoid main(){\n#ifdef FILLTEXTURE\nvec2 tileUV=fract(v_texcoordAlpha.xy);vec4 trimRect=v_customs;if(tileUV.x<trimRect.x||tileUV.x>trimRect.x+trimRect.z||tileUV.y<trimRect.y||tileUV.y>trimRect.y+trimRect.w)discard;vec2 contentUV=(tileUV-trimRect.xy)/trimRect.zw;vec2 uv=contentUV*u_TexRange.zw+u_TexRange.xy;\n#else\nvec2 uv=v_texcoordAlpha.xy;\n#endif\n#ifdef USE_TEX_ARRAY\nvec4 color=texture(u_spriteTextureArray,vec3(uv,v_texLayer));\n#else\nvec4 color=texture2D(u_spriteTexture,uv);\n#endif\n#ifndef GAMMATEXTURE\n#ifdef GAMMASPACE\ncolor.rgb=linearToGamma(color.xyz);\n#endif\n#else\n#ifndef GAMMASPACE\ncolor.rgb=gammaToLinear(color.xyz);\n#endif\n#endif\nfloat useTex=step(1.0,v_useTex);color=color*useTex+(1.0-useTex);\n#if defined(UV_CLIP_GPU) && !defined(FILLTEXTURE)\nif(v_useClip>=1.0){vec2 srcUV=v_texcoordAlpha.xy;vec4 clipRect=v_customs;if(srcUV.x<clipRect.x||srcUV.x>clipRect.x+clipRect.z||srcUV.y<clipRect.y||srcUV.y>clipRect.y+clipRect.w)discard;}\n#endif\ncolor.a*=v_color.w;\n#ifdef GAMMASPACE\nvec4 transColor=v_color;\n#else\nvec4 transColor=vec4(gammaToLinear(v_color.rgb),v_color.a);\n#endif\ncolor.rgb*=transColor.rgb;gl_FragColor=zhudaSurface(uv,color);}";
+
+// packages/core/shaders/ShaderMaterials.ts
+function validateShaderSpec(spec) {
+  const s = spec, e = [];
+  if (!s || s.schemaVersion !== 1 || ![2, 3].includes(s.dimension))
+    return ["Expected schemaVersion:1 and dimension:2|3"];
+  if (typeof s.name !== "string" || !/^Zhuda[A-Za-z0-9_]{1,100}$/.test(s.name))
+    e.push("Shader name must start with Zhuda, then letters/digits/_");
+  if (s.fog !== void 0 && typeof s.fog !== "boolean")
+    e.push("fog must be boolean");
+  if (typeof s.surface !== "string" || s.surface.length > 65536 || !s.surface.includes("zhudaSurface"))
+    e.push("surface must define zhudaSurface (at most 65536 characters)");
+  if (!s.uniforms || typeof s.uniforms !== "object" || Array.isArray(s.uniforms) || Object.keys(s.uniforms).length > 64)
+    e.push("Expected at most 64 uniform descriptors");
+  else
+    for (const [name, u] of Object.entries(s.uniforms)) {
+      if (!/^u_Zhuda[A-Za-z0-9_]+$/.test(name))
+        e.push("Custom uniforms must use u_Zhuda prefix");
+      if (!u || !["float", "vec2", "vec3", "vec4", "texture2D"].includes(u.type)) {
+        e.push("Invalid uniform type " + name);
+        continue;
+      }
+      const n = { float: 1, vec2: 2, vec3: 3, vec4: 4, texture2D: 0 }[u.type];
+      if (n && u.value !== void 0 && (n === 1 ? typeof u.value !== "number" || !Number.isFinite(u.value) : !Array.isArray(u.value) || u.value.length !== n || !u.value.every(Number.isFinite)))
+        e.push("Invalid uniform value " + name);
+      if (!n && u.value !== void 0)
+        e.push(
+          "Texture uniforms use the external texture bindings, not JSON values"
+        );
+    }
+  if (s.blend && !["opaque", "alpha", "additive"].includes(s.blend))
+    e.push("Invalid blend");
+  if (s.dimension === 2 && s.passes && (s.passes.depth || s.passes.opaqueColor))
+    e.push("2D graphics shaders cannot request 3D camera passes");
+  if (typeof s.surface === "string" && /\b(?:uniform|attribute|varying)\b|#\s*(?:version|include)|\bvoid\s+main\s*\(/.test(
+    s.surface.replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, "")
+  ))
+    e.push(
+      "surface is a function body contract; declarations/includes/main belong to the engine template"
+    );
+  return e;
+}
+var vertex3D = `#include "Scene.glsl";
+#include "SceneFogInput.glsl";
+#include "Camera.glsl";
+#include "Sprite3DVertex.glsl";
+#include "VertexCommon.glsl";
+varying vec2 v_ZhudaUV;varying vec3 v_ZhudaPosition;varying vec3 v_ZhudaNormal;
+void main(){Vertex v;getVertexParams(v);mat4 w=getWorldMatrix();vec4 p=w*vec4(v.positionOS,1.0);v_ZhudaPosition=p.xyz;
+v_ZhudaUV=vec2(0.0);
+#ifdef UV
+v_ZhudaUV=v.texCoord0;
+#endif
+vec3 a=w[0].xyz,b=w[1].xyz,c=w[2].xyz;v_ZhudaNormal=normalize(mat3(cross(b,c),cross(c,a),cross(a,b))*v.normalOS)*sign(dot(a,cross(b,c)));
+gl_Position=remapPositionZ(getPositionCS(p.xyz));
+#ifdef FOG
+FogHandle(gl_Position.z);
+#endif
+}`;
+var fragment3D = (surface, fog = true) => `#include "Color.glsl";
+#include "Scene.glsl";
+#include "SceneFog.glsl";
+varying vec2 v_ZhudaUV;varying vec3 v_ZhudaPosition;varying vec3 v_ZhudaNormal;
+${surface}
+void main(){gl_FragColor=outputTransform(zhudaSurface(v_ZhudaUV,v_ZhudaPosition,normalize(v_ZhudaNormal)));
+${fog ? `#ifdef FOG
+gl_FragColor.rgb=scenUnlitFog(gl_FragColor.rgb);
+#endif` : ""}
+}`;
+var ZhudaShaderMaterial = class {
+  constructor(spec, textures = {}) {
+    this.disposed = false;
+    const e = validateShaderSpec(spec);
+    if (e.length) throw Error(e.join("; "));
+    this.spec = JSON.parse(JSON.stringify(spec));
+    for (const [name, u] of Object.entries(spec.uniforms))
+      if (u.type === "texture2D" && !textures[name])
+        throw Error("Missing texture binding " + name);
+    const l = globalThis.Laya, types = {
+      float: l.ShaderDataType.Float,
+      vec2: l.ShaderDataType.Vector2,
+      vec3: l.ShaderDataType.Vector3,
+      vec4: l.ShaderDataType.Vector4,
+      texture2D: l.ShaderDataType.Texture2D
+    }, uniforms = Object.fromEntries(
+      Object.keys(spec.uniforms).sort().map((name) => [name, types[spec.uniforms[name].type]])
+    );
+    const textureHelpers = Object.entries(spec.uniforms).filter(([, u]) => u.type === "texture2D").map(
+      ([
+        name
+      ]) => `vec4 zhudaSample_${name}(vec2 uv){vec4 c=texture2D(${name},uv);
+#ifdef Gamma_${name}
+c=gammaToLinear(c);
+#endif
+return c;}`
+    ).join("\n");
+    const surface = textureHelpers + "\n" + spec.surface;
+    this.material = createCustomSurfaceMaterial({
+      name: spec.name,
+      dimension: spec.dimension,
+      vertex: spec.dimension === 2 ? graphicsVertex : vertex3D,
+      fragment: spec.dimension === 2 ? graphicsFragment.replace("__ZHUDA_FUNCTION__", surface) : fragment3D(surface, spec.fog !== false),
+      uniforms,
+      instancing: spec.dimension === 3
+    });
+    try {
+      const m = this.material, blend = spec.blend || (spec.dimension === 2 ? "alpha" : "opaque");
+      m.depthWrite = spec.depthWrite ?? (spec.dimension === 3 && blend === "opaque");
+      m.depthTest = spec.dimension === 2 ? l.RenderState.DEPTHTEST_ALWAYS : l.RenderState.DEPTHTEST_LESS;
+      m.cull = spec.dimension === 2 || spec.doubleSided ? l.RenderState.CULL_NONE : l.RenderState.CULL_BACK;
+      m.renderQueue = blend === "opaque" ? l.Material.RENDERQUEUE_OPAQUE : l.Material.RENDERQUEUE_TRANSPARENT;
+      m.blend = blend === "opaque" ? l.RenderState.BLEND_DISABLE : l.RenderState.BLEND_ENABLE_ALL;
+      m.blendSrc = spec.dimension === 2 ? l.RenderState.BLENDPARAM_ONE : l.RenderState.BLENDPARAM_SRC_ALPHA;
+      m.blendDst = blend === "additive" ? l.RenderState.BLENDPARAM_ONE : l.RenderState.BLENDPARAM_ONE_MINUS_SRC_ALPHA;
+      for (const [name, u] of Object.entries(spec.uniforms)) {
+        if (u.type === "texture2D") this.setTexture(name, textures[name]);
+        else
+          this.setUniform(
+            name,
+            u.value ?? (u.type === "float" ? 0 : Array(Number(u.type.slice(-1))).fill(0))
+          );
+      }
+    } catch (error) {
+      this.dispose();
+      throw error;
+    }
+  }
+  setUniform(name, value) {
+    if (this.disposed) throw Error("Disposed shader");
+    const u = this.spec.uniforms[name];
+    if (!u || u.type === "texture2D")
+      throw Error("Unknown numeric uniform " + name);
+    const n = u.type === "float" ? 1 : Number(u.type.slice(-1));
+    if (n === 1 ? typeof value !== "number" || !Number.isFinite(value) : typeof value === "number" || value.length !== n || !Array.from(value).every(Number.isFinite))
+      throw Error("Invalid uniform " + name);
+    const l = globalThis.Laya;
+    if (u.type === "float") this.material.setFloat(name, value);
+    else
+      this.material["setVector" + n](
+        name,
+        new l["Vector" + n](...value)
+      );
+  }
+  setTexture(name, texture) {
+    if (this.disposed || this.spec.uniforms[name]?.type !== "texture2D" || !texture || texture.destroyed)
+      throw Error("Invalid texture binding " + name);
+    this.material.setTexture(name, texture.bitmap || texture);
+  }
+  report() {
+    return {
+      name: this.spec.name,
+      dimension: this.spec.dimension,
+      uniforms: Object.keys(this.spec.uniforms),
+      passes: this.spec.passes || {},
+      gpuStatus: "requires-first-draw",
+      disposed: this.disposed
+    };
+  }
+  dispose() {
+    if (this.disposed) return;
+    this.disposed = true;
+    for (const [name, u] of Object.entries(this.spec.uniforms))
+      if (u.type === "texture2D") this.material.setTexture(name, null);
+    this.material.destroy();
+  }
+};
+var shaderRecipes = {
+  terrain3D: {
+    schemaVersion: 1,
+    name: "ZhudaTerrainHeightSlope",
+    dimension: 3,
+    uniforms: {
+      u_ZhudaGrass: { type: "vec3", value: [0.15, 0.42, 0.13] },
+      u_ZhudaRock: { type: "vec3", value: [0.38, 0.32, 0.26] },
+      u_ZhudaSnow: { type: "vec3", value: [0.85, 0.91, 0.96] },
+      u_ZhudaSnowLine: { type: "float", value: 5 }
+    },
+    surface: `vec4 zhudaSurface(vec2 uv,vec3 p,vec3 n){float slope=1.0-abs(n.y);vec3 color=mix(u_ZhudaGrass,u_ZhudaRock,smoothstep(.12,.5,slope));color=mix(color,u_ZhudaSnow,smoothstep(u_ZhudaSnowLine-.5,u_ZhudaSnowLine+.5,p.y));float grid=.95+.05*sin(uv.x*3.14159)*sin(uv.y*3.14159);float light=.35+.65*max(0.0,dot(n,normalize(vec3(.3,1.0,.2))));return vec4(color*light*grid,1.0);}`
+  },
+  textured3D: {
+    schemaVersion: 1,
+    name: "ZhudaTexturedSurface",
+    dimension: 3,
+    uniforms: {
+      u_ZhudaTexture: { type: "texture2D" },
+      u_ZhudaTint: { type: "vec4", value: [1, 1, 1, 1] }
+    },
+    surface: "vec4 zhudaSurface(vec2 uv,vec3 p,vec3 n){return zhudaSample_u_ZhudaTexture(uv)*u_ZhudaTint;}"
+  },
+  dissolve3D: {
+    schemaVersion: 1,
+    name: "ZhudaDissolveSurface",
+    dimension: 3,
+    doubleSided: true,
+    uniforms: {
+      u_ZhudaAmount: { type: "float", value: 0.4 },
+      u_ZhudaTint: { type: "vec4", value: [0.1, 0.7, 1, 1] }
+    },
+    surface: "vec4 zhudaSurface(vec2 uv,vec3 p,vec3 n){float noise=fract(sin(dot(floor(uv*40.0),vec2(12.98,78.23)))*43758.54);if(noise<u_ZhudaAmount)discard;float edge=1.0-smoothstep(u_ZhudaAmount,u_ZhudaAmount+.08,noise);return vec4(mix(u_ZhudaTint.rgb,vec3(1.0,.7,.05),edge),u_ZhudaTint.a);}"
+  },
+  tint2D: {
+    schemaVersion: 1,
+    name: "ZhudaGraphicsTint",
+    dimension: 2,
+    uniforms: { u_ZhudaTint: { type: "vec4", value: [1, 1, 1, 1] } },
+    surface: "vec4 zhudaSurface(vec2 uv,vec4 color){return vec4(color.rgb*u_ZhudaTint.rgb*u_ZhudaTint.a,color.a*u_ZhudaTint.a);}"
+  }
+};
 export {
   ENGINE_PRESET_PROFILES,
   EngineGuard,
@@ -6187,42 +8919,90 @@ export {
   ZHUDA_VFX_FRAGMENT,
   ZHUDA_VFX_VERTEX,
   Zhuda3D,
+  ZhudaAssetCache,
   ZhudaAssetSerializer,
   ZhudaBenchmarkEngine,
+  ZhudaCameraCoordinates,
+  ZhudaCameraRig,
+  ZhudaDistanceLOD,
+  ZhudaDynamicMesh,
   ZhudaEffectBudget,
   ZhudaEffectDirector,
   ZhudaEffectEnvelope,
   ZhudaEngine,
+  ZhudaEventGate,
+  ZhudaHeightfield,
+  ZhudaInstanceGroup,
   ZhudaLayaParticleRenderer,
   ZhudaLayaParticleRenderer3D,
   ZhudaLayaRibbonRenderer,
   ZhudaLayaRibbonRenderer3D,
+  ZhudaModelLibrary,
   ZhudaParticleEventLink,
   ZhudaParticleMesh3D,
   ZhudaParticleSystem,
   ZhudaParticleSystem3D,
+  ZhudaPointerInput,
   ZhudaPrefab,
+  ZhudaRequestSlot,
+  ZhudaResourceScope,
   ZhudaRibbonPath3D,
   ZhudaRibbonTrail,
   ZhudaRibbonTrail3D,
+  ZhudaRuntimeHost,
   ZhudaRuntimeProfiler,
+  ZhudaRuntimeSession,
+  ZhudaSceneBudget,
+  ZhudaSceneQueries,
+  ZhudaSceneRegions,
+  ZhudaShaderMaterial,
+  ZhudaSimulationClock,
+  ZhudaSnapshotBuffer,
+  ZhudaSurfaceQuery,
+  ZhudaTerrain2D,
+  ZhudaTerrain2DRenderer,
+  ZhudaTerrain3D,
   ZhudaUI,
   ZhudaVfxCamera,
   ZhudaVfxMaterial,
+  applySceneQuality,
   compareVisualFrames,
+  compose4,
+  configureSurfacePasses,
   convertUnityAnimationCurve,
   convertUnityVisualMaterial,
+  createCustomSurfaceMaterial,
+  createSurfaceMaterial,
+  createSurfaceTexture,
   disposeMigratedMaterial,
+  disposeSurfaceMaterial,
+  identity4,
+  inspectSceneResources,
+  installLaya342LifecycleFix,
+  installSandboxStorageFallback,
   instantiateMigratedMaterial,
+  inverse4,
+  multiply4,
+  normalized,
+  packMetallicRoughness,
+  rayBox,
+  resolveCameraBoom,
   resolveParticleCollision,
   rotateParticleVector3,
   sampleParticleColor,
   sampleParticleCurve,
   sampleParticleUV,
+  sceneQuality,
+  shaderRecipes,
+  terrainNoise,
+  transformPoint,
   validateEffectTimeline,
+  validateHeightfield,
   validateParticleEffect,
   validateParticleEffect3D,
   validateParticleExtras,
+  validateShaderSpec,
+  validateTerrain2D,
   validateVfxMaterial,
   zhudaComponent
 };
