@@ -18,11 +18,11 @@ E4ZEhFCYy4b5pYXJUbMC9KjRitkypyqtZvpSRerLWHCb
 
 English · [简体中文](docs/zh-CN/README.md)
 
-[![NEON APEX: drift, boost and race above a neon skyline. Actual 3D gameplay.](https://raw.githubusercontent.com/zhudaandzhuer/zhuda-neon-racer/main/docs/media/skyline-gameplay.gif)](https://zhudaandzhuer.github.io/zhuda-neon-racer/)
+[![NEON APEX: imported S800, nitro trails and actual 3D gameplay.](https://raw.githubusercontent.com/zhudaandzhuer/zhuda-neon-racer/main/docs/media/skyline-gameplay.gif?v=s800-2.1)](https://zhudaandzhuer.github.io/zhuda-neon-racer/)
 
 ### NEON APEX · Skyline Tour
 
-**Drift. Boost. Own the skyline.** Race three rivals on elevated city circuits, chain nitro out of corners, and earn your next car. A playable 3D game with four circuits, a garage and saved progress.
+**Drift. Boost. Own the skyline.** Drive an imported silver/black S800 with PBR materials, race three rivals on elevated city circuits, and upgrade your sedan. A playable 3D game with four circuits, a garage and saved progress.
 
 **[PLAY FREE →](https://zhudaandzhuer.github.io/zhuda-neon-racer/)** · [Watch the gameplay film](https://zhudaandzhuer.github.io/zhuda-neon-racer/showcase.html)
 
