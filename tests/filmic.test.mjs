@@ -89,6 +89,7 @@ test("environment uploads reorder public WebGL faces for every native Laya mip",
     globalThis.Laya = {
       TextureCube: Cube,
       TextureFormat: { R32G32B32A32: 1 },
+      FilterMode: { Trilinear: 2 },
       RenderCapable: {
         TextureFormat_R32G32B32A32: 1,
         Texture_FloatLinearFiltering: 2,
@@ -115,6 +116,7 @@ test("environment uploads reorder public WebGL faces for every native Laya mip",
       [5, 6, 1, 2, 3, 4],
       [15, 16, 11, 12, 13, 14],
     ]);
+    assert.equal(env.texture.filterMode, 2);
     env.dispose();
     assert.equal(env.texture.destroyed, true);
   } finally {

@@ -8030,6 +8030,7 @@ function createPrefilteredEnvironment(spec, pixels) {
     true,
     false
   );
+  texture.filterMode = l.FilterMode.Trilinear;
   const faces = (level) => [4, 5, 0, 1, 2, 3].map(
     (i) => pixels.subarray(
       level.offset + i * level.size * level.size * 4,

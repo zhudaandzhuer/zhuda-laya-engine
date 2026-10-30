@@ -58,7 +58,7 @@ const lighting = createPrefilteredEnvironment(descriptor, float32Pixels);
 lighting.apply(scene);
 ```
 
-The descriptor contains a power-of-two `size`, a complete mip list `{ size, offset, elements }` and 27 finite, RGB-interleaved `ambientSH` values. Offsets/counts are **float32 elements, not bytes**. Each mip contains RGBA, in WebGL cube face order +X, -X, +Y, -Y, +Z, -Z. Values are nonnegative scene-linear radiance; no sRGB/gamma/RGBD packing. Each subsequent side halves to 1. The upload requires float textures and float linear filtering; unsupported capabilities fail explicitly.
+The descriptor contains a power-of-two `size`, a complete mip list `{ size, offset, elements }` and 27 finite, RGB-interleaved `ambientSH` values. Offsets/counts are **float32 elements, not bytes**. Each mip contains RGBA, in WebGL cube face order +X, -X, +Y, -Y, +Z, -Z. Values are nonnegative scene-linear radiance; no sRGB/gamma/RGBD packing. Each subsequent side halves to 1. The factory explicitly enables trilinear filtering so fractional roughness LODs interpolate between the supplied GGX levels. The upload requires float textures and float linear filtering; unsupported capabilities fail explicitly.
 
 Generate GGX-convolved specular mips for Laya's native perceptual roughness lookup `mip = maxMip * r * (2-r)`. A raw resized image pyramid is not a convolved light source. Native diffuse SH evaluates:
 

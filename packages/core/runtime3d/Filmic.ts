@@ -53,6 +53,7 @@ export function createPrefilteredEnvironment(
     true,
     false,
   );
+  texture.filterMode = l.FilterMode.Trilinear;
   // Laya's pixel upload order is +Z,-Z,+X,-X,+Y,-Y, unlike WebGL/DDS.
   const faces = (level: { size: number; offset: number }) =>
     [4, 5, 0, 1, 2, 3].map((i) =>

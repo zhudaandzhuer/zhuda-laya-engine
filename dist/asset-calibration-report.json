@@ -1,11 +1,11 @@
 {
-  "generatedAt": "2026-10-30T11:10:13.861Z",
+  "generatedAt": "2026-10-30T11:20:16.972Z",
   "totalStaticAssets": 11,
   "calibratedPrefabsCount": 10,
   "allPassed": true,
   "selfConvergenceDemo": {
     "assetName": "ConfirmActionButton.lh",
-    "elapsedMs": 0.68,
+    "elapsedMs": 0.92,
     "before": {
       "measuredBox": {
         "x": 12,
