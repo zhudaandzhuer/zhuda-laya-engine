@@ -101,6 +101,8 @@ The [filmic rendering API](docs/filmic-rendering.md) adds native-lit procedural 
 
 Consumer code addresses assets with stable logical IDs through `AssetProvider`. `DirectoryAssetProvider` is the current development and web default: it provides timeout, cancellation, bounded reads, manifest checksums and progress reporting. A future CDN-chunk, ZIP or Rust/WASM provider can implement the same contract without changing gameplay or scene code. See the [asset loading contract](docs/asset-loading.md).
 
+Planned engine work is tracked in the [development plans](docs/plans/README.md) directory. Plans are proposals until their measurements and acceptance gates pass.
+
 ## Quick start
 
 Requires Node.js 24 or newer.

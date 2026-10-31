@@ -99,6 +99,8 @@ E4ZEhFCYy4b5pYXJUbMC9KjRitkypyqtZvpSRerLWHCb
 
 消费项目通过 `AssetProvider` 使用稳定的逻辑资产 ID。当前开发与 Web 默认使用 `DirectoryAssetProvider`，提供超时、取消、有界读取、manifest 校验和进度回报。未来可以接入 CDN 分块、ZIP 或 Rust/WASM provider，而不改动游戏规则和场景代码。详见[资产加载契约](../asset-loading.md)。
 
+预计的引擎工作统一放在[开发计划目录](../plans/README.md)。计划在完成测量与验收门槛前都只是提案。
+
 ## 快速开始
 
 需要 Node.js 24 或更新版本。
