@@ -97,6 +97,10 @@ The engine passes 84 tests. The existing integration has 41 real WebGL checks co
 
 The [filmic rendering API](docs/filmic-rendering.md) adds native-lit procedural PBR hooks, UV-derived tangents, explicit normal-map conventions, offline GGX/SH HDR lighting, an HDR/AO/bloom/ACES/TAA camera pipeline and horizontal planar reflections. A separate [HARBOR visual study](https://zhudaandzhuer.github.io/zhuda-neon-racer/visual.html) checks the rendered effects and resource teardown. This is an initial quality slice, with further scene and asset work required.
 
+### Asset source boundary
+
+Consumer code addresses assets with stable logical IDs through `AssetProvider`. `DirectoryAssetProvider` is the current development and web default: it provides timeout, cancellation, bounded reads, manifest checksums and progress reporting. A future CDN-chunk, ZIP or Rust/WASM provider can implement the same contract without changing gameplay or scene code. See the [asset loading contract](docs/asset-loading.md).
+
 ## Quick start
 
 Requires Node.js 24 or newer.

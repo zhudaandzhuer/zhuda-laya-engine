@@ -25,6 +25,8 @@ var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: tru
 // packages/core/index.ts
 var index_exports = {};
 __export(index_exports, {
+  AssetProviderError: () => AssetProviderError,
+  DirectoryAssetProvider: () => DirectoryAssetProvider,
   ENGINE_PRESET_PROFILES: () => ENGINE_PRESET_PROFILES,
   EngineGuard: () => EngineGuard,
   IframeSoundAdapter: () => IframeSoundAdapter,
@@ -99,6 +101,7 @@ __export(index_exports, {
   convertUnityVisualMaterial: () => convertUnityVisualMaterial,
   createCustomSurfaceMaterial: () => createCustomSurfaceMaterial,
   createPrefilteredEnvironment: () => createPrefilteredEnvironment,
+  createProviderAssetCache: () => createProviderAssetCache,
   createSurfaceMaterial: () => createSurfaceMaterial,
   createSurfaceTexture: () => createSurfaceTexture,
   disposeMigratedMaterial: () => disposeMigratedMaterial,
@@ -110,6 +113,7 @@ __export(index_exports, {
   instantiateMigratedMaterial: () => instantiateMigratedMaterial,
   inverse4: () => inverse4,
   multiply4: () => multiply4,
+  normalizeAssetId: () => normalizeAssetId,
   normalized: () => normalized,
   packMetallicRoughness: () => packMetallicRoughness,
   rayBox: () => rayBox,
@@ -123,6 +127,7 @@ __export(index_exports, {
   shaderRecipes: () => shaderRecipes,
   terrainNoise: () => terrainNoise,
   transformPoint: () => transformPoint,
+  validateAssetManifest: () => validateAssetManifest,
   validateEffectTimeline: () => validateEffectTimeline,
   validateHeightfield: () => validateHeightfield,
   validateParticleEffect: () => validateParticleEffect,
@@ -7563,6 +7568,234 @@ var ZhudaModelLibrary = class {
   }
 };
 
+// packages/core/runtime3d/AssetProvider.ts
+var AssetProviderError = class extends Error {
+  constructor(code, message, details = {}) {
+    super(message);
+    this.name = "AssetProviderError";
+    this.code = code;
+    this.id = details.id;
+    this.status = details.status;
+  }
+};
+function normalizeAssetId(value) {
+  if (typeof value !== "string")
+    throw new AssetProviderError("invalid-id", "Asset id must be a string");
+  let id = value.trim().replace(/\\/g, "/");
+  while (id.startsWith("./")) id = id.slice(2);
+  if (!id || id.startsWith("/") || id.includes("\0") || /[?#]/.test(id) || /^[a-z][a-z\d+.-]*:/i.test(id))
+    throw new AssetProviderError("invalid-id", `Invalid asset id: ${value}`);
+  const parts = id.split("/").filter(Boolean);
+  if (!parts.length || parts.some((part) => part === "." || part === ".."))
+    throw new AssetProviderError("invalid-id", `Invalid asset id: ${value}`);
+  return parts.join("/");
+}
+function validateAssetManifest(value) {
+  if (!value || typeof value !== "object") throw Error("Invalid asset manifest");
+  const manifest = value;
+  if (manifest.schemaVersion !== 1 || !Array.isArray(manifest.entries))
+    throw Error("Invalid asset manifest schema");
+  const ids = /* @__PURE__ */ new Set();
+  for (const candidate of manifest.entries) {
+    if (!candidate || typeof candidate !== "object")
+      throw Error("Invalid asset manifest entry");
+    const entry = candidate;
+    const id = normalizeAssetId(entry.id);
+    if (id !== entry.id || ids.has(id))
+      throw Error(`Duplicate or non-normalized asset id: ${entry.id}`);
+    ids.add(id);
+    if (entry.bytes !== void 0 && (!Number.isSafeInteger(entry.bytes) || entry.bytes < 0))
+      throw Error(`Invalid asset byte size: ${id}`);
+    if (entry.sha256 !== void 0 && !/^[0-9a-f]{64}$/i.test(entry.sha256))
+      throw Error(`Invalid asset checksum: ${id}`);
+  }
+  return manifest;
+}
+function manifestIdFor(baseUrl, value) {
+  const manifestUrl = new URL(value, baseUrl);
+  if (manifestUrl.origin !== baseUrl.origin || !manifestUrl.pathname.startsWith(baseUrl.pathname))
+    throw new AssetProviderError("invalid-id", "Manifest must be below the provider base URL");
+  const id = decodeURIComponent(manifestUrl.pathname.slice(baseUrl.pathname.length));
+  return normalizeAssetId(id);
+}
+function abortReason(signal, id) {
+  return new AssetProviderError(
+    signal.reason?.name === "TimeoutError" ? "timeout" : "aborted",
+    signal.reason?.name === "TimeoutError" ? `Asset request timed out: ${id}` : `Asset request cancelled: ${id}`,
+    { id }
+  );
+}
+function combineSignals(source, timeoutMs, id) {
+  const controller = new AbortController();
+  let timedOut = false;
+  const abort = () => controller.abort(source?.reason);
+  if (source?.aborted) controller.abort(source.reason);
+  else source?.addEventListener("abort", abort, { once: true });
+  const timer = setTimeout(() => {
+    timedOut = true;
+    controller.abort(new DOMException("Asset request timed out", "TimeoutError"));
+  }, timeoutMs);
+  return {
+    signal: controller.signal,
+    cleanup: () => {
+      clearTimeout(timer);
+      source?.removeEventListener("abort", abort);
+      if (timedOut && !controller.signal.reason)
+        controller.abort(new DOMException(`Asset request timed out: ${id}`, "TimeoutError"));
+    }
+  };
+}
+async function sha256(bytes) {
+  if (!globalThis.crypto?.subtle)
+    throw new AssetProviderError("integrity", "Web Crypto subtle.digest is unavailable");
+  const input = new Uint8Array(bytes.byteLength);
+  input.set(bytes);
+  const digest = await globalThis.crypto.subtle.digest("SHA-256", input.buffer);
+  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+var DirectoryAssetProvider = class {
+  constructor(options) {
+    this.name = "directory";
+    this.active = /* @__PURE__ */ new Set();
+    this.disposed = false;
+    if (!options?.baseUrl) throw Error("DirectoryAssetProvider requires baseUrl");
+    this.baseUrl = new URL(options.baseUrl, globalThis.location?.href || "http://localhost/");
+    if (!this.baseUrl.pathname.endsWith("/")) this.baseUrl.pathname += "/";
+    this.manifest = options.manifest ? validateAssetManifest(options.manifest) : void 0;
+    this.manifestUrl = options.manifestUrl;
+    this.manifestId = options.manifestUrl ? manifestIdFor(this.baseUrl, options.manifestUrl) : void 0;
+    this.timeoutMs = options.timeoutMs ?? 15e3;
+    this.maxBytes = options.maxBytes ?? 128 * 1024 * 1024;
+    this.fetchImpl = options.fetch || globalThis.fetch.bind(globalThis);
+    if (!Number.isInteger(this.timeoutMs) || this.timeoutMs <= 0)
+      throw Error("timeoutMs must be a positive integer");
+    if (!Number.isInteger(this.maxBytes) || this.maxBytes <= 0)
+      throw Error("maxBytes must be a positive integer");
+  }
+  async getManifest(signal) {
+    if (this.disposed) throw new AssetProviderError("disposed", "Asset provider disposed");
+    if (this.manifest) return this.manifest;
+    if (!this.manifestId) return { schemaVersion: 1, entries: [] };
+    if (!this.manifestPromise) {
+      const pending = (async () => {
+        const result = await this.load(this.manifestId, {
+          signal,
+          maxBytes: 2 * 1024 * 1024
+        });
+        try {
+          const parsed = JSON.parse(new TextDecoder().decode(result.bytes));
+          this.manifest = validateAssetManifest(parsed);
+          return this.manifest;
+        } catch (error) {
+          if (error instanceof AssetProviderError) throw error;
+          throw new AssetProviderError("integrity", `Invalid asset manifest: ${this.manifestUrl}`);
+        }
+      })();
+      this.manifestPromise = pending.catch((error) => {
+        this.manifestPromise = void 0;
+        throw error;
+      });
+    }
+    return this.manifestPromise;
+  }
+  async load(value, options = {}) {
+    if (this.disposed) throw new AssetProviderError("disposed", "Asset provider disposed");
+    const id = normalizeAssetId(value);
+    if (this.manifestId && id !== this.manifestId && !this.manifest)
+      await this.getManifest(options.signal);
+    const entry = this.manifest?.entries.find((candidate) => candidate.id === id);
+    const maxBytes = options.maxBytes ?? this.maxBytes;
+    const url = new URL(id.split("/").map(encodeURIComponent).join("/"), this.baseUrl);
+    const combined = combineSignals(options.signal, this.timeoutMs, id);
+    const request = new AbortController();
+    const relay = () => request.abort(combined.signal.reason);
+    combined.signal.addEventListener("abort", relay, { once: true });
+    this.active.add(request);
+    try {
+      options.onProgress?.({ id, phase: "downloading", loadedBytes: 0 });
+      const response = await this.fetchImpl(url, { signal: request.signal });
+      if (!response.ok)
+        throw new AssetProviderError("http", `Asset HTTP ${response.status}: ${id}`, {
+          id,
+          status: response.status
+        });
+      const contentLength = Number(response.headers.get("content-length"));
+      if (Number.isFinite(contentLength) && contentLength > maxBytes)
+        throw new AssetProviderError("too-large", `Asset exceeds ${maxBytes} bytes: ${id}`, { id });
+      const chunks = [];
+      let total = 0;
+      if (response.body) {
+        const reader = response.body.getReader();
+        while (true) {
+          const next = await reader.read();
+          if (next.done) break;
+          total += next.value.byteLength;
+          if (total > maxBytes)
+            throw new AssetProviderError("too-large", `Asset exceeds ${maxBytes} bytes: ${id}`, { id });
+          chunks.push(next.value);
+          options.onProgress?.({ id, phase: "downloading", loadedBytes: total, totalBytes: contentLength || void 0 });
+        }
+      } else {
+        const data = new Uint8Array(await response.arrayBuffer());
+        total = data.byteLength;
+        if (total > maxBytes)
+          throw new AssetProviderError("too-large", `Asset exceeds ${maxBytes} bytes: ${id}`, { id });
+        chunks.push(data);
+        options.onProgress?.({ id, phase: "downloading", loadedBytes: total, totalBytes: total });
+      }
+      const bytes = new Uint8Array(total);
+      let offset = 0;
+      for (const chunk of chunks) {
+        bytes.set(chunk, offset);
+        offset += chunk.byteLength;
+      }
+      if (entry?.bytes !== void 0 && entry.bytes !== bytes.byteLength)
+        throw new AssetProviderError("integrity", `Asset size mismatch: ${id}`, { id });
+      if (entry?.sha256) {
+        options.onProgress?.({ id, phase: "verifying", loadedBytes: total, totalBytes: total });
+        if (await sha256(bytes) !== entry.sha256.toLowerCase())
+          throw new AssetProviderError("integrity", `Asset checksum mismatch: ${id}`, { id });
+      }
+      options.onProgress?.({ id, phase: "ready", loadedBytes: total, totalBytes: total });
+      return { id, bytes, manifest: entry };
+    } catch (error) {
+      if (combined.signal.aborted || request.signal.aborted) {
+        if (combined.signal.reason?.name === "TimeoutError") throw abortReason(combined.signal, id);
+        throw abortReason(combined.signal, id);
+      }
+      throw error;
+    } finally {
+      this.active.delete(request);
+      combined.signal.removeEventListener("abort", relay);
+      combined.cleanup();
+    }
+  }
+  dispose() {
+    if (this.disposed) return;
+    this.disposed = true;
+    for (const controller of this.active) controller.abort(new DOMException("Asset provider disposed", "AbortError"));
+    this.active.clear();
+  }
+};
+function createProviderAssetCache(provider, decode, destroy, maxIdle = 0) {
+  return new ZhudaAssetCache(
+    async (id, signal, phase) => {
+      const asset = await provider.load(id, {
+        signal,
+        onProgress: ({ phase: providerPhase }) => phase(providerPhase === "ready" ? "ready" : "downloading")
+      });
+      phase("parsing");
+      try {
+        return await decode(asset, signal, phase);
+      } finally {
+        asset.release?.();
+      }
+    },
+    destroy,
+    maxIdle
+  );
+}
+
 // packages/core/runtime3d/SceneQueries.ts
 var ZhudaSceneQueries = class {
   constructor() {
@@ -9495,6 +9728,8 @@ zhudaSurface(s,zhudaUV,pixel.positionWS,pixel.normalWS);inputs.diffuseColor=max(
 };
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
+  AssetProviderError,
+  DirectoryAssetProvider,
   ENGINE_PRESET_PROFILES,
   EngineGuard,
   IframeSoundAdapter,
@@ -9569,6 +9804,7 @@ zhudaSurface(s,zhudaUV,pixel.positionWS,pixel.normalWS);inputs.diffuseColor=max(
   convertUnityVisualMaterial,
   createCustomSurfaceMaterial,
   createPrefilteredEnvironment,
+  createProviderAssetCache,
   createSurfaceMaterial,
   createSurfaceTexture,
   disposeMigratedMaterial,
@@ -9580,6 +9816,7 @@ zhudaSurface(s,zhudaUV,pixel.positionWS,pixel.normalWS);inputs.diffuseColor=max(
   instantiateMigratedMaterial,
   inverse4,
   multiply4,
+  normalizeAssetId,
   normalized,
   packMetallicRoughness,
   rayBox,
@@ -9593,6 +9830,7 @@ zhudaSurface(s,zhudaUV,pixel.positionWS,pixel.normalWS);inputs.diffuseColor=max(
   shaderRecipes,
   terrainNoise,
   transformPoint,
+  validateAssetManifest,
   validateEffectTimeline,
   validateHeightfield,
   validateParticleEffect,

@@ -1,6 +1,7 @@
 export * from "./Math3D";
 export * from "./Clocks";
 export * from "./Assets";
+export * from "./AssetProvider";
 export * from "./Surfaces";
 export * from "./Runtime";
 export * from "./SceneQueries";

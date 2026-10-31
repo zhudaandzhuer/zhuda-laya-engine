@@ -95,6 +95,10 @@ E4ZEhFCYy4b5pYXJUbMC9KjRitkypyqtZvpSRerLWHCb
 
 该接入通过 81 项引擎测试与 41 项真实 WebGL 检查。Shader 验证包含图集 UV、染色、透明度、裁切、贴图/雾/溶解变体与真实编译诊断。具体用法和范围见[3D 接入文档](../3d-integration.md)、[地形/Shader 契约](../terrain-shader.md)与[验收限制](../3d-acceptance.md)。[独立消费端](https://github.com/zhudaandzhuer/zhuda-3d-lab)固定引擎 commit，并保存实机报告；小场景数据不能推导完整游戏地图与服务器性能。
 
+### 资产来源边界
+
+消费项目通过 `AssetProvider` 使用稳定的逻辑资产 ID。当前开发与 Web 默认使用 `DirectoryAssetProvider`，提供超时、取消、有界读取、manifest 校验和进度回报。未来可以接入 CDN 分块、ZIP 或 Rust/WASM provider，而不改动游戏规则和场景代码。详见[资产加载契约](../asset-loading.md)。
+
 ## 快速开始
 
 需要 Node.js 24 或更新版本。

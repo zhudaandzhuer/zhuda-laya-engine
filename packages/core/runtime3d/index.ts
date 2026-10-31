@@ -1,6 +1,7 @@
 export * from "./Math3D.ts";
 export * from "./Clocks.ts";
 export * from "./Assets.ts";
+export * from "./AssetProvider.ts";
 export * from "./Surfaces.ts";
 export * from "./Runtime.ts";
 export * from "./SceneQueries.ts";
