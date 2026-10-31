@@ -7,6 +7,7 @@ import ts from 'typescript';
 import { fileURLToPath } from 'node:url';
 import { scanAndGenerateRegistry } from '../packages/compiler/ast-scanner.mjs';
 import { runDoctorAudit } from '../packages/compiler/zhuda-doctor.mjs';
+import { auditAgentContract } from '../packages/compiler/agent-contract.mjs';
 import { executeMcpTool, handleJsonRpcMessage } from '../packages/mcp-server/index.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -41,7 +42,9 @@ test('MCP Server resolves topology, diagnoses Laya crashes, and serves Golden Ex
     params: {}
   });
   assert.equal(rpcRes.id, 42);
-  assert.equal(rpcRes.result.tools.length, 16);
+  assert.equal(rpcRes.result.tools.length, 18);
+  assert.ok(rpcRes.result.tools.some((tool) => tool.name === 'get_agent_contract'));
+  assert.ok(rpcRes.result.tools.some((tool) => tool.name === 'validate_task_spec'));
   assert.ok(rpcRes.result.tools.some((tool) => tool.name === 'audit_visual_migration'));
   assert.ok(rpcRes.result.tools.some((tool) => tool.name === 'audit_visual_contract'));
   assert.ok(rpcRes.result.tools.some((tool) => tool.name === 'validate_particle_effect'));
@@ -63,6 +66,41 @@ test('MCP Server resolves topology, diagnoses Laya crashes, and serves Golden Ex
   assert.equal(calibRes.afterReport.passed, true);
   assert.equal(calibRes.afterReport.pixelErrors.maxAbsErrorPx, 0);
   assert.equal(calibRes.afterReport.colorMetrics.maxDeltaE2000, 0);
+});
+
+test('agent contract is machine-readable and rejects incomplete task specs', () => {
+  const contract = executeMcpTool('get_agent_contract');
+  assert.equal(contract.passed, true);
+  assert.ok(contract.requiredReading.includes('AGENTS.md'));
+  assert.ok(contract.commands.includes('npm run verify'));
+  assert.equal(executeMcpTool('validate_task_spec', { task: { id: 'incomplete' } }).passed, false);
+  const valid = executeMcpTool('validate_task_spec', {
+    task: {
+      id: 'fixture-task', source: 'issue:123', goal: 'make a bounded change',
+      invariants: ['consumer owns gameplay'], dependencies: [],
+      scope: { engine: ['packages/core'], consumer: [] },
+      nonGoals: ['packed provider'], acceptance: ['npm test'], evidence: [],
+      unverifiedLimits: ['real iPhone']
+    }
+  });
+  assert.equal(valid.passed, true);
+});
+
+test('agent contract audit reports missing files and invalid plan status with repair hints', () => {
+  const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'zhuda-agent-contract-'));
+  try {
+    fs.mkdirSync(path.join(temporary, 'docs/plans'), { recursive: true });
+    fs.writeFileSync(path.join(temporary, 'docs/plans/README.md'), '[broken](missing.md)');
+    fs.writeFileSync(path.join(temporary, 'docs/plans/bad.md'), 'Status: Maybe\n');
+    const report = auditAgentContract(temporary);
+    assert.equal(report.passed, false);
+    assert.ok(report.issues.some((item) => item.code === 'AGENT_FILE_MISSING'));
+    assert.ok(report.issues.some((item) => item.code === 'PLAN_STATUS_INVALID'));
+    assert.ok(report.issues.some((item) => item.code === 'PLAN_LINK_BROKEN'));
+    assert.ok(report.issues.every((item) => item.hint || item.code === 'PLAN_STATUS_INVALID'));
+  } finally {
+    fs.rmSync(temporary, { recursive: true, force: true });
+  }
 });
 
 test('Zhuda Doctor audit passes with 0 topological inversions and 0 legacy API violations', () => {

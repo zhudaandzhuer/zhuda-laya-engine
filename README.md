@@ -93,7 +93,7 @@ Editable 2D tile maps and 3D heightfields, chunk streaming, LOD 1/2/4, closed si
 
 The public 3D SDK adds independent consumer builds, resource leases, PBR/custom surfaces, dynamic meshes, camera/input/query contracts, clocks, 2D tile terrain and 3D heightfields with chunk streaming, editing and LOD 1/2/4.
 
-The engine passes 84 tests. The existing integration has 41 real WebGL checks covering atlas UVs, tint, alpha, clipping, textured/fog/dissolve variants and compiler diagnostics. [Documentation](docs/3d-integration.md), [terrain/shader contracts](docs/terrain-shader.md) and [acceptance limits](docs/3d-acceptance.md) describe that scope. The [independent consumer](https://github.com/zhudaandzhuer/zhuda-3d-lab) pins a specific engine commit and stores its device reports. Small-scene results do not establish full-game map or server performance.
+The engine passes 91 automated tests. The existing integration has 41 real WebGL checks covering atlas UVs, tint, alpha, clipping, textured/fog/dissolve variants and compiler diagnostics. [Documentation](docs/3d-integration.md), [terrain/shader contracts](docs/terrain-shader.md) and [acceptance limits](docs/3d-acceptance.md) describe that scope. The [independent consumer](https://github.com/zhudaandzhuer/zhuda-3d-lab) pins a specific engine commit and stores its device reports. Small-scene results do not establish full-game map or server performance.
 
 The [filmic rendering API](docs/filmic-rendering.md) adds native-lit procedural PBR hooks, UV-derived tangents, explicit normal-map conventions, offline GGX/SH HDR lighting, an HDR/AO/bloom/ACES/TAA camera pipeline and horizontal planar reflections. A separate [HARBOR visual study](https://zhudaandzhuer.github.io/zhuda-neon-racer/visual.html) checks the rendered effects and resource teardown. This is an initial quality slice, with further scene and asset work required.
 
@@ -150,12 +150,15 @@ Consumer projects must load the selected Laya runtime modules before booting the
 | --- | --- |
 | `npm run build` | Generate the demo build and SDK bundles |
 | `npm run typecheck` | Check public/runtime types and application sources |
-| `npm run doctor` | Check module order, registration and known legacy API usage |
+| `npm run doctor` | Check module order, registration, known legacy API usage and the agent/documentation contract |
+| `npm run agent:contract` | Print the machine-readable agent boundary, workflow and evidence contract |
 | `npm test` | Run Node unit and integration tests |
 | `npm run verify` | Run build, typecheck, doctor and tests |
 | `npm run pack:tarball` | Create an installable package in `dist/` |
 
 ## Connect a coding agent
+
+Read [`AGENTS.md`](AGENTS.md) and [`docs/agent-development.md`](docs/agent-development.md) before delegating a complex change. The MCP server exposes `get_agent_contract` and `validate_task_spec` so another agent can retrieve the same boundaries, workflow and evidence rules without relying on this conversation.
 
 Add the bundled MCP server to your client configuration:
 

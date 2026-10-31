@@ -12,12 +12,33 @@
  */
 
 import readline from 'node:readline';
+import { fileURLToPath } from 'node:url';
 import {TopologyResolver,ZhudaBenchmarkEngine,ZhudaAssetSerializer,PixelCalibrationEngine,ViewportMatrixEngine,UnityBridgePipeline,validateParticleEffect,validateParticleEffect3D,validateTerrain2D,validateHeightfield,validateShaderSpec} from './runtime.mjs';
 import { auditVisualAssetMigration } from '../compiler/visual-asset-audit.mjs';
 import { auditVisualPresentationContracts } from '../compiler/visual-contract-audit.mjs';
+import { getAgentContract, validateTaskSpec } from '../compiler/agent-contract.mjs';
 import { API_GUARDRAILS, ERROR_DIAGNOSTICS_DB, GOLDEN_EXAMPLES } from './corpus.mjs';
 
+const projectRoot = fileURLToPath(new URL('../..', import.meta.url));
+
 export const MCP_TOOLS_MANIFEST = [
+  {
+    name: 'get_agent_contract',
+    description: '回傳複雜專案 agent 必讀文件、引擎／consumer 邊界、開發順序、必跑命令與證據規則；不代表所有計畫已實作。',
+    inputSchema: {
+      type: 'object',
+      properties: {}
+    }
+  },
+  {
+    name: 'validate_task_spec',
+    description: '驗證 agent 任務規格是否列出來源、目標、不變規則、依賴、引擎／consumer 範圍、非目標、驗收與未驗證限制。',
+    inputSchema: {
+      type: 'object',
+      properties: { task: { type: 'object' } },
+      required: ['task']
+    }
+  },
  {name:'validate_terrain_spec',description:'驗證可序列化的2D tile地形或3D高度場；回報尺寸、圖層、atlas、高度與配置錯誤，不代替實際渲染驗收。',inputSchema:{type:'object',properties:{terrain:{type:'object'}},required:['terrain']}},
  {name:'validate_shader_spec',description:'驗證ZhudaShaderSpec的2D/3D surface函式契約與uniform型別；GLSL編譯、fog、instancing、clipping及畫面須實際WebGL驗收。',inputSchema:{type:'object',properties:{shader:{type:'object'}},required:['shader']}},
   {
@@ -188,6 +209,10 @@ export const MCP_TOOLS_MANIFEST = [
 
 export function executeMcpTool(toolName, args = {}) {
   switch (toolName) {
+    case 'get_agent_contract':
+      return { tool: toolName, ...getAgentContract(projectRoot) };
+    case 'validate_task_spec':
+      return { tool: toolName, ...validateTaskSpec(args.task) };
     case 'validate_terrain_spec': {const issues=args.terrain?.dimension===3?validateHeightfield(args.terrain):validateTerrain2D(args.terrain);return{tool:toolName,passed:issues.length===0,issues};}
     case 'validate_shader_spec': {const issues=validateShaderSpec(args.shader);return{tool:toolName,passed:issues.length===0,issues,gpuValidation:'requires-real-draw'};}
     case 'validate_particle_effect': {

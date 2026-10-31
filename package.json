@@ -52,6 +52,7 @@
     "dist/build-manifest.json",
     "dist/asset-calibration-report.json",
     "zhuda.config.json",
+    "AGENTS.md",
     "docs",
     "README.md",
     "LICENSE"
@@ -76,6 +77,7 @@
     "visual:audit": "node packages/compiler/visual-asset-audit.mjs",
     "visual:contract": "node packages/compiler/visual-contract-audit.mjs",
     "mcp:list": "node -e \"import('./packages/mcp-server/index.mjs').then(m => console.log(JSON.stringify(m.MCP_TOOLS_MANIFEST, null, 2)))\"",
+    "agent:contract": "node packages/mcp-server/index.mjs --tool get_agent_contract",
     "test": "node --test tests/*.test.mjs",
     "pack:tarball": "npm pack --pack-destination dist",
     "verify": "npm run build && npm run typecheck && npm run doctor && npm run test",

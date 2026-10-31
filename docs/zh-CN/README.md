@@ -93,7 +93,7 @@ E4ZEhFCYy4b5pYXJUbMC9KjRitkypyqtZvpSRerLWHCb
 
 公开 3D SDK 补充独立消费端构建、资源 lease、PBR/自定义材质、动态网格、相机/输入/查询契约、时钟、2D tile 地图与支持分块载卸、编辑、LOD 1/2/4 的 3D 高度场。
 
-该接入通过 81 项引擎测试与 41 项真实 WebGL 检查。Shader 验证包含图集 UV、染色、透明度、裁切、贴图/雾/溶解变体与真实编译诊断。具体用法和范围见[3D 接入文档](../3d-integration.md)、[地形/Shader 契约](../terrain-shader.md)与[验收限制](../3d-acceptance.md)。[独立消费端](https://github.com/zhudaandzhuer/zhuda-3d-lab)固定引擎 commit，并保存实机报告；小场景数据不能推导完整游戏地图与服务器性能。
+该接入通过 91 项自动化引擎测试与 41 项真实 WebGL 检查。Shader 验证包含图集 UV、染色、透明度、裁切、贴图/雾/溶解变体与真实编译诊断。具体用法和范围见[3D 接入文档](../3d-integration.md)、[地形/Shader 契约](../terrain-shader.md)与[验收限制](../3d-acceptance.md)。[独立消费端](https://github.com/zhudaandzhuer/zhuda-3d-lab)固定引擎 commit，并保存实机报告；小场景数据不能推导完整游戏地图与服务器性能。
 
 ### 资产来源边界
 
@@ -135,13 +135,14 @@ cube.meshRenderer.sharedMaterial = Zhuda3D.createMaterial({
 scene.addChild(cube);
 ```
 
-消费项目需要先载入选定的 Laya 运行时模块，再启动 SDK。使用编译器计算模块顺序，避免混用不同代际 API。SDK 开发使用本仓库；游戏消费端使用打包产物或固定 Git commit。
+消费项目需要先载入选定的 Laya 运行时模块，再启动 SDK。使用编译器计算模块顺序，避免混用不同代际 API。SDK 开发使用本仓库；游戏消费端使用打包产物或固定 Git commit。复杂任务开始前请先阅读根目录 [`AGENTS.md`](../../AGENTS.md) 与[代理开发手册](../agent-development.md)；MCP 的 `get_agent_contract` 与 `validate_task_spec` 会提供相同的边界与验收规则。
 
 | 指令 | 用途 |
 | --- | --- |
 | `npm run build` | 生成工作台与 SDK 产物 |
 | `npm run typecheck` | 检查公开/运行时类型与应用源码 |
 | `npm run doctor` | 检查模块顺序、注册与已知旧 API 使用 |
+| `npm run agent:contract` | 输出机器可读的代理边界、工作流与证据契约 |
 | `npm test` | 执行 Node 单元与集成测试 |
 | `npm run verify` | 完整构建、类型、体检与测试 |
 | `npm run pack:tarball` | 在 `dist/` 生成可安装包 |

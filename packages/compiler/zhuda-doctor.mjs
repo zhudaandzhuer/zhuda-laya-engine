@@ -9,6 +9,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { collectTsFiles, parseReflectableClassesInFile } from './ast-scanner.mjs';
 import { TopologyResolver } from './compiler-runtime.mjs';
+import { auditAgentContract } from './agent-contract.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(__dirname, '../..');
@@ -66,15 +67,18 @@ export function runDoctorAudit() {
   }
 
   const passed = apiViolations.length === 0 && topologyIssues.length === 0;
+  const agentContract = auditAgentContract(projectRoot);
+  const allPassed = passed && agentContract.passed;
 
   return {
-    passed,
+    passed: allPassed,
     scannedTsFilesCount: tsFiles.length,
     discoveredComponentsCount: discoveredComponents.length,
     discoveredComponents: discoveredComponents.map((c) => c.className),
     htmlScriptCount: htmlScriptFiles.length,
     topologyIssues,
-    apiViolations
+    apiViolations,
+    agentContract
   };
 }
 
@@ -85,6 +89,11 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   console.log(`  • 反射組件數量:   ${report.discoveredComponentsCount} (${report.discoveredComponents.join(', ')})`);
   console.log(`  • HTML 拓撲模組:  ${report.htmlScriptCount} 個庫 (順序衝突: ${report.topologyIssues.length})`);
   console.log(`  • 廢棄 API 違規:  ${report.apiViolations.length} 處`);
+  console.log(`  • Agent 契約守衛: ${report.agentContract.issues.length} 處`);
+  for (const item of report.agentContract.issues) {
+    console.log(`    - [${item.code}] ${item.file}: ${item.message}`);
+    if (item.hint) console.log(`      修復: ${item.hint}`);
+  }
   console.log(`  • 體檢結論:       ${report.passed ? '✅ HEALTHY (0 阻斷錯誤)' : '❌ FAILED'}`);
   if (!report.passed) {
     process.exit(1);
