@@ -108,6 +108,12 @@ authority. It bounds the pre-gesture queue, applies master/channel gain once,
 checks bridge origins and disposes voices and listeners with the owner.
 Consumers must not create a second `AudioContext` for an event.
 
+### Platform adapters
+
+[`NoSleepAdapter`](docs/platform-adapters.md) is built into the SDK for native
+Screen Wake Lock. FairyGUI stays consumer-owned: projects that need it install
+their own compatible runtime and adapter.
+
 Planned engine work is tracked in the [development plans](docs/plans/README.md) directory. Plans are proposals until their measurements and acceptance gates pass.
 
 ## Quick start

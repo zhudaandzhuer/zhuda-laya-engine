@@ -157,11 +157,12 @@ test('zhuda-laya-engine SDK bundles (ESM & CJS) and upstream LayaAir Official at
   assert.ok(sdkMod.ZhudaEngine, 'ESM SDK should export ZhudaEngine');
   assert.ok(sdkMod.PixelCalibrationEngine, 'ESM SDK should export PixelCalibrationEngine');
   assert.ok(sdkMod.IframeSoundAdapter, 'ESM SDK should export IframeSoundAdapter');
+  assert.ok(sdkMod.NoSleepAdapter, 'ESM SDK should export NoSleepAdapter');
   assert.ok(sdkMod.ViewportMatrixEngine, 'ESM SDK should export ViewportMatrixEngine');
   assert.ok(sdkMod.UnityBridgePipeline, 'ESM SDK should export UnityBridgePipeline');
   assert.ok(sdkMod.VisualFocusContract, 'ESM SDK should export VisualFocusContract');
   const cjsMod = (await import('node:module')).createRequire(import.meta.url)(cjsPath);
-  for (const name of ['ZhudaParticleSystem', 'ZhudaRibbonTrail', 'ZhudaEffectEnvelope', 'ZhudaLayaParticleRenderer',
+  for (const name of ['NoSleepAdapter', 'ZhudaParticleSystem', 'ZhudaRibbonTrail', 'ZhudaEffectEnvelope', 'ZhudaLayaParticleRenderer',
     'ZhudaLayaRibbonRenderer', 'validateParticleEffect', 'ZhudaParticleSystem3D', 'ZhudaParticleMesh3D',
     'ZhudaRibbonTrail3D', 'ZhudaRibbonPath3D', 'ZhudaLayaParticleRenderer3D', 'ZhudaLayaRibbonRenderer3D', 'validateParticleEffect3D',
     'ZhudaEffectDirector', 'ZhudaEffectBudget', 'ZhudaRuntimeProfiler', 'ZhudaVfxMaterial', 'ZhudaVfxCamera',

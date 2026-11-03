@@ -49,6 +49,7 @@ into the consumer's own agent rules.
 3. [`docs/agent-development.md`](docs/agent-development.md) for the task,
    failure and evidence workflow.
 4. The relevant contract: [`docs/audio.md`](docs/audio.md),
+   [`docs/platform-adapters.md`](docs/platform-adapters.md),
    [`docs/asset-loading.md`](docs/asset-loading.md),
    [`docs/terrain-shader.md`](docs/terrain-shader.md),
    [`docs/3d-integration.md`](docs/3d-integration.md),
@@ -129,6 +130,8 @@ unavailable; it is never silently converted to pass.
   WebAudio and Laya `SoundManager`. Master/channel gain is applied once; every
   voice and listener has a disposal path. Bridge commands require an explicit
   allowed origin or same-origin validation.
+- NoSleep is an optional platform adapter owned by the engine; FairyGUI is a
+  consumer dependency and must not be bundled into the engine topology.
 
 ## Change classification
 

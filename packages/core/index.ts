@@ -5,6 +5,7 @@ export * from './BenchmarkEngine';
 export * from './StaticAssetPipeline';
 export * from './PixelCalibrationEngine';
 export * from './IframeSoundAdapter';
+export * from './NoSleepAdapter';
 export * from './ViewportMatrixEngine';
 export * from './UnityBridgePipeline';
 export * from './SpineVisualContract';

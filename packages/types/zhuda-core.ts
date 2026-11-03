@@ -16,3 +16,45 @@ export interface ZhudaClassMetadata {
   category?: '2d' | '3d' | 'ui' | 'spine' | 'physics' | 'gameplay';
   description?: string;
 }
+
+export type NoSleepState =
+  | 'disabled'
+  | 'requesting'
+  | 'enabled'
+  | 'suspended'
+  | 'unsupported'
+  | 'denied'
+  | 'error'
+  | 'disposed';
+
+export interface NoSleepWakeLockSentinel {
+  readonly released?: boolean;
+  release(): Promise<void> | void;
+  addEventListener?(type: 'release', listener: EventListener): void;
+  removeEventListener?(type: 'release', listener: EventListener): void;
+}
+
+export interface NoSleepWakeLockProvider {
+  request(type: 'screen'): Promise<NoSleepWakeLockSentinel>;
+}
+
+export interface NoSleepAdapterOptions {
+  /** Install pointer/touch/mouse/keyboard listeners that call enable once. */
+  autoEnableOnGesture?: boolean;
+  /** Release the native sentinel while the page is blurred. */
+  releaseOnBlur?: boolean;
+  /** Optional provider for hosts and deterministic tests. */
+  wakeLockProvider?: () => NoSleepWakeLockProvider | null;
+}
+
+export interface NoSleepDiagnostics {
+  state: NoSleepState;
+  supported: boolean;
+  desiredEnabled: boolean;
+  pageVisible: boolean;
+  windowFocused: boolean;
+  requestCount: number;
+  releaseCount: number;
+  staleRequestCount: number;
+  lastError: string | null;
+}

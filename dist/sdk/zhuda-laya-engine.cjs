@@ -1,5 +1,5 @@
 /**
- * zhuda-laya-engine v1.1.1 — 豬大 LayaAir (AI-Agent-Friendly Fork Edition)
+ * zhuda-laya-engine v1.2.0 — 豬大 LayaAir (AI-Agent-Friendly Fork Edition)
  * Repository: https://github.com/zhudaandzhuer/zhuda-laya-engine
  * Upstream Official: LayaAir Engine 3.4.2 by Layabox (https://layaair.com/ | https://github.com/layabox/LayaAir)
  * License: MIT
@@ -30,6 +30,7 @@ __export(index_exports, {
   ENGINE_PRESET_PROFILES: () => ENGINE_PRESET_PROFILES,
   EngineGuard: () => EngineGuard,
   IframeSoundAdapter: () => IframeSoundAdapter,
+  NoSleepAdapter: () => NoSleepAdapter,
   PixelCalibrationEngine: () => PixelCalibrationEngine,
   SpineVisualContract: () => SpineVisualContract,
   TopologyResolver: () => TopologyResolver,
@@ -5179,6 +5180,251 @@ var ZhudaBenchmarkEngine = class {
   }
 };
 
+// packages/core/NoSleepAdapter.ts
+function errorMessage(error) {
+  return error instanceof Error ? error.message : String(error);
+}
+var NoSleepAdapter = class {
+  constructor(options = {}) {
+    this.cleanupFns = [];
+    this.gestureCleanupFns = [];
+    this.state = "disabled";
+    this.desiredEnabled = false;
+    this.pageVisible = true;
+    this.windowFocused = true;
+    this.sentinel = null;
+    this.sentinelReleaseCleanup = null;
+    this.pendingRequest = null;
+    this.requestGeneration = 0;
+    this.requestCount = 0;
+    this.releaseCount = 0;
+    this.staleRequestCount = 0;
+    this.lastError = null;
+    this.disposed = false;
+    this.options = {
+      ...options,
+      autoEnableOnGesture: options.autoEnableOnGesture ?? true,
+      releaseOnBlur: options.releaseOnBlur ?? true
+    };
+    this.pageVisible = typeof document === "undefined" || document.visibilityState !== "hidden";
+    this.installLifecycleGuards();
+    if (this.options.autoEnableOnGesture) this.installGestureGuards();
+  }
+  addEventListener(target, type, listener, options, gesture = false) {
+    target.addEventListener(type, listener, options);
+    const cleanup = () => target.removeEventListener(type, listener, options);
+    this.cleanupFns.push(cleanup);
+    if (gesture) this.gestureCleanupFns.push(cleanup);
+  }
+  removeGestureGuards() {
+    for (const cleanup of this.gestureCleanupFns.splice(0)) {
+      cleanup();
+      const index = this.cleanupFns.indexOf(cleanup);
+      if (index >= 0) this.cleanupFns.splice(index, 1);
+    }
+  }
+  installGestureGuards() {
+    if (typeof window === "undefined") return;
+    const events = ["pointerdown", "touchstart", "mousedown", "keydown"];
+    const onGesture = () => {
+      void this.enable().then((enabled) => {
+        if (enabled) this.removeGestureGuards();
+      });
+    };
+    for (const type of events) {
+      this.addEventListener(window, type, onGesture, { capture: true, passive: true }, true);
+    }
+  }
+  installLifecycleGuards() {
+    if (typeof window === "undefined" || typeof document === "undefined") return;
+    this.addEventListener(document, "visibilitychange", () => {
+      const visible = document.visibilityState !== "hidden";
+      this.handleLifecycleChange(visible, this.windowFocused);
+    });
+    this.addEventListener(window, "blur", () => {
+      this.handleLifecycleChange(this.pageVisible, false);
+    });
+    this.addEventListener(window, "focus", () => {
+      this.handleLifecycleChange(this.pageVisible, true);
+    });
+    this.addEventListener(window, "pagehide", () => {
+      this.handleLifecycleChange(false, false);
+    });
+    this.addEventListener(window, "pageshow", () => {
+      this.handleLifecycleChange(true, true);
+    });
+  }
+  getProvider() {
+    if (this.options.wakeLockProvider) {
+      try {
+        return this.options.wakeLockProvider();
+      } catch (error) {
+        this.lastError = errorMessage(error);
+        return null;
+      }
+    }
+    const root = globalThis;
+    return root.navigator?.wakeLock ?? null;
+  }
+  isSupported() {
+    return this.getProvider() !== null;
+  }
+  recordError(error) {
+    this.lastError = errorMessage(error);
+  }
+  canRequest() {
+    return !this.disposed && this.desiredEnabled && this.pageVisible && this.windowFocused;
+  }
+  releaseCandidate(candidate) {
+    this.releaseCount++;
+    try {
+      Promise.resolve(candidate.release()).catch((error) => this.recordError(error));
+    } catch (error) {
+      this.recordError(error);
+    }
+  }
+  detachSentinel(candidate) {
+    if (this.sentinel !== candidate) return;
+    this.sentinel = null;
+    this.sentinelReleaseCleanup?.();
+    this.sentinelReleaseCleanup = null;
+  }
+  releaseSentinel(keepDesired) {
+    this.requestGeneration++;
+    const candidate = this.sentinel;
+    if (candidate) {
+      this.detachSentinel(candidate);
+      this.releaseCandidate(candidate);
+    }
+    if (this.disposed) return;
+    this.state = keepDesired && this.desiredEnabled ? "suspended" : "disabled";
+  }
+  attachSentinel(candidate, generation) {
+    if (!candidate || typeof candidate.release !== "function") {
+      this.state = "error";
+      this.lastError = "Wake Lock provider returned an invalid sentinel";
+      return false;
+    }
+    if (candidate.released === true) {
+      this.staleRequestCount++;
+      this.releaseCandidate(candidate);
+      this.state = "suspended";
+      return false;
+    }
+    if (!this.canRequest() || generation !== this.requestGeneration) {
+      this.staleRequestCount++;
+      this.releaseCandidate(candidate);
+      return false;
+    }
+    this.sentinel = candidate;
+    const onRelease = () => {
+      if (this.sentinel !== candidate) return;
+      this.detachSentinel(candidate);
+      this.releaseCount++;
+      if (this.disposed) return;
+      this.state = this.desiredEnabled ? "suspended" : "disabled";
+      if (this.canRequest()) void this.requestLock();
+    };
+    candidate.addEventListener?.("release", onRelease);
+    this.sentinelReleaseCleanup = () => candidate.removeEventListener?.("release", onRelease);
+    this.state = "enabled";
+    this.lastError = null;
+    return true;
+  }
+  requestLock() {
+    if (!this.canRequest()) return Promise.resolve(false);
+    if (this.sentinel && this.sentinel.released !== true) {
+      this.state = "enabled";
+      return Promise.resolve(true);
+    }
+    if (this.pendingRequest) return this.pendingRequest;
+    const provider = this.getProvider();
+    if (!provider) {
+      this.state = "unsupported";
+      this.lastError = "Screen Wake Lock API is unavailable";
+      return Promise.resolve(false);
+    }
+    const generation = ++this.requestGeneration;
+    this.requestCount++;
+    this.state = "requesting";
+    let request;
+    try {
+      request = Promise.resolve(provider.request("screen")).then(
+        (candidate) => this.attachSentinel(candidate, generation),
+        (error) => {
+          if (generation === this.requestGeneration && !this.disposed) {
+            this.state = error?.name === "NotAllowedError" ? "denied" : "error";
+            this.recordError(error);
+          }
+          return false;
+        }
+      );
+    } catch (error) {
+      this.state = "error";
+      this.recordError(error);
+      return Promise.resolve(false);
+    }
+    this.pendingRequest = request;
+    void request.finally(() => {
+      if (this.pendingRequest === request) this.pendingRequest = null;
+    }).catch((error) => this.recordError(error));
+    return request;
+  }
+  handleLifecycleChange(visible, focused) {
+    if (this.disposed) return;
+    this.pageVisible = Boolean(visible);
+    this.windowFocused = Boolean(focused);
+    if (!this.pageVisible || !this.windowFocused && this.options.releaseOnBlur) {
+      this.releaseSentinel(true);
+      return;
+    }
+    if (this.desiredEnabled) void this.requestLock();
+  }
+  /** Enable the native screen wake lock. Call from a user gesture when possible. */
+  enable() {
+    if (this.disposed) return Promise.resolve(false);
+    this.desiredEnabled = true;
+    if (!this.pageVisible || !this.windowFocused && this.options.releaseOnBlur) {
+      this.state = "suspended";
+      return Promise.resolve(false);
+    }
+    return this.requestLock();
+  }
+  /** Disable and release the current sentinel; release failures are diagnosed. */
+  disable() {
+    if (this.disposed) return;
+    this.desiredEnabled = false;
+    this.releaseSentinel(false);
+  }
+  isEnabled() {
+    return !this.disposed && this.state === "enabled" && this.sentinel !== null;
+  }
+  getDiagnostics() {
+    return {
+      state: this.state,
+      supported: this.isSupported(),
+      desiredEnabled: this.desiredEnabled,
+      pageVisible: this.pageVisible,
+      windowFocused: this.windowFocused,
+      requestCount: this.requestCount,
+      releaseCount: this.releaseCount,
+      staleRequestCount: this.staleRequestCount,
+      lastError: this.lastError
+    };
+  }
+  /** Remove listeners and release all owned wake-lock resources. */
+  dispose() {
+    if (this.disposed) return;
+    this.desiredEnabled = false;
+    this.requestGeneration++;
+    this.releaseSentinel(false);
+    this.disposed = true;
+    this.state = "disposed";
+    for (const cleanup of this.cleanupFns.splice(0)) cleanup();
+    this.gestureCleanupFns.splice(0);
+  }
+};
+
 // packages/core/SpineVisualContract.ts
 function uniqueStrings(value) {
   if (!Array.isArray(value)) return [];
@@ -10170,6 +10416,7 @@ zhudaSurface(s,zhudaUV,pixel.positionWS,pixel.normalWS);inputs.diffuseColor=max(
   ENGINE_PRESET_PROFILES,
   EngineGuard,
   IframeSoundAdapter,
+  NoSleepAdapter,
   PixelCalibrationEngine,
   SpineVisualContract,
   TopologyResolver,

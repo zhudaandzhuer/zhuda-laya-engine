@@ -35,3 +35,13 @@ export declare class IframeSoundAdapter {
   getDiagnostics(): import('./zhuda-2d-ui').IframeSoundDiagnostics;
   dispose(): void;
 }
+
+/** Native Screen Wake Lock / NoSleep-compatible lifecycle service. */
+export declare class NoSleepAdapter {
+  constructor(options?: import('./zhuda-core').NoSleepAdapterOptions);
+  enable(): Promise<boolean>;
+  disable(): void;
+  isEnabled(): boolean;
+  getDiagnostics(): import('./zhuda-core').NoSleepDiagnostics;
+  dispose(): void;
+}
