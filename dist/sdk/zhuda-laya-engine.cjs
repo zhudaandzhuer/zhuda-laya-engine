@@ -5394,6 +5394,7 @@ var NoSleepAdapter = class {
   disable() {
     if (this.disposed) return;
     this.desiredEnabled = false;
+    this.removeGestureGuards();
     this.releaseSentinel(false);
   }
   isEnabled() {
