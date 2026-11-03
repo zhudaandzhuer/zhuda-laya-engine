@@ -14,12 +14,14 @@ test("independent consumer preserves source hashes and its DOM/CSS; archive is a
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "zhuda-consumer-"));
   try {
     fs.mkdirSync(path.join(root, "public"));
+    fs.mkdirSync(path.join(root, "assets/prefabs"), { recursive: true });
     fs.mkdirSync(path.join(root, "src"));
     fs.writeFileSync(
       path.join(root, "public/index.html"),
       '<title>Consumer owns this</title><link rel="stylesheet" href="own.css"><div id="mount">Own DOM</div><!-- ZHUDA_LIBS --><!-- ZHUDA_ENTRY -->',
     );
     fs.writeFileSync(path.join(root, "public/own.css"), "#mount{color:red}");
+    fs.writeFileSync(path.join(root, "assets/prefabs/fixture.lh"), "{}");
     fs.writeFileSync(
       path.join(root, "src/Main.ts"),
       "import {ZhudaSceneQueries} from 'zhuda-laya-engine'; window['queries']=new ZhudaSceneQueries();",
@@ -53,6 +55,10 @@ test("independent consumer preserves source hashes and its DOM/CSS; archive is a
       /<meta charset="utf-8">/i,
     );
     assert.equal(fs.existsSync(path.join(root, "src/.generated")), false);
+    assert.equal(
+      fs.readFileSync(path.join(root, "dist/web/assets/prefabs/fixture.lh"), "utf8"),
+      "{}",
+    );
     assert.ok(
       !fs.readdirSync(path.join(root, "dist/web")).includes("preview.html"),
     );

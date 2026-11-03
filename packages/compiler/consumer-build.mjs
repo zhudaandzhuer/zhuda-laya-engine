@@ -209,6 +209,12 @@ export async function runConsumerBuild({
       recursive: true,
       filter: (p) => !path.basename(p).startsWith("."),
     });
+  const assets = path.join(projectRoot, "assets");
+  if (fs.existsSync(assets))
+    fs.cpSync(assets, path.join(out, "assets"), {
+      recursive: true,
+      filter: (p) => !path.basename(p).startsWith("."),
+    });
   for (const file of topology.orderedFiles)
     fs.copyFileSync(
       path.join(engineRoot, "vendor/laya-3.4.2/libs", file),
