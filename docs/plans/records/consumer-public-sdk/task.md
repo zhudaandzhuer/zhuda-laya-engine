@@ -1,6 +1,6 @@
 # Task: migrate consumer prefab pipeline to the public SDK
 
-Status: In progress  
+Status: Accepted
 Owner: Engine tooling and consumer integration  
 Last reviewed: 2026-11-03
 
@@ -28,7 +28,7 @@ Prefab-first control-bar provenance and the existing game behavior gates.
 
 ## Dependencies
 
-- Engine commit `012d6ff4b50545b4300bc71daf695acb1d3a50eb` on GitHub.
+- Engine commit `99116a147a0df7a6d66703aa0e0f762a73dbc9f0` on GitHub.
 - Consumer `/Users/yaowei/Desktop/game1` and its `AGENTS.md`.
 - `docs/prefab-workflow.md`, `packages/compiler/consumer-build.mjs`, and the
   public declarations under `packages/types/`.
