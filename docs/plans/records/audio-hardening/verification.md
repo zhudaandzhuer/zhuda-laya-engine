@@ -49,7 +49,7 @@ Not applicable. This task changes audio lifecycle and public types only.
 Real iOS/Android autoplay, iframe permission policy, speaker output, latency,
 clipping and hardware context-loss behavior remain unverified. Consumer-owned
 asset decoding, `AudioBuffer` caching, BGM streaming and spatial audio remain
-future capabilities under the contract in [`docs/audio.md`](../../audio.md).
+future capabilities under the contract in [`docs/audio.md`](../../../audio.md).
 
 Decision: **In progress** for the engine baseline because the headless engine
 checks pass but the required real browser/device audio check is unavailable.
