@@ -55,6 +55,34 @@ export interface NineSlicePanelOptions {
 
 export type IframeAudioChannel = 'master' | 'bgm' | 'sfx' | 'ui';
 
+export interface IframeSoundAdapterOptions {
+  allowedParentOrigins?: readonly string[];
+  queueMaxAgeMs?: number;
+  maxPendingQueue?: number;
+  maxActiveVoices?: number;
+  audioContextFactory?: () => AudioContext | null;
+  now?: () => number;
+  syncLayaSoundManager?: boolean;
+}
+
+export interface IframeToneOptions {
+  id: string;
+  channel?: IframeAudioChannel;
+  waveType?: OscillatorType;
+  startFreq: number;
+  endFreq?: number;
+  durationSec: number;
+  peakGain?: number;
+  delaySec?: number;
+}
+
+export interface AudioVoiceHandle {
+  readonly id: string;
+  readonly channel: IframeAudioChannel;
+  readonly stopped: boolean;
+  stop(): boolean;
+}
+
 export interface IframeSoundDiagnostics {
   inIframe: boolean;
   contextState: 'suspended' | 'running' | 'closed' | 'uninitialized';
@@ -66,9 +94,33 @@ export interface IframeSoundDiagnostics {
   userMuted: boolean;
   volumes: Record<IframeAudioChannel, number>;
   queuedBeforeUnlockCount: number;
+  pendingQueue: number;
+  droppedQueue: number;
+  activeVoices: number;
+  droppedVoices: number;
   playedEventsCount: number;
   postMessageBridgeActive: boolean;
   lastBridgeCommand: string;
+  backend: 'webaudio' | 'unavailable';
+  contextAvailable: boolean;
+  lastError: string | null;
+}
+
+export declare class IframeSoundAdapter {
+  static getShared(): IframeSoundAdapter;
+  constructor(options?: IframeSoundAdapterOptions);
+  unlockAudio(gestureSource?: string): boolean;
+  handleFocusOrVisibilityChange(visible: boolean, focused: boolean): void;
+  handleBridgeMessage(msg: { type: string; channel?: IframeAudioChannel; volume?: number }): IframeSoundDiagnostics;
+  setMuted(muted: boolean): void;
+  isMuted(): boolean;
+  setChannelVolume(channel: IframeAudioChannel, volume: number): boolean;
+  getChannelVolume(channel: IframeAudioChannel): number;
+  scheduleTone(options: IframeToneOptions): boolean;
+  stop(id: string): boolean;
+  stopAll(channel?: IframeAudioChannel): number;
+  getDiagnostics(): IframeSoundDiagnostics;
+  dispose(): void;
 }
 
 export type ViewportDeviceId =

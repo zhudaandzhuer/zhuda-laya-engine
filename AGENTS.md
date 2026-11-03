@@ -48,7 +48,8 @@ into the consumer's own agent rules.
    capability.
 3. [`docs/agent-development.md`](docs/agent-development.md) for the task,
    failure and evidence workflow.
-4. The relevant contract: [`docs/asset-loading.md`](docs/asset-loading.md),
+4. The relevant contract: [`docs/audio.md`](docs/audio.md),
+   [`docs/asset-loading.md`](docs/asset-loading.md),
    [`docs/terrain-shader.md`](docs/terrain-shader.md),
    [`docs/3d-integration.md`](docs/3d-integration.md),
    [`docs/3d-acceptance.md`](docs/3d-acceptance.md), or the package README.
@@ -122,6 +123,12 @@ unavailable; it is never silently converted to pass.
   visual masks must identify their target scope and restoration rule.
 - Coordinates and time are explicit: CSS pixels vs backing pixels, DPR,
   parent transforms, simulation tick vs render time and snapshot interpolation.
+
+- Audio has one authority: consumers submit logical events to `IframeSoundAdapter`
+  and never create a second `AudioContext` or route the same event through both
+  WebAudio and Laya `SoundManager`. Master/channel gain is applied once; every
+  voice and listener has a disposal path. Bridge commands require an explicit
+  allowed origin or same-origin validation.
 
 ## Change classification
 

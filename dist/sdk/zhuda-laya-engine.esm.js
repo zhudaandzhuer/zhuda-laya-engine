@@ -1,5 +1,5 @@
 /**
- * zhuda-laya-engine v1.1.0 — 豬大 LayaAir (AI-Agent-Friendly Fork Edition)
+ * zhuda-laya-engine v1.1.1 — 豬大 LayaAir (AI-Agent-Friendly Fork Edition)
  * Repository: https://github.com/zhudaandzhuer/zhuda-laya-engine
  * Upstream Official: LayaAir Engine 3.4.2 by Layabox (https://layaair.com/ | https://github.com/layabox/LayaAir)
  * License: MIT
@@ -4170,8 +4170,19 @@ var PixelCalibrationEngine = class {
 };
 
 // packages/core/IframeSoundAdapter.ts
+var CHANNELS = ["bgm", "sfx", "ui"];
+var AUDIO_WAVE_TYPES = ["sine", "square", "sawtooth", "triangle"];
+var CONTEXT_STATES = /* @__PURE__ */ new Set(["suspended", "running", "closed"]);
+function isAudioChannel(value) {
+  return value === "master" || value === "bgm" || value === "sfx" || value === "ui";
+}
+function isFiniteNumber(value) {
+  return typeof value === "number" && Number.isFinite(value);
+}
 var _IframeSoundAdapter = class _IframeSoundAdapter {
-  constructor() {
+  constructor(options = {}) {
+    this.cleanupFns = [];
+    this.gestureCleanupFns = [];
     this.ctx = null;
     this.masterGain = null;
     this.channelGains = {};
@@ -4184,6 +4195,9 @@ var _IframeSoundAdapter = class _IframeSoundAdapter {
     this.userMuted = false;
     this.postMessageBridgeActive = false;
     this.lastBridgeCommand = "init";
+    this.lastError = null;
+    this.disposed = false;
+    this.unlockAttempt = 0;
     this.volumes = {
       master: 0.85,
       bgm: 0.6,
@@ -4192,7 +4206,24 @@ var _IframeSoundAdapter = class _IframeSoundAdapter {
     };
     this.pendingQueue = [];
     this.queuedBeforeUnlockCount = 0;
+    this.droppedQueue = 0;
+    this.activeVoices = /* @__PURE__ */ new Map();
+    this.droppedVoices = 0;
     this.playedEventsCount = 0;
+    this.voiceSerial = 0;
+    this.options = {
+      ...options,
+      queueMaxAgeMs: options.queueMaxAgeMs ?? 500,
+      maxPendingQueue: options.maxPendingQueue ?? 32,
+      maxActiveVoices: options.maxActiveVoices ?? 32,
+      syncLayaSoundManager: options.syncLayaSoundManager ?? false
+    };
+    this.allowedParentOrigins = new Set(
+      (options.allowedParentOrigins ?? []).filter(
+        (origin) => typeof origin === "string" && origin.length > 0 && origin !== "*"
+      )
+    );
+    this.now = options.now ?? (() => Date.now());
     this.detectIframeContext();
     this.installGestureUnlockGuards();
     this.installVisibilityAndFocusGuards();
@@ -4201,10 +4232,13 @@ var _IframeSoundAdapter = class _IframeSoundAdapter {
     this.syncDomTelemetry();
   }
   static getShared() {
-    if (!this.instance) {
+    if (!this.instance || this.instance.disposed) {
       this.instance = new _IframeSoundAdapter();
     }
     return this.instance;
+  }
+  recordError(error) {
+    this.lastError = error instanceof Error ? error.message : String(error);
   }
   detectIframeContext() {
     if (typeof window === "undefined") {
@@ -4217,189 +4251,273 @@ var _IframeSoundAdapter = class _IframeSoundAdapter {
       this.inIframe = true;
     }
   }
-  ensureAudioContext() {
-    if (!this.ctx && typeof window !== "undefined") {
-      const AudioCtx = window.AudioContext || window.webkitAudioContext;
-      if (AudioCtx) {
-        try {
-          this.ctx = new AudioCtx();
-          this.masterGain = this.ctx.createGain();
-          this.masterGain.gain.value = this.getEffectiveMasterVolume();
-          this.masterGain.connect(this.ctx.destination);
-          const channels = ["bgm", "sfx", "ui"];
-          for (const ch of channels) {
-            const g = this.ctx.createGain();
-            g.gain.value = this.volumes[ch];
-            g.connect(this.masterGain);
-            this.channelGains[ch] = g;
-          }
-        } catch (_e) {
-          this.ctx = null;
-        }
-      }
+  defaultAudioContextFactory() {
+    if (typeof window === "undefined") return null;
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return null;
+    return new AudioCtx();
+  }
+  ensureAudioContext(recreateClosed = true) {
+    if (this.disposed) return null;
+    if (this.ctx && this.ctx.state !== "closed") return this.ctx;
+    if (this.ctx?.state === "closed") {
+      this.recordError("AudioContext is closed");
+      this.unlockedByGesture = false;
+      for (const voice of this.activeVoices.values()) voice.stopped = true;
+      this.activeVoices.clear();
+      this.ctx = null;
+      this.masterGain = null;
+      this.channelGains = {};
+      if (!recreateClosed) return null;
     }
-    return this.ctx;
+    let context = null;
+    try {
+      context = this.options.audioContextFactory ? this.options.audioContextFactory() : this.defaultAudioContextFactory();
+      if (!context) return null;
+      this.ctx = context;
+      this.masterGain = context.createGain();
+      this.masterGain.gain.value = this.getEffectiveMasterVolume();
+      this.masterGain.connect(context.destination);
+      this.channelGains = {};
+      for (const channel of CHANNELS) {
+        const gain = context.createGain();
+        gain.gain.value = this.volumes[channel];
+        gain.connect(this.masterGain);
+        this.channelGains[channel] = gain;
+      }
+      return context;
+    } catch (error) {
+      this.recordError(error);
+      try {
+        if (context && context.state !== "closed") void context.close();
+      } catch (_closeError) {
+      }
+      this.ctx = null;
+      this.masterGain = null;
+      this.channelGains = {};
+      return null;
+    }
   }
   getEffectiveMasterVolume() {
-    if (this.userMuted || this.autoSuspendedByBlur) {
-      return 0;
+    return this.userMuted || this.autoSuspendedByBlur ? 0 : this.volumes.master;
+  }
+  setGainValue(node, value) {
+    if (!this.ctx) return;
+    try {
+      node.gain.setValueAtTime(value, this.ctx.currentTime);
+    } catch (_error) {
+      node.gain.value = value;
     }
-    return this.volumes.master;
   }
   updateGainNodes() {
-    const effectiveMaster = this.getEffectiveMasterVolume();
-    if (this.ctx && this.masterGain) {
-      try {
-        this.masterGain.gain.setValueAtTime(effectiveMaster, this.ctx.currentTime);
-      } catch (_e) {
-        this.masterGain.gain.value = effectiveMaster;
-      }
-    }
-    const channels = ["bgm", "sfx", "ui"];
-    for (const ch of channels) {
-      const node = this.channelGains[ch];
-      if (node) {
-        node.gain.value = this.volumes[ch];
-      }
+    if (this.masterGain) this.setGainValue(this.masterGain, this.getEffectiveMasterVolume());
+    for (const channel of CHANNELS) {
+      const node = this.channelGains[channel];
+      if (node) this.setGainValue(node, this.volumes[channel]);
     }
     this.syncLayaSoundManager();
     this.syncDomTelemetry();
   }
+  /** Optional state mirroring for consumers that explicitly still use Laya SoundManager. */
   syncLayaSoundManager() {
+    if (!this.options.syncLayaSoundManager) return;
     const g = globalThis;
-    const sm = g.Laya?.SoundManager;
-    if (sm) {
-      sm.muted = this.userMuted || this.autoSuspendedByBlur;
-      sm.autoStopMusic = true;
-      if (typeof sm.setMusicVolume === "function") {
-        sm.setMusicVolume(Number((this.volumes.master * this.volumes.bgm).toFixed(2)));
-      }
-      if (typeof sm.setSoundVolume === "function") {
-        sm.setSoundVolume(Number((this.volumes.master * this.volumes.sfx).toFixed(2)));
-      }
+    const soundManager = g.Laya?.SoundManager;
+    if (!soundManager) return;
+    soundManager.muted = this.userMuted || this.autoSuspendedByBlur;
+    soundManager.autoStopMusic = true;
+    soundManager.setMusicVolume?.(Number((this.volumes.master * this.volumes.bgm).toFixed(2)));
+    soundManager.setSoundVolume?.(Number((this.volumes.master * this.volumes.sfx).toFixed(2)));
+  }
+  addEventListener(target, type, listener, options, gesture = false) {
+    target.addEventListener(type, listener, options);
+    const cleanup = () => target.removeEventListener(type, listener, options);
+    this.cleanupFns.push(cleanup);
+    if (gesture) this.gestureCleanupFns.push(cleanup);
+  }
+  removeGestureUnlockGuards() {
+    for (const cleanup of this.gestureCleanupFns.splice(0)) {
+      cleanup();
+      const index = this.cleanupFns.indexOf(cleanup);
+      if (index >= 0) this.cleanupFns.splice(index, 1);
     }
   }
-  /**
-   * 安裝首觸手勢解鎖守衛 (支援 pointerdown / touchstart / mousedown / keydown)
-   */
   installGestureUnlockGuards() {
-    if (typeof window === "undefined" || typeof document === "undefined") return;
-    const gestureEvents = ["pointerdown", "touchstart", "mousedown", "keydown"];
-    const onFirstGesture = (ev) => {
-      this.unlockAudio(ev.type || "gesture");
-      if (this.unlockedByGesture) {
-        for (const evtName of gestureEvents) {
-          window.removeEventListener(evtName, onFirstGesture, true);
-        }
-      }
+    if (typeof window === "undefined") return;
+    const events = ["pointerdown", "touchstart", "mousedown", "keydown"];
+    const onFirstGesture = (event) => {
+      this.unlockAudio(event.type || "gesture");
+      if (this.unlockedByGesture) this.removeGestureUnlockGuards();
     };
-    for (const evtName of gestureEvents) {
-      window.addEventListener(evtName, onFirstGesture, { capture: true, passive: true });
+    for (const event of events) {
+      this.addEventListener(window, event, onFirstGesture, { capture: true, passive: true }, true);
     }
   }
-  /**
-   * 執行音訊解鎖與排隊任務沖刷 (可由手勢事件或測試/母殼直接觸發)
-   */
-  unlockAudio(gestureSource = "programmatic-unlock") {
-    const ctx = this.ensureAudioContext();
+  markUnlocked(gestureSource) {
     this.unlockedByGesture = true;
     this.unlockGestureType = gestureSource;
-    if (ctx) {
-      if (ctx.state === "suspended" && typeof ctx.resume === "function") {
-        ctx.resume().catch(() => {
-        });
-      }
-      try {
-        const silentBuf = ctx.createBuffer(1, 1, 22050);
-        const src = ctx.createBufferSource();
-        src.buffer = silentBuf;
-        src.connect(ctx.destination);
-        src.start(0);
-      } catch (_e) {
-      }
+    this.playSilentUnlockSample();
+    this.flushPendingQueue();
+    this.syncDomTelemetry();
+  }
+  playSilentUnlockSample() {
+    if (!this.ctx) return;
+    try {
+      const silentBuffer = this.ctx.createBuffer(1, 1, 22050);
+      const source = this.ctx.createBufferSource();
+      source.buffer = silentBuffer;
+      source.connect(this.ctx.destination);
+      source.start(0);
+    } catch (error) {
+      this.recordError(error);
     }
-    const now = Date.now();
-    const tasks = this.pendingQueue.splice(0, this.pendingQueue.length);
-    for (const task of tasks) {
-      if (now - task.createdAt <= 1200) {
-        try {
-          task.execute();
-        } catch (_e) {
+  }
+  /** Unlocks only after a real context exists and resume succeeds or is already running. */
+  unlockAudio(gestureSource = "programmatic-unlock") {
+    if (this.disposed) return false;
+    this.unlockGestureType = gestureSource;
+    const context = this.ensureAudioContext();
+    if (!context) {
+      this.recordError("WebAudio is unavailable");
+      this.syncDomTelemetry();
+      return false;
+    }
+    const attempt = ++this.unlockAttempt;
+    if (context.state === "running") {
+      this.markUnlocked(gestureSource);
+      return true;
+    }
+    if (context.state !== "suspended" || typeof context.resume !== "function") {
+      this.recordError(`AudioContext cannot resume from ${context.state}`);
+      this.syncDomTelemetry();
+      return false;
+    }
+    try {
+      const result = context.resume();
+      Promise.resolve(result).then(
+        () => {
+          if (this.disposed || attempt !== this.unlockAttempt || this.ctx !== context) return;
+          if (context.state === "running") {
+            this.markUnlocked(gestureSource);
+            this.removeGestureUnlockGuards();
+          } else {
+            this.recordError(`AudioContext resume ended in ${context.state}`);
+            this.unlockedByGesture = false;
+            this.syncDomTelemetry();
+          }
+        },
+        (error) => {
+          if (this.disposed || attempt !== this.unlockAttempt) return;
+          this.unlockedByGesture = false;
+          this.recordError(error);
+          this.syncDomTelemetry();
         }
-      }
+      );
+    } catch (error) {
+      this.unlockedByGesture = false;
+      this.recordError(error);
+      this.syncDomTelemetry();
+      return false;
     }
     this.syncDomTelemetry();
     return this.unlockedByGesture;
   }
-  /**
-   * 安裝視窗可見度與 iframe 焦點守衛
-   */
+  flushPendingQueue() {
+    if (!this.unlockedByGesture) return;
+    const now = this.now();
+    const tasks = this.pendingQueue.splice(0);
+    for (const task of tasks) {
+      if (now - task.createdAt > this.options.queueMaxAgeMs) {
+        this.droppedQueue++;
+        continue;
+      }
+      try {
+        if (!task.execute()) this.droppedQueue++;
+      } catch (error) {
+        this.droppedQueue++;
+        this.recordError(error);
+      }
+    }
+    this.syncDomTelemetry();
+  }
   installVisibilityAndFocusGuards() {
     if (typeof window === "undefined" || typeof document === "undefined") return;
-    document.addEventListener("visibilitychange", () => {
-      const visible = document.visibilityState !== "hidden";
-      this.handleFocusOrVisibilityChange(visible, this.windowFocused);
+    this.addEventListener(document, "visibilitychange", () => {
+      this.handleFocusOrVisibilityChange(document.visibilityState !== "hidden", this.windowFocused);
     });
-    window.addEventListener("blur", () => {
+    this.addEventListener(window, "blur", () => {
       this.handleFocusOrVisibilityChange(this.pageVisible, false);
     });
-    window.addEventListener("focus", () => {
+    this.addEventListener(window, "focus", () => {
       this.handleFocusOrVisibilityChange(true, true);
     });
-    window.addEventListener("pagehide", () => {
+    this.addEventListener(window, "pagehide", () => {
       this.handleFocusOrVisibilityChange(false, false);
     });
-    window.addEventListener("pageshow", () => {
+    this.addEventListener(window, "pageshow", () => {
       this.handleFocusOrVisibilityChange(true, true);
     });
   }
   handleFocusOrVisibilityChange(visible, focused) {
-    this.pageVisible = visible;
-    this.windowFocused = focused;
-    this.autoSuspendedByBlur = !visible || !focused;
+    if (this.disposed) return;
+    this.pageVisible = Boolean(visible);
+    this.windowFocused = Boolean(focused);
+    this.autoSuspendedByBlur = !this.pageVisible || !this.windowFocused;
     if (this.ctx) {
       if (this.autoSuspendedByBlur && this.ctx.state === "running" && typeof this.ctx.suspend === "function") {
-        this.ctx.suspend().catch(() => {
-        });
-      } else if (!this.autoSuspendedByBlur && !this.userMuted && this.ctx.state === "suspended" && typeof this.ctx.resume === "function") {
-        this.ctx.resume().catch(() => {
-        });
+        try {
+          Promise.resolve(this.ctx.suspend()).catch((error) => this.recordError(error));
+        } catch (error) {
+          this.recordError(error);
+        }
+      } else if (!this.autoSuspendedByBlur && !this.userMuted && this.unlockedByGesture && this.ctx.state === "suspended" && typeof this.ctx.resume === "function") {
+        try {
+          Promise.resolve(this.ctx.resume()).catch((error) => this.recordError(error));
+        } catch (error) {
+          this.recordError(error);
+        }
       }
     }
     this.updateGainNodes();
   }
-  /**
-   * 安裝跨域 postMessage 通訊橋 (相容父層平台控制音訊與暫停)
-   */
+  isAllowedBridgeOrigin(origin) {
+    if (!origin || origin === "null") return false;
+    if (this.allowedParentOrigins.size > 0) return this.allowedParentOrigins.has(origin);
+    if (typeof window === "undefined" || !window.location) return false;
+    return origin === window.location.origin;
+  }
   installPostMessageBridge() {
-    this.postMessageBridgeActive = true;
     if (typeof window === "undefined") return;
-    window.addEventListener("message", (event) => {
-      const data = event?.data;
+    const listener = (event) => {
+      const messageEvent = event;
+      if (!this.isAllowedBridgeOrigin(messageEvent.origin)) return;
+      const data = messageEvent.data;
       if (!data || typeof data !== "object" || typeof data.type !== "string") return;
       if (!data.type.startsWith("zhuda:")) return;
       this.handleBridgeMessage(data);
-      if (event.source && typeof event.source.postMessage === "function") {
+      const source = messageEvent.source;
+      if (source && typeof source.postMessage === "function") {
         try {
-          event.source.postMessage(
+          source.postMessage(
             {
               type: "zhuda:telemetry:ack",
               receivedCommand: data.type,
               diagnostics: this.getDiagnostics()
             },
-            "*"
+            messageEvent.origin
           );
-        } catch (_e) {
+        } catch (error) {
+          this.recordError(error);
         }
       }
-    });
+    };
+    this.addEventListener(window, "message", listener);
+    this.postMessageBridgeActive = true;
   }
-  /**
-   * 處理來自父層 iframe 或 SDK 測試的結構化通訊指令
-   */
   handleBridgeMessage(msg) {
-    this.lastBridgeCommand = msg.type;
-    switch (msg.type) {
+    if (this.disposed) return this.getDiagnostics();
+    this.lastBridgeCommand = typeof msg?.type === "string" ? msg.type : "invalid";
+    switch (msg?.type) {
       case "zhuda:audio:mute":
         this.setMuted(true);
         break;
@@ -4408,7 +4526,7 @@ var _IframeSoundAdapter = class _IframeSoundAdapter {
         this.unlockAudio("bridge-unmute");
         break;
       case "zhuda:audio:setVolume":
-        if (msg.channel && typeof msg.volume === "number") {
+        if (isAudioChannel(msg.channel) && isFiniteNumber(msg.volume)) {
           this.setChannelVolume(msg.channel, msg.volume);
         }
         break;
@@ -4428,78 +4546,163 @@ var _IframeSoundAdapter = class _IframeSoundAdapter {
     return this.getDiagnostics();
   }
   setMuted(muted) {
-    this.userMuted = muted;
+    if (this.disposed) return;
+    this.userMuted = Boolean(muted);
     this.updateGainNodes();
   }
   isMuted() {
     return this.userMuted;
   }
   setChannelVolume(channel, volume) {
-    const clamped = Math.max(0, Math.min(1, Number(volume.toFixed(2))));
-    this.volumes[channel] = clamped;
+    if (!isAudioChannel(channel) || !isFiniteNumber(volume) || volume < 0 || volume > 1) return false;
+    this.volumes[channel] = volume;
     this.updateGainNodes();
+    return true;
   }
   getChannelVolume(channel) {
     return this.volumes[channel];
   }
-  /**
-   * 排程或立即播放合成音訊 (若尚未解鎖則安全入列，絕不拋出 DOMException NotAllowedError)
-   */
-  scheduleTone(options) {
+  validateTone(options) {
+    if (!options || typeof options.id !== "string" || options.id.trim().length === 0) return null;
     const channel = options.channel ?? "sfx";
-    if (this.userMuted || this.autoSuspendedByBlur) {
-      return false;
-    }
-    const runSynthesis = () => {
-      this.playedEventsCount++;
-      const ctx = this.ensureAudioContext();
-      if (!ctx) {
-        this.syncDomTelemetry();
-        return;
-      }
-      if (ctx.state === "suspended" && typeof ctx.resume === "function") {
-        ctx.resume().catch(() => {
-        });
-      }
-      try {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = options.waveType ?? "triangle";
-        osc.frequency.setValueAtTime(options.startFreq, ctx.currentTime);
-        if (options.endFreq && options.endFreq !== options.startFreq) {
-          osc.frequency.exponentialRampToValueAtTime(
-            Math.max(20, options.endFreq),
-            ctx.currentTime + options.durationSec
-          );
-        }
-        const peak = (options.peakGain ?? 0.18) * this.volumes.master * this.volumes[channel];
-        gain.gain.setValueAtTime(Math.max(1e-3, peak), ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(8e-4, ctx.currentTime + options.durationSec);
-        const targetDest = this.channelGains[channel] || this.masterGain || ctx.destination;
-        osc.connect(gain);
-        gain.connect(targetDest);
-        osc.start(ctx.currentTime);
-        osc.stop(ctx.currentTime + options.durationSec);
-      } catch (_e) {
-      }
+    if (!isAudioChannel(channel)) return null;
+    if (!isFiniteNumber(options.startFreq) || options.startFreq <= 0 || options.startFreq > 24e3) return null;
+    if (options.endFreq !== void 0 && (!isFiniteNumber(options.endFreq) || options.endFreq <= 0 || options.endFreq > 24e3)) return null;
+    if (!isFiniteNumber(options.durationSec) || options.durationSec <= 0 || options.durationSec > 30) return null;
+    if (options.peakGain !== void 0 && (!isFiniteNumber(options.peakGain) || options.peakGain < 0 || options.peakGain > 1)) return null;
+    if (options.delaySec !== void 0 && (!isFiniteNumber(options.delaySec) || options.delaySec < 0 || options.delaySec > 60)) return null;
+    if (options.waveType !== void 0 && !AUDIO_WAVE_TYPES.includes(options.waveType)) return null;
+    return channel;
+  }
+  runSynthesis(options, channel) {
+    const context = this.ensureAudioContext(false);
+    const channelGain = channel === "master" ? this.masterGain : this.channelGains[channel];
+    if (!context || !this.masterGain || !channelGain) {
+      this.recordError("WebAudio mixer is unavailable");
       this.syncDomTelemetry();
+      return null;
+    }
+    if (this.activeVoices.size >= this.options.maxActiveVoices) {
+      this.droppedVoices++;
+      this.syncDomTelemetry();
+      return null;
+    }
+    const voiceKey = `${options.id}:${++this.voiceSerial}`;
+    const when = context.currentTime + (options.delaySec ?? 0);
+    const duration = options.durationSec;
+    const state = {
+      logicalId: options.id,
+      channel,
+      source: null,
+      stopped: false
     };
-    if (!this.unlockedByGesture) {
-      this.queuedBeforeUnlockCount++;
-      this.pendingQueue.push({
+    try {
+      const source = context.createOscillator();
+      const gain = context.createGain();
+      state.source = source;
+      source.type = options.waveType ?? "triangle";
+      source.frequency.setValueAtTime(options.startFreq, when);
+      if (options.endFreq !== void 0 && options.endFreq !== options.startFreq) {
+        source.frequency.exponentialRampToValueAtTime(options.endFreq, when + duration);
+      }
+      const peak = options.peakGain ?? 0.18;
+      gain.gain.setValueAtTime(Math.max(1e-3, peak), when);
+      gain.gain.exponentialRampToValueAtTime(8e-4, when + duration);
+      source.connect(gain);
+      gain.connect(channelGain);
+      source.onended = () => {
+        const current = this.activeVoices.get(voiceKey);
+        if (current) {
+          current.stopped = true;
+          this.activeVoices.delete(voiceKey);
+          this.syncDomTelemetry();
+        }
+      };
+      this.activeVoices.set(voiceKey, state);
+      source.start(when);
+      source.stop(when + duration);
+      this.playedEventsCount++;
+      const handle = {
         id: options.id,
         channel,
-        createdAt: Date.now(),
-        execute: runSynthesis
-      });
-      runSynthesis();
+        get stopped() {
+          return state.stopped;
+        },
+        stop: () => this.stopVoice(voiceKey)
+      };
+      this.syncDomTelemetry();
+      return handle;
+    } catch (error) {
+      this.recordError(error);
+      state.stopped = true;
+      this.activeVoices.delete(voiceKey);
+      this.syncDomTelemetry();
+      return null;
+    }
+  }
+  /** Queues once before unlock, then starts one voice through the shared mixer. */
+  scheduleTone(options) {
+    const channel = this.validateTone(options);
+    if (!channel || this.disposed || this.userMuted || this.autoSuspendedByBlur) return false;
+    if (!this.unlockedByGesture) {
+      if (this.pendingQueue.some((task) => task.id === options.id)) {
+        this.droppedQueue++;
+        this.syncDomTelemetry();
+        return false;
+      }
+      if (this.pendingQueue.length >= this.options.maxPendingQueue) {
+        this.droppedQueue++;
+        this.syncDomTelemetry();
+        return false;
+      }
+      const queued = {
+        id: options.id,
+        channel,
+        createdAt: this.now(),
+        execute: () => this.runSynthesis(options, channel) !== null
+      };
+      this.pendingQueue.push(queued);
+      this.queuedBeforeUnlockCount++;
+      this.syncDomTelemetry();
       return true;
     }
-    runSynthesis();
+    return this.runSynthesis(options, channel) !== null;
+  }
+  stop(id) {
+    let stopped = false;
+    for (const [voiceKey, voice] of [...this.activeVoices.entries()]) {
+      if (voice.logicalId === id) stopped = this.stopVoice(voiceKey) || stopped;
+    }
+    const before = this.pendingQueue.length;
+    this.pendingQueue = this.pendingQueue.filter((task) => task.id !== id);
+    if (before !== this.pendingQueue.length) stopped = true;
+    this.syncDomTelemetry();
+    return stopped;
+  }
+  stopVoice(voiceKey) {
+    const voice = this.activeVoices.get(voiceKey);
+    if (!voice) return false;
+    voice.stopped = true;
+    this.activeVoices.delete(voiceKey);
+    try {
+      voice.source.stop();
+    } catch (_error) {
+    }
+    this.syncDomTelemetry();
     return true;
   }
+  stopAll(channel) {
+    let count = 0;
+    for (const [voiceKey, voice] of [...this.activeVoices.entries()]) {
+      if (channel === void 0 || voice.channel === channel) {
+        if (this.stopVoice(voiceKey)) count++;
+      }
+    }
+    this.syncDomTelemetry();
+    return count;
+  }
   getDiagnostics() {
-    const state = this.ctx ? this.ctx.state : "uninitialized";
+    const state = this.ctx && CONTEXT_STATES.has(this.ctx.state) ? this.ctx.state : "uninitialized";
     return {
       inIframe: this.inIframe,
       contextState: state,
@@ -4511,21 +4714,48 @@ var _IframeSoundAdapter = class _IframeSoundAdapter {
       userMuted: this.userMuted,
       volumes: { ...this.volumes },
       queuedBeforeUnlockCount: this.queuedBeforeUnlockCount,
+      pendingQueue: this.pendingQueue.length,
+      droppedQueue: this.droppedQueue,
+      activeVoices: this.activeVoices.size,
+      droppedVoices: this.droppedVoices,
       playedEventsCount: this.playedEventsCount,
       postMessageBridgeActive: this.postMessageBridgeActive,
-      lastBridgeCommand: this.lastBridgeCommand
+      lastBridgeCommand: this.lastBridgeCommand,
+      backend: this.ctx ? "webaudio" : "unavailable",
+      contextAvailable: this.ctx !== null,
+      lastError: this.lastError
     };
   }
   syncDomTelemetry() {
-    const diag = this.getDiagnostics();
+    const diagnostics = this.getDiagnostics();
     const win = globalThis;
-    win.__ZHUDA_IFRAME_AUDIO__ = diag;
-    win.__ZHUDA_IFRAME_ADAPTER__ = this;
+    win.__ZHUDA_IFRAME_AUDIO__ = diagnostics;
+    if (!this.disposed) win.__ZHUDA_IFRAME_ADAPTER__ = this;
     if (typeof document !== "undefined" && document.body) {
       document.body.dataset.zhudaIframeAudio = this.postMessageBridgeActive ? "ready" : "inactive";
       document.body.dataset.zhudaAudioMuted = String(this.userMuted || this.autoSuspendedByBlur);
       document.body.dataset.zhudaAudioPlayed = String(this.playedEventsCount);
     }
+  }
+  /** Stops voices, removes every event listener and closes the owned context. */
+  dispose() {
+    if (this.disposed) return;
+    this.disposed = true;
+    this.unlockAttempt++;
+    this.pendingQueue = [];
+    this.stopAll();
+    for (const cleanup of this.cleanupFns.splice(0)) cleanup();
+    this.gestureCleanupFns.splice(0);
+    this.postMessageBridgeActive = false;
+    if (this.ctx && typeof this.ctx.close === "function" && this.ctx.state !== "closed") {
+      try {
+        Promise.resolve(this.ctx.close()).catch((error) => this.recordError(error));
+      } catch (error) {
+        this.recordError(error);
+      }
+    }
+    this.syncDomTelemetry();
+    if (_IframeSoundAdapter.instance === this) _IframeSoundAdapter.instance = null;
   }
 };
 _IframeSoundAdapter.instance = null;

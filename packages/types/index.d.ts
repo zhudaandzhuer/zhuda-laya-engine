@@ -17,3 +17,21 @@ export * from './prefabs/index';
 
 export * from "./terrain/index";
 export * from "./shaders/index";
+
+/** Runtime audio mixer exported by packages/core/IframeSoundAdapter. */
+export declare class IframeSoundAdapter {
+  static getShared(): IframeSoundAdapter;
+  constructor(options?: import('./zhuda-2d-ui').IframeSoundAdapterOptions);
+  unlockAudio(gestureSource?: string): boolean;
+  handleFocusOrVisibilityChange(visible: boolean, focused: boolean): void;
+  handleBridgeMessage(msg: { type: string; channel?: import('./zhuda-2d-ui').IframeAudioChannel; volume?: number }): import('./zhuda-2d-ui').IframeSoundDiagnostics;
+  setMuted(muted: boolean): void;
+  isMuted(): boolean;
+  setChannelVolume(channel: import('./zhuda-2d-ui').IframeAudioChannel, volume: number): boolean;
+  getChannelVolume(channel: import('./zhuda-2d-ui').IframeAudioChannel): number;
+  scheduleTone(options: import('./zhuda-2d-ui').IframeToneOptions): boolean;
+  stop(id: string): boolean;
+  stopAll(channel?: import('./zhuda-2d-ui').IframeAudioChannel): number;
+  getDiagnostics(): import('./zhuda-2d-ui').IframeSoundDiagnostics;
+  dispose(): void;
+}

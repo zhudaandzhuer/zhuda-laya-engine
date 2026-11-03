@@ -55,6 +55,41 @@ export interface NineSlicePanelOptions {
 
 export type IframeAudioChannel = 'master' | 'bgm' | 'sfx' | 'ui';
 
+export interface IframeSoundAdapterOptions {
+  /** Parent origins accepted by the postMessage bridge. Same-origin is used when omitted. */
+  allowedParentOrigins?: readonly string[];
+  /** Maximum age of a pre-gesture event before it is discarded. Defaults to 500 ms. */
+  queueMaxAgeMs?: number;
+  /** Maximum number of pending events retained before unlock. Defaults to 32. */
+  maxPendingQueue?: number;
+  /** Maximum number of simultaneously active voices. Defaults to 32. */
+  maxActiveVoices?: number;
+  /** Optional factory used by hosts and deterministic tests. */
+  audioContextFactory?: () => AudioContext | null;
+  /** Clock used for queue expiry; production defaults to Date.now. */
+  now?: () => number;
+  /** Opt in to mirroring volume/mute state to Laya's SoundManager. */
+  syncLayaSoundManager?: boolean;
+}
+
+export interface IframeToneOptions {
+  id: string;
+  channel?: IframeAudioChannel;
+  waveType?: OscillatorType;
+  startFreq: number;
+  endFreq?: number;
+  durationSec: number;
+  peakGain?: number;
+  delaySec?: number;
+}
+
+export interface AudioVoiceHandle {
+  readonly id: string;
+  readonly channel: IframeAudioChannel;
+  readonly stopped: boolean;
+  stop(): boolean;
+}
+
 export interface IframeSoundDiagnostics {
   inIframe: boolean;
   contextState: 'suspended' | 'running' | 'closed' | 'uninitialized';
@@ -66,9 +101,16 @@ export interface IframeSoundDiagnostics {
   userMuted: boolean;
   volumes: Record<IframeAudioChannel, number>;
   queuedBeforeUnlockCount: number;
+  pendingQueue: number;
+  droppedQueue: number;
+  activeVoices: number;
+  droppedVoices: number;
   playedEventsCount: number;
   postMessageBridgeActive: boolean;
   lastBridgeCommand: string;
+  backend: 'webaudio' | 'unavailable';
+  contextAvailable: boolean;
+  lastError: string | null;
 }
 
 export type ViewportDeviceId =

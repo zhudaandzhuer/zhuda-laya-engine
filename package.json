@@ -1,6 +1,6 @@
 {
   "name": "zhuda-laya-engine",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "豬大 LayaAir 引擎 (zhuda-laya-engine) — 基於 LayaAir 官方 (layabox/LayaAir 3.4.2) 打造的豬大 AI-Agent-Friendly 開源分支版本，內建 Zero-IDE 極速打包、DAG 拓撲守衛、AST 自動反射、靜態資產 ΔE00 校準與 MCP 語料伺服器",
   "private": false,
   "license": "MIT",

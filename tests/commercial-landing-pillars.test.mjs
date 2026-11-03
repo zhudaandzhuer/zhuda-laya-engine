@@ -51,9 +51,10 @@ test('Direction 1 (M2): IframeSoundAdapter handles pre-gesture queue, auto-unloc
 
   // 2. 觸發首觸手勢解鎖
   const unlocked = adapter.unlockAudio('pointerdown');
-  assert.equal(unlocked, true);
-  assert.equal(adapter.getDiagnostics().unlockedByGesture, true);
+  assert.equal(unlocked, false, 'Node has no real AudioContext; unlock must remain unavailable');
+  assert.equal(adapter.getDiagnostics().unlockedByGesture, false);
   assert.equal(adapter.getDiagnostics().unlockGestureType, 'pointerdown');
+  assert.equal(adapter.getDiagnostics().backend, 'unavailable');
 
   // 3. 模擬 iframe 失焦 / 切出背景分頁 -> 自動靜音保護
   adapter.handleFocusOrVisibilityChange(false, false);
