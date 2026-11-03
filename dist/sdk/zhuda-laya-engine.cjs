@@ -1,5 +1,5 @@
 /**
- * zhuda-laya-engine v1.0.0 — 豬大 LayaAir (AI-Agent-Friendly Fork Edition)
+ * zhuda-laya-engine v1.1.0 — 豬大 LayaAir (AI-Agent-Friendly Fork Edition)
  * Repository: https://github.com/zhudaandzhuer/zhuda-laya-engine
  * Upstream Official: LayaAir Engine 3.4.2 by Layabox (https://layaair.com/ | https://github.com/layabox/LayaAir)
  * License: MIT
@@ -71,6 +71,7 @@ __export(index_exports, {
   ZhudaPlanarReflection: () => ZhudaPlanarReflection,
   ZhudaPointerInput: () => ZhudaPointerInput,
   ZhudaPrefab: () => ZhudaPrefab,
+  ZhudaPrefabLibrary: () => ZhudaPrefabLibrary,
   ZhudaRequestSlot: () => ZhudaRequestSlot,
   ZhudaResourceScope: () => ZhudaResourceScope,
   ZhudaRibbonPath3D: () => ZhudaRibbonPath3D,
@@ -106,7 +107,9 @@ __export(index_exports, {
   createSurfaceTexture: () => createSurfaceTexture,
   disposeMigratedMaterial: () => disposeMigratedMaterial,
   disposeSurfaceMaterial: () => disposeSurfaceMaterial,
+  findPrefabNode: () => findPrefabNode,
   identity4: () => identity4,
+  inspectPrefabInstance: () => inspectPrefabInstance,
   inspectSceneResources: () => inspectSceneResources,
   installLaya342LifecycleFix: () => installLaya342LifecycleFix,
   installSandboxStorageFallback: () => installSandboxStorageFallback,
@@ -3655,7 +3658,7 @@ var ZhudaPrefab = class {
     const L = globalThis.Laya;
     let node;
     if (data._$type === "Text" || data._$type === "Label") {
-      node = new L.Text();
+      node = data._$type === "Label" && L.Label ? new L.Label() : new L.Text();
       node.text = data.text ?? "";
       if (data.font) node.font = data.font;
       if (typeof data.fontSize === "number") node.fontSize = data.fontSize;
@@ -3664,8 +3667,15 @@ var ZhudaPrefab = class {
       if (data.align) node.align = data.align;
       if (data.valign) node.valign = data.valign;
       if (typeof data.leading === "number") node.leading = data.leading;
+      if (typeof data.stroke === "number") node.stroke = data.stroke;
+      if (data.strokeColor) node.strokeColor = data.strokeColor;
+      if (data.padding) node.padding = data._$type === "Label" && L.Label ? data.padding.join(",") : data.padding;
     } else if (data._$type === "Scene" && L.Scene) {
       node = new L.Scene();
+    } else if (data._$type === "Image" && L.Image) {
+      node = new L.Image();
+    } else if (data._$type === "Box" && L.Box) {
+      node = new L.Box();
     } else {
       node = new L.Sprite();
     }
@@ -7153,137 +7163,6 @@ function compareVisualFrames(source, target, width, height, options = {}) {
   return { passed: a > 0 && b > 0 && iou >= minIoU && center <= maxCenter, intersectionOverUnion: iou, sourcePixels: a, targetPixels: b, centroidErrorPx: center };
 }
 
-// packages/core/runtime3d/Clocks.ts
-var ZhudaSimulationClock = class {
-  constructor(step = 1 / 60, maxCatchup = 8) {
-    this.tick = 0;
-    this.renderTime = 0;
-    this.paused = false;
-    this.accumulator = 0;
-    this.step = step;
-    this.maxCatchup = maxCatchup;
-    if (!(step > 0 && Number.isFinite(step) && Number.isInteger(maxCatchup) && maxCatchup > 0))
-      throw Error("Invalid fixed clock");
-  }
-  advance(dt, simulate) {
-    if (!Number.isFinite(dt) || dt < 0) throw Error("Invalid clock delta");
-    if (this.paused) return 0;
-    this.renderTime += dt;
-    this.accumulator = Math.min(
-      this.accumulator + dt,
-      this.step * this.maxCatchup
-    );
-    let n = 0;
-    while (this.accumulator + 1e-10 >= this.step) {
-      this.accumulator -= this.step;
-      simulate(this.step, ++this.tick);
-      n++;
-    }
-    return n;
-  }
-  get simulationTime() {
-    return this.tick * this.step;
-  }
-  get alpha() {
-    return Math.max(0, this.accumulator / this.step);
-  }
-  reset(tick = 0) {
-    if (!Number.isSafeInteger(tick) || tick < 0) throw Error("Invalid tick");
-    this.tick = tick;
-    this.renderTime = tick * this.step;
-    this.accumulator = 0;
-  }
-};
-var ZhudaSnapshotBuffer = class {
-  constructor(epoch, interpolate, maxExtrapolation = 0.15, capacity = 32) {
-    this.items = [];
-    this.sequence = -1;
-    this.epoch = epoch;
-    this.interpolate = interpolate;
-    this.maxExtrapolation = maxExtrapolation;
-    this.capacity = capacity;
-    if (!Number.isFinite(maxExtrapolation) || maxExtrapolation < 0 || capacity < 2 || !Number.isInteger(capacity))
-      throw Error("Invalid snapshot bounds");
-  }
-  push(s) {
-    if (s.epoch !== this.epoch || !Number.isSafeInteger(s.sequence) || s.sequence <= this.sequence || !Number.isFinite(s.time))
-      return false;
-    if (this.items.length && s.time <= this.items[this.items.length - 1].time)
-      return false;
-    this.sequence = s.sequence;
-    this.items.push(s);
-    if (this.items.length > this.capacity) this.items.shift();
-    return true;
-  }
-  sample(time) {
-    if (!Number.isFinite(time)) throw Error("Invalid sample time");
-    const a = this.items;
-    if (!a.length) return null;
-    if (a.length === 1 || time <= a[0].time)
-      return { value: a[0].value, time: a[0].time, mode: "held" };
-    for (let i = 1; i < a.length; i++)
-      if (time <= a[i].time) {
-        const x2 = a[i - 1], y2 = a[i];
-        return {
-          value: this.interpolate(
-            x2.value,
-            y2.value,
-            (time - x2.time) / (y2.time - x2.time)
-          ),
-          time,
-          mode: "interpolated"
-        };
-      }
-    const x = a[a.length - 2], y = a[a.length - 1], t = Math.min(time, y.time + this.maxExtrapolation);
-    return {
-      value: this.interpolate(
-        x.value,
-        y.value,
-        (t - x.time) / (y.time - x.time)
-      ),
-      time: t,
-      mode: "extrapolated"
-    };
-  }
-  reset(epoch) {
-    this.epoch = epoch;
-    this.items = [];
-    this.sequence = -1;
-  }
-  get size() {
-    return this.items.length;
-  }
-};
-var ZhudaEventGate = class {
-  constructor(epoch, ttl = 30, capacity = 2048) {
-    this.seen = /* @__PURE__ */ new Map();
-    this.epoch = epoch;
-    this.ttl = ttl;
-    this.capacity = capacity;
-    if (!(ttl > 0 && Number.isFinite(ttl) && Number.isInteger(capacity) && capacity > 0))
-      throw Error("Invalid event bounds");
-  }
-  dispatch(id, now, action, options = {}) {
-    if (!id || !Number.isFinite(now)) throw Error("Invalid event");
-    if (options.replay || options.epoch && options.epoch !== this.epoch)
-      return false;
-    for (const [k, t] of this.seen) if (now - t > this.ttl) this.seen.delete(k);
-    if (this.seen.has(id)) return false;
-    this.seen.set(id, now);
-    while (this.seen.size > this.capacity)
-      this.seen.delete(this.seen.keys().next().value);
-    action();
-    return true;
-  }
-  reset(epoch) {
-    this.epoch = epoch;
-    this.seen.clear();
-  }
-  get size() {
-    return this.seen.size;
-  }
-};
-
 // packages/core/runtime3d/Assets.ts
 var abortError = () => new DOMException("Asset request cancelled", "AbortError");
 var ZhudaAssetCache = class {
@@ -7796,146 +7675,6 @@ function createProviderAssetCache(provider, decode, destroy, maxIdle = 0) {
   );
 }
 
-// packages/core/runtime3d/SceneQueries.ts
-var ZhudaSceneQueries = class {
-  constructor() {
-    this.providers = /* @__PURE__ */ new Map();
-  }
-  register(p) {
-    const key = p.entityId + "\0" + (p.instanceId ?? "");
-    if (!p.entityId || this.providers.has(key))
-      throw Error("Duplicate/missing stable query ID");
-    this.providers.set(key, p);
-    return () => this.providers.delete(key);
-  }
-  raycast(ray, maxDistance = Infinity, layerMask = 4294967295) {
-    if (!(maxDistance >= 0)) throw Error("Invalid ray distance");
-    const r = { origin: ray.origin, direction: normalized(ray.direction) };
-    let hit = null;
-    for (const p of this.providers.values()) {
-      if (!((p.layer ?? 1) & layerMask)) continue;
-      const h = p.raycast(r, hit?.distance ?? maxDistance);
-      if (h && Number.isFinite(h.distance) && h.distance >= 0 && h.distance <= maxDistance && (!hit || h.distance < hit.distance))
-        hit = {
-          ...h,
-          entityId: p.entityId,
-          instanceId: p.instanceId ?? h.instanceId
-        };
-    }
-    return hit;
-  }
-  sweepSphere(from, to, radius, layerMask = 4294967295) {
-    if (!Number.isFinite(radius) || radius < 0)
-      throw Error("Invalid sweep radius");
-    let hit = null;
-    for (const p of this.providers.values()) {
-      if (!((p.layer ?? 1) & layerMask) || !p.sweepSphere) continue;
-      const h = p.sweepSphere(from, to, radius);
-      if (h && h.distance >= 0 && Number.isFinite(h.distance) && (!hit || h.distance < hit.distance))
-        hit = {
-          ...h,
-          entityId: p.entityId,
-          instanceId: p.instanceId ?? h.instanceId
-        };
-    }
-    return hit;
-  }
-  clear() {
-    this.providers.clear();
-  }
-  get size() {
-    return this.providers.size;
-  }
-};
-function rayBox(ray, min, max, maxDistance = Infinity) {
-  let near = 0, far = maxDistance;
-  let normal = { x: 0, y: 0, z: 0 };
-  for (const axis of ["x", "y", "z"]) {
-    const d = ray.direction[axis], o = ray.origin[axis];
-    if (Math.abs(d) < 1e-10) {
-      if (o < min[axis] || o > max[axis]) return null;
-      continue;
-    }
-    let a = (min[axis] - o) / d, b = (max[axis] - o) / d, sign = -1;
-    if (a > b) {
-      [a, b] = [b, a];
-      sign = 1;
-    }
-    if (a > near) {
-      near = a;
-      normal = { x: 0, y: 0, z: 0 };
-      normal[axis] = sign;
-    }
-    far = Math.min(far, b);
-    if (near > far) return null;
-  }
-  if (far < 0) return null;
-  return {
-    distance: near,
-    normal,
-    position: {
-      x: ray.origin.x + ray.direction.x * near,
-      y: ray.origin.y + ray.direction.y * near,
-      z: ray.origin.z + ray.direction.z * near
-    }
-  };
-}
-var ZhudaCameraCoordinates = class {
-  constructor(camera, viewport) {
-    this.camera = camera;
-    this.viewport = viewport;
-  }
-  matrices() {
-    return multiply4(
-      this.camera.projectionMatrix.elements,
-      this.camera.viewMatrix.elements
-    );
-  }
-  rect() {
-    const v = this.viewport(), n = this.camera.normalizedViewport || { x: 0, y: 0, width: 1, height: 1 };
-    if (!(v.width > 0 && v.height > 0 && n.width > 0 && n.height > 0))
-      throw Error("Empty camera viewport");
-    return {
-      left: v.left + n.x * v.width,
-      top: v.top + n.y * v.height,
-      width: v.width * n.width,
-      height: v.height * n.height
-    };
-  }
-  screenToRay(x, y) {
-    if (![x, y].every(Number.isFinite)) throw Error("Invalid screen point");
-    const r = this.rect(), inv = inverse4(this.matrices()), nx = (x - r.left) / r.width * 2 - 1, ny = 1 - (y - r.top) / r.height * 2;
-    const origin = transformPoint(inv, { x: nx, y: ny, z: -1 }), far = transformPoint(inv, { x: nx, y: ny, z: 1 });
-    return {
-      origin,
-      direction: normalized({
-        x: far.x - origin.x,
-        y: far.y - origin.y,
-        z: far.z - origin.z
-      })
-    };
-  }
-  worldToScreen(p) {
-    const m = this.matrices(), v = transformPoint(m, p), r = this.rect(), w = m[3] * p.x + m[7] * p.y + m[11] * p.z + m[15];
-    return {
-      x: r.left + (v.x + 1) * 0.5 * r.width,
-      y: r.top + (1 - v.y) * 0.5 * r.height,
-      depth: (v.z + 1) * 0.5,
-      visible: w > 0 && Math.abs(v.x) <= 1 && Math.abs(v.y) <= 1 && Math.abs(v.z) <= 1
-    };
-  }
-};
-var ZhudaSurfaceQuery = class {
-  constructor(sample) {
-    this.sample = sample;
-  }
-  at(x, z, time) {
-    if (![x, z, time].every(Number.isFinite))
-      throw Error("Invalid surface query");
-    return this.sample(x, z, time);
-  }
-};
-
 // packages/core/runtime3d/SceneLifecycle.ts
 var ZhudaResourceScope = class {
   constructor() {
@@ -8111,6 +7850,474 @@ function applySceneQuality(quality, session, camera, lights = []) {
   }
   return { ...quality, additionalPassBudget: quality.extraPasses };
 }
+
+// packages/core/prefabs/PrefabLibrary.ts
+var provenance = /* @__PURE__ */ new WeakMap();
+function inspectPrefabInstance(root) {
+  const value = provenance.get(root);
+  return value ? structuredClone(value) : null;
+}
+function findPrefabNode(root, path = "") {
+  let node = root;
+  for (const name of path ? path.split("/") : []) {
+    const matches = [];
+    for (let i = 0; i < node.numChildren; i++) {
+      const child = node.getChildAt(i);
+      if (child.name === name) matches.push(child);
+    }
+    if (matches.length !== 1) throw Error(`Prefab node path missing or ambiguous: ${path}`);
+    node = matches[0];
+  }
+  return node;
+}
+async function hash(bytes) {
+  const digest = await crypto.subtle.digest("SHA-256", new Uint8Array(bytes).buffer);
+  return Array.from(new Uint8Array(digest), (n) => n.toString(16).padStart(2, "0")).join("");
+}
+var supportedTypes = /* @__PURE__ */ new Set(["Sprite", "Text", "Label", "Image", "Box"]);
+var numericPatch = /* @__PURE__ */ new Set(["x", "y", "width", "height", "scaleX", "scaleY", "rotation", "alpha", "fontSize"]);
+var stringPatch = /* @__PURE__ */ new Set(["text", "font", "color", "align", "valign", "sizeGrid"]);
+function validateStates(states) {
+  for (const patches of Object.values(states)) {
+    if (!patches || typeof patches !== "object" || Array.isArray(patches)) throw Error("Invalid prefab state");
+    for (const patch of Object.values(patches)) {
+      if (!patch || typeof patch !== "object" || Array.isArray(patch)) throw Error("Invalid node patch");
+      for (const [key, value] of Object.entries(patch)) {
+        const valid = numericPatch.has(key) ? typeof value === "number" && Number.isFinite(value) : stringPatch.has(key) ? typeof value === "string" : ["visible", "bold"].includes(key) && typeof value === "boolean";
+        if (!valid) throw Error(`Unsupported prefab state property: ${key}`);
+      }
+    }
+  }
+}
+function validateHierarchy(node, path = "root") {
+  if (!node || !supportedTypes.has(node._$type) || node._$comp?.length)
+    throw Error(`Unsupported static 2D prefab node at ${path}`);
+  const names = /* @__PURE__ */ new Set();
+  for (const child of node._$child || []) {
+    if (!child.name || child.name.includes("/") || names.has(child.name))
+      throw Error(`Prefab children need unique names at ${path}`);
+    names.add(child.name);
+    validateHierarchy(child, `${path}/${child.name}`);
+  }
+}
+var ZhudaPrefabLibrary = class {
+  constructor(options) {
+    this.active = /* @__PURE__ */ new Set();
+    this.instances = /* @__PURE__ */ new Set();
+    this.disposed = false;
+    const timeoutMs = options.timeoutMs ?? 15e3;
+    if (!Number.isSafeInteger(timeoutMs) || timeoutMs <= 0) throw Error("Invalid prefab timeout");
+    this.timeoutMs = timeoutMs;
+    this.definitions = /* @__PURE__ */ new Map();
+    const textures = /* @__PURE__ */ new Set();
+    for (const source of options.definitions) {
+      const entry = structuredClone(source);
+      if (typeof entry.id !== "string" || !entry.id || this.definitions.has(entry.id) || !entry.states || Array.isArray(entry.states) || !Object.keys(entry.states).length)
+        throw Error("Prefab IDs must be unique and have explicit states");
+      validateStates(entry.states);
+      if (normalizeAssetId(entry.asset) !== entry.asset) throw Error("Prefab asset ID must be normalized");
+      for (const id of entry.textures || []) {
+        if (normalizeAssetId(id) !== id || id === entry.asset) throw Error("Invalid prefab texture ID");
+        textures.add(id);
+      }
+      this.definitions.set(entry.id, entry);
+    }
+    this.cache = createProviderAssetCache(options.provider, async (asset, signal) => {
+      const sourceHash = await hash(asset.bytes);
+      if (!textures.has(asset.id)) {
+        const data = JSON.parse(new TextDecoder().decode(asset.bytes));
+        validateHierarchy(data);
+        return { hash: sourceHash, data };
+      }
+      const url = URL.createObjectURL(new Blob([new Uint8Array(asset.bytes)]));
+      const clear = () => {
+        Laya.loader.clearRes(url);
+        URL.revokeObjectURL(url);
+      };
+      let aborted = false;
+      const load = Laya.loader.load(url, { type: Laya.Loader.IMAGE }).then((texture) => {
+        if (aborted) clear();
+        if (!texture) throw Error(`Texture decode failed: ${asset.id}`);
+      });
+      let timer;
+      let cancel = () => {
+      };
+      try {
+        await Promise.race([load, new Promise((_, reject) => {
+          cancel = () => {
+            aborted = true;
+            reject(new DOMException("Prefab texture cancelled", "AbortError"));
+          };
+          signal.addEventListener("abort", cancel, { once: true });
+          timer = setTimeout(() => {
+            aborted = true;
+            reject(Error(`Texture decode timeout: ${asset.id}`));
+          }, timeoutMs);
+          if (signal.aborted) cancel();
+        })]);
+        return { hash: sourceHash, url };
+      } catch (error) {
+        clear();
+        throw error;
+      } finally {
+        clearTimeout(timer);
+        signal.removeEventListener("abort", cancel);
+      }
+    }, (resource) => {
+      if (resource.url) {
+        Laya.loader.clearRes(resource.url);
+        URL.revokeObjectURL(resource.url);
+      }
+    });
+  }
+  async instantiate(id, options = {}) {
+    if (this.disposed) throw Error("Disposed prefab library");
+    const entry = this.definitions.get(id);
+    if (!entry) throw Error(`Unknown prefab ID: ${id}`);
+    const state = options.state ?? Object.keys(entry.states)[0];
+    if (!Object.prototype.hasOwnProperty.call(entry.states, state)) throw Error(`Unknown prefab state: ${id}/${state}`);
+    const controller = new AbortController();
+    const abort = () => controller.abort();
+    options.signal?.addEventListener("abort", abort, { once: true });
+    if (options.signal?.aborted) abort();
+    this.active.add(controller);
+    const scope = new ZhudaResourceScope();
+    const timer = setTimeout(abort, this.timeoutMs);
+    try {
+      const resources = /* @__PURE__ */ new Map();
+      for (const key of [entry.asset, ...new Set(entry.textures)]) {
+        const lease = await this.cache.acquire(key, { signal: controller.signal });
+        scope.defer(() => lease.release());
+        resources.set(key, lease.value);
+      }
+      if (controller.signal.aborted) throw new DOMException("Prefab cancelled", "AbortError");
+      const data = structuredClone(resources.get(entry.asset).data);
+      const bindTextures = (node) => {
+        if (node.skin) {
+          const texture = resources.get(node.skin);
+          if (!texture?.url) throw Error(`Undeclared prefab texture: ${node.skin}`);
+          node.skin = texture.url;
+        }
+        node._$child?.forEach(bindTextures);
+      };
+      bindTextures(data);
+      const root = ZhudaPrefab.instantiate(data);
+      scope.defer(() => root.destroy(true));
+      for (const [path, patch] of Object.entries(entry.states[state])) {
+        const target = findPrefabNode(root, path);
+        Object.assign(target, patch);
+      }
+      const record = {
+        id,
+        state,
+        sources: Object.fromEntries([...resources].map(([key, value]) => [key, value.hash]))
+      };
+      const instance = {
+        root,
+        provenance: structuredClone(record),
+        find: (path) => findPrefabNode(root, path),
+        dispose: () => {
+          provenance.delete(root);
+          this.instances.delete(instance);
+          scope.dispose();
+        }
+      };
+      provenance.set(root, record);
+      options.parent?.addChild(root);
+      this.instances.add(instance);
+      return instance;
+    } catch (error) {
+      scope.dispose();
+      throw error;
+    } finally {
+      clearTimeout(timer);
+      this.active.delete(controller);
+      options.signal?.removeEventListener("abort", abort);
+      if (this.disposed && !this.active.size) this.cache.dispose();
+    }
+  }
+  report() {
+    return { instances: this.instances.size, ...this.cache.report() };
+  }
+  dispose() {
+    if (this.disposed) return;
+    this.disposed = true;
+    for (const controller of this.active) controller.abort();
+    for (const instance of [...this.instances]) instance.dispose();
+    if (!this.active.size) this.cache.dispose();
+  }
+};
+
+// packages/core/runtime3d/Clocks.ts
+var ZhudaSimulationClock = class {
+  constructor(step = 1 / 60, maxCatchup = 8) {
+    this.tick = 0;
+    this.renderTime = 0;
+    this.paused = false;
+    this.accumulator = 0;
+    this.step = step;
+    this.maxCatchup = maxCatchup;
+    if (!(step > 0 && Number.isFinite(step) && Number.isInteger(maxCatchup) && maxCatchup > 0))
+      throw Error("Invalid fixed clock");
+  }
+  advance(dt, simulate) {
+    if (!Number.isFinite(dt) || dt < 0) throw Error("Invalid clock delta");
+    if (this.paused) return 0;
+    this.renderTime += dt;
+    this.accumulator = Math.min(
+      this.accumulator + dt,
+      this.step * this.maxCatchup
+    );
+    let n = 0;
+    while (this.accumulator + 1e-10 >= this.step) {
+      this.accumulator -= this.step;
+      simulate(this.step, ++this.tick);
+      n++;
+    }
+    return n;
+  }
+  get simulationTime() {
+    return this.tick * this.step;
+  }
+  get alpha() {
+    return Math.max(0, this.accumulator / this.step);
+  }
+  reset(tick = 0) {
+    if (!Number.isSafeInteger(tick) || tick < 0) throw Error("Invalid tick");
+    this.tick = tick;
+    this.renderTime = tick * this.step;
+    this.accumulator = 0;
+  }
+};
+var ZhudaSnapshotBuffer = class {
+  constructor(epoch, interpolate, maxExtrapolation = 0.15, capacity = 32) {
+    this.items = [];
+    this.sequence = -1;
+    this.epoch = epoch;
+    this.interpolate = interpolate;
+    this.maxExtrapolation = maxExtrapolation;
+    this.capacity = capacity;
+    if (!Number.isFinite(maxExtrapolation) || maxExtrapolation < 0 || capacity < 2 || !Number.isInteger(capacity))
+      throw Error("Invalid snapshot bounds");
+  }
+  push(s) {
+    if (s.epoch !== this.epoch || !Number.isSafeInteger(s.sequence) || s.sequence <= this.sequence || !Number.isFinite(s.time))
+      return false;
+    if (this.items.length && s.time <= this.items[this.items.length - 1].time)
+      return false;
+    this.sequence = s.sequence;
+    this.items.push(s);
+    if (this.items.length > this.capacity) this.items.shift();
+    return true;
+  }
+  sample(time) {
+    if (!Number.isFinite(time)) throw Error("Invalid sample time");
+    const a = this.items;
+    if (!a.length) return null;
+    if (a.length === 1 || time <= a[0].time)
+      return { value: a[0].value, time: a[0].time, mode: "held" };
+    for (let i = 1; i < a.length; i++)
+      if (time <= a[i].time) {
+        const x2 = a[i - 1], y2 = a[i];
+        return {
+          value: this.interpolate(
+            x2.value,
+            y2.value,
+            (time - x2.time) / (y2.time - x2.time)
+          ),
+          time,
+          mode: "interpolated"
+        };
+      }
+    const x = a[a.length - 2], y = a[a.length - 1], t = Math.min(time, y.time + this.maxExtrapolation);
+    return {
+      value: this.interpolate(
+        x.value,
+        y.value,
+        (t - x.time) / (y.time - x.time)
+      ),
+      time: t,
+      mode: "extrapolated"
+    };
+  }
+  reset(epoch) {
+    this.epoch = epoch;
+    this.items = [];
+    this.sequence = -1;
+  }
+  get size() {
+    return this.items.length;
+  }
+};
+var ZhudaEventGate = class {
+  constructor(epoch, ttl = 30, capacity = 2048) {
+    this.seen = /* @__PURE__ */ new Map();
+    this.epoch = epoch;
+    this.ttl = ttl;
+    this.capacity = capacity;
+    if (!(ttl > 0 && Number.isFinite(ttl) && Number.isInteger(capacity) && capacity > 0))
+      throw Error("Invalid event bounds");
+  }
+  dispatch(id, now, action, options = {}) {
+    if (!id || !Number.isFinite(now)) throw Error("Invalid event");
+    if (options.replay || options.epoch && options.epoch !== this.epoch)
+      return false;
+    for (const [k, t] of this.seen) if (now - t > this.ttl) this.seen.delete(k);
+    if (this.seen.has(id)) return false;
+    this.seen.set(id, now);
+    while (this.seen.size > this.capacity)
+      this.seen.delete(this.seen.keys().next().value);
+    action();
+    return true;
+  }
+  reset(epoch) {
+    this.epoch = epoch;
+    this.seen.clear();
+  }
+  get size() {
+    return this.seen.size;
+  }
+};
+
+// packages/core/runtime3d/SceneQueries.ts
+var ZhudaSceneQueries = class {
+  constructor() {
+    this.providers = /* @__PURE__ */ new Map();
+  }
+  register(p) {
+    const key = p.entityId + "\0" + (p.instanceId ?? "");
+    if (!p.entityId || this.providers.has(key))
+      throw Error("Duplicate/missing stable query ID");
+    this.providers.set(key, p);
+    return () => this.providers.delete(key);
+  }
+  raycast(ray, maxDistance = Infinity, layerMask = 4294967295) {
+    if (!(maxDistance >= 0)) throw Error("Invalid ray distance");
+    const r = { origin: ray.origin, direction: normalized(ray.direction) };
+    let hit = null;
+    for (const p of this.providers.values()) {
+      if (!((p.layer ?? 1) & layerMask)) continue;
+      const h = p.raycast(r, hit?.distance ?? maxDistance);
+      if (h && Number.isFinite(h.distance) && h.distance >= 0 && h.distance <= maxDistance && (!hit || h.distance < hit.distance))
+        hit = {
+          ...h,
+          entityId: p.entityId,
+          instanceId: p.instanceId ?? h.instanceId
+        };
+    }
+    return hit;
+  }
+  sweepSphere(from, to, radius, layerMask = 4294967295) {
+    if (!Number.isFinite(radius) || radius < 0)
+      throw Error("Invalid sweep radius");
+    let hit = null;
+    for (const p of this.providers.values()) {
+      if (!((p.layer ?? 1) & layerMask) || !p.sweepSphere) continue;
+      const h = p.sweepSphere(from, to, radius);
+      if (h && h.distance >= 0 && Number.isFinite(h.distance) && (!hit || h.distance < hit.distance))
+        hit = {
+          ...h,
+          entityId: p.entityId,
+          instanceId: p.instanceId ?? h.instanceId
+        };
+    }
+    return hit;
+  }
+  clear() {
+    this.providers.clear();
+  }
+  get size() {
+    return this.providers.size;
+  }
+};
+function rayBox(ray, min, max, maxDistance = Infinity) {
+  let near = 0, far = maxDistance;
+  let normal = { x: 0, y: 0, z: 0 };
+  for (const axis of ["x", "y", "z"]) {
+    const d = ray.direction[axis], o = ray.origin[axis];
+    if (Math.abs(d) < 1e-10) {
+      if (o < min[axis] || o > max[axis]) return null;
+      continue;
+    }
+    let a = (min[axis] - o) / d, b = (max[axis] - o) / d, sign = -1;
+    if (a > b) {
+      [a, b] = [b, a];
+      sign = 1;
+    }
+    if (a > near) {
+      near = a;
+      normal = { x: 0, y: 0, z: 0 };
+      normal[axis] = sign;
+    }
+    far = Math.min(far, b);
+    if (near > far) return null;
+  }
+  if (far < 0) return null;
+  return {
+    distance: near,
+    normal,
+    position: {
+      x: ray.origin.x + ray.direction.x * near,
+      y: ray.origin.y + ray.direction.y * near,
+      z: ray.origin.z + ray.direction.z * near
+    }
+  };
+}
+var ZhudaCameraCoordinates = class {
+  constructor(camera, viewport) {
+    this.camera = camera;
+    this.viewport = viewport;
+  }
+  matrices() {
+    return multiply4(
+      this.camera.projectionMatrix.elements,
+      this.camera.viewMatrix.elements
+    );
+  }
+  rect() {
+    const v = this.viewport(), n = this.camera.normalizedViewport || { x: 0, y: 0, width: 1, height: 1 };
+    if (!(v.width > 0 && v.height > 0 && n.width > 0 && n.height > 0))
+      throw Error("Empty camera viewport");
+    return {
+      left: v.left + n.x * v.width,
+      top: v.top + n.y * v.height,
+      width: v.width * n.width,
+      height: v.height * n.height
+    };
+  }
+  screenToRay(x, y) {
+    if (![x, y].every(Number.isFinite)) throw Error("Invalid screen point");
+    const r = this.rect(), inv = inverse4(this.matrices()), nx = (x - r.left) / r.width * 2 - 1, ny = 1 - (y - r.top) / r.height * 2;
+    const origin = transformPoint(inv, { x: nx, y: ny, z: -1 }), far = transformPoint(inv, { x: nx, y: ny, z: 1 });
+    return {
+      origin,
+      direction: normalized({
+        x: far.x - origin.x,
+        y: far.y - origin.y,
+        z: far.z - origin.z
+      })
+    };
+  }
+  worldToScreen(p) {
+    const m = this.matrices(), v = transformPoint(m, p), r = this.rect(), w = m[3] * p.x + m[7] * p.y + m[11] * p.z + m[15];
+    return {
+      x: r.left + (v.x + 1) * 0.5 * r.width,
+      y: r.top + (1 - v.y) * 0.5 * r.height,
+      depth: (v.z + 1) * 0.5,
+      visible: w > 0 && Math.abs(v.x) <= 1 && Math.abs(v.y) <= 1 && Math.abs(v.z) <= 1
+    };
+  }
+};
+var ZhudaSurfaceQuery = class {
+  constructor(sample) {
+    this.sample = sample;
+  }
+  at(x, z, time) {
+    if (![x, z, time].every(Number.isFinite))
+      throw Error("Invalid surface query");
+    return this.sample(x, z, time);
+  }
+};
 
 // packages/core/runtime3d/CameraCollision.ts
 function resolveCameraBoom(focus, desired, options) {
@@ -8718,12 +8925,12 @@ function validateHeightfield(spec) {
 function terrainNoise(seed, x, z) {
   if (![seed, x, z].every(Number.isFinite))
     throw Error("Invalid noise coordinates");
-  const hash = (a2, b2) => {
+  const hash2 = (a2, b2) => {
     let h = Math.imul(a2 ^ seed, 374761393) ^ Math.imul(b2, 668265263);
     h = Math.imul(h ^ h >>> 13, 1274126177);
     return ((h ^ h >>> 16) >>> 0) / 4294967295;
   };
-  const ix = Math.floor(x), iz = Math.floor(z), fx = x - ix, fz = z - iz, u = fx * fx * (3 - 2 * fx), v = fz * fz * (3 - 2 * fz), a = hash(ix, iz) * (1 - u) + hash(ix + 1, iz) * u, b = hash(ix, iz + 1) * (1 - u) + hash(ix + 1, iz + 1) * u;
+  const ix = Math.floor(x), iz = Math.floor(z), fx = x - ix, fz = z - iz, u = fx * fx * (3 - 2 * fx), v = fz * fz * (3 - 2 * fz), a = hash2(ix, iz) * (1 - u) + hash2(ix + 1, iz) * u, b = hash2(ix, iz + 1) * (1 - u) + hash2(ix + 1, iz + 1) * u;
   return a * (1 - v) + b * v;
 }
 var ZhudaHeightfield = class _ZhudaHeightfield {
@@ -9774,6 +9981,7 @@ zhudaSurface(s,zhudaUV,pixel.positionWS,pixel.normalWS);inputs.diffuseColor=max(
   ZhudaPlanarReflection,
   ZhudaPointerInput,
   ZhudaPrefab,
+  ZhudaPrefabLibrary,
   ZhudaRequestSlot,
   ZhudaResourceScope,
   ZhudaRibbonPath3D,
@@ -9809,7 +10017,9 @@ zhudaSurface(s,zhudaUV,pixel.positionWS,pixel.normalWS);inputs.diffuseColor=max(
   createSurfaceTexture,
   disposeMigratedMaterial,
   disposeSurfaceMaterial,
+  findPrefabNode,
   identity4,
+  inspectPrefabInstance,
   inspectSceneResources,
   installLaya342LifecycleFix,
   installSandboxStorageFallback,

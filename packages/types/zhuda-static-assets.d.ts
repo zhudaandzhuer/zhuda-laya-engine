@@ -81,6 +81,9 @@ export interface LayaHierarchyNodeData {
   align?: string;
   valign?: string;
   leading?: number;
+  stroke?: number;
+  strokeColor?: string;
+  padding?: [number, number, number, number];
   skin?: string;
   sizeGrid?: string;
   _gcmds?: LayaGraphicsCmdData[];

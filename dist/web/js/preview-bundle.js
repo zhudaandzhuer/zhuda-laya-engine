@@ -3112,7 +3112,7 @@ var ZhudaPreviewBundle = (() => {
       const L = globalThis.Laya;
       let node;
       if (data._$type === "Text" || data._$type === "Label") {
-        node = new L.Text();
+        node = data._$type === "Label" && L.Label ? new L.Label() : new L.Text();
         node.text = data.text ?? "";
         if (data.font) node.font = data.font;
         if (typeof data.fontSize === "number") node.fontSize = data.fontSize;
@@ -3121,8 +3121,15 @@ var ZhudaPreviewBundle = (() => {
         if (data.align) node.align = data.align;
         if (data.valign) node.valign = data.valign;
         if (typeof data.leading === "number") node.leading = data.leading;
+        if (typeof data.stroke === "number") node.stroke = data.stroke;
+        if (data.strokeColor) node.strokeColor = data.strokeColor;
+        if (data.padding) node.padding = data._$type === "Label" && L.Label ? data.padding.join(",") : data.padding;
       } else if (data._$type === "Scene" && L.Scene) {
         node = new L.Scene();
+      } else if (data._$type === "Image" && L.Image) {
+        node = new L.Image();
+      } else if (data._$type === "Box" && L.Box) {
+        node = new L.Box();
       } else {
         node = new L.Sprite();
       }

@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { collectTsFiles, parseReflectableClassesInFile } from './ast-scanner.mjs';
 import { TopologyResolver } from './compiler-runtime.mjs';
 import { auditAgentContract } from './agent-contract.mjs';
+import { auditConsumerSources } from './consumer-guards.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(__dirname, '../..');
@@ -32,9 +33,10 @@ const BANNED_HALLUCINATION_PATTERNS = [
   }
 ];
 
-export function runDoctorAudit() {
-  const srcDir = path.join(projectRoot, 'src');
-  const htmlPath = path.join(projectRoot, 'dist/web/index.html');
+export function runDoctorAudit(options = {}) {
+  const root = path.resolve(options.projectRoot || projectRoot);
+  const srcDir = path.join(root, 'src');
+  const htmlPath = path.join(root, 'dist/web/index.html');
 
   const tsFiles = collectTsFiles(srcDir);
   const apiViolations = [];
@@ -42,9 +44,10 @@ export function runDoctorAudit() {
 
   for (const file of tsFiles) {
     const code = fs.readFileSync(file, 'utf8');
-    const rel = path.relative(projectRoot, file);
+    const rel = path.relative(root, file);
 
     for (const rule of BANNED_HALLUCINATION_PATTERNS) {
+      rule.regex.lastIndex = 0;
       if (rule.regex.test(code)) {
         apiViolations.push({
           file: rel,
@@ -68,7 +71,8 @@ export function runDoctorAudit() {
 
   const passed = apiViolations.length === 0 && topologyIssues.length === 0;
   const agentContract = auditAgentContract(projectRoot);
-  const allPassed = passed && agentContract.passed;
+  const consumer = root === projectRoot ? { passed: true, issues: [] } : auditConsumerSources(root);
+  const allPassed = passed && agentContract.passed && consumer.passed;
 
   return {
     passed: allPassed,
@@ -78,18 +82,22 @@ export function runDoctorAudit() {
     htmlScriptCount: htmlScriptFiles.length,
     topologyIssues,
     apiViolations,
+    consumer,
     agentContract
   };
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const report = runDoctorAudit();
+  const projectIndex = process.argv.indexOf('--project');
+  const report = runDoctorAudit({ projectRoot: projectIndex < 0 ? undefined : process.argv[projectIndex + 1] });
   console.log('🩺 [Zhuda-Doctor] 引擎相依性與 AI 防幻覺體檢報告:');
   console.log(`  • 掃描 TS 檔案數: ${report.scannedTsFilesCount}`);
   console.log(`  • 反射組件數量:   ${report.discoveredComponentsCount} (${report.discoveredComponents.join(', ')})`);
   console.log(`  • HTML 拓撲模組:  ${report.htmlScriptCount} 個庫 (順序衝突: ${report.topologyIssues.length})`);
   console.log(`  • 廢棄 API 違規:  ${report.apiViolations.length} 處`);
   console.log(`  • Agent 契約守衛: ${report.agentContract.issues.length} 處`);
+  for (const item of report.consumer.issues)
+    console.log(`    - [${item.code}] ${item.file}:${item.line}: ${item.message}`);
   for (const item of report.agentContract.issues) {
     console.log(`    - [${item.code}] ${item.file}: ${item.message}`);
     if (item.hint) console.log(`      修復: ${item.hint}`);

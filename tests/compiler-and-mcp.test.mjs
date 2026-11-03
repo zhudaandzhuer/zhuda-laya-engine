@@ -103,6 +103,32 @@ test('agent contract audit reports missing files and invalid plan status with re
   }
 });
 
+test('an agent can discover the visual gates over MCP and Doctor reports a missing policy', () => {
+  const rpc = handleJsonRpcMessage({
+    jsonrpc: '2.0', id: 1, method: 'tools/call',
+    params: { name: 'get_agent_contract', arguments: {} }
+  });
+  const contract = JSON.parse(rpc.result.content[0].text);
+  const { policyFile, stages } = contract.visualWorkflow;
+  assert.ok(contract.requiredReading.includes(policyFile));
+  assert.deepEqual(stages, [
+    'inventory-assets', 'author-prefab', 'verify-isolated-nodes',
+    'compose-approved-prefabs', 'verify-consumer-scene'
+  ]);
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'zhuda-prefab-policy-'));
+  try {
+    for (const file of contract.audit.requiredFiles.filter((file) => file !== policyFile)) {
+      fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
+      fs.copyFileSync(path.join(projectRoot, file), path.join(root, file));
+    }
+    const issue = auditAgentContract(root).issues.find((item) => item.file === policyFile);
+    assert.equal(issue?.code, 'AGENT_FILE_MISSING');
+    assert.match(issue.hint, /Restore/);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test('Zhuda Doctor audit passes with 0 topological inversions and 0 legacy API violations', () => {
   const audit = runDoctorAudit();
   assert.equal(audit.passed, true);

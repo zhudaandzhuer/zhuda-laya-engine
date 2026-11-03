@@ -5,6 +5,8 @@ import zlib from "node:zlib";
 import { fileURLToPath } from "node:url";
 import esbuild from "esbuild";
 import { auditVisualPresentationContracts } from "./visual-contract-audit.mjs";
+import { auditConsumerSources } from "./consumer-guards.mjs";
+import { buildPrefabPreview } from "./prefab-preview.mjs";
 import { TopologyResolver } from "./compiler-runtime.mjs";
 import {
   collectTsFiles,
@@ -63,6 +65,12 @@ const crc = (b) => {
   for (const v of b) n = crcTable[(n ^ v) & 255] ^ (n >>> 8);
   return (n ^ 0xffffffff) >>> 0;
 };
+function ensureUtf8Charset(html) {
+  if (/<meta\b[^>]*charset\s*=\s*["']?utf-8\b/i.test(html)) return html;
+  const doctype = html.match(/^\s*<!doctype\b[^>]*>/i);
+  if (!doctype) return `<meta charset="utf-8">${html}`;
+  return `${doctype[0]}<meta charset="utf-8">${html.slice(doctype[0].length)}`;
+}
 function walk(root, dir = root, result = []) {
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
     if (e.name.startsWith(".")) continue;
@@ -175,7 +183,7 @@ export async function runConsumerBuild({
     if (fs.existsSync(p) && fs.lstatSync(p).isSymbolicLink())
       throw Error("Output path cannot contain symlinks");
   }
-  const html = fs.readFileSync(template, "utf8");
+  const html = ensureUtf8Charset(fs.readFileSync(template, "utf8"));
   if (
     !html.includes("<!-- ZHUDA_LIBS -->") ||
     !html.includes("<!-- ZHUDA_ENTRY -->")
@@ -189,6 +197,8 @@ export async function runConsumerBuild({
     throw Error(
       "Visual presentation contract failed: " + visual.issues.join(" | "),
     );
+  const guard = auditConsumerSources(projectRoot);
+  if (!guard.passed) throw Error(guard.issues.map(i => `${i.file}:${i.line} [${i.code}] ${i.message}`).join("\n"));
   const topology = TopologyResolver.resolveByFeatures(
     config.features || ["core", "3d", "gltf"],
   );
@@ -223,16 +233,36 @@ export async function runConsumerBuild({
       .replace("<!-- ZHUDA_ENTRY -->", '<script src="app.js"></script>'),
   );
   fs.writeFileSync(path.join(out, ".nojekyll"), "");
+  if (config.prefabPreview)
+    await buildPrefabPreview({ projectRoot, engineRoot, out, topology, config });
   const payload = walk(out).map((f) => ({
     path: f.path,
     bytes: f.bytes.length,
     sha256: crypto.createHash("sha256").update(f.bytes).digest("hex"),
   }));
+  const fingerprint = crypto.createHash("sha256").update(JSON.stringify(payload)).digest("hex");
+  if (config.prefabEvidence) {
+    if (!Array.isArray(config.prefabEvidence) || !config.prefabEvidence.length)
+      throw Error("prefabEvidence requires at least one browser report");
+    for (const file of config.prefabEvidence) {
+      const reportPath = path.resolve(projectRoot, file);
+      const evidence = JSON.parse(fs.readFileSync(reportPath, "utf8"));
+      if (evidence.schemaVersion !== 1 || !evidence.passed || !evidence.provenance ||
+          !evidence.selection?.id || evidence.fingerprint !== fingerprint)
+        throw Error(`${file}: missing, failed or stale prefab evidence; rerun the browser comparison`);
+      for (const [artifact, checksum] of [[evidence.actual, evidence.actualSha256], [evidence.baseline, evidence.baselineSha256]]) {
+        if (typeof artifact !== "string" || typeof checksum !== "string" ||
+            crypto.createHash("sha256").update(fs.readFileSync(path.resolve(path.dirname(reportPath), artifact))).digest("hex") !== checksum)
+          throw Error(`${file}: changed prefab comparison artifact`);
+      }
+    }
+  }
   fs.writeFileSync(
     path.join(out, "payload-manifest.json"),
     JSON.stringify(
       {
         libraries: topology.orderedFiles,
+        fingerprint,
         files: payload,
         totalBytes: payload.reduce((n, f) => n + f.bytes, 0),
       },

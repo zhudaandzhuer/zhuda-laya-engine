@@ -1,0 +1,145 @@
+#!/usr/bin/env node
+import fs from "node:fs";
+import path from "node:path";
+import os from "node:os";
+import crypto from "node:crypto";
+import { spawn } from "node:child_process";
+import { fileURLToPath } from "node:url";
+
+const sha = bytes => crypto.createHash("sha256").update(bytes).digest("hex");
+/** Run an actual browser draw. The consumer exposes the same report bridge in its scene. */
+export async function checkPrefab({ url, baseline, output, updateBaseline = false, chromeBinary, maxDiffPixels = 0 }) {
+  if (!Number.isSafeInteger(maxDiffPixels) || maxDiffPixels < 0) throw Error("Invalid pixel tolerance");
+  const binary = chromeBinary || process.env.CHROME_BIN || [
+    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+    "/usr/bin/google-chrome", "/usr/bin/chromium"
+  ].find(file => fs.existsSync(file));
+  if (!binary) throw Error("Chrome unavailable. Set CHROME_BIN.");
+  const profile = fs.mkdtempSync(path.join(os.tmpdir(), "zhuda-prefab-browser-"));
+  const child = spawn(binary, ["--headless=new", "--use-mock-keychain", "--no-first-run", "--no-default-browser-check",
+    "--no-sandbox", "--enable-unsafe-swiftshader", "--force-device-scale-factor=1",
+    "--window-size=800,600", "--remote-debugging-port=0", `--user-data-dir=${profile}`, "about:blank"],
+    { detached: true, stdio: ["ignore", "ignore", "pipe"] });
+  let ws;
+  const pending = new Map();
+  try {
+    const endpoint = await new Promise((resolve, reject) => {
+      const timer = setTimeout(() => reject(Error("Chrome startup timeout")), 10000);
+      let text = "";
+      child.once("error", error => { clearTimeout(timer); reject(error); });
+      child.once("exit", () => { clearTimeout(timer); reject(Error("Chrome exited before ready")); });
+      child.stderr.on("data", chunk => {
+        text += chunk;
+        const match = text.match(/DevTools listening on (ws:\/\/\S+)/);
+        if (match) { clearTimeout(timer); resolve(new URL(match[1])); }
+      });
+    });
+    const pages = await (await fetch(`http://${endpoint.host}/json/list`)).json();
+    ws = new WebSocket(pages.find(page => page.type === "page").webSocketDebuggerUrl);
+    await new Promise((resolve, reject) => {
+      ws.addEventListener("open", resolve, { once: true });
+      ws.addEventListener("error", reject, { once: true });
+    });
+    let serial = 0;
+    const errors = [];
+    ws.addEventListener("message", event => {
+      const message = JSON.parse(event.data);
+      const request = pending.get(message.id);
+      if (request) {
+        pending.delete(message.id);
+        clearTimeout(request.timer);
+        message.error ? request.reject(Error(message.error.message)) : request.resolve(message.result);
+      }
+      if (message.method === "Runtime.exceptionThrown") errors.push(message.params.exceptionDetails.text);
+    });
+    const send = (method, params = {}) => new Promise((resolve, reject) => {
+      const id = ++serial;
+      const timer = setTimeout(() => { pending.delete(id); reject(Error(`CDP timeout: ${method}`)); }, 10000);
+      pending.set(id, { resolve, reject, timer });
+      ws.send(JSON.stringify({ id, method, params }));
+    });
+    const evaluate = async expression => {
+      const result = await send("Runtime.evaluate", { expression, returnByValue: true, awaitPromise: true });
+      if (result.exceptionDetails) throw Error(result.exceptionDetails.exception?.description || result.exceptionDetails.text);
+      return result.result.value;
+    };
+    await send("Runtime.enable");
+    await send("Page.enable");
+    await send("Page.navigate", { url });
+    let report;
+    for (let i = 0; i < 100; i++) {
+      report = await evaluate("window.__ZHUDA_PREFAB_TEST__?.report()");
+      if (report?.error) throw Error(report.error);
+      if (report?.ready) break;
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    if (!report?.ready || !report.provenance || errors.length)
+      throw Error("Prefab not ready or missing actual instance provenance: " + errors.join(", "));
+    await evaluate("document.fonts.ready.then(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))))");
+    await evaluate("new Promise(resolve=>Laya.timer.frameOnce(4,null,resolve))");
+    const clip = await evaluate("(()=>{const r=document.querySelector('canvas').getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height,scale:1}})()");
+    const shot = await send("Page.captureScreenshot", { format: "png", clip, captureBeyondViewport: true });
+    const actual = Buffer.from(shot.data, "base64");
+    fs.mkdirSync(path.dirname(output), { recursive: true });
+    const actualPath = output + ".png";
+    fs.writeFileSync(actualPath, actual);
+    const manifest = await evaluate("fetch('./payload-manifest.json').then(r=>{if(!r.ok)throw Error('Missing payload manifest');return r.json()})");
+    let comparison = { passed: false, reason: "Baseline updated; rerun comparison after review" };
+    if (updateBaseline) {
+      fs.mkdirSync(path.dirname(baseline), { recursive: true });
+      fs.writeFileSync(baseline, actual);
+    } else {
+      const expected = fs.readFileSync(baseline).toString("base64");
+      comparison = await evaluate(`(async()=>{
+        async function pixels(data){
+          const img=await createImageBitmap(await (await fetch('data:image/png;base64,'+data)).blob());
+          const c=document.createElement('canvas');c.width=img.width;c.height=img.height;
+          const ctx=c.getContext('2d');ctx.drawImage(img,0,0);img.close();
+          return {c,ctx,data:ctx.getImageData(0,0,c.width,c.height)};
+        }
+        const a=await pixels(${JSON.stringify(shot.data)}),b=await pixels(${JSON.stringify(expected)});
+        if(a.c.width!==b.c.width||a.c.height!==b.c.height)return {passed:false,reason:'Screenshot dimensions changed'};
+        let different=0;
+        const diff=a.ctx.createImageData(a.c.width,a.c.height);
+        for(let i=0;i<a.data.data.length;i+=4){
+          const changed=[0,1,2,3].some(k=>Math.abs(a.data.data[i+k]-b.data.data[i+k])>2);
+          if(changed)different++;
+          diff.data[i]=changed?255:0;diff.data[i+3]=255;
+        }
+        a.ctx.putImageData(diff,0,0);
+        return {passed:different<=${maxDiffPixels},differentPixels:different,diff:a.c.toDataURL('image/png').split(',')[1]};
+      })()`);
+      if (comparison.diff) fs.writeFileSync(output + ".diff.png", Buffer.from(comparison.diff, "base64"));
+      delete comparison.diff;
+    }
+    const result = {
+      schemaVersion: 1, passed: comparison.passed, url, ...report, comparison,
+      fingerprint: manifest.fingerprint, actual: path.basename(actualPath), actualSha256: sha(actual),
+      baseline: path.relative(path.dirname(output), baseline), baselineSha256: sha(fs.readFileSync(baseline)),
+      browser: (await send("Browser.getVersion")).product
+    };
+    result.renderState = await evaluate(`(()=>{
+      const labels=[];
+      const walk=n=>{if(n instanceof Laya.Label)labels.push({name:n.name,font:n.font,fontSize:n.fontSize,bold:n.bold,x:n.x,y:n.y,width:n.width,height:n.height,text:n.text,
+        padding:n.padding,tf:{font:n.textField.font,fontSize:n.textField.fontSize,width:n.textField.textWidth,height:n.textField.textHeight,x:n.textField.x,y:n.textField.y,scaleX:n.textField.scaleX,scaleY:n.textField.scaleY}});for(let i=0;i<n.numChildren;i++)walk(n.getChildAt(i));};walk(Laya.stage);
+      return {labels,scaleX:Laya.stage.clientScaleX,scaleY:Laya.stage.clientScaleY};
+    })()`);
+    fs.writeFileSync(output, JSON.stringify(result, null, 2));
+    return result;
+  } finally {
+    ws?.close();
+    for (const request of pending.values()) clearTimeout(request.timer);
+    if (child.pid) { try { process.kill(-child.pid, "SIGKILL"); } catch {} }
+    if (child.pid) await new Promise(resolve => child.exitCode !== null || child.signalCode !== null ? resolve() : child.once("exit", resolve));
+    fs.rmSync(profile, { recursive: true, force: true });
+  }
+}
+if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
+  const args = Object.fromEntries(process.argv.slice(2).filter(arg => arg.startsWith("--") && arg.includes("=")).map(arg => arg.slice(2).split(/=(.*)/s, 2)));
+  try {
+    if (!args.url || !args.baseline || !args.output) throw Error("Use --url=... --baseline=... --output=... [--update-baseline]");
+    const result = await checkPrefab({ ...args, updateBaseline: process.argv.includes("--update-baseline") });
+    console.log(JSON.stringify(result.comparison));
+    if (!result.passed && !process.argv.includes("--update-baseline")) process.exitCode = 1;
+  } catch (error) { console.error(error.message); process.exitCode = 1; }
+}

@@ -48,6 +48,10 @@ test("independent consumer preserves source hashes and its DOM/CSS; archive is a
         .readFileSync(path.join(root, "dist/web/index.html"), "utf8")
         .includes("Own DOM"),
     );
+    assert.match(
+      fs.readFileSync(path.join(root, "dist/web/index.html"), "utf8"),
+      /<meta charset="utf-8">/i,
+    );
     assert.equal(fs.existsSync(path.join(root, "src/.generated")), false);
     assert.ok(
       !fs.readdirSync(path.join(root, "dist/web")).includes("preview.html"),

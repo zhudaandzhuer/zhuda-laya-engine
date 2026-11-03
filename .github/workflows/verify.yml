@@ -16,3 +16,9 @@ jobs:
           node-version: '24'
       - run: npm install
       - run: npm run verify
+      - run: PREFAB_FIXTURE_DIR=/tmp/zhuda-prefab-browser node scripts/verify-prefab-browser.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: prefab-browser-evidence
+          path: /tmp/zhuda-prefab-browser/evidence/

@@ -184,6 +184,13 @@ Use the guardrails and validators before generating a scene. Schema validation c
 
 ## Migrate assets before gameplay
 
+Build each visual component as a consumer-owned prefab. Verify its named
+nodes against source references in an isolated preview, verify the assembled
+panel, then mount that same definition in the scene. The
+[prefab workflow](docs/prefab-workflow.md) includes rules to adopt in a
+consumer project. The [tooling roadmap](docs/plans/prefab-toolchain.md)
+distinguishes the current built-in examples from planned consumer tooling.
+
 Inventory the source assets first, map their presentation requirements, validate them in isolation, then connect existing game rules.
 
 ```sh

@@ -26,6 +26,16 @@ Date: YYYY-MM-DD
 Record cancellation, timeout, stale completion, retry, malformed data,
 context loss and repeated create/destroy results when the task touches them.
 
+## Prefab evidence (visual work)
+
+| Prefab ID / child path / state | Source and dependency revisions | Isolated replay command / environment | Reference / actual / diff | Result |
+| --- | --- | --- | --- | --- |
+| | | | | PASS / FAIL / UNAVAILABLE |
+
+Record which parent and scene consume that revision and where their separate
+integration results live. List changed dependencies and the affected entries
+that must be revalidated before composition.
+
 ## Limits and decision
 
 List every unverified limit. State whether the task is **Accepted**,

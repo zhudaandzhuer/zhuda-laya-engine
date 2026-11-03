@@ -8,7 +8,7 @@ const root = path.resolve(
 );
 const source = path.join(root, "packages/core");
 const program = ts.createProgram(
-  ["runtime3d", "terrain", "shaders"].map((dir) =>
+  ["runtime3d", "terrain", "shaders", "prefabs"].map((dir) =>
     path.join(source, dir, "index.ts"),
   ),
   {
@@ -33,6 +33,7 @@ if (diagnostics.length)
   );
 program.emit(undefined, (file, data) => {
   if (!file.startsWith(source + path.sep) || !file.endsWith(".d.ts")) return;
+  if (!["runtime3d", "terrain", "shaders", "prefabs"].some(dir => file.startsWith(path.join(source, dir) + path.sep))) return;
   const destination = path.join(
     root,
     "packages/types",

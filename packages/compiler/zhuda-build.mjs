@@ -30,6 +30,7 @@ export async function runZhudaBuild(options = {}) {
     ? JSON.parse(fs.readFileSync(configPath, 'utf8'))
     : {};
   const engineRoot = options.engineRoot || config.engineRoot || defaultEngineRoot;
+  const engineVersion = JSON.parse(fs.readFileSync(path.join(engineRoot, 'package.json'), 'utf8')).version;
 
   if (projectRoot !== engineRoot && config.demoAssets !== true) return runConsumerBuild({projectRoot,engineRoot,config});
 
@@ -217,7 +218,7 @@ export async function runZhudaBuild(options = {}) {
     const sdkEsmFile = path.join(sdkOutDir, 'zhuda-laya-engine.esm.js');
     const sdkCjsFile = path.join(sdkOutDir, 'zhuda-laya-engine.cjs');
     const sdkBanner = `/**
- * zhuda-laya-engine v1.0.0 — 豬大 LayaAir (AI-Agent-Friendly Fork Edition)
+ * zhuda-laya-engine v${engineVersion} — 豬大 LayaAir (AI-Agent-Friendly Fork Edition)
  * Repository: https://github.com/zhudaandzhuer/zhuda-laya-engine
  * Upstream Official: LayaAir Engine 3.4.2 by Layabox (https://layaair.com/ | https://github.com/layabox/LayaAir)
  * License: MIT
@@ -534,7 +535,7 @@ ${previewScriptTags}
 
   const manifest = {
     packageName: 'zhuda-laya-engine',
-    version: '1.0.0',
+    version: engineVersion,
     repositoryUrl: 'https://github.com/zhudaandzhuer/zhuda-laya-engine',
     upstreamOfficial: {
       name: 'LayaAir Official Engine (Layabox)',

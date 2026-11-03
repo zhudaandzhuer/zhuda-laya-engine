@@ -6,6 +6,9 @@ import { API_GUARDRAILS, ERROR_DIAGNOSTICS_DB } from '../mcp-server/corpus.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(__dirname, '../..');
+const packageVersion = JSON.parse(
+  fs.readFileSync(path.join(projectRoot, 'package.json'), 'utf8')
+).version;
 
 const buildManifest = JSON.parse(
   fs.readFileSync(path.join(projectRoot, 'dist/build-manifest.json'), 'utf8')
@@ -263,7 +266,7 @@ const html = `<!DOCTYPE html>
     <div class="hero">
       <div>
         <div class="badge-row">
-          <span class="badge badge-green">✔ PACKAGE: zhuda-laya-engine v1.0.0 (${buildManifest.buildTimeMs} ms)</span>
+          <span class="badge badge-green">✔ PACKAGE: zhuda-laya-engine v${packageVersion} (${buildManifest.buildTimeMs} ms)</span>
           <span class="badge badge-teal">✔ UPSTREAM: LayaAir 官方 3.4.2 (layabox/LayaAir)</span>
           <span class="badge badge-blue">✔ EDITION: 豬大 AI-Agent-Friendly 開源分支版</span>
         </div>
@@ -322,9 +325,9 @@ const html = `<!DOCTYPE html>
         <div class="infra-card">
           <h3>📦 套件與開源倉庫 (zhuda-laya-engine)</h3>
           <p>
-            • <b>套件名稱</b>：<code>zhuda-laya-engine</code> (v1.0.0, MIT License)<br/>
+            • <b>套件名稱</b>：<code>zhuda-laya-engine</code> (v${packageVersion}, MIT License)<br/>
             • <b>GitHub 倉庫</b>：<a href="https://github.com/zhudaandzhuer/zhuda-laya-engine" target="_blank" style="color:var(--accent)">https://github.com/zhudaandzhuer/zhuda-laya-engine</a><br/>
-            • <b>GitHub Release</b>：<a href="https://github.com/zhudaandzhuer/zhuda-laya-engine/releases/tag/v1.0.0" target="_blank" style="color:var(--teal)">v1.0.0 (含 zhuda-laya-engine-1.0.0.tgz 完整發行包)</a><br/>
+            • <b>GitHub Release</b>：<a href="https://github.com/zhudaandzhuer/zhuda-laya-engine/releases/tag/v${packageVersion}" target="_blank" style="color:var(--teal)">v${packageVersion} (含 zhuda-laya-engine-${packageVersion}.tgz 完整發行包)</a><br/>
             • <b>CLI 執行檔</b>：<code>zhuda-laya-build</code>、<code>zhuda-laya-doctor</code>、<code>zhuda-laya-mcp</code>
           </p>
           <span class="code-path">dist/sdk/zhuda-laya-engine.esm.js</span>

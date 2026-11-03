@@ -74,6 +74,11 @@ or a duplicate canvas/listener behind.
 
 ## Visual and 3D work
 
+Follow the [prefab authoring and isolated acceptance gates](prefab-workflow.md)
+for visual work. Fill the prefab section of the task and verification records.
+Resolve missing or stale node evidence before scene assembly. After integration
+the same prefab ID and child path must still open in the independent preview.
+
 Asset migration precedes gameplay wiring. Inventory model/texture/atlas/Spine
 versions and presentation states first, then validate shader and terrain data,
 then connect the existing consumer rules. Use the visual migration and visual

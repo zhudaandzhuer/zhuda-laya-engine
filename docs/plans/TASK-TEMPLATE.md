@@ -37,6 +37,12 @@ State one observable result.
 
 ## Acceptance checks
 
+For visual work, name the consumer prefab ID and stable child paths, source
+reference and dependencies, expected states, preview entry point and comparison
+criteria. Specify which parent and scene will reuse that verified definition.
+Record gaps in the pinned public SDK and the scoped adapter or upstream fix.
+Use the [prefab workflow](../prefab-workflow.md) before mounting the scene.
+
 Every item needs a command or a reproducible manual procedure and an expected
 result.
 

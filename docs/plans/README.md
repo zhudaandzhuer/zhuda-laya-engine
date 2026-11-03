@@ -16,6 +16,7 @@ device checks and acceptance gates pass.
 
 | Plan | Status | Decision it prepares |
 | --- | --- | --- |
+| [Prefab isolation and consumer tooling](prefab-toolchain.md) | In progress | P0 consumer Prefab preview and evidence gate delivered in 1.1.0; P1/P2 UI, lifecycle, media and device work remains |
 | [Deferred asset packaging](asset-packaging.md) | Proposed | Whether to keep plain assets, add CDN chunks, or introduce a packed/Rust/WASM provider after the project is stable |
 
 Use [TEMPLATE.md](TEMPLATE.md) for new decision plans. For an implementation

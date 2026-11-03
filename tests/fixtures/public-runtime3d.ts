@@ -168,3 +168,15 @@ createPrefilteredEnvironment(
   new Float32Array(24),
 );
 console.log(columns);
+import { ZhudaUI, ZhudaPrefab, ZhudaPrefabLibrary, DirectoryAssetProvider, inspectPrefabInstance } from "zhuda-laya-engine";
+const prefabLibrary = new ZhudaPrefabLibrary({
+  provider: new DirectoryAssetProvider({ baseUrl: "/assets/" }),
+  definitions: [{ id: "panel", asset: "panel.lh", states: { default: {} } }]
+});
+prefabLibrary.instantiate("panel").then(instance => {
+  const child: Laya.Sprite = instance.find("value");
+  inspectPrefabInstance(instance.root);
+  ZhudaUI.createVectorButton(child, 0, 0, "OK", { width: 80, height: 30 }, () => {});
+  ZhudaPrefab.instantiate({ _$id: "label", _$type: "Text" }, child);
+  instance.dispose();
+});

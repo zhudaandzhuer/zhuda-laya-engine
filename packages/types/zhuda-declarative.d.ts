@@ -5,6 +5,26 @@ import type {
   PrimitiveType3D,
 } from "./zhuda-3d-physics";
 import type { ZhudaClassMetadata } from "./zhuda-core";
+import type { LayaHierarchyNodeData, LayaGraphicsCmdData } from "./zhuda-static-assets";
+export declare class ZhudaPrefab {
+  static instantiate(data: LayaHierarchyNodeData, parent?: Laya.Node, positionOverride?: { x: number; y: number }): Laya.Sprite;
+  static applyGraphicsCommands(graphics: Laya.Graphics, commands: LayaGraphicsCmdData[]): void;
+}
+import type { GlassPanelOptions, VectorButtonStyle, NineSliceGridInput, NineSlicePanelOptions } from "./zhuda-2d-ui";
+export declare class ZhudaUI {
+  static createGlassPanel(parent: Laya.Node, opts: GlassPanelOptions): Laya.Sprite;
+  static createVectorButton(parent: Laya.Node, x: number, y: number, text: string,
+    style: VectorButtonStyle, onClick: () => void): {
+      root: Laya.Sprite; label: Laya.Text; setStyleState(active: boolean): void;
+    };
+  static parseSizeGrid(input: NineSliceGridInput): [number, number, number, number, number];
+  static formatSizeGrid(input: NineSliceGridInput): string;
+  static createNineSlicePanel(parent: Laya.Node, opts: NineSlicePanelOptions): {
+    root: Laya.Sprite;
+    sizeGridTuple: [number, number, number, number, number];
+    resizeNineSlice(width: number, height: number): void;
+  };
+}
 export declare function zhudaComponent(
   meta: string | ZhudaClassMetadata,
 ): <T extends new (...args: any[]) => any>(ctor: T) => T;

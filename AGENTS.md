@@ -20,6 +20,25 @@ test pass.
 The `src/` showcase and `assets/` fixtures are engine examples and regression
 fixtures. They are not a place for a consumer game's production content.
 
+## Prefab gate for visual work
+
+For new or changed visual content, follow the [prefab workflow](docs/prefab-workflow.md).
+Inventory the source assets, author the consumer prefab, then render the
+prefab and its named nodes in isolation. Record the exact selection, inputs,
+source revision, reference, actual image and comparison result. Compose
+verified children into panels and verify those before mounting them in a scene.
+The preview and the scene must instantiate the same definition. Keep the
+isolated entry point runnable after integration. Missing, stale or failed
+evidence blocks the affected composition until the prefab passes again.
+
+Pin the public SDK in the consumer. Check its public declarations before
+using a helper. Record API gaps with a failing consumer fixture. Do not
+vendor a patched engine, deep-import its sources, or bypass its types with
+a global `Laya: any`. A procedural effect still needs an independently
+selectable preset with deterministic inputs. Engine demo calibration proves
+only the named demo fixtures. Copy the workflow's adoption instructions
+into the consumer's own agent rules.
+
 ## Required reading before implementation
 
 1. [`README.md`](README.md) for the public package boundary and current

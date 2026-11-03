@@ -20,6 +20,7 @@ export * from './effects/EffectBudget.ts';
 export * from './effects/VfxMaterial.ts';
 export * from './effects/ParticleEventLink.ts';
 export * from './VisualMigrationPipeline.ts';
+export * from './prefabs/index.ts';
 export * from './runtime3d/index.ts';
 
 export * from "./terrain/index";

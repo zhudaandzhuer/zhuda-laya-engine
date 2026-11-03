@@ -9,9 +9,12 @@ export const VALID_PLAN_STATUSES = new Set([
   'Rejected'
 ]);
 
+const PREFAB_POLICY_FILE = 'docs/prefab-workflow.md';
+
 export const REQUIRED_AGENT_FILES = [
   'AGENTS.md',
   'docs/agent-development.md',
+  PREFAB_POLICY_FILE,
   'docs/plans/README.md',
   'docs/plans/TEMPLATE.md',
   'docs/plans/TASK-TEMPLATE.md',
@@ -176,14 +179,7 @@ export function getAgentContract(projectRoot) {
     contractVersion: 1,
     repository: 'zhuda-laya-engine',
     passed: audit.passed,
-    requiredReading: [
-      'AGENTS.md',
-      'docs/agent-development.md',
-      'docs/plans/README.md',
-      'docs/plans/TEMPLATE.md',
-      'docs/plans/TASK-TEMPLATE.md',
-      'docs/plans/VERIFICATION-TEMPLATE.md'
-    ],
+    requiredReading: [...REQUIRED_AGENT_FILES],
     commands: [
       'npm run verify',
       'git diff --check',
@@ -199,6 +195,26 @@ export function getAgentContract(projectRoot) {
       'run-verification',
       'write-verification-record'
     ],
+    visualWorkflow: {
+      appliesTo: 'New or changed consumer visual content, including procedural presets.',
+      policyFile: PREFAB_POLICY_FILE,
+      stages: [
+        'inventory-assets', 'author-prefab', 'verify-isolated-nodes',
+        'compose-approved-prefabs', 'verify-consumer-scene'
+      ],
+      isolatedSelection: ['prefab ID', 'stable child path', 'state and deterministic inputs'],
+      evidence: ['dependency revisions', 'replay command and environment', 'source reference', 'actual draw', 'comparison result'],
+      beforeComposition: 'Require current passing isolated evidence for every required child and composed prefab. A changed dependency invalidates affected evidence.',
+      integration: 'Keep the isolated entry point runnable. The scene instantiates the same verified definition.',
+      enforcement: 'Agent workflow. Doctor checks the engine contract files; it does not approve consumer visuals.',
+      consumerTools: {
+        previewConfig: 'prefabPreview',
+        evidenceConfig: 'prefabEvidence',
+        browserCheck: 'node packages/compiler/prefab-check.mjs --url=... --baseline=... --output=...',
+        doctor: 'node packages/compiler/zhuda-doctor.mjs --project /absolute/consumer',
+        scope: 'Static 2D hierarchy with declared image dependencies. Consumer scenes expose the actual-instance report bridge.'
+      }
+    },
     boundaries: {
       engine: ['public runtime APIs', 'types', 'compiler', 'MCP', 'diagnostics', 'engine fixtures'],
       consumer: ['game rules', 'network authority', 'art/assets', 'game-specific scenes/effects', 'deployment'],
