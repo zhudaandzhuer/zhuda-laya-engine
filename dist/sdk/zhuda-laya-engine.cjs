@@ -44,6 +44,7 @@ __export(index_exports, {
   ZHUDA_VFX_FRAGMENT: () => ZHUDA_VFX_FRAGMENT,
   ZHUDA_VFX_VERTEX: () => ZHUDA_VFX_VERTEX,
   Zhuda3D: () => Zhuda3D,
+  ZhudaActionStateMachine: () => ZhudaActionStateMachine,
   ZhudaAssetCache: () => ZhudaAssetCache,
   ZhudaAssetSerializer: () => ZhudaAssetSerializer,
   ZhudaBenchmarkEngine: () => ZhudaBenchmarkEngine,
@@ -60,11 +61,13 @@ __export(index_exports, {
   ZhudaFilmicPipeline: () => ZhudaFilmicPipeline,
   ZhudaGraphicsGuard: () => ZhudaGraphicsGuard,
   ZhudaHeightfield: () => ZhudaHeightfield,
+  ZhudaInputBuffer: () => ZhudaInputBuffer,
   ZhudaInstanceGroup: () => ZhudaInstanceGroup,
   ZhudaLayaParticleRenderer: () => ZhudaLayaParticleRenderer,
   ZhudaLayaParticleRenderer3D: () => ZhudaLayaParticleRenderer3D,
   ZhudaLayaRibbonRenderer: () => ZhudaLayaRibbonRenderer,
   ZhudaLayaRibbonRenderer3D: () => ZhudaLayaRibbonRenderer3D,
+  ZhudaLayeredClock: () => ZhudaLayeredClock,
   ZhudaLitSurfaceMaterial: () => ZhudaLitSurfaceMaterial,
   ZhudaModelLibrary: () => ZhudaModelLibrary,
   ZhudaObjectPool: () => ZhudaObjectPool,
@@ -138,6 +141,7 @@ __export(index_exports, {
   shaderRecipes: () => shaderRecipes,
   terrainNoise: () => terrainNoise,
   transformPoint: () => transformPoint,
+  validateActionFrameSpec: () => validateActionFrameSpec,
   validateAssetManifest: () => validateAssetManifest,
   validateEffectTimeline: () => validateEffectTimeline,
   validateHeightfield: () => validateHeightfield,
@@ -788,6 +792,121 @@ var ZhudaSimulationClock = class {
     this.accumulator = 0;
   }
 };
+var DEFAULT_TIME_LAYERS = ["world", "player", "enemy", "vfx", "ui"];
+var ZhudaLayeredClock = class {
+  constructor(layers = DEFAULT_TIME_LAYERS) {
+    this.layerStates = /* @__PURE__ */ new Map();
+    this.layerDeltaValues = /* @__PURE__ */ new Map();
+    /** Global scale inherited from the owning runtime session. */
+    this.globalTimeScale = 1;
+    this.unscaledTime = 0;
+    this.unscaledDeltaTime = 0;
+    if (Array.isArray(layers)) {
+      if (!layers.length) throw Error("At least one time layer is required");
+      for (const name of layers) this.defineLayer(name);
+    } else {
+      const definitions = layers;
+      const names = Object.keys(definitions);
+      if (!names.length) throw Error("At least one time layer is required");
+      for (const name of names) this.defineLayer(name, definitions[name]);
+    }
+  }
+  defineLayer(name, options = {}) {
+    this.validateName(name);
+    if (this.layerStates.has(name)) throw Error(`Time layer already exists: ${name}`);
+    const timeScale = options.timeScale ?? 1;
+    if (!Number.isFinite(timeScale) || timeScale < 0)
+      throw Error("Invalid time layer scale");
+    if (options.paused !== void 0 && typeof options.paused !== "boolean")
+      throw Error("Invalid time layer pause state");
+    this.layerStates.set(name, {
+      name,
+      timeScale,
+      paused: options.paused ?? false,
+      scaledTime: 0,
+      scaledDeltaTime: 0
+    });
+    this.layerDeltaValues.set(name, 0);
+    return this;
+  }
+  removeLayer(name) {
+    this.validateName(name);
+    this.layerDeltaValues.delete(name);
+    return this.layerStates.delete(name);
+  }
+  setTimeScale(name, value) {
+    const layer = this.getLayer(name);
+    if (!Number.isFinite(value) || value < 0) throw Error("Invalid time layer scale");
+    layer.timeScale = value;
+    return this;
+  }
+  setGlobalTimeScale(value) {
+    if (!Number.isFinite(value) || value < 0) throw Error("Invalid global time layer scale");
+    this.globalTimeScale = value;
+    return this;
+  }
+  setPaused(name, paused) {
+    const layer = this.getLayer(name);
+    if (typeof paused !== "boolean") throw Error("Invalid time layer pause state");
+    layer.paused = paused;
+    return this;
+  }
+  getTimeScale(name) {
+    return this.getLayer(name).timeScale;
+  }
+  isPaused(name) {
+    return this.getLayer(name).paused;
+  }
+  get layerNames() {
+    return [...this.layerStates.keys()];
+  }
+  /** Reusable layer deltas for `ZhudaTimerScheduler.advance`. */
+  get scaledDeltas() {
+    return this.layerDeltaValues;
+  }
+  advance(unscaledDeltaTime) {
+    if (!Number.isFinite(unscaledDeltaTime) || unscaledDeltaTime < 0)
+      throw Error("Invalid layered clock delta");
+    this.unscaledDeltaTime = unscaledDeltaTime;
+    this.unscaledTime += unscaledDeltaTime;
+    for (const layer of this.layerStates.values()) {
+      const scaledDeltaTime = layer.paused ? 0 : unscaledDeltaTime * this.globalTimeScale * layer.timeScale;
+      layer.scaledDeltaTime = scaledDeltaTime;
+      layer.scaledTime += scaledDeltaTime;
+      this.layerDeltaValues.set(layer.name, scaledDeltaTime);
+    }
+  }
+  sample(name) {
+    const layer = this.getLayer(name);
+    return {
+      layer: layer.name,
+      paused: layer.paused,
+      unscaledDeltaTime: this.unscaledDeltaTime,
+      scaledDeltaTime: layer.scaledDeltaTime,
+      unscaledTime: this.unscaledTime,
+      scaledTime: layer.scaledTime,
+      timeScale: this.globalTimeScale * layer.timeScale
+    };
+  }
+  reset() {
+    this.unscaledTime = 0;
+    this.unscaledDeltaTime = 0;
+    for (const layer of this.layerStates.values()) {
+      layer.scaledTime = 0;
+      layer.scaledDeltaTime = 0;
+      this.layerDeltaValues.set(layer.name, 0);
+    }
+  }
+  getLayer(name) {
+    this.validateName(name);
+    const layer = this.layerStates.get(name);
+    if (!layer) throw Error(`Unknown time layer: ${name}`);
+    return layer;
+  }
+  validateName(name) {
+    if (typeof name !== "string" || !name.trim()) throw Error("Invalid time layer name");
+  }
+};
 var ZhudaRealtimeClock = class {
   constructor() {
     this.timeScale = 1;
@@ -847,12 +966,17 @@ var ZhudaTimerScheduler = class {
     if (!Number.isFinite(delay) || delay < 0 || options.repeat && delay <= 0)
       throw Error("Invalid timer delay");
     if (typeof callback !== "function") throw Error("Invalid timer callback");
+    if (options.layer !== void 0 && (typeof options.layer !== "string" || !options.layer.trim()))
+      throw Error("Invalid timer layer");
+    if (options.layer !== void 0 && options.channel !== void 0)
+      throw Error("Timer layer cannot be combined with a timer channel");
     const task = {
       id: this.nextId++,
       remaining: delay,
       interval: delay,
       repeat: options.repeat,
       channel: options.channel ?? "scaled",
+      layer: options.layer,
       owner: options.owner,
       callback,
       cancelled: false
@@ -891,16 +1015,23 @@ var ZhudaTimerScheduler = class {
     for (const id of ids) this.cancel(id);
     return ids.length;
   }
-  advance(unscaledDeltaTime, scaledDeltaTime = unscaledDeltaTime) {
+  advance(unscaledDeltaTime, scaledDeltaTime = unscaledDeltaTime, layerDeltas) {
     if (this.disposed) return 0;
     if (![unscaledDeltaTime, scaledDeltaTime].every((v) => Number.isFinite(v) && v >= 0))
       throw Error("Invalid timer delta");
+    if (layerDeltas) {
+      for (const [name, delta] of layerDeltas) {
+        if (typeof name !== "string" || !name.trim() || !Number.isFinite(delta) || delta < 0)
+          throw Error("Invalid timer layer delta");
+      }
+    }
     let callbacks = 0;
     const snapshot = [...this.tasks.values()];
     for (const task of snapshot) {
       if (callbacks >= this.maxCallbacksPerAdvance) break;
       if (task.cancelled || !this.tasks.has(task.id)) continue;
-      task.remaining -= task.channel === "scaled" ? scaledDeltaTime : unscaledDeltaTime;
+      const delta = task.layer ? layerDeltas?.get(task.layer) ?? 0 : task.channel === "scaled" ? scaledDeltaTime : unscaledDeltaTime;
+      task.remaining -= delta;
       while (task.remaining <= 1e-10 && !task.cancelled && this.tasks.has(task.id) && callbacks < this.maxCallbacksPerAdvance) {
         task.callback();
         callbacks++;
@@ -1135,6 +1266,8 @@ var ZhudaRuntimeSession = class {
     this.contextLost = false;
     this.disposed = false;
     this.clock = new ZhudaRealtimeClock();
+    /** Named channels driven by the same RAF clock as `clock` and `timers`. */
+    this.layers = new ZhudaLayeredClock();
     this.timers = new ZhudaTimerScheduler();
     this.mutations = new ZhudaSceneMutationQueue();
     this.cleanups = [];
@@ -1148,6 +1281,7 @@ var ZhudaRuntimeSession = class {
         throw Error("Invalid runtime time scale");
       this.clock.timeScale = options.timeScale;
     }
+    this.layers.setGlobalTimeScale(this.clock.timeScale);
     const listen = (target, event, fn) => {
       target.addEventListener(event, fn);
       this.cleanups.push(() => target.removeEventListener(event, fn));
@@ -1210,7 +1344,13 @@ var ZhudaRuntimeSession = class {
         if (!this.previous || elapsed >= 1e3 / (this.options.targetFPS || 60) - 2) {
           this.previous = now;
           const sample = this.clock.advance(Math.min(0.1, elapsed / 1e3));
-          this.timers.advance(sample.unscaledDeltaTime, sample.scaledDeltaTime);
+          this.layers.setGlobalTimeScale(this.clock.timeScale);
+          this.layers.advance(sample.unscaledDeltaTime);
+          this.timers.advance(
+            sample.unscaledDeltaTime,
+            sample.scaledDeltaTime,
+            this.layers.scaledDeltas
+          );
           this.task?.(sample.unscaledDeltaTime, sample);
           this.mutations.flush();
         }
@@ -4133,8 +4273,20 @@ var ZhudaPrefab = class {
       }
     }
     if (Array.isArray(data._$child) && typeof node?.numChildren === "number") {
-      for (let i = 0; i < Math.min(data._$child.length, node.numChildren); i++) {
-        this.ensureGraphicsHydrated(node.getChildAt(i), data._$child[i]);
+      for (const childData of data._$child) {
+        let child = void 0;
+        for (let i = 0; i < node.numChildren; i++) {
+          const candidate = node.getChildAt(i);
+          if (candidate?.name === (childData.name || childData._$id)) {
+            child = candidate;
+            break;
+          }
+        }
+        if (!child && typeof node.addChild === "function") {
+          child = this.hydrateNodeRecursive(childData);
+          node.addChild(child);
+        }
+        if (child) this.ensureGraphicsHydrated(child, childData);
       }
     }
   }
@@ -8953,6 +9105,296 @@ var ZhudaPrefabLibrary = class {
   }
 };
 
+// packages/core/runtime3d/ActionFrames.ts
+function finiteInteger(value) {
+  return typeof value === "number" && Number.isSafeInteger(value);
+}
+function finiteNumber(value) {
+  return typeof value === "number" && Number.isFinite(value);
+}
+function validateWindow(name, window2, frameCount, errors) {
+  if (!window2 || !finiteInteger(window2.from) || !finiteInteger(window2.until)) {
+    errors.push(`${name} must contain integer from/until frames.`);
+    return false;
+  }
+  if (window2.from < 0 || window2.from >= window2.until || window2.until > frameCount)
+    errors.push(`${name} must be a non-empty interval within frameCount.`);
+  return true;
+}
+function validateActionFrameSpec(spec) {
+  const errors = [];
+  if (!spec || typeof spec !== "object") return ["Action frame spec is required."];
+  if (typeof spec.id !== "string" || !spec.id.trim()) errors.push("id must be a non-empty string.");
+  if (!finiteNumber(spec.frameRate) || spec.frameRate <= 0)
+    errors.push("frameRate must be a positive finite number.");
+  if (!finiteInteger(spec.frameCount) || spec.frameCount <= 0)
+    errors.push("frameCount must be a positive safe integer.");
+  const frameCount = finiteInteger(spec.frameCount) && spec.frameCount > 0 ? spec.frameCount : 1;
+  const startupOk = validateWindow("startup", spec.startup, frameCount, errors);
+  const activeOk = validateWindow("active", spec.active, frameCount, errors);
+  const recoveryOk = validateWindow("recovery", spec.recovery, frameCount, errors);
+  if (startupOk && spec.startup.from !== 0) errors.push("startup must begin at frame 0.");
+  if (startupOk && activeOk && spec.startup.until !== spec.active.from)
+    errors.push("startup must connect directly to active.");
+  if (activeOk && recoveryOk && spec.active.until !== spec.recovery.from)
+    errors.push("active must connect directly to recovery.");
+  if (recoveryOk && spec.recovery.until !== frameCount)
+    errors.push("recovery must end at frameCount.");
+  if (spec.cancelWindows !== void 0) {
+    if (!Array.isArray(spec.cancelWindows)) errors.push("cancelWindows must be an array.");
+    else {
+      for (let i = 0; i < spec.cancelWindows.length; i++) {
+        const window2 = spec.cancelWindows[i];
+        const name = `cancelWindows[${i}]`;
+        if (!validateWindow(name, window2, frameCount, errors)) continue;
+        const cancelWindow = window2;
+        if (!Array.isArray(cancelWindow.actions) || !cancelWindow.actions.length || cancelWindow.actions.some((action) => typeof action !== "string" || !action.trim()))
+          errors.push(`${name}.actions must contain at least one non-empty action id.`);
+      }
+    }
+  }
+  if (spec.events !== void 0) {
+    if (!Array.isArray(spec.events)) errors.push("events must be an array.");
+    else {
+      let previousFrame = -1;
+      for (let i = 0; i < spec.events.length; i++) {
+        const event = spec.events[i];
+        if (!event || !finiteInteger(event.frame) || event.frame < 0 || event.frame > frameCount)
+          errors.push(`events[${i}].frame must be within frameCount.`);
+        else if (event.frame < previousFrame)
+          errors.push("events must be ordered by non-decreasing frame.");
+        else previousFrame = event.frame;
+        if (!event || typeof event.id !== "string" || !event.id.trim())
+          errors.push(`events[${i}].id must be a non-empty string.`);
+      }
+    }
+  }
+  if (spec.sockets !== void 0) {
+    if (!Array.isArray(spec.sockets)) errors.push("sockets must be an array.");
+    else {
+      const ids = /* @__PURE__ */ new Set();
+      for (let i = 0; i < spec.sockets.length; i++) {
+        const socket = spec.sockets[i];
+        if (!socket || typeof socket.id !== "string" || !socket.id.trim())
+          errors.push(`sockets[${i}].id must be a non-empty string.`);
+        else if (ids.has(socket.id)) errors.push(`sockets[${i}].id is duplicated.`);
+        else ids.add(socket.id);
+        if (!socket || typeof socket.bone !== "string" || !socket.bone.trim())
+          errors.push(`sockets[${i}].bone must be a non-empty string.`);
+        const offset = socket?.offset;
+        if (offset && ![offset.x, offset.y, offset.z ?? 0].every(finiteNumber))
+          errors.push(`sockets[${i}].offset must contain finite coordinates.`);
+      }
+    }
+  }
+  return errors;
+}
+var ZhudaActionStateMachine = class {
+  constructor(spec) {
+    this.currentFrame = 0;
+    this.eventIndex = 0;
+    this.playing = false;
+    const errors = validateActionFrameSpec(spec);
+    if (errors.length) throw Error(`Invalid action frame spec: ${errors.join(" ")}`);
+    this.spec = {
+      ...spec,
+      cancelWindows: spec.cancelWindows ? spec.cancelWindows.map((w) => ({ ...w, actions: [...w.actions] })) : void 0,
+      events: spec.events ? spec.events.map((event) => ({ ...event })) : void 0,
+      sockets: spec.sockets ? spec.sockets.map((socket) => ({ ...socket, offset: socket.offset ? { ...socket.offset } : void 0 })) : void 0
+    };
+  }
+  get frame() {
+    return this.currentFrame;
+  }
+  get isPlaying() {
+    return this.playing;
+  }
+  get isComplete() {
+    return this.currentFrame >= this.spec.frameCount;
+  }
+  get phase() {
+    if (this.isComplete) return "complete";
+    if (this.currentFrame < this.spec.startup.until) return "startup";
+    if (this.currentFrame < this.spec.active.until) return "active";
+    return "recovery";
+  }
+  get normalizedTime() {
+    return this.currentFrame / this.spec.frameCount;
+  }
+  get active() {
+    return this.phase === "active";
+  }
+  reset() {
+    this.currentFrame = 0;
+    this.eventIndex = 0;
+    this.playing = false;
+  }
+  play(reset = true) {
+    if (reset) this.reset();
+    if (this.isComplete) this.reset();
+    this.playing = true;
+  }
+  stop() {
+    this.playing = false;
+  }
+  advance(deltaSeconds) {
+    if (!Number.isFinite(deltaSeconds) || deltaSeconds < 0)
+      throw Error("Invalid action delta");
+    if (!this.playing || this.isComplete) return [];
+    const previousFrame = this.currentFrame;
+    this.currentFrame = Math.min(
+      this.spec.frameCount,
+      previousFrame + deltaSeconds * this.spec.frameRate
+    );
+    const events = [];
+    const frameEvents = this.spec.events ?? [];
+    const firstAdvance = this.eventIndex === 0 && previousFrame === 0;
+    while (this.eventIndex < frameEvents.length && (frameEvents[this.eventIndex].frame > previousFrame || firstAdvance && frameEvents[this.eventIndex].frame === 0) && frameEvents[this.eventIndex].frame <= this.currentFrame) {
+      events.push({ ...frameEvents[this.eventIndex] });
+      this.eventIndex++;
+    }
+    if (this.isComplete) this.playing = false;
+    return events;
+  }
+  canCancelInto(actionId) {
+    if (typeof actionId !== "string" || !actionId.trim()) return false;
+    return (this.spec.cancelWindows ?? []).some(
+      (window2) => this.currentFrame >= window2.from && this.currentFrame < window2.until && window2.actions.includes(actionId)
+    );
+  }
+  getSocket(id) {
+    const socket = (this.spec.sockets ?? []).find((candidate) => candidate.id === id);
+    return socket ? { ...socket, offset: socket.offset ? { ...socket.offset } : void 0 } : null;
+  }
+};
+
+// packages/core/runtime3d/InputBuffer.ts
+var ZhudaInputBuffer = class {
+  constructor(options = {}) {
+    this.entries = [];
+    this.nextSequence = 1;
+    this.lastTime = -Infinity;
+    this.disposed = false;
+    this.window = options.window ?? 0.12;
+    this.capacity = options.capacity ?? 32;
+    if (!Number.isFinite(this.window) || this.window <= 0)
+      throw Error("Invalid input buffer window");
+    if (!Number.isSafeInteger(this.capacity) || this.capacity <= 0)
+      throw Error("Invalid input buffer capacity");
+  }
+  push(action, time) {
+    this.ensureLive();
+    if (typeof action !== "string" || !action.trim() || !Number.isFinite(time))
+      throw Error("Invalid buffered input");
+    if (time < this.lastTime) return false;
+    this.lastTime = time;
+    this.entries.push({ action, time, sequence: this.nextSequence++ });
+    this.prune(time);
+    while (this.entries.length > this.capacity) this.entries.shift();
+    return true;
+  }
+  has(action, time) {
+    this.ensureLive();
+    this.validateRead(action, time);
+    this.prune(time);
+    return this.entries.some((entry) => entry.action === action);
+  }
+  /** Consumes the oldest matching action once. */
+  consume(action, time) {
+    this.ensureLive();
+    this.validateRead(action, time);
+    this.prune(time);
+    const index = this.entries.findIndex((entry) => entry.action === action);
+    if (index < 0) return false;
+    this.entries.splice(index, 1);
+    return true;
+  }
+  /** Consumes the oldest matching action from a set of alternatives. */
+  consumeAny(actions, time) {
+    this.ensureLive();
+    this.validateActions(actions);
+    this.validateTime(time);
+    this.prune(time);
+    const accepted = new Set(actions);
+    const index = this.entries.findIndex((entry2) => accepted.has(entry2.action));
+    if (index < 0) return null;
+    const [entry] = this.entries.splice(index, 1);
+    return entry.action;
+  }
+  /**
+   * Consumes an ordered combo such as `down`, `forward`, `attack`.
+   * Unrelated actions may occur between combo steps; each accepted step must
+   * arrive within `maxGap` of the previous accepted step.
+   */
+  consumeSequence(actions, time, maxGap = this.window) {
+    this.ensureLive();
+    this.validateActions(actions);
+    this.validateTime(time);
+    if (!Number.isFinite(maxGap) || maxGap < 0) throw Error("Invalid combo gap");
+    this.prune(time);
+    const indexes = [];
+    let searchFrom = 0;
+    let previousTime = -Infinity;
+    for (const action of actions) {
+      let found = -1;
+      for (let i = searchFrom; i < this.entries.length; i++) {
+        const entry = this.entries[i];
+        if (entry.action !== action || entry.time > time) continue;
+        if (previousTime !== -Infinity && entry.time - previousTime > maxGap) break;
+        found = i;
+        break;
+      }
+      if (found < 0) return false;
+      indexes.push(found);
+      previousTime = this.entries[found].time;
+      searchFrom = found + 1;
+    }
+    for (let i = indexes.length - 1; i >= 0; i--) this.entries.splice(indexes[i], 1);
+    return true;
+  }
+  snapshot(time) {
+    this.ensureLive();
+    this.validateTime(time);
+    this.prune(time);
+    return this.entries.map((entry) => ({ ...entry }));
+  }
+  clear() {
+    this.entries = [];
+    this.lastTime = -Infinity;
+  }
+  dispose() {
+    if (this.disposed) return;
+    this.disposed = true;
+    this.clear();
+  }
+  get size() {
+    return this.entries.length;
+  }
+  get isDisposed() {
+    return this.disposed;
+  }
+  prune(time) {
+    const cutoff = time - this.window;
+    while (this.entries.length && this.entries[0].time < cutoff) this.entries.shift();
+  }
+  validateRead(action, time) {
+    if (typeof action !== "string" || !action.trim()) throw Error("Invalid buffered input action");
+    this.validateTime(time);
+  }
+  validateTime(time) {
+    if (!Number.isFinite(time)) throw Error("Invalid buffered input time");
+    if (time < this.lastTime) throw Error("Buffered input time moved backwards");
+    this.lastTime = time;
+  }
+  validateActions(actions) {
+    if (!Array.isArray(actions) || !actions.length || actions.some((action) => typeof action !== "string" || !action.trim()))
+      throw Error("Invalid input action sequence");
+  }
+  ensureLive() {
+    if (this.disposed) throw Error("Disposed input buffer");
+  }
+};
+
 // packages/core/runtime3d/RenderSpaces.ts
 var ZhudaRenderSpace = class {
   constructor() {
@@ -11105,6 +11547,7 @@ zhudaSurface(s,zhudaUV,pixel.positionWS,pixel.normalWS);inputs.diffuseColor=max(
   ZHUDA_VFX_FRAGMENT,
   ZHUDA_VFX_VERTEX,
   Zhuda3D,
+  ZhudaActionStateMachine,
   ZhudaAssetCache,
   ZhudaAssetSerializer,
   ZhudaBenchmarkEngine,
@@ -11121,11 +11564,13 @@ zhudaSurface(s,zhudaUV,pixel.positionWS,pixel.normalWS);inputs.diffuseColor=max(
   ZhudaFilmicPipeline,
   ZhudaGraphicsGuard,
   ZhudaHeightfield,
+  ZhudaInputBuffer,
   ZhudaInstanceGroup,
   ZhudaLayaParticleRenderer,
   ZhudaLayaParticleRenderer3D,
   ZhudaLayaRibbonRenderer,
   ZhudaLayaRibbonRenderer3D,
+  ZhudaLayeredClock,
   ZhudaLitSurfaceMaterial,
   ZhudaModelLibrary,
   ZhudaObjectPool,
@@ -11199,6 +11644,7 @@ zhudaSurface(s,zhudaUV,pixel.positionWS,pixel.normalWS);inputs.diffuseColor=max(
   shaderRecipes,
   terrainNoise,
   transformPoint,
+  validateActionFrameSpec,
   validateAssetManifest,
   validateEffectTimeline,
   validateHeightfield,

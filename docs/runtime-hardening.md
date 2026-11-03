@@ -27,6 +27,12 @@ pending callback. Browser `setInterval` and `setTimeout` must not drive gameplay
 `ZhudaSimulationClock` keeps fixed-step replay deterministic and now exposes the
 same scaled and unscaled measurements. Its default `timeScale` is `1`.
 
+For hit-stop or a local slow-motion effect, use `ZhudaLayeredClock` instead of
+creating another wall-clock source. It owns named `world`, `player`, `enemy`,
+`vfx` and `ui` channels and exposes a reusable `scaledDeltas` map for
+`ZhudaTimerScheduler` layer timers. See [combat runtime contracts](combat-runtime.md)
+for the action-game examples.
+
 ## Scene mutations
 
 `ZhudaSceneMutationQueue` accepts public operations and applies only the batch

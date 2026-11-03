@@ -23,6 +23,48 @@ export interface ZhudaClockSample {
     scaledTime: number;
     timeScale: number;
 }
+export interface ZhudaLayerClockSample extends ZhudaClockSample {
+    /** The named simulation/presentation layer that produced this sample. */
+    layer: string;
+    /** Pausing a layer keeps its real-time clock visible while zeroing its scaled channel. */
+    paused: boolean;
+}
+export interface ZhudaTimeLayerOptions {
+    timeScale?: number;
+    paused?: boolean;
+}
+/**
+ * A single real-time source with independently scaled named channels.
+ *
+ * The clock deliberately does not know anything about combat, rendering or
+ * animation. A consumer can freeze `enemy` for hit-stop while continuing to
+ * advance `player`, `vfx` and `ui`, then pass the exposed layer deltas to the
+ * shared `ZhudaTimerScheduler`.
+ */
+export declare class ZhudaLayeredClock {
+    private readonly layerStates;
+    private readonly layerDeltaValues;
+    /** Global scale inherited from the owning runtime session. */
+    globalTimeScale: number;
+    unscaledTime: number;
+    unscaledDeltaTime: number;
+    constructor(layers?: readonly string[] | Record<string, ZhudaTimeLayerOptions>);
+    defineLayer(name: string, options?: ZhudaTimeLayerOptions): this;
+    removeLayer(name: string): boolean;
+    setTimeScale(name: string, value: number): this;
+    setGlobalTimeScale(value: number): this;
+    setPaused(name: string, paused: boolean): this;
+    getTimeScale(name: string): number;
+    isPaused(name: string): boolean;
+    get layerNames(): readonly string[];
+    /** Reusable layer deltas for `ZhudaTimerScheduler.advance`. */
+    get scaledDeltas(): ReadonlyMap<string, number>;
+    advance(unscaledDeltaTime: number): void;
+    sample(name: string): ZhudaLayerClockSample;
+    reset(): void;
+    private getLayer;
+    private validateName;
+}
 /** A real-time clock that exposes both gameplay and presentation time channels. */
 export declare class ZhudaRealtimeClock {
     timeScale: number;
@@ -38,6 +80,8 @@ export declare class ZhudaRealtimeClock {
 export type ZhudaTimerChannel = "scaled" | "unscaled";
 export interface ZhudaTimerOptions {
     channel?: ZhudaTimerChannel;
+    /** When set, the timer consumes that named layer's scaled delta. */
+    layer?: string;
     owner?: object;
 }
 export interface ZhudaTimerHandle {
@@ -59,7 +103,7 @@ export declare class ZhudaTimerScheduler {
     private handle;
     private cancel;
     cancelOwner(owner: object): number;
-    advance(unscaledDeltaTime: number, scaledDeltaTime?: number): number;
+    advance(unscaledDeltaTime: number, scaledDeltaTime?: number, layerDeltas?: ReadonlyMap<string, number>): number;
     clear(): void;
     dispose(): void;
     get size(): number;

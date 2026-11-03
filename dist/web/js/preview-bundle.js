@@ -146,6 +146,121 @@ var ZhudaPreviewBundle = (() => {
   EngineGuard.registeredComponentNames = /* @__PURE__ */ new Set();
 
   // packages/core/runtime3d/Clocks.ts
+  var DEFAULT_TIME_LAYERS = ["world", "player", "enemy", "vfx", "ui"];
+  var ZhudaLayeredClock = class {
+    constructor(layers = DEFAULT_TIME_LAYERS) {
+      this.layerStates = /* @__PURE__ */ new Map();
+      this.layerDeltaValues = /* @__PURE__ */ new Map();
+      /** Global scale inherited from the owning runtime session. */
+      this.globalTimeScale = 1;
+      this.unscaledTime = 0;
+      this.unscaledDeltaTime = 0;
+      if (Array.isArray(layers)) {
+        if (!layers.length) throw Error("At least one time layer is required");
+        for (const name of layers) this.defineLayer(name);
+      } else {
+        const definitions = layers;
+        const names = Object.keys(definitions);
+        if (!names.length) throw Error("At least one time layer is required");
+        for (const name of names) this.defineLayer(name, definitions[name]);
+      }
+    }
+    defineLayer(name, options = {}) {
+      this.validateName(name);
+      if (this.layerStates.has(name)) throw Error(`Time layer already exists: ${name}`);
+      const timeScale = options.timeScale ?? 1;
+      if (!Number.isFinite(timeScale) || timeScale < 0)
+        throw Error("Invalid time layer scale");
+      if (options.paused !== void 0 && typeof options.paused !== "boolean")
+        throw Error("Invalid time layer pause state");
+      this.layerStates.set(name, {
+        name,
+        timeScale,
+        paused: options.paused ?? false,
+        scaledTime: 0,
+        scaledDeltaTime: 0
+      });
+      this.layerDeltaValues.set(name, 0);
+      return this;
+    }
+    removeLayer(name) {
+      this.validateName(name);
+      this.layerDeltaValues.delete(name);
+      return this.layerStates.delete(name);
+    }
+    setTimeScale(name, value) {
+      const layer = this.getLayer(name);
+      if (!Number.isFinite(value) || value < 0) throw Error("Invalid time layer scale");
+      layer.timeScale = value;
+      return this;
+    }
+    setGlobalTimeScale(value) {
+      if (!Number.isFinite(value) || value < 0) throw Error("Invalid global time layer scale");
+      this.globalTimeScale = value;
+      return this;
+    }
+    setPaused(name, paused) {
+      const layer = this.getLayer(name);
+      if (typeof paused !== "boolean") throw Error("Invalid time layer pause state");
+      layer.paused = paused;
+      return this;
+    }
+    getTimeScale(name) {
+      return this.getLayer(name).timeScale;
+    }
+    isPaused(name) {
+      return this.getLayer(name).paused;
+    }
+    get layerNames() {
+      return [...this.layerStates.keys()];
+    }
+    /** Reusable layer deltas for `ZhudaTimerScheduler.advance`. */
+    get scaledDeltas() {
+      return this.layerDeltaValues;
+    }
+    advance(unscaledDeltaTime) {
+      if (!Number.isFinite(unscaledDeltaTime) || unscaledDeltaTime < 0)
+        throw Error("Invalid layered clock delta");
+      this.unscaledDeltaTime = unscaledDeltaTime;
+      this.unscaledTime += unscaledDeltaTime;
+      for (const layer of this.layerStates.values()) {
+        const scaledDeltaTime = layer.paused ? 0 : unscaledDeltaTime * this.globalTimeScale * layer.timeScale;
+        layer.scaledDeltaTime = scaledDeltaTime;
+        layer.scaledTime += scaledDeltaTime;
+        this.layerDeltaValues.set(layer.name, scaledDeltaTime);
+      }
+    }
+    sample(name) {
+      const layer = this.getLayer(name);
+      return {
+        layer: layer.name,
+        paused: layer.paused,
+        unscaledDeltaTime: this.unscaledDeltaTime,
+        scaledDeltaTime: layer.scaledDeltaTime,
+        unscaledTime: this.unscaledTime,
+        scaledTime: layer.scaledTime,
+        timeScale: this.globalTimeScale * layer.timeScale
+      };
+    }
+    reset() {
+      this.unscaledTime = 0;
+      this.unscaledDeltaTime = 0;
+      for (const layer of this.layerStates.values()) {
+        layer.scaledTime = 0;
+        layer.scaledDeltaTime = 0;
+        this.layerDeltaValues.set(layer.name, 0);
+      }
+    }
+    getLayer(name) {
+      this.validateName(name);
+      const layer = this.layerStates.get(name);
+      if (!layer) throw Error(`Unknown time layer: ${name}`);
+      return layer;
+    }
+    validateName(name) {
+      if (typeof name !== "string" || !name.trim()) throw Error("Invalid time layer name");
+    }
+  };
   var ZhudaRealtimeClock = class {
     constructor() {
       this.timeScale = 1;
@@ -205,12 +320,17 @@ var ZhudaPreviewBundle = (() => {
       if (!Number.isFinite(delay) || delay < 0 || options.repeat && delay <= 0)
         throw Error("Invalid timer delay");
       if (typeof callback !== "function") throw Error("Invalid timer callback");
+      if (options.layer !== void 0 && (typeof options.layer !== "string" || !options.layer.trim()))
+        throw Error("Invalid timer layer");
+      if (options.layer !== void 0 && options.channel !== void 0)
+        throw Error("Timer layer cannot be combined with a timer channel");
       const task = {
         id: this.nextId++,
         remaining: delay,
         interval: delay,
         repeat: options.repeat,
         channel: options.channel ?? "scaled",
+        layer: options.layer,
         owner: options.owner,
         callback,
         cancelled: false
@@ -249,16 +369,23 @@ var ZhudaPreviewBundle = (() => {
       for (const id of ids) this.cancel(id);
       return ids.length;
     }
-    advance(unscaledDeltaTime, scaledDeltaTime = unscaledDeltaTime) {
+    advance(unscaledDeltaTime, scaledDeltaTime = unscaledDeltaTime, layerDeltas) {
       if (this.disposed) return 0;
       if (![unscaledDeltaTime, scaledDeltaTime].every((v) => Number.isFinite(v) && v >= 0))
         throw Error("Invalid timer delta");
+      if (layerDeltas) {
+        for (const [name, delta] of layerDeltas) {
+          if (typeof name !== "string" || !name.trim() || !Number.isFinite(delta) || delta < 0)
+            throw Error("Invalid timer layer delta");
+        }
+      }
       let callbacks = 0;
       const snapshot = [...this.tasks.values()];
       for (const task of snapshot) {
         if (callbacks >= this.maxCallbacksPerAdvance) break;
         if (task.cancelled || !this.tasks.has(task.id)) continue;
-        task.remaining -= task.channel === "scaled" ? scaledDeltaTime : unscaledDeltaTime;
+        const delta = task.layer ? layerDeltas?.get(task.layer) ?? 0 : task.channel === "scaled" ? scaledDeltaTime : unscaledDeltaTime;
+        task.remaining -= delta;
         while (task.remaining <= 1e-10 && !task.cancelled && this.tasks.has(task.id) && callbacks < this.maxCallbacksPerAdvance) {
           task.callback();
           callbacks++;
@@ -404,6 +531,8 @@ var ZhudaPreviewBundle = (() => {
       this.contextLost = false;
       this.disposed = false;
       this.clock = new ZhudaRealtimeClock();
+      /** Named channels driven by the same RAF clock as `clock` and `timers`. */
+      this.layers = new ZhudaLayeredClock();
       this.timers = new ZhudaTimerScheduler();
       this.mutations = new ZhudaSceneMutationQueue();
       this.cleanups = [];
@@ -417,6 +546,7 @@ var ZhudaPreviewBundle = (() => {
           throw Error("Invalid runtime time scale");
         this.clock.timeScale = options.timeScale;
       }
+      this.layers.setGlobalTimeScale(this.clock.timeScale);
       const listen = (target, event, fn) => {
         target.addEventListener(event, fn);
         this.cleanups.push(() => target.removeEventListener(event, fn));
@@ -479,7 +609,13 @@ var ZhudaPreviewBundle = (() => {
           if (!this.previous || elapsed >= 1e3 / (this.options.targetFPS || 60) - 2) {
             this.previous = now;
             const sample = this.clock.advance(Math.min(0.1, elapsed / 1e3));
-            this.timers.advance(sample.unscaledDeltaTime, sample.scaledDeltaTime);
+            this.layers.setGlobalTimeScale(this.clock.timeScale);
+            this.layers.advance(sample.unscaledDeltaTime);
+            this.timers.advance(
+              sample.unscaledDeltaTime,
+              sample.scaledDeltaTime,
+              this.layers.scaledDeltas
+            );
             this.task?.(sample.unscaledDeltaTime, sample);
             this.mutations.flush();
           }
@@ -3435,8 +3571,20 @@ var ZhudaPreviewBundle = (() => {
         }
       }
       if (Array.isArray(data._$child) && typeof node?.numChildren === "number") {
-        for (let i = 0; i < Math.min(data._$child.length, node.numChildren); i++) {
-          this.ensureGraphicsHydrated(node.getChildAt(i), data._$child[i]);
+        for (const childData of data._$child) {
+          let child = void 0;
+          for (let i = 0; i < node.numChildren; i++) {
+            const candidate = node.getChildAt(i);
+            if (candidate?.name === (childData.name || childData._$id)) {
+              child = candidate;
+              break;
+            }
+          }
+          if (!child && typeof node.addChild === "function") {
+            child = this.hydrateNodeRecursive(childData);
+            node.addChild(child);
+          }
+          if (child) this.ensureGraphicsHydrated(child, childData);
         }
       }
     }

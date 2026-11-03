@@ -12,14 +12,14 @@
   "engine": "zhuda-laya-engine (Zhuda-LayaAir · Agent-Friendly Fork of LayaAir 3.4.2)",
   "baseVersion": "3.4.2",
   "zeroIdeBuild": true,
-  "buildTimeMs": 196.5,
+  "buildTimeMs": 137.6,
   "activeProfile": "full-all-in-one",
-  "bundleSizeKB": 231.9,
+  "bundleSizeKB": 237.4,
   "sdkArtifacts": {
     "esmPath": "dist/sdk/zhuda-laya-engine.esm.js",
-    "esmSizeKB": 408.3,
+    "esmSizeKB": 424.8,
     "cjsPath": "dist/sdk/zhuda-laya-engine.cjs",
-    "cjsSizeKB": 415.1,
+    "cjsSizeKB": 431.8,
     "typesPath": "packages/types/index.d.ts"
   },
   "enginePayloadSizeKB": 6578.3,
@@ -165,7 +165,7 @@
     "totalAssets": 11,
     "calibratedPrefabs": 10,
     "allPassed": true,
-    "selfConvergenceElapsedMs": 0.21,
+    "selfConvergenceElapsedMs": 0.24,
     "beforePxError": 3,
     "afterPxError": 0,
     "beforeDeltaE2000": 8.98,
@@ -253,5 +253,5 @@
       ]
     }
   },
-  "timestamp": "2026-11-03T10:47:54.475Z"
+  "timestamp": "2026-11-03T17:15:11.960Z"
 }

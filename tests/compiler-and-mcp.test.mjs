@@ -163,6 +163,7 @@ test('zhuda-laya-engine SDK bundles (ESM & CJS) and upstream LayaAir Official at
   assert.ok(sdkMod.VisualFocusContract, 'ESM SDK should export VisualFocusContract');
   const cjsMod = (await import('node:module')).createRequire(import.meta.url)(cjsPath);
   for (const name of ['NoSleepAdapter', 'ZhudaParticleSystem', 'ZhudaRibbonTrail', 'ZhudaEffectEnvelope', 'ZhudaLayaParticleRenderer',
+    'ZhudaLayeredClock', 'ZhudaActionStateMachine', 'ZhudaInputBuffer',
     'ZhudaLayaRibbonRenderer', 'validateParticleEffect', 'ZhudaParticleSystem3D', 'ZhudaParticleMesh3D',
     'ZhudaRibbonTrail3D', 'ZhudaRibbonPath3D', 'ZhudaLayaParticleRenderer3D', 'ZhudaLayaRibbonRenderer3D', 'validateParticleEffect3D',
     'ZhudaEffectDirector', 'ZhudaEffectBudget', 'ZhudaRuntimeProfiler', 'ZhudaVfxMaterial', 'ZhudaVfxCamera',

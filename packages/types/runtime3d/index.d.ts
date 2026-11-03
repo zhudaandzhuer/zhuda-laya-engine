@@ -1,5 +1,7 @@
 export * from "./Math3D";
 export * from "./Clocks";
+export * from "./ActionFrames";
+export * from "./InputBuffer";
 export * from "./SceneMutation";
 export * from "./RenderSpaces";
 export * from "./GraphicsGuard";

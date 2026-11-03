@@ -1,4 +1,4 @@
-import { ZhudaRealtimeClock, ZhudaTimerScheduler, type ZhudaClockSample } from "./Clocks";
+import { ZhudaLayeredClock, ZhudaRealtimeClock, ZhudaTimerScheduler, type ZhudaClockSample } from "./Clocks";
 import { ZhudaSceneMutationQueue } from "./SceneMutation";
 export interface ManagedRuntimeOptions {
     container?: HTMLElement;
@@ -25,6 +25,8 @@ export declare class ZhudaRuntimeSession {
     contextLost: boolean;
     disposed: boolean;
     readonly clock: ZhudaRealtimeClock;
+    /** Named channels driven by the same RAF clock as `clock` and `timers`. */
+    readonly layers: ZhudaLayeredClock;
     readonly timers: ZhudaTimerScheduler;
     readonly mutations: ZhudaSceneMutationQueue;
     private cleanups;

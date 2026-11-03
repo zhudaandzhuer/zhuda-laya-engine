@@ -124,6 +124,18 @@ unavailable; it is never silently converted to pass.
   visual masks must identify their target scope and restoration rule.
 - Coordinates and time are explicit: CSS pixels vs backing pixels, DPR,
   parent transforms, simulation tick vs render time and snapshot interpolation.
+- Action-game time uses the existing `ZhudaRuntimeSession.layers` and
+  `ZhudaLayeredClock`; do not create a second wall-clock source or drive
+  gameplay from `setTimeout`/`setInterval`. Layer timers must receive the
+  session's `scaledDeltas` map.
+- Consumer-authored actions use `ZhudaActionFrameSpec` and
+  `ZhudaActionStateMachine` for startup/active/recovery, cancel windows and
+  frame events. The engine never decides damage, movement, animation pose or
+  whether a cancel is legal outside the declared data.
+- Keyboard, touch and gamepad adapters translate to stable action IDs and use
+  `ZhudaInputBuffer` for bounded pre-input. Clear or dispose it on focus loss,
+  round reset and runtime teardown; do not duplicate input queues in each
+  platform adapter.
 
 - Audio has one authority: consumers submit logical events to `IframeSoundAdapter`
   and never create a second `AudioContext` or route the same event through both

@@ -1,5 +1,7 @@
 export * from "./Math3D.ts";
 export * from "./Clocks.ts";
+export * from "./ActionFrames.ts";
+export * from "./InputBuffer.ts";
 export * from "./SceneMutation.ts";
 export * from "./RenderSpaces.ts";
 export * from "./GraphicsGuard.ts";

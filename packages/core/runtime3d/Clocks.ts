@@ -71,6 +71,170 @@ export interface ZhudaClockSample {
   timeScale: number;
 }
 
+export interface ZhudaLayerClockSample extends ZhudaClockSample {
+  /** The named simulation/presentation layer that produced this sample. */
+  layer: string;
+  /** Pausing a layer keeps its real-time clock visible while zeroing its scaled channel. */
+  paused: boolean;
+}
+
+export interface ZhudaTimeLayerOptions {
+  timeScale?: number;
+  paused?: boolean;
+}
+
+interface TimeLayerState {
+  name: string;
+  timeScale: number;
+  paused: boolean;
+  scaledTime: number;
+  scaledDeltaTime: number;
+}
+
+const DEFAULT_TIME_LAYERS = ["world", "player", "enemy", "vfx", "ui"] as const;
+
+/**
+ * A single real-time source with independently scaled named channels.
+ *
+ * The clock deliberately does not know anything about combat, rendering or
+ * animation. A consumer can freeze `enemy` for hit-stop while continuing to
+ * advance `player`, `vfx` and `ui`, then pass the exposed layer deltas to the
+ * shared `ZhudaTimerScheduler`.
+ */
+export class ZhudaLayeredClock {
+  private readonly layerStates = new Map<string, TimeLayerState>();
+  private readonly layerDeltaValues = new Map<string, number>();
+  /** Global scale inherited from the owning runtime session. */
+  globalTimeScale = 1;
+  unscaledTime = 0;
+  unscaledDeltaTime = 0;
+
+  constructor(
+    layers: readonly string[] | Record<string, ZhudaTimeLayerOptions> = DEFAULT_TIME_LAYERS,
+  ) {
+    if (Array.isArray(layers)) {
+      if (!layers.length) throw Error("At least one time layer is required");
+      for (const name of layers) this.defineLayer(name);
+    } else {
+      const definitions = layers as Record<string, ZhudaTimeLayerOptions>;
+      const names = Object.keys(definitions);
+      if (!names.length) throw Error("At least one time layer is required");
+      for (const name of names) this.defineLayer(name, definitions[name]);
+    }
+  }
+
+  defineLayer(name: string, options: ZhudaTimeLayerOptions = {}): this {
+    this.validateName(name);
+    if (this.layerStates.has(name)) throw Error(`Time layer already exists: ${name}`);
+    const timeScale = options.timeScale ?? 1;
+    if (!Number.isFinite(timeScale) || timeScale < 0)
+      throw Error("Invalid time layer scale");
+    if (options.paused !== undefined && typeof options.paused !== "boolean")
+      throw Error("Invalid time layer pause state");
+    this.layerStates.set(name, {
+      name,
+      timeScale,
+      paused: options.paused ?? false,
+      scaledTime: 0,
+      scaledDeltaTime: 0,
+    });
+    this.layerDeltaValues.set(name, 0);
+    return this;
+  }
+
+  removeLayer(name: string): boolean {
+    this.validateName(name);
+    this.layerDeltaValues.delete(name);
+    return this.layerStates.delete(name);
+  }
+
+  setTimeScale(name: string, value: number): this {
+    const layer = this.getLayer(name);
+    if (!Number.isFinite(value) || value < 0) throw Error("Invalid time layer scale");
+    layer.timeScale = value;
+    return this;
+  }
+
+  setGlobalTimeScale(value: number): this {
+    if (!Number.isFinite(value) || value < 0) throw Error("Invalid global time layer scale");
+    this.globalTimeScale = value;
+    return this;
+  }
+
+  setPaused(name: string, paused: boolean): this {
+    const layer = this.getLayer(name);
+    if (typeof paused !== "boolean") throw Error("Invalid time layer pause state");
+    layer.paused = paused;
+    return this;
+  }
+
+  getTimeScale(name: string): number {
+    return this.getLayer(name).timeScale;
+  }
+
+  isPaused(name: string): boolean {
+    return this.getLayer(name).paused;
+  }
+
+  get layerNames(): readonly string[] {
+    return [...this.layerStates.keys()];
+  }
+
+  /** Reusable layer deltas for `ZhudaTimerScheduler.advance`. */
+  get scaledDeltas(): ReadonlyMap<string, number> {
+    return this.layerDeltaValues;
+  }
+
+  advance(unscaledDeltaTime: number): void {
+    if (!Number.isFinite(unscaledDeltaTime) || unscaledDeltaTime < 0)
+      throw Error("Invalid layered clock delta");
+    this.unscaledDeltaTime = unscaledDeltaTime;
+    this.unscaledTime += unscaledDeltaTime;
+    for (const layer of this.layerStates.values()) {
+      const scaledDeltaTime = layer.paused
+        ? 0
+        : unscaledDeltaTime * this.globalTimeScale * layer.timeScale;
+      layer.scaledDeltaTime = scaledDeltaTime;
+      layer.scaledTime += scaledDeltaTime;
+      this.layerDeltaValues.set(layer.name, scaledDeltaTime);
+    }
+  }
+
+  sample(name: string): ZhudaLayerClockSample {
+    const layer = this.getLayer(name);
+    return {
+      layer: layer.name,
+      paused: layer.paused,
+      unscaledDeltaTime: this.unscaledDeltaTime,
+      scaledDeltaTime: layer.scaledDeltaTime,
+      unscaledTime: this.unscaledTime,
+      scaledTime: layer.scaledTime,
+      timeScale: this.globalTimeScale * layer.timeScale,
+    };
+  }
+
+  reset(): void {
+    this.unscaledTime = 0;
+    this.unscaledDeltaTime = 0;
+    for (const layer of this.layerStates.values()) {
+      layer.scaledTime = 0;
+      layer.scaledDeltaTime = 0;
+      this.layerDeltaValues.set(layer.name, 0);
+    }
+  }
+
+  private getLayer(name: string): TimeLayerState {
+    this.validateName(name);
+    const layer = this.layerStates.get(name);
+    if (!layer) throw Error(`Unknown time layer: ${name}`);
+    return layer;
+  }
+
+  private validateName(name: string): void {
+    if (typeof name !== "string" || !name.trim()) throw Error("Invalid time layer name");
+  }
+}
+
 /** A real-time clock that exposes both gameplay and presentation time channels. */
 export class ZhudaRealtimeClock {
   timeScale = 1;
@@ -115,6 +279,8 @@ export class ZhudaRealtimeClock {
 export type ZhudaTimerChannel = "scaled" | "unscaled";
 export interface ZhudaTimerOptions {
   channel?: ZhudaTimerChannel;
+  /** When set, the timer consumes that named layer's scaled delta. */
+  layer?: string;
   owner?: object;
 }
 export interface ZhudaTimerHandle {
@@ -129,6 +295,7 @@ interface TimerTask {
   interval: number;
   repeat: boolean;
   channel: ZhudaTimerChannel;
+  layer?: string;
   owner?: object;
   callback: () => void;
   cancelled: boolean;
@@ -161,12 +328,17 @@ export class ZhudaTimerScheduler {
     if (!Number.isFinite(delay) || delay < 0 || (options.repeat && delay <= 0))
       throw Error("Invalid timer delay");
     if (typeof callback !== "function") throw Error("Invalid timer callback");
+    if (options.layer !== undefined && (typeof options.layer !== "string" || !options.layer.trim()))
+      throw Error("Invalid timer layer");
+    if (options.layer !== undefined && options.channel !== undefined)
+      throw Error("Timer layer cannot be combined with a timer channel");
     const task: TimerTask = {
       id: this.nextId++,
       remaining: delay,
       interval: delay,
       repeat: options.repeat,
       channel: options.channel ?? "scaled",
+      layer: options.layer,
       owner: options.owner,
       callback,
       cancelled: false,
@@ -207,16 +379,29 @@ export class ZhudaTimerScheduler {
     return ids.length;
   }
 
-  advance(unscaledDeltaTime: number, scaledDeltaTime = unscaledDeltaTime): number {
+  advance(
+    unscaledDeltaTime: number,
+    scaledDeltaTime = unscaledDeltaTime,
+    layerDeltas?: ReadonlyMap<string, number>,
+  ): number {
     if (this.disposed) return 0;
     if (![unscaledDeltaTime, scaledDeltaTime].every(v => Number.isFinite(v) && v >= 0))
       throw Error("Invalid timer delta");
+    if (layerDeltas) {
+      for (const [name, delta] of layerDeltas) {
+        if (typeof name !== "string" || !name.trim() || !Number.isFinite(delta) || delta < 0)
+          throw Error("Invalid timer layer delta");
+      }
+    }
     let callbacks = 0;
     const snapshot = [...this.tasks.values()];
     for (const task of snapshot) {
       if (callbacks >= this.maxCallbacksPerAdvance) break;
       if (task.cancelled || !this.tasks.has(task.id)) continue;
-      task.remaining -= task.channel === "scaled" ? scaledDeltaTime : unscaledDeltaTime;
+      const delta = task.layer
+        ? layerDeltas?.get(task.layer) ?? 0
+        : task.channel === "scaled" ? scaledDeltaTime : unscaledDeltaTime;
+      task.remaining -= delta;
       while (task.remaining <= 1e-10 && !task.cancelled && this.tasks.has(task.id) && callbacks < this.maxCallbacksPerAdvance) {
         task.callback();
         callbacks++;

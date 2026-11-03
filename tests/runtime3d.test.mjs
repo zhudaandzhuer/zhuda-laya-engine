@@ -5,7 +5,11 @@ import {
   ZhudaRequestSlot,
   ZhudaSimulationClock,
   ZhudaRealtimeClock,
+  ZhudaLayeredClock,
   ZhudaTimerScheduler,
+  ZhudaActionStateMachine,
+  validateActionFrameSpec,
+  ZhudaInputBuffer,
   ZhudaSceneMutationQueue,
   ZhudaRenderSpace,
   ZhudaGraphicsGuard,
@@ -96,6 +100,8 @@ test("runtime session drives scaled samples and frame timers from one loop", () 
     globalThis.cancelAnimationFrame = () => { callback = null; };
     const session = new ZhudaRuntimeSession(new EventTarget(), { timeScale: 0.5 });
     session.timers.scheduleOnce(0.01, () => fired++);
+    session.layers.setPaused("enemy", true);
+    session.timers.scheduleOnce(0.01, () => fired += 10, { layer: "enemy" });
     session.mutations.deferAdd(() => mutations++);
     session.start((dt, value) => { sample = value; assert.equal(dt, value.unscaledDeltaTime); });
     callback(1000);
@@ -103,6 +109,9 @@ test("runtime session drives scaled samples and frame timers from one loop", () 
     assert.equal(sample.unscaledDeltaTime, 0.02);
     assert.equal(sample.scaledDeltaTime, 0.01);
     assert.equal(fired, 1);
+    session.layers.setPaused("enemy", false);
+    callback(1040);
+    assert.equal(fired, 11);
     assert.equal(mutations, 1);
     session.dispose();
   } finally {
@@ -285,6 +294,81 @@ test("scaled and unscaled clocks plus timer ownership are deterministic", () => 
   assert.equal(bounded.advance(0.5, 0.5), 2);
   assert.equal(boundedCalls.length, 2);
   bounded.dispose();
+});
+test("layered clock and layer timers keep hit-stop channels independent", () => {
+  const clock = new ZhudaLayeredClock({
+    world: { timeScale: 0.5 },
+    enemy: { paused: true },
+    ui: { timeScale: 1 },
+  });
+  clock.advance(0.2);
+  assert.equal(clock.sample("world").scaledDeltaTime, 0.1);
+  assert.equal(clock.sample("enemy").scaledDeltaTime, 0);
+  assert.equal(clock.sample("enemy").unscaledDeltaTime, 0.2);
+  assert.equal(clock.sample("ui").scaledTime, 0.2);
+  clock.setGlobalTimeScale(0.5).advance(0.2);
+  assert.equal(clock.sample("world").scaledDeltaTime, 0.05);
+  assert.equal(clock.sample("ui").scaledDeltaTime, 0.1);
+  const timers = new ZhudaTimerScheduler();
+  const calls = [];
+  timers.scheduleOnce(0.05, () => calls.push("world"), { layer: "world" });
+  timers.scheduleOnce(0.05, () => calls.push("enemy"), { layer: "enemy" });
+  timers.scheduleOnce(0.1, () => calls.push("ui"), { layer: "ui" });
+  timers.advance(clock.unscaledDeltaTime, clock.unscaledDeltaTime, clock.scaledDeltas);
+  assert.deepEqual(calls, ["world", "ui"]);
+  clock.setPaused("enemy", false).setTimeScale("enemy", 0.5);
+  clock.advance(0.2);
+  timers.advance(clock.unscaledDeltaTime, clock.unscaledDeltaTime, clock.scaledDeltas);
+  assert.deepEqual(calls, ["world", "ui", "enemy"]);
+  assert.throws(() => timers.scheduleOnce(1, () => {}, { layer: "enemy", channel: "scaled" }), /cannot be combined/);
+  timers.dispose();
+});
+test("action frame data validates phases, events, cancel windows and sockets", () => {
+  const spec = {
+    id: "light-1",
+    frameRate: 10,
+    frameCount: 10,
+    startup: { from: 0, until: 2 },
+    active: { from: 2, until: 5 },
+    recovery: { from: 5, until: 10 },
+    cancelWindows: [{ from: 3, until: 4, actions: ["dash"] }],
+    events: [{ frame: 3, id: "hit" }, { frame: 6, id: "recover" }],
+    sockets: [{ id: "rHand", bone: "hand_r", offset: { x: 0.1, y: 0, z: 0 } }],
+  };
+  assert.deepEqual(validateActionFrameSpec(spec), []);
+  const machine = new ZhudaActionStateMachine(spec);
+  machine.play();
+  machine.advance(0.2);
+  assert.equal(machine.phase, "active");
+  assert.equal(machine.active, true);
+  assert.equal(machine.canCancelInto("dash"), false);
+  assert.deepEqual(machine.advance(0.1).map((event) => event.id), ["hit"]);
+  assert.equal(machine.canCancelInto("dash"), true);
+  assert.deepEqual(machine.getSocket("rHand"), { id: "rHand", bone: "hand_r", offset: { x: 0.1, y: 0, z: 0 } });
+  machine.advance(0.7);
+  assert.equal(machine.phase, "complete");
+  assert.equal(machine.isPlaying, false);
+  assert.throws(() => new ZhudaActionStateMachine({ ...spec, active: { from: 4, until: 5 } }), /startup must connect/);
+});
+test("input buffer bounds, expiry, one-shot consumption and combos", () => {
+  const buffer = new ZhudaInputBuffer({ window: 0.12, capacity: 4 });
+  assert.equal(buffer.push("down", 0), true);
+  assert.equal(buffer.push("forward", 0.04), true);
+  assert.equal(buffer.push("light", 0.08), true);
+  assert.equal(buffer.consumeSequence(["down", "forward", "light"], 0.08), true);
+  assert.equal(buffer.size, 0);
+  assert.equal(buffer.push("heavy", 0.2), true);
+  assert.equal(buffer.push("jump", 0.19), false);
+  assert.equal(buffer.has("heavy", 0.2), true);
+  assert.equal(buffer.consume("heavy", 0.2), true);
+  assert.equal(buffer.consume("heavy", 0.2), false);
+  for (const [action, time] of [["a", 0.3], ["b", 0.31], ["c", 0.32], ["d", 0.33], ["e", 0.34]])
+    buffer.push(action, time);
+  assert.equal(buffer.size, 4);
+  assert.equal(buffer.snapshot(0.34)[0].action, "b");
+  assert.throws(() => buffer.snapshot(0.1), /moved backwards/);
+  buffer.dispose();
+  assert.throws(() => buffer.push("light", 0.3), /Disposed/);
 });
 test("scene mutation queue defers nested writes and rejects work after disposal", () => {
   const queue = new ZhudaSceneMutationQueue(), events = [];

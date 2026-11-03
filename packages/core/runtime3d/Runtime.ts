@@ -1,4 +1,9 @@
-import { ZhudaRealtimeClock, ZhudaTimerScheduler, type ZhudaClockSample } from "./Clocks.ts";
+import {
+  ZhudaLayeredClock,
+  ZhudaRealtimeClock,
+  ZhudaTimerScheduler,
+  type ZhudaClockSample,
+} from "./Clocks.ts";
 import { ZhudaSceneMutationQueue } from "./SceneMutation.ts";
 
 export interface ManagedRuntimeOptions {
@@ -52,6 +57,8 @@ export class ZhudaRuntimeSession {
   contextLost = false;
   disposed = false;
   readonly clock = new ZhudaRealtimeClock();
+  /** Named channels driven by the same RAF clock as `clock` and `timers`. */
+  readonly layers = new ZhudaLayeredClock();
   readonly timers = new ZhudaTimerScheduler();
   readonly mutations = new ZhudaSceneMutationQueue();
   private cleanups: (() => void)[] = [];
@@ -67,6 +74,7 @@ export class ZhudaRuntimeSession {
         throw Error("Invalid runtime time scale");
       this.clock.timeScale = options.timeScale;
     }
+    this.layers.setGlobalTimeScale(this.clock.timeScale);
     const listen = (target: EventTarget, event: string, fn: EventListener) => {
       target.addEventListener(event, fn);
       this.cleanups.push(() => target.removeEventListener(event, fn));
@@ -138,7 +146,13 @@ export class ZhudaRuntimeSession {
         ) {
           this.previous = now;
           const sample = this.clock.advance(Math.min(0.1, elapsed / 1000));
-          this.timers.advance(sample.unscaledDeltaTime, sample.scaledDeltaTime);
+          this.layers.setGlobalTimeScale(this.clock.timeScale);
+          this.layers.advance(sample.unscaledDeltaTime);
+          this.timers.advance(
+            sample.unscaledDeltaTime,
+            sample.scaledDeltaTime,
+            this.layers.scaledDeltas,
+          );
           this.task?.(sample.unscaledDeltaTime, sample);
           this.mutations.flush();
         }

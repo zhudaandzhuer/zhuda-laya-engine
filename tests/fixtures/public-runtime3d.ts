@@ -6,7 +6,10 @@ import {
   ZhudaSceneQueries,
   ZhudaSimulationClock,
   ZhudaRealtimeClock,
+  ZhudaLayeredClock,
   ZhudaTimerScheduler,
+  ZhudaActionStateMachine,
+  ZhudaInputBuffer,
   ZhudaSceneMutationQueue,
   ZhudaRenderSpace,
   ZhudaGraphicsGuard,
@@ -73,6 +76,20 @@ async function consume() {
   realtime.timeScale = 0.5;
   const scheduler = new ZhudaTimerScheduler();
   scheduler.scheduleOnce(0.1, () => {}, { channel: 'unscaled' });
+  const layered = new ZhudaLayeredClock({ world: { timeScale: 0.5 }, ui: { timeScale: 1 } });
+  layered.advance(0.016);
+  scheduler.scheduleOnce(0.01, () => {}, { layer: 'world' });
+  scheduler.advance(layered.unscaledDeltaTime, realtime.scaledDeltaTime, layered.scaledDeltas);
+  const action = new ZhudaActionStateMachine({
+    id: 'light', frameRate: 60, frameCount: 12,
+    startup: { from: 0, until: 3 }, active: { from: 3, until: 6 }, recovery: { from: 6, until: 12 },
+    sockets: [{ id: 'hand', bone: 'hand_r' }],
+  });
+  action.play();
+  action.advance(1 / 60);
+  const input = new ZhudaInputBuffer();
+  input.push('light', 0);
+  input.consume('light', 0);
   const mutations = new ZhudaSceneMutationQueue();
   mutations.deferDestroy(() => {});
   const renderSpace = new ZhudaRenderSpace();
