@@ -121,6 +121,38 @@ test('DrawTextureCmd keeps a stable texture ID and hydrates through the preloade
   }
 });
 
+test('native hierarchy hydration restores omitted Image children for stable Prefab paths', () => {
+  class Node {
+    constructor() { this.children = []; this.name = ''; this.graphics = { cmds: [] }; }
+    get numChildren() { return this.children.length; }
+    getChildAt(index) { return this.children[index]; }
+    addChild(child) { this.children.push(child); return child; }
+  }
+  class Image extends Node {}
+  class Text extends Node {}
+  const previous = globalThis.Laya;
+  globalThis.Laya = {
+    Sprite: Node,
+    Image,
+    Text,
+    HierarchyParser: { parse: data => {
+      const root = data._$type === 'Image' ? new Image() : new Node();
+      root.name = data.name;
+      return root;
+    } }
+  };
+  try {
+    const root = ZhudaPrefab.instantiate({
+      _$id: 'root', _$type: 'Image', name: 'root',
+      _$child: [{ _$id: 'label', _$type: 'Text', name: 'label', text: 'OK' }]
+    });
+    assert.equal(root.numChildren, 1);
+    assert.equal(root.getChildAt(0).name, 'label');
+  } finally {
+    globalThis.Laya = previous;
+  }
+});
+
 test('PixelCalibrationEngine detects +3px width drift and ΔE00 color drift and auto-converges to 0px / ΔE00=0', () => {
   const convergence = PixelCalibrationEngine.runSelfConvergenceDemo();
 

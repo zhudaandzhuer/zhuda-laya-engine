@@ -1746,8 +1746,22 @@ export class ZhudaPrefab {
       }
     }
     if (Array.isArray(data._$child) && typeof node?.numChildren === 'number') {
-      for (let i = 0; i < Math.min(data._$child.length, node.numChildren); i++) {
-        this.ensureGraphicsHydrated(node.getChildAt(i), data._$child[i]);
+      for (const childData of data._$child) {
+        let child: any = undefined;
+        for (let i = 0; i < node.numChildren; i++) {
+          const candidate = node.getChildAt(i);
+          if (candidate?.name === (childData.name || childData._$id)) {
+            child = candidate;
+            break;
+          }
+        }
+        // Laya's native parser can omit children of Image/Box nodes. Add the
+        // missing serialized child so named Prefab paths remain stable.
+        if (!child && typeof node.addChild === 'function') {
+          child = this.hydrateNodeRecursive(childData);
+          node.addChild(child);
+        }
+        if (child) this.ensureGraphicsHydrated(child, childData);
       }
     }
   }
