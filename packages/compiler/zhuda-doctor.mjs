@@ -87,7 +87,10 @@ export function runDoctorAudit(options = {}) {
   };
 }
 
-const launchedAsCli = process.argv[1] && fs.realpathSync(process.argv[1]) === fileURLToPath(import.meta.url);
+const cliArg = process.argv[1] || '';
+const modulePath = fileURLToPath(import.meta.url);
+const launchedAsCli = Boolean(cliArg) && (path.basename(cliArg) === path.basename(modulePath) ||
+  fs.realpathSync(cliArg) === fs.realpathSync(modulePath));
 if (launchedAsCli) {
   const projectIndex = process.argv.indexOf('--project');
   const report = runDoctorAudit({ projectRoot: projectIndex < 0 ? undefined : process.argv[projectIndex + 1] });

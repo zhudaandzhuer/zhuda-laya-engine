@@ -134,7 +134,10 @@ export async function checkPrefab({ url, baseline, output, updateBaseline = fals
     fs.rmSync(profile, { recursive: true, force: true });
   }
 }
-const launchedAsCli = process.argv[1] && fs.realpathSync(process.argv[1]) === fileURLToPath(import.meta.url);
+const cliArg = process.argv[1] || '';
+const modulePath = fileURLToPath(import.meta.url);
+const launchedAsCli = Boolean(cliArg) && (path.basename(cliArg) === path.basename(modulePath) ||
+  fs.realpathSync(cliArg) === fs.realpathSync(modulePath));
 if (launchedAsCli) {
   const args = Object.fromEntries(process.argv.slice(2).filter(arg => arg.startsWith("--") && arg.includes("=")).map(arg => arg.slice(2).split(/=(.*)/s, 2)));
   try {

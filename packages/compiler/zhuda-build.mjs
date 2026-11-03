@@ -602,7 +602,10 @@ ${previewScriptTags}
   return manifest;
 }
 
-const launchedAsCli = process.argv[1] && fs.realpathSync(process.argv[1]) === fileURLToPath(import.meta.url);
+const cliArg = process.argv[1] || '';
+const modulePath = fileURLToPath(import.meta.url);
+const launchedAsCli = Boolean(cliArg) && (path.basename(cliArg) === path.basename(modulePath) ||
+  fs.realpathSync(cliArg) === fs.realpathSync(modulePath));
 if (launchedAsCli) {
   const argProfileIdx = process.argv.indexOf('--profile');
   const profile = argProfileIdx !== -1 ? process.argv[argProfileIdx + 1] : undefined;
