@@ -47,7 +47,7 @@ test("independent consumer preserves source hashes and its DOM/CSS; archive is a
     const r = await runConsumerBuild({
       projectRoot: root,
       engineRoot,
-      config: { assetExclude: ["raw"] },
+      config: { assetExclude: ["raw"], profile: "2d-light" },
     });
     assert.deepEqual(hashes(), before);
     assert.equal(r.sourceWrites, 0);
@@ -66,6 +66,7 @@ test("independent consumer preserves source hashes and its DOM/CSS; archive is a
       "{}",
     );
     assert.equal(fs.existsSync(path.join(root, "dist/web/assets/raw/source.mp4")), false);
+    assert.ok(r.orderedLibraries.includes("laya.ui.js"));
     assert.ok(
       !fs.readdirSync(path.join(root, "dist/web")).includes("preview.html"),
     );

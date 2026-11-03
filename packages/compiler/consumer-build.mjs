@@ -7,7 +7,7 @@ import esbuild from "esbuild";
 import { auditVisualPresentationContracts } from "./visual-contract-audit.mjs";
 import { auditConsumerSources } from "./consumer-guards.mjs";
 import { buildPrefabPreview } from "./prefab-preview.mjs";
-import { TopologyResolver } from "./compiler-runtime.mjs";
+import { ENGINE_PRESET_PROFILES, TopologyResolver } from "./compiler-runtime.mjs";
 import {
   collectTsFiles,
   parseReflectableClassesInFile,
@@ -199,9 +199,10 @@ export async function runConsumerBuild({
     );
   const guard = auditConsumerSources(projectRoot);
   if (!guard.passed) throw Error(guard.issues.map(i => `${i.file}:${i.line} [${i.code}] ${i.message}`).join("\n"));
-  const topology = TopologyResolver.resolveByFeatures(
-    config.features || ["core", "3d", "gltf"],
-  );
+  const features = config.features ||
+    (config.profile && ENGINE_PRESET_PROFILES[config.profile]) ||
+    ["core", "3d", "gltf"];
+  const topology = TopologyResolver.resolveByFeatures(features);
   fs.rmSync(out, { recursive: true, force: true });
   fs.mkdirSync(path.join(out, "libs"), { recursive: true });
   if (fs.existsSync(pub))
