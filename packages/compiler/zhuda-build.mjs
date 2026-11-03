@@ -22,14 +22,20 @@ import { auditVisualPresentationContracts } from './visual-contract-audit.mjs';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const defaultEngineRoot = path.resolve(__dirname, '../..');
 
+/** Resolve a consumer's pinned SDK relative to that consumer checkout. */
+export function resolveEngineRoot(projectRoot, configuredRoot, fallback = defaultEngineRoot) {
+  const candidate = configuredRoot || fallback;
+  return path.resolve(projectRoot, candidate);
+}
+
 export async function runZhudaBuild(options = {}) {
   const startTime = performance.now();
-  const projectRoot = options.projectRoot || (fs.existsSync(path.join(process.cwd(), 'zhuda.config.json')) ? process.cwd() : defaultEngineRoot);
+  const projectRoot = path.resolve(options.projectRoot || (fs.existsSync(path.join(process.cwd(), 'zhuda.config.json')) ? process.cwd() : defaultEngineRoot));
   const configPath = path.join(projectRoot, 'zhuda.config.json');
   const config = fs.existsSync(configPath)
     ? JSON.parse(fs.readFileSync(configPath, 'utf8'))
     : {};
-  const engineRoot = options.engineRoot || config.engineRoot || defaultEngineRoot;
+  const engineRoot = resolveEngineRoot(projectRoot, options.engineRoot || config.engineRoot);
   const engineVersion = JSON.parse(fs.readFileSync(path.join(engineRoot, 'package.json'), 'utf8')).version;
 
   if (projectRoot !== engineRoot && config.demoAssets !== true) return runConsumerBuild({projectRoot,engineRoot,config});
@@ -596,7 +602,8 @@ ${previewScriptTags}
   return manifest;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+const launchedAsCli = process.argv[1] && fs.realpathSync(process.argv[1]) === fileURLToPath(import.meta.url);
+if (launchedAsCli) {
   const argProfileIdx = process.argv.indexOf('--profile');
   const profile = argProfileIdx !== -1 ? process.argv[argProfileIdx + 1] : undefined;
   const argProjectIdx = process.argv.indexOf('--project');

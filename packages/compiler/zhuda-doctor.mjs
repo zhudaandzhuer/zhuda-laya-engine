@@ -87,7 +87,8 @@ export function runDoctorAudit(options = {}) {
   };
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+const launchedAsCli = process.argv[1] && fs.realpathSync(process.argv[1]) === fileURLToPath(import.meta.url);
+if (launchedAsCli) {
   const projectIndex = process.argv.indexOf('--project');
   const report = runDoctorAudit({ projectRoot: projectIndex < 0 ? undefined : process.argv[projectIndex + 1] });
   console.log('🩺 [Zhuda-Doctor] 引擎相依性與 AI 防幻覺體檢報告:');

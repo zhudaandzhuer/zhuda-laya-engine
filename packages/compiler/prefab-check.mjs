@@ -134,7 +134,8 @@ export async function checkPrefab({ url, baseline, output, updateBaseline = fals
     fs.rmSync(profile, { recursive: true, force: true });
   }
 }
-if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
+const launchedAsCli = process.argv[1] && fs.realpathSync(process.argv[1]) === fileURLToPath(import.meta.url);
+if (launchedAsCli) {
   const args = Object.fromEntries(process.argv.slice(2).filter(arg => arg.startsWith("--") && arg.includes("=")).map(arg => arg.slice(2).split(/=(.*)/s, 2)));
   try {
     if (!args.url || !args.baseline || !args.output) throw Error("Use --url=... --baseline=... --output=... [--update-baseline]");
