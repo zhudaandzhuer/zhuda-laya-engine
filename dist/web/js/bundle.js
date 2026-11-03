@@ -10,6 +10,227 @@ var ZhudaAppBundle = (() => {
     return result;
   };
 
+  // packages/core/runtime3d/Clocks.ts
+  var ZhudaRealtimeClock = class {
+    constructor() {
+      this.timeScale = 1;
+      this.unscaledTime = 0;
+      this.scaledTime = 0;
+      this.unscaledDeltaTime = 0;
+      this.scaledDeltaTime = 0;
+      this.paused = false;
+    }
+    advance(unscaledDeltaTime) {
+      if (!Number.isFinite(unscaledDeltaTime) || unscaledDeltaTime < 0)
+        throw Error("Invalid real-time delta");
+      if (!Number.isFinite(this.timeScale) || this.timeScale < 0)
+        throw Error("Invalid clock time scale");
+      const unscaled = this.paused ? 0 : unscaledDeltaTime;
+      const scaled = unscaled * this.timeScale;
+      this.unscaledDeltaTime = unscaled;
+      this.scaledDeltaTime = scaled;
+      this.unscaledTime += unscaled;
+      this.scaledTime += scaled;
+      return this.sample();
+    }
+    sample() {
+      return {
+        unscaledDeltaTime: this.unscaledDeltaTime,
+        scaledDeltaTime: this.scaledDeltaTime,
+        unscaledTime: this.unscaledTime,
+        scaledTime: this.scaledTime,
+        timeScale: this.timeScale
+      };
+    }
+    reset() {
+      this.unscaledTime = 0;
+      this.scaledTime = 0;
+      this.unscaledDeltaTime = 0;
+      this.scaledDeltaTime = 0;
+    }
+  };
+  var ZhudaTimerScheduler = class {
+    constructor(maxCallbacksPerAdvance = 64) {
+      this.nextId = 1;
+      this.tasks = /* @__PURE__ */ new Map();
+      this.owners = /* @__PURE__ */ new Map();
+      this.disposed = false;
+      if (!Number.isSafeInteger(maxCallbacksPerAdvance) || maxCallbacksPerAdvance <= 0)
+        throw Error("Invalid timer callback bound");
+      this.maxCallbacksPerAdvance = maxCallbacksPerAdvance;
+    }
+    scheduleOnce(delay, callback, options = {}) {
+      return this.schedule(delay, callback, { ...options, repeat: false });
+    }
+    scheduleLoop(interval, callback, options = {}) {
+      return this.schedule(interval, callback, { ...options, repeat: true });
+    }
+    schedule(delay, callback, options) {
+      if (this.disposed) throw Error("Disposed timer scheduler");
+      if (!Number.isFinite(delay) || delay < 0 || options.repeat && delay <= 0)
+        throw Error("Invalid timer delay");
+      if (typeof callback !== "function") throw Error("Invalid timer callback");
+      const task = {
+        id: this.nextId++,
+        remaining: delay,
+        interval: delay,
+        repeat: options.repeat,
+        channel: options.channel ?? "scaled",
+        owner: options.owner,
+        callback,
+        cancelled: false
+      };
+      this.tasks.set(task.id, task);
+      if (task.owner) {
+        let ids = this.owners.get(task.owner);
+        if (!ids) this.owners.set(task.owner, ids = /* @__PURE__ */ new Set());
+        ids.add(task.id);
+      }
+      return this.handle(task);
+    }
+    handle(task) {
+      return {
+        id: task.id,
+        get cancelled() {
+          return task.cancelled;
+        },
+        cancel: () => this.cancel(task.id)
+      };
+    }
+    cancel(id) {
+      const task = this.tasks.get(id);
+      if (!task || task.cancelled) return false;
+      task.cancelled = true;
+      this.tasks.delete(id);
+      if (task.owner) {
+        const ids = this.owners.get(task.owner);
+        ids?.delete(id);
+        if (ids && !ids.size) this.owners.delete(task.owner);
+      }
+      return true;
+    }
+    cancelOwner(owner) {
+      const ids = [...this.owners.get(owner) ?? []];
+      for (const id of ids) this.cancel(id);
+      return ids.length;
+    }
+    advance(unscaledDeltaTime, scaledDeltaTime = unscaledDeltaTime) {
+      if (this.disposed) return 0;
+      if (![unscaledDeltaTime, scaledDeltaTime].every((v) => Number.isFinite(v) && v >= 0))
+        throw Error("Invalid timer delta");
+      let callbacks = 0;
+      const snapshot = [...this.tasks.values()];
+      for (const task of snapshot) {
+        if (callbacks >= this.maxCallbacksPerAdvance) break;
+        if (task.cancelled || !this.tasks.has(task.id)) continue;
+        task.remaining -= task.channel === "scaled" ? scaledDeltaTime : unscaledDeltaTime;
+        while (task.remaining <= 1e-10 && !task.cancelled && this.tasks.has(task.id) && callbacks < this.maxCallbacksPerAdvance) {
+          task.callback();
+          callbacks++;
+          if (!task.repeat) {
+            this.cancel(task.id);
+            break;
+          }
+          task.remaining += task.interval;
+        }
+        if (callbacks >= this.maxCallbacksPerAdvance && task.repeat && !task.cancelled && task.remaining <= 1e-10)
+          task.remaining = task.interval;
+      }
+      return callbacks;
+    }
+    clear() {
+      for (const id of [...this.tasks.keys()]) this.cancel(id);
+    }
+    dispose() {
+      if (this.disposed) return;
+      this.disposed = true;
+      this.clear();
+      this.owners.clear();
+    }
+    get size() {
+      return this.tasks.size;
+    }
+  };
+
+  // packages/core/runtime3d/SceneMutation.ts
+  var ZhudaSceneMutationQueue = class {
+    constructor() {
+      this.nextId = 1;
+      this.pending = /* @__PURE__ */ new Map();
+      this.disposed = false;
+      this.flushing = false;
+    }
+    enqueue(mutation) {
+      if (this.disposed) throw Error("Disposed scene mutation queue");
+      if (!mutation || typeof mutation.apply !== "function")
+        throw Error("Invalid scene mutation");
+      if (!["add", "remove", "destroy", "custom"].includes(mutation.kind))
+        throw Error("Invalid scene mutation kind");
+      const item = {
+        ...mutation,
+        id: this.nextId++,
+        cancelled: false
+      };
+      this.pending.set(item.id, item);
+      return {
+        id: item.id,
+        get cancelled() {
+          return item.cancelled;
+        },
+        cancel: () => this.cancel(item.id)
+      };
+    }
+    deferAdd(apply) {
+      return this.enqueue({ kind: "add", apply });
+    }
+    deferRemove(apply) {
+      return this.enqueue({ kind: "remove", apply });
+    }
+    deferDestroy(apply) {
+      return this.enqueue({ kind: "destroy", apply });
+    }
+    cancel(id) {
+      const item = this.pending.get(id);
+      if (!item || item.cancelled) return false;
+      item.cancelled = true;
+      this.pending.delete(id);
+      return true;
+    }
+    /** Applies exactly the batch present at the start of this call. */
+    flush() {
+      if (this.disposed || this.flushing) return 0;
+      const batch = [...this.pending.values()];
+      for (const item of batch) this.pending.delete(item.id);
+      this.flushing = true;
+      let applied = 0;
+      try {
+        for (const item of batch) {
+          if (item.cancelled) continue;
+          item.apply();
+          applied++;
+        }
+      } finally {
+        this.flushing = false;
+      }
+      return applied;
+    }
+    clear() {
+      for (const item of this.pending.values()) item.cancelled = true;
+      this.pending.clear();
+    }
+    dispose() {
+      if (this.disposed) return;
+      this.disposed = true;
+      this.clear();
+    }
+    get size() {
+      return this.pending.size;
+    }
+    get isFlushing() {
+      return this.flushing;
+    }
+  };
+
   // packages/core/runtime3d/Runtime.ts
   function installSandboxStorageFallback() {
     const modes = {};
@@ -47,12 +268,20 @@ var ZhudaAppBundle = (() => {
       this.paused = false;
       this.contextLost = false;
       this.disposed = false;
+      this.clock = new ZhudaRealtimeClock();
+      this.timers = new ZhudaTimerScheduler();
+      this.mutations = new ZhudaSceneMutationQueue();
       this.cleanups = [];
       this.frame = 0;
       this.previous = 0;
       this.task = null;
       this.canvas = canvas;
       this.options = options;
+      if (options.timeScale !== void 0) {
+        if (!Number.isFinite(options.timeScale) || options.timeScale < 0)
+          throw Error("Invalid runtime time scale");
+        this.clock.timeScale = options.timeScale;
+      }
       const listen = (target, event, fn) => {
         target.addEventListener(event, fn);
         this.cleanups.push(() => target.removeEventListener(event, fn));
@@ -114,7 +343,10 @@ var ZhudaAppBundle = (() => {
           const elapsed = this.previous ? now - this.previous : 0;
           if (!this.previous || elapsed >= 1e3 / (this.options.targetFPS || 60) - 2) {
             this.previous = now;
-            this.task?.(Math.min(0.1, elapsed / 1e3));
+            const sample = this.clock.advance(Math.min(0.1, elapsed / 1e3));
+            this.timers.advance(sample.unscaledDeltaTime, sample.scaledDeltaTime);
+            this.task?.(sample.unscaledDeltaTime, sample);
+            this.mutations.flush();
           }
         }
         this.frame = requestAnimationFrame(tick);
@@ -127,6 +359,8 @@ var ZhudaAppBundle = (() => {
       cancelAnimationFrame(this.frame);
       this.frame = 0;
       this.task = null;
+      this.timers.dispose();
+      this.mutations.dispose();
       this.observer?.disconnect();
       for (const f of this.cleanups) f();
       this.cleanups = [];

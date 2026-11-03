@@ -1,7 +1,10 @@
+import { ZhudaRealtimeClock, ZhudaTimerScheduler, type ZhudaClockSample } from "./Clocks";
+import { ZhudaSceneMutationQueue } from "./SceneMutation";
 export interface ManagedRuntimeOptions {
     container?: HTMLElement;
     dprCap?: number;
     targetFPS?: 30 | 60;
+    timeScale?: number;
     clearInput?: () => void;
     onPause?: (paused: boolean) => void;
     onContextLost?: () => void;
@@ -21,6 +24,9 @@ export declare class ZhudaRuntimeSession {
     paused: boolean;
     contextLost: boolean;
     disposed: boolean;
+    readonly clock: ZhudaRealtimeClock;
+    readonly timers: ZhudaTimerScheduler;
+    readonly mutations: ZhudaSceneMutationQueue;
     private cleanups;
     private frame;
     private previous;
@@ -29,7 +35,7 @@ export declare class ZhudaRuntimeSession {
     constructor(canvas: HTMLCanvasElement, options?: ManagedRuntimeOptions);
     setPaused(value: boolean): void;
     resize(): void;
-    start(update: (dt: number) => void): void;
+    start(update: (dt: number, sample?: ZhudaClockSample) => void): void;
     dispose(): void;
 }
 /** Separate JavaScript/WebGL realm; replacing a failed frame releases its engine, tasks and listeners. */

@@ -4,6 +4,11 @@ export class ZhudaSimulationClock {
   tick = 0;
   renderTime = 0;
   paused = false;
+  timeScale = 1;
+  unscaledTime = 0;
+  scaledTime = 0;
+  unscaledDeltaTime = 0;
+  scaledDeltaTime = 0;
   private accumulator = 0;
   constructor(step = 1 / 60, maxCatchup = 8) {
     this.step = step;
@@ -20,10 +25,16 @@ export class ZhudaSimulationClock {
   }
   advance(dt: number, simulate: (dt: number, tick: number) => void) {
     if (!Number.isFinite(dt) || dt < 0) throw Error("Invalid clock delta");
+    if (!Number.isFinite(this.timeScale) || this.timeScale < 0)
+      throw Error("Invalid clock time scale");
+    this.unscaledDeltaTime = this.paused ? 0 : dt;
+    this.scaledDeltaTime = this.paused ? 0 : dt * this.timeScale;
     if (this.paused) return 0;
+    this.unscaledTime += dt;
+    this.scaledTime += dt * this.timeScale;
     this.renderTime += dt;
     this.accumulator = Math.min(
-      this.accumulator + dt,
+      this.accumulator + dt * this.timeScale,
       this.step * this.maxCatchup,
     );
     let n = 0;
@@ -44,8 +55,195 @@ export class ZhudaSimulationClock {
     if (!Number.isSafeInteger(tick) || tick < 0) throw Error("Invalid tick");
     this.tick = tick;
     this.renderTime = tick * this.step;
+    this.unscaledTime = this.renderTime;
+    this.scaledTime = this.renderTime;
+    this.unscaledDeltaTime = 0;
+    this.scaledDeltaTime = 0;
     this.accumulator = 0;
   }
+}
+
+export interface ZhudaClockSample {
+  unscaledDeltaTime: number;
+  scaledDeltaTime: number;
+  unscaledTime: number;
+  scaledTime: number;
+  timeScale: number;
+}
+
+/** A real-time clock that exposes both gameplay and presentation time channels. */
+export class ZhudaRealtimeClock {
+  timeScale = 1;
+  unscaledTime = 0;
+  scaledTime = 0;
+  unscaledDeltaTime = 0;
+  scaledDeltaTime = 0;
+  paused = false;
+
+  advance(unscaledDeltaTime: number): ZhudaClockSample {
+    if (!Number.isFinite(unscaledDeltaTime) || unscaledDeltaTime < 0)
+      throw Error("Invalid real-time delta");
+    if (!Number.isFinite(this.timeScale) || this.timeScale < 0)
+      throw Error("Invalid clock time scale");
+    const unscaled = this.paused ? 0 : unscaledDeltaTime;
+    const scaled = unscaled * this.timeScale;
+    this.unscaledDeltaTime = unscaled;
+    this.scaledDeltaTime = scaled;
+    this.unscaledTime += unscaled;
+    this.scaledTime += scaled;
+    return this.sample();
+  }
+
+  sample(): ZhudaClockSample {
+    return {
+      unscaledDeltaTime: this.unscaledDeltaTime,
+      scaledDeltaTime: this.scaledDeltaTime,
+      unscaledTime: this.unscaledTime,
+      scaledTime: this.scaledTime,
+      timeScale: this.timeScale,
+    };
+  }
+
+  reset(): void {
+    this.unscaledTime = 0;
+    this.scaledTime = 0;
+    this.unscaledDeltaTime = 0;
+    this.scaledDeltaTime = 0;
+  }
+}
+
+export type ZhudaTimerChannel = "scaled" | "unscaled";
+export interface ZhudaTimerOptions {
+  channel?: ZhudaTimerChannel;
+  owner?: object;
+}
+export interface ZhudaTimerHandle {
+  readonly id: number;
+  readonly cancelled: boolean;
+  cancel(): boolean;
+}
+
+interface TimerTask {
+  id: number;
+  remaining: number;
+  interval: number;
+  repeat: boolean;
+  channel: ZhudaTimerChannel;
+  owner?: object;
+  callback: () => void;
+  cancelled: boolean;
+}
+
+/** Frame-driven timer scheduler. It never creates a browser timer or outlives its owner. */
+export class ZhudaTimerScheduler {
+  readonly maxCallbacksPerAdvance: number;
+  private nextId = 1;
+  private tasks = new Map<number, TimerTask>();
+  private owners = new Map<object, Set<number>>();
+  private disposed = false;
+
+  constructor(maxCallbacksPerAdvance = 64) {
+    if (!Number.isSafeInteger(maxCallbacksPerAdvance) || maxCallbacksPerAdvance <= 0)
+      throw Error("Invalid timer callback bound");
+    this.maxCallbacksPerAdvance = maxCallbacksPerAdvance;
+  }
+
+  scheduleOnce(delay: number, callback: () => void, options: ZhudaTimerOptions = {}): ZhudaTimerHandle {
+    return this.schedule(delay, callback, { ...options, repeat: false });
+  }
+
+  scheduleLoop(interval: number, callback: () => void, options: ZhudaTimerOptions = {}): ZhudaTimerHandle {
+    return this.schedule(interval, callback, { ...options, repeat: true });
+  }
+
+  private schedule(delay: number, callback: () => void, options: ZhudaTimerOptions & { repeat: boolean }): ZhudaTimerHandle {
+    if (this.disposed) throw Error("Disposed timer scheduler");
+    if (!Number.isFinite(delay) || delay < 0 || (options.repeat && delay <= 0))
+      throw Error("Invalid timer delay");
+    if (typeof callback !== "function") throw Error("Invalid timer callback");
+    const task: TimerTask = {
+      id: this.nextId++,
+      remaining: delay,
+      interval: delay,
+      repeat: options.repeat,
+      channel: options.channel ?? "scaled",
+      owner: options.owner,
+      callback,
+      cancelled: false,
+    };
+    this.tasks.set(task.id, task);
+    if (task.owner) {
+      let ids = this.owners.get(task.owner);
+      if (!ids) this.owners.set(task.owner, (ids = new Set()));
+      ids.add(task.id);
+    }
+    return this.handle(task);
+  }
+
+  private handle(task: TimerTask): ZhudaTimerHandle {
+    return {
+      id: task.id,
+      get cancelled() { return task.cancelled; },
+      cancel: () => this.cancel(task.id),
+    };
+  }
+
+  private cancel(id: number): boolean {
+    const task = this.tasks.get(id);
+    if (!task || task.cancelled) return false;
+    task.cancelled = true;
+    this.tasks.delete(id);
+    if (task.owner) {
+      const ids = this.owners.get(task.owner);
+      ids?.delete(id);
+      if (ids && !ids.size) this.owners.delete(task.owner);
+    }
+    return true;
+  }
+
+  cancelOwner(owner: object): number {
+    const ids = [...(this.owners.get(owner) ?? [])];
+    for (const id of ids) this.cancel(id);
+    return ids.length;
+  }
+
+  advance(unscaledDeltaTime: number, scaledDeltaTime = unscaledDeltaTime): number {
+    if (this.disposed) return 0;
+    if (![unscaledDeltaTime, scaledDeltaTime].every(v => Number.isFinite(v) && v >= 0))
+      throw Error("Invalid timer delta");
+    let callbacks = 0;
+    const snapshot = [...this.tasks.values()];
+    for (const task of snapshot) {
+      if (callbacks >= this.maxCallbacksPerAdvance) break;
+      if (task.cancelled || !this.tasks.has(task.id)) continue;
+      task.remaining -= task.channel === "scaled" ? scaledDeltaTime : unscaledDeltaTime;
+      while (task.remaining <= 1e-10 && !task.cancelled && this.tasks.has(task.id) && callbacks < this.maxCallbacksPerAdvance) {
+        task.callback();
+        callbacks++;
+        if (!task.repeat) {
+          this.cancel(task.id);
+          break;
+        }
+        task.remaining += task.interval;
+      }
+      if (callbacks >= this.maxCallbacksPerAdvance && task.repeat && !task.cancelled && task.remaining <= 1e-10)
+        task.remaining = task.interval;
+    }
+    return callbacks;
+  }
+
+  clear(): void {
+    for (const id of [...this.tasks.keys()]) this.cancel(id);
+  }
+
+  dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true;
+    this.clear();
+    this.owners.clear();
+  }
+
+  get size(): number { return this.tasks.size; }
 }
 export interface TimedSnapshot<T> {
   epoch: string;

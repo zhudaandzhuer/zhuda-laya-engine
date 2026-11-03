@@ -1,5 +1,5 @@
 /**
- * zhuda-laya-engine v1.2.0 — 豬大 LayaAir (AI-Agent-Friendly Fork Edition)
+ * zhuda-laya-engine v1.3.0 — 豬大 LayaAir (AI-Agent-Friendly Fork Edition)
  * Repository: https://github.com/zhudaandzhuer/zhuda-laya-engine
  * Upstream Official: LayaAir Engine 3.4.2 by Layabox (https://layaair.com/ | https://github.com/layabox/LayaAir)
  * License: MIT
@@ -49,6 +49,7 @@ __export(index_exports, {
   ZhudaBenchmarkEngine: () => ZhudaBenchmarkEngine,
   ZhudaCameraCoordinates: () => ZhudaCameraCoordinates,
   ZhudaCameraRig: () => ZhudaCameraRig,
+  ZhudaCombatWorld: () => ZhudaCombatWorld,
   ZhudaDistanceLOD: () => ZhudaDistanceLOD,
   ZhudaDynamicMesh: () => ZhudaDynamicMesh,
   ZhudaEffectBudget: () => ZhudaEffectBudget,
@@ -57,6 +58,7 @@ __export(index_exports, {
   ZhudaEngine: () => ZhudaEngine,
   ZhudaEventGate: () => ZhudaEventGate,
   ZhudaFilmicPipeline: () => ZhudaFilmicPipeline,
+  ZhudaGraphicsGuard: () => ZhudaGraphicsGuard,
   ZhudaHeightfield: () => ZhudaHeightfield,
   ZhudaInstanceGroup: () => ZhudaInstanceGroup,
   ZhudaLayaParticleRenderer: () => ZhudaLayaParticleRenderer,
@@ -65,6 +67,7 @@ __export(index_exports, {
   ZhudaLayaRibbonRenderer3D: () => ZhudaLayaRibbonRenderer3D,
   ZhudaLitSurfaceMaterial: () => ZhudaLitSurfaceMaterial,
   ZhudaModelLibrary: () => ZhudaModelLibrary,
+  ZhudaObjectPool: () => ZhudaObjectPool,
   ZhudaParticleEventLink: () => ZhudaParticleEventLink,
   ZhudaParticleMesh3D: () => ZhudaParticleMesh3D,
   ZhudaParticleSystem: () => ZhudaParticleSystem,
@@ -73,6 +76,8 @@ __export(index_exports, {
   ZhudaPointerInput: () => ZhudaPointerInput,
   ZhudaPrefab: () => ZhudaPrefab,
   ZhudaPrefabLibrary: () => ZhudaPrefabLibrary,
+  ZhudaRealtimeClock: () => ZhudaRealtimeClock,
+  ZhudaRenderSpace: () => ZhudaRenderSpace,
   ZhudaRequestSlot: () => ZhudaRequestSlot,
   ZhudaResourceScope: () => ZhudaResourceScope,
   ZhudaRibbonPath3D: () => ZhudaRibbonPath3D,
@@ -82,6 +87,7 @@ __export(index_exports, {
   ZhudaRuntimeProfiler: () => ZhudaRuntimeProfiler,
   ZhudaRuntimeSession: () => ZhudaRuntimeSession,
   ZhudaSceneBudget: () => ZhudaSceneBudget,
+  ZhudaSceneMutationQueue: () => ZhudaSceneMutationQueue,
   ZhudaSceneQueries: () => ZhudaSceneQueries,
   ZhudaSceneRegions: () => ZhudaSceneRegions,
   ZhudaShaderMaterial: () => ZhudaShaderMaterial,
@@ -91,6 +97,7 @@ __export(index_exports, {
   ZhudaTerrain2D: () => ZhudaTerrain2D,
   ZhudaTerrain2DRenderer: () => ZhudaTerrain2DRenderer,
   ZhudaTerrain3D: () => ZhudaTerrain3D,
+  ZhudaTimerScheduler: () => ZhudaTimerScheduler,
   ZhudaUI: () => ZhudaUI,
   ZhudaVfxCamera: () => ZhudaVfxCamera,
   ZhudaVfxMaterial: () => ZhudaVfxMaterial,
@@ -725,6 +732,371 @@ var EngineGuard = class {
 EngineGuard.detoxInstalled = false;
 EngineGuard.registeredComponentNames = /* @__PURE__ */ new Set();
 
+// packages/core/runtime3d/Clocks.ts
+var ZhudaSimulationClock = class {
+  constructor(step = 1 / 60, maxCatchup = 8) {
+    this.tick = 0;
+    this.renderTime = 0;
+    this.paused = false;
+    this.timeScale = 1;
+    this.unscaledTime = 0;
+    this.scaledTime = 0;
+    this.unscaledDeltaTime = 0;
+    this.scaledDeltaTime = 0;
+    this.accumulator = 0;
+    this.step = step;
+    this.maxCatchup = maxCatchup;
+    if (!(step > 0 && Number.isFinite(step) && Number.isInteger(maxCatchup) && maxCatchup > 0))
+      throw Error("Invalid fixed clock");
+  }
+  advance(dt, simulate) {
+    if (!Number.isFinite(dt) || dt < 0) throw Error("Invalid clock delta");
+    if (!Number.isFinite(this.timeScale) || this.timeScale < 0)
+      throw Error("Invalid clock time scale");
+    this.unscaledDeltaTime = this.paused ? 0 : dt;
+    this.scaledDeltaTime = this.paused ? 0 : dt * this.timeScale;
+    if (this.paused) return 0;
+    this.unscaledTime += dt;
+    this.scaledTime += dt * this.timeScale;
+    this.renderTime += dt;
+    this.accumulator = Math.min(
+      this.accumulator + dt * this.timeScale,
+      this.step * this.maxCatchup
+    );
+    let n = 0;
+    while (this.accumulator + 1e-10 >= this.step) {
+      this.accumulator -= this.step;
+      simulate(this.step, ++this.tick);
+      n++;
+    }
+    return n;
+  }
+  get simulationTime() {
+    return this.tick * this.step;
+  }
+  get alpha() {
+    return Math.max(0, this.accumulator / this.step);
+  }
+  reset(tick = 0) {
+    if (!Number.isSafeInteger(tick) || tick < 0) throw Error("Invalid tick");
+    this.tick = tick;
+    this.renderTime = tick * this.step;
+    this.unscaledTime = this.renderTime;
+    this.scaledTime = this.renderTime;
+    this.unscaledDeltaTime = 0;
+    this.scaledDeltaTime = 0;
+    this.accumulator = 0;
+  }
+};
+var ZhudaRealtimeClock = class {
+  constructor() {
+    this.timeScale = 1;
+    this.unscaledTime = 0;
+    this.scaledTime = 0;
+    this.unscaledDeltaTime = 0;
+    this.scaledDeltaTime = 0;
+    this.paused = false;
+  }
+  advance(unscaledDeltaTime) {
+    if (!Number.isFinite(unscaledDeltaTime) || unscaledDeltaTime < 0)
+      throw Error("Invalid real-time delta");
+    if (!Number.isFinite(this.timeScale) || this.timeScale < 0)
+      throw Error("Invalid clock time scale");
+    const unscaled = this.paused ? 0 : unscaledDeltaTime;
+    const scaled = unscaled * this.timeScale;
+    this.unscaledDeltaTime = unscaled;
+    this.scaledDeltaTime = scaled;
+    this.unscaledTime += unscaled;
+    this.scaledTime += scaled;
+    return this.sample();
+  }
+  sample() {
+    return {
+      unscaledDeltaTime: this.unscaledDeltaTime,
+      scaledDeltaTime: this.scaledDeltaTime,
+      unscaledTime: this.unscaledTime,
+      scaledTime: this.scaledTime,
+      timeScale: this.timeScale
+    };
+  }
+  reset() {
+    this.unscaledTime = 0;
+    this.scaledTime = 0;
+    this.unscaledDeltaTime = 0;
+    this.scaledDeltaTime = 0;
+  }
+};
+var ZhudaTimerScheduler = class {
+  constructor(maxCallbacksPerAdvance = 64) {
+    this.nextId = 1;
+    this.tasks = /* @__PURE__ */ new Map();
+    this.owners = /* @__PURE__ */ new Map();
+    this.disposed = false;
+    if (!Number.isSafeInteger(maxCallbacksPerAdvance) || maxCallbacksPerAdvance <= 0)
+      throw Error("Invalid timer callback bound");
+    this.maxCallbacksPerAdvance = maxCallbacksPerAdvance;
+  }
+  scheduleOnce(delay, callback, options = {}) {
+    return this.schedule(delay, callback, { ...options, repeat: false });
+  }
+  scheduleLoop(interval, callback, options = {}) {
+    return this.schedule(interval, callback, { ...options, repeat: true });
+  }
+  schedule(delay, callback, options) {
+    if (this.disposed) throw Error("Disposed timer scheduler");
+    if (!Number.isFinite(delay) || delay < 0 || options.repeat && delay <= 0)
+      throw Error("Invalid timer delay");
+    if (typeof callback !== "function") throw Error("Invalid timer callback");
+    const task = {
+      id: this.nextId++,
+      remaining: delay,
+      interval: delay,
+      repeat: options.repeat,
+      channel: options.channel ?? "scaled",
+      owner: options.owner,
+      callback,
+      cancelled: false
+    };
+    this.tasks.set(task.id, task);
+    if (task.owner) {
+      let ids = this.owners.get(task.owner);
+      if (!ids) this.owners.set(task.owner, ids = /* @__PURE__ */ new Set());
+      ids.add(task.id);
+    }
+    return this.handle(task);
+  }
+  handle(task) {
+    return {
+      id: task.id,
+      get cancelled() {
+        return task.cancelled;
+      },
+      cancel: () => this.cancel(task.id)
+    };
+  }
+  cancel(id) {
+    const task = this.tasks.get(id);
+    if (!task || task.cancelled) return false;
+    task.cancelled = true;
+    this.tasks.delete(id);
+    if (task.owner) {
+      const ids = this.owners.get(task.owner);
+      ids?.delete(id);
+      if (ids && !ids.size) this.owners.delete(task.owner);
+    }
+    return true;
+  }
+  cancelOwner(owner) {
+    const ids = [...this.owners.get(owner) ?? []];
+    for (const id of ids) this.cancel(id);
+    return ids.length;
+  }
+  advance(unscaledDeltaTime, scaledDeltaTime = unscaledDeltaTime) {
+    if (this.disposed) return 0;
+    if (![unscaledDeltaTime, scaledDeltaTime].every((v) => Number.isFinite(v) && v >= 0))
+      throw Error("Invalid timer delta");
+    let callbacks = 0;
+    const snapshot = [...this.tasks.values()];
+    for (const task of snapshot) {
+      if (callbacks >= this.maxCallbacksPerAdvance) break;
+      if (task.cancelled || !this.tasks.has(task.id)) continue;
+      task.remaining -= task.channel === "scaled" ? scaledDeltaTime : unscaledDeltaTime;
+      while (task.remaining <= 1e-10 && !task.cancelled && this.tasks.has(task.id) && callbacks < this.maxCallbacksPerAdvance) {
+        task.callback();
+        callbacks++;
+        if (!task.repeat) {
+          this.cancel(task.id);
+          break;
+        }
+        task.remaining += task.interval;
+      }
+      if (callbacks >= this.maxCallbacksPerAdvance && task.repeat && !task.cancelled && task.remaining <= 1e-10)
+        task.remaining = task.interval;
+    }
+    return callbacks;
+  }
+  clear() {
+    for (const id of [...this.tasks.keys()]) this.cancel(id);
+  }
+  dispose() {
+    if (this.disposed) return;
+    this.disposed = true;
+    this.clear();
+    this.owners.clear();
+  }
+  get size() {
+    return this.tasks.size;
+  }
+};
+var ZhudaSnapshotBuffer = class {
+  constructor(epoch, interpolate, maxExtrapolation = 0.15, capacity = 32) {
+    this.items = [];
+    this.sequence = -1;
+    this.epoch = epoch;
+    this.interpolate = interpolate;
+    this.maxExtrapolation = maxExtrapolation;
+    this.capacity = capacity;
+    if (!Number.isFinite(maxExtrapolation) || maxExtrapolation < 0 || capacity < 2 || !Number.isInteger(capacity))
+      throw Error("Invalid snapshot bounds");
+  }
+  push(s) {
+    if (s.epoch !== this.epoch || !Number.isSafeInteger(s.sequence) || s.sequence <= this.sequence || !Number.isFinite(s.time))
+      return false;
+    if (this.items.length && s.time <= this.items[this.items.length - 1].time)
+      return false;
+    this.sequence = s.sequence;
+    this.items.push(s);
+    if (this.items.length > this.capacity) this.items.shift();
+    return true;
+  }
+  sample(time) {
+    if (!Number.isFinite(time)) throw Error("Invalid sample time");
+    const a = this.items;
+    if (!a.length) return null;
+    if (a.length === 1 || time <= a[0].time)
+      return { value: a[0].value, time: a[0].time, mode: "held" };
+    for (let i = 1; i < a.length; i++)
+      if (time <= a[i].time) {
+        const x2 = a[i - 1], y2 = a[i];
+        return {
+          value: this.interpolate(
+            x2.value,
+            y2.value,
+            (time - x2.time) / (y2.time - x2.time)
+          ),
+          time,
+          mode: "interpolated"
+        };
+      }
+    const x = a[a.length - 2], y = a[a.length - 1], t = Math.min(time, y.time + this.maxExtrapolation);
+    return {
+      value: this.interpolate(
+        x.value,
+        y.value,
+        (t - x.time) / (y.time - x.time)
+      ),
+      time: t,
+      mode: "extrapolated"
+    };
+  }
+  reset(epoch) {
+    this.epoch = epoch;
+    this.items = [];
+    this.sequence = -1;
+  }
+  get size() {
+    return this.items.length;
+  }
+};
+var ZhudaEventGate = class {
+  constructor(epoch, ttl = 30, capacity = 2048) {
+    this.seen = /* @__PURE__ */ new Map();
+    this.epoch = epoch;
+    this.ttl = ttl;
+    this.capacity = capacity;
+    if (!(ttl > 0 && Number.isFinite(ttl) && Number.isInteger(capacity) && capacity > 0))
+      throw Error("Invalid event bounds");
+  }
+  dispatch(id, now, action, options = {}) {
+    if (!id || !Number.isFinite(now)) throw Error("Invalid event");
+    if (options.replay || options.epoch && options.epoch !== this.epoch)
+      return false;
+    for (const [k, t] of this.seen) if (now - t > this.ttl) this.seen.delete(k);
+    if (this.seen.has(id)) return false;
+    this.seen.set(id, now);
+    while (this.seen.size > this.capacity)
+      this.seen.delete(this.seen.keys().next().value);
+    action();
+    return true;
+  }
+  reset(epoch) {
+    this.epoch = epoch;
+    this.seen.clear();
+  }
+  get size() {
+    return this.seen.size;
+  }
+};
+
+// packages/core/runtime3d/SceneMutation.ts
+var ZhudaSceneMutationQueue = class {
+  constructor() {
+    this.nextId = 1;
+    this.pending = /* @__PURE__ */ new Map();
+    this.disposed = false;
+    this.flushing = false;
+  }
+  enqueue(mutation) {
+    if (this.disposed) throw Error("Disposed scene mutation queue");
+    if (!mutation || typeof mutation.apply !== "function")
+      throw Error("Invalid scene mutation");
+    if (!["add", "remove", "destroy", "custom"].includes(mutation.kind))
+      throw Error("Invalid scene mutation kind");
+    const item = {
+      ...mutation,
+      id: this.nextId++,
+      cancelled: false
+    };
+    this.pending.set(item.id, item);
+    return {
+      id: item.id,
+      get cancelled() {
+        return item.cancelled;
+      },
+      cancel: () => this.cancel(item.id)
+    };
+  }
+  deferAdd(apply) {
+    return this.enqueue({ kind: "add", apply });
+  }
+  deferRemove(apply) {
+    return this.enqueue({ kind: "remove", apply });
+  }
+  deferDestroy(apply) {
+    return this.enqueue({ kind: "destroy", apply });
+  }
+  cancel(id) {
+    const item = this.pending.get(id);
+    if (!item || item.cancelled) return false;
+    item.cancelled = true;
+    this.pending.delete(id);
+    return true;
+  }
+  /** Applies exactly the batch present at the start of this call. */
+  flush() {
+    if (this.disposed || this.flushing) return 0;
+    const batch = [...this.pending.values()];
+    for (const item of batch) this.pending.delete(item.id);
+    this.flushing = true;
+    let applied = 0;
+    try {
+      for (const item of batch) {
+        if (item.cancelled) continue;
+        item.apply();
+        applied++;
+      }
+    } finally {
+      this.flushing = false;
+    }
+    return applied;
+  }
+  clear() {
+    for (const item of this.pending.values()) item.cancelled = true;
+    this.pending.clear();
+  }
+  dispose() {
+    if (this.disposed) return;
+    this.disposed = true;
+    this.clear();
+  }
+  get size() {
+    return this.pending.size;
+  }
+  get isFlushing() {
+    return this.flushing;
+  }
+};
+
 // packages/core/runtime3d/Runtime.ts
 function installSandboxStorageFallback() {
   const modes = {};
@@ -762,12 +1134,20 @@ var ZhudaRuntimeSession = class {
     this.paused = false;
     this.contextLost = false;
     this.disposed = false;
+    this.clock = new ZhudaRealtimeClock();
+    this.timers = new ZhudaTimerScheduler();
+    this.mutations = new ZhudaSceneMutationQueue();
     this.cleanups = [];
     this.frame = 0;
     this.previous = 0;
     this.task = null;
     this.canvas = canvas;
     this.options = options;
+    if (options.timeScale !== void 0) {
+      if (!Number.isFinite(options.timeScale) || options.timeScale < 0)
+        throw Error("Invalid runtime time scale");
+      this.clock.timeScale = options.timeScale;
+    }
     const listen = (target, event, fn) => {
       target.addEventListener(event, fn);
       this.cleanups.push(() => target.removeEventListener(event, fn));
@@ -829,7 +1209,10 @@ var ZhudaRuntimeSession = class {
         const elapsed = this.previous ? now - this.previous : 0;
         if (!this.previous || elapsed >= 1e3 / (this.options.targetFPS || 60) - 2) {
           this.previous = now;
-          this.task?.(Math.min(0.1, elapsed / 1e3));
+          const sample = this.clock.advance(Math.min(0.1, elapsed / 1e3));
+          this.timers.advance(sample.unscaledDeltaTime, sample.scaledDeltaTime);
+          this.task?.(sample.unscaledDeltaTime, sample);
+          this.mutations.flush();
         }
       }
       this.frame = requestAnimationFrame(tick);
@@ -842,6 +1225,8 @@ var ZhudaRuntimeSession = class {
     cancelAnimationFrame(this.frame);
     this.frame = 0;
     this.task = null;
+    this.timers.dispose();
+    this.mutations.dispose();
     this.observer?.disconnect();
     for (const f of this.cleanups) f();
     this.cleanups = [];
@@ -5692,7 +6077,7 @@ function validateParticleEffect(value) {
     return ["Expected schemaVersion: 1 and a non-empty emitters array."];
   }
   const ids = /* @__PURE__ */ new Set();
-  const finite = (v) => typeof v === "number" && Number.isFinite(v);
+  const finite2 = (v) => typeof v === "number" && Number.isFinite(v);
   for (const e of spec.emitters) {
     if (!e || typeof e !== "object") {
       issues.push("Emitter must be an object.");
@@ -5706,27 +6091,27 @@ function validateParticleEffect(value) {
     if (!Number.isInteger(e.maxParticles) || e.maxParticles < 1 || e.maxParticles > 16383) issues.push(`${id}: maxParticles must be 1..16383.`);
     if (!Number.isInteger(e.seed)) issues.push(`${id}: seed must be an integer.`);
     if (!["world", "local"].includes(e.space) || !["alpha", "additive"].includes(e.blend)) issues.push(`${id}: explicit space and blend are required.`);
-    if (!finite(e.rate) || e.rate < 0) issues.push(`${id}: rate must be non-negative.`);
+    if (!finite2(e.rate) || e.rate < 0) issues.push(`${id}: rate must be non-negative.`);
     for (const key of ["lifetime", "speed", "angle", "size", "rotation", "angularVelocity"]) {
       const v = e[key];
       if (v === void 0 && ["rotation", "angularVelocity"].includes(key)) continue;
       const range = Array.isArray(v) ? v : [v, v];
-      if (range.length !== 2 || !range.every(finite) || range[0] > range[1]) issues.push(`${id}: invalid ${key} range.`);
+      if (range.length !== 2 || !range.every(finite2) || range[0] > range[1]) issues.push(`${id}: invalid ${key} range.`);
       else if ((key === "lifetime" || key === "size") && range[0] <= 0) issues.push(`${id}: ${key} must be positive.`);
     }
     if (!e.shape || !["point", "box", "circle"].includes(e.shape.type)) issues.push(`${id}: invalid shape.`);
-    else if (e.shape.type === "box" && (![e.shape.width, e.shape.height].every(finite) || e.shape.width < 0 || e.shape.height < 0)) issues.push(`${id}: invalid box dimensions.`);
-    else if (e.shape.type === "circle" && (!finite(e.shape.radius) || e.shape.radius < 0)) issues.push(`${id}: invalid circle radius.`);
+    else if (e.shape.type === "box" && (![e.shape.width, e.shape.height].every(finite2) || e.shape.width < 0 || e.shape.height < 0)) issues.push(`${id}: invalid box dimensions.`);
+    else if (e.shape.type === "circle" && (!finite2(e.shape.radius) || e.shape.radius < 0)) issues.push(`${id}: invalid circle radius.`);
     for (const key of ["drag", "rateOverDistance", "stretch"]) {
-      if (e[key] !== void 0 && (!finite(e[key]) || e[key] < 0)) issues.push(`${id}: ${key} must be non-negative.`);
+      if (e[key] !== void 0 && (!finite2(e[key]) || e[key] < 0)) issues.push(`${id}: ${key} must be non-negative.`);
     }
-    if (e.duration !== void 0 && (!finite(e.duration) || e.duration <= 0)) issues.push(`${id}: duration must be positive.`);
+    if (e.duration !== void 0 && (!finite2(e.duration) || e.duration <= 0)) issues.push(`${id}: duration must be positive.`);
     if (e.loop !== void 0 && typeof e.loop !== "boolean") issues.push(`${id}: loop must be boolean.`);
     if (e.loop && e.duration !== void 0 && e.duration < 1 / 120) issues.push(`${id}: looping duration must be at least 1/120 second.`);
-    if (e.acceleration && ![e.acceleration.x, e.acceleration.y].every(finite)) issues.push(`${id}: acceleration must be finite.`);
-    if (e.turbulence && (![e.turbulence.strength, e.turbulence.frequency].every(finite) || e.turbulence.strength < 0 || e.turbulence.frequency < 0)) issues.push(`${id}: invalid turbulence.`);
-    if (e.bursts !== void 0 && (!Array.isArray(e.bursts) || e.bursts.some((b) => !b || !finite(b.time) || b.time < 0 || !Number.isInteger(b.count) || b.count < 0))) issues.push(`${id}: invalid bursts.`);
-    if (Array.isArray(e.bursts) && finite(e.duration) && e.bursts.some((b) => b && b.time > e.duration)) issues.push(`${id}: burst time exceeds duration.`);
+    if (e.acceleration && ![e.acceleration.x, e.acceleration.y].every(finite2)) issues.push(`${id}: acceleration must be finite.`);
+    if (e.turbulence && (![e.turbulence.strength, e.turbulence.frequency].every(finite2) || e.turbulence.strength < 0 || e.turbulence.frequency < 0)) issues.push(`${id}: invalid turbulence.`);
+    if (e.bursts !== void 0 && (!Array.isArray(e.bursts) || e.bursts.some((b) => !b || !finite2(b.time) || b.time < 0 || !Number.isInteger(b.count) || b.count < 0))) issues.push(`${id}: invalid bursts.`);
+    if (Array.isArray(e.bursts) && finite2(e.duration) && e.bursts.some((b) => b && b.time > e.duration)) issues.push(`${id}: burst time exceeds duration.`);
     for (const key of ["sizeOverLife", "alphaOverLife", "colorOverLife"]) {
       const keys = e[key];
       if (keys === void 0) continue;
@@ -5736,14 +6121,14 @@ function validateParticleEffect(value) {
       }
       let previous = -1;
       for (const k of keys) {
-        if (!k || !finite(k.time) || k.time < 0 || k.time > 1 || k.time <= previous) {
+        if (!k || !finite2(k.time) || k.time < 0 || k.time > 1 || k.time <= previous) {
           issues.push(`${id}: ${key} times must increase within 0..1.`);
           break;
         }
         previous = k.time;
         if (key === "colorOverLife") {
           if (!/^#[0-9a-f]{6}$/i.test(k.color)) issues.push(`${id}: colors must use #rrggbb.`);
-        } else if (!finite(k.value) || k.value < 0 || key === "alphaOverLife" && k.value > 1) issues.push(`${id}: invalid ${key} value.`);
+        } else if (!finite2(k.value) || k.value < 0 || key === "alphaOverLife" && k.value > 1) issues.push(`${id}: invalid ${key} value.`);
       }
     }
   }
@@ -8525,134 +8910,380 @@ var ZhudaPrefabLibrary = class {
   }
 };
 
-// packages/core/runtime3d/Clocks.ts
-var ZhudaSimulationClock = class {
-  constructor(step = 1 / 60, maxCatchup = 8) {
-    this.tick = 0;
-    this.renderTime = 0;
-    this.paused = false;
-    this.accumulator = 0;
-    this.step = step;
-    this.maxCatchup = maxCatchup;
-    if (!(step > 0 && Number.isFinite(step) && Number.isInteger(maxCatchup) && maxCatchup > 0))
-      throw Error("Invalid fixed clock");
+// packages/core/runtime3d/RenderSpaces.ts
+var ZhudaRenderSpace = class {
+  constructor() {
+    this.registrations = /* @__PURE__ */ new Set();
+    this.disposed = false;
   }
-  advance(dt, simulate) {
-    if (!Number.isFinite(dt) || dt < 0) throw Error("Invalid clock delta");
-    if (this.paused) return 0;
-    this.renderTime += dt;
-    this.accumulator = Math.min(
-      this.accumulator + dt,
-      this.step * this.maxCatchup
-    );
-    let n = 0;
-    while (this.accumulator + 1e-10 >= this.step) {
-      this.accumulator -= this.step;
-      simulate(this.step, ++this.tick);
-      n++;
-    }
-    return n;
-  }
-  get simulationTime() {
-    return this.tick * this.step;
-  }
-  get alpha() {
-    return Math.max(0, this.accumulator / this.step);
-  }
-  reset(tick = 0) {
-    if (!Number.isSafeInteger(tick) || tick < 0) throw Error("Invalid tick");
-    this.tick = tick;
-    this.renderTime = tick * this.step;
-    this.accumulator = 0;
-  }
-};
-var ZhudaSnapshotBuffer = class {
-  constructor(epoch, interpolate, maxExtrapolation = 0.15, capacity = 32) {
-    this.items = [];
-    this.sequence = -1;
-    this.epoch = epoch;
-    this.interpolate = interpolate;
-    this.maxExtrapolation = maxExtrapolation;
-    this.capacity = capacity;
-    if (!Number.isFinite(maxExtrapolation) || maxExtrapolation < 0 || capacity < 2 || !Number.isInteger(capacity))
-      throw Error("Invalid snapshot bounds");
-  }
-  push(s) {
-    if (s.epoch !== this.epoch || !Number.isSafeInteger(s.sequence) || s.sequence <= this.sequence || !Number.isFinite(s.time))
-      return false;
-    if (this.items.length && s.time <= this.items[this.items.length - 1].time)
-      return false;
-    this.sequence = s.sequence;
-    this.items.push(s);
-    if (this.items.length > this.capacity) this.items.shift();
-    return true;
-  }
-  sample(time) {
-    if (!Number.isFinite(time)) throw Error("Invalid sample time");
-    const a = this.items;
-    if (!a.length) return null;
-    if (a.length === 1 || time <= a[0].time)
-      return { value: a[0].value, time: a[0].time, mode: "held" };
-    for (let i = 1; i < a.length; i++)
-      if (time <= a[i].time) {
-        const x2 = a[i - 1], y2 = a[i];
-        return {
-          value: this.interpolate(
-            x2.value,
-            y2.value,
-            (time - x2.time) / (y2.time - x2.time)
-          ),
-          time,
-          mode: "interpolated"
-        };
-      }
-    const x = a[a.length - 2], y = a[a.length - 1], t = Math.min(time, y.time + this.maxExtrapolation);
+  register(callbacks) {
+    if (this.disposed) throw Error("Disposed render space");
+    if (!callbacks || !callbacks.onRenderLocal && !callbacks.onRenderWorld && !callbacks.onRenderOverlay)
+      throw Error("Render space needs at least one pass callback");
+    this.registrations.add(callbacks);
+    let cancelled = false;
     return {
-      value: this.interpolate(
-        x.value,
-        y.value,
-        (t - x.time) / (y.time - x.time)
-      ),
-      time: t,
-      mode: "extrapolated"
+      get cancelled() {
+        return cancelled;
+      },
+      cancel: () => {
+        if (cancelled) return false;
+        cancelled = true;
+        return this.registrations.delete(callbacks);
+      }
     };
   }
-  reset(epoch) {
-    this.epoch = epoch;
-    this.items = [];
-    this.sequence = -1;
+  render(frame) {
+    if (this.disposed) return 0;
+    const snapshot = [...this.registrations];
+    let calls = 0;
+    const dispatch = (pass, coordinates, transform, callback) => {
+      if (!callback) return;
+      callback({
+        pass,
+        coordinates,
+        transform: transform ?? null,
+        localToWorld: frame.localToWorld,
+        worldToLocal: frame.worldToLocal
+      });
+      calls++;
+    };
+    for (const registration of snapshot) {
+      dispatch("local", "local", frame.localTransform, registration.onRenderLocal);
+      dispatch("world", "world", frame.worldTransform, registration.onRenderWorld);
+      dispatch("overlay", "camera-overlay", frame.overlayTransform, registration.onRenderOverlay);
+    }
+    return calls;
+  }
+  clear() {
+    this.registrations.clear();
+  }
+  dispose() {
+    if (this.disposed) return;
+    this.disposed = true;
+    this.clear();
   }
   get size() {
-    return this.items.length;
+    return this.registrations.size;
   }
 };
-var ZhudaEventGate = class {
-  constructor(epoch, ttl = 30, capacity = 2048) {
-    this.seen = /* @__PURE__ */ new Map();
-    this.epoch = epoch;
-    this.ttl = ttl;
-    this.capacity = capacity;
-    if (!(ttl > 0 && Number.isFinite(ttl) && Number.isInteger(capacity) && capacity > 0))
-      throw Error("Invalid event bounds");
+
+// packages/core/runtime3d/GraphicsGuard.ts
+function finite(name, value) {
+  if (!Number.isFinite(value)) throw Error(`Invalid Graphics ${name}`);
+  return value;
+}
+function nonNegative(name, value) {
+  return Math.max(0, finite(name, value));
+}
+var ZhudaGraphicsGuard = class {
+  constructor(target) {
+    if (!target) throw Error("Graphics target is required");
+    this.target = target;
   }
-  dispatch(id, now, action, options = {}) {
-    if (!id || !Number.isFinite(now)) throw Error("Invalid event");
-    if (options.replay || options.epoch && options.epoch !== this.epoch)
-      return false;
-    for (const [k, t] of this.seen) if (now - t > this.ttl) this.seen.delete(k);
-    if (this.seen.has(id)) return false;
-    this.seen.set(id, now);
-    while (this.seen.size > this.capacity)
-      this.seen.delete(this.seen.keys().next().value);
-    action();
+  clear(...args) {
+    return this.target.clear(...args);
+  }
+  drawRect(x, y, width, height, fillColor, lineColor, lineWidth = 1, percent = false) {
+    return this.target.drawRect(
+      finite("x", x),
+      finite("y", y),
+      nonNegative("width", width),
+      nonNegative("height", height),
+      fillColor,
+      lineColor,
+      nonNegative("lineWidth", lineWidth),
+      percent
+    );
+  }
+  drawRoundRect(x, y, width, height, lt, rt, lb, rb, fillColor, lineColor, lineWidth = 1, percent = false, minNum, segPixel) {
+    const w = nonNegative("width", width), h = nonNegative("height", height);
+    const maxRadius = Math.min(w, h) / 2;
+    return this.target.drawRoundRect(
+      finite("x", x),
+      finite("y", y),
+      w,
+      h,
+      Math.min(maxRadius, nonNegative("lt", lt)),
+      Math.min(maxRadius, nonNegative("rt", rt)),
+      Math.min(maxRadius, nonNegative("lb", lb)),
+      Math.min(maxRadius, nonNegative("rb", rb)),
+      fillColor,
+      lineColor,
+      nonNegative("lineWidth", lineWidth),
+      percent,
+      minNum === void 0 ? void 0 : nonNegative("minNum", minNum),
+      segPixel === void 0 ? void 0 : nonNegative("segPixel", segPixel)
+    );
+  }
+  drawCircle(x, y, radius, fillColor, lineColor, lineWidth = 1, percent = false) {
+    return this.target.drawCircle(
+      finite("x", x),
+      finite("y", y),
+      nonNegative("radius", radius),
+      fillColor,
+      lineColor,
+      nonNegative("lineWidth", lineWidth),
+      percent
+    );
+  }
+  drawEllipse(x, y, width, height, fillColor, lineColor, lineWidth = 1, percent = false) {
+    return this.target.drawEllipse(
+      finite("x", x),
+      finite("y", y),
+      nonNegative("width", width),
+      nonNegative("height", height),
+      fillColor,
+      lineColor,
+      nonNegative("lineWidth", lineWidth),
+      percent
+    );
+  }
+};
+
+// packages/core/runtime3d/Pool.ts
+var ZhudaObjectPool = class {
+  constructor(options) {
+    this.free = [];
+    this.active = /* @__PURE__ */ new Set();
+    this.disposedItems = /* @__PURE__ */ new Set();
+    this.created = 0;
+    this.disposed = false;
+    if (!options || !Number.isSafeInteger(options.capacity) || options.capacity <= 0)
+      throw Error("Invalid pool capacity");
+    if (typeof options.create !== "function") throw Error("Pool create callback is required");
+    this.capacity = options.capacity;
+    this.create = options.create;
+    this.reset = options.reset;
+    this.onSpawn = options.onSpawn;
+    this.onDespawn = options.onDespawn;
+    this.disposeItemCallback = options.dispose;
+  }
+  acquire() {
+    if (this.disposed) return null;
+    let item;
+    if (this.free.length) item = this.free.pop();
+    else if (this.created < this.capacity) {
+      item = this.create();
+      this.created++;
+    } else item = null;
+    if (item === null) return null;
+    this.active.add(item);
+    try {
+      this.onSpawn?.(item);
+    } catch (error) {
+      this.active.delete(item);
+      this.disposeItem(item);
+      throw error;
+    }
+    return item;
+  }
+  release(item) {
+    if (this.disposed || !this.active.has(item)) return false;
+    this.active.delete(item);
+    try {
+      this.onDespawn?.(item);
+      this.reset?.(item);
+    } catch (error) {
+      this.disposeItem(item);
+      throw error;
+    }
+    this.free.push(item);
     return true;
   }
-  reset(epoch) {
-    this.epoch = epoch;
-    this.seen.clear();
+  disposeItem(item) {
+    if (this.disposedItems.has(item)) return;
+    this.disposedItems.add(item);
+    this.disposeItemCallback?.(item);
+    this.created = Math.max(0, this.created - 1);
   }
-  get size() {
-    return this.seen.size;
+  clear() {
+    const items = [...this.active];
+    for (const item of items) this.release(item);
+    return items.length;
+  }
+  dispose() {
+    if (this.disposed) return;
+    this.disposed = true;
+    let firstError;
+    let hadError = false;
+    const run = (action) => {
+      try {
+        action();
+      } catch (error) {
+        if (!hadError) {
+          hadError = true;
+          firstError = error;
+        }
+      }
+    };
+    for (const item of this.active) {
+      run(() => this.onDespawn?.(item));
+      run(() => this.disposeItem(item));
+    }
+    for (const item of this.free) run(() => this.disposeItem(item));
+    this.active.clear();
+    this.free.length = 0;
+    if (hadError) throw firstError;
+  }
+  get activeCount() {
+    return this.active.size;
+  }
+  get availableCount() {
+    return this.free.length;
+  }
+  get createdCount() {
+    return this.created;
+  }
+  get isDisposed() {
+    return this.disposed;
+  }
+};
+
+// packages/core/runtime3d/CombatQueries.ts
+function validateRect(rect) {
+  if (!rect || ![rect.x, rect.y, rect.width, rect.height].every(Number.isFinite))
+    throw Error("Combat rectangles must be finite");
+  if (rect.width < 0 || rect.height < 0) throw Error("Combat rectangle size must be non-negative");
+  return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+}
+function validateLayer(name, value) {
+  if (!Number.isSafeInteger(value) || value <= 0 || value > 4294967295)
+    throw Error(`Invalid ${name} layer`);
+  return value >>> 0;
+}
+function overlap(a, b) {
+  return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
+}
+var ZhudaCombatWorld = class {
+  constructor() {
+    this.hurtboxes = /* @__PURE__ */ new Map();
+    this.hitboxes = /* @__PURE__ */ new Map();
+    this.hitTargets = /* @__PURE__ */ new Map();
+    this.disposed = false;
+  }
+  registerHurtbox(definition) {
+    if (this.disposed) throw Error("Disposed combat world");
+    this.validateBox(definition);
+    if (this.hurtboxes.has(definition.id)) throw Error(`Duplicate hurtbox: ${definition.id}`);
+    this.hurtboxes.set(definition.id, { ...definition, rect: validateRect(definition.rect) });
+    return () => this.hurtboxes.delete(definition.id);
+  }
+  registerHitbox(definition) {
+    if (this.disposed) throw Error("Disposed combat world");
+    this.validateBox(definition);
+    if (!definition.swingId && definition.swingId !== 0) throw Error("Hitbox swingId is required");
+    if (!Number.isFinite(definition.activeFrom ?? 0) || !Number.isFinite(definition.activeUntil ?? 0))
+      throw Error("Invalid hitbox active window");
+    if (definition.activeFrom !== void 0 && definition.activeUntil !== void 0 && definition.activeUntil < definition.activeFrom)
+      throw Error("Hitbox active window is reversed");
+    if (this.hitboxes.has(definition.id)) throw Error(`Duplicate hitbox: ${definition.id}`);
+    this.hitboxes.set(definition.id, { ...definition, rect: validateRect(definition.rect), mask: validateLayer("hitbox mask", definition.mask) });
+    return () => {
+      this.clearHitboxSwing(definition.id);
+      return this.hitboxes.delete(definition.id);
+    };
+  }
+  validateBox(definition) {
+    if (!definition?.id || !definition.ownerId) throw Error("Combat box needs id and ownerId");
+    validateLayer("box", definition.layer);
+    validateRect(definition.rect);
+    if (definition.sampleRect && typeof definition.sampleRect !== "function") throw Error("Invalid combat rect sampler");
+  }
+  updateHurtbox(id, patch) {
+    const box = this.hurtboxes.get(id);
+    if (!box) return false;
+    if (patch.rect) box.rect = validateRect(patch.rect);
+    if (patch.layer !== void 0) box.layer = validateLayer("box", patch.layer);
+    if (patch.enabled !== void 0) box.enabled = patch.enabled;
+    if (patch.sampleRect !== void 0) box.sampleRect = patch.sampleRect;
+    return true;
+  }
+  updateHitbox(id, patch) {
+    const box = this.hitboxes.get(id);
+    if (!box) return false;
+    const rect = patch.rect ? validateRect(patch.rect) : box.rect;
+    const layer = patch.layer === void 0 ? box.layer : validateLayer("box", patch.layer);
+    const mask = patch.mask === void 0 ? box.mask : validateLayer("hitbox mask", patch.mask);
+    if (patch.sampleRect !== void 0 && typeof patch.sampleRect !== "function") throw Error("Invalid combat rect sampler");
+    const swingId = patch.swingId === void 0 ? box.swingId : patch.swingId;
+    if (!swingId && swingId !== 0) throw Error("Hitbox swingId is required");
+    const activeFrom = patch.activeFrom === void 0 ? box.activeFrom : patch.activeFrom;
+    const activeUntil = patch.activeUntil === void 0 ? box.activeUntil : patch.activeUntil;
+    if (activeFrom !== void 0 && !Number.isFinite(activeFrom) || activeUntil !== void 0 && !Number.isFinite(activeUntil))
+      throw Error("Invalid hitbox active window");
+    if (activeFrom !== void 0 && activeUntil !== void 0 && activeUntil < activeFrom)
+      throw Error("Hitbox active window is reversed");
+    if (patch.swingId !== void 0 && String(patch.swingId) !== String(box.swingId)) this.clearHitboxSwing(id);
+    Object.assign(box, {
+      rect,
+      layer,
+      mask,
+      swingId,
+      activeFrom,
+      activeUntil,
+      ...patch.enabled === void 0 ? {} : { enabled: patch.enabled },
+      ...patch.sampleRect === void 0 ? {} : { sampleRect: patch.sampleRect }
+    });
+    return true;
+  }
+  queryHitbox(id, time) {
+    if (!Number.isFinite(time)) throw Error("Combat query time must be finite");
+    const hitbox = this.hitboxes.get(id);
+    if (!hitbox || hitbox.enabled === false || hitbox.activeFrom !== void 0 && time < hitbox.activeFrom || hitbox.activeUntil !== void 0 && time >= hitbox.activeUntil) return [];
+    const attackRect = validateRect(hitbox.sampleRect?.() ?? hitbox.rect);
+    const swingKey = `${hitbox.id}\0${String(hitbox.swingId)}`;
+    let seen = this.hitTargets.get(swingKey);
+    if (!seen) this.hitTargets.set(swingKey, seen = /* @__PURE__ */ new Set());
+    const result = [];
+    for (const hurtbox of this.hurtboxes.values()) {
+      if (hurtbox.enabled === false || !(hurtbox.layer >>> 0 & hitbox.mask)) continue;
+      const hurtRect = validateRect(hurtbox.sampleRect?.() ?? hurtbox.rect);
+      if (!overlap(attackRect, hurtRect) || seen.has(hurtbox.id)) continue;
+      seen.add(hurtbox.id);
+      result.push({
+        hitboxId: hitbox.id,
+        swingId: hitbox.swingId,
+        attackerId: hitbox.ownerId,
+        hurtboxId: hurtbox.id,
+        targetId: hurtbox.ownerId,
+        attackRect,
+        hurtRect
+      });
+    }
+    return result;
+  }
+  queryAll(time) {
+    const result = [];
+    for (const id of this.hitboxes.keys()) result.push(...this.queryHitbox(id, time));
+    return result;
+  }
+  clearHitboxSwing(hitboxId, swingId) {
+    const prefix = `${hitboxId}\0`;
+    let removed = 0;
+    for (const key of [...this.hitTargets.keys()]) {
+      if (key.startsWith(prefix) && (swingId === void 0 || key === `${prefix}${String(swingId)}`)) {
+        this.hitTargets.delete(key);
+        removed++;
+      }
+    }
+    return removed;
+  }
+  clear() {
+    this.hurtboxes.clear();
+    this.hitboxes.clear();
+    this.hitTargets.clear();
+  }
+  dispose() {
+    if (this.disposed) return;
+    this.disposed = true;
+    this.clear();
+  }
+  get hurtboxCount() {
+    return this.hurtboxes.size;
+  }
+  get hitboxCount() {
+    return this.hitboxes.size;
   }
 };
 
@@ -10436,6 +11067,7 @@ zhudaSurface(s,zhudaUV,pixel.positionWS,pixel.normalWS);inputs.diffuseColor=max(
   ZhudaBenchmarkEngine,
   ZhudaCameraCoordinates,
   ZhudaCameraRig,
+  ZhudaCombatWorld,
   ZhudaDistanceLOD,
   ZhudaDynamicMesh,
   ZhudaEffectBudget,
@@ -10444,6 +11076,7 @@ zhudaSurface(s,zhudaUV,pixel.positionWS,pixel.normalWS);inputs.diffuseColor=max(
   ZhudaEngine,
   ZhudaEventGate,
   ZhudaFilmicPipeline,
+  ZhudaGraphicsGuard,
   ZhudaHeightfield,
   ZhudaInstanceGroup,
   ZhudaLayaParticleRenderer,
@@ -10452,6 +11085,7 @@ zhudaSurface(s,zhudaUV,pixel.positionWS,pixel.normalWS);inputs.diffuseColor=max(
   ZhudaLayaRibbonRenderer3D,
   ZhudaLitSurfaceMaterial,
   ZhudaModelLibrary,
+  ZhudaObjectPool,
   ZhudaParticleEventLink,
   ZhudaParticleMesh3D,
   ZhudaParticleSystem,
@@ -10460,6 +11094,8 @@ zhudaSurface(s,zhudaUV,pixel.positionWS,pixel.normalWS);inputs.diffuseColor=max(
   ZhudaPointerInput,
   ZhudaPrefab,
   ZhudaPrefabLibrary,
+  ZhudaRealtimeClock,
+  ZhudaRenderSpace,
   ZhudaRequestSlot,
   ZhudaResourceScope,
   ZhudaRibbonPath3D,
@@ -10469,6 +11105,7 @@ zhudaSurface(s,zhudaUV,pixel.positionWS,pixel.normalWS);inputs.diffuseColor=max(
   ZhudaRuntimeProfiler,
   ZhudaRuntimeSession,
   ZhudaSceneBudget,
+  ZhudaSceneMutationQueue,
   ZhudaSceneQueries,
   ZhudaSceneRegions,
   ZhudaShaderMaterial,
@@ -10478,6 +11115,7 @@ zhudaSurface(s,zhudaUV,pixel.positionWS,pixel.normalWS);inputs.diffuseColor=max(
   ZhudaTerrain2D,
   ZhudaTerrain2DRenderer,
   ZhudaTerrain3D,
+  ZhudaTimerScheduler,
   ZhudaUI,
   ZhudaVfxCamera,
   ZhudaVfxMaterial,

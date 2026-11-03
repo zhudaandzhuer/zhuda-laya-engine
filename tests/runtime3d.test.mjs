@@ -4,6 +4,13 @@ import {
   ZhudaAssetCache,
   ZhudaRequestSlot,
   ZhudaSimulationClock,
+  ZhudaRealtimeClock,
+  ZhudaTimerScheduler,
+  ZhudaSceneMutationQueue,
+  ZhudaRenderSpace,
+  ZhudaGraphicsGuard,
+  ZhudaObjectPool,
+  ZhudaCombatWorld,
   ZhudaSnapshotBuffer,
   ZhudaEventGate,
   compose4,
@@ -70,6 +77,34 @@ test("runtime frame pacing tolerates integer 16/17ms Safari timestamps and relea
     assert.ok(clears);
     session.dispose();
     assert.equal(callback, null);
+  } finally {
+    Object.assign(globalThis, saved);
+  }
+});
+test("runtime session drives scaled samples and frame timers from one loop", () => {
+  const saved = {
+    document: globalThis.document,
+    window: globalThis.window,
+    requestAnimationFrame: globalThis.requestAnimationFrame,
+    cancelAnimationFrame: globalThis.cancelAnimationFrame,
+  };
+  let callback, fired = 0, sample, mutations = 0;
+  try {
+    globalThis.document = Object.assign(new EventTarget(), { hidden: false });
+    globalThis.window = new EventTarget();
+    globalThis.requestAnimationFrame = fn => { callback = fn; return 1; };
+    globalThis.cancelAnimationFrame = () => { callback = null; };
+    const session = new ZhudaRuntimeSession(new EventTarget(), { timeScale: 0.5 });
+    session.timers.scheduleOnce(0.01, () => fired++);
+    session.mutations.deferAdd(() => mutations++);
+    session.start((dt, value) => { sample = value; assert.equal(dt, value.unscaledDeltaTime); });
+    callback(1000);
+    callback(1020);
+    assert.equal(sample.unscaledDeltaTime, 0.02);
+    assert.equal(sample.scaledDeltaTime, 0.01);
+    assert.equal(fired, 1);
+    assert.equal(mutations, 1);
+    session.dispose();
   } finally {
     Object.assign(globalThis, saved);
   }
@@ -219,6 +254,115 @@ test("10 Hz snapshots and fixed simulation agree at 30/60/120 FPS; repeats never
     buffer.reset("round-2");
     assert.equal(buffer.sample(0), null);
   }
+});
+test("scaled and unscaled clocks plus timer ownership are deterministic", () => {
+  const realtime = new ZhudaRealtimeClock();
+  realtime.timeScale = 0.25;
+  const first = realtime.advance(0.4);
+  assert.equal(first.unscaledDeltaTime, 0.4);
+  assert.equal(first.scaledDeltaTime, 0.1);
+  assert.equal(first.unscaledTime, 0.4);
+  assert.equal(first.scaledTime, 0.1);
+  realtime.paused = true;
+  const paused = realtime.advance(1);
+  assert.equal(paused.unscaledDeltaTime, 0);
+  assert.equal(paused.scaledTime, 0.1);
+
+  const timers = new ZhudaTimerScheduler(8), owner = {}, calls = [];
+  timers.scheduleOnce(0.2, () => calls.push("scaled"), { owner });
+  timers.scheduleOnce(0.2, () => calls.push("real"), { owner, channel: "unscaled" });
+  timers.scheduleLoop(0.1, () => calls.push("loop"), { channel: "scaled" });
+  timers.advance(0.2, 0.05);
+  assert.deepEqual(calls, ["real"]);
+  timers.advance(0.2, 0.15);
+  assert.deepEqual(calls, ["real", "scaled", "loop", "loop"]);
+  assert.equal(timers.cancelOwner(owner), 0);
+  timers.cancelOwner({});
+  timers.dispose();
+  assert.equal(timers.size, 0);
+  const bounded = new ZhudaTimerScheduler(2), boundedCalls = [];
+  bounded.scheduleLoop(0.1, () => boundedCalls.push(1));
+  assert.equal(bounded.advance(0.5, 0.5), 2);
+  assert.equal(boundedCalls.length, 2);
+  bounded.dispose();
+});
+test("scene mutation queue defers nested writes and rejects work after disposal", () => {
+  const queue = new ZhudaSceneMutationQueue(), events = [];
+  queue.deferAdd(() => {
+    events.push("add");
+    queue.deferDestroy(() => events.push("nested-destroy"));
+  });
+  queue.deferRemove(() => events.push("remove"));
+  assert.equal(queue.flush(), 2);
+  assert.deepEqual(events, ["add", "remove"]);
+  assert.equal(queue.flush(), 1);
+  assert.deepEqual(events, ["add", "remove", "nested-destroy"]);
+  const handle = queue.deferDestroy(() => events.push("cancelled"));
+  assert.equal(handle.cancel(), true);
+  assert.equal(queue.flush(), 0);
+  queue.dispose();
+  assert.throws(() => queue.deferAdd(() => {}), /Disposed/);
+});
+test("render passes and graphics guard keep coordinate and numeric policy explicit", () => {
+  const space = new ZhudaRenderSpace(), passes = [], matrix = [1, 0, 0, 1];
+  space.register({
+    onRenderLocal: context => passes.push([context.pass, context.coordinates, context.transform]),
+    onRenderWorld: context => passes.push([context.pass, context.coordinates, context.transform]),
+    onRenderOverlay: context => passes.push([context.pass, context.coordinates, context.transform]),
+  });
+  assert.equal(space.render({ localTransform: matrix, worldTransform: null, overlayTransform: matrix }), 3);
+  assert.deepEqual(passes, [
+    ["local", "local", matrix],
+    ["world", "world", null],
+    ["overlay", "camera-overlay", matrix],
+  ]);
+  const calls = [], target = {
+    clear: (...args) => calls.push(["clear", ...args]),
+    drawRect: (...args) => calls.push(["rect", ...args]),
+    drawRoundRect: (...args) => calls.push(["round", ...args]),
+    drawCircle: (...args) => calls.push(["circle", ...args]),
+    drawEllipse: (...args) => calls.push(["ellipse", ...args]),
+  };
+  const graphics = new ZhudaGraphicsGuard(target);
+  graphics.drawCircle(1, 2, -3, "red");
+  graphics.drawRoundRect(0, 0, 10, 4, 9, -1, 3, 2, "blue");
+  graphics.drawRect(0, 0, -4, 5, "green");
+  assert.equal(calls[0][3], 0);
+  assert.equal(calls[1][5], 2);
+  assert.throws(() => graphics.drawCircle(NaN, 0, 1, "red"), /Graphics x/);
+});
+test("object pool and combat world reset state and deduplicate one swing", () => {
+  const lifecycle = [], created = [], disposed = [], pool = new ZhudaObjectPool({
+    capacity: 1,
+    create: () => { const item = { value: 0 }; created.push(item); return item; },
+    onSpawn: item => { item.value++; lifecycle.push("spawn"); },
+    onDespawn: () => lifecycle.push("despawn"),
+    reset: item => { item.value = 0; lifecycle.push("reset"); },
+    dispose: item => disposed.push(item),
+  });
+  const item = pool.acquire();
+  assert.equal(item.value, 1);
+  assert.equal(pool.acquire(), null);
+  assert.equal(pool.release(item), true);
+  assert.equal(pool.availableCount, 1);
+  const reused = pool.acquire();
+  assert.equal(reused, item);
+  assert.equal(reused.value, 1);
+  pool.dispose();
+  assert.deepEqual(lifecycle, ["spawn", "despawn", "reset", "spawn", "despawn"]);
+  assert.equal(created.length, 1);
+  assert.deepEqual(disposed, [item]);
+
+  const combat = new ZhudaCombatWorld();
+  combat.registerHurtbox({ id: "hurt", ownerId: "enemy", layer: 2, rect: { x: 4, y: 0, width: 2, height: 2 } });
+  combat.registerHitbox({ id: "hit", ownerId: "hero", layer: 1, mask: 2, swingId: "s1", activeFrom: 1, activeUntil: 2, rect: { x: 4, y: 0, width: 2, height: 2 } });
+  assert.deepEqual(combat.queryHitbox("hit", 0), []);
+  assert.equal(combat.queryHitbox("hit", 1).length, 1);
+  assert.deepEqual(combat.queryHitbox("hit", 1), []);
+  assert.deepEqual(combat.queryHitbox("hit", 2), []);
+  combat.updateHitbox("hit", { swingId: "s2" });
+  assert.equal(combat.queryHitbox("hit", 1.5).length, 1);
+  combat.dispose();
 });
 test("3D attachments preserve rotated non-uniform parent matrices and stop after target destruction", () => {
   const q = { x: 0, y: Math.sin(Math.PI / 4), z: 0, w: Math.cos(Math.PI / 4) },

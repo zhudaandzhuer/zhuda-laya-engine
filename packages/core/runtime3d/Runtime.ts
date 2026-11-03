@@ -1,7 +1,11 @@
+import { ZhudaRealtimeClock, ZhudaTimerScheduler, type ZhudaClockSample } from "./Clocks.ts";
+import { ZhudaSceneMutationQueue } from "./SceneMutation.ts";
+
 export interface ManagedRuntimeOptions {
   container?: HTMLElement;
   dprCap?: number;
   targetFPS?: 30 | 60;
+  timeScale?: number;
   clearInput?: () => void;
   onPause?: (paused: boolean) => void;
   onContextLost?: () => void;
@@ -47,14 +51,22 @@ export class ZhudaRuntimeSession {
   paused = false;
   contextLost = false;
   disposed = false;
+  readonly clock = new ZhudaRealtimeClock();
+  readonly timers = new ZhudaTimerScheduler();
+  readonly mutations = new ZhudaSceneMutationQueue();
   private cleanups: (() => void)[] = [];
   private frame = 0;
   private previous = 0;
-  private task: ((dt: number) => void) | null = null;
+  private task: ((dt: number, sample?: ZhudaClockSample) => void) | null = null;
   private observer?: ResizeObserver;
   constructor(canvas: HTMLCanvasElement, options: ManagedRuntimeOptions = {}) {
     this.canvas = canvas;
     this.options = options;
+    if (options.timeScale !== undefined) {
+      if (!Number.isFinite(options.timeScale) || options.timeScale < 0)
+        throw Error("Invalid runtime time scale");
+      this.clock.timeScale = options.timeScale;
+    }
     const listen = (target: EventTarget, event: string, fn: EventListener) => {
       target.addEventListener(event, fn);
       this.cleanups.push(() => target.removeEventListener(event, fn));
@@ -111,7 +123,7 @@ export class ZhudaRuntimeSession {
     );
     this.options.onResize?.({ width, height, dpr });
   }
-  start(update: (dt: number) => void) {
+  start(update: (dt: number, sample?: ZhudaClockSample) => void) {
     if (this.disposed) throw Error("Disposed runtime");
     this.task = update;
     if (this.frame) return;
@@ -125,7 +137,10 @@ export class ZhudaRuntimeSession {
           elapsed >= 1000 / (this.options.targetFPS || 60) - 2
         ) {
           this.previous = now;
-          this.task?.(Math.min(0.1, elapsed / 1000));
+          const sample = this.clock.advance(Math.min(0.1, elapsed / 1000));
+          this.timers.advance(sample.unscaledDeltaTime, sample.scaledDeltaTime);
+          this.task?.(sample.unscaledDeltaTime, sample);
+          this.mutations.flush();
         }
       }
       this.frame = requestAnimationFrame(tick);
@@ -138,6 +153,8 @@ export class ZhudaRuntimeSession {
     cancelAnimationFrame(this.frame);
     this.frame = 0;
     this.task = null;
+    this.timers.dispose();
+    this.mutations.dispose();
     this.observer?.disconnect();
     for (const f of this.cleanups) f();
     this.cleanups = [];

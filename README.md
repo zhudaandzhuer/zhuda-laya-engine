@@ -88,6 +88,7 @@ Editable 2D tile maps and 3D heightfields, chunk streaming, LOD 1/2/4, closed si
 | Visual state contracts | `SpineVisualContract` rejects incomplete fallback presentation; `VisualFocusContract` gives focus, empty selection and reset distinct meanings. |
 | Static assets and UI | `.lh` / `.ls` serialization, explicit `percent:false`, pixel bounds and color comparison, nine-slice checks and safe-area fixtures. |
 | Effects | Seeded 2D/3D particles, pooling, ribbons, flipbooks, collision events, VFX materials, timelines, anchors and quality budgets. |
+| Runtime hardening | Scaled/unscaled clocks and timers, deferred scene mutations, explicit local/world/overlay render passes, defensive Graphics calls, bounded object pools and consumer-owned combat queries. See [runtime hardening](docs/runtime-hardening.md). |
 
 ### 3D terrain, shaders and integration
 

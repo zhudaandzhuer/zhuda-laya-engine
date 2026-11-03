@@ -5,6 +5,13 @@ import {
   ZhudaDynamicMesh,
   ZhudaSceneQueries,
   ZhudaSimulationClock,
+  ZhudaRealtimeClock,
+  ZhudaTimerScheduler,
+  ZhudaSceneMutationQueue,
+  ZhudaRenderSpace,
+  ZhudaGraphicsGuard,
+  ZhudaObjectPool,
+  ZhudaCombatWorld,
   ZhudaSnapshotBuffer,
   ZhudaEventGate,
   ZhudaCameraCoordinates,
@@ -62,6 +69,22 @@ async function consume() {
   const unsafe: QueryHit = queries.raycast(coordinates.screenToRay(10, 20));
   console.log(hit?.entityId, unsafe, inspectSceneResources());
   const clock = new ZhudaSimulationClock();
+  const realtime = new ZhudaRealtimeClock();
+  realtime.timeScale = 0.5;
+  const scheduler = new ZhudaTimerScheduler();
+  scheduler.scheduleOnce(0.1, () => {}, { channel: 'unscaled' });
+  const mutations = new ZhudaSceneMutationQueue();
+  mutations.deferDestroy(() => {});
+  const renderSpace = new ZhudaRenderSpace();
+  renderSpace.register({ onRenderOverlay: () => {} });
+  const graphics = new ZhudaGraphicsGuard({} as any);
+  graphics.drawCircle(0, 0, 1, '#fff');
+  const pool = new ZhudaObjectPool({ capacity: 1, create: () => ({}) });
+  pool.release(pool.acquire()!);
+  const combat = new ZhudaCombatWorld();
+  combat.registerHurtbox({ id: 'hurt', ownerId: 'enemy', layer: 2, rect: { x: 0, y: 0, width: 1, height: 1 } });
+  combat.registerHitbox({ id: 'hit', ownerId: 'hero', layer: 1, mask: 2, swingId: 1, rect: { x: 0, y: 0, width: 1, height: 1 } });
+  console.log(realtime.sample(), scheduler.size, mutations.size, renderSpace.size, pool.activeCount, combat.hurtboxCount);
   const snapshots = new ZhudaSnapshotBuffer(
     "round-1",
     (a: number, b: number, t) => a + (b - a) * t,
