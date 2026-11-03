@@ -210,10 +210,17 @@ export async function runConsumerBuild({
       filter: (p) => !path.basename(p).startsWith("."),
     });
   const assets = path.join(projectRoot, "assets");
+  const assetExcludes = Array.isArray(config.assetExclude)
+    ? config.assetExclude.map((value) => String(value).replaceAll("\\", "/").replace(/^\/+|\/+$/g, ""))
+    : [];
   if (fs.existsSync(assets))
     fs.cpSync(assets, path.join(out, "assets"), {
       recursive: true,
-      filter: (p) => !path.basename(p).startsWith("."),
+      filter: (p) => {
+        if (path.basename(p).startsWith(".")) return false;
+        const relative = path.relative(assets, p).split(path.sep).join("/");
+        return !assetExcludes.some((prefix) => relative === prefix || relative.startsWith(`${prefix}/`));
+      },
     });
   for (const file of topology.orderedFiles)
     fs.copyFileSync(

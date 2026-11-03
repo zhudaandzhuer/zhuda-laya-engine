@@ -15,6 +15,7 @@ test("independent consumer preserves source hashes and its DOM/CSS; archive is a
   try {
     fs.mkdirSync(path.join(root, "public"));
     fs.mkdirSync(path.join(root, "assets/prefabs"), { recursive: true });
+    fs.mkdirSync(path.join(root, "assets/raw"), { recursive: true });
     fs.mkdirSync(path.join(root, "src"));
     fs.writeFileSync(
       path.join(root, "public/index.html"),
@@ -22,6 +23,7 @@ test("independent consumer preserves source hashes and its DOM/CSS; archive is a
     );
     fs.writeFileSync(path.join(root, "public/own.css"), "#mount{color:red}");
     fs.writeFileSync(path.join(root, "assets/prefabs/fixture.lh"), "{}");
+    fs.writeFileSync(path.join(root, "assets/raw/source.mp4"), "source");
     fs.writeFileSync(
       path.join(root, "src/Main.ts"),
       "import {ZhudaSceneQueries} from 'zhuda-laya-engine'; window['queries']=new ZhudaSceneQueries();",
@@ -42,7 +44,11 @@ test("independent consumer preserves source hashes and its DOM/CSS; archive is a
       /Visual presentation contract failed/,
     );
     const before = hashes();
-    const r = await runConsumerBuild({ projectRoot: root, engineRoot });
+    const r = await runConsumerBuild({
+      projectRoot: root,
+      engineRoot,
+      config: { assetExclude: ["raw"] },
+    });
     assert.deepEqual(hashes(), before);
     assert.equal(r.sourceWrites, 0);
     assert.ok(
@@ -59,6 +65,7 @@ test("independent consumer preserves source hashes and its DOM/CSS; archive is a
       fs.readFileSync(path.join(root, "dist/web/assets/prefabs/fixture.lh"), "utf8"),
       "{}",
     );
+    assert.equal(fs.existsSync(path.join(root, "dist/web/assets/raw/source.mp4")), false);
     assert.ok(
       !fs.readdirSync(path.join(root, "dist/web")).includes("preview.html"),
     );

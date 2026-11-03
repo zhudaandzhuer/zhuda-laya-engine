@@ -16,7 +16,7 @@ await runConsumerBuild({
 });
 ```
 
-消費端 `public/index.html` 必須有 `<!-- ZHUDA_LIBS -->` 與 `<!-- ZHUDA_ENTRY -->`。保留原有 HTML、CSS、DOM；預設來源為 `src/Main.ts`，輸出為 `dist/web`。可設定 `entry`、`publicDir`、`htmlTemplate`、`outDir`。讀取反射資料後直接 bundle，不產生消費端 `.generated`，不寫入來源、不複製內建示範。現有 `zhuda-laya-build` 外部建置也走此路徑；`demoAssets: true` 才啟用舊示範流程。若有畫面契約 manifest，仍執行原有檢查。
+消費端 `public/index.html` 必須有 `<!-- ZHUDA_LIBS -->` 與 `<!-- ZHUDA_ENTRY -->`。保留原有 HTML、CSS、DOM；預設來源為 `src/Main.ts`，輸出為 `dist/web`。可設定 `entry`、`publicDir`、`htmlTemplate`、`outDir`，並會把消費端 `assets/` 複製到輸出供 Provider／Prefab 使用；可用 `assetExclude`（相對 `assets/` 的目錄前綴陣列）排除原始影片、設計檔等不應部署的來源資料。讀取反射資料後直接 bundle，不產生消費端 `.generated`，不寫入來源、不複製內建示範。現有 `zhuda-laya-build` 外部建置也走此路徑；`demoAssets: true` 才啟用舊示範流程。若有畫面契約 manifest，仍執行原有檢查。
 
 `dist/game.zip` 為可解壓的 ZIP，`consumer-build.json` 記錄實際 ZIP／解壓大小，預設各不得超過 50,000,000 bytes。`payload-manifest.json` 列出引擎庫與每個 payload 的 bytes／SHA256。資源與 script 均使用相對路徑；消費端自行管理資產版本目錄。iframe opaque-origin 載入 GLB／JPG 需要資產伺服器回傳 CORS 許可。
 
