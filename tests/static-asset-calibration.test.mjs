@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ZhudaAssetSerializer } from '../packages/core/StaticAssetPipeline.ts';
+import { ZhudaAssetSerializer, ZhudaPrefab } from '../packages/core/StaticAssetPipeline.ts';
 import { PixelCalibrationEngine } from '../packages/core/PixelCalibrationEngine.ts';
 
 test('ZhudaAssetSerializer reverse-serializes runtime nodes into Laya 3.4.2 .lh JSON with explicit percent:false', () => {
@@ -64,6 +64,61 @@ test('ZhudaAssetSerializer reverse-serializes runtime nodes into Laya 3.4.2 .lh 
   assert.equal(lh._$child.length, 1);
   assert.equal(lh._$child[0]._$type, 'Text');
   assert.equal(lh._$child[0].text, 'START');
+});
+
+test('DrawTextureCmd keeps a stable texture ID and hydrates through the preloaded Laya loader', () => {
+  const lh = ZhudaAssetSerializer.serializeNodeToHierarchy({
+    name: 'RasterPanel',
+    graphics: {
+      cmds: [{
+        cmdID: 'DrawTextureCmd',
+        textureId: 'ui/panel.png',
+        x: 4,
+        y: 8,
+        width: 120,
+        height: 40,
+        alpha: 0.8
+      }]
+    }
+  });
+  assert.deepEqual(lh._gcmds[0], {
+    _$type: 'DrawTextureCmd',
+    textureId: 'ui/panel.png',
+    x: 4,
+    y: 8,
+    width: 120,
+    height: 40,
+    matrix: undefined,
+    alpha: 0.8,
+    color: null,
+    blendMode: undefined,
+    uv: undefined,
+    percent: false
+  });
+
+  const previous = globalThis.Laya;
+  const calls = [];
+  globalThis.Laya = {
+    loader: { getRes: id => id === 'ui/panel.png' ? { id } : null },
+    Matrix: class Matrix {
+      constructor(...values) { this.values = values; }
+    }
+  };
+  try {
+    ZhudaPrefab.applyGraphicsCommands({
+      clear() {},
+      drawTexture(...args) { calls.push(args); }
+    }, lh._gcmds);
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0][0].id, 'ui/panel.png');
+    assert.equal(calls[0][5], null);
+    assert.throws(() => ZhudaPrefab.applyGraphicsCommands({
+      clear() {},
+      drawTexture() {}
+    }, [{ _$type: 'DrawTextureCmd', textureId: 'ui/missing.png' }]), /ui\/missing\.png/);
+  } finally {
+    globalThis.Laya = previous;
+  }
 });
 
 test('PixelCalibrationEngine detects +3px width drift and ΔE00 color drift and auto-converges to 0px / ΔE00=0', () => {

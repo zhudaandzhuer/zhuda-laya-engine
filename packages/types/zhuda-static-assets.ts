@@ -25,6 +25,7 @@ export interface LayaGraphicsCmdData {
     | 'DrawLineCmd'
     | 'DrawPolyCmd'
     | 'DrawPieCmd'
+    | 'DrawTextureCmd'
     | 'FillTextCmd';
   x?: number;
   y?: number;
@@ -50,6 +51,12 @@ export interface LayaGraphicsCmdData {
   font?: string;
   color?: string;
   align?: string;
+  /** Stable provider/loader ID used to resolve DrawTextureCmd at hydration. */
+  textureId?: string;
+  matrix?: number[];
+  alpha?: number;
+  blendMode?: string;
+  uv?: number[];
 }
 
 export interface LayaComponentData {

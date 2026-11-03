@@ -2066,6 +2066,24 @@ var ZhudaPreviewBundle = (() => {
             lineColor: cmd.lineColor ?? null,
             lineWidth: cmd.lineWidth ?? 0
           };
+        case "DrawTextureCmd": {
+          const textureId = typeof cmd.textureId === "string" ? cmd.textureId : typeof cmd.texture === "string" ? cmd.texture : typeof cmd.texture?.url === "string" ? cmd.texture.url : "";
+          if (!textureId || /^(?:blob:|data:)/i.test(textureId)) return null;
+          return {
+            _$type: "DrawTextureCmd",
+            textureId,
+            x: cmd.x ?? 0,
+            y: cmd.y ?? 0,
+            width: cmd.width,
+            height: cmd.height,
+            matrix: Array.isArray(cmd.matrix) ? [...cmd.matrix] : void 0,
+            alpha: cmd.alpha,
+            color: cmd.color ?? null,
+            blendMode: cmd.blendMode,
+            uv: Array.isArray(cmd.uv) ? [...cmd.uv] : void 0,
+            percent
+          };
+        }
         default:
           return null;
       }
@@ -3518,6 +3536,31 @@ var ZhudaPreviewBundle = (() => {
               cmd.lineWidth ?? 1
             );
             break;
+          case "DrawTextureCmd": {
+            const textureId = cmd.textureId;
+            const runtime = globalThis.Laya;
+            const texture = textureId && runtime?.loader?.getRes?.(textureId);
+            if (!texture) {
+              throw Error(`DrawTextureCmd texture is not loaded: ${textureId || "<missing textureId>"}`);
+            }
+            if (typeof graphics.drawTexture !== "function") {
+              throw Error("DrawTextureCmd requires Graphics.drawTexture");
+            }
+            const matrix = Array.isArray(cmd.matrix) && cmd.matrix.length === 6 && runtime?.Matrix ? new runtime.Matrix(...cmd.matrix) : null;
+            graphics.drawTexture(
+              texture,
+              cmd.x ?? 0,
+              cmd.y ?? 0,
+              cmd.width,
+              cmd.height,
+              matrix,
+              cmd.alpha,
+              cmd.color ?? null,
+              cmd.blendMode ?? null,
+              cmd.uv
+            );
+            break;
+          }
           default:
             break;
         }
