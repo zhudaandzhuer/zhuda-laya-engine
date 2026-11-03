@@ -1,7 +1,7 @@
 # Verification record: prefab-release
 
 Task document: `docs/plans/records/prefab-release/task.md`  
-Commit: `a30ae54`  
+Commit: `c4977f2`  
 Date: 2026-11-03
 
 ## Environment
