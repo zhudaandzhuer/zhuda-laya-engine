@@ -1,15 +1,16 @@
 # Verification record: game1-cleanup-and-engine-splash
 
 Task document: `docs/plans/records/game1-cleanup-and-engine-splash/task.md`  
-Commit: `9dc6d7b95866757acd5f3a6a42fb2b313e8f3395` (engine base; final change
-commit is recorded after this implementation is committed)  
+Commit: `4e246d49a4a6a9d385159c24107d2c324459e09c` (engine splash
+implementation)  
 Date: 2026-11-04
 
 ## Environment
 
 - OS: macOS on the local Codex host; no real iOS or Android device attached.
 - Node / npm: recorded by `node --version` and `npm --version` below.
-- Engine: `9dc6d7b95866757acd5f3a6a42fb2b313e8f3395` before this change.
+- Engine base: `9dc6d7b95866757acd5f3a6a42fb2b313e8f3395`; implementation:
+  `4e246d49a4a6a9d385159c24107d2c324459e09c`.
 - Consumer: `/Users/yaowei/Desktop/game1`, plain directory with no `.git` or
   GitHub remote; dependency is pinned to the same engine revision.
 - Browser: generated HTML inspection and local desktop browser execution;
