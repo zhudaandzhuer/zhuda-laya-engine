@@ -29,6 +29,7 @@ export declare function zhudaComponent(
   meta: string | ZhudaClassMetadata,
 ): <T extends new (...args: any[]) => any>(ctor: T) => T;
 export declare class Zhuda3D {
+  static buildPrefabTree(spec: import('./prefabs/PrefabTree3D').PrefabTree3D): import('./prefabs/PrefabTree3D').PrefabTreeInstance3D;
   static createScene3D(
     parent: Laya.Node,
     options?: {

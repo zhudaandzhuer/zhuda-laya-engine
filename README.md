@@ -67,6 +67,16 @@ in the [consumer route](docs/consumer-route.md) when writing project reports.
 
 [Play Neon Apex](https://zhudaandzhuer.github.io/zhuda-neon-racer/) · [Explore 100 particle effects](https://zhudaandzhuer.github.io/zhuda-particle-lab/) · [Try the 3D terrain lab](https://zhudaandzhuer.github.io/zhuda-3d-lab/?terrain=1)
 
+## Consumer runtime additions (1.4.0 candidate)
+
+Doctor now selects the current project and rejects empty scans. The existing
+mixer accepts provider-backed audio samples with loops, fades and disposal.
+The shared Prefab library/preview accepts typed primitive 3D trees with named
+nodes, states, material slots and sockets. See [audio](docs/audio.md),
+[3D Prefabs](docs/procedural-prefabs.md) and the
+[verification scope](docs/plans/records/consumer-runtime-hardening/verification.md).
+These additions do not establish physical mobile acceptance or approve game art.
+
 ## More games
 
 The separate racer and four arcade games offer keyboard/touch input, levels, a win/loss state and saved progress.

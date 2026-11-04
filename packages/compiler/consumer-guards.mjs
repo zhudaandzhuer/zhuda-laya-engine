@@ -113,7 +113,7 @@ export function auditConsumerSources(projectRoot, overrides = {}) {
         const specifier = node.moduleSpecifier?.text || "";
         if (specifier === ENGINE_PACKAGE) hasPublicSdkImport = true;
         if (PRIVATE_ENGINE_IMPORT.test(specifier))
-          add(source, node, "PRIVATE_ENGINE_IMPORT", "Use the pinned zhuda-laya-engine public entry; report missing APIs upstream.");
+          add(source, node, "PRIVATE_ENGINE_IMPORT", "Import { ZhudaEngine, Zhuda3D } from 'zhuda-laya-engine'. Its public declarations also expose typed Laya.Sprite3D/Laya.Vector3; report any remaining API gap with a strict consumer fixture.");
         if (isExternalRendererSpecifier(specifier))
           add(source, node, "EXTERNAL_RENDERER_IMPORT", "Use Zhuda's public rendering contracts; a Three.js renderer is not evidence of Zhuda engine usage.");
       }
@@ -123,13 +123,13 @@ export function auditConsumerSources(projectRoot, overrides = {}) {
         if (argument && ts.isStringLiteral(argument)) {
           if (argument.text === ENGINE_PACKAGE) hasPublicSdkImport = true;
           if (PRIVATE_ENGINE_IMPORT.test(argument.text))
-            add(source, node, "PRIVATE_ENGINE_IMPORT", "Use the pinned zhuda-laya-engine public entry; report missing APIs upstream.");
+            add(source, node, "PRIVATE_ENGINE_IMPORT", "Use the pinned 'zhuda-laya-engine' root (ZhudaEngine/Zhuda3D) and its typed Laya runtime declarations; do not import engine source paths.");
           if (isExternalRendererSpecifier(argument.text))
             add(source, node, "EXTERNAL_RENDERER_IMPORT", "Use Zhuda's public rendering contracts; a Three.js renderer is not evidence of Zhuda engine usage.");
         }
       }
       if (ts.isVariableDeclaration(node) && node.name.getText(source) === "Laya" && node.type?.kind === ts.SyntaxKind.AnyKeyword)
-        add(source, node, "UNTYPED_LAYA", "Remove Laya: any and use the installed public runtime declarations.");
+        add(source, node, "UNTYPED_LAYA", "Remove Laya: any. Import { ZhudaEngine, Zhuda3D } from 'zhuda-laya-engine'; after boot, use typed new Laya.Vector3(...) / new Laya.MeshSprite3D(...). LayaVector3 and LayaMeshSprite3D are not named SDK exports.");
       ts.forEachChild(node, visit);
     };
     visit(source);

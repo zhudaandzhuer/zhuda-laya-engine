@@ -12,10 +12,16 @@ import type {
   IframeAudioChannel,
   IframeSoundAdapterOptions,
   IframeSoundDiagnostics,
-  IframeToneOptions
+  IframeToneOptions,
+  IframeSampleOptions,
+  IframeSampleInfo
 } from '../types/index.ts';
 
+import { createProviderAssetCache, normalizeAssetId } from './runtime3d/AssetProvider.ts';
+import type { AssetLease, ZhudaAssetCache } from './runtime3d/Assets.ts';
+
 export interface QueuedAudioTask {
+  sampleId?: string;
   id: string;
   channel: IframeAudioChannel;
   createdAt: number;
@@ -26,7 +32,10 @@ type Cleanup = () => void;
 type VoiceState = {
   logicalId: string;
   channel: IframeAudioChannel;
-  source: OscillatorNode;
+  source: AudioScheduledSourceNode;
+  gain?: GainNode;
+  sampleId?: string;
+  stopping?: boolean;
   stopped: boolean;
 };
 
@@ -84,6 +93,12 @@ export class IframeSoundAdapter {
   private droppedVoices = 0;
   private playedEventsCount = 0;
   private voiceSerial = 0;
+  private sampleCache?: ZhudaAssetCache<AudioBuffer>;
+  private readonly samples = new Map<string, AssetLease<AudioBuffer>>();
+  private readonly sampleLoads = new Map<AbortController, string>();
+  private readonly sampleTimeoutMs: number;
+  private readonly maxSamples: number;
+  private readonly maxDecodedSampleBytes: number;
 
   public static getShared(): IframeSoundAdapter {
     if (!this.instance || this.instance.disposed) {
@@ -100,6 +115,33 @@ export class IframeSoundAdapter {
       maxActiveVoices: options.maxActiveVoices ?? 32,
       syncLayaSoundManager: options.syncLayaSoundManager ?? false
     };
+    this.sampleTimeoutMs = options.sampleTimeoutMs ?? 15_000;
+    this.maxSamples = options.maxSamples ?? 32;
+    this.maxDecodedSampleBytes = options.maxDecodedSampleBytes ?? 64 * 1024 * 1024;
+    for (const [name, value] of Object.entries({sampleTimeoutMs:this.sampleTimeoutMs,maxSamples:this.maxSamples,maxDecodedSampleBytes:this.maxDecodedSampleBytes,
+      maxActiveVoices:this.options.maxActiveVoices,maxPendingQueue:this.options.maxPendingQueue,queueMaxAgeMs:this.options.queueMaxAgeMs}))
+      if (!Number.isSafeInteger(value) || value <= 0) throw Error(`Invalid audio limit: ${name}`);
+    if (options.sampleProvider) this.sampleCache = createProviderAssetCache(options.sampleProvider, async (asset, signal) => {
+      const context = this.ensureAudioContext();
+      if (!context) throw Error('WebAudio decoder unavailable');
+      if (signal.aborted) throw new DOMException('Sample decode cancelled', 'AbortError');
+      let cancel: () => void = () => {};
+      try {
+        const decoded = await Promise.race([
+          context.decodeAudioData(new Uint8Array(asset.bytes).buffer),
+          new Promise<never>((_, reject) => {
+            cancel = () => reject(new DOMException('Sample decode cancelled', 'AbortError'));
+            signal.addEventListener('abort', cancel, { once: true });
+            if (signal.aborted) cancel();
+          }),
+        ]);
+        if (signal.aborted || this.disposed) throw new DOMException('Sample decode cancelled', 'AbortError');
+        const bytes = decoded.length * decoded.numberOfChannels * 4;
+        if (!Number.isSafeInteger(bytes) || bytes <= 0 || bytes > this.maxDecodedSampleBytes || !Number.isFinite(decoded.duration) || decoded.duration <= 0)
+          throw Error('Decoded sample exceeds PCM bound or is empty');
+        return decoded;
+      } finally { signal.removeEventListener('abort', cancel); }
+    }, () => {});
     this.allowedParentOrigins = new Set(
       (options.allowedParentOrigins ?? []).filter((origin): origin is string =>
         typeof origin === 'string' && origin.length > 0 && origin !== '*'
@@ -146,8 +188,7 @@ export class IframeSoundAdapter {
     if (this.ctx?.state === 'closed') {
       this.recordError('AudioContext is closed');
       this.unlockedByGesture = false;
-      for (const voice of this.activeVoices.values()) voice.stopped = true;
-      this.activeVoices.clear();
+      for (const key of [...this.activeVoices.keys()]) this.finishVoice(key);
       this.ctx = null;
       this.masterGain = null;
       this.channelGains = {};
@@ -279,6 +320,7 @@ export class IframeSoundAdapter {
       const silentBuffer = this.ctx.createBuffer(1, 1, 22050);
       const source = this.ctx.createBufferSource();
       source.buffer = silentBuffer;
+      source.onended = () => source.disconnect?.();
       source.connect(this.ctx.destination);
       source.start(0);
     } catch (error) {
@@ -343,6 +385,7 @@ export class IframeSoundAdapter {
 
   private flushPendingQueue(): void {
     if (!this.unlockedByGesture) return;
+    if (this.userMuted || this.autoSuspendedByBlur) { this.pendingQueue = []; return; }
     const now = this.now();
     const tasks = this.pendingQueue.splice(0);
     for (const task of tasks) {
@@ -544,6 +587,7 @@ export class IframeSoundAdapter {
       const source = context.createOscillator();
       const gain = context.createGain();
       state.source = source;
+      state.gain = gain;
       source.type = options.waveType ?? 'triangle';
       source.frequency.setValueAtTime(options.startFreq, when);
       if (options.endFreq !== undefined && options.endFreq !== options.startFreq) {
@@ -557,14 +601,7 @@ export class IframeSoundAdapter {
       source.connect(gain);
       gain.connect(channelGain);
 
-      source.onended = () => {
-        const current = this.activeVoices.get(voiceKey);
-        if (current) {
-          current.stopped = true;
-          this.activeVoices.delete(voiceKey);
-          this.syncDomTelemetry();
-        }
-      };
+      source.onended = () => this.finishVoice(voiceKey);
       this.activeVoices.set(voiceKey, state);
       source.start(when);
       source.stop(when + duration);
@@ -583,47 +620,152 @@ export class IframeSoundAdapter {
     } catch (error) {
       this.recordError(error);
       state.stopped = true;
+      try { state.source?.disconnect?.(); state.gain?.disconnect?.(); } catch { /* failed setup */ }
       this.activeVoices.delete(voiceKey);
       this.syncDomTelemetry();
       return null;
     }
   }
 
+  private submit(task: Omit<QueuedAudioTask, 'createdAt'>, replace = false): boolean {
+    if (this.disposed || this.userMuted || this.autoSuspendedByBlur) return false;
+    if (this.unlockedByGesture) return task.execute();
+    const old = this.pendingQueue.findIndex(value => value.id === task.id);
+    if (old >= 0 && !replace) { this.droppedQueue++; this.syncDomTelemetry(); return false; }
+    if (old < 0 && this.pendingQueue.length >= this.options.maxPendingQueue) {
+      this.droppedQueue++; this.syncDomTelemetry(); return false;
+    }
+    const queued = { ...task, createdAt: this.now() };
+    if (old >= 0) this.pendingQueue[old] = queued;
+    else this.pendingQueue.push(queued);
+    this.queuedBeforeUnlockCount++;
+    this.syncDomTelemetry();
+    return true;
+  }
+
   /** Queues once before unlock, then starts one voice through the shared mixer. */
   public scheduleTone(options: IframeToneOptions): boolean {
     const channel = this.validateTone(options);
-    if (!channel || this.disposed || this.userMuted || this.autoSuspendedByBlur) return false;
-
-    if (!this.unlockedByGesture) {
-      if (this.pendingQueue.some((task) => task.id === options.id)) {
-        this.droppedQueue++;
-        this.syncDomTelemetry();
-        return false;
-      }
-      if (this.pendingQueue.length >= this.options.maxPendingQueue) {
-        this.droppedQueue++;
-        this.syncDomTelemetry();
-        return false;
-      }
-      const queued: QueuedAudioTask = {
-        id: options.id,
-        channel,
-        createdAt: this.now(),
-        execute: () => this.runSynthesis(options, channel) !== null
-      };
-      this.pendingQueue.push(queued);
-      this.queuedBeforeUnlockCount++;
-      this.syncDomTelemetry();
-      return true;
-    }
-
-    return this.runSynthesis(options, channel) !== null;
+    if (!channel) return false;
+    const snapshot = { ...options };
+    return this.submit({ id: snapshot.id, channel, execute: () => this.runSynthesis(snapshot, channel) !== null });
   }
 
-  public stop(id: string): boolean {
+  private sampleInfo(id: string, buffer: AudioBuffer): IframeSampleInfo {
+    return { id, durationSec: buffer.duration, channels: buffer.numberOfChannels, sampleRate: buffer.sampleRate,
+      frames: buffer.length, decodedBytes: buffer.length * buffer.numberOfChannels * 4 };
+  }
+
+  /** Load and decode a provider logical ID. Repeated callers share the existing cache work. */
+  public async loadSample(id: string, options: { signal?: AbortSignal } = {}): Promise<IframeSampleInfo> {
+    normalizeAssetId(id);
+    if (this.disposed || !this.sampleCache) throw Error('Sample loading requires a live adapter with sampleProvider');
+    if (options.signal?.aborted) throw new DOMException('Sample load cancelled', 'AbortError');
+    const existing = this.samples.get(id);
+    if (existing) return this.sampleInfo(id, existing.value);
+    const reserved = new Set([...this.samples.keys(), ...this.sampleLoads.values(), id]);
+    if (reserved.size > this.maxSamples) throw Error('Audio sample capacity exceeded');
+    const controller = new AbortController();
+    const abort = () => controller.abort();
+    options.signal?.addEventListener('abort', abort, { once: true });
+    this.sampleLoads.set(controller, id);
+    let timedOut = false;
+    const timer = setTimeout(() => { timedOut = true; abort(); }, this.sampleTimeoutMs);
+    let lease: AssetLease<AudioBuffer> | undefined;
+    try {
+      lease = await this.sampleCache.acquire(id, { signal: controller.signal });
+      if (controller.signal.aborted || this.disposed) throw new DOMException('Sample load cancelled', 'AbortError');
+      const info = this.sampleInfo(id, lease.value);
+      if (!this.samples.has(id)) {
+        if (this.getDiagnostics().decodedSampleBytes + info.decodedBytes > this.maxDecodedSampleBytes) throw Error('Total decoded sample PCM bound exceeded');
+        this.samples.set(id, lease); lease = undefined;
+      }
+      return info;
+    } catch (error) {
+      const failure = timedOut ? new Error(`Audio sample load/decode timeout: ${id}`) : error;
+      this.recordError(failure); throw failure;
+    } finally {
+      lease?.release(); clearTimeout(timer);
+      options.signal?.removeEventListener('abort', abort);
+      this.sampleLoads.delete(controller);
+      if (this.disposed && !this.sampleLoads.size) this.sampleCache.dispose();
+      this.syncDomTelemetry();
+    }
+  }
+
+  /** Stops this sample's queued/active voices, cancels pending loads and releases its PCM lease. */
+  public unloadSample(id: string): boolean {
+    let changed = false;
+    for (const [controller, sampleId] of this.sampleLoads) if (sampleId === id) { controller.abort(); changed = true; }
+    for (const [key, voice] of [...this.activeVoices]) if (voice.sampleId === id) { this.stopVoice(key); changed = true; }
+    const before = this.pendingQueue.length;
+    this.pendingQueue = this.pendingQueue.filter(task => task.sampleId !== id);
+    changed ||= before !== this.pendingQueue.length;
+    const lease = this.samples.get(id);
+    if (lease) { this.samples.delete(id); lease.release(); changed = true; }
+    this.syncDomTelemetry(); return changed;
+  }
+
+  public playSample(options: IframeSampleOptions): boolean {
+    if (!options || typeof options.id !== 'string' || !options.id.trim()) return false;
+    const lease = this.samples.get(options.sampleId);
+    const channel = options.channel ?? 'sfx';
+    if (!lease || !isAudioChannel(channel)) return false;
+    const buffer = lease.value;
+    const offset = options.offsetSec ?? 0, loopStart = options.loopStartSec ?? 0, loopEnd = options.loopEndSec ?? buffer.duration;
+    for (const value of [offset, loopStart, loopEnd, options.fadeInSec ?? 0, options.fadeOutSec ?? 0, options.crossFadeSec ?? 0])
+      if (!Number.isFinite(value) || value < 0) return false;
+    if (offset >= buffer.duration || loopStart >= loopEnd || loopEnd > buffer.duration ||
+        (options.loop !== undefined && typeof options.loop !== 'boolean') ||
+        (options.replace !== undefined && typeof options.replace !== 'boolean') ||
+        ((options.crossFadeSec ?? 0) > 0 && !options.replace) ||
+        (options.durationSec !== undefined && (!Number.isFinite(options.durationSec) || options.durationSec <= 0)) ||
+        (options.peakGain !== undefined && (!Number.isFinite(options.peakGain) || options.peakGain < 0 || options.peakGain > 1))) return false;
+    const duration = options.loop ? options.durationSec : Math.min(options.durationSec ?? Infinity, buffer.duration - offset);
+    const fadeIn = options.fadeInSec ?? options.crossFadeSec ?? 0, fadeOut = options.fadeOutSec ?? 0;
+    if (fadeIn > 60 || fadeOut > 60 || (options.crossFadeSec ?? 0) > 60 ||
+        (duration === undefined ? fadeOut > 0 : fadeIn + fadeOut > duration)) return false;
+    const snapshot = { ...options };
+    return this.submit({ id: snapshot.id, sampleId: snapshot.sampleId, channel, execute: () => {
+      if (this.samples.get(snapshot.sampleId) !== lease || this.userMuted || this.autoSuspendedByBlur) return false;
+      const previous = [...this.activeVoices].filter(([, voice]) => voice.logicalId === snapshot.id).map(([key]) => key);
+      if (previous.length && !snapshot.replace) return false;
+      const context = this.ensureAudioContext(false);
+      const channelGain = channel === 'master' ? this.masterGain : this.channelGains[channel];
+      if (!context || !channelGain) return false;
+      if (this.activeVoices.size >= this.options.maxActiveVoices) { this.droppedVoices++; this.syncDomTelemetry(); return false; }
+      const key = `${snapshot.id}:${++this.voiceSerial}`;
+      let source: AudioBufferSourceNode | undefined, gain: GainNode | undefined;
+      try {
+        source = context.createBufferSource(); gain = context.createGain();
+        source.buffer = buffer; source.loop = snapshot.loop ?? false; source.loopStart = loopStart; source.loopEnd = loopEnd;
+        const now = context.currentTime, peak = snapshot.peakGain ?? 1;
+        gain.gain.setValueAtTime(fadeIn ? 0 : peak, now);
+        if (fadeIn) gain.gain.linearRampToValueAtTime(peak, now + fadeIn);
+        if (duration !== undefined && fadeOut) {
+          gain.gain.setValueAtTime(peak, now + duration - fadeOut);
+          gain.gain.linearRampToValueAtTime(0, now + duration);
+        }
+        source.connect(gain); gain.connect(channelGain);
+        source.onended = () => this.finishVoice(key);
+        this.activeVoices.set(key, { logicalId: snapshot.id, channel, source, gain, sampleId: snapshot.sampleId, stopped: false });
+        source.start(now, offset);
+        if (duration !== undefined) source.stop(now + duration);
+        for (const old of previous) this.stopVoice(old, snapshot.crossFadeSec ?? 0);
+        this.playedEventsCount++; this.syncDomTelemetry(); return true;
+      } catch (error) {
+        try { source?.stop(); } catch { /* not started */ }
+        source?.disconnect(); gain?.disconnect(); this.activeVoices.delete(key);
+        this.recordError(error); this.syncDomTelemetry(); return false;
+      }
+    } }, snapshot.replace);
+  }
+
+  public stop(id: string, fadeOutSec = 0): boolean {
+    if (!Number.isFinite(fadeOutSec) || fadeOutSec < 0 || fadeOutSec > 60) return false;
     let stopped = false;
     for (const [voiceKey, voice] of [...this.activeVoices.entries()]) {
-      if (voice.logicalId === id) stopped = this.stopVoice(voiceKey) || stopped;
+      if (voice.logicalId === id) stopped = this.stopVoice(voiceKey, fadeOutSec) || stopped;
     }
     const before = this.pendingQueue.length;
     this.pendingQueue = this.pendingQueue.filter((task) => task.id !== id);
@@ -632,22 +774,39 @@ export class IframeSoundAdapter {
     return stopped;
   }
 
-  private stopVoice(voiceKey: string): boolean {
+  private finishVoice(voiceKey: string): void {
+    const voice = this.activeVoices.get(voiceKey);
+    if (!voice) return;
+    this.activeVoices.delete(voiceKey); voice.stopped = true;
+    voice.source.onended = null;
+    try { voice.source.disconnect?.(); } catch { /* already disconnected */ }
+    try { voice.gain?.disconnect?.(); } catch { /* already disconnected */ }
+    this.syncDomTelemetry();
+  }
+
+  private stopVoice(voiceKey: string, fadeOutSec = 0): boolean {
     const voice = this.activeVoices.get(voiceKey);
     if (!voice) return false;
-    voice.stopped = true;
-    this.activeVoices.delete(voiceKey);
+    if (fadeOutSec && voice.stopping) return false;
     try {
+      if (fadeOutSec && this.ctx && voice.gain) {
+        const now = this.ctx.currentTime;
+        voice.gain.gain.cancelScheduledValues(now);
+        voice.gain.gain.setValueAtTime(voice.gain.gain.value, now);
+        voice.gain.gain.linearRampToValueAtTime(0, now + fadeOutSec);
+        voice.source.stop(now + fadeOutSec); voice.stopping = true;
+        return true;
+      }
       voice.source.stop();
-    } catch (_error) {
-      // A source may already have reached its scheduled stop time.
-    }
-    this.syncDomTelemetry();
+    } catch (_error) { /* source may have ended */ }
+    this.finishVoice(voiceKey);
     return true;
   }
 
   public stopAll(channel?: IframeAudioChannel): number {
-    let count = 0;
+    const before = this.pendingQueue.length;
+    this.pendingQueue = this.pendingQueue.filter(task => channel !== undefined && task.channel !== channel);
+    let count = before - this.pendingQueue.length;
     for (const [voiceKey, voice] of [...this.activeVoices.entries()]) {
       if (channel === undefined || voice.channel === channel) {
         if (this.stopVoice(voiceKey)) count++;
@@ -662,6 +821,9 @@ export class IframeSoundAdapter {
       ? (this.ctx.state as IframeSoundDiagnostics['contextState'])
       : 'uninitialized';
     return {
+      loadedSamples: this.samples.size,
+      pendingSampleLoads: this.sampleLoads.size,
+      decodedSampleBytes: [...this.samples.values()].reduce((sum, lease) => sum + lease.value.length * lease.value.numberOfChannels * 4, 0),
       inIframe: this.inIframe,
       contextState: state,
       unlockedByGesture: this.unlockedByGesture,
@@ -708,6 +870,10 @@ export class IframeSoundAdapter {
     this.unlockAttempt++;
     this.pendingQueue = [];
     this.stopAll();
+    for (const controller of this.sampleLoads.keys()) controller.abort();
+    for (const id of [...this.samples.keys()]) this.unloadSample(id);
+    if (!this.sampleLoads.size) this.sampleCache?.dispose();
+    try { this.masterGain?.disconnect?.(); for (const node of Object.values(this.channelGains)) node.disconnect?.(); } catch { /* context already closed */ }
     for (const cleanup of this.cleanupFns.splice(0)) cleanup();
     this.gestureCleanupFns.splice(0);
     this.postMessageBridgeActive = false;

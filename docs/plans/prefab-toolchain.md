@@ -32,6 +32,14 @@ Last reviewed: 2026-11-03
   `Laya` declarations. The neutral browser fixture covers wrong nodes, shifted
   text, wrong same-sized textures, cancellation, timeout and 30 unload cycles.
 
+## 1.4.0 candidate extension
+
+The shared library/preview adds serializable primitive 3D trees, named sockets,
+transform/material states, definition hashes and explicit mesh/material disposal.
+See [the API](../procedural-prefabs.md) and
+[candidate verification](records/consumer-runtime-hardening/verification.md).
+This does not deliver arbitrary model factories or selective evidence invalidation.
+
 ## Staged work and acceptance gates
 
 各項依序取得證據再決定是否擴大。引擎提供通用資料格式、工具、公開型別和中性 fixtures；遊戲保存美術基準、媒體、情境及實機產物。

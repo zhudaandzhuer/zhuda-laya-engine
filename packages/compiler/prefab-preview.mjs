@@ -8,7 +8,7 @@ export async function buildPrefabPreview({ projectRoot, engineRoot, out, topolog
     throw Error("prefabPreview must name an existing consumer module");
   const sdk = path.join(engineRoot, "dist/sdk/zhuda-laya-engine.esm.js");
   const code = `
-import {ZhudaEngine,DirectoryAssetProvider,ZhudaPrefabLibrary,ZhudaRequestSlot,ZhudaResourceScope,inspectPrefabInstance} from 'zhuda-laya-engine';
+import {ZhudaEngine,Zhuda3D,DirectoryAssetProvider,ZhudaPrefabLibrary,ZhudaRequestSlot,ZhudaResourceScope,inspectPrefabInstance} from 'zhuda-laya-engine';
 import * as prefabModule from ${JSON.stringify(entry)};
 const {definitions}=prefabModule;
 const scope=new ZhudaResourceScope();
@@ -30,7 +30,15 @@ preview.style.maxWidth='none';
 preview.style.maxHeight='none';
 preview.dataset.designWidth=String(width);
 preview.dataset.designHeight=String(height);
-const context=scope.own(await ZhudaEngine.boot({container:document.querySelector('#preview'),width,height,dprCap:dpr,features:['core','2d','ui'],bgColor:'#152030'}),value=>value.dispose());
+const has3D=definitions.some(definition=>definition.kind==='3d');
+const context=scope.own(await ZhudaEngine.boot({container:document.querySelector('#preview'),width,height,dprCap:dpr,features:has3D?['core','3d']:['core','2d','ui'],bgColor:'#152030'}),value=>value.dispose());
+let scene3D;
+if(has3D){
+ const settings=prefabModule.preview3D||{};
+ scene3D=Zhuda3D.createScene3D(context.rootScene,{ambientColor:settings.ambientColor||[.4,.4,.4,1]});
+ Zhuda3D.createCamera(scene3D,settings.camera||{position:[0,2,6],rotationEuler:[-15,0,0],clearColor:[.08,.12,.18,1]});
+ Zhuda3D.createDirectionalLight(scene3D,settings.light||{rotationEuler:[-35,-30,0],intensity:1});
+}
 // Consumers may export the same typed factory that their Scene calls. The
 // preview owns this instance and releases it with the library/session.
 const createAssetProvider=Reflect.get(prefabModule,'createAssetProvider');
@@ -50,11 +58,12 @@ async function select(id,state,node=''){
    let current=selected;
    while(current!==value.root){
     const parent=current.parent;
-    for(let i=0;i<parent.numChildren;i++)parent.getChildAt(i).visible=parent.getChildAt(i)===current;
+    for(let i=0;i<parent.numChildren;i++)parent.getChildAt(i)[value.provenance.kind==='3d'?'active':'visible']=parent.getChildAt(i)===current;
     current=parent;
    }
    instance?.dispose();instance=value;
-   context.rootScene.addChild(value.root);
+   if(scene3D)scene3D.active=value.provenance.kind==='3d';
+   (value.provenance.kind==='3d'?scene3D:context.rootScene).addChild(value.root);
    selection={id,state:value.provenance.state,node};
   },value=>value.dispose());
   await document.fonts.ready;

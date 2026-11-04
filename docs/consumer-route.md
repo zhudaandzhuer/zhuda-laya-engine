@@ -99,6 +99,10 @@ Use [`prefab-workflow.md`](prefab-workflow.md) for the evidence schema and
 fingerprint or static Doctor result cannot establish mobile support or game
 performance.
 
+Doctor defaults to the current working directory, prints the resolved target,
+and fails when no application sources are found. `--project /path/to/game`
+selects an explicit target. HEALTHY only covers the reported static checks.
+
 ## What the Doctor rejects
 
 The consumer guard is deliberately strict about false engine integrations. It
@@ -118,8 +122,8 @@ visual route requires authored source assets.
 
 Use input buffers, layered clocks and action frame contracts where the game
 needs their behavior; exporting combat APIs does not make them mandatory for a
-slot or static UI. Original MP3/BGM ingestion is still an engine API gap
-([audio contract](audio.md)). Do not add a second mixer to conceal that gap.
+slot or static UI. Original sample/BGM playback uses IframeSoundAdapter with provider-backed
+loadSample/playSample ([audio contract](audio.md)). Do not create a second mixer.
 
 ## Claim levels
 

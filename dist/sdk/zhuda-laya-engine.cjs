@@ -1,5 +1,5 @@
 /**
- * zhuda-laya-engine v1.3.0 — 豬大 LayaAir (AI-Agent-Friendly Fork Edition)
+ * zhuda-laya-engine v1.4.0 — 豬大 LayaAir (AI-Agent-Friendly Fork Edition)
  * Repository: https://github.com/zhudaandzhuer/zhuda-laya-engine
  * Upstream Official: LayaAir Engine 3.4.2 by Layabox (https://layaair.com/ | https://github.com/layabox/LayaAir)
  * License: MIT
@@ -105,6 +105,7 @@ __export(index_exports, {
   ZhudaVfxCamera: () => ZhudaVfxCamera,
   ZhudaVfxMaterial: () => ZhudaVfxMaterial,
   applySceneQuality: () => applySceneQuality,
+  buildPrefabTree: () => buildPrefabTree,
   compareVisualFrames: () => compareVisualFrames,
   compose4: () => compose4,
   computeMeshTangents: () => computeMeshTangents,
@@ -148,6 +149,8 @@ __export(index_exports, {
   validateParticleEffect: () => validateParticleEffect,
   validateParticleEffect3D: () => validateParticleEffect3D,
   validateParticleExtras: () => validateParticleExtras,
+  validatePrefabPatch3D: () => validatePrefabPatch3D,
+  validatePrefabTree3D: () => validatePrefabTree3D,
   validateShaderSpec: () => validateShaderSpec,
   validateTerrain2D: () => validateTerrain2D,
   validateVfxMaterial: () => validateVfxMaterial,
@@ -1809,6 +1812,598 @@ function installLaya342LifecycleFix(runtime = globalThis.Laya) {
   patched.add(prototype);
 }
 
+// packages/core/runtime3d/Assets.ts
+var abortError = () => new DOMException("Asset request cancelled", "AbortError");
+var ZhudaAssetCache = class {
+  constructor(load, destroy, maxIdle = 0) {
+    this.entries = /* @__PURE__ */ new Map();
+    this.disposed = false;
+    this.serial = 0;
+    this.loads = 0;
+    this.load = load;
+    this.destroy = destroy;
+    this.maxIdle = maxIdle;
+    if (!Number.isInteger(maxIdle) || maxIdle < 0)
+      throw Error("Invalid warm asset bound");
+  }
+  async acquire(key, options = {}) {
+    if (this.disposed) throw Error("Disposed asset cache");
+    if (options.signal?.aborted) throw abortError();
+    if (!key || options.retries !== void 0 && (!Number.isInteger(options.retries) || options.retries < 0 || options.retries > 3))
+      throw Error("Invalid asset request");
+    let e = this.entries.get(key);
+    if (!e) {
+      const controller = new AbortController();
+      e = {
+        refs: 0,
+        ready: false,
+        abort: controller,
+        phase: "downloading",
+        used: ++this.serial,
+        promise: null
+      };
+      const created = e;
+      this.entries.set(key, e);
+      this.loads++;
+      e.promise = (async () => {
+        let last;
+        for (let i = 0; i <= Math.max(0, Math.min(3, options.retries ?? 0)); i++) {
+          try {
+            return await this.load(
+              key,
+              controller.signal,
+              (p) => created.phase = p
+            );
+          } catch (error) {
+            last = error;
+            if (controller.signal.aborted) throw error;
+          }
+        }
+        throw last;
+      })().then(
+        (value) => {
+          created.value = value;
+          created.ready = true;
+          created.phase = "ready";
+          if (controller.signal.aborted || this.disposed || this.entries.get(key) !== created) {
+            this.destroy(value);
+            throw abortError();
+          }
+          return value;
+        },
+        (error) => {
+          if (this.entries.get(key) === created) this.entries.delete(key);
+          throw error;
+        }
+      );
+    }
+    const target = e;
+    target.refs++;
+    target.used = ++this.serial;
+    let released = false;
+    const release = () => {
+      if (released) return;
+      released = true;
+      target.refs--;
+      target.used = ++this.serial;
+      this.evict();
+    };
+    let cancel;
+    try {
+      const value = await new Promise((resolve, reject) => {
+        cancel = () => {
+          release();
+          reject(abortError());
+        };
+        options.signal?.addEventListener("abort", cancel, { once: true });
+        target.promise.then(resolve, reject);
+      });
+      if (released) throw abortError();
+      return { value, release };
+    } catch (error) {
+      release();
+      throw error;
+    } finally {
+      if (cancel) options.signal?.removeEventListener("abort", cancel);
+    }
+  }
+  evict() {
+    for (const [k, e] of this.entries)
+      if (!e.refs && !e.ready) {
+        this.entries.delete(k);
+        e.abort.abort();
+      }
+    const idle = [...this.entries].filter(([, e]) => !e.refs && e.ready).sort((a, b) => a[1].used - b[1].used);
+    while (idle.length > this.maxIdle) {
+      const [k, e] = idle.shift();
+      this.entries.delete(k);
+      this.destroy(e.value);
+    }
+  }
+  report() {
+    return {
+      entries: this.entries.size,
+      references: [...this.entries.values()].reduce((n, e) => n + e.refs, 0),
+      pending: [...this.entries.values()].filter((e) => !e.ready).length,
+      loads: this.loads,
+      phases: [...this.entries].map(([key, e]) => ({
+        key,
+        phase: e.phase,
+        references: e.refs
+      })),
+      gpuReady: "requires-first-draw"
+    };
+  }
+  dispose() {
+    if (this.disposed) return;
+    if ([...this.entries.values()].some((e) => e.refs > 0))
+      throw Error("Release all asset leases before disposing cache");
+    this.disposed = true;
+    for (const e of this.entries.values()) {
+      e.abort.abort();
+      if (e.ready) this.destroy(e.value);
+    }
+    this.entries.clear();
+  }
+};
+var ZhudaRequestSlot = class {
+  constructor() {
+    this.generation = 0;
+    this.active = null;
+  }
+  async replace(load, commit, discard) {
+    this.cancel();
+    const n = this.generation, c = this.active = new AbortController();
+    try {
+      const value = await load(c.signal);
+      if (n !== this.generation || c.signal.aborted) {
+        discard(value);
+        return false;
+      }
+      try {
+        commit(value);
+      } catch (error) {
+        discard(value);
+        throw error;
+      }
+      return true;
+    } catch (e) {
+      if (c.signal.aborted) return false;
+      throw e;
+    }
+  }
+  cancel() {
+    this.generation++;
+    this.active?.abort();
+    this.active = null;
+  }
+};
+function visit(node, fn) {
+  fn(node);
+  for (let i = 0; i < (node.numChildren || 0); i++)
+    visit(node.getChildAt(i), fn);
+}
+var ZhudaModelLibrary = class {
+  constructor(maxIdle = 3) {
+    this.instances = /* @__PURE__ */ new Set();
+    this.cache = new ZhudaAssetCache(
+      async (url, signal, phase) => {
+        const l = globalThis.Laya;
+        if (!l?.glTFResource)
+          throw Error("Load Laya glTF module before models");
+        const response = await fetch(url, { signal });
+        if (!response.ok) throw Error(`Model HTTP ${response.status}`);
+        const bytes = await response.arrayBuffer();
+        if (signal.aborted) throw abortError();
+        phase("parsing");
+        const resource = new l.glTFResource();
+        try {
+          const view = new DataView(bytes);
+          if (bytes.byteLength >= 12 && view.getUint32(0, true) === 1179937895)
+            await resource._parseglb(bytes, url);
+          else
+            await resource._parse(
+              JSON.parse(new TextDecoder().decode(bytes)),
+              url
+            );
+          if (signal.aborted) {
+            resource.destroy();
+            throw abortError();
+          }
+          resource._addReference();
+          return resource;
+        } catch (e) {
+          if (!resource.destroyed) resource.destroy();
+          throw e;
+        }
+      },
+      (r) => {
+        r._removeReference();
+        r.destroy();
+      },
+      maxIdle
+    );
+  }
+  async instantiate(url, options = {}) {
+    const lease = await this.cache.acquire(url, options);
+    let node;
+    const materials = [];
+    try {
+      if (options.signal?.aborted) throw abortError();
+      node = lease.value.create();
+      if (options.independentMaterials)
+        visit(node, (n) => {
+          const l = globalThis.Laya;
+          const renderer = n.meshRenderer || n.skinnedMeshRenderer || n.getComponent?.(l.SkinnedMeshRenderer) || n.getComponent?.(l.MeshRenderer);
+          if (renderer) {
+            renderer.sharedMaterials = renderer.sharedMaterials.map(
+              (m) => {
+                const copy = m.clone();
+                materials.push(copy);
+                return copy;
+              }
+            );
+          }
+        });
+    } catch (e) {
+      node?.destroy(true);
+      lease.release();
+      throw e;
+    }
+    this.instances.add(node);
+    let disposed = false;
+    return {
+      node,
+      materials,
+      setTint: (color) => {
+        if (disposed) throw Error("Disposed model instance");
+        if (!options.independentMaterials)
+          throw Error("Tint requires independent materials");
+        if (color.length !== 4 || !color.every((n) => Number.isFinite(n) && n >= 0 && n <= 1))
+          throw Error("Invalid linear tint");
+        const l = globalThis.Laya;
+        for (const m of materials) {
+          if ("albedoColor" in m) m.albedoColor = new l.Color(...color);
+          else if (m.getVector4("u_BaseColorFactor"))
+            m.setVector4("u_BaseColorFactor", new l.Vector4(...color));
+          else throw Error("Model material does not expose a base color");
+        }
+      },
+      find: (name) => {
+        let found = null;
+        visit(node, (n) => {
+          if (n.name === name) found = n;
+        });
+        return found;
+      },
+      dispose: () => {
+        if (disposed) return;
+        disposed = true;
+        node.destroy(true);
+        for (const m of materials) if (!m.destroyed) m.destroy();
+        this.instances.delete(node);
+        lease.release();
+      }
+    };
+  }
+  report() {
+    return { ...this.cache.report(), instances: this.instances.size };
+  }
+  dispose() {
+    if (this.instances.size)
+      throw Error("Dispose model instances before library");
+    this.cache.dispose();
+  }
+};
+
+// packages/core/runtime3d/SceneLifecycle.ts
+var ZhudaResourceScope = class {
+  constructor() {
+    this.releases = [];
+    this.disposed = false;
+  }
+  own(value, release) {
+    if (this.disposed) {
+      release(value);
+      throw Error("Disposed resource scope");
+    }
+    this.releases.push(() => release(value));
+    return value;
+  }
+  defer(release) {
+    this.own(release, (f) => f());
+  }
+  dispose() {
+    if (this.disposed) return;
+    this.disposed = true;
+    const errors = [];
+    for (const release of this.releases.reverse())
+      try {
+        release();
+      } catch (e) {
+        errors.push(e);
+      }
+    this.releases = [];
+    if (errors.length)
+      throw Object.assign(Error("Resource release failed"), { errors });
+  }
+};
+var ZhudaSceneRegions = class {
+  constructor() {
+    this.regions = /* @__PURE__ */ new Map();
+  }
+  async enter(id, create) {
+    if (!id) throw Error("Missing region ID");
+    this.leave(id);
+    const record = {
+      slot: new ZhudaRequestSlot(),
+      value: void 0
+    };
+    this.regions.set(id, record);
+    try {
+      return await record.slot.replace(
+        create,
+        (value) => record.value = value,
+        (value) => value.dispose()
+      );
+    } catch (e) {
+      if (this.regions.get(id) === record) this.regions.delete(id);
+      throw e;
+    }
+  }
+  leave(id) {
+    const r = this.regions.get(id);
+    if (!r) return;
+    this.regions.delete(id);
+    r.slot.cancel();
+    r.value?.dispose();
+  }
+  clear() {
+    for (const id of [...this.regions.keys()]) this.leave(id);
+  }
+  get size() {
+    return this.regions.size;
+  }
+};
+var ZhudaSceneBudget = class {
+  constructor() {
+    this.resources = /* @__PURE__ */ new Map();
+  }
+  track(id, kind, estimatedBytes) {
+    if (!id || this.resources.has(id) || !Number.isFinite(estimatedBytes) || estimatedBytes < 0)
+      throw Error("Invalid/duplicate resource budget");
+    this.resources.set(id, { kind, estimatedBytes });
+    return () => this.resources.delete(id);
+  }
+  report() {
+    const counts = { mesh: 0, texture: 0, renderTarget: 0 };
+    let estimatedBytes = 0;
+    for (const r of this.resources.values()) {
+      counts[r.kind]++;
+      estimatedBytes += r.estimatedBytes;
+    }
+    return { counts, estimatedBytes, memoryMeasurement: "estimate" };
+  }
+};
+var sceneQuality = {
+  low: {
+    dprCap: 1,
+    shadowDistance: 0,
+    shadowResolution: 512,
+    extraPasses: 0,
+    lodDistance: 20
+  },
+  medium: {
+    dprCap: 1.5,
+    shadowDistance: 30,
+    shadowResolution: 1024,
+    extraPasses: 0,
+    lodDistance: 40
+  },
+  high: {
+    dprCap: 2,
+    shadowDistance: 60,
+    shadowResolution: 2048,
+    extraPasses: 2,
+    lodDistance: 80
+  }
+};
+var ZhudaDistanceLOD = class {
+  constructor(distance, hysteresis = 2) {
+    this.near = true;
+    this.distance = distance;
+    this.hysteresis = hysteresis;
+    if (!(distance > hysteresis && hysteresis >= 0))
+      throw Error("Invalid LOD bounds");
+  }
+  update(camera, object) {
+    const d = Math.hypot(
+      camera.x - object.x,
+      camera.y - object.y,
+      camera.z - object.z
+    );
+    if (d > this.distance + this.hysteresis) this.near = false;
+    else if (d < this.distance - this.hysteresis) this.near = true;
+    return this.near;
+  }
+};
+function inspectSceneResources(runtime = globalThis.Laya) {
+  const map = runtime.Resource._idResourcesMap, items = map instanceof Map ? [...map.values()] : Object.values(map || {});
+  const counts = { mesh: 0, texture: 0, renderTarget: 0 };
+  let meshBytes = 0, textureBytes = 0, renderTargetBytes = 0;
+  for (const r of items) {
+    if (r.destroyed) continue;
+    if (r instanceof runtime.Mesh) {
+      counts.mesh++;
+      meshBytes += r.gpuMemory || 0;
+    } else if (runtime.RenderTexture && r instanceof runtime.RenderTexture || runtime.RenderTexture2D && r instanceof runtime.RenderTexture2D) {
+      counts.renderTarget++;
+      renderTargetBytes += (r.width || 0) * (r.height || 0) * 8 * Math.max(1, r.samples || 1);
+    } else if (r instanceof runtime.BaseTexture) {
+      counts.texture++;
+      textureBytes += (r.width || 0) * (r.height || 0) * 4 * (r.mipmap ? 4 / 3 : 1) * (r.isCube ? 6 : 1);
+    }
+  }
+  return {
+    counts,
+    resources: items.filter((r) => !r.destroyed).length,
+    estimatedBytes: meshBytes + textureBytes + renderTargetBytes,
+    meshBytes,
+    textureBytes,
+    renderTargetBytes,
+    memoryMeasurement: "estimate",
+    assumptions: "Texture RGBA8, render target RGBA8 + 32-bit depth; vendor mesh accounting. Excludes driver overhead and compressed/HDR format corrections."
+  };
+}
+function applySceneQuality(quality, session, camera, lights = []) {
+  const l = globalThis.Laya;
+  if (![quality.dprCap, quality.shadowDistance, quality.extraPasses].every(
+    Number.isFinite
+  ) || quality.dprCap < 0.5 || quality.dprCap > 4 || quality.shadowDistance < 0 || quality.extraPasses < 0 || !Number.isFinite(quality.lodDistance) || quality.lodDistance <= 0 || ![512, 1024, 2048].includes(quality.shadowResolution))
+    throw Error("Invalid scene quality");
+  session.options.dprCap = quality.dprCap;
+  session.resize();
+  camera.msaa = false;
+  for (const light of lights) {
+    light.shadowDistance = quality.shadowDistance;
+    light.shadowResolution = quality.shadowResolution;
+    light.shadowMode = quality.shadowDistance > 0 ? l.ShadowMode.SoftLow : l.ShadowMode.None;
+  }
+  return { ...quality, additionalPassBudget: quality.extraPasses };
+}
+
+// packages/core/prefabs/PrefabTree3D.ts
+var primitives = /* @__PURE__ */ new Set(["box", "sphere", "plane", "cone", "cylinder", "capsule"]);
+var has = (object, key) => Object.prototype.hasOwnProperty.call(object, key);
+function validatePrefabPatch3D(patch) {
+  if (!patch || typeof patch !== "object" || Array.isArray(patch)) throw Error("Invalid 3D node patch");
+  for (const [key, value] of Object.entries(patch)) {
+    if (key === "active" && typeof value === "boolean") continue;
+    if (key === "material" && typeof value === "string" && value.length) continue;
+    if (["localPosition", "localRotationEuler", "localScale"].includes(key) && Array.isArray(value) && value.length === 3 && value.every((n) => typeof n === "number" && Number.isFinite(n)) && (key !== "localScale" || value.every((n) => n !== 0))) continue;
+    throw Error(`Invalid 3D prefab patch property: ${key}`);
+  }
+}
+function validatePrefabTree3D(tree) {
+  if (!tree || !tree.materials || Array.isArray(tree.materials)) throw Error("3D prefab requires materials");
+  for (const [id, material] of Object.entries(tree.materials)) {
+    if (!id || !material || !Array.isArray(material.albedoColor) || material.albedoColor.length !== 4 || !material.albedoColor.every((n) => Number.isFinite(n) && n >= 0 && n <= 1) || material.type !== void 0 && !["blinn-phong", "unlit", "pbr"].includes(material.type))
+      throw Error(`Invalid 3D prefab material: ${id}`);
+    for (const key of ["shininess", "metallic", "smoothness"]) {
+      const value = material[key];
+      if (value !== void 0 && (!Number.isFinite(value) || value < 0 || value > (key === "shininess" ? 128 : 1)))
+        throw Error(`Invalid 3D material ${id}.${key}`);
+    }
+  }
+  let count = 0;
+  const paths = /* @__PURE__ */ new Set();
+  const visit2 = (node, path, depth) => {
+    if (++count > 4096 || depth > 64) throw Error("3D prefab tree exceeds node/depth limit");
+    if (!node || typeof node.name !== "string" || !node.name || node.name.includes("/")) throw Error(`Invalid 3D node name at ${path}`);
+    const { name, mesh, children, ...patch } = node;
+    validatePrefabPatch3D(patch);
+    if (mesh && (!primitives.has(mesh.type) || !node.material)) throw Error(`Invalid mesh/material at ${path}`);
+    if (node.material && (!mesh || !has(tree.materials, node.material))) throw Error(`Unknown material or non-mesh node at ${path}`);
+    for (const [key, value] of Object.entries(mesh?.dimensions ?? {}))
+      if (!["width", "height", "depth", "radius"].includes(key) || !Number.isFinite(value) || value <= 0)
+        throw Error(`Invalid primitive dimension at ${path}.${key}`);
+    paths.add(path);
+    if (children !== void 0 && !Array.isArray(children)) throw Error(`Invalid children at ${path}`);
+    const names = /* @__PURE__ */ new Set();
+    for (const child of children ?? []) {
+      if (!child || names.has(child.name)) throw Error(`Duplicate child name at ${path}`);
+      names.add(child.name);
+      visit2(child, path ? `${path}/${child.name}` : child.name, depth + 1);
+    }
+  };
+  visit2(tree.root, "", 0);
+  for (const [id, path] of Object.entries(tree.sockets ?? {}))
+    if (!id || !paths.has(path)) throw Error(`Unknown 3D socket path: ${id}/${path}`);
+}
+function buildPrefabTree(tree) {
+  const spec = structuredClone(tree);
+  validatePrefabTree3D(spec);
+  const resources = new ZhudaResourceScope();
+  const nodes = /* @__PURE__ */ new Map();
+  const baseline = /* @__PURE__ */ new Map();
+  const materials = /* @__PURE__ */ new Map();
+  let root;
+  let disposed = false;
+  const find = (path = "") => {
+    if (disposed) throw Error("Disposed 3D prefab");
+    const node = nodes.get(path);
+    if (!node) throw Error(`Prefab node path missing: ${path}`);
+    return node;
+  };
+  const applyNode = (node, patch) => {
+    if (patch.active !== void 0) node.active = patch.active;
+    if (patch.localPosition) node.transform.localPosition = new Laya.Vector3(...patch.localPosition);
+    if (patch.localRotationEuler) node.transform.localRotationEuler = new Laya.Vector3(...patch.localRotationEuler);
+    if (patch.localScale) node.transform.localScale = new Laya.Vector3(...patch.localScale);
+    if (patch.material) node.meshRenderer.sharedMaterial = materials.get(patch.material);
+  };
+  try {
+    for (const [id, material] of Object.entries(spec.materials))
+      materials.set(id, resources.own(Zhuda3D.createMaterial(material), (value) => value.destroy()));
+    const visit2 = (source, path, parent) => {
+      const node = source.mesh ? new Laya.MeshSprite3D(resources.own(Zhuda3D.createPrimitiveMesh(source.mesh.type, source.mesh.dimensions), (value) => value.destroy())) : new Laya.Sprite3D();
+      if (!root) root = node;
+      node.name = source.name;
+      parent?.addChild(node);
+      nodes.set(path, node);
+      const patch = {
+        active: source.active ?? true,
+        localPosition: source.localPosition ?? [0, 0, 0],
+        localRotationEuler: source.localRotationEuler ?? [0, 0, 0],
+        localScale: source.localScale ?? [1, 1, 1],
+        ...source.material ? { material: source.material } : {}
+      };
+      baseline.set(path, patch);
+      applyNode(node, patch);
+      for (const child of source.children ?? []) visit2(child, path ? `${path}/${child.name}` : child.name, node);
+      return node;
+    };
+    visit2(spec.root, "");
+    return {
+      root,
+      find,
+      socket: (id) => {
+        if (!has(spec.sockets ?? {}, id)) throw Error(`Unknown 3D socket: ${id}`);
+        return find(spec.sockets[id]);
+      },
+      apply: (patches) => {
+        if (disposed) throw Error("Disposed 3D prefab");
+        for (const [path, patch] of Object.entries(patches)) {
+          validatePrefabPatch3D(patch);
+          find(path);
+          if (patch.material && (!materials.has(patch.material) || !baseline.get(path)?.material))
+            throw Error(`Invalid material slot at ${path}`);
+        }
+        for (const [path, patch] of baseline) applyNode(find(path), patch);
+        for (const [path, patch] of Object.entries(patches)) applyNode(find(path), patch);
+      },
+      dispose: () => {
+        if (disposed) return;
+        disposed = true;
+        try {
+          root.destroy(true);
+        } finally {
+          resources.dispose();
+          nodes.clear();
+          materials.clear();
+        }
+      }
+    };
+  } catch (error) {
+    try {
+      root?.destroy(true);
+    } finally {
+      resources.dispose();
+    }
+    throw error;
+  }
+}
+
 // packages/core/DeclarativeSDK.ts
 function zhudaComponent(meta) {
   return function(ctor) {
@@ -1889,7 +2484,7 @@ var ZhudaEngine = class {
         Laya.stage.frameRate = options.targetFPS === 30 ? "slow" : "fast";
       const runtime = new ZhudaRuntimeSession(canvas, {
         ...options,
-        container
+        container: container ?? void 0
       });
       let disposed = false;
       this.activeContext = {
@@ -1941,6 +2536,9 @@ var ZhudaEngine = class {
 ZhudaEngine.activeContext = null;
 ZhudaEngine.booting = false;
 var Zhuda3D = class {
+  static buildPrefabTree(spec) {
+    return buildPrefabTree(spec);
+  }
   static createScene3D(parent, options = {}) {
     const scene3D = new Laya.Scene3D();
     scene3D.name = options.name ?? "ZhudaScene3D";
@@ -4888,6 +5486,234 @@ var PixelCalibrationEngine = class {
   }
 };
 
+// packages/core/runtime3d/AssetProvider.ts
+var AssetProviderError = class extends Error {
+  constructor(code, message, details = {}) {
+    super(message);
+    this.name = "AssetProviderError";
+    this.code = code;
+    this.id = details.id;
+    this.status = details.status;
+  }
+};
+function normalizeAssetId(value) {
+  if (typeof value !== "string")
+    throw new AssetProviderError("invalid-id", "Asset id must be a string");
+  let id = value.trim().replace(/\\/g, "/");
+  while (id.startsWith("./")) id = id.slice(2);
+  if (!id || id.startsWith("/") || id.includes("\0") || /[?#]/.test(id) || /^[a-z][a-z\d+.-]*:/i.test(id))
+    throw new AssetProviderError("invalid-id", `Invalid asset id: ${value}`);
+  const parts = id.split("/").filter(Boolean);
+  if (!parts.length || parts.some((part) => part === "." || part === ".."))
+    throw new AssetProviderError("invalid-id", `Invalid asset id: ${value}`);
+  return parts.join("/");
+}
+function validateAssetManifest(value) {
+  if (!value || typeof value !== "object") throw Error("Invalid asset manifest");
+  const manifest = value;
+  if (manifest.schemaVersion !== 1 || !Array.isArray(manifest.entries))
+    throw Error("Invalid asset manifest schema");
+  const ids = /* @__PURE__ */ new Set();
+  for (const candidate of manifest.entries) {
+    if (!candidate || typeof candidate !== "object")
+      throw Error("Invalid asset manifest entry");
+    const entry = candidate;
+    const id = normalizeAssetId(entry.id);
+    if (id !== entry.id || ids.has(id))
+      throw Error(`Duplicate or non-normalized asset id: ${entry.id}`);
+    ids.add(id);
+    if (entry.bytes !== void 0 && (!Number.isSafeInteger(entry.bytes) || entry.bytes < 0))
+      throw Error(`Invalid asset byte size: ${id}`);
+    if (entry.sha256 !== void 0 && !/^[0-9a-f]{64}$/i.test(entry.sha256))
+      throw Error(`Invalid asset checksum: ${id}`);
+  }
+  return manifest;
+}
+function manifestIdFor(baseUrl, value) {
+  const manifestUrl = new URL(value, baseUrl);
+  if (manifestUrl.origin !== baseUrl.origin || !manifestUrl.pathname.startsWith(baseUrl.pathname))
+    throw new AssetProviderError("invalid-id", "Manifest must be below the provider base URL");
+  const id = decodeURIComponent(manifestUrl.pathname.slice(baseUrl.pathname.length));
+  return normalizeAssetId(id);
+}
+function abortReason(signal, id) {
+  return new AssetProviderError(
+    signal.reason?.name === "TimeoutError" ? "timeout" : "aborted",
+    signal.reason?.name === "TimeoutError" ? `Asset request timed out: ${id}` : `Asset request cancelled: ${id}`,
+    { id }
+  );
+}
+function combineSignals(source, timeoutMs, id) {
+  const controller = new AbortController();
+  let timedOut = false;
+  const abort = () => controller.abort(source?.reason);
+  if (source?.aborted) controller.abort(source.reason);
+  else source?.addEventListener("abort", abort, { once: true });
+  const timer = setTimeout(() => {
+    timedOut = true;
+    controller.abort(new DOMException("Asset request timed out", "TimeoutError"));
+  }, timeoutMs);
+  return {
+    signal: controller.signal,
+    cleanup: () => {
+      clearTimeout(timer);
+      source?.removeEventListener("abort", abort);
+      if (timedOut && !controller.signal.reason)
+        controller.abort(new DOMException(`Asset request timed out: ${id}`, "TimeoutError"));
+    }
+  };
+}
+async function sha256(bytes) {
+  if (!globalThis.crypto?.subtle)
+    throw new AssetProviderError("integrity", "Web Crypto subtle.digest is unavailable");
+  const input = new Uint8Array(bytes.byteLength);
+  input.set(bytes);
+  const digest = await globalThis.crypto.subtle.digest("SHA-256", input.buffer);
+  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+var DirectoryAssetProvider = class {
+  constructor(options) {
+    this.name = "directory";
+    this.active = /* @__PURE__ */ new Set();
+    this.disposed = false;
+    if (!options?.baseUrl) throw Error("DirectoryAssetProvider requires baseUrl");
+    this.baseUrl = new URL(options.baseUrl, globalThis.location?.href || "http://localhost/");
+    if (!this.baseUrl.pathname.endsWith("/")) this.baseUrl.pathname += "/";
+    this.manifest = options.manifest ? validateAssetManifest(options.manifest) : void 0;
+    this.manifestUrl = options.manifestUrl;
+    this.manifestId = options.manifestUrl ? manifestIdFor(this.baseUrl, options.manifestUrl) : void 0;
+    this.timeoutMs = options.timeoutMs ?? 15e3;
+    this.maxBytes = options.maxBytes ?? 128 * 1024 * 1024;
+    this.fetchImpl = options.fetch || globalThis.fetch.bind(globalThis);
+    if (!Number.isInteger(this.timeoutMs) || this.timeoutMs <= 0)
+      throw Error("timeoutMs must be a positive integer");
+    if (!Number.isInteger(this.maxBytes) || this.maxBytes <= 0)
+      throw Error("maxBytes must be a positive integer");
+  }
+  async getManifest(signal) {
+    if (this.disposed) throw new AssetProviderError("disposed", "Asset provider disposed");
+    if (this.manifest) return this.manifest;
+    if (!this.manifestId) return { schemaVersion: 1, entries: [] };
+    if (!this.manifestPromise) {
+      const pending = (async () => {
+        const result = await this.load(this.manifestId, {
+          signal,
+          maxBytes: 2 * 1024 * 1024
+        });
+        try {
+          const parsed = JSON.parse(new TextDecoder().decode(result.bytes));
+          this.manifest = validateAssetManifest(parsed);
+          return this.manifest;
+        } catch (error) {
+          if (error instanceof AssetProviderError) throw error;
+          throw new AssetProviderError("integrity", `Invalid asset manifest: ${this.manifestUrl}`);
+        }
+      })();
+      this.manifestPromise = pending.catch((error) => {
+        this.manifestPromise = void 0;
+        throw error;
+      });
+    }
+    return this.manifestPromise;
+  }
+  async load(value, options = {}) {
+    if (this.disposed) throw new AssetProviderError("disposed", "Asset provider disposed");
+    const id = normalizeAssetId(value);
+    if (this.manifestId && id !== this.manifestId && !this.manifest)
+      await this.getManifest(options.signal);
+    const entry = this.manifest?.entries.find((candidate) => candidate.id === id);
+    const maxBytes = options.maxBytes ?? this.maxBytes;
+    const url = new URL(id.split("/").map(encodeURIComponent).join("/"), this.baseUrl);
+    const combined = combineSignals(options.signal, this.timeoutMs, id);
+    const request = new AbortController();
+    const relay = () => request.abort(combined.signal.reason);
+    combined.signal.addEventListener("abort", relay, { once: true });
+    this.active.add(request);
+    try {
+      options.onProgress?.({ id, phase: "downloading", loadedBytes: 0 });
+      const response = await this.fetchImpl(url, { signal: request.signal });
+      if (!response.ok)
+        throw new AssetProviderError("http", `Asset HTTP ${response.status}: ${id}`, {
+          id,
+          status: response.status
+        });
+      const contentLength = Number(response.headers.get("content-length"));
+      if (Number.isFinite(contentLength) && contentLength > maxBytes)
+        throw new AssetProviderError("too-large", `Asset exceeds ${maxBytes} bytes: ${id}`, { id });
+      const chunks = [];
+      let total = 0;
+      if (response.body) {
+        const reader = response.body.getReader();
+        while (true) {
+          const next = await reader.read();
+          if (next.done) break;
+          total += next.value.byteLength;
+          if (total > maxBytes)
+            throw new AssetProviderError("too-large", `Asset exceeds ${maxBytes} bytes: ${id}`, { id });
+          chunks.push(next.value);
+          options.onProgress?.({ id, phase: "downloading", loadedBytes: total, totalBytes: contentLength || void 0 });
+        }
+      } else {
+        const data = new Uint8Array(await response.arrayBuffer());
+        total = data.byteLength;
+        if (total > maxBytes)
+          throw new AssetProviderError("too-large", `Asset exceeds ${maxBytes} bytes: ${id}`, { id });
+        chunks.push(data);
+        options.onProgress?.({ id, phase: "downloading", loadedBytes: total, totalBytes: total });
+      }
+      const bytes = new Uint8Array(total);
+      let offset = 0;
+      for (const chunk of chunks) {
+        bytes.set(chunk, offset);
+        offset += chunk.byteLength;
+      }
+      if (entry?.bytes !== void 0 && entry.bytes !== bytes.byteLength)
+        throw new AssetProviderError("integrity", `Asset size mismatch: ${id}`, { id });
+      if (entry?.sha256) {
+        options.onProgress?.({ id, phase: "verifying", loadedBytes: total, totalBytes: total });
+        if (await sha256(bytes) !== entry.sha256.toLowerCase())
+          throw new AssetProviderError("integrity", `Asset checksum mismatch: ${id}`, { id });
+      }
+      options.onProgress?.({ id, phase: "ready", loadedBytes: total, totalBytes: total });
+      return { id, bytes, manifest: entry };
+    } catch (error) {
+      if (combined.signal.aborted || request.signal.aborted) {
+        if (combined.signal.reason?.name === "TimeoutError") throw abortReason(combined.signal, id);
+        throw abortReason(combined.signal, id);
+      }
+      throw error;
+    } finally {
+      this.active.delete(request);
+      combined.signal.removeEventListener("abort", relay);
+      combined.cleanup();
+    }
+  }
+  dispose() {
+    if (this.disposed) return;
+    this.disposed = true;
+    for (const controller of this.active) controller.abort(new DOMException("Asset provider disposed", "AbortError"));
+    this.active.clear();
+  }
+};
+function createProviderAssetCache(provider, decode, destroy, maxIdle = 0) {
+  return new ZhudaAssetCache(
+    async (id, signal, phase) => {
+      const asset = await provider.load(id, {
+        signal,
+        onProgress: ({ phase: providerPhase }) => phase(providerPhase === "ready" ? "ready" : "downloading")
+      });
+      phase("parsing");
+      try {
+        return await decode(asset, signal, phase);
+      } finally {
+        asset.release?.();
+      }
+    },
+    destroy,
+    maxIdle
+  );
+}
+
 // packages/core/IframeSoundAdapter.ts
 var CHANNELS = ["bgm", "sfx", "ui"];
 var AUDIO_WAVE_TYPES = ["sine", "square", "sawtooth", "triangle"];
@@ -4930,6 +5756,8 @@ var _IframeSoundAdapter = class _IframeSoundAdapter {
     this.droppedVoices = 0;
     this.playedEventsCount = 0;
     this.voiceSerial = 0;
+    this.samples = /* @__PURE__ */ new Map();
+    this.sampleLoads = /* @__PURE__ */ new Map();
     this.options = {
       ...options,
       queueMaxAgeMs: options.queueMaxAgeMs ?? 500,
@@ -4937,6 +5765,43 @@ var _IframeSoundAdapter = class _IframeSoundAdapter {
       maxActiveVoices: options.maxActiveVoices ?? 32,
       syncLayaSoundManager: options.syncLayaSoundManager ?? false
     };
+    this.sampleTimeoutMs = options.sampleTimeoutMs ?? 15e3;
+    this.maxSamples = options.maxSamples ?? 32;
+    this.maxDecodedSampleBytes = options.maxDecodedSampleBytes ?? 64 * 1024 * 1024;
+    for (const [name, value] of Object.entries({
+      sampleTimeoutMs: this.sampleTimeoutMs,
+      maxSamples: this.maxSamples,
+      maxDecodedSampleBytes: this.maxDecodedSampleBytes,
+      maxActiveVoices: this.options.maxActiveVoices,
+      maxPendingQueue: this.options.maxPendingQueue,
+      queueMaxAgeMs: this.options.queueMaxAgeMs
+    }))
+      if (!Number.isSafeInteger(value) || value <= 0) throw Error(`Invalid audio limit: ${name}`);
+    if (options.sampleProvider) this.sampleCache = createProviderAssetCache(options.sampleProvider, async (asset, signal) => {
+      const context = this.ensureAudioContext();
+      if (!context) throw Error("WebAudio decoder unavailable");
+      if (signal.aborted) throw new DOMException("Sample decode cancelled", "AbortError");
+      let cancel = () => {
+      };
+      try {
+        const decoded = await Promise.race([
+          context.decodeAudioData(new Uint8Array(asset.bytes).buffer),
+          new Promise((_, reject) => {
+            cancel = () => reject(new DOMException("Sample decode cancelled", "AbortError"));
+            signal.addEventListener("abort", cancel, { once: true });
+            if (signal.aborted) cancel();
+          })
+        ]);
+        if (signal.aborted || this.disposed) throw new DOMException("Sample decode cancelled", "AbortError");
+        const bytes = decoded.length * decoded.numberOfChannels * 4;
+        if (!Number.isSafeInteger(bytes) || bytes <= 0 || bytes > this.maxDecodedSampleBytes || !Number.isFinite(decoded.duration) || decoded.duration <= 0)
+          throw Error("Decoded sample exceeds PCM bound or is empty");
+        return decoded;
+      } finally {
+        signal.removeEventListener("abort", cancel);
+      }
+    }, () => {
+    });
     this.allowedParentOrigins = new Set(
       (options.allowedParentOrigins ?? []).filter(
         (origin) => typeof origin === "string" && origin.length > 0 && origin !== "*"
@@ -4982,8 +5847,7 @@ var _IframeSoundAdapter = class _IframeSoundAdapter {
     if (this.ctx?.state === "closed") {
       this.recordError("AudioContext is closed");
       this.unlockedByGesture = false;
-      for (const voice of this.activeVoices.values()) voice.stopped = true;
-      this.activeVoices.clear();
+      for (const key of [...this.activeVoices.keys()]) this.finishVoice(key);
       this.ctx = null;
       this.masterGain = null;
       this.channelGains = {};
@@ -5085,6 +5949,7 @@ var _IframeSoundAdapter = class _IframeSoundAdapter {
       const silentBuffer = this.ctx.createBuffer(1, 1, 22050);
       const source = this.ctx.createBufferSource();
       source.buffer = silentBuffer;
+      source.onended = () => source.disconnect?.();
       source.connect(this.ctx.destination);
       source.start(0);
     } catch (error) {
@@ -5143,6 +6008,10 @@ var _IframeSoundAdapter = class _IframeSoundAdapter {
   }
   flushPendingQueue() {
     if (!this.unlockedByGesture) return;
+    if (this.userMuted || this.autoSuspendedByBlur) {
+      this.pendingQueue = [];
+      return;
+    }
     const now = this.now();
     const tasks = this.pendingQueue.splice(0);
     for (const task of tasks) {
@@ -5319,6 +6188,7 @@ var _IframeSoundAdapter = class _IframeSoundAdapter {
       const source = context.createOscillator();
       const gain = context.createGain();
       state.source = source;
+      state.gain = gain;
       source.type = options.waveType ?? "triangle";
       source.frequency.setValueAtTime(options.startFreq, when);
       if (options.endFreq !== void 0 && options.endFreq !== options.startFreq) {
@@ -5329,14 +6199,7 @@ var _IframeSoundAdapter = class _IframeSoundAdapter {
       gain.gain.exponentialRampToValueAtTime(8e-4, when + duration);
       source.connect(gain);
       gain.connect(channelGain);
-      source.onended = () => {
-        const current = this.activeVoices.get(voiceKey);
-        if (current) {
-          current.stopped = true;
-          this.activeVoices.delete(voiceKey);
-          this.syncDomTelemetry();
-        }
-      };
+      source.onended = () => this.finishVoice(voiceKey);
       this.activeVoices.set(voiceKey, state);
       source.start(when);
       source.stop(when + duration);
@@ -5354,43 +6217,190 @@ var _IframeSoundAdapter = class _IframeSoundAdapter {
     } catch (error) {
       this.recordError(error);
       state.stopped = true;
+      try {
+        state.source?.disconnect?.();
+        state.gain?.disconnect?.();
+      } catch {
+      }
       this.activeVoices.delete(voiceKey);
       this.syncDomTelemetry();
       return null;
     }
   }
+  submit(task, replace = false) {
+    if (this.disposed || this.userMuted || this.autoSuspendedByBlur) return false;
+    if (this.unlockedByGesture) return task.execute();
+    const old = this.pendingQueue.findIndex((value) => value.id === task.id);
+    if (old >= 0 && !replace) {
+      this.droppedQueue++;
+      this.syncDomTelemetry();
+      return false;
+    }
+    if (old < 0 && this.pendingQueue.length >= this.options.maxPendingQueue) {
+      this.droppedQueue++;
+      this.syncDomTelemetry();
+      return false;
+    }
+    const queued = { ...task, createdAt: this.now() };
+    if (old >= 0) this.pendingQueue[old] = queued;
+    else this.pendingQueue.push(queued);
+    this.queuedBeforeUnlockCount++;
+    this.syncDomTelemetry();
+    return true;
+  }
   /** Queues once before unlock, then starts one voice through the shared mixer. */
   scheduleTone(options) {
     const channel = this.validateTone(options);
-    if (!channel || this.disposed || this.userMuted || this.autoSuspendedByBlur) return false;
-    if (!this.unlockedByGesture) {
-      if (this.pendingQueue.some((task) => task.id === options.id)) {
-        this.droppedQueue++;
-        this.syncDomTelemetry();
-        return false;
-      }
-      if (this.pendingQueue.length >= this.options.maxPendingQueue) {
-        this.droppedQueue++;
-        this.syncDomTelemetry();
-        return false;
-      }
-      const queued = {
-        id: options.id,
-        channel,
-        createdAt: this.now(),
-        execute: () => this.runSynthesis(options, channel) !== null
-      };
-      this.pendingQueue.push(queued);
-      this.queuedBeforeUnlockCount++;
-      this.syncDomTelemetry();
-      return true;
-    }
-    return this.runSynthesis(options, channel) !== null;
+    if (!channel) return false;
+    const snapshot = { ...options };
+    return this.submit({ id: snapshot.id, channel, execute: () => this.runSynthesis(snapshot, channel) !== null });
   }
-  stop(id) {
+  sampleInfo(id, buffer) {
+    return {
+      id,
+      durationSec: buffer.duration,
+      channels: buffer.numberOfChannels,
+      sampleRate: buffer.sampleRate,
+      frames: buffer.length,
+      decodedBytes: buffer.length * buffer.numberOfChannels * 4
+    };
+  }
+  /** Load and decode a provider logical ID. Repeated callers share the existing cache work. */
+  async loadSample(id, options = {}) {
+    normalizeAssetId(id);
+    if (this.disposed || !this.sampleCache) throw Error("Sample loading requires a live adapter with sampleProvider");
+    if (options.signal?.aborted) throw new DOMException("Sample load cancelled", "AbortError");
+    const existing = this.samples.get(id);
+    if (existing) return this.sampleInfo(id, existing.value);
+    const reserved = /* @__PURE__ */ new Set([...this.samples.keys(), ...this.sampleLoads.values(), id]);
+    if (reserved.size > this.maxSamples) throw Error("Audio sample capacity exceeded");
+    const controller = new AbortController();
+    const abort = () => controller.abort();
+    options.signal?.addEventListener("abort", abort, { once: true });
+    this.sampleLoads.set(controller, id);
+    let timedOut = false;
+    const timer = setTimeout(() => {
+      timedOut = true;
+      abort();
+    }, this.sampleTimeoutMs);
+    let lease;
+    try {
+      lease = await this.sampleCache.acquire(id, { signal: controller.signal });
+      if (controller.signal.aborted || this.disposed) throw new DOMException("Sample load cancelled", "AbortError");
+      const info = this.sampleInfo(id, lease.value);
+      if (!this.samples.has(id)) {
+        if (this.getDiagnostics().decodedSampleBytes + info.decodedBytes > this.maxDecodedSampleBytes) throw Error("Total decoded sample PCM bound exceeded");
+        this.samples.set(id, lease);
+        lease = void 0;
+      }
+      return info;
+    } catch (error) {
+      const failure = timedOut ? new Error(`Audio sample load/decode timeout: ${id}`) : error;
+      this.recordError(failure);
+      throw failure;
+    } finally {
+      lease?.release();
+      clearTimeout(timer);
+      options.signal?.removeEventListener("abort", abort);
+      this.sampleLoads.delete(controller);
+      if (this.disposed && !this.sampleLoads.size) this.sampleCache.dispose();
+      this.syncDomTelemetry();
+    }
+  }
+  /** Stops this sample's queued/active voices, cancels pending loads and releases its PCM lease. */
+  unloadSample(id) {
+    let changed = false;
+    for (const [controller, sampleId] of this.sampleLoads) if (sampleId === id) {
+      controller.abort();
+      changed = true;
+    }
+    for (const [key, voice] of [...this.activeVoices]) if (voice.sampleId === id) {
+      this.stopVoice(key);
+      changed = true;
+    }
+    const before = this.pendingQueue.length;
+    this.pendingQueue = this.pendingQueue.filter((task) => task.sampleId !== id);
+    changed || (changed = before !== this.pendingQueue.length);
+    const lease = this.samples.get(id);
+    if (lease) {
+      this.samples.delete(id);
+      lease.release();
+      changed = true;
+    }
+    this.syncDomTelemetry();
+    return changed;
+  }
+  playSample(options) {
+    if (!options || typeof options.id !== "string" || !options.id.trim()) return false;
+    const lease = this.samples.get(options.sampleId);
+    const channel = options.channel ?? "sfx";
+    if (!lease || !isAudioChannel(channel)) return false;
+    const buffer = lease.value;
+    const offset = options.offsetSec ?? 0, loopStart = options.loopStartSec ?? 0, loopEnd = options.loopEndSec ?? buffer.duration;
+    for (const value of [offset, loopStart, loopEnd, options.fadeInSec ?? 0, options.fadeOutSec ?? 0, options.crossFadeSec ?? 0])
+      if (!Number.isFinite(value) || value < 0) return false;
+    if (offset >= buffer.duration || loopStart >= loopEnd || loopEnd > buffer.duration || options.loop !== void 0 && typeof options.loop !== "boolean" || options.replace !== void 0 && typeof options.replace !== "boolean" || (options.crossFadeSec ?? 0) > 0 && !options.replace || options.durationSec !== void 0 && (!Number.isFinite(options.durationSec) || options.durationSec <= 0) || options.peakGain !== void 0 && (!Number.isFinite(options.peakGain) || options.peakGain < 0 || options.peakGain > 1)) return false;
+    const duration = options.loop ? options.durationSec : Math.min(options.durationSec ?? Infinity, buffer.duration - offset);
+    const fadeIn = options.fadeInSec ?? options.crossFadeSec ?? 0, fadeOut = options.fadeOutSec ?? 0;
+    if (fadeIn > 60 || fadeOut > 60 || (options.crossFadeSec ?? 0) > 60 || (duration === void 0 ? fadeOut > 0 : fadeIn + fadeOut > duration)) return false;
+    const snapshot = { ...options };
+    return this.submit({ id: snapshot.id, sampleId: snapshot.sampleId, channel, execute: () => {
+      if (this.samples.get(snapshot.sampleId) !== lease || this.userMuted || this.autoSuspendedByBlur) return false;
+      const previous = [...this.activeVoices].filter(([, voice]) => voice.logicalId === snapshot.id).map(([key2]) => key2);
+      if (previous.length && !snapshot.replace) return false;
+      const context = this.ensureAudioContext(false);
+      const channelGain = channel === "master" ? this.masterGain : this.channelGains[channel];
+      if (!context || !channelGain) return false;
+      if (this.activeVoices.size >= this.options.maxActiveVoices) {
+        this.droppedVoices++;
+        this.syncDomTelemetry();
+        return false;
+      }
+      const key = `${snapshot.id}:${++this.voiceSerial}`;
+      let source, gain;
+      try {
+        source = context.createBufferSource();
+        gain = context.createGain();
+        source.buffer = buffer;
+        source.loop = snapshot.loop ?? false;
+        source.loopStart = loopStart;
+        source.loopEnd = loopEnd;
+        const now = context.currentTime, peak = snapshot.peakGain ?? 1;
+        gain.gain.setValueAtTime(fadeIn ? 0 : peak, now);
+        if (fadeIn) gain.gain.linearRampToValueAtTime(peak, now + fadeIn);
+        if (duration !== void 0 && fadeOut) {
+          gain.gain.setValueAtTime(peak, now + duration - fadeOut);
+          gain.gain.linearRampToValueAtTime(0, now + duration);
+        }
+        source.connect(gain);
+        gain.connect(channelGain);
+        source.onended = () => this.finishVoice(key);
+        this.activeVoices.set(key, { logicalId: snapshot.id, channel, source, gain, sampleId: snapshot.sampleId, stopped: false });
+        source.start(now, offset);
+        if (duration !== void 0) source.stop(now + duration);
+        for (const old of previous) this.stopVoice(old, snapshot.crossFadeSec ?? 0);
+        this.playedEventsCount++;
+        this.syncDomTelemetry();
+        return true;
+      } catch (error) {
+        try {
+          source?.stop();
+        } catch {
+        }
+        source?.disconnect();
+        gain?.disconnect();
+        this.activeVoices.delete(key);
+        this.recordError(error);
+        this.syncDomTelemetry();
+        return false;
+      }
+    } }, snapshot.replace);
+  }
+  stop(id, fadeOutSec = 0) {
+    if (!Number.isFinite(fadeOutSec) || fadeOutSec < 0 || fadeOutSec > 60) return false;
     let stopped = false;
     for (const [voiceKey, voice] of [...this.activeVoices.entries()]) {
-      if (voice.logicalId === id) stopped = this.stopVoice(voiceKey) || stopped;
+      if (voice.logicalId === id) stopped = this.stopVoice(voiceKey, fadeOutSec) || stopped;
     }
     const before = this.pendingQueue.length;
     this.pendingQueue = this.pendingQueue.filter((task) => task.id !== id);
@@ -5398,20 +6408,46 @@ var _IframeSoundAdapter = class _IframeSoundAdapter {
     this.syncDomTelemetry();
     return stopped;
   }
-  stopVoice(voiceKey) {
+  finishVoice(voiceKey) {
+    const voice = this.activeVoices.get(voiceKey);
+    if (!voice) return;
+    this.activeVoices.delete(voiceKey);
+    voice.stopped = true;
+    voice.source.onended = null;
+    try {
+      voice.source.disconnect?.();
+    } catch {
+    }
+    try {
+      voice.gain?.disconnect?.();
+    } catch {
+    }
+    this.syncDomTelemetry();
+  }
+  stopVoice(voiceKey, fadeOutSec = 0) {
     const voice = this.activeVoices.get(voiceKey);
     if (!voice) return false;
-    voice.stopped = true;
-    this.activeVoices.delete(voiceKey);
+    if (fadeOutSec && voice.stopping) return false;
     try {
+      if (fadeOutSec && this.ctx && voice.gain) {
+        const now = this.ctx.currentTime;
+        voice.gain.gain.cancelScheduledValues(now);
+        voice.gain.gain.setValueAtTime(voice.gain.gain.value, now);
+        voice.gain.gain.linearRampToValueAtTime(0, now + fadeOutSec);
+        voice.source.stop(now + fadeOutSec);
+        voice.stopping = true;
+        return true;
+      }
       voice.source.stop();
     } catch (_error) {
     }
-    this.syncDomTelemetry();
+    this.finishVoice(voiceKey);
     return true;
   }
   stopAll(channel) {
-    let count = 0;
+    const before = this.pendingQueue.length;
+    this.pendingQueue = this.pendingQueue.filter((task) => channel !== void 0 && task.channel !== channel);
+    let count = before - this.pendingQueue.length;
     for (const [voiceKey, voice] of [...this.activeVoices.entries()]) {
       if (channel === void 0 || voice.channel === channel) {
         if (this.stopVoice(voiceKey)) count++;
@@ -5423,6 +6459,9 @@ var _IframeSoundAdapter = class _IframeSoundAdapter {
   getDiagnostics() {
     const state = this.ctx && CONTEXT_STATES.has(this.ctx.state) ? this.ctx.state : "uninitialized";
     return {
+      loadedSamples: this.samples.size,
+      pendingSampleLoads: this.sampleLoads.size,
+      decodedSampleBytes: [...this.samples.values()].reduce((sum, lease) => sum + lease.value.length * lease.value.numberOfChannels * 4, 0),
       inIframe: this.inIframe,
       contextState: state,
       unlockedByGesture: this.unlockedByGesture,
@@ -5463,6 +6502,14 @@ var _IframeSoundAdapter = class _IframeSoundAdapter {
     this.unlockAttempt++;
     this.pendingQueue = [];
     this.stopAll();
+    for (const controller of this.sampleLoads.keys()) controller.abort();
+    for (const id of [...this.samples.keys()]) this.unloadSample(id);
+    if (!this.sampleLoads.size) this.sampleCache?.dispose();
+    try {
+      this.masterGain?.disconnect?.();
+      for (const node of Object.values(this.channelGains)) node.disconnect?.();
+    } catch {
+    }
     for (const cleanup of this.cleanupFns.splice(0)) cleanup();
     this.gestureCleanupFns.splice(0);
     this.postMessageBridgeActive = false;
@@ -8220,694 +9267,6 @@ function compareVisualFrames(source, target, width, height, options = {}) {
   return { passed: a > 0 && b > 0 && iou >= minIoU && center <= maxCenter, intersectionOverUnion: iou, sourcePixels: a, targetPixels: b, centroidErrorPx: center };
 }
 
-// packages/core/runtime3d/Assets.ts
-var abortError = () => new DOMException("Asset request cancelled", "AbortError");
-var ZhudaAssetCache = class {
-  constructor(load, destroy, maxIdle = 0) {
-    this.entries = /* @__PURE__ */ new Map();
-    this.disposed = false;
-    this.serial = 0;
-    this.loads = 0;
-    this.load = load;
-    this.destroy = destroy;
-    this.maxIdle = maxIdle;
-    if (!Number.isInteger(maxIdle) || maxIdle < 0)
-      throw Error("Invalid warm asset bound");
-  }
-  async acquire(key, options = {}) {
-    if (this.disposed) throw Error("Disposed asset cache");
-    if (options.signal?.aborted) throw abortError();
-    if (!key || options.retries !== void 0 && (!Number.isInteger(options.retries) || options.retries < 0 || options.retries > 3))
-      throw Error("Invalid asset request");
-    let e = this.entries.get(key);
-    if (!e) {
-      const controller = new AbortController();
-      e = {
-        refs: 0,
-        ready: false,
-        abort: controller,
-        phase: "downloading",
-        used: ++this.serial,
-        promise: null
-      };
-      const created = e;
-      this.entries.set(key, e);
-      this.loads++;
-      e.promise = (async () => {
-        let last;
-        for (let i = 0; i <= Math.max(0, Math.min(3, options.retries ?? 0)); i++) {
-          try {
-            return await this.load(
-              key,
-              controller.signal,
-              (p) => created.phase = p
-            );
-          } catch (error) {
-            last = error;
-            if (controller.signal.aborted) throw error;
-          }
-        }
-        throw last;
-      })().then(
-        (value) => {
-          created.value = value;
-          created.ready = true;
-          created.phase = "ready";
-          if (controller.signal.aborted || this.disposed || this.entries.get(key) !== created) {
-            this.destroy(value);
-            throw abortError();
-          }
-          return value;
-        },
-        (error) => {
-          if (this.entries.get(key) === created) this.entries.delete(key);
-          throw error;
-        }
-      );
-    }
-    const target = e;
-    target.refs++;
-    target.used = ++this.serial;
-    let released = false;
-    const release = () => {
-      if (released) return;
-      released = true;
-      target.refs--;
-      target.used = ++this.serial;
-      this.evict();
-    };
-    let cancel;
-    try {
-      const value = await new Promise((resolve, reject) => {
-        cancel = () => {
-          release();
-          reject(abortError());
-        };
-        options.signal?.addEventListener("abort", cancel, { once: true });
-        target.promise.then(resolve, reject);
-      });
-      if (released) throw abortError();
-      return { value, release };
-    } catch (error) {
-      release();
-      throw error;
-    } finally {
-      if (cancel) options.signal?.removeEventListener("abort", cancel);
-    }
-  }
-  evict() {
-    for (const [k, e] of this.entries)
-      if (!e.refs && !e.ready) {
-        this.entries.delete(k);
-        e.abort.abort();
-      }
-    const idle = [...this.entries].filter(([, e]) => !e.refs && e.ready).sort((a, b) => a[1].used - b[1].used);
-    while (idle.length > this.maxIdle) {
-      const [k, e] = idle.shift();
-      this.entries.delete(k);
-      this.destroy(e.value);
-    }
-  }
-  report() {
-    return {
-      entries: this.entries.size,
-      references: [...this.entries.values()].reduce((n, e) => n + e.refs, 0),
-      pending: [...this.entries.values()].filter((e) => !e.ready).length,
-      loads: this.loads,
-      phases: [...this.entries].map(([key, e]) => ({
-        key,
-        phase: e.phase,
-        references: e.refs
-      })),
-      gpuReady: "requires-first-draw"
-    };
-  }
-  dispose() {
-    if (this.disposed) return;
-    if ([...this.entries.values()].some((e) => e.refs > 0))
-      throw Error("Release all asset leases before disposing cache");
-    this.disposed = true;
-    for (const e of this.entries.values()) {
-      e.abort.abort();
-      if (e.ready) this.destroy(e.value);
-    }
-    this.entries.clear();
-  }
-};
-var ZhudaRequestSlot = class {
-  constructor() {
-    this.generation = 0;
-    this.active = null;
-  }
-  async replace(load, commit, discard) {
-    this.cancel();
-    const n = this.generation, c = this.active = new AbortController();
-    try {
-      const value = await load(c.signal);
-      if (n !== this.generation || c.signal.aborted) {
-        discard(value);
-        return false;
-      }
-      try {
-        commit(value);
-      } catch (error) {
-        discard(value);
-        throw error;
-      }
-      return true;
-    } catch (e) {
-      if (c.signal.aborted) return false;
-      throw e;
-    }
-  }
-  cancel() {
-    this.generation++;
-    this.active?.abort();
-    this.active = null;
-  }
-};
-function visit(node, fn) {
-  fn(node);
-  for (let i = 0; i < (node.numChildren || 0); i++)
-    visit(node.getChildAt(i), fn);
-}
-var ZhudaModelLibrary = class {
-  constructor(maxIdle = 3) {
-    this.instances = /* @__PURE__ */ new Set();
-    this.cache = new ZhudaAssetCache(
-      async (url, signal, phase) => {
-        const l = globalThis.Laya;
-        if (!l?.glTFResource)
-          throw Error("Load Laya glTF module before models");
-        const response = await fetch(url, { signal });
-        if (!response.ok) throw Error(`Model HTTP ${response.status}`);
-        const bytes = await response.arrayBuffer();
-        if (signal.aborted) throw abortError();
-        phase("parsing");
-        const resource = new l.glTFResource();
-        try {
-          const view = new DataView(bytes);
-          if (bytes.byteLength >= 12 && view.getUint32(0, true) === 1179937895)
-            await resource._parseglb(bytes, url);
-          else
-            await resource._parse(
-              JSON.parse(new TextDecoder().decode(bytes)),
-              url
-            );
-          if (signal.aborted) {
-            resource.destroy();
-            throw abortError();
-          }
-          resource._addReference();
-          return resource;
-        } catch (e) {
-          if (!resource.destroyed) resource.destroy();
-          throw e;
-        }
-      },
-      (r) => {
-        r._removeReference();
-        r.destroy();
-      },
-      maxIdle
-    );
-  }
-  async instantiate(url, options = {}) {
-    const lease = await this.cache.acquire(url, options);
-    let node;
-    const materials = [];
-    try {
-      if (options.signal?.aborted) throw abortError();
-      node = lease.value.create();
-      if (options.independentMaterials)
-        visit(node, (n) => {
-          const l = globalThis.Laya;
-          const renderer = n.meshRenderer || n.skinnedMeshRenderer || n.getComponent?.(l.SkinnedMeshRenderer) || n.getComponent?.(l.MeshRenderer);
-          if (renderer) {
-            renderer.sharedMaterials = renderer.sharedMaterials.map(
-              (m) => {
-                const copy = m.clone();
-                materials.push(copy);
-                return copy;
-              }
-            );
-          }
-        });
-    } catch (e) {
-      node?.destroy(true);
-      lease.release();
-      throw e;
-    }
-    this.instances.add(node);
-    let disposed = false;
-    return {
-      node,
-      materials,
-      setTint: (color) => {
-        if (disposed) throw Error("Disposed model instance");
-        if (!options.independentMaterials)
-          throw Error("Tint requires independent materials");
-        if (color.length !== 4 || !color.every((n) => Number.isFinite(n) && n >= 0 && n <= 1))
-          throw Error("Invalid linear tint");
-        const l = globalThis.Laya;
-        for (const m of materials) {
-          if ("albedoColor" in m) m.albedoColor = new l.Color(...color);
-          else if (m.getVector4("u_BaseColorFactor"))
-            m.setVector4("u_BaseColorFactor", new l.Vector4(...color));
-          else throw Error("Model material does not expose a base color");
-        }
-      },
-      find: (name) => {
-        let found = null;
-        visit(node, (n) => {
-          if (n.name === name) found = n;
-        });
-        return found;
-      },
-      dispose: () => {
-        if (disposed) return;
-        disposed = true;
-        node.destroy(true);
-        for (const m of materials) if (!m.destroyed) m.destroy();
-        this.instances.delete(node);
-        lease.release();
-      }
-    };
-  }
-  report() {
-    return { ...this.cache.report(), instances: this.instances.size };
-  }
-  dispose() {
-    if (this.instances.size)
-      throw Error("Dispose model instances before library");
-    this.cache.dispose();
-  }
-};
-
-// packages/core/runtime3d/AssetProvider.ts
-var AssetProviderError = class extends Error {
-  constructor(code, message, details = {}) {
-    super(message);
-    this.name = "AssetProviderError";
-    this.code = code;
-    this.id = details.id;
-    this.status = details.status;
-  }
-};
-function normalizeAssetId(value) {
-  if (typeof value !== "string")
-    throw new AssetProviderError("invalid-id", "Asset id must be a string");
-  let id = value.trim().replace(/\\/g, "/");
-  while (id.startsWith("./")) id = id.slice(2);
-  if (!id || id.startsWith("/") || id.includes("\0") || /[?#]/.test(id) || /^[a-z][a-z\d+.-]*:/i.test(id))
-    throw new AssetProviderError("invalid-id", `Invalid asset id: ${value}`);
-  const parts = id.split("/").filter(Boolean);
-  if (!parts.length || parts.some((part) => part === "." || part === ".."))
-    throw new AssetProviderError("invalid-id", `Invalid asset id: ${value}`);
-  return parts.join("/");
-}
-function validateAssetManifest(value) {
-  if (!value || typeof value !== "object") throw Error("Invalid asset manifest");
-  const manifest = value;
-  if (manifest.schemaVersion !== 1 || !Array.isArray(manifest.entries))
-    throw Error("Invalid asset manifest schema");
-  const ids = /* @__PURE__ */ new Set();
-  for (const candidate of manifest.entries) {
-    if (!candidate || typeof candidate !== "object")
-      throw Error("Invalid asset manifest entry");
-    const entry = candidate;
-    const id = normalizeAssetId(entry.id);
-    if (id !== entry.id || ids.has(id))
-      throw Error(`Duplicate or non-normalized asset id: ${entry.id}`);
-    ids.add(id);
-    if (entry.bytes !== void 0 && (!Number.isSafeInteger(entry.bytes) || entry.bytes < 0))
-      throw Error(`Invalid asset byte size: ${id}`);
-    if (entry.sha256 !== void 0 && !/^[0-9a-f]{64}$/i.test(entry.sha256))
-      throw Error(`Invalid asset checksum: ${id}`);
-  }
-  return manifest;
-}
-function manifestIdFor(baseUrl, value) {
-  const manifestUrl = new URL(value, baseUrl);
-  if (manifestUrl.origin !== baseUrl.origin || !manifestUrl.pathname.startsWith(baseUrl.pathname))
-    throw new AssetProviderError("invalid-id", "Manifest must be below the provider base URL");
-  const id = decodeURIComponent(manifestUrl.pathname.slice(baseUrl.pathname.length));
-  return normalizeAssetId(id);
-}
-function abortReason(signal, id) {
-  return new AssetProviderError(
-    signal.reason?.name === "TimeoutError" ? "timeout" : "aborted",
-    signal.reason?.name === "TimeoutError" ? `Asset request timed out: ${id}` : `Asset request cancelled: ${id}`,
-    { id }
-  );
-}
-function combineSignals(source, timeoutMs, id) {
-  const controller = new AbortController();
-  let timedOut = false;
-  const abort = () => controller.abort(source?.reason);
-  if (source?.aborted) controller.abort(source.reason);
-  else source?.addEventListener("abort", abort, { once: true });
-  const timer = setTimeout(() => {
-    timedOut = true;
-    controller.abort(new DOMException("Asset request timed out", "TimeoutError"));
-  }, timeoutMs);
-  return {
-    signal: controller.signal,
-    cleanup: () => {
-      clearTimeout(timer);
-      source?.removeEventListener("abort", abort);
-      if (timedOut && !controller.signal.reason)
-        controller.abort(new DOMException(`Asset request timed out: ${id}`, "TimeoutError"));
-    }
-  };
-}
-async function sha256(bytes) {
-  if (!globalThis.crypto?.subtle)
-    throw new AssetProviderError("integrity", "Web Crypto subtle.digest is unavailable");
-  const input = new Uint8Array(bytes.byteLength);
-  input.set(bytes);
-  const digest = await globalThis.crypto.subtle.digest("SHA-256", input.buffer);
-  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
-}
-var DirectoryAssetProvider = class {
-  constructor(options) {
-    this.name = "directory";
-    this.active = /* @__PURE__ */ new Set();
-    this.disposed = false;
-    if (!options?.baseUrl) throw Error("DirectoryAssetProvider requires baseUrl");
-    this.baseUrl = new URL(options.baseUrl, globalThis.location?.href || "http://localhost/");
-    if (!this.baseUrl.pathname.endsWith("/")) this.baseUrl.pathname += "/";
-    this.manifest = options.manifest ? validateAssetManifest(options.manifest) : void 0;
-    this.manifestUrl = options.manifestUrl;
-    this.manifestId = options.manifestUrl ? manifestIdFor(this.baseUrl, options.manifestUrl) : void 0;
-    this.timeoutMs = options.timeoutMs ?? 15e3;
-    this.maxBytes = options.maxBytes ?? 128 * 1024 * 1024;
-    this.fetchImpl = options.fetch || globalThis.fetch.bind(globalThis);
-    if (!Number.isInteger(this.timeoutMs) || this.timeoutMs <= 0)
-      throw Error("timeoutMs must be a positive integer");
-    if (!Number.isInteger(this.maxBytes) || this.maxBytes <= 0)
-      throw Error("maxBytes must be a positive integer");
-  }
-  async getManifest(signal) {
-    if (this.disposed) throw new AssetProviderError("disposed", "Asset provider disposed");
-    if (this.manifest) return this.manifest;
-    if (!this.manifestId) return { schemaVersion: 1, entries: [] };
-    if (!this.manifestPromise) {
-      const pending = (async () => {
-        const result = await this.load(this.manifestId, {
-          signal,
-          maxBytes: 2 * 1024 * 1024
-        });
-        try {
-          const parsed = JSON.parse(new TextDecoder().decode(result.bytes));
-          this.manifest = validateAssetManifest(parsed);
-          return this.manifest;
-        } catch (error) {
-          if (error instanceof AssetProviderError) throw error;
-          throw new AssetProviderError("integrity", `Invalid asset manifest: ${this.manifestUrl}`);
-        }
-      })();
-      this.manifestPromise = pending.catch((error) => {
-        this.manifestPromise = void 0;
-        throw error;
-      });
-    }
-    return this.manifestPromise;
-  }
-  async load(value, options = {}) {
-    if (this.disposed) throw new AssetProviderError("disposed", "Asset provider disposed");
-    const id = normalizeAssetId(value);
-    if (this.manifestId && id !== this.manifestId && !this.manifest)
-      await this.getManifest(options.signal);
-    const entry = this.manifest?.entries.find((candidate) => candidate.id === id);
-    const maxBytes = options.maxBytes ?? this.maxBytes;
-    const url = new URL(id.split("/").map(encodeURIComponent).join("/"), this.baseUrl);
-    const combined = combineSignals(options.signal, this.timeoutMs, id);
-    const request = new AbortController();
-    const relay = () => request.abort(combined.signal.reason);
-    combined.signal.addEventListener("abort", relay, { once: true });
-    this.active.add(request);
-    try {
-      options.onProgress?.({ id, phase: "downloading", loadedBytes: 0 });
-      const response = await this.fetchImpl(url, { signal: request.signal });
-      if (!response.ok)
-        throw new AssetProviderError("http", `Asset HTTP ${response.status}: ${id}`, {
-          id,
-          status: response.status
-        });
-      const contentLength = Number(response.headers.get("content-length"));
-      if (Number.isFinite(contentLength) && contentLength > maxBytes)
-        throw new AssetProviderError("too-large", `Asset exceeds ${maxBytes} bytes: ${id}`, { id });
-      const chunks = [];
-      let total = 0;
-      if (response.body) {
-        const reader = response.body.getReader();
-        while (true) {
-          const next = await reader.read();
-          if (next.done) break;
-          total += next.value.byteLength;
-          if (total > maxBytes)
-            throw new AssetProviderError("too-large", `Asset exceeds ${maxBytes} bytes: ${id}`, { id });
-          chunks.push(next.value);
-          options.onProgress?.({ id, phase: "downloading", loadedBytes: total, totalBytes: contentLength || void 0 });
-        }
-      } else {
-        const data = new Uint8Array(await response.arrayBuffer());
-        total = data.byteLength;
-        if (total > maxBytes)
-          throw new AssetProviderError("too-large", `Asset exceeds ${maxBytes} bytes: ${id}`, { id });
-        chunks.push(data);
-        options.onProgress?.({ id, phase: "downloading", loadedBytes: total, totalBytes: total });
-      }
-      const bytes = new Uint8Array(total);
-      let offset = 0;
-      for (const chunk of chunks) {
-        bytes.set(chunk, offset);
-        offset += chunk.byteLength;
-      }
-      if (entry?.bytes !== void 0 && entry.bytes !== bytes.byteLength)
-        throw new AssetProviderError("integrity", `Asset size mismatch: ${id}`, { id });
-      if (entry?.sha256) {
-        options.onProgress?.({ id, phase: "verifying", loadedBytes: total, totalBytes: total });
-        if (await sha256(bytes) !== entry.sha256.toLowerCase())
-          throw new AssetProviderError("integrity", `Asset checksum mismatch: ${id}`, { id });
-      }
-      options.onProgress?.({ id, phase: "ready", loadedBytes: total, totalBytes: total });
-      return { id, bytes, manifest: entry };
-    } catch (error) {
-      if (combined.signal.aborted || request.signal.aborted) {
-        if (combined.signal.reason?.name === "TimeoutError") throw abortReason(combined.signal, id);
-        throw abortReason(combined.signal, id);
-      }
-      throw error;
-    } finally {
-      this.active.delete(request);
-      combined.signal.removeEventListener("abort", relay);
-      combined.cleanup();
-    }
-  }
-  dispose() {
-    if (this.disposed) return;
-    this.disposed = true;
-    for (const controller of this.active) controller.abort(new DOMException("Asset provider disposed", "AbortError"));
-    this.active.clear();
-  }
-};
-function createProviderAssetCache(provider, decode, destroy, maxIdle = 0) {
-  return new ZhudaAssetCache(
-    async (id, signal, phase) => {
-      const asset = await provider.load(id, {
-        signal,
-        onProgress: ({ phase: providerPhase }) => phase(providerPhase === "ready" ? "ready" : "downloading")
-      });
-      phase("parsing");
-      try {
-        return await decode(asset, signal, phase);
-      } finally {
-        asset.release?.();
-      }
-    },
-    destroy,
-    maxIdle
-  );
-}
-
-// packages/core/runtime3d/SceneLifecycle.ts
-var ZhudaResourceScope = class {
-  constructor() {
-    this.releases = [];
-    this.disposed = false;
-  }
-  own(value, release) {
-    if (this.disposed) {
-      release(value);
-      throw Error("Disposed resource scope");
-    }
-    this.releases.push(() => release(value));
-    return value;
-  }
-  defer(release) {
-    this.own(release, (f) => f());
-  }
-  dispose() {
-    if (this.disposed) return;
-    this.disposed = true;
-    const errors = [];
-    for (const release of this.releases.reverse())
-      try {
-        release();
-      } catch (e) {
-        errors.push(e);
-      }
-    this.releases = [];
-    if (errors.length)
-      throw Object.assign(Error("Resource release failed"), { errors });
-  }
-};
-var ZhudaSceneRegions = class {
-  constructor() {
-    this.regions = /* @__PURE__ */ new Map();
-  }
-  async enter(id, create) {
-    if (!id) throw Error("Missing region ID");
-    this.leave(id);
-    const record = {
-      slot: new ZhudaRequestSlot(),
-      value: void 0
-    };
-    this.regions.set(id, record);
-    try {
-      return await record.slot.replace(
-        create,
-        (value) => record.value = value,
-        (value) => value.dispose()
-      );
-    } catch (e) {
-      if (this.regions.get(id) === record) this.regions.delete(id);
-      throw e;
-    }
-  }
-  leave(id) {
-    const r = this.regions.get(id);
-    if (!r) return;
-    this.regions.delete(id);
-    r.slot.cancel();
-    r.value?.dispose();
-  }
-  clear() {
-    for (const id of [...this.regions.keys()]) this.leave(id);
-  }
-  get size() {
-    return this.regions.size;
-  }
-};
-var ZhudaSceneBudget = class {
-  constructor() {
-    this.resources = /* @__PURE__ */ new Map();
-  }
-  track(id, kind, estimatedBytes) {
-    if (!id || this.resources.has(id) || !Number.isFinite(estimatedBytes) || estimatedBytes < 0)
-      throw Error("Invalid/duplicate resource budget");
-    this.resources.set(id, { kind, estimatedBytes });
-    return () => this.resources.delete(id);
-  }
-  report() {
-    const counts = { mesh: 0, texture: 0, renderTarget: 0 };
-    let estimatedBytes = 0;
-    for (const r of this.resources.values()) {
-      counts[r.kind]++;
-      estimatedBytes += r.estimatedBytes;
-    }
-    return { counts, estimatedBytes, memoryMeasurement: "estimate" };
-  }
-};
-var sceneQuality = {
-  low: {
-    dprCap: 1,
-    shadowDistance: 0,
-    shadowResolution: 512,
-    extraPasses: 0,
-    lodDistance: 20
-  },
-  medium: {
-    dprCap: 1.5,
-    shadowDistance: 30,
-    shadowResolution: 1024,
-    extraPasses: 0,
-    lodDistance: 40
-  },
-  high: {
-    dprCap: 2,
-    shadowDistance: 60,
-    shadowResolution: 2048,
-    extraPasses: 2,
-    lodDistance: 80
-  }
-};
-var ZhudaDistanceLOD = class {
-  constructor(distance, hysteresis = 2) {
-    this.near = true;
-    this.distance = distance;
-    this.hysteresis = hysteresis;
-    if (!(distance > hysteresis && hysteresis >= 0))
-      throw Error("Invalid LOD bounds");
-  }
-  update(camera, object) {
-    const d = Math.hypot(
-      camera.x - object.x,
-      camera.y - object.y,
-      camera.z - object.z
-    );
-    if (d > this.distance + this.hysteresis) this.near = false;
-    else if (d < this.distance - this.hysteresis) this.near = true;
-    return this.near;
-  }
-};
-function inspectSceneResources(runtime = globalThis.Laya) {
-  const map = runtime.Resource._idResourcesMap, items = map instanceof Map ? [...map.values()] : Object.values(map || {});
-  const counts = { mesh: 0, texture: 0, renderTarget: 0 };
-  let meshBytes = 0, textureBytes = 0, renderTargetBytes = 0;
-  for (const r of items) {
-    if (r.destroyed) continue;
-    if (r instanceof runtime.Mesh) {
-      counts.mesh++;
-      meshBytes += r.gpuMemory || 0;
-    } else if (runtime.RenderTexture && r instanceof runtime.RenderTexture || runtime.RenderTexture2D && r instanceof runtime.RenderTexture2D) {
-      counts.renderTarget++;
-      renderTargetBytes += (r.width || 0) * (r.height || 0) * 8 * Math.max(1, r.samples || 1);
-    } else if (r instanceof runtime.BaseTexture) {
-      counts.texture++;
-      textureBytes += (r.width || 0) * (r.height || 0) * 4 * (r.mipmap ? 4 / 3 : 1) * (r.isCube ? 6 : 1);
-    }
-  }
-  return {
-    counts,
-    resources: items.filter((r) => !r.destroyed).length,
-    estimatedBytes: meshBytes + textureBytes + renderTargetBytes,
-    meshBytes,
-    textureBytes,
-    renderTargetBytes,
-    memoryMeasurement: "estimate",
-    assumptions: "Texture RGBA8, render target RGBA8 + 32-bit depth; vendor mesh accounting. Excludes driver overhead and compressed/HDR format corrections."
-  };
-}
-function applySceneQuality(quality, session, camera, lights = []) {
-  const l = globalThis.Laya;
-  if (![quality.dprCap, quality.shadowDistance, quality.extraPasses].every(
-    Number.isFinite
-  ) || quality.dprCap < 0.5 || quality.dprCap > 4 || quality.shadowDistance < 0 || quality.extraPasses < 0 || !Number.isFinite(quality.lodDistance) || quality.lodDistance <= 0 || ![512, 1024, 2048].includes(quality.shadowResolution))
-    throw Error("Invalid scene quality");
-  session.options.dprCap = quality.dprCap;
-  session.resize();
-  camera.msaa = false;
-  for (const light of lights) {
-    light.shadowDistance = quality.shadowDistance;
-    light.shadowResolution = quality.shadowResolution;
-    light.shadowMode = quality.shadowDistance > 0 ? l.ShadowMode.SoftLow : l.ShadowMode.None;
-  }
-  return { ...quality, additionalPassBudget: quality.extraPasses };
-}
-
 // packages/core/prefabs/PrefabLibrary.ts
 var provenance = /* @__PURE__ */ new WeakMap();
 function inspectPrefabInstance(root) {
@@ -8971,6 +9330,15 @@ var ZhudaPrefabLibrary = class {
       const entry = structuredClone(source);
       if (typeof entry.id !== "string" || !entry.id || this.definitions.has(entry.id) || !entry.states || Array.isArray(entry.states) || !Object.keys(entry.states).length)
         throw Error("Prefab IDs must be unique and have explicit states");
+      if (entry.kind === "3d") {
+        validatePrefabTree3D(entry.tree);
+        for (const patches of Object.values(entry.states)) {
+          if (!patches || typeof patches !== "object" || Array.isArray(patches)) throw Error("Invalid 3D prefab state");
+          for (const patch of Object.values(patches)) validatePrefabPatch3D(patch);
+        }
+        this.definitions.set(entry.id, entry);
+        continue;
+      }
       validateStates(entry.states);
       if (normalizeAssetId(entry.asset) !== entry.asset) throw Error("Prefab asset ID must be normalized");
       for (const id of entry.textures || []) {
@@ -9042,45 +9410,88 @@ var ZhudaPrefabLibrary = class {
     const timer = setTimeout(abort, this.timeoutMs);
     try {
       const resources = /* @__PURE__ */ new Map();
-      for (const key of [entry.asset, ...new Set(entry.textures)]) {
+      for (const key of entry.kind === "3d" ? [] : [entry.asset, ...new Set(entry.textures)]) {
         const lease = await this.cache.acquire(key, { signal: controller.signal });
         scope.defer(() => lease.release());
         resources.set(key, lease.value);
       }
       if (controller.signal.aborted) throw new DOMException("Prefab cancelled", "AbortError");
-      const data = structuredClone(resources.get(entry.asset).data);
-      const bindTextures = (node) => {
-        if (node.skin) {
-          const texture = resources.get(node.skin);
-          if (!texture?.url) throw Error(`Undeclared prefab texture: ${node.skin}`);
-          node.skin = texture.url;
-        }
-        for (const command of node._gcmds || []) {
-          if (command._$type !== "DrawTextureCmd") continue;
-          if (!command.textureId) throw Error("DrawTextureCmd requires textureId");
-          const texture = resources.get(command.textureId);
-          if (!texture?.url) throw Error(`Undeclared prefab texture: ${command.textureId}`);
-          command.textureId = texture.url;
-        }
-        node._$child?.forEach(bindTextures);
-      };
-      bindTextures(data);
-      const root = ZhudaPrefab.instantiate(data);
-      scope.defer(() => root.destroy(true));
-      for (const [path, patch] of Object.entries(entry.states[state])) {
-        const target = findPrefabNode(root, path);
-        Object.assign(target, patch);
+      const definitionHash = await hash(new TextEncoder().encode(JSON.stringify(entry)));
+      if (controller.signal.aborted) throw new DOMException("Prefab cancelled", "AbortError");
+      let tree;
+      let created;
+      if (entry.kind === "3d") {
+        tree = buildPrefabTree(entry.tree);
+        scope.defer(() => tree.dispose());
+        created = tree.root;
+      } else {
+        const data = structuredClone(resources.get(entry.asset).data);
+        const bindTextures = (node) => {
+          if (node.skin) {
+            const texture = resources.get(node.skin);
+            if (!texture?.url) throw Error(`Undeclared prefab texture: ${node.skin}`);
+            node.skin = texture.url;
+          }
+          for (const command of node._gcmds || []) {
+            if (command._$type !== "DrawTextureCmd") continue;
+            if (!command.textureId) throw Error("DrawTextureCmd requires textureId");
+            const texture = resources.get(command.textureId);
+            if (!texture?.url) throw Error(`Undeclared prefab texture: ${command.textureId}`);
+            command.textureId = texture.url;
+          }
+          node._$child?.forEach(bindTextures);
+        };
+        bindTextures(data);
+        created = ZhudaPrefab.instantiate(data);
+        scope.defer(() => created.destroy(true));
       }
+      const root = created;
+      const baseline = /* @__PURE__ */ new Map();
+      if (entry.kind !== "3d") for (const patches of Object.values(entry.states)) {
+        for (const [path, patch] of Object.entries(patches)) {
+          const target = findPrefabNode(root, path);
+          const values = baseline.get(target) ?? {};
+          for (const key of Object.keys(patch)) if (!Object.prototype.hasOwnProperty.call(values, key))
+            values[key] = Reflect.get(target, key);
+          baseline.set(target, values);
+        }
+      }
+      let retired = false;
+      const apply = (next) => {
+        if (retired) throw Error("Disposed prefab instance");
+        if (!Object.prototype.hasOwnProperty.call(entry.states, next)) throw Error(`Unknown prefab state: ${id}/${next}`);
+        if (tree) tree.apply(entry.states[next]);
+        else {
+          for (const [target, values] of baseline) Object.assign(target, values);
+          for (const [path, patch] of Object.entries(entry.states[next])) Object.assign(findPrefabNode(root, path), patch);
+        }
+      };
+      apply(state);
       const record = {
         id,
         state,
+        kind: entry.kind ?? "2d",
+        definitionHash,
         sources: Object.fromEntries([...resources].map(([key, value]) => [key, value.hash]))
       };
       const instance = {
         root,
         provenance: structuredClone(record),
-        find: (path) => findPrefabNode(root, path),
+        find: (path) => {
+          if (retired) throw Error("Disposed prefab instance");
+          return findPrefabNode(root, path);
+        },
+        socket: (id2) => {
+          if (!tree) throw Error("Sockets require a 3D prefab");
+          return tree.socket(id2);
+        },
+        applyState: (next) => {
+          apply(next);
+          record.state = next;
+          instance.provenance = structuredClone(record);
+        },
         dispose: () => {
+          retired = true;
           provenance.delete(root);
           this.instances.delete(instance);
           scope.dispose();
@@ -11615,6 +12026,7 @@ zhudaSurface(s,zhudaUV,pixel.positionWS,pixel.normalWS);inputs.diffuseColor=max(
   ZhudaVfxCamera,
   ZhudaVfxMaterial,
   applySceneQuality,
+  buildPrefabTree,
   compareVisualFrames,
   compose4,
   computeMeshTangents,
@@ -11658,6 +12070,8 @@ zhudaSurface(s,zhudaUV,pixel.positionWS,pixel.normalWS);inputs.diffuseColor=max(
   validateParticleEffect,
   validateParticleEffect3D,
   validateParticleExtras,
+  validatePrefabPatch3D,
+  validatePrefabTree3D,
   validateShaderSpec,
   validateTerrain2D,
   validateVfxMaterial,

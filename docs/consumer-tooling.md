@@ -134,3 +134,10 @@ full declaration check with `skipLibCheck:false` and exits nonzero on debt. Its
 report is `dist/declaration-audit.json`; it is not part of a claimed zero-error
 declaration release. Package/config versions now agree, but a source version
 number alone is not evidence that a release tag was published.
+
+## Primitive 3D definitions
+
+The shared library and preview also accept typed `Prefab3DDefinition` recipes.
+See [primitive 3D Prefabs](procedural-prefabs.md) for transforms, materials,
+sockets, states, camera/light configuration and ownership. Static `.lh` remains
+supported; Zero-IDE does not mean serialized assets are forbidden.

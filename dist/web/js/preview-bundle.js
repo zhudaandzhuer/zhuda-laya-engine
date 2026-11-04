@@ -1187,7 +1187,7 @@ var ZhudaPreviewBundle = (() => {
           Laya.stage.frameRate = options.targetFPS === 30 ? "slow" : "fast";
         const runtime = new ZhudaRuntimeSession(canvas, {
           ...options,
-          container
+          container: container ?? void 0
         });
         let disposed = false;
         this.activeContext = {

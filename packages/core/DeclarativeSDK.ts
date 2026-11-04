@@ -5,12 +5,14 @@ import {
 import type { ManagedRuntimeOptions } from "./runtime3d/Runtime.ts";
 import { createSurfaceMaterial } from "./runtime3d/Surfaces.ts";
 import { installLaya342LifecycleFix } from "./runtime3d/Laya342Adapters.ts";
+import { buildPrefabTree } from './prefabs/PrefabTree3D.ts';
+import type { PrefabTree3D, PrefabTreeInstance3D } from './prefabs/PrefabTree3D.ts';
 /**
  * @zhuda-laya/core — AI-Friendly Declarative SDK (對標 Three.js / R3F 純代碼開發體驗)
  *
  * 目標：
  * - 100% 純 TypeScript 宣告式建構 3D 場景、材質、燈光、相機與 2D 向量玻璃擬態 UI
- * - 內建 @zhudaComponent 裝飾器與自動類別反射，完全脫離 LayaAir IDE (.laya / .lh / .ls)
+ * - 不依賴 LayaAir IDE；同時支援可版本控制的 .lh/.ls 序列化與程序式建構
  * - 消除 AI 生成 Laya 程式碼時常見的 1.x / 2.x 廢棄 API 幻覺
  */
 
@@ -194,7 +196,7 @@ export class ZhudaEngine {
         Laya.stage.frameRate = options.targetFPS === 30 ? "slow" : "fast";
       const runtime = new ZhudaRuntimeSession(canvas, {
         ...options,
-        container,
+        container: container ?? undefined,
       });
       let disposed = false;
       this.activeContext = {
@@ -254,6 +256,9 @@ export class ZhudaEngine {
  * Zhuda3D：零幻覺 3D 宣告式建構器 (對標 Three.js Scene / Mesh / Material 直覺語法)
  */
 export class Zhuda3D {
+  public static buildPrefabTree(spec: PrefabTree3D): PrefabTreeInstance3D {
+    return buildPrefabTree(spec);
+  }
   public static createScene3D(
     parent: Laya.Node,
     options: {

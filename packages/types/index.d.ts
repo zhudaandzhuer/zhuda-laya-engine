@@ -30,7 +30,10 @@ export declare class IframeSoundAdapter {
   setChannelVolume(channel: import('./zhuda-2d-ui').IframeAudioChannel, volume: number): boolean;
   getChannelVolume(channel: import('./zhuda-2d-ui').IframeAudioChannel): number;
   scheduleTone(options: import('./zhuda-2d-ui').IframeToneOptions): boolean;
-  stop(id: string): boolean;
+  loadSample(id: string, options?: { signal?: AbortSignal }): Promise<import('./zhuda-2d-ui').IframeSampleInfo>;
+  unloadSample(id: string): boolean;
+  playSample(options: import('./zhuda-2d-ui').IframeSampleOptions): boolean;
+  stop(id: string, fadeOutSec?: number): boolean;
   stopAll(channel?: import('./zhuda-2d-ui').IframeAudioChannel): number;
   getDiagnostics(): import('./zhuda-2d-ui').IframeSoundDiagnostics;
   dispose(): void;

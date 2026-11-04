@@ -1,30 +1,45 @@
 import type { LayaHierarchyNodeData } from "../../types/zhuda-static-assets";
 import type { AssetProvider } from "../runtime3d/AssetProvider";
+import type { PrefabTree3D, PrefabNodePatch3D } from "./PrefabTree3D";
 export type PrefabNodePatch = Partial<Pick<LayaHierarchyNodeData, "x" | "y" | "width" | "height" | "scaleX" | "scaleY" | "rotation" | "alpha" | "visible" | "text" | "font" | "fontSize" | "color" | "bold" | "align" | "valign" | "sizeGrid">>;
 export interface PrefabDefinition {
     id: string;
+    kind?: "2d";
     /** Logical provider ID of a static 2D .lh JSON hierarchy. */
     asset: string;
     textures?: string[];
     states: Record<string, Record<string, PrefabNodePatch>>;
 }
+export interface Prefab3DDefinition {
+    id: string;
+    kind: "3d";
+    tree: PrefabTree3D;
+    states: Record<string, Record<string, PrefabNodePatch3D>>;
+}
+export type AnyPrefabDefinition = PrefabDefinition | Prefab3DDefinition;
+type PrefabRoot<T> = T extends Prefab3DDefinition ? Laya.Sprite3D : Laya.Sprite;
 export interface PrefabProvenance {
+    kind: "2d" | "3d";
+    /** Hash of the complete serialized definition, including states and recipe. */
+    definitionHash: string;
     id: string;
     state: string;
     /** SHA-256 of the original bytes, including every declared texture. */
     sources: Record<string, string>;
 }
-export interface PrefabInstance {
-    root: Laya.Sprite;
+export interface PrefabInstance<T extends Laya.Node = Laya.Sprite> {
+    root: T;
     provenance: PrefabProvenance;
-    find(path?: string): Laya.Sprite;
+    find(path?: string): T;
+    applyState(state: string): void;
+    socket(id: string): T;
     dispose(): void;
 }
 /** Returns null for manually built substitutes. */
-export declare function inspectPrefabInstance(root: Laya.Sprite): PrefabProvenance | null;
-export declare function findPrefabNode(root: Laya.Sprite, path?: string): Laya.Sprite;
+export declare function inspectPrefabInstance(root: Laya.Node): PrefabProvenance | null;
+export declare function findPrefabNode<T extends Laya.Node>(root: T, path?: string): T;
 /** Shared by isolated previews and scenes. Owns instances and resource leases. */
-export declare class ZhudaPrefabLibrary {
+export declare class ZhudaPrefabLibrary<T extends AnyPrefabDefinition = PrefabDefinition> {
     private readonly definitions;
     private readonly cache;
     private readonly active;
@@ -33,14 +48,14 @@ export declare class ZhudaPrefabLibrary {
     private readonly timeoutMs;
     constructor(options: {
         provider: AssetProvider;
-        definitions: PrefabDefinition[];
+        definitions: readonly T[];
         timeoutMs?: number;
     });
     instantiate(id: string, options?: {
         state?: string;
         signal?: AbortSignal;
         parent?: Laya.Node;
-    }): Promise<PrefabInstance>;
+    }): Promise<PrefabInstance<PrefabRoot<T>>>;
     report(): {
         entries: number;
         references: number;
@@ -56,3 +71,4 @@ export declare class ZhudaPrefabLibrary {
     };
     dispose(): void;
 }
+export {};

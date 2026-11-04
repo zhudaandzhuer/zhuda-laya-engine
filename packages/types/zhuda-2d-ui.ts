@@ -56,6 +56,12 @@ export interface NineSlicePanelOptions {
 export type IframeAudioChannel = 'master' | 'bgm' | 'sfx' | 'ui';
 
 export interface IframeSoundAdapterOptions {
+  /** Borrowed provider; the adapter owns decoded sample leases, not this provider. */
+  sampleProvider?: import('./runtime3d/AssetProvider').AssetProvider;
+  sampleTimeoutMs?: number;
+  maxSamples?: number;
+  /** Total retained decoded PCM bound (channels * frames * 4). Default 64 MiB. */
+  maxDecodedSampleBytes?: number;
   /** Parent origins accepted by the postMessage bridge. Same-origin is used when omitted. */
   allowedParentOrigins?: readonly string[];
   /** Maximum age of a pre-gesture event before it is discarded. Defaults to 500 ms. */
@@ -83,6 +89,32 @@ export interface IframeToneOptions {
   delaySec?: number;
 }
 
+export interface IframeSampleInfo {
+  id: string;
+  durationSec: number;
+  channels: number;
+  sampleRate: number;
+  frames: number;
+  decodedBytes: number;
+}
+export interface IframeSampleOptions {
+  /** Logical event/voice identity, distinct from the provider asset ID. */
+  id: string;
+  sampleId: string;
+  channel?: IframeAudioChannel;
+  loop?: boolean;
+  loopStartSec?: number;
+  loopEndSec?: number;
+  offsetSec?: number;
+  durationSec?: number;
+  peakGain?: number;
+  fadeInSec?: number;
+  fadeOutSec?: number;
+  /** Start the new voice before stopping matching IDs; requires a free voice slot. */
+  replace?: boolean;
+  crossFadeSec?: number;
+}
+
 export interface AudioVoiceHandle {
   readonly id: string;
   readonly channel: IframeAudioChannel;
@@ -91,6 +123,9 @@ export interface AudioVoiceHandle {
 }
 
 export interface IframeSoundDiagnostics {
+  loadedSamples: number;
+  pendingSampleLoads: number;
+  decodedSampleBytes: number;
   inIframe: boolean;
   contextState: 'suspended' | 'running' | 'closed' | 'uninitialized';
   unlockedByGesture: boolean;

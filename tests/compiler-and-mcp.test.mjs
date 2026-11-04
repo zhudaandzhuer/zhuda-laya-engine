@@ -166,7 +166,7 @@ test('zhuda-laya-engine SDK bundles (ESM & CJS) and upstream LayaAir Official at
   assert.ok(sdkMod.VisualFocusContract, 'ESM SDK should export VisualFocusContract');
   const cjsMod = (await import('node:module')).createRequire(import.meta.url)(cjsPath);
   for (const name of ['NoSleepAdapter', 'ZhudaParticleSystem', 'ZhudaRibbonTrail', 'ZhudaEffectEnvelope', 'ZhudaLayaParticleRenderer',
-    'ZhudaLayeredClock', 'ZhudaActionStateMachine', 'ZhudaInputBuffer',
+    'ZhudaLayeredClock', 'ZhudaActionStateMachine', 'ZhudaInputBuffer', 'buildPrefabTree', 'validatePrefabTree3D',
     'ZhudaLayaRibbonRenderer', 'validateParticleEffect', 'ZhudaParticleSystem3D', 'ZhudaParticleMesh3D',
     'ZhudaRibbonTrail3D', 'ZhudaRibbonPath3D', 'ZhudaLayaParticleRenderer3D', 'ZhudaLayaRibbonRenderer3D', 'validateParticleEffect3D',
     'ZhudaEffectDirector', 'ZhudaEffectBudget', 'ZhudaRuntimeProfiler', 'ZhudaVfxMaterial', 'ZhudaVfxCamera',
@@ -174,6 +174,11 @@ test('zhuda-laya-engine SDK bundles (ESM & CJS) and upstream LayaAir Official at
     'disposeMigratedMaterial', 'convertUnityAnimationCurve', 'compareVisualFrames']) {
     assert.equal(typeof sdkMod[name], 'function', `ESM SDK should export ${name}`);
     assert.equal(typeof cjsMod[name], 'function', `CJS SDK should export ${name}`);
+  }
+  for (const sdk of [sdkMod, cjsMod]) {
+    assert.equal(typeof sdk.Zhuda3D.buildPrefabTree, 'function');
+    for (const method of ['loadSample', 'playSample', 'unloadSample'])
+      assert.equal(typeof sdk.IframeSoundAdapter.prototype[method], 'function');
   }
 });
 

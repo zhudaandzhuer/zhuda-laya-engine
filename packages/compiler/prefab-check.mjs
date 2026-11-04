@@ -130,7 +130,7 @@ export async function checkPrefab({ url, baseline, output, updateBaseline = fals
     };
     result.renderState = await evaluate(`(()=>{
       const labels=[];
-      const walk=n=>{if(n instanceof Laya.Label)labels.push({name:n.name,font:n.font,fontSize:n.fontSize,bold:n.bold,x:n.x,y:n.y,width:n.width,height:n.height,text:n.text,
+      const walk=n=>{if(typeof Laya.Label==='function'&&n instanceof Laya.Label)labels.push({name:n.name,font:n.font,fontSize:n.fontSize,bold:n.bold,x:n.x,y:n.y,width:n.width,height:n.height,text:n.text,
         padding:n.padding,tf:{font:n.textField.font,fontSize:n.textField.fontSize,width:n.textField.textWidth,height:n.textField.textHeight,x:n.textField.x,y:n.textField.y,scaleX:n.textField.scaleX,scaleY:n.textField.scaleY}});for(let i=0;i<n.numChildren;i++)walk(n.getChildAt(i));};walk(Laya.stage);
       return {labels,scaleX:Laya.stage.clientScaleX,scaleY:Laya.stage.clientScaleY};
     })()`);

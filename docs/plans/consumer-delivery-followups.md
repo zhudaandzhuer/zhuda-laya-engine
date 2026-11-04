@@ -1,10 +1,10 @@
 # Consumer delivery follow-ups: samples, dependency evidence and declarations
 
-Status: Proposed
+Status: In progress
 
 Owner: Engine runtime and consumer tooling
 
-Last reviewed: 2026-11-04
+Last reviewed: 2026-11-05
 
 ## Objective
 
@@ -22,10 +22,12 @@ exports combat APIs; choose contracts appropriate to their gameplay.
 
 ## Current baseline
 
-- [`audio.md`](../audio.md): one context/mixer and tone events only. No public
-  AudioBuffer ingress, MP3 decoder, BGM streaming or replaceable backend port.
-- [`prefab-toolchain.md`](prefab-toolchain.md): static 2D Prefab provenance and
-  whole-payload evidence. Provenance is not a component dependency graph.
+- [`audio.md`](../audio.md): tone and provider-backed decoded sample playback in
+  one mixer. The 1.4.0 candidate adds loop/offset/fade/replacement and bounded
+  leases; streaming, spatial audio and the full physical-device matrix remain open.
+- [`prefab-toolchain.md`](prefab-toolchain.md): static 2D and primitive 3D
+  Prefab provenance with whole-payload evidence. Provenance is not a component
+  dependency graph.
 - [`consumer-review-reliability`](records/consumer-review-reliability/task.md):
   separate work for measured browser metrics, staged build publication,
   preview provider injection and explicit asset inclusion.
@@ -36,27 +38,29 @@ exports combat APIs; choose contracts appropriate to their gameplay.
 
 ## Design and alternatives
 
-### Audio sample ownership (proposed; no such API ships yet)
+### Audio sample ownership (implemented candidate; device acceptance pending)
 
-The existing `IframeSoundAdapter` remains the only audio authority. Add sample
-decoding/playing to that owner, sharing its channel gains, bounded event queue,
+The existing `IframeSoundAdapter` remains the only audio authority. The candidate
+adds provider-backed `loadSample`/`playSample`/`unloadSample`, sharing its channel gains, bounded event queue,
 voice policy, unlock, focus and disposal. Source bytes come from `AssetProvider`
 logical IDs and existing cache leases. A buffer source and an oscillator both
 route through one voice gain, then one channel gain and one master gain.
 
-The public contract needs cancellation/timeout while loading, stale completion
-after decode (which may be non-cancellable), sample lease release, explicit
-loop points, offset/resume policy, BGM replacement and channel-wide stop. Keep
-logical event IDs distinct from sample IDs. Specify whether replacement
-crossfades count as two voices, maximum overlap and behavior when capacity is
-exhausted. Event deduplication must follow the existing event/epoch contract.
+The candidate implements cancellation/timeout, stale decode disposal, sample
+leases, explicit loop points/offsets, replacement and channel-wide stop.
+Crossfades count as two voices; exhausted capacity preserves the old voice.
+Logical event IDs remain distinct from sample IDs. Persistent replay
+deduplication remains the consumer event-gate responsibility.
 Do not emulate original MP3 assets with tones.
 
 A replaceable backend is an alternative only if it implements all the same
 operations and owns the entire event route. `audioContextFactory` is context
 injection, not a playback-backend contract. `syncLayaSoundManager` mirrors
 settings; it does not connect Laya voices to the mixer or prove asset lifecycle.
-Decide the backend shape using a neutral sample fixture before exporting types.
+A replaceable backend is not part of this candidate.
+
+See [candidate verification](records/consumer-runtime-hardening/verification.md)
+for measured scope. This does not mark the entire plan Accepted.
 
 ### Component evidence graph (proposed; no selective invalidation yet)
 
@@ -107,6 +111,7 @@ the full failing audit alongside existing consumer checks until the debt is zero
 ## Risks and rollback
 
 Media decoding, mobile autoplay and dynamic dependency edges can produce hidden
-resource owners or missed invalidations. Keep these capabilities Proposed until
-their gates pass. Retain tone playback and whole-payload evidence as the current
-baseline; do not widen acceptance claims or patch consumer engine copies.
+resource owners or missed invalidations. Keep unmeasured device behavior and
+remaining graph/declaration work unaccepted. Retain compatible tone playback
+and whole-payload evidence; do not widen acceptance claims or patch consumer
+engine copies.
