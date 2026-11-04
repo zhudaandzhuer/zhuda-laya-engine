@@ -184,5 +184,12 @@ async function main() {
   process.once("SIGTERM", stop);
 }
 
-const launched = process.argv[1] && path.resolve(process.argv[1]) === path.join(moduleDir, "prefab-watch.mjs");
+const launched = (() => {
+  if (!process.argv[1]) return false;
+  try {
+    return fs.realpathSync(process.argv[1]) === fs.realpathSync(path.join(moduleDir, "prefab-watch.mjs"));
+  } catch {
+    return path.resolve(process.argv[1]) === path.join(moduleDir, "prefab-watch.mjs");
+  }
+})();
 if (launched) main().catch(error => { console.error(error); process.exit(1); });
