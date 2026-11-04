@@ -1,3 +1,4 @@
+import { injectBrandSplash } from './branding.mjs';
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
@@ -193,7 +194,7 @@ export async function runConsumerBuild({
     if (fs.existsSync(p) && fs.lstatSync(p).isSymbolicLink())
       throw Error("Output path cannot contain symlinks");
   }
-  const html = ensureUtf8Charset(fs.readFileSync(template, "utf8"));
+  const html = injectBrandSplash(ensureUtf8Charset(fs.readFileSync(template, "utf8")), fs.readFileSync(path.join(engineRoot, 'assets/branding/zhuda-layaair-mark.svg'), 'utf8'));
   if (
     !html.includes("<!-- ZHUDA_LIBS -->") ||
     !html.includes("<!-- ZHUDA_ENTRY -->")

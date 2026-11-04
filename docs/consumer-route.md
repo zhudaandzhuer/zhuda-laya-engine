@@ -138,3 +138,10 @@ Use precise labels in README files and reports:
 
 Do not call a Three.js mock, a hand-written Zhuda facade or a screenshot-only
 prototype “powered by zhuda-laya-engine”.
+
+Since 1.4.1, the consumer compiler also inserts the official responsive
+豬大 × LayaAir boot animation before the runtime scripts. Its SVG is embedded
+in the generated HTML and cannot be lost through game asset allowlists.
+`#zhudaLogoSplash` is reserved; remove manually copied splash markup from the
+consumer template. Isolated Prefab pages remain free of the intro so their
+pixel comparisons measure the selected content.
