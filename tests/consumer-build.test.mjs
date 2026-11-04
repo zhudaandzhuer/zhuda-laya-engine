@@ -17,6 +17,7 @@ test("independent consumer preserves source hashes and its DOM/CSS; archive is a
     fs.mkdirSync(path.join(root, "assets/prefabs"), { recursive: true });
     fs.mkdirSync(path.join(root, "assets/raw"), { recursive: true });
     fs.mkdirSync(path.join(root, "src"));
+    fs.mkdirSync(path.join(root, "src/prefabs"));
     fs.writeFileSync(
       path.join(root, "public/index.html"),
       '<title>Consumer owns this</title><link rel="stylesheet" href="own.css"><div id="mount">Own DOM</div><!-- ZHUDA_LIBS --><!-- ZHUDA_ENTRY -->',
@@ -28,6 +29,7 @@ test("independent consumer preserves source hashes and its DOM/CSS; archive is a
       path.join(root, "src/Main.ts"),
       "import {ZhudaSceneQueries} from 'zhuda-laya-engine'; window['queries']=new ZhudaSceneQueries();",
     );
+    fs.writeFileSync(path.join(root, "src/prefabs/definitions.ts"), "export const definitions = [];\n");
     const hashes = () =>
       ["public/index.html", "public/own.css", "src/Main.ts"].map((f) =>
         crypto
@@ -47,7 +49,7 @@ test("independent consumer preserves source hashes and its DOM/CSS; archive is a
     const r = await runConsumerBuild({
       projectRoot: root,
       engineRoot,
-      config: { assetExclude: ["raw"], profile: "2d-light" },
+      config: { assetExclude: ["raw"], profile: "2d-light", prefabPreview: "src/prefabs/definitions.ts" },
     });
     assert.deepEqual(hashes(), before);
     assert.equal(r.sourceWrites, 0);
@@ -60,6 +62,11 @@ test("independent consumer preserves source hashes and its DOM/CSS; archive is a
       fs.readFileSync(path.join(root, "dist/web/index.html"), "utf8"),
       /<meta charset="utf-8">/i,
     );
+    const previewHtml = fs.readFileSync(path.join(root, "dist/web/prefab-preview.html"), "utf8");
+    const previewJs = fs.readFileSync(path.join(root, "dist/web/prefab-preview.js"), "utf8");
+    assert.match(previewHtml, /#preview\{display:block;position:relative/);
+    assert.match(previewJs, /designWidth/);
+    assert.match(previewJs, /maxWidth/);
     assert.equal(fs.existsSync(path.join(root, "src/.generated")), false);
     assert.equal(
       fs.readFileSync(path.join(root, "dist/web/assets/prefabs/fixture.lh"), "utf8"),

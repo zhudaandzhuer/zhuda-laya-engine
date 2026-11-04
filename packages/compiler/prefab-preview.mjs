@@ -14,6 +14,17 @@ async function bootPreview(){
 const params=new URLSearchParams(location.search);
 const width=Number(params.get('width')||640),height=Number(params.get('height')||360),dpr=Number(params.get('dpr')||1);
 if(![width,height,dpr].every(Number.isFinite)||width<1||height<1||width>4096||height>4096||dpr<.5||dpr>3)throw Error('Invalid preview size');
+// The runtime observes the preview container and uses its CSS box as the
+// stage size. Keep that box equal to the requested design canvas; a generic
+// 100vw/80vh box would silently resize a 572x174 control bar to a portrait
+// viewport and stretch every circle and capsule before it can be reviewed.
+const preview=document.querySelector('#preview');
+preview.style.width=width+'px';
+preview.style.height=height+'px';
+preview.style.maxWidth='none';
+preview.style.maxHeight='none';
+preview.dataset.designWidth=String(width);
+preview.dataset.designHeight=String(height);
 const context=await ZhudaEngine.boot({container:document.querySelector('#preview'),width,height,dprCap:dpr,features:['core','2d','ui'],bgColor:'#152030'});
 const provider=new DirectoryAssetProvider({baseUrl:'./assets/'});
 const library=new ZhudaPrefabLibrary({provider,definitions});
@@ -76,7 +87,7 @@ void bootPreview();
   });
   const scripts = topology.orderedFiles.map(file => `<script src="libs/${file}"></script>`).join("\n");
   fs.writeFileSync(path.join(out, "prefab-preview.html"), `<!doctype html><meta charset="utf-8">
-<title>Prefab preview</title><style>body{margin:0;background:#152030;color:white;font:14px sans-serif}#preview{width:100vw;height:80vh}header{padding:12px}</style>
+<title>Prefab preview</title><style>body{margin:0;background:#152030;color:white;font:14px sans-serif;overflow:auto}header{padding:12px}#preview{display:block;position:relative;width:640px;height:360px;overflow:hidden;background:#152030}</style>
 <header>Prefab <select id="choose"></select><span id="error" role="alert"></span></header>
 <div id="preview"></div>${scripts}<script src="prefab-preview.js"></script>`);
 }
