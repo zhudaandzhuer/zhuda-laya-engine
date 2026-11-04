@@ -6,6 +6,9 @@
 
 ## 外部建置與啟動
 
+新專案先看[完整 consumer 路線](consumer-route.md)。下列能力的範圍與新版
+證據格式見[consumer build 與驗收工具](consumer-tooling.md)。
+
 Node.js 24+。固定引擎 Git SHA 安裝，不依賴工作目錄旁的引擎原始碼。
 
 ```js

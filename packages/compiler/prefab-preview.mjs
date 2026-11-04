@@ -8,8 +8,13 @@ export async function buildPrefabPreview({ projectRoot, engineRoot, out, topolog
     throw Error("prefabPreview must name an existing consumer module");
   const sdk = path.join(engineRoot, "dist/sdk/zhuda-laya-engine.esm.js");
   const code = `
-import {ZhudaEngine,DirectoryAssetProvider,ZhudaPrefabLibrary,ZhudaRequestSlot,inspectPrefabInstance} from 'zhuda-laya-engine';
-import {definitions} from ${JSON.stringify(entry)};
+import {ZhudaEngine,DirectoryAssetProvider,ZhudaPrefabLibrary,ZhudaRequestSlot,ZhudaResourceScope,inspectPrefabInstance} from 'zhuda-laya-engine';
+import * as prefabModule from ${JSON.stringify(entry)};
+const {definitions}=prefabModule;
+const scope=new ZhudaResourceScope();
+const dispose=()=>scope.dispose();
+window.addEventListener('pagehide',dispose,{once:true});
+scope.defer(()=>window.removeEventListener('pagehide',dispose));
 async function bootPreview(){
 const params=new URLSearchParams(location.search);
 const width=Number(params.get('width')||640),height=Number(params.get('height')||360),dpr=Number(params.get('dpr')||1);
@@ -25,10 +30,16 @@ preview.style.maxWidth='none';
 preview.style.maxHeight='none';
 preview.dataset.designWidth=String(width);
 preview.dataset.designHeight=String(height);
-const context=await ZhudaEngine.boot({container:document.querySelector('#preview'),width,height,dprCap:dpr,features:['core','2d','ui'],bgColor:'#152030'});
-const provider=new DirectoryAssetProvider({baseUrl:'./assets/'});
-const library=new ZhudaPrefabLibrary({provider,definitions});
-const slot=new ZhudaRequestSlot();
+const context=scope.own(await ZhudaEngine.boot({container:document.querySelector('#preview'),width,height,dprCap:dpr,features:['core','2d','ui'],bgColor:'#152030'}),value=>value.dispose());
+// Consumers may export the same typed factory that their Scene calls. The
+// preview owns this instance and releases it with the library/session.
+const createAssetProvider=Reflect.get(prefabModule,'createAssetProvider');
+const provider=typeof createAssetProvider==='function'
+  ? createAssetProvider() : new DirectoryAssetProvider({baseUrl:'./assets/'});
+if(!provider||typeof provider.load!=='function')throw Error('createAssetProvider must return an AssetProvider synchronously');
+scope.own(provider,value=>value.dispose?.());
+const library=scope.own(new ZhudaPrefabLibrary({provider,definitions}),value=>value.dispose());
+const slot=scope.own(new ZhudaRequestSlot(),value=>value.cancel());
 let instance,selection,error;
 const lifecycle=[];
 async function select(id,state,node=''){
@@ -56,7 +67,10 @@ window.__ZHUDA_PREFAB_TEST__={
   const node=instance?.find(selection.node);
   return {ready:!!instance&&!error,error,selection,provenance:instance?inspectPrefabInstance(instance.root):null,
     bounds:node?{x:node.x,y:node.y,width:node.width,height:node.height}:null,
-    resources:library.report(),lifecycle,environment:{width,height,dpr,engine:${JSON.stringify(JSON.parse(fs.readFileSync(path.join(engineRoot,'package.json'),'utf8')).version)}}}
+    resources:library.report(),lifecycle,environment:{
+      requested:{width,height,dpr},
+      measured:{width:innerWidth,height:innerHeight,dpr:devicePixelRatio},
+      provider:provider.name,engine:${JSON.stringify(JSON.parse(fs.readFileSync(path.join(engineRoot,'package.json'),'utf8')).version)}}}
  }
 };
 for(const definition of definitions){
@@ -73,9 +87,12 @@ for(let i=0;i<cycles;i++){
  lifecycle.push(library.report());
  await select(id,params.get('state')||undefined,params.get('node')||'');
 }
-window.addEventListener('pagehide',()=>{slot.cancel();library.dispose();provider.dispose();context.dispose()},{once:true});
 }
-void bootPreview();
+void bootPreview().catch(error=>{
+ try{dispose()}catch(releaseError){console.error(releaseError)}
+ document.querySelector('#error').textContent=String(error);
+ window.__ZHUDA_PREFAB_TEST__={report:()=>({ready:false,error:String(error)})};
+});
 `;
   await esbuild.build({
     stdin: { contents: code, loader: "ts", resolveDir: projectRoot },

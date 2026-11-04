@@ -40,6 +40,31 @@ Build 2D, 3D and Spine 4.2 projects with TypeScript, a CLI and coding agents. Th
 
 Maintained by [Zhuda](https://github.com/zhudaandzhuer). Rendering and physics come from [LayaAir / Layabox](https://layaair.com/). This is an independent fork; donations support Zhuda's work on this repository.
 
+## Start here: build a real consumer
+
+Use the engine checkout for SDK work. Put a game in its own repository and
+start from the canonical [consumer route](docs/consumer-route.md):
+
+```sh
+# after npm install in this engine checkout
+node packages/compiler/zhuda-init.mjs /absolute/path/to/my-game
+cd /absolute/path/to/my-game
+npm install
+npm run verify
+```
+
+The starter pins this engine to a commit, creates `public/index.html` with the
+`ZHUDA_LIBS` / `ZHUDA_ENTRY` markers, and creates `src/Main.ts` that imports
+the public SDK and calls `ZhudaEngine.boot`. The consumer then owns its rules,
+assets, prefabs, scenes and deployment. Read [AGENTS.md](AGENTS.md) and the
+[visual prefab workflow](docs/prefab-workflow.md) before adding authored
+visuals. A static pass does not establish real WebGL or device support.
+
+Do not use a Three.js renderer, an inline `ZhudaEngine` facade, a copied
+`packages/core`, or a deep engine import and call the result Zhuda-backed. The
+consumer Doctor reports these cases with a file and line. Use the claim levels
+in the [consumer route](docs/consumer-route.md) when writing project reports.
+
 [Play Neon Apex](https://zhudaandzhuer.github.io/zhuda-neon-racer/) · [Explore 100 particle effects](https://zhudaandzhuer.github.io/zhuda-particle-lab/) · [Try the 3D terrain lab](https://zhudaandzhuer.github.io/zhuda-3d-lab/?terrain=1)
 
 ## More games
@@ -158,12 +183,18 @@ scene.addChild(cube);
 
 Consumer projects must load the selected Laya runtime modules before booting the SDK. Use the compiler's dependency ordering rather than mixing engine generations. Clone this repository to work on the SDK; use a packaged build or a pinned Git commit in consumer projects.
 
+The commands above start the **engine workbench**. They are not the game
+integration path. For an external game, use [`docs/consumer-route.md`](docs/consumer-route.md)
+or the installed `zhuda-laya-init` binary, then run the consumer's own `npm run verify`.
+
 ### Commands
 
 | Command | Purpose |
 | --- | --- |
+| `node packages/compiler/zhuda-init.mjs /absolute/path/to/consumer` | Create a pinned public-SDK consumer skeleton |
 | `npm run build` | Generate the demo build and SDK bundles |
 | `npm run typecheck` | Check public/runtime types and application sources |
+| `npm run audit:declarations` | Audit all SDK declarations without `skipLibCheck`; currently fails on inherited vendor debt |
 | `npm run doctor` | Check module order, registration, known legacy API usage and the agent/documentation contract |
 | `npm run agent:contract` | Print the machine-readable agent boundary, workflow and evidence contract |
 | `npm test` | Run Node unit and integration tests |

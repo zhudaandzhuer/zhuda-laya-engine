@@ -4,6 +4,10 @@ This guide is the operational companion to the repository contract in
 [`../AGENTS.md`](../AGENTS.md). It is written for an agent that has to change a
 large engine without losing track of scope, lifecycle or evidence.
 
+For an external game, read the [canonical consumer route](consumer-route.md)
+before writing `src/Main.ts`. The engine workbench quick start and a consumer
+project use different build roots; do not copy the workbench into a game.
+
 ## Start with a bounded task
 
 Copy [`plans/TASK-TEMPLATE.md`](plans/TASK-TEMPLATE.md) into the task record

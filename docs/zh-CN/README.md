@@ -40,6 +40,27 @@ E4ZEhFCYy4b5pYXJUbMC9KjRitkypyqtZvpSRerLWHCb
 
 由 [豬大 Zhuda](https://github.com/zhudaandzhuer) 维护。底层渲染与物理由 [LayaAir / Layabox](https://layaair.com/) 提供。本项目是独立分支，捐助用于支持豬大在这个仓库的开发工作。
 
+## 从这里开始：建立真正的消费项目
+
+引擎仓库用于 SDK 与工具链开发。游戏应放在独立仓库，并按照[消费项目接入路线](../consumer-route.md)开始：
+
+```sh
+# 在引擎仓库执行 npm install 后运行
+node packages/compiler/zhuda-init.mjs /absolute/path/to/my-game
+cd /absolute/path/to/my-game
+npm install
+npm run verify
+```
+
+脚手架会固定引擎 commit，创建带 `ZHUDA_LIBS`／`ZHUDA_ENTRY` 标记的
+`public/index.html`，并创建从公开 SDK 导入且调用 `ZhudaEngine.boot` 的
+`src/Main.ts`。游戏规则、美术资源、Prefab、Scene 与部署由消费项目自己
+负责。新增视觉内容前先读根目录 [`AGENTS.md`](../../AGENTS.md) 与[Prefab 工作流](../prefab-workflow.md)。静态通过不等于真实 WebGL 或设备支持。
+
+不要使用 Three.js renderer、内联假的 `ZhudaEngine`、复制的
+`packages/core` 或引擎深层路径后宣称是 Zhuda 项目；消费端 Doctor 会给出
+文件与行号。项目报告请使用[消费项目接入路线](../consumer-route.md)的分级声明。
+
 [进入游戏馆](https://zhudaandzhuer.github.io/zhuda-arcade/) · [体验 100 种粒子效果](https://zhudaandzhuer.github.io/zhuda-particle-lab/) · [操作 3D 地形工坊](https://zhudaandzhuer.github.io/zhuda-3d-lab/?terrain=1)
 
 ## 更多游戏
@@ -137,10 +158,14 @@ scene.addChild(cube);
 
 消费项目需要先载入选定的 Laya 运行时模块，再启动 SDK。使用编译器计算模块顺序，避免混用不同代际 API。SDK 开发使用本仓库；游戏消费端使用打包产物或固定 Git commit。复杂任务开始前请先阅读根目录 [`AGENTS.md`](../../AGENTS.md) 与[代理开发手册](../agent-development.md)；MCP 的 `get_agent_contract` 与 `validate_task_spec` 会提供相同的边界与验收规则。
 
+这里的快速开始启动的是**引擎工作台**。外部游戏请使用[消费项目接入路线](../consumer-route.md)或已安装的 `zhuda-laya-init`，再在游戏仓库执行自己的 `npm run verify`。
+
 | 指令 | 用途 |
 | --- | --- |
+| `node packages/compiler/zhuda-init.mjs /absolute/path/to/consumer` | 建立固定公开 SDK 的消费项目骨架 |
 | `npm run build` | 生成工作台与 SDK 产物 |
 | `npm run typecheck` | 检查公开/运行时类型与应用源码 |
+| `npm run audit:declarations` | 不跳过完整声明检查；目前会因既有 vendor 声明欠债而失败 |
 | `npm run doctor` | 检查模块顺序、注册与已知旧 API 使用 |
 | `npm run agent:contract` | 输出机器可读的代理边界、工作流与证据契约 |
 | `npm test` | 执行 Node 单元与集成测试 |

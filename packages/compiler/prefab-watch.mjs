@@ -36,8 +36,16 @@ export function liveReloadScript() {
   var source = new EventSource('/__zhuda_reload');
   source.addEventListener('reload', function(){ window.location.reload(); });
   source.addEventListener('error', function(event){
-    var node = document.querySelector('[role="alert"]') || document.body;
-    var detail = event && event.data ? event.data : 'Prefab watch build failed';
+    if (!event || !event.data) return;
+    var node = document.querySelector('[data-zhuda-build-error]');
+    if (!node) {
+      node = document.createElement('div');
+      node.setAttribute('data-zhuda-build-error', '');
+      node.setAttribute('role', 'alert');
+      node.style.cssText = 'position:fixed;bottom:0;left:0;right:0;z-index:2147483647;background:#1a1010;padding:12px;white-space:pre-wrap;pointer-events:none';
+      document.body.appendChild(node);
+    }
+    var detail = event.data;
     if (node) { node.textContent = detail; node.style.color = '#ff8b8b'; }
   });
   window.addEventListener('pagehide', function(){ source.close(); }, { once: true });
@@ -131,16 +139,21 @@ function watchRoots(project) {
 export function watchConsumer({ project, port, host, build = runZhudaBuild, log = console }) {
   let building = false;
   let queued = false;
+  let closed = false;
+  let activeBuild = Promise.resolve();
   let timer;
   const watchers = [];
   const preview = createPreviewServer({ root: path.join(project, "dist/web"), host, port });
   const rebuild = async (reason = "source change") => {
+    if (closed) return null;
     if (building) { queued = true; return; }
     building = true;
+    let finished;
+    activeBuild = new Promise(resolve => { finished = resolve; });
     preview.broadcast("status", { state: "building", reason });
     try {
       const result = await build({ projectRoot: project });
-      preview.broadcast("reload", { state: "ready", reason, at: Date.now() });
+      if (!closed) preview.broadcast("reload", { state: "ready", reason, at: Date.now() });
       log.log(`[Zhuda Watch] rebuilt after ${reason}`);
       return result;
     } catch (error) {
@@ -149,10 +162,12 @@ export function watchConsumer({ project, port, host, build = runZhudaBuild, log 
       return null;
     } finally {
       building = false;
-      if (queued) { queued = false; void rebuild("queued source change"); }
+      finished();
+      if (queued && !closed) { queued = false; void rebuild("queued source change"); }
     }
   };
   const schedule = reason => {
+    if (closed) return;
     clearTimeout(timer);
     timer = setTimeout(() => void rebuild(reason), 120);
   };
@@ -166,8 +181,11 @@ export function watchConsumer({ project, port, host, build = runZhudaBuild, log 
     }
   }
   const close = async () => {
+    closed = true;
+    queued = false;
     clearTimeout(timer);
     for (const watcher of watchers) watcher.close();
+    await activeBuild;
     await preview.close();
   };
   return { preview, rebuild, close, watchers };

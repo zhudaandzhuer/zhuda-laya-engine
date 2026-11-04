@@ -71,6 +71,7 @@ test('MCP Server resolves topology, diagnoses Laya crashes, and serves Golden Ex
 test('agent contract is machine-readable and rejects incomplete task specs', () => {
   const contract = executeMcpTool('get_agent_contract');
   assert.equal(contract.passed, true);
+  assert.equal(contract.consumerRoute, 'docs/consumer-route.md');
   assert.ok(contract.requiredReading.includes('AGENTS.md'));
   assert.ok(contract.commands.includes('npm run verify'));
   assert.equal(executeMcpTool('validate_task_spec', { task: { id: 'incomplete' } }).passed, false);
@@ -137,6 +138,8 @@ test('Zhuda Doctor audit passes with 0 topological inversions and 0 legacy API v
 });
 
 test('zhuda-laya-engine SDK bundles (ESM & CJS) and upstream LayaAir Official attribution are present', async () => {
+  assert.equal(JSON.parse(fs.readFileSync(path.join(projectRoot, 'zhuda.config.json'))).version,
+    JSON.parse(fs.readFileSync(path.join(projectRoot, 'package.json'))).version, 'Engine config version must match the package');
   const manifestPath = path.join(projectRoot, 'dist/build-manifest.json');
   assert.equal(fs.existsSync(manifestPath), true);
   const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));

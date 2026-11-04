@@ -4,6 +4,7 @@ import os from "node:os";
 import http from "node:http";
 import zlib from "node:zlib";
 import assert from "node:assert/strict";
+import crypto from 'node:crypto';
 import { runConsumerBuild } from "../packages/compiler/consumer-build.mjs";
 import { checkPrefab } from "../packages/compiler/prefab-check.mjs";
 
@@ -25,6 +26,8 @@ function png(color) {
   return Buffer.concat([Buffer.from([137,80,78,71,13,10,26,10]),chunk("IHDR",header),chunk("IDAT",zlib.deflateSync(rows)),chunk("IEND",Buffer.alloc(0))]);
 }
 const write = (name, value) => fs.writeFileSync(path.join(root, name), value);
+const sha = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
+write('package.json', JSON.stringify({private:true,type:'module',dependencies:{'zhuda-laya-engine':'1.3.0'}}));
 const hierarchy = { _$id:"panel", _$type:"Sprite", name:"Panel", width:300,height:150,
   _$child:[
     { _$id:"plate", _$type:"Image", name:"plate", skin:"plate.png", x:20,y:20,width:260,height:110 },
@@ -32,23 +35,35 @@ const hierarchy = { _$id:"panel", _$type:"Sprite", name:"Panel", width:300,heigh
   ] };
 write("public/assets/panel.lh", JSON.stringify(hierarchy));
 write("public/assets/plate.png", png([28,75,90,255]));
-write("src/prefabs.ts", `import type {PrefabDefinition} from 'zhuda-laya-engine';
-export const definitions:PrefabDefinition[]=[{id:'amount-plate',asset:'panel.lh',textures:['plate.png'],states:{short:{},long:{value:{text:'999,999,999'}}}}];`);
-write("src/Main.ts", `import {ZhudaEngine,DirectoryAssetProvider,ZhudaPrefabLibrary,inspectPrefabInstance} from 'zhuda-laya-engine';
-import {definitions} from './prefabs';
+function writeDefinitions() {
+const manifest={schemaVersion:1,entries:['panel.lh','plate.png'].map(id=>({id,sha256:sha(fs.readFileSync(path.join(root,'public/assets',id)))}))};
+write("src/prefabs.ts", `import {DirectoryAssetProvider} from 'zhuda-laya-engine';
+import type {PrefabDefinition,AssetProvider} from 'zhuda-laya-engine';
+export const definitions:PrefabDefinition[]=[{id:'amount-plate',asset:'panel.lh',textures:['plate.png'],states:{short:{},long:{value:{text:'999,999,999'}}}}];
+export function createAssetProvider():AssetProvider {return new DirectoryAssetProvider({baseUrl:'./assets/',manifest:${JSON.stringify(manifest)}});}`);
+}
+writeDefinitions();
+write("src/Main.ts", `import {ZhudaEngine,ZhudaPrefabLibrary,inspectPrefabInstance} from 'zhuda-laya-engine';
+import {definitions,createAssetProvider} from './prefabs';
 async function main(){
-const context=await ZhudaEngine.boot({container:document.querySelector('#preview')!,width:640,height:360,dprCap:1,features:['core','2d','ui'],bgColor:'#152030'});
-const library=new ZhudaPrefabLibrary({provider:new DirectoryAssetProvider({baseUrl:'./assets/'}),definitions});
+const params=new URLSearchParams(location.search);
+const width=Number(params.get('width')||640),height=Number(params.get('height')||360),dpr=Number(params.get('dpr')||1);
+const container=document.querySelector<HTMLElement>('#preview')!;
+container.style.width=width+'px';container.style.height=height+'px';
+const context=await ZhudaEngine.boot({container,width,height,dprCap:Number(params.get('cap')||dpr),features:['core','2d','ui'],bgColor:'#152030'});
+const provider=createAssetProvider();
+const library=new ZhudaPrefabLibrary({provider,definitions});
+window.addEventListener('pagehide',()=>{library.dispose();provider.dispose?.();context.dispose()},{once:true});
 const instance=await library.instantiate('amount-plate',{state:'short'});
 context.rootScene.addChild(instance.root);
 await document.fonts.ready;ZhudaEngine.flushRenderFrames(3);
 if(new URLSearchParams(location.search).has('shift'))instance.find('value').x+=15;
 const substitute=new URLSearchParams(location.search).has('substitute');
-(window as unknown as Record<string,unknown>).__ZHUDA_PREFAB_TEST__={report:()=>({ready:true,
+(window as unknown as Record<string,unknown>).__ZHUDA_PREFAB_TEST__={report:()=>({ready:true,passed:true,
 selection:{id:'amount-plate',state:'short',node:''},provenance:inspectPrefabInstance(substitute?new Laya.Sprite():instance.root),
 bounds:{x:instance.root.x,y:instance.root.y,width:instance.root.width,height:instance.root.height},
-environment:{width:640,height:360,dpr:1,engine:'1.1.0'}})};
-}void main();`);
+environment:{requested:{width,height,dpr},provider:provider.name}})};
+}void main().catch(error=>{(window as unknown as Record<string,unknown>).__ZHUDA_PREFAB_TEST__={report:()=>({ready:false,error:String(error)})};});`);
 write("public/index.html", `<!doctype html><meta charset="utf-8"><style>body{margin:0;background:#152030;color:white;font:14px sans-serif}#preview{width:100vw;height:80vh}header{padding:12px}</style><header>Prefab <select><option>amount-plate</option></select></header><div id="preview"></div><!-- ZHUDA_LIBS --><!-- ZHUDA_ENTRY -->`);
 const config = { features:["core","2d","ui"], prefabPreview:"src/prefabs.ts" };
 await runConsumerBuild({ projectRoot:root, engineRoot, config });
@@ -67,7 +82,7 @@ const base = `http://127.0.0.1:${server.address().port}/`;
 const baseline=path.join(root,"evidence/panel.png");
 const result=async (page,name,extra={})=>checkPrefab({url:base+page,baseline,output:path.join(root,"evidence",name+".json"),...extra});
 try {
-  await result("prefab-preview.html?id=amount-plate","baseline",{updateBaseline:true});
+  assert.equal((await result("prefab-preview.html?id=amount-plate","baseline",{updateBaseline:true})).passed,false);
   assert.equal((await result("prefab-preview.html?id=amount-plate","pass")).passed,true);
   const cycles=await result("prefab-preview.html?id=amount-plate&cycles=30","cycles");
   assert.equal(cycles.lifecycle.length,30);
@@ -84,15 +99,40 @@ try {
   const longBase=path.join(root,"evidence/long.png");
   await result("prefab-preview.html?id=amount-plate&state=long","long-baseline",{baseline:longBase,updateBaseline:true});
   assert.equal((await result("prefab-preview.html?id=amount-plate&state=long","long",{baseline:longBase})).passed,true);
+  const environments=[];
+  for(const [width,height,dpr] of [[1024,576,1],[1024,576,2],[360,640,2]]) {
+    const name=`${width}x${height}-dpr${dpr}`;
+    const query=`width=${width}&height=${height}&dpr=${dpr}`;
+    const reference=path.join(root,'evidence',name+'.png');
+    await result('prefab-preview.html?id=amount-plate&'+query,name+'-reference',{baseline:reference,updateBaseline:true});
+    const prefab=await result('prefab-preview.html?id=amount-plate&'+query,name,{baseline:reference});
+    const scene=await result('index.html?'+query,name+'-scene',{baseline:reference});
+    assert.equal(prefab.passed,true); assert.equal(scene.passed,true);
+    assert.equal(scene.environment.measured.dpr,dpr);
+    assert.deepEqual(scene.environment.measured.viewport,{width,height});
+    assert.deepEqual(prefab.provenance,scene.provenance);
+    environments.push({name,environment:scene.environment});
+  }
+  const childDpr2=path.join(root,'evidence/value-dpr2.png');
+  await result('prefab-preview.html?id=amount-plate&node=value&dpr=2','child-dpr2-reference',{baseline:childDpr2,updateBaseline:true});
+  assert.equal((await result('prefab-preview.html?id=amount-plate&node=value&dpr=2','child-dpr2',{baseline:childDpr2})).passed,true);
+  await assert.rejects(result('index.html?dpr=2&cap=1','wrong-backing'),/environment mismatch/);
+  // Even a Scene bridge claiming passed:true cannot approve a new baseline.
+  assert.equal((await result('index.html','scene-baseline',{baseline:path.join(root,'evidence/scene-baseline.png'),updateBaseline:true})).passed,false);
   await runConsumerBuild({ projectRoot:root,engineRoot,config:{...config,prefabEvidence:["evidence/pass.json","evidence/scene.json"]} });
   write("public/assets/plate.png",png([130,30,35,255]));
   await assert.rejects(runConsumerBuild({projectRoot:root,engineRoot,config:{...config,prefabEvidence:["evidence/pass.json"]}}),/stale prefab evidence/);
+  await runConsumerBuild({projectRoot:root,engineRoot,config});
+  await assert.rejects(result('prefab-preview.html?id=amount-plate','integrity-failure'),/checksum mismatch/);
+  await assert.rejects(result('index.html','scene-integrity-failure'),/checksum mismatch/);
+  // A deliberate, approved new manifest permits loading; the old visual baseline still rejects the wrong color.
+  writeDefinitions();
   await runConsumerBuild({projectRoot:root,engineRoot,config});
   assert.equal((await result("prefab-preview.html?id=amount-plate","wrong-texture")).passed,false);
   write("src/bad.ts","declare const Laya: any;\nimport {ZhudaEngine} from '../packages/core/DeclarativeSDK';");
   await assert.rejects(runConsumerBuild({projectRoot:root,engineRoot,config}),/bad.ts:1 \[UNTYPED_LAYA\]/);
   fs.rmSync(path.join(root,"src/bad.ts"));
-  write("evidence/summary.json",JSON.stringify({passed:true,environment:"desktop Chrome WebGL",checks:14,
+  write("evidence/summary.json",JSON.stringify({passed:true,environment:"desktop Chrome WebGL; DPR emulated via CDP",environments,
     limits:["iPhone Safari and Android hardware not tested"],root},null,2));
   console.log("PASS: prefab browser regressions; evidence at "+path.join(root,"evidence"));
 } finally { server.closeAllConnections(); await new Promise(resolve=>server.close(resolve)); }

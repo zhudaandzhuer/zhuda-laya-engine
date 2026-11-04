@@ -5,11 +5,13 @@ import os from "node:os";
 import crypto from "node:crypto";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { requestedPrefabEnvironment, measurePrefabEnvironment, auditPrefabEnvironment } from './prefab-environment.mjs';
 
 const sha = bytes => crypto.createHash("sha256").update(bytes).digest("hex");
 /** Run an actual browser draw. The consumer exposes the same report bridge in its scene. */
-export async function checkPrefab({ url, baseline, output, updateBaseline = false, chromeBinary, maxDiffPixels = 0 }) {
+export async function checkPrefab({ url, baseline, output, updateBaseline = false, chromeBinary, maxDiffPixels = 0, ...metrics }) {
   if (!Number.isSafeInteger(maxDiffPixels) || maxDiffPixels < 0) throw Error("Invalid pixel tolerance");
+  const requested = requestedPrefabEnvironment(url, metrics);
   const binary = chromeBinary || process.env.CHROME_BIN || [
     "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
     "/usr/bin/google-chrome", "/usr/bin/chromium"
@@ -21,6 +23,7 @@ export async function checkPrefab({ url, baseline, output, updateBaseline = fals
     "--window-size=800,600", "--remote-debugging-port=0", `--user-data-dir=${profile}`, "about:blank"],
     { detached: true, stdio: ["ignore", "ignore", "pipe"] });
   let ws;
+  let environment;
   const pending = new Map();
   try {
     const endpoint = await new Promise((resolve, reject) => {
@@ -65,6 +68,10 @@ export async function checkPrefab({ url, baseline, output, updateBaseline = fals
     };
     await send("Runtime.enable");
     await send("Page.enable");
+    await send('Emulation.setDeviceMetricsOverride', {
+      width: requested.viewport.width, height: requested.viewport.height,
+      deviceScaleFactor: requested.dpr, mobile: false,
+    });
     await send("Page.navigate", { url });
     let report;
     for (let i = 0; i < 100; i++) {
@@ -77,6 +84,8 @@ export async function checkPrefab({ url, baseline, output, updateBaseline = fals
       throw Error("Prefab not ready or missing actual instance provenance: " + errors.join(", "));
     await evaluate("document.fonts.ready.then(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))))");
     await evaluate("new Promise(resolve=>Laya.timer.frameOnce(4,null,resolve))");
+    environment = auditPrefabEnvironment(requested, await evaluate(`(${measurePrefabEnvironment.toString()})()`));
+    if (!environment.passed) throw Error('Prefab environment mismatch: ' + environment.issues.join('; '));
     const clip = await evaluate("(()=>{const r=document.querySelector('canvas').getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height,scale:1}})()");
     const shot = await send("Page.captureScreenshot", { format: "png", clip, captureBeyondViewport: true });
     const actual = Buffer.from(shot.data, "base64");
@@ -113,7 +122,8 @@ export async function checkPrefab({ url, baseline, output, updateBaseline = fals
       delete comparison.diff;
     }
     const result = {
-      schemaVersion: 1, passed: comparison.passed, url, ...report, comparison,
+      ...report, schemaVersion: 2, passed: comparison.passed && environment.passed, url, comparison,
+      environment, previewEnvironment: report.environment,
       fingerprint: manifest.fingerprint, actual: path.basename(actualPath), actualSha256: sha(actual),
       baseline: path.relative(path.dirname(output), baseline), baselineSha256: sha(fs.readFileSync(baseline)),
       browser: (await send("Browser.getVersion")).product
@@ -126,6 +136,11 @@ export async function checkPrefab({ url, baseline, output, updateBaseline = fals
     })()`);
     fs.writeFileSync(output, JSON.stringify(result, null, 2));
     return result;
+  } catch (error) {
+    fs.mkdirSync(path.dirname(output), {recursive:true});
+    fs.writeFileSync(output, JSON.stringify({schemaVersion:2, passed:false, url, error: String(error),
+      environment: environment || {requested, measured:null, passed:false, issues:['Browser measurement unavailable']}}, null, 2));
+    throw error;
   } finally {
     ws?.close();
     for (const request of pending.values()) clearTimeout(request.timer);
@@ -142,7 +157,7 @@ if (launchedAsCli) {
   const args = Object.fromEntries(process.argv.slice(2).filter(arg => arg.startsWith("--") && arg.includes("=")).map(arg => arg.slice(2).split(/=(.*)/s, 2)));
   try {
     if (!args.url || !args.baseline || !args.output) throw Error("Use --url=... --baseline=... --output=... [--update-baseline]");
-    const result = await checkPrefab({ ...args, updateBaseline: process.argv.includes("--update-baseline") });
+    const result = await checkPrefab({ ...args, maxDiffPixels: Number(args.maxDiffPixels ?? 0), updateBaseline: process.argv.includes("--update-baseline") });
     console.log(JSON.stringify(result.comparison));
     if (!result.passed && !process.argv.includes("--update-baseline")) process.exitCode = 1;
   } catch (error) { console.error(error.message); process.exitCode = 1; }

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { createPreviewServer, liveReloadScript, parseWatchArgs } from "../packages/compiler/prefab-watch.mjs";
+import { createPreviewServer, liveReloadScript, parseWatchArgs, watchConsumer } from "../packages/compiler/prefab-watch.mjs";
 
 test("prefab watch arguments and reload client are deterministic", () => {
   const args = parseWatchArgs(["--project", process.cwd(), "--host", "127.0.0.1", "--port", "8899"]);
@@ -12,6 +12,25 @@ test("prefab watch arguments and reload client are deterministic", () => {
   assert.throws(() => parseWatchArgs(["--project", process.cwd(), "--port", "0"]), /Invalid --port/);
   assert.match(liveReloadScript(), /EventSource\('\/__zhuda_reload'\)/);
   assert.match(liveReloadScript(), /location\.reload/);
+});
+
+test('watcher close drains an in-flight build and never starts queued work after disposal', async () => {
+  const root=fs.mkdtempSync(path.join(os.tmpdir(),'zhuda-watch-close-'));
+  let finish, calls=0;
+  const watcher=watchConsumer({project:root,host:'127.0.0.1',port:0,
+    build:()=>{calls++;return new Promise(resolve=>{finish=resolve;});}, log:{log(){},error(){},warn(){}}});
+  await watcher.preview.listening;
+  const active=watcher.rebuild();
+  await watcher.rebuild('queued');
+  let closed=false;
+  const closing=watcher.close().then(()=>{closed=true;});
+  await Promise.resolve();
+  assert.equal(closed,false);
+  finish({ok:true});
+  await active;await closing;
+  assert.equal(calls,1);
+  assert.equal(await watcher.rebuild('after close'),null);
+  fs.rmSync(root,{recursive:true,force:true});
 });
 
 test("preview server injects live reload only into generated entry pages", async () => {

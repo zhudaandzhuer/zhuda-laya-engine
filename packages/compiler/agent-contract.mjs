@@ -179,14 +179,17 @@ export function getAgentContract(projectRoot) {
     contractVersion: 1,
     repository: 'zhuda-laya-engine',
     passed: audit.passed,
+    consumerRoute: 'docs/consumer-route.md',
     requiredReading: [...REQUIRED_AGENT_FILES],
     commands: [
+      'node packages/compiler/zhuda-init.mjs /absolute/path/to/consumer',
       'npm run verify',
       'git diff --check',
       'git status --short'
     ],
     workflow: [
       'read-contract',
+      'follow-consumer-route',
       'write-task-spec',
       'inventory-assets-and-boundaries',
       'add-failing-fixture',

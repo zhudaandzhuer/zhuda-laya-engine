@@ -35,7 +35,17 @@ the accepted origin and never uses `'*'`. A consumer that deliberately mirrors
 state to Laya can opt into `syncLayaSoundManager`, but it must choose one
 playback backend for each event and must not submit the same sound to both.
 
-The current engine baseline is a deterministic tone primitive. Consumer-owned
-asset decoding, `AudioBuffer` caching, BGM streaming, spatial audio and device
-speaker checks remain separate capabilities and need their own lifecycle and
-acceptance evidence.
+The current engine baseline is a deterministic tone primitive. There is **no
+public AudioBuffer/sample playback ingress, MP3 decoder or BGM streaming API**
+in this mixer. A consumer cannot complete original audio migration merely by
+decoding files itself: it has no supported way to submit those samples to the
+single mixer. This is an engine capability gap, not an instruction to create a
+second context, deep-import private nodes, or substitute a tone for an MP3.
+
+`audioContextFactory` supplies the context for this mixer; it is not a pluggable
+playback backend. `syncLayaSoundManager` only mirrors settings, not voices or
+their resource ownership. Projects needing original sample/BGM parity must
+record that gap until a public sample path or complete backend contract ships.
+The [follow-up plan](plans/consumer-delivery-followups.md) specifies the proposed
+ownership, loading, loop/replacement and acceptance work. It is not an available
+runtime API. Spatial audio and device speaker checks also remain unverified.

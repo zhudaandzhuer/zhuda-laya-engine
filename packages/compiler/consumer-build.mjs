@@ -7,6 +7,8 @@ import esbuild from "esbuild";
 import { auditVisualPresentationContracts } from "./visual-contract-audit.mjs";
 import { auditConsumerSources } from "./consumer-guards.mjs";
 import { buildPrefabPreview } from "./prefab-preview.mjs";
+import { publishConsumerOutput } from "./consumer-publication.mjs";
+import { auditPrefabEnvironment } from "./prefab-environment.mjs";
 import { ENGINE_PRESET_PROFILES, TopologyResolver } from "./compiler-runtime.mjs";
 import {
   collectTsFiles,
@@ -86,6 +88,13 @@ function walk(root, dir = root, result = []) {
   }
   return result;
 }
+function assetPaths(value, name) {
+  if (value === undefined) return undefined;
+  if (!Array.isArray(value) || value.some(p => typeof p !== 'string' || !p || p.startsWith('/') ||
+      p.includes('\\') || /[:*?\0]/.test(p) || p.split('/').some(part => !part || part === '.' || part === '..')))
+    throw Error(`${name} must contain normalized file or directory paths relative to assets/ (no glob patterns)`);
+  return [...new Set(value)].sort();
+}
 /** ZIP Deflate, bounded entries; archive stays outside the web payload. Sizes are actual bytes. */
 export function archiveConsumer(root, destination, maxBytes = 50_000_000) {
   const files = walk(root);
@@ -154,7 +163,7 @@ export async function runConsumerBuild({
   ),
   config = {},
 }) {
-  const out = path.resolve(projectRoot, config.outDir || "dist/web"),
+  const output = path.resolve(projectRoot, config.outDir || "dist/web"),
     entry = path.resolve(projectRoot, config.entry || "src/Main.ts"),
     pub = path.resolve(projectRoot, config.publicDir || "public");
   projectRoot = path.resolve(projectRoot);
@@ -165,21 +174,22 @@ export async function runConsumerBuild({
   );
   const within = (a, b) => a === b || a.startsWith(b + path.sep);
   if (
-    !within(out, projectRoot) ||
-    out === projectRoot ||
+    !within(output, projectRoot) ||
+    output === projectRoot ||
     [
       pub,
       path.join(projectRoot, "src"),
+      path.join(projectRoot, "assets"),
       entry,
       template,
       path.join(projectRoot, "node_modules"),
       engineRoot,
-    ].some((source) => within(out, source) || within(source, out))
+    ].some((source) => within(output, source) || within(source, output))
   )
     throw Error(
       "Output must be separate from source, public assets and engine",
     );
-  for (let p = out; p !== projectRoot; p = path.dirname(p)) {
+  for (let p = output; p !== projectRoot; p = path.dirname(p)) {
     if (fs.existsSync(p) && fs.lstatSync(p).isSymbolicLink())
       throw Error("Output path cannot contain symlinks");
   }
@@ -197,108 +207,166 @@ export async function runConsumerBuild({
     throw Error(
       "Visual presentation contract failed: " + visual.issues.join(" | "),
     );
-  const guard = auditConsumerSources(projectRoot);
+  const guard = auditConsumerSources(projectRoot, config);
   if (!guard.passed) throw Error(guard.issues.map(i => `${i.file}:${i.line} [${i.code}] ${i.message}`).join("\n"));
   const features = config.features ||
     (config.profile && ENGINE_PRESET_PROFILES[config.profile]) ||
     ["core", "3d", "gltf"];
   const topology = TopologyResolver.resolveByFeatures(features);
-  fs.rmSync(out, { recursive: true, force: true });
-  fs.mkdirSync(path.join(out, "libs"), { recursive: true });
-  if (fs.existsSync(pub))
-    fs.cpSync(pub, out, {
-      recursive: true,
-      filter: (p) => !path.basename(p).startsWith("."),
+  const includes = assetPaths(config.assetInclude, 'assetInclude');
+  const excludes = assetPaths(config.assetExclude, 'assetExclude') || [];
+  const under = (value, prefix) => value === prefix || value.startsWith(prefix + '/');
+  const assetAllowed = (relative, directory = false) =>
+    !excludes.some(prefix => under(relative, prefix)) &&
+    (includes === undefined || includes.some(prefix => under(relative, prefix) || (directory && under(prefix, relative))));
+  const assets = path.join(projectRoot, 'assets');
+  for (const include of includes || []) {
+    if (!fs.existsSync(path.join(assets, include)) && !fs.existsSync(path.join(pub, 'assets', include)))
+      throw Error(`assetInclude path is missing: ${include}`);
+  }
+  const parent = path.dirname(output);
+  for (const name of ['game.zip', 'consumer-build.json']) {
+    const artifact = path.join(parent, name);
+    if (artifact === output || artifact === entry || artifact === template ||
+        (fs.existsSync(artifact) && (!fs.lstatSync(artifact).isFile() || fs.lstatSync(artifact).isSymbolicLink())))
+      throw Error(`Reserved consumer artifact path: ${artifact}`);
+  }
+  fs.mkdirSync(parent, { recursive: true });
+  const lock = path.join(parent, '.zhuda-consumer-build.lock');
+  let lockFd;
+  try { lockFd = fs.openSync(lock, 'wx'); }
+  catch (error) {
+    if (error.code === 'EEXIST') throw Error(`Consumer build already owns ${parent}; if interrupted, confirm its process exited before removing ${lock}`);
+    throw error;
+  }
+  let staging;
+  let preserveRecovery = false;
+  try {
+    fs.writeFileSync(lockFd, JSON.stringify({ pid: process.pid, output }));
+    staging = fs.mkdtempSync(path.join(parent, '.zhuda-build-'));
+    const out = path.join(staging, 'web');
+    fs.mkdirSync(path.join(out, "libs"), { recursive: true });
+    if (fs.existsSync(pub))
+      fs.cpSync(pub, out, {
+        recursive: true,
+        filter: (p) => {
+          if (path.basename(p).startsWith('.')) return false;
+          const relative = path.relative(pub, p).split(path.sep).join('/');
+          return relative === 'assets' || !relative.startsWith('assets/') || assetAllowed(relative.slice(7), fs.lstatSync(p).isDirectory());
+        },
+      });
+    if (fs.existsSync(assets))
+      fs.cpSync(assets, path.join(out, "assets"), {
+        recursive: true,
+        filter: (p) => {
+          if (path.basename(p).startsWith(".")) return false;
+          const relative = path.relative(assets, p).split(path.sep).join("/");
+          return relative === '' || assetAllowed(relative, fs.lstatSync(p).isDirectory());
+        },
+      });
+    for (const file of topology.orderedFiles)
+      fs.copyFileSync(
+        path.join(engineRoot, "vendor/laya-3.4.2/libs", file),
+        path.join(out, "libs", file),
+      );
+    await esbuild.build({
+      entryPoints: [entry],
+      bundle: true,
+      format: "iife",
+      target: "es2020",
+      outfile: path.join(out, "app.js"),
+      minify: true,
+      plugins: [zhudaConsumerPlugin({ projectRoot, entry, engineRoot })],
     });
-  const assets = path.join(projectRoot, "assets");
-  const assetExcludes = Array.isArray(config.assetExclude)
-    ? config.assetExclude.map((value) => String(value).replaceAll("\\", "/").replace(/^\/+|\/+$/g, ""))
-    : [];
-  if (fs.existsSync(assets))
-    fs.cpSync(assets, path.join(out, "assets"), {
-      recursive: true,
-      filter: (p) => {
-        if (path.basename(p).startsWith(".")) return false;
-        const relative = path.relative(assets, p).split(path.sep).join("/");
-        return !assetExcludes.some((prefix) => relative === prefix || relative.startsWith(`${prefix}/`));
-      },
-    });
-  for (const file of topology.orderedFiles)
-    fs.copyFileSync(
-      path.join(engineRoot, "vendor/laya-3.4.2/libs", file),
-      path.join(out, "libs", file),
+    const tags = topology.orderedFiles
+      .map((f) => `<script src="libs/${f}"></script>`)
+      .join("\n");
+    fs.writeFileSync(
+      path.join(out, "index.html"),
+      html
+        .replace("<!-- ZHUDA_LIBS -->", tags)
+        .replace("<!-- ZHUDA_ENTRY -->", '<script src="app.js"></script>'),
     );
-  await esbuild.build({
-    entryPoints: [entry],
-    bundle: true,
-    format: "iife",
-    target: "es2020",
-    outfile: path.join(out, "app.js"),
-    minify: true,
-    plugins: [zhudaConsumerPlugin({ projectRoot, entry, engineRoot })],
-  });
-  const tags = topology.orderedFiles
-    .map((f) => `<script src="libs/${f}"></script>`)
-    .join("\n");
-  fs.writeFileSync(
-    path.join(out, "index.html"),
-    html
-      .replace("<!-- ZHUDA_LIBS -->", tags)
-      .replace("<!-- ZHUDA_ENTRY -->", '<script src="app.js"></script>'),
-  );
-  fs.writeFileSync(path.join(out, ".nojekyll"), "");
-  if (config.prefabPreview)
-    await buildPrefabPreview({ projectRoot, engineRoot, out, topology, config });
-  const payload = walk(out).map((f) => ({
-    path: f.path,
-    bytes: f.bytes.length,
-    sha256: crypto.createHash("sha256").update(f.bytes).digest("hex"),
-  }));
-  const fingerprint = crypto.createHash("sha256").update(JSON.stringify(payload)).digest("hex");
-  if (config.prefabEvidence) {
-    if (!Array.isArray(config.prefabEvidence) || !config.prefabEvidence.length)
-      throw Error("prefabEvidence requires at least one browser report");
-    for (const file of config.prefabEvidence) {
-      const reportPath = path.resolve(projectRoot, file);
-      const evidence = JSON.parse(fs.readFileSync(reportPath, "utf8"));
-      if (evidence.schemaVersion !== 1 || !evidence.passed || !evidence.provenance ||
-          !evidence.selection?.id || evidence.fingerprint !== fingerprint)
-        throw Error(`${file}: missing, failed or stale prefab evidence; rerun the browser comparison`);
-      for (const [artifact, checksum] of [[evidence.actual, evidence.actualSha256], [evidence.baseline, evidence.baselineSha256]]) {
-        if (typeof artifact !== "string" || typeof checksum !== "string" ||
-            crypto.createHash("sha256").update(fs.readFileSync(path.resolve(path.dirname(reportPath), artifact))).digest("hex") !== checksum)
-          throw Error(`${file}: changed prefab comparison artifact`);
+    fs.writeFileSync(path.join(out, ".nojekyll"), "");
+    if (config.prefabPreview)
+      await buildPrefabPreview({ projectRoot, engineRoot, out, topology, config });
+    const payload = walk(out).map((f) => ({
+      path: f.path,
+      bytes: f.bytes.length,
+      sha256: crypto.createHash("sha256").update(f.bytes).digest("hex"),
+    }));
+    const fingerprint = crypto.createHash("sha256").update(JSON.stringify(payload)).digest("hex");
+    if (config.prefabEvidence) {
+      if (!Array.isArray(config.prefabEvidence) || !config.prefabEvidence.length)
+        throw Error("prefabEvidence requires at least one browser report");
+      for (const file of config.prefabEvidence) {
+        const reportPath = path.resolve(projectRoot, file);
+        const evidence = JSON.parse(fs.readFileSync(reportPath, "utf8"));
+        if (evidence.schemaVersion !== 2 || !evidence.passed || !evidence.provenance ||
+            !evidence.environment?.passed ||
+            !auditPrefabEnvironment(evidence.environment.requested, evidence.environment.measured).passed ||
+            !evidence.selection?.id || evidence.fingerprint !== fingerprint)
+          throw Error(`${file}: missing, failed or stale prefab evidence; rerun the browser comparison`);
+        for (const [artifact, checksum] of [[evidence.actual, evidence.actualSha256], [evidence.baseline, evidence.baselineSha256]]) {
+          if (typeof artifact !== "string" || typeof checksum !== "string" ||
+              crypto.createHash("sha256").update(fs.readFileSync(path.resolve(path.dirname(reportPath), artifact))).digest("hex") !== checksum)
+            throw Error(`${file}: changed prefab comparison artifact`);
+        }
       }
     }
-  }
-  fs.writeFileSync(
-    path.join(out, "payload-manifest.json"),
-    JSON.stringify(
-      {
-        libraries: topology.orderedFiles,
-        fingerprint,
-        files: payload,
-        totalBytes: payload.reduce((n, f) => n + f.bytes, 0),
+    fs.writeFileSync(
+      path.join(out, "payload-manifest.json"),
+      JSON.stringify(
+        {
+          libraries: topology.orderedFiles,
+          fingerprint,
+          files: payload,
+          totalBytes: payload.reduce((n, f) => n + f.bytes, 0),
+        },
+        null,
+        2,
+      ),
+    );
+    const archive = archiveConsumer(
+      out,
+      path.join(path.dirname(out), "game.zip"),
+      config.maxPackageBytes || 50_000_000,
+    );
+    const report = {
+      consumer: true,
+      sourceWrites: 0,
+      output,
+      orderedLibraries: topology.orderedFiles,
+      assets: { include: includes ?? null, exclude: excludes },
+      route: {
+        level: "engine-backed-static",
+        engineDependency: guard.checks.engineDependency,
+        publicSdkImport: guard.checks.publicSdkImport,
+        engineBoot: guard.checks.engineBoot,
+        browserWebGL: "required",
+        deviceEvidence: "required",
       },
-      null,
-      2,
-    ),
-  );
-  const archive = archiveConsumer(
-    out,
-    path.join(path.dirname(out), "game.zip"),
-    config.maxPackageBytes || 50_000_000,
-  );
-  const report = {
-    consumer: true,
-    sourceWrites: 0,
-    output: out,
-    orderedLibraries: topology.orderedFiles,
-    archive,
-  };
-  fs.writeFileSync(
-    path.join(path.dirname(out), "consumer-build.json"),
-    JSON.stringify(report, null, 2),
-  );
-  return report;
+      archive,
+    };
+    fs.writeFileSync(
+      path.join(path.dirname(out), "consumer-build.json"),
+      JSON.stringify(report, null, 2),
+    );
+    publishConsumerOutput({ staging, output });
+    return report;
+  } catch (error) {
+    preserveRecovery = Boolean(error.recoveryDirectory);
+    throw error;
+  } finally {
+    // Cleanup failure must not turn an already-published success into a failed
+    // build with changed output, nor hide the original gate/rollback error.
+    for (const cleanup of [
+      () => { if (staging && !preserveRecovery) fs.rmSync(staging, { recursive: true, force: true }); },
+      () => fs.closeSync(lockFd),
+      () => fs.unlinkSync(lock),
+    ]) {
+      try { cleanup(); }
+      catch (error) { console.warn(`Consumer build cleanup: ${error.message}`); }
+    }
+  }
 }

@@ -17,6 +17,12 @@ test("independent consumer preserves source hashes and its DOM/CSS; archive is a
     fs.mkdirSync(path.join(root, "assets/prefabs"), { recursive: true });
     fs.mkdirSync(path.join(root, "assets/raw"), { recursive: true });
     fs.mkdirSync(path.join(root, "src"));
+    fs.writeFileSync(path.join(root, "package.json"), JSON.stringify({
+      name: "consumer-fixture",
+      private: true,
+      type: "module",
+      dependencies: { "zhuda-laya-engine": "1.3.0" },
+    }));
     fs.mkdirSync(path.join(root, "src/prefabs"));
     fs.writeFileSync(
       path.join(root, "public/index.html"),
@@ -27,7 +33,7 @@ test("independent consumer preserves source hashes and its DOM/CSS; archive is a
     fs.writeFileSync(path.join(root, "assets/raw/source.mp4"), "source");
     fs.writeFileSync(
       path.join(root, "src/Main.ts"),
-      "import {ZhudaSceneQueries} from 'zhuda-laya-engine'; window['queries']=new ZhudaSceneQueries();",
+      "import {ZhudaEngine, ZhudaSceneQueries} from 'zhuda-laya-engine'; ZhudaEngine.boot({features:['core','2d']}); window['queries']=new ZhudaSceneQueries();",
     );
     fs.writeFileSync(path.join(root, "src/prefabs/definitions.ts"), "export const definitions = [];\n");
     const hashes = () =>
@@ -78,7 +84,7 @@ test("independent consumer preserves source hashes and its DOM/CSS; archive is a
       !fs.readdirSync(path.join(root, "dist/web")).includes("preview.html"),
     );
     execFileSync("unzip", ["-t", path.join(root, "dist/game.zip")]);
-    for (const outDir of [".", "src", "public", "src/generated", "dist/.."])
+    for (const outDir of [".", "src", "public", "src/generated", "assets", "assets/generated", "dist/.."])
       await assert.rejects(
         runConsumerBuild({ projectRoot: root, engineRoot, config: { outDir } }),
       );

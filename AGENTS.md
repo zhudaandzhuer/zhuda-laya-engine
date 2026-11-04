@@ -20,6 +20,13 @@ test pass.
 The `src/` showcase and `assets/` fixtures are engine examples and regression
 fixtures. They are not a place for a consumer game's production content.
 
+For a game integration, follow the single [canonical consumer route](docs/consumer-route.md)
+and start from `node packages/compiler/zhuda-init.mjs` (or the installed
+`zhuda-laya-init` bin) when creating a project. The engine
+workbench quick start in README is for engine development; it is not a consumer
+scaffold. A consumer may claim engine-backed integration only after its pinned
+SDK, public import, boot path, HTML markers, build and Doctor checks pass.
+
 ## Prefab gate for visual work
 
 For new or changed visual content, follow the [prefab workflow](docs/prefab-workflow.md).
@@ -38,6 +45,10 @@ a global `Laya: any`. A procedural effect still needs an independently
 selectable preset with deterministic inputs. Engine demo calibration proves
 only the named demo fixtures. Copy the workflow's adoption instructions
 into the consumer's own agent rules.
+
+The consumer guard also rejects Three.js renderer imports/scripts and inline
+Zhuda/Laya facade classes. Those checks prove the public boundary only; real
+WebGL and device acceptance still require the consumer's own reports.
 
 ## Required reading before implementation
 

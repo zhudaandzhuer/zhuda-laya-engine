@@ -30,6 +30,10 @@
 
 ## API 與證據邊界
 
+Checker 的 viewport／DPR 實測、schema 2 證據遷移，以及預覽／Scene 共用
+`createAssetProvider` 的設定見[consumer tooling](consumer-tooling.md)。
+舊 schema 1 報告不能直接改版號重用；需重新測量。
+
 - 隔離預覽與消費端入口的 HTML 都要在腳本前宣告 `<meta charset="utf-8">`。Consumer build 會在輸出頁補上缺少的宣告；來源仍應明確寫出它。這固定瀏覽器字型測量的編碼環境，避免同一個 Label 在預覽和 Scene 產生不可重現的首幀差異。
 - 遊戲固定公開套件版本或 Git SHA，使用獨立 consumer build 與嚴格型別檢查。先查已安裝版本的公開宣告、既有元件及測試。禁止複製或直接匯入引擎內部原始碼、修改 vendor，或用 `declare const Laya: any` 繞過型別缺口。
 - 優先重用適用的 ZhudaUI／Laya UI 控件、切片與容器。特殊外觀可在遊戲的 Prefab renderer 組合公開的 Sprite、Label 或其他型別。採用自訂 adapter 時，在任務記錄寫明既有能力、缺口、作用範圍與可重現測試。可重用的引擎缺陷應帶最小失敗案例回報至引擎庫。

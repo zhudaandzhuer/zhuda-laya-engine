@@ -41,6 +41,7 @@
   "bin": {
     "zhuda-laya-build": "./packages/compiler/zhuda-build.mjs",
     "zhuda-laya-doctor": "./packages/compiler/zhuda-doctor.mjs",
+    "zhuda-laya-init": "./packages/compiler/zhuda-init.mjs",
     "zhuda-visual-contract": "./packages/compiler/visual-contract-audit.mjs",
     "zhuda-prefab-check": "./packages/compiler/prefab-check.mjs",
     "zhuda-laya-watch": "./packages/compiler/prefab-watch.mjs",
@@ -74,6 +75,7 @@
   "scripts": {
     "ast:scan": "node -e \"import('./packages/compiler/ast-scanner.mjs').then(m => m.scanAndGenerateRegistry(process.cwd()))\"",
     "typecheck": "npm run types:runtime3d && npm run ast:scan && tsc --noEmit -p tsconfig.json",
+    "audit:declarations": "node scripts/audit-public-declarations.mjs",
     "build": "npm run types:runtime3d && node packages/compiler/zhuda-build.mjs",
     "doctor": "node packages/compiler/zhuda-doctor.mjs",
     "visual:audit": "node packages/compiler/visual-asset-audit.mjs",

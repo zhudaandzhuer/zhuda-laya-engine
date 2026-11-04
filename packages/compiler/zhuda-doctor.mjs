@@ -99,6 +99,10 @@ if (launchedAsCli) {
   console.log(`  • 反射組件數量:   ${report.discoveredComponentsCount} (${report.discoveredComponents.join(', ')})`);
   console.log(`  • HTML 拓撲模組:  ${report.htmlScriptCount} 個庫 (順序衝突: ${report.topologyIssues.length})`);
   console.log(`  • 廢棄 API 違規:  ${report.apiViolations.length} 處`);
+  if (report.consumer.checks) {
+    const pin = report.consumer.checks.engineDependency?.value || 'missing';
+    console.log(`  • Consumer 路線:   ${report.consumer.checks.publicSdkImport && report.consumer.checks.engineBoot ? 'engine-backed static' : 'incomplete'} (pin: ${pin})`);
+  }
   console.log(`  • Agent 契約守衛: ${report.agentContract.issues.length} 處`);
   for (const item of report.consumer.issues)
     console.log(`    - [${item.code}] ${item.file}:${item.line}: ${item.message}`);
