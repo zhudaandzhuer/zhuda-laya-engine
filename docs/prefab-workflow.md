@@ -43,3 +43,17 @@
 > 視覺工作依固定引擎版本的 `docs/prefab-workflow.md` 執行。先建資產清單和 Prefab，在隔離入口按 ID、子節點及狀態比對來源，提交可重跑的證據，通過後才組面板和 Scene。遊戲與預覽共用同一份定義。FAIL、UNAVAILABLE 或過期證據不得放行對應階段。使用公開型別和資源生命週期；發現缺口時附最小案例。接手舊 Scene 時從下一個要改的元件開始，逐一建立 Prefab、比對後替換舊節點。
 
 有 MCP 的 agent 呼叫 `get_agent_contract`，查看 `visualWorkflow`。沒有 MCP 時直接讀安裝套件的這份文件。消費專案須在自己的規則填上實際預覽命令、素材與基準位置、CI 任務及目標裝置。現有引擎工作台只示範內建資產。遊戲現階段需提供獨立測試入口，通用預覽與 CI 規畫見[工具路線圖](plans/prefab-toolchain.md)。
+## 即時小窗預覽
+
+消費專案完成 `prefabPreview` 設定後，可用引擎內建的 watch server：
+
+```sh
+zhuda-laya-watch --project /absolute/path/to/consumer --host 127.0.0.1 --port 8890
+```
+
+它先執行一次完整 consumer build，再監看 `src/`、`assets/`、`public/`、
+`zhuda.config.json` 與 `package.json`。開啟輸出的 `prefab-preview.html` 或
+`index.html` 後，儲存 Prefab、貼圖、定義或 Scene 變更會觸發重新建置；成功時
+兩個頁面都自動重新載入，失敗時保留上一個可用輸出並在頁面 alert 顯示錯誤。
+這是開發期預覽能力，仍須使用 `zhuda-prefab-check` 和 Scene 驗收報告作為
+提交門禁。

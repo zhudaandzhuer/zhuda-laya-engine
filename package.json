@@ -43,6 +43,7 @@
     "zhuda-laya-doctor": "./packages/compiler/zhuda-doctor.mjs",
     "zhuda-visual-contract": "./packages/compiler/visual-contract-audit.mjs",
     "zhuda-prefab-check": "./packages/compiler/prefab-check.mjs",
+    "zhuda-laya-watch": "./packages/compiler/prefab-watch.mjs",
     "zhuda-laya-mcp": "./packages/mcp-server/index.mjs"
   },
   "files": [

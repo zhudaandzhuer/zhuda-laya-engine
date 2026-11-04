@@ -171,6 +171,18 @@ export class ZhudaPrefabLibrary {
           if (!texture?.url) throw Error(`Undeclared prefab texture: ${node.skin}`);
           node.skin = texture.url;
         }
+        // Graphics draw commands use the same logical asset boundary as
+        // Image.skin. Resolve their provider IDs before the low-level
+        // hydrator sees them so isolated previews and Scenes can share
+        // procedural slices (for example a capsule with three DrawTextureCmd
+        // segments) without embedding blob URLs in the Prefab source.
+        for (const command of node._gcmds || []) {
+          if (command._$type !== "DrawTextureCmd") continue;
+          if (!command.textureId) throw Error("DrawTextureCmd requires textureId");
+          const texture = resources.get(command.textureId);
+          if (!texture?.url) throw Error(`Undeclared prefab texture: ${command.textureId}`);
+          command.textureId = texture.url;
+        }
         node._$child?.forEach(bindTextures);
       };
       bindTextures(data);

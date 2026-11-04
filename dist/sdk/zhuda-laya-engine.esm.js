@@ -8905,6 +8905,13 @@ var ZhudaPrefabLibrary = class {
           if (!texture?.url) throw Error(`Undeclared prefab texture: ${node.skin}`);
           node.skin = texture.url;
         }
+        for (const command of node._gcmds || []) {
+          if (command._$type !== "DrawTextureCmd") continue;
+          if (!command.textureId) throw Error("DrawTextureCmd requires textureId");
+          const texture = resources.get(command.textureId);
+          if (!texture?.url) throw Error(`Undeclared prefab texture: ${command.textureId}`);
+          command.textureId = texture.url;
+        }
         node._$child?.forEach(bindTextures);
       };
       bindTextures(data);

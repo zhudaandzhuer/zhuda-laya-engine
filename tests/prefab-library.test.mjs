@@ -71,3 +71,48 @@ test("prefab timeout, cancellation, late completion, disposal and malformed data
     broken.dispose();
   } finally { globalThis.Laya = previous; }
 });
+
+test("prefab DrawTextureCmd resolves declared logical texture IDs before hydration", async () => {
+  const previous = globalThis.Laya;
+  class Graphics {
+    calls = [];
+    clear() {}
+    drawTexture(...args) { this.calls.push(args); }
+  }
+  class TextureSprite extends Sprite {
+    graphics = new Graphics();
+  }
+  const hierarchy = {
+    _$id: "capsule", _$type: "Sprite", width: 96, height: 28,
+    _gcmds: [
+      { _$type: "DrawTextureCmd", textureId: "ui/pill.png", x: 0, y: 0, width: 14, height: 28 },
+      { _$type: "DrawTextureCmd", textureId: "ui/pill.png", x: 14, y: 0, width: 68, height: 28 },
+      { _$type: "DrawTextureCmd", textureId: "ui/pill.png", x: 82, y: 0, width: 14, height: 28 },
+    ],
+  };
+  globalThis.Laya = {
+    Sprite: TextureSprite, Text: TextureSprite, Loader: { IMAGE: "image" },
+    loader: {
+      load: async () => ({}),
+      getRes: url => ({ url }),
+      clearRes: () => {},
+    },
+  };
+  try {
+    const provider = {
+      name: "texture-fixture",
+      async load(id) {
+        return { id, bytes: new TextEncoder().encode(id === "panel.lh" ? JSON.stringify(hierarchy) : "png") };
+      },
+    };
+    const library = new ZhudaPrefabLibrary({
+      provider,
+      definitions: [{ id: "capsule", asset: "panel.lh", textures: ["ui/pill.png"], states: { idle: {} } }],
+    });
+    const instance = await library.instantiate("capsule");
+    assert.equal(instance.root.graphics.calls.length, 3);
+    assert.match(instance.root.graphics.calls[0][0].url, /^blob:/);
+    instance.dispose();
+    library.dispose();
+  } finally { globalThis.Laya = previous; }
+});
