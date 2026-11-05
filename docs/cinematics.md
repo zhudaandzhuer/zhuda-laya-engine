@@ -21,7 +21,13 @@ are strictly increasing and bounded by the duration. `seek(t, {emitEvents:true})
 explicitly emits cues crossed by the seek; ordinary seeks do not replay audio.
 The sequencer is disposed with its scene and does not create another clock.
 
-This is the first cinematic building block. It does not provide a timeline editor,
-offline 4K renderer, motion blur, path tracing, FFmpeg or Unreal parity. Use the
-[keyframe sequence gate](../packages/ci-gate/verify-sequence.mjs) to record fixed
-times and actual renderer/device diagnostics before claiming cinematic support.
+For fixed-step evidence or an offline producer, `ZhudaOfflineFrameRecorder`
+drives consumer callbacks at an exact integer frame rate and returns the
+captured frame metadata in order. It validates cancellation and capture
+metadata but does not own a renderer, filesystem or encoder; the consumer must
+still provide real image files and device diagnostics for the
+[keyframe sequence gate](../packages/ci-gate/verify-sequence.mjs).
+
+This remains a deterministic presentation foundation. It does not provide a
+timeline editor, offline 4K renderer, motion blur, path tracing, FFmpeg or
+Unreal parity.

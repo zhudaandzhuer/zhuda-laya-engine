@@ -19,6 +19,47 @@ export interface ZhudaTimelineBinding {
 }
 export interface ZhudaTimelineSeekOptions { emitEvents?: boolean; }
 
+export interface ZhudaOfflineFrame {
+  readonly index: number;
+  readonly time: number;
+  readonly deltaSeconds: number;
+}
+
+export interface ZhudaOfflineFrameCapture {
+  readonly ready: true;
+  readonly imagePath: string;
+  readonly imageSha256?: string;
+  readonly referenceSha256?: string;
+  readonly metrics?: Readonly<Record<string, number>>;
+}
+
+export interface ZhudaOfflineFrameRecorderOptions {
+  /** Total duration, including the frame at t=0. */
+  readonly durationSeconds: number;
+  /** Fixed output rate. durationSeconds * fps must be an integer. */
+  readonly fps: number;
+  readonly maxFrames?: number;
+  readonly signal?: AbortSignal;
+  /** Advance the consumer timeline by the supplied fixed frame. */
+  readonly advance: (frame: ZhudaOfflineFrame) => void | Promise<void>;
+  /** Capture one frame after advance has completed. */
+  readonly capture: (frame: ZhudaOfflineFrame) => ZhudaOfflineFrameCapture | Promise<ZhudaOfflineFrameCapture>;
+}
+
+const abortOffline = () => new DOMException('Offline frame recording cancelled', 'AbortError');
+
+function validateFrameCapture(value: ZhudaOfflineFrameCapture): ZhudaOfflineFrameCapture {
+  if (!value || value.ready !== true || typeof value.imagePath !== 'string' || !value.imagePath)
+    throw Error('Offline frame capture must provide ready:true and imagePath.');
+  if (value.metrics !== undefined) {
+    if (!value.metrics || typeof value.metrics !== 'object' || Array.isArray(value.metrics))
+      throw Error('Offline frame metrics must be an object.');
+    for (const [key, metric] of Object.entries(value.metrics))
+      if (!Number.isFinite(metric)) throw Error(`Offline frame metric ${key} must be finite.`);
+  }
+  return Object.freeze({ ...value, metrics: value.metrics ? Object.freeze({ ...value.metrics }) : undefined });
+}
+
 function sameShape(a: TimelineValue, b: TimelineValue, kind: TimelineTrackKind): boolean {
   if (kind === 'number') return typeof a === 'number' && typeof b === 'number';
   if (kind === 'boolean') return typeof a === 'boolean' && typeof b === 'boolean';
@@ -105,5 +146,59 @@ export class ZhudaTimelineSequencer {
   reset(): void { this.seek(0); }
   get currentTime(): number { return this.time; }
   get complete(): boolean { return this.time >= this.spec.duration; }
+  dispose(): void { this.disposed = true; }
+}
+
+/**
+ * Fixed-step capture driver for cinematic evidence and offline producers.
+ * It advances a consumer callback; it does not own a renderer, clock, file
+ * system or encoder. The caller remains responsible for real pixel capture.
+ */
+export class ZhudaOfflineFrameRecorder {
+  private readonly options: ZhudaOfflineFrameRecorderOptions;
+  private readonly frameCount: number;
+  private disposed = false;
+  private recording = false;
+  constructor(options: ZhudaOfflineFrameRecorderOptions) {
+    if (!options || !Number.isFinite(options.durationSeconds) || options.durationSeconds <= 0)
+      throw Error('Offline duration must be positive.');
+    if (!Number.isFinite(options.fps) || options.fps <= 0 || options.fps > 1000)
+      throw Error('Offline fps must be 0..1000.');
+    const exactFrames = options.durationSeconds * options.fps;
+    if (!Number.isSafeInteger(Math.round(exactFrames)) || Math.abs(exactFrames - Math.round(exactFrames)) > 1e-7)
+      throw Error('Offline durationSeconds * fps must be an integer.');
+    this.frameCount = Math.round(exactFrames) + 1;
+    const maxFrames = options.maxFrames ?? 100_000;
+    if (!Number.isSafeInteger(maxFrames) || maxFrames <= 0 || this.frameCount > maxFrames)
+      throw Error('Offline frame count exceeds maxFrames.');
+    if (typeof options.advance !== 'function' || typeof options.capture !== 'function')
+      throw Error('Offline recorder requires advance and capture callbacks.');
+    this.options = options;
+  }
+  private check() {
+    if (this.disposed) throw Error('Disposed offline frame recorder.');
+    if (this.options.signal?.aborted) throw abortOffline();
+  }
+  async record(): Promise<readonly (ZhudaOfflineFrame & { readonly capture: ZhudaOfflineFrameCapture })[]> {
+    this.check();
+    if (this.recording) throw Error('Offline frame recorder is already recording.');
+    this.recording = true;
+    const frames: (ZhudaOfflineFrame & { readonly capture: ZhudaOfflineFrameCapture })[] = [];
+    const deltaSeconds = 1 / this.options.fps;
+    try {
+      for (let index = 0; index < this.frameCount; index++) {
+        this.check();
+        const frame = Object.freeze({ index, time: index * deltaSeconds, deltaSeconds: index === 0 ? 0 : deltaSeconds });
+        await this.options.advance(frame);
+        this.check();
+        const capture = validateFrameCapture(await this.options.capture(frame));
+        this.check();
+        frames.push(Object.freeze({ ...frame, capture }));
+      }
+      return Object.freeze(frames);
+    } finally {
+      this.recording = false;
+    }
+  }
   dispose(): void { this.disposed = true; }
 }

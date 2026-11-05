@@ -40,8 +40,9 @@ bundle and give all consumers a public, renderer-aware keyframe evidence gate.
 
 - `examples/windows-webgpu/` desktop host and instructions.
 - `packages/ci-gate/verify-sequence.mjs` and its public contract tests.
-- `packages/core/runtime3d/Timeline.ts` deterministic presentation timeline and
-  the explicit glTF/KTX2/Meshopt/Draco capability catalog.
+- `packages/core/runtime3d/Timeline.ts` deterministic presentation timeline,
+  fixed-step offline frame recorder and the explicit
+  glTF/KTX2/Meshopt/Draco capability catalog.
 - WebGPU and acceptance documentation and this verification record.
 
 ### Consumer or adapter
@@ -66,7 +67,9 @@ bundle and give all consumers a public, renderer-aware keyframe evidence gate.
    report the actual WebGPU adapter and fail on fallback/software/error.
 4. `node packages/ci-gate/verify-sequence.mjs <report>` reproduces a JSON gate
    with exact expected timestamps and bounded metric assertions.
-5. `git diff --check` and documentation link checks pass.
+5. `ZhudaOfflineFrameRecorder` emits exact integer-FPS timestamps, stops on
+   cancellation and rejects invalid capture metadata.
+6. `git diff --check` and documentation link checks pass.
 
 ## Evidence to attach
 
