@@ -16,6 +16,23 @@ export interface GltfExtensionCapability {
   /** An implemented parser is not a visual conformance certificate. */
   visualConformance: 'not-certified';
 }
+export interface GltfAssetCapability {
+  name: string;
+  kind: 'container' | 'delivery' | 'geometry-compression' | 'image-compression';
+  status: 'supported' | 'unsupported';
+  message: string;
+  hint: string;
+}
+/** Machine-readable import/delivery boundary for agents and model tooling. */
+export const gltfAssetCapabilities: readonly GltfAssetCapability[] = Object.freeze([
+  Object.freeze({ name: 'glTF 2.0 JSON', kind: 'container' as const, status: 'supported' as const, message: 'glTF 2.0 JSON can be inspected and loaded when its resources are self-contained.', hint: 'Prefer a single GLB for consumer delivery.' }),
+  Object.freeze({ name: 'GLB 2.0', kind: 'container' as const, status: 'supported' as const, message: 'GLB 2.0 with an embedded JSON and binary payload is supported.', hint: 'Pass the complete GLB through AssetProvider.' }),
+  Object.freeze({ name: 'embedded buffers/images', kind: 'delivery' as const, status: 'supported' as const, message: 'Embedded data is deterministic and provider-verifiable.', hint: 'Record the logical asset SHA.' }),
+  Object.freeze({ name: 'external buffers/images', kind: 'delivery' as const, status: 'unsupported' as const, message: 'The provider model loader does not fetch undeclared relative resource URLs.', hint: 'Package buffers and images into a GLB or explicit provider assets.' }),
+  Object.freeze({ name: 'KHR_draco_mesh_compression', kind: 'geometry-compression' as const, status: 'unsupported' as const, message: 'No pinned Draco decoder is shipped in this release.', hint: 'Export an uncompressed GLB or add a separately verified decoder adapter.' }),
+  Object.freeze({ name: 'EXT_meshopt_compression', kind: 'geometry-compression' as const, status: 'unsupported' as const, message: 'No pinned Meshopt decoder is shipped in this release.', hint: 'Export an uncompressed GLB or add a separately verified decoder adapter.' }),
+  Object.freeze({ name: 'KHR_texture_basisu', kind: 'image-compression' as const, status: 'unsupported' as const, message: 'No pinned KTX2/Basis decoder and device upload contract is shipped in this release.', hint: 'Use ordinary embedded images until the format gate passes on target devices.' }),
+]);
 const extensionNames = [
   'KHR_materials_anisotropy', 'KHR_materials_clearcoat', 'KHR_materials_emissive_strength',
   'KHR_materials_ior', 'KHR_materials_iridescence', 'KHR_materials_sheen',

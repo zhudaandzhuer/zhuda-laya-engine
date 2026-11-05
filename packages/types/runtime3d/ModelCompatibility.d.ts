@@ -14,6 +14,15 @@ export interface GltfExtensionCapability {
     /** An implemented parser is not a visual conformance certificate. */
     visualConformance: 'not-certified';
 }
+export interface GltfAssetCapability {
+    name: string;
+    kind: 'container' | 'delivery' | 'geometry-compression' | 'image-compression';
+    status: 'supported' | 'unsupported';
+    message: string;
+    hint: string;
+}
+/** Machine-readable import/delivery boundary for agents and model tooling. */
+export declare const gltfAssetCapabilities: readonly GltfAssetCapability[];
 export declare const gltfExtensionCapabilities: readonly GltfExtensionCapability[];
 export interface ModelSourceInventory {
     nodes: readonly {

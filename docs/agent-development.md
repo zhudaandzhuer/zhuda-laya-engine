@@ -97,6 +97,11 @@ shaders, document color space, normal/metallic channels, blend/depth passes,
 fog, instancing and fallback quality. For particles and Spine, test target
 scope, event deduplication, mask restoration and repeated disposal.
 
+For cinematic or visual-sequence evidence, use
+`node packages/ci-gate/verify-sequence.mjs` with fixed timestamps, the actual
+renderer report and bounded metric assertions. A first-frame screenshot or a
+synthetic report does not prove a timeline, device or performance contract.
+
 ## Evidence and handoff
 
 Use [`plans/VERIFICATION-TEMPLATE.md`](plans/VERIFICATION-TEMPLATE.md) for the

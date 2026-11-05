@@ -1,10 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { inspectGltfDocument, inspectGltfAsset, ZhudaModelCompatibilityError } from '../packages/core/runtime3d/ModelCompatibility.ts';
+import { inspectGltfDocument, inspectGltfAsset, gltfAssetCapabilities, ZhudaModelCompatibilityError } from '../packages/core/runtime3d/ModelCompatibility.ts';
 import { ZhudaModelLibrary } from '../packages/core/runtime3d/Assets.ts';
 import { prepareLaya342GltfResource } from '../packages/core/runtime3d/Laya342GltfAdapter.ts';
 const fixture = name => JSON.parse(fs.readFileSync(new URL(`./fixtures/gltf-review/${name}.gltf`, import.meta.url)));
+
+test('asset capability catalog makes compression and delivery limits explicit', () => {
+  const byName = new Map(gltfAssetCapabilities.map(capability => [capability.name, capability]));
+  assert.equal(byName.get('GLB 2.0').status, 'supported');
+  assert.equal(byName.get('KHR_texture_basisu').status, 'unsupported');
+  assert.match(byName.get('KHR_texture_basisu').hint, /ordinary embedded images/);
+  assert.equal(Object.isFrozen(gltfAssetCapabilities), true);
+});
 
 test('required extensions fail explicitly; optional loss and required render inputs remain machine readable', () => {
   const data = fixture('required-extension');

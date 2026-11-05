@@ -49,6 +49,8 @@ devices through the existing runtime lifecycle. Default WebGL is preserved.
 [Setup, fallback and platform limits](docs/webgpu.md) include reproducible Windows
 browser checks. macOS hardware rendering is measured; Windows hardware, native
 EXE/Steam and physical mobile acceptance remain unverified.
+The [`examples/windows-webgpu`](examples/windows-webgpu/) host provides a
+reproducible Electron entry for the next Windows packaged acceptance step.
 
 ## White-label and H5 factory foundations (1.10.0)
 

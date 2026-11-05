@@ -1,0 +1,23 @@
+{
+  "name": "zhuda-windows-webgpu-host",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "main.mjs",
+  "scripts": {
+    "start": "electron .",
+    "verify": "electron . --verify",
+    "package": "electron-forge make"
+  },
+  "devDependencies": {
+    "@electron-forge/cli": "^7.8.3",
+    "@electron-forge/maker-squirrel": "^7.8.3",
+    "electron": "36.9.5"
+  },
+  "config": {
+    "forge": {
+      "packagerConfig": { "asar": true },
+      "makers": [{ "name": "@electron-forge/maker-squirrel" }]
+    }
+  }
+}

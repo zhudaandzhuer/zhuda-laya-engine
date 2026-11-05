@@ -26,6 +26,7 @@ device checks and acceptance gates pass.
 | [Astra runtime feedback](records/astra-runtime-feedback/task.md) | Implemented; desktop verified | DPR, streams, voice retirement, driver/recovery, backend seam and clean declarations; physical devices unavailable |
 | [Browser SDK delivery](records/browser-sdk-delivery/task.md) | Implemented; desktop verified | Versioned browser bundles, SRI, hosted examples and cross-origin HTML; mobile unavailable |
 | [RPG integration feedback](records/rpg-feedback-hardening/task.md) | Implemented; desktop verified | Lifecycle completion, official candidate acceptance, component proofs and leased primitive resources; physical devices unavailable |
+| [Desktop and Agent gates](desktop-and-agent-gates/task.md) | In progress; desktop preparation verified | Packaged Windows WebGPU host, generic keyframe gate, deterministic timeline and explicit model-format capabilities; Windows hardware and decoders pending |
 
 Use [TEMPLATE.md](TEMPLATE.md) for new decision plans. For an implementation
 delegated to an agent, copy [TASK-TEMPLATE.md](TASK-TEMPLATE.md) and finish the

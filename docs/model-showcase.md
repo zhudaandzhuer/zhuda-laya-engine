@@ -56,6 +56,14 @@ IDs belong behind AssetProvider.
 `KHR_materials_transmission`, `KHR_materials_unlit`, `KHR_materials_volume`,
 `KHR_texture_transform`.
 
+`gltfAssetCapabilities` is the machine-readable delivery boundary for agents.
+It currently reports GLB/embedded data as supported and explicitly reports
+external resource URLs, Draco, Meshopt and KTX2/Basis as unsupported. A model
+agent must query this catalog before selecting a compressed asset; an unknown
+required extension still fails through `inspectGltfAsset`. Adding a decoder is a
+separate engine change that must pin its bytes, expose cancellation and release,
+and pass real WebGL/WebGPU model fixtures on the target devices.
+
 ## Inspect and control a live model
 
 ```ts

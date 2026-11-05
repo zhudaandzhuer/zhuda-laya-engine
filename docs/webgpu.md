@@ -141,3 +141,14 @@ CI checks compilation and contracts, not hardware rendering. See the
 [verification record](plans/records/webgpu-delivery/verification.md).
 The [Windows/Linux CI run](https://github.com/zhudaandzhuer/zhuda-laya-engine/actions/runs/41995476456)
 passes both jobs, including pinned vendor-byte checks on Windows.
+
+## Packaged Windows application
+
+The repository includes an Electron host at
+[`examples/windows-webgpu`](../examples/windows-webgpu/). It serves a consumer's
+already-built `dist/web` through a secure `app://bundle` origin, preserving
+relative WASM/fetch/provider paths in the packaged app. On a Windows GPU host,
+run its `npm run verify` before `npm run package`; the report fails on WebGL,
+software adapters, fallback or renderer validation errors. This is a packaged
+entry check. A Windows driver, WebView2 or signed installer is accepted only
+after a real target-machine report is attached.
