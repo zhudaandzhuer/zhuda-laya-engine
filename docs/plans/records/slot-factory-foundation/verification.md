@@ -2,7 +2,8 @@
 
 Task: [task.md](task.md). Date: 2026-11-05.
 Baseline: `49358fff189ea09adc01368221a2b69c8ff7a8cd` (1.9.0).
-Implementation commit: recorded in the following documentation-only identity update.
+Implementation commit: `f35ab6bbac679893fc3f94e8af5d3b7215761292`.
+This following documentation-only commit records the immutable implementation identity.
 
 Decision: **Implemented; desktop verified. Customer/device adoption Deferred.**
 White-label, immutable theme/provider mappings, prepared replacement, result
