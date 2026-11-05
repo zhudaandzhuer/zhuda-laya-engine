@@ -55,3 +55,7 @@ playback cannot prove the full-file checksum. Native playback failures are
 asynchronous media failures rather than successful load evidence. Provider
 teardown revokes outstanding owned URLs; dispose consumers first. See
 [audio](audio.md) for playback, memory and lifetime rules.
+
+## 1.8.0 模型接入
+
+`ZhudaModelLibrary({provider,maxIdle,timeoutMs})` 接受邏輯 ID 的自包含 GLB／內嵌 glTF，共用離場模板及動畫，完整處理租約與取消／逾時。外部 URI 依賴在 provider 模式會拒絕。型別、遷移與所有權見 [群體模型契約](crowd-runtime.md#模型與動畫的所有權)。

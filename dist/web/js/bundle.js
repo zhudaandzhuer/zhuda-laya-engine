@@ -698,6 +698,47 @@ var ZhudaAppBundle = (() => {
     return m;
   }
 
+  // packages/core/runtime3d/AssetProvider.ts
+  var AssetProviderError = class extends Error {
+    constructor(code, message, details = {}) {
+      super(message);
+      this.name = "AssetProviderError";
+      this.code = code;
+      this.id = details.id;
+      this.status = details.status;
+    }
+  };
+  function normalizeAssetId(value) {
+    if (typeof value !== "string")
+      throw new AssetProviderError("invalid-id", "Asset id must be a string");
+    let id = value.trim().replace(/\\/g, "/");
+    while (id.startsWith("./")) id = id.slice(2);
+    if (!id || id.startsWith("/") || id.includes("\0") || /[?#]/.test(id) || /^[a-z][a-z\d+.-]*:/i.test(id))
+      throw new AssetProviderError("invalid-id", `Invalid asset id: ${value}`);
+    const parts = id.split("/").filter(Boolean);
+    if (!parts.length || parts.some((part) => part === "." || part === ".."))
+      throw new AssetProviderError("invalid-id", `Invalid asset id: ${value}`);
+    return parts.join("/");
+  }
+  function createProviderAssetCache(provider, decode, destroy, maxIdle = 0) {
+    return new ZhudaAssetCache(
+      async (id, signal, phase) => {
+        const asset = await provider.load(id, {
+          signal,
+          onProgress: ({ phase: providerPhase }) => phase(providerPhase === "ready" ? "ready" : "downloading")
+        });
+        phase("parsing");
+        try {
+          return await decode(asset, signal, phase);
+        } finally {
+          asset.release?.();
+        }
+      },
+      destroy,
+      maxIdle
+    );
+  }
+
   // packages/core/runtime3d/Assets.ts
   var abortError = () => new DOMException("Asset request cancelled", "AbortError");
   var ZhudaAssetCache = class {
@@ -3778,47 +3819,6 @@ var ZhudaAppBundle = (() => {
       this.container.destroy();
     }
   };
-
-  // packages/core/runtime3d/AssetProvider.ts
-  var AssetProviderError = class extends Error {
-    constructor(code, message, details = {}) {
-      super(message);
-      this.name = "AssetProviderError";
-      this.code = code;
-      this.id = details.id;
-      this.status = details.status;
-    }
-  };
-  function normalizeAssetId(value) {
-    if (typeof value !== "string")
-      throw new AssetProviderError("invalid-id", "Asset id must be a string");
-    let id = value.trim().replace(/\\/g, "/");
-    while (id.startsWith("./")) id = id.slice(2);
-    if (!id || id.startsWith("/") || id.includes("\0") || /[?#]/.test(id) || /^[a-z][a-z\d+.-]*:/i.test(id))
-      throw new AssetProviderError("invalid-id", `Invalid asset id: ${value}`);
-    const parts = id.split("/").filter(Boolean);
-    if (!parts.length || parts.some((part) => part === "." || part === ".."))
-      throw new AssetProviderError("invalid-id", `Invalid asset id: ${value}`);
-    return parts.join("/");
-  }
-  function createProviderAssetCache(provider, decode, destroy, maxIdle = 0) {
-    return new ZhudaAssetCache(
-      async (id, signal, phase) => {
-        const asset = await provider.load(id, {
-          signal,
-          onProgress: ({ phase: providerPhase }) => phase(providerPhase === "ready" ? "ready" : "downloading")
-        });
-        phase("parsing");
-        try {
-          return await decode(asset, signal, phase);
-        } finally {
-          asset.release?.();
-        }
-      },
-      destroy,
-      maxIdle
-    );
-  }
 
   // packages/core/audio/StreamVoice.ts
   var StreamVoice = class {

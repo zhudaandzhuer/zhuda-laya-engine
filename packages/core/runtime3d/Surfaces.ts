@@ -369,7 +369,8 @@ export class ZhudaInstanceGroup {
   readonly parent: any;
   readonly mesh: any;
   readonly material: any;
-  private nodes = new Map<string, any>();
+  private nodes = new Map<string, { node: any; matrix: any }>();
+  private disposed = false;
   constructor(parent: any, mesh: any, material: any) {
     this.parent = parent;
     this.mesh = mesh;
@@ -377,38 +378,37 @@ export class ZhudaInstanceGroup {
     material.enableInstancing = true;
   }
   set(id: string, matrix: ArrayLike<number>) {
-    if (
-      !id ||
-      matrix.length !== 16 ||
-      !Array.from(matrix).every(Number.isFinite)
-    )
-      throw Error("Invalid instance");
-    const l = (globalThis as any).Laya;
-    let node = this.nodes.get(id);
-    if (!node) {
-      node = new l.MeshSprite3D(this.mesh, id);
+    if (this.disposed) throw Error("Disposed instance group");
+    if (!id || matrix.length !== 16) throw Error("Invalid instance");
+    // Validate before touching retained storage: failed updates are atomic.
+    for (let i = 0; i < 16; i++)
+      if (!Number.isFinite(matrix[i])) throw Error("Invalid instance");
+    let entry = this.nodes.get(id);
+    if (!entry) {
+      const l = (globalThis as any).Laya;
+      const node = new l.MeshSprite3D(this.mesh, id);
       node.meshRenderer.sharedMaterial = this.material;
       this.parent.addChild(node);
-      this.nodes.set(id, node);
+      entry = { node, matrix: new l.Matrix4x4() };
+      this.nodes.set(id, entry);
     }
-    node.transform.worldMatrix = new l.Matrix4x4(...Array.from(matrix));
-    return node;
+    for (let i = 0; i < 16; i++) entry.matrix.elements[i] = matrix[i];
+    entry.node.transform.worldMatrix = entry.matrix;
+    return entry.node;
   }
   remove(id: string) {
-    const node = this.nodes.get(id);
-    if (!node) return false;
-    node.destroy(true);
+    const entry = this.nodes.get(id);
+    if (!entry) return false;
+    entry.node.destroy(true);
     this.nodes.delete(id);
     return true;
   }
-  get(id: string) {
-    return this.nodes.get(id);
-  }
-  get size() {
-    return this.nodes.size;
-  }
+  get(id: string) { return this.nodes.get(id)?.node; }
+  get size() { return this.nodes.size; }
   dispose() {
-    for (const n of this.nodes.values()) n.destroy(true);
+    if (this.disposed) return;
+    this.disposed = true;
+    for (const { node } of this.nodes.values()) node.destroy(true);
     this.nodes.clear();
   }
 }

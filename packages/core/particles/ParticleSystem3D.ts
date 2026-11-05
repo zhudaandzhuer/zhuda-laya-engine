@@ -5,6 +5,13 @@ import type { ParticleRange } from './ParticleTypes.ts';
 import { rotateParticleVector3, validateParticleEffect3D } from './ParticleTypes3D.ts';
 import type { ParticleEmitterSpec3D, ParticleQuaternion, ParticleState3D, ParticleTransform3D, ParticleVector3 } from './ParticleTypes3D.ts';
 
+export interface ParticleSimulationOptions3D {
+  /** Visual simulation rate, 15–240 Hz. Default 120. Does not control game rules. */
+  frequencyHz?: number;
+  /** Per-call work bound, 1–240 steps. Default 30. Excess time is dropped and reported. */
+  maxSubsteps?: number;
+}
+
 /** Fixed-step XYZ simulation with bounded pools, quaternion emitters and world/local space. */
 export class ZhudaParticleSystem3D {
   readonly spec: ParticleEmitterSpec3D;
@@ -36,7 +43,21 @@ export class ZhudaParticleSystem3D {
   private readonly basisU: ParticleVector3;
   private readonly basisV: ParticleVector3;
   static readonly STEP = 1 / 120;
-  constructor(spec: ParticleEmitterSpec3D) {
+  private frequency = 120;
+  private maxSteps = 30;
+  simulatedSteps = 0;
+  lastSubsteps = 0;
+  get frequencyHz(): number { return this.frequency; }
+  /** Rate changes discard only the fractional remainder, reported in droppedSeconds. */
+  setSimulation(options: ParticleSimulationOptions3D): void {
+    const frequency = options.frequencyHz ?? this.frequency, maxSteps = options.maxSubsteps ?? this.maxSteps;
+    if (!Number.isFinite(frequency) || frequency < 15 || frequency > 240 || !Number.isInteger(maxSteps) || maxSteps < 1 || maxSteps > 240)
+      throw new Error('Invalid particle simulation budget.');
+    if (frequency !== this.frequency) { this.droppedSeconds += this.accumulator; this.accumulator = 0; }
+    this.frequency = frequency; this.maxSteps = maxSteps;
+  }
+  constructor(spec: ParticleEmitterSpec3D, simulation: ParticleSimulationOptions3D = {}) {
+    this.setSimulation(simulation);
     const issues = validateParticleEffect3D({ schemaVersion: 1, dimension: 3, emitters: [spec] });
     if (issues.length) throw new Error(`[ZhudaParticles3D] ${issues.join(' | ')}`);
     this.spec = JSON.parse(JSON.stringify(spec)); this.rng = spec.seed >>> 0;
@@ -74,7 +95,7 @@ export class ZhudaParticleSystem3D {
     this.count = 0; this.freeCount = this.capacity; this.events.length = 0; this.droppedEvents = 0;
     for (let i = 0; i < this.capacity; i++) this.free[i] = this.capacity - 1 - i;
     this.rng = this.spec.seed >>> 0; this.time = this.cycle = this.accumulator = this.remainder = this.distanceRemainder = 0;
-    this.first = true; this.droppedParticles = this.droppedSeconds = 0;
+    this.first = true; this.droppedParticles = this.droppedSeconds = this.simulatedSteps = this.lastSubsteps = 0;
     Object.assign(this.previous, { x: this.transform.x, y: this.transform.y, z: this.transform.z });
   }
   burst(count: number, x = this.transform.x, y = this.transform.y, z = this.transform.z): void {
@@ -87,14 +108,18 @@ export class ZhudaParticleSystem3D {
   update(delta: number): void {
     if (!Number.isFinite(delta) || delta < 0) throw new Error('Invalid 3D particle delta.');
     const accepted = Math.min(delta, .25); this.droppedSeconds += delta - accepted; this.accumulator += accepted;
-    const steps = Math.floor((this.accumulator + 1e-10) / ZhudaParticleSystem3D.STEP);
+    const step = 1 / this.frequency;
+    const requested = Math.floor((this.accumulator + 1e-10) / step);
+    const steps = Math.min(requested, this.maxSteps);
+    this.lastSubsteps = steps; this.simulatedSteps += steps;
+    this.droppedSeconds += (requested - steps) * step;
     const sx = this.previous.x, sy = this.previous.y, sz = this.previous.z;
     for (let i = 0; i < steps; i++) {
       const t = (i + 1) / steps;
       const x = sx + (this.transform.x - sx) * t, y = sy + (this.transform.y - sy) * t, z = sz + (this.transform.z - sz) * t;
-      this.step(ZhudaParticleSystem3D.STEP, x, y, z); Object.assign(this.previous, { x, y, z });
+      this.step(step, x, y, z); Object.assign(this.previous, { x, y, z });
     }
-    this.accumulator = Math.max(0, this.accumulator - steps * ZhudaParticleSystem3D.STEP);
+    this.accumulator = Math.max(0, this.accumulator - requested * step);
     this.flushEvents();
   }
   private random(): number { this.rng = (Math.imul(this.rng, 1664525) + 1013904223) >>> 0; return this.rng / 4294967296; }

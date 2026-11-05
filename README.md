@@ -40,6 +40,16 @@ Build 2D, 3D and Spine 4.2 projects with TypeScript, a CLI and coding agents. Th
 
 Maintained by [Zhuda](https://github.com/zhudaandzhuer). Rendering and physics come from [LayaAir / Layabox](https://layaair.com/). This is an independent fork; donations support Zhuda's work on this repository.
 
+## Crowd presentation and measurable budgets (1.8.0)
+
+Provider-backed model templates now share animation clips and release native
+model resources deterministically. Crowd/snapshot presentation scheduling,
+native animation LOD, important-effect fallback, adjustable particle simulation
+and bounded P50/P95/P99/raw GPU profiling are available through the public SDK.
+[Integration and platform boundaries](docs/crowd-runtime.md) include a reproducible
+25/50/100 skinned-character consumer benchmark and 100/300/500 ordinary-instance
+comparisons. These fixtures do not certify a production MMO or Windows/Steam.
+
 ## Runtime reliability (1.7.0)
 
 DPR-independent CSS design coordinates, provider-backed streaming BGM, bounded
@@ -51,7 +61,7 @@ and the [measured scope and migration notes](docs/plans/records/astra-runtime-fe
 Physical iOS/Android, speaker latency and a production Worklet DSP mixer remain
 unverified; the extension and desktop reference test do not establish full SOP compliance.
 
-## Single-HTML browser entry (1.7.0)
+## Single-HTML browser entry (1.8.0)
 
 Use the [hosted SDK and runnable examples](https://game.qianlongxundao.com/play/zhuda-engine-sdk/)
 to load the real runtime with one pinned script. [Browser SDK guide](docs/browser-sdk.md)

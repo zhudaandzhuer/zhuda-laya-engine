@@ -18,3 +18,4 @@ export * from "./CameraRig";
 export * from "./CameraCollision";
 export * from "./Filmic";
 export { installLaya342LifecycleFix } from "./Laya342Adapters";
+export * from "./CrowdPresentation";

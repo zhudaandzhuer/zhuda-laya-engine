@@ -87,3 +87,21 @@ export function installLaya342LifecycleFix(
   };
   patched.add(prototype);
 }
+
+/** Model ownership seam: native Node.destroy queues component teardown for the
+ * next frame. Finish only this tree's queued components before releasing its
+ * cache lease; otherwise zero-reference clips/meshes survive resource disposal.
+ * Never drain the global driver (which could destroy unrelated consumer nodes).
+ */
+export function destroyLaya342ModelTree(node: any, runtime: any = (globalThis as any).Laya): void {
+  const pending: { component: any; queue: Set<any> | undefined }[] = [];
+  const collect = (n: any) => {
+    for (const component of n._components ?? [])
+      pending.push({ component, queue: (component._driver || runtime?.stage?._componentDriver)?._toDestroys });
+    for (let i = 0; i < (n.numChildren || 0); i++) collect(n.getChildAt(i));
+  };
+  collect(node);
+  node.destroy(true);
+  for (const { component, queue } of pending)
+    if (component._status === 4 && queue?.delete(component)) component._destroy(true);
+}

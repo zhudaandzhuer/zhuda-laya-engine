@@ -19,14 +19,15 @@ SDK 無法自行繞過政策，需用允許的附件資源或一般 HTTP 預覽�
 
 ## 固定版本與載入方式
 
-本次固定發行：**1.7.0**（DPR／音訊／時鐘與宣告修正）。1.6.0 的固定 URL 保留。
+本次固定發行：**1.8.0**（群體呈現、模型生命週期、特效預算與效能量測）。
+[1.7.0 固定版本](https://game.qianlongxundao.com/apps/zhuda-engine-sdk/releases/e69ecb8850e43d172389f96ab0a9430e/)及 1.6.0 保留。
 
-`https://game.qianlongxundao.com/apps/zhuda-engine-sdk/releases/e69ecb8850e43d172389f96ab0a9430e/`
+`https://game.qianlongxundao.com/apps/zhuda-engine-sdk/releases/02b2dc8ba9dea9d1f1cd43a37226641c/`
 
 | 檔案 | 包含內容 | 未壓縮 bytes |
 | --- | --- | ---: |
-| `zhuda-2d.js` | core、2D WebGL、UI、公開 Zhuda SDK | 1,570,008 |
-| `zhuda-3d.js` | 上述內容加上 3D、3D WebGL | 2,331,642 |
+| `zhuda-2d.js` | core、2D WebGL、UI、公開 Zhuda SDK | 1,583,195 |
+| `zhuda-3d.js` | 上述內容加上 3D、3D WebGL | 2,344,829 |
 
 這兩個基本 profile 沒有打入額外的 Spine、物理、粒子、glTF 或其他 plugin。
 公共函式仍與 package root 同一份；功能若依賴未載入的底層模組，不能只因
@@ -34,8 +35,8 @@ SDK 無法自行繞過政策，需用允許的附件資源或一般 HTTP 預覽�
 
 ```html
 <script
-  src="https://game.qianlongxundao.com/apps/zhuda-engine-sdk/releases/e69ecb8850e43d172389f96ab0a9430e/zhuda-3d.js"
-  integrity="sha384-Ki5s4ig+tJFROL8EEI50EtPdaZLDZ/vtxoCcRSXx0DNI8EaEeD0PVSnKNiIzuuvX"
+  src="https://game.qianlongxundao.com/apps/zhuda-engine-sdk/releases/02b2dc8ba9dea9d1f1cd43a37226641c/zhuda-3d.js"
+  integrity="sha384-Ndz1PeOiHamG0OAKRQ+yh+kd8bAEDSPgvZK/cgUNoLNlKDMx3suTJZopWG/c9ZSM"
   crossorigin="anonymous"></script>
 <script>
 const { ZhudaEngine, Zhuda3D } = Zhuda;
@@ -105,7 +106,8 @@ zhuda-laya-browser-sdk --out ./sdk-release
 正式遊戲依 [consumer route](consumer-route.md) 保留版本、型別、Prefab 比對、
 Scene／操作及目標裝置證據。Browser 範例的按鈕／計數也不能代替你的遊戲驗收。
 
-1.7.0 結果見 [本輪驗收記錄](plans/records/astra-runtime-feedback/verification.md)；
+1.8.0 結果見 [群體與 SDK 發行驗收](plans/records/crowd-runtime-hardening/verification.md)；
+1.7.0 結果見 [當輪驗收記錄](plans/records/astra-runtime-feedback/verification.md)；
 原始 Browser SDK 範圍見 [1.6.0 記錄](plans/records/browser-sdk-delivery/verification.md)。
 
 站內沙箱禁止 Worker，因此 `ZhudaWorkerFrameDriver` 必須由 consumer 在支援的

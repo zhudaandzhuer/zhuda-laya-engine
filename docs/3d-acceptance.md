@@ -41,3 +41,7 @@
 ## 地下視角補強
 
 已新增逐chunk封閉網格、側面/底面最近命中、編輯/LOD同步及相機boom九射線避障。消費端新增實際地下視角截圖、側/底命中、相機地表安全距離及sky shader關閉fog的像素檢查。這不是洞穴生成器或連續球體掃掠；focus必須位於實體外。詳見terrain-shader.md。
+
+## 1.8.0 群體呈現補強
+
+上述舊切片的「模型無 animation」只描述當時資產。新版本另加入有真實骨骼動畫的 25／50／100 角色測試、粒子預算、100／300／500 網格合批及 30 次模型重載。來源、硬體、有效採樣、原始量測與未驗項見 [群體驗證紀錄](plans/records/crowd-runtime-hardening/verification.md)；接入方式見 [群體呈現契約](crowd-runtime.md)。舊手機紀錄不會自動升級為百人手機或 Windows／Steam 通過。

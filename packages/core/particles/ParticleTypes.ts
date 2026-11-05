@@ -105,7 +105,7 @@ export function validateParticleEffect(value: unknown): string[] {
       const v = e[key];
       if (v === undefined && ['rotation', 'angularVelocity'].includes(key)) continue;
       const range = Array.isArray(v) ? v : [v, v];
-      if (range.length !== 2 || !range.every(finite) || range[0] > range[1]) issues.push(`${id}: invalid ${key} range.`);
+      if (range.length !== 2 || typeof range[0] !== 'number' || typeof range[1] !== 'number' || !range.every(finite) || range[0] > range[1]) issues.push(`${id}: invalid ${key} range.`);
       else if ((key === 'lifetime' || key === 'size') && range[0] <= 0) issues.push(`${id}: ${key} must be positive.`);
     }
     if (!e.shape || !['point', 'box', 'circle'].includes(e.shape.type)) issues.push(`${id}: invalid shape.`);

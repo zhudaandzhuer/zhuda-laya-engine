@@ -12,9 +12,12 @@ import type { ParticleTextureResolver } from './LayaParticleRenderer.ts';
 class DynamicParticleMesh3D {
   readonly node: any; readonly material: any; readonly mesh: any;
   private disposed = false;
+  private drawCount = -1;
+  private readonly staticIndices: boolean;
   readonly vfx?: ZhudaVfxMaterial;
   private readonly min: any; private readonly max: any;
-  constructor(parent: any, geometry: ParticleGeometry3D, texture: any, blend: 'alpha' | 'additive', color?: string, vfxSpec?: VfxMaterialSpec, resolver?: ParticleTextureResolver) {
+  constructor(parent: any, geometry: ParticleGeometry3D, texture: any, blend: 'alpha' | 'additive', color?: string, vfxSpec?: VfxMaterialSpec, resolver?: ParticleTextureResolver, staticIndices = false) {
+    this.staticIndices = staticIndices;
     const l = (globalThis as any).Laya;
     if (!l?.PrimitiveMesh?._createMesh || !l?.MeshSprite3D || !texture) throw new Error('3D particle rendering requires booted Laya 3.4.2 3D modules and a texture.');
     this.mesh = l.PrimitiveMesh._createMesh(l.VertexMesh.getVertexDeclaration('POSITION,COLOR,UV'), geometry.vertices, geometry.indices);
@@ -27,6 +30,7 @@ class DynamicParticleMesh3D {
     this.material.blend = l.RenderState.BLEND_ENABLE_ALL; this.material.blendSrc = l.RenderState.BLENDPARAM_SRC_ALPHA;
     this.material.blendDst = blend === 'additive' ? l.RenderState.BLENDPARAM_ONE : l.RenderState.BLENDPARAM_ONE_MINUS_SRC_ALPHA;
     this.node = new l.MeshSprite3D(this.mesh); this.node.name = 'ZhudaParticles3D';
+    this.node.active = false; // No draw until the first non-empty submission.
     this.node.meshRenderer.sharedMaterial = this.material; parent.addChild(this.node);
     this.min = new l.Vector3(); this.max = new l.Vector3();
   }
@@ -34,9 +38,14 @@ class DynamicParticleMesh3D {
     if (this.disposed) return;
     this.node.active = visible && g.indexCount > 0;
     if (!this.node.active) return;
-    this.mesh.setVertices(g.vertices.buffer);
-    this.mesh.setIndices(g.indices);
-    // Inactive quads remain zero-area in a preallocated index buffer; no per-frame buffer allocation.
+    // Version-pinned 3.4.2 adapter, same buffer seam as ZhudaDynamicMesh.
+    // Keep capacity stable; only submit live vertices/indices and draw their range.
+    this.mesh._vertexBuffer.setData(g.vertices.buffer, 0, g.vertices.byteOffset, g.vertexCount * 9 * 4);
+    if (!this.staticIndices) this.mesh._indexBuffer.setData(g.indices, 0, 0, g.indexCount);
+    if (this.drawCount !== g.indexCount) {
+      this.mesh.getSubMesh(0)._setIndexRange(0, g.indexCount);
+      this.drawCount = g.indexCount;
+    }
     this.min.setValue(Infinity, Infinity, Infinity); this.max.setValue(-Infinity, -Infinity, -Infinity);
     for (let i = 0; i < g.vertexCount; i++) {
       const offset = i * 9;
@@ -76,7 +85,7 @@ export class ZhudaLayaParticleRenderer3D {
   private disposed = false;
   constructor(system: ZhudaParticleSystem3D, parent: any, resolveTexture: ParticleTextureResolver) {
     this.system = system; this.builder = new ZhudaParticleMesh3D(system);
-    this.backend = new DynamicParticleMesh3D(parent, this.builder.geometry, resolveTexture(system.spec.texture), system.spec.blend, undefined, system.spec.material, resolveTexture);
+    this.backend = new DynamicParticleMesh3D(parent, this.builder.geometry, resolveTexture(system.spec.texture), system.spec.blend, undefined, system.spec.material, resolveTexture, true);
     this.node = this.backend.node;
   }
   render(camera: any, opacity = 1): void {

@@ -30,7 +30,8 @@ export class ZhudaParticleMesh3D {
     }
   }
   build(view: ParticleView3D, opacity = 1): ParticleGeometry3D {
-    const s = this.system, spec = s.spec, g = this.geometry; g.vertices.fill(0);
+    const s = this.system, spec = s.spec, g = this.geometry;
+    const previousCount = g.vertexCount;
     this.items.length = 0; s.forEach(this.collect);
     Object.assign(this.sortForward, view.forward);
     if (spec.space === 'local') {
@@ -70,6 +71,7 @@ export class ZhudaParticleMesh3D {
         v[base + 7] = rect.x + (sx > 0 ? rect.width : 0); v[base + 8] = rect.y + (sy > 0 ? 0 : rect.height);
       }
     }
+    g.vertices.fill(0, this.items.length * 36, previousCount * 9);
     g.vertexCount = this.items.length * 4; g.indexCount = this.items.length * 6; return g;
   }
 }

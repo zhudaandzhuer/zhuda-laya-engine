@@ -40,6 +40,14 @@ E4ZEhFCYy4b5pYXJUbMC9KjRitkypyqtZvpSRerLWHCb
 
 由 [豬大 Zhuda](https://github.com/zhudaandzhuer) 维护。底层渲染与物理由 [LayaAir / Layabox](https://layaair.com/) 提供。本项目是独立分支，捐助用于支持豬大在这个仓库的开发工作。
 
+## 1.8.0 群体呈现与可测量的预算
+
+模型通过 provider 共享离场模板和动画片段，并在释放时完成 native 资源清理。
+新增群体／远端快照呈现排程、动画 LOD、重要特效保留与 fallback、可调粒子频率，
+以及有界 P50/P95/P99、原始记录和可选 GPU query profiler。
+[接入方式与平台边界](../crowd-runtime.md)提供真实骨骼角色 25/50/100 测试和重现命令；
+这些证据不等于商业 MMO、手机百人战斗或 Windows/Steam 已通过验收。
+
 ## 1.7.0 运行时改进
 
 修复高 DPR 下的设计坐标，增加同一 mixer 内的串流 BGM、FIFO／优先级声道回收、

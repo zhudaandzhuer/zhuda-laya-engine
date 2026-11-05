@@ -90,3 +90,7 @@ download／parse／ready 與 GPU 已顯示分開：report 的 `gpuReady: require
 `ZhudaSceneBudget` 是顯式登記的預算；`inspectSceneResources` 是目前資源的邏輯清單。mesh 借用 vendor accounting，texture 依 RGBA8／mip／cube 估算，render target 假設 color+depth，均不包含 driver overhead。標示 `memoryMeasurement: estimate`，不能當精準 GPU 記憶體。GPU timer 不可用時維持 null／unavailable。
 
 獨立消費端的 browser test 使用真實 WebGL，測水面 CPU／GPU 採樣、三款 `.bin`＋JPG、材質獨立、30 次場景拆除、動態 buffer、擋雨、DPR／橫豎屏對齊、雙指輸入、隔離預覽、context loss 及 opaque sandbox。完整結果／裝置負載見 [接收矩陣](3d-acceptance.md)。
+
+## 群體角色接入（1.8.0）
+
+模型 provider／共享動畫、呈現排程、遠端快照、native 動畫降頻、特效降級與長視窗 profiler，見 [群體呈現契約](crowd-runtime.md)。獨立壓測與各平台未驗項分開紀錄；普通網格合批不能替代骨骼角色驗收。

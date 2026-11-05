@@ -60,6 +60,7 @@ export declare class ZhudaInstanceGroup {
     readonly mesh: any;
     readonly material: any;
     private nodes;
+    private disposed;
     constructor(parent: any, mesh: any, material: any);
     set(id: string, matrix: ArrayLike<number>): any;
     remove(id: string): boolean;

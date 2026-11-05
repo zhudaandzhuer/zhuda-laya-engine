@@ -121,6 +121,16 @@ export function brandSplashMarkup(source) {
 export function injectBrandSplash(html, svg) {
   if (/\bid\s*=\s*["']zhudaLogoSplash["']/i.test(html))
     throw Error('Reserved #zhudaLogoSplash in consumer HTML; remove the custom splash and let the public compiler provide the official brand.');
+  // Fragment templates are valid consumer inputs. Keep a real document header
+  // before the large embedded SVG, or charset detection can fall back to a
+  // legacy encoding and make Unicode runtime scripts fail to parse.
+  if (!/<body\b[^>]*>/i.test(html)) {
+    const head = html.match(/<head\b[^>]*>([\s\S]*?)<\/head>/i)?.[1] || '';
+    const content = html.replace(/<!doctype\b[^>]*>/ig, '').replace(/<head\b[^>]*>[\s\S]*?<\/head>/ig, '').replace(/<\/?html\b[^>]*>/ig, '');
+    html = `<!doctype html><html><head><meta charset="utf-8">${head}</head><body>${content}</body></html>`;
+  }
+  if (!/<head\b[^>]*>/i.test(html))
+    html = html.replace(/<body\b[^>]*>/i, tag => '<head><meta charset="utf-8"></head>' + tag);
   const source = `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
   const styles = `<style data-zhuda-brand>\n${brandSplashCss}</style>`;
   const result = /<\/head>/i.test(html) ? html.replace(/<\/head>/i, styles + '</head>') : styles + html;

@@ -1,3 +1,6 @@
+import { destroyLaya342ModelTree } from "./Laya342Adapters.ts";
+import type { AssetProvider, LoadedAssetBytes } from "./AssetProvider.ts";
+import { normalizeAssetId } from "./AssetProvider.ts";
 export type AssetPhase = "downloading" | "parsing" | "ready";
 export interface AssetLease<T> {
   readonly value: T;
@@ -221,46 +224,107 @@ function visit(node: any, fn: (n: any) => void) {
   for (let i = 0; i < (node.numChildren || 0); i++)
     visit(node.getChildAt(i), fn);
 }
+export interface ModelInstance {
+  readonly node: Laya.Sprite3D;
+  readonly materials: readonly Laya.Material[];
+  setTint(color: [number, number, number, number]): void;
+  find(name: string): Laya.Sprite3D | null;
+  dispose(): void;
+}
+export interface ModelLibraryOptions {
+  maxIdle?: number;
+  /** Borrowed provider. Embedded GLB/glTF only; external URI dependencies are rejected. */
+  provider?: AssetProvider;
+  /** Per-caller download + parse deadline. Default 15000ms. */
+  timeoutMs?: number;
+}
+function embeddedModelDocument(bytes: ArrayBuffer): { binary: boolean; document: { buffers?: { uri?: string }[]; images?: { uri?: string }[] } } {
+  const view = new DataView(bytes);
+  const binary = bytes.byteLength >= 12 && view.getUint32(0, true) === 0x46546c67;
+  let json: Uint8Array;
+  if (binary) {
+    if (bytes.byteLength < 20 || view.getUint32(4, true) !== 2 || view.getUint32(8, true) !== bytes.byteLength || view.getUint32(16, true) !== 0x4e4f534a || view.getUint32(12, true) > bytes.byteLength - 20)
+      throw Error("Invalid GLB header or JSON chunk");
+    json = new Uint8Array(bytes, 20, view.getUint32(12, true));
+  } else json = new Uint8Array(bytes);
+  return { binary, document: JSON.parse(new TextDecoder().decode(json)) };
+}
 export class ZhudaModelLibrary {
   readonly cache: ZhudaAssetCache<any>;
   private instances = new Set<any>();
-  constructor(maxIdle = 3) {
+  // glTFResource.create() rebuilds animation clips on every call in 3.4.2.
+  // Retain one off-scene template per existing cache lease and clone its tree.
+  private templates = new WeakMap<object, { node: Laya.Sprite3D; clips: Set<Laya.AnimationClip> }>();
+  private readonly timeoutMs: number;
+  private readonly provider?: AssetProvider;
+  constructor(options: number | ModelLibraryOptions = 3) {
+    const config = typeof options === "number" ? { maxIdle: options } : options;
+    this.provider = config.provider;
+    this.timeoutMs = config.timeoutMs ?? 15000;
+    if (!Number.isInteger(this.timeoutMs) || this.timeoutMs <= 0) throw Error("Invalid model deadline");
     this.cache = new ZhudaAssetCache(
       async (url, signal, phase) => {
         const l = (globalThis as any).Laya;
         if (!l?.glTFResource)
           throw Error("Load Laya glTF module before models");
-        const response = await fetch(url, { signal });
-        if (!response.ok) throw Error(`Model HTTP ${response.status}`);
-        const bytes = await response.arrayBuffer();
-        if (signal.aborted) throw abortError();
-        phase("parsing");
-        const resource = new l.glTFResource();
+        let asset: LoadedAssetBytes | undefined;
+        let resource: any;
         try {
-          const view = new DataView(bytes);
-          if (bytes.byteLength >= 12 && view.getUint32(0, true) === 0x46546c67)
-            await resource._parseglb(bytes, url);
-          else
-            await resource._parse(
-              JSON.parse(new TextDecoder().decode(bytes)),
-              url,
-            );
+          let bytes: ArrayBuffer;
+          if (this.provider) {
+            asset = await this.provider.load(url, { signal });
+            if (signal.aborted) throw abortError();
+            // Isolate offset/shared provider storage from the native parser.
+            bytes = new Uint8Array(asset.bytes).buffer;
+          } else {
+            const response = await fetch(url, { signal });
+            if (!response.ok) throw Error(`Model HTTP ${response.status}`);
+            bytes = await response.arrayBuffer();
+          }
+          if (signal.aborted) throw abortError();
+          const parsed = embeddedModelDocument(bytes);
+          if (this.provider) {
+            for (const item of [...(parsed.document.buffers ?? []), ...(parsed.document.images ?? [])])
+              if (item.uri !== undefined && !item.uri.startsWith("data:"))
+                throw Error("Provider models require embedded buffers/images; repack as a self-contained GLB");
+          }
+          phase("parsing");
+          resource = new l.glTFResource();
+          if (parsed.binary) await resource._parseglb(bytes, url);
+          else await resource._parse(parsed.document, url);
           if (signal.aborted) {
             resource.destroy();
             throw abortError();
           }
+          const template = resource.create() as Laya.Sprite3D;
+          const clips = new Set<Laya.AnimationClip>();
+          visit(template, n => {
+            const animator = l.Animator && n.getComponent?.(l.Animator);
+            if (animator) for (let i = 0; i < animator.controllerLayerCount; i++)
+              for (const state of animator.getControllerLayer(i).states) if (state.clip) clips.add(state.clip);
+          });
+          this.templates.set(resource, { node: template, clips });
           resource._addReference(); // Cache owns the prefab even while no instances are visible.
           return resource;
         } catch (e) {
-          if (!resource.destroyed) resource.destroy();
+          if (resource && !resource.destroyed) resource.destroy();
           throw e;
+        } finally {
+          asset?.release?.();
         }
       },
       (r) => {
+        const template = this.templates.get(r);
+        if (template) destroyLaya342ModelTree(template.node);
         r._removeReference();
         r.destroy();
+        // Imported clips are created by glTF rather than registered as resource
+        // dependencies. Node teardown drops references but doesn't collect them.
+        for (const clip of template?.clips ?? [])
+          if (!clip.destroyed && clip.referenceCount === 0) clip.destroy();
+        this.templates.delete(r);
       },
-      maxIdle,
+      config.maxIdle ?? 3,
     );
   }
   async instantiate(
@@ -269,14 +333,42 @@ export class ZhudaModelLibrary {
       signal?: AbortSignal;
       independentMaterials?: boolean;
       retries?: number;
+      timeoutMs?: number;
     } = {},
-  ) {
-    const lease = await this.cache.acquire(url, options);
+  ): Promise<ModelInstance> {
+    const key = this.provider ? normalizeAssetId(url) : url;
+    const timeoutMs = options.timeoutMs ?? this.timeoutMs;
+    if (!Number.isInteger(timeoutMs) || timeoutMs <= 0) throw Error("Invalid model deadline");
+    const controller = new AbortController();
+    const relay = () => controller.abort(options.signal?.reason);
+    options.signal?.addEventListener("abort", relay, { once: true });
+    if (options.signal?.aborted) relay();
+    // IO deadline only. No gameplay time is driven by this timer.
+    const timer = setTimeout(() => controller.abort(new DOMException("Model request timed out", "TimeoutError")), timeoutMs);
+    let lease: AssetLease<any>;
+    try { lease = await this.cache.acquire(key, { ...options, signal: controller.signal }); }
+    catch (error) { if (controller.signal.reason?.name === "TimeoutError") throw controller.signal.reason; throw error; }
+    finally { clearTimeout(timer); options.signal?.removeEventListener("abort", relay); }
     let node: any;
     const materials: any[] = [];
     try {
       if (options.signal?.aborted) throw abortError();
-      node = lease.value.create();
+      const template = this.templates.get(lease.value);
+      if (!template) throw Error("Model template unavailable");
+      node = template.node.clone();
+      // Native clone selects the first state, while glTF may author a different
+      // default. Preserve each layer's selected state before the clone is mounted.
+      const l = (globalThis as any).Laya;
+      const restoreDefaults = (source: any, target: any) => {
+        const a = l.Animator && source.getComponent?.(l.Animator), b = l.Animator && target.getComponent?.(l.Animator);
+        if (a && b) for (let i = 0; i < a.controllerLayerCount; i++) {
+          const original = a.getControllerLayer(i).defaultState;
+          const layer = b.getControllerLayer(i);
+          if (original) layer.defaultState = layer.getAnimatorState(original.name);
+        }
+        for (let i = 0; i < (source.numChildren || 0); i++) restoreDefaults(source.getChildAt(i), target.getChildAt(i));
+      };
+      restoreDefaults(template.node, node);
       if (options.independentMaterials)
         visit(node, (n) => {
           const l = (globalThis as any).Laya;
@@ -296,7 +388,8 @@ export class ZhudaModelLibrary {
           }
         });
     } catch (e) {
-      node?.destroy(true);
+      if (node) destroyLaya342ModelTree(node);
+      for (const m of materials) if (!m.destroyed) m.destroy();
       lease.release();
       throw e;
     }
@@ -332,7 +425,7 @@ export class ZhudaModelLibrary {
       dispose: () => {
         if (disposed) return;
         disposed = true;
-        node.destroy(true);
+        destroyLaya342ModelTree(node);
         for (const m of materials) if (!m.destroyed) m.destroy();
         this.instances.delete(node);
         lease.release();

@@ -207,7 +207,7 @@ test('effects and migration public types compose with particle systems in a stri
       const timeline:EffectTimelineSpec={version:1,duration:2};new ZhudaEffectDirector(timeline,{}).seek(1);
       const budget=new ZhudaEffectBudget({maxParticles:100,maxCoverage:2});source.particleLimit=budget.allocate([{id:'fx',particles:16,coverage:1,priority:1}])[0].particleLimit;
       new ZhudaVfxCamera({}, {softParticles:true}).dispose();new ZhudaVfxMaterial(material,{},key=>({})).configure({dissolve:.5});
-      const gpu:null=new ZhudaRuntimeProfiler().report().gpuTimeMs;
+      const gpu:number|null=new ZhudaRuntimeProfiler().report().gpuTimeMs;
       instantiateMigratedMaterial(convertUnityVisualMaterial({id:'metal',shader:'Standard',metallic:.8}),key=>({}));
       const passed:boolean=compareVisualFrames(new Uint8Array(4),new Uint8Array(4),1,1).passed;
       // @ts-expect-error version must match the material contract
@@ -271,4 +271,10 @@ test('MCP validates 3D particle descriptors with XYZ direction and cone constrai
     shape:{type:'point'},direction:{x:0,y:0,z:-1},spread:.2,rate:10,lifetime:1,speed:2,size:.1}]};
   assert.equal(executeMcpTool('validate_particle_effect',{effect}).passed,true);
   effect.emitters[0].direction.z=0;assert.equal(executeMcpTool('validate_particle_effect',{effect}).passed,false);
+});
+
+test('MCP crowd guidance separates native animation, provider models and measured platform support',()=>{
+ const crowd=executeMcpTool('search_api_guardrails',{query:'crowd'});assert.ok(crowd.guardrails.some(g=>g.zhudaCanonicalApi.includes('ZhudaCrowdScheduler')));
+ const unavailable=executeMcpTool('search_api_guardrails',{query:'ZhudaMMOServer'});assert.equal(unavailable.matchCount,1);assert.match(unavailable.guardrails[0].reason,/consumer/);
+ const gpu=executeMcpTool('search_api_guardrails',{query:'profiler'});assert.match(gpu.guardrails[0].reason,/disjoint/);
 });

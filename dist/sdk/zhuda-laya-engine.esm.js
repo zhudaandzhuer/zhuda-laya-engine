@@ -1,5 +1,5 @@
 /**
- * zhuda-laya-engine v1.7.0 — 豬大 LayaAir (AI-Agent-Friendly Fork Edition)
+ * zhuda-laya-engine v1.8.0 — 豬大 LayaAir (AI-Agent-Friendly Fork Edition)
  * Repository: https://github.com/zhudaandzhuer/zhuda-laya-engine
  * Upstream Official: LayaAir Engine 3.4.2 by Layabox (https://layaair.com/ | https://github.com/layabox/LayaAir)
  * License: MIT
@@ -1135,6 +1135,18 @@ function installLaya342LifecycleFix(runtime = globalThis.Laya) {
   };
   patched.add(prototype);
 }
+function destroyLaya342ModelTree(node, runtime = globalThis.Laya) {
+  const pending = [];
+  const collect = (n) => {
+    for (const component of n._components ?? [])
+      pending.push({ component, queue: (component._driver || runtime?.stage?._componentDriver)?._toDestroys });
+    for (let i = 0; i < (n.numChildren || 0); i++) collect(n.getChildAt(i));
+  };
+  collect(node);
+  node.destroy(true);
+  for (const { component, queue } of pending)
+    if (component._status === 4 && queue?.delete(component)) component._destroy(true);
+}
 
 // packages/core/runtime3d/RuntimeDriver.ts
 var ZhudaRafDriver = class {
@@ -1805,40 +1817,47 @@ var ZhudaDynamicMesh = class {
 var ZhudaInstanceGroup = class {
   constructor(parent, mesh, material) {
     this.nodes = /* @__PURE__ */ new Map();
+    this.disposed = false;
     this.parent = parent;
     this.mesh = mesh;
     this.material = material;
     material.enableInstancing = true;
   }
   set(id, matrix) {
-    if (!id || matrix.length !== 16 || !Array.from(matrix).every(Number.isFinite))
-      throw Error("Invalid instance");
-    const l = globalThis.Laya;
-    let node = this.nodes.get(id);
-    if (!node) {
-      node = new l.MeshSprite3D(this.mesh, id);
+    if (this.disposed) throw Error("Disposed instance group");
+    if (!id || matrix.length !== 16) throw Error("Invalid instance");
+    for (let i = 0; i < 16; i++)
+      if (!Number.isFinite(matrix[i])) throw Error("Invalid instance");
+    let entry = this.nodes.get(id);
+    if (!entry) {
+      const l = globalThis.Laya;
+      const node = new l.MeshSprite3D(this.mesh, id);
       node.meshRenderer.sharedMaterial = this.material;
       this.parent.addChild(node);
-      this.nodes.set(id, node);
+      entry = { node, matrix: new l.Matrix4x4() };
+      this.nodes.set(id, entry);
     }
-    node.transform.worldMatrix = new l.Matrix4x4(...Array.from(matrix));
-    return node;
+    for (let i = 0; i < 16; i++) entry.matrix.elements[i] = matrix[i];
+    entry.node.transform.worldMatrix = entry.matrix;
+    return entry.node;
   }
   remove(id) {
-    const node = this.nodes.get(id);
-    if (!node) return false;
-    node.destroy(true);
+    const entry = this.nodes.get(id);
+    if (!entry) return false;
+    entry.node.destroy(true);
     this.nodes.delete(id);
     return true;
   }
   get(id) {
-    return this.nodes.get(id);
+    return this.nodes.get(id)?.node;
   }
   get size() {
     return this.nodes.size;
   }
   dispose() {
-    for (const n of this.nodes.values()) n.destroy(true);
+    if (this.disposed) return;
+    this.disposed = true;
+    for (const { node } of this.nodes.values()) node.destroy(true);
     this.nodes.clear();
   }
 };
@@ -1863,6 +1882,377 @@ function configureSurfacePasses(camera, requirements, maxAdditionalPasses) {
     ready: withinBudget && supported,
     reason: !withinBudget ? "budget" : !supported ? "depth-unsupported" : null
   };
+}
+
+// packages/core/runtime3d/AssetProvider.ts
+var AssetProviderError = class extends Error {
+  constructor(code, message, details = {}) {
+    super(message);
+    this.name = "AssetProviderError";
+    this.code = code;
+    this.id = details.id;
+    this.status = details.status;
+  }
+};
+function normalizeAssetId(value) {
+  if (typeof value !== "string")
+    throw new AssetProviderError("invalid-id", "Asset id must be a string");
+  let id = value.trim().replace(/\\/g, "/");
+  while (id.startsWith("./")) id = id.slice(2);
+  if (!id || id.startsWith("/") || id.includes("\0") || /[?#]/.test(id) || /^[a-z][a-z\d+.-]*:/i.test(id))
+    throw new AssetProviderError("invalid-id", `Invalid asset id: ${value}`);
+  const parts = id.split("/").filter(Boolean);
+  if (!parts.length || parts.some((part) => part === "." || part === ".."))
+    throw new AssetProviderError("invalid-id", `Invalid asset id: ${value}`);
+  return parts.join("/");
+}
+function validateAssetManifest(value) {
+  if (!value || typeof value !== "object")
+    throw Error("Invalid asset manifest");
+  const manifest = value;
+  if (manifest.schemaVersion !== 1 || !Array.isArray(manifest.entries))
+    throw Error("Invalid asset manifest schema");
+  const ids = /* @__PURE__ */ new Set();
+  for (const candidate of manifest.entries) {
+    if (!candidate || typeof candidate !== "object")
+      throw Error("Invalid asset manifest entry");
+    const entry = candidate;
+    const id = normalizeAssetId(entry.id);
+    if (id !== entry.id || ids.has(id))
+      throw Error(`Duplicate or non-normalized asset id: ${entry.id}`);
+    ids.add(id);
+    if (entry.bytes !== void 0 && (!Number.isSafeInteger(entry.bytes) || entry.bytes < 0))
+      throw Error(`Invalid asset byte size: ${id}`);
+    if (entry.sha256 !== void 0 && !/^[0-9a-f]{64}$/i.test(entry.sha256))
+      throw Error(`Invalid asset checksum: ${id}`);
+  }
+  return manifest;
+}
+function manifestIdFor(baseUrl, value) {
+  const manifestUrl = new URL(value, baseUrl);
+  if (manifestUrl.origin !== baseUrl.origin || !manifestUrl.pathname.startsWith(baseUrl.pathname))
+    throw new AssetProviderError(
+      "invalid-id",
+      "Manifest must be below the provider base URL"
+    );
+  const id = decodeURIComponent(
+    manifestUrl.pathname.slice(baseUrl.pathname.length)
+  );
+  return normalizeAssetId(id);
+}
+function abortReason(signal, id) {
+  return new AssetProviderError(
+    signal.reason?.name === "TimeoutError" ? "timeout" : "aborted",
+    signal.reason?.name === "TimeoutError" ? `Asset request timed out: ${id}` : `Asset request cancelled: ${id}`,
+    { id }
+  );
+}
+function combineSignals(source, timeoutMs, id) {
+  const controller = new AbortController();
+  let timedOut = false;
+  const abort = () => controller.abort(source?.reason);
+  if (source?.aborted) controller.abort(source.reason);
+  else source?.addEventListener("abort", abort, { once: true });
+  const timer = setTimeout(() => {
+    timedOut = true;
+    controller.abort(
+      new DOMException("Asset request timed out", "TimeoutError")
+    );
+  }, timeoutMs);
+  return {
+    signal: controller.signal,
+    cleanup: () => {
+      clearTimeout(timer);
+      source?.removeEventListener("abort", abort);
+      if (timedOut && !controller.signal.reason)
+        controller.abort(
+          new DOMException(`Asset request timed out: ${id}`, "TimeoutError")
+        );
+    }
+  };
+}
+async function sha256(bytes) {
+  if (!globalThis.crypto?.subtle)
+    throw new AssetProviderError(
+      "integrity",
+      "Web Crypto subtle.digest is unavailable"
+    );
+  const input = new Uint8Array(bytes.byteLength);
+  input.set(bytes);
+  const digest = await globalThis.crypto.subtle.digest("SHA-256", input.buffer);
+  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+var DirectoryAssetProvider = class {
+  constructor(options) {
+    this.name = "directory";
+    this.active = /* @__PURE__ */ new Set();
+    this.disposed = false;
+    this.streamReleases = /* @__PURE__ */ new Set();
+    if (!options?.baseUrl)
+      throw Error("DirectoryAssetProvider requires baseUrl");
+    this.baseUrl = new URL(
+      options.baseUrl,
+      globalThis.location?.href || "http://localhost/"
+    );
+    if (!this.baseUrl.pathname.endsWith("/")) this.baseUrl.pathname += "/";
+    this.manifest = options.manifest ? validateAssetManifest(options.manifest) : void 0;
+    this.manifestUrl = options.manifestUrl;
+    this.manifestId = options.manifestUrl ? manifestIdFor(this.baseUrl, options.manifestUrl) : void 0;
+    this.timeoutMs = options.timeoutMs ?? 15e3;
+    this.maxBytes = options.maxBytes ?? 128 * 1024 * 1024;
+    this.fetchImpl = options.fetch || globalThis.fetch.bind(globalThis);
+    this.streamMode = options.streamMode ?? "verified-blob";
+    if (!["native", "verified-blob"].includes(this.streamMode))
+      throw Error("Invalid streamMode");
+    if (!Number.isInteger(this.timeoutMs) || this.timeoutMs <= 0)
+      throw Error("timeoutMs must be a positive integer");
+    if (!Number.isInteger(this.maxBytes) || this.maxBytes <= 0)
+      throw Error("maxBytes must be a positive integer");
+  }
+  async getManifest(signal) {
+    if (this.disposed)
+      throw new AssetProviderError("disposed", "Asset provider disposed");
+    if (this.manifest) return this.manifest;
+    if (!this.manifestId) return { schemaVersion: 1, entries: [] };
+    if (!this.manifestPromise) {
+      const pending = (async () => {
+        const result = await this.load(this.manifestId, {
+          signal,
+          maxBytes: 2 * 1024 * 1024
+        });
+        try {
+          const parsed = JSON.parse(new TextDecoder().decode(result.bytes));
+          this.manifest = validateAssetManifest(parsed);
+          return this.manifest;
+        } catch (error) {
+          if (error instanceof AssetProviderError) throw error;
+          throw new AssetProviderError(
+            "integrity",
+            `Invalid asset manifest: ${this.manifestUrl}`
+          );
+        }
+      })();
+      this.manifestPromise = pending.catch((error) => {
+        this.manifestPromise = void 0;
+        throw error;
+      });
+    }
+    return this.manifestPromise;
+  }
+  async load(value, options = {}) {
+    if (this.disposed)
+      throw new AssetProviderError("disposed", "Asset provider disposed");
+    const id = normalizeAssetId(value);
+    if (this.manifestId && id !== this.manifestId && !this.manifest)
+      await this.getManifest(options.signal);
+    const entry = this.manifest?.entries.find(
+      (candidate) => candidate.id === id
+    );
+    const maxBytes = options.maxBytes ?? this.maxBytes;
+    const url = new URL(
+      id.split("/").map(encodeURIComponent).join("/"),
+      this.baseUrl
+    );
+    const combined = combineSignals(options.signal, this.timeoutMs, id);
+    const request = new AbortController();
+    const relay = () => request.abort(combined.signal.reason);
+    combined.signal.addEventListener("abort", relay, { once: true });
+    if (combined.signal.aborted) relay();
+    this.active.add(request);
+    try {
+      if (request.signal.aborted) throw abortReason(combined.signal, id);
+      options.onProgress?.({ id, phase: "downloading", loadedBytes: 0 });
+      const response = await this.fetchImpl(url, { signal: request.signal });
+      if (!response.ok)
+        throw new AssetProviderError(
+          "http",
+          `Asset HTTP ${response.status}: ${id}`,
+          {
+            id,
+            status: response.status
+          }
+        );
+      const contentLength = Number(response.headers.get("content-length"));
+      if (Number.isFinite(contentLength) && contentLength > maxBytes)
+        throw new AssetProviderError(
+          "too-large",
+          `Asset exceeds ${maxBytes} bytes: ${id}`,
+          { id }
+        );
+      const chunks = [];
+      let total = 0;
+      if (response.body) {
+        const reader = response.body.getReader();
+        while (true) {
+          const next = await reader.read();
+          if (next.done) break;
+          total += next.value.byteLength;
+          if (total > maxBytes)
+            throw new AssetProviderError(
+              "too-large",
+              `Asset exceeds ${maxBytes} bytes: ${id}`,
+              { id }
+            );
+          chunks.push(next.value);
+          options.onProgress?.({
+            id,
+            phase: "downloading",
+            loadedBytes: total,
+            totalBytes: contentLength || void 0
+          });
+        }
+      } else {
+        const data = new Uint8Array(await response.arrayBuffer());
+        total = data.byteLength;
+        if (total > maxBytes)
+          throw new AssetProviderError(
+            "too-large",
+            `Asset exceeds ${maxBytes} bytes: ${id}`,
+            { id }
+          );
+        chunks.push(data);
+        options.onProgress?.({
+          id,
+          phase: "downloading",
+          loadedBytes: total,
+          totalBytes: total
+        });
+      }
+      const bytes = new Uint8Array(total);
+      let offset = 0;
+      for (const chunk of chunks) {
+        bytes.set(chunk, offset);
+        offset += chunk.byteLength;
+      }
+      if (entry?.bytes !== void 0 && entry.bytes !== bytes.byteLength)
+        throw new AssetProviderError(
+          "integrity",
+          `Asset size mismatch: ${id}`,
+          { id }
+        );
+      if (entry?.sha256) {
+        options.onProgress?.({
+          id,
+          phase: "verifying",
+          loadedBytes: total,
+          totalBytes: total
+        });
+        if (await sha256(bytes) !== entry.sha256.toLowerCase())
+          throw new AssetProviderError(
+            "integrity",
+            `Asset checksum mismatch: ${id}`,
+            { id }
+          );
+      }
+      options.onProgress?.({
+        id,
+        phase: "ready",
+        loadedBytes: total,
+        totalBytes: total
+      });
+      return { id, bytes, manifest: entry };
+    } catch (error) {
+      if (combined.signal.aborted || request.signal.aborted) {
+        if (combined.signal.reason?.name === "TimeoutError")
+          throw abortReason(combined.signal, id);
+        throw abortReason(combined.signal, id);
+      }
+      throw error;
+    } finally {
+      this.active.delete(request);
+      combined.signal.removeEventListener("abort", relay);
+      combined.cleanup();
+    }
+  }
+  async openStream(value, options = {}) {
+    const id = normalizeAssetId(value);
+    const check = () => {
+      if (this.disposed)
+        throw new AssetProviderError("disposed", "Asset provider disposed");
+      if (options.signal?.aborted) throw abortReason(options.signal, id);
+    };
+    check();
+    if (this.manifestId && !this.manifest)
+      await this.getManifest(options.signal);
+    check();
+    const entry = this.manifest?.entries.find((value2) => value2.id === id);
+    if (this.manifest && !entry)
+      throw new AssetProviderError(
+        "integrity",
+        `Stream missing manifest entry: ${id}`
+      );
+    if (entry?.kind && entry.kind !== "audio")
+      throw new AssetProviderError("integrity", `Stream is not audio: ${id}`);
+    let url, retainedBytes = 0;
+    if (this.streamMode === "native") {
+      if (entry?.sha256)
+        throw new AssetProviderError(
+          "integrity",
+          `Native stream cannot verify whole-file SHA: ${id}; use verified-blob or a transport-only media manifest`
+        );
+      url = new URL(
+        id.split("/").map(encodeURIComponent).join("/"),
+        this.baseUrl
+      ).href;
+    } else {
+      const asset = await this.load(id, options);
+      try {
+        check();
+        retainedBytes = asset.bytes.byteLength;
+        const mime = /\.mp3$/i.test(id) ? "audio/mpeg" : /\.ogg$/i.test(id) ? "audio/ogg" : /\.(m4a|mp4)$/i.test(id) ? "audio/mp4" : /\.wav$/i.test(id) ? "audio/wav" : "application/octet-stream";
+        url = URL.createObjectURL(
+          new Blob([new Uint8Array(asset.bytes)], { type: mime })
+        );
+      } finally {
+        asset.release?.();
+      }
+    }
+    let released = false;
+    const release = () => {
+      if (released) return;
+      released = true;
+      this.streamReleases.delete(release);
+      if (this.streamMode === "verified-blob") URL.revokeObjectURL(url);
+    };
+    this.streamReleases.add(release);
+    return {
+      id,
+      url,
+      retainedBytes,
+      delivery: this.streamMode,
+      integrity: entry?.sha256 ? "sha256" : "transport",
+      crossOrigin: "anonymous",
+      release
+    };
+  }
+  dispose() {
+    if (this.disposed) return;
+    this.disposed = true;
+    for (const controller of this.active)
+      controller.abort(
+        new DOMException("Asset provider disposed", "AbortError")
+      );
+    this.active.clear();
+    for (const release of [...this.streamReleases]) release();
+  }
+};
+function createProviderAssetCache(provider, decode, destroy, maxIdle = 0) {
+  return new ZhudaAssetCache(
+    async (id, signal, phase) => {
+      const asset = await provider.load(id, {
+        signal,
+        onProgress: ({ phase: providerPhase }) => phase(providerPhase === "ready" ? "ready" : "downloading")
+      });
+      phase("parsing");
+      try {
+        return await decode(asset, signal, phase);
+      } finally {
+        asset.release?.();
+      }
+    },
+    destroy,
+    maxIdle
+  );
 }
 
 // packages/core/runtime3d/Assets.ts
@@ -2036,58 +2426,132 @@ function visit(node, fn) {
   for (let i = 0; i < (node.numChildren || 0); i++)
     visit(node.getChildAt(i), fn);
 }
+function embeddedModelDocument(bytes) {
+  const view = new DataView(bytes);
+  const binary = bytes.byteLength >= 12 && view.getUint32(0, true) === 1179937895;
+  let json;
+  if (binary) {
+    if (bytes.byteLength < 20 || view.getUint32(4, true) !== 2 || view.getUint32(8, true) !== bytes.byteLength || view.getUint32(16, true) !== 1313821514 || view.getUint32(12, true) > bytes.byteLength - 20)
+      throw Error("Invalid GLB header or JSON chunk");
+    json = new Uint8Array(bytes, 20, view.getUint32(12, true));
+  } else json = new Uint8Array(bytes);
+  return { binary, document: JSON.parse(new TextDecoder().decode(json)) };
+}
 var ZhudaModelLibrary = class {
-  constructor(maxIdle = 3) {
+  constructor(options = 3) {
     this.instances = /* @__PURE__ */ new Set();
+    // glTFResource.create() rebuilds animation clips on every call in 3.4.2.
+    // Retain one off-scene template per existing cache lease and clone its tree.
+    this.templates = /* @__PURE__ */ new WeakMap();
+    const config = typeof options === "number" ? { maxIdle: options } : options;
+    this.provider = config.provider;
+    this.timeoutMs = config.timeoutMs ?? 15e3;
+    if (!Number.isInteger(this.timeoutMs) || this.timeoutMs <= 0) throw Error("Invalid model deadline");
     this.cache = new ZhudaAssetCache(
       async (url, signal, phase) => {
         const l = globalThis.Laya;
         if (!l?.glTFResource)
           throw Error("Load Laya glTF module before models");
-        const response = await fetch(url, { signal });
-        if (!response.ok) throw Error(`Model HTTP ${response.status}`);
-        const bytes = await response.arrayBuffer();
-        if (signal.aborted) throw abortError();
-        phase("parsing");
-        const resource = new l.glTFResource();
+        let asset;
+        let resource;
         try {
-          const view = new DataView(bytes);
-          if (bytes.byteLength >= 12 && view.getUint32(0, true) === 1179937895)
-            await resource._parseglb(bytes, url);
-          else
-            await resource._parse(
-              JSON.parse(new TextDecoder().decode(bytes)),
-              url
-            );
+          let bytes;
+          if (this.provider) {
+            asset = await this.provider.load(url, { signal });
+            if (signal.aborted) throw abortError();
+            bytes = new Uint8Array(asset.bytes).buffer;
+          } else {
+            const response = await fetch(url, { signal });
+            if (!response.ok) throw Error(`Model HTTP ${response.status}`);
+            bytes = await response.arrayBuffer();
+          }
+          if (signal.aborted) throw abortError();
+          const parsed = embeddedModelDocument(bytes);
+          if (this.provider) {
+            for (const item of [...parsed.document.buffers ?? [], ...parsed.document.images ?? []])
+              if (item.uri !== void 0 && !item.uri.startsWith("data:"))
+                throw Error("Provider models require embedded buffers/images; repack as a self-contained GLB");
+          }
+          phase("parsing");
+          resource = new l.glTFResource();
+          if (parsed.binary) await resource._parseglb(bytes, url);
+          else await resource._parse(parsed.document, url);
           if (signal.aborted) {
             resource.destroy();
             throw abortError();
           }
+          const template = resource.create();
+          const clips = /* @__PURE__ */ new Set();
+          visit(template, (n) => {
+            const animator = l.Animator && n.getComponent?.(l.Animator);
+            if (animator) {
+              for (let i = 0; i < animator.controllerLayerCount; i++)
+                for (const state of animator.getControllerLayer(i).states) if (state.clip) clips.add(state.clip);
+            }
+          });
+          this.templates.set(resource, { node: template, clips });
           resource._addReference();
           return resource;
         } catch (e) {
-          if (!resource.destroyed) resource.destroy();
+          if (resource && !resource.destroyed) resource.destroy();
           throw e;
+        } finally {
+          asset?.release?.();
         }
       },
       (r) => {
+        const template = this.templates.get(r);
+        if (template) destroyLaya342ModelTree(template.node);
         r._removeReference();
         r.destroy();
+        for (const clip of template?.clips ?? [])
+          if (!clip.destroyed && clip.referenceCount === 0) clip.destroy();
+        this.templates.delete(r);
       },
-      maxIdle
+      config.maxIdle ?? 3
     );
   }
   async instantiate(url, options = {}) {
-    const lease = await this.cache.acquire(url, options);
+    const key = this.provider ? normalizeAssetId(url) : url;
+    const timeoutMs = options.timeoutMs ?? this.timeoutMs;
+    if (!Number.isInteger(timeoutMs) || timeoutMs <= 0) throw Error("Invalid model deadline");
+    const controller = new AbortController();
+    const relay = () => controller.abort(options.signal?.reason);
+    options.signal?.addEventListener("abort", relay, { once: true });
+    if (options.signal?.aborted) relay();
+    const timer = setTimeout(() => controller.abort(new DOMException("Model request timed out", "TimeoutError")), timeoutMs);
+    let lease;
+    try {
+      lease = await this.cache.acquire(key, { ...options, signal: controller.signal });
+    } catch (error) {
+      if (controller.signal.reason?.name === "TimeoutError") throw controller.signal.reason;
+      throw error;
+    } finally {
+      clearTimeout(timer);
+      options.signal?.removeEventListener("abort", relay);
+    }
     let node;
     const materials = [];
     try {
       if (options.signal?.aborted) throw abortError();
-      node = lease.value.create();
+      const template = this.templates.get(lease.value);
+      if (!template) throw Error("Model template unavailable");
+      node = template.node.clone();
+      const l = globalThis.Laya;
+      const restoreDefaults = (source, target) => {
+        const a = l.Animator && source.getComponent?.(l.Animator), b = l.Animator && target.getComponent?.(l.Animator);
+        if (a && b) for (let i = 0; i < a.controllerLayerCount; i++) {
+          const original = a.getControllerLayer(i).defaultState;
+          const layer = b.getControllerLayer(i);
+          if (original) layer.defaultState = layer.getAnimatorState(original.name);
+        }
+        for (let i = 0; i < (source.numChildren || 0); i++) restoreDefaults(source.getChildAt(i), target.getChildAt(i));
+      };
+      restoreDefaults(template.node, node);
       if (options.independentMaterials)
         visit(node, (n) => {
-          const l = globalThis.Laya;
-          const renderer = n.meshRenderer || n.skinnedMeshRenderer || n.getComponent?.(l.SkinnedMeshRenderer) || n.getComponent?.(l.MeshRenderer);
+          const l2 = globalThis.Laya;
+          const renderer = n.meshRenderer || n.skinnedMeshRenderer || n.getComponent?.(l2.SkinnedMeshRenderer) || n.getComponent?.(l2.MeshRenderer);
           if (renderer) {
             renderer.sharedMaterials = renderer.sharedMaterials.map(
               (m) => {
@@ -2099,7 +2563,8 @@ var ZhudaModelLibrary = class {
           }
         });
     } catch (e) {
-      node?.destroy(true);
+      if (node) destroyLaya342ModelTree(node);
+      for (const m of materials) if (!m.destroyed) m.destroy();
       lease.release();
       throw e;
     }
@@ -2132,7 +2597,7 @@ var ZhudaModelLibrary = class {
       dispose: () => {
         if (disposed) return;
         disposed = true;
-        node.destroy(true);
+        destroyLaya342ModelTree(node);
         for (const m of materials) if (!m.destroyed) m.destroy();
         this.instances.delete(node);
         lease.release();
@@ -2230,6 +2695,7 @@ var ZhudaSceneBudget = class {
   }
   report() {
     const counts = { mesh: 0, texture: 0, renderTarget: 0 };
+    const animation = { clips: 0, materials: 0 };
     let estimatedBytes = 0;
     for (const r of this.resources.values()) {
       counts[r.kind]++;
@@ -2283,9 +2749,12 @@ var ZhudaDistanceLOD = class {
 function inspectSceneResources(runtime = globalThis.Laya) {
   const map = runtime.Resource._idResourcesMap, items = map instanceof Map ? [...map.values()] : Object.values(map || {});
   const counts = { mesh: 0, texture: 0, renderTarget: 0 };
+  const animation = { clips: 0, materials: 0 };
   let meshBytes = 0, textureBytes = 0, renderTargetBytes = 0;
   for (const r of items) {
     if (r.destroyed) continue;
+    if (typeof runtime.AnimationClip === "function" && r instanceof runtime.AnimationClip) animation.clips++;
+    if (typeof runtime.Material === "function" && r instanceof runtime.Material) animation.materials++;
     if (typeof runtime.Mesh === "function" && r instanceof runtime.Mesh) {
       counts.mesh++;
       meshBytes += r.gpuMemory || 0;
@@ -2299,6 +2768,7 @@ function inspectSceneResources(runtime = globalThis.Laya) {
   }
   return {
     counts,
+    animation,
     resources: items.filter((r) => !r.destroyed).length,
     estimatedBytes: meshBytes + textureBytes + renderTargetBytes,
     meshBytes,
@@ -5583,377 +6053,6 @@ var PixelCalibrationEngine = class {
   }
 };
 
-// packages/core/runtime3d/AssetProvider.ts
-var AssetProviderError = class extends Error {
-  constructor(code, message, details = {}) {
-    super(message);
-    this.name = "AssetProviderError";
-    this.code = code;
-    this.id = details.id;
-    this.status = details.status;
-  }
-};
-function normalizeAssetId(value) {
-  if (typeof value !== "string")
-    throw new AssetProviderError("invalid-id", "Asset id must be a string");
-  let id = value.trim().replace(/\\/g, "/");
-  while (id.startsWith("./")) id = id.slice(2);
-  if (!id || id.startsWith("/") || id.includes("\0") || /[?#]/.test(id) || /^[a-z][a-z\d+.-]*:/i.test(id))
-    throw new AssetProviderError("invalid-id", `Invalid asset id: ${value}`);
-  const parts = id.split("/").filter(Boolean);
-  if (!parts.length || parts.some((part) => part === "." || part === ".."))
-    throw new AssetProviderError("invalid-id", `Invalid asset id: ${value}`);
-  return parts.join("/");
-}
-function validateAssetManifest(value) {
-  if (!value || typeof value !== "object")
-    throw Error("Invalid asset manifest");
-  const manifest = value;
-  if (manifest.schemaVersion !== 1 || !Array.isArray(manifest.entries))
-    throw Error("Invalid asset manifest schema");
-  const ids = /* @__PURE__ */ new Set();
-  for (const candidate of manifest.entries) {
-    if (!candidate || typeof candidate !== "object")
-      throw Error("Invalid asset manifest entry");
-    const entry = candidate;
-    const id = normalizeAssetId(entry.id);
-    if (id !== entry.id || ids.has(id))
-      throw Error(`Duplicate or non-normalized asset id: ${entry.id}`);
-    ids.add(id);
-    if (entry.bytes !== void 0 && (!Number.isSafeInteger(entry.bytes) || entry.bytes < 0))
-      throw Error(`Invalid asset byte size: ${id}`);
-    if (entry.sha256 !== void 0 && !/^[0-9a-f]{64}$/i.test(entry.sha256))
-      throw Error(`Invalid asset checksum: ${id}`);
-  }
-  return manifest;
-}
-function manifestIdFor(baseUrl, value) {
-  const manifestUrl = new URL(value, baseUrl);
-  if (manifestUrl.origin !== baseUrl.origin || !manifestUrl.pathname.startsWith(baseUrl.pathname))
-    throw new AssetProviderError(
-      "invalid-id",
-      "Manifest must be below the provider base URL"
-    );
-  const id = decodeURIComponent(
-    manifestUrl.pathname.slice(baseUrl.pathname.length)
-  );
-  return normalizeAssetId(id);
-}
-function abortReason(signal, id) {
-  return new AssetProviderError(
-    signal.reason?.name === "TimeoutError" ? "timeout" : "aborted",
-    signal.reason?.name === "TimeoutError" ? `Asset request timed out: ${id}` : `Asset request cancelled: ${id}`,
-    { id }
-  );
-}
-function combineSignals(source, timeoutMs, id) {
-  const controller = new AbortController();
-  let timedOut = false;
-  const abort = () => controller.abort(source?.reason);
-  if (source?.aborted) controller.abort(source.reason);
-  else source?.addEventListener("abort", abort, { once: true });
-  const timer = setTimeout(() => {
-    timedOut = true;
-    controller.abort(
-      new DOMException("Asset request timed out", "TimeoutError")
-    );
-  }, timeoutMs);
-  return {
-    signal: controller.signal,
-    cleanup: () => {
-      clearTimeout(timer);
-      source?.removeEventListener("abort", abort);
-      if (timedOut && !controller.signal.reason)
-        controller.abort(
-          new DOMException(`Asset request timed out: ${id}`, "TimeoutError")
-        );
-    }
-  };
-}
-async function sha256(bytes) {
-  if (!globalThis.crypto?.subtle)
-    throw new AssetProviderError(
-      "integrity",
-      "Web Crypto subtle.digest is unavailable"
-    );
-  const input = new Uint8Array(bytes.byteLength);
-  input.set(bytes);
-  const digest = await globalThis.crypto.subtle.digest("SHA-256", input.buffer);
-  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
-}
-var DirectoryAssetProvider = class {
-  constructor(options) {
-    this.name = "directory";
-    this.active = /* @__PURE__ */ new Set();
-    this.disposed = false;
-    this.streamReleases = /* @__PURE__ */ new Set();
-    if (!options?.baseUrl)
-      throw Error("DirectoryAssetProvider requires baseUrl");
-    this.baseUrl = new URL(
-      options.baseUrl,
-      globalThis.location?.href || "http://localhost/"
-    );
-    if (!this.baseUrl.pathname.endsWith("/")) this.baseUrl.pathname += "/";
-    this.manifest = options.manifest ? validateAssetManifest(options.manifest) : void 0;
-    this.manifestUrl = options.manifestUrl;
-    this.manifestId = options.manifestUrl ? manifestIdFor(this.baseUrl, options.manifestUrl) : void 0;
-    this.timeoutMs = options.timeoutMs ?? 15e3;
-    this.maxBytes = options.maxBytes ?? 128 * 1024 * 1024;
-    this.fetchImpl = options.fetch || globalThis.fetch.bind(globalThis);
-    this.streamMode = options.streamMode ?? "verified-blob";
-    if (!["native", "verified-blob"].includes(this.streamMode))
-      throw Error("Invalid streamMode");
-    if (!Number.isInteger(this.timeoutMs) || this.timeoutMs <= 0)
-      throw Error("timeoutMs must be a positive integer");
-    if (!Number.isInteger(this.maxBytes) || this.maxBytes <= 0)
-      throw Error("maxBytes must be a positive integer");
-  }
-  async getManifest(signal) {
-    if (this.disposed)
-      throw new AssetProviderError("disposed", "Asset provider disposed");
-    if (this.manifest) return this.manifest;
-    if (!this.manifestId) return { schemaVersion: 1, entries: [] };
-    if (!this.manifestPromise) {
-      const pending = (async () => {
-        const result = await this.load(this.manifestId, {
-          signal,
-          maxBytes: 2 * 1024 * 1024
-        });
-        try {
-          const parsed = JSON.parse(new TextDecoder().decode(result.bytes));
-          this.manifest = validateAssetManifest(parsed);
-          return this.manifest;
-        } catch (error) {
-          if (error instanceof AssetProviderError) throw error;
-          throw new AssetProviderError(
-            "integrity",
-            `Invalid asset manifest: ${this.manifestUrl}`
-          );
-        }
-      })();
-      this.manifestPromise = pending.catch((error) => {
-        this.manifestPromise = void 0;
-        throw error;
-      });
-    }
-    return this.manifestPromise;
-  }
-  async load(value, options = {}) {
-    if (this.disposed)
-      throw new AssetProviderError("disposed", "Asset provider disposed");
-    const id = normalizeAssetId(value);
-    if (this.manifestId && id !== this.manifestId && !this.manifest)
-      await this.getManifest(options.signal);
-    const entry = this.manifest?.entries.find(
-      (candidate) => candidate.id === id
-    );
-    const maxBytes = options.maxBytes ?? this.maxBytes;
-    const url = new URL(
-      id.split("/").map(encodeURIComponent).join("/"),
-      this.baseUrl
-    );
-    const combined = combineSignals(options.signal, this.timeoutMs, id);
-    const request = new AbortController();
-    const relay = () => request.abort(combined.signal.reason);
-    combined.signal.addEventListener("abort", relay, { once: true });
-    if (combined.signal.aborted) relay();
-    this.active.add(request);
-    try {
-      if (request.signal.aborted) throw abortReason(combined.signal, id);
-      options.onProgress?.({ id, phase: "downloading", loadedBytes: 0 });
-      const response = await this.fetchImpl(url, { signal: request.signal });
-      if (!response.ok)
-        throw new AssetProviderError(
-          "http",
-          `Asset HTTP ${response.status}: ${id}`,
-          {
-            id,
-            status: response.status
-          }
-        );
-      const contentLength = Number(response.headers.get("content-length"));
-      if (Number.isFinite(contentLength) && contentLength > maxBytes)
-        throw new AssetProviderError(
-          "too-large",
-          `Asset exceeds ${maxBytes} bytes: ${id}`,
-          { id }
-        );
-      const chunks = [];
-      let total = 0;
-      if (response.body) {
-        const reader = response.body.getReader();
-        while (true) {
-          const next = await reader.read();
-          if (next.done) break;
-          total += next.value.byteLength;
-          if (total > maxBytes)
-            throw new AssetProviderError(
-              "too-large",
-              `Asset exceeds ${maxBytes} bytes: ${id}`,
-              { id }
-            );
-          chunks.push(next.value);
-          options.onProgress?.({
-            id,
-            phase: "downloading",
-            loadedBytes: total,
-            totalBytes: contentLength || void 0
-          });
-        }
-      } else {
-        const data = new Uint8Array(await response.arrayBuffer());
-        total = data.byteLength;
-        if (total > maxBytes)
-          throw new AssetProviderError(
-            "too-large",
-            `Asset exceeds ${maxBytes} bytes: ${id}`,
-            { id }
-          );
-        chunks.push(data);
-        options.onProgress?.({
-          id,
-          phase: "downloading",
-          loadedBytes: total,
-          totalBytes: total
-        });
-      }
-      const bytes = new Uint8Array(total);
-      let offset = 0;
-      for (const chunk of chunks) {
-        bytes.set(chunk, offset);
-        offset += chunk.byteLength;
-      }
-      if (entry?.bytes !== void 0 && entry.bytes !== bytes.byteLength)
-        throw new AssetProviderError(
-          "integrity",
-          `Asset size mismatch: ${id}`,
-          { id }
-        );
-      if (entry?.sha256) {
-        options.onProgress?.({
-          id,
-          phase: "verifying",
-          loadedBytes: total,
-          totalBytes: total
-        });
-        if (await sha256(bytes) !== entry.sha256.toLowerCase())
-          throw new AssetProviderError(
-            "integrity",
-            `Asset checksum mismatch: ${id}`,
-            { id }
-          );
-      }
-      options.onProgress?.({
-        id,
-        phase: "ready",
-        loadedBytes: total,
-        totalBytes: total
-      });
-      return { id, bytes, manifest: entry };
-    } catch (error) {
-      if (combined.signal.aborted || request.signal.aborted) {
-        if (combined.signal.reason?.name === "TimeoutError")
-          throw abortReason(combined.signal, id);
-        throw abortReason(combined.signal, id);
-      }
-      throw error;
-    } finally {
-      this.active.delete(request);
-      combined.signal.removeEventListener("abort", relay);
-      combined.cleanup();
-    }
-  }
-  async openStream(value, options = {}) {
-    const id = normalizeAssetId(value);
-    const check = () => {
-      if (this.disposed)
-        throw new AssetProviderError("disposed", "Asset provider disposed");
-      if (options.signal?.aborted) throw abortReason(options.signal, id);
-    };
-    check();
-    if (this.manifestId && !this.manifest)
-      await this.getManifest(options.signal);
-    check();
-    const entry = this.manifest?.entries.find((value2) => value2.id === id);
-    if (this.manifest && !entry)
-      throw new AssetProviderError(
-        "integrity",
-        `Stream missing manifest entry: ${id}`
-      );
-    if (entry?.kind && entry.kind !== "audio")
-      throw new AssetProviderError("integrity", `Stream is not audio: ${id}`);
-    let url, retainedBytes = 0;
-    if (this.streamMode === "native") {
-      if (entry?.sha256)
-        throw new AssetProviderError(
-          "integrity",
-          `Native stream cannot verify whole-file SHA: ${id}; use verified-blob or a transport-only media manifest`
-        );
-      url = new URL(
-        id.split("/").map(encodeURIComponent).join("/"),
-        this.baseUrl
-      ).href;
-    } else {
-      const asset = await this.load(id, options);
-      try {
-        check();
-        retainedBytes = asset.bytes.byteLength;
-        const mime = /\.mp3$/i.test(id) ? "audio/mpeg" : /\.ogg$/i.test(id) ? "audio/ogg" : /\.(m4a|mp4)$/i.test(id) ? "audio/mp4" : /\.wav$/i.test(id) ? "audio/wav" : "application/octet-stream";
-        url = URL.createObjectURL(
-          new Blob([new Uint8Array(asset.bytes)], { type: mime })
-        );
-      } finally {
-        asset.release?.();
-      }
-    }
-    let released = false;
-    const release = () => {
-      if (released) return;
-      released = true;
-      this.streamReleases.delete(release);
-      if (this.streamMode === "verified-blob") URL.revokeObjectURL(url);
-    };
-    this.streamReleases.add(release);
-    return {
-      id,
-      url,
-      retainedBytes,
-      delivery: this.streamMode,
-      integrity: entry?.sha256 ? "sha256" : "transport",
-      crossOrigin: "anonymous",
-      release
-    };
-  }
-  dispose() {
-    if (this.disposed) return;
-    this.disposed = true;
-    for (const controller of this.active)
-      controller.abort(
-        new DOMException("Asset provider disposed", "AbortError")
-      );
-    this.active.clear();
-    for (const release of [...this.streamReleases]) release();
-  }
-};
-function createProviderAssetCache(provider, decode, destroy, maxIdle = 0) {
-  return new ZhudaAssetCache(
-    async (id, signal, phase) => {
-      const asset = await provider.load(id, {
-        signal,
-        onProgress: ({ phase: providerPhase }) => phase(providerPhase === "ready" ? "ready" : "downloading")
-      });
-      phase("parsing");
-      try {
-        return await decode(asset, signal, phase);
-      } finally {
-        asset.release?.();
-      }
-    },
-    destroy,
-    maxIdle
-  );
-}
-
 // packages/core/audio/StreamVoice.ts
 var StreamVoice = class {
   constructor(context, media, lease, options, timeoutMs, onFailure, onStarted) {
@@ -8213,7 +8312,7 @@ function validateParticleEffect(value) {
       const v = e[key];
       if (v === void 0 && ["rotation", "angularVelocity"].includes(key)) continue;
       const range = Array.isArray(v) ? v : [v, v];
-      if (range.length !== 2 || !range.every(finite2) || range[0] > range[1]) issues.push(`${id}: invalid ${key} range.`);
+      if (range.length !== 2 || typeof range[0] !== "number" || typeof range[1] !== "number" || !range.every(finite2) || range[0] > range[1]) issues.push(`${id}: invalid ${key} range.`);
       else if ((key === "lifetime" || key === "size") && range[0] <= 0) issues.push(`${id}: ${key} must be positive.`);
     }
     if (!e.shape || !["point", "box", "circle"].includes(e.shape.type)) issues.push(`${id}: invalid shape.`);
@@ -8972,8 +9071,8 @@ function validateParticleEffect3D(value) {
 }
 
 // packages/core/particles/ParticleSystem3D.ts
-var _ZhudaParticleSystem3D = class _ZhudaParticleSystem3D {
-  constructor(spec) {
+var ZhudaParticleSystem3D = class {
+  constructor(spec, simulation = {}) {
     this.transform = { x: 0, y: 0, z: 0, rotation: { x: 0, y: 0, z: 0, w: 1 } };
     this.emitterVelocity = { x: 0, y: 0, z: 0 };
     this.intensity = 1;
@@ -8994,6 +9093,11 @@ var _ZhudaParticleSystem3D = class _ZhudaParticleSystem3D {
     this.positioned = false;
     this.previous = { x: 0, y: 0, z: 0 };
     this.scratch = { x: 0, y: 0, z: 0 };
+    this.frequency = 120;
+    this.maxSteps = 30;
+    this.simulatedSteps = 0;
+    this.lastSubsteps = 0;
+    this.setSimulation(simulation);
     const issues = validateParticleEffect3D({ schemaVersion: 1, dimension: 3, emitters: [spec] });
     if (issues.length) throw new Error(`[ZhudaParticles3D] ${issues.join(" | ")}`);
     this.spec = JSON.parse(JSON.stringify(spec));
@@ -9037,6 +9141,21 @@ var _ZhudaParticleSystem3D = class _ZhudaParticleSystem3D {
     this.events = [];
     for (const e of events) this.onEvent?.(e);
   }
+  get frequencyHz() {
+    return this.frequency;
+  }
+  /** Rate changes discard only the fractional remainder, reported in droppedSeconds. */
+  setSimulation(options) {
+    const frequency = options.frequencyHz ?? this.frequency, maxSteps = options.maxSubsteps ?? this.maxSteps;
+    if (!Number.isFinite(frequency) || frequency < 15 || frequency > 240 || !Number.isInteger(maxSteps) || maxSteps < 1 || maxSteps > 240)
+      throw new Error("Invalid particle simulation budget.");
+    if (frequency !== this.frequency) {
+      this.droppedSeconds += this.accumulator;
+      this.accumulator = 0;
+    }
+    this.frequency = frequency;
+    this.maxSteps = maxSteps;
+  }
   get aliveCount() {
     return this.count;
   }
@@ -9079,7 +9198,7 @@ var _ZhudaParticleSystem3D = class _ZhudaParticleSystem3D {
     this.rng = this.spec.seed >>> 0;
     this.time = this.cycle = this.accumulator = this.remainder = this.distanceRemainder = 0;
     this.first = true;
-    this.droppedParticles = this.droppedSeconds = 0;
+    this.droppedParticles = this.droppedSeconds = this.simulatedSteps = this.lastSubsteps = 0;
     Object.assign(this.previous, { x: this.transform.x, y: this.transform.y, z: this.transform.z });
   }
   burst(count, x = this.transform.x, y = this.transform.y, z = this.transform.z) {
@@ -9101,15 +9220,20 @@ var _ZhudaParticleSystem3D = class _ZhudaParticleSystem3D {
     const accepted = Math.min(delta, 0.25);
     this.droppedSeconds += delta - accepted;
     this.accumulator += accepted;
-    const steps = Math.floor((this.accumulator + 1e-10) / _ZhudaParticleSystem3D.STEP);
+    const step = 1 / this.frequency;
+    const requested = Math.floor((this.accumulator + 1e-10) / step);
+    const steps = Math.min(requested, this.maxSteps);
+    this.lastSubsteps = steps;
+    this.simulatedSteps += steps;
+    this.droppedSeconds += (requested - steps) * step;
     const sx = this.previous.x, sy = this.previous.y, sz = this.previous.z;
     for (let i = 0; i < steps; i++) {
       const t = (i + 1) / steps;
       const x = sx + (this.transform.x - sx) * t, y = sy + (this.transform.y - sy) * t, z = sz + (this.transform.z - sz) * t;
-      this.step(_ZhudaParticleSystem3D.STEP, x, y, z);
+      this.step(step, x, y, z);
       Object.assign(this.previous, { x, y, z });
     }
-    this.accumulator = Math.max(0, this.accumulator - steps * _ZhudaParticleSystem3D.STEP);
+    this.accumulator = Math.max(0, this.accumulator - requested * step);
     this.flushEvents();
   }
   random() {
@@ -9213,8 +9337,7 @@ var _ZhudaParticleSystem3D = class _ZhudaParticleSystem3D {
     this.time += dt;
   }
 };
-_ZhudaParticleSystem3D.STEP = 1 / 120;
-var ZhudaParticleSystem3D = _ZhudaParticleSystem3D;
+ZhudaParticleSystem3D.STEP = 1 / 120;
 
 // packages/core/particles/ParticleMesh3D.ts
 var ZhudaParticleMesh3D = class {
@@ -9247,7 +9370,7 @@ var ZhudaParticleMesh3D = class {
   }
   build(view, opacity = 1) {
     const s = this.system, spec = s.spec, g = this.geometry;
-    g.vertices.fill(0);
+    const previousCount = g.vertexCount;
     this.items.length = 0;
     s.forEach(this.collect);
     Object.assign(this.sortForward, view.forward);
@@ -9312,6 +9435,7 @@ var ZhudaParticleMesh3D = class {
         v[base + 8] = rect.y + (sy > 0 ? 0 : rect.height);
       }
     }
+    g.vertices.fill(0, this.items.length * 36, previousCount * 9);
     g.vertexCount = this.items.length * 4;
     g.indexCount = this.items.length * 6;
     return g;
@@ -9556,8 +9680,10 @@ function smooth(v) {
 
 // packages/core/particles/LayaParticleRenderer3D.ts
 var DynamicParticleMesh3D = class {
-  constructor(parent, geometry, texture, blend, color, vfxSpec, resolver) {
+  constructor(parent, geometry, texture, blend, color, vfxSpec, resolver, staticIndices = false) {
     this.disposed = false;
+    this.drawCount = -1;
+    this.staticIndices = staticIndices;
     const l = globalThis.Laya;
     if (!l?.PrimitiveMesh?._createMesh || !l?.MeshSprite3D || !texture) throw new Error("3D particle rendering requires booted Laya 3.4.2 3D modules and a texture.");
     this.mesh = l.PrimitiveMesh._createMesh(l.VertexMesh.getVertexDeclaration("POSITION,COLOR,UV"), geometry.vertices, geometry.indices);
@@ -9578,6 +9704,7 @@ var DynamicParticleMesh3D = class {
     this.material.blendDst = blend === "additive" ? l.RenderState.BLENDPARAM_ONE : l.RenderState.BLENDPARAM_ONE_MINUS_SRC_ALPHA;
     this.node = new l.MeshSprite3D(this.mesh);
     this.node.name = "ZhudaParticles3D";
+    this.node.active = false;
     this.node.meshRenderer.sharedMaterial = this.material;
     parent.addChild(this.node);
     this.min = new l.Vector3();
@@ -9587,8 +9714,12 @@ var DynamicParticleMesh3D = class {
     if (this.disposed) return;
     this.node.active = visible && g.indexCount > 0;
     if (!this.node.active) return;
-    this.mesh.setVertices(g.vertices.buffer);
-    this.mesh.setIndices(g.indices);
+    this.mesh._vertexBuffer.setData(g.vertices.buffer, 0, g.vertices.byteOffset, g.vertexCount * 9 * 4);
+    if (!this.staticIndices) this.mesh._indexBuffer.setData(g.indices, 0, 0, g.indexCount);
+    if (this.drawCount !== g.indexCount) {
+      this.mesh.getSubMesh(0)._setIndexRange(0, g.indexCount);
+      this.drawCount = g.indexCount;
+    }
     this.min.setValue(Infinity, Infinity, Infinity);
     this.max.setValue(-Infinity, -Infinity, -Infinity);
     for (let i = 0; i < g.vertexCount; i++) {
@@ -9634,7 +9765,7 @@ var ZhudaLayaParticleRenderer3D = class {
     this.disposed = false;
     this.system = system;
     this.builder = new ZhudaParticleMesh3D(system);
-    this.backend = new DynamicParticleMesh3D(parent, this.builder.geometry, resolveTexture(system.spec.texture), system.spec.blend, void 0, system.spec.material, resolveTexture);
+    this.backend = new DynamicParticleMesh3D(parent, this.builder.geometry, resolveTexture(system.spec.texture), system.spec.blend, void 0, system.spec.material, resolveTexture, true);
     this.node = this.backend.node;
   }
   get vfxMaterial() {
@@ -9949,67 +10080,203 @@ var ZhudaEffectBudget = class {
   allocate(requests) {
     const seen = /* @__PURE__ */ new Set();
     for (const r of requests) {
-      if (!r.id || seen.has(r.id) || !Number.isInteger(r.particles) || r.particles < 0 || ![r.coverage, r.priority, r.distance ?? 0].every(Number.isFinite) || r.coverage < 0 || (r.distance ?? 0) < 0) throw new Error("Invalid or duplicate effect request.");
+      if (!r.id || seen.has(r.id) || !Number.isInteger(r.particles) || r.particles < 0 || ![r.coverage, r.priority, r.distance ?? 0, r.minimumScale ?? 0].every(Number.isFinite) || r.coverage < 0 || (r.distance ?? 0) < 0 || (r.minimumScale ?? 0) < 0 || (r.minimumScale ?? 0) > 1 || r.fallbackId !== void 0 && !r.fallbackId) throw new Error("Invalid or duplicate effect request.");
       seen.add(r.id);
     }
+    if (!Number.isFinite(this.quality) || this.quality < 0 || this.quality > 1) throw Error("Invalid effect quality.");
     let particles = Math.floor(this.spec.maxParticles * this.quality), coverage = this.spec.maxCoverage * this.quality;
+    const ordered = [...requests].sort((a, b) => b.priority - a.priority || (a.distance || 0) - (b.distance || 0) || a.id.localeCompare(b.id));
     const result = /* @__PURE__ */ new Map();
-    for (const r of [...requests].sort((a, b) => b.priority - a.priority || (a.distance || 0) - (b.distance || 0) || a.id.localeCompare(b.id))) {
-      const scale = r.visible === false ? 0 : Math.max(0, Math.min(1, r.particles ? particles / r.particles : 1, r.coverage ? coverage / r.coverage : 1));
-      const limit = Math.floor(r.particles * scale), effective = r.particles ? limit / r.particles : scale;
+    for (const r of ordered) {
+      const limit = Math.ceil(r.particles * (r.minimumScale ?? 0));
+      const scale = r.particles ? limit / r.particles : r.minimumScale ?? 0;
+      const hidden = r.visible === false;
+      const unmet = !hidden && (limit > particles || r.coverage * scale > coverage + 1e-10);
+      const admitted = !hidden && !unmet;
+      if (admitted) {
+        particles -= limit;
+        coverage -= r.coverage * scale;
+      }
+      result.set(r.id, {
+        id: r.id,
+        particleLimit: admitted ? limit : 0,
+        emissionScale: admitted ? scale : 0,
+        mode: hidden ? "culled" : unmet ? "fallback" : "reduced",
+        fallbackRequired: unmet,
+        ...unmet && r.fallbackId ? { fallbackId: r.fallbackId } : {}
+      });
+    }
+    for (const r of ordered) {
+      const a = result.get(r.id);
+      if (a.mode === "culled" || a.fallbackRequired) continue;
+      const extra = Math.max(0, Math.min(1 - a.emissionScale, r.particles ? particles / r.particles : 1, r.coverage ? coverage / r.coverage : 1));
+      const limit = Math.min(r.particles - a.particleLimit, Math.floor(r.particles * extra + 1e-10));
+      const effective = r.particles ? limit / r.particles : extra;
+      a.particleLimit += limit;
+      a.emissionScale += effective;
       particles -= limit;
-      coverage -= r.coverage * effective;
-      result.set(r.id, { id: r.id, particleLimit: limit, emissionScale: effective });
+      coverage = Math.max(0, coverage - r.coverage * effective);
+      a.mode = a.emissionScale >= 1 - 1e-10 ? "full" : "reduced";
     }
     return requests.map((r) => result.get(r.id));
   }
 };
+function percentiles(values) {
+  values.sort((a, b) => a - b);
+  const at = (p) => values.length ? values[Math.ceil(values.length * p) - 1] : null;
+  return { p50: at(0.5), p95: at(0.95), p99: at(0.99) };
+}
 var ZhudaRuntimeProfiler = class {
-  constructor() {
+  constructor(options = {}) {
     this.calls = 0;
     this.triangles = 0;
     this.contexts = /* @__PURE__ */ new WeakSet();
+    this.contextCount = 0;
     this.restore = [];
     this.samples = [];
+    this.next = 0;
+    this.total = 0;
+    this.duration = 0;
+    this.gpuReason = "GPU timer queries not enabled.";
+    this.frameOpen = false;
+    this.capacity = options.capacity ?? 600;
+    if (!Number.isInteger(this.capacity) || this.capacity < 1 || this.capacity > 1e6) throw Error("Invalid profiler capacity.");
   }
   attach(gl) {
     if (!gl) throw new Error("A WebGL context is required.");
     if (this.contexts.has(gl)) return;
     this.contexts.add(gl);
-    for (const name of ["drawArrays", "drawElements", "drawArraysInstanced", "drawElementsInstanced"]) {
-      if (typeof gl[name] !== "function") continue;
-      const original = gl[name], profiler = this;
-      const wrapper = function(...args) {
-        profiler.calls++;
-        const count = name.startsWith("drawElements") ? args[1] : args[2];
-        const instances = name.endsWith("Instanced") ? args[name === "drawArraysInstanced" ? 3 : 4] : 1;
-        if (args[0] === gl.TRIANGLES) profiler.triangles += Math.floor(count / 3) * instances;
-        return original.apply(gl, args);
-      };
-      gl[name] = wrapper;
-      this.restore.push(() => {
-        if (gl[name] === wrapper) gl[name] = original;
-      });
+    this.contextCount++;
+    const wrap = (target, names) => {
+      for (const name of names) {
+        if (typeof target[name] !== "function") continue;
+        const original = target[name], profiler = this;
+        const wrapper = function(...args) {
+          profiler.calls++;
+          const count = name.startsWith("drawElements") ? args[1] : args[2];
+          const instances = name.includes("Instanced") ? args[name.startsWith("drawArrays") ? 3 : 4] : 1;
+          if (args[0] === gl.TRIANGLES) profiler.triangles += Math.floor(count / 3) * instances;
+          else if (args[0] === gl.TRIANGLE_STRIP || args[0] === gl.TRIANGLE_FAN) profiler.triangles += Math.max(0, count - 2) * instances;
+          return original.apply(target, args);
+        };
+        target[name] = wrapper;
+        this.restore.push(() => {
+          if (target[name] === wrapper) target[name] = original;
+        });
+      }
+    };
+    wrap(gl, ["drawArrays", "drawElements", "drawArraysInstanced", "drawElementsInstanced"]);
+    if (!gl.drawArraysInstanced) {
+      const angle = gl.getExtension?.("ANGLE_instanced_arrays");
+      if (angle) wrap(angle, ["drawArraysInstancedANGLE", "drawElementsInstancedANGLE"]);
     }
   }
-  beginFrame() {
-    this.calls = this.triangles = 0;
+  /** Optional WebGL2 timer. Never blocks on completion or substitutes CPU elapsed time. */
+  enableGpuTiming(gl) {
+    if (this.gpu) throw Error("GPU timing already enabled.");
+    const ext = gl.getExtension("EXT_disjoint_timer_query_webgl2");
+    if (!ext || typeof gl.createQuery !== "function") {
+      this.gpuReason = "EXT_disjoint_timer_query_webgl2 unavailable.";
+      return false;
+    }
+    this.gpu = { gl, timeElapsed: ext.TIME_ELAPSED_EXT, disjoint: ext.GPU_DISJOINT_EXT, pending: [] };
+    this.gpuReason = "No completed valid GPU queries in retained window.";
+    return true;
   }
-  endFrame(frameMs, cpuMs) {
-    if (![frameMs, cpuMs].every((v) => Number.isFinite(v) && v >= 0)) throw new Error("Invalid frame timing.");
-    const sample = { frameMs, cpuMs, drawCalls: this.calls, triangles: this.triangles };
-    this.samples.push(sample);
-    if (this.samples.length > 600) this.samples.shift();
-    return sample;
+  pollGpu() {
+    const g = this.gpu;
+    if (!g) return;
+    const invalid = g.gl.isContextLost() || g.gl.getParameter(g.disjoint);
+    for (let i = g.pending.length - 1; i >= 0; i--) {
+      const q = g.pending[i];
+      if (invalid || g.gl.getQueryParameter(q.query, g.gl.QUERY_RESULT_AVAILABLE)) {
+        if (!invalid && q.sample) {
+          const ms = Number(g.gl.getQueryParameter(q.query, g.gl.QUERY_RESULT)) / 1e6;
+          if (Number.isFinite(ms) && ms >= 0) q.sample.gpuMs = ms;
+        }
+        g.gl.deleteQuery(q.query);
+        g.pending.splice(i, 1);
+      }
+    }
+    if (invalid) this.gpuReason = "GPU disjoint or context lost; affected queries discarded.";
+  }
+  beginFrame() {
+    if (this.frameOpen) throw Error("End the previous profiler frame first.");
+    this.frameOpen = true;
+    this.calls = this.triangles = 0;
+    this.pollGpu();
+    const g = this.gpu;
+    if (g && !g.gl.isContextLost() && !g.gl.getParameter(g.disjoint) && g.pending.length < 64 && !g.gl.getQuery(g.timeElapsed, g.gl.CURRENT_QUERY)) {
+      const query = g.gl.createQuery();
+      if (query) {
+        g.active = { query };
+        g.gl.beginQuery(g.timeElapsed, query);
+      }
+    }
+  }
+  endFrame(frameMs, cpuMs, extra = {}) {
+    if (![frameMs, cpuMs, extra.heapBytes ?? 0].every((v) => Number.isFinite(v) && v >= 0)) throw new Error("Invalid frame timing or heap.");
+    const sample = {
+      frameMs,
+      cpuMs,
+      drawCalls: this.calls,
+      triangles: this.triangles,
+      ...extra.heapBytes === void 0 ? {} : { heapBytes: extra.heapBytes }
+    };
+    const g = this.gpu;
+    if (g?.active) {
+      g.gl.endQuery(g.timeElapsed);
+      g.active.sample = sample;
+      g.pending.push(g.active);
+      g.active = void 0;
+    }
+    this.frameOpen = false;
+    this.samples[this.next] = sample;
+    this.next = (this.next + 1) % this.capacity;
+    this.total++;
+    this.duration += frameMs;
+    return { ...sample };
   }
   report() {
-    const sorted = this.samples.map((s) => s.frameMs).sort((a, b) => a - b);
-    return { measured: true, gpuTimeMs: null, gpuTimeReason: "GPU timer queries are not collected by this profiler.", samples: this.samples.map((s) => ({ ...s })), frameP95Ms: sorted.length ? sorted[Math.ceil(sorted.length * 0.95) - 1] : null };
+    this.pollGpu();
+    const samples = (this.samples.length < this.capacity ? this.samples : [...this.samples.slice(this.next), ...this.samples.slice(0, this.next)]).map((s) => ({ ...s }));
+    const frame = percentiles(samples.map((s) => s.frameMs)), cpu = percentiles(samples.map((s) => s.cpuMs));
+    const gpu = percentiles(samples.flatMap((s) => s.gpuMs === void 0 ? [] : [s.gpuMs]));
+    return {
+      measured: this.total > 0,
+      sources: { frame: "caller elapsed frame interval", cpu: "caller timed work scope", draw: this.contextCount ? "intercepted WebGL calls" : "unavailable: no context attached", heap: "optional caller JS heap bytes", gpu: "optional disjoint timer query" },
+      totalSamples: this.total,
+      retainedSamples: samples.length,
+      droppedSamples: this.total - samples.length,
+      durationMs: this.duration,
+      retainedDurationMs: samples.reduce((n, s) => n + s.frameMs, 0),
+      frame,
+      cpu,
+      gpu,
+      frameP95Ms: frame.p95,
+      gpuTimeMs: gpu.p50,
+      gpuTimeReason: gpu.p50 === null ? this.gpuReason : "Median of valid completed GPU queries in retained window.",
+      samples
+    };
+  }
+  exportJSON(metadata = {}) {
+    return JSON.stringify({ schemaVersion: 1, metadata, ...this.report() });
   }
   dispose() {
+    const g = this.gpu;
+    if (g) {
+      if (g.active) {
+        if (!g.gl.isContextLost()) g.gl.endQuery(g.timeElapsed);
+        g.gl.deleteQuery(g.active.query);
+      }
+      for (const q of g.pending) g.gl.deleteQuery(q.query);
+      this.gpu = void 0;
+    }
+    this.frameOpen = false;
     this.restore.forEach((fn) => fn());
     this.restore = [];
     this.contexts = /* @__PURE__ */ new WeakSet();
+    this.contextCount = 0;
   }
 };
 
@@ -11567,6 +11834,194 @@ var ZhudaPlanarReflection = class {
   }
 };
 
+// packages/core/runtime3d/CrowdPresentation.ts
+var ZhudaCrowdScheduler = class {
+  constructor(options) {
+    this.entries = /* @__PURE__ */ new Map();
+    this.due = [];
+    this.disposed = false;
+    this.dropped = 0;
+    if (!options.tiers.length || options.tiers[options.tiers.length - 1]?.maxDistance !== Infinity || !Number.isInteger(options.maxUpdatesPerFrame) || options.maxUpdatesPerFrame < 1)
+      throw Error("Invalid crowd presentation budget.");
+    let previous = -1;
+    for (const tier of options.tiers) {
+      if (!(tier.maxDistance > previous) || !Number.isFinite(tier.updateHz) || tier.updateHz <= 0 || tier.updateHz > 240 || !["full", "low", "paused"].includes(tier.animation) || !Number.isInteger(tier.animationInterval ?? 2) || (tier.animationInterval ?? 2) < 1 || (tier.animationInterval ?? 2) > 60)
+        throw Error("Invalid crowd tier.");
+      previous = tier.maxDistance;
+    }
+    this.hysteresis = options.hysteresis ?? 1;
+    this.maxDelta = options.maxDeltaSeconds ?? 0.25;
+    if (!Number.isFinite(this.hysteresis) || this.hysteresis < 0 || !Number.isFinite(this.maxDelta) || this.maxDelta <= 0) throw Error("Invalid crowd time/distance bounds.");
+    this.tiers = options.tiers.map((t) => Object.freeze({ ...t }));
+    this.maxUpdates = options.maxUpdatesPerFrame;
+  }
+  check() {
+    if (this.disposed) throw Error("Disposed crowd scheduler.");
+  }
+  register(id, binding, state) {
+    this.check();
+    if (!id || this.entries.has(id)) throw Error("Duplicate or empty crowd ID.");
+    this.validate(state);
+    const entry = { id, binding, state: { ...state }, tier: -2, elapsed: 0, initial: true, active: true };
+    this.entries.set(id, entry);
+    try {
+      this.selectTier(entry);
+    } catch (error) {
+      this.entries.delete(id);
+      throw error;
+    }
+  }
+  validate(s) {
+    if (typeof s.visible !== "boolean" || !Number.isFinite(s.distance) || s.distance < 0 || !Number.isFinite(s.priority ?? 0)) throw Error("Invalid crowd presentation state.");
+  }
+  setState(id, state) {
+    this.check();
+    this.validate(state);
+    const e = this.entries.get(id);
+    if (!e) throw Error(`Unknown crowd ID: ${id}`);
+    e.state = { ...state };
+    this.selectTier(e);
+  }
+  selectTier(e) {
+    let next = e.tier;
+    if (!e.state.visible) next = -1;
+    else if (next < 0) next = this.tiers.findIndex((t) => e.state.distance <= t.maxDistance);
+    else {
+      while (next < this.tiers.length - 1 && e.state.distance > this.tiers[next].maxDistance + this.hysteresis) next++;
+      while (next > 0 && e.state.distance < this.tiers[next - 1].maxDistance - this.hysteresis) next--;
+    }
+    if (next !== e.tier) {
+      e.tier = next;
+      e.elapsed = 0;
+      e.initial = true;
+      e.binding.setTier?.(next < 0 ? null : this.tiers[next]);
+    }
+  }
+  update(deltaSeconds) {
+    this.check();
+    if (!Number.isFinite(deltaSeconds) || deltaSeconds < 0) throw Error("Invalid crowd delta.");
+    this.due.length = 0;
+    let hidden = 0;
+    for (const e of this.entries.values()) {
+      if (e.tier < 0) {
+        hidden++;
+        continue;
+      }
+      e.elapsed += deltaSeconds;
+      if (e.initial || e.elapsed + 1e-10 >= 1 / this.tiers[e.tier].updateHz) this.due.push(e);
+    }
+    this.due.sort((a, b) => b.elapsed * this.tiers[b.tier].updateHz - a.elapsed * this.tiers[a.tier].updateHz || (b.state.priority ?? 0) - (a.state.priority ?? 0) || a.id.localeCompare(b.id));
+    let updated = 0;
+    for (const e of this.due) {
+      if (updated >= this.maxUpdates) break;
+      if (!e.active || e.tier < 0) continue;
+      const dt = Math.min(e.elapsed, this.maxDelta);
+      this.dropped += e.elapsed - dt;
+      e.elapsed = 0;
+      e.initial = false;
+      updated++;
+      e.binding.update(dt);
+    }
+    return { updated, deferred: this.due.filter((e) => e.active && (e.initial || e.elapsed > 0)).length, hidden, droppedSeconds: this.dropped };
+  }
+  remove(id) {
+    const e = this.entries.get(id);
+    if (!e) return false;
+    e.active = false;
+    this.entries.delete(id);
+    return true;
+  }
+  get size() {
+    return this.entries.size;
+  }
+  dispose() {
+    this.disposed = true;
+    for (const e of this.entries.values()) e.active = false;
+    this.entries.clear();
+    this.due.length = 0;
+  }
+};
+var _ZhudaAnimatorLOD = class _ZhudaAnimatorLOD {
+  /** Native updateMode/interval are write-only in 3.4.2. Pass original settings if non-default. */
+  constructor(target, restore = {}) {
+    this.disposed = false;
+    if (_ZhudaAnimatorLOD.owners.has(target)) throw Error("Animator already has a LOD owner.");
+    if (!Number.isFinite(target.speed) || ![0, 1, 2].includes(restore.updateMode ?? 0) || !Number.isInteger(restore.lowUpdateInterval ?? 1) || (restore.lowUpdateInterval ?? 1) < 1 || (restore.lowUpdateInterval ?? 1) > 60) throw Error("Invalid animator restoration settings.");
+    _ZhudaAnimatorLOD.owners.add(target);
+    this.target = target;
+    this.speed = target.speed;
+    this.restoreMode = restore.updateMode ?? 0;
+    this.restoreInterval = restore.lowUpdateInterval ?? 1;
+  }
+  set(mode, frameInterval = 2) {
+    if (this.disposed) throw Error("Disposed animator LOD.");
+    if (!["full", "low", "paused"].includes(mode) || !Number.isInteger(frameInterval) || frameInterval < 1 || frameInterval > 60) throw Error("Invalid animation LOD.");
+    this.target.speed = mode === "paused" ? 0 : this.speed;
+    this.target.lowUpdateDelty = frameInterval;
+    this.target.updateMode = mode === "low" ? 1 : 0;
+  }
+  dispose() {
+    if (this.disposed) return;
+    this.disposed = true;
+    _ZhudaAnimatorLOD.owners.delete(this.target);
+    this.target.speed = this.speed;
+    this.target.updateMode = this.restoreMode;
+    this.target.lowUpdateDelty = this.restoreInterval;
+  }
+};
+_ZhudaAnimatorLOD.owners = /* @__PURE__ */ new WeakSet();
+var ZhudaAnimatorLOD = _ZhudaAnimatorLOD;
+var ZhudaRemoteCharacterPresenter = class {
+  constructor(options) {
+    this.entries = /* @__PURE__ */ new Map();
+    this.sampleTime = 0;
+    if (!options.epoch || !Number.isFinite(options.staleAfterSeconds ?? 0.5) || (options.staleAfterSeconds ?? 0.5) < 0) throw Error("Invalid remote presentation bounds.");
+    new ZhudaSnapshotBuffer(options.epoch, options.interpolate, options.maxExtrapolation, options.snapshotCapacity);
+    this.options = { ...options };
+    this.epoch = options.epoch;
+    this.scheduler = new ZhudaCrowdScheduler(options);
+  }
+  register(id, binding, state) {
+    const entry = { buffer: new ZhudaSnapshotBuffer(this.epoch, this.options.interpolate, this.options.maxExtrapolation, this.options.snapshotCapacity), latest: -Infinity, sequence: -1 };
+    this.scheduler.register(id, { setTier: binding.setTier?.bind(binding), update: () => {
+      const sample = entry.buffer.sample(this.sampleTime);
+      if (sample) binding.present(sample.value, sample.mode, this.sampleTime - entry.latest > (this.options.staleAfterSeconds ?? 0.5));
+    } }, state);
+    this.entries.set(id, entry);
+  }
+  push(id, snapshot, teleport = false) {
+    const e = this.entries.get(id);
+    if (!e || snapshot.epoch !== this.epoch || !Number.isInteger(snapshot.sequence) || snapshot.sequence <= e.sequence || !Number.isFinite(snapshot.time) || snapshot.time <= e.latest) return false;
+    if (teleport) e.buffer.reset(this.epoch);
+    if (!e.buffer.push(snapshot)) return false;
+    e.latest = snapshot.time;
+    e.sequence = snapshot.sequence;
+    return true;
+  }
+  update(deltaSeconds, serverSampleTime) {
+    if (!Number.isFinite(serverSampleTime)) throw Error("Invalid server sample time.");
+    this.sampleTime = serverSampleTime;
+    return this.scheduler.update(deltaSeconds);
+  }
+  reset(epoch) {
+    if (!epoch) throw Error("Empty epoch.");
+    this.epoch = epoch;
+    for (const e of this.entries.values()) {
+      e.buffer.reset(epoch);
+      e.latest = -Infinity;
+      e.sequence = -1;
+    }
+  }
+  remove(id) {
+    this.entries.delete(id);
+    return this.scheduler.remove(id);
+  }
+  dispose() {
+    this.scheduler.dispose();
+    this.entries.clear();
+  }
+};
+
 // packages/core/terrain/Terrain2D.ts
 function validateTerrain2D(spec) {
   const s = spec, e = [];
@@ -12861,12 +13316,14 @@ export {
   ZHUDA_VFX_VERTEX,
   Zhuda3D,
   ZhudaActionStateMachine,
+  ZhudaAnimatorLOD,
   ZhudaAssetCache,
   ZhudaAssetSerializer,
   ZhudaBenchmarkEngine,
   ZhudaCameraCoordinates,
   ZhudaCameraRig,
   ZhudaCombatWorld,
+  ZhudaCrowdScheduler,
   ZhudaDistanceLOD,
   ZhudaDynamicMesh,
   ZhudaEffectBudget,
@@ -12897,6 +13354,7 @@ export {
   ZhudaPrefabLibrary,
   ZhudaRafDriver,
   ZhudaRealtimeClock,
+  ZhudaRemoteCharacterPresenter,
   ZhudaRenderSpace,
   ZhudaRequestSlot,
   ZhudaResourceScope,

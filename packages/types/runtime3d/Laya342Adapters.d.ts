@@ -20,3 +20,9 @@ export declare function resizeLaya342Stage(runtime: {
 /** Laya 3.4.2 allocates two process-owned fallback textures but releases only depth.
  * Keep this version-specific repair isolated from consumer scene code. */
 export declare function installLaya342LifecycleFix(runtime?: any): void;
+/** Model ownership seam: native Node.destroy queues component teardown for the
+ * next frame. Finish only this tree's queued components before releasing its
+ * cache lease; otherwise zero-reference clips/meshes survive resource disposal.
+ * Never drain the global driver (which could destroy unrelated consumer nodes).
+ */
+export declare function destroyLaya342ModelTree(node: any, runtime?: any): void;

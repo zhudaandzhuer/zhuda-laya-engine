@@ -55,6 +55,10 @@ export declare function inspectSceneResources(runtime?: any): {
         texture: number;
         renderTarget: number;
     };
+    animation: {
+        clips: number;
+        materials: number;
+    };
     resources: number;
     estimatedBytes: number;
     meshBytes: number;

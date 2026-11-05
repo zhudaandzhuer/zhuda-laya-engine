@@ -33,6 +33,7 @@ export async function chromeFixture() {
   );
   let ws,
     serial = 0;
+  const eventWaiters = new Map();
   const pending = new Map(),
     errors = [];
   const close = async () => {
@@ -42,6 +43,8 @@ export async function chromeFixture() {
       r.reject(Error("Browser closed"));
     }
     pending.clear();
+    for (const waiter of eventWaiters.values()) { clearTimeout(waiter.timer); waiter.reject(Error("Browser closed")); }
+    eventWaiters.clear();
     if (child.pid) {
       try {
         process.kill(-child.pid, "SIGKILL");
@@ -93,13 +96,15 @@ export async function chromeFixture() {
         clearTimeout(r.timer);
         m.error ? r.reject(Error(m.error.message)) : r.resolve(m.result);
       }
+      const waiter = eventWaiters.get(m.method);
+      if (waiter) { eventWaiters.delete(m.method); clearTimeout(waiter.timer); waiter.resolve(m.params); }
       if (m.method === "Runtime.exceptionThrown")
         errors.push(
           m.params.exceptionDetails.exception?.description ||
             m.params.exceptionDetails.text,
         );
     });
-    const send = (method, params = {}) =>
+    const send = (method, params = {}, sessionId) =>
       new Promise((resolve, reject) => {
         const id = ++serial,
           timer = setTimeout(() => {
@@ -107,7 +112,7 @@ export async function chromeFixture() {
             reject(Error("CDP timeout " + method));
           }, 20000);
         pending.set(id, { resolve, reject, timer });
-        ws.send(JSON.stringify({ id, method, params }));
+        ws.send(JSON.stringify({ id, method, params, ...(sessionId ? { sessionId } : {}) }));
       });
     const evaluate = async (expression, options = {}) => {
       const r = await send("Runtime.evaluate", {
@@ -133,6 +138,11 @@ export async function chromeFixture() {
     await send("Runtime.enable");
     return {
       send,
+      waitEvent: (method, timeoutMs = 20000) => new Promise((resolve, reject) => {
+        if (eventWaiters.has(method)) { reject(Error("Duplicate event waiter")); return; }
+        const timer = setTimeout(() => { eventWaiters.delete(method); reject(Error("CDP event timeout " + method)); }, timeoutMs);
+        eventWaiters.set(method, { resolve, reject, timer });
+      }),
       evaluate,
       waitFor,
       errors,

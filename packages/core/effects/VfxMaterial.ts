@@ -18,7 +18,7 @@ export function validateVfxMaterial(s: VfxMaterialSpec): string[] {
   for (const k of ['intensity','softDistance'] as const) if (s[k] !== undefined && (!Number.isFinite(s[k]) || s[k]! < 0 || s[k]! > 100)) errors.push(`${k} must be 0..100.`);
   if (s.uvScroll && ![s.uvScroll.x,s.uvScroll.y].every(Number.isFinite)) errors.push('Invalid UV scroll.');
   if (s.edgeColor !== undefined && !/^#[0-9a-f]{6}$/i.test(s.edgeColor)) errors.push('Invalid edge color.');
-  for (const key of ['maskTexture','noiseTexture']) if (s[key] !== undefined && (typeof s[key] !== 'string' || !s[key].length)) errors.push(`Invalid ${key}.`);
+  for (const key of ['maskTexture','noiseTexture'] as const) if (s[key] !== undefined && (typeof s[key] !== 'string' || !s[key].length)) errors.push(`Invalid ${key}.`);
   return errors;
 }
 export const ZHUDA_VFX_VERTEX = `

@@ -93,7 +93,7 @@ test('3D authored flow reveals from its start, erases forward, preserves XYZ and
 test('3D renderer uses scene depth, submits preallocated geometry, and destroys only owned resources once', () => {
   const previous=globalThis.Laya,owned=[];const texture={destroy(){throw new Error('shared texture destroyed');}};
   class V {setValue(x,y,z){Object.assign(this,{x,y,z});}}
-  const mesh={bounds:{setMin(){},setMax(){}},setVertices(v){this.vertices=v;},setIndices(v){this.indices=v;},destroy(){owned.push('mesh');}};
+  const mesh={bounds:{setMin(){},setMax(){}},_vertexBuffer:{setData(v,offset,start,length){mesh.vertices=v;mesh.uploadLength=length;}},_indexBuffer:{setData(){throw Error("static index buffer reuploaded");}},getSubMesh(){return {_setIndexRange(start,count){mesh.drawCount=count;}}},destroy(){owned.push('mesh');}};
   class Node {constructor(){this.meshRenderer={};}destroy(){owned.push('node');}}
   class Material {destroy(){assert.equal(this.albedoTexture,null,'Detach shared texture before the Laya resource destruction cascade');owned.push('material');}}
   globalThis.Laya={PrimitiveMesh:{_createMesh(){return mesh;}},VertexMesh:{getVertexDeclaration(){return {};}},
@@ -101,9 +101,10 @@ test('3D renderer uses scene depth, submits preallocated geometry, and destroys 
   try{
     const s=new ZhudaParticleSystem3D(emitter({rate:0}));s.burst(4);
     const r=new ZhudaLayaParticleRenderer3D(s,{addChild(){}},()=>texture);
+    assert.equal(r.node.active,false);
     const cam={transform:{position:view.position,worldMatrix:{elements:[1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1]}}};
     r.render(cam);assert.equal(r.submittedBatches,1);assert.equal(r.node.meshRenderer.sharedMaterial.depthWrite,false);assert.equal(r.node.meshRenderer.sharedMaterial.depthTest,515);
-    const buffer=mesh.vertices;r.render(cam);assert.equal(buffer,mesh.vertices);r.render(cam,0);assert.equal(r.node.active,false);
+    assert.equal(mesh.uploadLength,4*36*4);assert.equal(mesh.drawCount,24);const buffer=mesh.vertices;r.render(cam);assert.equal(buffer,mesh.vertices);r.render(cam,0);assert.equal(r.node.active,false);
     r.dispose();r.dispose();assert.deepEqual(owned,['node','mesh','material']);r.render(cam);assert.equal(r.submittedBatches,0);
   }finally{globalThis.Laya=previous;}
 });

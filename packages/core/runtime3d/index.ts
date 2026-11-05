@@ -18,3 +18,4 @@ export * from "./CameraRig.ts";
 export * from "./CameraCollision.ts";
 export * from "./Filmic.ts";
 export { installLaya342LifecycleFix } from "./Laya342Adapters.ts";
+export * from "./CrowdPresentation.ts";

@@ -242,6 +242,12 @@ export declare class ZhudaParticleSystem {
     private step;
 }
 
+export interface ParticleSimulationOptions3D {
+    /** Visual simulation rate, 15–240 Hz. Default 120. Does not control game rules. */
+    frequencyHz?: number;
+    /** Per-call work bound, 1–240 steps. Default 30. Excess time is dropped and reported. */
+    maxSubsteps?: number;
+}
 /** Fixed-step XYZ simulation with bounded pools, quaternion emitters and world/local space. */
 export declare class ZhudaParticleSystem3D {
     readonly spec: ParticleEmitterSpec3D;
@@ -279,7 +285,14 @@ export declare class ZhudaParticleSystem3D {
     private readonly basisU;
     private readonly basisV;
     static readonly STEP: number;
-    constructor(spec: ParticleEmitterSpec3D);
+    private frequency;
+    private maxSteps;
+    simulatedSteps: number;
+    lastSubsteps: number;
+    get frequencyHz(): number;
+    /** Rate changes discard only the fractional remainder, reported in droppedSeconds. */
+    setSimulation(options: ParticleSimulationOptions3D): void;
+    constructor(spec: ParticleEmitterSpec3D, simulation?: ParticleSimulationOptions3D);
     get aliveCount(): number;
     get capacity(): number;
     setTransform(x: number, y: number, z: number, rotation?: ParticleQuaternion, velocity?: ParticleVector3): void;

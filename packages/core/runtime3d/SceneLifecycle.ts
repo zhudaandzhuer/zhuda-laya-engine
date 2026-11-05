@@ -95,6 +95,7 @@ export class ZhudaSceneBudget {
   }
   report() {
     const counts = { mesh: 0, texture: 0, renderTarget: 0 };
+  const animation = { clips: 0, materials: 0 };
     let estimatedBytes = 0;
     for (const r of this.resources.values()) {
       counts[r.kind]++;
@@ -162,11 +163,14 @@ export function inspectSceneResources(runtime: any = (globalThis as any).Laya) {
     items: any[] =
       map instanceof Map ? [...map.values()] : Object.values(map || {});
   const counts = { mesh: 0, texture: 0, renderTarget: 0 };
+  const animation = { clips: 0, materials: 0 };
   let meshBytes = 0,
     textureBytes = 0,
     renderTargetBytes = 0;
   for (const r of items) {
     if (r.destroyed) continue;
+    if (typeof runtime.AnimationClip === 'function' && r instanceof runtime.AnimationClip) animation.clips++;
+    if (typeof runtime.Material === 'function' && r instanceof runtime.Material) animation.materials++;
     if (typeof runtime.Mesh === 'function' && r instanceof runtime.Mesh) {
       counts.mesh++;
       meshBytes += r.gpuMemory || 0;
@@ -189,6 +193,7 @@ export function inspectSceneResources(runtime: any = (globalThis as any).Laya) {
   }
   return {
     counts,
+    animation,
     resources: items.filter((r) => !r.destroyed).length,
     estimatedBytes: meshBytes + textureBytes + renderTargetBytes,
     meshBytes,
