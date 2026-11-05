@@ -67,7 +67,7 @@ in the [consumer route](docs/consumer-route.md) when writing project reports.
 
 [Play Neon Apex](https://zhudaandzhuer.github.io/zhuda-neon-racer/) · [Explore 100 particle effects](https://zhudaandzhuer.github.io/zhuda-particle-lab/) · [Try the 3D terrain lab](https://zhudaandzhuer.github.io/zhuda-3d-lab/?terrain=1)
 
-## Consumer runtime additions (1.4.0 candidate)
+## Consumer runtime additions (1.5.0)
 
 Doctor now selects the current project and rejects empty scans. The existing
 mixer accepts provider-backed audio samples with loops, fades and disposal.
@@ -76,6 +76,13 @@ nodes, states, material slots and sockets. See [audio](docs/audio.md),
 [3D Prefabs](docs/procedural-prefabs.md) and the
 [verification scope](docs/plans/records/consumer-runtime-hardening/verification.md).
 These additions do not establish physical mobile acceptance or approve game art.
+
+The RPG integration adds explicit lifecycle completion checks, official
+`zhuda-laya-build --candidate` / `zhuda-laya-accept` commands, conservative
+component dependency proofs and opt-in shared primitive Prefab resources.
+Start with [candidate and evidence configuration](docs/consumer-tooling.md)
+and [shared resource ownership](docs/procedural-prefabs.md). Existing consumers
+keep whole-payload validation and independent resource ownership by default.
 
 ## More games
 

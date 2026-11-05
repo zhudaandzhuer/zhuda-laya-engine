@@ -117,13 +117,94 @@ the image and rerun the actual comparison before it can become gate evidence.
 This procedure proves deterministic regression of the neutral/current fixture,
 not artistic parity with an external reference or physical mobile behavior.
 
-For a stale production gate, build a separate candidate output using the same
-consumer configuration and source, e.g. `dist/candidate`, without publishing it
-over the accepted `dist/web`. Capture/review schema 2 evidence against that
-candidate, then run the normal build with `prefabEvidence` enabled. The original
-accepted output stays available until the new evidence and normal build pass.
-The whole-payload fingerprint remains conservative; selective component
-invalidation is [proposed](plans/consumer-delivery-followups.md), not implemented.
+## Candidate and acceptance commands (1.5.0)
+
+```sh
+zhuda-laya-build --candidate
+zhuda-laya-watch --candidate --port 8890
+```
+
+Candidates use `<release-parent>/candidate/<web-directory>` (`dist/candidate/web`
+by default), with their own ZIP, report and lock. Compilation, source guards and
+package limits remain enforced; the evidence gate is deferred. The build report
+says `unverified-candidate`. Release configuration and accepted output stay intact.
+The watcher honors `outDir` and the candidate flag.
+
+Declare the checks in `zhuda.config.json`:
+
+```json
+{
+  "prefabPreview": "src/prefabs.ts",
+  "prefabChecks": [
+    { "id": "hero", "node": "Body", "state": "idle",
+      "width": 640, "height": 480, "dpr": 1, "cycles": 30,
+      "baseline": "references/hero-body.png", "output": "evidence/hero-body.json" }
+  ]
+}
+```
+
+`zhuda-laya-accept --capture` builds/serves a candidate and captures references;
+reports remain failed and **no release is published**. Inspect the images and
+retain prior references when changing an accepted design. Then run
+`zhuda-laya-accept`: it builds a candidate, starts a temporary local server,
+runs each real browser comparison, closes the server and rebuilds with the
+normal evidence gate. Publication requires the **exact** candidate payload and
+unchanged config. Failed checks or stale inputs preserve the prior release.
+
+Normal `zhuda-laya-build` also requires every `prefabChecks[].output`, in addition
+to legacy `prefabEvidence`. It verifies the configured selection, reference,
+viewport/DPR, cycles and pixel tolerance. The acceptance command does not approve
+references, run game rules/tests, measure physical devices or deploy a site.
+Keep running consumer strict types, Doctor, game tests and Scene checks.
+
+The preview now reports `lifecycleCheck.requestedCycles`, `completedCycles`,
+status and before/after resource estimates. It becomes ready only when all
+requested cycles finish. The checker verifies zero instance/reference/pending
+counts after each disposal, matching resource snapshots and re-reads the final
+report after comparison to catch late errors. Older previews without completion
+evidence cannot pass nonzero cycles. Counts do not measure the GPU driver heap.
+
+## Selective component evidence
+
+Whole-payload validation remains the default. An isolated module must export
+**exactly one matching definition**, with the same preview/provider/library
+options and definition that the Scene uses:
+
+```json
+{
+  "prefabPreview": "src/prefabs.ts",
+  "prefabComponents": {
+    "hero": { "entry": "src/prefabs/hero.ts", "assets": ["hero"] },
+    "panel": { "entry": "src/prefabs/panel.ts", "dependsOn": ["hero"] },
+    "tree": { "entry": "src/prefabs/tree.ts", "assets": [] }
+  }
+}
+```
+
+The existing preview URL routes by ID to its compiled component bundle. Its
+fingerprint includes emitted code and imported renderer/SDK code, libraries,
+preview shell, non-game public files (including fonts), selected assets and
+child proof hashes. A changed child invalidates its parents. Cycles and missing
+assets/children fail with config guidance. Omitted `assets` includes **all**
+assets; `[]` declares no external assets. Paths are files or directory prefixes
+relative to the output `assets/`.
+
+A parent that limits `assets` must include the child assets it actually loads;
+`dependsOn` adds child fingerprints, not an implicit union of asset allowlists.
+Otherwise the observed child load falls back to whole-payload evidence.
+
+A `dependencyProof` is recorded only when the matching bundle was loaded,
+observed network resources are covered and provider provenance hashes match
+included files. Unknown/external/undeclared loads retain whole-payload evidence.
+Imported helper changes affect the emitted bundle; consumers cannot omit a
+renderer source file through a manually maintained source allowlist.
+
+This is a conservative module/component graph, not arbitrary JavaScript
+inference. Importing one giant definitions file still invalidates its users
+together. Split independently edited definitions into modules for granularity.
+Unobserved states need separate checks. These proofs approve isolated previews;
+changed Scene composition still needs integration checks. Remote freshness is
+not proved by a local build; keep pinned provider integrity policies.
 
 ## Declaration scope
 

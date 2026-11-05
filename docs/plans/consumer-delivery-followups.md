@@ -26,8 +26,10 @@ exports combat APIs; choose contracts appropriate to their gameplay.
   one mixer. The 1.4.0 candidate adds loop/offset/fade/replacement and bounded
   leases; streaming, spatial audio and the full physical-device matrix remain open.
 - [`prefab-toolchain.md`](prefab-toolchain.md): static 2D and primitive 3D
-  Prefab provenance with whole-payload evidence. Provenance is not a component
-  dependency graph.
+  Prefab provenance with whole-payload evidence by default. Version 1.5.0 adds
+  isolated component bundles and conservative dependency proofs; see
+  [consumer tooling](../consumer-tooling.md). Arbitrary runtime dependencies and
+  automatic per-node data slicing are still outside that graph.
 - [`consumer-review-reliability`](records/consumer-review-reliability/task.md):
   separate work for measured browser metrics, staged build publication,
   preview provider injection and explicit asset inclusion.
@@ -62,7 +64,14 @@ A replaceable backend is not part of this candidate.
 See [candidate verification](records/consumer-runtime-hardening/verification.md)
 for measured scope. This does not mark the entire plan Accepted.
 
-### Component evidence graph (proposed; no selective invalidation yet)
+### Component evidence graph (module-level implementation; broader inference proposed)
+
+The [RPG feedback task](records/rpg-feedback-hardening/task.md) implements opt-in
+component entries, emitted bundle/runtime/shell/asset fingerprints and explicit
+parent edges. Checker-observed requests and provider provenance must be covered;
+otherwise evidence remains whole-payload. Components in a shared monolithic
+source still invalidate together. The finer-grained goal below remains a design
+direction, not a claim of arbitrary JavaScript dependency inference.
 
 Each proof node must include its selected Prefab ID/node/state, definition
 hash, declared logical asset IDs and expected hashes, renderer/module version,

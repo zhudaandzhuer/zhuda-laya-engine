@@ -9,7 +9,10 @@ import { auditVisualPresentationContracts } from "./visual-contract-audit.mjs";
 import { auditConsumerSources } from "./consumer-guards.mjs";
 import { buildPrefabPreview } from "./prefab-preview.mjs";
 import { publishConsumerOutput } from "./consumer-publication.mjs";
-import { auditPrefabEnvironment } from "./prefab-environment.mjs";
+import { auditPrefabEnvironment, requestedPrefabEnvironment } from "./prefab-environment.mjs";
+import { auditPrefabLifecycle } from "./prefab-lifecycle.mjs";
+import { buildPrefabDependencies, prefabEvidenceMatches } from './prefab-dependencies.mjs';
+import { validatePrefabChecks } from './prefab-checks.mjs';
 import { ENGINE_PRESET_PROFILES, TopologyResolver } from "./compiler-runtime.mjs";
 import {
   collectTsFiles,
@@ -163,7 +166,13 @@ export async function runConsumerBuild({
     "../..",
   ),
   config = {},
+  mode = 'release',
+  expectedFingerprint,
 }) {
+  if (!['release', 'candidate'].includes(mode)) throw Error('Unknown consumer build mode');
+  if (config.prefabChecks) validatePrefabChecks(config,projectRoot);
+  const releaseOutput = path.resolve(projectRoot, config.outDir || 'dist/web');
+  if (mode === 'candidate') config = { ...config, outDir: path.join(path.dirname(releaseOutput), 'candidate', path.basename(releaseOutput)) };
   const output = path.resolve(projectRoot, config.outDir || "dist/web"),
     entry = path.resolve(projectRoot, config.entry || "src/Main.ts"),
     pub = path.resolve(projectRoot, config.publicDir || "public");
@@ -289,25 +298,43 @@ export async function runConsumerBuild({
         .replace("<!-- ZHUDA_ENTRY -->", '<script src="app.js"></script>'),
     );
     fs.writeFileSync(path.join(out, ".nojekyll"), "");
-    if (config.prefabPreview)
-      await buildPrefabPreview({ projectRoot, engineRoot, out, topology, config });
+    const componentBundles = config.prefabPreview
+      ? await buildPrefabPreview({ projectRoot, engineRoot, out, topology, config }) : {};
     const payload = walk(out).map((f) => ({
       path: f.path,
       bytes: f.bytes.length,
       sha256: crypto.createHash("sha256").update(f.bytes).digest("hex"),
     }));
     const fingerprint = crypto.createHash("sha256").update(JSON.stringify(payload)).digest("hex");
-    if (config.prefabEvidence) {
-      if (!Array.isArray(config.prefabEvidence) || !config.prefabEvidence.length)
+    const prefabDependencies=buildPrefabDependencies(payload,config.prefabComponents,componentBundles);
+    if (expectedFingerprint && expectedFingerprint !== fingerprint)
+      throw Error('Candidate changed during acceptance; rebuild and rerun browser checks');
+    const evidenceFiles = config.prefabChecks
+      ? [...new Set([...(config.prefabEvidence || []), ...config.prefabChecks.map(check => check.output)])]
+      : config.prefabEvidence;
+    if (mode === 'release' && evidenceFiles) {
+      if (!Array.isArray(evidenceFiles) || !evidenceFiles.length)
         throw Error("prefabEvidence requires at least one browser report");
-      for (const file of config.prefabEvidence) {
+      for (const file of evidenceFiles) {
         const reportPath = path.resolve(projectRoot, file);
         const evidence = JSON.parse(fs.readFileSync(reportPath, "utf8"));
         if (evidence.schemaVersion !== 2 || !evidence.passed || !evidence.provenance ||
             !evidence.environment?.passed ||
             !auditPrefabEnvironment(evidence.environment.requested, evidence.environment.measured).passed ||
-            !evidence.selection?.id || evidence.fingerprint !== fingerprint)
+            !evidence.selection?.id || !prefabEvidenceMatches(evidence,fingerprint,prefabDependencies))
           throw Error(`${file}: missing, failed or stale prefab evidence; rerun the browser comparison`);
+        if (evidence.url && !auditPrefabLifecycle(evidence, evidence.url).passed)
+          throw Error(`${file}: incomplete or failed prefab lifecycle`);
+        for (const check of (config.prefabChecks || []).filter(value=>value.output===file)) {
+          const {baseline,output,maxDiffPixels,...params}=check;
+          const requestedUrl='http://localhost/prefab-preview.html?'+new URLSearchParams(params);
+          if (!auditPrefabLifecycle(evidence,requestedUrl).passed ||
+              !auditPrefabEnvironment(requestedPrefabEnvironment(requestedUrl),evidence.environment.measured).passed ||
+              !evidence.comparison?.passed || !Number.isSafeInteger(evidence.comparison.differentPixels) ||
+              evidence.comparison.differentPixels > (maxDiffPixels || 0) ||
+              path.resolve(path.dirname(reportPath),evidence.baseline)!==path.resolve(projectRoot,baseline))
+            throw Error(`${file}: evidence does not satisfy configured selection, cycles, baseline or tolerance`);
+        }
         for (const [artifact, checksum] of [[evidence.actual, evidence.actualSha256], [evidence.baseline, evidence.baselineSha256]]) {
           if (typeof artifact !== "string" || typeof checksum !== "string" ||
               crypto.createHash("sha256").update(fs.readFileSync(path.resolve(path.dirname(reportPath), artifact))).digest("hex") !== checksum)
@@ -321,6 +348,7 @@ export async function runConsumerBuild({
         {
           libraries: topology.orderedFiles,
           fingerprint,
+          prefabDependencies,
           files: payload,
           totalBytes: payload.reduce((n, f) => n + f.bytes, 0),
         },
@@ -335,12 +363,15 @@ export async function runConsumerBuild({
     );
     const report = {
       consumer: true,
+      mode,
+      fingerprint,
+      releaseOutput,
       sourceWrites: 0,
       output,
       orderedLibraries: topology.orderedFiles,
       assets: { include: includes ?? null, exclude: excludes },
       route: {
-        level: "engine-backed-static",
+        level: mode === 'candidate' ? 'unverified-candidate' : "engine-backed-static",
         engineDependency: guard.checks.engineDependency,
         publicSdkImport: guard.checks.publicSdkImport,
         engineBoot: guard.checks.engineBoot,

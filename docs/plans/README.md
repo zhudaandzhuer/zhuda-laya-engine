@@ -19,6 +19,7 @@ device checks and acceptance gates pass.
 | [Prefab isolation and consumer tooling](prefab-toolchain.md) | In progress | P0 consumer Prefab preview and evidence gate delivered in 1.1.0; P1/P2 UI, lifecycle, media and device work remains |
 | [Deferred asset packaging](asset-packaging.md) | Proposed | Whether to keep plain assets, add CDN chunks, or introduce a packed/Rust/WASM provider after the project is stable |
 | [Consumer delivery follow-ups](consumer-delivery-followups.md) | In progress | Original sample/BGM audio in one mixer, component dependency evidence and full vendor declaration repair |
+| [RPG integration feedback](records/rpg-feedback-hardening/task.md) | Implemented; desktop verified | Lifecycle completion, official candidate acceptance, component proofs and leased primitive resources; physical devices unavailable |
 
 Use [TEMPLATE.md](TEMPLATE.md) for new decision plans. For an implementation
 delegated to an agent, copy [TASK-TEMPLATE.md](TASK-TEMPLATE.md) and finish the

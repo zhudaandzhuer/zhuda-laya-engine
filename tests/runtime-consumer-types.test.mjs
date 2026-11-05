@@ -13,12 +13,13 @@ test('strict public consumer composes sample audio and inferred 2D/3D Prefab roo
 import type { Prefab3DDefinition, PrefabDefinition, PrefabPreview3D } from 'zhuda-laya-engine';
 const provider=new DirectoryAssetProvider({baseUrl:'./assets/'});
 const definitions:Prefab3DDefinition[]=[{id:'tree',kind:'3d',tree:{root:{name:'Root'},materials:{}},states:{idle:{}}}];
-const library=new ZhudaPrefabLibrary({provider,definitions});
+const library=new ZhudaPrefabLibrary({provider,definitions,share3DResources:true});
 async function use(){
  const instance=await library.instantiate('tree');
  const root:Laya.Sprite3D=instance.root;
  const socket:Laya.Sprite3D=instance.socket('mount');
  instance.applyState('idle');
+ const material:Laya.Material=instance.makeMaterialUnique('Body');
  // @ts-expect-error 3D roots are not 2D sprites
  const bad:Laya.Sprite=instance.root;
  const twoD:PrefabDefinition[]=[{id:'panel',asset:'panel.lh',states:{idle:{}}}];

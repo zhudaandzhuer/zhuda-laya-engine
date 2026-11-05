@@ -1,5 +1,5 @@
 /**
- * zhuda-laya-engine v1.4.1 — 豬大 LayaAir (AI-Agent-Friendly Fork Edition)
+ * zhuda-laya-engine v1.5.0 — 豬大 LayaAir (AI-Agent-Friendly Fork Edition)
  * Repository: https://github.com/zhudaandzhuer/zhuda-laya-engine
  * Upstream Official: LayaAir Engine 3.4.2 by Layabox (https://layaair.com/ | https://github.com/layabox/LayaAir)
  * License: MIT
@@ -2167,13 +2167,42 @@ function validatePrefabTree3D(tree) {
   for (const [id, path] of Object.entries(tree.sockets ?? {}))
     if (!id || !paths.has(path)) throw Error(`Unknown 3D socket path: ${id}/${path}`);
 }
+function createPrefabTreeResources(tree) {
+  validatePrefabTree3D(tree);
+  const scope = new ZhudaResourceScope();
+  const materials = /* @__PURE__ */ new Map();
+  const meshes = /* @__PURE__ */ new Map();
+  try {
+    for (const [id, options] of Object.entries(tree.materials)) {
+      const material = scope.own(Zhuda3D.createMaterial(options), (value) => value.destroy());
+      materials.set(id, material);
+    }
+    const visit2 = (node, nodePath) => {
+      if (node.mesh)
+        meshes.set(nodePath, scope.own(Zhuda3D.createPrimitiveMesh(node.mesh.type, node.mesh.dimensions), (value) => value.destroy()));
+      node.children?.forEach((child) => visit2(child, nodePath ? `${nodePath}/${child.name}` : child.name));
+    };
+    visit2(tree.root, "");
+    return { materials, meshes, dispose: () => scope.dispose() };
+  } catch (error) {
+    scope.dispose();
+    throw error;
+  }
+}
 function buildPrefabTree(tree) {
+  return renderPrefabTree(tree);
+}
+function buildSharedPrefabTree(tree, resources) {
+  return renderPrefabTree(tree, resources);
+}
+function renderPrefabTree(tree, shared) {
   const spec = structuredClone(tree);
   validatePrefabTree3D(spec);
   const resources = new ZhudaResourceScope();
   const nodes = /* @__PURE__ */ new Map();
   const baseline = /* @__PURE__ */ new Map();
   const materials = /* @__PURE__ */ new Map();
+  const ownedMaterials = /* @__PURE__ */ new Set();
   let root;
   let disposed = false;
   const find = (path = "") => {
@@ -2190,10 +2219,13 @@ function buildPrefabTree(tree) {
     if (patch.material) node.meshRenderer.sharedMaterial = materials.get(patch.material);
   };
   try {
-    for (const [id, material] of Object.entries(spec.materials))
-      materials.set(id, resources.own(Zhuda3D.createMaterial(material), (value) => value.destroy()));
+    for (const [id, material] of Object.entries(spec.materials)) {
+      const value = shared ? shared.materials.get(id) : resources.own(Zhuda3D.createMaterial(material), (value2) => value2.destroy());
+      materials.set(id, value);
+      if (!shared) ownedMaterials.add(value);
+    }
     const visit2 = (source, path, parent) => {
-      const node = source.mesh ? new Laya.MeshSprite3D(resources.own(Zhuda3D.createPrimitiveMesh(source.mesh.type, source.mesh.dimensions), (value) => value.destroy())) : new Laya.Sprite3D();
+      const node = source.mesh ? new Laya.MeshSprite3D(shared ? shared.meshes.get(path) : resources.own(Zhuda3D.createPrimitiveMesh(source.mesh.type, source.mesh.dimensions), (value) => value.destroy())) : new Laya.Sprite3D();
       if (!root) root = node;
       node.name = source.name;
       parent?.addChild(node);
@@ -2214,6 +2246,18 @@ function buildPrefabTree(tree) {
     return {
       root,
       find,
+      makeMaterialUnique: (path = "") => {
+        const node = find(path);
+        if (!baseline.get(path)?.material) throw Error(`Node has no material slot: ${path}`);
+        const current = node.meshRenderer.sharedMaterial;
+        if (ownedMaterials.has(current)) return current;
+        const clone = resources.own(current.clone(), (value) => value.destroy());
+        ownedMaterials.add(clone);
+        for (const [id, value] of materials) if (value === current) materials.set(id, clone);
+        for (const [key, other] of nodes) if (baseline.get(key)?.material && other.meshRenderer.sharedMaterial === current)
+          other.meshRenderer.sharedMaterial = clone;
+        return clone;
+      },
       socket: (id) => {
         if (!has(spec.sockets ?? {}, id)) throw Error(`Unknown 3D socket: ${id}`);
         return find(spec.sockets[id]);
@@ -9171,6 +9215,8 @@ var ZhudaPrefabLibrary = class {
     const timeoutMs = options.timeoutMs ?? 15e3;
     if (!Number.isSafeInteger(timeoutMs) || timeoutMs <= 0) throw Error("Invalid prefab timeout");
     this.timeoutMs = timeoutMs;
+    if (options.share3DResources !== void 0 && typeof options.share3DResources !== "boolean") throw Error("share3DResources must be boolean");
+    this.share3DResources = options.share3DResources ?? false;
     this.definitions = /* @__PURE__ */ new Map();
     const textures = /* @__PURE__ */ new Set();
     for (const source of options.definitions) {
@@ -9194,6 +9240,10 @@ var ZhudaPrefabLibrary = class {
       }
       this.definitions.set(entry.id, entry);
     }
+    this.shared3DCache = new ZhudaAssetCache(async (key, signal) => {
+      if (signal.aborted) throw new DOMException("Prefab cancelled", "AbortError");
+      return createPrefabTreeResources(JSON.parse(key));
+    }, (value) => value.dispose());
     this.cache = createProviderAssetCache(options.provider, async (asset, signal) => {
       const sourceHash = await hash(asset.bytes);
       if (!textures.has(asset.id)) {
@@ -9268,7 +9318,12 @@ var ZhudaPrefabLibrary = class {
       let tree;
       let created;
       if (entry.kind === "3d") {
-        tree = buildPrefabTree(entry.tree);
+        if (this.share3DResources) {
+          const lease = await this.shared3DCache.acquire(JSON.stringify(entry.tree), { signal: controller.signal });
+          scope.defer(() => lease.release());
+          if (controller.signal.aborted) throw new DOMException("Prefab cancelled", "AbortError");
+          tree = buildSharedPrefabTree(entry.tree, lease.value);
+        } else tree = buildPrefabTree(entry.tree);
         scope.defer(() => tree.dispose());
         created = tree.root;
       } else {
@@ -9332,6 +9387,10 @@ var ZhudaPrefabLibrary = class {
           if (!tree) throw Error("Sockets require a 3D prefab");
           return tree.socket(id2);
         },
+        makeMaterialUnique: (path) => {
+          if (!tree) throw Error("Material slots require a 3D prefab");
+          return tree.makeMaterialUnique(path);
+        },
         applyState: (next) => {
           apply(next);
           record.state = next;
@@ -9355,18 +9414,24 @@ var ZhudaPrefabLibrary = class {
       clearTimeout(timer);
       this.active.delete(controller);
       options.signal?.removeEventListener("abort", abort);
-      if (this.disposed && !this.active.size) this.cache.dispose();
+      if (this.disposed && !this.active.size) {
+        this.cache.dispose();
+        this.shared3DCache.dispose();
+      }
     }
   }
   report() {
-    return { instances: this.instances.size, ...this.cache.report() };
+    return { instances: this.instances.size, ...this.cache.report(), shared3D: this.shared3DCache.report() };
   }
   dispose() {
     if (this.disposed) return;
     this.disposed = true;
     for (const controller of this.active) controller.abort();
     for (const instance of [...this.instances]) instance.dispose();
-    if (!this.active.size) this.cache.dispose();
+    if (!this.active.size) {
+      this.cache.dispose();
+      this.shared3DCache.dispose();
+    }
   }
 };
 

@@ -1,2 +1,3 @@
 export * from "./PrefabLibrary";
-export * from "./PrefabTree3D";
+export { buildPrefabTree, validatePrefabTree3D, validatePrefabPatch3D } from "./PrefabTree3D";
+export type { PrefabVector3, PrefabNodePatch3D, PrefabTreeNode3D, PrefabTree3D, PrefabPreview3D, PrefabTreeInstance3D } from "./PrefabTree3D";

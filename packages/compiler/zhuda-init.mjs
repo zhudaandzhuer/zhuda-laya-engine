@@ -61,6 +61,9 @@ function filesFor({ name, engine }) {
       engines: { node: ">=24" },
       scripts: {
         build: "zhuda-laya-build",
+        "build:candidate": "zhuda-laya-build --candidate",
+        "watch:candidate": "zhuda-laya-watch --candidate",
+        "accept:prefabs": "zhuda-laya-accept",
         typecheck: "tsc --noEmit",
         doctor: "zhuda-laya-doctor --project .",
         test: "node --test",

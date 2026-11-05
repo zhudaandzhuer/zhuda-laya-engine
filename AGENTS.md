@@ -27,6 +27,12 @@ workbench quick start in README is for engine development; it is not a consumer
 scaffold. A consumer may claim engine-backed integration only after its pinned
 SDK, public import, boot path, HTML markers, build and Doctor checks pass.
 
+When evidence becomes stale, use `zhuda-laya-build --candidate` or
+`zhuda-laya-watch --candidate`; do not remove the release gate. Configure
+`prefabChecks` and run `zhuda-laya-accept` for candidate comparisons followed by
+gated publication. Capture is a separate, unapproved reference step. See
+[consumer tooling](docs/consumer-tooling.md) for component dependency scope.
+
 ## Prefab gate for visual work
 
 For new or changed visual content, follow the [prefab workflow](docs/prefab-workflow.md).

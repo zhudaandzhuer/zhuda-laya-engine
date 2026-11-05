@@ -38,9 +38,21 @@ export interface PrefabTreeInstance3D {
     socket(id: string): Laya.Sprite3D;
     /** Resets the authored baseline before applying a complete named state. */
     apply(patches: Record<string, PrefabNodePatch3D>): void;
+    /** Returns an instance-owned copy of this node's material slot before mutation. */
+    makeMaterialUnique(path?: string): Laya.Material;
     dispose(): void;
 }
 export declare function validatePrefabPatch3D(patch: PrefabNodePatch3D): void;
 export declare function validatePrefabTree3D(tree: PrefabTree3D): void;
-/** Primitive meshes/materials belong to this instance; dispose releases all of them. */
+/** Internal resource pack; lifetime is owned by the library's existing cache leases. */
+export declare function createPrefabTreeResources(tree: PrefabTree3D): {
+    materials: Map<string, Laya.Material>;
+    meshes: Map<string, Laya.Mesh>;
+    dispose: () => void;
+};
+type SharedTreeResources = ReturnType<typeof createPrefabTreeResources>;
+/** Independent ownership is the compatible default for the synchronous builder. */
 export declare function buildPrefabTree(tree: PrefabTree3D): PrefabTreeInstance3D;
+/** Internal library entry; borrowed resources are released by its cache lease. */
+export declare function buildSharedPrefabTree(tree: PrefabTree3D, resources: SharedTreeResources): PrefabTreeInstance3D;
+export {};

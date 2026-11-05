@@ -1,6 +1,6 @@
 # Primitive 3D Prefabs
 
-The 1.4.0 candidate extends `ZhudaPrefabLibrary` with typed, serializable 3D
+`ZhudaPrefabLibrary` supports typed, serializable 3D
 trees. Static 2D `.lh` definitions remain supported. Neither format requires
 the LayaAir IDE. A tree is a source definition, not approved visual evidence.
 
@@ -66,9 +66,8 @@ manually constructed trees do not acquire verified provenance automatically.
   replacement requires a mesh node; no untyped renderer access is necessary.
 - A state is applied relative to the authored baseline. Returning to `idle`
   restores transforms, activity and material bindings; prior states do not leak.
-- Each instance owns its primitive meshes/materials. Nodes within an instance
-  may share a material; separate instances have independent resources.
-  Destroy the instance before disposing its library/provider.
+- By default each instance owns its primitive meshes/materials. Optional shared
+  ownership is described below. Destroy instances before their library/provider.
 - The current tree format has no external textures, GLB factory, skeleton,
   animation controller or gameplay authority. Models use the existing model
   library; do not invent unsupported fields or put game rules in this renderer.
@@ -89,9 +88,46 @@ module; configure it explicitly to match the intended reference.
 
 Provenance includes `kind`, `definitionHash` (the entire serialized definition,
 states and recipe), and provider `sources` hashes. Pure primitive trees have
-no external source assets, so `sources` is empty. Renderer code remains covered
-by the payload fingerprint. This is not a selective dependency graph.
+no external source assets, so `sources` is empty. Renderer code is covered by
+the whole-payload fingerprint by default; optional isolated component
+fingerprints are described in [consumer tooling](consumer-tooling.md).
 
 Follow [the prefab workflow](prefab-workflow.md) and
 [schema 2 comparisons](consumer-tooling.md). A valid tree or a successful build
 does not approve a baseline, prove reference-art parity, or qualify a device.
+
+## Shared resources (1.5.0)
+
+Opt in when instances use immutable authored geometry/materials:
+
+```ts
+export const libraryOptions = { share3DResources: true };
+const library = new ZhudaPrefabLibrary({ provider, definitions, ...libraryOptions });
+const a = await library.instantiate('neutral/assembly');
+const b = await library.instantiate('neutral/assembly');
+// State swaps change bindings on a; b is unaffected.
+a.applyState('turned');
+// Before changing a material property, obtain an instance-owned material.
+const ownMaterial = a.makeMaterialUnique('Pivot/Body');
+ownMaterial.renderQueue = 2000;
+```
+
+The official preview reads the same exported `libraryOptions.share3DResources`.
+The library uses `ZhudaAssetCache` with no idle retention to lease a compiled
+tree resource set. Identical tree recipes share each named node's mesh and
+material slots across instances. Nodes/transforms/activity are always separate.
+Identical sibling shapes keep distinct mesh identities to preserve single-tree
+batch ordering at coplanar intersections. Compatible native shaders can batch
+shared resources; this option is not a draw-call or FPS guarantee.
+
+Treat shared meshes and materials as immutable. Use `makeMaterialUnique(path)`
+before changing a material: it clones that slot for this instance, updates its
+current bindings, survives state changes and is destroyed with the instance.
+It does not mutate another instance or the library's original slot. Calling it
+again returns the owned material. Non-mesh paths and 2D instances reject it.
+For arbitrary mesh edits, use the compatible independent-ownership mode.
+
+Cancelled/failed creation releases partial leases; disposal destroys nodes
+before releasing the shared resources. The last lease destroys the resource
+set. `library.report().shared3D` reports separate cache counts. The low-level
+synchronous `buildPrefabTree()` keeps independent ownership.

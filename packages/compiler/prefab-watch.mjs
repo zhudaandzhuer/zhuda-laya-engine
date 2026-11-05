@@ -27,7 +27,7 @@ export function parseWatchArgs(argv = process.argv.slice(2)) {
   if (!Number.isInteger(port) || port < 1 || port > 65535) throw Error("Invalid --port");
   if (!host || host.includes("/")) throw Error("Invalid --host");
   if (!fs.existsSync(project) || !fs.statSync(project).isDirectory()) throw Error(`Project does not exist: ${project}`);
-  return { project, port, host };
+  return { project, port, host, candidate:argv.includes('--candidate') };
 }
 
 export function liveReloadScript() {
@@ -83,7 +83,7 @@ function safeFile(root, requestPath) {
   return file;
 }
 
-export function createPreviewServer({ root, host = "127.0.0.1", port = 8890, onBuild }) {
+export function createPreviewServer({ root, host = "127.0.0.1", port = 8890, onBuild, reload = true }) {
   const clients = new Set();
   const server = http.createServer((request, response) => {
     if (request.url?.split("?")[0] === "/__zhuda_reload") {
@@ -105,7 +105,7 @@ export function createPreviewServer({ root, host = "127.0.0.1", port = 8890, onB
       const target = !statError && stat.isDirectory() ? path.join(file, "index.html") : file;
       fs.readFile(target, (error, bytes) => {
         if (error) { response.writeHead(error.code === "ENOENT" ? 404 : 500); response.end(error.code === "ENOENT" ? "Not found" : "Read failed"); return; }
-        const body = path.basename(target) === "index.html" || path.basename(target) === "prefab-preview.html"
+        const body = reload && (path.basename(target) === "index.html" || path.basename(target) === "prefab-preview.html")
           ? withLiveReload(bytes.toString("utf8")) : bytes;
         response.writeHead(200, { "Content-Type": contentType(target), "Cache-Control": "no-cache" });
         response.end(body);
@@ -136,14 +136,18 @@ function watchRoots(project) {
     .filter(file => fs.existsSync(file));
 }
 
-export function watchConsumer({ project, port, host, build = runZhudaBuild, log = console }) {
+export function watchConsumer({ project, port, host, candidate=false, build = runZhudaBuild, log = console }) {
   let building = false;
   let queued = false;
   let closed = false;
   let activeBuild = Promise.resolve();
   let timer;
   const watchers = [];
-  const preview = createPreviewServer({ root: path.join(project, "dist/web"), host, port });
+  const configFile=path.join(project,'zhuda.config.json');
+  const config=fs.existsSync(configFile)?JSON.parse(fs.readFileSync(configFile,'utf8')):{};
+  const release=path.resolve(project,config.outDir || 'dist/web');
+  const root=candidate?path.join(path.dirname(release),'candidate',path.basename(release)):release;
+  const preview = createPreviewServer({ root, host, port });
   const rebuild = async (reason = "source change") => {
     if (closed) return null;
     if (building) { queued = true; return; }
@@ -152,7 +156,7 @@ export function watchConsumer({ project, port, host, build = runZhudaBuild, log 
     activeBuild = new Promise(resolve => { finished = resolve; });
     preview.broadcast("status", { state: "building", reason });
     try {
-      const result = await build({ projectRoot: project });
+      const result = await build({ projectRoot: project, candidate });
       if (!closed) preview.broadcast("reload", { state: "ready", reason, at: Date.now() });
       log.log(`[Zhuda Watch] rebuilt after ${reason}`);
       return result;

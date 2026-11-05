@@ -33,6 +33,8 @@ export interface PrefabTreeInstance3D {
   socket(id: string): Laya.Sprite3D;
   /** Resets the authored baseline before applying a complete named state. */
   apply(patches: Record<string, PrefabNodePatch3D>): void;
+  /** Returns an instance-owned copy of this node's material slot before mutation. */
+  makeMaterialUnique(path?: string): Laya.Material;
   dispose(): void;
 }
 const primitives = new Set(['box', 'sphere', 'plane', 'cone', 'cylinder', 'capsule']);
@@ -86,14 +88,47 @@ export function validatePrefabTree3D(tree: PrefabTree3D): void {
     if (!id || !paths.has(path)) throw Error(`Unknown 3D socket path: ${id}/${path}`);
 }
 
-/** Primitive meshes/materials belong to this instance; dispose releases all of them. */
+/** Internal resource pack; lifetime is owned by the library's existing cache leases. */
+export function createPrefabTreeResources(tree: PrefabTree3D) {
+  validatePrefabTree3D(tree);
+  const scope = new ZhudaResourceScope();
+  const materials = new Map<string, Laya.Material>();
+  const meshes = new Map<string, Laya.Mesh>();
+  try {
+    for (const [id, options] of Object.entries(tree.materials)) {
+      const material = scope.own(Zhuda3D.createMaterial(options), value=>value.destroy());
+      materials.set(id, material);
+    }
+    // Preserve node-level mesh identity within a recipe. Merging identical
+    // sibling shapes can change native batch ordering at coplanar intersections.
+    // The same path is still shared across every instance of this recipe.
+    const visit = (node: PrefabTreeNode3D, nodePath: string) => {
+      if (node.mesh)
+        meshes.set(nodePath, scope.own(Zhuda3D.createPrimitiveMesh(node.mesh.type,node.mesh.dimensions),value=>value.destroy()));
+      node.children?.forEach(child=>visit(child,nodePath?`${nodePath}/${child.name}`:child.name));
+    };
+    visit(tree.root,'');
+    return {materials,meshes,dispose:()=>scope.dispose()};
+  } catch (error) { scope.dispose(); throw error; }
+}
+type SharedTreeResources = ReturnType<typeof createPrefabTreeResources>;
+
+/** Independent ownership is the compatible default for the synchronous builder. */
 export function buildPrefabTree(tree: PrefabTree3D): PrefabTreeInstance3D {
+  return renderPrefabTree(tree);
+}
+/** Internal library entry; borrowed resources are released by its cache lease. */
+export function buildSharedPrefabTree(tree: PrefabTree3D, resources: SharedTreeResources): PrefabTreeInstance3D {
+  return renderPrefabTree(tree, resources);
+}
+function renderPrefabTree(tree: PrefabTree3D, shared?: SharedTreeResources): PrefabTreeInstance3D {
   const spec = structuredClone(tree);
   validatePrefabTree3D(spec);
   const resources = new ZhudaResourceScope();
   const nodes = new Map<string, Laya.Sprite3D>();
   const baseline = new Map<string, PrefabNodePatch3D>();
   const materials = new Map<string, Laya.Material>();
+  const ownedMaterials = new Set<Laya.Material>();
   let root: Laya.Sprite3D | undefined;
   let disposed = false;
   const find = (path = '') => {
@@ -110,11 +145,14 @@ export function buildPrefabTree(tree: PrefabTree3D): PrefabTreeInstance3D {
     if (patch.material) (node as Laya.MeshSprite3D).meshRenderer.sharedMaterial = materials.get(patch.material)!;
   };
   try {
-    for (const [id, material] of Object.entries(spec.materials))
-      materials.set(id, resources.own(Zhuda3D.createMaterial(material), value => value.destroy()));
+    for (const [id, material] of Object.entries(spec.materials)) {
+      const value = shared ? shared.materials.get(id)! : resources.own(Zhuda3D.createMaterial(material), value => value.destroy());
+      materials.set(id, value);
+      if (!shared) ownedMaterials.add(value);
+    }
     const visit = (source: PrefabTreeNode3D, path: string, parent?: Laya.Sprite3D): Laya.Sprite3D => {
       const node = source.mesh
-        ? new Laya.MeshSprite3D(resources.own(Zhuda3D.createPrimitiveMesh(source.mesh.type, source.mesh.dimensions), value => value.destroy()))
+        ? new Laya.MeshSprite3D(shared ? shared.meshes.get(path)! : resources.own(Zhuda3D.createPrimitiveMesh(source.mesh.type, source.mesh.dimensions), value => value.destroy()))
         : new Laya.Sprite3D();
       if (!root) root = node;
       node.name = source.name;
@@ -132,6 +170,18 @@ export function buildPrefabTree(tree: PrefabTree3D): PrefabTreeInstance3D {
     visit(spec.root, '');
     return {
       root: root!, find,
+      makeMaterialUnique: (path = '') => {
+        const node = find(path) as Laya.MeshSprite3D;
+        if (!baseline.get(path)?.material) throw Error(`Node has no material slot: ${path}`);
+        const current = node.meshRenderer.sharedMaterial;
+        if (ownedMaterials.has(current)) return current;
+        const clone = resources.own(current.clone(), value=>value.destroy());
+        ownedMaterials.add(clone);
+        for (const [id, value] of materials) if (value === current) materials.set(id, clone);
+        for (const [key, other] of nodes) if (baseline.get(key)?.material && (other as Laya.MeshSprite3D).meshRenderer.sharedMaterial === current)
+          (other as Laya.MeshSprite3D).meshRenderer.sharedMaterial = clone;
+        return clone;
+      },
       socket: id => {
         if (!has(spec.sockets ?? {}, id)) throw Error(`Unknown 3D socket: ${id}`);
         return find(spec.sockets![id]);

@@ -70,6 +70,12 @@ npm test            # consumer tests
 npm run verify      # all of the above
 ```
 
+When configured Prefab evidence is missing or stale, first run
+`npm run build:candidate`, then `npm run accept:prefabs`. The latter runs all
+`prefabChecks` in a real browser and publishes only the exact checked candidate.
+Use `zhuda-laya-accept --capture` only to capture references for inspection;
+capture does not approve or publish. Keep the release evidence gate enabled.
+
 The generated `dist/consumer-build.json` and `dist/web/payload-manifest.json`
 record the build payload and its fingerprint. They do not claim that a browser
 rendered a frame. Add the real browser/WebGL report, then the target device

@@ -39,7 +39,8 @@ export async function runZhudaBuild(options = {}) {
   const engineRoot = resolveEngineRoot(projectRoot, options.engineRoot || config.engineRoot);
   const engineVersion = JSON.parse(fs.readFileSync(path.join(engineRoot, 'package.json'), 'utf8')).version;
 
-  if (projectRoot !== engineRoot && config.demoAssets !== true) return runConsumerBuild({projectRoot,engineRoot,config});
+  if (projectRoot !== engineRoot && config.demoAssets !== true) return runConsumerBuild({projectRoot,engineRoot,config,mode:options.candidate?'candidate':'release'});
+  if (options.candidate) throw Error('--candidate requires an independent consumer project');
 
   // A project that declares a visual presentation manifest must pass its
   // semantic state/scope gate before gameplay code is bundled. Engine-only
@@ -614,7 +615,7 @@ if (launchedAsCli) {
   const profile = argProfileIdx !== -1 ? process.argv[argProfileIdx + 1] : undefined;
   const argProjectIdx = process.argv.indexOf('--project');
   const projectRoot = argProjectIdx !== -1 ? path.resolve(process.argv[argProjectIdx + 1]) : undefined;
-  runZhudaBuild({ profile, projectRoot }).catch((err) => {
+  runZhudaBuild({ profile, projectRoot, candidate:process.argv.includes('--candidate') }).catch((err) => {
     console.error(err);
     process.exit(1);
   });

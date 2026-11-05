@@ -18,7 +18,7 @@ const definition = {
 function install() {
   const previous = globalThis.Laya;
   const resources = [];
-  class Resource { destroyed = false; constructor(){ resources.push(this); } destroy(){ assert.equal(this.destroyed,false); this.destroyed=true; } }
+  class Resource { destroyed = false; constructor(){ resources.push(this); } clone(){const value=new Resource();value.color=this.color;return value;} destroy(){ assert.equal(this.destroyed,false); this.destroyed=true; } }
   class Vector3 { constructor(x=0,y=0,z=0){ Object.assign(this,{x,y,z}); } }
   class Node {
     children=[]; name=''; active=true; transform={}; destroyed=false;
@@ -92,4 +92,64 @@ test('3D recipe hashes change with authored inputs; cancelled instance never mou
     assert.equal(lib.report().instances,2);lib.dispose();
     assert.ok(fake.resources.every(r=>r.destroyed));
   }finally{fake.restore();}
+});
+
+test('shared primitives reuse meshes/materials, isolate states and material edits, release only the last lease',async()=>{
+  const fake=install();
+  try {
+    const lib=new ZhudaPrefabLibrary({provider:{name:'unused'},definitions:[definition],share3DResources:true});
+    const a=await lib.instantiate(definition.id), b=await lib.instantiate(definition.id);
+    const bodyA=a.find('Pivot/Body'),bodyB=b.find('Pivot/Body');
+    assert.equal(bodyA.mesh,bodyB.mesh);
+    const original=bodyA.meshRenderer.sharedMaterial;
+    assert.equal(original,bodyB.meshRenderer.sharedMaterial);
+    a.applyState('turn');
+    assert.equal(bodyB.meshRenderer.sharedMaterial,original);
+    a.applyState('idle');
+    const own=a.makeMaterialUnique('Pivot/Body');own.color='changed';
+    assert.notEqual(own,original);assert.equal(original.color,undefined);
+    assert.equal(a.makeMaterialUnique('Pivot/Body'),own);
+    a.applyState('turn');a.applyState('idle');
+    assert.equal(bodyA.meshRenderer.sharedMaterial,own);
+    assert.throws(()=>a.makeMaterialUnique('Pivot'),/no material/);
+    a.dispose();assert.equal(original.destroyed,false);assert.equal(own.destroyed,true);
+    assert.equal(lib.report().shared3D.references,1);
+    b.dispose();assert.ok(fake.resources.every(r=>r.destroyed));
+    assert.equal(lib.report().shared3D.entries,0);
+    for(let cycle=0;cycle<30;cycle++){
+      const instance=await lib.instantiate(definition.id);instance.dispose();
+      assert.equal(lib.report().shared3D.references,0);
+      assert.ok(fake.resources.every(r=>r.destroyed));
+    }
+    lib.dispose();
+  } finally {fake.restore();}
+});
+
+test('shared primitive cancellation and failed mount do not retain resources or retire another instance',async()=>{
+  const fake=install();
+  try {
+    const bad=structuredClone(definition);bad.id='bad';bad.states.bad={missing:{active:true}};
+    const lib=new ZhudaPrefabLibrary({provider:{name:'unused'},definitions:[definition,bad],share3DResources:true});
+    const good=await lib.instantiate(definition.id);
+    const abort=new AbortController();const pending=lib.instantiate(definition.id,{signal:abort.signal});abort.abort();
+    await assert.rejects(pending,/cancelled/);
+    await assert.rejects(lib.instantiate('bad',{state:'bad'}),/path/);
+    assert.equal(lib.report().instances,1);assert.equal(lib.report().shared3D.references,1);
+    assert.equal(good.find('Pivot/Body').mesh.destroyed,false);
+    lib.dispose();assert.ok(fake.resources.every(r=>r.destroyed));
+  } finally {fake.restore();}
+});
+
+test('sharing preserves sibling mesh identity while reusing the same node path across instances',async()=>{
+  const fake=install();
+  try {
+    const repeated=structuredClone(definition);
+    repeated.tree.root.children[0].children.push({...structuredClone(repeated.tree.root.children[0].children[0]),name:'Twin'});
+    const lib=new ZhudaPrefabLibrary({provider:{name:'unused'},definitions:[repeated],share3DResources:true});
+    const a=await lib.instantiate(repeated.id),b=await lib.instantiate(repeated.id);
+    assert.notEqual(a.find('Pivot/Body').mesh,a.find('Pivot/Twin').mesh,'coplanar sibling batching order must remain unchanged');
+    assert.equal(a.find('Pivot/Body').mesh,b.find('Pivot/Body').mesh);
+    assert.equal(a.find('Pivot/Twin').mesh,b.find('Pivot/Twin').mesh);
+    lib.dispose();assert.ok(fake.resources.every(r=>r.destroyed));
+  } finally {fake.restore();}
 });

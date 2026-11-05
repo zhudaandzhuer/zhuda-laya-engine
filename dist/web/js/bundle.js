@@ -784,12 +784,16 @@ var ZhudaAppBundle = (() => {
       if (!id || !paths.has(path)) throw Error(`Unknown 3D socket path: ${id}/${path}`);
   }
   function buildPrefabTree(tree) {
+    return renderPrefabTree(tree);
+  }
+  function renderPrefabTree(tree, shared) {
     const spec = structuredClone(tree);
     validatePrefabTree3D(spec);
     const resources = new ZhudaResourceScope();
     const nodes = /* @__PURE__ */ new Map();
     const baseline = /* @__PURE__ */ new Map();
     const materials = /* @__PURE__ */ new Map();
+    const ownedMaterials = /* @__PURE__ */ new Set();
     let root;
     let disposed = false;
     const find = (path = "") => {
@@ -806,10 +810,13 @@ var ZhudaAppBundle = (() => {
       if (patch.material) node.meshRenderer.sharedMaterial = materials.get(patch.material);
     };
     try {
-      for (const [id, material] of Object.entries(spec.materials))
-        materials.set(id, resources.own(Zhuda3D.createMaterial(material), (value) => value.destroy()));
+      for (const [id, material] of Object.entries(spec.materials)) {
+        const value = shared ? shared.materials.get(id) : resources.own(Zhuda3D.createMaterial(material), (value2) => value2.destroy());
+        materials.set(id, value);
+        if (!shared) ownedMaterials.add(value);
+      }
       const visit = (source, path, parent) => {
-        const node = source.mesh ? new Laya.MeshSprite3D(resources.own(Zhuda3D.createPrimitiveMesh(source.mesh.type, source.mesh.dimensions), (value) => value.destroy())) : new Laya.Sprite3D();
+        const node = source.mesh ? new Laya.MeshSprite3D(shared ? shared.meshes.get(path) : resources.own(Zhuda3D.createPrimitiveMesh(source.mesh.type, source.mesh.dimensions), (value) => value.destroy())) : new Laya.Sprite3D();
         if (!root) root = node;
         node.name = source.name;
         parent?.addChild(node);
@@ -830,6 +837,18 @@ var ZhudaAppBundle = (() => {
       return {
         root,
         find,
+        makeMaterialUnique: (path = "") => {
+          const node = find(path);
+          if (!baseline.get(path)?.material) throw Error(`Node has no material slot: ${path}`);
+          const current = node.meshRenderer.sharedMaterial;
+          if (ownedMaterials.has(current)) return current;
+          const clone = resources.own(current.clone(), (value) => value.destroy());
+          ownedMaterials.add(clone);
+          for (const [id, value] of materials) if (value === current) materials.set(id, clone);
+          for (const [key, other] of nodes) if (baseline.get(key)?.material && other.meshRenderer.sharedMaterial === current)
+            other.meshRenderer.sharedMaterial = clone;
+          return clone;
+        },
         socket: (id) => {
           if (!has(spec.sockets ?? {}, id)) throw Error(`Unknown 3D socket: ${id}`);
           return find(spec.sockets[id]);

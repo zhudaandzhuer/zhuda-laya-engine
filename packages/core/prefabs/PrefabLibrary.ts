@@ -2,9 +2,10 @@ import type { LayaHierarchyNodeData } from "../../types/zhuda-static-assets.ts";
 import { ZhudaPrefab } from "../StaticAssetPipeline.ts";
 import { createProviderAssetCache, normalizeAssetId } from "../runtime3d/AssetProvider.ts";
 import type { AssetProvider } from "../runtime3d/AssetProvider.ts";
-import { buildPrefabTree, validatePrefabTree3D, validatePrefabPatch3D } from "./PrefabTree3D.ts";
+import { buildPrefabTree, buildSharedPrefabTree, createPrefabTreeResources, validatePrefabTree3D, validatePrefabPatch3D } from "./PrefabTree3D.ts";
 import type { PrefabTree3D, PrefabNodePatch3D, PrefabTreeInstance3D } from "./PrefabTree3D.ts";
 import { ZhudaResourceScope } from "../runtime3d/SceneLifecycle.ts";
+import { ZhudaAssetCache } from '../runtime3d/Assets.ts';
 
 export type PrefabNodePatch = Partial<Pick<LayaHierarchyNodeData,
   "x" | "y" | "width" | "height" | "scaleX" | "scaleY" | "rotation" |
@@ -41,6 +42,8 @@ export interface PrefabInstance<T extends Laya.Node = Laya.Sprite> {
   find(path?: string): T;
   applyState(state: string): void;
   socket(id: string): T;
+  /** 3D only: copy this instance's material slot before changing material properties. */
+  makeMaterialUnique(path?: string): Laya.Material;
   dispose(): void;
 }
 const provenance = new WeakMap<Laya.Node, PrefabProvenance>();
@@ -100,14 +103,18 @@ function validateHierarchy(node: LayaHierarchyNodeData, path = "root") {
 export class ZhudaPrefabLibrary<T extends AnyPrefabDefinition = PrefabDefinition> {
   private readonly definitions: Map<string, AnyPrefabDefinition>;
   private readonly cache;
+  private readonly shared3DCache;
+  private readonly share3DResources: boolean;
   private readonly active = new Set<AbortController>();
   private readonly instances = new Set<PrefabInstance<PrefabRoot<T>>>();
   private disposed = false;
   private readonly timeoutMs: number;
-  constructor(options: { provider: AssetProvider; definitions: readonly T[]; timeoutMs?: number }) {
+  constructor(options: { provider: AssetProvider; definitions: readonly T[]; timeoutMs?: number; share3DResources?: boolean }) {
     const timeoutMs = options.timeoutMs ?? 15_000;
     if (!Number.isSafeInteger(timeoutMs) || timeoutMs <= 0) throw Error("Invalid prefab timeout");
     this.timeoutMs = timeoutMs;
+    if (options.share3DResources !== undefined && typeof options.share3DResources !== 'boolean') throw Error('share3DResources must be boolean');
+    this.share3DResources = options.share3DResources ?? false;
     this.definitions = new Map();
     const textures = new Set<string>();
     for (const source of options.definitions) {
@@ -132,6 +139,10 @@ export class ZhudaPrefabLibrary<T extends AnyPrefabDefinition = PrefabDefinition
       }
       this.definitions.set(entry.id, entry);
     }
+    this.shared3DCache = new ZhudaAssetCache(async (key, signal) => {
+      if (signal.aborted) throw new DOMException('Prefab cancelled', 'AbortError');
+      return createPrefabTreeResources(JSON.parse(key) as PrefabTree3D);
+    }, value=>value.dispose());
     this.cache = createProviderAssetCache<Resource>(options.provider, async (asset, signal) => {
       const sourceHash = await hash(asset.bytes);
       if (!textures.has(asset.id)) {
@@ -194,7 +205,12 @@ export class ZhudaPrefabLibrary<T extends AnyPrefabDefinition = PrefabDefinition
       let tree: PrefabTreeInstance3D | undefined;
       let created: Laya.Sprite | Laya.Sprite3D;
       if (entry.kind === "3d") {
-        tree = buildPrefabTree(entry.tree);
+        if (this.share3DResources) {
+          const lease = await this.shared3DCache.acquire(JSON.stringify(entry.tree), {signal:controller.signal});
+          scope.defer(()=>lease.release());
+          if (controller.signal.aborted) throw new DOMException('Prefab cancelled', 'AbortError');
+          tree = buildSharedPrefabTree(entry.tree, lease.value);
+        } else tree = buildPrefabTree(entry.tree);
         scope.defer(() => tree!.dispose());
         created = tree.root;
       } else {
@@ -254,6 +270,7 @@ export class ZhudaPrefabLibrary<T extends AnyPrefabDefinition = PrefabDefinition
         root, provenance: structuredClone(record),
         find: path => { if (retired) throw Error('Disposed prefab instance'); return findPrefabNode(root, path); },
         socket: id => { if (!tree) throw Error('Sockets require a 3D prefab'); return tree.socket(id) as PrefabRoot<T>; },
+        makeMaterialUnique: path => { if (!tree) throw Error('Material slots require a 3D prefab'); return tree.makeMaterialUnique(path); },
         applyState: next => { apply(next); record.state = next; instance.provenance = structuredClone(record); },
         dispose: () => {
           retired = true;
@@ -273,16 +290,16 @@ export class ZhudaPrefabLibrary<T extends AnyPrefabDefinition = PrefabDefinition
       clearTimeout(timer);
       this.active.delete(controller);
       options.signal?.removeEventListener("abort", abort);
-      if (this.disposed && !this.active.size) this.cache.dispose();
+      if (this.disposed && !this.active.size) { this.cache.dispose(); this.shared3DCache.dispose(); }
     }
   }
-  report() { return { instances: this.instances.size, ...this.cache.report() }; }
+  report() { return { instances: this.instances.size, ...this.cache.report(), shared3D: this.shared3DCache.report() }; }
   dispose() {
     if (this.disposed) return;
     this.disposed = true;
     for (const controller of this.active) controller.abort();
     for (const instance of [...this.instances]) instance.dispose();
     // Cancelled acquisitions release their leases in their finally paths.
-    if (!this.active.size) this.cache.dispose();
+    if (!this.active.size) { this.cache.dispose(); this.shared3DCache.dispose(); }
   }
 }

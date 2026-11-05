@@ -34,6 +34,13 @@ Checker 的 viewport／DPR 實測、schema 2 證據遷移，以及預覽／Scene
 `createAssetProvider` 的設定見[consumer tooling](consumer-tooling.md)。
 舊 schema 1 報告不能直接改版號重用；需重新測量。
 
+1.5.0 起，證據缺漏或過期時先用 `zhuda-laya-build --candidate` 產生獨立候選產物，
+再以 `zhuda-laya-accept` 執行設定中的 `prefabChecks`，通過後才發布同一候選版本。
+`--capture` 只建立待審的參考圖，不會放行發布。`cycles=30` 必須真正完成 30 次
+釋放／重建，且前後資源快照一致，才可通過。不得移除正式門禁來取得預覽。
+可用 `prefabComponents` 為獨立模組宣告資產與父子依賴；無法證明範圍時仍採整包失效。
+它不會自動拆解同一大檔案中的每個節點，詳見 consumer tooling 的限制。
+
 - 隔離預覽與消費端入口的 HTML 都要在腳本前宣告 `<meta charset="utf-8">`。Consumer build 會在輸出頁補上缺少的宣告；來源仍應明確寫出它。這固定瀏覽器字型測量的編碼環境，避免同一個 Label 在預覽和 Scene 產生不可重現的首幀差異。
 - 遊戲固定公開套件版本或 Git SHA，使用獨立 consumer build 與嚴格型別檢查。先查已安裝版本的公開宣告、既有元件及測試。禁止複製或直接匯入引擎內部原始碼、修改 vendor，或用 `declare const Laya: any` 繞過型別缺口。
 - 優先重用適用的 ZhudaUI／Laya UI 控件、切片與容器。特殊外觀可在遊戲的 Prefab renderer 組合公開的 Sprite、Label 或其他型別。採用自訂 adapter 時，在任務記錄寫明既有能力、缺口、作用範圍與可重現測試。可重用的引擎缺陷應帶最小失敗案例回報至引擎庫。
@@ -52,10 +59,10 @@ Checker 的 viewport／DPR 實測、schema 2 證據遷移，以及預覽／Scene
 消費專案完成 `prefabPreview` 設定後，可用引擎內建的 watch server：
 
 ```sh
-zhuda-laya-watch --project /absolute/path/to/consumer --host 127.0.0.1 --port 8890
+zhuda-laya-watch --candidate --project /absolute/path/to/consumer --host 127.0.0.1 --port 8890
 ```
 
-它先執行一次完整 consumer build，再監看 `src/`、`assets/`、`public/`、
+它先執行一次獨立 candidate build，再監看 `src/`、`assets/`、`public/`、
 `zhuda.config.json` 與 `package.json`。開啟輸出的 `prefab-preview.html` 或
 `index.html` 後，儲存 Prefab、貼圖、定義或 Scene 變更會觸發重新建置；成功時
 兩個頁面都自動重新載入，失敗時保留上一個可用輸出並在頁面 alert 顯示錯誤。

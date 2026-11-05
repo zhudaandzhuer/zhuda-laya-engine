@@ -6,12 +6,15 @@ import crypto from "node:crypto";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { requestedPrefabEnvironment, measurePrefabEnvironment, auditPrefabEnvironment } from './prefab-environment.mjs';
+import { requestedPrefabCycles, auditPrefabLifecycle } from './prefab-lifecycle.mjs';
+import { selectPrefabDependencyProof } from './prefab-dependencies.mjs';
 
 const sha = bytes => crypto.createHash("sha256").update(bytes).digest("hex");
 /** Run an actual browser draw. The consumer exposes the same report bridge in its scene. */
 export async function checkPrefab({ url, baseline, output, updateBaseline = false, chromeBinary, maxDiffPixels = 0, ...metrics }) {
   if (!Number.isSafeInteger(maxDiffPixels) || maxDiffPixels < 0) throw Error("Invalid pixel tolerance");
   const requested = requestedPrefabEnvironment(url, metrics);
+  requestedPrefabCycles(url);
   const binary = chromeBinary || process.env.CHROME_BIN || [
     "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
     "/usr/bin/google-chrome", "/usr/bin/chromium"
@@ -45,6 +48,7 @@ export async function checkPrefab({ url, baseline, output, updateBaseline = fals
     });
     let serial = 0;
     const errors = [];
+    const requests = new Set();
     ws.addEventListener("message", event => {
       const message = JSON.parse(event.data);
       const request = pending.get(message.id);
@@ -54,6 +58,8 @@ export async function checkPrefab({ url, baseline, output, updateBaseline = fals
         message.error ? request.reject(Error(message.error.message)) : request.resolve(message.result);
       }
       if (message.method === "Runtime.exceptionThrown") errors.push(message.params.exceptionDetails.text);
+      if (message.method === 'Network.responseReceived' && message.params.response.status < 400 &&
+          !message.params.response.url.endsWith('/favicon.ico')) requests.add(message.params.response.url);
     });
     const send = (method, params = {}) => new Promise((resolve, reject) => {
       const id = ++serial;
@@ -68,6 +74,7 @@ export async function checkPrefab({ url, baseline, output, updateBaseline = fals
     };
     await send("Runtime.enable");
     await send("Page.enable");
+    await send('Network.enable');
     await send('Emulation.setDeviceMetricsOverride', {
       width: requested.viewport.width, height: requested.viewport.height,
       deviceScaleFactor: requested.dpr, mobile: false,
@@ -77,11 +84,13 @@ export async function checkPrefab({ url, baseline, output, updateBaseline = fals
     for (let i = 0; i < 100; i++) {
       report = await evaluate("window.__ZHUDA_PREFAB_TEST__?.report()");
       if (report?.error) throw Error(report.error);
-      if (report?.ready) break;
+      if (report?.ready && auditPrefabLifecycle(report, url).passed) break;
       await new Promise(resolve => setTimeout(resolve, 100));
     }
     if (!report?.ready || !report.provenance || errors.length)
       throw Error("Prefab not ready or missing actual instance provenance: " + errors.join(", "));
+    const lifecycleAudit = auditPrefabLifecycle(report, url);
+    if (!lifecycleAudit.passed) throw Error(lifecycleAudit.issues.join('; '));
     await evaluate("document.fonts.ready.then(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))))");
     await evaluate("new Promise(resolve=>Laya.timer.frameOnce(4,null,resolve))");
     environment = auditPrefabEnvironment(requested, await evaluate(`(${measurePrefabEnvironment.toString()})()`));
@@ -121,9 +130,16 @@ export async function checkPrefab({ url, baseline, output, updateBaseline = fals
       if (comparison.diff) fs.writeFileSync(output + ".diff.png", Buffer.from(comparison.diff, "base64"));
       delete comparison.diff;
     }
+    // Re-read after rendering/comparison; the initial ready snapshot can be stale.
+    report = await evaluate("window.__ZHUDA_PREFAB_TEST__?.report()");
+    const finalLifecycle = auditPrefabLifecycle(report, url);
+    if (!report?.ready || report.error || errors.length || !finalLifecycle.passed)
+      throw Error('Prefab changed or failed after draw: ' + [report?.error, ...errors, ...finalLifecycle.issues].filter(Boolean).join('; '));
     const result = {
       ...report, schemaVersion: 2, passed: comparison.passed && environment.passed, url, comparison,
       environment, previewEnvironment: report.environment,
+      lifecycleAudit: finalLifecycle,
+      dependencyProof: selectPrefabDependencyProof(manifest,report,[...requests],url),
       fingerprint: manifest.fingerprint, actual: path.basename(actualPath), actualSha256: sha(actual),
       baseline: path.relative(path.dirname(output), baseline), baselineSha256: sha(fs.readFileSync(baseline)),
       browser: (await send("Browser.getVersion")).product

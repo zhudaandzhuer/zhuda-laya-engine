@@ -33,6 +33,8 @@ export interface PrefabInstance<T extends Laya.Node = Laya.Sprite> {
     find(path?: string): T;
     applyState(state: string): void;
     socket(id: string): T;
+    /** 3D only: copy this instance's material slot before changing material properties. */
+    makeMaterialUnique(path?: string): Laya.Material;
     dispose(): void;
 }
 /** Returns null for manually built substitutes. */
@@ -42,6 +44,8 @@ export declare function findPrefabNode<T extends Laya.Node>(root: T, path?: stri
 export declare class ZhudaPrefabLibrary<T extends AnyPrefabDefinition = PrefabDefinition> {
     private readonly definitions;
     private readonly cache;
+    private readonly shared3DCache;
+    private readonly share3DResources;
     private readonly active;
     private readonly instances;
     private disposed;
@@ -50,6 +54,7 @@ export declare class ZhudaPrefabLibrary<T extends AnyPrefabDefinition = PrefabDe
         provider: AssetProvider;
         definitions: readonly T[];
         timeoutMs?: number;
+        share3DResources?: boolean;
     });
     instantiate(id: string, options?: {
         state?: string;
@@ -57,6 +62,18 @@ export declare class ZhudaPrefabLibrary<T extends AnyPrefabDefinition = PrefabDe
         parent?: Laya.Node;
     }): Promise<PrefabInstance<PrefabRoot<T>>>;
     report(): {
+        shared3D: {
+            entries: number;
+            references: number;
+            pending: number;
+            loads: number;
+            phases: {
+                key: string;
+                phase: import("../runtime3d/Assets").AssetPhase;
+                references: number;
+            }[];
+            gpuReady: "requires-first-draw";
+        };
         entries: number;
         references: number;
         pending: number;
