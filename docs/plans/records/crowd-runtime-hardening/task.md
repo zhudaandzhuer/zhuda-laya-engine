@@ -1,7 +1,7 @@
 # Agent task: crowd-runtime-hardening
 
-Status: Implemented; desktop verified; target-platform acceptance Deferred  
-Owner: reusable runtime, diagnostics and consumer benchmark  
+Status: Implemented; desktop verified; target-platform acceptance Deferred
+Owner: reusable runtime, diagnostics and consumer benchmark
 Last reviewed: 2026-11-05
 
 ## Source requirement

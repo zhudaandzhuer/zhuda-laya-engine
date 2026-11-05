@@ -2,7 +2,8 @@
 
 Task: [task.md](task.md). Date: 2026-11-05. Baseline commit:
 `70c7e000eb9f4eb8eda64d8093626e30da441bb3` (1.7.0).
-Implementation commit: recorded below after committing this release.
+Implementation commit: `222b29cf4922d960c534480cab2015aa2a65347f`.
+The following documentation-only commit records this identity and final release evidence.
 
 Decision: **Implemented; desktop verified. Target-platform acceptance Deferred.**
 The runtime/toolchain changes have reproducible public-consumer and desktop
