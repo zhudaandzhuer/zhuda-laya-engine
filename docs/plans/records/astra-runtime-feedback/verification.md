@@ -3,8 +3,9 @@
 Task: [task.md](task.md)  
 Date: 2026-11-05  
 Baseline commit: `4ce9255ae9a8617f70bc9326dcf65efe3061d39d` (1.6.0)  
-Implementation: the 1.7.0 implementation commit containing this record; exact
-source hashes and baseline are in the external `source-revisions.json`.
+Implementation commit: `28aead129186887e5dada22d8b1ac268919c24b6`.
+The following documentation commit records this identity; exact source hashes
+and baseline are also in the external `source-revisions.json`.
 
 Evidence root (abbreviated **E** below):
 `/Users/yaowei/Desktop/zhuda-astra-runtime-acceptance-20261105`.
