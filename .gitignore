@@ -3,3 +3,6 @@ node_modules
 *.log
 dist/*.tgz
 dist/browser/
+
+# Reproducible local verification output; regenerate with the documented gate.
+dist/declaration-audit.json

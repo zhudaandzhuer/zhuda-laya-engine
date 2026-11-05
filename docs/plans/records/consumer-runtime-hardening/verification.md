@@ -69,7 +69,7 @@ image hashes, requested and measured environment independently.
 
 ## Limits and decision
 
-**In progress for cross-device acceptance; desktop implementation verified.**
+**Implemented for the desktop scope; cross-device acceptance remains deferred.**
 No claim for mobile audio codecs/autoplay, physical speakers, mobile GPU drivers,
 streaming/spatial audio or exact GPU memory. Primitive trees do not provide
 external textures, arbitrary factories or spline meshes. Full vendor declaration

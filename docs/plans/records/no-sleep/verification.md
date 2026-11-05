@@ -45,5 +45,5 @@ policy or keep hidden tabs awake. Browser permission policy, iOS/Android vendor
 behavior and unsupported-browser fallback remain unverified. FairyGUI remains a
 consumer dependency as documented in [`platform-adapters.md`](../../../platform-adapters.md).
 
-Decision: **In progress** because the engine and type checks pass, but the
-required real browser/device wake-lock check is unavailable.
+Decision: **Implemented for the lifecycle contract; real browser/device
+wake-lock acceptance remains deferred.**

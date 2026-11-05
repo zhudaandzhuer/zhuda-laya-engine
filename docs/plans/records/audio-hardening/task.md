@@ -1,8 +1,8 @@
 # Agent task: audio-hardening
 
-Status: In progress  
-Owner: Codex  
-Last reviewed: 2026-11-03  
+Status: Implemented; headless engine scope verified; browser/device audio deferred
+Owner: Codex
+Last reviewed: 2026-11-06
 
 ## Source requirement
 

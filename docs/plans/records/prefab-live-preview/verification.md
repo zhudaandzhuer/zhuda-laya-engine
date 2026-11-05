@@ -1,7 +1,7 @@
 # Verification: prefab live preview and fixed-size rendering
 
-Status: In progress
-Last reviewed: 2026-11-04
+Status: Implemented; engine watcher verified; consumer/device acceptance deferred
+Last reviewed: 2026-11-06
 
 ## Engine checks
 
@@ -9,8 +9,8 @@ Last reviewed: 2026-11-04
 | --- | --- | --- | --- | --- |
 | `npm run build` | working tree | macOS, Node.js 26.12.0 | PASS; SDK and compiler bundles rebuilt | `dist/sdk/zhuda-laya-engine.esm.js` |
 | `npm test -- --test-name-pattern='independent consumer|prefab watch'` | working tree | macOS, Node.js 26.12.0 | PASS; 121 tests completed, including preview generation and watcher server injection | terminal output |
-| `npm run verify` | pending final commit | macOS, Node.js 26.12.0 | PENDING final clean-tree run | terminal output |
-| `git diff --check` | pending final commit | macOS | PENDING final clean-tree run | terminal output |
+| `npm run verify` | current checkout | macOS, Node.js 26.12.0 | PASS; build, declarations, Doctor and 258 tests | terminal output |
+| `git diff --check` | current checkout | macOS | PASS | terminal output |
 
 ## Browser and consumer evidence
 

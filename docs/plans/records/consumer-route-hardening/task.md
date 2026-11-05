@@ -1,10 +1,10 @@
 # Agent task: consumer-route-hardening
 
-Status: In progress
+Status: Implemented; static consumer route verified; browser/device acceptance deferred
 
 Owner: Zhuda engine tooling
 
-Last reviewed: 2026-11-04
+Last reviewed: 2026-11-06
 
 
 ## Source requirement

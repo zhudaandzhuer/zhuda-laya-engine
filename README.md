@@ -404,7 +404,7 @@ packages/core/          SDK, effects, particles and engine adapters
 packages/compiler/      CLI builds, AST registration and visual audits
 packages/mcp-server/    Agent tools, API guardrails and examples
 packages/types/         Public and vendor runtime declarations
-packages/ci-gate/       Browser first-frame checks and reports
+packages/ci-gate/       Browser evidence, sequence and film gates
 vendor/laya-3.4.2/      Upstream runtime libraries
 assets/                 Generic fixtures and serialized prefabs
 src/                    Engine workbench and isolated asset preview

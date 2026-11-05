@@ -63,9 +63,9 @@ the exact inventory is in `/Users/yaowei/Desktop/game1/CLEANUP-REPORT.md`.
   a second server was unavailable, while the existing server served the
   validated consumer build.
 
-Decision: **In progress** until a physical-device report is attached. The
-engine and consumer desktop/build gates pass and the checked-in fallback is the
-responsive reduced-motion splash.
+Decision: **Implemented for the engine and consumer desktop/build scope; physical
+device acceptance remains deferred.** The checked-in fallback is the responsive
+reduced-motion splash.
 
 ## Rollback
 

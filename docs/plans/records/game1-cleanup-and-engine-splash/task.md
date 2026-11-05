@@ -1,8 +1,8 @@
 # Task: finish game1 handoff and add the engine splash mark
 
-Status: In progress
+Status: Implemented; desktop/build scope verified; physical-device acceptance deferred
 Owner: Codex
-Last reviewed: 2026-11-04
+Last reviewed: 2026-11-06
 
 ## Source requirement
 

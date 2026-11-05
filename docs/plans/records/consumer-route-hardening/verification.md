@@ -44,6 +44,6 @@ not author or change a consumer prefab.
 
 Static guards prove public boundary configuration and generated build structure.
 They do not prove a rendered frame, shader pixels, performance, touch behavior,
-audio behavior or device support. The route is **In progress** until the
-consumer-side browser and device reports are supplied; the engine tooling
-portion is verified by the checks above.
+audio behavior or device support. The route is **implemented for static consumer
+tooling**; consumer-side browser and device reports remain deferred. The engine
+tooling portion is verified by the checks above.

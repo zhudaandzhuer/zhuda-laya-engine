@@ -50,7 +50,8 @@ not applicable; existing isolated prefab tests remain part of the 111-test pass.
 The runtime contracts are implemented and verified in Node and strict public type
 fixtures. Real Laya browser traversal, GPU Graphics backend behavior, and mobile
 performance remain `UNAVAILABLE` until a consumer browser/device report runs.
-Decision: **In progress** pending those consumer acceptance checks.
+Decision: **Implemented for the deterministic runtime contracts; consumer
+browser/device acceptance remains deferred.**
 
 ## Rollback
 

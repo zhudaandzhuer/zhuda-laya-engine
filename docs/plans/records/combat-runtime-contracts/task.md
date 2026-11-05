@@ -1,8 +1,8 @@
 # Agent task: combat-runtime-contracts
 
-Status: In progress
+Status: Implemented; deterministic contracts verified; browser/device acceptance deferred
 Owner: Codex
-Last reviewed: 2026-11-04
+Last reviewed: 2026-11-06
 
 ## Source requirement
 

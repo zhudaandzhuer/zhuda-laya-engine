@@ -1,8 +1,8 @@
 # Agent task: no-sleep
 
-Status: In progress  
-Owner: Codex  
-Last reviewed: 2026-11-03
+Status: Implemented; lifecycle contracts verified; browser/device acceptance deferred
+Owner: Codex
+Last reviewed: 2026-11-06
 
 ## Source requirement
 

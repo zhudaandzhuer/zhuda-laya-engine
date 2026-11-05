@@ -1,8 +1,8 @@
 # Agent task: consumer-runtime-hardening
 
-Status: In progress  
-Owner: Engine runtime and consumer tooling  
-Last reviewed: 2026-11-05
+Status: Implemented; desktop scope verified; cross-device acceptance deferred
+Owner: Engine runtime and consumer tooling
+Last reviewed: 2026-11-06
 
 ## Source requirement
 
