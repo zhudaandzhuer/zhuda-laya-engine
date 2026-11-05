@@ -1,0 +1,53 @@
+/** A deterministic authored model, shared by isolated selection and all presentation modes. */
+export function modelBrowserExample(entry, document) {
+ return `<!doctype html><html lang="zh-Hant"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Zhuda 模型檢視 ${entry.version}</title>
+<style>body{margin:0;background:#101924;color:#e6f0fa;font:15px/1.6 system-ui}main{max-width:1100px;margin:auto;padding:24px}#view{width:min(100%,720px);aspect-ratio:3/2;position:relative;overflow:hidden}button,select,input{margin:8px 8px 8px 0;padding:8px}pre{white-space:pre-wrap;max-height:340px;overflow:auto;background:#182737;padding:16px}label{display:inline-block}small{color:#a9bbce}</style>
+<main><h1>模型檢視 / ${entry.version}</h1><p>同一模型切換無後製、遊戲與即時電影後製；模式保留材質及幾何。下方是中性 Morph 回歸模型，可載入自己的自包含 GLB / glTF。</p>
+<div id="view"></div><label>展示模式 <select id="mode"><option value="raw">Raw · 無後製</option><option value="gameplay">Gameplay · ACES</option><option value="cinematic">Cinematic · AO / Bloom / ACES</option></select></label>
+<label>資產 <input id="file" type="file" accept=".glb,.gltf"></label><br>
+<label>動畫 <select id="animation"></select></label><button id="play">播放</button><button id="pause">暫停</button>
+<label>Morph <select id="morph"></select><input id="weight" type="range" min="0" max="1" step="0.01" value="0"></label>
+<button id="cycles">30 次載入／釋放</button><button id="dispose">釋放展示</button>
+<p><small>Raw 保留原始材質與場景光照。Cinematic 是即時後製，不代表離線電影輸出。相容性報告不是完整 glTF 或商品保真認證；此示範沒有自動取景、HDR studio 或商家場景美術。</small></p><pre id="report">載入中</pre></main>
+<script src="${entry.file}" integrity="${entry.integrity}" crossorigin="anonymous"></script>
+<script>
+const {ZhudaEngine,Zhuda3D,ZhudaModelLibrary,ZhudaAssetShowcase,ZhudaModelInspector,inspectSceneResources}=Zhuda;
+const params=new URLSearchParams(location.search),source=${JSON.stringify(document)},bytes=new Map([['asset-probe',new TextEncoder().encode(JSON.stringify(source))]]);
+const provider={name:'inline-model-inspector',async load(id,options){if(options?.signal?.aborted)throw new DOMException('Cancelled','AbortError');if(!bytes.has(id))throw Error('Unknown asset '+id);return {id,bytes:bytes.get(id)};}};
+let context,library,show,inspector,ready=false,error=null,disposed=false,completedCycles=0,serial=0;
+const selection={id:'asset-probe',node:params.get('node')||'',state:params.get('state')||'rest'};
+const report=()=>({ready,error,disposed,selection,bundle:ZhudaBundle,mode:show?.mode,inspection:show?.instance?show.inspect():null,library:library?.report(),completedCycles,resources:context?inspectSceneResources():null});
+const render=()=>document.querySelector('#report').textContent=JSON.stringify(report(),null,2);
+const safely=fn=>async()=>{try{await fn();error=null;}catch(e){error=String(e);}render();};
+function controls(){
+ inspector=new ZhudaModelInspector(show.instance);const info=inspector.inspect();
+ const animations=document.querySelector('#animation');animations.replaceChildren();
+ for(const a of info.animations){const option=document.createElement('option');option.value=JSON.stringify(a);option.textContent=a.name+' · '+a.durationSeconds+'s';animations.append(option);inspector.setAnimationSpeed(a.path,0);}
+ const morphs=document.querySelector('#morph');morphs.replaceChildren();
+ for(const n of info.nodes)for(const name of Object.keys(n.morphWeights)){const option=document.createElement('option');option.value=JSON.stringify({path:n.path,name});option.textContent=n.name+' / '+name;morphs.append(option);}
+ if(selection.node){const target=info.nodes.find(n=>n.name===selection.node);if(!target)throw Error('Unknown selection');for(const n of info.nodes)if(n.path!==target.path&&!target.path.startsWith(n.path+'/')&&!n.path.startsWith(target.path+'/'))inspector.node(n.path).active=false;}
+ if(selection.state==='weighted')for(const n of info.nodes)for(const name of Object.keys(n.morphWeights))inspector.setMorphWeight(n.path,name,1);
+}
+async function cycles(){for(let i=0;i<30;i++){show.clear();await show.load('asset-probe');controls();show.setMode(['raw','gameplay','cinematic'][i%3]);ZhudaEngine.flushRenderFrames(3);completedCycles=i+1;}}
+async function main(){
+ context=await ZhudaEngine.boot({container:'#view',width:720,height:480,dprCap:Number(params.get('dpr')||2),features:[...ZhudaBundle.features],preserveDrawingBuffer:true});
+ const scene=Zhuda3D.createScene3D(context.rootScene,{ambientColor:[.4,.4,.4,1]});const camera=Zhuda3D.createCamera(scene,{position:[0,0,3],clearColor:[.04,.07,.11,1]});
+ Zhuda3D.createDirectionalLight(scene,{rotationEuler:[-35,-25,0],intensity:1});
+ library=new ZhudaModelLibrary({provider,maxIdle:0});show=new ZhudaAssetShowcase({library,parent:scene,camera});await show.load('asset-probe');controls();show.setMode(params.get('mode')||'raw');
+ context.runtime.start(()=>{});ZhudaEngine.flushRenderFrames(3);
+ while(!window.__ZHUDA_SPLASH__?.completed)await new Promise(requestAnimationFrame);
+ ready=true;render();
+ document.querySelector('#mode').onchange=safely(()=>show.setMode(document.querySelector('#mode').value));
+ document.querySelector('#play').onclick=safely(()=>{const a=JSON.parse(document.querySelector('#animation').value);inspector.play(a.path,a.name,{layer:a.layer});});
+ document.querySelector('#pause').onclick=safely(()=>{for(const a of inspector.inspect().animations)inspector.setAnimationSpeed(a.path,0);});
+ document.querySelector('#weight').oninput=safely(()=>{const m=JSON.parse(document.querySelector('#morph').value);for(const a of inspector.inspect().animations)inspector.setAnimationSpeed(a.path,0);inspector.setMorphWeight(m.path,m.name,Number(document.querySelector('#weight').value));});
+ document.querySelector('#cycles').onclick=safely(cycles);
+ document.querySelector('#file').onchange=safely(async()=>{const file=document.querySelector('#file').files[0];if(!file)return;const id='upload-'+(++serial);bytes.set(id,new Uint8Array(await file.arrayBuffer()));try{if(await show.load(id)){selection.id=id;selection.node='';selection.state='rest';controls();}}finally{bytes.delete(id);}});
+ document.querySelector('#dispose').onclick=dispose;
+}
+function dispose(){if(disposed)return;disposed=true;ready=false;show?.dispose();library?.dispose();context?.dispose();document.querySelectorAll('input,select,button').forEach(e=>e.disabled=true);render();}
+window.addEventListener('pagehide',dispose,{once:true});
+window.__ZHUDA_MODEL_TEST__={report,cycles,dispose,get showcase(){return show;},get inspector(){return inspector;}};
+main().catch(e=>{error=String(e);dispose();});
+</script></html>`;
+}

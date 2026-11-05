@@ -19,3 +19,7 @@ export * from "./CameraCollision.ts";
 export * from "./Filmic.ts";
 export { installLaya342LifecycleFix } from "./Laya342Adapters.ts";
 export * from "./CrowdPresentation.ts";
+export * from "./ModelInspector.ts";
+export * from "./AssetShowcase.ts";
+export { inspectGltfDocument, inspectGltfAsset, gltfExtensionCapabilities, ZhudaModelCompatibilityError } from "./ModelCompatibility.ts";
+export type { ModelDiagnostic, ModelCompatibilityReport, ModelSourceInventory, GltfExtensionCapability } from "./ModelCompatibility.ts";

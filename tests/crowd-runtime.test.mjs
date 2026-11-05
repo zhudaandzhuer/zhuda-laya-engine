@@ -100,7 +100,7 @@ test('provider models share parsing, release byte leases, run 30 cycles and reje
 test('model deadline and caller cancellation are isolated; late parse/provider completion cannot leak',async()=>{
  const previous=globalThis.Laya;let resolveLoad,resolveParse,bytesReleased=0,destroyed=0;
  class Resource {async _parse(){await new Promise(r=>{resolveParse=r;});} _addReference(){} _removeReference(){}create(){const make=()=>({numChildren:0,clone:make,destroy(){}});return make();}destroy(){this.destroyed=true;destroyed++;}}
- globalThis.Laya={glTFResource:Resource};const provider={name:'late',load:()=>new Promise(r=>{resolveLoad=()=>r({id:'actor',bytes:new TextEncoder().encode('{}'),release(){bytesReleased++;}});})};
+ globalThis.Laya={glTFResource:Resource};const provider={name:'late',load:()=>new Promise(r=>{resolveLoad=()=>r({id:'actor',bytes:new TextEncoder().encode('{"asset":{"version":"2.0"}}'),release(){bytesReleased++;}});})};
  try{const library=new ZhudaModelLibrary({provider,maxIdle:0,timeoutMs:50});
  const a=library.instantiate('actor',{timeoutMs:5});await assert.rejects(a,e=>e.name==='TimeoutError');resolveLoad();await new Promise(r=>setTimeout(r,0));assert.equal(bytesReleased,1);assert.equal(destroyed,0);
  const c=new AbortController();const b=library.instantiate('actor',{signal:c.signal}),d=library.instantiate('actor',{timeoutMs:1000});resolveLoad();await new Promise(r=>setTimeout(r,0));c.abort();await assert.rejects(b,e=>e.name==='AbortError');resolveParse();const instance=await d;instance.dispose();assert.equal(destroyed,1);assert.equal(bytesReleased,2);
@@ -116,7 +116,7 @@ test('model cache builds one off-scene template and shares clips until the last 
  const make=()=>{refs++;return{numChildren:0,getComponent:()=>animator,clone(){cloned++;return make();},destroy(){refs--;}};};
  class Resource{async _parse(){}create(){created++;return make();}_addReference(){}_removeReference(){}destroy(){this.destroyed=true;}}
  globalThis.Laya={glTFResource:Resource,Animator:class{}};
- try{const library=new ZhudaModelLibrary({maxIdle:0,provider:{name:'embedded',async load(){return{id:'model',bytes:new TextEncoder().encode('{}')};}}});
+ try{const library=new ZhudaModelLibrary({maxIdle:0,provider:{name:'embedded',async load(){return{id:'model',bytes:new TextEncoder().encode('{"asset":{"version":"2.0"}}')};}}});
  const a=await library.instantiate('model'),b=await library.instantiate('model');assert.equal(created,1);assert.equal(cloned,2);assert.equal(refs,3);a.dispose();assert.equal(clip.destroyed,false);b.dispose();assert.equal(refs,0);assert.equal(destroyed,1);library.dispose();
  }finally{globalThis.Laya=previous;}
 });
@@ -135,6 +135,6 @@ test('model clones preserve non-first default animation states authored by glTF'
  return{numChildren:0,layer,getComponent:()=>({controllerLayerCount:1,getControllerLayer:()=>layer}),clone:()=>make('idle'),destroy(){}};};
  class Resource{async _parse(){}create(){return make('run');}_addReference(){}_removeReference(){}destroy(){this.destroyed=true;}}
  globalThis.Laya={glTFResource:Resource,Animator:class{}};
- try{const library=new ZhudaModelLibrary({maxIdle:0,provider:{name:'embedded',async load(){return{id:'model',bytes:new TextEncoder().encode('{}')};}}});const actor=await library.instantiate('model');assert.equal(actor.node.layer.defaultState.name,'run');actor.dispose();library.dispose();}
+ try{const library=new ZhudaModelLibrary({maxIdle:0,provider:{name:'embedded',async load(){return{id:'model',bytes:new TextEncoder().encode('{"asset":{"version":"2.0"}}')};}}});const actor=await library.instantiate('model');assert.equal(actor.node.layer.defaultState.name,'run');actor.dispose();library.dispose();}
  finally{globalThis.Laya=previous;}
 });

@@ -19,24 +19,28 @@ SDK 無法自行繞過政策，需用允許的附件資源或一般 HTTP 預覽�
 
 ## 固定版本與載入方式
 
-本次固定發行：**1.8.0**（群體呈現、模型生命週期、特效預算與效能量測）。
+本次固定發行：**1.9.0**（模型相容性、Morph 修復、Inspector 與三種展示模式）。
+[1.8.0 固定版本](https://game.qianlongxundao.com/apps/zhuda-engine-sdk/releases/02b2dc8ba9dea9d1f1cd43a37226641c/)、
 [1.7.0 固定版本](https://game.qianlongxundao.com/apps/zhuda-engine-sdk/releases/e69ecb8850e43d172389f96ab0a9430e/)及 1.6.0 保留。
 
-`https://game.qianlongxundao.com/apps/zhuda-engine-sdk/releases/02b2dc8ba9dea9d1f1cd43a37226641c/`
+`https://game.qianlongxundao.com/apps/zhuda-engine-sdk/releases/c61d0a83b7094ff5055302d2f8235b8b/`
 
 | 檔案 | 包含內容 | 未壓縮 bytes |
 | --- | --- | ---: |
-| `zhuda-2d.js` | core、2D WebGL、UI、公開 Zhuda SDK | 1,583,195 |
-| `zhuda-3d.js` | 上述內容加上 3D、3D WebGL | 2,344,829 |
+| `zhuda-2d.js` | core、2D WebGL、UI、公開 Zhuda SDK | 1,600,154 |
+| `zhuda-3d.js` | 上述內容加上 3D、3D WebGL | 2,361,788 |
+| `zhuda-3d-gltf.js` | 3D 加上 glTF、postProcess；模型 Inspector 範例 | 2,521,636 |
 
-這兩個基本 profile 沒有打入額外的 Spine、物理、粒子、glTF 或其他 plugin。
+這兩個基本 profile 沒有打入額外的 Spine、物理、粒子、glTF 或其他 plugin。模型展示可選新增的 `3d-gltf` profile；
+[可複製的 HTML 模型檢視器](../examples/browser-sdk/3d-gltf.html)
+附帶相容性報告、動畫／Morph、三模式與重載測試。
 公共函式仍與 package root 同一份；功能若依賴未載入的底層模組，不能只因
-命名空間有函式就宣稱該功能可用。需要這些模組時走既有 npm consumer pipeline。
+命名空間有函式就宣稱該功能可用。需要其他未打入的模組時走既有 npm consumer pipeline。
 
 ```html
 <script
-  src="https://game.qianlongxundao.com/apps/zhuda-engine-sdk/releases/02b2dc8ba9dea9d1f1cd43a37226641c/zhuda-3d.js"
-  integrity="sha384-Ndz1PeOiHamG0OAKRQ+yh+kd8bAEDSPgvZK/cgUNoLNlKDMx3suTJZopWG/c9ZSM"
+  src="https://game.qianlongxundao.com/apps/zhuda-engine-sdk/releases/c61d0a83b7094ff5055302d2f8235b8b/zhuda-3d.js"
+  integrity="sha384-KCd5aaUX6virCJCqVbwb/6R9t3tuyhxdMjRr/tC1gvzm9TY6qjI8DCLFYGMiQa0A"
   crossorigin="anonymous"></script>
 <script>
 const { ZhudaEngine, Zhuda3D } = Zhuda;
@@ -89,7 +93,7 @@ npm run build
 npm run build:browser
 # installed public package
 zhuda-laya-browser-sdk --out ./sdk-release
-# optional: --profile 2d or --profile 3d
+# optional: --profile 2d, --profile 3d, or --profile 3d-gltf
 ```
 
 預設輸出 `dist/browser/<version>`。相同內容可以重用；若同目錄已有不同產物，
@@ -106,6 +110,7 @@ zhuda-laya-browser-sdk --out ./sdk-release
 正式遊戲依 [consumer route](consumer-route.md) 保留版本、型別、Prefab 比對、
 Scene／操作及目標裝置證據。Browser 範例的按鈕／計數也不能代替你的遊戲驗收。
 
+1.9.0 結果見[模型展示與 SDK 驗收](plans/records/asset-showcase-hardening/verification.md)。
 1.8.0 結果見 [群體與 SDK 發行驗收](plans/records/crowd-runtime-hardening/verification.md)；
 1.7.0 結果見 [當輪驗收記錄](plans/records/astra-runtime-feedback/verification.md)；
 原始 Browser SDK 範圍見 [1.6.0 記錄](plans/records/browser-sdk-delivery/verification.md)。

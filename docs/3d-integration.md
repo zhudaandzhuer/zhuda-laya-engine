@@ -94,3 +94,10 @@ download／parse／ready 與 GPU 已顯示分開：report 的 `gpuReady: require
 ## 群體角色接入（1.8.0）
 
 模型 provider／共享動畫、呈現排程、遠端快照、native 動畫降頻、特效降級與長視窗 profiler，見 [群體呈現契約](crowd-runtime.md)。獨立壓測與各平台未驗項分開紀錄；普通網格合批不能替代骨骼角色驗收。
+
+## Model seller / inspector integration (1.9.0)
+
+Use the [model showcase contract](model-showcase.md) for glTF compatibility reports,
+Morph repairs, typed inspection and same-instance Raw/Gameplay/Cinematic modes.
+Required unsupported extensions reject; implemented handlers are not a visual
+conformance certificate. Browser HTML needs the `3d-gltf` profile.

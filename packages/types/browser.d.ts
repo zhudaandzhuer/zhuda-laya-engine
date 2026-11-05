@@ -4,7 +4,7 @@ export as namespace Zhuda;
 declare global {
   const ZhudaBundle: Readonly<{
     version: string;
-    profile: '2d' | '3d';
+    profile: '2d' | '3d' | '3d-gltf';
     features: readonly import('./zhuda-bootstrap').EngineFeatureTag[];
     libraries: readonly string[];
     sourceFingerprint: string;

@@ -1,5 +1,5 @@
 /**
- * zhuda-laya-engine v1.8.0 — 豬大 LayaAir (AI-Agent-Friendly Fork Edition)
+ * zhuda-laya-engine v1.9.0 — 豬大 LayaAir (AI-Agent-Friendly Fork Edition)
  * Repository: https://github.com/zhudaandzhuer/zhuda-laya-engine
  * Upstream Official: LayaAir Engine 3.4.2 by Layabox (https://layaair.com/ | https://github.com/layabox/LayaAir)
  * License: MIT
@@ -48,6 +48,7 @@ __export(index_exports, {
   ZhudaAnimatorLOD: () => ZhudaAnimatorLOD,
   ZhudaAssetCache: () => ZhudaAssetCache,
   ZhudaAssetSerializer: () => ZhudaAssetSerializer,
+  ZhudaAssetShowcase: () => ZhudaAssetShowcase,
   ZhudaBenchmarkEngine: () => ZhudaBenchmarkEngine,
   ZhudaCameraCoordinates: () => ZhudaCameraCoordinates,
   ZhudaCameraRig: () => ZhudaCameraRig,
@@ -71,6 +72,8 @@ __export(index_exports, {
   ZhudaLayaRibbonRenderer3D: () => ZhudaLayaRibbonRenderer3D,
   ZhudaLayeredClock: () => ZhudaLayeredClock,
   ZhudaLitSurfaceMaterial: () => ZhudaLitSurfaceMaterial,
+  ZhudaModelCompatibilityError: () => ZhudaModelCompatibilityError,
+  ZhudaModelInspector: () => ZhudaModelInspector,
   ZhudaModelLibrary: () => ZhudaModelLibrary,
   ZhudaObjectPool: () => ZhudaObjectPool,
   ZhudaParticleEventLink: () => ZhudaParticleEventLink,
@@ -125,7 +128,10 @@ __export(index_exports, {
   disposeMigratedMaterial: () => disposeMigratedMaterial,
   disposeSurfaceMaterial: () => disposeSurfaceMaterial,
   findPrefabNode: () => findPrefabNode,
+  gltfExtensionCapabilities: () => gltfExtensionCapabilities,
   identity4: () => identity4,
+  inspectGltfAsset: () => inspectGltfAsset,
+  inspectGltfDocument: () => inspectGltfDocument,
   inspectPrefabInstance: () => inspectPrefabInstance,
   inspectSceneResources: () => inspectSceneResources,
   installLaya342LifecycleFix: () => installLaya342LifecycleFix,
@@ -1238,19 +1244,19 @@ var ZhudaSceneMutationQueue = class {
 
 // packages/core/runtime3d/Laya342Adapters.ts
 var patched = /* @__PURE__ */ new WeakSet();
-function resizeLaya342Stage(runtime, width, height, designWidth, designHeight, dpr, canvas) {
+function resizeLaya342Stage(runtime2, width, height, designWidth, designHeight, dpr, canvas) {
   const descriptor = Object.getOwnPropertyDescriptor(
-    runtime.Browser,
+    runtime2.Browser,
     "pixelRatio"
   );
   try {
-    Object.defineProperty(runtime.Browser, "pixelRatio", {
+    Object.defineProperty(runtime2.Browser, "pixelRatio", {
       configurable: true,
       get: () => dpr
     });
-    runtime.stage.size(designWidth, designHeight);
-    runtime.stage.setScreenSize(width * dpr, height * dpr);
-    const matrix = runtime.stage._canvasTransform;
+    runtime2.stage.size(designWidth, designHeight);
+    runtime2.stage.setScreenSize(width * dpr, height * dpr);
+    const matrix = runtime2.stage._canvasTransform;
     if (canvas?.getBoundingClientRect && matrix) {
       const rect = canvas.getBoundingClientRect();
       const x = [
@@ -1270,12 +1276,12 @@ function resizeLaya342Stage(runtime, width, height, designWidth, designHeight, d
     }
   } finally {
     if (descriptor)
-      Object.defineProperty(runtime.Browser, "pixelRatio", descriptor);
-    else Reflect.deleteProperty(runtime.Browser, "pixelRatio");
+      Object.defineProperty(runtime2.Browser, "pixelRatio", descriptor);
+    else Reflect.deleteProperty(runtime2.Browser, "pixelRatio");
   }
 }
-function installLaya342LifecycleFix(runtime = globalThis.Laya) {
-  const prototype = runtime?.WebRender3DProcess?.prototype;
+function installLaya342LifecycleFix(runtime2 = globalThis.Laya) {
+  const prototype = runtime2?.WebRender3DProcess?.prototype;
   if (!prototype || patched.has(prototype)) return;
   const destroy = prototype.destroy;
   if (typeof destroy !== "function") return;
@@ -1293,11 +1299,11 @@ function installLaya342LifecycleFix(runtime = globalThis.Laya) {
   };
   patched.add(prototype);
 }
-function destroyLaya342ModelTree(node, runtime = globalThis.Laya) {
+function destroyLaya342ModelTree(node, runtime2 = globalThis.Laya) {
   const pending = [];
   const collect = (n) => {
     for (const component of n._components ?? [])
-      pending.push({ component, queue: (component._driver || runtime?.stage?._componentDriver)?._toDestroys });
+      pending.push({ component, queue: (component._driver || runtime2?.stage?._componentDriver)?._toDestroys });
     for (let i = 0; i < (n.numChildren || 0); i++) collect(n.getChildAt(i));
   };
   collect(node);
@@ -2042,6 +2048,310 @@ function configureSurfacePasses(camera, requirements, maxAdditionalPasses) {
   };
 }
 
+// packages/core/runtime3d/Laya342GltfAdapter.ts
+var prepared = /* @__PURE__ */ new WeakSet();
+function prepareLaya342GltfResource(resource, runtime2) {
+  if (prepared.has(resource)) return;
+  prepared.add(resource);
+  for (const method of ["createMeshSprite3D", "createSkinnedMeshSprite3D"]) {
+    const original = resource[method];
+    if (typeof original !== "function") continue;
+    resource[method] = function(definition) {
+      const node = original.call(this, definition);
+      if (definition.weights !== void 0) {
+        const renderer = node.getComponent(runtime2.SkinnedMeshRenderer) || node.getComponent(runtime2.MeshRenderer);
+        const morphs = node.getComponent(runtime2.MeshFilter)?.sharedMesh?.morphTargetData;
+        if (!renderer || !morphs || definition.weights.length !== morphs.channelCount) {
+          destroyLaya342ModelTree(node, runtime2);
+          throw Error("glTF node morph weights do not match its mesh.");
+        }
+        for (let i = 0; i < morphs.channelCount; i++)
+          renderer.setMorphChannelWeight(morphs.getMorphChannelbyIndex(i).name, definition.weights[i]);
+      }
+      return node;
+    };
+  }
+  const createClip = resource.createAnimatorClip;
+  if (typeof createClip !== "function") return;
+  resource.createAnimatorClip = function(animation, root) {
+    var _a;
+    const tracks = [];
+    for (const channel of animation.channels) {
+      const sampler = animation.samplers[channel.sampler];
+      if (channel.target.path !== "weights" || sampler.interpolation !== "CUBICSPLINE") continue;
+      const node = this._nodes[channel.target.node];
+      const morphs = node?.getComponent(runtime2.MeshFilter)?.sharedMesh?.morphTargetData;
+      if (!morphs) throw Error("CUBICSPLINE weights require a morph target mesh.");
+      const times = this.getBufferwithAccessorIndex(sampler.input), values = this.getBufferwithAccessorIndex(sampler.output);
+      const count = morphs.channelCount;
+      if (!count || !times || times.length < 1 || !values || values.length !== times.length * count * 3)
+        throw Error("Invalid CUBICSPLINE morph sample count.");
+      for (let i = 0; i < times.length; i++) if (!Number.isFinite(times[i]) || times[i] < 0 || i > 0 && times[i] <= times[i - 1])
+        throw Error("Invalid CUBICSPLINE morph sample times.");
+      for (let i = 0; i < values.length; i++) if (!Number.isFinite(values[i])) throw Error("Invalid CUBICSPLINE morph sample value.");
+      tracks.push({
+        paths: this.getAnimationPath(root, node),
+        owner: node.getComponent(runtime2.SkinnedMeshRenderer) ? "SkinnedMeshRenderer" : "MeshRenderer",
+        names: Array.from({ length: count }, (_, i) => morphs.getMorphChannelbyIndex(i).name),
+        times,
+        values
+      });
+    }
+    const clip = createClip.call(this, animation, root);
+    try {
+      for (const track of tracks) for (let morph = 0; morph < track.names.length; morph++) {
+        const name = track.names[morph], index = clip._nodes.count, node = new runtime2.KeyframeNode();
+        clip._nodes.count = index + 1;
+        clip._nodes.setNodeByIndex(index, node);
+        node._indexInList = index;
+        node.type = 0;
+        node._setOwnerPathCount(track.paths.length);
+        track.paths.forEach((p, i) => node._setOwnerPathByIndex(i, p));
+        const ownerPath = node._joinOwnerPath("/");
+        ((_a = clip._nodesMap)[ownerPath] || (_a[ownerPath] = [])).push(node);
+        node.propertyOwner = track.owner;
+        node._setPropertyCount(2);
+        node._setPropertyByIndex(0, "morphTargetValues");
+        node._setPropertyByIndex(1, name);
+        node.fullPath = `${ownerPath}.${track.owner}.morphTargetValues.${name}`;
+        clip._nodesDic[node.fullPath] = node.fullPath;
+        node.callbackFunData = "_changeMorphTargetValue";
+        node.callParams = [name];
+        node.propertyChangePath = "morphTargetValues";
+        for (let key = 0; key < track.times.length; key++) {
+          const frame = new runtime2.FloatKeyframe(), start = key * track.names.length * 3;
+          frame.time = track.times[key];
+          frame.inTangent = track.values[start + morph];
+          frame.value = track.values[start + track.names.length + morph];
+          frame.outTangent = track.values[start + track.names.length * 2 + morph];
+          node._setKeyframeByIndex(key, frame);
+        }
+        clip._duration = Math.max(clip._duration, track.times[track.times.length - 1]);
+      }
+      return clip;
+    } catch (error) {
+      clip.destroy();
+      throw error;
+    }
+  };
+}
+function copyLaya342MorphWeights(source, target, runtime2) {
+  const a = source.getComponent?.(runtime2.MeshRenderer), b = target.getComponent?.(runtime2.MeshRenderer);
+  if (a && b) for (const [name, weight] of Object.entries(a.morphTargetValues ?? {}))
+    b.setMorphChannelWeight(name, weight);
+}
+function createLaya342ModelTemplate(resource, runtime2) {
+  try {
+    return resource.create();
+  } catch (error) {
+    const nodes = /* @__PURE__ */ new Set(), clips = /* @__PURE__ */ new Set();
+    const collect = (node) => {
+      if (!node || nodes.has(node)) return;
+      nodes.add(node);
+      const animator = runtime2.Animator && node.getComponent?.(runtime2.Animator);
+      if (animator) {
+        for (let layer = 0; layer < animator.controllerLayerCount; layer++)
+          for (const state of animator.getControllerLayer(layer).states) if (state.clip) clips.add(state.clip);
+      }
+      for (let i = 0; i < (node.numChildren || 0); i++) collect(node.getChildAt(i));
+    };
+    for (const node of [...resource._scenes ?? [], ...resource._nodes ?? []]) collect(node);
+    for (const node of nodes) if (!node.destroyed) destroyLaya342ModelTree(node, runtime2);
+    for (const clip of clips) if (!clip.destroyed && clip.referenceCount === 0) clip.destroy();
+    if (resource._scenes) resource._scenes.length = 0;
+    if (resource._nodes) resource._nodes.length = 0;
+    throw error;
+  }
+}
+
+// packages/core/runtime3d/ModelCompatibility.ts
+var extensionNames = [
+  "KHR_materials_anisotropy",
+  "KHR_materials_clearcoat",
+  "KHR_materials_emissive_strength",
+  "KHR_materials_ior",
+  "KHR_materials_iridescence",
+  "KHR_materials_sheen",
+  "KHR_materials_specular",
+  "KHR_materials_transmission",
+  "KHR_materials_unlit",
+  "KHR_materials_volume",
+  "KHR_texture_transform"
+];
+var gltfExtensionCapabilities = Object.freeze(
+  extensionNames.map((name) => Object.freeze({
+    name,
+    implementation: "native",
+    requiredRenderInputs: Object.freeze(name === "KHR_materials_transmission" ? ["opaqueColor"] : []),
+    visualConformance: "not-certified"
+  }))
+);
+var record = (v) => v !== null && typeof v === "object" && !Array.isArray(v) ? v : {};
+var list = (v) => Array.isArray(v) ? v : [];
+var records = (v) => list(v).map(record);
+var numeric = (v, fallback = 0) => typeof v === "number" && Number.isFinite(v) ? v : fallback;
+var indexOf = (v) => Number.isInteger(v) && v >= 0 ? v : null;
+var label = (v) => typeof v === "string" ? v : "";
+var numbers = (v) => list(v).map((x) => numeric(x));
+function freeze(value) {
+  if (value && typeof value === "object" && !Object.isFrozen(value)) {
+    for (const child of Object.values(value)) freeze(child);
+    Object.freeze(value);
+  }
+  return value;
+}
+function inventory(d) {
+  const meshes = records(d.meshes), accessors = records(d.accessors);
+  return {
+    nodes: records(d.nodes).map((n, index) => ({
+      index,
+      name: label(n.name),
+      mesh: indexOf(n.mesh),
+      skin: indexOf(n.skin),
+      children: numbers(n.children),
+      morphWeights: numbers(n.weights ?? meshes[indexOf(n.mesh) ?? -1]?.weights)
+    })),
+    meshes: meshes.map((m, index) => ({ index, name: label(m.name), primitives: records(m.primitives).map((p) => {
+      const attributes = record(p.attributes), vertices = numeric(accessors[indexOf(attributes.POSITION) ?? -1]?.count);
+      const indices = p.indices === void 0 ? vertices : numeric(accessors[indexOf(p.indices) ?? -1]?.count);
+      const mode = numeric(p.mode, 4);
+      return {
+        mode,
+        vertices,
+        indices,
+        triangles: mode === 4 ? indices / 3 : mode === 5 || mode === 6 ? Math.max(0, indices - 2) : null,
+        material: indexOf(p.material),
+        morphTargets: list(p.targets).length,
+        attributes: Object.keys(attributes)
+      };
+    }) })),
+    materials: records(d.materials).map((m, index) => {
+      const pbr = record(m.pbrMetallicRoughness), textures = [];
+      const add = (slot, v, colorSpace) => {
+        const info = record(v), texture = indexOf(info.index);
+        if (texture !== null) textures.push({ slot, texture, texCoord: numeric(record(record(info.extensions).KHR_texture_transform).texCoord, numeric(info.texCoord)), colorSpace });
+      };
+      add("baseColor", pbr.baseColorTexture, "srgb");
+      add("metallicRoughness", pbr.metallicRoughnessTexture, "linear");
+      add("normal", m.normalTexture, "linear");
+      add("occlusion", m.occlusionTexture, "linear");
+      add("emissive", m.emissiveTexture, "srgb");
+      for (const [extension, value] of Object.entries(record(m.extensions)))
+        for (const [name, texture] of Object.entries(record(value))) if (name.endsWith("Texture"))
+          add(`${extension}.${name}`, texture, name === "sheenColorTexture" || name === "specularColorTexture" ? "srgb" : "linear");
+      return {
+        index,
+        name: label(m.name),
+        alphaMode: label(m.alphaMode) || "OPAQUE",
+        doubleSided: m.doubleSided === true,
+        baseColor: pbr.baseColorFactor === void 0 ? [1, 1, 1, 1] : numbers(pbr.baseColorFactor),
+        metallic: numeric(pbr.metallicFactor, 1),
+        roughness: numeric(pbr.roughnessFactor, 1),
+        extensions: Object.keys(record(m.extensions)),
+        textures
+      };
+    }),
+    textures: records(d.textures).map((t, index) => ({ index, image: indexOf(t.source), sampler: indexOf(t.sampler) })),
+    images: records(d.images).map((i, index) => ({
+      index,
+      name: label(i.name),
+      delivery: typeof i.uri === "string" && !i.uri.startsWith("data:") ? "external" : "embedded",
+      mimeType: typeof i.mimeType === "string" ? i.mimeType : null
+    })),
+    animations: records(d.animations).map((a, index) => ({ index, name: label(a.name), channels: records(a.channels).map((c) => {
+      const target = record(c.target), sampler = records(a.samplers)[indexOf(c.sampler) ?? -1];
+      return { node: indexOf(target.node), path: label(target.path), interpolation: label(sampler?.interpolation) || "LINEAR" };
+    }) }))
+  };
+}
+function inspectGltfDocument(document2) {
+  const d = record(document2), diagnostics = [];
+  const add = (issue) => diagnostics.push(issue);
+  if (record(d.asset).version !== "2.0") add({ code: "INVALID_DOCUMENT", severity: "error", path: "$.asset.version", message: "Expected a glTF 2.0 document.", hint: "Export glTF 2.0 / GLB and run Khronos Validator." });
+  if (record(d.asset).minVersion !== void 0 && record(d.asset).minVersion !== "2.0") add({ code: "INVALID_DOCUMENT", severity: "error", path: "$.asset.minVersion", message: "The minimum glTF version is not supported.", hint: "Export for the shipped glTF 2.0 importer." });
+  const extensionList = (key) => {
+    const value = d[key];
+    if (value === void 0) return [];
+    if (!Array.isArray(value) || value.some((x) => typeof x !== "string" || !x) || new Set(value).size !== value.length) {
+      add({ code: "INVALID_EXTENSION_DECLARATION", severity: "error", path: `$.${key}`, message: "Extensions must be a unique array of nonempty names.", hint: "Repair the exported extension declaration." });
+      return [];
+    }
+    return value;
+  };
+  const used = extensionList("extensionsUsed"), required = extensionList("extensionsRequired");
+  for (const [i, name] of required.entries()) if (!used.includes(name)) add({ code: "INVALID_EXTENSION_DECLARATION", severity: "error", extension: name, path: `$.extensionsRequired[${i}]`, message: "Required extension is missing from extensionsUsed.", hint: "Declare every required extension in both arrays." });
+  const seen = /* @__PURE__ */ new WeakSet();
+  const collect = (v, path) => {
+    if (!v || typeof v !== "object" || seen.has(v)) return;
+    seen.add(v);
+    for (const [key, child] of Object.entries(v)) {
+      if (key === "extras") continue;
+      if (key === "extensions") {
+        for (const name of Object.keys(record(child))) if (!used.includes(name))
+          add({ code: "UNDECLARED_EXTENSION", severity: "error", extension: name, path: `${path}.extensions.${name}`, message: "Extension payload is not declared in extensionsUsed.", hint: "Repair the export; missing declarations can silently omit a material feature." });
+      }
+      collect(child, `${path}.${key}`);
+    }
+  };
+  collect(d, "$");
+  const extensions = [.../* @__PURE__ */ new Set([...used, ...required])].map((name) => ({ name, required: required.includes(name), implemented: extensionNames.includes(name) }));
+  for (const e of extensions) if (!e.implemented) add({
+    code: e.required ? "UNSUPPORTED_REQUIRED_EXTENSION" : "UNSUPPORTED_OPTIONAL_EXTENSION",
+    severity: e.required ? "error" : "warning",
+    extension: e.name,
+    path: `$.${e.required ? "extensionsRequired" : "extensionsUsed"}[${(e.required ? required : used).indexOf(e.name)}]`,
+    message: `The shipped importer does not implement ${e.name}.`,
+    hint: e.required ? "Export a supported representation. Do not remove required declarations to force acceptance." : "The fallback may omit this feature; inspect the result and record the accepted downgrade."
+  });
+  const needsOpaque = used.includes("KHR_materials_transmission");
+  if (needsOpaque) add({ code: "REQUIRED_RENDER_INPUT", severity: "warning", extension: "KHR_materials_transmission", path: "$.extensionsUsed", message: "Transmission requires the camera opaque-color pass.", hint: "Use configureSurfacePasses or a showcase mode with opaqueColor enabled, then verify transparent materials." });
+  const meshes = records(d.meshes);
+  const checkWeights = (v, count, path) => {
+    if (v !== void 0 && (!Array.isArray(v) || v.length !== count || v.some((x) => typeof x !== "number" || !Number.isFinite(x))))
+      add({ code: "INVALID_MORPH_WEIGHTS", severity: "error", path, message: "Morph weights must be finite and match the mesh target count.", hint: "Fix the exporter; node weights override mesh weights and are not clamped." });
+  };
+  meshes.forEach((m, i) => checkWeights(m.weights, list(records(m.primitives)[0]?.targets).length, `$.meshes[${i}].weights`));
+  records(d.nodes).forEach((n, i) => checkWeights(n.weights, list(records(meshes[indexOf(n.mesh) ?? -1]?.primitives)[0]?.targets).length, `$.nodes[${i}].weights`));
+  const status = diagnostics.some((x) => x.severity === "error") ? "unsupported" : diagnostics.some((x) => x.code === "UNSUPPORTED_OPTIONAL_EXTENSION") ? "degraded" : needsOpaque ? "conditional" : "supported";
+  return freeze({
+    schemaVersion: 1,
+    status,
+    validationScope: "importer-capabilities",
+    extensions,
+    requiredRenderInputs: needsOpaque ? ["opaqueColor"] : [],
+    diagnostics,
+    inventory: inventory(d)
+  });
+}
+var ZhudaModelCompatibilityError = class extends Error {
+  constructor(report, assetId) {
+    super(report.diagnostics.filter((x) => x.severity === "error").map((x) => `${x.code} ${x.path}: ${x.message}`).join("; "));
+    this.name = "ZhudaModelCompatibilityError";
+    this.report = report;
+    this.assetId = assetId;
+  }
+};
+function readGltfAssetDocument(input) {
+  const bytes = input instanceof Uint8Array ? input : new Uint8Array(input);
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const binary = bytes.byteLength >= 12 && view.getUint32(0, true) === 1179937895;
+  let json = bytes;
+  if (binary) {
+    if (bytes.byteLength < 20 || view.getUint32(4, true) !== 2 || view.getUint32(8, true) !== bytes.byteLength || view.getUint32(16, true) !== 1313821514 || view.getUint32(12, true) > bytes.byteLength - 20)
+      throw Error("Invalid GLB header or JSON chunk");
+    json = bytes.subarray(20, 20 + view.getUint32(12, true));
+  }
+  return { binary, document: record(JSON.parse(new TextDecoder().decode(json))) };
+}
+function inspectGltfAsset(bytes) {
+  try {
+    return inspectGltfDocument(readGltfAssetDocument(bytes).document);
+  } catch (error) {
+    const base = inspectGltfDocument({});
+    return freeze({ ...base, diagnostics: [{ code: "INVALID_DOCUMENT", severity: "error", path: "$", message: error instanceof Error ? error.message : "Invalid model bytes.", hint: "Verify the glTF JSON / GLB container and run Khronos Validator." }] });
+  }
+}
+
 // packages/core/runtime3d/AssetProvider.ts
 var AssetProviderError = class extends Error {
   constructor(code, message, details = {}) {
@@ -2584,17 +2894,6 @@ function visit(node, fn) {
   for (let i = 0; i < (node.numChildren || 0); i++)
     visit(node.getChildAt(i), fn);
 }
-function embeddedModelDocument(bytes) {
-  const view = new DataView(bytes);
-  const binary = bytes.byteLength >= 12 && view.getUint32(0, true) === 1179937895;
-  let json;
-  if (binary) {
-    if (bytes.byteLength < 20 || view.getUint32(4, true) !== 2 || view.getUint32(8, true) !== bytes.byteLength || view.getUint32(16, true) !== 1313821514 || view.getUint32(12, true) > bytes.byteLength - 20)
-      throw Error("Invalid GLB header or JSON chunk");
-    json = new Uint8Array(bytes, 20, view.getUint32(12, true));
-  } else json = new Uint8Array(bytes);
-  return { binary, document: JSON.parse(new TextDecoder().decode(json)) };
-}
 var ZhudaModelLibrary = class {
   constructor(options = 3) {
     this.instances = /* @__PURE__ */ new Set();
@@ -2624,7 +2923,9 @@ var ZhudaModelLibrary = class {
             bytes = await response.arrayBuffer();
           }
           if (signal.aborted) throw abortError();
-          const parsed = embeddedModelDocument(bytes);
+          const compatibility = inspectGltfAsset(bytes);
+          if (compatibility.status === "unsupported") throw new ZhudaModelCompatibilityError(compatibility, url);
+          const parsed = readGltfAssetDocument(bytes);
           if (this.provider) {
             for (const item of [...parsed.document.buffers ?? [], ...parsed.document.images ?? []])
               if (item.uri !== void 0 && !item.uri.startsWith("data:"))
@@ -2632,13 +2933,14 @@ var ZhudaModelLibrary = class {
           }
           phase("parsing");
           resource = new l.glTFResource();
+          prepareLaya342GltfResource(resource, l);
           if (parsed.binary) await resource._parseglb(bytes, url);
           else await resource._parse(parsed.document, url);
           if (signal.aborted) {
             resource.destroy();
             throw abortError();
           }
-          const template = resource.create();
+          const template = createLaya342ModelTemplate(resource, l);
           const clips = /* @__PURE__ */ new Set();
           visit(template, (n) => {
             const animator = l.Animator && n.getComponent?.(l.Animator);
@@ -2647,7 +2949,7 @@ var ZhudaModelLibrary = class {
                 for (const state of animator.getControllerLayer(i).states) if (state.clip) clips.add(state.clip);
             }
           });
-          this.templates.set(resource, { node: template, clips });
+          this.templates.set(resource, { node: template, clips, compatibility });
           resource._addReference();
           return resource;
         } catch (e) {
@@ -2697,6 +2999,7 @@ var ZhudaModelLibrary = class {
       node = template.node.clone();
       const l = globalThis.Laya;
       const restoreDefaults = (source, target) => {
+        copyLaya342MorphWeights(source, target, l);
         const a = l.Animator && source.getComponent?.(l.Animator), b = l.Animator && target.getComponent?.(l.Animator);
         if (a && b) for (let i = 0; i < a.controllerLayerCount; i++) {
           const original = a.getControllerLayer(i).defaultState;
@@ -2730,6 +3033,7 @@ var ZhudaModelLibrary = class {
     let disposed = false;
     return {
       node,
+      compatibility: this.templates.get(lease.value).compatibility,
       materials,
       setTint: (color) => {
         if (disposed) throw Error("Disposed model instance");
@@ -2811,19 +3115,19 @@ var ZhudaSceneRegions = class {
   async enter(id, create) {
     if (!id) throw Error("Missing region ID");
     this.leave(id);
-    const record = {
+    const record2 = {
       slot: new ZhudaRequestSlot(),
       value: void 0
     };
-    this.regions.set(id, record);
+    this.regions.set(id, record2);
     try {
-      return await record.slot.replace(
+      return await record2.slot.replace(
         create,
-        (value) => record.value = value,
+        (value) => record2.value = value,
         (value) => value.dispose()
       );
     } catch (e) {
-      if (this.regions.get(id) === record) this.regions.delete(id);
+      if (this.regions.get(id) === record2) this.regions.delete(id);
       throw e;
     }
   }
@@ -2904,22 +3208,22 @@ var ZhudaDistanceLOD = class {
     return this.near;
   }
 };
-function inspectSceneResources(runtime = globalThis.Laya) {
-  const map = runtime.Resource._idResourcesMap, items = map instanceof Map ? [...map.values()] : Object.values(map || {});
+function inspectSceneResources(runtime2 = globalThis.Laya) {
+  const map = runtime2.Resource._idResourcesMap, items = map instanceof Map ? [...map.values()] : Object.values(map || {});
   const counts = { mesh: 0, texture: 0, renderTarget: 0 };
   const animation = { clips: 0, materials: 0 };
   let meshBytes = 0, textureBytes = 0, renderTargetBytes = 0;
   for (const r of items) {
     if (r.destroyed) continue;
-    if (typeof runtime.AnimationClip === "function" && r instanceof runtime.AnimationClip) animation.clips++;
-    if (typeof runtime.Material === "function" && r instanceof runtime.Material) animation.materials++;
-    if (typeof runtime.Mesh === "function" && r instanceof runtime.Mesh) {
+    if (typeof runtime2.AnimationClip === "function" && r instanceof runtime2.AnimationClip) animation.clips++;
+    if (typeof runtime2.Material === "function" && r instanceof runtime2.Material) animation.materials++;
+    if (typeof runtime2.Mesh === "function" && r instanceof runtime2.Mesh) {
       counts.mesh++;
       meshBytes += r.gpuMemory || 0;
-    } else if (runtime.RenderTexture && r instanceof runtime.RenderTexture || runtime.RenderTexture2D && r instanceof runtime.RenderTexture2D) {
+    } else if (runtime2.RenderTexture && r instanceof runtime2.RenderTexture || runtime2.RenderTexture2D && r instanceof runtime2.RenderTexture2D) {
       counts.renderTarget++;
       renderTargetBytes += (r.width || 0) * (r.height || 0) * 8 * Math.max(1, r.samples || 1);
-    } else if (r instanceof runtime.BaseTexture) {
+    } else if (r instanceof runtime2.BaseTexture) {
       counts.texture++;
       textureBytes += (r.width || 0) * (r.height || 0) * 4 * (r.mipmap ? 4 / 3 : 1) * (r.isCube ? 6 : 1);
     }
@@ -3207,7 +3511,7 @@ var ZhudaEngine = class {
       if (container) container.appendChild(canvas);
       if (options.targetFPS)
         Laya.stage.frameRate = options.targetFPS === 30 ? "slow" : "fast";
-      const runtime = new ZhudaRuntimeSession(canvas, {
+      const runtime2 = new ZhudaRuntimeSession(canvas, {
         ...options,
         container: container ?? void 0
       });
@@ -3218,12 +3522,12 @@ var ZhudaEngine = class {
         topology,
         health,
         canvas,
-        runtime,
-        resize: () => runtime.resize(),
+        runtime: runtime2,
+        resize: () => runtime2.resize(),
         dispose: () => {
           if (disposed) return;
           disposed = true;
-          runtime.dispose();
+          runtime2.dispose();
           rootScene.destroy(true);
           this.activeContext = null;
         }
@@ -3402,28 +3706,28 @@ var ZhudaUI = class {
       root.graphics = g;
     };
     drawBg(bgColor, borderColor);
-    const label = new Laya.Text();
-    label.text = text;
-    label.fontSize = style.fontSize ?? 13;
-    label.bold = style.bold ?? true;
-    label.color = style.textColor ?? "#d6e6fa";
-    label.align = "center";
-    label.valign = "middle";
-    label.width = style.width;
-    label.height = style.height;
-    root.addChild(label);
+    const label2 = new Laya.Text();
+    label2.text = text;
+    label2.fontSize = style.fontSize ?? 13;
+    label2.bold = style.bold ?? true;
+    label2.color = style.textColor ?? "#d6e6fa";
+    label2.align = "center";
+    label2.valign = "middle";
+    label2.width = style.width;
+    label2.height = style.height;
+    root.addChild(label2);
     let isActive = false;
     root.mouseEnabled = true;
     root.on(Laya.Event.MOUSE_OVER, root, () => {
       drawBg(isActive ? activeBgColor : hoverBgColor, "#64ffda");
-      label.color = style.hoverTextColor ?? "#ffffff";
+      label2.color = style.hoverTextColor ?? "#ffffff";
     });
     root.on(Laya.Event.MOUSE_OUT, root, () => {
       drawBg(
         isActive ? activeBgColor : bgColor,
         isActive ? "#00e5ff" : borderColor
       );
-      label.color = isActive ? "#64ffda" : style.textColor ?? "#d6e6fa";
+      label2.color = isActive ? "#64ffda" : style.textColor ?? "#d6e6fa";
     });
     root.on(Laya.Event.CLICK, root, onClick);
     parent.addChild(root);
@@ -3433,9 +3737,9 @@ var ZhudaUI = class {
         isActive ? activeBgColor : bgColor,
         isActive ? "#00e5ff" : borderColor
       );
-      label.color = isActive ? "#64ffda" : style.textColor ?? "#d6e6fa";
+      label2.color = isActive ? "#64ffda" : style.textColor ?? "#d6e6fa";
     };
-    return { root, label, setStyleState };
+    return { root, label: label2, setStyleState };
   }
   /**
    * 解析 LayaAir 3.4.2 九宮格 (9-Slice / sizeGrid) 參數為標準 5 元組 [top, right, bottom, left, repeat]
@@ -5711,15 +6015,15 @@ var ZhudaPrefab = class {
           break;
         case "DrawTextureCmd": {
           const textureId = cmd.textureId;
-          const runtime = globalThis.Laya;
-          const texture = textureId && runtime?.loader?.getRes?.(textureId);
+          const runtime2 = globalThis.Laya;
+          const texture = textureId && runtime2?.loader?.getRes?.(textureId);
           if (!texture) {
             throw Error(`DrawTextureCmd texture is not loaded: ${textureId || "<missing textureId>"}`);
           }
           if (typeof graphics.drawTexture !== "function") {
             throw Error("DrawTextureCmd requires Graphics.drawTexture");
           }
-          const matrix = Array.isArray(cmd.matrix) && cmd.matrix.length === 6 && runtime?.Matrix ? new runtime.Matrix(...cmd.matrix) : null;
+          const matrix = Array.isArray(cmd.matrix) && cmd.matrix.length === 6 && runtime2?.Matrix ? new runtime2.Matrix(...cmd.matrix) : null;
           graphics.drawTexture(
             texture,
             cmd.x ?? 0,
@@ -9162,9 +9466,9 @@ var ZhudaVfxMaterial = class {
 var _ZhudaVfxCamera = class _ZhudaVfxCamera {
   constructor(camera, options = {}) {
     this.disposed = false;
-    const runtime = globalThis.Laya;
+    const runtime2 = globalThis.Laya;
     if (_ZhudaVfxCamera.owners.has(camera)) throw new Error("This camera already has a VFX pass owner.");
-    if (options.bloomIntensity !== void 0 && (!runtime?.PostProcess || !runtime?.BloomEffect || !Number.isFinite(options.bloomIntensity) || options.bloomIntensity < 0)) throw new Error("Bloom requires the Laya postProcess module and a non-negative intensity.");
+    if (options.bloomIntensity !== void 0 && (!runtime2?.PostProcess || !runtime2?.BloomEffect || !Number.isFinite(options.bloomIntensity) || options.bloomIntensity < 0)) throw new Error("Bloom requires the Laya postProcess module and a non-negative intensity.");
     _ZhudaVfxCamera.owners.add(camera);
     this.camera = camera;
     const l = globalThis.Laya;
@@ -10778,7 +11082,7 @@ var ZhudaPrefabLibrary = class {
         }
       };
       apply(state);
-      const record = {
+      const record2 = {
         id,
         state,
         kind: entry.kind ?? "2d",
@@ -10787,7 +11091,7 @@ var ZhudaPrefabLibrary = class {
       };
       const instance = {
         root,
-        provenance: structuredClone(record),
+        provenance: structuredClone(record2),
         find: (path) => {
           if (retired) throw Error("Disposed prefab instance");
           return findPrefabNode(root, path);
@@ -10802,8 +11106,8 @@ var ZhudaPrefabLibrary = class {
         },
         applyState: (next) => {
           apply(next);
-          record.state = next;
-          instance.provenance = structuredClone(record);
+          record2.state = next;
+          instance.provenance = structuredClone(record2);
         },
         dispose: () => {
           retired = true;
@@ -10812,7 +11116,7 @@ var ZhudaPrefabLibrary = class {
           scope.dispose();
         }
       };
-      provenance.set(root, record);
+      provenance.set(root, record2);
       options.parent?.addChild(root);
       this.instances.add(instance);
       return instance;
@@ -12180,6 +12484,225 @@ var ZhudaRemoteCharacterPresenter = class {
   }
 };
 
+// packages/core/runtime3d/ModelInspector.ts
+var runtime = () => globalThis.Laya;
+var textureUniforms = [
+  "u_BaseColorTexture",
+  "u_MetallicRoughnessTexture",
+  "u_NormalTexture",
+  "u_OcclusionTexture",
+  "u_EmissionTexture",
+  "u_AlbedoTexture",
+  "u_ClearCoatTexture",
+  "u_ClearCoatRoughnessTexture",
+  "u_ClearCoatNormalTexture",
+  "u_AnisotropyTexture",
+  "u_IridescenceTexture",
+  "u_IridescenceThicknessTexture",
+  "u_SheenColorTexture",
+  "u_SheenRoughnessTexture",
+  "u_TransmissionTexture",
+  "u_VolumeThicknessTexture",
+  "u_SpecularFactorTexture",
+  "u_SpecularColorTexture"
+];
+var ZhudaModelInspector = class {
+  constructor(instance) {
+    this.instance = instance;
+  }
+  root() {
+    if (this.instance.node.destroyed) throw Error("Disposed model instance");
+    return this.instance.node;
+  }
+  node(path) {
+    if (!/^\$(\/\d+)*$/.test(path)) throw Error("Invalid model node path: " + path);
+    let node = this.root();
+    for (const part of path.split("/").slice(1)) {
+      const index = Number(part);
+      if (!Number.isSafeInteger(index) || index >= node.numChildren) throw Error("Unknown model node path: " + path);
+      node = node.getChildAt(index);
+    }
+    return node;
+  }
+  inspect() {
+    const l = runtime(), materials = /* @__PURE__ */ new Map();
+    const nodes = [], animations = [];
+    const visit2 = (node, path) => {
+      const renderer = node.getComponent(l.MeshRenderer), mesh = node.getComponent(l.MeshFilter)?.sharedMesh;
+      const slots = renderer?.sharedMaterials ?? [];
+      nodes.push({
+        path,
+        name: node.name,
+        active: node.active,
+        mesh: mesh ? { id: mesh.id, vertices: mesh.vertexCount, indices: mesh.indexCount } : null,
+        materialIds: slots.filter(Boolean).map((m) => m.id),
+        morphWeights: { ...renderer?.morphTargetValues }
+      });
+      for (const material of slots) if (material && !materials.has(material.id)) {
+        const textures = [];
+        for (const uniform of textureUniforms) {
+          const texture = material.getTexture(uniform);
+          if (texture) textures.push({ uniform, id: texture.id, width: texture.width, height: texture.height });
+        }
+        materials.set(material.id, { id: material.id, name: material.name ?? "", textures });
+      }
+      const animator = node.getComponent(l.Animator);
+      if (animator) {
+        for (let layer = 0; layer < animator.controllerLayerCount; layer++)
+          for (const state of animator.getControllerLayer(layer).states) if (state.clip)
+            animations.push({ path, layer, name: state.name, durationSeconds: state.clip.duration(), speed: animator.speed });
+      }
+      for (let i = 0; i < node.numChildren; i++) visit2(node.getChildAt(i), `${path}/${i}`);
+    };
+    visit2(this.root(), "$");
+    return { compatibility: this.instance.compatibility, nodes, materials: [...materials.values()], animations, textureScope: "known-gltf-and-unlit-uniforms" };
+  }
+  setMorphWeight(path, channel, weight) {
+    if (!Number.isFinite(weight)) throw Error("Morph weight must be finite");
+    const renderer = this.node(path).getComponent(runtime().MeshRenderer);
+    if (!renderer || !Object.prototype.hasOwnProperty.call(renderer.morphTargetValues, channel)) throw Error("Unknown morph channel: " + channel);
+    renderer.setMorphChannelWeight(channel, weight);
+  }
+  /** Starts native playback. Pose is evaluated by the next native animation frame, not synchronously. */
+  play(path, name, options = {}) {
+    const animator = this.node(path).getComponent(runtime().Animator), layer = options.layer ?? 0;
+    const time = options.normalizedTime ?? 0, speed = options.speed ?? 1;
+    if (!animator || !Number.isInteger(layer) || layer < 0 || layer >= animator.controllerLayerCount || !animator.getControllerLayer(layer).getAnimatorState(name)) throw Error("Unknown animation state");
+    if (!Number.isFinite(time) || time < 0 || time > 1 || !Number.isFinite(speed) || speed < 0) throw Error("Invalid animation playback options");
+    animator.speed = speed;
+    animator.play(name, layer, time);
+  }
+  setAnimationSpeed(path, speed) {
+    const animator = this.node(path).getComponent(runtime().Animator);
+    if (!animator || !Number.isFinite(speed) || speed < 0) throw Error("Invalid animator or speed");
+    animator.speed = speed;
+  }
+};
+
+// packages/core/runtime3d/AssetShowcase.ts
+var defaults = {
+  raw: { filmic: false, opaqueColor: true },
+  gameplay: { filmic: { ao: false, bloom: false, exposure: 1, contrast: 1, saturation: 1 }, opaqueColor: true },
+  cinematic: { filmic: { ao: true, bloom: true, temporalAA: false }, opaqueColor: true }
+};
+var owners = /* @__PURE__ */ new WeakSet();
+var ZhudaAssetShowcase = class {
+  constructor(options) {
+    this.slot = new ZhudaRequestSlot();
+    this.pipeline = null;
+    this.current = null;
+    this.currentMode = "raw";
+    this.disposed = false;
+    this.library = options.library;
+    this.parent = options.parent;
+    this.camera = options.camera;
+    if (this.camera.destroyed || this.parent.destroyed || owners.has(this.camera) || this.camera.postProcess || this.camera.taa)
+      throw Error("Showcase requires a live exclusive camera without postprocessing or TAA");
+    this.modes = {};
+    for (const mode of ["raw", "gameplay", "cinematic"]) {
+      const value = options.presentations?.[mode] ?? defaults[mode];
+      if (typeof value.opaqueColor !== "boolean" || value.filmic !== false && (!value.filmic || typeof value.filmic !== "object") || mode === "raw" && value.filmic !== false) throw Error("Invalid showcase presentation: " + mode);
+      if (value.filmic !== false) {
+        for (const key of ["exposure", "contrast", "saturation", "aoIntensity", "aoRadius", "bloomIntensity"]) {
+          const n = value.filmic[key];
+          if (n !== void 0 && (!Number.isFinite(n) || n < 0)) throw Error("Invalid filmic option: " + key);
+        }
+        for (const key of ["ao", "bloom", "temporalAA"]) if (value.filmic[key] !== void 0 && typeof value.filmic[key] !== "boolean") throw Error("Invalid filmic option: " + key);
+      }
+      this.modes[mode] = { opaqueColor: value.opaqueColor, filmic: value.filmic === false ? false : { ...value.filmic } };
+    }
+    this.previousOpaque = this.camera.opaquePass;
+    owners.add(this.camera);
+    this.camera.opaquePass = this.modes.raw.opaqueColor;
+  }
+  get mode() {
+    return this.currentMode;
+  }
+  get instance() {
+    return this.current;
+  }
+  alive() {
+    if (this.disposed || this.parent.destroyed || this.camera.destroyed) throw Error("Disposed showcase or borrowed scene");
+  }
+  requireInputs(instance, mode) {
+    if (instance.compatibility.requiredRenderInputs.includes("opaqueColor") && !this.modes[mode].opaqueColor)
+      throw Error("REQUIRED_RENDER_INPUT: this asset requires opaqueColor in mode " + mode);
+  }
+  async load(assetId, options = {}) {
+    this.alive();
+    return this.slot.replace(
+      async (signal) => {
+        const controller = new AbortController();
+        const abort = () => controller.abort();
+        signal.addEventListener("abort", abort, { once: true });
+        options.signal?.addEventListener("abort", abort, { once: true });
+        if (signal.aborted || options.signal?.aborted) abort();
+        try {
+          return await this.library.instantiate(assetId, { ...options, signal: controller.signal });
+        } finally {
+          signal.removeEventListener("abort", abort);
+          options.signal?.removeEventListener("abort", abort);
+        }
+      },
+      (instance) => {
+        this.alive();
+        this.requireInputs(instance, this.currentMode);
+        this.parent.addChild(instance.node);
+        const previous = this.current;
+        this.current = instance;
+        previous?.dispose();
+        this.pipeline?.resetHistory();
+      },
+      (instance) => instance.dispose()
+    );
+  }
+  inspect() {
+    this.alive();
+    if (!this.current) throw Error("No loaded showcase asset");
+    return new ZhudaModelInspector(this.current).inspect();
+  }
+  setMode(mode) {
+    this.alive();
+    if (!Object.prototype.hasOwnProperty.call(this.modes, mode)) throw Error("Unknown showcase mode");
+    if (mode === this.currentMode) return;
+    if (this.current) this.requireInputs(this.current, mode);
+    if (this.camera.postProcess && this.camera.postProcess !== this.pipeline?.post) throw Error("Showcase camera postprocess ownership changed");
+    const next = this.modes[mode], previous = this.modes[this.currentMode];
+    if (next.filmic !== false) {
+      const l = globalThis.Laya;
+      if (!l.PostProcess || !l.ScalableAO || !l.BloomEffect || !l.ColorGradEffect || !l.LayaGL.renderEngine.getCapable(l.RenderCapable.RenderTextureFormat_R16G16B16A16)) throw Error("Showcase Filmic requires postprocess module and half-float render targets");
+    }
+    this.pipeline?.dispose();
+    this.pipeline = null;
+    try {
+      if (next.filmic !== false) this.pipeline = new ZhudaFilmicPipeline(this.camera, next.filmic);
+      this.camera.opaquePass = next.opaqueColor;
+      this.currentMode = mode;
+    } catch (error) {
+      if (previous.filmic !== false) this.pipeline = new ZhudaFilmicPipeline(this.camera, previous.filmic);
+      this.camera.opaquePass = previous.opaqueColor;
+      throw error;
+    }
+  }
+  cancel() {
+    this.slot.cancel();
+  }
+  clear() {
+    this.slot.cancel();
+    this.current?.dispose();
+    this.current = null;
+  }
+  dispose() {
+    if (this.disposed) return;
+    this.disposed = true;
+    this.clear();
+    this.pipeline?.dispose();
+    this.pipeline = null;
+    if (!this.camera.destroyed) this.camera.opaquePass = this.previousOpaque;
+    owners.delete(this.camera);
+  }
+};
+
 // packages/core/terrain/Terrain2D.ts
 function validateTerrain2D(spec) {
   const s = spec, e = [];
@@ -13338,15 +13861,15 @@ var ZhudaLitSurfaceMaterial = class {
       material: spec.material ? { ...spec.material } : void 0
     };
     const l = globalThis.Laya;
-    let records = registry.get(l.Shader3D);
-    if (!records) registry.set(l.Shader3D, records = /* @__PURE__ */ new Map());
+    let records2 = registry.get(l.Shader3D);
+    if (!records2) registry.set(l.Shader3D, records2 = /* @__PURE__ */ new Map());
     const signature = JSON.stringify({
       surface: spec.surface,
       uniforms,
       normalConvention: spec.normalConvention || "directx"
     });
     if (l.Shader3D.find(spec.name)) {
-      if (records.get(spec.name) !== signature)
+      if (records2.get(spec.name) !== signature)
         throw Error("Shader name has a different contract");
     } else {
       const types = {
@@ -13395,7 +13918,7 @@ zhudaSurface(s,zhudaUV,pixel.positionWS,pixel.normalWS);inputs.diffuseColor=max(
         normals(litDepthFragment),
         "DepthNormal"
       );
-      records.set(spec.name, signature);
+      records2.set(spec.name, signature);
     }
     const m = createSurfaceMaterial({ type: "pbr", ...spec.material });
     m.setShaderName(spec.name);
@@ -13478,6 +14001,7 @@ zhudaSurface(s,zhudaUV,pixel.positionWS,pixel.normalWS);inputs.diffuseColor=max(
   ZhudaAnimatorLOD,
   ZhudaAssetCache,
   ZhudaAssetSerializer,
+  ZhudaAssetShowcase,
   ZhudaBenchmarkEngine,
   ZhudaCameraCoordinates,
   ZhudaCameraRig,
@@ -13501,6 +14025,8 @@ zhudaSurface(s,zhudaUV,pixel.positionWS,pixel.normalWS);inputs.diffuseColor=max(
   ZhudaLayaRibbonRenderer3D,
   ZhudaLayeredClock,
   ZhudaLitSurfaceMaterial,
+  ZhudaModelCompatibilityError,
+  ZhudaModelInspector,
   ZhudaModelLibrary,
   ZhudaObjectPool,
   ZhudaParticleEventLink,
@@ -13555,7 +14081,10 @@ zhudaSurface(s,zhudaUV,pixel.positionWS,pixel.normalWS);inputs.diffuseColor=max(
   disposeMigratedMaterial,
   disposeSurfaceMaterial,
   findPrefabNode,
+  gltfExtensionCapabilities,
   identity4,
+  inspectGltfAsset,
+  inspectGltfDocument,
   inspectPrefabInstance,
   inspectSceneResources,
   installLaya342LifecycleFix,

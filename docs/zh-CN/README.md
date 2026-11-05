@@ -40,6 +40,13 @@ E4ZEhFCYy4b5pYXJUbMC9KjRitkypyqtZvpSRerLWHCb
 
 由 [豬大 Zhuda](https://github.com/zhudaandzhuer) 维护。底层渲染与物理由 [LayaAir / Layabox](https://layaair.com/) 提供。本项目是独立分支，捐助用于支持豬大在这个仓库的开发工作。
 
+## 1.9.0 模型检查与导入可靠性
+
+必需 glTF 扩展不支持时明确拒绝，修复节点 Morph 权重与 CUBICSPLINE 动画。
+新增相容性报告、模型 Inspector、同一实例的 Raw / Gameplay / Cinematic 模式
+和包含 glTF / 后处理的 HTML bundle。参见[模型展示契约](../model-showcase.md)。
+Cinematic 是实时后处理，不等于离线电影管线，也不保证所有资产与 UE 一致。
+
 ## 1.8.0 群体呈现与可测量的预算
 
 模型通过 provider 共享离场模板和动画片段，并在释放时完成 native 资源清理。

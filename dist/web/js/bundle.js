@@ -698,6 +698,29 @@ var ZhudaAppBundle = (() => {
     return m;
   }
 
+  // packages/core/runtime3d/ModelCompatibility.ts
+  var extensionNames = [
+    "KHR_materials_anisotropy",
+    "KHR_materials_clearcoat",
+    "KHR_materials_emissive_strength",
+    "KHR_materials_ior",
+    "KHR_materials_iridescence",
+    "KHR_materials_sheen",
+    "KHR_materials_specular",
+    "KHR_materials_transmission",
+    "KHR_materials_unlit",
+    "KHR_materials_volume",
+    "KHR_texture_transform"
+  ];
+  var gltfExtensionCapabilities = Object.freeze(
+    extensionNames.map((name) => Object.freeze({
+      name,
+      implementation: "native",
+      requiredRenderInputs: Object.freeze(name === "KHR_materials_transmission" ? ["opaqueColor"] : []),
+      visualConformance: "not-certified"
+    }))
+  );
+
   // packages/core/runtime3d/AssetProvider.ts
   var AssetProviderError = class extends Error {
     constructor(code, message, details = {}) {

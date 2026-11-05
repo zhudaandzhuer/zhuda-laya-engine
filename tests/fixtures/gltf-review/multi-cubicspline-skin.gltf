@@ -1,0 +1,301 @@
+{
+  "asset": {
+    "version": "2.0",
+    "generator": "Zhuda authored multi-morph fixture"
+  },
+  "scene": 0,
+  "scenes": [
+    {
+      "nodes": [
+        0,
+        1
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "name": "Probe",
+      "mesh": 0,
+      "weights": [
+        0.2,
+        0.4
+      ],
+      "skin": 0
+    },
+    {
+      "name": "Joint"
+    }
+  ],
+  "meshes": [
+    {
+      "weights": [
+        0,
+        0
+      ],
+      "extras": {
+        "targetNames": [
+          "bend",
+          "lift"
+        ]
+      },
+      "primitives": [
+        {
+          "attributes": {
+            "POSITION": 0,
+            "NORMAL": 1,
+            "JOINTS_0": 5,
+            "WEIGHTS_0": 6
+          },
+          "indices": 2,
+          "material": 0,
+          "targets": [
+            {
+              "POSITION": 3
+            },
+            {
+              "POSITION": 4
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "materials": [
+    {
+      "name": "NeutralMagenta",
+      "pbrMetallicRoughness": {
+        "baseColorFactor": [
+          0.7,
+          0.2,
+          0.8,
+          1
+        ],
+        "metallicFactor": 0,
+        "roughnessFactor": 1
+      },
+      "doubleSided": true,
+      "extensions": {
+        "KHR_materials_unlit": {}
+      }
+    }
+  ],
+  "extensionsUsed": [
+    "KHR_materials_unlit"
+  ],
+  "accessors": [
+    {
+      "bufferView": 0,
+      "componentType": 5126,
+      "type": "VEC3",
+      "count": 3,
+      "min": [
+        -0.5,
+        -0.5,
+        0
+      ],
+      "max": [
+        0.5,
+        0.5,
+        0
+      ]
+    },
+    {
+      "bufferView": 1,
+      "componentType": 5126,
+      "type": "VEC3",
+      "count": 3
+    },
+    {
+      "bufferView": 2,
+      "componentType": 5123,
+      "type": "SCALAR",
+      "count": 3
+    },
+    {
+      "bufferView": 3,
+      "componentType": 5126,
+      "type": "VEC3",
+      "count": 3,
+      "min": [
+        0,
+        0,
+        0
+      ],
+      "max": [
+        0.8,
+        0,
+        0
+      ]
+    },
+    {
+      "bufferView": 4,
+      "componentType": 5126,
+      "type": "VEC3",
+      "count": 3,
+      "min": [
+        0,
+        0,
+        0
+      ],
+      "max": [
+        0,
+        0.4,
+        0
+      ]
+    },
+    {
+      "bufferView": 5,
+      "componentType": 5123,
+      "type": "VEC4",
+      "count": 3
+    },
+    {
+      "bufferView": 6,
+      "componentType": 5126,
+      "type": "VEC4",
+      "count": 3
+    },
+    {
+      "bufferView": 7,
+      "componentType": 5126,
+      "type": "MAT4",
+      "count": 1
+    },
+    {
+      "bufferView": 8,
+      "componentType": 5126,
+      "type": "SCALAR",
+      "count": 2,
+      "min": [
+        0
+      ],
+      "max": [
+        2
+      ]
+    },
+    {
+      "bufferView": 9,
+      "componentType": 5126,
+      "type": "SCALAR",
+      "count": 12
+    },
+    {
+      "bufferView": 10,
+      "componentType": 5126,
+      "type": "VEC3",
+      "count": 2
+    }
+  ],
+  "bufferViews": [
+    {
+      "buffer": 0,
+      "byteOffset": 0,
+      "byteLength": 36,
+      "target": 34962
+    },
+    {
+      "buffer": 0,
+      "byteOffset": 36,
+      "byteLength": 36,
+      "target": 34962
+    },
+    {
+      "buffer": 0,
+      "byteOffset": 72,
+      "byteLength": 6,
+      "target": 34963
+    },
+    {
+      "buffer": 0,
+      "byteOffset": 80,
+      "byteLength": 36,
+      "target": 34962
+    },
+    {
+      "buffer": 0,
+      "byteOffset": 116,
+      "byteLength": 36,
+      "target": 34962
+    },
+    {
+      "buffer": 0,
+      "byteOffset": 152,
+      "byteLength": 24,
+      "target": 34962
+    },
+    {
+      "buffer": 0,
+      "byteOffset": 176,
+      "byteLength": 48,
+      "target": 34962
+    },
+    {
+      "buffer": 0,
+      "byteOffset": 224,
+      "byteLength": 64
+    },
+    {
+      "buffer": 0,
+      "byteOffset": 288,
+      "byteLength": 8
+    },
+    {
+      "buffer": 0,
+      "byteOffset": 296,
+      "byteLength": 48
+    },
+    {
+      "buffer": 0,
+      "byteOffset": 344,
+      "byteLength": 24
+    }
+  ],
+  "skins": [
+    {
+      "joints": [
+        1
+      ],
+      "skeleton": 1,
+      "inverseBindMatrices": 7
+    }
+  ],
+  "animations": [
+    {
+      "name": "Morph",
+      "samplers": [
+        {
+          "input": 8,
+          "output": 9,
+          "interpolation": "CUBICSPLINE"
+        },
+        {
+          "input": 8,
+          "output": 10,
+          "interpolation": "LINEAR"
+        }
+      ],
+      "channels": [
+        {
+          "sampler": 0,
+          "target": {
+            "node": 0,
+            "path": "weights"
+          }
+        },
+        {
+          "sampler": 1,
+          "target": {
+            "node": 1,
+            "path": "translation"
+          }
+        }
+      ]
+    }
+  ],
+  "buffers": [
+    {
+      "byteLength": 368,
+      "uri": "data:application/octet-stream;base64,AAAAvwAAAL8AAAAAAAAAPwAAAL8AAAAAAAAAAAAAAD8AAAAAAAAAAAAAAAAAAIA/AAAAAAAAAAAAAIA/AAAAAAAAAAAAAIA/AAABAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADNzEw/AAAAAAAAAAAAAAAAzcxMPgAAAAAAAAAAAAAAAAAAAAAAAAAAzczMPgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIA/AAAAAAAAAAAAAAAAAACAPwAAAAAAAAAAAAAAAAAAgD8AAAAAAAAAAAAAAAAAAIA/AAAAAAAAAAAAAAAAAAAAAAAAgD8AAAAAAAAAAAAAAAAAAAAAAACAPwAAAAAAAAAAAAAAAAAAAAAAAIA/AAAAAAAAAEAAAAAAAAAAAAAAAADNzEw+zczMPs3MTL7NzEy+mpkZPwAAgD/NzEw/AAAAAAAAAAAAAAAAAAAAAAAAAADNzMw9AAAAAAAAAAA="
+    }
+  ]
+}

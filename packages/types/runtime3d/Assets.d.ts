@@ -1,3 +1,4 @@
+import { type ModelCompatibilityReport } from "./ModelCompatibility";
 import type { AssetProvider } from "./AssetProvider";
 export type AssetPhase = "downloading" | "parsing" | "ready";
 export interface AssetLease<T> {
@@ -41,6 +42,7 @@ export declare class ZhudaRequestSlot {
 }
 export interface ModelInstance {
     readonly node: Laya.Sprite3D;
+    readonly compatibility: ModelCompatibilityReport;
     readonly materials: readonly Laya.Material[];
     setTint(color: [number, number, number, number]): void;
     find(name: string): Laya.Sprite3D | null;

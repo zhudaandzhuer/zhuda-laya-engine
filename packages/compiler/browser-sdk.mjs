@@ -6,11 +6,13 @@ import {fileURLToPath} from 'node:url';
 import esbuild from 'esbuild';
 import {TopologyResolver} from './compiler-runtime.mjs';
 import {brandSplashCss,brandSplashMarkup} from './branding.mjs';
+import {modelBrowserExample} from './browser-model-example.mjs';
 import {browserExample} from './browser-sdk-example.mjs';
 
 export const BROWSER_PROFILES=Object.freeze({
   '2d':Object.freeze(['core','2d','ui']),
   '3d':Object.freeze(['core','2d','3d','ui']),
+  '3d-gltf':Object.freeze(['core','2d','3d','ui','gltf','postProcess']),
 });
 const hash=(bytes,algorithm='sha256',encoding='hex')=>crypto.createHash(algorithm).update(bytes).digest(encoding);
 const defaultRoot=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../..');
@@ -25,10 +27,10 @@ function branding(svg){
 }
 
 /** Create/reuse a deterministic distribution; never overwrite a different release. */
-export async function buildBrowserSdk({engineRoot=defaultRoot,outDir,profiles=['2d','3d']}={}){
+export async function buildBrowserSdk({engineRoot=defaultRoot,outDir,profiles=['2d','3d','3d-gltf']}={}){
   engineRoot=path.resolve(engineRoot);
   if(!Array.isArray(profiles)||!profiles.length||new Set(profiles).size!==profiles.length||profiles.some(p=>!Object.hasOwn(BROWSER_PROFILES,p)))
-    throw Error('Browser profile must be 2d or 3d (unique, nonempty list)');
+    throw Error('Browser profile must be 2d, 3d or 3d-gltf (unique, nonempty list)');
   const packageInfo=JSON.parse(fs.readFileSync(path.join(engineRoot,'package.json'),'utf8'));
   const version=packageInfo.version;
   if(packageInfo.dependencies.esbuild!==esbuild.version)throw Error('Browser bundler version differs from the exact package pin; reinstall dependencies');
@@ -45,18 +47,20 @@ export async function buildBrowserSdk({engineRoot=defaultRoot,outDir,profiles=['
     const problems=TopologyResolver.auditFileSequence(topology.orderedFiles);
     if(problems.length)throw Error('Invalid browser topology: '+problems.map(p=>p.message).join('; '));
     const inputs=[{path:'dist/sdk/zhuda-laya-engine.esm.js',sha256:hash(sdk)},{path:'assets/branding/zhuda-layaair-mark.svg',sha256:hash(svg)}];
-    for(const file of ['browser-sdk.mjs','browser-sdk-example.mjs','branding.mjs'])
+    for(const file of ['browser-sdk.mjs','browser-sdk-example.mjs','browser-model-example.mjs','branding.mjs'])
       inputs.push({path:'packages/compiler/'+file,sha256:hash(fs.readFileSync(path.join(engineRoot,'packages/compiler',file)))});
     const libs=topology.orderedFiles.map(file=>{
       const relative='vendor/laya-3.4.2/libs/'+file,bytes=fs.readFileSync(path.join(engineRoot,relative));
       inputs.push({path:relative,sha256:hash(bytes)});return bytes.toString('utf8');
     });
+    const modelDocument = profile==='3d-gltf' ? fs.readFileSync(path.join(engineRoot,'examples/model-inspector/asset.gltf'),'utf8') : null;
+    if(modelDocument) inputs.push({path:'examples/model-inspector/asset.gltf',sha256:hash(modelDocument)});
     const metadata={version,profile,features,libraries:topology.orderedFiles,sourceFingerprint:hash(JSON.stringify({inputs,esbuild:esbuild.version})),bundler:{name:'esbuild',version:esbuild.version}};
     const code=`/* Zhuda LayaAir ${version} browser ${profile}; MIT; see LICENSE.txt (including upstream attribution). */\n(function(){\nif(globalThis.Zhuda||globalThis.Laya||globalThis.ZhudaBundle)throw Error('ZHUDA_DUPLICATE_RUNTIME: load exactly one official browser bundle per page');\n${branding(svg)}\n${libs.join('\n;\n')}\n;${bundled.outputFiles[0].text}\nObject.defineProperty(globalThis,'Zhuda',{value:Object.freeze(__zhudaSdk),configurable:false,writable:false});\nconst meta=${JSON.stringify(metadata)};Object.freeze(meta.features);Object.freeze(meta.libraries);Object.defineProperty(globalThis,'ZhudaBundle',{value:Object.freeze(meta),configurable:false,writable:false});\n})();\n`;
     const file=`zhuda-${profile}.js`,bytes=Buffer.from(code);
     const entry={...metadata,file,bytes:bytes.length,sha256:hash(bytes),integrity:'sha384-'+hash(bytes,'sha384','base64'),inputs};
     manifest.profiles[profile]=entry;files.set(file,bytes);
-    files.set(`example-${profile}.html`,Buffer.from(browserExample(entry)));
+    files.set(`example-${profile}.html`,Buffer.from(modelDocument ? modelBrowserExample(entry,JSON.parse(modelDocument)) : browserExample(entry)));
   }
   files.set('sdk-manifest.json',Buffer.from(JSON.stringify(manifest,null,2)+'\n'));
   files.set('LICENSE.txt',fs.readFileSync(path.join(engineRoot,'LICENSE')));
@@ -82,7 +86,7 @@ if(process.argv[1]&&fs.realpathSync(process.argv[1])===fileURLToPath(import.meta
     for(let i=0;i<args.length;i++){
       if(args[i]==='--out'&&args[i+1])outDir=args[++i];
       else if(args[i]==='--profile'&&args[i+1])profiles=[args[++i]];
-      else throw Error('Usage: zhuda-laya-browser-sdk [--out DIRECTORY] [--profile 2d|3d]');
+      else throw Error('Usage: zhuda-laya-browser-sdk [--out DIRECTORY] [--profile 2d|3d|3d-gltf]');
     }
     console.log(JSON.stringify(await buildBrowserSdk({outDir,profiles}),null,2));
   }catch(error){console.error(error.message);process.exitCode=1;}

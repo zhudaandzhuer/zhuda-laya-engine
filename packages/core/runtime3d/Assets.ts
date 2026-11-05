@@ -1,3 +1,5 @@
+import { prepareLaya342GltfResource, copyLaya342MorphWeights, createLaya342ModelTemplate } from "./Laya342GltfAdapter.ts";
+import { inspectGltfAsset, readGltfAssetDocument, ZhudaModelCompatibilityError, type ModelCompatibilityReport } from "./ModelCompatibility.ts";
 import { destroyLaya342ModelTree } from "./Laya342Adapters.ts";
 import type { AssetProvider, LoadedAssetBytes } from "./AssetProvider.ts";
 import { normalizeAssetId } from "./AssetProvider.ts";
@@ -226,6 +228,7 @@ function visit(node: any, fn: (n: any) => void) {
 }
 export interface ModelInstance {
   readonly node: Laya.Sprite3D;
+  readonly compatibility: ModelCompatibilityReport;
   readonly materials: readonly Laya.Material[];
   setTint(color: [number, number, number, number]): void;
   find(name: string): Laya.Sprite3D | null;
@@ -238,23 +241,12 @@ export interface ModelLibraryOptions {
   /** Per-caller download + parse deadline. Default 15000ms. */
   timeoutMs?: number;
 }
-function embeddedModelDocument(bytes: ArrayBuffer): { binary: boolean; document: { buffers?: { uri?: string }[]; images?: { uri?: string }[] } } {
-  const view = new DataView(bytes);
-  const binary = bytes.byteLength >= 12 && view.getUint32(0, true) === 0x46546c67;
-  let json: Uint8Array;
-  if (binary) {
-    if (bytes.byteLength < 20 || view.getUint32(4, true) !== 2 || view.getUint32(8, true) !== bytes.byteLength || view.getUint32(16, true) !== 0x4e4f534a || view.getUint32(12, true) > bytes.byteLength - 20)
-      throw Error("Invalid GLB header or JSON chunk");
-    json = new Uint8Array(bytes, 20, view.getUint32(12, true));
-  } else json = new Uint8Array(bytes);
-  return { binary, document: JSON.parse(new TextDecoder().decode(json)) };
-}
 export class ZhudaModelLibrary {
   readonly cache: ZhudaAssetCache<any>;
   private instances = new Set<any>();
   // glTFResource.create() rebuilds animation clips on every call in 3.4.2.
   // Retain one off-scene template per existing cache lease and clone its tree.
-  private templates = new WeakMap<object, { node: Laya.Sprite3D; clips: Set<Laya.AnimationClip> }>();
+  private templates = new WeakMap<object, { node: Laya.Sprite3D; clips: Set<Laya.AnimationClip>; compatibility: ModelCompatibilityReport }>();
   private readonly timeoutMs: number;
   private readonly provider?: AssetProvider;
   constructor(options: number | ModelLibraryOptions = 3) {
@@ -282,28 +274,31 @@ export class ZhudaModelLibrary {
             bytes = await response.arrayBuffer();
           }
           if (signal.aborted) throw abortError();
-          const parsed = embeddedModelDocument(bytes);
+          const compatibility = inspectGltfAsset(bytes);
+          if (compatibility.status === "unsupported") throw new ZhudaModelCompatibilityError(compatibility, url);
+          const parsed = readGltfAssetDocument(bytes);
           if (this.provider) {
-            for (const item of [...(parsed.document.buffers ?? []), ...(parsed.document.images ?? [])])
+            for (const item of [...((parsed.document.buffers ?? []) as {uri?: string}[]), ...((parsed.document.images ?? []) as {uri?: string}[])])
               if (item.uri !== undefined && !item.uri.startsWith("data:"))
                 throw Error("Provider models require embedded buffers/images; repack as a self-contained GLB");
           }
           phase("parsing");
           resource = new l.glTFResource();
+          prepareLaya342GltfResource(resource, l);
           if (parsed.binary) await resource._parseglb(bytes, url);
           else await resource._parse(parsed.document, url);
           if (signal.aborted) {
             resource.destroy();
             throw abortError();
           }
-          const template = resource.create() as Laya.Sprite3D;
+          const template = createLaya342ModelTemplate(resource, l);
           const clips = new Set<Laya.AnimationClip>();
           visit(template, n => {
             const animator = l.Animator && n.getComponent?.(l.Animator);
             if (animator) for (let i = 0; i < animator.controllerLayerCount; i++)
               for (const state of animator.getControllerLayer(i).states) if (state.clip) clips.add(state.clip);
           });
-          this.templates.set(resource, { node: template, clips });
+          this.templates.set(resource, { node: template, clips, compatibility });
           resource._addReference(); // Cache owns the prefab even while no instances are visible.
           return resource;
         } catch (e) {
@@ -360,6 +355,7 @@ export class ZhudaModelLibrary {
       // default. Preserve each layer's selected state before the clone is mounted.
       const l = (globalThis as any).Laya;
       const restoreDefaults = (source: any, target: any) => {
+        copyLaya342MorphWeights(source, target, l);
         const a = l.Animator && source.getComponent?.(l.Animator), b = l.Animator && target.getComponent?.(l.Animator);
         if (a && b) for (let i = 0; i < a.controllerLayerCount; i++) {
           const original = a.getControllerLayer(i).defaultState;
@@ -397,6 +393,7 @@ export class ZhudaModelLibrary {
     let disposed = false;
     return {
       node,
+      compatibility: this.templates.get(lease.value)!.compatibility,
       materials,
       setTint: (color: [number, number, number, number]) => {
         if (disposed) throw Error("Disposed model instance");

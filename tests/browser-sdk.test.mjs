@@ -23,6 +23,10 @@ test('browser distribution is deterministic, integrity-pinned, rejects overwrite
  const temp=fs.mkdtempSync(path.join(os.tmpdir(),'zhuda-browser-'));
  try{
   const out=path.join(temp,'sdk'),first=await buildBrowserSdk({engineRoot:root,outDir:out});
+  assert.ok(first.manifest.profiles['3d-gltf'].libraries.includes('laya.gltf.js'));
+  assert.ok(first.manifest.profiles['3d-gltf'].libraries.includes('laya.postProcess.js'));
+  assert.equal(first.manifest.profiles['3d'].libraries.includes('laya.gltf.js'),false);
+  assert.ok(first.manifest.profiles['3d-gltf'].inputs.some(x=>x.path==='examples/model-inspector/asset.gltf'));
   assert.equal((await buildBrowserSdk({engineRoot:root,outDir:out})).reused,true);
   for(const [profile,entry] of Object.entries(first.manifest.profiles)){
    const bytes=fs.readFileSync(path.join(out,entry.file));

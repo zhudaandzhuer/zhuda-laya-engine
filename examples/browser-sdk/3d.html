@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Zhuda 3D · 單一 HTML 範例</title>
 <style>body{margin:0;padding:20px;background:#101c2a;color:#e5f1ff;font:16px/1.5 system-ui}main{max-width:900px;margin:auto}#view{position:relative;width:min(100%,640px);aspect-ratio:4/3;overflow:hidden;background:#152030}button{padding:10px;margin:12px 8px 12px 0}pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:300px;overflow:auto}a{color:#72d6eb}</style></head>
-<body><main><h1>Zhuda 3D / 1.8.0</h1><p>一份 HTML，以官方公開 API 建立 Prefab。按鈕切換同一份定義的狀態。</p><div id="view" aria-label="引擎畫布"></div><button id="toggle" disabled>切換狀態</button><button id="cycles" disabled>驗證 30 次建立／釋放</button><button id="dispose" disabled>釋放場景</button><pre id="sdk-report">載入中</pre></main>
-<script src="https://game.qianlongxundao.com/apps/zhuda-engine-sdk/releases/02b2dc8ba9dea9d1f1cd43a37226641c/zhuda-3d.js" integrity="sha384-Ndz1PeOiHamG0OAKRQ+yh+kd8bAEDSPgvZK/cgUNoLNlKDMx3suTJZopWG/c9ZSM" crossorigin="anonymous" onerror="document.querySelector('#sdk-report').textContent='SDK 載入失敗：檢查網址、網路、CSP 與 integrity';"></script>
+<body><main><h1>Zhuda 3D / 1.9.0</h1><p>一份 HTML，以官方公開 API 建立 Prefab。按鈕切換同一份定義的狀態。</p><div id="view" aria-label="引擎畫布"></div><button id="toggle" disabled>切換狀態</button><button id="cycles" disabled>驗證 30 次建立／釋放</button><button id="dispose" disabled>釋放場景</button><pre id="sdk-report">載入中</pre></main>
+<script src="https://game.qianlongxundao.com/apps/zhuda-engine-sdk/releases/c61d0a83b7094ff5055302d2f8235b8b/zhuda-3d.js" integrity="sha384-KCd5aaUX6virCJCqVbwb/6R9t3tuyhxdMjRr/tC1gvzm9TY6qjI8DCLFYGMiQa0A" crossorigin="anonymous" onerror="document.querySelector('#sdk-report').textContent='SDK 載入失敗：檢查網址、網路、CSP 與 integrity';"></script>
 <script>
 const {ZhudaEngine,Zhuda3D,ZhudaPrefabLibrary,ZhudaResourceScope,inspectSceneResources}=Zhuda;
 const scope=new ZhudaResourceScope(),cancel=new AbortController();scope.defer(()=>cancel.abort());

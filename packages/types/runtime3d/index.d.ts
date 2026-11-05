@@ -19,3 +19,7 @@ export * from "./CameraCollision";
 export * from "./Filmic";
 export { installLaya342LifecycleFix } from "./Laya342Adapters";
 export * from "./CrowdPresentation";
+export * from "./ModelInspector";
+export * from "./AssetShowcase";
+export { inspectGltfDocument, inspectGltfAsset, gltfExtensionCapabilities, ZhudaModelCompatibilityError } from "./ModelCompatibility";
+export type { ModelDiagnostic, ModelCompatibilityReport, ModelSourceInventory, GltfExtensionCapability } from "./ModelCompatibility";
