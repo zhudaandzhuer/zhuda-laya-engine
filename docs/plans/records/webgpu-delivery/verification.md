@@ -33,6 +33,7 @@ Neutral authored geometry/text only; no customer art or game logic.
 | Hosted payload | Download and hash all 16 immutable files; compare archive SHA response | PASS | `deployment.json`, `hosted-hashes.json` |
 | Hosted cross-origin/SRI and sandbox | `SDK_BROWSER_DIR=<root>/browser-1.11.0 SDK_EVIDENCE_DIR=<root>/hosted SDK_RELEASE_URL=<fixed-release> node scripts/verify-browser-sdk.mjs` | PASS, 12 scenarios (six profiles × cross-origin/sandbox) | `hosted/hosted-browser.json`, PNGs |
 | Hosted hardware GPU pipeline | `node scripts/verify-webgpu.mjs --url <fixed-release> --out <root>/hosted-gpu` | PASS, all three GPU profiles | `hosted-gpu/results.json`, shader/particle and model PNGs |
+| Windows and Linux CI | [Repair run](https://github.com/zhudaandzhuer/zhuda-laya-engine/actions/runs/41995476456), commit `695c0580ecfb2631c71932603b398a70d50882bd` | PASS, both jobs | `ci-repair.json`, `ci-repair.log`, `ci-prefab-evidence/` |
 | Windows hardware | `npm run verify:webgpu` on Windows Chrome/Edge | UNAVAILABLE | Reproducible entry documented in `docs/webgpu.md`; Windows CI is contracts only |
 | Diff/status | `git diff --check`, `git status --short` | PASS before implementation commit | Git working tree |
 
@@ -51,8 +52,11 @@ Local follow-up checks pass: `npm run verify` (216 tests, `verify-ci-fix.log`) a
 `PREFAB_FIXTURE_DIR=<root>/legacy-prefab-ci-fixed node scripts/verify-prefab-browser.mjs`
 (`legacy-prefab-ci-fixed.log`, `legacy-prefab-ci-fixed/evidence/summary.json`).
 This includes deliberate pixel/provenance/checksum/DPR failures and 30 resource
-cycles. The failed CI log is retained as `ci-first-failure.log`. Remote rerun is
-pending at this commit; Windows hardware acceptance remains unavailable.
+cycles. The failed CI log is retained as `ci-first-failure.log`. The repair run
+at `695c0580ecfb2631c71932603b398a70d50882bd` passed both jobs: Windows build,
+typecheck, complete declaration audit and all 14 selected tests; Linux full
+verification and the complete browser Prefab comparison. The subsequent record
+update changes documentation only. Windows hardware acceptance remains unavailable.
 
 ## Bugs reproduced and repaired
 

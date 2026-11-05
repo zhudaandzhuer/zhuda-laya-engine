@@ -139,3 +139,5 @@ and errors; it fails on software adapters or WebGL fallback. Preserve the report
 with the target GPU/driver and `chrome://gpu` / `edge://gpu` information. Windows
 CI checks compilation and contracts, not hardware rendering. See the
 [verification record](plans/records/webgpu-delivery/verification.md).
+The [Windows/Linux CI run](https://github.com/zhudaandzhuer/zhuda-laya-engine/actions/runs/41995476456)
+passes both jobs, including pinned vendor-byte checks on Windows.
