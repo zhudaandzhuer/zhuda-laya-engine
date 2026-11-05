@@ -232,3 +232,10 @@ at DPR 1/2/3 must fail. Rebuild candidates and recapture/review affected evidenc
 do not re-label a pre-fix reference as approved. Default preview design units
 match the requested CSS canvas dimensions. See [runtime sizing](platform-adapters.md)
 for fixed-design consumers and [measured results](plans/records/astra-runtime-feedback/verification.md).
+
+## Branding and neutral 2D starter (1.10.0)
+
+Use `zhuda-laya-init --template 2d` for a strict 2D consumer. Explicit
+`branding.mode` selects `engine` (default), `custom`, or `none`; notices remain
+in the output. See [white-label, themes and recovery](slot-factory.md) for the
+validated schema and independent consumer verification command.

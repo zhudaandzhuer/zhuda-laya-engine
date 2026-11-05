@@ -1,5 +1,5 @@
 /**
- * zhuda-laya-engine v1.9.0 — 豬大 LayaAir (AI-Agent-Friendly Fork Edition)
+ * zhuda-laya-engine v1.10.0 — 豬大 LayaAir (AI-Agent-Friendly Fork Edition)
  * Repository: https://github.com/zhudaandzhuer/zhuda-laya-engine
  * Upstream Official: LayaAir Engine 3.4.2 by Layabox (https://layaair.com/ | https://github.com/layabox/LayaAir)
  * License: MIT
@@ -1091,6 +1091,8 @@ function resizeLaya342Stage(runtime2, width, height, designWidth, designHeight, 
       get: () => dpr
     });
     runtime2.stage.size(designWidth, designHeight);
+    if (runtime2.stage.updateCanvasSize)
+      runtime2.systemTimer?.clearCallLater(runtime2.stage, runtime2.stage.updateCanvasSize);
     runtime2.stage.setScreenSize(width * dpr, height * dpr);
     const matrix = runtime2.stage._canvasTransform;
     if (canvas?.getBoundingClientRect && matrix) {
@@ -3225,12 +3227,12 @@ function renderPrefabTree(tree, shared) {
         if (!baseline.get(path)?.material) throw Error(`Node has no material slot: ${path}`);
         const current = node.meshRenderer.sharedMaterial;
         if (ownedMaterials.has(current)) return current;
-        const clone = resources.own(current.clone(), (value) => value.destroy());
-        ownedMaterials.add(clone);
-        for (const [id, value] of materials) if (value === current) materials.set(id, clone);
+        const clone2 = resources.own(current.clone(), (value) => value.destroy());
+        ownedMaterials.add(clone2);
+        for (const [id, value] of materials) if (value === current) materials.set(id, clone2);
         for (const [key, other] of nodes) if (baseline.get(key)?.material && other.meshRenderer.sharedMaterial === current)
-          other.meshRenderer.sharedMaterial = clone;
-        return clone;
+          other.meshRenderer.sharedMaterial = clone2;
+        return clone2;
       },
       socket: (id) => {
         if (!has(spec.sockets ?? {}, id)) throw Error(`Unknown 3D socket: ${id}`);
@@ -12539,6 +12541,368 @@ var ZhudaAssetShowcase = class {
   }
 };
 
+// packages/core/runtime3d/AsyncDeadline.ts
+function withDeadline(run, options, discard = () => {
+}) {
+  const timeout = options.timeoutMs ?? 15e3;
+  if (!Number.isSafeInteger(timeout) || timeout <= 0) return Promise.reject(Error("Invalid IO timeoutMs"));
+  return new Promise((resolve, reject) => {
+    const controller = new AbortController();
+    let settled = false;
+    const cleanup = () => {
+      clearTimeout(timer);
+      options.signal?.removeEventListener("abort", abort);
+    };
+    const fail = (reason) => {
+      if (settled) return;
+      settled = true;
+      controller.abort(reason);
+      cleanup();
+      reject(reason);
+    };
+    const abort = () => fail(options.signal?.reason ?? new DOMException("Operation cancelled", "AbortError"));
+    const timer = setTimeout(() => fail(new DOMException("IO deadline exceeded", "TimeoutError")), timeout);
+    options.signal?.addEventListener("abort", abort, { once: true });
+    if (options.signal?.aborted) {
+      abort();
+      return;
+    }
+    Promise.resolve().then(() => {
+      if (controller.signal.aborted) throw controller.signal.reason;
+      return run(controller.signal);
+    }).then((value) => {
+      if (settled) {
+        discard(value);
+        return;
+      }
+      settled = true;
+      cleanup();
+      resolve(value);
+    }, fail).catch(() => {
+    });
+  });
+}
+
+// packages/core/runtime3d/Themes.ts
+function identity(value) {
+  if (typeof value !== "string" || !/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$/.test(value)) throw Error("Invalid theme identity");
+}
+function budget(value) {
+  if (value !== void 0 && (!Number.isSafeInteger(value) || value < 0)) throw Error("Invalid theme budget");
+}
+function validateThemeManifest(value, contract) {
+  if (!value || value.schemaVersion !== 1 || !Array.isArray(value.assets) || !contract || !Array.isArray(contract.required)) throw Error("Invalid theme schema");
+  identity(value.id);
+  identity(value.revision);
+  identity(value.contractId);
+  identity(contract.id);
+  if (value.contractId !== contract.id) throw Error("Theme contract mismatch");
+  budget(value.estimatedDecodedBytes);
+  budget(contract.maxDownloadBytes);
+  budget(contract.maxEstimatedDecodedBytes);
+  if (value.estimatedDecodedBytes === void 0) throw Error("Missing decoded theme estimate");
+  const ids = /* @__PURE__ */ new Set();
+  let bytes = 0;
+  const assets = value.assets.map((entry) => {
+    if (!entry || normalizeAssetId(entry.id) !== entry.id || normalizeAssetId(entry.source) !== entry.source || ids.has(entry.id)) throw Error("Duplicate or invalid theme asset");
+    if (typeof entry.sha256 !== "string" || !/^[a-f0-9]{64}$/.test(entry.sha256) || !Number.isSafeInteger(entry.bytes) || entry.bytes < 0) throw Error("Theme asset requires bytes and lowercase SHA-256: " + entry.id);
+    if (entry.kind !== void 0 && !["binary", "text", "image", "audio", "model", "scene", "shader", "unknown"].includes(entry.kind)) throw Error("Invalid theme asset kind");
+    if (entry.formatVersion !== void 0 && (typeof entry.formatVersion !== "string" || !entry.formatVersion)) throw Error("Invalid theme formatVersion");
+    ids.add(entry.id);
+    bytes += entry.bytes;
+    return Object.freeze({ ...entry });
+  });
+  const required = /* @__PURE__ */ new Set();
+  for (const need of contract.required) {
+    if (normalizeAssetId(need.id) !== need.id || required.has(need.id)) throw Error("Invalid theme requirement");
+    required.add(need.id);
+    const found = assets.find((a) => a.id === need.id);
+    if (!found || need.kind && need.kind !== found.kind || need.formatVersion && need.formatVersion !== found.formatVersion) throw Error("Missing/incompatible theme asset: " + need.id);
+  }
+  if (!Number.isSafeInteger(bytes) || bytes > (contract.maxDownloadBytes ?? Infinity)) throw Error("Theme download budget exceeded");
+  if (value.estimatedDecodedBytes > (contract.maxEstimatedDecodedBytes ?? Infinity)) throw Error("Theme decoded estimate budget exceeded");
+  return Object.freeze({ ...value, assets: Object.freeze(assets) });
+}
+var ZhudaThemeAssetProvider = class {
+  constructor(source, manifest, contract, timeoutMs = 15e3) {
+    this.lifetime = new AbortController();
+    this.releases = /* @__PURE__ */ new Set();
+    this.manifest = validateThemeManifest(manifest, contract);
+    this.name = `theme:${manifest.id}:${manifest.revision}`;
+    this.source = source;
+    this.timeoutMs = timeoutMs;
+    if (!Number.isSafeInteger(timeoutMs) || timeoutMs <= 0) throw Error("Invalid IO timeoutMs");
+  }
+  /** Namespace a caller's shared cache key; never reuse bare logical IDs between providers. */
+  cacheKey(id) {
+    const entry = this.entry(id);
+    return JSON.stringify([this.manifest.id, this.manifest.revision, entry.id, entry.sha256]);
+  }
+  entry(id) {
+    if (this.lifetime.signal.aborted) throw Error("Disposed theme provider");
+    const entry = this.manifest.assets.find((a) => a.id === normalizeAssetId(id));
+    if (!entry) throw Error("Unmapped theme asset: " + id);
+    return entry;
+  }
+  async getManifest(signal) {
+    if (this.lifetime.signal.aborted || signal?.aborted) throw new DOMException("Cancelled theme manifest", "AbortError");
+    return { schemaVersion: 1, entries: this.manifest.assets.map(({ source: _source, ...entry }) => entry) };
+  }
+  async load(id, options = {}) {
+    const entry = this.entry(id);
+    const controller = new AbortController();
+    const abort = () => controller.abort(new DOMException("Theme load cancelled", "AbortError"));
+    const signals = [this.lifetime.signal, options.signal].filter((s) => !!s);
+    for (const signal of signals) {
+      signal.addEventListener("abort", abort, { once: true });
+      if (signal.aborted) abort();
+    }
+    try {
+      const asset = await withDeadline(async (signal) => {
+        const raw = await this.source.load(entry.source, { ...options, signal, maxBytes: Math.min(entry.bytes || 1, options.maxBytes ?? Infinity), onProgress: (p) => options.onProgress?.({ ...p, id: entry.id }) });
+        try {
+          if (raw.bytes.byteLength !== entry.bytes || raw.bytes.byteLength > (options.maxBytes ?? Infinity)) throw Error("Theme asset size mismatch: " + id);
+          const digest = await crypto.subtle.digest("SHA-256", new Uint8Array(raw.bytes).buffer);
+          const sha = [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
+          if (sha !== entry.sha256) throw Error("Theme asset integrity mismatch: " + id);
+          return raw;
+        } catch (error) {
+          raw.release?.();
+          throw error;
+        }
+      }, { signal: controller.signal, timeoutMs: this.timeoutMs }, (raw) => raw.release?.());
+      let released = false;
+      const release = () => {
+        if (released) return;
+        released = true;
+        this.releases.delete(release);
+        asset.release?.();
+      };
+      if (controller.signal.aborted) {
+        release();
+        throw controller.signal.reason;
+      }
+      this.releases.add(release);
+      return { id: entry.id, bytes: asset.bytes, manifest: { ...entry }, release };
+    } finally {
+      for (const signal of signals) signal.removeEventListener("abort", abort);
+    }
+  }
+  dispose() {
+    if (this.lifetime.signal.aborted) return;
+    this.lifetime.abort();
+    const errors = [];
+    for (const release of [...this.releases]) {
+      try {
+        release();
+      } catch (error) {
+        errors.push(error);
+      }
+    }
+    if (errors.length) throw Object.assign(Error("Theme release failed"), { errors });
+  }
+};
+var ZhudaThemeController = class {
+  constructor(source, contract, maxTransitionEstimatedBytes = Infinity) {
+    this.slot = new ZhudaRequestSlot();
+    this.active = null;
+    this.disposed = false;
+    this.source = source;
+    this.maxTransitionEstimatedBytes = maxTransitionEstimatedBytes;
+    this.contract = { ...contract, required: contract.required.map((r) => ({ ...r })) };
+    if (maxTransitionEstimatedBytes !== Infinity) budget(maxTransitionEstimatedBytes);
+  }
+  get current() {
+    return this.active;
+  }
+  async replace(manifest, prepare, options = {}) {
+    if (this.disposed) throw Error("Disposed theme controller");
+    const snapshot = validateThemeManifest(manifest, this.contract);
+    if (snapshot.estimatedDecodedBytes + (this.active?.manifest.estimatedDecodedBytes ?? 0) > this.maxTransitionEstimatedBytes) throw Error("Theme transition estimate budget exceeded");
+    let retirementError;
+    const changed = await this.slot.replace(async (signal) => {
+      const provider = new ZhudaThemeAssetProvider(this.source, snapshot, this.contract, options.timeoutMs);
+      const controller = new AbortController();
+      const abort = () => controller.abort(new DOMException("Theme preparation cancelled", "AbortError"));
+      for (const s of [signal, options.signal]) {
+        s?.addEventListener("abort", abort, { once: true });
+        if (s?.aborted) abort();
+      }
+      try {
+        const prepared2 = await withDeadline((s) => prepare(provider, s), { signal: controller.signal, timeoutMs: options.timeoutMs }, (value) => value.dispose());
+        let disposed = false;
+        return Object.freeze({ manifest: snapshot, provider, value: prepared2.value, dispose: () => {
+          if (disposed) return;
+          disposed = true;
+          try {
+            prepared2.dispose();
+          } finally {
+            provider.dispose();
+          }
+        } });
+      } catch (error) {
+        provider.dispose();
+        throw error;
+      } finally {
+        for (const s of [signal, options.signal]) s?.removeEventListener("abort", abort);
+      }
+    }, (value) => {
+      const old = this.active;
+      this.active = value;
+      try {
+        old?.dispose();
+      } catch (error) {
+        retirementError = error;
+      }
+    }, (value) => value.dispose());
+    if (retirementError) throw retirementError;
+    return changed;
+  }
+  cancel() {
+    this.slot.cancel();
+  }
+  clear() {
+    this.slot.cancel();
+    const old = this.active;
+    this.active = null;
+    old?.dispose();
+  }
+  dispose() {
+    if (this.disposed) return;
+    this.disposed = true;
+    this.clear();
+  }
+};
+
+// packages/core/runtime3d/ResultPlayback.ts
+function identity2(value) {
+  if (typeof value !== "string" || !value || value.length > 256) throw Error("Invalid result identity");
+}
+function canonical(value, depth = 0) {
+  if (depth > 64) throw Error("Result exceeds JSON depth");
+  if (value === null || typeof value === "boolean" || typeof value === "string") return JSON.stringify(value);
+  if (typeof value === "number" && Number.isFinite(value)) return JSON.stringify(value);
+  if (Array.isArray(value)) return "[" + Array.from(value, (v) => canonical(v, depth + 1)).join(",") + "]";
+  if (value && typeof value === "object" && Object.getPrototypeOf(value) === Object.prototype)
+    return "{" + Object.keys(value).sort().map((k) => JSON.stringify(k) + ":" + canonical(value[k], depth + 1)).join(",") + "}";
+  throw Error("Result must contain finite JSON values");
+}
+var clone = (value) => JSON.parse(canonical(value));
+var ZhudaResultPlayback = class {
+  constructor(options) {
+    this.ready = false;
+    this.disposed = false;
+    this.pending = null;
+    this.scope = { ...options.scope };
+    this.store = options.store;
+    this.validate = options.validate;
+    this.validateCursor = options.validateCursor;
+    for (const field of ["gameId", "sessionId", "epoch"]) identity2(this.scope[field]);
+    this.key = "zhuda:playback:" + JSON.stringify([this.scope.gameId, this.scope.sessionId, this.scope.epoch]);
+    const stored = this.store.read(this.key);
+    this.state = stored == null ? { schemaVersion: 1, ...this.scope, result: null, cursor: 0, completed: false } : this.checkpoint(stored);
+  }
+  checkScope(value) {
+    for (const field of ["gameId", "sessionId", "epoch"]) if (value[field] !== this.scope[field]) throw Error("Result scope mismatch: " + field);
+  }
+  result(value) {
+    if (!value || value.schemaVersion !== 1 || !Number.isSafeInteger(value.sequence) || value.sequence < 1) throw Error("Invalid result envelope");
+    this.checkScope(value);
+    identity2(value.roundId);
+    identity2(value.resultVersion);
+    const copy = clone(value);
+    this.validate(clone(copy));
+    return copy;
+  }
+  checkpoint(value) {
+    const state = clone(value);
+    if (!state || state.schemaVersion !== 1 || !Number.isSafeInteger(state.cursor) || state.cursor < 0 || typeof state.completed !== "boolean") throw Error("Invalid playback checkpoint");
+    this.checkScope(state);
+    if (state.result === null) {
+      if (state.cursor !== 0 || state.completed) throw Error("Invalid empty checkpoint");
+    } else {
+      this.result(state.result);
+      this.validateCursor?.(clone(state.result), state.cursor, state.completed);
+    }
+    return state;
+  }
+  persist(state) {
+    const checked = this.checkpoint(state);
+    this.store.write(this.key, clone(checked));
+    this.state = checked;
+  }
+  alive() {
+    if (this.disposed) throw Error("Disposed result playback");
+  }
+  writable() {
+    this.alive();
+    if (!this.ready || this.pending) throw Error("Playback locked; authoritative recovery required");
+  }
+  get inputLocked() {
+    return !this.ready || this.pending !== null || this.disposed;
+  }
+  snapshot() {
+    return clone(this.state);
+  }
+  accept(value) {
+    this.writable();
+    const next = this.result(value), previous = this.state.result;
+    if (previous && next.sequence < previous.sequence) return "stale";
+    if (previous && next.sequence === previous.sequence) {
+      if (canonical(next) !== canonical(previous)) throw Error("Conflicting result for sequence");
+      return "duplicate";
+    }
+    if (next.sequence !== (previous?.sequence ?? 0) + 1) throw Error("Result sequence gap; reconcile with authority");
+    if (previous && (!this.state.completed || previous.roundId === next.roundId)) throw Error("Previous presentation incomplete or round ID reused");
+    this.persist({ ...this.state, result: next, cursor: 0, completed: false });
+    return "accepted";
+  }
+  /** Consumer applies idempotent visual state then checkpoints; crashes may replay that state.
+   * Never attach wallet/payment side effects to this method. */
+  advance(sequence, cursor, completed = false) {
+    this.writable();
+    if (!this.state.result || this.state.result.sequence !== sequence || this.state.completed || cursor < this.state.cursor || cursor === this.state.cursor && !completed) throw Error("Stale or regressing presentation cursor");
+    this.persist({ ...this.state, cursor, completed });
+  }
+  /** On blur/context loss call suspend, cancel visual work and pause the existing session. */
+  suspend() {
+    this.ready = false;
+    this.pending?.abort(new DOMException("Playback suspended", "AbortError"));
+    this.pending = null;
+  }
+  async recover(adapter, options = {}) {
+    this.alive();
+    this.suspend();
+    const controller = new AbortController();
+    this.pending = controller;
+    const abort = () => controller.abort(options.signal?.reason);
+    options.signal?.addEventListener("abort", abort, { once: true });
+    if (options.signal?.aborted) abort();
+    try {
+      const value = await withDeadline((signal) => adapter.reconcile(this.snapshot(), signal), { signal: controller.signal, timeoutMs: options.timeoutMs });
+      if (controller.signal.aborted || this.pending !== controller || this.disposed) throw new DOMException("Stale result recovery", "AbortError");
+      const next = value === null ? null : this.result(value), previous = this.state.result;
+      if (previous && (!next || next.sequence < previous.sequence)) throw Error("Authoritative recovery regressed; require a new epoch");
+      if (previous && next && next.sequence === previous.sequence) {
+        if (canonical(next) !== canonical(previous)) throw Error("Conflicting authoritative recovery");
+        this.persist(this.state);
+      } else {
+        if (previous && next?.roundId === previous.roundId) throw Error("Recovered round ID reused");
+        this.persist({ ...this.state, result: next, cursor: 0, completed: false });
+      }
+      this.ready = true;
+    } finally {
+      options.signal?.removeEventListener("abort", abort);
+      if (this.pending === controller) this.pending = null;
+    }
+  }
+  dispose() {
+    if (this.disposed) return;
+    this.disposed = true;
+    this.suspend();
+  }
+};
+
 // packages/core/terrain/Terrain2D.ts
 function validateTerrain2D(spec) {
   const s = spec, e = [];
@@ -13878,6 +14242,7 @@ export {
   ZhudaRenderSpace,
   ZhudaRequestSlot,
   ZhudaResourceScope,
+  ZhudaResultPlayback,
   ZhudaRibbonPath3D,
   ZhudaRibbonTrail,
   ZhudaRibbonTrail3D,
@@ -13895,6 +14260,8 @@ export {
   ZhudaTerrain2D,
   ZhudaTerrain2DRenderer,
   ZhudaTerrain3D,
+  ZhudaThemeAssetProvider,
+  ZhudaThemeController,
   ZhudaTimerScheduler,
   ZhudaUI,
   ZhudaVfxCamera,
@@ -13952,6 +14319,7 @@ export {
   validatePrefabTree3D,
   validateShaderSpec,
   validateTerrain2D,
+  validateThemeManifest,
   validateVfxMaterial,
   zhudaComponent
 };

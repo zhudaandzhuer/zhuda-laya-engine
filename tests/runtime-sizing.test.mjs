@@ -22,3 +22,13 @@ test('DPR cap restores native ratio on success and sizing failure, with embedded
   assert.equal(Browser.pixelRatio,3);
   assert.equal(Object.getOwnPropertyDescriptor(Browser,'pixelRatio').get,get);
 });
+
+test('managed container sizing cancels the native delayed window resize only',()=>{
+ const queue=new Map(),other=()=>{},Browser={};let backing;
+ const stage={updateCanvasSize(){backing=[1440,810];},size(){queue.set(this,this.updateCanvasSize);},setScreenSize(w,h){backing=[w,h];}};
+ queue.set(other,other);
+ const systemTimer={clearCallLater(caller,method){if(queue.get(caller)===method)queue.delete(caller);}};
+ resizeLaya342Stage({Browser,stage,systemTimer},640,360,640,360,2);
+ assert.deepEqual(backing,[1280,720]);assert.equal(queue.has(stage),false);assert.equal(queue.has(other),true);
+ for(const [caller,fn]of queue)fn.call(caller);assert.deepEqual(backing,[1280,720]);
+});

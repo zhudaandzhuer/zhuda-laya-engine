@@ -40,6 +40,18 @@ Build 2D, 3D and Spine 4.2 projects with TypeScript, a CLI and coding agents. Th
 
 Maintained by [Zhuda](https://github.com/zhudaandzhuer). Rendering and physics come from [LayaAir / Layabox](https://layaair.com/). This is an independent fork; donations support Zhuda's work on this repository.
 
+## White-label and H5 factory foundations (1.10.0)
+
+Keep the default 豬大 × LayaAir splash, use your own brand, or explicitly disable
+it through the public compiler and browser bundle. Immutable theme mappings,
+SHA-verified assets, cancellable prepared replacement and authoritative-result
+presentation/checkpoint coordination support a same-core, two-theme workflow.
+`zhuda-laya-init --template 2d` creates a strict 2D consumer with shared isolated
+Prefab definitions. See [contracts, examples and adoption limits](docs/slot-factory.md)
+and the [verification record](docs/plans/records/slot-factory-foundation/verification.md).
+This is the H5 foundation; a complete Slot Factory, signed Native delivery and
+customer/low-end-device acceptance remain separate work.
+
 ## Model inspection and import reliability (1.9.0)
 
 Required glTF extensions now fail explicitly when unsupported; node Morph weights
@@ -70,7 +82,7 @@ and the [measured scope and migration notes](docs/plans/records/astra-runtime-fe
 Physical iOS/Android, speaker latency and a production Worklet DSP mixer remain
 unverified; the extension and desktop reference test do not establish full SOP compliance.
 
-## Single-HTML browser entry (1.9.0)
+## Single-HTML browser entry (1.10.0)
 
 Use the [hosted SDK and runnable examples](https://game.qianlongxundao.com/play/zhuda-engine-sdk/)
 to load the real runtime with one pinned script. [Browser SDK guide](docs/browser-sdk.md)

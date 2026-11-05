@@ -64,3 +64,16 @@ test("init argument parser keeps the consumer target and explicit engine spec", 
   assert.equal(parsed.target, path.resolve(process.cwd(), "game"));
   assert.throws(() => parseInitArgs(["./game", "--engine"]), /--engine requires/);
 });
+
+test('2D scaffold uses the same isolated definitions and complete declaration checking',async()=>{
+ const root=fs.mkdtempSync(path.join(os.tmpdir(),'zhuda-2d-init-'));
+ try{
+  const parsed=parseInitArgs([root,'--engine','1.10.0','--template','2d']);initConsumer(parsed);
+  const config=JSON.parse(fs.readFileSync(path.join(root,'zhuda.config.json')));
+  assert.deepEqual(config.features,['core','2d','ui']);assert.equal(config.prefabPreview,'src/prefabs.ts');
+  assert.equal(JSON.parse(fs.readFileSync(path.join(root,'tsconfig.json'))).compilerOptions.skipLibCheck,false);
+  assert.equal(auditConsumerSources(root).passed,true);
+  const report=await runConsumerBuild({projectRoot:root,config});assert.equal(report.route.level,'engine-backed-static');
+  assert.throws(()=>parseInitArgs([root,'--engine','1.10.0','--template','slot']),/template/);
+ }finally{fs.rmSync(root,{recursive:true,force:true});}
+});

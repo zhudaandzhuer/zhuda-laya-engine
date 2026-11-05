@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import {starter2D} from './consumer-starter-2d.mjs';
 import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
@@ -28,6 +29,7 @@ export function parseInitArgs(argv = process.argv.slice(2)) {
   let target = "zhuda-consumer";
   let name;
   let engine;
+  let template = "3d";
   for (let index = 0; index < argv.length; index++) {
     const arg = argv[index];
     if (arg === "--name") {
@@ -37,6 +39,10 @@ export function parseInitArgs(argv = process.argv.slice(2)) {
     else if (arg === "--engine") {
       engine = argv[++index];
       if (!engine || engine.startsWith("-")) throw Error("--engine requires an exact version or commit-pinned Git specification");
+    }
+    else if (arg === "--template") {
+      template = argv[++index];
+      if (!["2d","3d"].includes(template)) throw Error("--template requires 2d or 3d");
     }
     else if (arg === "--help" || arg === "-h") return { help: true };
     else if (arg.startsWith("-")) throw Error(`Unknown option: ${arg}`);
@@ -49,10 +55,12 @@ export function parseInitArgs(argv = process.argv.slice(2)) {
     name: packageName(name || path.basename(absoluteTarget)),
     engine: engine || currentEngineSpec(),
     help: false,
+    template,
   };
 }
 
-function filesFor({ name, engine }) {
+function filesFor({ name, engine, template = "3d" }) {
+  if (!["2d","3d"].includes(template)) throw Error("--template requires 2d or 3d");
   return {
     "package.json": JSON.stringify({
       name,
@@ -76,7 +84,8 @@ function filesFor({ name, engine }) {
       name,
       entry: "src/Main.ts",
       outDir: "dist/web",
-      features: ["core", "3d"],
+      features: template === "2d" ? ["core", "2d", "ui"] : ["core", "3d"],
+      ...(template === "2d" ? {prefabPreview: "src/prefabs.ts"} : {}),
       viewport: { width: 1280, height: 720, scaleMode: "showall" },
     }, null, 2) + "\n",
     "tsconfig.json": JSON.stringify({
@@ -86,7 +95,7 @@ function filesFor({ name, engine }) {
         moduleResolution: "bundler",
         lib: ["ES2020", "DOM"],
         strict: true,
-        skipLibCheck: true,
+        skipLibCheck: false,
         noEmit: true,
       },
       include: ["src/**/*.ts"],
@@ -145,6 +154,7 @@ Keep game rules, assets, prefabs and deployment here. Read the engine's
 \`AGENTS.md\` and [consumer route](https://github.com/zhudaandzhuer/zhuda-laya-engine/blob/main/docs/consumer-route.md)
 before adding visual content.
 `,
+    ...(template === "2d" ? starter2D() : {}),
   };
 }
 
@@ -161,7 +171,7 @@ export function initConsumer(options) {
 }
 
 export function printHelp() {
-  console.log("Usage: zhuda-laya-init [directory] [--name package-name] [--engine exact-version-or-commit-spec]");
+  console.log("Usage: zhuda-laya-init [directory] [--name package-name] [--engine exact-version-or-commit-spec] [--template 2d|3d]");
   console.log("Creates a public-SDK consumer with pinned engine dependency, required HTML markers and verify scripts.");
 }
 

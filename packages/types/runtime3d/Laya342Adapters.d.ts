@@ -4,9 +4,13 @@
  * quality cap never changes the browser/device measurement seen by consumers. */
 export declare function resizeLaya342Stage(runtime: {
     Browser: object;
+    systemTimer?: {
+        clearCallLater(caller: object, method: (...args: never[]) => unknown): void;
+    };
     stage: {
         size(width: number, height: number): unknown;
         setScreenSize(width: number, height: number): void;
+        updateCanvasSize?: (...args: never[]) => unknown;
         _canvasTransform?: {
             a: number;
             b: number;

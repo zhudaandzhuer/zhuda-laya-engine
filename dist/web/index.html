@@ -128,31 +128,27 @@
     </script>
 </head>
 <body>
-    <div id="zhudaLogoSplash" role="status" aria-live="polite" aria-label="豬大 LayaAir">
-      <div class="zhuda-splash-shell">
-        <img src="assets/branding/zhuda-layaair-mark.svg" alt="豬大 × LayaAir" decoding="async" />
-        <p class="zhuda-splash-caption">AI-FRIENDLY GAME ENGINE</p>
-        <div class="zhuda-splash-progress" aria-hidden="true"></div>
-      </div>
+<div id="zhudaLogoSplash" role="status" aria-live="polite" aria-label="豬大 × LayaAir">
+    <div class="zhuda-splash-shell">
+      <img src="assets/branding/zhuda-layaair-mark.svg" alt="豬大 × LayaAir" decoding="async" />
+      <p class="zhuda-splash-caption">AI-FRIENDLY GAME ENGINE</p>
+      <div class="zhuda-splash-progress" aria-hidden="true"></div>
     </div>
-    <script>
-      (() => {
-        const splash = document.getElementById('zhudaLogoSplash');
-        if (!splash) return;
-        document.documentElement.classList.add('zhuda-splash-active');
-        const state = { started: true, durationMs: 2180, completed: false };
-        window.__ZHUDA_SPLASH__ = state;
-        const release = () => {
-          if (state.completed) return;
-          state.completed = true;
-          splash.classList.add('is-complete');
-          document.documentElement.classList.remove('zhuda-splash-active');
-          window.setTimeout(() => splash.remove(), 460);
-        };
-        window.setTimeout(release, 2180);
-      })();
-    </script>
-
+  </div><script>(function runBrandSplash(mode) {
+  const splash = document.getElementById('zhudaLogoSplash');
+  const state = { started: true, durationMs: mode === 'none' ? 0 : 2180, completed: mode === 'none', mode };
+  window.__ZHUDA_SPLASH__ = state;
+  if (mode === 'none' || !splash) return;
+  document.documentElement.classList.add('zhuda-splash-active');
+  const release = () => {
+    if (state.completed) return;
+    state.completed = true;
+    splash.classList.add('is-complete');
+    document.documentElement.classList.remove('zhuda-splash-active');
+    window.setTimeout(() => splash.remove(), 460);
+  };
+  window.setTimeout(release, state.durationMs);
+})("engine");</script>
     <!-- [1/29] -->
     <script type="text/javascript" src="libs/laya.core.js"></script>
     <!-- [2/29] -->

@@ -19,17 +19,18 @@ SDK 無法自行繞過政策，需用允許的附件資源或一般 HTTP 預覽�
 
 ## 固定版本與載入方式
 
-本次固定發行：**1.9.0**（模型相容性、Morph 修復、Inspector 與三種展示模式）。
+本次固定發行：**1.10.0**（預設官方品牌、可配置白牌；Theme／結果恢復基礎）。
+[1.9.0 固定版本](https://game.qianlongxundao.com/apps/zhuda-engine-sdk/releases/c61d0a83b7094ff5055302d2f8235b8b/)保留。
 [1.8.0 固定版本](https://game.qianlongxundao.com/apps/zhuda-engine-sdk/releases/02b2dc8ba9dea9d1f1cd43a37226641c/)、
 [1.7.0 固定版本](https://game.qianlongxundao.com/apps/zhuda-engine-sdk/releases/e69ecb8850e43d172389f96ab0a9430e/)及 1.6.0 保留。
 
-`https://game.qianlongxundao.com/apps/zhuda-engine-sdk/releases/c61d0a83b7094ff5055302d2f8235b8b/`
+`https://game.qianlongxundao.com/apps/zhuda-engine-sdk/releases/5d05c7177ff7fd71fd35114f3a324172/`
 
 | 檔案 | 包含內容 | 未壓縮 bytes |
 | --- | --- | ---: |
-| `zhuda-2d.js` | core、2D WebGL、UI、公開 Zhuda SDK | 1,600,154 |
-| `zhuda-3d.js` | 上述內容加上 3D、3D WebGL | 2,361,788 |
-| `zhuda-3d-gltf.js` | 3D 加上 glTF、postProcess；模型 Inspector 範例 | 2,521,636 |
+| `zhuda-2d.js` | core、2D WebGL、UI、公開 Zhuda SDK | 1,611,807 |
+| `zhuda-3d.js` | 上述內容加上 3D、3D WebGL | 2,373,441 |
+| `zhuda-3d-gltf.js` | 3D 加上 glTF、postProcess；模型 Inspector 範例 | 2,533,289 |
 
 這兩個基本 profile 沒有打入額外的 Spine、物理、粒子、glTF 或其他 plugin。模型展示可選新增的 `3d-gltf` profile；
 [可複製的 HTML 模型檢視器](../examples/browser-sdk/3d-gltf.html)
@@ -39,8 +40,8 @@ SDK 無法自行繞過政策，需用允許的附件資源或一般 HTTP 預覽�
 
 ```html
 <script
-  src="https://game.qianlongxundao.com/apps/zhuda-engine-sdk/releases/c61d0a83b7094ff5055302d2f8235b8b/zhuda-3d.js"
-  integrity="sha384-KCd5aaUX6virCJCqVbwb/6R9t3tuyhxdMjRr/tC1gvzm9TY6qjI8DCLFYGMiQa0A"
+  src="https://game.qianlongxundao.com/apps/zhuda-engine-sdk/releases/5d05c7177ff7fd71fd35114f3a324172/zhuda-3d.js"
+  integrity="sha384-BaoJ5RbOW5/qUkzME18zgcmGPBlSrr3+Cj0WeOuASZ9JdKswXd00s277omkdh8U+"
   crossorigin="anonymous"></script>
 <script>
 const { ZhudaEngine, Zhuda3D } = Zhuda;
@@ -66,7 +67,9 @@ HTML 須先建立具有明確尺寸的 `#game` 容器；完整可畫出內容的
 
 `Zhuda` 的 runtime exports 與公開 ESM 入口相同，並未再寫一套 facade。
 `ZhudaBundle` 回報版本、profile、模組清單、來源指紋與打包器版本。
-bundle 自動掛載共用的響應式豬大 × LayaAir Logo；不要自行放入同名 splash。
+bundle 預設掛載響應式豬大 × LayaAir Logo。1.10.0 可在載入前設定
+`window.ZhudaBranding={mode:"custom",brandId:"client",logo:"./logo.svg"}`，
+或 `{mode:"none"}`；詳見[白牌契約](slot-factory.md)。不要自行放入同名 splash。
 
 `sdk-manifest.json` 保存每份 bundle 的 SHA-256、SRI SHA-384、大小和來源檔雜湊。
 固定版本不覆寫；不要在正式遊戲使用會變動的 latest／launch URL 作為 script URL。
@@ -98,7 +101,7 @@ zhuda-laya-browser-sdk --out ./sdk-release
 
 預設輸出 `dist/browser/<version>`。相同內容可以重用；若同目錄已有不同產物，
 指令拒絕覆寫，請換新的輸出目錄。esbuild 固定為 0.27.1，工具版本不一致會拒絕。
-獨立安裝 tarball 的 CLI 與引擎 checkout 生成的八個檔案已逐 byte 比對一致。
+獨立安裝 tarball 的 CLI 與引擎 checkout 生成的十個檔案已逐 byte 比對一致。
 
 編輯器型別可以使用已安裝套件的
 `/// <reference types="zhuda-laya-engine/browser" />`，或直接 reference 該套件的
@@ -110,6 +113,7 @@ zhuda-laya-browser-sdk --out ./sdk-release
 正式遊戲依 [consumer route](consumer-route.md) 保留版本、型別、Prefab 比對、
 Scene／操作及目標裝置證據。Browser 範例的按鈕／計數也不能代替你的遊戲驗收。
 
+1.10.0 結果見[白牌與量產基礎驗收](plans/records/slot-factory-foundation/verification.md)。
 1.9.0 結果見[模型展示與 SDK 驗收](plans/records/asset-showcase-hardening/verification.md)。
 1.8.0 結果見 [群體與 SDK 發行驗收](plans/records/crowd-runtime-hardening/verification.md)；
 1.7.0 結果見 [當輪驗收記錄](plans/records/astra-runtime-feedback/verification.md)；

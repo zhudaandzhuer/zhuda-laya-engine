@@ -5,7 +5,7 @@ import crypto from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 import esbuild from 'esbuild';
 import {TopologyResolver} from './compiler-runtime.mjs';
-import {brandSplashCss,brandSplashMarkup} from './branding.mjs';
+
 import {modelBrowserExample} from './browser-model-example.mjs';
 import {browserExample} from './browser-sdk-example.mjs';
 
@@ -17,13 +17,10 @@ export const BROWSER_PROFILES=Object.freeze({
 const hash=(bytes,algorithm='sha256',encoding='hex')=>crypto.createHash(algorithm).update(bytes).digest(encoding);
 const defaultRoot=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../..');
 
-// Use the exact existing branding markup/runtime. Script text is included at
-// build time; no eval, fetched code or second splash implementation is needed.
-function branding(svg){
-  const html=brandSplashMarkup(`data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`);
-  const match=html.match(/<script>([\s\S]*?)<\/script>/);
-  if(!match)throw Error('Official branding runtime missing');
-  return `(()=>{const mount=()=>{if(document.getElementById('zhudaLogoSplash'))throw Error('Reserved #zhudaLogoSplash; browser SDK supplies branding');const style=document.createElement('style');style.dataset.zhudaBrand='';style.textContent=${JSON.stringify(brandSplashCss)};document.head.append(style);const holder=document.createElement('div');holder.innerHTML=${JSON.stringify(html.replace(match[0],''))};document.body.prepend(holder.firstElementChild);${match[1]}};if(document.body)mount();else document.addEventListener('DOMContentLoaded',mount,{once:true});})();`;
+async function branding(svg, engineRoot) {
+  const source = `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
+  const result = await esbuild.build({absWorkingDir:engineRoot,minify:true,stdin:{contents:`import {mountBrandSplash} from './packages/compiler/branding.mjs'; mountBrandSplash(${JSON.stringify(source)}, globalThis.ZhudaBranding);`,resolveDir:engineRoot},bundle:true,write:false,format:'iife',platform:'browser',target:'es2020'});
+  return result.outputFiles[0].text;
 }
 
 /** Create/reuse a deterministic distribution; never overwrite a different release. */
@@ -38,6 +35,7 @@ export async function buildBrowserSdk({engineRoot=defaultRoot,outDir,profiles=['
   const sdk=fs.readFileSync(sdkFile,'utf8');
   if(!sdk.includes(`zhuda-laya-engine v${version}`))throw Error('SDK version is stale; run npm run build before browser packaging');
   const svg=fs.readFileSync(path.join(engineRoot,'assets/branding/zhuda-layaair-mark.svg'),'utf8');
+  const brandCode=await branding(svg,engineRoot);
   const bundled=await esbuild.build({entryPoints:[sdkFile],bundle:true,write:false,minify:true,format:'iife',globalName:'__zhudaSdk',platform:'browser',target:'es2020',legalComments:'inline'});
   const output=path.resolve(outDir||path.join(engineRoot,'dist/browser',version));
   const files=new Map();
@@ -56,7 +54,7 @@ export async function buildBrowserSdk({engineRoot=defaultRoot,outDir,profiles=['
     const modelDocument = profile==='3d-gltf' ? fs.readFileSync(path.join(engineRoot,'examples/model-inspector/asset.gltf'),'utf8') : null;
     if(modelDocument) inputs.push({path:'examples/model-inspector/asset.gltf',sha256:hash(modelDocument)});
     const metadata={version,profile,features,libraries:topology.orderedFiles,sourceFingerprint:hash(JSON.stringify({inputs,esbuild:esbuild.version})),bundler:{name:'esbuild',version:esbuild.version}};
-    const code=`/* Zhuda LayaAir ${version} browser ${profile}; MIT; see LICENSE.txt (including upstream attribution). */\n(function(){\nif(globalThis.Zhuda||globalThis.Laya||globalThis.ZhudaBundle)throw Error('ZHUDA_DUPLICATE_RUNTIME: load exactly one official browser bundle per page');\n${branding(svg)}\n${libs.join('\n;\n')}\n;${bundled.outputFiles[0].text}\nObject.defineProperty(globalThis,'Zhuda',{value:Object.freeze(__zhudaSdk),configurable:false,writable:false});\nconst meta=${JSON.stringify(metadata)};Object.freeze(meta.features);Object.freeze(meta.libraries);Object.defineProperty(globalThis,'ZhudaBundle',{value:Object.freeze(meta),configurable:false,writable:false});\n})();\n`;
+    const code=`/* Zhuda LayaAir ${version} browser ${profile}; MIT; see LICENSE.txt (including upstream attribution). */\n(function(){\nif(globalThis.Zhuda||globalThis.Laya||globalThis.ZhudaBundle)throw Error('ZHUDA_DUPLICATE_RUNTIME: load exactly one official browser bundle per page');\n${brandCode}\n${libs.join('\n;\n')}\n;${bundled.outputFiles[0].text}\nObject.defineProperty(globalThis,'Zhuda',{value:Object.freeze(__zhudaSdk),configurable:false,writable:false});\nconst meta=${JSON.stringify(metadata)};Object.freeze(meta.features);Object.freeze(meta.libraries);Object.defineProperty(globalThis,'ZhudaBundle',{value:Object.freeze(meta),configurable:false,writable:false});\n})();\n`;
     const file=`zhuda-${profile}.js`,bytes=Buffer.from(code);
     const entry={...metadata,file,bytes:bytes.length,sha256:hash(bytes),integrity:'sha384-'+hash(bytes,'sha384','base64'),inputs};
     manifest.profiles[profile]=entry;files.set(file,bytes);

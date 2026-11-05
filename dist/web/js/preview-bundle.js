@@ -506,6 +506,8 @@ var ZhudaPreviewBundle = (() => {
         get: () => dpr
       });
       runtime.stage.size(designWidth, designHeight);
+      if (runtime.stage.updateCanvasSize)
+        runtime.systemTimer?.clearCallLater(runtime.stage, runtime.stage.updateCanvasSize);
       runtime.stage.setScreenSize(width * dpr, height * dpr);
       const matrix = runtime.stage._canvasTransform;
       if (canvas?.getBoundingClientRect && matrix) {

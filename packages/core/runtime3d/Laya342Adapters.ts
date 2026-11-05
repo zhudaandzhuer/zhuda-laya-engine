@@ -6,9 +6,11 @@ const patched = new WeakSet<object>();
 export function resizeLaya342Stage(
   runtime: {
     Browser: object;
+    systemTimer?: { clearCallLater(caller: object, method: (...args: never[]) => unknown): void };
     stage: {
       size(width: number, height: number): unknown;
       setScreenSize(width: number, height: number): void;
+      updateCanvasSize?: (...args: never[]) => unknown;
       _canvasTransform?: {
         a: number;
         b: number;
@@ -36,6 +38,11 @@ export function resizeLaya342Stage(
       get: () => dpr,
     });
     runtime.stage.size(designWidth, designHeight);
+    // size/alignment can enqueue a native window-sized callLater even after
+    // screenAdaptationEnabled=false. Retire only that queued resize before our
+    // container-owned sizing; otherwise a later frame overwrites DPR/input.
+    if (runtime.stage.updateCanvasSize)
+      runtime.systemTimer?.clearCallLater(runtime.stage, runtime.stage.updateCanvasSize);
     runtime.stage.setScreenSize(width * dpr, height * dpr);
     // Laya's input consumes page coordinates, but native setScreenSize only
     // includes canvas.style.left/top. Account for an embedded container after

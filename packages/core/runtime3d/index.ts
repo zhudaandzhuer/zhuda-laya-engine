@@ -23,3 +23,5 @@ export * from "./ModelInspector.ts";
 export * from "./AssetShowcase.ts";
 export { inspectGltfDocument, inspectGltfAsset, gltfExtensionCapabilities, ZhudaModelCompatibilityError } from "./ModelCompatibility.ts";
 export type { ModelDiagnostic, ModelCompatibilityReport, ModelSourceInventory, GltfExtensionCapability } from "./ModelCompatibility.ts";
+export * from "./Themes.ts";
+export * from "./ResultPlayback.ts";

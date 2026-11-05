@@ -38,6 +38,12 @@ test('browser distribution is deterministic, integrity-pinned, rejects overwrite
    assert.throws(()=>new vm.Script(bytes.toString()).runInNewContext(sandbox),/ZHUDA_DUPLICATE_RUNTIME/);
    assert.equal(sandbox.Laya,previous);assert.equal(sandbox.Zhuda,undefined);
   }
+  // An installed package at another absolute path must generate identical bytes/SRI.
+  const relocated=path.join(temp,'installed-package');
+  const sources=new Set(['package.json','LICENSE',...Object.values(first.manifest.profiles).flatMap(p=>p.inputs.map(i=>i.path))]);
+  for(const file of sources){const target=path.join(relocated,file);fs.mkdirSync(path.dirname(target),{recursive:true});fs.copyFileSync(path.join(root,file),target);}
+  const relocatedOut=path.join(temp,'installed-output');await buildBrowserSdk({engineRoot:relocated,outDir:relocatedOut});
+  for(const file of fs.readdirSync(out))assert.deepEqual(fs.readFileSync(path.join(out,file)),fs.readFileSync(path.join(relocatedOut,file)),file+' changed with installation path');
   const before=fs.readFileSync(path.join(out,'zhuda-3d.js'));
   fs.writeFileSync(path.join(out,'index.html'),'keep previous output');
   await assert.rejects(buildBrowserSdk({engineRoot:root,outDir:out}),/preserve the prior release/);
@@ -54,6 +60,10 @@ test('browser globals retain strict public SDK types without a parallel facade',
   const file=path.join(temp,'consumer.ts');
   fs.writeFileSync(file,`/// <reference path=${JSON.stringify(path.join(root,'packages/types/browser.d.ts'))} />
 async function main(){
+ globalThis.ZhudaBranding={mode:'custom',brandId:'customer',logo:'brand.svg'};
+ globalThis.ZhudaBranding={mode:'none'};
+ // @ts-expect-error custom branding requires a logo
+ globalThis.ZhudaBranding={mode:'custom',brandId:'customer'};
  const context=await Zhuda.ZhudaEngine.boot({container:'#view',features:[...ZhudaBundle.features]});
  const library=new Zhuda.ZhudaPrefabLibrary({provider:new Zhuda.DirectoryAssetProvider({baseUrl:'./assets/'}),definitions:[],share3DResources:true});
  context.dispose();library.dispose();

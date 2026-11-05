@@ -54,3 +54,4 @@ export declare class NoSleepAdapter {
 }
 
 export type * from './zhuda-audio';
+export type * from './zhuda-branding';

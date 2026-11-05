@@ -2,6 +2,7 @@
 export * from 'zhuda-laya-engine';
 export as namespace Zhuda;
 declare global {
+  var ZhudaBranding: import('./zhuda-branding').ZhudaBrandingConfig | undefined;
   const ZhudaBundle: Readonly<{
     version: string;
     profile: '2d' | '3d' | '3d-gltf';

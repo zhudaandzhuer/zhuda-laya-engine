@@ -1,3 +1,4 @@
+import {resolveConsumerBranding} from './branding-assets.mjs';
 import { injectBrandSplash } from './branding.mjs';
 import fs from "node:fs";
 import path from "node:path";
@@ -203,7 +204,8 @@ export async function runConsumerBuild({
     if (fs.existsSync(p) && fs.lstatSync(p).isSymbolicLink())
       throw Error("Output path cannot contain symlinks");
   }
-  const html = injectBrandSplash(ensureUtf8Charset(fs.readFileSync(template, "utf8")), fs.readFileSync(path.join(engineRoot, 'assets/branding/zhuda-layaair-mark.svg'), 'utf8'));
+  const branding = resolveConsumerBranding(projectRoot, config.branding);
+  const html = injectBrandSplash(ensureUtf8Charset(fs.readFileSync(template, "utf8")), fs.readFileSync(path.join(engineRoot, 'assets/branding/zhuda-layaair-mark.svg'), 'utf8'), branding);
   if (
     !html.includes("<!-- ZHUDA_LIBS -->") ||
     !html.includes("<!-- ZHUDA_ENTRY -->")
@@ -300,6 +302,11 @@ export async function runConsumerBuild({
     fs.writeFileSync(path.join(out, ".nojekyll"), "");
     const componentBundles = config.prefabPreview
       ? await buildPrefabPreview({ projectRoot, engineRoot, out, topology, config }) : {};
+    const notices = path.join(out, 'zhuda-notices');
+    if (fs.existsSync(notices)) throw Error('Reserved payload directory: zhuda-notices');
+    fs.mkdirSync(notices);
+    fs.copyFileSync(path.join(engineRoot, 'LICENSE'), path.join(notices, 'LICENSE.txt'));
+    fs.writeFileSync(path.join(notices, 'branding.json'), JSON.stringify({mode: branding.mode, brandId: branding.brandId ?? 'zhuda', engine: 'zhuda-laya-engine', version: JSON.parse(fs.readFileSync(path.join(engineRoot, 'package.json'))).version}, null, 2));
     const payload = walk(out).map((f) => ({
       path: f.path,
       bytes: f.bytes.length,
@@ -362,6 +369,7 @@ export async function runConsumerBuild({
       config.maxPackageBytes || 50_000_000,
     );
     const report = {
+      branding: {mode: branding.mode, brandId: branding.brandId ?? "zhuda"},
       consumer: true,
       mode,
       fingerprint,
