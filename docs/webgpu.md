@@ -106,6 +106,9 @@ Measured on macOS Chrome 156, Apple Metal hardware WebGPU:
 - Browser bundles: glTF/Morph, Raw/Gameplay/Cinematic (AO/Bloom/ACES), neutral
   custom surface shader and seeded 3D particles. No GPU validation errors.
 - Missing GPU/adapter/compiler, timeout, pre-abort and late device cancellation.
+- Published fixed SDK: all 16 payload hashes, six profiles through cross-origin
+  SRI and the existing opaque-origin sandbox; hardware WebGPU and its shaders
+  also pass on the hosted release without changing server CSP.
 
 Cross-backend images may differ because of shader conversion and driver precision;
 exact preview/Scene comparisons are **within** a backend. These neutral fixtures

@@ -3,7 +3,12 @@
 Task: [task.md](task.md). Date: 2026-11-05. Package: 1.11.0.
 Baseline: `ba0ebf2ba08741c2deb078483fc91df22b1e6ff8`.
 Decision: **Implemented; macOS hardware verified; Windows/device acceptance open**.
-Final release identity is recorded after immutable publication.
+Implementation commit: `418d93ad657e25b19917ca7a654df6b9b72c1a8f`.
+Independent package SHA-256: `457933d89449026a33bfeebbe5e882f2aef824b835ca1bdab0f05a9318c13294`.
+Hosted release: [`00b72197334c12e756e8c7e812c927fd`](https://game.qianlongxundao.com/apps/zhuda-engine-sdk/releases/00b72197334c12e756e8c7e812c927fd/).
+ZIP SHA-256: `bea3d74df412b300c566348a7a009211ec19f220b254eabf1d70a1f1baedbb8d`.
+The follow-up docs commit adds fixed URLs and this identity; runtime/bundle bytes
+are those tested from the implementation commit.
 
 ## Environment and evidence
 
@@ -17,14 +22,17 @@ Neutral authored geometry/text only; no customer art or game logic.
 
 | Check | Command / procedure | Result | Artifact |
 | --- | --- | --- | --- |
-| Full build/types/Doctor/regressions | `npm run verify` | PASS, 216 tests; complete declarations clean | `verify.log` (copied from `/tmp/zhuda-webgpu-verify-final.log`) |
-| Independent package | `WEBGPU_OUT=<root>/packed-dev5 node scripts/verify-webgpu-consumer.mjs` | PASS | `packed-dev5/evidence/identity.json`, `results.json`, `failures.json`, Doctor logs |
-| Prefab isolation | Same script; Icon, Label, 2D root, Body, 3D root; WebGL/WebGPU × DPR 1/2/3 | PASS, 30 preview/Scene PNG pairs byte-identical within each backend | `packed-dev5/evidence/*.png` |
-| Lifecycle/input | Same script; 30 cycles, mouse coordinates, resize, blur/focus, device.destroy, fresh-page recovery | PASS | `packed-dev5/evidence/results.json` |
-| Failure paths | Missing GPU/adapter/compiler, timeout, pre-abort, cancellation with late device | PASS, no mounted late Scene, late device destroyed, no uncaught exception | `packed-dev5/evidence/failures.json` |
-| Browser bundle | `WEBGPU_BROWSER_DIR=<release> WEBGPU_BROWSER_OUT=<root>/browser-final node scripts/verify-webgpu.mjs` | PASS | `browser-final/results.json`, PNGs |
+| Full build/types/Doctor/regressions | `npm run verify` | PASS, 216 tests; complete declarations clean | `verify.log` |
+| Independent package | `WEBGPU_OUT=<root>/final node scripts/verify-webgpu-consumer.mjs` | PASS | `final/evidence/identity.json`, `results.json`, `failures.json`, Doctor logs |
+| Prefab isolation | Same script; Icon, Label, 2D root, Body, 3D root; WebGL/WebGPU × DPR 1/2/3 | PASS, 30 preview/Scene PNG pairs byte-identical within each backend | `final/evidence/*.png` |
+| Lifecycle/input | Same script; 30 cycles, mouse coordinates, resize, blur/focus, device.destroy, fresh-page recovery | PASS | `final/evidence/results.json` |
+| Failure paths | Missing GPU/adapter/compiler, timeout, pre-abort, cancellation with late device | PASS, no mounted late Scene, late device destroyed, no uncaught exception | `final/evidence/failures.json` |
+| Browser bundle | `WEBGPU_BROWSER_DIR=<root>/browser-1.11.0-release WEBGPU_BROWSER_OUT=<root>/browser-final node scripts/verify-webgpu.mjs` | PASS | `browser-final/results.json`, PNGs |
 | Shader and particles | `backend.shader+particles`, terrain surface recipe, sphere, 16 particles, seed 42, 0.1 seconds | PASS, real WebGPU draw, zero validation errors | `browser-final/3d-webgpu-shader-particles.png` |
 | Model pipeline | Same browser script: glTF/Morph, raw/gameplay/cinematic, AO/Bloom/ACES, 30 reloads | PASS | `browser-final/3d-gltf-webgpu-*.png` and report |
+| Hosted payload | Download and hash all 16 immutable files; compare archive SHA response | PASS | `deployment.json`, `hosted-hashes.json` |
+| Hosted cross-origin/SRI and sandbox | `SDK_BROWSER_DIR=<root>/browser-1.11.0 SDK_EVIDENCE_DIR=<root>/hosted SDK_RELEASE_URL=<fixed-release> node scripts/verify-browser-sdk.mjs` | PASS, 12 scenarios (six profiles × cross-origin/sandbox) | `hosted/hosted-browser.json`, PNGs |
+| Hosted hardware GPU pipeline | `node scripts/verify-webgpu.mjs --url <fixed-release> --out <root>/hosted-gpu` | PASS, all three GPU profiles | `hosted-gpu/results.json`, shader/particle and model PNGs |
 | Windows hardware | `npm run verify:webgpu` on Windows Chrome/Edge | UNAVAILABLE | Reproducible entry documented in `docs/webgpu.md`; Windows CI is contracts only |
 | Diff/status | `git diff --check`, `git status --short` | PASS before implementation commit | Git working tree |
 

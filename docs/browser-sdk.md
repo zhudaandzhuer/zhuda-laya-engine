@@ -19,29 +19,36 @@ SDK 無法自行繞過政策，需用允許的附件資源或一般 HTTP 預覽�
 
 ## 固定版本與載入方式
 
-本次固定發行：**1.10.0**（預設官方品牌、可配置白牌；Theme／結果恢復基礎）。
+本次固定發行：**1.11.0**（WebGPU 後端、Shader compiler、GPU 生命週期；保留 WebGL 與白牌）。
+[1.10.0 固定版本](https://game.qianlongxundao.com/apps/zhuda-engine-sdk/releases/5d05c7177ff7fd71fd35114f3a324172/)保留。
 [1.9.0 固定版本](https://game.qianlongxundao.com/apps/zhuda-engine-sdk/releases/c61d0a83b7094ff5055302d2f8235b8b/)保留。
 [1.8.0 固定版本](https://game.qianlongxundao.com/apps/zhuda-engine-sdk/releases/02b2dc8ba9dea9d1f1cd43a37226641c/)、
 [1.7.0 固定版本](https://game.qianlongxundao.com/apps/zhuda-engine-sdk/releases/e69ecb8850e43d172389f96ab0a9430e/)及 1.6.0 保留。
 
-`https://game.qianlongxundao.com/apps/zhuda-engine-sdk/releases/5d05c7177ff7fd71fd35114f3a324172/`
+`https://game.qianlongxundao.com/apps/zhuda-engine-sdk/releases/00b72197334c12e756e8c7e812c927fd/`
 
 | 檔案 | 包含內容 | 未壓縮 bytes |
 | --- | --- | ---: |
-| `zhuda-2d.js` | core、2D WebGL、UI、公開 Zhuda SDK | 1,611,807 |
-| `zhuda-3d.js` | 上述內容加上 3D、3D WebGL | 2,373,441 |
-| `zhuda-3d-gltf.js` | 3D 加上 glTF、postProcess；模型 Inspector 範例 | 2,533,289 |
+| `zhuda-2d.js` | core、2D WebGL、UI、公開 Zhuda SDK | 1,617,235 |
+| `zhuda-3d.js` | 上述內容加上 3D、3D WebGL | 2,378,869 |
+| `zhuda-3d-gltf.js` | 3D 加上 glTF、postProcess | 2,538,717 |
+| `zhuda-2d-webgpu.js` | 2D WebGPU、UI、內嵌 Shader WASM | 10,194,875 |
+| `zhuda-3d-webgpu.js` | 2D/3D WebGPU、UI、內嵌 Shader WASM | 11,219,716 |
+| `zhuda-3d-gltf-webgpu.js` | WebGPU 加上 glTF、postProcess、Shader WASM | 11,379,564 |
 
-這兩個基本 profile 沒有打入額外的 Spine、物理、粒子、glTF 或其他 plugin。模型展示可選新增的 `3d-gltf` profile；
+基本 2d／3d profile（含 WebGPU 變體）沒有打入額外的原生 Spine、物理、粒子、glTF 或其他 plugin。模型展示可選新增的 `3d-gltf` profile；
 [可複製的 HTML 模型檢視器](../examples/browser-sdk/3d-gltf.html)
 附帶相容性報告、動畫／Morph、三模式與重載測試。
+WebGPU 用 [3D GPU 範本](../examples/browser-sdk/3d-webgpu.html)、[2D GPU 範本](../examples/browser-sdk/2d-webgpu.html) 或 [GPU 模型檢視器](../examples/browser-sdk/3d-gltf-webgpu.html)。
+`ZhudaEngine.boot({renderer:"webgpu"})` 必須對應 GPU bundle；詳見 [後端／失敗／Windows 驗收契約](webgpu.md)。
+
 公共函式仍與 package root 同一份；功能若依賴未載入的底層模組，不能只因
 命名空間有函式就宣稱該功能可用。需要其他未打入的模組時走既有 npm consumer pipeline。
 
 ```html
 <script
-  src="https://game.qianlongxundao.com/apps/zhuda-engine-sdk/releases/5d05c7177ff7fd71fd35114f3a324172/zhuda-3d.js"
-  integrity="sha384-BaoJ5RbOW5/qUkzME18zgcmGPBlSrr3+Cj0WeOuASZ9JdKswXd00s277omkdh8U+"
+  src="https://game.qianlongxundao.com/apps/zhuda-engine-sdk/releases/00b72197334c12e756e8c7e812c927fd/zhuda-3d.js"
+  integrity="sha384-vYWlL3LCIWVqT4a0zQoMD7oeGUN6lTHXLW35aDwcUuD3fgFn85PwkZkD05PX8bzF"
   crossorigin="anonymous"></script>
 <script>
 const { ZhudaEngine, Zhuda3D } = Zhuda;
@@ -66,7 +73,7 @@ HTML 須先建立具有明確尺寸的 `#game` 容器；完整可畫出內容的
 使用尚未載入的 `Zhuda`。同頁只載一份 bundle，重複／既有 Laya 會在改寫前明確拒絕。
 
 `Zhuda` 的 runtime exports 與公開 ESM 入口相同，並未再寫一套 facade。
-`ZhudaBundle` 回報版本、profile、模組清單、來源指紋與打包器版本。
+`ZhudaBundle` 回報版本、profile、renderer、模組清單、來源指紋與打包器版本。
 bundle 預設掛載響應式豬大 × LayaAir Logo。1.10.0 可在載入前設定
 `window.ZhudaBranding={mode:"custom",brandId:"client",logo:"./logo.svg"}`，
 或 `{mode:"none"}`；詳見[白牌契約](slot-factory.md)。不要自行放入同名 splash。
@@ -77,7 +84,7 @@ SRI 不吻合時瀏覽器拒絕執行，不會悄悄改用另一個引擎。
 
 ## game.qianlongxundao.com 的兩種情境
 
-- 外部 HTML 載入本站 SDK：本次已實測跨來源腳本＋SRI、2D/3D WebGL。
+- 外部 HTML 載入本站 SDK：本次已實測跨來源腳本＋SRI、2D/3D WebGL 及 WebGPU。
   JS 回應包含正確 MIME、`Access-Control-Allow-Origin: *`、跨來源資源政策與
  一年 immutable 快取標頭。Cloudflare 邊緣快取是否命中需看實際回應。
 - 站內遊戲沙箱：只允許**自己發行版本目錄**的資源。因此部署遊戲時，將同一份
@@ -96,12 +103,12 @@ npm run build
 npm run build:browser
 # installed public package
 zhuda-laya-browser-sdk --out ./sdk-release
-# optional: --profile 2d, --profile 3d, or --profile 3d-gltf
+# optional: --profile 2d, 3d, 3d-gltf, 2d-webgpu, 3d-webgpu, 3d-gltf-webgpu
 ```
 
 預設輸出 `dist/browser/<version>`。相同內容可以重用；若同目錄已有不同產物，
 指令拒絕覆寫，請換新的輸出目錄。esbuild 固定為 0.27.1，工具版本不一致會拒絕。
-獨立安裝 tarball 的 CLI 與引擎 checkout 生成的十個檔案已逐 byte 比對一致。
+獨立安裝 tarball 的 CLI 與引擎 checkout 生成的完整產物已逐 byte 比對一致。
 
 編輯器型別可以使用已安裝套件的
 `/// <reference types="zhuda-laya-engine/browser" />`，或直接 reference 該套件的
@@ -113,6 +120,7 @@ zhuda-laya-browser-sdk --out ./sdk-release
 正式遊戲依 [consumer route](consumer-route.md) 保留版本、型別、Prefab 比對、
 Scene／操作及目標裝置證據。Browser 範例的按鈕／計數也不能代替你的遊戲驗收。
 
+1.11.0 結果見 [WebGPU 驗收](plans/records/webgpu-delivery/verification.md)。Windows 硬體尚待實機報告。
 1.10.0 結果見[白牌與量產基礎驗收](plans/records/slot-factory-foundation/verification.md)。
 1.9.0 結果見[模型展示與 SDK 驗收](plans/records/asset-showcase-hardening/verification.md)。
 1.8.0 結果見 [群體與 SDK 發行驗收](plans/records/crowd-runtime-hardening/verification.md)；
