@@ -1,0 +1,4 @@
+# Keep compiler fingerprints stable across Git's platform checkout defaults.
+* text=auto eol=lf
+# Upstream artifacts are byte-pinned; never normalize their contents.
+vendor/laya-3.4.2/libs/** -text

@@ -73,6 +73,9 @@ performance guarantees. Windows browser support and native delivery are distinct
    UNAVAILABLE, not emulated into a pass.
 8. `git diff --check`, `git status --short`, completed verification record and
    release identity before handoff.
+9. Windows checkout preserves pinned vendor bytes despite Git's CRLF defaults.
+   Linux CI's existing Prefab comparison explicitly omits the separately tested
+   boot-page branding, so its reference and Scene measure the same content.
 
 ## Evidence to attach
 

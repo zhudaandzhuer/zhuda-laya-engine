@@ -36,6 +36,24 @@ Neutral authored geometry/text only; no customer art or game logic.
 | Windows hardware | `npm run verify:webgpu` on Windows Chrome/Edge | UNAVAILABLE | Reproducible entry documented in `docs/webgpu.md`; Windows CI is contracts only |
 | Diff/status | `git diff --check`, `git status --short` | PASS before implementation commit | Git working tree |
 
+## Cross-platform CI follow-up
+
+The first [release CI run](https://github.com/zhudaandzhuer/zhuda-laya-engine/actions/runs/41994590337)
+failed two checks. Windows Git checkout converted the pinned WebGPU JavaScript
+from LF to CRLF, changing its bytes; `.gitattributes` now preserves upstream
+artifacts verbatim and uses LF for source files. The existing Linux Prefab
+comparison captured the default logo splash over the Scene while its reference
+contained only the panel. That isolated fixture now explicitly sets
+`branding.mode: "none"`; production branding defaults and comparison gates are
+unchanged. Its package version follows the tested engine version.
+
+Local follow-up checks pass: `npm run verify` (216 tests, `verify-ci-fix.log`) and
+`PREFAB_FIXTURE_DIR=<root>/legacy-prefab-ci-fixed node scripts/verify-prefab-browser.mjs`
+(`legacy-prefab-ci-fixed.log`, `legacy-prefab-ci-fixed/evidence/summary.json`).
+This includes deliberate pixel/provenance/checksum/DPR failures and 30 resource
+cycles. The failed CI log is retained as `ci-first-failure.log`. Remote rerun is
+pending at this commit; Windows hardware acceptance remains unavailable.
+
 ## Bugs reproduced and repaired
 
 1. Upstream catches glslang fetch failure and can continue with an empty compiler.

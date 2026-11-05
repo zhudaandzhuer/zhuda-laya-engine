@@ -27,7 +27,8 @@ function png(color) {
 }
 const write = (name, value) => fs.writeFileSync(path.join(root, name), value);
 const sha = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
-write('package.json', JSON.stringify({private:true,type:'module',dependencies:{'zhuda-laya-engine':'1.3.0'}}));
+const engineVersion = JSON.parse(fs.readFileSync(path.join(engineRoot, 'package.json'), 'utf8')).version;
+write('package.json', JSON.stringify({private:true,type:'module',dependencies:{'zhuda-laya-engine':engineVersion}}));
 const hierarchy = { _$id:"panel", _$type:"Sprite", name:"Panel", width:300,height:150,
   _$child:[
     { _$id:"plate", _$type:"Image", name:"plate", skin:"plate.png", x:20,y:20,width:260,height:110 },
@@ -65,7 +66,8 @@ bounds:{x:instance.root.x,y:instance.root.y,width:instance.root.width,height:ins
 environment:{requested:{width,height,dpr},provider:provider.name}})};
 }void main().catch(error=>{(window as unknown as Record<string,unknown>).__ZHUDA_PREFAB_TEST__={report:()=>({ready:false,error:String(error)})};});`);
 write("public/index.html", `<!doctype html><meta charset="utf-8"><style>body{margin:0;background:#152030;color:white;font:14px sans-serif}#preview{width:100vw;height:80vh}header{padding:12px}</style><header>Prefab <select><option>amount-plate</option></select></header><div id="preview"></div><!-- ZHUDA_LIBS --><!-- ZHUDA_ENTRY -->`);
-const config = { features:["core","2d","ui"], prefabPreview:"src/prefabs.ts" };
+// Compare the isolated content, without the separately tested boot-page splash.
+const config = { features:["core","2d","ui"], prefabPreview:"src/prefabs.ts", branding:{mode:"none"} };
 await runConsumerBuild({ projectRoot:root, engineRoot, config });
 const server = http.createServer((req,res)=>{
   const relative = decodeURIComponent(new URL(req.url,"http://localhost").pathname);
