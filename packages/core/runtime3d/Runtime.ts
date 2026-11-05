@@ -8,6 +8,21 @@ import { ZhudaSceneMutationQueue } from "./SceneMutation.ts";
 import { resizeLaya342Stage } from "./Laya342Adapters.ts";
 import { ZhudaRafDriver, type ZhudaRuntimeDriver } from "./RuntimeDriver.ts";
 
+/** Wake the same session clock from the platform's existing Laya frame loop. */
+class LayaPlatformDriver implements ZhudaRuntimeDriver {
+  private tick?: () => void;
+  now() { return Laya.Browser.now(); }
+  start(callback: (nowMs: number) => void) {
+    this.stop();
+    const tick = () => { if (this.tick === tick) callback(this.now()); };
+    this.tick = tick;
+    Laya.systemTimer.frameLoop(1, this, tick);
+  }
+  setBackground(_background: boolean) {}
+  stop() { if (this.tick) Laya.systemTimer.clear(this, this.tick); this.tick = undefined; }
+  dispose() { this.stop(); }
+}
+
 export interface ManagedRuntimeOptions {
   container?: HTMLElement;
   dprCap?: number;
@@ -103,7 +118,9 @@ export class ZhudaRuntimeSession {
         throw Error("Invalid runtime time scale");
       this.clock.timeScale = options.timeScale;
     }
-    this.driver = options.driver ?? new ZhudaRafDriver();
+    const native = (globalThis as unknown as {Laya?: typeof Laya}).Laya;
+    const platform = native?.Browser?.isDomSupported === false ? native.PAL?.browser : undefined;
+    this.driver = options.driver ?? (platform ? new LayaPlatformDriver() : new ZhudaRafDriver());
     this.layers.setGlobalTimeScale(this.clock.timeScale);
     const listen = (
       target: EventTarget,
@@ -114,6 +131,22 @@ export class ZhudaRuntimeSession {
       target.addEventListener(event, fn, capture);
       this.cleanups.push(() => target.removeEventListener(event, fn, capture));
     };
+    if (platform) {
+      if (options.container) throw Error("Mini-game runtime cannot use a DOM container");
+      const visibility = (visible: boolean) => this.setBackground(!visible);
+      const focus = () => this.setBackground(false);
+      const blur = () => this.setBackground(true);
+      const resize = () => this.resize();
+      for (const [event, callback] of [[Laya.Event.VISIBILITY_CHANGE, visibility], [Laya.Event.FOCUS, focus], [Laya.Event.BLUR, blur], [Laya.Event.RESIZE, resize]] as const) {
+        platform.on(event, this, callback);
+        this.cleanups.push(() => platform.off(event, this, callback));
+      }
+      try {
+        this.resize();
+        if (!platform.getVisibility()) this.setBackground(true);
+      } catch (error) { this.dispose(); throw error; }
+      return;
+    }
     listen(document, "visibilitychange", () =>
       this.setBackground(document.hidden),
     );
@@ -198,10 +231,11 @@ export class ZhudaRuntimeSession {
     const l = (globalThis as any).Laya,
       c = this.options.container;
     if (!c && !this.options.dprCap) return;
+    const platform = l.Browser?.isDomSupported === false ? l.PAL?.browser : undefined;
     const rect = c?.getBoundingClientRect(),
-      width = rect?.width || innerWidth,
-      height = rect?.height || innerHeight,
-      dpr = Math.min(devicePixelRatio || 1, this.options.dprCap ?? 2);
+      width = platform ? platform.getClientWidth() : rect?.width || innerWidth,
+      height = platform ? platform.getClientHeight() : rect?.height || innerHeight,
+      dpr = Math.min(platform ? platform.getPixelRatio() : devicePixelRatio || 1, this.options.dprCap ?? 2);
     if (width < 2 || height < 2) return;
     const design = this.options.designSize ?? { width, height };
     if (
@@ -224,7 +258,7 @@ export class ZhudaRuntimeSession {
       design.width,
       design.height,
       dpr,
-      this.canvas,
+      platform ? undefined : this.canvas,
     );
     this.options.onResize?.({ width, height, dpr });
   }

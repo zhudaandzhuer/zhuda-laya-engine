@@ -331,6 +331,84 @@ var ZhudaPreviewBundle = (() => {
     });
   }
 
+  // packages/core/runtime3d/AsyncOperation.ts
+  function awaitAbortable(work, signal, discard) {
+    return new Promise((resolve, reject) => {
+      let settled = false;
+      const abort = () => {
+        if (settled) return;
+        settled = true;
+        reject(signal.reason ?? new DOMException("Cancelled", "AbortError"));
+      };
+      if (signal.aborted) abort();
+      else signal.addEventListener("abort", abort, { once: true });
+      work.then((value) => {
+        signal.removeEventListener("abort", abort);
+        if (settled) {
+          discard?.(value);
+          return;
+        }
+        settled = true;
+        resolve(value);
+      }, (error) => {
+        signal.removeEventListener("abort", abort);
+        if (!settled) {
+          settled = true;
+          reject(error);
+        }
+      }).catch(() => {
+      });
+    });
+  }
+
+  // packages/core/runtime3d/MiniGameSplash.ts
+  async function showMiniGameSplash(context, signal, timeoutMs = 3e4) {
+    const config = globalThis.__ZHUDA_MINIGAME__;
+    const branding = config?.branding;
+    if (!branding || branding.mode === "none" || !branding.logo) return;
+    const url = branding.logo;
+    const panel = new Laya.Sprite(), logo = new Laya.Sprite();
+    panel.name = "ZhudaPlatformSplash";
+    panel.zOrder = 2147483e3;
+    panel.mouseEnabled = true;
+    panel.addChild(logo);
+    Laya.stage.addChild(panel);
+    let ready = false, elapsed = 0;
+    const release = () => Laya.loader.clearRes(url);
+    try {
+      await withDeadline(async (cancellation) => {
+        const texture = await awaitAbortable(Laya.loader.load(url, Laya.Loader.IMAGE), cancellation, release);
+        if (!(texture instanceof Laya.Texture)) throw Error("Mini-game branding image failed to load");
+        logo.texture = texture;
+        ready = true;
+        await awaitAbortable(new Promise((resolve) => {
+          context.runtime.start((dt) => {
+            if (!ready || context.runtime.disposed) return;
+            elapsed += dt;
+            const width = Laya.stage.width, height = Laya.stage.height;
+            panel.size(width, height);
+            panel.graphics.clear();
+            panel.graphics.drawRect(0, 0, width, height, "#0b1220");
+            const fit = Math.min(width * 0.82 / texture.width, height * 0.5 / texture.height);
+            const entrance = Math.min(1, elapsed / 0.5);
+            logo.size(texture.width * fit, texture.height * fit);
+            logo.pivot(logo.width / 2, logo.height / 2);
+            logo.pos(width / 2, height / 2);
+            logo.scale(0.9 + 0.1 * entrance, 0.9 + 0.1 * entrance);
+            panel.alpha = elapsed > 1.4 ? Math.max(0, (1.8 - elapsed) / 0.4) : entrance;
+            if (elapsed >= 1.8) resolve();
+          });
+        }), cancellation);
+      }, { signal, timeoutMs });
+    } finally {
+      ready = false;
+      if (!context.runtime.disposed) context.runtime.start(() => {
+      });
+      panel.destroy(true);
+      release();
+    }
+  }
+
   // packages/core/runtime3d/Clocks.ts
   var DEFAULT_TIME_LAYERS = ["world", "player", "enemy", "vfx", "ui"];
   var ZhudaLayeredClock = class {
@@ -776,6 +854,28 @@ var ZhudaPreviewBundle = (() => {
   };
 
   // packages/core/runtime3d/Runtime.ts
+  var LayaPlatformDriver = class {
+    now() {
+      return Laya.Browser.now();
+    }
+    start(callback) {
+      this.stop();
+      const tick = () => {
+        if (this.tick === tick) callback(this.now());
+      };
+      this.tick = tick;
+      Laya.systemTimer.frameLoop(1, this, tick);
+    }
+    setBackground(_background) {
+    }
+    stop() {
+      if (this.tick) Laya.systemTimer.clear(this, this.tick);
+      this.tick = void 0;
+    }
+    dispose() {
+      this.stop();
+    }
+  };
   function installSandboxStorageFallback() {
     const modes = {};
     for (const name of ["localStorage", "sessionStorage"]) {
@@ -832,12 +932,33 @@ var ZhudaPreviewBundle = (() => {
           throw Error("Invalid runtime time scale");
         this.clock.timeScale = options.timeScale;
       }
-      this.driver = options.driver ?? new ZhudaRafDriver();
+      const native = globalThis.Laya;
+      const platform = native?.Browser?.isDomSupported === false ? native.PAL?.browser : void 0;
+      this.driver = options.driver ?? (platform ? new LayaPlatformDriver() : new ZhudaRafDriver());
       this.layers.setGlobalTimeScale(this.clock.timeScale);
       const listen = (target, event, fn, capture = false) => {
         target.addEventListener(event, fn, capture);
         this.cleanups.push(() => target.removeEventListener(event, fn, capture));
       };
+      if (platform) {
+        if (options.container) throw Error("Mini-game runtime cannot use a DOM container");
+        const visibility = (visible) => this.setBackground(!visible);
+        const focus = () => this.setBackground(false);
+        const blur = () => this.setBackground(true);
+        const resize = () => this.resize();
+        for (const [event, callback] of [[Laya.Event.VISIBILITY_CHANGE, visibility], [Laya.Event.FOCUS, focus], [Laya.Event.BLUR, blur], [Laya.Event.RESIZE, resize]]) {
+          platform.on(event, this, callback);
+          this.cleanups.push(() => platform.off(event, this, callback));
+        }
+        try {
+          this.resize();
+          if (!platform.getVisibility()) this.setBackground(true);
+        } catch (error) {
+          this.dispose();
+          throw error;
+        }
+        return;
+      }
       listen(
         document,
         "visibilitychange",
@@ -910,7 +1031,8 @@ var ZhudaPreviewBundle = (() => {
       if (this.disposed) return;
       const l = globalThis.Laya, c = this.options.container;
       if (!c && !this.options.dprCap) return;
-      const rect = c?.getBoundingClientRect(), width = rect?.width || innerWidth, height = rect?.height || innerHeight, dpr = Math.min(devicePixelRatio || 1, this.options.dprCap ?? 2);
+      const platform = l.Browser?.isDomSupported === false ? l.PAL?.browser : void 0;
+      const rect = c?.getBoundingClientRect(), width = platform ? platform.getClientWidth() : rect?.width || innerWidth, height = platform ? platform.getClientHeight() : rect?.height || innerHeight, dpr = Math.min(platform ? platform.getPixelRatio() : devicePixelRatio || 1, this.options.dprCap ?? 2);
       if (width < 2 || height < 2) return;
       const design = this.options.designSize ?? { width, height };
       if (![design.width, design.height, dpr].every(
@@ -929,7 +1051,7 @@ var ZhudaPreviewBundle = (() => {
         design.width,
         design.height,
         dpr,
-        this.canvas
+        platform ? void 0 : this.canvas
       );
       this.options.onResize?.({ width, height, dpr });
     }
@@ -1513,6 +1635,7 @@ var ZhudaPreviewBundle = (() => {
         throw new Error("DPR cap must be .5..4");
       this.booting = true;
       let allocatedScene;
+      let allocatedRuntime;
       let renderer;
       try {
         const width = options.width ?? 1280;
@@ -1558,7 +1681,7 @@ var ZhudaPreviewBundle = (() => {
         win.__ZHUDA_ENGINE_BOOTED__ = true;
         win.__ZHUDA_ENGINE_HEALTH__ = health;
         win.__ZHUDA_TOPOLOGY__ = topology;
-        if (typeof document !== "undefined" && document.body) {
+        if (Laya.Browser.isDomSupported !== false && typeof document !== "undefined" && document.body?.dataset) {
           document.body.dataset.zhudaBooted = "true";
           document.body.dataset.zhudaModules = String(
             topology.orderedFiles.length
@@ -1573,7 +1696,7 @@ var ZhudaPreviewBundle = (() => {
         if (container) container.appendChild(canvas);
         if (options.targetFPS)
           Laya.stage.frameRate = options.targetFPS === 30 ? "slow" : "fast";
-        const runtime = new ZhudaRuntimeSession(canvas, {
+        const runtime = allocatedRuntime = new ZhudaRuntimeSession(canvas, {
           ...options,
           container: container ?? void 0
         });
@@ -1599,13 +1722,16 @@ var ZhudaPreviewBundle = (() => {
             this.activeContext = null;
           }
         };
+        await showMiniGameSplash(this.activeContext, options.signal, options.bootTimeoutMs);
         return this.activeContext;
       } catch (error) {
+        allocatedRuntime?.dispose();
+        this.activeContext = null;
         allocatedScene?.destroy(true);
         renderer?.release("failed");
         if (renderer?.backend === "webgpu") this.retiredGpuRealm = true;
         globalThis.__ZHUDA_ENGINE_BOOTED__ = false;
-        if (typeof document !== "undefined" && document.body)
+        if (typeof document !== "undefined" && document.body?.dataset)
           document.body.dataset.zhudaBooted = "false";
         throw error;
       } finally {

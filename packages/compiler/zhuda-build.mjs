@@ -605,6 +605,9 @@ const modulePath = fileURLToPath(import.meta.url);
 const launchedAsCli = Boolean(cliArg) && (path.basename(cliArg) === path.basename(modulePath) ||
   fs.realpathSync(cliArg) === fs.realpathSync(modulePath));
 if (launchedAsCli) {
+  if (process.argv.includes('--platform') || process.argv.includes('--list-platforms')) {
+    import('./zhuda-minigame.mjs').then(({miniGameCli})=>miniGameCli()).catch(error=>{console.error(error.message);process.exitCode=1;});
+  } else {
   const argProfileIdx = process.argv.indexOf('--profile');
   const profile = argProfileIdx !== -1 ? process.argv[argProfileIdx + 1] : undefined;
   const argProjectIdx = process.argv.indexOf('--project');
@@ -613,4 +616,5 @@ if (launchedAsCli) {
     console.error(err);
     process.exit(1);
   });
+  }
 }

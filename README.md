@@ -128,6 +128,16 @@ to load the real runtime with one pinned script. [Browser SDK guide](docs/browse
 includes fixed URLs, SRI, 2D/3D HTML templates and sandbox limits. The existing
 consumer/Prefab/device gates still apply to a complete game.
 
+## Official mini-game packaging without the IDE (1.14.0)
+
+An independent consumer can call the installed LayaAir 3.4.2 CLI directly
+through the public build API for WeChat, ByteDance, OPPO, VIVO, Xiaomi,
+Alipay, Taobao, Bilibili and Huawei targets. The route pins the toolchain,
+retains the official platform adapter, stages output atomically and records
+the package fingerprint. See [mini-game packaging](docs/minigame-packaging.md).
+Kuaishou, store submission and device execution are not claimed without an
+official adapter and separate platform evidence.
+
 ## Start here: build a real consumer
 
 Use the engine checkout for SDK work. Put a game in its own repository and

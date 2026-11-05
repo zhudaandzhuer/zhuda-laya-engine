@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import {starter2D} from './consumer-starter-2d.mjs';
+import {starterMiniGame} from './consumer-starter-minigame.mjs';
 import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
@@ -42,7 +43,7 @@ export function parseInitArgs(argv = process.argv.slice(2)) {
     }
     else if (arg === "--template") {
       template = argv[++index];
-      if (!["2d","3d"].includes(template)) throw Error("--template requires 2d or 3d");
+      if (!["2d","3d","minigame"].includes(template)) throw Error("--template requires 2d, 3d or minigame");
     }
     else if (arg === "--help" || arg === "-h") return { help: true };
     else if (arg.startsWith("-")) throw Error(`Unknown option: ${arg}`);
@@ -60,7 +61,7 @@ export function parseInitArgs(argv = process.argv.slice(2)) {
 }
 
 function filesFor({ name, engine, template = "3d" }) {
-  if (!["2d","3d"].includes(template)) throw Error("--template requires 2d or 3d");
+  if (!["2d","3d","minigame"].includes(template)) throw Error("--template requires 2d, 3d or minigame");
   return {
     "package.json": JSON.stringify({
       name,
@@ -69,6 +70,7 @@ function filesFor({ name, engine, template = "3d" }) {
       engines: { node: ">=24" },
       scripts: {
         build: "zhuda-laya-build",
+        ...(template === 'minigame' ? {'build:minigame':'zhuda-laya-minigame','platforms':'zhuda-laya-minigame --list-platforms'} : {}),
         "build:candidate": "zhuda-laya-build --candidate",
         "watch:candidate": "zhuda-laya-watch --candidate",
         "accept:prefabs": "zhuda-laya-accept",
@@ -85,7 +87,8 @@ function filesFor({ name, engine, template = "3d" }) {
       entry: "src/Main.ts",
       outDir: "dist/web",
       features: template === "2d" ? ["core", "2d", "ui"] : ["core", "3d"],
-      ...(template === "2d" ? {prefabPreview: "src/prefabs.ts"} : {}),
+      ...(["2d","minigame"].includes(template) ? {prefabPreview: "src/prefabs.ts"} : {}),
+      ...(template === "minigame" ? {minigame:{maxMainPackageBytes:8388608,targets:{}}} : {}),
       viewport: { width: 1280, height: 720, scaleMode: "showall" },
     }, null, 2) + "\n",
     "tsconfig.json": JSON.stringify({
@@ -155,6 +158,7 @@ Keep game rules, assets, prefabs and deployment here. Read the engine's
 before adding visual content.
 `,
     ...(template === "2d" ? starter2D() : {}),
+    ...(template === "minigame" ? starterMiniGame() : {}),
   };
 }
 
@@ -171,7 +175,7 @@ export function initConsumer(options) {
 }
 
 export function printHelp() {
-  console.log("Usage: zhuda-laya-init [directory] [--name package-name] [--engine exact-version-or-commit-spec] [--template 2d|3d]");
+  console.log("Usage: zhuda-laya-init [directory] [--name package-name] [--engine exact-version-or-commit-spec] [--template 2d|3d|minigame]");
   console.log("Creates a public-SDK consumer with pinned engine dependency, required HTML markers and verify scripts.");
 }
 

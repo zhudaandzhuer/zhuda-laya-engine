@@ -1,5 +1,6 @@
 import { prepareRenderer, type RendererDiagnostics } from './runtime3d/Renderer.ts';
 import { withDeadline } from './runtime3d/AsyncDeadline.ts';
+import { showMiniGameSplash } from './runtime3d/MiniGameSplash.ts';
 import type { RendererBackend } from './TopologyGraph.ts';
 import {
   ZhudaRuntimeSession,
@@ -111,6 +112,7 @@ export class ZhudaEngine {
       throw new Error("DPR cap must be .5..4");
     this.booting = true;
     let allocatedScene: Laya.Scene | undefined;
+    let allocatedRuntime: ZhudaRuntimeSession | undefined;
     let renderer: ReturnType<typeof prepareRenderer> | undefined;
     try {
       const width = options.width ?? 1280;
@@ -190,7 +192,7 @@ export class ZhudaEngine {
       win.__ZHUDA_ENGINE_HEALTH__ = health;
       win.__ZHUDA_TOPOLOGY__ = topology;
 
-      if (typeof document !== "undefined" && document.body) {
+      if (Laya.Browser.isDomSupported !== false && typeof document !== "undefined" && document.body?.dataset) {
         document.body.dataset.zhudaBooted = "true";
         document.body.dataset.zhudaModules = String(
           topology.orderedFiles.length,
@@ -208,10 +210,10 @@ export class ZhudaEngine {
       if (container) container.appendChild(canvas);
       if (options.targetFPS)
         Laya.stage.frameRate = options.targetFPS === 30 ? "slow" : "fast";
-      const runtime = new ZhudaRuntimeSession(canvas, {
+      const runtime = (allocatedRuntime = new ZhudaRuntimeSession(canvas, {
         ...options,
         container: container ?? undefined,
-      });
+      }));
       renderer.attach(runtime);
       const selectedRenderer = renderer;
       let disposed = false;
@@ -235,13 +237,16 @@ export class ZhudaEngine {
         },
       };
 
+      await showMiniGameSplash(this.activeContext, options.signal, options.bootTimeoutMs);
       return this.activeContext;
     } catch (error) {
+      allocatedRuntime?.dispose();
+      this.activeContext = null;
       allocatedScene?.destroy(true);
       renderer?.release("failed");
       if (renderer?.backend === "webgpu") this.retiredGpuRealm = true;
       (globalThis as any).__ZHUDA_ENGINE_BOOTED__ = false;
-      if (typeof document !== "undefined" && document.body)
+      if (typeof document !== "undefined" && document.body?.dataset)
         document.body.dataset.zhudaBooted = "false";
       throw error;
     } finally {
