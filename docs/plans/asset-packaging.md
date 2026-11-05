@@ -1,8 +1,8 @@
 # Deferred asset packaging
 
-Status: Proposed  
+Status: In progress
 Owner: Engine and consumer integration  
-Last reviewed: 2026-10-31
+Last reviewed: 2026-11-05
 
 ## Objective
 
@@ -23,6 +23,9 @@ layout, Spine presentation or rendering rules.
   manifest validation and optional SHA-256 verification.
 - `createProviderAssetCache` adapts a provider to the existing shared cache,
   leases and destruction rules.
+- `ChunkedAssetProvider` now implements the first bounded chunk experiment:
+  manifest-declared ranges, chunk/asset SHA checks, cancellation, timeout and a
+  bounded cache. It is opt-in and has no production performance claim.
 - The current consumer build still emits normal web files and a bounded ZIP
   archive for build evidence. No Rust/WASM vault is part of the runtime.
 - The engine source and public types live in `packages/core/runtime3d` and
@@ -64,7 +67,7 @@ failure modes.
 
 ### B. Chunked web delivery
 
-Add a provider that maps manifest entries to independently cacheable chunks.
+`ChunkedAssetProvider` maps manifest entries to independently cacheable chunks.
 Load a small core chunk first and fetch heavy scenes or bonus content on demand.
 Use ordinary HTTP responses or byte ranges; measure cache hit rate, seek
 behavior, retries and memory peaks.

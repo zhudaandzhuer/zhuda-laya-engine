@@ -6,8 +6,10 @@ encrypted container.
 
 The default provider is `DirectoryAssetProvider`. It resolves normalized IDs
 under a base URL, applies an abortable timeout, limits response size, reports
-download and verification progress, and can verify a manifest SHA-256. A future
-packed or Rust/WASM provider implements the same `AssetProvider` interface.
+download and verification progress, and can verify a manifest SHA-256.
+`ChunkedAssetProvider` is the first optional delivery layer for heavy scenes: it
+fetches a bounded, SHA-verified chunk, copies the requested logical range and
+returns the same `AssetProvider` result. Scenes still know only logical IDs.
 
 ```ts
 const assets = new DirectoryAssetProvider({
@@ -25,6 +27,24 @@ const glb = await assets.load("vehicles/s800.glb", {
 shared in-flight requests, per-caller cancellation, bounded idle ownership and
 explicit destruction. This is the seam for a later packed provider; no packed
 format is part of the engine runtime yet.
+
+```ts
+const assets = new ChunkedAssetProvider({
+  baseUrl: "/assets/",
+  manifest: {
+    schemaVersion: 1,
+    chunks: [{id: "scene-1", url: "chunks/scene-1.bin", sha256: "..."}],
+    assets: [{id: "scenes/harbor.glb", chunk: "scene-1", offset: 0, length: 1234, kind: "model"}],
+  },
+});
+const scene = await assets.load("scenes/harbor.glb", {signal});
+```
+
+The provider validates chunk URL scope, byte ranges, chunk and asset checksums,
+timeouts, cancellation and a bounded in-memory chunk cache. It is a delivery
+experiment, not a claim that a particular chunk split improves startup or GPU
+memory; use the asset-packaging plan's device measurements before selecting it
+for production.
 
 ## Rules for consumers
 

@@ -17,7 +17,7 @@ device checks and acceptance gates pass.
 | Plan | Status | Decision it prepares |
 | --- | --- | --- |
 | [Prefab isolation and consumer tooling](prefab-toolchain.md) | In progress | P0 consumer Prefab preview and evidence gate delivered in 1.1.0; P1/P2 UI, lifecycle, media and device work remains |
-| [Deferred asset packaging](asset-packaging.md) | Proposed | Whether to keep plain assets, add CDN chunks, or introduce a packed/Rust/WASM provider after the project is stable |
+| [Deferred asset packaging](asset-packaging.md) | In progress | Optional bounded ChunkedAssetProvider is available; production chunk split, compressed decoders and device evidence remain pending |
 | [Consumer delivery follow-ups](consumer-delivery-followups.md) | In progress | Original sample/BGM audio in one mixer, component dependency evidence and full vendor declaration repair |
 | [WebGPU delivery](records/webgpu-delivery/task.md) | Implemented; desktop verified | Real backend, exclusive compiler/browser delivery, GPU lifecycle and Windows reproducible entry; Windows hardware unavailable |
 | [Slot factory foundation](records/slot-factory-foundation/task.md) | Implemented; desktop verified | White-label, immutable themes, result presentation recovery and measured neutral 2D pilot; customer/native/device acceptance separate |

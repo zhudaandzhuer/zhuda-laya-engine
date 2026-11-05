@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   AssetProviderError,
   DirectoryAssetProvider,
+  ChunkedAssetProvider,
   createProviderAssetCache,
   normalizeAssetId,
   validateAssetManifest,
@@ -112,4 +113,26 @@ test("provider cache releases packed decoder leases after decoding", async () =>
   assert.equal(released, 1);
   lease.release();
   cache.dispose();
+});
+
+test("chunked provider verifies bounded chunks, ranges and lifecycle", async () => {
+  const source = new TextEncoder().encode("prefix-heavy-scene-suffix");
+  const digest = [...new Uint8Array(await crypto.subtle.digest("SHA-256", source.slice(7, 18)))]
+    .map((byte) => byte.toString(16).padStart(2, "0")).join("");
+  let loads = 0;
+  const provider = new ChunkedAssetProvider({
+    baseUrl: "https://example.test/assets/",
+    manifest: { schemaVersion: 1, chunks: [{ id: "scene-1", url: "chunks/scene-1.bin", bytes: source.byteLength }], assets: [{ id: "scene/model.bin", kind: "model", chunk: "scene-1", offset: 7, length: 11, bytes: 11, sha256: digest }] },
+    fetch: async (url) => { loads++; assert.equal(String(url), "https://example.test/assets/chunks/scene-1.bin"); return new Response(source, { status: 200, headers: { "content-length": String(source.byteLength) } }); },
+  });
+  const progress = []; const result = await provider.load("scene/model.bin", { onProgress: value => progress.push(value) });
+  assert.equal(new TextDecoder().decode(result.bytes), "heavy-scene"); assert.equal(loads, 1); assert.equal(progress.at(-1).phase, "ready");
+  const cached = await provider.load("scene/model.bin"); assert.equal(new TextDecoder().decode(cached.bytes), "heavy-scene"); assert.equal(loads, 1);
+  provider.dispose(); await assert.rejects(provider.load("scene/model.bin"), error => error.code === "disposed");
+});
+
+test("chunked provider rejects malformed ranges and checksum failures", async () => {
+  assert.throws(() => new ChunkedAssetProvider({ baseUrl: "https://example.test/", manifest: { schemaVersion: 1, chunks: [{ id: "x", url: "x" }], assets: [{ id: "a", chunk: "x", offset: 0, length: 2, bytes: 3 }] }, fetch: async () => new Response(new Uint8Array([1, 2])) }), /range mismatch/);
+  const provider = new ChunkedAssetProvider({ baseUrl: "https://example.test/", manifest: { schemaVersion: 1, chunks: [{ id: "x", url: "x" }], assets: [{ id: "a", chunk: "x", offset: 0, length: 2, sha256: "00".repeat(32) }] }, fetch: async () => new Response(new Uint8Array([1, 2])) });
+  await assert.rejects(provider.load("a"), error => error.code === "integrity"); provider.dispose();
 });

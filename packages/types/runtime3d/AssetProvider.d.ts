@@ -85,6 +85,30 @@ export interface DirectoryAssetProviderOptions {
      * streaming is opt-in and rejects entries requiring a whole-file SHA. */
     readonly streamMode?: "verified-blob" | "native";
 }
+export interface ChunkAssetRange extends AssetManifestEntry {
+    readonly chunk: string;
+    readonly offset: number;
+    readonly length: number;
+}
+export interface ChunkDescriptor {
+    readonly id: string;
+    readonly url: string;
+    readonly bytes?: number;
+    readonly sha256?: string;
+}
+export interface ChunkedAssetManifest {
+    readonly schemaVersion: 1;
+    readonly chunks: readonly ChunkDescriptor[];
+    readonly assets: readonly ChunkAssetRange[];
+}
+export interface ChunkedAssetProviderOptions {
+    readonly baseUrl: string;
+    readonly manifest: ChunkedAssetManifest;
+    readonly timeoutMs?: number;
+    readonly maxChunkBytes?: number;
+    readonly maxCachedChunks?: number;
+    readonly fetch?: FetchLike;
+}
 /** Plain URL-backed provider used by development and the initial consumer build. */
 export declare class DirectoryAssetProvider implements AssetProvider {
     readonly name = "directory";
@@ -106,6 +130,31 @@ export declare class DirectoryAssetProvider implements AssetProvider {
     openStream(value: string, options?: {
         signal?: AbortSignal;
     }): Promise<AssetStreamLease>;
+    dispose(): void;
+}
+/**
+ * Chunk delivery layer for heavy scenes. It returns ordinary logical assets so
+ * the existing cache/lease lifecycle remains authoritative. Chunks are
+ * verified and bounded before a range is copied to the caller.
+ */
+export declare class ChunkedAssetProvider implements AssetProvider {
+    readonly name = "chunked";
+    private readonly baseUrl;
+    private readonly manifest;
+    private readonly chunks;
+    private readonly assets;
+    private readonly cache;
+    private readonly timeoutMs;
+    private readonly maxChunkBytes;
+    private readonly maxCachedChunks;
+    private readonly fetchImpl;
+    private readonly active;
+    private disposed;
+    constructor(options: ChunkedAssetProviderOptions);
+    getManifest(): Promise<AssetManifest>;
+    private remember;
+    private loadChunk;
+    load(value: string, options?: AssetLoadOptions): Promise<LoadedAssetBytes>;
     dispose(): void;
 }
 /** Adapts a provider to the existing bounded cache without changing cache callers. */

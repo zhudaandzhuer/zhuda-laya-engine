@@ -10,6 +10,7 @@ Task: [task.md](task.md). Date: 2026-11-05. Baseline:
 | Focused sequence, timeline and model capability tests | `node --test tests/ci-sequence-gate.test.mjs tests/timeline.test.mjs tests/model-showcase.test.mjs` | PASS, 14 tests | terminal output |
 | Full build, declarations, Doctor and regressions | `npm run verify` | PASS, 222 tests, zero declaration diagnostics | `/tmp/zhuda-next-round-verify.log` |
 | Example host dependency lock | `npm install --ignore-scripts` in `examples/windows-webgpu` | PASS; Electron 36.9.5 lock recorded | `examples/windows-webgpu/package-lock.json` |
+| Chunked provider | `node --test tests/asset-provider.test.mjs` | PASS, range/cache/checksum/lifecycle cases | terminal output |
 | Host syntax | `node --check examples/windows-webgpu/main.mjs` | PASS | terminal output |
 | Keyframe CLI help | `node packages/ci-gate/verify-sequence.mjs --help` | PASS | terminal output |
 | Documentation and whitespace | `git diff --check`; local Markdown target check | PASS | terminal output |
