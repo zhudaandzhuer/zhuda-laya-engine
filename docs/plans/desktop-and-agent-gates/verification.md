@@ -1,17 +1,18 @@
 # Verification: desktop-and-agent-gates
 
 Task: [task.md](task.md). Date: 2026-11-05. Baseline:
-`501caf1`.
+`bb4250e`.
 
 ## Checks
 
 | Check | Exact command | Result | Evidence |
 | --- | --- | --- | --- |
-| Focused sequence, timeline and model capability tests | `node --test tests/ci-sequence-gate.test.mjs tests/timeline.test.mjs tests/model-showcase.test.mjs` | PASS, 16 tests | terminal output |
-| Full build, declarations, Doctor and regressions | `npm run verify` | PASS, 226 tests, zero declaration diagnostics | `/tmp/zhuda-next-round-verify.log` |
+| Focused sequence, timeline and model capability tests | `node --test tests/ci-sequence-gate.test.mjs tests/timeline.test.mjs tests/model-showcase.test.mjs tests/model-decoder.test.mjs` | PASS, 19 tests | terminal output |
+| Full build, declarations, Doctor and regressions | `npm run verify` | PASS, 229 tests, zero declaration diagnostics | `/tmp/zhuda-next-round-verify.log` |
 | Example host dependency lock | `npm install --ignore-scripts` in `examples/windows-webgpu` | PASS; Electron 36.9.5 lock recorded | `examples/windows-webgpu/package-lock.json` |
 | Chunked provider | `node --test tests/asset-provider.test.mjs` | PASS, range/cache/checksum/lifecycle cases | terminal output |
 | Fixed-step cinematic recorder | `node --test tests/timeline.test.mjs` | PASS, exact timestamps/cancellation/capture metadata | terminal output |
+| Decoder lifecycle seam | `node --test tests/model-decoder.test.mjs` | PASS, pinned identity/input bounds/timeout/release | terminal output |
 | Host syntax | `node --check examples/windows-webgpu/main.mjs` | PASS | terminal output |
 | Keyframe CLI help | `node packages/ci-gate/verify-sequence.mjs --help` | PASS | terminal output |
 | Documentation and whitespace | `git diff --check`; local Markdown target check | PASS | terminal output |
@@ -21,7 +22,8 @@ rejected fallback/WebGL, non-monotonic time, missing images, path traversal,
 metric overrun and SHA tampering. The timeline test covers linear sampling,
 fixed updates, one-shot event cues, reset/disposal and fixed-step capture
 cancellation. The model catalog test keeps KTX2/Basis, Meshopt and Draco
-explicitly unsupported.
+explicitly unsupported. The decoder registry tests cover the lifecycle seam
+without claiming a concrete decoder.
 
 ## Windows acceptance
 

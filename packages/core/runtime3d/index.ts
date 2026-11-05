@@ -9,6 +9,7 @@ export * from "./Pool.ts";
 export * from "./CombatQueries.ts";
 export * from "./Assets.ts";
 export * from "./AssetProvider.ts";
+export * from "./ModelDecoder.ts";
 export * from "./Surfaces.ts";
 export * from "./Runtime.ts";
 export * from "./RuntimeDriver.ts";

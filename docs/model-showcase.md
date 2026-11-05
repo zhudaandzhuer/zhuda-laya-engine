@@ -60,9 +60,12 @@ IDs belong behind AssetProvider.
 It currently reports GLB/embedded data as supported and explicitly reports
 external resource URLs, Draco, Meshopt and KTX2/Basis as unsupported. A model
 agent must query this catalog before selecting a compressed asset; an unknown
-required extension still fails through `inspectGltfAsset`. Adding a decoder is a
-separate engine change that must pin its bytes, expose cancellation and release,
-and pass real WebGL/WebGPU model fixtures on the target devices.
+required extension still fails through `inspectGltfAsset`. `ZhudaModelDecoderRegistry`
+now provides the shared adapter seam: registrations carry a version and
+SHA-256, and decode calls have bounded input, cancellation, timeout and
+exactly-once release behavior. It does not register Draco, Meshopt or KTX2 by
+itself. A decoder adapter must still be connected to the importer and pass real
+WebGL/WebGPU model fixtures on target devices before the catalog changes.
 
 ## Inspect and control a live model
 

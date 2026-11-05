@@ -9,6 +9,7 @@ export * from "./Pool";
 export * from "./CombatQueries";
 export * from "./Assets";
 export * from "./AssetProvider";
+export * from "./ModelDecoder";
 export * from "./Surfaces";
 export * from "./Runtime";
 export * from "./RuntimeDriver";
