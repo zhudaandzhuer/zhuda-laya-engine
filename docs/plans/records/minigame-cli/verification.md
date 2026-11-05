@@ -1,7 +1,7 @@
 # Verification record: minigame-cli
 
 Task document: `docs/plans/records/minigame-cli/task.md`  
-Commit: pending final commit hash  
+Commit: `6907c8052b8f38e45427e44dd0badedd2855b8bc`  
 Date: 2026-11-06
 
 ## Environment
