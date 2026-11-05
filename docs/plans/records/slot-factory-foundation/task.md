@@ -1,6 +1,6 @@
 # Agent task: slot-factory-foundation
 
-Status: In progress — implementation and desktop verification complete; customer/device adoption deferred  
+Status: Historical engine foundation — reusable implementation retained; game-specific products excluded
 Owner: engine maintainers  
 Last reviewed: 2026-11-05
 
@@ -50,7 +50,8 @@ sequence. Caller owns real assets, backend validation and durable storage.
 
 Full Slot/Board rules kit, visual skin editor, AI game generator, Native signing,
 multi-product commercial factory and customer adoption certification. These
-follow a measured pilot; no actual customer assets/backend contract supplied.
+belong in consumer products outside this engine repository. The historical
+pilot does not authorize game-specific engine roadmap work.
 
 ## Acceptance checks
 

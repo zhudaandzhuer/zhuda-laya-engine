@@ -20,13 +20,18 @@ device checks and acceptance gates pass.
 | [Deferred asset packaging](asset-packaging.md) | In progress | Optional shared chunk delivery and embedded Meshopt adapter; production chunk split, Draco/KTX2 and mobile evidence remain pending |
 | [Consumer delivery follow-ups](consumer-delivery-followups.md) | In progress | Original sample/BGM audio in one mixer, component dependency evidence and full vendor declaration repair |
 | [WebGPU delivery](records/webgpu-delivery/task.md) | Implemented; desktop verified | Real backend, exclusive compiler/browser delivery, GPU lifecycle and Windows reproducible entry; Windows hardware unavailable |
-| [Slot factory foundation](records/slot-factory-foundation/task.md) | Implemented; desktop verified | White-label, immutable themes, result presentation recovery and measured neutral 2D pilot; customer/native/device acceptance separate |
+| [White-label/theme foundation (historical pilot)](records/slot-factory-foundation/task.md) | Implemented; desktop verified | White-label, immutable themes, result presentation recovery and measured neutral 2D pilot; customer/native/device acceptance separate |
 | [Asset showcase hardening](records/asset-showcase-hardening/task.md) | Implemented; desktop verified | Required glTF gates, Morph repairs, public inspector and same-instance presentation; seller/device limits explicit |
 | [Crowd runtime hardening](records/crowd-runtime-hardening/task.md) | Implemented; desktop verified | Shared animation/model lifecycle, presentation LOD, VFX admission, GPU/raw profiler and independent skinned benchmark |
 | [Astra runtime feedback](records/astra-runtime-feedback/task.md) | Implemented; desktop verified | DPR, streams, voice retirement, driver/recovery, backend seam and clean declarations; physical devices unavailable |
 | [Browser SDK delivery](records/browser-sdk-delivery/task.md) | Implemented; desktop verified | Versioned browser bundles, SRI, hosted examples and cross-origin HTML; mobile unavailable |
 | [RPG integration feedback](records/rpg-feedback-hardening/task.md) | Implemented; desktop verified | Lifecycle completion, official candidate acceptance, component proofs and leased primitive resources; physical devices unavailable |
+| [Cinematic production](cinematic-production/task.md) | Implemented; macOS verified | Synchronous native sampling, physical lens/shutter capture, shared offline audio and atomic MP4; scene-linear HDR and additional platforms remain separate |
 | [Desktop and Agent gates](desktop-and-agent-gates/task.md) | Implemented; macOS verified | [Hardening and evidence](desktop-and-agent-gates/hardening-verification.md): packaged host, PNG sequence comparison, timeline/recorder and actual Meshopt; Windows hardware still pending |
+
+Slot-specific rules, RGS, math, wallet and Factory products are outside this
+engine roadmap. Historical pilot documents retain their evidence; reusable
+branding, theme and result-presentation APIs remain supported.
 
 Use [TEMPLATE.md](TEMPLATE.md) for new decision plans. For an implementation
 delegated to an agent, copy [TASK-TEMPLATE.md](TASK-TEMPLATE.md) and finish the

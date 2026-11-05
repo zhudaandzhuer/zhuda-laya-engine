@@ -181,6 +181,7 @@ export declare class IframeSoundAdapter {
   loadSample(id: string, options?: { signal?: AbortSignal }): Promise<IframeSampleInfo>;
   unloadSample(id: string): boolean;
   playSample(options: IframeSampleOptions): boolean;
+  renderOffline(options: import('./zhuda-audio').IframeOfflineMixOptions): Promise<import('./zhuda-audio').IframeOfflineMix>;
   stop(id: string, fadeOutSec?: number): boolean;
   stopAll(channel?: IframeAudioChannel): number;
   getDiagnostics(): IframeSoundDiagnostics;

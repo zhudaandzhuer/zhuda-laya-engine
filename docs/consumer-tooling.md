@@ -237,7 +237,7 @@ for fixed-design consumers and [measured results](plans/records/astra-runtime-fe
 
 Use `zhuda-laya-init --template 2d` for a strict 2D consumer. Explicit
 `branding.mode` selects `engine` (default), `custom`, or `none`; notices remain
-in the output. See [white-label, themes and recovery](slot-factory.md) for the
+in the output. See [white-label, themes and recovery](white-label-themes.md) for the
 validated schema and independent consumer verification command.
 
 ## Renderer axis (1.11.0)

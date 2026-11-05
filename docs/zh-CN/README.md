@@ -45,7 +45,7 @@ E4ZEhFCYy4b5pYXJUbMC9KjRitkypyqtZvpSRerLWHCb
 默认保留「猪大 × LayaAir」启动画面，可显式配置客户品牌或关闭画面，授权
 notices 仍保留。新增不可变 Theme 映射、素材 SHA 校验、可取消的预备切换和
 权威结果／演出进度恢复契约。`zhuda-laya-init --template 2d` 提供严格类型的
-2D 独立项目。详见[使用契约及边界](../slot-factory.md)。完整 Slot Factory、
+2D 独立项目。详见[使用契约及边界](../white-label-themes.md)。完整 Slot Factory、
 原生签章发行及客户真机验收仍是独立阶段，不以桌面样例宣称完成。
 
 ## 1.9.0 模型检查与导入可靠性

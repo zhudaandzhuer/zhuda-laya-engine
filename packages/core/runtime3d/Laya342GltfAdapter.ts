@@ -5,6 +5,19 @@ const prepared = new WeakSet<object>();
 export function prepareLaya342GltfResource(resource: any, runtime: any): void {
   if (prepared.has(resource)) return;
   prepared.add(resource);
+  const createMaterial = resource.createMaterial;
+  if (typeof createMaterial === 'function') resource.createMaterial = function (definition: any) {
+    const material = createMaterial.call(this, definition);
+    // Native KHR_materials_unlit mutates the color returned by its getter, then
+    // assigns that same object. WebGPU's equality fast path skips conversion,
+    // leaving the linear GPU uniform white. Repair this owned imported material.
+    if (definition.extensions?.KHR_materials_unlit && definition.pbrMetallicRoughness?.baseColorFactor) {
+      const linear = new runtime.Color();
+      material.albedoColor.toLinear(linear);
+      material.setVector4('u_AlbedoColor', new runtime.Vector4(linear.r, linear.g, linear.b, linear.a));
+    }
+    return material;
+  };
   for (const method of ['createMeshSprite3D', 'createSkinnedMeshSprite3D']) {
     const original = resource[method];
     if (typeof original !== 'function') continue;

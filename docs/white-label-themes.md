@@ -1,7 +1,6 @@
-# White-label and H5 factory foundations (1.10.0)
+# White-label, themes and presentation recovery
 
-This release supplies reusable presentation contracts, not a complete Slot
-Factory. Customer rules, RNG, payouts, wallet, backend authority, artwork and
+These are reusable engine presentation contracts introduced in 1.10.0. Customer rules, RNG, payouts, wallet, backend authority, artwork and
 certification stay in the consumer. Use the same pinned SDK, core and Prefab
 workflow for every theme. [Verification and limits](plans/records/slot-factory-foundation/verification.md).
 
@@ -169,12 +168,12 @@ comparison. They are not customer-art approval. It exercises 100 replacements,
 1000 known-result presentations and recovery, reporting raw frame samples and
 resource inventories. This is separate from a 60-minute low-end phone test.
 
-## Remaining roadmap
+## Consumer product boundary
 
-A real customer pilot supplies licensed art, target device budgets, backend
-result fixtures and distribution requirements. Complete that failure/device
-matrix before claiming commercial adoption. Skin Editor, AI configuration,
-Slot/Board kits and multi-game Factory CLI build on those stabilized contracts.
-Android/iOS signed delivery is a separate track requiring a target/native
-sample and signing resources. These product capabilities are not claimed by
-this foundation release.
+Slot/Reel/Board rule kits, payout math, RNG, RGS, wallets, certification, skin
+editors, AI game generators and multi-game Factory products belong in separate
+consumer repositories. They are not future engine deliverables. The historical
+pilot above measures only shared branding/theme/presentation APIs; it does not
+make its game domain part of the SDK. Consumer teams own licensed assets,
+backend fixtures and device acceptance. Native platform delivery remains a
+separate general engine/host track.

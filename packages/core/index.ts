@@ -13,6 +13,7 @@ export * from './VisualFocusContract';
 export * from './particles/index.ts';
 export type * from '../types/zhuda-core.ts';
 export type * from '../types/zhuda-2d-ui.ts';
+export type * from '../types/zhuda-audio.ts';
 export type * from '../types/zhuda-3d-physics.ts';
 export type * from '../types/zhuda-spine42.ts';
 export type * from '../types/zhuda-static-assets.ts';

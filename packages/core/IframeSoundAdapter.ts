@@ -32,6 +32,12 @@ import type {
   IframeBackendVoice,
 } from "../types/zhuda-audio.ts";
 import { StreamVoice } from "./audio/StreamVoice.ts";
+import { renderOfflineMix } from "./audio/OfflineMix.ts";
+import { awaitAbortable } from "./runtime3d/AsyncOperation.ts";
+import type {
+  IframeOfflineMixOptions,
+  IframeOfflineMix,
+} from "../types/zhuda-audio.ts";
 
 export interface QueuedAudioTask {
   sampleId?: string;
@@ -140,6 +146,7 @@ export class IframeSoundAdapter {
   private sampleBackend?: IframeSampleBackend;
   private backendPreparing?: AbortController;
   private backendContextLost = false;
+  private offlineMix: AbortController | null = null;
 
   public static getShared(): IframeSoundAdapter {
     if (!this.instance || this.instance.disposed) {
@@ -1503,6 +1510,59 @@ export class IframeSoundAdapter {
     return this.submit(task, snapshot.replace);
   }
 
+  /** Explicit offline soundtrack using loaded samples and this mixer's gain snapshot.
+   * Does not play live voices, use a second live AudioContext or dispatch events. */
+  public async renderOffline(
+    options: IframeOfflineMixOptions,
+  ): Promise<IframeOfflineMix> {
+    if (this.disposed || this.offlineMix)
+      throw Error("Offline mixer is disposed or busy");
+    const timeout = options.timeoutMs ?? 30000;
+    if (!Number.isSafeInteger(timeout) || timeout <= 0 || timeout > 2147483647)
+      throw Error("Invalid offline audio deadline");
+    if (options.signal?.aborted)
+      throw (
+        options.signal.reason ?? new DOMException("Cancelled", "AbortError")
+      );
+    const controller = (this.offlineMix = new AbortController()),
+      abort = () =>
+        controller.abort(
+          options.signal?.reason ?? new DOMException("Cancelled", "AbortError"),
+        );
+    options.signal?.addEventListener("abort", abort, { once: true });
+    const timer = setTimeout(
+      () =>
+        controller.abort(
+          new DOMException("Offline mix timed out", "TimeoutError"),
+        ),
+      timeout,
+    );
+    const work = renderOfflineMix(
+      {
+        samples: new Map(
+          [...this.samples].map(([id, lease]) => [id, lease.value]),
+        ),
+        volumes: {
+          ...this.volumes,
+          master: this.userMuted ? 0 : this.volumes.master,
+        },
+        maxVoices: this.options.maxActiveVoices,
+      },
+      options,
+      controller.signal,
+    );
+    const drained = () => {
+      if (this.offlineMix === controller) this.offlineMix = null;
+    };
+    void work.then(drained, drained);
+    try {
+      return await awaitAbortable(work, controller.signal);
+    } finally {
+      clearTimeout(timer);
+      options.signal?.removeEventListener("abort", abort);
+    }
+  }
+
   public stop(id: string, fadeOutSec = 0): boolean {
     if (!Number.isFinite(fadeOutSec) || fadeOutSec < 0 || fadeOutSec > 60)
       return false;
@@ -1660,6 +1720,7 @@ export class IframeSoundAdapter {
   public dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
+    this.offlineMix?.abort(new DOMException("Mixer disposed", "AbortError"));
     this.backendPreparing?.abort();
     this.unlockAttempt++;
     this.pendingQueue = [];

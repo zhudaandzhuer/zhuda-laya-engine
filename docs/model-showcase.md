@@ -197,3 +197,9 @@ Seller models, their source DCC/UE scene, physical iOS/Android, complex material
 corpus and offline movie output remain separate acceptance work. Follow the
 [Prefab gate](prefab-workflow.md) for actual product geometry, named parts and
 composed environments before claiming a sale-ready presentation.
+
+For deterministic offline poses, use `ZhudaModelAnimationSampler` instead of
+assuming `inspector.play` immediately evaluates a pose. See [movie production](cinematics.md).
+Version 1.13.0 also repairs the owned native KHR_materials_unlit import path on
+WebGPU: getter mutation no longer leaves the linear color uniform white. The
+same authored unlit glTF color is checked against WebGL in the cinematic runner.

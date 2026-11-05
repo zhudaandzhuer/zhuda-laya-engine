@@ -40,6 +40,21 @@ Build 2D, 3D and Spine 4.2 projects with TypeScript, a CLI and coding agents. Th
 
 Maintained by [Zhuda](https://github.com/zhudaandzhuer). Rendering and physics come from [LayaAir / Layabox](https://layaair.com/). This is an independent fork; donations support Zhuda's work on this repository.
 
+## Deterministic movie production (1.13.0)
+
+Sample native bone/Morph animation at exact timestamps, use a physical camera
+with aperture/shutter samples, capture bounded offscreen frames, and export a
+soundtrack through the existing audio mixer. `zhuda-film-export` verifies the
+sequence and encodes H.264/AAC with atomic replacement of the previous movie.
+The glTF unlit importer also preserves authored colors on WebGPU.
+
+[Public movie workflow](docs/cinematics.md) · [Runnable example](examples/cinematic-capture/)
+· [Verification and limits](docs/plans/cinematic-production/verification.md).
+Neutral macOS WebGL/WebGPU fixtures cover actual 4K24 output, exact replay,
+DPR/resize, focus/motion effects, audio timing and repeated disposal. Accumulation
+is display-linear SDR after tone mapping. Scene-linear HDR/EXR, path tracing,
+Windows hardware and physical mobile/XR remain unverified or unimplemented.
+
 ## Asset delivery and deterministic evidence (1.12.0)
 
 Optional pinned Meshopt decoding now feeds the existing provider/model cache;
@@ -50,7 +65,7 @@ consumer bundle inside the package. See [model loading](docs/model-showcase.md),
 [timelines](docs/cinematics.md), [desktop packaging](examples/windows-webgpu/)
 and the [measured scope](docs/plans/desktop-and-agent-gates/hardening-verification.md).
 macOS WebGL/WebGPU neutral-model checks pass; Windows hardware, Draco, KTX2,
-GPU-driven/HLOD, XR and a full offline movie pipeline remain separate work.
+GPU-driven/HLOD and XR remain separate work; the 1.13.0 movie route is above.
 
 ## WebGPU backend and delivery (1.11.0)
 
@@ -64,17 +79,17 @@ EXE/Steam and physical mobile acceptance remain unverified.
 The [`examples/windows-webgpu`](examples/windows-webgpu/) host provides a
 reproducible Electron entry for the next Windows packaged acceptance step.
 
-## White-label and H5 factory foundations (1.10.0)
+## White-label, themes and presentation recovery (1.10.0)
 
 Keep the default 豬大 × LayaAir splash, use your own brand, or explicitly disable
 it through the public compiler and browser bundle. Immutable theme mappings,
 SHA-verified assets, cancellable prepared replacement and authoritative-result
 presentation/checkpoint coordination support a same-core, two-theme workflow.
 `zhuda-laya-init --template 2d` creates a strict 2D consumer with shared isolated
-Prefab definitions. See [contracts, examples and adoption limits](docs/slot-factory.md)
+Prefab definitions. See [contracts, examples and adoption limits](docs/white-label-themes.md)
 and the [verification record](docs/plans/records/slot-factory-foundation/verification.md).
-This is the H5 foundation; a complete Slot Factory, signed Native delivery and
-customer/low-end-device acceptance remain separate work.
+Slot-specific rule kits, math/RGS/wallet and Factory products belong outside
+this engine repository. Signed Native and device acceptance are separate checks.
 
 ## Model inspection and import reliability (1.9.0)
 
@@ -106,7 +121,7 @@ and the [measured scope and migration notes](docs/plans/records/astra-runtime-fe
 Physical iOS/Android, speaker latency and a production Worklet DSP mixer remain
 unverified; the extension and desktop reference test do not establish full SOP compliance.
 
-## Single-HTML browser entry (1.11.0)
+## Single-HTML browser entry (1.13.0)
 
 Use the [hosted SDK and runnable examples](https://game.qianlongxundao.com/play/zhuda-engine-sdk/)
 to load the real runtime with one pinned script. [Browser SDK guide](docs/browser-sdk.md)

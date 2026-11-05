@@ -34,5 +34,5 @@ jobs:
       - run: npm run build
       - run: npm run typecheck
       - run: npm run audit:declarations
-      - run: node --test tests/webgpu.test.mjs tests/topology-and-guards.test.mjs tests/browser-sdk.test.mjs
+      - run: node --test tests/webgpu.test.mjs tests/topology-and-guards.test.mjs tests/browser-sdk.test.mjs tests/cinematic-capture.test.mjs tests/offline-audio.test.mjs tests/film-export.test.mjs
       # Hosted CI is not a Windows hardware WebGPU acceptance run.

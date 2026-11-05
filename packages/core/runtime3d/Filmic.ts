@@ -166,6 +166,13 @@ export class ZhudaFilmicPipeline {
       camera.taaSettings.quality = l.TemporalAAQuality.High;
     }
   }
+  /** Update the existing ACES grading exposure multiplier. */
+  setExposure(value: number) {
+    if (this.disposed) throw Error("Disposed filmic pipeline");
+    if (!Number.isFinite(value) || value < 0 || value > 1048576)
+      throw Error("Invalid filmic exposure");
+    this.grade.postExposure = value;
+  }
   /** Call on camera cuts, teleports and timeline seeks, not on ordinary movement. */
   resetHistory() {
     if (this.disposed) throw Error("Disposed filmic pipeline");

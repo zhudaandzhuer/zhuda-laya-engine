@@ -1,5 +1,5 @@
 /**
- * zhuda-laya-engine v1.12.0 — 豬大 LayaAir (AI-Agent-Friendly Fork Edition)
+ * zhuda-laya-engine v1.13.0 — 豬大 LayaAir (AI-Agent-Friendly Fork Edition)
  * Repository: https://github.com/zhudaandzhuer/zhuda-laya-engine
  * Upstream Official: LayaAir Engine 3.4.2 by Layabox (https://layaair.com/ | https://github.com/layabox/LayaAir)
  * License: MIT
@@ -54,6 +54,7 @@ __export(index_exports, {
   ZhudaBenchmarkEngine: () => ZhudaBenchmarkEngine,
   ZhudaCameraCoordinates: () => ZhudaCameraCoordinates,
   ZhudaCameraRig: () => ZhudaCameraRig,
+  ZhudaCinematicCapture: () => ZhudaCinematicCapture,
   ZhudaCombatWorld: () => ZhudaCombatWorld,
   ZhudaCrowdScheduler: () => ZhudaCrowdScheduler,
   ZhudaDistanceLOD: () => ZhudaDistanceLOD,
@@ -75,6 +76,7 @@ __export(index_exports, {
   ZhudaLayeredClock: () => ZhudaLayeredClock,
   ZhudaLitSurfaceMaterial: () => ZhudaLitSurfaceMaterial,
   ZhudaMeshoptModelDecoder: () => ZhudaMeshoptModelDecoder,
+  ZhudaModelAnimationSampler: () => ZhudaModelAnimationSampler,
   ZhudaModelCompatibilityError: () => ZhudaModelCompatibilityError,
   ZhudaModelDecoderRegistry: () => ZhudaModelDecoderRegistry,
   ZhudaModelInspector: () => ZhudaModelInspector,
@@ -85,6 +87,7 @@ __export(index_exports, {
   ZhudaParticleMesh3D: () => ZhudaParticleMesh3D,
   ZhudaParticleSystem: () => ZhudaParticleSystem,
   ZhudaParticleSystem3D: () => ZhudaParticleSystem3D,
+  ZhudaPhysicalCameraRig: () => ZhudaPhysicalCameraRig,
   ZhudaPlanarReflection: () => ZhudaPlanarReflection,
   ZhudaPointerInput: () => ZhudaPointerInput,
   ZhudaPrefab: () => ZhudaPrefab,
@@ -153,6 +156,8 @@ __export(index_exports, {
   normalizeAssetId: () => normalizeAssetId,
   normalized: () => normalized,
   packMetallicRoughness: () => packMetallicRoughness,
+  physicalCameraMetrics: () => physicalCameraMetrics,
+  physicalCameraSettings: () => physicalCameraSettings,
   rayBox: () => rayBox,
   resolveCameraBoom: () => resolveCameraBoom,
   resolveParticleCollision: () => resolveParticleCollision,
@@ -2286,6 +2291,16 @@ var prepared = /* @__PURE__ */ new WeakSet();
 function prepareLaya342GltfResource(resource, runtime2) {
   if (prepared.has(resource)) return;
   prepared.add(resource);
+  const createMaterial = resource.createMaterial;
+  if (typeof createMaterial === "function") resource.createMaterial = function(definition) {
+    const material = createMaterial.call(this, definition);
+    if (definition.extensions?.KHR_materials_unlit && definition.pbrMetallicRoughness?.baseColorFactor) {
+      const linear2 = new runtime2.Color();
+      material.albedoColor.toLinear(linear2);
+      material.setVector4("u_AlbedoColor", new runtime2.Vector4(linear2.r, linear2.g, linear2.b, linear2.a));
+    }
+    return material;
+  };
   for (const method of ["createMeshSprite3D", "createSkinnedMeshSprite3D"]) {
     const original = resource[method];
     if (typeof original !== "function") continue;
@@ -7094,6 +7109,147 @@ var StreamVoice = class {
   }
 };
 
+// packages/core/audio/OfflineMix.ts
+async function renderOfflineMix(snapshot, options, signal) {
+  const rate = options.sampleRate ?? 48e3, channels = options.channels ?? 2, limit = options.maxOutputBytes ?? 256 * 1024 * 1024;
+  const frames = Math.round(options.durationSec * rate);
+  if (!Number.isInteger(rate) || rate < 8e3 || rate > 192e3 || ![1, 2].includes(channels) || !Number.isFinite(options.durationSec) || options.durationSec <= 0 || !Number.isSafeInteger(frames) || frames < 1 || Math.abs(frames - options.durationSec * rate) > 1e-6 || !Number.isSafeInteger(limit) || limit <= 0 || frames * channels * 8 + 44 > limit || frames * channels * 4 + 36 > 4294967295)
+    throw Error("Invalid offline audio duration or PCM budget");
+  if (!Array.isArray(options.cues) || options.cues.length > 1e5)
+    throw Error("Invalid offline audio cues");
+  const ids = /* @__PURE__ */ new Set(), events = [];
+  const cues = options.cues.map((cue) => {
+    if (!cue || typeof cue.id !== "string" || !cue.id || ids.has(cue.id))
+      throw Error("Duplicate or missing offline audio event id");
+    ids.add(cue.id);
+    const buffer = snapshot.samples.get(cue.sampleId);
+    if (!buffer) throw Error("Offline sample is not loaded: " + cue.sampleId);
+    const c = {
+      ...cue,
+      channel: cue.channel ?? "sfx",
+      offsetSec: cue.offsetSec ?? 0,
+      loopStartSec: cue.loopStartSec ?? 0,
+      loopEndSec: cue.loopEndSec ?? buffer.duration,
+      peakGain: cue.peakGain ?? 1,
+      fadeInSec: cue.fadeInSec ?? 0,
+      fadeOutSec: cue.fadeOutSec ?? 0
+    };
+    if (!["master", "bgm", "sfx", "ui"].includes(c.channel) || ![
+      c.atSec,
+      c.durationSec,
+      c.offsetSec,
+      c.loopStartSec,
+      c.loopEndSec,
+      c.peakGain,
+      c.fadeInSec,
+      c.fadeOutSec
+    ].every(Number.isFinite) || c.atSec < 0 || c.durationSec <= 0 || c.atSec + c.durationSec > options.durationSec + 1e-9 || c.offsetSec < 0 || c.offsetSec >= buffer.duration || c.loopStartSec < 0 || c.loopEndSec > buffer.duration || c.loopEndSec <= c.loopStartSec || c.peakGain < 0 || c.peakGain > 4 || c.fadeInSec < 0 || c.fadeOutSec < 0 || c.fadeInSec + c.fadeOutSec > c.durationSec || !c.loop && c.offsetSec + c.durationSec > buffer.duration + 1 / rate)
+      throw Error("Invalid offline audio cue: " + c.id);
+    events.push(
+      { time: c.atSec, delta: 1 },
+      { time: c.atSec + c.durationSec, delta: -1 }
+    );
+    return { cue: c, buffer };
+  });
+  let voices = 0;
+  for (const event of events.sort(
+    (a, b) => a.time - b.time || a.delta - b.delta
+  ))
+    if ((voices += event.delta) > snapshot.maxVoices)
+      throw Error("Offline audio voice capacity exceeded");
+  if (signal.aborted) throw signal.reason;
+  if (typeof globalThis.OfflineAudioContext !== "function")
+    throw Error("OfflineAudioContext unavailable");
+  const context = new OfflineAudioContext(channels, frames, rate), nodes = [], sources = [];
+  try {
+    const master = context.createGain();
+    master.gain.value = snapshot.volumes.master;
+    master.connect(context.destination);
+    nodes.push(master);
+    const buses = /* @__PURE__ */ new Map([["master", master]]);
+    for (const channel of ["bgm", "sfx", "ui"]) {
+      const gain = context.createGain();
+      gain.gain.value = snapshot.volumes[channel];
+      gain.connect(master);
+      buses.set(channel, gain);
+      nodes.push(gain);
+    }
+    for (const { cue: c, buffer } of cues) {
+      const source = context.createBufferSource(), gain = context.createGain();
+      sources.push(source);
+      nodes.push(source, gain);
+      source.buffer = buffer;
+      source.loop = c.loop ?? false;
+      source.loopStart = c.loopStartSec;
+      source.loopEnd = c.loopEndSec;
+      gain.gain.setValueAtTime(c.fadeInSec ? 0 : c.peakGain, c.atSec);
+      if (c.fadeInSec)
+        gain.gain.linearRampToValueAtTime(c.peakGain, c.atSec + c.fadeInSec);
+      if (c.fadeOutSec) {
+        gain.gain.setValueAtTime(
+          c.peakGain,
+          c.atSec + c.durationSec - c.fadeOutSec
+        );
+        gain.gain.linearRampToValueAtTime(0, c.atSec + c.durationSec);
+      }
+      source.connect(gain);
+      gain.connect(buses.get(c.channel));
+      source.start(c.atSec, c.offsetSec);
+      source.stop(c.atSec + c.durationSec);
+    }
+    const rendered = await context.startRendering();
+    if (signal.aborted) throw signal.reason;
+    const wav = new Uint8Array(44 + frames * channels * 4), view = new DataView(wav.buffer), write = (offset, text) => {
+      for (let i = 0; i < text.length; i++)
+        wav[offset + i] = text.charCodeAt(i);
+    };
+    write(0, "RIFF");
+    view.setUint32(4, wav.length - 8, true);
+    write(8, "WAVE");
+    write(12, "fmt ");
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 3, true);
+    view.setUint16(22, channels, true);
+    view.setUint32(24, rate, true);
+    view.setUint32(28, rate * channels * 4, true);
+    view.setUint16(32, channels * 4, true);
+    view.setUint16(34, 32, true);
+    write(36, "data");
+    view.setUint32(40, wav.length - 44, true);
+    const data = Array.from(
+      { length: channels },
+      (_, i) => rendered.getChannelData(i)
+    );
+    let peak = 0, overRangeSamples = 0;
+    for (let i = 0; i < frames; i++)
+      for (let c = 0; c < channels; c++) {
+        const value = data[c][i];
+        if (!Number.isFinite(value)) throw Error("Nonfinite offline sample");
+        peak = Math.max(peak, Math.abs(value));
+        if (Math.abs(value) > 1) overRangeSamples++;
+        view.setFloat32(44 + (i * channels + c) * 4, value, true);
+      }
+    return {
+      sampleRate: rate,
+      channels,
+      frames,
+      durationSec: frames / rate,
+      format: "wav-f32",
+      peak,
+      overRangeSamples,
+      wav
+    };
+  } finally {
+    for (const source of sources) {
+      try {
+        source.stop();
+      } catch {
+      }
+    }
+    for (const node of nodes) node.disconnect();
+  }
+}
+
 // packages/core/IframeSoundAdapter.ts
 var CHANNELS = ["bgm", "sfx", "ui"];
 var AUDIO_WAVE_TYPES = [
@@ -7148,6 +7304,7 @@ var _IframeSoundAdapter = class _IframeSoundAdapter {
     this.admissions = /* @__PURE__ */ new Map();
     this.retiredVoices = 0;
     this.backendContextLost = false;
+    this.offlineMix = null;
     this.options = {
       ...options,
       queueMaxAgeMs: options.queueMaxAgeMs ?? 500,
@@ -8221,6 +8378,51 @@ var _IframeSoundAdapter = class _IframeSoundAdapter {
     };
     return this.submit(task, snapshot.replace);
   }
+  /** Explicit offline soundtrack using loaded samples and this mixer's gain snapshot.
+   * Does not play live voices, use a second live AudioContext or dispatch events. */
+  async renderOffline(options) {
+    if (this.disposed || this.offlineMix)
+      throw Error("Offline mixer is disposed or busy");
+    const timeout = options.timeoutMs ?? 3e4;
+    if (!Number.isSafeInteger(timeout) || timeout <= 0 || timeout > 2147483647)
+      throw Error("Invalid offline audio deadline");
+    if (options.signal?.aborted)
+      throw options.signal.reason ?? new DOMException("Cancelled", "AbortError");
+    const controller = this.offlineMix = new AbortController(), abort = () => controller.abort(
+      options.signal?.reason ?? new DOMException("Cancelled", "AbortError")
+    );
+    options.signal?.addEventListener("abort", abort, { once: true });
+    const timer = setTimeout(
+      () => controller.abort(
+        new DOMException("Offline mix timed out", "TimeoutError")
+      ),
+      timeout
+    );
+    const work = renderOfflineMix(
+      {
+        samples: new Map(
+          [...this.samples].map(([id, lease]) => [id, lease.value])
+        ),
+        volumes: {
+          ...this.volumes,
+          master: this.userMuted ? 0 : this.volumes.master
+        },
+        maxVoices: this.options.maxActiveVoices
+      },
+      options,
+      controller.signal
+    );
+    const drained = () => {
+      if (this.offlineMix === controller) this.offlineMix = null;
+    };
+    void work.then(drained, drained);
+    try {
+      return await awaitAbortable(work, controller.signal);
+    } finally {
+      clearTimeout(timer);
+      options.signal?.removeEventListener("abort", abort);
+    }
+  }
   stop(id, fadeOutSec = 0) {
     if (!Number.isFinite(fadeOutSec) || fadeOutSec < 0 || fadeOutSec > 60)
       return false;
@@ -8359,6 +8561,7 @@ var _IframeSoundAdapter = class _IframeSoundAdapter {
   dispose() {
     if (this.disposed) return;
     this.disposed = true;
+    this.offlineMix?.abort(new DOMException("Mixer disposed", "AbortError"));
     this.backendPreparing?.abort();
     this.unlockAttempt++;
     this.pendingQueue = [];
@@ -13154,6 +13357,13 @@ var ZhudaFilmicPipeline = class {
       camera.taaSettings.quality = l.TemporalAAQuality.High;
     }
   }
+  /** Update the existing ACES grading exposure multiplier. */
+  setExposure(value) {
+    if (this.disposed) throw Error("Disposed filmic pipeline");
+    if (!Number.isFinite(value) || value < 0 || value > 1048576)
+      throw Error("Invalid filmic exposure");
+    this.grade.postExposure = value;
+  }
   /** Call on camera cuts, teleports and timeline seeks, not on ordinary movement. */
   resetHistory() {
     if (this.disposed) throw Error("Disposed filmic pipeline");
@@ -13860,6 +14070,432 @@ var ZhudaOfflineFrameRecorder = class {
   dispose() {
     this.disposed = true;
     this.controller?.abort(abortOffline());
+  }
+};
+
+// packages/core/runtime3d/PhysicalCamera.ts
+function physicalCameraSettings(spec) {
+  const value = {
+    sensorHeightMm: 24,
+    fStop: 2.8,
+    focusDistanceM: 5,
+    iso: 100,
+    shutterAngle: 180,
+    exposureCompensation: 0,
+    referenceEV100: 10,
+    ...spec
+  };
+  const bounds = {
+    focalLengthMm: [1, 2e3],
+    sensorHeightMm: [1, 200],
+    fStop: [0.1, 128],
+    focusDistanceM: [0.01, 1e7],
+    iso: [1, 1e7],
+    shutterAngle: [0, 360],
+    exposureCompensation: [-24, 24],
+    referenceEV100: [-24, 32]
+  };
+  for (const key of Object.keys(bounds))
+    if (!Number.isFinite(value[key]) || value[key] < bounds[key][0] || value[key] > bounds[key][1])
+      throw Error("Invalid physical camera " + key);
+  if (value.focusDistanceM <= value.focalLengthMm / 1e3)
+    throw Error("Focus must lie beyond focal length");
+  return Object.freeze(value);
+}
+function physicalCameraMetrics(spec, fps) {
+  const s = physicalCameraSettings(spec);
+  if (!Number.isFinite(fps) || fps <= 0 || fps > 1e3)
+    throw Error("Invalid camera frame rate");
+  const exposureSeconds = s.shutterAngle / 360 / fps;
+  const ev100 = exposureSeconds === 0 ? Infinity : Math.log2(s.fStop * s.fStop / exposureSeconds * 100 / s.iso);
+  return Object.freeze({
+    verticalFovDegrees: 2 * Math.atan(s.sensorHeightMm / (2 * s.focalLengthMm)) * 180 / Math.PI,
+    apertureRadiusM: s.focalLengthMm / s.fStop / 2e3,
+    exposureSeconds,
+    ev100,
+    exposureMultiplier: exposureSeconds === 0 ? 0 : Math.pow(2, s.referenceEV100 - ev100 + s.exposureCompensation)
+  });
+}
+var lenses = /* @__PURE__ */ new WeakSet();
+var ZhudaPhysicalCameraRig = class {
+  constructor(camera, spec) {
+    this.disposed = false;
+    this.restoreSample = null;
+    this.settings = physicalCameraSettings(spec);
+    if (camera.destroyed || camera.orthographic || lenses.has(camera))
+      throw Error("Physical camera requires an unowned perspective camera");
+    this.camera = camera;
+    this.previous = {
+      fov: camera.fieldOfView,
+      aspect: camera._aspectRatio ?? camera.aspectRatio,
+      projection: camera.projectionMatrix.clone(),
+      custom: camera._useUserProjectionMatrix
+    };
+    lenses.add(camera);
+  }
+  check() {
+    if (this.disposed || this.camera.destroyed)
+      throw Error("Disposed physical camera");
+  }
+  get spec() {
+    return this.settings;
+  }
+  configure(patch) {
+    this.check();
+    if (this.restoreSample) throw Error("Restore active lens sample first");
+    this.settings = physicalCameraSettings({ ...this.settings, ...patch });
+  }
+  apply(aspect) {
+    this.check();
+    if (this.restoreSample) throw Error("Restore active lens sample first");
+    if (!Number.isFinite(aspect) || aspect <= 0)
+      throw Error("Invalid camera aspect");
+    this.camera.resetProjectionMatrix();
+    this.camera.aspectRatio = aspect;
+    this.camera.fieldOfView = physicalCameraMetrics(
+      this.settings,
+      24
+    ).verticalFovDegrees;
+  }
+  applyExposure(pipeline, fps) {
+    this.check();
+    pipeline.setExposure(
+      physicalCameraMetrics(this.settings, fps).exposureMultiplier
+    );
+  }
+  /** Temporary aperture and subpixel offsets; always call the returned restore. */
+  sample(lensX, lensY, jitterX, jitterY, width, height) {
+    this.check();
+    if (this.restoreSample) throw Error("Restore active lens sample first");
+    if (![lensX, lensY, jitterX, jitterY, width, height].every(Number.isFinite) || Math.hypot(lensX, lensY) > 1.000001 || Math.abs(jitterX) > 0.5 || Math.abs(jitterY) > 0.5 || width < 1 || height < 1)
+      throw Error("Invalid lens sample");
+    const l = globalThis.Laya, camera = this.camera;
+    const position = camera.transform.position.clone(), projection = camera.projectionMatrix.clone();
+    const custom = camera._useUserProjectionMatrix;
+    const matrix = camera.transform.worldMatrix.elements, radius = physicalCameraMetrics(this.settings, 24).apertureRadiusM;
+    for (const start of [0, 4, 8])
+      if (Math.abs(
+        Math.hypot(matrix[start], matrix[start + 1], matrix[start + 2]) - 1
+      ) > 1e-4)
+        throw Error("Physical camera requires unit world scale");
+    const x = lensX * radius, y = lensY * radius, shifted = projection.clone();
+    shifted.elements[8] -= projection.elements[0] * x / this.settings.focusDistanceM + 2 * jitterX / width;
+    shifted.elements[9] -= projection.elements[5] * y / this.settings.focusDistanceM + 2 * jitterY / height;
+    camera.transform.position = new l.Vector3(
+      position.x + matrix[0] * x + matrix[4] * y,
+      position.y + matrix[1] * x + matrix[5] * y,
+      position.z + matrix[2] * x + matrix[6] * y
+    );
+    camera.projectionMatrix = shifted;
+    let restored = false;
+    return this.restoreSample = () => {
+      if (restored) return;
+      restored = true;
+      this.restoreSample = null;
+      if (camera.destroyed) return;
+      camera.transform.position = position;
+      if (custom) camera.projectionMatrix = projection;
+      else camera.resetProjectionMatrix();
+    };
+  }
+  dispose() {
+    if (this.disposed) return;
+    this.restoreSample?.();
+    this.disposed = true;
+    lenses.delete(this.camera);
+    if (this.camera.destroyed) return;
+    this.camera.fieldOfView = this.previous.fov;
+    this.camera.aspectRatio = this.previous.aspect;
+    if (this.previous.custom)
+      this.camera.projectionMatrix = this.previous.projection;
+    else this.camera.resetProjectionMatrix();
+  }
+};
+
+// packages/core/runtime3d/ModelAnimationSampler.ts
+var owners2 = /* @__PURE__ */ new WeakSet();
+var ZhudaModelAnimationSampler = class {
+  constructor(instance, path, name, layerIndex = 0) {
+    this.mark = 0;
+    this.disposed = false;
+    const l = globalThis.Laya;
+    const animator = new ZhudaModelInspector(instance).node(path).getComponent(l.Animator);
+    if (!animator || !Number.isInteger(layerIndex) || layerIndex < 0 || layerIndex >= animator.controllerLayerCount || owners2.has(animator))
+      throw Error("Missing or owned animation sampler target");
+    const layer = animator.getControllerLayer(layerIndex), state = layer.getAnimatorState(name);
+    if (!state?.clip || layer.blendingMode !== l.AnimatorControllerLayer.BLENDINGMODE_OVERRIDE)
+      throw Error("Sampling requires a named override animation");
+    const duration = state.clip.duration() * (state.clipEnd - state.clipStart);
+    if (!Number.isFinite(duration) || duration <= 0)
+      throw Error("Invalid animation duration");
+    const native = animator;
+    l.prepareStateOwners(native._bindContext, state);
+    this.animator = animator;
+    this.layer = layer;
+    this.state = state;
+    this.durationSeconds = duration;
+    this.evaluator = new l.WebAnimatorEvaluator();
+    this.applier = new l.WebAnimatorApplier();
+    this.play = new l.AnimatorPlayState();
+    this.task = new l.LayerTask();
+    this.task.type = l.LayerTaskType.Normal;
+    this.task.state = state;
+    this.task.playState = this.play;
+    this.task.weight = 1;
+    this.previousSpeed = animator.speed;
+    animator.speed = 0;
+    owners2.add(animator);
+  }
+  /** Absolute clip-local seconds. Clamps by default; explicit loop wraps endpoint. */
+  sample(seconds, loop = false) {
+    if (this.disposed || this.animator.destroyed)
+      throw Error("Disposed animation sampler");
+    if (!Number.isFinite(seconds) || seconds < 0 || typeof loop !== "boolean")
+      throw Error("Invalid animation sample time");
+    const time = loop ? seconds % this.durationSeconds : Math.min(seconds, this.durationSeconds);
+    this.state._currentFrameIndices.fill(-1);
+    Object.assign(this.play, {
+      _duration: this.durationSeconds,
+      _normalizedPlayTime: time / this.durationSeconds,
+      _elapsedTime: time,
+      _lastElapsedTime: -Infinity
+    });
+    this.evaluator.evaluateLayer(this.task, this.layer);
+    this.applier.applyNormal(this.task, this.layer, true, --this.mark);
+  }
+  /** Restore native playback speed. The last sampled pose remains until next tick. */
+  dispose() {
+    if (this.disposed) return;
+    this.disposed = true;
+    owners2.delete(this.animator);
+    if (!this.animator.destroyed) this.animator.speed = this.previousSpeed;
+  }
+};
+
+// packages/core/runtime3d/CinematicCapture.ts
+var locked = /* @__PURE__ */ new WeakSet();
+var halton = (index, base) => {
+  let result = 0, fraction = 1;
+  while (index > 0) {
+    fraction /= base;
+    result += fraction * (index % base);
+    index = Math.floor(index / base);
+  }
+  return result;
+};
+var linear = Float32Array.from({ length: 256 }, (_, i) => {
+  const x = i / 255;
+  return x <= 0.04045 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4);
+});
+var srgb = (x) => Math.round(
+  Math.min(
+    1,
+    Math.max(
+      0,
+      x <= 31308e-7 ? 12.92 * x : 1.055 * Math.pow(x, 1 / 2.4) - 0.055
+    )
+  ) * 255
+);
+var ZhudaCinematicCapture = class {
+  constructor(scene, lens, runtime2, options) {
+    this.disposed = false;
+    this.busy = false;
+    this.controller = null;
+    this.reading = false;
+    this.released = false;
+    const l = globalThis.Laya;
+    const { width, height } = options, limit = options.maxWorkingBytes ?? 512 * 1024 * 1024, timeout = options.timeoutMs ?? 3e4;
+    if (![width, height].every(
+      (v) => Number.isInteger(v) && v > 0 && v <= 8192
+    ) || !Number.isSafeInteger(limit) || limit <= 0 || width * height * 24 > limit)
+      throw Error("Cinematic pixel budget exceeded");
+    if (!Number.isSafeInteger(timeout) || timeout <= 0 || timeout > 2147483647)
+      throw Error("Invalid cinematic deadline");
+    if (scene.destroyed || !scene.parent || lens.camera.scene !== scene || locked.has(scene) || !runtime2.paused)
+      throw Error(
+        "Capture requires a mounted unowned scene and paused runtime"
+      );
+    if (lens.camera.taa)
+      throw Error("Disable temporal AA for independently sampled capture");
+    this.scene = scene;
+    this.lens = lens;
+    this.runtime = runtime2;
+    this.width = width;
+    this.height = height;
+    this.timeoutMs = timeout;
+    this.target = new l.RenderTexture(
+      width,
+      height,
+      l.RenderTargetFormat.R8G8B8A8,
+      l.RenderTargetFormat.DEPTH_16,
+      false,
+      1,
+      false,
+      true
+    );
+    this.previous = {
+      update: this.scene._update,
+      editor: this.scene._renderByEditor,
+      time: this.scene._time
+    };
+    this.scene._update = () => {
+    };
+    this.scene._renderByEditor = true;
+    locked.add(scene);
+  }
+  check() {
+    if (this.disposed || this.scene.destroyed || this.lens.camera.destroyed || !this.runtime.paused)
+      throw Error("Capture is disposed or runtime resumed");
+    if (this.lens.camera.taa)
+      throw Error("Disable temporal AA for independently sampled capture");
+  }
+  async renderFrame(request) {
+    this.check();
+    if (this.busy || this.reading)
+      throw Error(
+        "Cinematic capture is already rendering or draining readback"
+      );
+    const count = request.samples ?? 1;
+    if (!Number.isSafeInteger(request.index) || request.index < 0 || !Number.isFinite(request.fps) || request.fps < 1 || request.fps > 1e3 || !Number.isInteger(count) || count < 1 || count > 256 || typeof request.sample !== "function")
+      throw Error("Invalid cinematic frame request");
+    if (request.signal?.aborted)
+      throw request.signal.reason ?? new DOMException("Cancelled", "AbortError");
+    this.busy = true;
+    const controller = this.controller = new AbortController();
+    const abort = () => controller.abort(
+      request.signal?.reason ?? new DOMException("Cancelled", "AbortError")
+    );
+    request.signal?.addEventListener("abort", abort, { once: true });
+    const timer = setTimeout(
+      () => controller.abort(
+        new DOMException("Cinematic capture timed out", "TimeoutError")
+      ),
+      this.timeoutMs
+    );
+    const l = globalThis.Laya;
+    const pixels = new Uint8Array(this.width * this.height * 4), sum = new Float32Array(this.width * this.height * 3);
+    const time = request.index / request.fps;
+    try {
+      for (let i = 0; i < count; i++) {
+        this.check();
+        if (controller.signal.aborted) throw controller.signal.reason;
+        const seconds = time + (count === 1 ? 0 : (i + 0.5) / count) * this.lens.spec.shutterAngle / 360 / request.fps;
+        const sampled = request.sample(seconds);
+        if (sampled && typeof sampled.then === "function") {
+          void Promise.resolve(sampled).catch(() => {
+          });
+          throw Error(
+            "Cinematic sample must be synchronous; load assets before capture"
+          );
+        }
+        this.check();
+        this.lens.apply(this.width / this.height);
+        this.scene._time = seconds;
+        this.scene._shaderValues.setNumber(
+          l.Shader3D.propertyNameToID("u_Time"),
+          seconds
+        );
+        const radius = Math.sqrt(halton(i + 1, 5)), angle = 2 * Math.PI * halton(i + 1, 7), aperture = count > 1 && request.aperture !== false;
+        const restore = this.lens.sample(
+          aperture ? radius * Math.cos(angle) : 0,
+          aperture ? radius * Math.sin(angle) : 0,
+          count > 1 && request.jitter !== false ? halton(i + 1, 2) - 0.5 : 0,
+          count > 1 && request.jitter !== false ? halton(i + 1, 3) - 0.5 : 0,
+          this.width,
+          this.height
+        );
+        try {
+          l.Stat.loopCount++;
+          l.LayaGL.renderEngine.startFrame();
+          const previousTarget = this.lens.camera.renderTarget;
+          try {
+            l.Camera.drawRenderTextureByScene(
+              this.lens.camera,
+              this.scene,
+              this.target
+            );
+          } finally {
+            this.lens.camera.renderTarget = previousTarget;
+            this.scene.recaculateCullCamera();
+            l.LayaGL.renderEngine.endFrame();
+          }
+        } finally {
+          restore();
+        }
+        const readback = this.target.getDataAsync(
+          0,
+          0,
+          this.width,
+          this.height,
+          pixels
+        );
+        this.reading = true;
+        const drained = () => {
+          this.reading = false;
+          this.releaseTarget();
+        };
+        void readback.then(drained, drained);
+        await awaitAbortable(readback, controller.signal);
+        this.check();
+        for (let p = 0, q = 0; p < pixels.length; p += 4, q += 3) {
+          sum[q] += linear[pixels[p]];
+          sum[q + 1] += linear[pixels[p + 1]];
+          sum[q + 2] += linear[pixels[p + 2]];
+        }
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        this.check();
+        if (controller.signal.aborted) throw controller.signal.reason;
+      }
+      const output = new Uint8Array(pixels.length);
+      for (let y = 0; y < this.height; y++)
+        for (let x = 0; x < this.width; x++) {
+          const src = (y * this.width + x) * 3, dest = (y * this.width + x) * 4;
+          output[dest] = srgb(sum[src] / count);
+          output[dest + 1] = srgb(sum[src + 1] / count);
+          output[dest + 2] = srgb(sum[src + 2] / count);
+          output[dest + 3] = 255;
+        }
+      return {
+        width: this.width,
+        height: this.height,
+        index: request.index,
+        time,
+        samples: count,
+        colorSpace: "srgb",
+        accumulation: "display-linear",
+        alpha: "opaque",
+        rgba: output
+      };
+    } finally {
+      clearTimeout(timer);
+      request.signal?.removeEventListener("abort", abort);
+      this.busy = false;
+      this.controller = null;
+      this.releaseTarget();
+    }
+  }
+  releaseTarget() {
+    if (this.disposed && !this.busy && !this.reading && !this.released) {
+      this.released = true;
+      locked.delete(this.scene);
+      this.target.destroy();
+    }
+  }
+  dispose() {
+    if (this.disposed) return;
+    this.disposed = true;
+    this.controller?.abort(new DOMException("Capture disposed", "AbortError"));
+    if (!this.scene.destroyed) {
+      this.scene._update = this.previous.update;
+      this.scene._renderByEditor = this.previous.editor;
+      this.scene._time = this.previous.time;
+      const l = globalThis.Laya;
+      this.scene._shaderValues.setNumber(
+        l.Shader3D.propertyNameToID("u_Time"),
+        this.previous.time
+      );
+    }
+    this.releaseTarget();
   }
 };
 
@@ -15487,6 +16123,7 @@ zhudaSurface(s,zhudaUV,pixel.positionWS,pixel.normalWS);inputs.diffuseColor=max(
   ZhudaBenchmarkEngine,
   ZhudaCameraCoordinates,
   ZhudaCameraRig,
+  ZhudaCinematicCapture,
   ZhudaCombatWorld,
   ZhudaCrowdScheduler,
   ZhudaDistanceLOD,
@@ -15508,6 +16145,7 @@ zhudaSurface(s,zhudaUV,pixel.positionWS,pixel.normalWS);inputs.diffuseColor=max(
   ZhudaLayeredClock,
   ZhudaLitSurfaceMaterial,
   ZhudaMeshoptModelDecoder,
+  ZhudaModelAnimationSampler,
   ZhudaModelCompatibilityError,
   ZhudaModelDecoderRegistry,
   ZhudaModelInspector,
@@ -15518,6 +16156,7 @@ zhudaSurface(s,zhudaUV,pixel.positionWS,pixel.normalWS);inputs.diffuseColor=max(
   ZhudaParticleMesh3D,
   ZhudaParticleSystem,
   ZhudaParticleSystem3D,
+  ZhudaPhysicalCameraRig,
   ZhudaPlanarReflection,
   ZhudaPointerInput,
   ZhudaPrefab,
@@ -15586,6 +16225,8 @@ zhudaSurface(s,zhudaUV,pixel.positionWS,pixel.normalWS);inputs.diffuseColor=max(
   normalizeAssetId,
   normalized,
   packMetallicRoughness,
+  physicalCameraMetrics,
+  physicalCameraSettings,
   rayBox,
   resolveCameraBoom,
   resolveParticleCollision,

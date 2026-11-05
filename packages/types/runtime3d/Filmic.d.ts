@@ -40,6 +40,8 @@ export declare class ZhudaFilmicPipeline {
     private previousMSAA;
     private previousDepth;
     constructor(camera: any, options?: FilmicOptions);
+    /** Update the existing ACES grading exposure multiplier. */
+    setExposure(value: number): void;
     /** Call on camera cuts, teleports and timeline seeks, not on ordinary movement. */
     resetHistory(): void;
     dispose(): void;

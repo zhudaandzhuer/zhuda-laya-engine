@@ -7,6 +7,40 @@ export interface IframeVoiceOptions {
   /** Explicit voice protection in addition to protected channels. */
   protected?: boolean;
 }
+export interface IframeOfflineCue {
+  id: string;
+  sampleId: string;
+  atSec: number;
+  durationSec: number;
+  offsetSec?: number;
+  loop?: boolean;
+  loopStartSec?: number;
+  loopEndSec?: number;
+  channel?: IframeAudioChannel;
+  peakGain?: number;
+  fadeInSec?: number;
+  fadeOutSec?: number;
+}
+export interface IframeOfflineMixOptions {
+  durationSec: number;
+  sampleRate?: number;
+  channels?: 1 | 2;
+  maxOutputBytes?: number;
+  timeoutMs?: number;
+  signal?: AbortSignal;
+  cues: readonly IframeOfflineCue[];
+}
+export interface IframeOfflineMix {
+  sampleRate: number;
+  channels: number;
+  frames: number;
+  durationSec: number;
+  format: "wav-f32";
+  peak: number;
+  /** Float WAV preserves over-range samples; encoder/consumer chooses limiting. */
+  overRangeSamples: number;
+  wav: Uint8Array;
+}
 export interface IframeVoiceEvent {
   type: "started" | "rejected" | "retiring" | "ended" | "failed";
   id: string;

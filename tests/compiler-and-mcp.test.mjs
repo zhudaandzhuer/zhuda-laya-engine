@@ -42,7 +42,8 @@ test('MCP Server resolves topology, diagnoses Laya crashes, and serves Golden Ex
     params: {}
   });
   assert.equal(rpcRes.id, 42);
-  assert.equal(rpcRes.result.tools.length, 20);
+  assert.equal(rpcRes.result.tools.length, 21);
+  assert.ok(rpcRes.result.tools.some((tool) => tool.name === 'get_cinematic_contract'));
   assert.ok(rpcRes.result.tools.some((tool) => tool.name === 'get_agent_contract'));
   assert.ok(rpcRes.result.tools.some((tool) => tool.name === 'validate_task_spec'));
   assert.ok(rpcRes.result.tools.some((tool) => tool.name === 'audit_visual_migration'));
@@ -277,4 +278,9 @@ test('MCP crowd guidance separates native animation, provider models and measure
  const crowd=executeMcpTool('search_api_guardrails',{query:'crowd'});assert.ok(crowd.guardrails.some(g=>g.zhudaCanonicalApi.includes('ZhudaCrowdScheduler')));
  const unavailable=executeMcpTool('search_api_guardrails',{query:'ZhudaMMOServer'});assert.equal(unavailable.matchCount,1);assert.match(unavailable.guardrails[0].reason,/consumer/);
  const gpu=executeMcpTool('search_api_guardrails',{query:'profiler'});assert.match(gpu.guardrails[0].reason,/disjoint/);
+});
+
+test('MCP exposes the actual cinematic route and keeps HDR/device limits explicit',()=>{
+ const contract=executeMcpTool('get_cinematic_contract');assert.ok(contract.api.includes('ZhudaCinematicCapture'));assert.match(contract.capture.accumulation,/display-linear/);assert.equal(contract.deviceCertification,false);assert.ok(contract.limits.some(x=>x.includes('EXR')));
+ const guard=executeMcpTool('search_api_guardrails',{query:'GUARD_CINEMATIC_CAPTURE'});assert.equal(guard.matchCount,1);assert.match(guard.guardrails[0].zhudaCanonicalApi,/zhuda-film-export/);
 });

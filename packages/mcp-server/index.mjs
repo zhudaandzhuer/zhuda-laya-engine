@@ -22,6 +22,7 @@ import { API_GUARDRAILS, ERROR_DIAGNOSTICS_DB, GOLDEN_EXAMPLES } from './corpus.
 const projectRoot = fileURLToPath(new URL('../..', import.meta.url));
 
 export const MCP_TOOLS_MANIFEST = [
+  {name:'get_cinematic_contract',description:'Return the deterministic movie API, export route and explicit HDR/device limits. Does not render or certify quality.',inputSchema:{type:'object',properties:{}}},
   {name:'validate_timeline_spec',description:'Validate deterministic timeline keys, dimensions and targets. Configuration only; no rendering or movie certification.',inputSchema:{type:'object',properties:{timeline:{type:'object'}},required:['timeline']}},
   {name:'get_model_capabilities',description:'List native model extensions, optional Meshopt adapter and unsupported formats with device evidence limits.',inputSchema:{type:'object',properties:{}}},
   {
@@ -211,6 +212,13 @@ export const MCP_TOOLS_MANIFEST = [
 
 export function executeMcpTool(toolName, args = {}) {
   switch (toolName) {
+    case 'get_cinematic_contract': return {tool:toolName,version:'1.13.0',
+      api:['ZhudaTimelineSequencer','ZhudaModelAnimationSampler','ZhudaPhysicalCameraRig','ZhudaCinematicCapture','IframeSoundAdapter.renderOffline'],
+      export:'zhuda-film-export sequence.json --fps 24 --output movie.mp4 --audio soundtrack.wav',
+      capture:{pose:'synchronous absolute time',runtime:'paused',samples:'1..256',pixels:'opaque sRGB top-left',accumulation:'display-linear after tone mapping',shutter:'forward interval; single sample at frame start'},
+      requirements:['Load assets through provider before capture','Select one override animation per Animator; no state transitions/events','Disable TAA; render callbacks must be deterministic','Movie timestamps are i/fps for i < frameCount; exclude endpoint','FFmpeg/ffprobe required for MP4; PNG output remains available'],
+      limits:['No scene-linear HDR/ACEScg/EXR/path-tracing claim','OfflineAudioContext drains after cancellation; no streaming/custom Worklet DSP export','Windows physical GPU/mobile/XR unavailable'],
+      documentation:'docs/cinematics.md',example:'examples/cinematic-capture/',deviceCertification:false};
     case 'validate_timeline_spec': {const issues=validateTimelineSpec(args.timeline);return{tool:toolName,passed:issues.length===0,issues,rendering:'requires-real-draw'};}
     case 'get_model_capabilities': return {tool:toolName,assets:gltfAssetCapabilities,extensions:gltfExtensionCapabilities,scope:'importer-capabilities',deviceCertification:false};
     case 'get_agent_contract':

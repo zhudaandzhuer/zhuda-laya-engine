@@ -215,3 +215,12 @@ measures processor progress during a 250 ms main-thread block. Hardware output
 latency, glitch-free speakers, mobile autoplay and full SOP compliance remain
 unverified. Unsupported Worklet/module/CSP environments must handle preparation
 failure explicitly. See the [1.7.0 verification record](plans/records/astra-runtime-feedback/verification.md).
+
+## Offline movie soundtrack (1.13.0)
+
+`IframeSoundAdapter.renderOffline` renders explicit timestamped cues from the
+same loaded sample cache and gain/mute policy into bounded float32 WAV. No live
+voice is emitted. It supports source offsets, loop regions, linear fades and
+fails if overlapping cues exceed the existing voice cap. Native offline jobs
+retain admission until they drain after cancellation. Streaming/custom Worklet
+DSP is not automatically baked. See [movie audio and export](cinematics.md#soundtrack-through-the-same-mixer).

@@ -1,6 +1,6 @@
 {
   "packageName": "zhuda-laya-engine",
-  "version": "1.12.0",
+  "version": "1.13.0",
   "repositoryUrl": "https://github.com/zhudaandzhuer/zhuda-laya-engine",
   "upstreamOfficial": {
     "name": "LayaAir Official Engine (Layabox)",
@@ -12,14 +12,14 @@
   "engine": "zhuda-laya-engine (Zhuda-LayaAir · Agent-Friendly Fork of LayaAir 3.4.2)",
   "baseVersion": "3.4.2",
   "zeroIdeBuild": true,
-  "buildTimeMs": 181.5,
+  "buildTimeMs": 237.8,
   "activeProfile": "full-all-in-one",
-  "bundleSizeKB": 302,
+  "bundleSizeKB": 310.7,
   "sdkArtifacts": {
     "esmPath": "dist/sdk/zhuda-laya-engine.esm.js",
-    "esmSizeKB": 613.2,
+    "esmSizeKB": 637.4,
     "cjsPath": "dist/sdk/zhuda-laya-engine.cjs",
-    "cjsSizeKB": 621.6,
+    "cjsSizeKB": 646.1,
     "typesPath": "packages/types/index.d.ts"
   },
   "enginePayloadSizeKB": 6578.3,
@@ -253,5 +253,5 @@
       ]
     }
   },
-  "timestamp": "2026-11-05T11:19:38.994Z"
+  "timestamp": "2026-11-05T12:20:03.589Z"
 }

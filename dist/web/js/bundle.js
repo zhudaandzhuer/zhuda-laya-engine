@@ -923,6 +923,36 @@ var ZhudaAppBundle = (() => {
     }))
   );
 
+  // packages/core/runtime3d/AsyncOperation.ts
+  function awaitAbortable(work, signal, discard) {
+    return new Promise((resolve, reject) => {
+      let settled = false;
+      const abort = () => {
+        if (settled) return;
+        settled = true;
+        reject(signal.reason ?? new DOMException("Cancelled", "AbortError"));
+      };
+      if (signal.aborted) abort();
+      else signal.addEventListener("abort", abort, { once: true });
+      work.then((value) => {
+        signal.removeEventListener("abort", abort);
+        if (settled) {
+          discard?.(value);
+          return;
+        }
+        settled = true;
+        resolve(value);
+      }, (error) => {
+        signal.removeEventListener("abort", abort);
+        if (!settled) {
+          settled = true;
+          reject(error);
+        }
+      }).catch(() => {
+      });
+    });
+  }
+
   // packages/core/runtime3d/AssetProvider.ts
   var AssetProviderError = class extends Error {
     constructor(code, message, details = {}) {
@@ -4228,6 +4258,147 @@ var ZhudaAppBundle = (() => {
     }
   };
 
+  // packages/core/audio/OfflineMix.ts
+  async function renderOfflineMix(snapshot, options, signal) {
+    const rate = options.sampleRate ?? 48e3, channels = options.channels ?? 2, limit = options.maxOutputBytes ?? 256 * 1024 * 1024;
+    const frames = Math.round(options.durationSec * rate);
+    if (!Number.isInteger(rate) || rate < 8e3 || rate > 192e3 || ![1, 2].includes(channels) || !Number.isFinite(options.durationSec) || options.durationSec <= 0 || !Number.isSafeInteger(frames) || frames < 1 || Math.abs(frames - options.durationSec * rate) > 1e-6 || !Number.isSafeInteger(limit) || limit <= 0 || frames * channels * 8 + 44 > limit || frames * channels * 4 + 36 > 4294967295)
+      throw Error("Invalid offline audio duration or PCM budget");
+    if (!Array.isArray(options.cues) || options.cues.length > 1e5)
+      throw Error("Invalid offline audio cues");
+    const ids = /* @__PURE__ */ new Set(), events = [];
+    const cues = options.cues.map((cue) => {
+      if (!cue || typeof cue.id !== "string" || !cue.id || ids.has(cue.id))
+        throw Error("Duplicate or missing offline audio event id");
+      ids.add(cue.id);
+      const buffer = snapshot.samples.get(cue.sampleId);
+      if (!buffer) throw Error("Offline sample is not loaded: " + cue.sampleId);
+      const c = {
+        ...cue,
+        channel: cue.channel ?? "sfx",
+        offsetSec: cue.offsetSec ?? 0,
+        loopStartSec: cue.loopStartSec ?? 0,
+        loopEndSec: cue.loopEndSec ?? buffer.duration,
+        peakGain: cue.peakGain ?? 1,
+        fadeInSec: cue.fadeInSec ?? 0,
+        fadeOutSec: cue.fadeOutSec ?? 0
+      };
+      if (!["master", "bgm", "sfx", "ui"].includes(c.channel) || ![
+        c.atSec,
+        c.durationSec,
+        c.offsetSec,
+        c.loopStartSec,
+        c.loopEndSec,
+        c.peakGain,
+        c.fadeInSec,
+        c.fadeOutSec
+      ].every(Number.isFinite) || c.atSec < 0 || c.durationSec <= 0 || c.atSec + c.durationSec > options.durationSec + 1e-9 || c.offsetSec < 0 || c.offsetSec >= buffer.duration || c.loopStartSec < 0 || c.loopEndSec > buffer.duration || c.loopEndSec <= c.loopStartSec || c.peakGain < 0 || c.peakGain > 4 || c.fadeInSec < 0 || c.fadeOutSec < 0 || c.fadeInSec + c.fadeOutSec > c.durationSec || !c.loop && c.offsetSec + c.durationSec > buffer.duration + 1 / rate)
+        throw Error("Invalid offline audio cue: " + c.id);
+      events.push(
+        { time: c.atSec, delta: 1 },
+        { time: c.atSec + c.durationSec, delta: -1 }
+      );
+      return { cue: c, buffer };
+    });
+    let voices = 0;
+    for (const event of events.sort(
+      (a, b) => a.time - b.time || a.delta - b.delta
+    ))
+      if ((voices += event.delta) > snapshot.maxVoices)
+        throw Error("Offline audio voice capacity exceeded");
+    if (signal.aborted) throw signal.reason;
+    if (typeof globalThis.OfflineAudioContext !== "function")
+      throw Error("OfflineAudioContext unavailable");
+    const context = new OfflineAudioContext(channels, frames, rate), nodes = [], sources = [];
+    try {
+      const master = context.createGain();
+      master.gain.value = snapshot.volumes.master;
+      master.connect(context.destination);
+      nodes.push(master);
+      const buses = /* @__PURE__ */ new Map([["master", master]]);
+      for (const channel of ["bgm", "sfx", "ui"]) {
+        const gain = context.createGain();
+        gain.gain.value = snapshot.volumes[channel];
+        gain.connect(master);
+        buses.set(channel, gain);
+        nodes.push(gain);
+      }
+      for (const { cue: c, buffer } of cues) {
+        const source = context.createBufferSource(), gain = context.createGain();
+        sources.push(source);
+        nodes.push(source, gain);
+        source.buffer = buffer;
+        source.loop = c.loop ?? false;
+        source.loopStart = c.loopStartSec;
+        source.loopEnd = c.loopEndSec;
+        gain.gain.setValueAtTime(c.fadeInSec ? 0 : c.peakGain, c.atSec);
+        if (c.fadeInSec)
+          gain.gain.linearRampToValueAtTime(c.peakGain, c.atSec + c.fadeInSec);
+        if (c.fadeOutSec) {
+          gain.gain.setValueAtTime(
+            c.peakGain,
+            c.atSec + c.durationSec - c.fadeOutSec
+          );
+          gain.gain.linearRampToValueAtTime(0, c.atSec + c.durationSec);
+        }
+        source.connect(gain);
+        gain.connect(buses.get(c.channel));
+        source.start(c.atSec, c.offsetSec);
+        source.stop(c.atSec + c.durationSec);
+      }
+      const rendered = await context.startRendering();
+      if (signal.aborted) throw signal.reason;
+      const wav = new Uint8Array(44 + frames * channels * 4), view = new DataView(wav.buffer), write = (offset, text) => {
+        for (let i = 0; i < text.length; i++)
+          wav[offset + i] = text.charCodeAt(i);
+      };
+      write(0, "RIFF");
+      view.setUint32(4, wav.length - 8, true);
+      write(8, "WAVE");
+      write(12, "fmt ");
+      view.setUint32(16, 16, true);
+      view.setUint16(20, 3, true);
+      view.setUint16(22, channels, true);
+      view.setUint32(24, rate, true);
+      view.setUint32(28, rate * channels * 4, true);
+      view.setUint16(32, channels * 4, true);
+      view.setUint16(34, 32, true);
+      write(36, "data");
+      view.setUint32(40, wav.length - 44, true);
+      const data = Array.from(
+        { length: channels },
+        (_, i) => rendered.getChannelData(i)
+      );
+      let peak = 0, overRangeSamples = 0;
+      for (let i = 0; i < frames; i++)
+        for (let c = 0; c < channels; c++) {
+          const value = data[c][i];
+          if (!Number.isFinite(value)) throw Error("Nonfinite offline sample");
+          peak = Math.max(peak, Math.abs(value));
+          if (Math.abs(value) > 1) overRangeSamples++;
+          view.setFloat32(44 + (i * channels + c) * 4, value, true);
+        }
+      return {
+        sampleRate: rate,
+        channels,
+        frames,
+        durationSec: frames / rate,
+        format: "wav-f32",
+        peak,
+        overRangeSamples,
+        wav
+      };
+    } finally {
+      for (const source of sources) {
+        try {
+          source.stop();
+        } catch {
+        }
+      }
+      for (const node of nodes) node.disconnect();
+    }
+  }
+
   // packages/core/IframeSoundAdapter.ts
   var CHANNELS = ["bgm", "sfx", "ui"];
   var AUDIO_WAVE_TYPES = [
@@ -4282,6 +4453,7 @@ var ZhudaAppBundle = (() => {
       this.admissions = /* @__PURE__ */ new Map();
       this.retiredVoices = 0;
       this.backendContextLost = false;
+      this.offlineMix = null;
       this.options = {
         ...options,
         queueMaxAgeMs: options.queueMaxAgeMs ?? 500,
@@ -5355,6 +5527,51 @@ var ZhudaAppBundle = (() => {
       };
       return this.submit(task, snapshot.replace);
     }
+    /** Explicit offline soundtrack using loaded samples and this mixer's gain snapshot.
+     * Does not play live voices, use a second live AudioContext or dispatch events. */
+    async renderOffline(options) {
+      if (this.disposed || this.offlineMix)
+        throw Error("Offline mixer is disposed or busy");
+      const timeout = options.timeoutMs ?? 3e4;
+      if (!Number.isSafeInteger(timeout) || timeout <= 0 || timeout > 2147483647)
+        throw Error("Invalid offline audio deadline");
+      if (options.signal?.aborted)
+        throw options.signal.reason ?? new DOMException("Cancelled", "AbortError");
+      const controller = this.offlineMix = new AbortController(), abort = () => controller.abort(
+        options.signal?.reason ?? new DOMException("Cancelled", "AbortError")
+      );
+      options.signal?.addEventListener("abort", abort, { once: true });
+      const timer = setTimeout(
+        () => controller.abort(
+          new DOMException("Offline mix timed out", "TimeoutError")
+        ),
+        timeout
+      );
+      const work = renderOfflineMix(
+        {
+          samples: new Map(
+            [...this.samples].map(([id, lease]) => [id, lease.value])
+          ),
+          volumes: {
+            ...this.volumes,
+            master: this.userMuted ? 0 : this.volumes.master
+          },
+          maxVoices: this.options.maxActiveVoices
+        },
+        options,
+        controller.signal
+      );
+      const drained = () => {
+        if (this.offlineMix === controller) this.offlineMix = null;
+      };
+      void work.then(drained, drained);
+      try {
+        return await awaitAbortable(work, controller.signal);
+      } finally {
+        clearTimeout(timer);
+        options.signal?.removeEventListener("abort", abort);
+      }
+    }
     stop(id, fadeOutSec = 0) {
       if (!Number.isFinite(fadeOutSec) || fadeOutSec < 0 || fadeOutSec > 60)
         return false;
@@ -5493,6 +5710,7 @@ var ZhudaAppBundle = (() => {
     dispose() {
       if (this.disposed) return;
       this.disposed = true;
+      this.offlineMix?.abort(new DOMException("Mixer disposed", "AbortError"));
       this.backendPreparing?.abort();
       this.unlockAttempt++;
       this.pendingQueue = [];
