@@ -90,7 +90,7 @@ window.__ZHUDA_PREFAB_TEST__={
  select,
  report:()=>{
   const node=instance?.find(selection?.node);
-  return {ready:ready&&!!instance&&!error,error,componentId,selection,provenance:instance?inspectPrefabInstance(instance.root):null,
+  return {ready:ready&&!!instance&&!error,error,componentId,selection,renderer:context.renderer,provenance:instance?inspectPrefabInstance(instance.root):null,
     bounds:node?{x:node.x,y:node.y,width:node.width,height:node.height}:null,
     resources:library.report(),lifecycle,lifecycleCheck,environment:{
       requested:{width,height,dpr},

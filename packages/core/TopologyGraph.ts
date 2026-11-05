@@ -1,3 +1,5 @@
+export type RendererBackend = 'webgl' | 'webgpu';
+
 /**
  * @zhuda-laya/core — Topological Dependency Graph & Tree-Pruning Resolver
  *
@@ -43,6 +45,8 @@ export interface EngineModuleNode {
 }
 
 export interface TopologyResolutionResult {
+  renderer: RendererBackend;
+  supportFiles: string[];
   orderedModules: EngineModuleNode[];
   orderedFiles: string[];
   totalSizeBytes: number;
@@ -345,6 +349,23 @@ export const ZHUDA_ENGINE_MODULES: readonly EngineModuleNode[] = [
   }
 ] as const;
 
+/** Renderer is a separate build axis; never load both backends in one realm. */
+function rendererModules(renderer: RendererBackend): readonly EngineModuleNode[] {
+  if (renderer !== 'webgl' && renderer !== 'webgpu') throw Error('[ZhudaTopology] renderer must be webgl or webgpu');
+  if (renderer === 'webgl') return ZHUDA_ENGINE_MODULES;
+  const id = (value: string) => value.replace('webgl', 'webgpu');
+  return [
+    ...ZHUDA_ENGINE_MODULES.map(node => ({...node, id: id(node.id),
+      file: node.file.replace('webgl', 'webgpu'),
+      sizeBytes: node.id === 'webgl2d' ? 858378 : node.id === 'webgl3d' ? 335455 : node.sizeBytes,
+      dependsOn: [...node.dependsOn.map(id), ...(node.id === 'webgl2d' ? ['shader-compiler', 'naga'] : [])],
+      providesGlobals: node.providesGlobals.map(value => value.replace('WebGL', 'WebGPU')),
+    })),
+    {id:'shader-compiler', file:'shader_compiler_web.js', sizeBytes: 61401, feature:'2d', dependsOn:['core'], providesGlobals:['ShaderCompiler'], priority:25},
+    {id:'naga', file:'nagabind.js', sizeBytes:13996, feature:'2d', dependsOn:['core'], providesGlobals:['wasm_bindgen'], priority:26},
+  ];
+}
+
 export type PresetProfileName = '2d-light' | '3d-standard' | 'spine-hybrid' | 'full-all-in-one';
 
 export const ENGINE_PRESET_PROFILES: Record<PresetProfileName, EngineFeatureTag[]> = {
@@ -395,21 +416,23 @@ export class TopologyResolver {
   /**
    * 根據 Feature Tags 解析最小必備模組並執行拓撲排序
    */
-  public static resolveByFeatures(features: EngineFeatureTag[] | 'all'): TopologyResolutionResult {
+  public static resolveByFeatures(features: EngineFeatureTag[] | 'all', renderer: RendererBackend = 'webgl'): TopologyResolutionResult {
     const targetFeatures =
       features === 'all' ? ENGINE_PRESET_PROFILES['full-all-in-one'] : Array.from(new Set(['core', ...features]));
 
-    const seedIds = ZHUDA_ENGINE_MODULES.filter((m) =>
+    const seedIds = rendererModules(renderer).filter((m) =>
       targetFeatures.includes(m.feature)
     ).map((m) => m.id);
 
-    return this.resolveByModuleIds(seedIds);
+    return this.resolveByModuleIds(seedIds, renderer);
   }
 
   /**
    * 根據 Module IDs 展開傳遞依賴閉包並以 Kahn's Algorithm 排序
    */
-  public static resolveByModuleIds(seedModuleIds: string[]): TopologyResolutionResult {
+  public static resolveByModuleIds(seedModuleIds: string[], renderer: RendererBackend = 'webgl'): TopologyResolutionResult {
+    const modules = rendererModules(renderer);
+    const moduleMap = new Map(modules.map(node => [node.id, node]));
     const closure = new Set<string>();
     const diagnostics: string[] = [];
 
@@ -417,13 +440,13 @@ export class TopologyResolver {
       if (chain.includes(id)) {
         throw new Error(`[ZhudaTopology] 偵測到循環依賴 (Cycle Detected): ${[...chain, id].join(' -> ')}`);
       }
-      const node = this.moduleMap.get(id);
+      const node = moduleMap.get(id);
       if (!node) {
         throw new Error(`[ZhudaTopology] 未知的引擎模組 ID: "${id}"`);
       }
       for (const depId of node.dependsOn) {
         if (!closure.has(depId)) {
-          diagnostics.push(`[Auto-Dependency] 模組 "${node.file}" 自動拉入前置依賴 "${this.moduleMap.get(depId)?.file}"`);
+          diagnostics.push(`[Auto-Dependency] 模組 "${node.file}" 自動拉入前置依賴 "${moduleMap.get(depId)?.file}"`);
         }
         visit(depId, [...chain, id]);
       }
@@ -436,7 +459,7 @@ export class TopologyResolver {
 
     // 檢查互斥衝突
     for (const id of closure) {
-      const node = this.moduleMap.get(id)!;
+      const node = moduleMap.get(id)!;
       if (node.conflictsWith) {
         for (const conflictId of node.conflictsWith) {
           if (closure.has(conflictId)) {
@@ -456,7 +479,7 @@ export class TopologyResolver {
     }
 
     for (const id of closure) {
-      const node = this.moduleMap.get(id)!;
+      const node = moduleMap.get(id)!;
       for (const depId of node.dependsOn) {
         adj.get(depId)!.push(id);
         inDegree.set(id, (inDegree.get(id) || 0) + 1);
@@ -466,7 +489,7 @@ export class TopologyResolver {
     const readyQueue: EngineModuleNode[] = [];
     for (const [id, deg] of inDegree.entries()) {
       if (deg === 0) {
-        readyQueue.push(this.moduleMap.get(id)!);
+        readyQueue.push(moduleMap.get(id)!);
       }
     }
     readyQueue.sort((a, b) => a.priority - b.priority);
@@ -480,7 +503,7 @@ export class TopologyResolver {
         const nextDeg = (inDegree.get(neighborId) || 0) - 1;
         inDegree.set(neighborId, nextDeg);
         if (nextDeg === 0) {
-          readyQueue.push(this.moduleMap.get(neighborId)!);
+          readyQueue.push(moduleMap.get(neighborId)!);
           readyQueue.sort((a, b) => a.priority - b.priority);
         }
       }
@@ -490,11 +513,14 @@ export class TopologyResolver {
       throw new Error('[ZhudaTopology] 拓撲排序失敗：存在無法解開的依賴環');
     }
 
-    const totalSizeBytes = orderedModules.reduce((acc, m) => acc + m.sizeBytes, 0);
-    const fullSizeBytes = this.getFullEngineSizeBytes();
+    const supportSizeBytes = renderer === 'webgpu' ? 5942257 : 0;
+    const totalSizeBytes = orderedModules.reduce((acc, m) => acc + m.sizeBytes, supportSizeBytes);
+    const fullSizeBytes = modules.reduce((acc, m) => acc + m.sizeBytes, supportSizeBytes);
     const prunedRatioPercent = Number((((fullSizeBytes - totalSizeBytes) / fullSizeBytes) * 100).toFixed(1));
 
     return {
+      renderer,
+      supportFiles: renderer === 'webgpu' ? ['shader_compiler_web.wasm', 'nagabind_bg.wasm'] : [],
       orderedModules,
       orderedFiles: orderedModules.map((m) => m.file),
       totalSizeBytes,
@@ -510,17 +536,22 @@ export class TopologyResolver {
    */
   public static auditFileSequence(files: string[]): SequenceAuditIssue[] {
     const issues: SequenceAuditIssue[] = [];
+    const gpu = files.some(file => file.startsWith('laya.webgpu_'));
+    const modules = rendererModules(gpu ? 'webgpu' : 'webgl');
+    const moduleMap = new Map(modules.map(node => [node.id, node]));
+    const fileMap = new Map(modules.map(node => [node.file, node]));
+    if (gpu && files.some(file => file.startsWith('laya.webgl_'))) issues.push({type:'CONFLICTING_MODULE', moduleFile:'laya.webgpu_2D.js', requiredFile:'laya.webgl_2D.js', fatalSymptom:'Mixed renderer factories', message:'Load exactly one renderer backend per realm'});
     const seenFiles = new Set<string>();
 
     for (const file of files) {
-      const node = this.fileMap.get(file);
+      const node = fileMap.get(file);
       if (!node) {
         seenFiles.add(file);
         continue;
       }
 
       for (const depId of node.dependsOn) {
-        const depNode = this.moduleMap.get(depId);
+        const depNode = moduleMap.get(depId);
         if (!depNode) continue;
 
         if (!seenFiles.has(depNode.file)) {

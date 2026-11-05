@@ -35,3 +35,7 @@ UPSTREAM OFFICIAL ATTRIBUTION & OPEN-SOURCE NOTICE (上游官方致謝與聲明)
 
 2. Spine Runtimes (`spine-core-3.8.js` / `spine-core-4.2.js`)
    - 授權條款依循 Esoteric Software Spine Runtimes License (https://esotericsoftware.com/spine-runtimes-license)。
+
+WebGPU shader translation dependencies: glslang and Naga / wgpu.
+Full upstream notices are in vendor/laya-3.4.2/WEBGPU-LICENSES.txt and accompany
+WebGPU browser/consumer distributions.

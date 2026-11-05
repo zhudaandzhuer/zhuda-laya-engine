@@ -1,3 +1,4 @@
+import {copyEngineLibraries} from './webgpu-loader.mjs';
 import {resolveConsumerBranding} from './branding-assets.mjs';
 import { injectBrandSplash } from './branding.mjs';
 import fs from "node:fs";
@@ -224,7 +225,9 @@ export async function runConsumerBuild({
   const features = config.features ||
     (config.profile && ENGINE_PRESET_PROFILES[config.profile]) ||
     ["core", "3d", "gltf"];
-  const topology = TopologyResolver.resolveByFeatures(features);
+  let topology;
+  try { topology = TopologyResolver.resolveByFeatures(features, config.renderer); }
+  catch(error) { throw Error('zhuda.config.json:1 [RENDERER_TOPOLOGY] '+error.message); }
   const includes = assetPaths(config.assetInclude, 'assetInclude');
   const excludes = assetPaths(config.assetExclude, 'assetExclude') || [];
   const under = (value, prefix) => value === prefix || value.startsWith(prefix + '/');
@@ -276,11 +279,7 @@ export async function runConsumerBuild({
           return relative === '' || assetAllowed(relative, fs.lstatSync(p).isDirectory());
         },
       });
-    for (const file of topology.orderedFiles)
-      fs.copyFileSync(
-        path.join(engineRoot, "vendor/laya-3.4.2/libs", file),
-        path.join(out, "libs", file),
-      );
+    copyEngineLibraries(topology, path.join(engineRoot, "vendor/laya-3.4.2/libs"), path.join(out,"libs"));
     await esbuild.build({
       entryPoints: [entry],
       bundle: true,
@@ -306,6 +305,7 @@ export async function runConsumerBuild({
     if (fs.existsSync(notices)) throw Error('Reserved payload directory: zhuda-notices');
     fs.mkdirSync(notices);
     fs.copyFileSync(path.join(engineRoot, 'LICENSE'), path.join(notices, 'LICENSE.txt'));
+    if(topology.renderer==='webgpu')for(const file of ['WEBGPU-LICENSES.txt','webgpu-provenance.json'])fs.copyFileSync(path.join(engineRoot,'vendor/laya-3.4.2',file),path.join(notices,file));
     fs.writeFileSync(path.join(notices, 'branding.json'), JSON.stringify({mode: branding.mode, brandId: branding.brandId ?? 'zhuda', engine: 'zhuda-laya-engine', version: JSON.parse(fs.readFileSync(path.join(engineRoot, 'package.json'))).version}, null, 2));
     const payload = walk(out).map((f) => ({
       path: f.path,
@@ -353,6 +353,8 @@ export async function runConsumerBuild({
       path.join(out, "payload-manifest.json"),
       JSON.stringify(
         {
+          renderer: topology.renderer,
+          supportFiles: topology.supportFiles,
           libraries: topology.orderedFiles,
           fingerprint,
           prefabDependencies,
@@ -376,6 +378,8 @@ export async function runConsumerBuild({
       releaseOutput,
       sourceWrites: 0,
       output,
+      renderer: topology.renderer,
+      supportFiles: topology.supportFiles,
       orderedLibraries: topology.orderedFiles,
       assets: { include: includes ?? null, exclude: excludes },
       route: {

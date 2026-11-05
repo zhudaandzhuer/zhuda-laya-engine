@@ -95,3 +95,10 @@ with replies `{generation}`. Late-generation replies must not be retained.
 Browsers and operating systems can throttle or freeze **both** threads. Desktop
 Chrome switching/freeze and deterministic long-gap tests are measured; physical
 iOS/Android background longevity and battery behavior remain unavailable.
+
+## WebGPU (1.11.0)
+
+The same runtime owns WebGL context loss and WebGPU device loss. See
+[renderer selection, diagnostics, cancellation and fresh-realm recovery](webgpu.md).
+Windows browser availability depends on its GPU/driver; native packaging is a
+separate capability. Do not interpret WebGL fallback as WebGPU acceptance.

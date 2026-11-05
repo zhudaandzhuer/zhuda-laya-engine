@@ -239,3 +239,11 @@ Use `zhuda-laya-init --template 2d` for a strict 2D consumer. Explicit
 `branding.mode` selects `engine` (default), `custom`, or `none`; notices remain
 in the output. See [white-label, themes and recovery](slot-factory.md) for the
 validated schema and independent consumer verification command.
+
+## Renderer axis (1.11.0)
+
+`renderer: "webgpu"` in `zhuda.config.json` selects pinned GPU libraries and
+SHA-verified, cancellable compiler WASM dependencies for both Scene and Prefab
+preview. Omit it for WebGL. The package/ZIP contains the full relative payload.
+A boot option must match the build; changing it alone does not load a backend.
+See [WebGPU contract and measured boundaries](webgpu.md).

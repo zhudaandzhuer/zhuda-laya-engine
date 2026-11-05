@@ -16,7 +16,7 @@ const params=new URLSearchParams(location.search),source=${JSON.stringify(docume
 const provider={name:'inline-model-inspector',async load(id,options){if(options?.signal?.aborted)throw new DOMException('Cancelled','AbortError');if(!bytes.has(id))throw Error('Unknown asset '+id);return {id,bytes:bytes.get(id)};}};
 let context,library,show,inspector,ready=false,error=null,disposed=false,completedCycles=0,serial=0;
 const selection={id:'asset-probe',node:params.get('node')||'',state:params.get('state')||'rest'};
-const report=()=>({ready,error,disposed,selection,bundle:ZhudaBundle,mode:show?.mode,inspection:show?.instance?show.inspect():null,library:library?.report(),completedCycles,resources:context?inspectSceneResources():null});
+const report=()=>({ready,error,disposed,selection,renderer:context?.renderer,bundle:ZhudaBundle,mode:show?.mode,inspection:show?.instance?show.inspect():null,library:library?.report(),completedCycles,resources:context?inspectSceneResources():null});
 const render=()=>document.querySelector('#report').textContent=JSON.stringify(report(),null,2);
 const safely=fn=>async()=>{try{await fn();error=null;}catch(e){error=String(e);}render();};
 function controls(){
@@ -30,7 +30,7 @@ function controls(){
 }
 async function cycles(){for(let i=0;i<30;i++){show.clear();await show.load('asset-probe');controls();show.setMode(['raw','gameplay','cinematic'][i%3]);ZhudaEngine.flushRenderFrames(3);completedCycles=i+1;}}
 async function main(){
- context=await ZhudaEngine.boot({container:'#view',width:720,height:480,dprCap:Number(params.get('dpr')||2),features:[...ZhudaBundle.features],preserveDrawingBuffer:true});
+ context=await ZhudaEngine.boot({renderer:ZhudaBundle.renderer,container:'#view',width:720,height:480,dprCap:Number(params.get('dpr')||2),features:[...ZhudaBundle.features],preserveDrawingBuffer:true});
  const scene=Zhuda3D.createScene3D(context.rootScene,{ambientColor:[.4,.4,.4,1]});const camera=Zhuda3D.createCamera(scene,{position:[0,0,3],clearColor:[.04,.07,.11,1]});
  Zhuda3D.createDirectionalLight(scene,{rotationEuler:[-35,-25,0],intensity:1});
  library=new ZhudaModelLibrary({provider,maxIdle:0});show=new ZhudaAssetShowcase({library,parent:scene,camera});await show.load('asset-probe');controls();show.setMode(params.get('mode')||'raw');

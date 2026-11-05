@@ -1,3 +1,6 @@
+import type { RendererDiagnostics } from './runtime3d/Renderer';
+import type { RendererBackend } from './runtime3d/Renderer';
+export type { RendererBackend } from './runtime3d/Renderer';
 import type {
   ManagedRuntimeOptions,
   ZhudaRuntimeSession,
@@ -41,6 +44,8 @@ export interface EngineModuleNode {
   painPointNote?: string;
 }
 export interface TopologyResolutionResult {
+  renderer: RendererBackend;
+  supportFiles: string[];
   orderedModules: EngineModuleNode[];
   orderedFiles: string[];
   totalSizeBytes: number;
@@ -72,8 +77,12 @@ export interface ZhudaBootOptions
   screenMode?: string;
   features?: EngineFeatureTag[] | "all";
   beforeInit?: () => void;
+  renderer?: RendererBackend;
+  signal?: AbortSignal;
+  bootTimeoutMs?: number;
 }
 export interface ZhudaBootContext {
+  renderer: RendererDiagnostics;
   canvas: HTMLCanvasElement;
   runtime: ZhudaRuntimeSession;
   resize(): void;

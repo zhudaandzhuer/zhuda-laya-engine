@@ -40,6 +40,16 @@ Build 2D, 3D and Spine 4.2 projects with TypeScript, a CLI and coding agents. Th
 
 Maintained by [Zhuda](https://github.com/zhudaandzhuer). Rendering and physics come from [LayaAir / Layabox](https://layaair.com/). This is an independent fork; donations support Zhuda's work on this repository.
 
+## WebGPU backend and delivery (1.11.0)
+
+Choose `renderer: "webgpu"` in the consumer compiler, or a `2d-webgpu`,
+`3d-webgpu` or `3d-gltf-webgpu` browser bundle. The SDK uses the real upstream
+GPU backend, reports the actual adapter, bounds initialization and retires lost
+devices through the existing runtime lifecycle. Default WebGL is preserved.
+[Setup, fallback and platform limits](docs/webgpu.md) include reproducible Windows
+browser checks. macOS hardware rendering is measured; Windows hardware, native
+EXE/Steam and physical mobile acceptance remain unverified.
+
 ## White-label and H5 factory foundations (1.10.0)
 
 Keep the default 豬大 × LayaAir splash, use your own brand, or explicitly disable
@@ -82,7 +92,7 @@ and the [measured scope and migration notes](docs/plans/records/astra-runtime-fe
 Physical iOS/Android, speaker latency and a production Worklet DSP mixer remain
 unverified; the extension and desktop reference test do not establish full SOP compliance.
 
-## Single-HTML browser entry (1.10.0)
+## Single-HTML browser entry (1.11.0)
 
 Use the [hosted SDK and runnable examples](https://game.qianlongxundao.com/play/zhuda-engine-sdk/)
 to load the real runtime with one pinned script. [Browser SDK guide](docs/browser-sdk.md)

@@ -58,6 +58,8 @@ export declare class ZhudaRuntimeSession {
     private task;
     private observer?;
     constructor(canvas: HTMLCanvasElement, options?: ManagedRuntimeOptions);
+    /** Shared WebGL context/WebGPU device-loss path; a new realm owns recovery. */
+    notifyContextLost(): void;
     setPaused(value: boolean): void;
     private setBackground;
     resize(): void;

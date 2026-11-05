@@ -25,3 +25,5 @@ export { inspectGltfDocument, inspectGltfAsset, gltfExtensionCapabilities, Zhuda
 export type { ModelDiagnostic, ModelCompatibilityReport, ModelSourceInventory, GltfExtensionCapability } from "./ModelCompatibility";
 export * from "./Themes";
 export * from "./ResultPlayback";
+export { ZhudaRendererError } from './Renderer';
+export type { RendererDiagnostics } from './Renderer';

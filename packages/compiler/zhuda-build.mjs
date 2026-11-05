@@ -11,6 +11,7 @@ import { brandSplashCss, brandSplashMarkup } from './branding.mjs';
  * 4. 產出無順序死鎖的 dist/web/index.html 與 dist/build-manifest.json
  */
 
+import {copyEngineLibraries} from './webgpu-loader.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -80,7 +81,7 @@ export async function runZhudaBuild(options = {}) {
   );
 
   // Step 2: 拓撲依賴解析與序列審計
-  const topology = TopologyResolver.resolveByFeatures(features);
+  const topology = TopologyResolver.resolveByFeatures(features, config.renderer);
   const sequenceIssues = TopologyResolver.auditFileSequence(topology.orderedFiles);
   if (sequenceIssues.length > 0) {
     throw new Error(
@@ -179,14 +180,7 @@ export async function runZhudaBuild(options = {}) {
     `  ✔ [Static Assets & ΔE Gate] 已序列化 ${staticAssetFiles.length} 份 .lh/.ls 靜態資產，${calibrationReports.length}/${calibrationReports.length} 通過 0px 邊界與 ΔE00 色差校準！`
   );
 
-  for (const libFile of topology.orderedFiles) {
-    const srcLib = path.join(vendorLibsDir, libFile);
-    const destLib = path.join(outLibsDir, libFile);
-    if (!fs.existsSync(srcLib)) {
-      throw new Error(`[Zhuda-Compiler] 找不到引擎庫檔案: ${srcLib}`);
-    }
-    fs.copyFileSync(srcLib, destLib);
-  }
+  copyEngineLibraries(topology, vendorLibsDir, outLibsDir);
 
   // 複製專案自帶 assets/ 至 dist/web/assets
   const projectAssetsDir = path.join(projectRoot, 'assets');
@@ -348,7 +342,7 @@ ${scriptTags}
   fs.writeFileSync(indexHtmlPath, htmlContent, 'utf8');
 
   // 生成孤立微預覽工作台 dist/web/preview.html (僅載入 2d+ui+spine42 輕量拓撲，50ms 極速啟動)
-  const previewTopology = TopologyResolver.resolveByFeatures(['core', '2d', 'ui', 'spine42']);
+  const previewTopology = TopologyResolver.resolveByFeatures(['core', '2d', 'ui', 'spine42'], config.renderer);
   const previewScriptTags = previewTopology.orderedFiles
     .map(
       (file, idx) =>

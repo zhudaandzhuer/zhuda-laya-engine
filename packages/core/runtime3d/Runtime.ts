@@ -128,9 +128,7 @@ export class ZhudaRuntimeSession {
     listen(window, "scroll", () => this.resize(), true);
     listen(canvas, "webglcontextlost", (e) => {
       e.preventDefault();
-      this.contextLost = true;
-      this.setPaused(true);
-      options.onContextLost?.();
+      this.notifyContextLost();
     });
     try {
       if (options.container) {
@@ -143,6 +141,13 @@ export class ZhudaRuntimeSession {
       this.dispose();
       throw error;
     }
+  }
+  /** Shared WebGL context/WebGPU device-loss path; a new realm owns recovery. */
+  notifyContextLost() {
+    if (this.disposed || this.contextLost) return;
+    this.contextLost = true;
+    this.setPaused(true);
+    this.options.onContextLost?.();
   }
   setPaused(value: boolean) {
     this.manuallyPaused = value;

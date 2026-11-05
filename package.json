@@ -1,6 +1,6 @@
 {
   "name": "zhuda-laya-engine",
-  "version": "1.10.0",
+  "version": "1.11.0",
   "description": "豬大 LayaAir 引擎 (zhuda-laya-engine) — 基於 LayaAir 官方 (layabox/LayaAir 3.4.2) 打造的豬大 AI-Agent-Friendly 開源分支版本，內建 Zero-IDE 極速打包、DAG 拓撲守衛、AST 自動反射、靜態資產 ΔE00 校準與 MCP 語料伺服器",
   "private": false,
   "license": "MIT",
@@ -77,7 +77,8 @@
     "webgl",
     "spine-4.2",
     "mcp-server",
-    "zero-ide"
+    "zero-ide",
+    "webgpu"
   ],
   "scripts": {
     "ast:scan": "node -e \"import('./packages/compiler/ast-scanner.mjs').then(m => m.scanAndGenerateRegistry(process.cwd()))\"",
@@ -94,7 +95,9 @@
     "verify": "npm run build && npm run typecheck && npm run audit:declarations && npm run doctor && npm run test",
     "start": "python3 -m http.server 8890 --bind 127.0.0.1 --directory dist/web",
     "types:runtime3d": "node packages/compiler/runtime3d-types.mjs",
-    "build:browser": "node packages/compiler/browser-sdk.mjs"
+    "build:browser": "node packages/compiler/browser-sdk.mjs",
+    "verify:webgpu": "node scripts/verify-webgpu.mjs",
+    "verify:webgpu-consumer": "node scripts/verify-webgpu-consumer.mjs"
   },
   "dependencies": {
     "@webgpu/types": "0.1.74",

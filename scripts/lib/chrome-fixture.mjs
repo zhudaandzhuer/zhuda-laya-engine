@@ -10,6 +10,7 @@ export async function chromeFixture() {
       "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
       "/usr/bin/google-chrome",
       "/usr/bin/chromium",
+      ...[process.env.PROGRAMFILES, process.env["PROGRAMFILES(X86)"], process.env.LOCALAPPDATA].filter(Boolean).map(base => path.join(base, "Google/Chrome/Application/chrome.exe")),
     ].find(fs.existsSync);
   if (!binary) throw Error("Chrome unavailable");
   const profile = fs.mkdtempSync(
@@ -47,7 +48,8 @@ export async function chromeFixture() {
     eventWaiters.clear();
     if (child.pid) {
       try {
-        process.kill(-child.pid, "SIGKILL");
+        if (process.platform === "win32") child.kill();
+        else process.kill(-child.pid, "SIGKILL");
       } catch {}
       if (child.exitCode === null && child.signalCode === null)
         await new Promise((r) => child.once("exit", r));

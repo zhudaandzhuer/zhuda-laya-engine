@@ -1,0 +1,41 @@
+{
+  "source": "LayaAir IDE 3.4.2 distributed engine/libs (unmodified artifacts)",
+  "upstreamRepository": "https://github.com/layabox/LayaAir",
+  "referenceTag": "v3.4.2",
+  "referenceCommit": "af6a0446e2e963e239a4abc2e4b2dc48d3c31e2a",
+  "note": "Reference source tag identifies the upstream version, not a claim of byte-reproducible compilation. These shipped IDE artifacts are pinned independently by SHA-256.",
+  "files": [
+    {
+      "file": "laya.webgpu_2D.js",
+      "bytes": 858378,
+      "sha256": "c2a6482f43fc8f0043aef2a2b30f420ad777b15682b951f45ef5435ed3356931"
+    },
+    {
+      "file": "laya.webgpu_3D.js",
+      "bytes": 335455,
+      "sha256": "a6e937726b03daa7424c56fb637dcd7dbf898f47b3c5f3017561a8dfd0317bd8"
+    },
+    {
+      "file": "shader_compiler_web.js",
+      "bytes": 61401,
+      "sha256": "efd2adab7182fb07ed92a48f37a6073e2f1dffab0b406a4c630727a18bd5d244"
+    },
+    {
+      "file": "shader_compiler_web.wasm",
+      "bytes": 2714840,
+      "sha256": "9cc4672b2293949bc26659418e5892e726f82d540bf6909d69b38dc72f8b3641"
+    },
+    {
+      "file": "nagabind.js",
+      "bytes": 13996,
+      "sha256": "06c7194de1b68411e4e685a5c0c0ac9e1e526428eb0fb5b6512c887d2042704d"
+    },
+    {
+      "file": "nagabind_bg.wasm",
+      "bytes": 3227417,
+      "sha256": "709a6a8c5af6d1f2df7ecd058acf34282702befd5d7b7bb106cae75903d9cc08"
+    }
+  ],
+  "shaderCompilerVerification": "All four compiler JS/WASM artifacts match byte-for-byte src/layaAir/jsLibs at referenceCommit.",
+  "notices": "WEBGPU-LICENSES.txt"
+}

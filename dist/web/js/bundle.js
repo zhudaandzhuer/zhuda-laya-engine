@@ -10,6 +10,192 @@ var ZhudaAppBundle = (() => {
     return result;
   };
 
+  // packages/core/runtime3d/WebGPU342Adapters.ts
+  var patched = /* @__PURE__ */ new WeakSet();
+  function installLaya342WebGPUFix(native) {
+    const prototype = native.WebGPUMeshRenderBatchAgent?.prototype;
+    if (!prototype || patched.has(prototype)) return;
+    const append = prototype.appendRenderElement;
+    prototype.appendRenderElement = function(...args) {
+      if (this._checkCPUCullList?.length || this._changeElementBatchMark?.length) {
+        this._canKipCull = native.Stat.loopCount;
+        this._cameraChangeMask = this._dirCullChangeMask = this._spotCullChangeMask = native.Stat.loopCount;
+      }
+      return append.apply(this, args);
+    };
+    patched.add(prototype);
+  }
+
+  // packages/core/runtime3d/Renderer.ts
+  var ZhudaRendererError = class extends Error {
+    constructor(code, message) {
+      super(`${code}: ${message}`);
+      this.code = code;
+      this.name = "ZhudaRendererError";
+    }
+  };
+  function prepareRenderer(requested, native = globalThis.Laya) {
+    const gpuLoaded = !!native?.WebGPURenderDeviceFactory;
+    const glLoaded = !!native?.WebGLRenderDeviceFactory;
+    const selected = gpuLoaded ? "webgpu" : "webgl";
+    requested ?? (requested = selected);
+    if (requested !== "webgl" && requested !== "webgpu") throw new ZhudaRendererError("RENDERER_OPTION", "renderer must be webgl or webgpu");
+    if (gpuLoaded && glLoaded) throw new ZhudaRendererError("RENDERER_CONFLICT", "Load one backend per realm; rebuild with renderer: webgl or webgpu");
+    if (requested !== selected) throw new ZhudaRendererError("RENDERER_MISMATCH", `Requested ${requested}, loaded ${selected}; set renderer in zhuda.config.json and rebuild`);
+    if (selected === "webgpu" && !globalThis.navigator?.gpu) throw new ZhudaRendererError("WEBGPU_UNAVAILABLE", "WebGPU requires HTTPS/localhost and a supported browser/GPU; use a separately built WebGL page if unavailable");
+    const diagnostics = { requested, selected, fallbackReason: null, nativeEngine: "", status: "initializing", features: [], errors: [] };
+    let ended = false, device, engine, session;
+    const cancellation = new AbortController();
+    const cleanups = [];
+    const check = () => {
+      if (ended) throw new ZhudaRendererError("RENDERER_CANCELLED", "Initialization retired; recreate the runtime realm");
+    };
+    const errorListener = (event) => {
+      if (diagnostics.errors.length < 64) diagnostics.errors.push(String(event.error?.message ?? event.error));
+    };
+    const pause = () => {
+      if (native.Render) native.Render.paused = true;
+      if (native.stage) native.stage.renderingEnabled = false;
+      session?.notifyContextLost();
+    };
+    const patch = (prototype, key, make) => {
+      const original = prototype?.[key];
+      if (typeof original !== "function") throw new ZhudaRendererError("WEBGPU_VENDOR_MISMATCH", `Missing pinned LayaAir 3.4.2 seam: ${key}`);
+      const replacement = make(original);
+      prototype[key] = replacement;
+      cleanups.push(() => {
+        if (prototype[key] === replacement) prototype[key] = original;
+      });
+    };
+    const release = (status) => {
+      if (ended) return;
+      ended = true;
+      diagnostics.status = status;
+      cancellation.abort();
+      if (selected === "webgpu") {
+        pause();
+        device?.removeEventListener("uncapturederror", errorListener);
+        engine?._context?.unconfigure();
+        device?.destroy();
+      }
+      cleanups.splice(0).reverse().forEach((cleanup) => cleanup());
+    };
+    try {
+      if (selected === "webgpu") {
+        installLaya342WebGPUFix(native);
+        patch(native.WebGPUShaderCompiler?.prototype, "init", (original) => async function() {
+          check();
+          const prepare = globalThis.__ZHUDA_WEBGPU_PREPARE__;
+          if (prepare) {
+            try {
+              const compiled = await prepare(cancellation.signal);
+              check();
+              this.glslang = compiled.glslang;
+              this.naga = compiled.naga;
+            } catch (error) {
+              throw new ZhudaRendererError("WEBGPU_SHADER_COMPILER", String(error));
+            }
+          } else {
+            await original.call(this);
+            check();
+          }
+          if (!this.glslang || !this.naga) throw new ZhudaRendererError("WEBGPU_SHADER_COMPILER", "GLSL/WGSL compiler failed; verify the packaged WASM resources and CSP");
+        });
+        patch(native.WebGPURenderEngine?.prototype, "_getAdapter", (original) => async function() {
+          check();
+          const adapter = await original.call(this);
+          check();
+          if (!adapter) throw new ZhudaRendererError("WEBGPU_ADAPTER", "No compatible adapter; inspect browser GPU diagnostics");
+          const info = adapter.info ?? {};
+          diagnostics.adapter = { vendor: info.vendor ?? "", architecture: info.architecture ?? "", device: info.device ?? "", description: info.description ?? "", isFallbackAdapter: info.isFallbackAdapter ?? false };
+          return adapter;
+        });
+        patch(native.WebGPURenderEngine?.prototype, "_getGPUdevice", (original) => async function(descriptor) {
+          check();
+          const result = await original.call(this, descriptor);
+          if (ended) {
+            result.destroy();
+            check();
+          }
+          device = result;
+          engine = this;
+          diagnostics.features = [...result.features].sort();
+          device.addEventListener("uncapturederror", errorListener);
+          device.lost.then((info) => {
+            if (ended) return;
+            diagnostics.status = "lost";
+            diagnostics.loss = { reason: info.reason, message: info.message };
+            pause();
+          });
+          return result;
+        });
+      }
+      return {
+        backend: selected,
+        diagnostics,
+        ready() {
+          check();
+          const actual = native.LayaGL?.renderEngine;
+          diagnostics.nativeEngine = actual?.objectName ?? actual?.constructor?.name ?? "unknown";
+          const actualGpu = typeof actual?.getDevice === "function" && !!actual.getDevice();
+          if (selected === "webgpu" && (!actualGpu || diagnostics.status === "lost")) throw new ZhudaRendererError("WEBGPU_NOT_READY", "Native WebGPU device did not initialize or was lost");
+          if (selected === "webgl" && actualGpu) throw new ZhudaRendererError("RENDERER_MISMATCH", "Native renderer does not match the requested backend");
+          diagnostics.status = "ready";
+        },
+        attach(runtime) {
+          session = runtime;
+          if (diagnostics.status === "lost") pause();
+        },
+        release
+      };
+    } catch (error) {
+      release("failed");
+      throw error;
+    }
+  }
+
+  // packages/core/runtime3d/AsyncDeadline.ts
+  function withDeadline(run, options, discard = () => {
+  }) {
+    const timeout = options.timeoutMs ?? 15e3;
+    if (!Number.isSafeInteger(timeout) || timeout <= 0) return Promise.reject(Error("Invalid IO timeoutMs"));
+    return new Promise((resolve, reject) => {
+      const controller = new AbortController();
+      let settled = false;
+      const cleanup = () => {
+        clearTimeout(timer);
+        options.signal?.removeEventListener("abort", abort);
+      };
+      const fail = (reason) => {
+        if (settled) return;
+        settled = true;
+        controller.abort(reason);
+        cleanup();
+        reject(reason);
+      };
+      const abort = () => fail(options.signal?.reason ?? new DOMException("Operation cancelled", "AbortError"));
+      const timer = setTimeout(() => fail(new DOMException("IO deadline exceeded", "TimeoutError")), timeout);
+      options.signal?.addEventListener("abort", abort, { once: true });
+      if (options.signal?.aborted) {
+        abort();
+        return;
+      }
+      Promise.resolve().then(() => {
+        if (controller.signal.aborted) throw controller.signal.reason;
+        return run(controller.signal);
+      }).then((value) => {
+        if (settled) {
+          discard(value);
+          return;
+        }
+        settled = true;
+        cleanup();
+        resolve(value);
+      }, fail).catch(() => {
+      });
+    });
+  }
+
   // packages/core/runtime3d/Clocks.ts
   var DEFAULT_TIME_LAYERS = ["world", "player", "enemy", "vfx", "ui"];
   var ZhudaLayeredClock = class {
@@ -359,7 +545,7 @@ var ZhudaAppBundle = (() => {
   };
 
   // packages/core/runtime3d/Laya342Adapters.ts
-  var patched = /* @__PURE__ */ new WeakSet();
+  var patched2 = /* @__PURE__ */ new WeakSet();
   function resizeLaya342Stage(runtime, width, height, designWidth, designHeight, dpr, canvas) {
     const descriptor = Object.getOwnPropertyDescriptor(
       runtime.Browser,
@@ -400,7 +586,7 @@ var ZhudaAppBundle = (() => {
   }
   function installLaya342LifecycleFix(runtime = globalThis.Laya) {
     const prototype = runtime?.WebRender3DProcess?.prototype;
-    if (!prototype || patched.has(prototype)) return;
+    if (!prototype || patched2.has(prototype)) return;
     const destroy = prototype.destroy;
     if (typeof destroy !== "function") return;
     const retired = /* @__PURE__ */ new WeakSet();
@@ -415,7 +601,7 @@ var ZhudaAppBundle = (() => {
         this._defaultShadowMap = null;
       }
     };
-    patched.add(prototype);
+    patched2.add(prototype);
   }
 
   // packages/core/runtime3d/RuntimeDriver.ts
@@ -533,9 +719,7 @@ var ZhudaAppBundle = (() => {
       listen(window, "scroll", () => this.resize(), true);
       listen(canvas, "webglcontextlost", (e) => {
         e.preventDefault();
-        this.contextLost = true;
-        this.setPaused(true);
-        options.onContextLost?.();
+        this.notifyContextLost();
       });
       try {
         if (options.container) {
@@ -548,6 +732,13 @@ var ZhudaAppBundle = (() => {
         this.dispose();
         throw error;
       }
+    }
+    /** Shared WebGL context/WebGPU device-loss path; a new realm owns recovery. */
+    notifyContextLost() {
+      if (this.disposed || this.contextLost) return;
+      this.contextLost = true;
+      this.setPaused(true);
+      this.options.onContextLost?.();
     }
     setPaused(value) {
       this.manuallyPaused = value;
@@ -1365,6 +1556,23 @@ var ZhudaAppBundle = (() => {
       priority: 290
     }
   ];
+  function rendererModules(renderer) {
+    if (renderer !== "webgl" && renderer !== "webgpu") throw Error("[ZhudaTopology] renderer must be webgl or webgpu");
+    if (renderer === "webgl") return ZHUDA_ENGINE_MODULES;
+    const id = (value) => value.replace("webgl", "webgpu");
+    return [
+      ...ZHUDA_ENGINE_MODULES.map((node) => ({
+        ...node,
+        id: id(node.id),
+        file: node.file.replace("webgl", "webgpu"),
+        sizeBytes: node.id === "webgl2d" ? 858378 : node.id === "webgl3d" ? 335455 : node.sizeBytes,
+        dependsOn: [...node.dependsOn.map(id), ...node.id === "webgl2d" ? ["shader-compiler", "naga"] : []],
+        providesGlobals: node.providesGlobals.map((value) => value.replace("WebGL", "WebGPU"))
+      })),
+      { id: "shader-compiler", file: "shader_compiler_web.js", sizeBytes: 61401, feature: "2d", dependsOn: ["core"], providesGlobals: ["ShaderCompiler"], priority: 25 },
+      { id: "naga", file: "nagabind.js", sizeBytes: 13996, feature: "2d", dependsOn: ["core"], providesGlobals: ["wasm_bindgen"], priority: 26 }
+    ];
+  }
   var ENGINE_PRESET_PROFILES = {
     "2d-light": ["core", "2d", "ui"],
     "3d-standard": ["core", "2d", "3d", "ui", "physics3d", "postProcess", "gltf"],
@@ -1400,30 +1608,32 @@ var ZhudaAppBundle = (() => {
     /**
      * 根據 Feature Tags 解析最小必備模組並執行拓撲排序
      */
-    static resolveByFeatures(features) {
+    static resolveByFeatures(features, renderer = "webgl") {
       const targetFeatures = features === "all" ? ENGINE_PRESET_PROFILES["full-all-in-one"] : Array.from(/* @__PURE__ */ new Set(["core", ...features]));
-      const seedIds = ZHUDA_ENGINE_MODULES.filter(
+      const seedIds = rendererModules(renderer).filter(
         (m) => targetFeatures.includes(m.feature)
       ).map((m) => m.id);
-      return this.resolveByModuleIds(seedIds);
+      return this.resolveByModuleIds(seedIds, renderer);
     }
     /**
      * 根據 Module IDs 展開傳遞依賴閉包並以 Kahn's Algorithm 排序
      */
-    static resolveByModuleIds(seedModuleIds) {
+    static resolveByModuleIds(seedModuleIds, renderer = "webgl") {
+      const modules = rendererModules(renderer);
+      const moduleMap = new Map(modules.map((node) => [node.id, node]));
       const closure = /* @__PURE__ */ new Set();
       const diagnostics = [];
       const visit = (id, chain) => {
         if (chain.includes(id)) {
           throw new Error(`[ZhudaTopology] \u5075\u6E2C\u5230\u5FAA\u74B0\u4F9D\u8CF4 (Cycle Detected): ${[...chain, id].join(" -> ")}`);
         }
-        const node = this.moduleMap.get(id);
+        const node = moduleMap.get(id);
         if (!node) {
           throw new Error(`[ZhudaTopology] \u672A\u77E5\u7684\u5F15\u64CE\u6A21\u7D44 ID: "${id}"`);
         }
         for (const depId of node.dependsOn) {
           if (!closure.has(depId)) {
-            diagnostics.push(`[Auto-Dependency] \u6A21\u7D44 "${node.file}" \u81EA\u52D5\u62C9\u5165\u524D\u7F6E\u4F9D\u8CF4 "${this.moduleMap.get(depId)?.file}"`);
+            diagnostics.push(`[Auto-Dependency] \u6A21\u7D44 "${node.file}" \u81EA\u52D5\u62C9\u5165\u524D\u7F6E\u4F9D\u8CF4 "${moduleMap.get(depId)?.file}"`);
           }
           visit(depId, [...chain, id]);
         }
@@ -1433,7 +1643,7 @@ var ZhudaAppBundle = (() => {
         visit(seed, []);
       }
       for (const id of closure) {
-        const node = this.moduleMap.get(id);
+        const node = moduleMap.get(id);
         if (node.conflictsWith) {
           for (const conflictId of node.conflictsWith) {
             if (closure.has(conflictId)) {
@@ -1449,7 +1659,7 @@ var ZhudaAppBundle = (() => {
         adj.set(id, []);
       }
       for (const id of closure) {
-        const node = this.moduleMap.get(id);
+        const node = moduleMap.get(id);
         for (const depId of node.dependsOn) {
           adj.get(depId).push(id);
           inDegree.set(id, (inDegree.get(id) || 0) + 1);
@@ -1458,7 +1668,7 @@ var ZhudaAppBundle = (() => {
       const readyQueue = [];
       for (const [id, deg] of inDegree.entries()) {
         if (deg === 0) {
-          readyQueue.push(this.moduleMap.get(id));
+          readyQueue.push(moduleMap.get(id));
         }
       }
       readyQueue.sort((a, b) => a.priority - b.priority);
@@ -1470,7 +1680,7 @@ var ZhudaAppBundle = (() => {
           const nextDeg = (inDegree.get(neighborId) || 0) - 1;
           inDegree.set(neighborId, nextDeg);
           if (nextDeg === 0) {
-            readyQueue.push(this.moduleMap.get(neighborId));
+            readyQueue.push(moduleMap.get(neighborId));
             readyQueue.sort((a, b) => a.priority - b.priority);
           }
         }
@@ -1478,10 +1688,13 @@ var ZhudaAppBundle = (() => {
       if (orderedModules.length !== closure.size) {
         throw new Error("[ZhudaTopology] \u62D3\u64B2\u6392\u5E8F\u5931\u6557\uFF1A\u5B58\u5728\u7121\u6CD5\u89E3\u958B\u7684\u4F9D\u8CF4\u74B0");
       }
-      const totalSizeBytes = orderedModules.reduce((acc, m) => acc + m.sizeBytes, 0);
-      const fullSizeBytes = this.getFullEngineSizeBytes();
+      const supportSizeBytes = renderer === "webgpu" ? 5942257 : 0;
+      const totalSizeBytes = orderedModules.reduce((acc, m) => acc + m.sizeBytes, supportSizeBytes);
+      const fullSizeBytes = modules.reduce((acc, m) => acc + m.sizeBytes, supportSizeBytes);
       const prunedRatioPercent = Number(((fullSizeBytes - totalSizeBytes) / fullSizeBytes * 100).toFixed(1));
       return {
+        renderer,
+        supportFiles: renderer === "webgpu" ? ["shader_compiler_web.wasm", "nagabind_bg.wasm"] : [],
         orderedModules,
         orderedFiles: orderedModules.map((m) => m.file),
         totalSizeBytes,
@@ -1496,15 +1709,20 @@ var ZhudaAppBundle = (() => {
      */
     static auditFileSequence(files) {
       const issues = [];
+      const gpu = files.some((file) => file.startsWith("laya.webgpu_"));
+      const modules = rendererModules(gpu ? "webgpu" : "webgl");
+      const moduleMap = new Map(modules.map((node) => [node.id, node]));
+      const fileMap = new Map(modules.map((node) => [node.file, node]));
+      if (gpu && files.some((file) => file.startsWith("laya.webgl_"))) issues.push({ type: "CONFLICTING_MODULE", moduleFile: "laya.webgpu_2D.js", requiredFile: "laya.webgl_2D.js", fatalSymptom: "Mixed renderer factories", message: "Load exactly one renderer backend per realm" });
       const seenFiles = /* @__PURE__ */ new Set();
       for (const file of files) {
-        const node = this.fileMap.get(file);
+        const node = fileMap.get(file);
         if (!node) {
           seenFiles.add(file);
           continue;
         }
         for (const depId of node.dependsOn) {
-          const depNode = this.moduleMap.get(depId);
+          const depNode = moduleMap.get(depId);
           if (!depNode) continue;
           if (!seenFiles.has(depNode.file)) {
             const isPresentLater = files.includes(depNode.file);
@@ -1674,6 +1892,8 @@ var ZhudaAppBundle = (() => {
   }
   var ZhudaEngine = class {
     static async boot(options = {}) {
+      if (this.retiredGpuRealm) throw Error("WebGPU realm retired; recreate it with ZhudaRuntimeHost or reload the page");
+      if (options.signal?.aborted) throw options.signal.reason ?? new DOMException("Cancelled", "AbortError");
       if (this.activeContext || this.booting)
         throw new Error(
           "An engine session is already active; dispose it or use a separate runtime realm."
@@ -1685,12 +1905,14 @@ var ZhudaAppBundle = (() => {
         throw new Error("DPR cap must be .5..4");
       this.booting = true;
       let allocatedScene;
+      let renderer;
       try {
         const width = options.width ?? 1280;
         const height = options.height ?? 720;
         const bgColor = options.bgColor ?? "#0d1117";
         const features = options.features ?? "all";
-        const topology = TopologyResolver.resolveByFeatures(features);
+        renderer = prepareRenderer(options.renderer);
+        const topology = TopologyResolver.resolveByFeatures(features, renderer.backend);
         if (typeof window !== "undefined") installSandboxStorageFallback();
         EngineGuard.installPrototypeDetox();
         const hasSpine42 = features === "all" || Array.isArray(features) && features.includes("spine42");
@@ -1711,7 +1933,8 @@ var ZhudaAppBundle = (() => {
             layaConfig.isAntialias = options.antialias;
         }
         options.beforeInit?.();
-        await Laya.init(width, height);
+        await withDeadline(() => Laya.init(width, height), { signal: options.signal, timeoutMs: options.bootTimeoutMs ?? 3e4 });
+        renderer.ready();
         installLaya342LifecycleFix();
         EngineGuard.installPrototypeDetox();
         Laya.stage.scaleMode = options.scaleMode ?? Laya.Stage.SCALE_SHOWALL;
@@ -1746,8 +1969,11 @@ var ZhudaAppBundle = (() => {
           ...options,
           container: container ?? void 0
         });
+        renderer.attach(runtime);
+        const selectedRenderer = renderer;
         let disposed = false;
         this.activeContext = {
+          renderer: renderer.diagnostics,
           stage: Laya.stage,
           rootScene,
           topology,
@@ -1760,12 +1986,16 @@ var ZhudaAppBundle = (() => {
             disposed = true;
             runtime.dispose();
             rootScene.destroy(true);
+            selectedRenderer.release("disposed");
+            if (selectedRenderer.backend === "webgpu") this.retiredGpuRealm = true;
             this.activeContext = null;
           }
         };
         return this.activeContext;
       } catch (error) {
         allocatedScene?.destroy(true);
+        renderer?.release("failed");
+        if (renderer?.backend === "webgpu") this.retiredGpuRealm = true;
         globalThis.__ZHUDA_ENGINE_BOOTED__ = false;
         if (typeof document !== "undefined" && document.body)
           document.body.dataset.zhudaBooted = "false";
@@ -1795,6 +2025,7 @@ var ZhudaAppBundle = (() => {
   };
   ZhudaEngine.activeContext = null;
   ZhudaEngine.booting = false;
+  ZhudaEngine.retiredGpuRealm = false;
   var Zhuda3D = class {
     static buildPrefabTree(spec) {
       return buildPrefabTree(spec);

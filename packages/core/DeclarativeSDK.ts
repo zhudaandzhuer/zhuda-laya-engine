@@ -1,3 +1,6 @@
+import { prepareRenderer, type RendererDiagnostics } from './runtime3d/Renderer.ts';
+import { withDeadline } from './runtime3d/AsyncDeadline.ts';
+import type { RendererBackend } from './TopologyGraph.ts';
 import {
   ZhudaRuntimeSession,
   installSandboxStorageFallback,
@@ -46,9 +49,14 @@ export interface ZhudaBootOptions
   screenMode?: string;
   features?: EngineFeatureTag[] | "all";
   beforeInit?: () => void;
+  renderer?: RendererBackend;
+  signal?: AbortSignal;
+  /** Bounded native initialization, default 30 seconds. */
+  bootTimeoutMs?: number;
 }
 
 export interface ZhudaBootContext {
+  renderer: RendererDiagnostics;
   stage: Laya.Stage;
   rootScene: Laya.Scene;
   topology: TopologyResolutionResult;
@@ -77,10 +85,13 @@ export function zhudaComponent(meta: string | ZhudaClassMetadata) {
 export class ZhudaEngine {
   private static activeContext: ZhudaBootContext | null = null;
   private static booting = false;
+  private static retiredGpuRealm = false;
 
   public static async boot(
     options: ZhudaBootOptions = {},
   ): Promise<ZhudaBootContext> {
+    if (this.retiredGpuRealm) throw Error("WebGPU realm retired; recreate it with ZhudaRuntimeHost or reload the page");
+    if (options.signal?.aborted) throw options.signal.reason ?? new DOMException("Cancelled", "AbortError");
     if (this.activeContext || this.booting)
       throw new Error(
         "An engine session is already active; dispose it or use a separate runtime realm.",
@@ -100,6 +111,7 @@ export class ZhudaEngine {
       throw new Error("DPR cap must be .5..4");
     this.booting = true;
     let allocatedScene: Laya.Scene | undefined;
+    let renderer: ReturnType<typeof prepareRenderer> | undefined;
     try {
       const width = options.width ?? 1280;
       const height = options.height ?? 720;
@@ -107,7 +119,8 @@ export class ZhudaEngine {
       const features = options.features ?? "all";
 
       // 1. 解析拓撲圖與按需模組清單
-      const topology = TopologyResolver.resolveByFeatures(features);
+      renderer = prepareRenderer(options.renderer);
+      const topology = TopologyResolver.resolveByFeatures(features, renderer.backend);
 
       // 2. 安裝原型解毒補丁 (修復 Button AutoBitmap.setState 與反射攔截)
       if (typeof window !== "undefined") installSandboxStorageFallback();
@@ -147,7 +160,8 @@ export class ZhudaEngine {
       options.beforeInit?.();
 
       // 3. 初始化 LayaAir 3.4.2 引擎核心與 WebGL/WASM 管線
-      await Laya.init(width, height);
+      await withDeadline(() => Laya.init(width, height), {signal:options.signal, timeoutMs:options.bootTimeoutMs ?? 30000});
+      renderer.ready();
       installLaya342LifecycleFix();
 
       // 再次確認原型解毒補丁在 Laya.init 後保持生效
@@ -198,8 +212,11 @@ export class ZhudaEngine {
         ...options,
         container: container ?? undefined,
       });
+      renderer.attach(runtime);
+      const selectedRenderer = renderer;
       let disposed = false;
       this.activeContext = {
+        renderer: renderer.diagnostics,
         stage: Laya.stage,
         rootScene,
         topology,
@@ -212,6 +229,8 @@ export class ZhudaEngine {
           disposed = true;
           runtime.dispose();
           rootScene.destroy(true);
+          selectedRenderer.release("disposed");
+          if (selectedRenderer.backend === "webgpu") this.retiredGpuRealm = true;
           this.activeContext = null;
         },
       };
@@ -219,6 +238,8 @@ export class ZhudaEngine {
       return this.activeContext;
     } catch (error) {
       allocatedScene?.destroy(true);
+      renderer?.release("failed");
+      if (renderer?.backend === "webgpu") this.retiredGpuRealm = true;
       (globalThis as any).__ZHUDA_ENGINE_BOOTED__ = false;
       if (typeof document !== "undefined" && document.body)
         document.body.dataset.zhudaBooted = "false";

@@ -22,3 +22,17 @@ jobs:
         with:
           name: prefab-browser-evidence
           path: /tmp/zhuda-prefab-browser/evidence/
+
+  windows-contracts:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install
+      - run: npm run build
+      - run: npm run typecheck
+      - run: npm run audit:declarations
+      - run: node --test tests/webgpu.test.mjs tests/topology-and-guards.test.mjs tests/browser-sdk.test.mjs
+      # Hosted CI is not a Windows hardware WebGPU acceptance run.
