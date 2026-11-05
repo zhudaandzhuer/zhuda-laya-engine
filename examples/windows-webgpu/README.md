@@ -10,13 +10,26 @@ On a Windows GPU machine:
 
 ```powershell
 cd examples/windows-webgpu
-npm install
+npm ci
 $env:ZHUDA_WEB_ROOT = "C:\path\to\consumer\dist\web"
 $env:ZHUDA_ENTRY = "index.html"
 $env:ZHUDA_WINDOWS_WEBGPU_OUT = "$PWD\evidence"
 npm run verify
-npm run package
+npm run package # prepackage stages ZHUDA_WEB_ROOT into the app's web/ directory
+# Install the generated Squirrel app, then run the installed executable:
+& "C:\path\to\installed\zhuda-windows-webgpu-host.exe" --verify
 ```
+
+`npm run verify` tests the development host. The installed executable resolves
+its bundled `web/` directory independently of the source checkout or environment
+variable. Its report must contain `packaged:true` for packaged acceptance.
+`desktop-bundle.json` records staged file hashes. Staging rejects symlinks and
+preserves the previous staged bundle when validation fails. Capture and retain
+both development and installed-app reports in separate output directories.
+Without an output override, installed apps write evidence under Electron's
+user-data directory; development writes to `windows-webgpu-evidence/` in the
+working directory. Use Node 24 LTS for the Forge build (validated on macOS);
+the runtime remains the pinned Electron version.
 
 `verify` fails unless the page reports `selected: "webgpu"`,
 `nativeEngine: "WebGPURenderEngine"`, a ready state, no validation errors and no

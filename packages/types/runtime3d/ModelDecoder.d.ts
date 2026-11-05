@@ -2,15 +2,16 @@ export type ModelDecoderFormat = "draco" | "meshopt" | "ktx2-basis";
 export interface ModelDecoderDescriptor {
     readonly format: ModelDecoderFormat;
     readonly name: string;
-    /** Pin the decoder implementation before it can be used in a release. */
+    /** Declared version; the registry does not authenticate adapter code. */
     readonly version: string;
-    /** SHA-256 of the decoder bytes or immutable package artifact. */
+    /** Declared SHA-256. Artifact verification belongs to build/package tooling. */
     readonly integritySha256: string;
 }
 export interface ModelDecoderInput {
     readonly assetId: string;
     readonly bytes: Uint8Array;
     readonly signal: AbortSignal;
+    readonly maxOutputBytes: number;
 }
 export interface ModelDecodedPayload {
     readonly assetId: string;
@@ -29,11 +30,13 @@ export interface ModelDecoderAdapter {
 export interface ModelDecoderOptions {
     readonly timeoutMs?: number;
     readonly maxInputBytes?: number;
+    readonly maxOutputBytes?: number;
 }
 export interface ModelDecodeRequestOptions {
     readonly signal?: AbortSignal;
     readonly timeoutMs?: number;
     readonly maxInputBytes?: number;
+    readonly maxOutputBytes?: number;
 }
 export type ModelDecoderErrorCode = "invalid-adapter" | "unsupported" | "invalid-input" | "aborted" | "timeout" | "invalid-output" | "disposed";
 export declare class ModelDecoderError extends Error {
@@ -45,19 +48,16 @@ export declare class ModelDecoderError extends Error {
         assetId?: string;
     });
 }
-/**
- * Shared lifecycle boundary for optional compressed model decoders.
- * Registration does not make a format supported by the glTF importer; a
- * decoder still needs an importer adapter and target-device evidence before
- * the capability catalog can be promoted.
- */
+/** Optional decoder lifecycle. Metadata is not artifact verification or importer support. */
 export declare class ZhudaModelDecoderRegistry {
     private readonly adapters;
-    private readonly active;
     private readonly timeoutMs;
     private readonly maxInputBytes;
+    private readonly maxOutputBytes;
     private disposed;
     constructor(options?: ModelDecoderOptions);
+    private drain;
+    private retire;
     register(adapter: ModelDecoderAdapter): () => void;
     has(format: ModelDecoderFormat): boolean;
     decode(format: ModelDecoderFormat, assetId: string, bytes: Uint8Array, options?: ModelDecodeRequestOptions): Promise<ModelDecodedPayload>;

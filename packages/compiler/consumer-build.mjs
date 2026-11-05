@@ -305,6 +305,7 @@ export async function runConsumerBuild({
     if (fs.existsSync(notices)) throw Error('Reserved payload directory: zhuda-notices');
     fs.mkdirSync(notices);
     fs.copyFileSync(path.join(engineRoot, 'LICENSE'), path.join(notices, 'LICENSE.txt'));
+    fs.copyFileSync(path.join(engineRoot, 'vendor/meshoptimizer/LICENSE.txt'), path.join(notices, 'MESHOPT-LICENSE.txt'));
     if(topology.renderer==='webgpu')for(const file of ['WEBGPU-LICENSES.txt','webgpu-provenance.json'])fs.copyFileSync(path.join(engineRoot,'vendor/laya-3.4.2',file),path.join(notices,file));
     fs.writeFileSync(path.join(notices, 'branding.json'), JSON.stringify({mode: branding.mode, brandId: branding.brandId ?? 'zhuda', engine: 'zhuda-laya-engine', version: JSON.parse(fs.readFileSync(path.join(engineRoot, 'package.json'))).version}, null, 2));
     const payload = walk(out).map((f) => ({

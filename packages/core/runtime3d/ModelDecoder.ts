@@ -1,11 +1,13 @@
+import { normalizeAssetId } from "./AssetProvider.ts";
+import { awaitAbortable } from "./AsyncOperation.ts";
 export type ModelDecoderFormat = "draco" | "meshopt" | "ktx2-basis";
 
 export interface ModelDecoderDescriptor {
   readonly format: ModelDecoderFormat;
   readonly name: string;
-  /** Pin the decoder implementation before it can be used in a release. */
+  /** Declared version; the registry does not authenticate adapter code. */
   readonly version: string;
-  /** SHA-256 of the decoder bytes or immutable package artifact. */
+  /** Declared SHA-256. Artifact verification belongs to build/package tooling. */
   readonly integritySha256: string;
 }
 
@@ -13,6 +15,7 @@ export interface ModelDecoderInput {
   readonly assetId: string;
   readonly bytes: Uint8Array;
   readonly signal: AbortSignal;
+  readonly maxOutputBytes: number;
 }
 
 export interface ModelDecodedPayload {
@@ -34,12 +37,14 @@ export interface ModelDecoderAdapter {
 export interface ModelDecoderOptions {
   readonly timeoutMs?: number;
   readonly maxInputBytes?: number;
+  readonly maxOutputBytes?: number;
 }
 
 export interface ModelDecodeRequestOptions {
   readonly signal?: AbortSignal;
   readonly timeoutMs?: number;
   readonly maxInputBytes?: number;
+  readonly maxOutputBytes?: number;
 }
 
 export type ModelDecoderErrorCode =
@@ -70,95 +75,100 @@ const abortError = (format: ModelDecoderFormat, assetId: string, timeout: boolea
   new ModelDecoderError(timeout ? "timeout" : "aborted", timeout ? `Model decoder timed out: ${assetId}` : `Model decoder cancelled: ${assetId}`, { format, assetId });
 
 function validateDescriptor(descriptor: ModelDecoderDescriptor): void {
-  if (!descriptor || !formats.has(descriptor.format) || !descriptor.name || !descriptor.version || !sha256Pattern.test(descriptor.integritySha256))
-    throw new ModelDecoderError("invalid-adapter", "A decoder descriptor requires a format, name, version and SHA-256 integrity.");
+  if (!descriptor || !formats.has(descriptor.format) || typeof descriptor.name !== "string" || !descriptor.name.trim() ||
+      typeof descriptor.version !== "string" || !descriptor.version.trim() || typeof descriptor.integritySha256 !== "string" || !sha256Pattern.test(descriptor.integritySha256))
+    throw new ModelDecoderError("invalid-adapter", "A decoder descriptor requires a format, name, version and SHA-256 metadata.");
 }
+function positive(value: number): boolean { return Number.isSafeInteger(value) && value > 0; }
+function releasePayload(payload: ModelDecodedPayload): void { if (typeof payload?.release === "function") payload.release(); }
+type Registration = { adapter: ModelDecoderAdapter; requests: Set<AbortController>; pending: number; leases: number; retired: boolean; disposed: boolean };
 
-function validatePayload(payload: ModelDecodedPayload, format: ModelDecoderFormat, assetId: string): ModelDecodedPayload {
-  if (!payload || payload.assetId !== assetId || payload.format !== format || !Number.isSafeInteger(payload.byteLength) || payload.byteLength < 0 || typeof payload.release !== "function")
-    throw new ModelDecoderError("invalid-output", `Decoder returned an invalid payload for ${assetId}.`, { format, assetId });
-  let released = false;
-  return Object.freeze({ ...payload, release: () => { if (!released) { released = true; payload.release(); } } });
-}
-
-function combinedSignal(source: AbortSignal | undefined, timeoutMs: number, format: ModelDecoderFormat, assetId: string): { signal: AbortSignal; controller: AbortController; timedOut: () => boolean; cleanup: () => void } {
-  const controller = new AbortController();
-  let timeout = false;
-  const abort = () => controller.abort(source?.reason);
-  if (source?.aborted) controller.abort(source.reason);
-  else source?.addEventListener("abort", abort, { once: true });
-  const timer = setTimeout(() => { timeout = true; controller.abort(); }, timeoutMs);
-  return { signal: controller.signal, controller, timedOut: () => timeout, cleanup: () => { clearTimeout(timer); source?.removeEventListener("abort", abort); } };
-}
-
-/**
- * Shared lifecycle boundary for optional compressed model decoders.
- * Registration does not make a format supported by the glTF importer; a
- * decoder still needs an importer adapter and target-device evidence before
- * the capability catalog can be promoted.
- */
+/** Optional decoder lifecycle. Metadata is not artifact verification or importer support. */
 export class ZhudaModelDecoderRegistry {
-  private readonly adapters = new Map<ModelDecoderFormat, ModelDecoderAdapter>();
-  private readonly active = new Set<AbortController>();
+  private readonly adapters = new Map<ModelDecoderFormat, Registration>();
   private readonly timeoutMs: number;
   private readonly maxInputBytes: number;
+  private readonly maxOutputBytes: number;
   private disposed = false;
   constructor(options: ModelDecoderOptions = {}) {
     this.timeoutMs = options.timeoutMs ?? 15_000;
     this.maxInputBytes = options.maxInputBytes ?? 256 * 1024 * 1024;
-    if (!Number.isSafeInteger(this.timeoutMs) || this.timeoutMs <= 0) throw Error("Invalid decoder timeout");
-    if (!Number.isSafeInteger(this.maxInputBytes) || this.maxInputBytes <= 0) throw Error("Invalid decoder input bound");
+    this.maxOutputBytes = options.maxOutputBytes ?? 256 * 1024 * 1024;
+    if (!positive(this.timeoutMs) || this.timeoutMs > 2_147_483_647 || !positive(this.maxInputBytes) || !positive(this.maxOutputBytes))
+      throw Error("Invalid decoder limits");
+  }
+  private drain(entry: Registration): void {
+    if (entry.retired && !entry.pending && !entry.leases && !entry.disposed) {
+      entry.disposed = true;
+      entry.adapter.dispose?.();
+    }
+  }
+  private retire(entry: Registration): void {
+    if (entry.retired) return;
+    entry.retired = true;
+    for (const controller of entry.requests) controller.abort(new DOMException("Decoder retired", "AbortError"));
+    this.drain(entry);
   }
   register(adapter: ModelDecoderAdapter): () => void {
     if (this.disposed) throw new ModelDecoderError("disposed", "Decoder registry is disposed.");
     validateDescriptor(adapter?.descriptor);
+    if (typeof adapter.decode !== "function" || (adapter.dispose !== undefined && typeof adapter.dispose !== "function"))
+      throw new ModelDecoderError("invalid-adapter", "Decoder requires decode and an optional dispose function.");
     const { format } = adapter.descriptor;
     if (this.adapters.has(format)) throw new ModelDecoderError("invalid-adapter", `A ${format} decoder is already registered.`, { format });
-    this.adapters.set(format, adapter);
-    let active = true;
+    const entry: Registration = { adapter, requests: new Set(), pending: 0, leases: 0, retired: false, disposed: false };
+    this.adapters.set(format, entry);
     return () => {
-      if (!active) return;
-      active = false;
-      if (this.adapters.get(format) === adapter) this.adapters.delete(format);
-      adapter.dispose?.();
+      if (this.adapters.get(format) === entry) this.adapters.delete(format);
+      this.retire(entry);
     };
   }
   has(format: ModelDecoderFormat): boolean { return this.adapters.has(format); }
   async decode(format: ModelDecoderFormat, assetId: string, bytes: Uint8Array, options: ModelDecodeRequestOptions = {}): Promise<ModelDecodedPayload> {
     if (this.disposed) throw new ModelDecoderError("disposed", "Decoder registry is disposed.", { format, assetId });
-    if (!formats.has(format) || !assetId) throw new ModelDecoderError("invalid-input", "Decoder format and assetId are required.", { format, assetId });
-    if (!(bytes instanceof Uint8Array) || bytes.byteLength > (options.maxInputBytes ?? this.maxInputBytes))
-      throw new ModelDecoderError("invalid-input", `Decoder input exceeds the configured bound: ${assetId}.`, { format, assetId });
+    if (!formats.has(format) || normalizeAssetId(assetId) !== assetId) throw new ModelDecoderError("invalid-input", "A normalized logical asset ID is required.", { format, assetId });
+    const timeoutMs = options.timeoutMs ?? this.timeoutMs, inputLimit = options.maxInputBytes ?? this.maxInputBytes,
+      outputLimit = options.maxOutputBytes ?? this.maxOutputBytes;
+    if (!positive(timeoutMs) || timeoutMs > 2_147_483_647 || !positive(inputLimit) || !positive(outputLimit) || !(bytes instanceof Uint8Array) || bytes.byteLength > inputLimit)
+      throw new ModelDecoderError("invalid-input", `Invalid decoder bounds/input: ${assetId}.`, { format, assetId });
     if (options.signal?.aborted) throw abortError(format, assetId, false);
-    const adapter = this.adapters.get(format);
-    if (!adapter) throw new ModelDecoderError("unsupported", `No ${format} decoder is registered.`, { format, assetId });
-    const timeoutMs = options.timeoutMs ?? this.timeoutMs;
-    if (!Number.isSafeInteger(timeoutMs) || timeoutMs <= 0) throw new ModelDecoderError("invalid-input", "Invalid decoder timeout.", { format, assetId });
-    const combined = combinedSignal(options.signal, timeoutMs, format, assetId);
-    this.active.add(combined.controller);
+    const entry = this.adapters.get(format);
+    if (!entry) throw new ModelDecoderError("unsupported", `No ${format} decoder is registered.`, { format, assetId });
+    const controller = new AbortController();
+    const abort = () => controller.abort(options.signal?.reason);
+    options.signal?.addEventListener("abort", abort, { once: true });
+    let timedOut = false;
+    const timer = setTimeout(() => { timedOut = true; controller.abort(); }, timeoutMs);
+    entry.requests.add(controller); entry.pending++;
+    // Snapshot bytes: caller mutation/release cannot affect an asynchronous decode.
+    const input = new Uint8Array(bytes);
+    const work = Promise.resolve().then(async () => {
+      if (controller.signal.aborted) throw abortError(format, assetId, timedOut);
+      const payload = await entry.adapter.decode({ assetId, bytes: input, signal: controller.signal, maxOutputBytes: outputLimit });
+      if (!payload || payload.assetId !== assetId || payload.format !== format || !Number.isSafeInteger(payload.byteLength) || payload.byteLength < 0 || payload.byteLength > outputLimit || typeof payload.release !== "function") {
+        releasePayload(payload);
+        throw new ModelDecoderError("invalid-output", `Invalid or oversized decoder output: ${assetId}`, { format, assetId });
+      }
+      entry.leases++;
+      let released = false;
+      return Object.freeze({ assetId, format, data: payload.data, byteLength: payload.byteLength, release: () => {
+        if (released) return; released = true;
+        try { payload.release(); } finally { entry.leases--; this.drain(entry); }
+      } });
+    }).finally(() => { entry.pending--; entry.requests.delete(controller); this.drain(entry); });
     try {
-      let payload: ModelDecodedPayload;
-      try {
-        payload = await adapter.decode({ assetId, bytes, signal: combined.signal });
-      } catch (error) {
-        if (combined.signal.aborted) throw abortError(format, assetId, combined.timedOut());
-        throw error;
-      }
-      if (combined.signal.aborted || this.disposed) {
-        try { validatePayload(payload, format, assetId).release(); } catch { /* invalid late output has no safe owner */ }
-        throw abortError(format, assetId, combined.timedOut());
-      }
-      return validatePayload(payload, format, assetId);
+      return await awaitAbortable(work, controller.signal, releasePayload);
+    } catch (error) {
+      if (controller.signal.aborted) throw abortError(format, assetId, timedOut);
+      throw error;
     } finally {
-      combined.cleanup();
-      this.active.delete(combined.controller);
+      clearTimeout(timer); options.signal?.removeEventListener("abort", abort);
     }
   }
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
-    for (const controller of this.active) controller.abort();
-    for (const adapter of this.adapters.values()) adapter.dispose?.();
-    this.adapters.clear();
+    const entries = [...this.adapters.values()]; this.adapters.clear();
+    for (const entry of entries) this.retire(entry);
   }
 }

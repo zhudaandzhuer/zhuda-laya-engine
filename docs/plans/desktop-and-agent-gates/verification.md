@@ -3,6 +3,12 @@
 Task: [task.md](task.md). Date: 2026-11-05. Baseline:
 `bb4250e`.
 
+Historical foundation record. The 1.12.0 [hardening verification](hardening-verification.md)
+supersedes its capability and acceptance status: optional Meshopt decoding,
+PNG sequence comparison and a packaged macOS host now have real evidence.
+The log path below was reused by the later run; the original test count is a
+historical result, not the current file's contents.
+
 ## Checks
 
 | Check | Exact command | Result | Evidence |
@@ -21,7 +27,7 @@ The sequence gate accepted a deterministic WebGPU report at `t=0,1.5,3`, and
 rejected fallback/WebGL, non-monotonic time, missing images, path traversal,
 metric overrun and SHA tampering. The timeline test covers linear sampling,
 fixed updates, one-shot event cues, reset/disposal and fixed-step capture
-cancellation. The model catalog test keeps KTX2/Basis, Meshopt and Draco
+cancellation. At this baseline the model catalog test kept KTX2/Basis, Meshopt and Draco
 explicitly unsupported. The decoder registry tests cover the lifecycle seam
 without claiming a concrete decoder.
 

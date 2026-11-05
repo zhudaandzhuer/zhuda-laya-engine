@@ -41,11 +41,13 @@ export interface ZhudaOfflineFrameRecorderOptions {
     /** Fixed output rate. durationSeconds * fps must be an integer. */
     readonly fps: number;
     readonly maxFrames?: number;
+    /** Deadline per callback; callbacks receive the run signal. Default 15000ms. */
+    readonly stepTimeoutMs?: number;
     readonly signal?: AbortSignal;
     /** Advance the consumer timeline by the supplied fixed frame. */
-    readonly advance: (frame: ZhudaOfflineFrame) => void | Promise<void>;
+    readonly advance: (frame: ZhudaOfflineFrame, signal: AbortSignal) => void | Promise<void>;
     /** Capture one frame after advance has completed. */
-    readonly capture: (frame: ZhudaOfflineFrame) => ZhudaOfflineFrameCapture | Promise<ZhudaOfflineFrameCapture>;
+    readonly capture: (frame: ZhudaOfflineFrame, signal: AbortSignal) => ZhudaOfflineFrameCapture | Promise<ZhudaOfflineFrameCapture>;
 }
 export declare function validateTimelineSpec(spec: unknown): string[];
 /** Deterministic presentation timeline. The consumer supplies the clock and bindings. */
@@ -75,6 +77,7 @@ export declare class ZhudaOfflineFrameRecorder {
     private readonly frameCount;
     private disposed;
     private recording;
+    private controller;
     constructor(options: ZhudaOfflineFrameRecorderOptions);
     private check;
     record(): Promise<readonly (ZhudaOfflineFrame & {

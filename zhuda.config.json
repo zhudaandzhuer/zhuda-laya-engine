@@ -1,6 +1,6 @@
 {
   "name": "zhuda-laya-engine",
-  "version": "1.11.0",
+  "version": "1.12.0",
   "engineBaseVersion": "3.4.2",
   "upstreamOfficial": {
     "name": "LayaAir Engine (Layabox Official)",

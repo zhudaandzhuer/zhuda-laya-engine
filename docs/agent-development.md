@@ -99,8 +99,12 @@ scope, event deduplication, mask restoration and repeated disposal.
 
 For cinematic or visual-sequence evidence, use
 `node packages/ci-gate/verify-sequence.mjs` with fixed timestamps, the actual
-renderer report and bounded metric assertions. A first-frame screenshot or a
-synthetic report does not prove a timeline, device or performance contract.
+renderer report and bounded metric assertions. `get_model_capabilities` and
+`validate_timeline_spec` expose the current contracts through MCP. The sequence
+gate checks evidence integrity; `--reference` additionally compares PNG pixels
+against separately reviewed references. Capture does not approve a reference.
+A first-frame screenshot or a synthetic report does not prove a timeline,
+device or performance contract. See [cinematics](cinematics.md) for limits.
 
 ## Evidence and handoff
 

@@ -40,6 +40,18 @@ Build 2D, 3D and Spine 4.2 projects with TypeScript, a CLI and coding agents. Th
 
 Maintained by [Zhuda](https://github.com/zhudaandzhuer). Rendering and physics come from [LayaAir / Layabox](https://layaair.com/). This is an independent fork; donations support Zhuda's work on this repository.
 
+## Asset delivery and deterministic evidence (1.12.0)
+
+Optional pinned Meshopt decoding now feeds the existing provider/model cache;
+chunk delivery shares leases and rejects late, oversized or corrupt downloads.
+Deterministic timelines, a bounded frame recorder and `zhuda-sequence-check`
+provide reproducible presentation evidence. The Electron example now stages the
+consumer bundle inside the package. See [model loading](docs/model-showcase.md),
+[timelines](docs/cinematics.md), [desktop packaging](examples/windows-webgpu/)
+and the [measured scope](docs/plans/desktop-and-agent-gates/hardening-verification.md).
+macOS WebGL/WebGPU neutral-model checks pass; Windows hardware, Draco, KTX2,
+GPU-driven/HLOD, XR and a full offline movie pipeline remain separate work.
+
 ## WebGPU backend and delivery (1.11.0)
 
 Choose `renderer: "webgpu"` in the consumer compiler, or a `2d-webgpu`,

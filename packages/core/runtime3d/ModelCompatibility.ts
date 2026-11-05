@@ -19,7 +19,7 @@ export interface GltfExtensionCapability {
 export interface GltfAssetCapability {
   name: string;
   kind: 'container' | 'delivery' | 'geometry-compression' | 'image-compression';
-  status: 'supported' | 'unsupported';
+  status: 'supported' | 'adapter-required' | 'unsupported';
   message: string;
   hint: string;
 }
@@ -30,7 +30,7 @@ export const gltfAssetCapabilities: readonly GltfAssetCapability[] = Object.free
   Object.freeze({ name: 'embedded buffers/images', kind: 'delivery' as const, status: 'supported' as const, message: 'Embedded data is deterministic and provider-verifiable.', hint: 'Record the logical asset SHA.' }),
   Object.freeze({ name: 'external buffers/images', kind: 'delivery' as const, status: 'unsupported' as const, message: 'The provider model loader does not fetch undeclared relative resource URLs.', hint: 'Package buffers and images into a GLB or explicit provider assets.' }),
   Object.freeze({ name: 'KHR_draco_mesh_compression', kind: 'geometry-compression' as const, status: 'unsupported' as const, message: 'No pinned Draco decoder is shipped in this release.', hint: 'Export an uncompressed GLB or add a separately verified decoder adapter.' }),
-  Object.freeze({ name: 'EXT_meshopt_compression', kind: 'geometry-compression' as const, status: 'unsupported' as const, message: 'No pinned Meshopt decoder is shipped in this release.', hint: 'Export an uncompressed GLB or add a separately verified decoder adapter.' }),
+  Object.freeze({ name: 'EXT_meshopt_compression', kind: 'geometry-compression' as const, status: 'adapter-required' as const, message: 'Embedded glTF/GLB can be decoded by the optional pinned Meshopt adapter before native parsing.', hint: 'Register ZhudaMeshoptModelDecoder with ZhudaModelDecoderRegistry and pass decoders plus provider to ZhudaModelLibrary; verify the model on target devices.' }),
   Object.freeze({ name: 'KHR_texture_basisu', kind: 'image-compression' as const, status: 'unsupported' as const, message: 'No pinned KTX2/Basis decoder and device upload contract is shipped in this release.', hint: 'Use ordinary embedded images until the format gate passes on target devices.' }),
 ]);
 const extensionNames = [

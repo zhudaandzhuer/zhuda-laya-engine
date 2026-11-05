@@ -1,3 +1,4 @@
+import type { ZhudaModelDecoderRegistry } from "./ModelDecoder";
 import { type ModelCompatibilityReport } from "./ModelCompatibility";
 import type { AssetProvider } from "./AssetProvider";
 export type AssetPhase = "downloading" | "parsing" | "ready";
@@ -49,6 +50,8 @@ export interface ModelInstance {
     dispose(): void;
 }
 export interface ModelLibraryOptions {
+    /** Borrowed optional decoders. Embedded Meshopt conversion runs before native parsing. */
+    decoders?: ZhudaModelDecoderRegistry;
     maxIdle?: number;
     /** Borrowed provider. Embedded GLB/glTF only; external URI dependencies are rejected. */
     provider?: AssetProvider;

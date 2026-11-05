@@ -19,6 +19,8 @@ const runtime = installed
           "particles/ParticleTypes3D",
           "terrain/index",
           "shaders/index",
+          "runtime3d/Timeline",
+          "runtime3d/ModelCompatibility",
         ].map((name) => import(new URL(`../core/${name}.ts`, import.meta.url))),
       )),
     );
@@ -34,4 +36,7 @@ export const {
   validateTerrain2D,
   validateHeightfield,
   validateShaderSpec,
+  validateTimelineSpec,
+  gltfAssetCapabilities,
+  gltfExtensionCapabilities,
 } = runtime;

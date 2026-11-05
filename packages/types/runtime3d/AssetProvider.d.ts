@@ -140,19 +140,16 @@ export declare class DirectoryAssetProvider implements AssetProvider {
 export declare class ChunkedAssetProvider implements AssetProvider {
     readonly name = "chunked";
     private readonly baseUrl;
-    private readonly manifest;
     private readonly chunks;
     private readonly assets;
     private readonly cache;
     private readonly timeoutMs;
     private readonly maxChunkBytes;
-    private readonly maxCachedChunks;
     private readonly fetchImpl;
     private readonly active;
     private disposed;
     constructor(options: ChunkedAssetProviderOptions);
-    getManifest(): Promise<AssetManifest>;
-    private remember;
+    getManifest(signal?: AbortSignal): Promise<AssetManifest>;
     private loadChunk;
     load(value: string, options?: AssetLoadOptions): Promise<LoadedAssetBytes>;
     dispose(): void;

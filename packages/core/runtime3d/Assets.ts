@@ -1,3 +1,4 @@
+import type { ZhudaModelDecoderRegistry, ModelDecodedPayload } from "./ModelDecoder.ts";
 import { prepareLaya342GltfResource, copyLaya342MorphWeights, createLaya342ModelTemplate } from "./Laya342GltfAdapter.ts";
 import { inspectGltfAsset, readGltfAssetDocument, ZhudaModelCompatibilityError, type ModelCompatibilityReport } from "./ModelCompatibility.ts";
 import { destroyLaya342ModelTree } from "./Laya342Adapters.ts";
@@ -235,6 +236,8 @@ export interface ModelInstance {
   dispose(): void;
 }
 export interface ModelLibraryOptions {
+  /** Borrowed optional decoders. Embedded Meshopt conversion runs before native parsing. */
+  decoders?: ZhudaModelDecoderRegistry;
   maxIdle?: number;
   /** Borrowed provider. Embedded GLB/glTF only; external URI dependencies are rejected. */
   provider?: AssetProvider;
@@ -251,6 +254,7 @@ export class ZhudaModelLibrary {
   private readonly provider?: AssetProvider;
   constructor(options: number | ModelLibraryOptions = 3) {
     const config = typeof options === "number" ? { maxIdle: options } : options;
+    if (config.decoders && !config.provider) throw Error("Model decoders require a logical AssetProvider");
     this.provider = config.provider;
     this.timeoutMs = config.timeoutMs ?? 15000;
     if (!Number.isInteger(this.timeoutMs) || this.timeoutMs <= 0) throw Error("Invalid model deadline");
@@ -261,6 +265,7 @@ export class ZhudaModelLibrary {
           throw Error("Load Laya glTF module before models");
         let asset: LoadedAssetBytes | undefined;
         let resource: any;
+        let decoded: ModelDecodedPayload | undefined;
         try {
           let bytes: ArrayBuffer;
           if (this.provider) {
@@ -274,6 +279,12 @@ export class ZhudaModelLibrary {
             bytes = await response.arrayBuffer();
           }
           if (signal.aborted) throw abortError();
+          if (config.decoders?.has("meshopt") && inspectGltfAsset(bytes).extensions.some(e => e.name === "EXT_meshopt_compression")) {
+            decoded = await config.decoders.decode("meshopt", url, new Uint8Array(bytes), {signal});
+            if (!(decoded.data instanceof Uint8Array)) throw Error("Meshopt model decoder must return embedded GLB bytes");
+            bytes = new Uint8Array(decoded.data).buffer;
+            if (signal.aborted) throw abortError();
+          }
           const compatibility = inspectGltfAsset(bytes);
           if (compatibility.status === "unsupported") throw new ZhudaModelCompatibilityError(compatibility, url);
           const parsed = readGltfAssetDocument(bytes);
@@ -305,7 +316,7 @@ export class ZhudaModelLibrary {
           if (resource && !resource.destroyed) resource.destroy();
           throw e;
         } finally {
-          asset?.release?.();
+          try { decoded?.release(); } finally { asset?.release?.(); }
         }
       },
       (r) => {

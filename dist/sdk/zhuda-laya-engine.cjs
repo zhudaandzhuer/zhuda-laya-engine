@@ -1,5 +1,5 @@
 /**
- * zhuda-laya-engine v1.11.0 — 豬大 LayaAir (AI-Agent-Friendly Fork Edition)
+ * zhuda-laya-engine v1.12.0 — 豬大 LayaAir (AI-Agent-Friendly Fork Edition)
  * Repository: https://github.com/zhudaandzhuer/zhuda-laya-engine
  * Upstream Official: LayaAir Engine 3.4.2 by Layabox (https://layaair.com/ | https://github.com/layabox/LayaAir)
  * License: MIT
@@ -26,10 +26,12 @@ var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: tru
 var index_exports = {};
 __export(index_exports, {
   AssetProviderError: () => AssetProviderError,
+  ChunkedAssetProvider: () => ChunkedAssetProvider,
   DirectoryAssetProvider: () => DirectoryAssetProvider,
   ENGINE_PRESET_PROFILES: () => ENGINE_PRESET_PROFILES,
   EngineGuard: () => EngineGuard,
   IframeSoundAdapter: () => IframeSoundAdapter,
+  ModelDecoderError: () => ModelDecoderError,
   NoSleepAdapter: () => NoSleepAdapter,
   PixelCalibrationEngine: () => PixelCalibrationEngine,
   SpineVisualContract: () => SpineVisualContract,
@@ -72,10 +74,13 @@ __export(index_exports, {
   ZhudaLayaRibbonRenderer3D: () => ZhudaLayaRibbonRenderer3D,
   ZhudaLayeredClock: () => ZhudaLayeredClock,
   ZhudaLitSurfaceMaterial: () => ZhudaLitSurfaceMaterial,
+  ZhudaMeshoptModelDecoder: () => ZhudaMeshoptModelDecoder,
   ZhudaModelCompatibilityError: () => ZhudaModelCompatibilityError,
+  ZhudaModelDecoderRegistry: () => ZhudaModelDecoderRegistry,
   ZhudaModelInspector: () => ZhudaModelInspector,
   ZhudaModelLibrary: () => ZhudaModelLibrary,
   ZhudaObjectPool: () => ZhudaObjectPool,
+  ZhudaOfflineFrameRecorder: () => ZhudaOfflineFrameRecorder,
   ZhudaParticleEventLink: () => ZhudaParticleEventLink,
   ZhudaParticleMesh3D: () => ZhudaParticleMesh3D,
   ZhudaParticleSystem: () => ZhudaParticleSystem,
@@ -111,6 +116,7 @@ __export(index_exports, {
   ZhudaTerrain3D: () => ZhudaTerrain3D,
   ZhudaThemeAssetProvider: () => ZhudaThemeAssetProvider,
   ZhudaThemeController: () => ZhudaThemeController,
+  ZhudaTimelineSequencer: () => ZhudaTimelineSequencer,
   ZhudaTimerScheduler: () => ZhudaTimerScheduler,
   ZhudaUI: () => ZhudaUI,
   ZhudaVfxCamera: () => ZhudaVfxCamera,
@@ -132,6 +138,7 @@ __export(index_exports, {
   disposeMigratedMaterial: () => disposeMigratedMaterial,
   disposeSurfaceMaterial: () => disposeSurfaceMaterial,
   findPrefabNode: () => findPrefabNode,
+  gltfAssetCapabilities: () => gltfAssetCapabilities,
   gltfExtensionCapabilities: () => gltfExtensionCapabilities,
   identity4: () => identity4,
   inspectGltfAsset: () => inspectGltfAsset,
@@ -169,6 +176,7 @@ __export(index_exports, {
   validateShaderSpec: () => validateShaderSpec,
   validateTerrain2D: () => validateTerrain2D,
   validateThemeManifest: () => validateThemeManifest,
+  validateTimelineSpec: () => validateTimelineSpec,
   validateVfxMaterial: () => validateVfxMaterial,
   zhudaComponent: () => zhudaComponent
 });
@@ -2390,6 +2398,15 @@ function createLaya342ModelTemplate(resource, runtime2) {
 }
 
 // packages/core/runtime3d/ModelCompatibility.ts
+var gltfAssetCapabilities = Object.freeze([
+  Object.freeze({ name: "glTF 2.0 JSON", kind: "container", status: "supported", message: "glTF 2.0 JSON can be inspected and loaded when its resources are self-contained.", hint: "Prefer a single GLB for consumer delivery." }),
+  Object.freeze({ name: "GLB 2.0", kind: "container", status: "supported", message: "GLB 2.0 with an embedded JSON and binary payload is supported.", hint: "Pass the complete GLB through AssetProvider." }),
+  Object.freeze({ name: "embedded buffers/images", kind: "delivery", status: "supported", message: "Embedded data is deterministic and provider-verifiable.", hint: "Record the logical asset SHA." }),
+  Object.freeze({ name: "external buffers/images", kind: "delivery", status: "unsupported", message: "The provider model loader does not fetch undeclared relative resource URLs.", hint: "Package buffers and images into a GLB or explicit provider assets." }),
+  Object.freeze({ name: "KHR_draco_mesh_compression", kind: "geometry-compression", status: "unsupported", message: "No pinned Draco decoder is shipped in this release.", hint: "Export an uncompressed GLB or add a separately verified decoder adapter." }),
+  Object.freeze({ name: "EXT_meshopt_compression", kind: "geometry-compression", status: "adapter-required", message: "Embedded glTF/GLB can be decoded by the optional pinned Meshopt adapter before native parsing.", hint: "Register ZhudaMeshoptModelDecoder with ZhudaModelDecoderRegistry and pass decoders plus provider to ZhudaModelLibrary; verify the model on target devices." }),
+  Object.freeze({ name: "KHR_texture_basisu", kind: "image-compression", status: "unsupported", message: "No pinned KTX2/Basis decoder and device upload contract is shipped in this release.", hint: "Use ordinary embedded images until the format gate passes on target devices." })
+]);
 var extensionNames = [
   "KHR_materials_anisotropy",
   "KHR_materials_clearcoat",
@@ -2575,6 +2592,36 @@ function inspectGltfAsset(bytes) {
     const base = inspectGltfDocument({});
     return freeze({ ...base, diagnostics: [{ code: "INVALID_DOCUMENT", severity: "error", path: "$", message: error instanceof Error ? error.message : "Invalid model bytes.", hint: "Verify the glTF JSON / GLB container and run Khronos Validator." }] });
   }
+}
+
+// packages/core/runtime3d/AsyncOperation.ts
+function awaitAbortable(work, signal, discard) {
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const abort = () => {
+      if (settled) return;
+      settled = true;
+      reject(signal.reason ?? new DOMException("Cancelled", "AbortError"));
+    };
+    if (signal.aborted) abort();
+    else signal.addEventListener("abort", abort, { once: true });
+    work.then((value) => {
+      signal.removeEventListener("abort", abort);
+      if (settled) {
+        discard?.(value);
+        return;
+      }
+      settled = true;
+      resolve(value);
+    }, (error) => {
+      signal.removeEventListener("abort", abort);
+      if (!settled) {
+        settled = true;
+        reject(error);
+      }
+    }).catch(() => {
+    });
+  });
 }
 
 // packages/core/runtime3d/AssetProvider.ts
@@ -2929,6 +2976,145 @@ var DirectoryAssetProvider = class {
     for (const release of [...this.streamReleases]) release();
   }
 };
+var ChunkedAssetProvider = class {
+  constructor(options) {
+    this.name = "chunked";
+    this.chunks = /* @__PURE__ */ new Map();
+    this.assets = /* @__PURE__ */ new Map();
+    this.active = /* @__PURE__ */ new Set();
+    this.disposed = false;
+    if (!options?.baseUrl) throw Error("ChunkedAssetProvider requires baseUrl");
+    this.baseUrl = new URL(options.baseUrl, globalThis.location?.href || "http://localhost/");
+    if (!this.baseUrl.pathname.endsWith("/")) this.baseUrl.pathname += "/";
+    if (!options.manifest || options.manifest.schemaVersion !== 1 || !Array.isArray(options.manifest.chunks) || !Array.isArray(options.manifest.assets)) throw Error("Invalid chunked asset manifest");
+    this.timeoutMs = options.timeoutMs ?? 3e4;
+    this.maxChunkBytes = options.maxChunkBytes ?? 256 * 1024 * 1024;
+    const maxCachedChunks = options.maxCachedChunks ?? 4;
+    if (!Number.isSafeInteger(this.timeoutMs) || this.timeoutMs <= 0 || this.timeoutMs > 2147483647 || !Number.isSafeInteger(this.maxChunkBytes) || this.maxChunkBytes < 1 || !Number.isSafeInteger(maxCachedChunks) || maxCachedChunks < 0) throw Error("Invalid chunk provider limits");
+    for (const chunk of options.manifest.chunks) {
+      if (!chunk || normalizeAssetId(chunk.id) !== chunk.id || this.chunks.has(chunk.id) || typeof chunk.url !== "string" || !chunk.url) throw Error(`Invalid or duplicate chunk: ${chunk?.id}`);
+      if (chunk.bytes !== void 0 && (!Number.isSafeInteger(chunk.bytes) || chunk.bytes < 0 || chunk.bytes > this.maxChunkBytes)) throw Error(`Invalid chunk byte size: ${chunk.id}`);
+      if (chunk.sha256 !== void 0 && !/^[0-9a-f]{64}$/i.test(chunk.sha256)) throw Error(`Invalid chunk checksum: ${chunk.id}`);
+      const url = new URL(chunk.url, this.baseUrl);
+      if (url.origin !== this.baseUrl.origin || !url.pathname.startsWith(this.baseUrl.pathname) || url.username || url.password || url.hash) throw new AssetProviderError("invalid-id", `Chunk URL escapes provider base: ${chunk.id}`);
+      const relative = decodeURIComponent(url.pathname.slice(this.baseUrl.pathname.length));
+      normalizeAssetId(relative);
+      this.chunks.set(chunk.id, Object.freeze({ ...chunk, url: url.href }));
+    }
+    for (const asset of options.manifest.assets) {
+      if (!asset) throw Error("Invalid chunk asset");
+      validateAssetManifest({ schemaVersion: 1, entries: [asset] });
+      const id = normalizeAssetId(asset.id), chunk = this.chunks.get(asset.chunk);
+      if (id !== asset.id || this.assets.has(id) || !chunk || !Number.isSafeInteger(asset.offset) || asset.offset < 0 || !Number.isSafeInteger(asset.length) || asset.length < 0 || !Number.isSafeInteger(asset.offset + asset.length) || asset.offset + asset.length > (chunk.bytes ?? this.maxChunkBytes)) throw Error(`Invalid chunk asset range: ${id}`);
+      if (asset.bytes !== void 0 && asset.bytes !== asset.length) throw Error(`Chunk asset byte range mismatch: ${id}`);
+      this.assets.set(id, Object.freeze({ ...asset, bytes: asset.length }));
+    }
+    this.fetchImpl = options.fetch ?? globalThis.fetch?.bind(globalThis);
+    if (!this.fetchImpl) throw Error("ChunkedAssetProvider requires fetch");
+    this.cache = new ZhudaAssetCache((id, signal) => this.loadChunk(this.chunks.get(id), signal), () => {
+    }, maxCachedChunks);
+  }
+  async getManifest(signal) {
+    if (this.disposed) throw new AssetProviderError("disposed", "Asset provider disposed");
+    if (signal?.aborted) throw abortReason(signal, "manifest");
+    return Object.freeze({ schemaVersion: 1, entries: Object.freeze([...this.assets.values()].map(({ offset: _offset, length: _length, ...entry }) => Object.freeze(entry))) });
+  }
+  async loadChunk(chunk, signal) {
+    const response = await awaitAbortable(
+      this.fetchImpl(new URL(chunk.url), { signal, redirect: "error" }),
+      signal,
+      (late) => {
+        void late.body?.cancel().catch(() => {
+        });
+      }
+    );
+    let reader;
+    try {
+      if (!response.ok) throw new AssetProviderError("http", `Chunk HTTP ${response.status}: ${chunk.id}`, { id: chunk.id, status: response.status });
+      const declared = response.headers.get("content-length");
+      if (declared !== null && Number(declared) > this.maxChunkBytes) throw new AssetProviderError("too-large", `Chunk exceeds ${this.maxChunkBytes} bytes: ${chunk.id}`);
+      if (!response.body) throw new AssetProviderError("integrity", `Chunk has no response body: ${chunk.id}`);
+      reader = response.body.getReader();
+      const pieces = [];
+      let length = 0;
+      while (true) {
+        const part = await awaitAbortable(reader.read(), signal);
+        if (part.done) break;
+        length += part.value.byteLength;
+        if (length > this.maxChunkBytes) throw new AssetProviderError("too-large", `Chunk exceeds ${this.maxChunkBytes} bytes: ${chunk.id}`);
+        pieces.push(part.value);
+      }
+      if (chunk.bytes !== void 0 && length !== chunk.bytes) throw new AssetProviderError("integrity", `Chunk size mismatch: ${chunk.id}`);
+      const bytes = new Uint8Array(length);
+      let offset = 0;
+      for (const part of pieces) {
+        bytes.set(part, offset);
+        offset += part.byteLength;
+      }
+      if (chunk.sha256 && await awaitAbortable(sha256(bytes), signal) !== chunk.sha256.toLowerCase()) throw new AssetProviderError("integrity", `Chunk checksum mismatch: ${chunk.id}`);
+      if (signal.aborted) throw signal.reason;
+      return bytes;
+    } finally {
+      if (reader) {
+        void reader.cancel().catch(() => {
+        });
+        reader.releaseLock();
+      } else {
+        void response.body?.cancel().catch(() => {
+        });
+      }
+    }
+  }
+  async load(value, options = {}) {
+    if (this.disposed) throw new AssetProviderError("disposed", "Asset provider disposed");
+    const id = normalizeAssetId(value), entry = this.assets.get(id);
+    if (!entry) throw new AssetProviderError("http", `Unknown chunk asset: ${id}`, { id });
+    if (options.maxBytes !== void 0 && (!Number.isSafeInteger(options.maxBytes) || options.maxBytes < 0 || entry.length > options.maxBytes)) throw new AssetProviderError("too-large", `Invalid or exceeded asset byte limit: ${id}`);
+    const request = new AbortController(), relay = () => request.abort(options.signal?.reason);
+    options.signal?.addEventListener("abort", relay, { once: true });
+    if (options.signal?.aborted) relay();
+    this.active.add(request);
+    const combined = combineSignals(request.signal, this.timeoutMs, id);
+    let lease;
+    const check = () => {
+      if (this.disposed) throw new AssetProviderError("disposed", "Asset provider disposed", { id });
+      if (combined.signal.aborted) throw abortReason(combined.signal, id);
+    };
+    try {
+      check();
+      options.onProgress?.({ id, phase: "downloading", loadedBytes: 0, totalBytes: entry.length });
+      check();
+      lease = await this.cache.acquire(entry.chunk, { signal: combined.signal });
+      check();
+      if (entry.offset + entry.length > lease.value.byteLength) throw new AssetProviderError("integrity", `Chunk range exceeds chunk: ${id}`, { id });
+      const bytes = lease.value.slice(entry.offset, entry.offset + entry.length);
+      if (entry.sha256) {
+        options.onProgress?.({ id, phase: "verifying", loadedBytes: bytes.byteLength, totalBytes: bytes.byteLength });
+        check();
+        if (await awaitAbortable(sha256(bytes), combined.signal) !== entry.sha256.toLowerCase()) throw new AssetProviderError("integrity", `Asset checksum mismatch: ${id}`, { id });
+      }
+      check();
+      options.onProgress?.({ id, phase: "ready", loadedBytes: bytes.byteLength, totalBytes: bytes.byteLength });
+      check();
+      return { id, bytes, manifest: entry };
+    } catch (error) {
+      check();
+      throw error;
+    } finally {
+      lease?.release();
+      combined.cleanup();
+      options.signal?.removeEventListener("abort", relay);
+      this.active.delete(request);
+      if (this.disposed && !this.active.size) this.cache.dispose();
+    }
+  }
+  dispose() {
+    if (this.disposed) return;
+    this.disposed = true;
+    for (const controller of this.active) controller.abort(new DOMException("Asset provider disposed", "AbortError"));
+    if (!this.active.size) this.cache.dispose();
+  }
+};
 function createProviderAssetCache(provider, decode, destroy, maxIdle = 0) {
   return new ZhudaAssetCache(
     async (id, signal, phase) => {
@@ -3126,6 +3312,7 @@ var ZhudaModelLibrary = class {
     // Retain one off-scene template per existing cache lease and clone its tree.
     this.templates = /* @__PURE__ */ new WeakMap();
     const config = typeof options === "number" ? { maxIdle: options } : options;
+    if (config.decoders && !config.provider) throw Error("Model decoders require a logical AssetProvider");
     this.provider = config.provider;
     this.timeoutMs = config.timeoutMs ?? 15e3;
     if (!Number.isInteger(this.timeoutMs) || this.timeoutMs <= 0) throw Error("Invalid model deadline");
@@ -3136,6 +3323,7 @@ var ZhudaModelLibrary = class {
           throw Error("Load Laya glTF module before models");
         let asset;
         let resource;
+        let decoded;
         try {
           let bytes;
           if (this.provider) {
@@ -3148,6 +3336,12 @@ var ZhudaModelLibrary = class {
             bytes = await response.arrayBuffer();
           }
           if (signal.aborted) throw abortError();
+          if (config.decoders?.has("meshopt") && inspectGltfAsset(bytes).extensions.some((e) => e.name === "EXT_meshopt_compression")) {
+            decoded = await config.decoders.decode("meshopt", url, new Uint8Array(bytes), { signal });
+            if (!(decoded.data instanceof Uint8Array)) throw Error("Meshopt model decoder must return embedded GLB bytes");
+            bytes = new Uint8Array(decoded.data).buffer;
+            if (signal.aborted) throw abortError();
+          }
           const compatibility = inspectGltfAsset(bytes);
           if (compatibility.status === "unsupported") throw new ZhudaModelCompatibilityError(compatibility, url);
           const parsed = readGltfAssetDocument(bytes);
@@ -3181,7 +3375,11 @@ var ZhudaModelLibrary = class {
           if (resource && !resource.destroyed) resource.destroy();
           throw e;
         } finally {
-          asset?.release?.();
+          try {
+            decoded?.release();
+          } finally {
+            asset?.release?.();
+          }
         }
       },
       (r) => {
@@ -3422,11 +3620,11 @@ var ZhudaDistanceLOD = class {
     if (!(distance > hysteresis && hysteresis >= 0))
       throw Error("Invalid LOD bounds");
   }
-  update(camera, object) {
+  update(camera, object2) {
     const d = Math.hypot(
-      camera.x - object.x,
-      camera.y - object.y,
-      camera.z - object.z
+      camera.x - object2.x,
+      camera.y - object2.y,
+      camera.z - object2.z
     );
     if (d > this.distance + this.hysteresis) this.near = false;
     else if (d < this.distance - this.hysteresis) this.near = true;
@@ -3484,7 +3682,7 @@ function applySceneQuality(quality, session, camera, lights = []) {
 
 // packages/core/prefabs/PrefabTree3D.ts
 var primitives = /* @__PURE__ */ new Set(["box", "sphere", "plane", "cone", "cylinder", "capsule"]);
-var has = (object, key) => Object.prototype.hasOwnProperty.call(object, key);
+var has = (object2, key) => Object.prototype.hasOwnProperty.call(object2, key);
 function validatePrefabPatch3D(patch) {
   if (!patch || typeof patch !== "object" || Array.isArray(patch)) throw Error("Invalid 3D node patch");
   for (const [key, value] of Object.entries(patch)) {
@@ -12053,6 +12251,532 @@ var ZhudaCombatWorld = class {
   }
 };
 
+// packages/core/runtime3d/ModelDecoder.ts
+var ModelDecoderError = class extends Error {
+  constructor(code, message, details = {}) {
+    super(message);
+    this.name = "ModelDecoderError";
+    this.code = code;
+    this.format = details.format;
+    this.assetId = details.assetId;
+  }
+};
+var formats = /* @__PURE__ */ new Set(["draco", "meshopt", "ktx2-basis"]);
+var sha256Pattern = /^[0-9a-f]{64}$/i;
+var abortError2 = (format, assetId, timeout) => new ModelDecoderError(timeout ? "timeout" : "aborted", timeout ? `Model decoder timed out: ${assetId}` : `Model decoder cancelled: ${assetId}`, { format, assetId });
+function validateDescriptor(descriptor) {
+  if (!descriptor || !formats.has(descriptor.format) || typeof descriptor.name !== "string" || !descriptor.name.trim() || typeof descriptor.version !== "string" || !descriptor.version.trim() || typeof descriptor.integritySha256 !== "string" || !sha256Pattern.test(descriptor.integritySha256))
+    throw new ModelDecoderError("invalid-adapter", "A decoder descriptor requires a format, name, version and SHA-256 metadata.");
+}
+function positive(value) {
+  return Number.isSafeInteger(value) && value > 0;
+}
+function releasePayload(payload) {
+  if (typeof payload?.release === "function") payload.release();
+}
+var ZhudaModelDecoderRegistry = class {
+  constructor(options = {}) {
+    this.adapters = /* @__PURE__ */ new Map();
+    this.disposed = false;
+    this.timeoutMs = options.timeoutMs ?? 15e3;
+    this.maxInputBytes = options.maxInputBytes ?? 256 * 1024 * 1024;
+    this.maxOutputBytes = options.maxOutputBytes ?? 256 * 1024 * 1024;
+    if (!positive(this.timeoutMs) || this.timeoutMs > 2147483647 || !positive(this.maxInputBytes) || !positive(this.maxOutputBytes))
+      throw Error("Invalid decoder limits");
+  }
+  drain(entry) {
+    if (entry.retired && !entry.pending && !entry.leases && !entry.disposed) {
+      entry.disposed = true;
+      entry.adapter.dispose?.();
+    }
+  }
+  retire(entry) {
+    if (entry.retired) return;
+    entry.retired = true;
+    for (const controller of entry.requests) controller.abort(new DOMException("Decoder retired", "AbortError"));
+    this.drain(entry);
+  }
+  register(adapter) {
+    if (this.disposed) throw new ModelDecoderError("disposed", "Decoder registry is disposed.");
+    validateDescriptor(adapter?.descriptor);
+    if (typeof adapter.decode !== "function" || adapter.dispose !== void 0 && typeof adapter.dispose !== "function")
+      throw new ModelDecoderError("invalid-adapter", "Decoder requires decode and an optional dispose function.");
+    const { format } = adapter.descriptor;
+    if (this.adapters.has(format)) throw new ModelDecoderError("invalid-adapter", `A ${format} decoder is already registered.`, { format });
+    const entry = { adapter, requests: /* @__PURE__ */ new Set(), pending: 0, leases: 0, retired: false, disposed: false };
+    this.adapters.set(format, entry);
+    return () => {
+      if (this.adapters.get(format) === entry) this.adapters.delete(format);
+      this.retire(entry);
+    };
+  }
+  has(format) {
+    return this.adapters.has(format);
+  }
+  async decode(format, assetId, bytes, options = {}) {
+    if (this.disposed) throw new ModelDecoderError("disposed", "Decoder registry is disposed.", { format, assetId });
+    if (!formats.has(format) || normalizeAssetId(assetId) !== assetId) throw new ModelDecoderError("invalid-input", "A normalized logical asset ID is required.", { format, assetId });
+    const timeoutMs = options.timeoutMs ?? this.timeoutMs, inputLimit = options.maxInputBytes ?? this.maxInputBytes, outputLimit = options.maxOutputBytes ?? this.maxOutputBytes;
+    if (!positive(timeoutMs) || timeoutMs > 2147483647 || !positive(inputLimit) || !positive(outputLimit) || !(bytes instanceof Uint8Array) || bytes.byteLength > inputLimit)
+      throw new ModelDecoderError("invalid-input", `Invalid decoder bounds/input: ${assetId}.`, { format, assetId });
+    if (options.signal?.aborted) throw abortError2(format, assetId, false);
+    const entry = this.adapters.get(format);
+    if (!entry) throw new ModelDecoderError("unsupported", `No ${format} decoder is registered.`, { format, assetId });
+    const controller = new AbortController();
+    const abort = () => controller.abort(options.signal?.reason);
+    options.signal?.addEventListener("abort", abort, { once: true });
+    let timedOut = false;
+    const timer = setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, timeoutMs);
+    entry.requests.add(controller);
+    entry.pending++;
+    const input = new Uint8Array(bytes);
+    const work = Promise.resolve().then(async () => {
+      if (controller.signal.aborted) throw abortError2(format, assetId, timedOut);
+      const payload = await entry.adapter.decode({ assetId, bytes: input, signal: controller.signal, maxOutputBytes: outputLimit });
+      if (!payload || payload.assetId !== assetId || payload.format !== format || !Number.isSafeInteger(payload.byteLength) || payload.byteLength < 0 || payload.byteLength > outputLimit || typeof payload.release !== "function") {
+        releasePayload(payload);
+        throw new ModelDecoderError("invalid-output", `Invalid or oversized decoder output: ${assetId}`, { format, assetId });
+      }
+      entry.leases++;
+      let released = false;
+      return Object.freeze({ assetId, format, data: payload.data, byteLength: payload.byteLength, release: () => {
+        if (released) return;
+        released = true;
+        try {
+          payload.release();
+        } finally {
+          entry.leases--;
+          this.drain(entry);
+        }
+      } });
+    }).finally(() => {
+      entry.pending--;
+      entry.requests.delete(controller);
+      this.drain(entry);
+    });
+    try {
+      return await awaitAbortable(work, controller.signal, releasePayload);
+    } catch (error) {
+      if (controller.signal.aborted) throw abortError2(format, assetId, timedOut);
+      throw error;
+    } finally {
+      clearTimeout(timer);
+      options.signal?.removeEventListener("abort", abort);
+    }
+  }
+  dispose() {
+    if (this.disposed) return;
+    this.disposed = true;
+    const entries = [...this.adapters.values()];
+    this.adapters.clear();
+    for (const entry of entries) this.retire(entry);
+  }
+};
+
+// node_modules/meshoptimizer/meshopt_decoder.mjs
+var MeshoptDecoder = (function() {
+  var wasm_base = "b9H79Tebbbe8Fv9Gbb9Gvuuuuueu9Giuuub9Geueu9Giuuueuixkbeeeddddillviebeoweuecj:Gdkr;Neqo9TW9T9VV95dbH9F9F939H79T9F9J9H229F9Jt9VV7bb8A9TW79O9V9Wt9F9KW9J9V9KW9wWVtW949c919M9MWVbeY9TW79O9V9Wt9F9KW9J9V9KW69U9KW949c919M9MWVbdE9TW79O9V9Wt9F9KW9J9V9KW69U9KW949tWG91W9U9JWbiL9TW79O9V9Wt9F9KW9J9V9KWS9P2tWV9p9JtblK9TW79O9V9Wt9F9KW9J9V9KWS9P2tWV9r919HtbvL9TW79O9V9Wt9F9KW9J9V9KWS9P2tWVT949WboY9TW79O9V9Wt9F9KW9J9V9KWS9P2tWVJ9V29VVbrl79IV9Rbwq;X8:kdbk:kYi5ud9:du8Jjjjjbcjq9Rgv8Kjjjjbc9:hodnalTmbcuhoaiRbbgrc;WeGc:Ge9hmbarcsGgwce0mbc9:hoalcufadcd4cbawEgDadfgrcKcaawEgqaraq0Egk6mbaicefhxcj;abad9Uc;WFbGcjdadca0EhmaialfgPar9Rgoadfhsavaoadz:jjjjbgzceVhHcbhOdndninaeaO9nmeaPax9RaD6mdamaeaO9RaOamfgoae6EgAcsfglc9WGhCaAcethXaxaDfhiaOaeaoaeao6E9RhQalcl4cifcd4hLazcjdfaAfhKcbhYabaOad2fg8AhEaHh3incbh5dnawTmbaxaYcd4fRbbh5kcbh8Eazcjdfhqinaih8Fdndndndna5a8Ecet4ciGgoc9:fPdebdkaPa8F9RaA6mrazcjdfa8EaA2fa8FaAz:jjjjb8Aa8FaAfhixdkazcjdfa8EaA2fcbaAz:kjjjb8Aa8FhixekaPa8F9RaL6mva8FaLfhidnaCTmbaPai9RcK6mbaocdtc:q:G:cjbfcj:G:cjbawEhaczhrcbhlinargoc9Wfghaqfhrdndndndndndnaaa8Fahco4fRbbalcoG4ciGcdtfydbPDbedvivvvlvkar9cb83bwar9cb83bbxlkarcbaiRbdai8Xbb9c:c:qj:bw9:9c:q;c1:I1e:d9c:b:c:e1z9:gg9cjjjjjz:dg8J9qE86bbaqaofgrcGfcbaicdfa8J9c8N1:NfghRbbag9cjjjjjw:dg8J9qE86bbarcVfcbaha8J9c8M1:NfghRbbag9cjjjjjl:dg8J9qE86bbarc7fcbaha8J9c8L1:NfghRbbag9cjjjjjd:dg8J9qE86bbarctfcbaha8J9c8K1:NfghRbbag9cjjjjje:dg8J9qE86bbarc91fcbaha8J9c8J1:NfghRbbag9cjjjj;ab:dg8J9qE86bbarc4fcbaha8J9cg1:NfghRbbag9cjjjja:dg8J9qE86bbarc93fcbaha8J9ch1:NfghRbbag9cjjjjz:dgg9qE86bbarc94fcbahag9ca1:NfghRbbai8Xbe9c:c:qj:bw9:9c:q;c1:I1e:d9c:b:c:e1z9:gg9cjjjjjz:dg8J9qE86bbarc95fcbaha8J9c8N1:NfgiRbbag9cjjjjjw:dg8J9qE86bbarc96fcbaia8J9c8M1:NfgiRbbag9cjjjjjl:dg8J9qE86bbarc97fcbaia8J9c8L1:NfgiRbbag9cjjjjjd:dg8J9qE86bbarc98fcbaia8J9c8K1:NfgiRbbag9cjjjjje:dg8J9qE86bbarc99fcbaia8J9c8J1:NfgiRbbag9cjjjj;ab:dg8J9qE86bbarc9:fcbaia8J9cg1:NfgiRbbag9cjjjja:dg8J9qE86bbarcufcbaia8J9ch1:NfgiRbbag9cjjjjz:dgg9qE86bbaiag9ca1:NfhixikaraiRblaiRbbghco4g8Ka8KciSg8KE86bbaqaofgrcGfaiclfa8Kfg8KRbbahcl4ciGg8La8LciSg8LE86bbarcVfa8Ka8Lfg8KRbbahcd4ciGg8La8LciSg8LE86bbarc7fa8Ka8Lfg8KRbbahciGghahciSghE86bbarctfa8Kahfg8KRbbaiRbeghco4g8La8LciSg8LE86bbarc91fa8Ka8Lfg8KRbbahcl4ciGg8La8LciSg8LE86bbarc4fa8Ka8Lfg8KRbbahcd4ciGg8La8LciSg8LE86bbarc93fa8Ka8Lfg8KRbbahciGghahciSghE86bbarc94fa8Kahfg8KRbbaiRbdghco4g8La8LciSg8LE86bbarc95fa8Ka8Lfg8KRbbahcl4ciGg8La8LciSg8LE86bbarc96fa8Ka8Lfg8KRbbahcd4ciGg8La8LciSg8LE86bbarc97fa8Ka8Lfg8KRbbahciGghahciSghE86bbarc98fa8KahfghRbbaiRbigico4g8Ka8KciSg8KE86bbarc99faha8KfghRbbaicl4ciGg8Ka8KciSg8KE86bbarc9:faha8KfghRbbaicd4ciGg8Ka8KciSg8KE86bbarcufaha8KfgrRbbaiciGgiaiciSgiE86bbaraifhixdkaraiRbwaiRbbghcl4g8Ka8KcsSg8KE86bbaqaofgrcGfaicwfa8Kfg8KRbbahcsGghahcsSghE86bbarcVfa8KahfghRbbaiRbeg8Kcl4g8La8LcsSg8LE86bbarc7faha8LfghRbba8KcsGg8Ka8KcsSg8KE86bbarctfaha8KfghRbbaiRbdg8Kcl4g8La8LcsSg8LE86bbarc91faha8LfghRbba8KcsGg8Ka8KcsSg8KE86bbarc4faha8KfghRbbaiRbig8Kcl4g8La8LcsSg8LE86bbarc93faha8LfghRbba8KcsGg8Ka8KcsSg8KE86bbarc94faha8KfghRbbaiRblg8Kcl4g8La8LcsSg8LE86bbarc95faha8LfghRbba8KcsGg8Ka8KcsSg8KE86bbarc96faha8KfghRbbaiRbvg8Kcl4g8La8LcsSg8LE86bbarc97faha8LfghRbba8KcsGg8Ka8KcsSg8KE86bbarc98faha8KfghRbbaiRbog8Kcl4g8La8LcsSg8LE86bbarc99faha8LfghRbba8KcsGg8Ka8KcsSg8KE86bbarc9:faha8KfghRbbaiRbrgicl4g8Ka8KcsSg8KE86bbarcufaha8KfgrRbbaicsGgiaicsSgiE86bbaraifhixekarai8Pbw83bwarai8Pbb83bbaiczfhikdnaoaC9pmbalcdfhlaoczfhraPai9RcL0mekkaoaC6moaimexokaCmva8FTmvkaqaAfhqa8Ecefg8Ecl9hmbkdndndndnawTmbasaYcd4fRbbgociGPlbedrbkaATmdazaYfh8Fazcjdfhhcbh8EaEhaina8FRbbhraahocbhlinaoahalfRbbgqce4cbaqceG9R7arfgr86bbaoadfhoaAalcefgl9hmbkaacefhaa8Fcefh8FahaAfhha8Ecefg8Ecl9hmbxikkaATmeazaYfhaazcjdfhhcbhoceh8EaKh8FinaEaofhlaa8Vbbhrcbhoinala8FaofRbbcwtahaofRbbgqVc;:FiGce4cbaqceG9R7arfgr87bbaladfhlaQaocefgofmbka8FaXfh8FcdhoaacdfhaahaXfhha8EceGhlcbh8EalmbxdkkaATmbaocl4h8EazaYfRbbhqcwhoa3hlinalRbbaotaqVhqalcefhlaocwfgoca9hmbkcbhhaEh8FaKhainazcjdfahfRbbhrcwhoaahlinalRbbaotarVhralaAfhlaocwfgoca9hmbkara8E94aq7hqcbhoa8Fhlinalaqao486bbalcefhlaocwfgoca9hmbka8Fadfh8FaacefhaahcefghaA9hmbkkaEclfhEa3clfh3aYclfgYad6mbkaza8AaAcufad2fadz:jjjjb8AaAaOfhOaihxaimbkc9:hoxdkcbc99aPax9RakSEhoxekc9:hokavcjqf8Kjjjjbaok:bsesu8Jjjjjbc;ae9Rgv8Kjjjjbc9:hodnalaeci9UgrcHf6mbcuhoaiRbbgwc;WeGc;Ge9hmbawcsGgwce0mbavc;abfcFecjez:kjjjb8Aav9cu83iUav9cu83i8Wav9cu83iyav9cu83iaav9cu83iKav9cu83izav9cu83iwav9cu83ibaialfc9WfhDaicefgiarfhqdndnaeci9pmbaqhexekcmcsawceSEhkcbhxcbhmaqhecbhlcbhoindndnaiRbbgrc;Ve0mbavc;abfaoarcu7gPcl4fcsGcitfgwydlhsawydbhzdndnarcsGgwak9pmbavalaPfcsGcdtfydbaxawEhraxawTgHfhxxekdnaeaD9nmbc9:hoxokdndnawcsSmbcehHamawcetfcWfhrxekaecefhrae8SbbgwcFeGhPdndnawcu9mmbarhexekaecvfheaPcFbGhPcrhwdninar8SbbgHcFbGawtaPVhPaHcu9kmearcefhrawcrfgwc8J9hmbxdkkarcefhekcehHaPce4cbaPceG9R7amfhrkarhmkavc;abfaocitfgwarBdbawasBdlavalcdtfarBdbavc;abfaocefcsGcitfgwazBdbawarBdlaocdfhoaHalfhldnadcd9hmbabar87elabas87edabaz87ebabcofhbxdkabarBdwabasBdlabazBdbabcxfhbxekdnarcpe0mbavalaDarcsGfRbbgwcl4gP9RcsGcdtfydbaxcefgsaPEhravalaw9RcsGcdtfydbasaPTgzfgsawcsGgPEhwaPThPdndnadcd9hmbabaw87elabar87edabax87ebcohHxekabawBdwabarBdlabaxBdbcxhHkavalcdtfaxBdbavc;abfaocitfgOarBdbaOaxBdlavalcefglcsGcdtfarBdbavc;abfaocefcsGcitfgOawBdbaOarBdlavalazfglcsGcdtfawBdbavc;abfaocdfcsGcitfgraxBdbarawBdlaocifhoabaHfhbalaPfhlasaPfhxxekdnaeaD9nmbc9:hoxlkaxcbaeRbbgwEgHarc;:eSgrfhsawcsGhOdndnawcl4gAmbascefhzxekashzavalaA9RcsGcdtfydbhskdndnaOmbazcefhxxekazhxavalaw9RcsGcdtfydbhzkdndnarTmbaecefhrxekaecdfhrae8SbegPcFeGhwdnaPcu9kmbaecofhHawcFbGhwcrhedninar8SbbgPcFbGaetawVhwaPcu9kmearcefhraecrfgec8J9hmbkaHhrxekarcefhrkawce4cbawceG9R7amfgmhHkdndnaAcsSmbarhwxekarcefhwar8SbbgecFeGhPdnaecu9kmbarcvfhsaPcFbGhPcrhedninaw8SbbgrcFbGaetaPVhParcu9kmeawcefhwaecrfgec8J9hmbkashwxekawcefhwkaPce4cbaPceG9R7amfgmhskdndnaOcsSmbawhexekawcefheaw8SbbgrcFeGhPdnarcu9kmbawcvfhzaPcFbGhPcrhrdninae8SbbgwcFbGartaPVhPawcu9kmeaecefhearcrfgrc8J9hmbkazhexekaecefhekaPce4cbaPceG9R7amfgmhzkdndnadcd9hmbabaz87elabas87edabaH87ebcohrxekabazBdwabasBdlabaHBdbcxhrkavc;abfaocitfgwasBdbawaHBdlavalcdtfaHBdbavc;abfaocefcsGcitfgwazBdbawasBdlavalcefglcsGcdtfasBdbavc;abfaocdfcsGcitfgwaHBdbawazBdlavalaATaAcsSVfglcsGcdtfazBdbalaOTaOcsSVfhlaocifhoabarfhbkaocsGhoalcsGhlaicefgiaq6mbkkcbc99aeaDSEhokavc;aef8Kjjjjbaok:clevu8Jjjjjbcz9Rhvdnalaecvf9pmbc9:skdnaiRbbc;:eGc;qeSmbcuskav9cb83iwaicefhoaialfc98fhrdnaeTmbdnadcdSmbcbhwindnaoar6mbc9:skaocefhlao8SbbgicFeGhddndnaicu9mmbalhoxekaocvfhoadcFbGhdcrhidninal8SbbgDcFbGaitadVhdaDcu9kmealcefhlaicrfgic8J9hmbxdkkalcefhokabawcdtfadc8Etc8F91adcd47avcwfadceGcdtVglydbfgiBdbalaiBdbawcefgwae9hmbxdkkcbhwindnaoar6mbc9:skaocefhlao8SbbgicFeGhddndnaicu9mmbalhoxekaocvfhoadcFbGhdcrhidninal8SbbgDcFbGaitadVhdaDcu9kmealcefhlaicrfgic8J9hmbxdkkalcefhokabawcetfadc8Etc8F91adcd47avcwfadceGcdtVglydbfgi87ebalaiBdbawcefgwae9hmbkkcbc99aoarSEk:Lvoeue99dud99eud99dndnadcl9hmbaeTmeindndnabcdfgd8Sbb:Yab8Sbbgi:Ygl:l:tabcefgv8Sbbgo:Ygr:l:tgwJbb;:9cawawNJbbbbawawJbbbb9GgDEgq:mgkaqaicb9iEalMgwawNakaqaocb9iEarMgqaqNMM:r:vglNJbbbZJbbb:;aDEMgr:lJbbb9p9DTmbar:Ohixekcjjjj94hikadai86bbdndnaqalNJbbbZJbbb:;aqJbbbb9GEMgq:lJbbb9p9DTmbaq:Ohdxekcjjjj94hdkavad86bbdndnawalNJbbbZJbbb:;awJbbbb9GEMgw:lJbbb9p9DTmbaw:Ohdxekcjjjj94hdkabad86bbabclfhbaecufgembxdkkaeTmbindndnabclfgd8Ueb:Yab8Uebgi:Ygl:l:tabcdfgv8Uebgo:Ygr:l:tgwJb;:FSawawNJbbbbawawJbbbb9GgDEgq:mgkaqaicb9iEalMgwawNakaqaocb9iEarMgqaqNMM:r:vglNJbbbZJbbb:;aDEMgr:lJbbb9p9DTmbar:Ohixekcjjjj94hikadai87ebdndnaqalNJbbbZJbbb:;aqJbbbb9GEMgq:lJbbb9p9DTmbaq:Ohdxekcjjjj94hdkavad87ebdndnawalNJbbbZJbbb:;awJbbbb9GEMgw:lJbbb9p9DTmbaw:Ohdxekcjjjj94hdkabad87ebabcwfhbaecufgembkkk:4ioiue99dud99dud99dnaeTmbcbhiabhlindndnal8Uebgv:YgoJ:ji:1Salcof8UebgrciVgw:Y:vgDNJbbbZJbbb:;avcu9kEMgq:lJbbb9p9DTmbaq:Ohkxekcjjjj94hkkalclf8Uebhvalcdf8UebhxalarcefciGcetfak87ebdndnax:YgqaDNJbbbZJbbb:;axcu9kEMgm:lJbbb9p9DTmbam:Ohxxekcjjjj94hxkabaiarciGgkfcd7cetfax87ebdndnav:YgmaDNJbbbZJbbb:;avcu9kEMgP:lJbbb9p9DTmbaP:Ohvxekcjjjj94hvkalarcufciGcetfav87ebdndnawaw2:ZgPaPMaoaoN:taqaqN:tamamN:tgoJbbbbaoJbbbb9GE:raDNJbbbZMgD:lJbbb9p9DTmbaD:Ohrxekcjjjj94hrkalakcetfar87ebalcwfhlaiclfhiaecufgembkkk9mbdnadcd4ae2gdTmbinababydbgecwtcw91:Yaece91cjjj98Gcjjj;8if::NUdbabclfhbadcufgdmbkkk:Tvirud99eudndnadcl9hmbaeTmeindndnabRbbgiabcefgl8Sbbgvabcdfgo8Sbbgrf9R:YJbbuJabcifgwRbbgdce4adVgDcd4aDVgDcl4aDVgD:Z:vgqNJbbbZMgk:lJbbb9p9DTmbak:Ohxxekcjjjj94hxkaoax86bbdndnaraif:YaqNJbbbZMgk:lJbbb9p9DTmbak:Ohoxekcjjjj94hokalao86bbdndnavaifar9R:YaqNJbbbZMgk:lJbbb9p9DTmbak:Ohixekcjjjj94hikabai86bbdndnaDadcetGadceGV:ZaqNJbbbZMgq:lJbbb9p9DTmbaq:Ohdxekcjjjj94hdkawad86bbabclfhbaecufgembxdkkaeTmbindndnab8Vebgiabcdfgl8Uebgvabclfgo8Uebgrf9R:YJbFu9habcofgw8Vebgdce4adVgDcd4aDVgDcl4aDVgDcw4aDVgD:Z:vgqNJbbbZMgk:lJbbb9p9DTmbak:Ohxxekcjjjj94hxkaoax87ebdndnaraif:YaqNJbbbZMgk:lJbbb9p9DTmbak:Ohoxekcjjjj94hokalao87ebdndnavaifar9R:YaqNJbbbZMgk:lJbbb9p9DTmbak:Ohixekcjjjj94hikabai87ebdndnaDadcetGadceGV:ZaqNJbbbZMgq:lJbbb9p9DTmbaq:Ohdxekcjjjj94hdkawad87ebabcwfhbaecufgembkkk9teiucbcbyd:K:G:cjbgeabcifc98GfgbBd:K:G:cjbdndnabZbcztgd9nmbcuhiabad9RcFFifcz4nbcuSmekaehikaik;LeeeudndnaeabVciGTmbabhixekdndnadcz9pmbabhixekabhiinaiaeydbBdbaiclfaeclfydbBdbaicwfaecwfydbBdbaicxfaecxfydbBdbaeczfheaiczfhiadc9Wfgdcs0mbkkadcl6mbinaiaeydbBdbaeclfheaiclfhiadc98fgdci0mbkkdnadTmbinaiaeRbb86bbaicefhiaecefheadcufgdmbkkabk;aeedudndnabciGTmbabhixekaecFeGc:b:c:ew2hldndnadcz9pmbabhixekabhiinaialBdbaicxfalBdbaicwfalBdbaiclfalBdbaiczfhiadc9Wfgdcs0mbkkadcl6mbinaialBdbaiclfhiadc98fgdci0mbkkdnadTmbinaiae86bbaicefhiadcufgdmbkkabkk83dbcj:Gdk8Kbbbbdbbblbbbwbbbbbbbebbbdbbblbbbwbbbbc:K:Gdkl8W:qbb";
+  var wasm_simd = "b9H79TebbbeKl9Gbb9Gvuuuuueu9Giuuub9Geueuixkbbebeeddddilve9Weeeviebeoweuecj:Gdkr;Neqo9TW9T9VV95dbH9F9F939H79T9F9J9H229F9Jt9VV7bb8A9TW79O9V9Wt9F9KW9J9V9KW9wWVtW949c919M9MWVbdY9TW79O9V9Wt9F9KW9J9V9KW69U9KW949c919M9MWVblE9TW79O9V9Wt9F9KW9J9V9KW69U9KW949tWG91W9U9JWbvL9TW79O9V9Wt9F9KW9J9V9KWS9P2tWV9p9JtboK9TW79O9V9Wt9F9KW9J9V9KWS9P2tWV9r919HtbrL9TW79O9V9Wt9F9KW9J9V9KWS9P2tWVT949WbwY9TW79O9V9Wt9F9KW9J9V9KWS9P2tWVJ9V29VVbDl79IV9Rbqq:I9Dklbzik94evu8Jjjjjbcz9Rhbcbheincbhdcbhiinabcwfadfaicjuaead4ceGglE86bbaialfhiadcefgdcw9hmbkaeai86b:q:W:cjbaecitab8Piw83i:q:G:cjbaecefgecjd9hmbkk:SBlEud97dur978Jjjjjbcj;kb9Rgv8Kjjjjbc9:hodnalTmbcuhoaiRbbgrc;WeGc:Ge9hmbarcsGgwce0mbc9:hoalcufadcd4cbawEgDadfgrcKcaawEgqaraq0Egk6mbaialfgxar9RhodnadTgmmbavaoad;8qbbkaicefhPcj;abad9Uc;WFbGcjdadca0EhsdndndnadTmbaoadfhzcbhHinaeaH9nmdaxaP9RaD6miabaHad2fgOavcjdfasaeaH9RaHasfae6EgAaAcsfgoc9WGgCSEhXaPaDfhQaocl4cifcd4hLavcj;cbfaCcetfhKavcj;cbfaCci2fhYavcj;cbfaCfh8AcbhEaoc;ab6h3incbh5dnawTmbaPaEcd4fRbbh5kcbh8Eavcj;cbfh8Findndndndna5a8Ecet4ciGgoc9:fPdebdkaxaQ9RaC6mwdnaCTmbavcj;cbfa8EaC2faQaC;8qbbkaQaAfhQxdkaCTmeavcj;cbfa8EaC2fcbaC;8kbxekaxaQ9RaL6moaoclVcbawEhraQaLfhocbhidna3mbaxao9Rc;Gb6mbcbhlina8FalfhidndndndndndnaQalco4fRbbgqciGarfPDbedibledibkaipxbbbbbbbbbbbbbbbbpklbxlkaiaopbblaopbbbgaclp:meaapmbzeHdOiAlCvXoQrLgacdp:meaapmbzeHdOiAlCvXoQrLpxiiiiiiiiiiiiiiiip9oghpxiiiiiiiiiiiiiiiip8Jgap5b9cjF;8;4;W;G;ab9:9cU1:Nggcitpbi:q:G:cjbagRb:q:W:cjbggpsaap5e9cjF;8;4;W;G;ab9:9cU1:Ng8Jcitpbi:q:G:cjbp9UpmbedilvorzHOACXQLpPahaap9spklbagaoclffa8JRb:q:W:cjbfhoxikaiaopbbwaopbbbgaclp:meaapmbzeHdOiAlCvXoQrLpxssssssssssssssssp9oghpxssssssssssssssssp8Jgap5b9cjF;8;4;W;G;ab9:9cU1:Nggcitpbi:q:G:cjbagRb:q:W:cjbggpsaap5e9cjF;8;4;W;G;ab9:9cU1:Ng8Jcitpbi:q:G:cjbp9UpmbedilvorzHOACXQLpPahaap9spklbagaocwffa8JRb:q:W:cjbfhoxdkaiaopbbbpklbaoczfhoxekaiaopbbdaoRbbggcitpbi:q:G:cjbagRb:q:W:cjbggpsaoRbeg8Jcitpbi:q:G:cjbp9UpmbedilvorzHOACXQLpPpklbagaocdffa8JRb:q:W:cjbfhokdndndndndndnaqcd4ciGarfPDbedibledibkaiczfpxbbbbbbbbbbbbbbbbpklbxlkaiczfaopbblaopbbbgaclp:meaapmbzeHdOiAlCvXoQrLgacdp:meaapmbzeHdOiAlCvXoQrLpxiiiiiiiiiiiiiiiip9oghpxiiiiiiiiiiiiiiiip8Jgap5b9cjF;8;4;W;G;ab9:9cU1:Nggcitpbi:q:G:cjbagRb:q:W:cjbggpsaap5e9cjF;8;4;W;G;ab9:9cU1:Ng8Jcitpbi:q:G:cjbp9UpmbedilvorzHOACXQLpPahaap9spklbagaoclffa8JRb:q:W:cjbfhoxikaiczfaopbbwaopbbbgaclp:meaapmbzeHdOiAlCvXoQrLpxssssssssssssssssp9oghpxssssssssssssssssp8Jgap5b9cjF;8;4;W;G;ab9:9cU1:Nggcitpbi:q:G:cjbagRb:q:W:cjbggpsaap5e9cjF;8;4;W;G;ab9:9cU1:Ng8Jcitpbi:q:G:cjbp9UpmbedilvorzHOACXQLpPahaap9spklbagaocwffa8JRb:q:W:cjbfhoxdkaiczfaopbbbpklbaoczfhoxekaiczfaopbbdaoRbbggcitpbi:q:G:cjbagRb:q:W:cjbggpsaoRbeg8Jcitpbi:q:G:cjbp9UpmbedilvorzHOACXQLpPpklbagaocdffa8JRb:q:W:cjbfhokdndndndndndnaqcl4ciGarfPDbedibledibkaicafpxbbbbbbbbbbbbbbbbpklbxlkaicafaopbblaopbbbgaclp:meaapmbzeHdOiAlCvXoQrLgacdp:meaapmbzeHdOiAlCvXoQrLpxiiiiiiiiiiiiiiiip9oghpxiiiiiiiiiiiiiiiip8Jgap5b9cjF;8;4;W;G;ab9:9cU1:Nggcitpbi:q:G:cjbagRb:q:W:cjbggpsaap5e9cjF;8;4;W;G;ab9:9cU1:Ng8Jcitpbi:q:G:cjbp9UpmbedilvorzHOACXQLpPahaap9spklbagaoclffa8JRb:q:W:cjbfhoxikaicafaopbbwaopbbbgaclp:meaapmbzeHdOiAlCvXoQrLpxssssssssssssssssp9oghpxssssssssssssssssp8Jgap5b9cjF;8;4;W;G;ab9:9cU1:Nggcitpbi:q:G:cjbagRb:q:W:cjbggpsaap5e9cjF;8;4;W;G;ab9:9cU1:Ng8Jcitpbi:q:G:cjbp9UpmbedilvorzHOACXQLpPahaap9spklbagaocwffa8JRb:q:W:cjbfhoxdkaicafaopbbbpklbaoczfhoxekaicafaopbbdaoRbbggcitpbi:q:G:cjbagRb:q:W:cjbggpsaoRbeg8Jcitpbi:q:G:cjbp9UpmbedilvorzHOACXQLpPpklbagaocdffa8JRb:q:W:cjbfhokdndndndndndnaqco4arfPDbedibledibkaic8Wfpxbbbbbbbbbbbbbbbbpklbxlkaic8Wfaopbblaopbbbgaclp:meaapmbzeHdOiAlCvXoQrLgacdp:meaapmbzeHdOiAlCvXoQrLpxiiiiiiiiiiiiiiiip9oghpxiiiiiiiiiiiiiiiip8Jgap5b9cjF;8;4;W;G;ab9:9cU1:Ngicitpbi:q:G:cjbaiRb:q:W:cjbgipsaap5e9cjF;8;4;W;G;ab9:9cU1:Ngqcitpbi:q:G:cjbp9UpmbedilvorzHOACXQLpPahaap9spklbaiaoclffaqRb:q:W:cjbfhoxikaic8Wfaopbbwaopbbbgaclp:meaapmbzeHdOiAlCvXoQrLpxssssssssssssssssp9oghpxssssssssssssssssp8Jgap5b9cjF;8;4;W;G;ab9:9cU1:Ngicitpbi:q:G:cjbaiRb:q:W:cjbgipsaap5e9cjF;8;4;W;G;ab9:9cU1:Ngqcitpbi:q:G:cjbp9UpmbedilvorzHOACXQLpPahaap9spklbaiaocwffaqRb:q:W:cjbfhoxdkaic8Wfaopbbbpklbaoczfhoxekaic8WfaopbbdaoRbbgicitpbi:q:G:cjbaiRb:q:W:cjbgipsaoRbegqcitpbi:q:G:cjbp9UpmbedilvorzHOACXQLpPpklbaiaocdffaqRb:q:W:cjbfhokalc;abfhialcjefaC0meaihlaxao9Rc;Fb0mbkkdnaiaC9pmbaici4hlinaxao9RcK6mwa8FaifhqdndndndndndnaQaico4fRbbalcoG4ciGarfPDbedibledibkaqpxbbbbbbbbbbbbbbbbpkbbxlkaqaopbblaopbbbgaclp:meaapmbzeHdOiAlCvXoQrLgacdp:meaapmbzeHdOiAlCvXoQrLpxiiiiiiiiiiiiiiiip9oghpxiiiiiiiiiiiiiiiip8Jgap5b9cjF;8;4;W;G;ab9:9cU1:Nggcitpbi:q:G:cjbagRb:q:W:cjbggpsaap5e9cjF;8;4;W;G;ab9:9cU1:Ng8Jcitpbi:q:G:cjbp9UpmbedilvorzHOACXQLpPahaap9spkbbagaoclffa8JRb:q:W:cjbfhoxikaqaopbbwaopbbbgaclp:meaapmbzeHdOiAlCvXoQrLpxssssssssssssssssp9oghpxssssssssssssssssp8Jgap5b9cjF;8;4;W;G;ab9:9cU1:Nggcitpbi:q:G:cjbagRb:q:W:cjbggpsaap5e9cjF;8;4;W;G;ab9:9cU1:Ng8Jcitpbi:q:G:cjbp9UpmbedilvorzHOACXQLpPahaap9spkbbagaocwffa8JRb:q:W:cjbfhoxdkaqaopbbbpkbbaoczfhoxekaqaopbbdaoRbbggcitpbi:q:G:cjbagRb:q:W:cjbggpsaoRbeg8Jcitpbi:q:G:cjbp9UpmbedilvorzHOACXQLpPpkbbagaocdffa8JRb:q:W:cjbfhokalcdfhlaiczfgiaC6mbkkaohQaoTmoka8FaCfh8Fa8Ecefg8Ecl9hmbkdndndndnawTmbazaEcd4fRbbglciGPlbedwbkaCTmdaXaEfhlavaEfpbdbh8Kcbhoinalavcj;cbfaofpblbg8La8Aaofpblbg8MpmbzeHdOiAlCvXoQrLg8NaKaofpblbgyaYaofpblbg8PpmbzeHdOiAlCvXoQrLgIpmbezHdiOAlvCXorQLgacep9Taapxeeeeeeeeeeeeeeeeghp9op9Hp9rgaa8Kp9Ug8Kp9Abbbaladfgla8Kaaaapmlvorlvorlvorlvorp9Ug8Kp9Abbbaladfgla8KaaaapmwDqkwDqkwDqkwDqkp9Ug8Kp9Abbbaladfgla8KaaaapmxmPsxmPsxmPsxmPsp9Ug8Kp9Abbbaladfgla8Ka8NaIpmwDKYqk8AExm35Ps8E8Fgacep9Taaahp9op9Hp9rgap9Ug8Kp9Abbbaladfgla8Kaaaapmlvorlvorlvorlvorp9Ug8Kp9Abbbaladfgla8KaaaapmwDqkwDqkwDqkwDqkp9Ug8Kp9Abbbaladfgla8KaaaapmxmPsxmPsxmPsxmPsp9Ug8Kp9Abbbaladfgla8Ka8La8MpmwKDYq8AkEx3m5P8Es8Fg8Laya8PpmwKDYq8AkEx3m5P8Es8Fg8MpmbezHdiOAlvCXorQLgacep9Taaahp9op9Hp9rgap9Ug8Kp9Abbbaladfgla8Kaaaapmlvorlvorlvorlvorp9Ug8Kp9Abbbaladfgla8KaaaapmwDqkwDqkwDqkwDqkp9Ug8Kp9Abbbaladfgla8KaaaapmxmPsxmPsxmPsxmPsp9Ug8Kp9Abbbaladfgla8Ka8La8MpmwDKYqk8AExm35Ps8E8Fgacep9Taaahp9op9Hp9rgap9Ughp9Abbbaladfglahaaaapmlvorlvorlvorlvorp9Ughp9AbbbaladfglahaaaapmwDqkwDqkwDqkwDqkp9Ughp9AbbbaladfglahaaaapmxmPsxmPsxmPsxmPsp9Ug8Kp9AbbbaladfhlaoczfgoaC6mbxikkaCTmeaXaEfhlavaEfpbdbh8Kcbhoinalavcj;cbfaofpblbg8La8Aaofpblbg8MpmbzeHdOiAlCvXoQrLg8NaKaofpblbgyaYaofpblbg8PpmbzeHdOiAlCvXoQrLgIpmbezHdiOAlvCXorQLgacep:neaapxebebebebebebebebghp9op:bep9rgaa8Kp:oeg8Kp9Abbbaladfgla8Kaaaapmlvorlvorlvorlvorp:oeg8Kp9Abbbaladfgla8KaaaapmwDqkwDqkwDqkwDqkp:oeg8Kp9Abbbaladfgla8KaaaapmxmPsxmPsxmPsxmPsp:oeg8Kp9Abbbaladfgla8Ka8NaIpmwDKYqk8AExm35Ps8E8Fgacep:neaaahp9op:bep9rgap:oeg8Kp9Abbbaladfgla8Kaaaapmlvorlvorlvorlvorp:oeg8Kp9Abbbaladfgla8KaaaapmwDqkwDqkwDqkwDqkp:oeg8Kp9Abbbaladfgla8KaaaapmxmPsxmPsxmPsxmPsp:oeg8Kp9Abbbaladfgla8Ka8La8MpmwKDYq8AkEx3m5P8Es8Fg8Laya8PpmwKDYq8AkEx3m5P8Es8Fg8MpmbezHdiOAlvCXorQLgacep:neaaahp9op:bep9rgap:oeg8Kp9Abbbaladfgla8Kaaaapmlvorlvorlvorlvorp:oeg8Kp9Abbbaladfgla8KaaaapmwDqkwDqkwDqkwDqkp:oeg8Kp9Abbbaladfgla8KaaaapmxmPsxmPsxmPsxmPsp:oeg8Kp9Abbbaladfgla8Ka8La8MpmwDKYqk8AExm35Ps8E8Fgacep:neaaahp9op:bep9rgap:oeghp9Abbbaladfglahaaaapmlvorlvorlvorlvorp:oeghp9AbbbaladfglahaaaapmwDqkwDqkwDqkwDqkp:oeghp9AbbbaladfglahaaaapmxmPsxmPsxmPsxmPsp:oeg8Kp9AbbbaladfhlaoczfgoaC6mbxdkkaCTmbaXaEfhrcbhocbalcl4gl9Rc8FGhiavaEfpbdbhhinaravcj;cbfaofpblbg8Ka8Aaofpblbg8LpmbzeHdOiAlCvXoQrLg8MaKaofpblbg8NaYaofpblbgypmbzeHdOiAlCvXoQrLg8PpmbezHdiOAlvCXorQLgaaip:Reaaalp:Tep9qgaahp9rghp9Abbbaradfgrahaaaapmlvorlvorlvorlvorp9rghp9AbbbaradfgrahaaaapmwDqkwDqkwDqkwDqkp9rghp9AbbbaradfgrahaaaapmxmPsxmPsxmPsxmPsp9rghp9Abbbaradfgraha8Ma8PpmwDKYqk8AExm35Ps8E8Fgaaip:Reaaalp:Tep9qgap9rghp9Abbbaradfgrahaaaapmlvorlvorlvorlvorp9rghp9AbbbaradfgrahaaaapmwDqkwDqkwDqkwDqkp9rghp9AbbbaradfgrahaaaapmxmPsxmPsxmPsxmPsp9rghp9Abbbaradfgraha8Ka8LpmwKDYq8AkEx3m5P8Es8Fg8Ka8NaypmwKDYq8AkEx3m5P8Es8Fg8LpmbezHdiOAlvCXorQLgaaip:Reaaalp:Tep9qgap9rghp9Abbbaradfgrahaaaapmlvorlvorlvorlvorp9rghp9AbbbaradfgrahaaaapmwDqkwDqkwDqkwDqkp9rghp9AbbbaradfgrahaaaapmxmPsxmPsxmPsxmPsp9rghp9Abbbaradfgraha8Ka8LpmwDKYqk8AExm35Ps8E8Fgaaip:Reaaalp:Tep9qgap9rghp9Abbbaradfgrahaaaapmlvorlvorlvorlvorp9rghp9AbbbaradfgrahaaaapmwDqkwDqkwDqkwDqkp9rghp9AbbbaradfgrahaaaapmxmPsxmPsxmPsxmPsp9rghp9AbbbaradfhraoczfgoaC6mbkkaEclfgEad6mbkdnaXavcjdf9hmbaAad2goTmbaOavcjdfao;8qbbkdnammbavaXaAcufad2fad;8qbbkaAaHfhHc9:hoaQhPaQmbxlkkaeTmbaDalfhrcbhocuhlinaralaD9RglfaD6mdasaeao9Raoasfae6Eaofgoae6mbkaial9RhPkcbc99axaP9RakSEhoxekc9:hokavcj;kbf8Kjjjjbaokwbz:bjjjbkpPesu8Jjjjjbc;ae9Rgv8Kjjjjbc9:hodnalaeci9UgrcHf6mbcuhoaiRbbgwc;WeGc;Ge9hmbawcsGgwce0mbavc;abfcFecje;8kbav9cu83iUav9cu83i8Wav9cu83iyav9cu83iaav9cu83iKav9cu83izav9cu83iwav9cu83ibaialfc9WfhDaicefgiarfhqdndnaeci9pmbaqhexekcmcsawceSEhkcbhxcbhmaqhecbhlcbhoindndnaiRbbgrc;Ve0mbavc;abfaoarcu7gPcl4fcsGcitfgwydlhsawydbhzdndnarcsGgwak9pmbavalaPfcsGcdtfydbaxawEhraxawTgHfhxxekdnaeaD9nmbc9:hoxokdndnawcsSmbcehHamawcetfcWfhrxekaecefhrae8SbbgwcFeGhPdndnawcu9mmbarhexekaecvfheaPcFbGhPcrhwdninar8SbbgHcFbGawtaPVhPaHcu9kmearcefhrawcrfgwc8J9hmbxdkkarcefhekcehHaPce4cbaPceG9R7amfhrkarhmkavc;abfaocitfgwarBdbawasBdlavalcdtfarBdbavc;abfaocefcsGcitfgwazBdbawarBdlaocdfhoaHalfhldnadcd9hmbabar87elabas87edabaz87ebabcofhbxdkabarBdwabasBdlabazBdbabcxfhbxekdnarcpe0mbavalaDarcsGfRbbgwcl4gP9RcsGcdtfydbaxcefgsaPEhravalaw9RcsGcdtfydbasaPTgzfgsawcsGgPEhwaPThPdndnadcd9hmbabaw87elabar87edabax87ebcohHxekabawBdwabarBdlabaxBdbcxhHkavalcdtfaxBdbavc;abfaocitfgOarBdbaOaxBdlavalcefglcsGcdtfarBdbavc;abfaocefcsGcitfgOawBdbaOarBdlavalazfglcsGcdtfawBdbavc;abfaocdfcsGcitfgraxBdbarawBdlaocifhoabaHfhbalaPfhlasaPfhxxekdnaeaD9nmbc9:hoxlkaxcbaeRbbgwEgHarc;:eSgrfhsawcsGhOdndnawcl4gAmbascefhzxekashzavalaA9RcsGcdtfydbhskdndnaOmbazcefhxxekazhxavalaw9RcsGcdtfydbhzkdndnarTmbaecefhrxekaecdfhrae8SbegPcFeGhwdnaPcu9kmbaecofhHawcFbGhwcrhedninar8SbbgPcFbGaetawVhwaPcu9kmearcefhraecrfgec8J9hmbkaHhrxekarcefhrkawce4cbawceG9R7amfgmhHkdndnaAcsSmbarhwxekarcefhwar8SbbgecFeGhPdnaecu9kmbarcvfhsaPcFbGhPcrhedninaw8SbbgrcFbGaetaPVhParcu9kmeawcefhwaecrfgec8J9hmbkashwxekawcefhwkaPce4cbaPceG9R7amfgmhskdndnaOcsSmbawhexekawcefheaw8SbbgrcFeGhPdnarcu9kmbawcvfhzaPcFbGhPcrhrdninae8SbbgwcFbGartaPVhPawcu9kmeaecefhearcrfgrc8J9hmbkazhexekaecefhekaPce4cbaPceG9R7amfgmhzkdndnadcd9hmbabaz87elabas87edabaH87ebcohrxekabazBdwabasBdlabaHBdbcxhrkavc;abfaocitfgwasBdbawaHBdlavalcdtfaHBdbavc;abfaocefcsGcitfgwazBdbawasBdlavalcefglcsGcdtfasBdbavc;abfaocdfcsGcitfgwaHBdbawazBdlavalaATaAcsSVfglcsGcdtfazBdbalaOTaOcsSVfhlaocifhoabarfhbkaocsGhoalcsGhlaicefgiaq6mbkkcbc99aeaDSEhokavc;aef8Kjjjjbaok:clevu8Jjjjjbcz9Rhvdnalaecvf9pmbc9:skdnaiRbbc;:eGc;qeSmbcuskav9cb83iwaicefhoaialfc98fhrdnaeTmbdnadcdSmbcbhwindnaoar6mbc9:skaocefhlao8SbbgicFeGhddndnaicu9mmbalhoxekaocvfhoadcFbGhdcrhidninal8SbbgDcFbGaitadVhdaDcu9kmealcefhlaicrfgic8J9hmbxdkkalcefhokabawcdtfadc8Etc8F91adcd47avcwfadceGcdtVglydbfgiBdbalaiBdbawcefgwae9hmbxdkkcbhwindnaoar6mbc9:skaocefhlao8SbbgicFeGhddndnaicu9mmbalhoxekaocvfhoadcFbGhdcrhidninal8SbbgDcFbGaitadVhdaDcu9kmealcefhlaicrfgic8J9hmbxdkkalcefhokabawcetfadc8Etc8F91adcd47avcwfadceGcdtVglydbfgi87ebalaiBdbawcefgwae9hmbkkcbc99aoarSEk;Toio97eue97aec98Ghedndnadcl9hmbaeTmecbhdinababpbbbgicKp:RecKp:Sep;6eglaicwp:RecKp:Sep;6ealp;Geaiczp:RecKp:Sep;6egvp;Gep;Kep;Legopxbbbbbbbbbbbbbbbbp:2egralpxbbbjbbbjbbbjbbbjgwp9op9rp;Keglpxbb;:9cbb;:9cbb;:9cbb;:9calalp;Meaoaop;Meavaravawp9op9rp;Keglalp;Mep;Kep;Kep;Jep;Negvp;Mepxbbn0bbn0bbn0bbn0grp;KepxFbbbFbbbFbbbFbbbp9oaipxbbbFbbbFbbbFbbbFp9op9qalavp;Mearp;Kecwp:RepxbFbbbFbbbFbbbFbbp9op9qaoavp;Mearp;Keczp:RepxbbFbbbFbbbFbbbFbp9op9qpkbbabczfhbadclfgdae6mbxdkkaeTmbcbhdinabczfgDaDpbbbgipxbbbbbbFFbbbbbbFFgwp9oabpbbbgoaipmbediwDqkzHOAKY8AEgvczp:Reczp:Sep;6eglaoaipmlvorxmPsCXQL358E8FpxFubbFubbFubbFubbp9op;6eavczp:Sep;6egvp;Gealp;Gep;Kep;Legipxbbbbbbbbbbbbbbbbp:2egralpxbbbjbbbjbbbjbbbjgqp9op9rp;Keglpxb;:FSb;:FSb;:FSb;:FSalalp;Meaiaip;Meavaravaqp9op9rp;Keglalp;Mep;Kep;Kep;Jep;Negvp;Mepxbbn0bbn0bbn0bbn0grp;KepxFFbbFFbbFFbbFFbbp9oaiavp;Mearp;Keczp:Rep9qgialavp;Mearp;KepxFFbbFFbbFFbbFFbbp9oglpmwDKYqk8AExm35Ps8E8Fp9qpkbbabaoawp9oaialpmbezHdiOAlvCXorQLp9qpkbbabcafhbadclfgdae6mbkkk;2ileue97euo97dnaec98GgiTmbcbheinabcKfpx:ji:1S:ji:1S:ji:1S:ji:1SabpbbbglabczfgvpbbbgopmlvorxmPsCXQL358E8Fgrczp:Segwpxibbbibbbibbbibbbp9qp;6egDp;NegqaDaDp;MegDaDp;KealaopmbediwDqkzHOAKY8AEgDczp:Reczp:Sep;6eglalp;MeaDczp:Sep;6egoaop;Mearczp:Reczp:Sep;6egrarp;Mep;Kep;Kep;Lepxbbbbbbbbbbbbbbbbp:4ep;Jep;Mepxbbn0bbn0bbn0bbn0gDp;KepxFFbbFFbbFFbbFFbbgkp9oaqaop;MeaDp;Keczp:Rep9qgoaqalp;MeaDp;Keakp9oaqarp;MeaDp;Keczp:Rep9qgDpmwDKYqk8AExm35Ps8E8Fglp5eawclp:RegqpEi:T:j83ibavalp5baqpEd:T:j83ibabcwfaoaDpmbezHdiOAlvCXorQLgDp5eaqpEe:T:j83ibabaDp5baqpEb:T:j83ibabcafhbaeclfgeai6mbkkkuee97dnadcd4ae2c98GgeTmbcbhdinababpbbbgicwp:Recwp:Sep;6eaicep:SepxbbjFbbjFbbjFbbjFp9opxbbjZbbjZbbjZbbjZp:Uep;Mepkbbabczfhbadclfgdae6mbkkk:Sodw97euaec98Ghedndnadcl9hmbaeTmecbhdinabpxbbuJbbuJbbuJbbuJabpbbbgicKp:TeglaicYp:Tep9qgvcdp:Teavp9qgvclp:Teavp9qgop;6ep;Negvaicwp:RecKp:SegraipxFbbbFbbbFbbbFbbbgwp9ogDp:Uep;6ep;Mepxbbn0bbn0bbn0bbn0gqp;Kecwp:RepxbFbbbFbbbFbbbFbbp9oavaDarp:Xeaiczp:RecKp:Segip:Uep;6ep;Meaqp;Keawp9op9qavaDaraip:Uep:Xep;6ep;Meaqp;Keczp:RepxbbFbbbFbbbFbbbFbp9op9qavaoalcep:Rep9oalpxebbbebbbebbbebbbp9op9qp;6ep;Meaqp;KecKp:Rep9qpkbbabczfhbadclfgdae6mbxdkkaeTmbcbhdinabczfgkpxbFu9hbFu9hbFu9hbFu9habpbbbglakpbbbgrpmlvorxmPsCXQL358E8Fgvczp:TegqavcHp:Tep9qgicdp:Teaip9qgiclp:Teaip9qgicwp:Teaip9qgop;6ep;NegialarpmbediwDqkzHOAKY8AEgDpxFFbbFFbbFFbbFFbbglp9ograDczp:Segwp:Ueavczp:Reczp:SegDp:Xep;6ep;Mepxbbn0bbn0bbn0bbn0gvp;Kealp9oaiarawaDp:Uep:Xep;6ep;Meavp;Keczp:Rep9qgwaiaoaqcep:Rep9oaqpxebbbebbbebbbebbbp9op9qp;6ep;Meavp;Keczp:ReaiaDarp:Uep;6ep;Meavp;Kealp9op9qgipmwDKYqk8AExm35Ps8E8FpkbbabawaipmbezHdiOAlvCXorQLpkbbabcafhbadclfgdae6mbkkk9teiucbcbydj:G:cjbgeabcifc98GfgbBdj:G:cjbdndnabZbcztgd9nmbcuhiabad9RcFFifcz4nbcuSmekaehikaikkxebcj:Gdklz:zbb";
+  var detector = new Uint8Array([
+    0,
+    97,
+    115,
+    109,
+    1,
+    0,
+    0,
+    0,
+    1,
+    4,
+    1,
+    96,
+    0,
+    0,
+    3,
+    3,
+    2,
+    0,
+    0,
+    5,
+    3,
+    1,
+    0,
+    1,
+    12,
+    1,
+    0,
+    10,
+    22,
+    2,
+    12,
+    0,
+    65,
+    0,
+    65,
+    0,
+    65,
+    0,
+    252,
+    10,
+    0,
+    0,
+    11,
+    7,
+    0,
+    65,
+    0,
+    253,
+    15,
+    26,
+    11
+  ]);
+  var wasmpack = new Uint8Array([
+    32,
+    0,
+    65,
+    2,
+    1,
+    106,
+    34,
+    33,
+    3,
+    128,
+    11,
+    4,
+    13,
+    64,
+    6,
+    253,
+    10,
+    7,
+    15,
+    116,
+    127,
+    5,
+    8,
+    12,
+    40,
+    16,
+    19,
+    54,
+    20,
+    9,
+    27,
+    255,
+    113,
+    17,
+    42,
+    67,
+    24,
+    23,
+    146,
+    148,
+    18,
+    14,
+    22,
+    45,
+    70,
+    69,
+    56,
+    114,
+    101,
+    21,
+    25,
+    63,
+    75,
+    136,
+    108,
+    28,
+    118,
+    29,
+    73,
+    115
+  ]);
+  if (typeof WebAssembly !== "object") {
+    return {
+      supported: false
+    };
+  }
+  var wasm = WebAssembly.validate(detector) ? unpack(wasm_simd) : unpack(wasm_base);
+  var instance;
+  var ready = WebAssembly.instantiate(wasm, {}).then(function(result) {
+    instance = result.instance;
+    instance.exports.__wasm_call_ctors();
+  });
+  function unpack(data) {
+    var result = new Uint8Array(data.length);
+    for (var i = 0; i < data.length; ++i) {
+      var ch = data.charCodeAt(i);
+      result[i] = ch > 96 ? ch - 97 : ch > 64 ? ch - 39 : ch + 4;
+    }
+    var write = 0;
+    for (var i = 0; i < data.length; ++i) {
+      result[write++] = result[i] < 60 ? wasmpack[result[i]] : (result[i] - 60) * 64 + result[++i];
+    }
+    return result.buffer.slice(0, write);
+  }
+  function decode(instance2, fun, target, count, size, source, filter) {
+    var sbrk = instance2.exports.sbrk;
+    var count4 = count + 3 & ~3;
+    var tp = sbrk(count4 * size);
+    var sp = sbrk(source.length);
+    var heap = new Uint8Array(instance2.exports.memory.buffer);
+    heap.set(source, sp);
+    var res = fun(tp, count, size, sp, source.length);
+    if (res == 0 && filter) {
+      filter(tp, count4, size);
+    }
+    target.set(heap.subarray(tp, tp + count * size));
+    sbrk(tp - sbrk(0));
+    if (res != 0) {
+      throw new Error("Malformed buffer data: " + res);
+    }
+  }
+  var filters = {
+    NONE: "",
+    OCTAHEDRAL: "meshopt_decodeFilterOct",
+    QUATERNION: "meshopt_decodeFilterQuat",
+    EXPONENTIAL: "meshopt_decodeFilterExp",
+    COLOR: "meshopt_decodeFilterColor"
+  };
+  var decoders = {
+    ATTRIBUTES: "meshopt_decodeVertexBuffer",
+    TRIANGLES: "meshopt_decodeIndexBuffer",
+    INDICES: "meshopt_decodeIndexSequence"
+  };
+  var workers = [];
+  var requestId = 0;
+  function createWorker(url) {
+    var worker = {
+      object: new Worker(url),
+      pending: 0,
+      requests: {}
+    };
+    worker.object.onmessage = function(event) {
+      var data = event.data;
+      worker.pending -= data.count;
+      worker.requests[data.id][data.action](data.value);
+      delete worker.requests[data.id];
+    };
+    return worker;
+  }
+  function initWorkers(count) {
+    var source = "self.ready = WebAssembly.instantiate(new Uint8Array([" + new Uint8Array(wasm) + "]), {}).then(function(result) { result.instance.exports.__wasm_call_ctors(); return result.instance; });self.onmessage = " + workerProcess.name + ";" + decode.toString() + workerProcess.toString();
+    var blob = new Blob([source], { type: "text/javascript" });
+    var url = URL.createObjectURL(blob);
+    for (var i = workers.length; i < count; ++i) {
+      workers[i] = createWorker(url);
+    }
+    for (var i = count; i < workers.length; ++i) {
+      workers[i].object.postMessage({});
+    }
+    workers.length = count;
+    URL.revokeObjectURL(url);
+  }
+  function decodeWorker(count, size, source, mode, filter) {
+    var worker = workers[0];
+    for (var i = 1; i < workers.length; ++i) {
+      if (workers[i].pending < worker.pending) {
+        worker = workers[i];
+      }
+    }
+    return new Promise(function(resolve, reject) {
+      var data = new Uint8Array(source);
+      var id = ++requestId;
+      worker.pending += count;
+      worker.requests[id] = { resolve, reject };
+      worker.object.postMessage({ id, count, size, source: data, mode, filter }, [data.buffer]);
+    });
+  }
+  function workerProcess(event) {
+    var data = event.data;
+    self.ready.then(function(instance2) {
+      if (!data.id) {
+        return self.close();
+      }
+      try {
+        var target = new Uint8Array(data.count * data.size);
+        decode(instance2, instance2.exports[data.mode], target, data.count, data.size, data.source, instance2.exports[data.filter]);
+        self.postMessage({ id: data.id, count: data.count, action: "resolve", value: target }, [target.buffer]);
+      } catch (error) {
+        self.postMessage({ id: data.id, count: data.count, action: "reject", value: error });
+      }
+    });
+  }
+  return {
+    ready,
+    supported: true,
+    useWorkers: function(count) {
+      initWorkers(count);
+    },
+    decodeVertexBuffer: function(target, count, size, source, filter) {
+      decode(instance, instance.exports.meshopt_decodeVertexBuffer, target, count, size, source, instance.exports[filters[filter]]);
+    },
+    decodeIndexBuffer: function(target, count, size, source) {
+      decode(instance, instance.exports.meshopt_decodeIndexBuffer, target, count, size, source);
+    },
+    decodeIndexSequence: function(target, count, size, source) {
+      decode(instance, instance.exports.meshopt_decodeIndexSequence, target, count, size, source);
+    },
+    decodeGltfBuffer: function(target, count, size, source, mode, filter) {
+      decode(instance, instance.exports[decoders[mode]], target, count, size, source, instance.exports[filters[filter]]);
+    },
+    decodeGltfBufferAsync: function(count, size, source, mode, filter) {
+      if (workers.length > 0) {
+        return decodeWorker(count, size, source, decoders[mode], filters[filter]);
+      }
+      return ready.then(function() {
+        var target = new Uint8Array(count * size);
+        decode(instance, instance.exports[decoders[mode]], target, count, size, source, instance.exports[filters[filter]]);
+        return target;
+      });
+    }
+  };
+})();
+
+// packages/core/runtime3d/MeshoptModelDecoder.ts
+var EXT = "EXT_meshopt_compression";
+var object = (value) => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw Error("Expected glTF object");
+  return value;
+};
+var integer = (value, min = 0) => {
+  if (typeof value !== "number" || !Number.isSafeInteger(value) || value < min) throw Error("Invalid glTF byte count/index");
+  return value;
+};
+var align = (value) => Math.ceil(value / 4) * 4;
+var ZhudaMeshoptModelDecoder = class {
+  constructor() {
+    this.descriptor = Object.freeze({
+      format: "meshopt",
+      name: "meshoptimizer",
+      version: "1.3.0",
+      integritySha256: "10b313edaa0e322b0c1b46443f6c8b186b42139fe1eca189d50c09511d0ebedc"
+    });
+    this.disposed = false;
+  }
+  async decode({ assetId, bytes, signal, maxOutputBytes }) {
+    const check = () => {
+      if (this.disposed || signal.aborted) throw new DOMException("Meshopt decode cancelled", "AbortError");
+    };
+    check();
+    if (!MeshoptDecoder.supported) throw new ModelDecoderError("unsupported", "Meshopt requires WebAssembly", { format: "meshopt", assetId });
+    if (!Number.isSafeInteger(maxOutputBytes) || maxOutputBytes <= 0) throw Error("Invalid Meshopt output limit");
+    const { document: document2, binary } = readGltfAssetDocument(bytes);
+    const report = inspectGltfDocument(document2);
+    if (report.diagnostics.some((d) => d.severity === "error" && !(d.code === "UNSUPPORTED_REQUIRED_EXTENSION" && d.extension === EXT)))
+      throw Error("Invalid or unsupported glTF input: " + report.diagnostics.filter((d) => d.severity === "error").map((d) => d.message).join("; "));
+    if (!Array.isArray(document2.extensionsUsed) || !document2.extensionsUsed.includes(EXT)) throw Error("Meshopt extension is not declared");
+    const sourceBuffers = document2.buffers;
+    const views = document2.bufferViews;
+    if (!Array.isArray(sourceBuffers) || !Array.isArray(views)) throw Error("Meshopt requires buffers and bufferViews");
+    let bin;
+    if (binary) {
+      const data = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+      let offset2 = 12, chunks = 0;
+      while (offset2 < bytes.byteLength) {
+        if (offset2 + 8 > bytes.byteLength) throw Error("Truncated GLB chunk");
+        const size = data.getUint32(offset2, true), kind = data.getUint32(offset2 + 4, true);
+        if (size % 4 || offset2 + 8 + size > bytes.byteLength) throw Error("Invalid GLB chunk length");
+        if (chunks === 0 && kind !== 1313821514) throw Error("GLB JSON must be first");
+        if (kind === 5130562) {
+          if (bin || chunks !== 1) throw Error("Duplicate or misplaced GLB binary chunk");
+          bin = bytes.subarray(offset2 + 8, offset2 + 8 + size);
+        } else if (kind !== 1313821514 || chunks !== 0) throw Error("Unsupported GLB chunk");
+        offset2 += size + 8;
+        chunks++;
+      }
+    }
+    const buffers = /* @__PURE__ */ new Map();
+    let embeddedBytes = 0;
+    const buffer = (value) => {
+      const index = integer(value), source = object(sourceBuffers[index]);
+      if (buffers.has(index)) return buffers.get(index);
+      const length = integer(source.byteLength), uri = source.uri;
+      let result;
+      if (uri === void 0 && index === 0 && bin) result = bin;
+      else if (typeof uri === "string" && /^data:(application\/(octet-stream|gltf-buffer))?;base64,/.test(uri)) {
+        const encoded = uri.slice(uri.indexOf(",") + 1);
+        if (!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(encoded) || Math.floor(encoded.length * 3 / 4) > maxOutputBytes + 2) throw Error("Invalid or oversized embedded buffer");
+        result = Uint8Array.from(atob(encoded), (c) => c.charCodeAt(0));
+      } else throw Error("Meshopt requires embedded buffers; no external fetch or missing fallback bytes");
+      if (result.byteLength < length || result.byteLength > length + (uri === void 0 ? 3 : 0)) throw Error("Embedded buffer length mismatch");
+      embeddedBytes += result.byteLength;
+      if (embeddedBytes > maxOutputBytes) throw Error("Meshopt embedded buffer budget exceeded");
+      buffers.set(index, result.subarray(0, length));
+      return buffers.get(index);
+    };
+    for (const item of document2.images ?? []) {
+      const image = object(item);
+      if (image.uri !== void 0 && (typeof image.uri !== "string" || !image.uri.startsWith("data:"))) throw Error("Meshopt requires embedded images");
+    }
+    const plans = views.map((raw, index) => {
+      const view = object(raw), extensions = view.extensions === void 0 ? {} : object(view.extensions);
+      const e = extensions[EXT] === void 0 ? void 0 : object(extensions[EXT]);
+      const length = integer(view.byteLength, 1), fallbackIndex = integer(view.buffer);
+      const fallback = object(sourceBuffers[fallbackIndex]);
+      if (integer(view.byteOffset ?? 0) + length > integer(fallback.byteLength)) throw Error(`bufferViews[${index}] exceeds declared fallback buffer`);
+      if (!e) return { view, length, source: buffer(view.buffer), offset: integer(view.byteOffset ?? 0), compressedLength: length, e };
+      const stride = integer(e.byteStride, 1), count = integer(e.count, 1), mode = e.mode, filter = e.filter ?? "NONE";
+      if (stride * count !== length || view.byteStride !== void 0 && view.byteStride !== stride || !["ATTRIBUTES", "TRIANGLES", "INDICES"].includes(String(mode)) || !["NONE", "OCTAHEDRAL", "QUATERNION", "EXPONENTIAL"].includes(String(filter)) || mode === "ATTRIBUTES" && (stride % 4 !== 0 || stride > 256) || mode !== "ATTRIBUTES" && (![2, 4].includes(stride) || filter !== "NONE") || mode === "TRIANGLES" && count % 3 !== 0 || filter === "OCTAHEDRAL" && ![4, 8].includes(stride) || filter === "QUATERNION" && stride !== 8 || filter === "EXPONENTIAL" && stride % 4 !== 0) throw Error(`Invalid Meshopt layout at bufferViews[${index}]`);
+      return { view, length, source: buffer(e.buffer), offset: integer(e.byteOffset ?? 0), compressedLength: integer(e.byteLength, 1), e };
+    });
+    let total = 0;
+    for (const p of plans) {
+      if (p.offset + p.compressedLength > p.source.byteLength) throw Error("Meshopt source range exceeds buffer");
+      total += align(p.length);
+      if (!Number.isSafeInteger(total) || total > maxOutputBytes) throw Error("Meshopt decoded output budget exceeded");
+    }
+    await MeshoptDecoder.ready;
+    check();
+    const output = new Uint8Array(total);
+    let offset = 0;
+    for (const p of plans) {
+      check();
+      const target = output.subarray(offset, offset + p.length), source = p.source.subarray(p.offset, p.offset + p.compressedLength);
+      if (p.e) MeshoptDecoder.decodeGltfBuffer(target, p.e.count, p.e.byteStride, source, p.e.mode, p.e.filter ?? "NONE");
+      else target.set(source);
+      p.view.buffer = 0;
+      p.view.byteOffset = offset;
+      if (p.view.extensions) {
+        delete object(p.view.extensions)[EXT];
+        if (!Object.keys(object(p.view.extensions)).length) delete p.view.extensions;
+      }
+      offset += align(p.length);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+    check();
+    document2.buffers = [{ byteLength: output.byteLength }];
+    for (const name of ["extensionsUsed", "extensionsRequired"]) if (Array.isArray(document2[name])) {
+      document2[name] = document2[name].filter((x) => x !== EXT);
+      if (!document2[name].length) delete document2[name];
+    }
+    if (inspectGltfDocument(document2).diagnostics.some((d) => d.severity === "error")) throw Error("Unhandled Meshopt extension location");
+    const json = new TextEncoder().encode(JSON.stringify(document2)), jsonLength = align(json.byteLength);
+    const fileLength = 12 + 8 + jsonLength + 8 + output.byteLength;
+    if (fileLength > maxOutputBytes || fileLength > 4294967295) throw Error("Meshopt GLB output budget exceeded");
+    const glb = new Uint8Array(fileLength), header = new DataView(glb.buffer);
+    header.setUint32(0, 1179937895, true);
+    header.setUint32(4, 2, true);
+    header.setUint32(8, fileLength, true);
+    header.setUint32(12, jsonLength, true);
+    header.setUint32(16, 1313821514, true);
+    glb.fill(32, 20, 20 + jsonLength);
+    glb.set(json, 20);
+    header.setUint32(20 + jsonLength, output.byteLength, true);
+    header.setUint32(24 + jsonLength, 5130562, true);
+    glb.set(output, 28 + jsonLength);
+    return { assetId, format: "meshopt", data: glb, byteLength: glb.byteLength, release() {
+    } };
+  }
+  dispose() {
+    this.disposed = true;
+  }
+};
+
 // packages/core/runtime3d/SceneQueries.ts
 var ZhudaSceneQueries = class {
   constructor() {
@@ -12938,6 +13662,204 @@ var ZhudaAssetShowcase = class {
     this.pipeline = null;
     if (!this.camera.destroyed) this.camera.opaquePass = this.previousOpaque;
     owners.delete(this.camera);
+  }
+};
+
+// packages/core/runtime3d/Timeline.ts
+var abortOffline = () => new DOMException("Offline frame recording cancelled", "AbortError");
+function validateFrameCapture(value) {
+  if (!value || value.ready !== true || typeof value.imagePath !== "string" || !value.imagePath)
+    throw Error("Offline frame capture must provide ready:true and imagePath.");
+  if (value.metrics !== void 0) {
+    if (!value.metrics || typeof value.metrics !== "object" || Array.isArray(value.metrics))
+      throw Error("Offline frame metrics must be an object.");
+    for (const [key, metric] of Object.entries(value.metrics))
+      if (!Number.isFinite(metric)) throw Error(`Offline frame metric ${key} must be finite.`);
+  }
+  return Object.freeze({ ...value, metrics: value.metrics ? Object.freeze({ ...value.metrics }) : void 0 });
+}
+function validValue(value, kind) {
+  if (kind === "number") return typeof value === "number" && Number.isFinite(value);
+  if (kind === "boolean") return typeof value === "boolean";
+  if (kind === "event") return typeof value === "string";
+  return kind === "vector" && Array.isArray(value) && value.length > 0 && value.every((x) => typeof x === "number" && Number.isFinite(x));
+}
+function validateTimelineSpec(spec) {
+  const errors = [];
+  if (!spec || typeof spec !== "object" || Array.isArray(spec)) return ["Timeline spec must be an object."];
+  const value = spec;
+  if (value.schemaVersion !== 1) errors.push("Timeline schemaVersion must be 1.");
+  if (!Number.isFinite(value.duration) || (value.duration ?? 0) <= 0) errors.push("Timeline duration must be positive.");
+  if (!Array.isArray(value.tracks) || !value.tracks.length) return [...errors, "Timeline requires at least one track."];
+  const ids = /* @__PURE__ */ new Set(), targets = /* @__PURE__ */ new Set();
+  for (const [index, track] of value.tracks.entries()) {
+    if (!track || typeof track !== "object" || Array.isArray(track)) {
+      errors.push(`Track ${index} must be an object.`);
+      continue;
+    }
+    const t = track;
+    if (typeof t.id !== "string" || !t.id || ids.has(t.id)) errors.push(`Track ${index} has a duplicate or empty id.`);
+    else ids.add(t.id);
+    if (typeof t.target !== "string" || !t.target) errors.push(`Track ${index} target is required.`);
+    if (t.kind !== "event") {
+      if (targets.has(t.target)) errors.push(`Track ${index} has a duplicate value target.`);
+      targets.add(t.target);
+    }
+    if (!["number", "boolean", "vector", "event"].includes(t.kind)) errors.push(`Track ${index} kind is invalid.`);
+    if (t.interpolation !== void 0 && !["linear", "step"].includes(t.interpolation)) errors.push(`Track ${index} interpolation is invalid.`);
+    if ((t.kind === "event" || t.kind === "boolean") && t.interpolation === "linear") errors.push(`Track ${index} ${t.kind} interpolation must be step.`);
+    if (!Array.isArray(t.keys) || !t.keys.length) {
+      errors.push(`Track ${index} requires keys.`);
+      continue;
+    }
+    let previous = -Infinity;
+    const dimensions = Array.isArray(t.keys[0]?.value) ? t.keys[0].value.length : -1;
+    for (const [keyIndex, key] of t.keys.entries()) {
+      if (!key || !Number.isFinite(key.time) || key.time < 0 || key.time > (value.duration ?? 0) || key.time <= previous) errors.push(`Track ${index} key ${keyIndex} time is invalid or not increasing.`);
+      previous = key?.time ?? previous;
+      if (!key || !validValue(key.value, t.kind) || t.kind === "vector" && (!Array.isArray(key.value) || key.value.length !== dimensions)) errors.push(`Track ${index} key ${keyIndex} value does not match ${t.kind}.`);
+    }
+  }
+  return errors;
+}
+function cloneValue(value) {
+  return Array.isArray(value) ? [...value] : value;
+}
+function valueAt(track, time) {
+  const keys = track.keys;
+  if (time <= keys[0].time) return cloneValue(keys[0].value);
+  const last = keys[keys.length - 1];
+  if (time >= last.time) return cloneValue(last.value);
+  let next = 1;
+  while (next < keys.length && keys[next].time <= time) next++;
+  const a = keys[next - 1], b = keys[next];
+  if (track.kind !== "number" && track.kind !== "vector" || track.interpolation === "step") return cloneValue(a.value);
+  const t = (time - a.time) / (b.time - a.time);
+  if (track.kind === "number") return a.value * (1 - t) + b.value * t;
+  return a.value.map((v, i) => v * (1 - t) + b.value[i] * t);
+}
+var ZhudaTimelineSequencer = class {
+  constructor(spec, bindings) {
+    this.time = 0;
+    this.disposed = false;
+    const errors = validateTimelineSpec(spec);
+    if (errors.length) throw Error(errors.join(" "));
+    this.spec = Object.freeze({ schemaVersion: 1, duration: spec.duration, tracks: Object.freeze(spec.tracks.map((track) => Object.freeze({ ...track, keys: Object.freeze(track.keys.map((key) => Object.freeze({ time: key.time, value: Array.isArray(key.value) ? Object.freeze([...key.value]) : key.value }))) }))) });
+    this.bindings = Object.freeze(Object.fromEntries(Object.entries(bindings).map(([key, value]) => [key, Object.freeze({ ...value })])));
+    for (const track of this.spec.tracks) if (typeof this.bindings[track.target]?.[track.kind === "event" ? "cue" : "set"] !== "function") throw Error(`Missing timeline binding: ${track.target}`);
+    this.apply(this.time, false);
+  }
+  check() {
+    if (this.disposed) throw Error("Disposed timeline sequencer.");
+  }
+  apply(time, emitEvents, from = this.time) {
+    for (const track of this.spec.tracks) {
+      const binding = this.bindings[track.target];
+      if (track.kind === "event") {
+        if (emitEvents && time >= from) {
+          for (const key of track.keys) if (key.time > from && key.time <= time) binding.cue?.(key.value, key.time, track);
+        }
+      } else binding.set?.(valueAt(track, time), time, track);
+    }
+  }
+  sample(time) {
+    this.check();
+    if (!Number.isFinite(time) || time < 0 || time > this.spec.duration) throw Error("Timeline sample is outside duration.");
+    return Object.freeze(Object.fromEntries(this.spec.tracks.filter((track) => track.kind !== "event").map((track) => [track.target, valueAt(track, time)])));
+  }
+  seek(time, options = {}) {
+    this.check();
+    if (!Number.isFinite(time) || time < 0 || time > this.spec.duration) throw Error("Timeline seek is outside duration.");
+    const from = this.time;
+    this.time = time;
+    this.apply(time, options.emitEvents === true, from);
+  }
+  update(deltaSeconds) {
+    this.check();
+    if (!Number.isFinite(deltaSeconds) || deltaSeconds < 0 || deltaSeconds > 10) throw Error("Timeline delta must be 0..10 seconds.");
+    const from = this.time;
+    this.time = Math.min(this.spec.duration, this.time + deltaSeconds);
+    this.apply(this.time, true, from);
+    return this.time;
+  }
+  reset() {
+    this.seek(0);
+  }
+  get currentTime() {
+    return this.time;
+  }
+  get complete() {
+    return this.time >= this.spec.duration;
+  }
+  dispose() {
+    this.disposed = true;
+  }
+};
+var ZhudaOfflineFrameRecorder = class {
+  constructor(options) {
+    this.disposed = false;
+    this.recording = false;
+    this.controller = null;
+    if (!options || !Number.isFinite(options.durationSeconds) || options.durationSeconds <= 0)
+      throw Error("Offline duration must be positive.");
+    if (!Number.isFinite(options.fps) || options.fps <= 0 || options.fps > 1e3)
+      throw Error("Offline fps must be 0..1000.");
+    const exactFrames = options.durationSeconds * options.fps;
+    if (!Number.isSafeInteger(Math.round(exactFrames)) || Math.abs(exactFrames - Math.round(exactFrames)) > 1e-7)
+      throw Error("Offline durationSeconds * fps must be an integer.");
+    this.frameCount = Math.round(exactFrames) + 1;
+    const maxFrames = options.maxFrames ?? 1e5;
+    if (!Number.isSafeInteger(maxFrames) || maxFrames <= 0 || this.frameCount > maxFrames)
+      throw Error("Offline frame count exceeds maxFrames.");
+    if (typeof options.advance !== "function" || typeof options.capture !== "function")
+      throw Error("Offline recorder requires advance and capture callbacks.");
+    if (!Number.isSafeInteger(options.stepTimeoutMs ?? 15e3) || (options.stepTimeoutMs ?? 15e3) <= 0 || (options.stepTimeoutMs ?? 15e3) > 2147483647) throw Error("Invalid offline step deadline.");
+    this.options = Object.freeze({ ...options });
+  }
+  check() {
+    if (this.disposed) throw Error("Disposed offline frame recorder.");
+    if (this.options.signal?.aborted) throw abortOffline();
+  }
+  async record() {
+    this.check();
+    if (this.recording) throw Error("Offline frame recorder is already recording.");
+    this.recording = true;
+    const controller = this.controller = new AbortController();
+    const abort = () => controller.abort(this.options.signal?.reason ?? abortOffline());
+    this.options.signal?.addEventListener("abort", abort, { once: true });
+    const step = async (fn) => {
+      const timer = setTimeout(() => controller.abort(new DOMException("Offline callback timed out", "TimeoutError")), this.options.stepTimeoutMs ?? 15e3);
+      try {
+        return await awaitAbortable(Promise.resolve().then(() => {
+          if (controller.signal.aborted) throw controller.signal.reason;
+          return fn();
+        }), controller.signal);
+      } finally {
+        clearTimeout(timer);
+      }
+    };
+    const frames = [];
+    const deltaSeconds = 1 / this.options.fps;
+    try {
+      for (let index = 0; index < this.frameCount; index++) {
+        this.check();
+        const frame = Object.freeze({ index, time: index / this.options.fps, deltaSeconds: index === 0 ? 0 : deltaSeconds });
+        await step(() => this.options.advance(frame, controller.signal));
+        this.check();
+        const capture = validateFrameCapture(await step(() => this.options.capture(frame, controller.signal)));
+        this.check();
+        frames.push(Object.freeze({ ...frame, capture }));
+      }
+      return Object.freeze(frames);
+    } finally {
+      this.recording = false;
+      this.controller = null;
+      this.options.signal?.removeEventListener("abort", abort);
+    }
+  }
+  dispose() {
+    this.disposed = true;
+    this.controller?.abort(abortOffline());
   }
 };
 
@@ -14537,10 +15459,12 @@ zhudaSurface(s,zhudaUV,pixel.positionWS,pixel.normalWS);inputs.diffuseColor=max(
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
   AssetProviderError,
+  ChunkedAssetProvider,
   DirectoryAssetProvider,
   ENGINE_PRESET_PROFILES,
   EngineGuard,
   IframeSoundAdapter,
+  ModelDecoderError,
   NoSleepAdapter,
   PixelCalibrationEngine,
   SpineVisualContract,
@@ -14583,10 +15507,13 @@ zhudaSurface(s,zhudaUV,pixel.positionWS,pixel.normalWS);inputs.diffuseColor=max(
   ZhudaLayaRibbonRenderer3D,
   ZhudaLayeredClock,
   ZhudaLitSurfaceMaterial,
+  ZhudaMeshoptModelDecoder,
   ZhudaModelCompatibilityError,
+  ZhudaModelDecoderRegistry,
   ZhudaModelInspector,
   ZhudaModelLibrary,
   ZhudaObjectPool,
+  ZhudaOfflineFrameRecorder,
   ZhudaParticleEventLink,
   ZhudaParticleMesh3D,
   ZhudaParticleSystem,
@@ -14622,6 +15549,7 @@ zhudaSurface(s,zhudaUV,pixel.positionWS,pixel.normalWS);inputs.diffuseColor=max(
   ZhudaTerrain3D,
   ZhudaThemeAssetProvider,
   ZhudaThemeController,
+  ZhudaTimelineSequencer,
   ZhudaTimerScheduler,
   ZhudaUI,
   ZhudaVfxCamera,
@@ -14643,6 +15571,7 @@ zhudaSurface(s,zhudaUV,pixel.positionWS,pixel.normalWS);inputs.diffuseColor=max(
   disposeMigratedMaterial,
   disposeSurfaceMaterial,
   findPrefabNode,
+  gltfAssetCapabilities,
   gltfExtensionCapabilities,
   identity4,
   inspectGltfAsset,
@@ -14680,6 +15609,7 @@ zhudaSurface(s,zhudaUV,pixel.positionWS,pixel.normalWS);inputs.diffuseColor=max(
   validateShaderSpec,
   validateTerrain2D,
   validateThemeManifest,
+  validateTimelineSpec,
   validateVfxMaterial,
   zhudaComponent
 });

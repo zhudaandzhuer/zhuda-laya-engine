@@ -8,7 +8,7 @@ The default provider is `DirectoryAssetProvider`. It resolves normalized IDs
 under a base URL, applies an abortable timeout, limits response size, reports
 download and verification progress, and can verify a manifest SHA-256.
 `ChunkedAssetProvider` is the first optional delivery layer for heavy scenes: it
-fetches a bounded, SHA-verified chunk, copies the requested logical range and
+fetches a bounded chunk (SHA-verified when a digest is supplied), copies the requested logical range and
 returns the same `AssetProvider` result. Scenes still know only logical IDs.
 
 ```ts
@@ -25,23 +25,31 @@ const glb = await assets.load("vehicles/s800.glb", {
 
 `createProviderAssetCache` adapts a provider to `ZhudaAssetCache`, retaining
 shared in-flight requests, per-caller cancellation, bounded idle ownership and
-explicit destruction. This is the seam for a later packed provider; no packed
-format is part of the engine runtime yet.
+explicit destruction. Chunk bytes are an optional delivery format through this
+same seam; no encrypted/WASM vault is shipped.
 
 ```ts
 const assets = new ChunkedAssetProvider({
   baseUrl: "/assets/",
   manifest: {
     schemaVersion: 1,
-    chunks: [{id: "scene-1", url: "chunks/scene-1.bin", sha256: "..."}],
+    chunks: [{id: "scene-1", url: "chunks/scene-1.bin", /* optional real SHA-256 belongs here */ bytes: 1234}],
     assets: [{id: "scenes/harbor.glb", chunk: "scene-1", offset: 0, length: 1234, kind: "model"}],
   },
 });
 const scene = await assets.load("scenes/harbor.glb", {signal});
 ```
 
-The provider validates chunk URL scope, byte ranges, chunk and asset checksums,
-timeouts, cancellation and a bounded in-memory chunk cache. It is a delivery
+The provider snapshots its manifest and validates chunk URL scope, byte ranges,
+chunk and asset checksums, timeouts and cancellation. SHA checks are optional;
+supply actual digests to require integrity. The existing `ZhudaAssetCache`
+shares in-flight chunks and holds at most `maxCachedChunks` idle chunks (default
+4, zero disables warm retention); active leased chunks are additional memory.
+Each chunk is limited to `maxChunkBytes`, including streamed responses without
+Content-Length. Requests have independent cancellation. Disposal/timeout cannot
+repopulate the cache with late bytes. Returned assets are independent copies;
+caller mutation does not corrupt cached chunk data. The provider downloads
+whole chunks; it does not issue HTTP Range requests. It is a delivery
 experiment, not a claim that a particular chunk split improves startup or GPU
 memory; use the asset-packaging plan's device measurements before selecting it
 for production.

@@ -17,7 +17,7 @@ device checks and acceptance gates pass.
 | Plan | Status | Decision it prepares |
 | --- | --- | --- |
 | [Prefab isolation and consumer tooling](prefab-toolchain.md) | In progress | P0 consumer Prefab preview and evidence gate delivered in 1.1.0; P1/P2 UI, lifecycle, media and device work remains |
-| [Deferred asset packaging](asset-packaging.md) | In progress | Optional bounded ChunkedAssetProvider and decoder lifecycle seam are available; production chunk split, compressed decoder integration and device evidence remain pending |
+| [Deferred asset packaging](asset-packaging.md) | In progress | Optional shared chunk delivery and embedded Meshopt adapter; production chunk split, Draco/KTX2 and mobile evidence remain pending |
 | [Consumer delivery follow-ups](consumer-delivery-followups.md) | In progress | Original sample/BGM audio in one mixer, component dependency evidence and full vendor declaration repair |
 | [WebGPU delivery](records/webgpu-delivery/task.md) | Implemented; desktop verified | Real backend, exclusive compiler/browser delivery, GPU lifecycle and Windows reproducible entry; Windows hardware unavailable |
 | [Slot factory foundation](records/slot-factory-foundation/task.md) | Implemented; desktop verified | White-label, immutable themes, result presentation recovery and measured neutral 2D pilot; customer/native/device acceptance separate |
@@ -26,7 +26,7 @@ device checks and acceptance gates pass.
 | [Astra runtime feedback](records/astra-runtime-feedback/task.md) | Implemented; desktop verified | DPR, streams, voice retirement, driver/recovery, backend seam and clean declarations; physical devices unavailable |
 | [Browser SDK delivery](records/browser-sdk-delivery/task.md) | Implemented; desktop verified | Versioned browser bundles, SRI, hosted examples and cross-origin HTML; mobile unavailable |
 | [RPG integration feedback](records/rpg-feedback-hardening/task.md) | Implemented; desktop verified | Lifecycle completion, official candidate acceptance, component proofs and leased primitive resources; physical devices unavailable |
-| [Desktop and Agent gates](desktop-and-agent-gates/task.md) | In progress; desktop preparation verified | Packaged Windows WebGPU host, generic keyframe gate, deterministic timeline and explicit model-format capabilities; Windows hardware and decoders pending |
+| [Desktop and Agent gates](desktop-and-agent-gates/task.md) | Implemented; macOS verified | [Hardening and evidence](desktop-and-agent-gates/hardening-verification.md): packaged host, PNG sequence comparison, timeline/recorder and actual Meshopt; Windows hardware still pending |
 
 Use [TEMPLATE.md](TEMPLATE.md) for new decision plans. For an implementation
 delegated to an agent, copy [TASK-TEMPLATE.md](TASK-TEMPLATE.md) and finish the

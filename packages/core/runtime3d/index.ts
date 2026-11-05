@@ -10,6 +10,7 @@ export * from "./CombatQueries.ts";
 export * from "./Assets.ts";
 export * from "./AssetProvider.ts";
 export * from "./ModelDecoder.ts";
+export * from "./MeshoptModelDecoder.ts";
 export * from "./Surfaces.ts";
 export * from "./Runtime.ts";
 export * from "./RuntimeDriver.ts";
@@ -24,7 +25,7 @@ export * from "./ModelInspector.ts";
 export * from "./AssetShowcase.ts";
 export { inspectGltfDocument, inspectGltfAsset, gltfExtensionCapabilities, gltfAssetCapabilities, ZhudaModelCompatibilityError } from "./ModelCompatibility.ts";
 export * from "./Timeline.ts";
-export type { ModelDiagnostic, ModelCompatibilityReport, ModelSourceInventory, GltfExtensionCapability } from "./ModelCompatibility.ts";
+export type { ModelDiagnostic, ModelCompatibilityReport, ModelSourceInventory, GltfExtensionCapability, GltfAssetCapability } from "./ModelCompatibility.ts";
 export * from "./Themes.ts";
 export * from "./ResultPlayback.ts";
 

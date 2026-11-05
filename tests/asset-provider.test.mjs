@@ -136,3 +136,34 @@ test("chunked provider rejects malformed ranges and checksum failures", async ()
   const provider = new ChunkedAssetProvider({ baseUrl: "https://example.test/", manifest: { schemaVersion: 1, chunks: [{ id: "x", url: "x" }], assets: [{ id: "a", chunk: "x", offset: 0, length: 2, sha256: "00".repeat(32) }] }, fetch: async () => new Response(new Uint8Array([1, 2])) });
   await assert.rejects(provider.load("a"), error => error.code === "integrity"); provider.dispose();
 });
+
+const chunkManifest = {schemaVersion:1,chunks:[{id:'c',url:'chunks/c',bytes:3}],assets:[{id:'a',chunk:'c',offset:0,length:3}]};
+test('chunk requests share existing cache with isolated cancellation and immutable manifest', async () => {
+  let done, loads=0;
+  const manifest=structuredClone(chunkManifest), abort=new AbortController();
+  const p=new ChunkedAssetProvider({baseUrl:'https://example.test/assets',manifest,fetch:async()=>{loads++; return new Promise(resolve=>done=()=>resolve(new Response(new Uint8Array([1,2,3]))));}});
+  manifest.assets[0].offset=2; manifest.chunks[0].url='../escape';
+  const first=p.load('a',{signal:abort.signal}), second=p.load('a');
+  abort.abort(); await assert.rejects(first,e=>e.code==='aborted'); done();
+  assert.deepEqual((await second).bytes,new Uint8Array([1,2,3])); assert.equal(loads,1);
+  for(let i=0;i<30;i++) {const a=await p.load('a');a.bytes[0]=9; assert.equal((await p.load('a')).bytes[0],1);}
+  p.dispose(); await assert.rejects(p.getManifest(),e=>e.code==='disposed');
+});
+test('chunk deadline/disposal settles ignoring fetch and never accepts a late result', async () => {
+  let finish, cancelled=0;
+  const p=new ChunkedAssetProvider({baseUrl:'https://example.test/assets/',manifest:chunkManifest,timeoutMs:10,fetch:()=>new Promise(resolve=>finish=()=>resolve(new Response(new ReadableStream({cancel(){cancelled++;}}))))});
+  await assert.rejects(p.load('a'),e=>e.code==='timeout'); p.dispose(); finish();
+  await new Promise(resolve=>setImmediate(resolve)); assert.equal(cancelled,1);
+  let finish2;
+  const p2=new ChunkedAssetProvider({baseUrl:'https://example.test/assets/',manifest:chunkManifest,fetch:()=>new Promise(resolve=>finish2=resolve)});
+  const pending=p2.load('a'); p2.dispose(); await assert.rejects(pending,e=>e.code==='disposed');
+  finish2(new Response(new Uint8Array([1,2,3])));
+});
+test('chunk read bounds work without content-length and reject ranges before IO', async () => {
+  let cancelled=0, calls=0;
+  const p=new ChunkedAssetProvider({baseUrl:'https://example.test/assets/',manifest:chunkManifest,maxChunkBytes:3,fetch:async()=>{calls++;return new Response(new ReadableStream({start(c){c.enqueue(new Uint8Array(4));},cancel(){cancelled++;}}));}});
+  await assert.rejects(p.load('a',{maxBytes:2}),e=>e.code==='too-large'); assert.equal(calls,0);
+  await assert.rejects(p.load('a'),e=>e.code==='too-large'); assert.equal(cancelled,1); p.dispose();
+  assert.throws(()=>new ChunkedAssetProvider({baseUrl:'https://example.test/assets',manifest:{...chunkManifest,chunks:[{id:'c',url:'../assets-evil/c'}]}}),/escapes/);
+  assert.throws(()=>new ChunkedAssetProvider({baseUrl:'https://example.test/',manifest:{...chunkManifest,assets:[{...chunkManifest.assets[0],sha256:'bad'}]}}),/checksum/);
+});

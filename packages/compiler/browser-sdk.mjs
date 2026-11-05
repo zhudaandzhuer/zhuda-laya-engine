@@ -49,7 +49,7 @@ export async function buildBrowserSdk({engineRoot=defaultRoot,outDir,profiles=['
     const features=[...BROWSER_PROFILES[profile]],topology=TopologyResolver.resolveByFeatures(features,renderer);
     const problems=TopologyResolver.auditFileSequence(topology.orderedFiles);
     if(problems.length)throw Error('Invalid browser topology: '+problems.map(p=>p.message).join('; '));
-    const inputs=[{path:'dist/sdk/zhuda-laya-engine.esm.js',sha256:hash(sdk)},{path:'assets/branding/zhuda-layaair-mark.svg',sha256:hash(svg)}];
+    const inputs=[{path:'vendor/meshoptimizer/LICENSE.txt',sha256:hash(fs.readFileSync(path.join(engineRoot,'vendor/meshoptimizer/LICENSE.txt')))},{path:'dist/sdk/zhuda-laya-engine.esm.js',sha256:hash(sdk)},{path:'assets/branding/zhuda-layaair-mark.svg',sha256:hash(svg)}];
     for(const file of ['browser-sdk.mjs','browser-sdk-example.mjs','browser-model-example.mjs','branding.mjs','webgpu-loader.mjs'])
       inputs.push({path:'packages/compiler/'+file,sha256:hash(fs.readFileSync(path.join(engineRoot,'packages/compiler',file)))});
     const libs=topology.orderedFiles.map(file=>{
@@ -73,7 +73,7 @@ export async function buildBrowserSdk({engineRoot=defaultRoot,outDir,profiles=['
     files.set(`example-${profile}.html`,Buffer.from(modelDocument ? modelBrowserExample(entry,JSON.parse(modelDocument)) : browserExample(entry)));
   }
   files.set('sdk-manifest.json',Buffer.from(JSON.stringify(manifest,null,2)+'\n'));
-  files.set('LICENSE.txt',Buffer.concat([fs.readFileSync(path.join(engineRoot,'LICENSE')),...(profiles.some(p=>p.endsWith('-webgpu'))?[fs.readFileSync(path.join(engineRoot,'vendor/laya-3.4.2/WEBGPU-LICENSES.txt'))]:[])]));
+  files.set('LICENSE.txt',Buffer.concat([fs.readFileSync(path.join(engineRoot,'LICENSE')),fs.readFileSync(path.join(engineRoot,'vendor/meshoptimizer/LICENSE.txt')),...(profiles.some(p=>p.endsWith('-webgpu'))?[fs.readFileSync(path.join(engineRoot,'vendor/laya-3.4.2/WEBGPU-LICENSES.txt'))]:[])]));
   files.set('index.html',Buffer.from(`<!doctype html><html lang="zh-Hant"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Zhuda Browser SDK ${version}</title><style>body{max-width:850px;margin:60px auto;padding:24px;background:#0d1724;color:#e5f1ff;font:18px/1.7 system-ui}a{color:#72d6eb}code{overflow-wrap:anywhere}</style><h1>豬大 Browser SDK ${version}</h1><p>單一 HTML，使用真正的 Zhuda × LayaAir 引擎。</p><ul>${profiles.map(p=>`<li><a href="example-${p}.html">${p.toUpperCase()} 可執行範例</a> · <a href="zhuda-${p}.js">完整 browser bundle</a></li>`).join('')}</ul><p>將範例中的相對 script src 換成此版本的完整網址，保留 integrity 與 crossorigin，即可從允許外部腳本的 HTML 引用。</p><p>使用固定 release 網址，不使用 latest。站內遊戲沙箱只允許自身版本資源：部署包內放入同一份 bundle，保留相對路徑。</p><p><a href="sdk-manifest.json">版本、依賴與完整性清單</a> · <a href="https://github.com/zhudaandzhuer/zhuda-laya-engine">公開 API 與開發路線</a></p><p>這是瀏覽器交付入口；Prefab 比對、遊戲驗收與裝置測試仍須完成。範例非完整遊戲。</p></html>`));
   const payload=[...files].map(([path,bytes])=>({path,bytes:bytes.length,sha256:hash(bytes)})).sort((a,b)=>a.path.localeCompare(b.path));
   files.set('payload-manifest.json',Buffer.from(JSON.stringify({fingerprint:hash(JSON.stringify(payload)),files:payload},null,2)+'\n'));

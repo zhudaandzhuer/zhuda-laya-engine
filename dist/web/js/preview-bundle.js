@@ -986,6 +986,15 @@ var ZhudaPreviewBundle = (() => {
   };
 
   // packages/core/runtime3d/ModelCompatibility.ts
+  var gltfAssetCapabilities = Object.freeze([
+    Object.freeze({ name: "glTF 2.0 JSON", kind: "container", status: "supported", message: "glTF 2.0 JSON can be inspected and loaded when its resources are self-contained.", hint: "Prefer a single GLB for consumer delivery." }),
+    Object.freeze({ name: "GLB 2.0", kind: "container", status: "supported", message: "GLB 2.0 with an embedded JSON and binary payload is supported.", hint: "Pass the complete GLB through AssetProvider." }),
+    Object.freeze({ name: "embedded buffers/images", kind: "delivery", status: "supported", message: "Embedded data is deterministic and provider-verifiable.", hint: "Record the logical asset SHA." }),
+    Object.freeze({ name: "external buffers/images", kind: "delivery", status: "unsupported", message: "The provider model loader does not fetch undeclared relative resource URLs.", hint: "Package buffers and images into a GLB or explicit provider assets." }),
+    Object.freeze({ name: "KHR_draco_mesh_compression", kind: "geometry-compression", status: "unsupported", message: "No pinned Draco decoder is shipped in this release.", hint: "Export an uncompressed GLB or add a separately verified decoder adapter." }),
+    Object.freeze({ name: "EXT_meshopt_compression", kind: "geometry-compression", status: "adapter-required", message: "Embedded glTF/GLB can be decoded by the optional pinned Meshopt adapter before native parsing.", hint: "Register ZhudaMeshoptModelDecoder with ZhudaModelDecoderRegistry and pass decoders plus provider to ZhudaModelLibrary; verify the model on target devices." }),
+    Object.freeze({ name: "KHR_texture_basisu", kind: "image-compression", status: "unsupported", message: "No pinned KTX2/Basis decoder and device upload contract is shipped in this release.", hint: "Use ordinary embedded images until the format gate passes on target devices." })
+  ]);
   var extensionNames = [
     "KHR_materials_anisotropy",
     "KHR_materials_clearcoat",

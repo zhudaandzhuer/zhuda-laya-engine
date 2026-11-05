@@ -1,6 +1,6 @@
 # Agent task: desktop-and-agent-gates
 
-Status: In progress
+Status: Implemented; macOS verified; Windows hardware acceptance remains unavailable
 Owner: engine maintainers
 Last reviewed: 2026-11-05
 
@@ -72,6 +72,10 @@ bundle and give all consumers a public, renderer-aware keyframe evidence gate.
 6. `git diff --check` and documentation link checks pass.
 
 ## Evidence to attach
+
+Current 1.12.0 results and superseding lifecycle/pixel-comparison work are in
+[hardening verification](hardening-verification.md). The original
+[verification](verification.md) records the earlier foundation only.
 
 - Unit test output and `npm run verify` log.
 - Windows host README and a target-machine JSON report containing OS, Electron,

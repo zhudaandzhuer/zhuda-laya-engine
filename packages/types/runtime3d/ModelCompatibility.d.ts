@@ -17,7 +17,7 @@ export interface GltfExtensionCapability {
 export interface GltfAssetCapability {
     name: string;
     kind: 'container' | 'delivery' | 'geometry-compression' | 'image-compression';
-    status: 'supported' | 'unsupported';
+    status: 'supported' | 'adapter-required' | 'unsupported';
     message: string;
     hint: string;
 }

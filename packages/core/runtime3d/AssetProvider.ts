@@ -1,3 +1,4 @@
+import { awaitAbortable } from "./AsyncOperation.ts";
 import type { ZhudaAssetCache } from "./Assets.ts";
 import { ZhudaAssetCache as AssetCache } from "./Assets.ts";
 
@@ -558,13 +559,11 @@ export class DirectoryAssetProvider implements AssetProvider {
 export class ChunkedAssetProvider implements AssetProvider {
   readonly name = "chunked";
   private readonly baseUrl: URL;
-  private readonly manifest: ChunkedAssetManifest;
   private readonly chunks = new Map<string, ChunkDescriptor>();
   private readonly assets = new Map<string, ChunkAssetRange>();
-  private readonly cache = new Map<string, Uint8Array>();
+  private readonly cache: AssetCache<Uint8Array>;
   private readonly timeoutMs: number;
   private readonly maxChunkBytes: number;
-  private readonly maxCachedChunks: number;
   private readonly fetchImpl: FetchLike;
   private readonly active = new Set<AbortController>();
   private disposed = false;
@@ -572,62 +571,68 @@ export class ChunkedAssetProvider implements AssetProvider {
   constructor(options: ChunkedAssetProviderOptions) {
     if (!options?.baseUrl) throw Error("ChunkedAssetProvider requires baseUrl");
     this.baseUrl = new URL(options.baseUrl, globalThis.location?.href || "http://localhost/");
+    if (!this.baseUrl.pathname.endsWith("/")) this.baseUrl.pathname += "/";
     if (!options.manifest || options.manifest.schemaVersion !== 1 || !Array.isArray(options.manifest.chunks) || !Array.isArray(options.manifest.assets)) throw Error("Invalid chunked asset manifest");
-    this.manifest = options.manifest;
-    for (const chunk of options.manifest.chunks) {
-      if (!chunk || !normalizeAssetId(chunk.id) || this.chunks.has(chunk.id) || typeof chunk.url !== "string" || !chunk.url) throw Error(`Invalid or duplicate chunk: ${chunk?.id}`);
-      if (chunk.bytes !== undefined && (!Number.isSafeInteger(chunk.bytes) || chunk.bytes < 0)) throw Error(`Invalid chunk byte size: ${chunk.id}`);
-      if (chunk.sha256 !== undefined && !/^[0-9a-f]{64}$/i.test(chunk.sha256)) throw Error(`Invalid chunk checksum: ${chunk.id}`);
-      this.chunks.set(chunk.id, chunk);
-    }
-    for (const asset of options.manifest.assets) {
-      const id = normalizeAssetId(asset.id);
-      if (id !== asset.id || this.assets.has(id) || !this.chunks.has(asset.chunk) || !Number.isSafeInteger(asset.offset) || asset.offset < 0 || !Number.isSafeInteger(asset.length) || asset.length < 0) throw Error(`Invalid chunk asset range: ${asset?.id}`);
-      if (asset.bytes !== undefined && asset.bytes !== asset.length) throw Error(`Chunk asset byte range mismatch: ${id}`);
-      this.assets.set(id, asset);
-    }
     this.timeoutMs = options.timeoutMs ?? 30_000;
     this.maxChunkBytes = options.maxChunkBytes ?? 256 * 1024 * 1024;
-    this.maxCachedChunks = options.maxCachedChunks ?? 4;
-    if (!Number.isFinite(this.timeoutMs) || this.timeoutMs <= 0 || !Number.isSafeInteger(this.maxChunkBytes) || this.maxChunkBytes < 1 || !Number.isInteger(this.maxCachedChunks) || this.maxCachedChunks < 1) throw Error("Invalid chunk provider limits");
+    const maxCachedChunks = options.maxCachedChunks ?? 4;
+    if (!Number.isSafeInteger(this.timeoutMs) || this.timeoutMs <= 0 || this.timeoutMs > 2_147_483_647 || !Number.isSafeInteger(this.maxChunkBytes) || this.maxChunkBytes < 1 || !Number.isSafeInteger(maxCachedChunks) || maxCachedChunks < 0) throw Error("Invalid chunk provider limits");
+    for (const chunk of options.manifest.chunks) {
+      if (!chunk || normalizeAssetId(chunk.id) !== chunk.id || this.chunks.has(chunk.id) || typeof chunk.url !== "string" || !chunk.url) throw Error(`Invalid or duplicate chunk: ${chunk?.id}`);
+      if (chunk.bytes !== undefined && (!Number.isSafeInteger(chunk.bytes) || chunk.bytes < 0 || chunk.bytes > this.maxChunkBytes)) throw Error(`Invalid chunk byte size: ${chunk.id}`);
+      if (chunk.sha256 !== undefined && !/^[0-9a-f]{64}$/i.test(chunk.sha256)) throw Error(`Invalid chunk checksum: ${chunk.id}`);
+      const url = new URL(chunk.url, this.baseUrl);
+      if (url.origin !== this.baseUrl.origin || !url.pathname.startsWith(this.baseUrl.pathname) || url.username || url.password || url.hash) throw new AssetProviderError("invalid-id", `Chunk URL escapes provider base: ${chunk.id}`);
+      const relative = decodeURIComponent(url.pathname.slice(this.baseUrl.pathname.length));
+      normalizeAssetId(relative);
+      this.chunks.set(chunk.id, Object.freeze({ ...chunk, url: url.href }));
+    }
+    for (const asset of options.manifest.assets) {
+      if (!asset) throw Error("Invalid chunk asset");
+      validateAssetManifest({schemaVersion: 1, entries: [asset]});
+      const id = normalizeAssetId(asset.id), chunk = this.chunks.get(asset.chunk);
+      if (id !== asset.id || this.assets.has(id) || !chunk || !Number.isSafeInteger(asset.offset) || asset.offset < 0 || !Number.isSafeInteger(asset.length) || asset.length < 0 || !Number.isSafeInteger(asset.offset + asset.length) || asset.offset + asset.length > (chunk.bytes ?? this.maxChunkBytes)) throw Error(`Invalid chunk asset range: ${id}`);
+      if (asset.bytes !== undefined && asset.bytes !== asset.length) throw Error(`Chunk asset byte range mismatch: ${id}`);
+      this.assets.set(id, Object.freeze({ ...asset, bytes: asset.length }));
+    }
     this.fetchImpl = options.fetch ?? globalThis.fetch?.bind(globalThis);
     if (!this.fetchImpl) throw Error("ChunkedAssetProvider requires fetch");
+    this.cache = new AssetCache((id, signal) => this.loadChunk(this.chunks.get(id)!, signal), () => {}, maxCachedChunks);
   }
 
-  getManifest(): Promise<AssetManifest> {
-    return Promise.resolve({ schemaVersion: 1, entries: [...this.assets.values()].map(({ offset: _offset, length: _length, ...entry }) => entry) });
+  async getManifest(signal?: AbortSignal): Promise<AssetManifest> {
+    if (this.disposed) throw new AssetProviderError("disposed", "Asset provider disposed");
+    if (signal?.aborted) throw abortReason(signal, "manifest");
+    return Object.freeze({ schemaVersion: 1, entries: Object.freeze([...this.assets.values()].map(({ offset: _offset, length: _length, ...entry }) => Object.freeze(entry))) });
   }
 
-  private remember(id: string, bytes: Uint8Array): void {
-    this.cache.delete(id); this.cache.set(id, bytes);
-    while (this.cache.size > this.maxCachedChunks) this.cache.delete(this.cache.keys().next().value!);
-  }
-
-  private async loadChunk(chunk: ChunkDescriptor, signal: AbortSignal, onProgress?: (loaded: number, total?: number) => void): Promise<Uint8Array> {
-    const cached = this.cache.get(chunk.id);
-    if (cached) { this.cache.delete(chunk.id); this.cache.set(chunk.id, cached); onProgress?.(cached.byteLength, cached.byteLength); return cached; }
-    const request = new AbortController();
-    const relay = () => request.abort(signal.reason);
-    signal.addEventListener("abort", relay, { once: true });
-    if (signal.aborted) relay();
-    this.active.add(request);
+  private async loadChunk(chunk: ChunkDescriptor, signal: AbortSignal): Promise<Uint8Array> {
+    const response = await awaitAbortable(this.fetchImpl(new URL(chunk.url), { signal, redirect: "error" }), signal,
+      late => { void late.body?.cancel().catch(() => {}); });
+    let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
     try {
-      const url = new URL(chunk.url, this.baseUrl);
-      if (url.origin !== this.baseUrl.origin || !url.pathname.startsWith(this.baseUrl.pathname)) throw new AssetProviderError("invalid-id", `Chunk URL escapes provider base: ${chunk.id}`);
-      const response = await this.fetchImpl(url, { signal: request.signal });
       if (!response.ok) throw new AssetProviderError("http", `Chunk HTTP ${response.status}: ${chunk.id}`, { id: chunk.id, status: response.status });
-      const length = Number(response.headers.get("content-length"));
-      if (Number.isFinite(length) && length > this.maxChunkBytes) throw new AssetProviderError("too-large", `Chunk exceeds ${this.maxChunkBytes} bytes: ${chunk.id}`, { id: chunk.id });
-      const bytes = new Uint8Array(await response.arrayBuffer());
-      if (bytes.byteLength > this.maxChunkBytes || chunk.bytes !== undefined && bytes.byteLength !== chunk.bytes) throw new AssetProviderError("integrity", `Chunk size mismatch: ${chunk.id}`, { id: chunk.id });
-      onProgress?.(bytes.byteLength, bytes.byteLength);
-      if (chunk.sha256 && (await sha256(bytes)) !== chunk.sha256.toLowerCase()) throw new AssetProviderError("integrity", `Chunk checksum mismatch: ${chunk.id}`, { id: chunk.id });
-      this.remember(chunk.id, bytes); return bytes;
-    } catch (error) {
-      if (signal.aborted || request.signal.aborted) throw abortReason(signal, chunk.id);
-      throw error;
+      const declared = response.headers.get("content-length");
+      if (declared !== null && Number(declared) > this.maxChunkBytes) throw new AssetProviderError("too-large", `Chunk exceeds ${this.maxChunkBytes} bytes: ${chunk.id}`);
+      if (!response.body) throw new AssetProviderError("integrity", `Chunk has no response body: ${chunk.id}`);
+      reader = response.body.getReader();
+      const pieces: Uint8Array[] = []; let length = 0;
+      while (true) {
+        const part = await awaitAbortable(reader.read(), signal);
+        if (part.done) break;
+        length += part.value.byteLength;
+        if (length > this.maxChunkBytes) throw new AssetProviderError("too-large", `Chunk exceeds ${this.maxChunkBytes} bytes: ${chunk.id}`);
+        pieces.push(part.value);
+      }
+      if (chunk.bytes !== undefined && length !== chunk.bytes) throw new AssetProviderError("integrity", `Chunk size mismatch: ${chunk.id}`);
+      const bytes = new Uint8Array(length); let offset = 0;
+      for (const part of pieces) { bytes.set(part, offset); offset += part.byteLength; }
+      if (chunk.sha256 && await awaitAbortable(sha256(bytes), signal) !== chunk.sha256.toLowerCase()) throw new AssetProviderError("integrity", `Chunk checksum mismatch: ${chunk.id}`);
+      if (signal.aborted) throw signal.reason;
+      return bytes;
     } finally {
-      signal.removeEventListener("abort", relay); this.active.delete(request);
+      if (reader) { void reader.cancel().catch(() => {}); reader.releaseLock(); }
+      else { void response.body?.cancel().catch(() => {}); }
     }
   }
 
@@ -635,24 +640,45 @@ export class ChunkedAssetProvider implements AssetProvider {
     if (this.disposed) throw new AssetProviderError("disposed", "Asset provider disposed");
     const id = normalizeAssetId(value), entry = this.assets.get(id);
     if (!entry) throw new AssetProviderError("http", `Unknown chunk asset: ${id}`, { id });
-    const combined = combineSignals(options.signal, this.timeoutMs, id);
-    try {
+    if (options.maxBytes !== undefined && (!Number.isSafeInteger(options.maxBytes) || options.maxBytes < 0 || entry.length > options.maxBytes)) throw new AssetProviderError("too-large", `Invalid or exceeded asset byte limit: ${id}`);
+    const request = new AbortController(), relay = () => request.abort(options.signal?.reason);
+    options.signal?.addEventListener("abort", relay, {once: true});
+    if (options.signal?.aborted) relay();
+    this.active.add(request);
+    const combined = combineSignals(request.signal, this.timeoutMs, id);
+    let lease: import("./Assets.ts").AssetLease<Uint8Array> | undefined;
+    const check = () => {
+      if (this.disposed) throw new AssetProviderError("disposed", "Asset provider disposed", {id});
       if (combined.signal.aborted) throw abortReason(combined.signal, id);
+    };
+    try {
+      check();
       options.onProgress?.({ id, phase: "downloading", loadedBytes: 0, totalBytes: entry.length });
-      const bytes = await this.loadChunk(this.chunks.get(entry.chunk)!, combined.signal, (loaded, total) => options.onProgress?.({ id, phase: "downloading", loadedBytes: Math.min(loaded, entry.length), totalBytes: total ? Math.min(total, entry.length) : entry.length }));
-      if (entry.offset + entry.length > bytes.byteLength) throw new AssetProviderError("integrity", `Chunk range exceeds chunk: ${id}`, { id });
-      const result = bytes.slice(entry.offset, entry.offset + entry.length);
-      if (options.maxBytes !== undefined && result.byteLength > options.maxBytes) throw new AssetProviderError("too-large", `Asset exceeds ${options.maxBytes} bytes: ${id}`, { id });
-      if (entry.sha256) { options.onProgress?.({ id, phase: "verifying", loadedBytes: result.byteLength, totalBytes: result.byteLength }); if ((await sha256(result)) !== entry.sha256.toLowerCase()) throw new AssetProviderError("integrity", `Asset checksum mismatch: ${id}`, { id }); }
-      options.onProgress?.({ id, phase: "ready", loadedBytes: result.byteLength, totalBytes: result.byteLength });
-      return { id, bytes: result, manifest: entry };
-    } finally { combined.cleanup(); }
+      check();
+      lease = await this.cache.acquire(entry.chunk, {signal: combined.signal});
+      check();
+      if (entry.offset + entry.length > lease.value.byteLength) throw new AssetProviderError("integrity", `Chunk range exceeds chunk: ${id}`, { id });
+      const bytes = lease.value.slice(entry.offset, entry.offset + entry.length);
+      if (entry.sha256) {
+        options.onProgress?.({ id, phase: "verifying", loadedBytes: bytes.byteLength, totalBytes: bytes.byteLength }); check();
+        if (await awaitAbortable(sha256(bytes), combined.signal) !== entry.sha256.toLowerCase()) throw new AssetProviderError("integrity", `Asset checksum mismatch: ${id}`, { id });
+      }
+      check();
+      options.onProgress?.({ id, phase: "ready", loadedBytes: bytes.byteLength, totalBytes: bytes.byteLength }); check();
+      return { id, bytes, manifest: entry };
+    } catch (error) {
+      check(); throw error;
+    } finally {
+      lease?.release(); combined.cleanup(); options.signal?.removeEventListener("abort", relay);
+      this.active.delete(request);
+      if (this.disposed && !this.active.size) this.cache.dispose();
+    }
   }
 
   dispose(): void {
     if (this.disposed) return; this.disposed = true;
     for (const controller of this.active) controller.abort(new DOMException("Asset provider disposed", "AbortError"));
-    this.active.clear(); this.cache.clear();
+    if (!this.active.size) this.cache.dispose();
   }
 }
 

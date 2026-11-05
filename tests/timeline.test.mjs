@@ -22,6 +22,15 @@ test('timeline validation rejects duplicate tracks, bad keys and event interpola
   assert.ok(errors.some(error => /event interpolation/.test(error)));
 });
 
+test('timeline interpolation keeps finite endpoints finite across opposite magnitudes', () => {
+  const timeline = new ZhudaTimelineSequencer({schemaVersion:1,duration:1,tracks:[
+    {id:'number',target:'number',kind:'number',keys:[{time:0,value:-1e308},{time:1,value:1e308}]},
+    {id:'vector',target:'vector',kind:'vector',keys:[{time:0,value:[1e308,-1e308]},{time:1,value:[-1e308,1e308]}]},
+  ]},{number:{set(){}},vector:{set(){}}});
+  assert.deepEqual(timeline.sample(.5),{number:0,vector:[0,0]});
+  timeline.dispose();
+});
+
 test('offline frame recorder advances fixed timestamps and validates captures', async () => {
   const advanced = [];
   const recorder = new ZhudaOfflineFrameRecorder({
@@ -51,4 +60,19 @@ test('offline frame recorder stops on cancellation and rejects non-integral dura
   });
   await assert.rejects(recorder.record(), error => error.name === 'AbortError');
   assert.equal(count, 2);
+});
+
+test('timeline rejects malformed vectors/NaN and samples step keys at their exact boundary', () => {
+  for(const bad of [null, {tracks:{}}, {schemaVersion:1,duration:1,tracks:[{id:'v',target:'v',kind:'vector',keys:[{time:0,value:[1]},{time:1,value:[1,2]}]}]}, {schemaVersion:1,duration:1,tracks:[{id:'n',target:'n',kind:'number',keys:[{time:0,value:NaN}]}]}]) assert.ok(validateTimelineSpec(bad).length);
+  const authored={schemaVersion:1,duration:2,tracks:[{id:'s',target:'s',kind:'boolean',keys:[{time:0,value:false},{time:1,value:true},{time:2,value:false}]}]};
+  const t=new ZhudaTimelineSequencer(authored,{s:{set(){}}});
+  assert.deepEqual(t.sample(1),{s:true}); authored.tracks[0].keys[1].value=false; assert.deepEqual(t.sample(1),{s:true});
+  assert.throws(()=>t.spec.tracks.push(authored.tracks[0])); assert.throws(()=>t.spec.tracks[0].keys.pop()); t.dispose();
+});
+test('offline recorder deadlines/disposal interrupt stuck callbacks without advancing', async () => {
+  let capture=0;
+  const r=new ZhudaOfflineFrameRecorder({durationSeconds:1,fps:1,stepTimeoutMs:10,advance:()=>new Promise(()=>{}),capture(){capture++;return {ready:true,imagePath:'x'};}});
+  await assert.rejects(r.record(),e=>e.name==='TimeoutError');assert.equal(capture,0);
+  const r2=new ZhudaOfflineFrameRecorder({durationSeconds:1,fps:1,advance:()=>new Promise(()=>{}),capture(){throw Error('unreachable');}});
+  const work=r2.record();r2.dispose();await assert.rejects(work,e=>e.name==='AbortError');
 });

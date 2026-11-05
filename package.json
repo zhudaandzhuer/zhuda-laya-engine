@@ -1,6 +1,6 @@
 {
   "name": "zhuda-laya-engine",
-  "version": "1.11.0",
+  "version": "1.12.0",
   "description": "豬大 LayaAir 引擎 (zhuda-laya-engine) — 基於 LayaAir 官方 (layabox/LayaAir 3.4.2) 打造的豬大 AI-Agent-Friendly 開源分支版本，內建 Zero-IDE 極速打包、DAG 拓撲守衛、AST 自動反射、靜態資產 ΔE00 校準與 MCP 語料伺服器",
   "private": false,
   "license": "MIT",
@@ -50,7 +50,8 @@
     "zhuda-laya-accept": "./packages/compiler/consumer-accept.mjs",
     "zhuda-laya-watch": "./packages/compiler/prefab-watch.mjs",
     "zhuda-laya-mcp": "./packages/mcp-server/index.mjs",
-    "zhuda-laya-browser-sdk": "./packages/compiler/browser-sdk.mjs"
+    "zhuda-laya-browser-sdk": "./packages/compiler/browser-sdk.mjs",
+    "zhuda-sequence-check": "./packages/ci-gate/verify-sequence.mjs"
   },
   "files": [
     "packages",
@@ -65,7 +66,8 @@
     "README.md",
     "LICENSE",
     "examples/browser-sdk",
-    "examples/model-inspector"
+    "examples/model-inspector",
+    "examples/windows-webgpu"
   ],
   "keywords": [
     "layaair",
@@ -103,6 +105,8 @@
     "@webgpu/types": "0.1.74",
     "esbuild": "0.27.1",
     "i18next": "26.7.1",
+    "meshoptimizer": "1.3.0",
+    "pngjs": "7.0.0",
     "typescript": "^5.6.0"
   },
   "engines": {

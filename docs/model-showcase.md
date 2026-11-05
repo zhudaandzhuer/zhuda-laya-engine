@@ -45,7 +45,8 @@ IDs belong behind AssetProvider.
 | 11 glTF handlers below | Native implementations exist | `visualConformance: 'not-certified'`; presence is not full fidelity |
 | Transmission | Requires opaque camera pass; showcase enforces mode policy | Input policy verified; complex refraction / layered transparency unverified |
 | FBX / OBJ / USD | No direct public importer or lossless conversion guarantee | Export supported glTF and validate conversion loss |
-| Draco / Meshopt / KTX2 / material variants | No registered support in this importer | Required extension rejects; optional fallback explicitly degraded |
+| Meshopt (`EXT_meshopt_compression`) | Optional `ZhudaMeshoptModelDecoder`, pinned meshoptimizer 1.3.0 | Embedded GLB/glTF preprocessed to ordinary GLB; neutral WebGL/WebGPU fixture verified |
+| Draco / KTX2 / material variants | No registered support in this importer | Required extension rejects; optional fallback explicitly degraded |
 | HDR / GI / reflection / hair / cloth / skin | Existing engine capabilities have their own boundaries | No seller-model / UE parity or new GI certification |
 | Movie / EXR / path tracing | Not delivered by showcase mode | Cinematic means real-time postprocessing only |
 
@@ -56,16 +57,50 @@ IDs belong behind AssetProvider.
 `KHR_materials_transmission`, `KHR_materials_unlit`, `KHR_materials_volume`,
 `KHR_texture_transform`.
 
-`gltfAssetCapabilities` is the machine-readable delivery boundary for agents.
-It currently reports GLB/embedded data as supported and explicitly reports
-external resource URLs, Draco, Meshopt and KTX2/Basis as unsupported. A model
-agent must query this catalog before selecting a compressed asset; an unknown
-required extension still fails through `inspectGltfAsset`. `ZhudaModelDecoderRegistry`
-now provides the shared adapter seam: registrations carry a version and
-SHA-256, and decode calls have bounded input, cancellation, timeout and
-exactly-once release behavior. It does not register Draco, Meshopt or KTX2 by
-itself. A decoder adapter must still be connected to the importer and pass real
-WebGL/WebGPU model fixtures on target devices before the catalog changes.
+`gltfAssetCapabilities` reports GLB/embedded data as supported, Meshopt as
+`adapter-required`, and external resource URLs, Draco and KTX2/Basis as
+unsupported. Raw `inspectGltfAsset` still describes the native importer; it does
+not simulate a registered decoder. Use the optional adapter explicitly:
+
+```ts
+import { ZhudaModelDecoderRegistry, ZhudaMeshoptModelDecoder,
+  ZhudaModelLibrary, DirectoryAssetProvider } from 'zhuda-laya-engine';
+const provider = new DirectoryAssetProvider({baseUrl:'./assets/'});
+const decoders = new ZhudaModelDecoderRegistry({maxOutputBytes:64*1024*1024});
+decoders.register(new ZhudaMeshoptModelDecoder());
+const models = new ZhudaModelLibrary({provider,decoders,maxIdle:0});
+const instance = await models.instantiate('models/product.glb');
+// scene.addChild(instance.node);
+instance.dispose(); models.dispose(); decoders.dispose(); provider.dispose();
+```
+
+The registry is borrowed by the model library and adds no cache. Shared model
+requests decode once under the existing cache/lease. The adapter accepts only
+embedded buffers/images and validates offsets, counts, stride/filter rules,
+compressed ranges and decoded byte budgets before allocation. The resulting
+GLB is checked by the native compatibility gate again; unrelated unsupported
+required extensions still fail. Instance compatibility describes the decoded
+GLB. Keep the source asset SHA in the provider manifest for original provenance.
+
+The pinned decoder's WASM is embedded in the npm module; no CDN fetch or second
+renderer is introduced. Package integrity and the decoder SHA are checked in
+the regression suite. Generic registry descriptor hashes are declared metadata,
+not authentication of third-party adapter code. Registering another adapter
+does not certify its output or enable Draco/KTX2 in the importer.
+
+Input and output byte limits are allocation controls, not measurements of total
+JS/WASM/native/GPU memory. Meshopt runs CPU blocks with cancellation checks
+between views; an individual synchronous WASM block cannot be preempted.
+Timeout/abort promptly rejects waiting callers, retires late results and delays
+adapter disposal until in-flight work and returned leases drain. Custom
+adapters must release their workers/native resources and honor the signal.
+Unregister/dispose is idempotent; release returned payloads explicitly.
+
+The neutral fixture verifies exact attribute/index/morph bytes, same-backend
+compressed/uncompressed pixels and 30 load/unload cycles on macOS Chrome WebGL
+and hardware WebGPU. This does not certify seller models, every filter/animation
+combination, Windows GPU or physical mobile. See the
+[hardening verification](plans/desktop-and-agent-gates/hardening-verification.md).
 
 ## Inspect and control a live model
 

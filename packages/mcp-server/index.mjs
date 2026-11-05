@@ -13,7 +13,7 @@
 
 import readline from 'node:readline';
 import { fileURLToPath } from 'node:url';
-import {TopologyResolver,ZhudaBenchmarkEngine,ZhudaAssetSerializer,PixelCalibrationEngine,ViewportMatrixEngine,UnityBridgePipeline,validateParticleEffect,validateParticleEffect3D,validateTerrain2D,validateHeightfield,validateShaderSpec} from './runtime.mjs';
+import {TopologyResolver,ZhudaBenchmarkEngine,ZhudaAssetSerializer,PixelCalibrationEngine,ViewportMatrixEngine,UnityBridgePipeline,validateParticleEffect,validateParticleEffect3D,validateTerrain2D,validateHeightfield,validateShaderSpec,validateTimelineSpec,gltfAssetCapabilities,gltfExtensionCapabilities} from './runtime.mjs';
 import { auditVisualAssetMigration } from '../compiler/visual-asset-audit.mjs';
 import { auditVisualPresentationContracts } from '../compiler/visual-contract-audit.mjs';
 import { getAgentContract, validateTaskSpec } from '../compiler/agent-contract.mjs';
@@ -22,6 +22,8 @@ import { API_GUARDRAILS, ERROR_DIAGNOSTICS_DB, GOLDEN_EXAMPLES } from './corpus.
 const projectRoot = fileURLToPath(new URL('../..', import.meta.url));
 
 export const MCP_TOOLS_MANIFEST = [
+  {name:'validate_timeline_spec',description:'Validate deterministic timeline keys, dimensions and targets. Configuration only; no rendering or movie certification.',inputSchema:{type:'object',properties:{timeline:{type:'object'}},required:['timeline']}},
+  {name:'get_model_capabilities',description:'List native model extensions, optional Meshopt adapter and unsupported formats with device evidence limits.',inputSchema:{type:'object',properties:{}}},
   {
     name: 'get_agent_contract',
     description: '回傳複雜專案 agent 必讀文件、引擎／consumer 邊界、開發順序、必跑命令與證據規則；不代表所有計畫已實作。',
@@ -101,7 +103,7 @@ export const MCP_TOOLS_MANIFEST = [
   },
   {
     name: 'run_benchmark',
-    description: '執行 Zhuda-LayaAir 與 Three.js 拼裝方案的 DrawCall、Spine 4.2 物理求解與包體剪枝基準測試。',
+    description: '執行彈簧算術微基準與拓撲包體估計；不是實際 Spine、WebGL、GPU 或跨引擎效能測試。',
     inputSchema: {
       type: 'object',
       properties: {
@@ -209,6 +211,8 @@ export const MCP_TOOLS_MANIFEST = [
 
 export function executeMcpTool(toolName, args = {}) {
   switch (toolName) {
+    case 'validate_timeline_spec': {const issues=validateTimelineSpec(args.timeline);return{tool:toolName,passed:issues.length===0,issues,rendering:'requires-real-draw'};}
+    case 'get_model_capabilities': return {tool:toolName,assets:gltfAssetCapabilities,extensions:gltfExtensionCapabilities,scope:'importer-capabilities',deviceCertification:false};
     case 'get_agent_contract':
       return { tool: toolName, ...getAgentContract(projectRoot) };
     case 'validate_task_spec':

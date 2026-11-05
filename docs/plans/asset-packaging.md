@@ -26,10 +26,10 @@ layout, Spine presentation or rendering rules.
 - `ChunkedAssetProvider` now implements the first bounded chunk experiment:
   manifest-declared ranges, chunk/asset SHA checks, cancellation, timeout and a
   bounded cache. It is opt-in and has no production performance claim.
-- `ZhudaModelDecoderRegistry` provides the lifecycle seam for a future pinned
-  Draco, Meshopt or KTX2/Basis adapter. It validates decoder identity, bounds
-  input, and handles timeout, cancellation and late-result release. It does not
-  promote any compressed format to supported.
+- `ZhudaModelDecoderRegistry` provides bounded decode/lease lifecycle;
+  optional `ZhudaMeshoptModelDecoder` now decodes embedded models before native
+  parsing. Generic descriptor SHA is declared metadata. Draco and KTX2/Basis
+  remain unsupported; see the [measured scope](desktop-and-agent-gates/hardening-verification.md).
 - The current consumer build still emits normal web files and a bounded ZIP
   archive for build evidence. No Rust/WASM vault is part of the runtime.
 - The engine source and public types live in `packages/core/runtime3d` and
@@ -50,7 +50,8 @@ See [asset-loading.md](../asset-loading.md) and the provider tests in
 
 ## Entry criteria
 
-Do not start a packed implementation until all of these are available:
+Do not promote experimental chunk delivery to a production recommendation until
+all of these are available:
 
 1. A complete asset inventory with logical IDs, kinds, decoded sizes and format
    versions (including Spine 4.2 data where applicable).
