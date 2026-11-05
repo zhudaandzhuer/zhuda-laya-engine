@@ -2,7 +2,8 @@
 
 Task: [task.md](task.md). Date: 2026-11-05.
 Baseline: `2e92e5932cac9128f3e33309719a0e035af9ca5e` (1.8.0).
-Implementation commit: recorded in the release identity follow-up.
+Implementation commit: `a4ef85b573dec77f1280440fb94642dff939d836`.
+The following documentation-only commit records this implementation identity.
 
 Decision: **Implemented; desktop verified. Seller/device acceptance Deferred.**
 The three reproduced importer defects, compatibility/inspection APIs, same-model
@@ -34,8 +35,8 @@ glTF conformance, Unreal parity or an offline movie pipeline.
 | MCP route | `node packages/mcp-server/index.mjs --tool search_api_guardrails --args '{"query":"showcase"}'` | Returns GUARD_MODEL_SHOWCASE | `E/mcp-showcase.json` |
 | Browser packaging | `node packages/compiler/browser-sdk.mjs --out E/browser-1.9.0-final` | 2d / 3d / 3d-gltf, immutable output, SRI and input hashes | `E/browser-build-final.json` |
 | Local browser delivery | `SDK_BROWSER_DIR=E/browser-1.9.0-final SDK_EVIDENCE_DIR=E/browser-evidence-final node scripts/verify-browser-sdk.mjs` | PASS all 3 profiles, controls and 30 reloads | `E/browser-local-final.log`, `E/browser-evidence-final/local-browser.json` |
-| Hosted delivery | Same command plus SDK_RELEASE_URL below | Cross-origin/SRI and real launch sandbox checked | `E/browser-hosted-final.log`, `E/browser-evidence-final/hosted-browser.json` |
-| Hosted bytes | Fetch every payload-manifest file and compare SHA-256 | All bytes must match local release | `E/remote-integrity-final.json`, `E/*.final.headers` |
+| Hosted delivery | Same command plus SDK_RELEASE_URL below | PASS: 3 cross-origin/SRI + 3 real launch sandbox scenarios | `E/browser-hosted-final.log`, `E/browser-evidence-final/hosted-browser.json` |
+| Hosted bytes | Fetch every payload-manifest file and compare SHA-256 | PASS: all 9 payload files match local release | `E/remote-integrity-final.json`, `E/*.final.headers` |
 | Whitespace and links | `git diff --check`; changed Markdown local-target check | PASS | Final handoff |
 
 ## Native animation, failure and ownership evidence
@@ -51,8 +52,9 @@ glTF conformance, Unreal parity or an offline movie pipeline.
 - Unsupported required extension rejects and retains the previous model. Explicit
   cancellation, 10ms deadline against delayed delivery, newer-request replacement
   and late-result discard are checked. Each DPR also rejects 30 malformed cubic
-  imports after partial native tree creation without resource growth (90 total). Unit tests also cover disposal during a
-  pending request, unavailable Filmic and opaque-input rejection.
+  imports after partial native tree creation without resource growth (90 total).
+  Unit tests also cover disposal during a pending request, unavailable Filmic
+  and opaque-input rejection.
 - Mode switching preserves mesh and material IDs on the same instance. Final
   disposal restores the borrowed camera's opaque/HDR/MSAA/depth/postprocess state.
 - 33 full reload + three-mode cycles at DPR 1: every cleared cycle has zero model
