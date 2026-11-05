@@ -59,7 +59,7 @@ async function main(){
  Zhuda.createAmazingGame();
 }
 `);
-  const program=ts.createProgram([file],{noEmit:true,strict:true,skipLibCheck:true,types:[],target:ts.ScriptTarget.ES2020,module:ts.ModuleKind.ESNext,moduleResolution:ts.ModuleResolutionKind.Bundler});
+  const program=ts.createProgram([file],{noEmit:true,strict:true,skipLibCheck:false,types:[],target:ts.ScriptTarget.ES2020,module:ts.ModuleKind.ESNext,moduleResolution:ts.ModuleResolutionKind.Bundler});
   const diagnostics=ts.getPreEmitDiagnostics(program);
   assert.equal(diagnostics.length,0,ts.formatDiagnosticsWithColorAndContext(diagnostics,{getCurrentDirectory:()=>root,getCanonicalFileName:f=>f,getNewLine:()=> '\n'}));
  }finally{fs.rmSync(temp,{recursive:true,force:true});}

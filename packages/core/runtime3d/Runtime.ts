@@ -5,10 +5,26 @@ import {
   type ZhudaClockSample,
 } from "./Clocks.ts";
 import { ZhudaSceneMutationQueue } from "./SceneMutation.ts";
+import { resizeLaya342Stage } from "./Laya342Adapters.ts";
+import { ZhudaRafDriver, type ZhudaRuntimeDriver } from "./RuntimeDriver.ts";
 
 export interface ManagedRuntimeOptions {
   container?: HTMLElement;
   dprCap?: number;
+  /** Omit for responsive CSS-pixel units. A fixed design is fitted into the container. */
+  designSize?: { width: number; height: number };
+  scaleMode?: string;
+  /** Owned by this session; defaults to RAF. */
+  driver?: ZhudaRuntimeDriver;
+  backgroundPolicy?: "pause" | "continue";
+  /** Foreground recovery never replays an unbounded suspended interval. */
+  recoveryPolicy?: "discard" | "bounded";
+  maxFrameDeltaSec?: number;
+  onResume?: (report: {
+    elapsedSec: number;
+    advancedSec: number;
+    discardedSec: number;
+  }) => void;
   targetFPS?: 30 | 60;
   timeScale?: number;
   clearInput?: () => void;
@@ -62,28 +78,54 @@ export class ZhudaRuntimeSession {
   readonly timers = new ZhudaTimerScheduler();
   readonly mutations = new ZhudaSceneMutationQueue();
   private cleanups: (() => void)[] = [];
-  private frame = 0;
-  private previous = 0;
+  private started = false;
+  private previous: number | undefined;
+  private readonly driver: ZhudaRuntimeDriver;
+  private background = false;
+  private manuallyPaused = false;
+  private suspendedAt?: number;
+  private recoveryDelta = 0;
   private task: ((dt: number, sample?: ZhudaClockSample) => void) | null = null;
   private observer?: ResizeObserver;
   constructor(canvas: HTMLCanvasElement, options: ManagedRuntimeOptions = {}) {
     this.canvas = canvas;
     this.options = options;
+    if (
+      !["pause", "continue"].includes(options.backgroundPolicy ?? "pause") ||
+      !["discard", "bounded"].includes(options.recoveryPolicy ?? "discard") ||
+      !Number.isFinite(options.maxFrameDeltaSec ?? 0.1) ||
+      (options.maxFrameDeltaSec ?? 0.1) <= 0 ||
+      (options.maxFrameDeltaSec ?? 0.1) > 1
+    )
+      throw Error("Invalid runtime background/recovery policy");
     if (options.timeScale !== undefined) {
       if (!Number.isFinite(options.timeScale) || options.timeScale < 0)
         throw Error("Invalid runtime time scale");
       this.clock.timeScale = options.timeScale;
     }
+    this.driver = options.driver ?? new ZhudaRafDriver();
     this.layers.setGlobalTimeScale(this.clock.timeScale);
-    const listen = (target: EventTarget, event: string, fn: EventListener) => {
-      target.addEventListener(event, fn);
-      this.cleanups.push(() => target.removeEventListener(event, fn));
+    const listen = (
+      target: EventTarget,
+      event: string,
+      fn: EventListener,
+      capture = false,
+    ) => {
+      target.addEventListener(event, fn, capture);
+      this.cleanups.push(() => target.removeEventListener(event, fn, capture));
     };
-    listen(document, "visibilitychange", () => this.setPaused(document.hidden));
-    listen(window, "blur", () => this.setPaused(true));
+    listen(document, "visibilitychange", () =>
+      this.setBackground(document.hidden),
+    );
+    listen(window, "blur", () => this.setBackground(true));
     listen(window, "focus", () => {
-      if (!document.hidden && !this.contextLost) this.setPaused(false);
+      if (!document.hidden && !this.contextLost) this.setBackground(false);
     });
+    listen(window, "pagehide", () => this.setBackground(true));
+    listen(window, "pageshow", () => {
+      if (!document.hidden) this.setBackground(false);
+    });
+    listen(window, "scroll", () => this.resize(), true);
     listen(canvas, "webglcontextlost", (e) => {
       e.preventDefault();
       this.contextLost = true;
@@ -96,15 +138,54 @@ export class ZhudaRuntimeSession {
         this.observer.observe(options.container);
       } else listen(window, "resize", () => this.resize());
       this.resize();
+      if (document.hidden) this.setBackground(true);
     } catch (error) {
       this.dispose();
       throw error;
     }
   }
   setPaused(value: boolean) {
+    this.manuallyPaused = value;
     this.options.clearInput?.();
-    this.paused = value || this.contextLost;
-    this.previous = 0;
+    this.paused =
+      value ||
+      this.contextLost ||
+      (this.background && this.options.backgroundPolicy !== "continue");
+    this.previous = undefined;
+    this.recoveryDelta = 0;
+    this.options.onPause?.(this.paused);
+  }
+  private setBackground(background: boolean) {
+    if (this.disposed || this.background === background) return;
+    this.options.clearInput?.();
+    const now = this.driver.now();
+    this.background = background;
+    this.driver.setBackground(background);
+    if (background) {
+      this.suspendedAt = now;
+    } else {
+      const elapsedSec = Math.max(0, (now - (this.suspendedAt ?? now)) / 1000);
+      const missed =
+        this.options.backgroundPolicy === "continue" &&
+        this.previous !== undefined
+          ? Math.max(0, (now - this.previous) / 1000)
+          : elapsedSec;
+      this.recoveryDelta =
+        !this.manuallyPaused && this.options.recoveryPolicy === "bounded"
+          ? Math.min(missed, this.options.maxFrameDeltaSec ?? 0.1)
+          : 0;
+      this.options.onResume?.({
+        elapsedSec,
+        advancedSec: this.recoveryDelta,
+        discardedSec: Math.max(0, missed - this.recoveryDelta),
+      });
+      this.previous = undefined;
+      this.suspendedAt = undefined;
+    }
+    this.paused =
+      this.manuallyPaused ||
+      this.contextLost ||
+      (background && this.options.backgroundPolicy !== "continue");
     this.options.onPause?.(this.paused);
   }
   resize() {
@@ -117,35 +198,57 @@ export class ZhudaRuntimeSession {
       height = rect?.height || innerHeight,
       dpr = Math.min(devicePixelRatio || 1, this.options.dprCap ?? 2);
     if (width < 2 || height < 2) return;
-    // In 3.4.2 retinal mode multiplies design dimensions by Browser.pixelRatio.
-    // We already selected backing dimensions from the explicit DPR cap.
-    l.Config.useRetinalCanvas = false;
+    const design = this.options.designSize ?? { width, height };
+    if (
+      ![design.width, design.height, dpr].every(
+        (value) => Number.isFinite(value) && value > 0,
+      )
+    )
+      throw Error("Invalid runtime design size or DPR");
+    // Design units must not grow with backing resolution. Native retinal mode
+    // supplies the stage scale used by both drawing and Laya input conversion.
+    l.Config.useRetinalCanvas = true;
     l.stage.screenAdaptationEnabled = false;
-    l.stage.scaleMode = l.Stage.SCALE_SHOWALL;
+    l.stage.scaleMode = this.options.scaleMode ?? l.Stage.SCALE_SHOWALL;
     l.stage.alignH = l.Stage.ALIGN_LEFT;
     l.stage.alignV = l.Stage.ALIGN_TOP;
-    l.stage.size(Math.round(width * dpr), Math.round(height * dpr));
-    l.stage.setScreenSize(
-      width * l.Browser.pixelRatio,
-      height * l.Browser.pixelRatio,
+    resizeLaya342Stage(
+      l,
+      width,
+      height,
+      design.width,
+      design.height,
+      dpr,
+      this.canvas,
     );
     this.options.onResize?.({ width, height, dpr });
   }
   start(update: (dt: number, sample?: ZhudaClockSample) => void) {
     if (this.disposed) throw Error("Disposed runtime");
     this.task = update;
-    if (this.frame) return;
+    if (this.started) return;
+    this.started = true;
     const tick = (now: number) => {
-      this.frame = 0;
       if (this.disposed) return;
+      if (
+        !Number.isFinite(now) ||
+        (this.previous !== undefined && now <= this.previous)
+      )
+        return;
       if (!this.paused) {
-        const elapsed = this.previous ? now - this.previous : 0;
+        const elapsed =
+          this.previous !== undefined
+            ? now - this.previous
+            : this.recoveryDelta * 1000;
         if (
-          !this.previous ||
+          this.previous === undefined ||
           elapsed >= 1000 / (this.options.targetFPS || 60) - 2
         ) {
           this.previous = now;
-          const sample = this.clock.advance(Math.min(0.1, elapsed / 1000));
+          this.recoveryDelta = 0;
+          const sample = this.clock.advance(
+            Math.min(this.options.maxFrameDeltaSec ?? 0.1, elapsed / 1000),
+          );
           this.layers.setGlobalTimeScale(this.clock.timeScale);
           this.layers.advance(sample.unscaledDeltaTime);
           this.timers.advance(
@@ -157,15 +260,20 @@ export class ZhudaRuntimeSession {
           this.mutations.flush();
         }
       }
-      this.frame = requestAnimationFrame(tick);
     };
-    this.frame = requestAnimationFrame(tick);
+    try {
+      this.driver.start(tick);
+    } catch (error) {
+      this.started = false;
+      this.driver.stop();
+      throw error;
+    }
   }
   dispose() {
     if (this.disposed) return;
     this.disposed = true;
-    cancelAnimationFrame(this.frame);
-    this.frame = 0;
+    this.driver.dispose();
+    this.started = false;
     this.task = null;
     this.timers.dispose();
     this.mutations.dispose();

@@ -1,5 +1,5 @@
 /**
- * zhuda-laya-engine v1.6.0 — 豬大 LayaAir (AI-Agent-Friendly Fork Edition)
+ * zhuda-laya-engine v1.7.0 — 豬大 LayaAir (AI-Agent-Friendly Fork Edition)
  * Repository: https://github.com/zhudaandzhuer/zhuda-laya-engine
  * Upstream Official: LayaAir Engine 3.4.2 by Layabox (https://layaair.com/ | https://github.com/layabox/LayaAir)
  * License: MIT
@@ -79,6 +79,7 @@ __export(index_exports, {
   ZhudaPointerInput: () => ZhudaPointerInput,
   ZhudaPrefab: () => ZhudaPrefab,
   ZhudaPrefabLibrary: () => ZhudaPrefabLibrary,
+  ZhudaRafDriver: () => ZhudaRafDriver,
   ZhudaRealtimeClock: () => ZhudaRealtimeClock,
   ZhudaRenderSpace: () => ZhudaRenderSpace,
   ZhudaRequestSlot: () => ZhudaRequestSlot,
@@ -104,6 +105,7 @@ __export(index_exports, {
   ZhudaUI: () => ZhudaUI,
   ZhudaVfxCamera: () => ZhudaVfxCamera,
   ZhudaVfxMaterial: () => ZhudaVfxMaterial,
+  ZhudaWorkerFrameDriver: () => ZhudaWorkerFrameDriver,
   applySceneQuality: () => applySceneQuality,
   buildPrefabTree: () => buildPrefabTree,
   compareVisualFrames: () => compareVisualFrames,
@@ -1231,6 +1233,175 @@ var ZhudaSceneMutationQueue = class {
   }
 };
 
+// packages/core/runtime3d/Laya342Adapters.ts
+var patched = /* @__PURE__ */ new WeakSet();
+function resizeLaya342Stage(runtime, width, height, designWidth, designHeight, dpr, canvas) {
+  const descriptor = Object.getOwnPropertyDescriptor(
+    runtime.Browser,
+    "pixelRatio"
+  );
+  try {
+    Object.defineProperty(runtime.Browser, "pixelRatio", {
+      configurable: true,
+      get: () => dpr
+    });
+    runtime.stage.size(designWidth, designHeight);
+    runtime.stage.setScreenSize(width * dpr, height * dpr);
+    const matrix = runtime.stage._canvasTransform;
+    if (canvas?.getBoundingClientRect && matrix) {
+      const rect = canvas.getBoundingClientRect();
+      const x = [
+        0,
+        matrix.a * canvas.width,
+        matrix.c * canvas.height,
+        matrix.a * canvas.width + matrix.c * canvas.height
+      ];
+      const y = [
+        0,
+        matrix.b * canvas.width,
+        matrix.d * canvas.height,
+        matrix.b * canvas.width + matrix.d * canvas.height
+      ];
+      matrix.tx = rect.left + (globalThis.scrollX || 0) - Math.min(...x);
+      matrix.ty = rect.top + (globalThis.scrollY || 0) - Math.min(...y);
+    }
+  } finally {
+    if (descriptor)
+      Object.defineProperty(runtime.Browser, "pixelRatio", descriptor);
+    else Reflect.deleteProperty(runtime.Browser, "pixelRatio");
+  }
+}
+function installLaya342LifecycleFix(runtime = globalThis.Laya) {
+  const prototype = runtime?.WebRender3DProcess?.prototype;
+  if (!prototype || patched.has(prototype)) return;
+  const destroy = prototype.destroy;
+  if (typeof destroy !== "function") return;
+  const retired = /* @__PURE__ */ new WeakSet();
+  prototype.destroy = function(...args) {
+    if (retired.has(this)) return;
+    retired.add(this);
+    const shadow = this._defaultShadowMap;
+    try {
+      return destroy.apply(this, args);
+    } finally {
+      if (shadow && !shadow.destroyed) shadow.destroy();
+      this._defaultShadowMap = null;
+    }
+  };
+  patched.add(prototype);
+}
+
+// packages/core/runtime3d/RuntimeDriver.ts
+var ZhudaRafDriver = class {
+  constructor() {
+    this.frame = 0;
+    this.generation = 0;
+  }
+  now() {
+    return performance.now();
+  }
+  start(callback) {
+    this.stop();
+    const generation = ++this.generation;
+    const tick = (now) => {
+      if (generation !== this.generation) return;
+      this.frame = 0;
+      try {
+        callback(now);
+      } finally {
+        if (generation === this.generation)
+          this.frame = requestAnimationFrame(tick);
+      }
+    };
+    this.frame = requestAnimationFrame(tick);
+  }
+  setBackground(_background) {
+  }
+  stop() {
+    this.generation++;
+    cancelAnimationFrame(this.frame);
+    this.frame = 0;
+  }
+  dispose() {
+    this.stop();
+  }
+};
+var ZhudaWorkerFrameDriver = class {
+  constructor(options = {}) {
+    this.raf = new ZhudaRafDriver();
+    this.generation = 0;
+    this.background = false;
+    this.disposed = false;
+    this.intervalMs = options.intervalMs ?? 100;
+    if (!Number.isFinite(this.intervalMs) || this.intervalMs < 16 || this.intervalMs > 6e4)
+      throw Error("Worker interval must be 16..60000 ms");
+    if (options.workerFactory) this.worker = options.workerFactory();
+    else {
+      const source = `let timer;onmessage=({data})=>{clearInterval(timer);if(data.type==='start')timer=setInterval(()=>postMessage({generation:data.generation}),data.intervalMs);};`;
+      const url = URL.createObjectURL(
+        new Blob([source], { type: "application/javascript" })
+      );
+      try {
+        this.worker = new Worker(url);
+      } finally {
+        URL.revokeObjectURL(url);
+      }
+    }
+    this.worker.onmessage = (event) => {
+      if (!this.disposed && this.background && this.callback && event.data?.generation === this.generation)
+        this.callback(this.now());
+    };
+    this.worker.onerror = (event) => {
+      this.stop();
+      options.onError?.(Error(event.message || "Background worker failed"));
+    };
+  }
+  now() {
+    return performance.now();
+  }
+  start(callback) {
+    if (this.disposed) throw Error("Driver disposed");
+    this.callback = callback;
+    this.switchSource();
+  }
+  setBackground(background) {
+    if (this.disposed || this.background === background) return;
+    this.background = background;
+    this.switchSource();
+  }
+  switchSource() {
+    const generation = ++this.generation;
+    this.raf.stop();
+    this.worker.postMessage({ type: "stop" });
+    if (!this.callback) return;
+    if (this.background)
+      this.worker.postMessage({
+        type: "start",
+        generation,
+        intervalMs: this.intervalMs
+      });
+    else
+      this.raf.start((now) => {
+        if (generation === this.generation) this.callback?.(now);
+      });
+  }
+  stop() {
+    this.callback = void 0;
+    this.generation++;
+    this.raf.stop();
+    this.worker.postMessage({ type: "stop" });
+  }
+  dispose() {
+    if (this.disposed) return;
+    this.stop();
+    this.disposed = true;
+    this.worker.onmessage = null;
+    this.worker.onerror = null;
+    this.worker.terminate();
+    this.raf.dispose();
+  }
+};
+
 // packages/core/runtime3d/Runtime.ts
 function installSandboxStorageFallback() {
   const modes = {};
@@ -1274,26 +1445,40 @@ var ZhudaRuntimeSession = class {
     this.timers = new ZhudaTimerScheduler();
     this.mutations = new ZhudaSceneMutationQueue();
     this.cleanups = [];
-    this.frame = 0;
-    this.previous = 0;
+    this.started = false;
+    this.background = false;
+    this.manuallyPaused = false;
+    this.recoveryDelta = 0;
     this.task = null;
     this.canvas = canvas;
     this.options = options;
+    if (!["pause", "continue"].includes(options.backgroundPolicy ?? "pause") || !["discard", "bounded"].includes(options.recoveryPolicy ?? "discard") || !Number.isFinite(options.maxFrameDeltaSec ?? 0.1) || (options.maxFrameDeltaSec ?? 0.1) <= 0 || (options.maxFrameDeltaSec ?? 0.1) > 1)
+      throw Error("Invalid runtime background/recovery policy");
     if (options.timeScale !== void 0) {
       if (!Number.isFinite(options.timeScale) || options.timeScale < 0)
         throw Error("Invalid runtime time scale");
       this.clock.timeScale = options.timeScale;
     }
+    this.driver = options.driver ?? new ZhudaRafDriver();
     this.layers.setGlobalTimeScale(this.clock.timeScale);
-    const listen = (target, event, fn) => {
-      target.addEventListener(event, fn);
-      this.cleanups.push(() => target.removeEventListener(event, fn));
+    const listen = (target, event, fn, capture = false) => {
+      target.addEventListener(event, fn, capture);
+      this.cleanups.push(() => target.removeEventListener(event, fn, capture));
     };
-    listen(document, "visibilitychange", () => this.setPaused(document.hidden));
-    listen(window, "blur", () => this.setPaused(true));
+    listen(
+      document,
+      "visibilitychange",
+      () => this.setBackground(document.hidden)
+    );
+    listen(window, "blur", () => this.setBackground(true));
     listen(window, "focus", () => {
-      if (!document.hidden && !this.contextLost) this.setPaused(false);
+      if (!document.hidden && !this.contextLost) this.setBackground(false);
     });
+    listen(window, "pagehide", () => this.setBackground(true));
+    listen(window, "pageshow", () => {
+      if (!document.hidden) this.setBackground(false);
+    });
+    listen(window, "scroll", () => this.resize(), true);
     listen(canvas, "webglcontextlost", (e) => {
       e.preventDefault();
       this.contextLost = true;
@@ -1306,15 +1491,41 @@ var ZhudaRuntimeSession = class {
         this.observer.observe(options.container);
       } else listen(window, "resize", () => this.resize());
       this.resize();
+      if (document.hidden) this.setBackground(true);
     } catch (error) {
       this.dispose();
       throw error;
     }
   }
   setPaused(value) {
+    this.manuallyPaused = value;
     this.options.clearInput?.();
-    this.paused = value || this.contextLost;
-    this.previous = 0;
+    this.paused = value || this.contextLost || this.background && this.options.backgroundPolicy !== "continue";
+    this.previous = void 0;
+    this.recoveryDelta = 0;
+    this.options.onPause?.(this.paused);
+  }
+  setBackground(background) {
+    if (this.disposed || this.background === background) return;
+    this.options.clearInput?.();
+    const now = this.driver.now();
+    this.background = background;
+    this.driver.setBackground(background);
+    if (background) {
+      this.suspendedAt = now;
+    } else {
+      const elapsedSec = Math.max(0, (now - (this.suspendedAt ?? now)) / 1e3);
+      const missed = this.options.backgroundPolicy === "continue" && this.previous !== void 0 ? Math.max(0, (now - this.previous) / 1e3) : elapsedSec;
+      this.recoveryDelta = !this.manuallyPaused && this.options.recoveryPolicy === "bounded" ? Math.min(missed, this.options.maxFrameDeltaSec ?? 0.1) : 0;
+      this.options.onResume?.({
+        elapsedSec,
+        advancedSec: this.recoveryDelta,
+        discardedSec: Math.max(0, missed - this.recoveryDelta)
+      });
+      this.previous = void 0;
+      this.suspendedAt = void 0;
+    }
+    this.paused = this.manuallyPaused || this.contextLost || background && this.options.backgroundPolicy !== "continue";
     this.options.onPause?.(this.paused);
   }
   resize() {
@@ -1323,30 +1534,44 @@ var ZhudaRuntimeSession = class {
     if (!c && !this.options.dprCap) return;
     const rect = c?.getBoundingClientRect(), width = rect?.width || innerWidth, height = rect?.height || innerHeight, dpr = Math.min(devicePixelRatio || 1, this.options.dprCap ?? 2);
     if (width < 2 || height < 2) return;
-    l.Config.useRetinalCanvas = false;
+    const design = this.options.designSize ?? { width, height };
+    if (![design.width, design.height, dpr].every(
+      (value) => Number.isFinite(value) && value > 0
+    ))
+      throw Error("Invalid runtime design size or DPR");
+    l.Config.useRetinalCanvas = true;
     l.stage.screenAdaptationEnabled = false;
-    l.stage.scaleMode = l.Stage.SCALE_SHOWALL;
+    l.stage.scaleMode = this.options.scaleMode ?? l.Stage.SCALE_SHOWALL;
     l.stage.alignH = l.Stage.ALIGN_LEFT;
     l.stage.alignV = l.Stage.ALIGN_TOP;
-    l.stage.size(Math.round(width * dpr), Math.round(height * dpr));
-    l.stage.setScreenSize(
-      width * l.Browser.pixelRatio,
-      height * l.Browser.pixelRatio
+    resizeLaya342Stage(
+      l,
+      width,
+      height,
+      design.width,
+      design.height,
+      dpr,
+      this.canvas
     );
     this.options.onResize?.({ width, height, dpr });
   }
   start(update) {
     if (this.disposed) throw Error("Disposed runtime");
     this.task = update;
-    if (this.frame) return;
+    if (this.started) return;
+    this.started = true;
     const tick = (now) => {
-      this.frame = 0;
       if (this.disposed) return;
+      if (!Number.isFinite(now) || this.previous !== void 0 && now <= this.previous)
+        return;
       if (!this.paused) {
-        const elapsed = this.previous ? now - this.previous : 0;
-        if (!this.previous || elapsed >= 1e3 / (this.options.targetFPS || 60) - 2) {
+        const elapsed = this.previous !== void 0 ? now - this.previous : this.recoveryDelta * 1e3;
+        if (this.previous === void 0 || elapsed >= 1e3 / (this.options.targetFPS || 60) - 2) {
           this.previous = now;
-          const sample = this.clock.advance(Math.min(0.1, elapsed / 1e3));
+          this.recoveryDelta = 0;
+          const sample = this.clock.advance(
+            Math.min(this.options.maxFrameDeltaSec ?? 0.1, elapsed / 1e3)
+          );
           this.layers.setGlobalTimeScale(this.clock.timeScale);
           this.layers.advance(sample.unscaledDeltaTime);
           this.timers.advance(
@@ -1358,15 +1583,20 @@ var ZhudaRuntimeSession = class {
           this.mutations.flush();
         }
       }
-      this.frame = requestAnimationFrame(tick);
     };
-    this.frame = requestAnimationFrame(tick);
+    try {
+      this.driver.start(tick);
+    } catch (error) {
+      this.started = false;
+      this.driver.stop();
+      throw error;
+    }
   }
   dispose() {
     if (this.disposed) return;
     this.disposed = true;
-    cancelAnimationFrame(this.frame);
-    this.frame = 0;
+    this.driver.dispose();
+    this.started = false;
     this.task = null;
     this.timers.dispose();
     this.mutations.dispose();
@@ -1788,28 +2018,6 @@ function configureSurfacePasses(camera, requirements, maxAdditionalPasses) {
     ready: withinBudget && supported,
     reason: !withinBudget ? "budget" : !supported ? "depth-unsupported" : null
   };
-}
-
-// packages/core/runtime3d/Laya342Adapters.ts
-var patched = /* @__PURE__ */ new WeakSet();
-function installLaya342LifecycleFix(runtime = globalThis.Laya) {
-  const prototype = runtime?.WebRender3DProcess?.prototype;
-  if (!prototype || patched.has(prototype)) return;
-  const destroy = prototype.destroy;
-  if (typeof destroy !== "function") return;
-  const retired = /* @__PURE__ */ new WeakSet();
-  prototype.destroy = function(...args) {
-    if (retired.has(this)) return;
-    retired.add(this);
-    const shadow = this._defaultShadowMap;
-    try {
-      return destroy.apply(this, args);
-    } finally {
-      if (shadow && !shadow.destroyed) shadow.destroy();
-      this._defaultShadowMap = null;
-    }
-  };
-  patched.add(prototype);
 }
 
 // packages/core/runtime3d/Assets.ts
@@ -5553,7 +5761,8 @@ function normalizeAssetId(value) {
   return parts.join("/");
 }
 function validateAssetManifest(value) {
-  if (!value || typeof value !== "object") throw Error("Invalid asset manifest");
+  if (!value || typeof value !== "object")
+    throw Error("Invalid asset manifest");
   const manifest = value;
   if (manifest.schemaVersion !== 1 || !Array.isArray(manifest.entries))
     throw Error("Invalid asset manifest schema");
@@ -5576,8 +5785,13 @@ function validateAssetManifest(value) {
 function manifestIdFor(baseUrl, value) {
   const manifestUrl = new URL(value, baseUrl);
   if (manifestUrl.origin !== baseUrl.origin || !manifestUrl.pathname.startsWith(baseUrl.pathname))
-    throw new AssetProviderError("invalid-id", "Manifest must be below the provider base URL");
-  const id = decodeURIComponent(manifestUrl.pathname.slice(baseUrl.pathname.length));
+    throw new AssetProviderError(
+      "invalid-id",
+      "Manifest must be below the provider base URL"
+    );
+  const id = decodeURIComponent(
+    manifestUrl.pathname.slice(baseUrl.pathname.length)
+  );
   return normalizeAssetId(id);
 }
 function abortReason(signal, id) {
@@ -5595,7 +5809,9 @@ function combineSignals(source, timeoutMs, id) {
   else source?.addEventListener("abort", abort, { once: true });
   const timer = setTimeout(() => {
     timedOut = true;
-    controller.abort(new DOMException("Asset request timed out", "TimeoutError"));
+    controller.abort(
+      new DOMException("Asset request timed out", "TimeoutError")
+    );
   }, timeoutMs);
   return {
     signal: controller.signal,
@@ -5603,13 +5819,18 @@ function combineSignals(source, timeoutMs, id) {
       clearTimeout(timer);
       source?.removeEventListener("abort", abort);
       if (timedOut && !controller.signal.reason)
-        controller.abort(new DOMException(`Asset request timed out: ${id}`, "TimeoutError"));
+        controller.abort(
+          new DOMException(`Asset request timed out: ${id}`, "TimeoutError")
+        );
     }
   };
 }
 async function sha256(bytes) {
   if (!globalThis.crypto?.subtle)
-    throw new AssetProviderError("integrity", "Web Crypto subtle.digest is unavailable");
+    throw new AssetProviderError(
+      "integrity",
+      "Web Crypto subtle.digest is unavailable"
+    );
   const input = new Uint8Array(bytes.byteLength);
   input.set(bytes);
   const digest = await globalThis.crypto.subtle.digest("SHA-256", input.buffer);
@@ -5620,8 +5841,13 @@ var DirectoryAssetProvider = class {
     this.name = "directory";
     this.active = /* @__PURE__ */ new Set();
     this.disposed = false;
-    if (!options?.baseUrl) throw Error("DirectoryAssetProvider requires baseUrl");
-    this.baseUrl = new URL(options.baseUrl, globalThis.location?.href || "http://localhost/");
+    this.streamReleases = /* @__PURE__ */ new Set();
+    if (!options?.baseUrl)
+      throw Error("DirectoryAssetProvider requires baseUrl");
+    this.baseUrl = new URL(
+      options.baseUrl,
+      globalThis.location?.href || "http://localhost/"
+    );
     if (!this.baseUrl.pathname.endsWith("/")) this.baseUrl.pathname += "/";
     this.manifest = options.manifest ? validateAssetManifest(options.manifest) : void 0;
     this.manifestUrl = options.manifestUrl;
@@ -5629,13 +5855,17 @@ var DirectoryAssetProvider = class {
     this.timeoutMs = options.timeoutMs ?? 15e3;
     this.maxBytes = options.maxBytes ?? 128 * 1024 * 1024;
     this.fetchImpl = options.fetch || globalThis.fetch.bind(globalThis);
+    this.streamMode = options.streamMode ?? "verified-blob";
+    if (!["native", "verified-blob"].includes(this.streamMode))
+      throw Error("Invalid streamMode");
     if (!Number.isInteger(this.timeoutMs) || this.timeoutMs <= 0)
       throw Error("timeoutMs must be a positive integer");
     if (!Number.isInteger(this.maxBytes) || this.maxBytes <= 0)
       throw Error("maxBytes must be a positive integer");
   }
   async getManifest(signal) {
-    if (this.disposed) throw new AssetProviderError("disposed", "Asset provider disposed");
+    if (this.disposed)
+      throw new AssetProviderError("disposed", "Asset provider disposed");
     if (this.manifest) return this.manifest;
     if (!this.manifestId) return { schemaVersion: 1, entries: [] };
     if (!this.manifestPromise) {
@@ -5650,7 +5880,10 @@ var DirectoryAssetProvider = class {
           return this.manifest;
         } catch (error) {
           if (error instanceof AssetProviderError) throw error;
-          throw new AssetProviderError("integrity", `Invalid asset manifest: ${this.manifestUrl}`);
+          throw new AssetProviderError(
+            "integrity",
+            `Invalid asset manifest: ${this.manifestUrl}`
+          );
         }
       })();
       this.manifestPromise = pending.catch((error) => {
@@ -5661,29 +5894,45 @@ var DirectoryAssetProvider = class {
     return this.manifestPromise;
   }
   async load(value, options = {}) {
-    if (this.disposed) throw new AssetProviderError("disposed", "Asset provider disposed");
+    if (this.disposed)
+      throw new AssetProviderError("disposed", "Asset provider disposed");
     const id = normalizeAssetId(value);
     if (this.manifestId && id !== this.manifestId && !this.manifest)
       await this.getManifest(options.signal);
-    const entry = this.manifest?.entries.find((candidate) => candidate.id === id);
+    const entry = this.manifest?.entries.find(
+      (candidate) => candidate.id === id
+    );
     const maxBytes = options.maxBytes ?? this.maxBytes;
-    const url = new URL(id.split("/").map(encodeURIComponent).join("/"), this.baseUrl);
+    const url = new URL(
+      id.split("/").map(encodeURIComponent).join("/"),
+      this.baseUrl
+    );
     const combined = combineSignals(options.signal, this.timeoutMs, id);
     const request = new AbortController();
     const relay = () => request.abort(combined.signal.reason);
     combined.signal.addEventListener("abort", relay, { once: true });
+    if (combined.signal.aborted) relay();
     this.active.add(request);
     try {
+      if (request.signal.aborted) throw abortReason(combined.signal, id);
       options.onProgress?.({ id, phase: "downloading", loadedBytes: 0 });
       const response = await this.fetchImpl(url, { signal: request.signal });
       if (!response.ok)
-        throw new AssetProviderError("http", `Asset HTTP ${response.status}: ${id}`, {
-          id,
-          status: response.status
-        });
+        throw new AssetProviderError(
+          "http",
+          `Asset HTTP ${response.status}: ${id}`,
+          {
+            id,
+            status: response.status
+          }
+        );
       const contentLength = Number(response.headers.get("content-length"));
       if (Number.isFinite(contentLength) && contentLength > maxBytes)
-        throw new AssetProviderError("too-large", `Asset exceeds ${maxBytes} bytes: ${id}`, { id });
+        throw new AssetProviderError(
+          "too-large",
+          `Asset exceeds ${maxBytes} bytes: ${id}`,
+          { id }
+        );
       const chunks = [];
       let total = 0;
       if (response.body) {
@@ -5693,17 +5942,35 @@ var DirectoryAssetProvider = class {
           if (next.done) break;
           total += next.value.byteLength;
           if (total > maxBytes)
-            throw new AssetProviderError("too-large", `Asset exceeds ${maxBytes} bytes: ${id}`, { id });
+            throw new AssetProviderError(
+              "too-large",
+              `Asset exceeds ${maxBytes} bytes: ${id}`,
+              { id }
+            );
           chunks.push(next.value);
-          options.onProgress?.({ id, phase: "downloading", loadedBytes: total, totalBytes: contentLength || void 0 });
+          options.onProgress?.({
+            id,
+            phase: "downloading",
+            loadedBytes: total,
+            totalBytes: contentLength || void 0
+          });
         }
       } else {
         const data = new Uint8Array(await response.arrayBuffer());
         total = data.byteLength;
         if (total > maxBytes)
-          throw new AssetProviderError("too-large", `Asset exceeds ${maxBytes} bytes: ${id}`, { id });
+          throw new AssetProviderError(
+            "too-large",
+            `Asset exceeds ${maxBytes} bytes: ${id}`,
+            { id }
+          );
         chunks.push(data);
-        options.onProgress?.({ id, phase: "downloading", loadedBytes: total, totalBytes: total });
+        options.onProgress?.({
+          id,
+          phase: "downloading",
+          loadedBytes: total,
+          totalBytes: total
+        });
       }
       const bytes = new Uint8Array(total);
       let offset = 0;
@@ -5712,17 +5979,36 @@ var DirectoryAssetProvider = class {
         offset += chunk.byteLength;
       }
       if (entry?.bytes !== void 0 && entry.bytes !== bytes.byteLength)
-        throw new AssetProviderError("integrity", `Asset size mismatch: ${id}`, { id });
+        throw new AssetProviderError(
+          "integrity",
+          `Asset size mismatch: ${id}`,
+          { id }
+        );
       if (entry?.sha256) {
-        options.onProgress?.({ id, phase: "verifying", loadedBytes: total, totalBytes: total });
+        options.onProgress?.({
+          id,
+          phase: "verifying",
+          loadedBytes: total,
+          totalBytes: total
+        });
         if (await sha256(bytes) !== entry.sha256.toLowerCase())
-          throw new AssetProviderError("integrity", `Asset checksum mismatch: ${id}`, { id });
+          throw new AssetProviderError(
+            "integrity",
+            `Asset checksum mismatch: ${id}`,
+            { id }
+          );
       }
-      options.onProgress?.({ id, phase: "ready", loadedBytes: total, totalBytes: total });
+      options.onProgress?.({
+        id,
+        phase: "ready",
+        loadedBytes: total,
+        totalBytes: total
+      });
       return { id, bytes, manifest: entry };
     } catch (error) {
       if (combined.signal.aborted || request.signal.aborted) {
-        if (combined.signal.reason?.name === "TimeoutError") throw abortReason(combined.signal, id);
+        if (combined.signal.reason?.name === "TimeoutError")
+          throw abortReason(combined.signal, id);
         throw abortReason(combined.signal, id);
       }
       throw error;
@@ -5732,11 +6018,76 @@ var DirectoryAssetProvider = class {
       combined.cleanup();
     }
   }
+  async openStream(value, options = {}) {
+    const id = normalizeAssetId(value);
+    const check = () => {
+      if (this.disposed)
+        throw new AssetProviderError("disposed", "Asset provider disposed");
+      if (options.signal?.aborted) throw abortReason(options.signal, id);
+    };
+    check();
+    if (this.manifestId && !this.manifest)
+      await this.getManifest(options.signal);
+    check();
+    const entry = this.manifest?.entries.find((value2) => value2.id === id);
+    if (this.manifest && !entry)
+      throw new AssetProviderError(
+        "integrity",
+        `Stream missing manifest entry: ${id}`
+      );
+    if (entry?.kind && entry.kind !== "audio")
+      throw new AssetProviderError("integrity", `Stream is not audio: ${id}`);
+    let url, retainedBytes = 0;
+    if (this.streamMode === "native") {
+      if (entry?.sha256)
+        throw new AssetProviderError(
+          "integrity",
+          `Native stream cannot verify whole-file SHA: ${id}; use verified-blob or a transport-only media manifest`
+        );
+      url = new URL(
+        id.split("/").map(encodeURIComponent).join("/"),
+        this.baseUrl
+      ).href;
+    } else {
+      const asset = await this.load(id, options);
+      try {
+        check();
+        retainedBytes = asset.bytes.byteLength;
+        const mime = /\.mp3$/i.test(id) ? "audio/mpeg" : /\.ogg$/i.test(id) ? "audio/ogg" : /\.(m4a|mp4)$/i.test(id) ? "audio/mp4" : /\.wav$/i.test(id) ? "audio/wav" : "application/octet-stream";
+        url = URL.createObjectURL(
+          new Blob([new Uint8Array(asset.bytes)], { type: mime })
+        );
+      } finally {
+        asset.release?.();
+      }
+    }
+    let released = false;
+    const release = () => {
+      if (released) return;
+      released = true;
+      this.streamReleases.delete(release);
+      if (this.streamMode === "verified-blob") URL.revokeObjectURL(url);
+    };
+    this.streamReleases.add(release);
+    return {
+      id,
+      url,
+      retainedBytes,
+      delivery: this.streamMode,
+      integrity: entry?.sha256 ? "sha256" : "transport",
+      crossOrigin: "anonymous",
+      release
+    };
+  }
   dispose() {
     if (this.disposed) return;
     this.disposed = true;
-    for (const controller of this.active) controller.abort(new DOMException("Asset provider disposed", "AbortError"));
+    for (const controller of this.active)
+      controller.abort(
+        new DOMException("Asset provider disposed", "AbortError")
+      );
     this.active.clear();
+    for (const release of [...this.streamReleases]) release();
   }
 };
 function createProviderAssetCache(provider, decode, destroy, maxIdle = 0) {
@@ -5758,9 +6109,157 @@ function createProviderAssetCache(provider, decode, destroy, maxIdle = 0) {
   );
 }
 
+// packages/core/audio/StreamVoice.ts
+var StreamVoice = class {
+  constructor(context, media, lease, options, timeoutMs, onFailure, onStarted) {
+    this.onended = null;
+    this.generation = 0;
+    this.ended = false;
+    this.paused = false;
+    this.started = false;
+    this.reportedStart = false;
+    this.endedListener = () => this.end();
+    this.errorListener = () => this.fail(
+      Error(
+        `Media playback failed: ${this.media.error?.message || this.media.error?.code || "unknown"}`
+      )
+    );
+    this.context = context;
+    this.media = media;
+    this.timeoutMs = timeoutMs;
+    this.onFailure = onFailure;
+    this.onStarted = onStarted;
+    media.crossOrigin = lease.crossOrigin ?? "anonymous";
+    media.preload = "metadata";
+    media.loop = options.loop ?? false;
+    media.volume = 1;
+    media.muted = false;
+    media.addEventListener("ended", this.endedListener);
+    media.addEventListener("error", this.errorListener);
+    try {
+      media.src = lease.url;
+      this.output = context.createMediaElementSource(media);
+    } catch (error) {
+      this.releaseMedia();
+      throw error;
+    }
+  }
+  start(_when, offsetSec) {
+    if (this.ended) throw Error("Stream voice ended");
+    this.media.currentTime = offsetSec;
+    this.started = true;
+    this.play();
+  }
+  play() {
+    if (this.ended || this.paused || !this.started) return;
+    const generation = ++this.generation;
+    clearTimeout(this.deadline);
+    this.deadline = setTimeout(
+      () => this.fail(Error("Stream playback timeout")),
+      this.timeoutMs
+    );
+    try {
+      Promise.resolve(this.media.play()).then(
+        () => {
+          if (generation !== this.generation || this.ended || this.paused)
+            return;
+          clearTimeout(this.deadline);
+          if (!this.reportedStart) {
+            this.reportedStart = true;
+            this.onStarted();
+          }
+        },
+        (error) => {
+          if (generation === this.generation && !this.ended) this.fail(error);
+        }
+      );
+    } catch (error) {
+      this.fail(error);
+    }
+  }
+  setPaused(paused) {
+    if (this.ended || this.paused === paused) return;
+    this.paused = paused;
+    if (paused) {
+      this.generation++;
+      clearTimeout(this.deadline);
+      this.media.pause();
+    } else this.play();
+  }
+  stop(when = this.context.currentTime) {
+    if (this.alarm) {
+      this.alarm.onended = null;
+      try {
+        this.alarm.stop();
+      } catch {
+      }
+      this.alarm.disconnect();
+    }
+    this.alarm = void 0;
+    if (when <= this.context.currentTime) {
+      this.end();
+      return;
+    }
+    const alarm = this.alarm = this.context.createBufferSource();
+    alarm.buffer = this.context.createBuffer(1, 1, this.context.sampleRate);
+    alarm.onended = () => {
+      if (this.alarm === alarm) this.end();
+    };
+    alarm.start(when);
+  }
+  fail(error) {
+    if (this.ended) return;
+    try {
+      this.onFailure(error);
+    } finally {
+      this.end();
+    }
+  }
+  end() {
+    if (this.ended) return;
+    this.ended = true;
+    this.generation++;
+    clearTimeout(this.deadline);
+    this.media.pause();
+    this.onended?.();
+  }
+  releaseMedia() {
+    this.media.removeEventListener("ended", this.endedListener);
+    this.media.removeEventListener("error", this.errorListener);
+    this.media.pause();
+    this.media.removeAttribute("src");
+    this.media.load();
+  }
+  disconnect() {
+    this.ended = true;
+    this.generation++;
+    clearTimeout(this.deadline);
+    if (this.alarm) {
+      this.alarm.onended = null;
+      try {
+        this.alarm.stop();
+      } catch {
+      }
+      this.alarm.disconnect();
+      this.alarm = void 0;
+    }
+    this.onended = null;
+    try {
+      this.output.disconnect();
+    } finally {
+      this.releaseMedia();
+    }
+  }
+};
+
 // packages/core/IframeSoundAdapter.ts
 var CHANNELS = ["bgm", "sfx", "ui"];
-var AUDIO_WAVE_TYPES = ["sine", "square", "sawtooth", "triangle"];
+var AUDIO_WAVE_TYPES = [
+  "sine",
+  "square",
+  "sawtooth",
+  "triangle"
+];
 var CONTEXT_STATES = /* @__PURE__ */ new Set(["suspended", "running", "closed"]);
 function isAudioChannel(value) {
   return value === "master" || value === "bgm" || value === "sfx" || value === "ui";
@@ -5802,6 +6301,11 @@ var _IframeSoundAdapter = class _IframeSoundAdapter {
     this.voiceSerial = 0;
     this.samples = /* @__PURE__ */ new Map();
     this.sampleLoads = /* @__PURE__ */ new Map();
+    this.streams = /* @__PURE__ */ new Map();
+    this.streamLoads = /* @__PURE__ */ new Map();
+    this.admissions = /* @__PURE__ */ new Map();
+    this.retiredVoices = 0;
+    this.backendContextLost = false;
     this.options = {
       ...options,
       queueMaxAgeMs: options.queueMaxAgeMs ?? 500,
@@ -5811,41 +6315,79 @@ var _IframeSoundAdapter = class _IframeSoundAdapter {
     };
     this.sampleTimeoutMs = options.sampleTimeoutMs ?? 15e3;
     this.maxSamples = options.maxSamples ?? 32;
+    this.maxRetainedStreamBytes = options.maxRetainedStreamBytes ?? 64 * 1024 * 1024;
     this.maxDecodedSampleBytes = options.maxDecodedSampleBytes ?? 64 * 1024 * 1024;
+    if (!["reject", "fifo", "priority"].includes(
+      options.voiceOverflow ?? "reject"
+    ))
+      throw Error("Invalid voice overflow");
+    if (!Number.isFinite(options.retireFadeSec ?? 5e-3) || (options.retireFadeSec ?? 5e-3) < 0 || (options.retireFadeSec ?? 5e-3) > 1)
+      throw Error("Invalid retirement fade");
+    if (options.protectedChannels?.some((channel) => !isAudioChannel(channel)))
+      throw Error("Invalid protected channel");
+    const streamProvider = options.streamProvider ?? options.sampleProvider;
+    if (streamProvider?.openStream)
+      this.streamCache = new ZhudaAssetCache(
+        async (id, signal) => {
+          const lease = await streamProvider.openStream(id, { signal });
+          if (signal.aborted || this.disposed) {
+            lease.release();
+            throw new DOMException("Stream load cancelled", "AbortError");
+          }
+          if (lease.id !== id || !lease.url || !["native", "verified-blob"].includes(lease.delivery) || !["sha256", "transport"].includes(lease.integrity) || !Number.isSafeInteger(lease.retainedBytes) || lease.retainedBytes < 0) {
+            lease.release();
+            throw Error("Invalid stream lease");
+          }
+          return lease;
+        },
+        (lease) => lease.release(),
+        0
+      );
     for (const [name, value] of Object.entries({
       sampleTimeoutMs: this.sampleTimeoutMs,
       maxSamples: this.maxSamples,
+      maxRetainedStreamBytes: this.maxRetainedStreamBytes,
       maxDecodedSampleBytes: this.maxDecodedSampleBytes,
       maxActiveVoices: this.options.maxActiveVoices,
       maxPendingQueue: this.options.maxPendingQueue,
       queueMaxAgeMs: this.options.queueMaxAgeMs
     }))
-      if (!Number.isSafeInteger(value) || value <= 0) throw Error(`Invalid audio limit: ${name}`);
-    if (options.sampleProvider) this.sampleCache = createProviderAssetCache(options.sampleProvider, async (asset, signal) => {
-      const context = this.ensureAudioContext();
-      if (!context) throw Error("WebAudio decoder unavailable");
-      if (signal.aborted) throw new DOMException("Sample decode cancelled", "AbortError");
-      let cancel = () => {
-      };
-      try {
-        const decoded = await Promise.race([
-          context.decodeAudioData(new Uint8Array(asset.bytes).buffer),
-          new Promise((_, reject) => {
-            cancel = () => reject(new DOMException("Sample decode cancelled", "AbortError"));
-            signal.addEventListener("abort", cancel, { once: true });
-            if (signal.aborted) cancel();
-          })
-        ]);
-        if (signal.aborted || this.disposed) throw new DOMException("Sample decode cancelled", "AbortError");
-        const bytes = decoded.length * decoded.numberOfChannels * 4;
-        if (!Number.isSafeInteger(bytes) || bytes <= 0 || bytes > this.maxDecodedSampleBytes || !Number.isFinite(decoded.duration) || decoded.duration <= 0)
-          throw Error("Decoded sample exceeds PCM bound or is empty");
-        return decoded;
-      } finally {
-        signal.removeEventListener("abort", cancel);
-      }
-    }, () => {
-    });
+      if (!Number.isSafeInteger(value) || value <= 0)
+        throw Error(`Invalid audio limit: ${name}`);
+    if (options.sampleProvider)
+      this.sampleCache = createProviderAssetCache(
+        options.sampleProvider,
+        async (asset, signal) => {
+          const context = this.ensureAudioContext();
+          if (!context) throw Error("WebAudio decoder unavailable");
+          if (signal.aborted)
+            throw new DOMException("Sample decode cancelled", "AbortError");
+          let cancel = () => {
+          };
+          try {
+            const decoded = await Promise.race([
+              context.decodeAudioData(new Uint8Array(asset.bytes).buffer),
+              new Promise((_, reject) => {
+                cancel = () => reject(
+                  new DOMException("Sample decode cancelled", "AbortError")
+                );
+                signal.addEventListener("abort", cancel, { once: true });
+                if (signal.aborted) cancel();
+              })
+            ]);
+            if (signal.aborted || this.disposed)
+              throw new DOMException("Sample decode cancelled", "AbortError");
+            const bytes = decoded.length * decoded.numberOfChannels * 4;
+            if (!Number.isSafeInteger(bytes) || bytes <= 0 || bytes > this.maxDecodedSampleBytes || !Number.isFinite(decoded.duration) || decoded.duration <= 0)
+              throw Error("Decoded sample exceeds PCM bound or is empty");
+            return decoded;
+          } finally {
+            signal.removeEventListener("abort", cancel);
+          }
+        },
+        () => {
+        }
+      );
     this.allowedParentOrigins = new Set(
       (options.allowedParentOrigins ?? []).filter(
         (origin) => typeof origin === "string" && origin.length > 0 && origin !== "*"
@@ -5868,6 +6410,50 @@ var _IframeSoundAdapter = class _IframeSoundAdapter {
   recordError(error) {
     this.lastError = error instanceof Error ? error.message : String(error);
   }
+  voiceEvent(event) {
+    try {
+      this.options.onVoiceEvent?.(event);
+    } catch (error) {
+      this.recordError(error);
+    }
+  }
+  validVoice(options) {
+    return (options.priority === void 0 || Number.isFinite(options.priority)) && (options.protected === void 0 || typeof options.protected === "boolean");
+  }
+  admit(options, task, exclude = []) {
+    if (this.activeVoices.size < this.options.maxActiveVoices) return "ready";
+    const mode = this.options.voiceOverflow ?? "reject";
+    const protectedChannels = this.options.protectedChannels ?? ["bgm"];
+    const candidates = [...this.activeVoices].filter(
+      ([key, voice]) => !exclude.includes(key) && !voice.stopping && !this.admissions.has(key) && !voice.protected && !protectedChannels.includes(voice.channel) && (mode !== "priority" || (voice.priority ?? 0) <= (options.priority ?? 0))
+    );
+    if (mode === "priority")
+      candidates.sort((a, b) => (a[1].priority ?? 0) - (b[1].priority ?? 0));
+    const victim = candidates[0];
+    if (mode === "reject" || !victim || this.admissions.size >= this.options.maxPendingQueue) {
+      this.droppedVoices++;
+      this.voiceEvent({
+        type: "rejected",
+        id: task.id,
+        channel: task.channel,
+        reason: "voice-capacity"
+      });
+      this.syncDomTelemetry();
+      return "rejected";
+    }
+    this.admissions.set(victim[0], task);
+    this.retiredVoices++;
+    this.voiceEvent({
+      type: "retiring",
+      id: victim[1].logicalId,
+      channel: victim[1].channel,
+      replacedBy: task.id,
+      reason: mode
+    });
+    this.stopVoice(victim[0], this.options.retireFadeSec ?? 5e-3);
+    this.syncDomTelemetry();
+    return "queued";
+  }
   detectIframeContext() {
     if (typeof window === "undefined") {
       this.inIframe = false;
@@ -5886,12 +6472,24 @@ var _IframeSoundAdapter = class _IframeSoundAdapter {
     return new AudioCtx();
   }
   ensureAudioContext(recreateClosed = true) {
-    if (this.disposed) return null;
+    if (this.disposed || this.backendContextLost) return null;
     if (this.ctx && this.ctx.state !== "closed") return this.ctx;
     if (this.ctx?.state === "closed") {
       this.recordError("AudioContext is closed");
       this.unlockedByGesture = false;
       for (const key of [...this.activeVoices.keys()]) this.finishVoice(key);
+      if (this.sampleBackend) {
+        this.backendContextLost = true;
+        try {
+          this.sampleBackend.dispose();
+        } catch (error) {
+          this.recordError(error);
+        }
+        this.recordError(
+          "Sample backend context closed; dispose and recreate the adapter"
+        );
+        return null;
+      }
       this.ctx = null;
       this.masterGain = null;
       this.channelGains = {};
@@ -5937,13 +6535,20 @@ var _IframeSoundAdapter = class _IframeSoundAdapter {
     }
   }
   updateGainNodes() {
-    if (this.masterGain) this.setGainValue(this.masterGain, this.getEffectiveMasterVolume());
+    if (this.masterGain)
+      this.setGainValue(this.masterGain, this.getEffectiveMasterVolume());
     for (const channel of CHANNELS) {
       const node = this.channelGains[channel];
       if (node) this.setGainValue(node, this.volumes[channel]);
     }
     this.syncLayaSoundManager();
+    this.syncStreamFocus();
     this.syncDomTelemetry();
+  }
+  syncStreamFocus() {
+    const paused = this.autoSuspendedByBlur || !this.unlockedByGesture || this.ctx?.state !== "running";
+    for (const voice of this.activeVoices.values())
+      if (voice.source instanceof StreamVoice) voice.source.setPaused(paused);
   }
   /** Optional state mirroring for consumers that explicitly still use Laya SoundManager. */
   syncLayaSoundManager() {
@@ -5953,8 +6558,12 @@ var _IframeSoundAdapter = class _IframeSoundAdapter {
     if (!soundManager) return;
     soundManager.muted = this.userMuted || this.autoSuspendedByBlur;
     soundManager.autoStopMusic = true;
-    soundManager.setMusicVolume?.(Number((this.volumes.master * this.volumes.bgm).toFixed(2)));
-    soundManager.setSoundVolume?.(Number((this.volumes.master * this.volumes.sfx).toFixed(2)));
+    soundManager.setMusicVolume?.(
+      Number((this.volumes.master * this.volumes.bgm).toFixed(2))
+    );
+    soundManager.setSoundVolume?.(
+      Number((this.volumes.master * this.volumes.sfx).toFixed(2))
+    );
   }
   addEventListener(target, type, listener, options, gesture = false) {
     target.addEventListener(type, listener, options);
@@ -5977,7 +6586,13 @@ var _IframeSoundAdapter = class _IframeSoundAdapter {
       if (this.unlockedByGesture) this.removeGestureUnlockGuards();
     };
     for (const event of events) {
-      this.addEventListener(window, event, onFirstGesture, { capture: true, passive: true }, true);
+      this.addEventListener(
+        window,
+        event,
+        onFirstGesture,
+        { capture: true, passive: true },
+        true
+      );
     }
   }
   markUnlocked(gestureSource) {
@@ -5985,6 +6600,7 @@ var _IframeSoundAdapter = class _IframeSoundAdapter {
     this.unlockGestureType = gestureSource;
     this.playSilentUnlockSample();
     this.flushPendingQueue();
+    this.syncStreamFocus();
     this.syncDomTelemetry();
   }
   playSilentUnlockSample() {
@@ -6024,7 +6640,8 @@ var _IframeSoundAdapter = class _IframeSoundAdapter {
       const result = context.resume();
       Promise.resolve(result).then(
         () => {
-          if (this.disposed || attempt !== this.unlockAttempt || this.ctx !== context) return;
+          if (this.disposed || attempt !== this.unlockAttempt || this.ctx !== context)
+            return;
           if (context.state === "running") {
             this.markUnlocked(gestureSource);
             this.removeGestureUnlockGuards();
@@ -6073,9 +6690,13 @@ var _IframeSoundAdapter = class _IframeSoundAdapter {
     this.syncDomTelemetry();
   }
   installVisibilityAndFocusGuards() {
-    if (typeof window === "undefined" || typeof document === "undefined") return;
+    if (typeof window === "undefined" || typeof document === "undefined")
+      return;
     this.addEventListener(document, "visibilitychange", () => {
-      this.handleFocusOrVisibilityChange(document.visibilityState !== "hidden", this.windowFocused);
+      this.handleFocusOrVisibilityChange(
+        document.visibilityState !== "hidden",
+        this.windowFocused
+      );
     });
     this.addEventListener(window, "blur", () => {
       this.handleFocusOrVisibilityChange(this.pageVisible, false);
@@ -6098,13 +6719,18 @@ var _IframeSoundAdapter = class _IframeSoundAdapter {
     if (this.ctx) {
       if (this.autoSuspendedByBlur && this.ctx.state === "running" && typeof this.ctx.suspend === "function") {
         try {
-          Promise.resolve(this.ctx.suspend()).catch((error) => this.recordError(error));
+          Promise.resolve(this.ctx.suspend()).catch(
+            (error) => this.recordError(error)
+          );
         } catch (error) {
           this.recordError(error);
         }
       } else if (!this.autoSuspendedByBlur && !this.userMuted && this.unlockedByGesture && this.ctx.state === "suspended" && typeof this.ctx.resume === "function") {
         try {
-          Promise.resolve(this.ctx.resume()).catch((error) => this.recordError(error));
+          Promise.resolve(this.ctx.resume()).then(
+            () => this.syncStreamFocus(),
+            (error) => this.recordError(error)
+          );
         } catch (error) {
           this.recordError(error);
         }
@@ -6114,7 +6740,8 @@ var _IframeSoundAdapter = class _IframeSoundAdapter {
   }
   isAllowedBridgeOrigin(origin) {
     if (!origin || origin === "null") return false;
-    if (this.allowedParentOrigins.size > 0) return this.allowedParentOrigins.has(origin);
+    if (this.allowedParentOrigins.size > 0)
+      return this.allowedParentOrigins.has(origin);
     if (typeof window === "undefined" || !window.location) return false;
     return origin === window.location.origin;
   }
@@ -6124,7 +6751,8 @@ var _IframeSoundAdapter = class _IframeSoundAdapter {
       const messageEvent = event;
       if (!this.isAllowedBridgeOrigin(messageEvent.origin)) return;
       const data = messageEvent.data;
-      if (!data || typeof data !== "object" || typeof data.type !== "string") return;
+      if (!data || typeof data !== "object" || typeof data.type !== "string")
+        return;
       if (!data.type.startsWith("zhuda:")) return;
       this.handleBridgeMessage(data);
       const source = messageEvent.source;
@@ -6186,7 +6814,8 @@ var _IframeSoundAdapter = class _IframeSoundAdapter {
     return this.userMuted;
   }
   setChannelVolume(channel, volume) {
-    if (!isAudioChannel(channel) || !isFiniteNumber(volume) || volume < 0 || volume > 1) return false;
+    if (!isAudioChannel(channel) || !isFiniteNumber(volume) || volume < 0 || volume > 1)
+      return false;
     this.volumes[channel] = volume;
     this.updateGainNodes();
     return true;
@@ -6195,15 +6824,22 @@ var _IframeSoundAdapter = class _IframeSoundAdapter {
     return this.volumes[channel];
   }
   validateTone(options) {
-    if (!options || typeof options.id !== "string" || options.id.trim().length === 0) return null;
+    if (!options || typeof options.id !== "string" || options.id.trim().length === 0 || !this.validVoice(options))
+      return null;
     const channel = options.channel ?? "sfx";
     if (!isAudioChannel(channel)) return null;
-    if (!isFiniteNumber(options.startFreq) || options.startFreq <= 0 || options.startFreq > 24e3) return null;
-    if (options.endFreq !== void 0 && (!isFiniteNumber(options.endFreq) || options.endFreq <= 0 || options.endFreq > 24e3)) return null;
-    if (!isFiniteNumber(options.durationSec) || options.durationSec <= 0 || options.durationSec > 30) return null;
-    if (options.peakGain !== void 0 && (!isFiniteNumber(options.peakGain) || options.peakGain < 0 || options.peakGain > 1)) return null;
-    if (options.delaySec !== void 0 && (!isFiniteNumber(options.delaySec) || options.delaySec < 0 || options.delaySec > 60)) return null;
-    if (options.waveType !== void 0 && !AUDIO_WAVE_TYPES.includes(options.waveType)) return null;
+    if (!isFiniteNumber(options.startFreq) || options.startFreq <= 0 || options.startFreq > 24e3)
+      return null;
+    if (options.endFreq !== void 0 && (!isFiniteNumber(options.endFreq) || options.endFreq <= 0 || options.endFreq > 24e3))
+      return null;
+    if (!isFiniteNumber(options.durationSec) || options.durationSec <= 0 || options.durationSec > 30)
+      return null;
+    if (options.peakGain !== void 0 && (!isFiniteNumber(options.peakGain) || options.peakGain < 0 || options.peakGain > 1))
+      return null;
+    if (options.delaySec !== void 0 && (!isFiniteNumber(options.delaySec) || options.delaySec < 0 || options.delaySec > 60))
+      return null;
+    if (options.waveType !== void 0 && !AUDIO_WAVE_TYPES.includes(options.waveType))
+      return null;
     return channel;
   }
   runSynthesis(options, channel) {
@@ -6214,17 +6850,20 @@ var _IframeSoundAdapter = class _IframeSoundAdapter {
       this.syncDomTelemetry();
       return null;
     }
-    if (this.activeVoices.size >= this.options.maxActiveVoices) {
-      this.droppedVoices++;
-      this.syncDomTelemetry();
-      return null;
-    }
+    const admission = this.admit(options, {
+      id: options.id,
+      channel,
+      execute: () => this.runSynthesis(options, channel) !== null
+    });
+    if (admission !== "ready") return admission === "queued" ? true : null;
     const voiceKey = `${options.id}:${++this.voiceSerial}`;
     const when = context.currentTime + (options.delaySec ?? 0);
     const duration = options.durationSec;
     const state = {
       logicalId: options.id,
       channel,
+      priority: options.priority,
+      protected: options.protected,
       source: null,
       stopped: false
     };
@@ -6236,7 +6875,10 @@ var _IframeSoundAdapter = class _IframeSoundAdapter {
       source.type = options.waveType ?? "triangle";
       source.frequency.setValueAtTime(options.startFreq, when);
       if (options.endFreq !== void 0 && options.endFreq !== options.startFreq) {
-        source.frequency.exponentialRampToValueAtTime(options.endFreq, when + duration);
+        source.frequency.exponentialRampToValueAtTime(
+          options.endFreq,
+          when + duration
+        );
       }
       const peak = options.peakGain ?? 0.18;
       gain.gain.setValueAtTime(Math.max(1e-3, peak), when);
@@ -6248,6 +6890,7 @@ var _IframeSoundAdapter = class _IframeSoundAdapter {
       source.start(when);
       source.stop(when + duration);
       this.playedEventsCount++;
+      this.voiceEvent({ type: "started", id: options.id, channel });
       const handle = {
         id: options.id,
         channel,
@@ -6272,7 +6915,10 @@ var _IframeSoundAdapter = class _IframeSoundAdapter {
     }
   }
   submit(task, replace = false) {
-    if (this.disposed || this.userMuted || this.autoSuspendedByBlur) return false;
+    if (this.disposed || this.userMuted || this.autoSuspendedByBlur)
+      return false;
+    if ([...this.admissions.values()].some((value) => value.id === task.id))
+      return false;
     if (this.unlockedByGesture) return task.execute();
     const old = this.pendingQueue.findIndex((value) => value.id === task.id);
     if (old >= 0 && !replace) {
@@ -6297,7 +6943,11 @@ var _IframeSoundAdapter = class _IframeSoundAdapter {
     const channel = this.validateTone(options);
     if (!channel) return false;
     const snapshot = { ...options };
-    return this.submit({ id: snapshot.id, channel, execute: () => this.runSynthesis(snapshot, channel) !== null });
+    return this.submit({
+      id: snapshot.id,
+      channel,
+      execute: () => this.runSynthesis(snapshot, channel) !== null
+    });
   }
   sampleInfo(id, buffer) {
     return {
@@ -6312,12 +6962,19 @@ var _IframeSoundAdapter = class _IframeSoundAdapter {
   /** Load and decode a provider logical ID. Repeated callers share the existing cache work. */
   async loadSample(id, options = {}) {
     normalizeAssetId(id);
-    if (this.disposed || !this.sampleCache) throw Error("Sample loading requires a live adapter with sampleProvider");
-    if (options.signal?.aborted) throw new DOMException("Sample load cancelled", "AbortError");
+    if (this.disposed || !this.sampleCache)
+      throw Error("Sample loading requires a live adapter with sampleProvider");
+    if (options.signal?.aborted)
+      throw new DOMException("Sample load cancelled", "AbortError");
     const existing = this.samples.get(id);
     if (existing) return this.sampleInfo(id, existing.value);
-    const reserved = /* @__PURE__ */ new Set([...this.samples.keys(), ...this.sampleLoads.values(), id]);
-    if (reserved.size > this.maxSamples) throw Error("Audio sample capacity exceeded");
+    const reserved = /* @__PURE__ */ new Set([
+      ...this.samples.keys(),
+      ...this.sampleLoads.values(),
+      id
+    ]);
+    if (reserved.size > this.maxSamples)
+      throw Error("Audio sample capacity exceeded");
     const controller = new AbortController();
     const abort = () => controller.abort();
     options.signal?.addEventListener("abort", abort, { once: true });
@@ -6330,10 +6987,12 @@ var _IframeSoundAdapter = class _IframeSoundAdapter {
     let lease;
     try {
       lease = await this.sampleCache.acquire(id, { signal: controller.signal });
-      if (controller.signal.aborted || this.disposed) throw new DOMException("Sample load cancelled", "AbortError");
+      if (controller.signal.aborted || this.disposed)
+        throw new DOMException("Sample load cancelled", "AbortError");
       const info = this.sampleInfo(id, lease.value);
       if (!this.samples.has(id)) {
-        if (this.getDiagnostics().decodedSampleBytes + info.decodedBytes > this.maxDecodedSampleBytes) throw Error("Total decoded sample PCM bound exceeded");
+        if (this.getDiagnostics().decodedSampleBytes + info.decodedBytes > this.maxDecodedSampleBytes)
+          throw Error("Total decoded sample PCM bound exceeded");
         this.samples.set(id, lease);
         lease = void 0;
       }
@@ -6354,16 +7013,25 @@ var _IframeSoundAdapter = class _IframeSoundAdapter {
   /** Stops this sample's queued/active voices, cancels pending loads and releases its PCM lease. */
   unloadSample(id) {
     let changed = false;
-    for (const [controller, sampleId] of this.sampleLoads) if (sampleId === id) {
-      controller.abort();
-      changed = true;
-    }
-    for (const [key, voice] of [...this.activeVoices]) if (voice.sampleId === id) {
-      this.stopVoice(key);
-      changed = true;
-    }
+    for (const [controller, sampleId] of this.sampleLoads)
+      if (sampleId === id) {
+        controller.abort();
+        changed = true;
+      }
+    for (const [key, task] of this.admissions)
+      if (task.sampleId === id) {
+        this.admissions.delete(key);
+        changed = true;
+      }
+    for (const [key, voice] of [...this.activeVoices])
+      if (voice.sampleId === id) {
+        this.stopVoice(key);
+        changed = true;
+      }
     const before = this.pendingQueue.length;
-    this.pendingQueue = this.pendingQueue.filter((task) => task.sampleId !== id);
+    this.pendingQueue = this.pendingQueue.filter(
+      (task) => task.sampleId !== id
+    );
     changed || (changed = before !== this.pendingQueue.length);
     const lease = this.samples.get(id);
     if (lease) {
@@ -6374,77 +7042,355 @@ var _IframeSoundAdapter = class _IframeSoundAdapter {
     this.syncDomTelemetry();
     return changed;
   }
+  /** Install one sample backend before playback. No implicit fallback after
+   * failure: the caller may retry or retain native playback explicitly. */
+  async prepareSampleBackend(backend, options = {}) {
+    if (this.disposed || this.sampleBackend || this.backendPreparing || this.activeVoices.size || this.pendingQueue.length || this.admissions.size)
+      throw Error(
+        "Backend preparation requires an idle, live adapter without a backend"
+      );
+    const provider = this.options.sampleProvider;
+    const context = this.ensureAudioContext();
+    if (!provider || !context || !backend?.name)
+      throw Error("Backend requires provider, context and name");
+    const controller = this.backendPreparing = new AbortController();
+    const abort = () => controller.abort(options.signal?.reason);
+    options.signal?.addEventListener("abort", abort, { once: true });
+    if (options.signal?.aborted) abort();
+    const timer = setTimeout(
+      () => controller.abort(
+        new DOMException("Backend prepare timeout", "TimeoutError")
+      ),
+      this.sampleTimeoutMs
+    );
+    let cancel = () => {
+    };
+    let accepted = false;
+    const work = Promise.resolve().then(() => {
+      if (controller.signal.aborted)
+        throw controller.signal.reason ?? new DOMException("Cancelled", "AbortError");
+      return backend.prepare({ context, provider, signal: controller.signal });
+    });
+    void work.then(
+      () => {
+        if (controller.signal.aborted || this.disposed) {
+          try {
+            backend.dispose();
+          } catch (error) {
+            this.recordError(error);
+          }
+        }
+      },
+      () => {
+      }
+    );
+    try {
+      await Promise.race([
+        work,
+        new Promise((_, reject) => {
+          cancel = () => reject(
+            controller.signal.reason ?? new DOMException("Cancelled", "AbortError")
+          );
+          controller.signal.addEventListener("abort", cancel, { once: true });
+          if (controller.signal.aborted) cancel();
+        })
+      ]);
+      if (this.disposed || controller.signal.aborted)
+        throw new DOMException("Backend cancelled", "AbortError");
+      this.sampleBackend = backend;
+      accepted = true;
+    } catch (error) {
+      this.recordError(error);
+      throw error;
+    } finally {
+      clearTimeout(timer);
+      options.signal?.removeEventListener("abort", abort);
+      controller.signal.removeEventListener("abort", cancel);
+      this.backendPreparing = void 0;
+      if (!accepted) {
+        try {
+          backend.dispose();
+        } catch (error) {
+          this.recordError(error);
+        }
+      }
+    }
+  }
+  async loadStream(id, options = {}) {
+    id = normalizeAssetId(id);
+    if (this.disposed || !this.streamCache)
+      throw Error("Stream loading requires a live provider with openStream");
+    if (options.signal?.aborted)
+      throw new DOMException("Stream cancelled", "AbortError");
+    const info = (lease2) => ({
+      id,
+      integrity: lease2.integrity,
+      delivery: lease2.delivery,
+      retainedBytes: lease2.retainedBytes
+    });
+    const existing = this.streams.get(id);
+    if (existing) return info(existing.value);
+    if ((/* @__PURE__ */ new Set([...this.streams.keys(), ...this.streamLoads.values(), id])).size > this.maxSamples)
+      throw Error("Stream capacity exceeded");
+    const controller = new AbortController();
+    const abort = () => controller.abort(options.signal?.reason);
+    options.signal?.addEventListener("abort", abort, { once: true });
+    this.streamLoads.set(controller, id);
+    let timeout = false;
+    const timer = setTimeout(() => {
+      timeout = true;
+      controller.abort();
+    }, this.sampleTimeoutMs);
+    let lease;
+    try {
+      lease = await this.streamCache.acquire(id, { signal: controller.signal });
+      if (controller.signal.aborted || this.disposed)
+        throw new DOMException("Stream cancelled", "AbortError");
+      const result = info(lease.value);
+      if (!this.streams.has(id)) {
+        if (this.getDiagnostics().retainedStreamBytes + result.retainedBytes > this.maxRetainedStreamBytes)
+          throw Error("Total retained stream byte bound exceeded");
+        this.streams.set(id, lease);
+        lease = void 0;
+      }
+      return result;
+    } catch (error) {
+      const failure = timeout ? Error(`Stream load timeout: ${id}`) : error;
+      this.recordError(failure);
+      throw failure;
+    } finally {
+      lease?.release();
+      clearTimeout(timer);
+      options.signal?.removeEventListener("abort", abort);
+      this.streamLoads.delete(controller);
+      if (this.disposed && !this.streamLoads.size) this.streamCache.dispose();
+      this.syncDomTelemetry();
+    }
+  }
+  unloadStream(id) {
+    let changed = false;
+    for (const [controller, value] of this.streamLoads)
+      if (value === id) {
+        controller.abort();
+        changed = true;
+      }
+    for (const [key, task] of this.admissions)
+      if (task.streamId === id) {
+        this.admissions.delete(key);
+        changed = true;
+      }
+    const before = this.pendingQueue.length;
+    this.pendingQueue = this.pendingQueue.filter(
+      (task) => task.streamId !== id
+    );
+    changed || (changed = before !== this.pendingQueue.length);
+    for (const [key, voice] of [...this.activeVoices])
+      if (voice.streamId === id) {
+        this.stopVoice(key);
+        changed = true;
+      }
+    const lease = this.streams.get(id);
+    if (lease) {
+      this.streams.delete(id);
+      lease.release();
+      changed = true;
+    }
+    this.syncDomTelemetry();
+    return changed;
+  }
+  playStream(options) {
+    if (!options || !options.id?.trim() || !this.validVoice(options))
+      return false;
+    const lease = this.streams.get(options.streamId), channel = options.channel ?? "bgm";
+    if (!lease || !isAudioChannel(channel)) return false;
+    const offset = options.offsetSec ?? 0, fade = options.fadeInSec ?? options.crossFadeSec ?? 0, crossFade = options.crossFadeSec ?? 0, peak = options.peakGain ?? 1;
+    if (![offset, fade, crossFade, peak].every(
+      (v) => Number.isFinite(v) && v >= 0
+    ) || peak > 1 || fade > 60 || crossFade > 60 || crossFade > 0 && !options.replace || options.loop !== void 0 && typeof options.loop !== "boolean" || options.replace !== void 0 && typeof options.replace !== "boolean")
+      return false;
+    const snapshot = { ...options };
+    const task = {
+      id: snapshot.id,
+      streamId: snapshot.streamId,
+      channel,
+      execute: () => {
+        if (this.disposed || this.userMuted || this.autoSuspendedByBlur || this.streams.get(snapshot.streamId) !== lease)
+          return false;
+        const previous = [...this.activeVoices].filter(([, v]) => v.logicalId === snapshot.id).map(([k]) => k);
+        if (previous.length && !snapshot.replace) return false;
+        const context = this.ensureAudioContext(false), channelGain = channel === "master" ? this.masterGain : this.channelGains[channel];
+        if (!context || !channelGain) return false;
+        const admission = this.admit(snapshot, task, previous);
+        if (admission !== "ready") return admission === "queued";
+        const key = `${snapshot.id}:${++this.voiceSerial}`;
+        let source, gain;
+        try {
+          const media = this.options.mediaElementFactory?.() ?? document.createElement("audio");
+          source = new StreamVoice(
+            context,
+            media,
+            lease.value,
+            snapshot,
+            this.sampleTimeoutMs,
+            (error) => {
+              this.recordError(error);
+              this.voiceEvent({
+                type: "failed",
+                id: snapshot.id,
+                channel,
+                reason: String(error)
+              });
+            },
+            () => {
+              if (!this.activeVoices.has(key) || this.disposed) return;
+              gain.gain.setValueAtTime(fade ? 0 : peak, context.currentTime);
+              if (fade)
+                gain.gain.linearRampToValueAtTime(
+                  peak,
+                  context.currentTime + fade
+                );
+              for (const old of previous) this.stopVoice(old, crossFade);
+              this.playedEventsCount++;
+              this.voiceEvent({ type: "started", id: snapshot.id, channel });
+              this.syncDomTelemetry();
+            }
+          );
+          gain = context.createGain();
+          gain.gain.setValueAtTime(fade ? 0 : peak, context.currentTime);
+          source.output.connect(gain);
+          gain.connect(channelGain);
+          source.onended = () => this.finishVoice(key);
+          this.activeVoices.set(key, {
+            logicalId: snapshot.id,
+            channel,
+            source,
+            gain,
+            streamId: snapshot.streamId,
+            stopped: false,
+            priority: snapshot.priority,
+            protected: snapshot.protected
+          });
+          source.start(context.currentTime, offset);
+          this.syncDomTelemetry();
+          return true;
+        } catch (error) {
+          source?.disconnect();
+          gain?.disconnect();
+          this.activeVoices.delete(key);
+          this.recordError(error);
+          return false;
+        }
+      }
+    };
+    return this.submit(task, snapshot.replace);
+  }
   playSample(options) {
-    if (!options || typeof options.id !== "string" || !options.id.trim()) return false;
+    if (!options || typeof options.id !== "string" || !options.id.trim() || !this.validVoice(options) || this.backendPreparing)
+      return false;
     const lease = this.samples.get(options.sampleId);
     const channel = options.channel ?? "sfx";
     if (!lease || !isAudioChannel(channel)) return false;
     const buffer = lease.value;
     const offset = options.offsetSec ?? 0, loopStart = options.loopStartSec ?? 0, loopEnd = options.loopEndSec ?? buffer.duration;
-    for (const value of [offset, loopStart, loopEnd, options.fadeInSec ?? 0, options.fadeOutSec ?? 0, options.crossFadeSec ?? 0])
+    for (const value of [
+      offset,
+      loopStart,
+      loopEnd,
+      options.fadeInSec ?? 0,
+      options.fadeOutSec ?? 0,
+      options.crossFadeSec ?? 0
+    ])
       if (!Number.isFinite(value) || value < 0) return false;
-    if (offset >= buffer.duration || loopStart >= loopEnd || loopEnd > buffer.duration || options.loop !== void 0 && typeof options.loop !== "boolean" || options.replace !== void 0 && typeof options.replace !== "boolean" || (options.crossFadeSec ?? 0) > 0 && !options.replace || options.durationSec !== void 0 && (!Number.isFinite(options.durationSec) || options.durationSec <= 0) || options.peakGain !== void 0 && (!Number.isFinite(options.peakGain) || options.peakGain < 0 || options.peakGain > 1)) return false;
+    if (offset >= buffer.duration || loopStart >= loopEnd || loopEnd > buffer.duration || options.loop !== void 0 && typeof options.loop !== "boolean" || options.replace !== void 0 && typeof options.replace !== "boolean" || (options.crossFadeSec ?? 0) > 0 && !options.replace || options.durationSec !== void 0 && (!Number.isFinite(options.durationSec) || options.durationSec <= 0) || options.peakGain !== void 0 && (!Number.isFinite(options.peakGain) || options.peakGain < 0 || options.peakGain > 1))
+      return false;
     const duration = options.loop ? options.durationSec : Math.min(options.durationSec ?? Infinity, buffer.duration - offset);
     const fadeIn = options.fadeInSec ?? options.crossFadeSec ?? 0, fadeOut = options.fadeOutSec ?? 0;
-    if (fadeIn > 60 || fadeOut > 60 || (options.crossFadeSec ?? 0) > 60 || (duration === void 0 ? fadeOut > 0 : fadeIn + fadeOut > duration)) return false;
+    if (fadeIn > 60 || fadeOut > 60 || (options.crossFadeSec ?? 0) > 60 || (duration === void 0 ? fadeOut > 0 : fadeIn + fadeOut > duration))
+      return false;
     const snapshot = { ...options };
-    return this.submit({ id: snapshot.id, sampleId: snapshot.sampleId, channel, execute: () => {
-      if (this.samples.get(snapshot.sampleId) !== lease || this.userMuted || this.autoSuspendedByBlur) return false;
-      const previous = [...this.activeVoices].filter(([, voice]) => voice.logicalId === snapshot.id).map(([key2]) => key2);
-      if (previous.length && !snapshot.replace) return false;
-      const context = this.ensureAudioContext(false);
-      const channelGain = channel === "master" ? this.masterGain : this.channelGains[channel];
-      if (!context || !channelGain) return false;
-      if (this.activeVoices.size >= this.options.maxActiveVoices) {
-        this.droppedVoices++;
-        this.syncDomTelemetry();
-        return false;
-      }
-      const key = `${snapshot.id}:${++this.voiceSerial}`;
-      let source, gain;
-      try {
-        source = context.createBufferSource();
-        gain = context.createGain();
-        source.buffer = buffer;
-        source.loop = snapshot.loop ?? false;
-        source.loopStart = loopStart;
-        source.loopEnd = loopEnd;
-        const now = context.currentTime, peak = snapshot.peakGain ?? 1;
-        gain.gain.setValueAtTime(fadeIn ? 0 : peak, now);
-        if (fadeIn) gain.gain.linearRampToValueAtTime(peak, now + fadeIn);
-        if (duration !== void 0 && fadeOut) {
-          gain.gain.setValueAtTime(peak, now + duration - fadeOut);
-          gain.gain.linearRampToValueAtTime(0, now + duration);
-        }
-        source.connect(gain);
-        gain.connect(channelGain);
-        source.onended = () => this.finishVoice(key);
-        this.activeVoices.set(key, { logicalId: snapshot.id, channel, source, gain, sampleId: snapshot.sampleId, stopped: false });
-        source.start(now, offset);
-        if (duration !== void 0) source.stop(now + duration);
-        for (const old of previous) this.stopVoice(old, snapshot.crossFadeSec ?? 0);
-        this.playedEventsCount++;
-        this.syncDomTelemetry();
-        return true;
-      } catch (error) {
+    const task = {
+      id: snapshot.id,
+      sampleId: snapshot.sampleId,
+      channel,
+      execute: () => {
+        if (this.samples.get(snapshot.sampleId) !== lease || this.userMuted || this.autoSuspendedByBlur)
+          return false;
+        const previous = [...this.activeVoices].filter(([, voice]) => voice.logicalId === snapshot.id).map(([key2]) => key2);
+        if (previous.length && !snapshot.replace) return false;
+        const context = this.ensureAudioContext(false);
+        const channelGain = channel === "master" ? this.masterGain : this.channelGains[channel];
+        if (!context || !channelGain) return false;
+        const admission = this.admit(snapshot, task, previous);
+        if (admission !== "ready") return admission === "queued";
+        const key = `${snapshot.id}:${++this.voiceSerial}`;
+        let source, gain;
         try {
-          source?.stop();
-        } catch {
+          if (this.sampleBackend)
+            source = this.sampleBackend.createVoice(buffer, snapshot);
+          else {
+            source = context.createBufferSource();
+            source.buffer = buffer;
+            source.loop = snapshot.loop ?? false;
+            source.loopStart = loopStart;
+            source.loopEnd = loopEnd;
+          }
+          gain = context.createGain();
+          const now = context.currentTime, peak = snapshot.peakGain ?? 1;
+          gain.gain.setValueAtTime(fadeIn ? 0 : peak, now);
+          if (fadeIn) gain.gain.linearRampToValueAtTime(peak, now + fadeIn);
+          if (duration !== void 0 && fadeOut) {
+            gain.gain.setValueAtTime(peak, now + duration - fadeOut);
+            gain.gain.linearRampToValueAtTime(0, now + duration);
+          }
+          ("output" in source ? source.output : source).connect(gain);
+          gain.connect(channelGain);
+          source.onended = () => this.finishVoice(key);
+          this.activeVoices.set(key, {
+            logicalId: snapshot.id,
+            channel,
+            source,
+            gain,
+            sampleId: snapshot.sampleId,
+            stopped: false,
+            priority: snapshot.priority,
+            protected: snapshot.protected
+          });
+          source.start(now, offset);
+          if (duration !== void 0) source.stop(now + duration);
+          for (const old of previous)
+            this.stopVoice(old, snapshot.crossFadeSec ?? 0);
+          this.playedEventsCount++;
+          this.voiceEvent({ type: "started", id: snapshot.id, channel });
+          this.syncDomTelemetry();
+          return true;
+        } catch (error) {
+          try {
+            source?.stop();
+          } catch {
+          }
+          source?.disconnect();
+          gain?.disconnect();
+          this.activeVoices.delete(key);
+          this.recordError(error);
+          this.syncDomTelemetry();
+          return false;
         }
-        source?.disconnect();
-        gain?.disconnect();
-        this.activeVoices.delete(key);
-        this.recordError(error);
-        this.syncDomTelemetry();
-        return false;
       }
-    } }, snapshot.replace);
+    };
+    return this.submit(task, snapshot.replace);
   }
   stop(id, fadeOutSec = 0) {
-    if (!Number.isFinite(fadeOutSec) || fadeOutSec < 0 || fadeOutSec > 60) return false;
+    if (!Number.isFinite(fadeOutSec) || fadeOutSec < 0 || fadeOutSec > 60)
+      return false;
     let stopped = false;
+    for (const [key, task] of this.admissions)
+      if (task.id === id) {
+        this.admissions.delete(key);
+        stopped = true;
+      }
     for (const [voiceKey, voice] of [...this.activeVoices.entries()]) {
-      if (voice.logicalId === id) stopped = this.stopVoice(voiceKey, fadeOutSec) || stopped;
+      if (voice.logicalId === id)
+        stopped = this.stopVoice(voiceKey, fadeOutSec) || stopped;
     }
     const before = this.pendingQueue.length;
     this.pendingQueue = this.pendingQueue.filter((task) => task.id !== id);
@@ -6466,6 +7412,15 @@ var _IframeSoundAdapter = class _IframeSoundAdapter {
       voice.gain?.disconnect?.();
     } catch {
     }
+    const next = this.admissions.get(voiceKey);
+    this.admissions.delete(voiceKey);
+    this.voiceEvent({
+      type: "ended",
+      id: voice.logicalId,
+      channel: voice.channel
+    });
+    if (next && !this.disposed && !this.userMuted && !this.autoSuspendedByBlur)
+      next.execute();
     this.syncDomTelemetry();
   }
   stopVoice(voiceKey, fadeOutSec = 0) {
@@ -6489,8 +7444,13 @@ var _IframeSoundAdapter = class _IframeSoundAdapter {
     return true;
   }
   stopAll(channel) {
+    for (const [key, task] of this.admissions)
+      if (channel === void 0 || task.channel === channel)
+        this.admissions.delete(key);
     const before = this.pendingQueue.length;
-    this.pendingQueue = this.pendingQueue.filter((task) => channel !== void 0 && task.channel !== channel);
+    this.pendingQueue = this.pendingQueue.filter(
+      (task) => channel !== void 0 && task.channel !== channel
+    );
     let count = before - this.pendingQueue.length;
     for (const [voiceKey, voice] of [...this.activeVoices.entries()]) {
       if (channel === void 0 || voice.channel === channel) {
@@ -6503,9 +7463,21 @@ var _IframeSoundAdapter = class _IframeSoundAdapter {
   getDiagnostics() {
     const state = this.ctx && CONTEXT_STATES.has(this.ctx.state) ? this.ctx.state : "uninitialized";
     return {
+      loadedStreams: this.streams.size,
+      pendingStreamLoads: this.streamLoads.size,
+      retainedStreamBytes: [...this.streams.values()].reduce(
+        (sum, lease) => sum + lease.value.retainedBytes,
+        0
+      ),
+      pendingAdmissions: this.admissions.size,
+      retiredVoices: this.retiredVoices,
+      sampleBackend: this.sampleBackend?.name ?? "native",
       loadedSamples: this.samples.size,
       pendingSampleLoads: this.sampleLoads.size,
-      decodedSampleBytes: [...this.samples.values()].reduce((sum, lease) => sum + lease.value.length * lease.value.numberOfChannels * 4, 0),
+      decodedSampleBytes: [...this.samples.values()].reduce(
+        (sum, lease) => sum + lease.value.length * lease.value.numberOfChannels * 4,
+        0
+      ),
       inIframe: this.inIframe,
       contextState: state,
       unlockedByGesture: this.unlockedByGesture,
@@ -6535,7 +7507,9 @@ var _IframeSoundAdapter = class _IframeSoundAdapter {
     if (!this.disposed) win.__ZHUDA_IFRAME_ADAPTER__ = this;
     if (typeof document !== "undefined" && document.body) {
       document.body.dataset.zhudaIframeAudio = this.postMessageBridgeActive ? "ready" : "inactive";
-      document.body.dataset.zhudaAudioMuted = String(this.userMuted || this.autoSuspendedByBlur);
+      document.body.dataset.zhudaAudioMuted = String(
+        this.userMuted || this.autoSuspendedByBlur
+      );
       document.body.dataset.zhudaAudioPlayed = String(this.playedEventsCount);
     }
   }
@@ -6543,11 +7517,20 @@ var _IframeSoundAdapter = class _IframeSoundAdapter {
   dispose() {
     if (this.disposed) return;
     this.disposed = true;
+    this.backendPreparing?.abort();
     this.unlockAttempt++;
     this.pendingQueue = [];
     this.stopAll();
     for (const controller of this.sampleLoads.keys()) controller.abort();
     for (const id of [...this.samples.keys()]) this.unloadSample(id);
+    for (const controller of this.streamLoads.keys()) controller.abort();
+    for (const id of [...this.streams.keys()]) this.unloadStream(id);
+    if (!this.streamLoads.size) this.streamCache?.dispose();
+    try {
+      this.sampleBackend?.dispose();
+    } catch (error) {
+      this.recordError(error);
+    }
     if (!this.sampleLoads.size) this.sampleCache?.dispose();
     try {
       this.masterGain?.disconnect?.();
@@ -6559,13 +7542,16 @@ var _IframeSoundAdapter = class _IframeSoundAdapter {
     this.postMessageBridgeActive = false;
     if (this.ctx && typeof this.ctx.close === "function" && this.ctx.state !== "closed") {
       try {
-        Promise.resolve(this.ctx.close()).catch((error) => this.recordError(error));
+        Promise.resolve(this.ctx.close()).catch(
+          (error) => this.recordError(error)
+        );
       } catch (error) {
         this.recordError(error);
       }
     }
     this.syncDomTelemetry();
-    if (_IframeSoundAdapter.instance === this) _IframeSoundAdapter.instance = null;
+    if (_IframeSoundAdapter.instance === this)
+      _IframeSoundAdapter.instance = null;
   }
 };
 _IframeSoundAdapter.instance = null;
@@ -12065,6 +13051,7 @@ zhudaSurface(s,zhudaUV,pixel.positionWS,pixel.normalWS);inputs.diffuseColor=max(
   ZhudaPointerInput,
   ZhudaPrefab,
   ZhudaPrefabLibrary,
+  ZhudaRafDriver,
   ZhudaRealtimeClock,
   ZhudaRenderSpace,
   ZhudaRequestSlot,
@@ -12090,6 +13077,7 @@ zhudaSurface(s,zhudaUV,pixel.positionWS,pixel.normalWS);inputs.diffuseColor=max(
   ZhudaUI,
   ZhudaVfxCamera,
   ZhudaVfxMaterial,
+  ZhudaWorkerFrameDriver,
   applySceneQuality,
   buildPrefabTree,
   compareVisualFrames,

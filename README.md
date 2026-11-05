@@ -40,7 +40,18 @@ Build 2D, 3D and Spine 4.2 projects with TypeScript, a CLI and coding agents. Th
 
 Maintained by [Zhuda](https://github.com/zhudaandzhuer). Rendering and physics come from [LayaAir / Layabox](https://layaair.com/). This is an independent fork; donations support Zhuda's work on this repository.
 
-## Single-HTML browser entry (1.6.0)
+## Runtime reliability (1.7.0)
+
+DPR-independent CSS design coordinates, provider-backed streaming BGM, bounded
+FIFO/priority voice retirement, a sample-backend extension and an optional
+Worker frame driver are available. The full vendor declaration audit now passes
+with `skipLibCheck:false` and runs inside `npm run verify`.
+See [audio](docs/audio.md), [runtime sizing and recovery](docs/platform-adapters.md),
+and the [measured scope and migration notes](docs/plans/records/astra-runtime-feedback/verification.md).
+Physical iOS/Android, speaker latency and a production Worklet DSP mixer remain
+unverified; the extension and desktop reference test do not establish full SOP compliance.
+
+## Single-HTML browser entry (1.7.0)
 
 Use the [hosted SDK and runnable examples](https://game.qianlongxundao.com/play/zhuda-engine-sdk/)
 to load the real runtime with one pinned script. [Browser SDK guide](docs/browser-sdk.md)
@@ -218,7 +229,7 @@ or the installed `zhuda-laya-init` binary, then run the consumer's own `npm run 
 | `node packages/compiler/zhuda-init.mjs /absolute/path/to/consumer` | Create a pinned public-SDK consumer skeleton |
 | `npm run build` | Generate the demo build and SDK bundles |
 | `npm run typecheck` | Check public/runtime types and application sources |
-| `npm run audit:declarations` | Audit all SDK declarations without `skipLibCheck`; currently fails on inherited vendor debt |
+| `npm run audit:declarations` | Audit all SDK declarations without `skipLibCheck`; required clean vendor and public SDK audit |
 | `npm run doctor` | Check module order, registration, known legacy API usage and the agent/documentation contract |
 | `npm run agent:contract` | Print the machine-readable agent boundary, workflow and evidence contract |
 | `npm test` | Run Node unit and integration tests |

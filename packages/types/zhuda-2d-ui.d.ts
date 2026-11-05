@@ -1,3 +1,4 @@
+import type { IframeVoiceOptions } from './zhuda-audio';
 /**
  * @zhuda-laya/types — Layer 2: 2D Rendering, Vector UI & Physics2D (Box2D) Contracts
  * 包含 AutoBitmap 安全防護介面與宣告式 2D UI 建構器型別
@@ -62,6 +63,8 @@ export interface IframeSoundAdapterOptions {
   maxSamples?: number;
   /** Total retained decoded PCM bound (channels * frames * 4). Default 64 MiB. */
   maxDecodedSampleBytes?: number;
+  /** Encoded stream-lease budget, separate from decoded PCM. Default 64 MiB. */
+  maxRetainedStreamBytes?: number;
   /** Parent origins accepted by the postMessage bridge. Same-origin is used when omitted. */
   allowedParentOrigins?: readonly string[];
   /** Maximum age of a pre-gesture event before it is discarded. Defaults to 500 ms. */
@@ -70,6 +73,16 @@ export interface IframeSoundAdapterOptions {
   maxPendingQueue?: number;
   /** Maximum number of simultaneously active voices. Defaults to 32. */
   maxActiveVoices?: number;
+  /** Overflow defaults to reject for compatibility. */
+  voiceOverflow?: 'reject' | 'fifo' | 'priority';
+  protectedChannels?: readonly IframeAudioChannel[];
+  /** Eviction fade, default 0.005 seconds. A fading voice still occupies its slot. */
+  retireFadeSec?: number;
+  onVoiceEvent?: (event: import('./zhuda-audio').IframeVoiceEvent) => void;
+  /** Borrowed provider; defaults to sampleProvider. */
+  streamProvider?: import('./runtime3d/AssetProvider').AssetProvider;
+  /** Injectable for platform integration and tests. One element per live stream voice. */
+  mediaElementFactory?: () => HTMLAudioElement;
   /** Optional factory used by hosts and deterministic tests. */
   audioContextFactory?: () => AudioContext | null;
   /** Clock used for queue expiry; production defaults to Date.now. */
@@ -78,7 +91,7 @@ export interface IframeSoundAdapterOptions {
   syncLayaSoundManager?: boolean;
 }
 
-export interface IframeToneOptions {
+export interface IframeToneOptions extends IframeVoiceOptions {
   id: string;
   channel?: IframeAudioChannel;
   waveType?: OscillatorType;
@@ -97,7 +110,7 @@ export interface IframeSampleInfo {
   frames: number;
   decodedBytes: number;
 }
-export interface IframeSampleOptions {
+export interface IframeSampleOptions extends IframeVoiceOptions {
   /** Logical event/voice identity, distinct from the provider asset ID. */
   id: string;
   sampleId: string;
@@ -123,6 +136,12 @@ export interface AudioVoiceHandle {
 }
 
 export interface IframeSoundDiagnostics {
+  loadedStreams: number;
+  pendingStreamLoads: number;
+  retainedStreamBytes: number;
+  pendingAdmissions: number;
+  retiredVoices: number;
+  sampleBackend: string;
   loadedSamples: number;
   pendingSampleLoads: number;
   decodedSampleBytes: number;

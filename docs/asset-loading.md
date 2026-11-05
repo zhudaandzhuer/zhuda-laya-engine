@@ -40,3 +40,18 @@ format is part of the engine runtime yet.
 - Keep development on directory assets until the project is stable. Production
   can choose plain files, CDN chunks, ZIP chunks or a Rust/WASM provider without
   changing gameplay code.
+
+## Media stream leases
+
+An optional `openStream(id, {signal})` exposes a provider-owned media address
+through `AssetStreamLease`, including delivery, integrity, retained-byte count
+and idempotent `release`. The mixer shares these leases through `ZhudaAssetCache`.
+Keep a lease live until all voices using its URL have disconnected.
+
+`DirectoryAssetProvider` defaults to `streamMode:'verified-blob'`: it uses the
+existing bounded byte loader and manifest checks, then owns/revokes a Blob URL.
+Native mode is opt-in and refuses SHA-required entries because browser range
+playback cannot prove the full-file checksum. Native playback failures are
+asynchronous media failures rather than successful load evidence. Provider
+teardown revokes outstanding owned URLs; dispose consumers first. See
+[audio](audio.md) for playback, memory and lifetime rules.

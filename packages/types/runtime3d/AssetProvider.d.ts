@@ -34,6 +34,16 @@ export interface LoadedAssetBytes {
     /** Packed providers may release a WASM/decoder lease after decode completes. */
     readonly release?: () => void;
 }
+/** Media-address lease. The player never constructs URLs from logical IDs. */
+export interface AssetStreamLease {
+    readonly id: string;
+    readonly url: string;
+    readonly integrity: "sha256" | "transport";
+    readonly delivery: "native" | "verified-blob";
+    readonly retainedBytes: number;
+    readonly crossOrigin?: "anonymous" | "use-credentials";
+    release(): void;
+}
 /**
  * Stable source boundary for consumer assets.
  *
@@ -43,6 +53,9 @@ export interface LoadedAssetBytes {
 export interface AssetProvider {
     readonly name: string;
     load(id: string, options?: AssetLoadOptions): Promise<LoadedAssetBytes>;
+    openStream?(id: string, options?: {
+        signal?: AbortSignal;
+    }): Promise<AssetStreamLease>;
     getManifest?(signal?: AbortSignal): Promise<AssetManifest>;
     dispose?(): void;
 }
@@ -68,6 +81,9 @@ export interface DirectoryAssetProviderOptions {
     /** Default protects against accidental decompression/resource bombs. */
     readonly maxBytes?: number;
     readonly fetch?: FetchLike;
+    /** verified-blob preserves full-byte verification without PCM decode. Native
+     * streaming is opt-in and rejects entries requiring a whole-file SHA. */
+    readonly streamMode?: "verified-blob" | "native";
 }
 /** Plain URL-backed provider used by development and the initial consumer build. */
 export declare class DirectoryAssetProvider implements AssetProvider {
@@ -82,9 +98,14 @@ export declare class DirectoryAssetProvider implements AssetProvider {
     private readonly fetchImpl;
     private readonly active;
     private disposed;
+    private readonly streamMode;
+    private readonly streamReleases;
     constructor(options: DirectoryAssetProviderOptions);
     getManifest(signal?: AbortSignal): Promise<AssetManifest>;
     load(value: string, options?: AssetLoadOptions): Promise<LoadedAssetBytes>;
+    openStream(value: string, options?: {
+        signal?: AbortSignal;
+    }): Promise<AssetStreamLease>;
     dispose(): void;
 }
 /** Adapts a provider to the existing bounded cache without changing cache callers. */

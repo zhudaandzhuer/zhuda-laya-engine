@@ -1,8 +1,26 @@
 import { ZhudaLayeredClock, ZhudaRealtimeClock, ZhudaTimerScheduler, type ZhudaClockSample } from "./Clocks";
 import { ZhudaSceneMutationQueue } from "./SceneMutation";
+import { type ZhudaRuntimeDriver } from "./RuntimeDriver";
 export interface ManagedRuntimeOptions {
     container?: HTMLElement;
     dprCap?: number;
+    /** Omit for responsive CSS-pixel units. A fixed design is fitted into the container. */
+    designSize?: {
+        width: number;
+        height: number;
+    };
+    scaleMode?: string;
+    /** Owned by this session; defaults to RAF. */
+    driver?: ZhudaRuntimeDriver;
+    backgroundPolicy?: "pause" | "continue";
+    /** Foreground recovery never replays an unbounded suspended interval. */
+    recoveryPolicy?: "discard" | "bounded";
+    maxFrameDeltaSec?: number;
+    onResume?: (report: {
+        elapsedSec: number;
+        advancedSec: number;
+        discardedSec: number;
+    }) => void;
     targetFPS?: 30 | 60;
     timeScale?: number;
     clearInput?: () => void;
@@ -30,12 +48,18 @@ export declare class ZhudaRuntimeSession {
     readonly timers: ZhudaTimerScheduler;
     readonly mutations: ZhudaSceneMutationQueue;
     private cleanups;
-    private frame;
+    private started;
     private previous;
+    private readonly driver;
+    private background;
+    private manuallyPaused;
+    private suspendedAt?;
+    private recoveryDelta;
     private task;
     private observer?;
     constructor(canvas: HTMLCanvasElement, options?: ManagedRuntimeOptions);
     setPaused(value: boolean): void;
+    private setBackground;
     resize(): void;
     start(update: (dt: number, sample?: ZhudaClockSample) => void): void;
     dispose(): void;

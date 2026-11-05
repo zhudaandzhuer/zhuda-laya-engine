@@ -15,3 +15,5 @@ export * from './zhuda-declarative';
 
 export * from "./terrain/index";
 export * from "./shaders/index";
+
+export type * from './zhuda-audio';

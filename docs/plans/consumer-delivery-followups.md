@@ -23,8 +23,9 @@ exports combat APIs; choose contracts appropriate to their gameplay.
 ## Current baseline
 
 - [`audio.md`](../audio.md): tone and provider-backed decoded sample playback in
-  one mixer. The 1.4.0 candidate adds loop/offset/fade/replacement and bounded
-  leases; streaming, spatial audio and the full physical-device matrix remain open.
+  one mixer. Version 1.7.0 adds stream leases, FIFO/priority retirement and a sample
+  backend extension. Spatial audio, production Worklet DSP and the physical-device
+  matrix remain open.
 - [`prefab-toolchain.md`](prefab-toolchain.md): static 2D and primitive 3D
   Prefab provenance with whole-payload evidence by default. Version 1.5.0 adds
   isolated component bundles and conservative dependency proofs; see
@@ -33,10 +34,10 @@ exports combat APIs; choose contracts appropriate to their gameplay.
 - [`consumer-review-reliability`](records/consumer-review-reliability/task.md):
   separate work for measured browser metrics, staged build publication,
   preview provider injection and explicit asset inclusion.
-- `npm run audit:declarations`: reproduces 506 errors in
-  `packages/types/vendor/LayaAir.runtime.d.ts` with TypeScript 5.9.3,
-  `strict:true`, `skipLibCheck:false`, `types:[]`. Consumer strict typechecking
-  with `skipLibCheck:true` does not establish clean vendor declarations.
+- `npm run audit:declarations`: **zero diagnostics** in 1.7.0 with TypeScript
+  5.9.3, `strict:true`, `skipLibCheck:false`, `types:[]` (baseline: 506). The
+  audit is required by `npm run verify`; source-backed repair details are in
+  [vendor REPAIRS](../../packages/types/vendor/REPAIRS.md).
 
 ## Design and alternatives
 
@@ -59,7 +60,8 @@ A replaceable backend is an alternative only if it implements all the same
 operations and owns the entire event route. `audioContextFactory` is context
 injection, not a playback-backend contract. `syncLayaSoundManager` mirrors
 settings; it does not connect Laya voices to the mixer or prove asset lifecycle.
-A replaceable backend is not part of this candidate.
+Version 1.7.0 adds the `IframeSampleBackend` extension; its reference Worklet
+fixture is not a production DSP mixer. See [audio](../audio.md).
 
 See [candidate verification](records/consumer-runtime-hardening/verification.md)
 for measured scope. This does not mark the entire plan Accepted.
@@ -86,13 +88,14 @@ them to build inputs and runtime provenance. Unknown/dynamic dependencies keep
 the conservative whole-payload fallback. Do not remove the current fingerprint
 gate before deliberate false-negative fixtures pass.
 
-### Declaration debt (proposed repair)
+### Declaration debt (implemented; strict audit passes)
 
 Group diagnostics by missing platform types, duplicate vendor declarations and
 incompatible inheritance/signatures. Preserve the actual vendor API; do not
 replace it with `any`, blanket suppression or empty declarations. Add strict
 public fixtures for repaired groups and validate ESM/CJS behavior. Maintain
-the full failing audit alongside existing consumer checks until the debt is zero.
+the full audit alongside strict consumer checks to prevent recurrence. The
+[1.7.0 record](records/astra-runtime-feedback/verification.md) includes the zero-diagnostic result.
 
 ## Staged work
 

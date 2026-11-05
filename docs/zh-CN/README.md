@@ -40,6 +40,13 @@ E4ZEhFCYy4b5pYXJUbMC9KjRitkypyqtZvpSRerLWHCb
 
 由 [豬大 Zhuda](https://github.com/zhudaandzhuer) 维护。底层渲染与物理由 [LayaAir / Layabox](https://layaair.com/) 提供。本项目是独立分支，捐助用于支持豬大在这个仓库的开发工作。
 
+## 1.7.0 运行时改进
+
+修复高 DPR 下的设计坐标，增加同一 mixer 内的串流 BGM、FIFO／优先级声道回收、
+样本后端扩展，以及可插拔后台时钟与恢复策略。完整 vendor 声明检查已从 506 项
+错误降到 0，并加入必跑验证。详情与未验证的真机／Worklet 限制见
+[本轮验收记录](../plans/records/astra-runtime-feedback/verification.md)。
+
 ## 从这里开始：建立真正的消费项目
 
 引擎仓库用于 SDK 与工具链开发。游戏应放在独立仓库，并按照[消费项目接入路线](../consumer-route.md)开始：

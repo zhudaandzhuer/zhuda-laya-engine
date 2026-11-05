@@ -50,5 +50,11 @@ export function auditPrefabEnvironment(requested, measured) {
   for (const key of ['width','height','scaleX','scaleY']) {
     if (!Number.isFinite(measured?.stage?.[key]) || measured.stage[key] <= 0) issues.push(`stage.${key}: invalid or missing measured value`);
   }
+  // Canvas resolution alone cannot establish design-space correctness: the
+  // former runtime doubled stage.width at DPR 2 and halved every CSS element.
+  for (const [axis, scale] of [['width','scaleX'], ['height','scaleY']]) {
+    same(`stage.design.${axis}`, requested?.canvas?.[axis], measured?.stage?.[axis]);
+    same(`stage.${scale}`, measured?.canvas?.backing?.[axis] / requested?.canvas?.[axis], measured?.stage?.[scale]);
+  }
   return { requested, measured, passed: issues.length === 0, issues };
 }

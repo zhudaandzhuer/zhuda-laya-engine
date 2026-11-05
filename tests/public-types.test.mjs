@@ -11,7 +11,7 @@ test("strict external consumers use public exports and nullable query contracts"
       module: ts.ModuleKind.ESNext,
       moduleResolution: ts.ModuleResolutionKind.Bundler,
       strict: true,
-      skipLibCheck: true,
+      skipLibCheck: false,
       noEmit: true,
     },
   );

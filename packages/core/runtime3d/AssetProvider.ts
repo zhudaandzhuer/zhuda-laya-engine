@@ -11,10 +11,7 @@ export type AssetKind =
   | "shader"
   | "unknown";
 
-export type AssetProviderPhase =
-  | "downloading"
-  | "verifying"
-  | "ready";
+export type AssetProviderPhase = "downloading" | "verifying" | "ready";
 
 export interface AssetManifestEntry {
   readonly id: string;
@@ -54,6 +51,17 @@ export interface LoadedAssetBytes {
   readonly release?: () => void;
 }
 
+/** Media-address lease. The player never constructs URLs from logical IDs. */
+export interface AssetStreamLease {
+  readonly id: string;
+  readonly url: string;
+  readonly integrity: "sha256" | "transport";
+  readonly delivery: "native" | "verified-blob";
+  readonly retainedBytes: number;
+  readonly crossOrigin?: "anonymous" | "use-credentials";
+  release(): void;
+}
+
 /**
  * Stable source boundary for consumer assets.
  *
@@ -63,6 +71,10 @@ export interface LoadedAssetBytes {
 export interface AssetProvider {
   readonly name: string;
   load(id: string, options?: AssetLoadOptions): Promise<LoadedAssetBytes>;
+  openStream?(
+    id: string,
+    options?: { signal?: AbortSignal },
+  ): Promise<AssetStreamLease>;
   getManifest?(signal?: AbortSignal): Promise<AssetManifest>;
   dispose?(): void;
 }
@@ -113,7 +125,8 @@ export function normalizeAssetId(value: string): string {
 }
 
 export function validateAssetManifest(value: unknown): AssetManifest {
-  if (!value || typeof value !== "object") throw Error("Invalid asset manifest");
+  if (!value || typeof value !== "object")
+    throw Error("Invalid asset manifest");
   const manifest = value as Partial<AssetManifest>;
   if (manifest.schemaVersion !== 1 || !Array.isArray(manifest.entries))
     throw Error("Invalid asset manifest schema");
@@ -148,6 +161,9 @@ export interface DirectoryAssetProviderOptions {
   /** Default protects against accidental decompression/resource bombs. */
   readonly maxBytes?: number;
   readonly fetch?: FetchLike;
+  /** verified-blob preserves full-byte verification without PCM decode. Native
+   * streaming is opt-in and rejects entries requiring a whole-file SHA. */
+  readonly streamMode?: "verified-blob" | "native";
 }
 
 function manifestIdFor(baseUrl: URL, value: string): string {
@@ -156,8 +172,13 @@ function manifestIdFor(baseUrl: URL, value: string): string {
     manifestUrl.origin !== baseUrl.origin ||
     !manifestUrl.pathname.startsWith(baseUrl.pathname)
   )
-    throw new AssetProviderError("invalid-id", "Manifest must be below the provider base URL");
-  const id = decodeURIComponent(manifestUrl.pathname.slice(baseUrl.pathname.length));
+    throw new AssetProviderError(
+      "invalid-id",
+      "Manifest must be below the provider base URL",
+    );
+  const id = decodeURIComponent(
+    manifestUrl.pathname.slice(baseUrl.pathname.length),
+  );
   return normalizeAssetId(id);
 }
 
@@ -183,7 +204,9 @@ function combineSignals(
   else source?.addEventListener("abort", abort, { once: true });
   const timer = setTimeout(() => {
     timedOut = true;
-    controller.abort(new DOMException("Asset request timed out", "TimeoutError"));
+    controller.abort(
+      new DOMException("Asset request timed out", "TimeoutError"),
+    );
   }, timeoutMs);
   return {
     signal: controller.signal,
@@ -192,14 +215,19 @@ function combineSignals(
       source?.removeEventListener("abort", abort);
       // Preserve the distinction for callers that inspect the resulting error.
       if (timedOut && !controller.signal.reason)
-        controller.abort(new DOMException(`Asset request timed out: ${id}`, "TimeoutError"));
+        controller.abort(
+          new DOMException(`Asset request timed out: ${id}`, "TimeoutError"),
+        );
     },
   };
 }
 
 async function sha256(bytes: Uint8Array): Promise<string> {
   if (!globalThis.crypto?.subtle)
-    throw new AssetProviderError("integrity", "Web Crypto subtle.digest is unavailable");
+    throw new AssetProviderError(
+      "integrity",
+      "Web Crypto subtle.digest is unavailable",
+    );
   const input = new Uint8Array(bytes.byteLength);
   input.set(bytes);
   const digest = await globalThis.crypto.subtle.digest("SHA-256", input.buffer);
@@ -221,17 +249,30 @@ export class DirectoryAssetProvider implements AssetProvider {
   private readonly fetchImpl: FetchLike;
   private readonly active = new Set<AbortController>();
   private disposed = false;
+  private readonly streamMode: "verified-blob" | "native";
+  private readonly streamReleases = new Set<() => void>();
 
   constructor(options: DirectoryAssetProviderOptions) {
-    if (!options?.baseUrl) throw Error("DirectoryAssetProvider requires baseUrl");
-    this.baseUrl = new URL(options.baseUrl, globalThis.location?.href || "http://localhost/");
+    if (!options?.baseUrl)
+      throw Error("DirectoryAssetProvider requires baseUrl");
+    this.baseUrl = new URL(
+      options.baseUrl,
+      globalThis.location?.href || "http://localhost/",
+    );
     if (!this.baseUrl.pathname.endsWith("/")) this.baseUrl.pathname += "/";
-    this.manifest = options.manifest ? validateAssetManifest(options.manifest) : undefined;
+    this.manifest = options.manifest
+      ? validateAssetManifest(options.manifest)
+      : undefined;
     this.manifestUrl = options.manifestUrl;
-    this.manifestId = options.manifestUrl ? manifestIdFor(this.baseUrl, options.manifestUrl) : undefined;
+    this.manifestId = options.manifestUrl
+      ? manifestIdFor(this.baseUrl, options.manifestUrl)
+      : undefined;
     this.timeoutMs = options.timeoutMs ?? 15_000;
     this.maxBytes = options.maxBytes ?? 128 * 1024 * 1024;
     this.fetchImpl = options.fetch || globalThis.fetch.bind(globalThis);
+    this.streamMode = options.streamMode ?? "verified-blob";
+    if (!["native", "verified-blob"].includes(this.streamMode))
+      throw Error("Invalid streamMode");
     if (!Number.isInteger(this.timeoutMs) || this.timeoutMs <= 0)
       throw Error("timeoutMs must be a positive integer");
     if (!Number.isInteger(this.maxBytes) || this.maxBytes <= 0)
@@ -239,7 +280,8 @@ export class DirectoryAssetProvider implements AssetProvider {
   }
 
   async getManifest(signal?: AbortSignal): Promise<AssetManifest> {
-    if (this.disposed) throw new AssetProviderError("disposed", "Asset provider disposed");
+    if (this.disposed)
+      throw new AssetProviderError("disposed", "Asset provider disposed");
     if (this.manifest) return this.manifest;
     if (!this.manifestId) return { schemaVersion: 1, entries: [] };
     if (!this.manifestPromise) {
@@ -254,7 +296,10 @@ export class DirectoryAssetProvider implements AssetProvider {
           return this.manifest;
         } catch (error) {
           if (error instanceof AssetProviderError) throw error;
-          throw new AssetProviderError("integrity", `Invalid asset manifest: ${this.manifestUrl}`);
+          throw new AssetProviderError(
+            "integrity",
+            `Invalid asset manifest: ${this.manifestUrl}`,
+          );
         }
       })();
       this.manifestPromise = pending.catch((error) => {
@@ -265,30 +310,49 @@ export class DirectoryAssetProvider implements AssetProvider {
     return this.manifestPromise;
   }
 
-  async load(value: string, options: AssetLoadOptions = {}): Promise<LoadedAssetBytes> {
-    if (this.disposed) throw new AssetProviderError("disposed", "Asset provider disposed");
+  async load(
+    value: string,
+    options: AssetLoadOptions = {},
+  ): Promise<LoadedAssetBytes> {
+    if (this.disposed)
+      throw new AssetProviderError("disposed", "Asset provider disposed");
     const id = normalizeAssetId(value);
     if (this.manifestId && id !== this.manifestId && !this.manifest)
       await this.getManifest(options.signal);
-    const entry = this.manifest?.entries.find((candidate) => candidate.id === id);
+    const entry = this.manifest?.entries.find(
+      (candidate) => candidate.id === id,
+    );
     const maxBytes = options.maxBytes ?? this.maxBytes;
-    const url = new URL(id.split("/").map(encodeURIComponent).join("/"), this.baseUrl);
+    const url = new URL(
+      id.split("/").map(encodeURIComponent).join("/"),
+      this.baseUrl,
+    );
     const combined = combineSignals(options.signal, this.timeoutMs, id);
     const request = new AbortController();
     const relay = () => request.abort(combined.signal.reason);
     combined.signal.addEventListener("abort", relay, { once: true });
+    if (combined.signal.aborted) relay();
     this.active.add(request);
     try {
+      if (request.signal.aborted) throw abortReason(combined.signal, id);
       options.onProgress?.({ id, phase: "downloading", loadedBytes: 0 });
       const response = await this.fetchImpl(url, { signal: request.signal });
       if (!response.ok)
-        throw new AssetProviderError("http", `Asset HTTP ${response.status}: ${id}`, {
-          id,
-          status: response.status,
-        });
+        throw new AssetProviderError(
+          "http",
+          `Asset HTTP ${response.status}: ${id}`,
+          {
+            id,
+            status: response.status,
+          },
+        );
       const contentLength = Number(response.headers.get("content-length"));
       if (Number.isFinite(contentLength) && contentLength > maxBytes)
-        throw new AssetProviderError("too-large", `Asset exceeds ${maxBytes} bytes: ${id}`, { id });
+        throw new AssetProviderError(
+          "too-large",
+          `Asset exceeds ${maxBytes} bytes: ${id}`,
+          { id },
+        );
       const chunks: Uint8Array[] = [];
       let total = 0;
       if (response.body) {
@@ -298,17 +362,35 @@ export class DirectoryAssetProvider implements AssetProvider {
           if (next.done) break;
           total += next.value.byteLength;
           if (total > maxBytes)
-            throw new AssetProviderError("too-large", `Asset exceeds ${maxBytes} bytes: ${id}`, { id });
+            throw new AssetProviderError(
+              "too-large",
+              `Asset exceeds ${maxBytes} bytes: ${id}`,
+              { id },
+            );
           chunks.push(next.value);
-          options.onProgress?.({ id, phase: "downloading", loadedBytes: total, totalBytes: contentLength || undefined });
+          options.onProgress?.({
+            id,
+            phase: "downloading",
+            loadedBytes: total,
+            totalBytes: contentLength || undefined,
+          });
         }
       } else {
         const data = new Uint8Array(await response.arrayBuffer());
         total = data.byteLength;
         if (total > maxBytes)
-          throw new AssetProviderError("too-large", `Asset exceeds ${maxBytes} bytes: ${id}`, { id });
+          throw new AssetProviderError(
+            "too-large",
+            `Asset exceeds ${maxBytes} bytes: ${id}`,
+            { id },
+          );
         chunks.push(data);
-        options.onProgress?.({ id, phase: "downloading", loadedBytes: total, totalBytes: total });
+        options.onProgress?.({
+          id,
+          phase: "downloading",
+          loadedBytes: total,
+          totalBytes: total,
+        });
       }
       const bytes = new Uint8Array(total);
       let offset = 0;
@@ -317,17 +399,36 @@ export class DirectoryAssetProvider implements AssetProvider {
         offset += chunk.byteLength;
       }
       if (entry?.bytes !== undefined && entry.bytes !== bytes.byteLength)
-        throw new AssetProviderError("integrity", `Asset size mismatch: ${id}`, { id });
+        throw new AssetProviderError(
+          "integrity",
+          `Asset size mismatch: ${id}`,
+          { id },
+        );
       if (entry?.sha256) {
-        options.onProgress?.({ id, phase: "verifying", loadedBytes: total, totalBytes: total });
+        options.onProgress?.({
+          id,
+          phase: "verifying",
+          loadedBytes: total,
+          totalBytes: total,
+        });
         if ((await sha256(bytes)) !== entry.sha256.toLowerCase())
-          throw new AssetProviderError("integrity", `Asset checksum mismatch: ${id}`, { id });
+          throw new AssetProviderError(
+            "integrity",
+            `Asset checksum mismatch: ${id}`,
+            { id },
+          );
       }
-      options.onProgress?.({ id, phase: "ready", loadedBytes: total, totalBytes: total });
+      options.onProgress?.({
+        id,
+        phase: "ready",
+        loadedBytes: total,
+        totalBytes: total,
+      });
       return { id, bytes, manifest: entry };
     } catch (error) {
       if (combined.signal.aborted || request.signal.aborted) {
-        if (combined.signal.reason?.name === "TimeoutError") throw abortReason(combined.signal, id);
+        if (combined.signal.reason?.name === "TimeoutError")
+          throw abortReason(combined.signal, id);
         throw abortReason(combined.signal, id);
       }
       throw error;
@@ -338,18 +439,100 @@ export class DirectoryAssetProvider implements AssetProvider {
     }
   }
 
+  async openStream(
+    value: string,
+    options: { signal?: AbortSignal } = {},
+  ): Promise<AssetStreamLease> {
+    const id = normalizeAssetId(value);
+    const check = () => {
+      if (this.disposed)
+        throw new AssetProviderError("disposed", "Asset provider disposed");
+      if (options.signal?.aborted) throw abortReason(options.signal, id);
+    };
+    check();
+    if (this.manifestId && !this.manifest)
+      await this.getManifest(options.signal);
+    check();
+    const entry = this.manifest?.entries.find((value) => value.id === id);
+    if (this.manifest && !entry)
+      throw new AssetProviderError(
+        "integrity",
+        `Stream missing manifest entry: ${id}`,
+      );
+    if (entry?.kind && entry.kind !== "audio")
+      throw new AssetProviderError("integrity", `Stream is not audio: ${id}`);
+    let url: string,
+      retainedBytes = 0;
+    if (this.streamMode === "native") {
+      if (entry?.sha256)
+        throw new AssetProviderError(
+          "integrity",
+          `Native stream cannot verify whole-file SHA: ${id}; use verified-blob or a transport-only media manifest`,
+        );
+      url = new URL(
+        id.split("/").map(encodeURIComponent).join("/"),
+        this.baseUrl,
+      ).href;
+    } else {
+      const asset = await this.load(id, options);
+      try {
+        check();
+        retainedBytes = asset.bytes.byteLength;
+        const mime = /\.mp3$/i.test(id)
+          ? "audio/mpeg"
+          : /\.ogg$/i.test(id)
+            ? "audio/ogg"
+            : /\.(m4a|mp4)$/i.test(id)
+              ? "audio/mp4"
+              : /\.wav$/i.test(id)
+                ? "audio/wav"
+                : "application/octet-stream";
+        url = URL.createObjectURL(
+          new Blob([new Uint8Array(asset.bytes)], { type: mime }),
+        );
+      } finally {
+        asset.release?.();
+      }
+    }
+    let released = false;
+    const release = () => {
+      if (released) return;
+      released = true;
+      this.streamReleases.delete(release);
+      if (this.streamMode === "verified-blob") URL.revokeObjectURL(url);
+    };
+    this.streamReleases.add(release);
+    return {
+      id,
+      url,
+      retainedBytes,
+      delivery: this.streamMode,
+      integrity: entry?.sha256 ? "sha256" : "transport",
+      crossOrigin: "anonymous",
+      release,
+    };
+  }
+
   dispose() {
     if (this.disposed) return;
     this.disposed = true;
-    for (const controller of this.active) controller.abort(new DOMException("Asset provider disposed", "AbortError"));
+    for (const controller of this.active)
+      controller.abort(
+        new DOMException("Asset provider disposed", "AbortError"),
+      );
     this.active.clear();
+    for (const release of [...this.streamReleases]) release();
   }
 }
 
 /** Adapts a provider to the existing bounded cache without changing cache callers. */
 export function createProviderAssetCache<T>(
   provider: AssetProvider,
-  decode: (asset: LoadedAssetBytes, signal: AbortSignal, phase: (phase: "parsing" | "ready") => void) => Promise<T> | T,
+  decode: (
+    asset: LoadedAssetBytes,
+    signal: AbortSignal,
+    phase: (phase: "parsing" | "ready") => void,
+  ) => Promise<T> | T,
   destroy: (value: T) => void,
   maxIdle = 0,
 ): ZhudaAssetCache<T> {
@@ -357,7 +540,8 @@ export function createProviderAssetCache<T>(
     async (id, signal, phase) => {
       const asset = await provider.load(id, {
         signal,
-        onProgress: ({ phase: providerPhase }) => phase(providerPhase === "ready" ? "ready" : "downloading"),
+        onProgress: ({ phase: providerPhase }) =>
+          phase(providerPhase === "ready" ? "ready" : "downloading"),
       });
       phase("parsing");
       try {

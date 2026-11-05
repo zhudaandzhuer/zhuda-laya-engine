@@ -1,3 +1,5 @@
+/// <reference types="@webgpu/types" />
+/// <reference path="./wechat-media.d.ts" />
 type TypedArrayConstructor = Float32ArrayConstructor | Int32ArrayConstructor | Uint32ArrayConstructor | Int16ArrayConstructor | Uint16ArrayConstructor | Int8ArrayConstructor | Uint8ArrayConstructor;
 type TypedArrayType = Float32Array | Int32Array | Uint32Array | Int16Array | Uint16Array | Int8Array | Uint8Array;
 /**
@@ -3003,7 +3005,7 @@ declare namespace Laya {
          * @zh 反序列化完成、holder 数据就绪后重新套用一次配置。
          * scene3d 创建、相机内参、bridge 注册都已在 registerBridge3D / initScene3D 中完成，
          * 此处仅做一次最终的数据 apply，覆盖 holder 数据晚于 bridge 到位的情况。
-        
+
          */
         finalizeSetup(): void;
         /**
@@ -4863,7 +4865,25 @@ declare namespace Laya {
          * @zh 销毁。
          */
         destroy(): void;
-    }
+
+_clip: AnimationClip2D | null;
+_currentFrameIndices: Int16Array | null;
+transitions: AnimatorTransition2D[];
+_scripts: AnimatorState2DScript[] | null;
+_realtimeDatas: Array<number | string | boolean | {
+        pos: Vector3;
+        rotation: Vector3;
+    }>;
+_eventStateUpdate(value: number): void;
+_eventStart(animator: Animator2D, layerIndex: number): void;
+_eventExit(): void;
+_eventLoop(): void;
+_resetFrameIndices(): void;
+_getReferenceCount(): number;
+_addReference(count: number): void;
+_removeReference(count: number): void;
+_clearReference(): void;
+}
     /**
      * @en The AnimatorStateScript class is used as the parent class for animation state scripts. This class is abstract and does not allow instances.
      * @zh AnimatorStateScript 类用于动画状态脚本的父类,该类为抽象类,不允许实例。
@@ -25129,7 +25149,7 @@ declare namespace Laya {
      * @blueprintIgnore
      */
     interface IBridge3DSceneInternal {
-        scene3d: Scene3D;
+        scene3d: Scene3D | null;
         sharedCamera: Camera;
         applyData(data: IBridge3DData | null): void;
         finalizeSetup(): void;
@@ -25784,7 +25804,22 @@ declare namespace Laya {
          */
         inv_geometry: IRenderGeometryElement;
         initDefalutMesh(): void;
-    }
+
+_transform(mat: Matrix, pivotX: number, pivotY: number): void;
+_rotate(angle: number, pivotX: number, pivotY: number): void;
+_scale(scaleX: number, scaleY: number, pivotX: number, pivotY: number): void;
+_drawLine(x: number, y: number, fromX: number, fromY: number, toX: number, toY: number, lineColor: string, lineWidth: number, vid: number): void;
+_drawLines(x: number, y: number, points: any[], lineColor: any, lineWidth: number, vid: number): void;
+_drawCircle(x: number, y: number, radius: number, fillColor: any, lineColor: any, lineWidth: number, vid: number): void;
+_drawEllipse(x: number, y: number, width: number, height: number, fillColor: any, lineColor: any, lineWidth: number): void;
+_drawRoundRect(x: number, y: number, width: number, height: number, lt: number, rt: number, lb: number, rb: number, fillColor: any, lineColor: any, lineWidth: number, minNum?: number, segPixel?: number): void;
+_drawPie(x: number, y: number, radius: number, startAngle: number, endAngle: number, fillColor: any, lineColor: any, lineWidth: number, vid: number): void;
+_drawPoly(x: number, y: number, points: any[], fillColor: any, lineColor: any, lineWidth: number, isConvexPolygon: boolean, vid: number): void;
+_drawPath(x: number, y: number, paths: any[], brush: any, pen: any): void;
+_drawTextureM(tex: Texture, x: number, y: number, width: number, height: number, m: Matrix, alpha: number, uv: any[] | null, color: number): boolean;
+_inner_drawTexture(tex: Texture | BaseTexture, imgid: number, x: number, y: number, width: number, height: number, m: Matrix | null, uv: ArrayLike<number> | null, alpha: number, color: number, italicDeg?: number, pixelSnap?: boolean): boolean;
+_mixRGBandAlpha(color: number, alpha: number): number;
+}
     /**
      * 用于在 2D 中显示 Mesh2D 的节点
      */
@@ -26626,8 +26661,8 @@ declare namespace Laya {
          * 1.srollRect自带裁剪效果，viewport只影响子对象渲染是否渲染，不具有裁剪效果（性能更高）。
          * 2.设置rect的x,y属性均能实现区域滚动效果，但scrollRect会保持0,0点位置不变。
          */
-        get scrollRect(): Rectangle;
-        set scrollRect(value: Rectangle);
+        get scrollRect(): Rectangle | null;
+        set scrollRect(value: Rectangle | null);
         /**
          * @deprecated
          */
@@ -32041,14 +32076,14 @@ declare namespace Laya {
          * @param largeTextureIndex 大纹理索引
          * @returns 大纹理对象
          */
-        getLargeTexture(largeTextureIndex: number): import("./LargeTex").LargeTex;
+        getLargeTexture(largeTextureIndex: number): LargeTex;
         /**
          * @en Get all large texture objects
          * @returns all large texture objects
          * @zh 获取所有大纹理对象
          * @returns 大纹理对象数组
          */
-        getAllLargeTextures(): import("./LargeTex").LargeTex[];
+        getAllLargeTextures(): LargeTex[];
         /**
          * @en Get texture count in atlas
          * @returns texture count in atlas
@@ -34927,7 +34962,13 @@ declare namespace Laya {
          * @param segments
          */
         private _getLightPolygon;
-    }
+
+static _managerName: string;
+_printTextureToConsoleAsBase64(tex: RenderTexture): void;
+_lightTransformChange(light: BaseLight2D): void;
+_getLayerUpdateMark(layer: number): number;
+_updateShaderDataByLayer(layer: number, shaderData: ShaderData): void;
+}
     /**
      * 每一层用于渲染光影图的资源
      */
@@ -41730,7 +41771,22 @@ declare namespace Laya {
          * @returns NavMeshSurface 对象数组。
          */
         getNavMeshSurfacesByBound(min: Vector3, max: Vector3, type: string): BaseNavMeshSurface[];
-    }
+
+protected static _initialize(callback: () => void | Promise<void>): Promise<void>;
+name: string;
+_navConfigMap: Map<string, RecastConfig>;
+_areaFlagMap: Map<string, NavAreaFlag>;
+_naveMeshMaps: Map<string, SingletonList<BaseNavMeshSurface>>;
+_naveMeshLinkMaps: Map<string, Array<NavMeshLinkData>>;
+_deflatAllMask: AreaMask;
+protected _init(): void;
+Init(data: any): void;
+setFilterCost(filer: any): void;
+update(dt: number): void;
+getNavMeshLink(from: BaseNavMeshSurface, to: BaseNavMeshSurface): NavMeshLinkData[];
+regNavMeshSurface(nav: BaseNavMeshSurface): void;
+removeNavMeshSurface(nav: BaseNavMeshSurface): void;
+}
     /**
      * @en Class used to instantiate a navigation agent
      * @zh 类用来实例化一个寻路代理
@@ -54585,7 +54641,22 @@ declare namespace Laya {
          * @param value 弹性合并模式。
          */
         setBounceCombine(value: PhysicsCombineMode): void;
-    }
+
+static _ActorPool: Map<number, pxCollider>;
+static _pxActorID: number;
+owner: Sprite3D;
+componentEnable: boolean;
+component: PhysicsColliderComponent;
+_isSimulate: boolean;
+_enableProcessCollisions: boolean;
+protected _transformFlag: number;
+_getTransformFlag(type: number): boolean;
+_setTransformFlag(type: number, value: boolean): void;
+_transformTo(pos: Vector3, rot: Quaternion): {
+        translation: Vector3;
+        rotation: Quaternion;
+    };
+}
     /**
      * @en The collision detection mode constants.
      * @zh 碰撞检测模式常量。
@@ -55205,7 +55276,51 @@ declare namespace Laya {
          */
         constructor(manager: pxPhysicsManager);
         destroy(): void;
-    }
+
+static _ActorPool: Map<number, pxJoint>;
+static _pxJointID: number;
+static _tempTransform0: {
+        translation: Vector3;
+        rotation: Quaternion;
+    };
+static _tempTransform1: {
+        translation: Vector3;
+        rotation: Quaternion;
+    };
+protected _pxJoint: any;
+protected _collider: pxCollider;
+protected _localPos: Vector3;
+protected _connectCollider: pxCollider;
+protected _connectlocalPos: Vector3;
+protected _breakForce: number;
+protected _breakTorque: number;
+protected _id: number;
+protected _linearForce: Vector3;
+protected _angularForce: Vector3;
+owner: Sprite3D;
+_physicsManager: pxPhysicsManager;
+isEnable(value: boolean): void;
+isCollision(value: boolean): void;
+isPreprocessiong(value: boolean): void;
+protected _createJoint(): void;
+setOwner(value: Sprite3D): void;
+protected _setActor(): void;
+setCollider(owner: pxCollider): void;
+setConnectedCollider(owner: pxCollider): void;
+protected _setLocalPose(actor: number, position: Vector3): void;
+setLocalPos(value: Vector3): void;
+setConnectLocalPos(value: Vector3): void;
+setConnectedMassScale(value: number): void;
+setConnectedInertiaScale(value: number): void;
+setMassScale(value: number): void;
+setInertiaScale(value: number): void;
+setBreakForce(value: number): void;
+setBreakTorque(value: number): void;
+getlinearForce(): Vector3;
+getAngularForce(): Vector3;
+isValid(): boolean;
+release(): void;
+}
     enum PxRevoluteJointFlag {
         eLIMIT_ENABLED = 1,
         eDRIVE_ENABLED = 2,
@@ -55225,7 +55340,23 @@ declare namespace Laya {
          * @zh 销毁关节
          */
         destroy(): void;
-    }
+
+protected static _xAxis: Vector3;
+protected _setLocalPose(actor: number, position: Vector3): void;
+setLowerLimit(lowerLimit: number): void;
+setUpLimit(value: number): void;
+setBounceness(value: number): void;
+setBouncenMinVelocity(value: number): void;
+setContactDistance(value: number): void;
+enableLimit(value: boolean): void;
+enableDrive(value: boolean): void;
+enableFreeSpin(value: boolean): void;
+setAxis(value: Vector3): void;
+getAngle(): number;
+getVelocity(): Readonly<Vector3>;
+setDriveVelocity(velocity: number): void;
+setDriveForceLimit(limit: number): void;
+}
     class pxSphereJoint extends pxJoint {
     }
     /**
@@ -58423,7 +58554,10 @@ declare namespace Laya {
         get noBatch(): boolean;
         set noBatch(v: boolean);
         destroy(): void;
-    }
+
+protected _elem2dBuf: ArrayBuffer;
+_onRenderStateChanged(): void;
+}
     class LayaX3DRenderPassFactory implements I3DRenderPassFactory {
         createRender3DProcess(): IRender3DProcess;
         createRenderContext3D(): IRenderContext3D;
@@ -58696,7 +58830,9 @@ declare namespace Laya {
         get canDynamicBatch(): boolean;
         set canDynamicBatch(value: boolean);
         destroy(): void;
-    }
+
+_onRenderStateChanged(): void;
+}
     /**
      * LayaX Compute Context — 对标 GLESComputeContext
      *
@@ -59049,7 +59185,9 @@ declare namespace Laya {
         get instanceCount(): number;
         set indexFormat(value: IndexFormat);
         get indexFormat(): IndexFormat;
-    }
+
+drawParams: FastSinglelist<number>;
+}
     /** RenderState 变化监听者接口（避免循环引用） */
     interface IRenderStateListener {
         _onRenderStateChanged(): void;
@@ -63388,7 +63526,10 @@ declare namespace Laya {
         constructor();
         registerBatchModuleAgent(renderNodeType: number | BaseRenderType, agent: IBatchModuleAgent): void;
         updateProperty(object: BaseRender, property: string): void;
-    }
+
+_list: SingletonList<BaseRender>;
+batchAgentList: Map<number, IBatchModuleAgent>;
+}
     class RTSimpleSkinRenderNode extends RTBaseRenderNode implements ISimpleSkinRenderNode {
         private _nativeMemory;
         private _float32Array;
@@ -63933,75 +64074,7 @@ declare namespace Laya {
         batch(list: FastSinglelist<IPrimitiveRenderElement2D>, start: number, end: number, allowReorder?: boolean): void;
         private merge;
     }
-    const enum GraphicsQuadPayloadWordOffset {
-        X = 0,
-        Y = 1,
-        Width = 2,
-        Height = 3,
-        U0 = 4,
-        V0 = 5,
-        U1 = 6,
-        V1 = 7,
-        PackedColor = 8,
-        Alpha = 9,
-        BlendMode = 10,
-        TextureLayer = 11,
-        MatrixA = 12,
-        MatrixB = 13,
-        MatrixC = 14,
-        MatrixD = 15,
-        MatrixTx = 16,
-        MatrixTy = 17,
-        HasMatrix = 18,
-        RepeatX = 19,
-        RepeatY = 20,
-        OffsetX = 21,
-        OffsetY = 22,
-        TexRangeX = 23,
-        TexRangeY = 24,
-        TexRangeWidth = 25,
-        TexRangeHeight = 26,
-        UVClipEnabled = 27,
-        UVClipX = 28,
-        UVClipY = 29,
-        UVClipWidth = 30,
-        UVClipHeight = 31
-    }
-    const GraphicsQuadPayloadWordCount = 32;
-    const enum GraphicsMeshPayloadWordOffset {
-        X = 0,
-        Y = 1,
-        PackedColor = 2,
-        Alpha = 3,
-        BlendMode = 4,
-        TextureLayer = 5,
-        MatrixA = 6,
-        MatrixB = 7,
-        MatrixC = 8,
-        MatrixD = 9,
-        MatrixTx = 10,
-        MatrixTy = 11,
-        HasMatrix = 12,
-        VertexCount = 13,
-        IndexCount = 14,
-        HasUV = 15,
-        HasColors = 16,
-        VertexDataOffset = 17,
-        UVDataOffset = 18,
-        IndexDataOffset = 19,
-        ColorDataOffset = 20,
-        UVClipEnabled = 21,
-        UVClipX = 22,
-        UVClipY = 23,
-        UVClipWidth = 24,
-        UVClipHeight = 25
-    }
-    const GraphicsMeshPayloadWordCount = 26;
-    type GraphicsOpBufferOwner = {
-        buffer: ArrayBuffer;
-        float32: Float32Array;
-        int32: Int32Array;
-    };
+
     function writeQuadPayloadValues(float32: Float32Array, int32: Int32Array, wordOffset: number, x: number, y: number, width: number, height: number, u0: number, v0: number, u1: number, v1: number, packedColor: number, alpha: number, blendMode: number, textureLayer: number, matrix: Matrix | null, uvClip?: ArrayLike<number> | null): void;
     function writeFillTexturePayloadValues(float32: Float32Array, int32: Int32Array, wordOffset: number, x: number, y: number, width: number, height: number, u0: number, v0: number, u1: number, v1: number, packedColor: number, alpha: number, blendMode: number, textureLayer: number, matrix: Matrix | null, repeatX: number, repeatY: number, offsetX: number, offsetY: number, texRangeX: number, texRangeY: number, texRangeWidth: number, texRangeHeight: number, uvClip?: ArrayLike<number> | null): void;
     function writeOpInfoBuffer(owner: GraphicsOpBufferOwner, profile: GraphicsOpProfile, changeMask: number, version: number, vertexCount: number, indexCount: number, stateKey: number, typeKey: number, textureKey: number, packedColor: number, localAlpha: number, bodyWordCount: number, recordCount: number): void;
@@ -64669,7 +64742,10 @@ declare namespace Laya {
          * @zh 销毁渲染对象并清理资源。
          */
         destroy(): void;
-    }
+
+_list: SingletonList<BaseRender>;
+batchAgentList: Map<number, IBatchModuleAgent>;
+}
     class WebBaseSpotRP implements ISpotShadowRP {
         /**light */
         private _light;
@@ -65483,8 +65559,8 @@ declare namespace Laya {
         get renderShaderData(): WebGLShaderData;
         set renderShaderData(value: WebGLShaderData);
         protected _invertFront: boolean;
-        protected _passRenderInfo: Map<number, OneDrawPassCacheInfo>;
-        protected _curDrawCacheInfo: OneDrawPassCacheInfo;
+        protected _passRenderInfo: Map<number, WebGLOneDrawPassCacheInfo>;
+        protected _curDrawCacheInfo: WebGLOneDrawPassCacheInfo;
         protected _materialRenderDataChange: boolean;
         protected _spriteRenderDataChange: boolean;
         protected _matChangeFlag: Vector2;
@@ -66100,7 +66176,7 @@ declare namespace Laya {
         globalDefineChangeFlag: Vector2;
         constructor();
     }
-    class OneDrawPassCacheInfo {
+    class WebGLOneDrawPassCacheInfo {
         matCacheFlag: Vector2;
         nodeCacheFlag: Vector2;
         passDefineCacheFlag: Vector2;
@@ -66440,8 +66516,8 @@ declare namespace Laya {
         protected _bindGroupMap: Map<number, WebGPUBindGroup>;
         protected _materialRenderDataChange: boolean;
         protected _value2DRenderDataChange: boolean;
-        protected _passRenderInfo: Map<number, OneDrawPassCacheInfo>;
-        protected _drawPassInfo: OneDrawPassCacheInfo;
+        protected _passRenderInfo: Map<number, WebGPUOneDrawPassCacheInfo>;
+        protected _drawPassInfo: WebGPUOneDrawPassCacheInfo;
         protected _drawCacheArray: OneDrawCacheInfo[];
         protected _materialStateRevision: number;
         protected _pipelineChangeFlag: Vector2;
@@ -67229,7 +67305,7 @@ declare namespace Laya {
         private readonly _batchInvertFrontFace;
         constructor(invertFrontFace: boolean);
         protected _getInvertFront(): boolean;
-        protected _getShaderInstanceDefines(context: WebGPURenderContext3D): import("../../../../RenderModuleData/WebModuleData/WebDefineDatas").WebDefineDatas;
+        protected _getShaderInstanceDefines(context: WebGPURenderContext3D): WebDefineDatas;
     }
     class WebGPUMeshBatchCPUCullNodeList {
         _dynamicCullList: SingletonList<WebGPUBaseRenderNode>;
@@ -67600,8 +67676,8 @@ declare namespace Laya {
         frontFace: FrontFace;
         geometry: WebGPURenderGeometry;
         protected depthStencilParam: DepthStencilParam;
-        protected _passRenderInfo: Map<number, OneDrawPassCacheInfo>;
-        protected _drawPassInfo: OneDrawPassCacheInfo;
+        protected _passRenderInfo: Map<number, WebGPUOneDrawPassCacheInfo>;
+        protected _drawPassInfo: WebGPUOneDrawPassCacheInfo;
         protected _drawCacheArray: OneDrawCacheInfo[];
         protected _materialStateRevision: number;
         protected _renderNodeChangeFlag: Vector2;
@@ -68717,7 +68793,7 @@ declare namespace Laya {
     }
     function compareCahceFlag(changeFlag: Vector2, cacheFlag: Vector2): boolean;
     function coverCahceFlag(coverFlag: Vector2, oldFlag: Vector2): void;
-    class OneDrawPassCacheInfo {
+    class WebGPUOneDrawPassCacheInfo {
         materialStateRevision: number;
         nodeCacheFlag: Vector2;
         passDefineCacheFlag: Vector2;
@@ -74241,7 +74317,7 @@ declare namespace Laya {
         animationEnd: number;
         animation: {
             duration: number;
-        };
+        } | null;
         trackIndex: number;
         loop: boolean;
     }
@@ -75120,7 +75196,7 @@ declare namespace Laya {
          * @en Get the reference to the slot by name.
          * @param slotName The name of the slot.
          */
-        getSlotByName(slotName: string): import("./interface/ISpineRender").ISlotInfo;
+        getSlotByName(slotName: string): ISlotInfo;
         /**
          * @zh 设置动画播放速率
          * @param value	速率值，1为标准速率
@@ -75232,7 +75308,7 @@ declare namespace Laya {
          * - Note: Get the spine runtime bone information (spine.Bone), not the engine method.
          * @param boneName The name of the bone.
          */
-        getBoneByName(boneName: string): import("./interface/ISpineRender").IBoneInfo;
+        getBoneByName(boneName: string): IBoneInfo;
         /**
          * @zh 获取骨骼信息（已废弃，只有 Web 运行时有准确对象）
          * @deprecated 不再直接暴露原生spine对象，只有 Web 运行时有准确对象
@@ -75473,7 +75549,7 @@ declare namespace Laya {
          * @en Get the reference to the slot by name.
          * @param slotName The name of the slot.
          */
-        getSlotByName(slotName: string): import("./interface/ISpineRender").ISlotInfo;
+        getSlotByName(slotName: string): ISlotInfo;
         /**
          * @zh 设置动画播放速率
          * @param value	速率值，1为标准速率
@@ -75571,7 +75647,7 @@ declare namespace Laya {
          * - Note: Get the spine runtime bone information (spine.Bone), not the engine method.
          * @param boneName The name of the bone.
          */
-        getBoneByName(boneName: string): import("./interface/ISpineRender").IBoneInfo;
+        getBoneByName(boneName: string): IBoneInfo;
         /**
          * @zh 获取骨骼信息（已废弃，只有 Web 运行时有准确对象）
          * @deprecated 不再直接暴露原生spine对象，只有 Web 运行时有准确对象
@@ -75812,7 +75888,7 @@ declare namespace Laya {
          * 通过名字得到插槽的引用
          * @param slotName
          */
-        getSlotByName(slotName: string): import("./interface/ISpineRender").ISlotInfo;
+        getSlotByName(slotName: string): ISlotInfo;
         /**
          * 设置动画播放速率
          * @param value	1为标准速率
@@ -75864,7 +75940,7 @@ declare namespace Laya {
          * 注意: 获取到的是spine运行时的骨骼信息(spine.Bone)，不适用引擎的方法
          * @param boneName
          */
-        getBoneByName(boneName: string): import("./interface/ISpineRender").IBoneInfo;
+        getBoneByName(boneName: string): IBoneInfo;
         /**
          * @zh 获取Skeleton(spine.Skeleton)
          * @deprecated 不再直接暴露原生spine对象，只有 Web 运行时有准确对象
@@ -76721,7 +76797,12 @@ declare namespace Laya {
          */
         _clearRenderElements(): void;
         _getRenderHandle(): any;
-    }
+
+protected readonly is3D: boolean;
+_owner: Spine2DRenderNode;
+_getMaterialByName(name: string, blendMode: number): Material;
+_getMaterial(texture: Texture2D, blendMode: number): Material;
+}
     class BakedSpine2DRenderer extends BakedSpineRenderer {
         /**
          * @en Create a new instance of SpineBaseRenderer.
@@ -76808,7 +76889,12 @@ declare namespace Laya {
          * @zh 清除所有渲染元素。
          */
         _clearRenderElements(): void;
-    }
+
+protected readonly is3D: boolean;
+_owner: IBaseRenderNode;
+_getMaterialByName(name: string, blendMode: number): Material;
+_getMaterial(texture: Texture2D, blendMode: number): Material;
+}
     /**
      * @en Creator class for index buffer (IB) in spine rendering.
      * @zh Spine渲染中用于创建索引缓冲区（IB）的类。
@@ -77178,7 +77264,9 @@ declare namespace Laya {
          * @param out 要追加到的输出数组。
          */
         appendDeform(attachmentParse: AttachmentParse, deform: Array<number>, offset: number, out: Float32Array): void;
-    }
+
+_create(): VBCreator;
+}
     type TAttamentPos = {
         offset: number;
         attachment: AttachmentParse;
@@ -78508,7 +78596,7 @@ declare namespace Laya {
          */
         state: spine.AnimationState;
         updateBones: (delta: number, bones: spine.Bone[], boneMat: Float32Array, ofx: number, ofy: number) => void;
-        getSubMeshes(): import("../../../../RenderDriver/DriverDesign/RenderDevice/IRenderGeometryElement").IRenderGeometryElement[];
+        getSubMeshes(): IRenderGeometryElement[];
         needUpdate: boolean;
         /**
          * @en Create a new instance of SpineRenderUpdater.
@@ -78724,12 +78812,6 @@ declare namespace Laya {
         materials: Material[];
         restoreFromCache(cache: FrameRenderCache, offsetX?: number, offsetY?: number): void;
         destroy(): void;
-    }
-    enum ERenderProxyType {
-        RenderNormal = 0,
-        RenderRigidBody = 1,
-        RenderOptimize = 2,
-        RenderBake = 3
     }
     class JSSpineFactory implements ISpineFactory {
         createSpineTempletParser(): ISpineTempletParser;
@@ -79126,23 +79208,23 @@ declare namespace Laya {
         setCellNeighbor(cellNeighbor: TileMapCellNeighbor): void;
         clone(): TileMapTerrainRule;
     }
-    abstract class Vector2LikeSet<T extends IV2> {
+    abstract class Vector2LikeSet<T extends IV2, Query extends unknown[] = (number | boolean | T)[]> {
         /** 无序表 */
         map: any;
         /** 快速查找 */
         list: T[];
         abstract add(ele: T): T;
-        abstract get(...argv: (number | boolean | T)[]): T;
-        abstract delete(...argv: (number | boolean | T)[]): T;
+        abstract get(...argv: Query): T;
+        abstract delete(...argv: Query): T;
     }
-    class TerrainRuleSet extends Vector2LikeSet<TileMapTerrainRule> {
+    class TerrainRuleSet extends Vector2LikeSet<TileMapTerrainRule, [x: number, y: number, data: number]> {
         /** 无序表 */
         map: TileMapTerrainRule[][][];
         add(ele: TileMapTerrainRule): TileMapTerrainRule;
         get(x: number, y: number, data: number): TileMapTerrainRule;
         delete(x: number, y: number, data: number): TileMapTerrainRule;
     }
-    class TerrainVector2Set extends Vector2LikeSet<TTerrainVector2> {
+    class TerrainVector2Set extends Vector2LikeSet<TTerrainVector2, [x: number, y: number, create?: boolean]> {
         /** 无序表 */
         map: TTerrainVector2[][];
         /** 快速查找 */
@@ -93652,7 +93734,7 @@ declare namespace Laya {
         get isStripOutput(): boolean;
         particlePerStripCount: number;
         stripCapacity: number;
-        blendMode: import("../VFXAsset").VFXBlendMode;
+        blendMode: VFXBlendMode;
         private static _matUidCounter;
         /** per-system 材质实例 key:custom shader 材质若按 shaderName+blendMode 全局共享,
          *  各 system 的 per-system uniform(_MaskTexture/alpha 年龄曲线/Disappear 曲线/颜色渐变)会互相覆盖。
@@ -96219,4 +96301,1140 @@ declare namespace Laya {
          */
         static closeDialogOnSide: boolean;
     }
+}
+
+declare namespace Laya { type i18n = import("i18next").i18n; }
+
+// Internal dependencies omitted by upstream stripInternal; restored from source.
+declare namespace Laya {
+// Restored from LayaAir v3.4.2: laya/ani/GraphicsAni.d.ts
+class GraphicsAni extends Graphics {
+    /**
+     * @private
+     * @en Draws a custom skinned mesh for graphic animation.
+     * @param skinA The skin mesh object for graphic.
+     * @param alpha The opacity value to apply to the graphic.
+     * @zh 绘制自定义蒙皮动画。
+     * @param skinA 图形的蒙皮网格对象。
+     * @param alpha 要应用于图形的不透明度值。
+     */
+    drawSkin(skinA: SkinMeshForGraphic, alpha: number): void;
+    private static _caches;
+    /**
+     * @en Retrieves an instance of GraphicsAni from the cache or creates a new one if none are available.
+     * @returns An instance of GraphicsAni.
+     * @zh 从缓存中获取一个 GraphicsAni 实例，如果没有可用的实例则创建一个新的。
+     * @returns GraphicsAni 的一个实例。
+     */
+    static create(): GraphicsAni;
+    /**
+     * @en Recycles a GraphicsAni instance by clearing its content and adding it to the cache for future use.
+     * @param graphics The GraphicsAni instance to recycle.
+     * @zh 通过清除其内容并将其实例添加到缓存中来回收 GraphicsAni。
+     * @param graphics 要回收的 GraphicsAni 实例。
+     */
+    static recycle(graphics: GraphicsAni): void;
+}
+
+// Restored from LayaAir v3.4.2: laya/RenderDriver/DriverDesign/2DRenderPass/IRenderElement2D.d.ts
+interface WebGL2DStencilState {
+    enabled: boolean;
+    test: number;
+    write: boolean;
+    ref: number;
+    readMask: number;
+    writeMask: number;
+    opFail: number;
+    opZFail: number;
+    opZPass: number;
+}
+
+// Restored from LayaAir v3.4.2: laya/d3/component/Animator/KeyframeNodeOwner.d.ts
+class KeyframeNodeOwner {
+    /**
+     * @internal
+     * @en Index in the list
+     * @zh 列表中的索引
+     */
+    indexInList: number;
+    /**
+     * @internal
+     * @en Reference count
+     * @zh 引用计数
+     */
+    referenceCount: number;
+    /**
+     * @internal
+     * @en Update mark
+     * @zh 更新标记
+     */
+    updateMark: number;
+    /**
+     * @internal
+     * @en 0 float, 1 position, 2 rotation, 3 Scale, 4 rotationEuler
+     * @zh 0 浮点数, 1 位置, 2 旋转, 3 缩放, 4 欧拉角旋转
+     */
+    type: KeyFrameValueType;
+    /**
+     * @internal
+     * @en Full path of the node
+     * @zh 节点的完整路径
+     */
+    fullPath: string | null;
+    nodePath: string | null;
+    /**
+     * @internal
+     * @en Owner of the property
+     * @zh 属性的所有者
+     */
+    propertyOwner: any;
+    /**
+     * @internal
+     * @en Property array
+     * @zh 属性数组
+     */
+    property: string[] | null;
+    /**
+     * @internal
+     * 运行时热数据隔层：value / defaultValue / crossFixedValue / maskActive 全部转发到 _data。
+     * Web 路径下 _data 是 PlainOwnerData（字段就是 plain 字段，行为与重构前一致）；
+     * Native 路径下 _data 是 conch 端的 proxy 实例（getter/setter 跨边界写 OwnerTable）。
+     * 现有调用方 `owner.value` / `owner.defaultValue` 等都通过 accessor 透传，0 改动。
+     */
+    _data: IOwnerData;
+    /**
+     * @internal
+     * @en Default value of the property
+     * @zh 属性的默认值
+     */
+    get defaultValue(): any;
+    set defaultValue(v: any);
+    /**
+     * @internal
+     * @en Current value of the property
+     * @zh 属性的当前值
+     */
+    get value(): any;
+    set value(v: any);
+    /**
+     * @internal
+     * @en Fixed value for cross-fading
+     * @zh 用于交叉淡入淡出的固定值
+     */
+    get crossFixedValue(): any;
+    set crossFixedValue(v: any);
+    /**
+     * @internal
+     * AvatarMask 预解析结果：当前 owner 是否激活。默认 true，由上层在 mask 变更时刷新。
+     */
+    get maskActive(): boolean;
+    set maskActive(v: boolean);
+    /**
+     * @internal
+     * @en Whether the property belongs to a material
+     * @zh 属性是否属于材质
+     */
+    isMaterial: boolean;
+    /**
+     * @internal
+     * @en Callback path
+     * @zh 回调路径
+     */
+    callbackFunData: string;
+    /**
+     * @internal
+     * @en Callback owner
+     * @zh 回调归属
+     */
+    callBackOwner: any;
+    /**@internal */
+    callbackFun: string;
+    /**@internal */
+    callParams: any[];
+    /**
+     * @en constructor of KeyframeNodeOwner
+     * @zh 构造函数
+     */
+    constructor();
+    /**
+     * @internal
+     */
+    saveCrossFixedValue(): void;
+    /**
+     * @internal
+     */
+    animatorDataSetCallBack(): void;
+    /**
+     * @internal
+     */
+    getCallbackNode(): void;
+}
+
+// Restored from LayaAir v3.4.2: laya/d3/component/Volume/VolumetricGI/VolumetricGIManager.d.ts
+class VolumetricGIManager implements IVolumeManager {
+    /**
+     * @en Whether all renders need to be updated.
+     * @zh 是否需要更新所有渲染。
+     */
+    _needUpdateAllRender: boolean;
+    private _GIVolumes;
+    /**
+     * @en Constructor, initialize the VolumetricGI manager.
+     * @zh 构造函数，初始化体积全局光照(VolumetricGI)管理器。
+     */
+    constructor();
+    hasVolume(): boolean;
+    /**
+     * @en Remove Volumetric GI from the specified renderer.
+     * @zh 从指定的渲染器中移除体积全局光照。
+     */
+    removeVolumetricGI(renderer: BaseRender): void;
+    /**
+     * @en Add a VolumetricGI volume to the collection.
+     * @zh 添加一个体积全局光照(VolumetricGI)到集合中。
+     */
+    add(volume: VolumetricGI): void;
+    /**
+     * @en Remove a VolumetricGI volume from the collection.
+     * @zh 从集合中移除一个体积全局光照(VolumetricGI)。
+     */
+    remove(volume: VolumetricGI): void;
+    /**
+     * @en Update the render object based on the current VolumetricGI volumes.
+     * This method checks for overlap between the renderer's bounds and VolumetricGI volumes, and applies the most overlapping volume's settings to the renderer.
+     * @param renderer The BaseRender object to update.
+     * @zh 根据当前的体积全局光照(VolumetricGI)更新渲染对象。
+     * 此方法检查渲染器边界与VolumetricGI之间的重叠，并将重叠最多的体积的设置应用于渲染器。
+     * @param renderer 要更新的BaseRender对象。
+     */
+    _updateRenderObject(renderer: BaseRender): void;
+    /**
+     * @en Handle the list of motion objects by updating their VolumetricGI settings.
+     * @param motionObjects A SingletonList of BaseRender objects representing motion objects.
+     * @zh 处理运动对象列表，更新它们的体积全局光照(VolumetricGI)设置。
+     * @param motionObjects 表示运动对象的BaseRender对象的SingletonList。
+     */
+    handleMotionlist(motionObjects: SingletonList<BaseRender>): void;
+    /**
+     * @en Recalculate VolumetricGI settings for all render objects.
+     * @param renders A SingletonList of BaseRender objects to recalculate.
+     * @zh 重新计算所有渲染对象的体积全局光照(VolumetricGI)设置。
+     * @param renders 需要重新计算的BaseRender对象的SingletonList。
+     */
+    reCaculateAllRenderObjects(renders: SingletonList<BaseRender>): void;
+    /**
+     * @en Destroy the instance and release resources.
+     * @zh 销毁实例并释放资源。
+     */
+    destroy(): void;
+}
+
+// Restored from LayaAir v3.4.2: laya/Physics3D/interface/IVehicle/IPhysicsVehicle.d.ts
+interface VehicleWheelDesc {
+    /** Runtime identity used by the component; backends must not serialize it. */
+    wheel: object;
+    centerX: number;
+    centerY: number;
+    centerZ: number;
+    radius: number;
+    suspensionRestLength: number;
+    maxSuspensionTravel: number;
+    springStiffness: number;
+    compressionDamping: number;
+    reboundDamping: number;
+    maxSuspensionForce: number;
+    frictionStiffness: number;
+}
+
+// Restored from LayaAir v3.4.2: laya/d3/WebXR/core/WebXRCamera.d.ts
+class WebXRCamera extends Camera {
+    /**
+     * @internal
+     */
+    isWebXR: boolean;
+    /**
+     * WebXRSessionManager
+     */
+    private _webXRManager;
+    /**
+     * override client
+     */
+    private _clientWidth;
+    /**
+     * override client
+     */
+    private _clientHeight;
+    /**
+     * 自定义渲染场景的渲染目标。
+     */
+    get renderTarget(): RenderTexture;
+    /**
+     * @internal
+     */
+    set renderTarget(value: RenderTexture);
+    /**
+     * @internal
+     */
+    set clientWidth(value: number);
+    /**
+     * @internal
+     */
+    set clientHeight(value: number);
+    /**
+     * @internal
+     */
+    get clientWidth(): number;
+    /**
+     * @internal
+     */
+    get clientHeight(): number;
+    /**
+     * restore view state
+     * @internal
+     */
+    private _restoreView;
+    /**
+     * 渲染
+     * @override
+     * @param shader
+     * @param replacementTag
+     */
+    render(): void;
+    /**
+ * 渲染主流程
+ * @internal
+ * @param context 渲染上下文
+ * @param viewport 视口
+ * @param scene 场景
+ * @param shader shader
+ * @param replacementTag 替换标签
+ * @param needInternalRT 是否需要内部RT
+ */
+    _renderMainPass(context: RenderContext3D, viewport: Viewport, scene: Scene3D, shader: Shader3D, replacementTag: string, needInternalRT: boolean): void;
+    /**
+     * null function
+     */
+    protected _calculateProjectionMatrix(): void;
+    /**
+     * @internal
+     */
+    clear(gl: WebGLRenderingContext): void;
+    /**
+     * destroy
+     */
+    destroy(): void;
+}
+
+// Restored from LayaAir v3.4.2: laya/display/IGraphics.d.ts
+interface IGraphicsCommandExecutor {
+    sprite: Sprite | null;
+    _textRender: TextRender;
+    _curMat: Matrix;
+    _matrixChanged: boolean;
+    globalAlpha: number;
+    globalCompositeOperation: BlendMode;
+    alpha(value: number): void;
+    save(): void;
+    restore(): void;
+    translate(x: number, y: number): void;
+    _transform(matrix: Matrix, pivotX: number, pivotY: number): void;
+    _rotate(angle: number, pivotX: number, pivotY: number): void;
+    _scale(scaleX: number, scaleY: number, pivotX: number, pivotY: number): void;
+    drawTexture(texture: Texture, x: number, y: number, width: number, height: number, color?: number): void;
+    drawTextureWithTransform(texture: Texture, x: number, y: number, width: number, height: number, transform: Matrix, tx: number, ty: number, alpha: number, blendMode: BlendMode | string, uv?: number[], color?: number): void;
+    drawTextures(texture: Texture, pos: ArrayLike<number>, tx: number, ty: number, colors: number[]): void;
+    drawRect(x: number, y: number, width: number, height: number, fillColor: any, lineColor: any, lineWidth: number): void;
+    fillTexture(texture: Texture, x: number, y: number, width: number, height: number, type: string, offset: Point, color: number): void;
+    _drawLine(x: number, y: number, fromX: number, fromY: number, toX: number, toY: number, lineColor: any, lineWidth: number, vid: number): void;
+    _drawLines(x: number, y: number, points: any[], lineColor: any, lineWidth: number, vid: number): void;
+    _drawCircle(x: number, y: number, radius: number, fillColor: any, lineColor: any, lineWidth: number, vid: number): void;
+    _drawEllipse(x: number, y: number, width: number, height: number, fillColor: any, lineColor: any, lineWidth: number): void;
+    _drawPie(x: number, y: number, radius: number, startAngle: number, endAngle: number, fillColor: any, lineColor: any, lineWidth: number, vid: number): void;
+    _drawPoly(x: number, y: number, points: any[], fillColor: any, lineColor: any, lineWidth: number, isConvexPolygon: boolean, vid: number): void;
+    _drawRoundRect(x: number, y: number, width: number, height: number, lt: number, rt: number, lb: number, rb: number, fillColor: any, lineColor: any, lineWidth: number, minNum?: number, segPixel?: number): void;
+    drawCurves(x: number, y: number, points: any[], lineColor: any, lineWidth: number): void;
+    _drawPath(x: number, y: number, paths: any[], brush: any, pen: any): void;
+    drawTriangles(texture: Texture | BaseTexture, x: number, y: number, vertices: ArrayLike<number>, uvs: ArrayLike<number>, indices: ArrayLike<number>, matrix?: Matrix, alpha?: number, blendMode?: BlendMode | string, color?: number, colors?: ArrayLike<number>, uvRange?: ArrayLike<number>): void;
+}
+
+// Restored from LayaAir v3.4.2: laya/large/DynamicAtlasManager.d.ts
+type _$TextureData = {
+    texture: Texture;
+    uv: ArrayLike<number>;
+};
+
+// Restored from LayaAir v3.4.2: laya/navigation/common/BaseNavMesh.d.ts
+class BaseNavMesh {
+    /**@internal ori navMesh*/
+    protected _navMesh: any;
+    /**@internal ori navQuery*/
+    protected _navQuery: any;
+    /**@internal ori meshLink*/
+    protected _navMeshLink: any;
+    /**@internal ori convexVolume*/
+    protected _navConvexVolume: any;
+    /**@internal 寻路代理 */
+    protected _crowd: any;
+    /**@internal 过滤信息 */
+    protected _defatfilter: any;
+    /**@internal 查找最近导航多边形时的搜索包围盒半尺寸，分别对应导航坐标系的 X、Y、Z 轴。 */
+    protected _extents: number[];
+    /**@internal */
+    _surface: BaseNavMeshSurface;
+    /**@internal */
+    protected _titileConfig: TitleConfig;
+    /**@internal */
+    protected _maxAgents: number;
+    /**@internal */
+    protected _navcreateedTileMaps: Set<number>;
+    /**@internal */
+    protected _delayCreates: Map<number, BaseNavAgent[]>;
+    /**@internal */
+    protected _allAgents: Map<number, BaseNavAgent>;
+    /**@internal */
+    protected _fiterMap: Map<number, any>;
+    /** @internal */
+    protected _grid: NavMeshGrid;
+    /**@internal */
+    protected _is3D: boolean;
+    /**
+     * @internal
+     * @en Find the nearest point's range
+     * @zh 寻找最近点的范围
+     */
+    get extents(): number[];
+    /**
+     * @internal
+     * @en Get the navigation mesh
+     */
+    get navMesh(): any;
+    /**
+    * @internal
+    */
+    get navQuery(): any;
+    /**
+    * @internal
+    */
+    get crowd(): any;
+    /**
+     * @internal
+     */
+    get navTileGrid(): NavMeshGrid;
+    /**
+     * @internal
+     */
+    get is3D(): boolean;
+    /**
+     * <code>实例化一个NavMesh<code>
+     */
+    constructor(config: RecastConfig, min: Vector3, max: Vector3, surface: BaseNavMeshSurface, is3D?: boolean);
+    /**
+     * get filter
+     *  @internal
+     */
+    private _getFilter;
+    /**
+     * create agent
+     * @param agent
+     */
+    protected _createAgents(agent: BaseNavAgent): void;
+    /**
+     * add Agent
+     * @internal
+     * @param agent
+     */
+    _addAgent(agent: BaseNavAgent): void;
+    /**
+     * remove agent
+     * @internal
+     * @param agent
+     */
+    _removeAgent(agent: BaseNavAgent): void;
+    /**
+     * @internal
+     * @en Get the current point's Flag
+     * @zh 获得当前点的Flag
+     * @param pos 世界坐标
+     * @param fiter
+     * @return flag
+     */
+    _getPolyFlags(pos: Vector3, fiter?: any): number;
+    /**
+     * @internal
+     * @en Get the current point's Area
+     * @zh 获得当前点的Area
+     * @param pos 世界坐标
+     * @param fiter
+     * @return area
+     */
+    _getPolyArea(pos: Vector3, fiter?: any): number;
+    /**
+     * @internal
+     * @en Find the nearest point
+     * @zh 查找最近点
+     * @param pos 世界坐标
+     * @param fiter
+     * @param out 返回世界坐标
+     * @return polyRef
+     */
+    _findNearestPoly(pos: Vector3, fiter: any, out: Vector3): number;
+    /**
+     * @internal
+     */
+    _findFllowPath(fllowPaths: NavigationPathData[], startPos: Vector3, endPos: Vector3, speed: number, filter?: any): boolean;
+    /**
+     * @internal
+     * @en Find the distance to the wall
+     * @zh 查找到墙的距离
+     * @param pos:Vector3
+     * @param filter
+     * @returns {dist:number,pos:Array<number>(3),normal:Array<number>(3)}
+     */
+    _findDistanceToWall(pos: Vector3, filter?: any): {
+        dist: number;
+        pos: Array<number>;
+        normal: Array<number>;
+    };
+    /**
+     * @internal
+     * @param agent
+     * @returns
+     */
+    _requestMoveTarget(agent: BaseNavAgent, destination: Vector3): boolean;
+    /**
+     * @internal
+     * @en create a navMesh and navQuery
+     */
+    _creatNavMesh(): void;
+    /**
+     * @internal
+     * @en init the navMesh
+     * @zh 初始化导航网格
+     */
+    _navMeshInit(): void;
+    /**
+     * @internal
+     * @en The heartbeat of pathfinding, updating the navigation mesh, synchronizing the agent's position, orientation
+     * @zh 寻路的心跳，更新导航网格,同步agent的位置,朝向
+     * @param dt (秒)
+     */
+    _updateNavMesh(dt: number): void;
+    /**
+     * @internal
+     * @en add a navigation grid link
+     * @zh 添加一个导航网格链接
+     * @param index
+     * @param start
+     * @param end
+     * @param width
+     * @param bidirectional
+     * @param areaFlag
+     * @returns
+     */
+    _addNavMeshLink(index: number, start: Vector3, end: Vector3, width: number, bidirectional: boolean, areaFlag: number): void;
+    /**
+     * @internal
+     * @en remove a navigation grid link
+     * @zh 删除一个导航网格链接
+     * @param linkid
+     */
+    _removeNavMeshLink(index: number): void;
+    /**
+     * @internal
+     * @en add a convexVolume
+     * @zh 添加一个凸体
+     */
+    _updateConvexVolume(index: number, buffer: Float32Array, miny: number, maxy: number, areaType: number): boolean;
+    /**
+     * @internal
+     * @en remove a convexVolume
+     * @zh 删除一个凸体
+     * @param index
+     */
+    _deleteConvexVoume(index: number): boolean;
+    /**
+     * @internal
+     * @en add a tile
+     * @zh 添加一个tile
+     * @param cellX
+     * @param cellY
+     * @param binds
+     * @param bound
+     */
+    _addTile(cache: NavTileCache, binds: any[], partitionType: number, maxSimplificationError: number): void;
+    /**
+     * @internal
+     * @en remove a tile
+     * @zh 删除一个tile
+     * @param cellX
+     * @param cellY
+     */
+    _removeTile(tileX: number, tileY: number): void;
+    /**@internal */
+    _clearn(): void;
+    /**
+     * @internal
+     */
+    _destroy(): void;
+}
+
+// Restored from LayaAir v3.4.2: laya/navigation/common/data/CacheData.d.ts
+class CacheData {
+    static TransfromFlag: number;
+    static AreaFlag: number;
+    static MinFlag: number;
+    static MaxFlag: number;
+    static DataFlag: number;
+    static DeleteFlag: number;
+    static OtherDataFlag: number;
+    static ResetDataFlag: number;
+    /**@internal */
+    protected _cacheflag: number;
+    /**@internal */
+    protected _areaFlag: string;
+    /**@internal */
+    protected _data: any;
+    /**@internal */
+    _surface: BaseNavMeshSurface;
+    /**@internal */
+    _transfrom: Matrix4x4;
+    /**@internal */
+    _min: Vector3;
+    /**@internal */
+    _max: Vector3;
+    /**@internal */
+    _titleIndex: Set<number>;
+    /**@internal */
+    _flagChangeHander: Handler;
+    /**@internal */
+    _tileHander: Handler;
+    /**@internal */
+    id: number;
+    /**@internal */
+    constructor(surface: BaseNavMeshSurface);
+    /**@internal */
+    _setUpdateDataHander(handler: Handler): void;
+    /**@internal */
+    _setTileHander(handler: Handler): void;
+    /**@internal */
+    _updateTransfrom(mat: Matrix4x4): void;
+    /**@internal */
+    _updateAreaFlag(flag: string): void;
+    /**@internal */
+    get areaFlag(): string;
+    /**@internal */
+    _cacheBound(min: Vector3, max: Vector3): void;
+    /**@internal */
+    set _cacheData(data: any);
+    /**@internal */
+    get _cacheData(): any;
+    /**@internal */
+    _destroy(): void;
+    /**@internal */
+    _setCacheFlag(type: number): void;
+    /**@internal */
+    _getCacheFlag(type: number): boolean;
+    /**@internal */
+    _updateCache(): void;
+    /**@internal */
+    _resetData(): void;
+}
+
+// Restored from LayaAir v3.4.2: laya/navigation/common/data/BaseData.d.ts
+class BaseData {
+    /**@internal */
+    _transfrom: Matrix4x4;
+    /**@internal */
+    _min: Vector3;
+    /**@internal */
+    _max: Vector3;
+    /**@internal */
+    _agentType: string;
+    /**@internal */
+    _areaFlags: string;
+    /**@internal */
+    _cacheDatas: Array<CacheData>;
+    /**
+    * agentType
+    */
+    set agentType(value: string);
+    get agentType(): string;
+    /**
+     * area 类型
+     */
+    set areaFlag(value: string);
+    get areaFlag(): string;
+    /**
+     * @internal
+     * 刷新数据
+     */
+    _refeashData(): void;
+    /**
+     * @internal
+     * 刷新transfrom
+     */
+    _refeahTransfrom(): void;
+    /**
+     * @internal
+     * 刷新包围盒
+     */
+    _refeahBound(): void;
+}
+
+// Restored from LayaAir v3.4.2: laya/physics/factory/IPhysics2DFactory.d.ts
+class Box2DShapeDef {
+    /**
+     * @zh 密度
+     * @en Density
+     */
+    density: number;
+    /**
+     * @zh 摩擦力
+     * @en Friction
+     */
+    friction: number;
+    /**
+     * @zh 是否为传感器
+     * @en Whether it is a sensor
+     */
+    isSensor: boolean;
+    /**
+     * @zh 弹力
+     * @en Restitution
+     */
+    restitution: number;
+    /**
+     * @zh 恢复速度阈值（米/秒），高于此速度的碰撞将应用恢复即反弹
+     */
+    restitutionThreshold: number;
+    /**
+     * @zh 形状
+     * @en Shape
+     */
+    shapeType: EPhysics2DShape;
+    /**
+     * @zh 碰撞过滤数据
+     * @en Collision filtering data
+     */
+    filter: FilterData;
+}
+
+// Restored from LayaAir v3.4.2: laya/physics/factory/IPhysics2DFactory.d.ts
+class box2DWorldDef {
+    gravity: Vector2;
+    pixelRatio: number;
+    subStep: number;
+    velocityIterations: number;
+    positionIterations: number;
+}
+
+// Restored from LayaAir v3.4.2: laya/physics/factory/IPhysics2DFactory.d.ts
+class physics2D_BaseJointDef {
+    /**
+     * @zh 刚体A
+     * @en Body A
+     */
+    bodyA: any;
+    /**
+     * @zh 刚体B
+     * @en Body B
+     */
+    bodyB: any;
+    /**
+     * @zh 刚体之间是否可以互相碰撞
+     */
+    collideConnected: boolean;
+}
+
+// Restored from LayaAir v3.4.2: laya/physics/factory/IPhysics2DFactory.d.ts
+class RigidBody2DInfo {
+    /**
+     * @zh 位置
+     * @en Position
+     */
+    position: Vector2;
+    /**
+     * @zh 角度
+     * @en Angle
+     */
+    angle: number;
+    /**
+     * @zh 允许睡眠
+     * @en Whether to allow sleeping
+     */
+    allowSleep: boolean;
+    /**
+     * @zh 角速度阻尼
+     * @en Angular velocity damping
+     */
+    angularDamping: number;
+    /**
+     * @zh 角速度
+     * @en Angular velocity
+     */
+    angularVelocity: number;
+    /**
+     * @zh 是否bullet高速运动类型
+     * @en Whether it is a bullet high speed motion type
+     */
+    bullet: boolean;
+    /**
+     * @zh 是否固定旋转
+     * @en Whether to fix rotation
+     */
+    fixedRotation: boolean;
+    /**
+     * @zh 重力缩放
+     * @en Gravity scale
+     */
+    gravityScale: number;
+    /**
+     * @zh 线性阻尼
+     * @en Linear damping
+     */
+    linearDamping: number;
+    /**
+     * @zh 线性速度
+     * @en Linear velocity
+     */
+    linearVelocity: Vector2;
+    type: string;
+    /**
+     * @deprecated 碰撞分组，作为兼容使用
+     */
+    group: number;
+}
+
+// Restored from LayaAir v3.4.2: laya/Physics3D/interface/IVehicle/IPhysicsVehicle.d.ts
+interface VehicleDesc {
+    chassis: IDynamicCollider;
+    chassisMass: number;
+    wheels: VehicleWheelDesc[];
+}
+
+// Restored from LayaAir v3.4.2: laya/Physics3D/interface/IPhysicsManager.d.ts
+interface IPhysicsStepListener {
+    beforePhysicsStep(fixedDeltaTime: number): void;
+    afterPhysicsStep(fixedDeltaTime: number): void;
+}
+
+// Restored from LayaAir v3.4.2: laya/Physics3D/interface/IVehicle/IPhysicsVehicle.d.ts
+interface IPhysicsVehicle {
+    setEnabled(value: boolean): void;
+    applyConfig(desc: VehicleDesc, changes: VehicleChanges): VehicleApplyResult;
+    setInputs(inputs: readonly VehicleWheelInput[]): void;
+    beforePhysicsStep(fixedDeltaTime: number): void;
+    afterPhysicsStep(fixedDeltaTime: number): void;
+    readStates(outStates: VehicleWheelState[]): void;
+    reset(): void;
+    destroy(): void;
+}
+
+// Restored from LayaAir v3.4.2: laya/Physics3D/interface/IVehicle/IPhysicsVehicle.d.ts
+interface VehicleChanges {
+    flags: VehicleChangeFlags;
+    changedWheelIndices: number[];
+}
+
+// Restored from LayaAir v3.4.2: laya/Physics3D/interface/IVehicle/IPhysicsVehicle.d.ts
+interface VehicleWheelInput {
+    motorForce: number;
+    brakeForce: number;
+    steerAngle: number;
+}
+
+// Restored from LayaAir v3.4.2: laya/RenderDriver/RenderModuleData/Design/2D/IRender2DDataHandle.d.ts
+interface IGraphicsSingleQuadDataHandle extends IRender2DDataHandle {
+    setGraphicsHandleUpdateBuffer(buffer: ArrayBuffer): void;
+    setGraphicsMaterialState(subShader: SubShader | null, shaderData: ShaderData | null, useSpriteState: boolean): void;
+    /** @internal Bind the renderer-owned fixed SingleQuad payload once. */
+    setSingleQuadPayloadBuffer(buffer: ArrayBuffer): void;
+    /** @internal Submit the already-resolved texture resource for the fixed SingleQuad payload. */
+    syncSingleQuad(texture: BaseTexture | null): boolean;
+    /** @internal Deactivate SingleQuad and return its render unit to the backend pool. */
+    deactivateSingleQuad(): void;
+}
+
+// Restored from LayaAir v3.4.2: laya/RenderDriver/RenderModuleData/Design/2D/IRender2DDataHandle.d.ts
+interface IGraphicsCommandStreamDataHandle extends IRender2DDataHandle, IGraphicsOp2DHandle {
+    /** @internal Deactivate CommandStream and return its render units to the backend pool. */
+    deactivateGraphicsOps(): void;
+}
+
+// Restored from LayaAir v3.4.2: laya/RenderDriver/DriverDesign/RenderDevice/UniformBufferManager/UniformBufferWriter.d.ts
+abstract class UniformBufferWriter {
+    descriptor: IUniformLayout;
+    needUpload: boolean;
+    /** 写完 view 后标脏。基类只置标志;池化块 override 成同时登记 cluster 脏位。 */
+    protected _dirty(): void;
+    setInt(index: number, value: number): void;
+    /** @internal */
+    _writeInt(uniform: UniformLayoutItem, value: number): void;
+    setBool(index: number, value: boolean): void;
+    setFloat(index: number, value: number): void;
+    /** @internal */
+    _writeFloat(uniform: UniformLayoutItem, value: number): void;
+    setVector2(index: number, value: Vector2): void;
+    /** @internal */
+    _writeVector2(uniform: UniformLayoutItem, value: Vector2): void;
+    setVector3(index: number, value: Vector3): void;
+    /** @internal */
+    _writeVector3(uniform: UniformLayoutItem, value: Vector3): void;
+    setVector4(index: number, value: Vector4): void;
+    /** @internal */
+    _writeVector4(uniform: UniformLayoutItem, value: Vector4): void;
+    setMatrix3x3(index: number, value: Matrix3x3): void;
+    /** @internal */
+    _writeMatrix3x3(uniform: UniformLayoutItem, value: Matrix3x3): void;
+    setMatrix4x4(index: number, value: Matrix4x4): void;
+    /** @internal */
+    _writeMatrix4x4(uniform: UniformLayoutItem, value: Matrix4x4): void;
+    setBuffer(index: number, value: Float32Array): void;
+    /** @internal */
+    _writeBuffer(uniform: UniformLayoutItem, value: Float32Array): void;
+    setArrayBuffer(index: number, value: Float32Array): void;
+    /** @internal */
+    _writeArrayBuffer(uniform: UniformLayoutItem, value: Float32Array): void;
+    private setMatrix3x3Array;
+    setUniformData(index: number, type: ShaderDataType, data: any): void;
+}
+
+// Restored from LayaAir v3.4.2: laya/RenderDriver/LayaXDriver/RenderDevice/LayaXInternalTex.d.ts
+class LayaXInternalTex implements InternalTexture {
+    _nativeObj: any;
+    constructor(nativeObj: any);
+    get wrapU(): WrapMode;
+    set wrapU(value: WrapMode);
+    get wrapV(): WrapMode;
+    set wrapV(value: WrapMode);
+    get wrapW(): WrapMode;
+    set wrapW(value: WrapMode);
+    set baseMipmapLevel(value: number);
+    get baseMipmapLevel(): number;
+    set maxMipmapLevel(value: number);
+    get maxMipmapLevel(): number;
+    get compareMode(): TextureCompareMode;
+    set compareMode(value: TextureCompareMode);
+    get anisoLevel(): number;
+    set anisoLevel(value: number);
+    get filterMode(): FilterMode;
+    set filterMode(value: FilterMode);
+    get mipmapCount(): number;
+    get mipmap(): boolean;
+    get isPotSize(): boolean;
+    get useSRGBLoad(): boolean;
+    get depth(): number;
+    get gammaCorrection(): number;
+    set gammaCorrection(value: number);
+    get resource(): any;
+    get width(): number;
+    get height(): number;
+    get gpuMemory(): number;
+    dispose(): void;
+}
+
+// Restored from LayaAir v3.4.2: laya/RenderDriver/OpenGLESDriver/RenderDevice/GLESInternalTex.d.ts
+class GLESInternalTex implements InternalTexture {
+    _nativeObj: any;
+    private _propsF32;
+    private _propsI32;
+    private _propsU32;
+    constructor(nativeObj: any);
+    get wrapU(): WrapMode;
+    set wrapU(value: WrapMode);
+    get wrapV(): WrapMode;
+    set wrapV(value: WrapMode);
+    get wrapW(): WrapMode;
+    set wrapW(value: WrapMode);
+    set baseMipmapLevel(value: number);
+    get baseMipmapLevel(): number;
+    set maxMipmapLevel(value: number);
+    get maxMipmapLevel(): number;
+    get compareMode(): TextureCompareMode;
+    set compareMode(value: TextureCompareMode);
+    get anisoLevel(): number;
+    set anisoLevel(value: number);
+    get filterMode(): FilterMode;
+    set filterMode(value: FilterMode);
+    get mipmapCount(): number;
+    get mipmap(): boolean;
+    get isPotSize(): boolean;
+    get useSRGBLoad(): boolean;
+    get depth(): number;
+    get gammaCorrection(): number;
+    set gammaCorrection(value: number);
+    get resource(): any;
+    get width(): number;
+    get height(): number;
+    get gpuMemory(): number;
+    dispose(): void;
+}
+
+// Restored from LayaAir v3.4.2: laya/display/Scene2DSpecial/GraphicsRenderPipeline/GraphicsPipelineTypes.d.ts
+const enum GraphicsOp2DKind {
+    TextureQuad = 1,
+    SolidQuad = 2,
+    FillTexture = 3,
+    Mesh = 4,
+    MultiQuad = 5,
+    Text = 6
+}
+
+// Restored from LayaAir v3.4.2: laya/display/Scene2DSpecial/GraphicsRenderPipeline/GraphicsPipelineTypes.d.ts
+type GraphicsOp2DType = "textureQuad" | "solidQuad" | "fillTexture" | "mesh" | "multiQuad" | "text";
+
+// Restored from LayaAir v3.4.2: laya/display/Scene2DSpecial/GraphicsRenderPipeline/GraphicsPipelineTypes.d.ts
+const enum GraphicsOpProfile {
+    TextureQuadPixel = 1,
+    TextureQuadPercent = 2,
+    SolidQuadPixel = 3,
+    SolidQuadPercent = 4,
+    FillTexture = 5,
+    MultiQuad = 6,
+    Text = 7,
+    GenericMesh = 8
+}
+
+// Restored from LayaAir v3.4.2: laya/display/Scene2DSpecial/GraphicsRenderPipeline/GraphicsPipelineTypes.d.ts
+type GraphicsCommandId = string;
+
+// Restored from LayaAir v3.4.2: laya/display/Scene2DSpecial/GraphicsRenderPipeline/GraphicsPipelineTypes.d.ts
+type GraphicsOp2DTextureHost = BaseTexture;
+
+// Restored from LayaAir v3.4.2: laya/display/Scene2DSpecial/GraphicsRenderPipeline/GraphicsPipelineTypes.d.ts
+const enum GraphicsOp2DDirtyFlag {
+    None = 0,
+    Structure = 1,
+    Geometry = 2,
+    Texture = 4,
+    State = 16,
+    All = 23
+}
+
+// Restored from LayaAir v3.4.2: laya/RenderDriver/RenderModuleData/WebModuleData/2D/WebGraphicsBatch.d.ts
+class BatchBuffer {
+    indexBuffer: IIndexBuffer;
+    wholeBuffer: Web2DGraphicsIndexBatchBuffer;
+    indexCount: number;
+    maxIndexCount: number;
+    bufferStates: Map<IVertexBuffer, IBufferState>;
+    constructor();
+    add(element: IPrimitiveRenderElement2D): IRenderGeometryElement;
+    updateBufLength(): void;
+    bindBuffer(buffer: IVertexBuffer): IBufferState;
+    clear(): void;
+    destroy(): void;
+}
+
+// Restored from LayaAir v3.4.2: laya/RenderDriver/WebGLDriver/RenderDevice/WebGLInternalTex.d.ts
+class WebGLInternalTex extends GLObject implements InternalTexture {
+    _gl: WebGLRenderingContext | WebGL2RenderingContext;
+    readonly resource: WebGLTexture;
+    _resourceTarget: number;
+    readonly width: number;
+    readonly height: number;
+    readonly depth: number;
+    readonly isPotSize: boolean;
+    private _mipmap;
+    /**
+     * 是否存在 mipmap 数据
+     */
+    get mipmap(): boolean;
+    private _mipmapCount;
+    get mipmapCount(): number;
+    readonly useSRGBLoad: boolean;
+    readonly gammaCorrection: number;
+    readonly target: number;
+    internalFormat: number;
+    format: number;
+    type: number;
+    /** WebGL2 texStorage3D creates immutable storage and must only be called once. */
+    _texture3DStorageAllocated: boolean;
+    /**bytelength */
+    _gpuMemory: number;
+    private _statistics_M_Texture;
+    private _statistics_RC_Texture;
+    _getSource(): WebGLTexture;
+    get gpuMemory(): number;
+    set gpuMemory(value: number);
+    constructor(engine: WebGLEngine, target: number, width: number, height: number, depth: number, dimension: TextureDimension, mipmap: boolean, useSRGBLoader: boolean, gammaCorrection: number);
+    private _filterMode;
+    get filterMode(): FilterMode;
+    set filterMode(value: FilterMode);
+    private _warpU;
+    get wrapU(): WrapMode;
+    set wrapU(value: WrapMode);
+    private _warpV;
+    get wrapV(): WrapMode;
+    set wrapV(value: WrapMode);
+    private _warpW;
+    get wrapW(): WrapMode;
+    set wrapW(value: WrapMode);
+    private _anisoLevel;
+    get anisoLevel(): number;
+    set anisoLevel(value: number);
+    private _baseMipmapLevel;
+    set baseMipmapLevel(value: number);
+    get baseMipmapLevel(): number;
+    private _maxMipmapLevel;
+    set maxMipmapLevel(value: number);
+    get maxMipmapLevel(): number;
+    private _compareMode;
+    get compareMode(): TextureCompareMode;
+    set compareMode(value: TextureCompareMode);
+    _setTexParameteri(pname: number, param: number): void;
+    _setTexParametexf(pname: number, param: number): void;
+    protected getFilteMinrParam(filterMode: FilterMode, mipmap: boolean): 9984 | 9728 | 9985 | 9729 | 9987;
+    protected getFilterMagParam(filterMode: FilterMode): 9728 | 9729;
+    protected getWrapParam(wrapMode: WrapMode): 10497 | 33071 | 33648;
+    protected _setWrapMode(pname: number, param: number): void;
+    private _changeTexMemory;
+    dispose(): void;
+}
+
+// Restored from LayaAir v3.4.2: laya/webgl/text/TextRender.d.ts
+type TextRenderTextureSink = (texture: Texture2D, x: number, y: number, width: number, height: number, uv: ArrayLike<number>, color: number, italicDeg: number, pixelSnap: boolean) => void;
+}
+
+// Internal dependencies omitted by upstream stripInternal; restored from source.
+declare namespace Laya {
+// Restored from LayaAir v3.4.2: laya/navigation/common/TitleConfig.d.ts
+class TitleConfig {
+    tx: number;
+    ty: number;
+    bmin: number[];
+    bmax: number[];
+    agentHeight: number;
+    agentRadius: number;
+    agentMaxClimb: number;
+    maxEdgeLen: number;
+    maxSimplificationError: number;
+    partitionType: any;
+    constructor();
+    /**
+     * 设置Title序列
+     * @param {*}
+     * @return {*}
+     */
+    _setOff(tx: number, ty: number): void;
+    /**
+     * 设置包围盒最小值
+     * @param {*}
+     * @return {*}
+     */
+    _setMin(value: Vector3): void;
+    /**
+     *设置包围盒最大值
+     */
+    _setMax(value: Vector3): void;
+    /**
+     * 设置运行代理的参数
+     * @param {number} height
+     * @param {number} radius
+     * @param {number} maxClimb
+     */
+    _setAgent(height: number, radius: number, maxClimb: number): void;
+    /** 设置最大边长 */
+    _setMaxEdgeLen(value: number): void;
+}
 }

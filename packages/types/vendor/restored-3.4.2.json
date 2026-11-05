@@ -1,0 +1,142 @@
+[
+  {
+    "name": "GraphicsAni",
+    "source": "laya/ani/GraphicsAni.d.ts"
+  },
+  {
+    "name": "WebGL2DStencilState",
+    "source": "laya/RenderDriver/DriverDesign/2DRenderPass/IRenderElement2D.d.ts"
+  },
+  {
+    "name": "KeyframeNodeOwner",
+    "source": "laya/d3/component/Animator/KeyframeNodeOwner.d.ts"
+  },
+  {
+    "name": "VolumetricGIManager",
+    "source": "laya/d3/component/Volume/VolumetricGI/VolumetricGIManager.d.ts"
+  },
+  {
+    "name": "VehicleWheelDesc",
+    "source": "laya/Physics3D/interface/IVehicle/IPhysicsVehicle.d.ts"
+  },
+  {
+    "name": "WebXRCamera",
+    "source": "laya/d3/WebXR/core/WebXRCamera.d.ts"
+  },
+  {
+    "name": "IGraphicsCommandExecutor",
+    "source": "laya/display/IGraphics.d.ts"
+  },
+  {
+    "name": "_$TextureData",
+    "source": "laya/large/DynamicAtlasManager.d.ts"
+  },
+  {
+    "name": "BaseNavMesh",
+    "source": "laya/navigation/common/BaseNavMesh.d.ts"
+  },
+  {
+    "name": "CacheData",
+    "source": "laya/navigation/common/data/CacheData.d.ts"
+  },
+  {
+    "name": "BaseData",
+    "source": "laya/navigation/common/data/BaseData.d.ts"
+  },
+  {
+    "name": "Box2DShapeDef",
+    "source": "laya/physics/factory/IPhysics2DFactory.d.ts"
+  },
+  {
+    "name": "box2DWorldDef",
+    "source": "laya/physics/factory/IPhysics2DFactory.d.ts"
+  },
+  {
+    "name": "physics2D_BaseJointDef",
+    "source": "laya/physics/factory/IPhysics2DFactory.d.ts"
+  },
+  {
+    "name": "RigidBody2DInfo",
+    "source": "laya/physics/factory/IPhysics2DFactory.d.ts"
+  },
+  {
+    "name": "VehicleDesc",
+    "source": "laya/Physics3D/interface/IVehicle/IPhysicsVehicle.d.ts"
+  },
+  {
+    "name": "IPhysicsStepListener",
+    "source": "laya/Physics3D/interface/IPhysicsManager.d.ts"
+  },
+  {
+    "name": "IPhysicsVehicle",
+    "source": "laya/Physics3D/interface/IVehicle/IPhysicsVehicle.d.ts"
+  },
+  {
+    "name": "VehicleChanges",
+    "source": "laya/Physics3D/interface/IVehicle/IPhysicsVehicle.d.ts"
+  },
+  {
+    "name": "VehicleWheelInput",
+    "source": "laya/Physics3D/interface/IVehicle/IPhysicsVehicle.d.ts"
+  },
+  {
+    "name": "IGraphicsSingleQuadDataHandle",
+    "source": "laya/RenderDriver/RenderModuleData/Design/2D/IRender2DDataHandle.d.ts"
+  },
+  {
+    "name": "IGraphicsCommandStreamDataHandle",
+    "source": "laya/RenderDriver/RenderModuleData/Design/2D/IRender2DDataHandle.d.ts"
+  },
+  {
+    "name": "UniformBufferWriter",
+    "source": "laya/RenderDriver/DriverDesign/RenderDevice/UniformBufferManager/UniformBufferWriter.d.ts"
+  },
+  {
+    "name": "LayaXInternalTex",
+    "source": "laya/RenderDriver/LayaXDriver/RenderDevice/LayaXInternalTex.d.ts"
+  },
+  {
+    "name": "GLESInternalTex",
+    "source": "laya/RenderDriver/OpenGLESDriver/RenderDevice/GLESInternalTex.d.ts"
+  },
+  {
+    "name": "GraphicsOp2DKind",
+    "source": "laya/display/Scene2DSpecial/GraphicsRenderPipeline/GraphicsPipelineTypes.d.ts"
+  },
+  {
+    "name": "GraphicsOp2DType",
+    "source": "laya/display/Scene2DSpecial/GraphicsRenderPipeline/GraphicsPipelineTypes.d.ts"
+  },
+  {
+    "name": "GraphicsOpProfile",
+    "source": "laya/display/Scene2DSpecial/GraphicsRenderPipeline/GraphicsPipelineTypes.d.ts"
+  },
+  {
+    "name": "GraphicsCommandId",
+    "source": "laya/display/Scene2DSpecial/GraphicsRenderPipeline/GraphicsPipelineTypes.d.ts"
+  },
+  {
+    "name": "GraphicsOp2DTextureHost",
+    "source": "laya/display/Scene2DSpecial/GraphicsRenderPipeline/GraphicsPipelineTypes.d.ts"
+  },
+  {
+    "name": "GraphicsOp2DDirtyFlag",
+    "source": "laya/display/Scene2DSpecial/GraphicsRenderPipeline/GraphicsPipelineTypes.d.ts"
+  },
+  {
+    "name": "BatchBuffer",
+    "source": "laya/RenderDriver/RenderModuleData/WebModuleData/2D/WebGraphicsBatch.d.ts"
+  },
+  {
+    "name": "WebGLInternalTex",
+    "source": "laya/RenderDriver/WebGLDriver/RenderDevice/WebGLInternalTex.d.ts"
+  },
+  {
+    "name": "TextRenderTextureSink",
+    "source": "laya/webgl/text/TextRender.d.ts"
+  },
+  {
+    "name": "TitleConfig",
+    "source": "laya/navigation/common/TitleConfig.d.ts"
+  }
+]

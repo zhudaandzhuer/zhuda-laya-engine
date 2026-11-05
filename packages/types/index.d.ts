@@ -30,6 +30,10 @@ export declare class IframeSoundAdapter {
   setChannelVolume(channel: import('./zhuda-2d-ui').IframeAudioChannel, volume: number): boolean;
   getChannelVolume(channel: import('./zhuda-2d-ui').IframeAudioChannel): number;
   scheduleTone(options: import('./zhuda-2d-ui').IframeToneOptions): boolean;
+  prepareSampleBackend(backend: import('./zhuda-audio').IframeSampleBackend, options?: { signal?: AbortSignal }): Promise<void>;
+  loadStream(id: string, options?: { signal?: AbortSignal }): Promise<import('./zhuda-audio').IframeStreamInfo>;
+  unloadStream(id: string): boolean;
+  playStream(options: import('./zhuda-audio').IframeStreamOptions): boolean;
   loadSample(id: string, options?: { signal?: AbortSignal }): Promise<import('./zhuda-2d-ui').IframeSampleInfo>;
   unloadSample(id: string): boolean;
   playSample(options: import('./zhuda-2d-ui').IframeSampleOptions): boolean;
@@ -48,3 +52,5 @@ export declare class NoSleepAdapter {
   getDiagnostics(): import('./zhuda-core').NoSleepDiagnostics;
   dispose(): void;
 }
+
+export type * from './zhuda-audio';

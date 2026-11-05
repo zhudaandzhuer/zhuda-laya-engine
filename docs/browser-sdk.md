@@ -19,14 +19,14 @@ SDK 無法自行繞過政策，需用允許的附件資源或一般 HTTP 預覽�
 
 ## 固定版本與載入方式
 
-本次固定發行：
+本次固定發行：**1.7.0**（DPR／音訊／時鐘與宣告修正）。1.6.0 的固定 URL 保留。
 
-`https://game.qianlongxundao.com/apps/zhuda-engine-sdk/releases/02b62daf1d3a8cdac423f35428454ce8/`
+`https://game.qianlongxundao.com/apps/zhuda-engine-sdk/releases/e69ecb8850e43d172389f96ab0a9430e/`
 
 | 檔案 | 包含內容 | 未壓縮 bytes |
 | --- | --- | ---: |
-| `zhuda-2d.js` | core、2D WebGL、UI、公開 Zhuda SDK | 1,552,551 |
-| `zhuda-3d.js` | 上述內容加上 3D、3D WebGL | 2,314,185 |
+| `zhuda-2d.js` | core、2D WebGL、UI、公開 Zhuda SDK | 1,570,008 |
+| `zhuda-3d.js` | 上述內容加上 3D、3D WebGL | 2,331,642 |
 
 這兩個基本 profile 沒有打入額外的 Spine、物理、粒子、glTF 或其他 plugin。
 公共函式仍與 package root 同一份；功能若依賴未載入的底層模組，不能只因
@@ -34,8 +34,8 @@ SDK 無法自行繞過政策，需用允許的附件資源或一般 HTTP 預覽�
 
 ```html
 <script
-  src="https://game.qianlongxundao.com/apps/zhuda-engine-sdk/releases/02b62daf1d3a8cdac423f35428454ce8/zhuda-3d.js"
-  integrity="sha384-WGJs+JEV38Iv3tN6SPf8Hs+K+Gk0RgMtprFi6K4fxXPSXThpr2KDf88ocAFO4k/s"
+  src="https://game.qianlongxundao.com/apps/zhuda-engine-sdk/releases/e69ecb8850e43d172389f96ab0a9430e/zhuda-3d.js"
+  integrity="sha384-Ki5s4ig+tJFROL8EEI50EtPdaZLDZ/vtxoCcRSXx0DNI8EaEeD0PVSnKNiIzuuvX"
   crossorigin="anonymous"></script>
 <script>
 const { ZhudaEngine, Zhuda3D } = Zhuda;
@@ -59,7 +59,7 @@ HTML 須先建立具有明確尺寸的 `#game` 容器；完整可畫出內容的
 使用普通 script 並維持順序；不要加 async/defer 後立即在下一段 inline script
 使用尚未載入的 `Zhuda`。同頁只載一份 bundle，重複／既有 Laya 會在改寫前明確拒絕。
 
-`Zhuda` 的 130 個 runtime exports 與公開 ESM 入口相同，並未再寫一套 facade。
+`Zhuda` 的 runtime exports 與公開 ESM 入口相同，並未再寫一套 facade。
 `ZhudaBundle` 回報版本、profile、模組清單、來源指紋與打包器版本。
 bundle 自動掛載共用的響應式豬大 × LayaAir Logo；不要自行放入同名 splash。
 
@@ -98,11 +98,16 @@ zhuda-laya-browser-sdk --out ./sdk-release
 編輯器型別可以使用已安裝套件的
 `/// <reference types="zhuda-laya-engine/browser" />`，或直接 reference 該套件的
 `packages/types/browser.d.ts`。這只是既有 public declarations 的 全域 namespace；
-不需要 `Laya: any`。現有 vendor 的 skipLibCheck 邊界仍保持。
+不需要 `Laya: any`。1.7.0 已通過完整 `skipLibCheck:false` 宣告稽核。
 
 **單一 HTML 的啟動成功是 browser runtime 證據，並不等於完成消費專案門禁。**
 既有 Doctor 針對 npm／TS consumer，不把普通 HTML 直接當成完整檢查通過。
 正式遊戲依 [consumer route](consumer-route.md) 保留版本、型別、Prefab 比對、
 Scene／操作及目標裝置證據。Browser 範例的按鈕／計數也不能代替你的遊戲驗收。
 
-完整本輪結果見 [驗收記錄](plans/records/browser-sdk-delivery/verification.md)。
+1.7.0 結果見 [本輪驗收記錄](plans/records/astra-runtime-feedback/verification.md)；
+原始 Browser SDK 範圍見 [1.6.0 記錄](plans/records/browser-sdk-delivery/verification.md)。
+
+站內沙箱禁止 Worker，因此 `ZhudaWorkerFrameDriver` 必須由 consumer 在支援的
+外部頁面選用，或明確回退到 RAF。Worklet／Blob media 也受各站 CSP 約束；
+此發行不更動伺服器沙箱，不能宣稱所有音訊／背景策略在站內都已驗收。

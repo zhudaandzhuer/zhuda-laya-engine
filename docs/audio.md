@@ -3,7 +3,7 @@
 `IframeSoundAdapter` is the engine's single WebAudio authority for an embedded
 consumer. It owns one `AudioContext`, the master/channel gain chain, autoplay
 unlock, active voices, lifecycle focus handling and disposal. A consumer submits
-logical events with `scheduleTone`; it does not create an `AudioContext`, connect
+logical events with `scheduleTone`, `playSample` or `playStream`; it does not create an `AudioContext`, connect
 an oscillator to `destination`, or synthesize the same event through Laya's
 `SoundManager`.
 
@@ -35,7 +35,7 @@ the accepted origin and never uses `'*'`. A consumer that deliberately mirrors
 state to Laya can opt into `syncLayaSoundManager`, but it must choose one
 playback backend for each event and must not submit the same sound to both.
 
-## Provider-backed samples (1.4.0 candidate)
+## Provider-backed samples
 
 The same mixer now exposes `loadSample`, `playSample` and `unloadSample` for
 browser-decodable audio, including original WAV/MP3 assets. Decoding uses the
@@ -103,9 +103,115 @@ same source position if permitted. It does not reconstruct a stream or guarantee
 mobile autoplay. `peakGain` remains voice-local; channel/master gains apply once.
 Sources and voice gains disconnect on end, stop, failure and disposal.
 
-Streaming, spatial playback, physical-device codec/speaker/autoplay acceptance
-and the complete sample migration matrix remain unverified. The
+Streaming desktop evidence and the backend extension are documented below.
+Spatial playback, physical-device codec/speaker/autoplay acceptance and the
+complete sample migration matrix remain unverified. The
 [verification record](plans/records/consumer-runtime-hardening/verification.md)
 labels the measured candidate scope. The broader
 [follow-up plan](plans/consumer-delivery-followups.md) still tracks dependency
 graphs, vendor declarations and remaining device work.
+
+## Streaming BGM (1.7.0)
+
+`loadStream` / `playStream` / `unloadStream` use an optional
+`AssetProvider.openStream` lease. Each voice owns a media element connected to
+**the existing AudioContext, voice/channel/master gains**. The element's volume
+is one; never connect another player or context for the same event.
+
+```ts
+const streams = new DirectoryAssetProvider({
+  baseUrl: '/audio/', streamMode: 'native',
+  // This delivery policy has no whole-file SHA requirement.
+});
+const audio = new IframeSoundAdapter({
+  sampleProvider: assets, streamProvider: streams,
+  maxActiveVoices: 24, voiceOverflow: 'fifo', protectedChannels: ['bgm'],
+  maxDecodedSampleBytes: 64 * 1024 * 1024,
+  maxRetainedStreamBytes: 32 * 1024 * 1024,
+});
+await audio.loadStream('theme.mp3', {signal});
+// Call unlockAudio from the existing real user-gesture handler.
+audio.playStream({id:'music', streamId:'theme.mp3', loop:true, fadeInSec:.2});
+await audio.loadStream('battle.mp3', {signal});
+audio.playStream({id:'music', streamId:'battle.mp3', loop:true,
+  replace:true, crossFadeSec:.3});
+// Unload the previous stream after its fade completes; unloading stops immediately.
+audio.stop('music', .2);
+// At owner teardown:
+audio.unloadStream('theme.mp3');
+audio.unloadStream('battle.mp3');
+audio.dispose();
+streams.dispose();
+```
+
+Two provider modes make the integrity tradeoff explicit:
+
+| Mode | Data retained | Integrity |
+| --- | --- | --- |
+| `verified-blob` (default) | Complete encoded bytes in a leased Blob URL, no full PCM decode by the adapter | Existing byte bound and manifest SHA checks |
+| `native` (opt-in) | Browser-managed range/buffer/decoder data; adapter lease reports zero retained bytes | Transport only; rejects a manifest entry requiring full-file SHA |
+
+Native `loadStream` resolves an address lease, not network/media readiness.
+Playback failures and the 15-second startup deadline are reported through
+`onVoiceEvent` and `lastError`. A replacement retires the previous voice only
+after the new element's play promise succeeds. Cancellation, stale results,
+unload and disposal release the lease, media source, listeners and source URL.
+Blur/hidden pauses the element as well as suspending the shared context; resume
+continues its position when the browser allows it. All crossfade/stop envelopes
+use audio time. `playStream` supports offset, loop, fade-in and replacement;
+custom loop segments and finite-duration envelopes remain sample features.
+
+`streamProvider` defaults to `sampleProvider`. `maxSamples` bounds each of the
+sample and stream collections; pending loads reserve IDs. Retained encoded
+stream bytes have their own `maxRetainedStreamBytes` budget (default 64 MiB).
+`decodedSampleBytes` is owned PCM, and `retainedStreamBytes` is encoded lease
+ownership. Neither is a measurement of total browser/native decoder memory.
+CORS, media codecs, user gestures and page CSP still apply.
+
+## Voice capacity and retirement
+
+`voiceOverflow` defaults to `reject`. `fifo` retires the oldest eligible voice;
+`priority` chooses the lowest priority, then the oldest, and rejects an incoming
+voice below every eligible priority. `priority` defaults to zero. A voice marked
+`protected:true` or in `protectedChannels` (default `['bgm']`) is never evicted.
+Explicit stop/unload still stops protected voices.
+
+The limit includes fading and crossfading voices. Retirement fades for
+`retireFadeSec` (default 5 ms), reserves its replacement and starts that
+replacement only after the old voice ends. The queue is bounded by
+`maxPendingQueue`; it is not extra voice capacity. Crossfades need one free or
+reclaimable slot and never steal their own old voice. Leave capacity for BGM
+switches when choosing a limit. A stream waiting for playback also owns a slot.
+A suspended audio clock delays retirement and admissions together.
+
+`onVoiceEvent` reports `started`, `rejected`, `retiring`, `ended` and asynchronous
+stream `failed` events. Monitor `pendingAdmissions`, `retiredVoices` and
+`droppedVoices`; a true submission result can mean queued, not audible.
+Stop/unload/disposal cancel the corresponding pending admissions.
+
+## Sample backend extension and AudioWorklet
+
+`prepareSampleBackend(backend, {signal})` installs one `IframeSampleBackend`
+on an idle adapter. The backend receives the **owned** context, borrowed
+provider and cancellation signal. `createVoice` returns an unconnected output,
+`start`, `stop`, `onended` and `disconnect`. It must implement sample timing and
+loop options, stop reliably, signal completion, and release nodes/ports on every
+exit. The adapter keeps the logical events, queue, capacity, gain envelope and
+focus authority. A backend must never connect directly to destination or apply
+channel/master gain again. Tones and streams keep their existing source types
+inside the same mixer.
+
+Preparation has the sample deadline, abort and stale-disposal guards. Failure
+rejects explicitly; the caller can keep native playback or retry with a fresh
+backend instance. Unexpected context closure after installation requires
+adapter disposal and recreation; it cannot reuse nodes from an old context.
+
+The neutral reference in `tests/fixtures/runtime-feedback.ts` and
+`tests/fixtures/runtime-worklet.js` demonstrates provider-loaded Worklet code,
+module URL cleanup, channel routing, message completion and node/port disposal.
+It is an acceptance fixture, **not a production DSP mixer or a complete sample
+backend** (its single-channel loop subset is deliberate). The Chrome check
+measures processor progress during a 250 ms main-thread block. Hardware output
+latency, glitch-free speakers, mobile autoplay and full SOP compliance remain
+unverified. Unsupported Worklet/module/CSP environments must handle preparation
+failure explicitly. See the [1.7.0 verification record](plans/records/astra-runtime-feedback/verification.md).

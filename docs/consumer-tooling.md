@@ -222,3 +222,13 @@ The shared library and preview also accept typed `Prefab3DDefinition` recipes.
 See [primitive 3D Prefabs](procedural-prefabs.md) for transforms, materials,
 sockets, states, camera/light configuration and ownership. Static `.lh` remains
 supported; Zero-IDE does not mean serialized assets are forbidden.
+
+### DPR evidence migration in 1.7.0
+
+The environment gate now checks stage design dimensions and stage scale as well
+as viewport, reported DPR, CSS canvas size and backing resolution. Correct
+backing pixels alone are insufficient: the former 198/99/66 CSS-pixel regression
+at DPR 1/2/3 must fail. Rebuild candidates and recapture/review affected evidence;
+do not re-label a pre-fix reference as approved. Default preview design units
+match the requested CSS canvas dimensions. See [runtime sizing](platform-adapters.md)
+for fixed-design consumers and [measured results](plans/records/astra-runtime-feedback/verification.md).

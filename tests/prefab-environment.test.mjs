@@ -12,7 +12,17 @@ test('DPR 2 requested but DPR 1 measured fails independently of a pixel comparis
   assert.match(audit.issues.join(';'), /viewport.width/);
   assert.match(audit.issues.join(';'), /canvas.backing.width/);
   measured.viewport={...requested.viewport}; measured.dpr=2; measured.canvas.backing={width:2048,height:1152};
+  assert.equal(auditPrefabEnvironment(requested,measured).passed,false);
+  measured.stage.scaleX=2; measured.stage.scaleY=2;
   assert.equal(auditPrefabEnvironment(requested,measured).passed,true);
+});
+
+test('a correct backing canvas with DPR-scaled design dimensions must fail', () => {
+  const requested=requestedPrefabEnvironment('http://localhost/?width=640&height=360&dpr=2');
+  const measured={viewport:{width:640,height:360},dpr:2,canvas:{css:{width:640,height:360},backing:{width:1280,height:720}},stage:{width:1280,height:720,scaleX:1,scaleY:1}};
+  const result=auditPrefabEnvironment(requested,measured);
+  assert.equal(result.passed,false);
+  assert.match(result.issues.join(';'),/stage.design.width/);
 });
 
 test('viewport, canvas and render DPR can be declared independently with bounded input', () => {

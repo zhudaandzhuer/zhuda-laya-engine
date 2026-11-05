@@ -493,6 +493,100 @@ var ZhudaPreviewBundle = (() => {
     }
   };
 
+  // packages/core/runtime3d/Laya342Adapters.ts
+  var patched = /* @__PURE__ */ new WeakSet();
+  function resizeLaya342Stage(runtime, width, height, designWidth, designHeight, dpr, canvas) {
+    const descriptor = Object.getOwnPropertyDescriptor(
+      runtime.Browser,
+      "pixelRatio"
+    );
+    try {
+      Object.defineProperty(runtime.Browser, "pixelRatio", {
+        configurable: true,
+        get: () => dpr
+      });
+      runtime.stage.size(designWidth, designHeight);
+      runtime.stage.setScreenSize(width * dpr, height * dpr);
+      const matrix = runtime.stage._canvasTransform;
+      if (canvas?.getBoundingClientRect && matrix) {
+        const rect = canvas.getBoundingClientRect();
+        const x = [
+          0,
+          matrix.a * canvas.width,
+          matrix.c * canvas.height,
+          matrix.a * canvas.width + matrix.c * canvas.height
+        ];
+        const y = [
+          0,
+          matrix.b * canvas.width,
+          matrix.d * canvas.height,
+          matrix.b * canvas.width + matrix.d * canvas.height
+        ];
+        matrix.tx = rect.left + (globalThis.scrollX || 0) - Math.min(...x);
+        matrix.ty = rect.top + (globalThis.scrollY || 0) - Math.min(...y);
+      }
+    } finally {
+      if (descriptor)
+        Object.defineProperty(runtime.Browser, "pixelRatio", descriptor);
+      else Reflect.deleteProperty(runtime.Browser, "pixelRatio");
+    }
+  }
+  function installLaya342LifecycleFix(runtime = globalThis.Laya) {
+    const prototype = runtime?.WebRender3DProcess?.prototype;
+    if (!prototype || patched.has(prototype)) return;
+    const destroy = prototype.destroy;
+    if (typeof destroy !== "function") return;
+    const retired = /* @__PURE__ */ new WeakSet();
+    prototype.destroy = function(...args) {
+      if (retired.has(this)) return;
+      retired.add(this);
+      const shadow = this._defaultShadowMap;
+      try {
+        return destroy.apply(this, args);
+      } finally {
+        if (shadow && !shadow.destroyed) shadow.destroy();
+        this._defaultShadowMap = null;
+      }
+    };
+    patched.add(prototype);
+  }
+
+  // packages/core/runtime3d/RuntimeDriver.ts
+  var ZhudaRafDriver = class {
+    constructor() {
+      this.frame = 0;
+      this.generation = 0;
+    }
+    now() {
+      return performance.now();
+    }
+    start(callback) {
+      this.stop();
+      const generation = ++this.generation;
+      const tick = (now) => {
+        if (generation !== this.generation) return;
+        this.frame = 0;
+        try {
+          callback(now);
+        } finally {
+          if (generation === this.generation)
+            this.frame = requestAnimationFrame(tick);
+        }
+      };
+      this.frame = requestAnimationFrame(tick);
+    }
+    setBackground(_background) {
+    }
+    stop() {
+      this.generation++;
+      cancelAnimationFrame(this.frame);
+      this.frame = 0;
+    }
+    dispose() {
+      this.stop();
+    }
+  };
+
   // packages/core/runtime3d/Runtime.ts
   function installSandboxStorageFallback() {
     const modes = {};
@@ -536,26 +630,40 @@ var ZhudaPreviewBundle = (() => {
       this.timers = new ZhudaTimerScheduler();
       this.mutations = new ZhudaSceneMutationQueue();
       this.cleanups = [];
-      this.frame = 0;
-      this.previous = 0;
+      this.started = false;
+      this.background = false;
+      this.manuallyPaused = false;
+      this.recoveryDelta = 0;
       this.task = null;
       this.canvas = canvas;
       this.options = options;
+      if (!["pause", "continue"].includes(options.backgroundPolicy ?? "pause") || !["discard", "bounded"].includes(options.recoveryPolicy ?? "discard") || !Number.isFinite(options.maxFrameDeltaSec ?? 0.1) || (options.maxFrameDeltaSec ?? 0.1) <= 0 || (options.maxFrameDeltaSec ?? 0.1) > 1)
+        throw Error("Invalid runtime background/recovery policy");
       if (options.timeScale !== void 0) {
         if (!Number.isFinite(options.timeScale) || options.timeScale < 0)
           throw Error("Invalid runtime time scale");
         this.clock.timeScale = options.timeScale;
       }
+      this.driver = options.driver ?? new ZhudaRafDriver();
       this.layers.setGlobalTimeScale(this.clock.timeScale);
-      const listen = (target, event, fn) => {
-        target.addEventListener(event, fn);
-        this.cleanups.push(() => target.removeEventListener(event, fn));
+      const listen = (target, event, fn, capture = false) => {
+        target.addEventListener(event, fn, capture);
+        this.cleanups.push(() => target.removeEventListener(event, fn, capture));
       };
-      listen(document, "visibilitychange", () => this.setPaused(document.hidden));
-      listen(window, "blur", () => this.setPaused(true));
+      listen(
+        document,
+        "visibilitychange",
+        () => this.setBackground(document.hidden)
+      );
+      listen(window, "blur", () => this.setBackground(true));
       listen(window, "focus", () => {
-        if (!document.hidden && !this.contextLost) this.setPaused(false);
+        if (!document.hidden && !this.contextLost) this.setBackground(false);
       });
+      listen(window, "pagehide", () => this.setBackground(true));
+      listen(window, "pageshow", () => {
+        if (!document.hidden) this.setBackground(false);
+      });
+      listen(window, "scroll", () => this.resize(), true);
       listen(canvas, "webglcontextlost", (e) => {
         e.preventDefault();
         this.contextLost = true;
@@ -568,15 +676,41 @@ var ZhudaPreviewBundle = (() => {
           this.observer.observe(options.container);
         } else listen(window, "resize", () => this.resize());
         this.resize();
+        if (document.hidden) this.setBackground(true);
       } catch (error) {
         this.dispose();
         throw error;
       }
     }
     setPaused(value) {
+      this.manuallyPaused = value;
       this.options.clearInput?.();
-      this.paused = value || this.contextLost;
-      this.previous = 0;
+      this.paused = value || this.contextLost || this.background && this.options.backgroundPolicy !== "continue";
+      this.previous = void 0;
+      this.recoveryDelta = 0;
+      this.options.onPause?.(this.paused);
+    }
+    setBackground(background) {
+      if (this.disposed || this.background === background) return;
+      this.options.clearInput?.();
+      const now = this.driver.now();
+      this.background = background;
+      this.driver.setBackground(background);
+      if (background) {
+        this.suspendedAt = now;
+      } else {
+        const elapsedSec = Math.max(0, (now - (this.suspendedAt ?? now)) / 1e3);
+        const missed = this.options.backgroundPolicy === "continue" && this.previous !== void 0 ? Math.max(0, (now - this.previous) / 1e3) : elapsedSec;
+        this.recoveryDelta = !this.manuallyPaused && this.options.recoveryPolicy === "bounded" ? Math.min(missed, this.options.maxFrameDeltaSec ?? 0.1) : 0;
+        this.options.onResume?.({
+          elapsedSec,
+          advancedSec: this.recoveryDelta,
+          discardedSec: Math.max(0, missed - this.recoveryDelta)
+        });
+        this.previous = void 0;
+        this.suspendedAt = void 0;
+      }
+      this.paused = this.manuallyPaused || this.contextLost || background && this.options.backgroundPolicy !== "continue";
       this.options.onPause?.(this.paused);
     }
     resize() {
@@ -585,30 +719,44 @@ var ZhudaPreviewBundle = (() => {
       if (!c && !this.options.dprCap) return;
       const rect = c?.getBoundingClientRect(), width = rect?.width || innerWidth, height = rect?.height || innerHeight, dpr = Math.min(devicePixelRatio || 1, this.options.dprCap ?? 2);
       if (width < 2 || height < 2) return;
-      l.Config.useRetinalCanvas = false;
+      const design = this.options.designSize ?? { width, height };
+      if (![design.width, design.height, dpr].every(
+        (value) => Number.isFinite(value) && value > 0
+      ))
+        throw Error("Invalid runtime design size or DPR");
+      l.Config.useRetinalCanvas = true;
       l.stage.screenAdaptationEnabled = false;
-      l.stage.scaleMode = l.Stage.SCALE_SHOWALL;
+      l.stage.scaleMode = this.options.scaleMode ?? l.Stage.SCALE_SHOWALL;
       l.stage.alignH = l.Stage.ALIGN_LEFT;
       l.stage.alignV = l.Stage.ALIGN_TOP;
-      l.stage.size(Math.round(width * dpr), Math.round(height * dpr));
-      l.stage.setScreenSize(
-        width * l.Browser.pixelRatio,
-        height * l.Browser.pixelRatio
+      resizeLaya342Stage(
+        l,
+        width,
+        height,
+        design.width,
+        design.height,
+        dpr,
+        this.canvas
       );
       this.options.onResize?.({ width, height, dpr });
     }
     start(update) {
       if (this.disposed) throw Error("Disposed runtime");
       this.task = update;
-      if (this.frame) return;
+      if (this.started) return;
+      this.started = true;
       const tick = (now) => {
-        this.frame = 0;
         if (this.disposed) return;
+        if (!Number.isFinite(now) || this.previous !== void 0 && now <= this.previous)
+          return;
         if (!this.paused) {
-          const elapsed = this.previous ? now - this.previous : 0;
-          if (!this.previous || elapsed >= 1e3 / (this.options.targetFPS || 60) - 2) {
+          const elapsed = this.previous !== void 0 ? now - this.previous : this.recoveryDelta * 1e3;
+          if (this.previous === void 0 || elapsed >= 1e3 / (this.options.targetFPS || 60) - 2) {
             this.previous = now;
-            const sample = this.clock.advance(Math.min(0.1, elapsed / 1e3));
+            this.recoveryDelta = 0;
+            const sample = this.clock.advance(
+              Math.min(this.options.maxFrameDeltaSec ?? 0.1, elapsed / 1e3)
+            );
             this.layers.setGlobalTimeScale(this.clock.timeScale);
             this.layers.advance(sample.unscaledDeltaTime);
             this.timers.advance(
@@ -620,15 +768,20 @@ var ZhudaPreviewBundle = (() => {
             this.mutations.flush();
           }
         }
-        this.frame = requestAnimationFrame(tick);
       };
-      this.frame = requestAnimationFrame(tick);
+      try {
+        this.driver.start(tick);
+      } catch (error) {
+        this.started = false;
+        this.driver.stop();
+        throw error;
+      }
     }
     dispose() {
       if (this.disposed) return;
       this.disposed = true;
-      cancelAnimationFrame(this.frame);
-      this.frame = 0;
+      this.driver.dispose();
+      this.started = false;
       this.task = null;
       this.timers.dispose();
       this.mutations.dispose();
@@ -638,28 +791,6 @@ var ZhudaPreviewBundle = (() => {
       this.options.clearInput?.();
     }
   };
-
-  // packages/core/runtime3d/Laya342Adapters.ts
-  var patched = /* @__PURE__ */ new WeakSet();
-  function installLaya342LifecycleFix(runtime = globalThis.Laya) {
-    const prototype = runtime?.WebRender3DProcess?.prototype;
-    if (!prototype || patched.has(prototype)) return;
-    const destroy = prototype.destroy;
-    if (typeof destroy !== "function") return;
-    const retired = /* @__PURE__ */ new WeakSet();
-    prototype.destroy = function(...args) {
-      if (retired.has(this)) return;
-      retired.add(this);
-      const shadow = this._defaultShadowMap;
-      try {
-        return destroy.apply(this, args);
-      } finally {
-        if (shadow && !shadow.destroyed) shadow.destroy();
-        this._defaultShadowMap = null;
-      }
-    };
-    patched.add(prototype);
-  }
 
   // packages/core/TopologyGraph.ts
   var ZHUDA_ENGINE_MODULES = [
