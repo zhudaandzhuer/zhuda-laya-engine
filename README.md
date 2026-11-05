@@ -40,6 +40,13 @@ Build 2D, 3D and Spine 4.2 projects with TypeScript, a CLI and coding agents. Th
 
 Maintained by [Zhuda](https://github.com/zhudaandzhuer). Rendering and physics come from [LayaAir / Layabox](https://layaair.com/). This is an independent fork; donations support Zhuda's work on this repository.
 
+## Single-HTML browser entry (1.6.0)
+
+Use the [hosted SDK and runnable examples](https://game.qianlongxundao.com/play/zhuda-engine-sdk/)
+to load the real runtime with one pinned script. [Browser SDK guide](docs/browser-sdk.md)
+includes fixed URLs, SRI, 2D/3D HTML templates and sandbox limits. The existing
+consumer/Prefab/device gates still apply to a complete game.
+
 ## Start here: build a real consumer
 
 Use the engine checkout for SDK work. Put a game in its own repository and

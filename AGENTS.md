@@ -27,6 +27,11 @@ workbench quick start in README is for engine development; it is not a consumer
 scaffold. A consumer may claim engine-backed integration only after its pinned
 SDK, public import, boot path, HTML markers, build and Doctor checks pass.
 
+For an explicitly requested single-HTML entry, use [the official browser SDK](docs/browser-sdk.md)
+and its fixed URL/SRI templates in `examples/browser-sdk/`. Load one real bundle,
+use `Zhuda` public exports, and keep the existing Prefab/Scene/device evidence
+boundaries; a browser draw is not a complete consumer Doctor pass.
+
 When evidence becomes stale, use `zhuda-laya-build --candidate` or
 `zhuda-laya-watch --candidate`; do not remove the release gate. Configure
 `prefabChecks` and run `zhuda-laya-accept` for candidate comparisons followed by

@@ -6,6 +6,14 @@ diagnostics and neutral fixtures. The consumer repository owns game rules,
 network authority, art, models, textures, audio, prefabs, scenes and deploy
 configuration.
 
+## Single-HTML browser entry
+
+For an explicitly requested single-HTML prototype, use the official
+[browser SDK route](browser-sdk.md). It loads the same public runtime under the
+`Zhuda` namespace from a fixed URL with SRI. Do not create a substitute facade.
+This browser entry does not by itself pass the npm consumer Doctor or the
+Prefab/device gates below; retain those evidence boundaries for final delivery.
+
 ## Start from a consumer checkout
 
 Keep the game outside the engine checkout. From a cloned engine repository,

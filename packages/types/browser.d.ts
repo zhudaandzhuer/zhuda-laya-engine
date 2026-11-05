@@ -1,0 +1,13 @@
+/** Types for the official classic-script browser bundle. No second API surface. */
+export * from 'zhuda-laya-engine';
+export as namespace Zhuda;
+declare global {
+  const ZhudaBundle: Readonly<{
+    version: string;
+    profile: '2d' | '3d';
+    features: readonly import('./zhuda-bootstrap').EngineFeatureTag[];
+    libraries: readonly string[];
+    sourceFingerprint: string;
+    bundler: Readonly<{name: 'esbuild'; version: string}>;
+  }>;
+}

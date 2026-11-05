@@ -1,6 +1,6 @@
 {
   "name": "zhuda-laya-engine",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "description": "豬大 LayaAir 引擎 (zhuda-laya-engine) — 基於 LayaAir 官方 (layabox/LayaAir 3.4.2) 打造的豬大 AI-Agent-Friendly 開源分支版本，內建 Zero-IDE 極速打包、DAG 拓撲守衛、AST 自動反射、靜態資產 ΔE00 校準與 MCP 語料伺服器",
   "private": false,
   "license": "MIT",
@@ -36,7 +36,10 @@
     "./doctor": "./packages/compiler/zhuda-doctor.mjs",
     "./mcp-server": "./packages/mcp-server/index.mjs",
     "./types": "./packages/types/index.d.ts",
-    "./compiler/consumer": "./packages/compiler/consumer-build.mjs"
+    "./compiler/consumer": "./packages/compiler/consumer-build.mjs",
+    "./browser": {
+      "types": "./packages/types/browser.d.ts"
+    }
   },
   "bin": {
     "zhuda-laya-build": "./packages/compiler/zhuda-build.mjs",
@@ -46,7 +49,8 @@
     "zhuda-prefab-check": "./packages/compiler/prefab-check.mjs",
     "zhuda-laya-accept": "./packages/compiler/consumer-accept.mjs",
     "zhuda-laya-watch": "./packages/compiler/prefab-watch.mjs",
-    "zhuda-laya-mcp": "./packages/mcp-server/index.mjs"
+    "zhuda-laya-mcp": "./packages/mcp-server/index.mjs",
+    "zhuda-laya-browser-sdk": "./packages/compiler/browser-sdk.mjs"
   },
   "files": [
     "packages",
@@ -59,7 +63,8 @@
     "AGENTS.md",
     "docs",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "examples/browser-sdk"
   ],
   "keywords": [
     "layaair",
@@ -87,10 +92,11 @@
     "pack:tarball": "npm pack --pack-destination dist",
     "verify": "npm run build && npm run typecheck && npm run doctor && npm run test",
     "start": "python3 -m http.server 8890 --bind 127.0.0.1 --directory dist/web",
-    "types:runtime3d": "node packages/compiler/runtime3d-types.mjs"
+    "types:runtime3d": "node packages/compiler/runtime3d-types.mjs",
+    "build:browser": "node packages/compiler/browser-sdk.mjs"
   },
   "dependencies": {
-    "esbuild": "^0.24.0",
+    "esbuild": "0.27.1",
     "typescript": "^5.6.0"
   },
   "engines": {

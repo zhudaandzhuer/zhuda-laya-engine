@@ -1,5 +1,5 @@
 /**
- * zhuda-laya-engine v1.5.0 — 豬大 LayaAir (AI-Agent-Friendly Fork Edition)
+ * zhuda-laya-engine v1.6.0 — 豬大 LayaAir (AI-Agent-Friendly Fork Edition)
  * Repository: https://github.com/zhudaandzhuer/zhuda-laya-engine
  * Upstream Official: LayaAir Engine 3.4.2 by Layabox (https://layaair.com/ | https://github.com/layabox/LayaAir)
  * License: MIT
@@ -2233,7 +2233,7 @@ function inspectSceneResources(runtime = globalThis.Laya) {
   let meshBytes = 0, textureBytes = 0, renderTargetBytes = 0;
   for (const r of items) {
     if (r.destroyed) continue;
-    if (r instanceof runtime.Mesh) {
+    if (typeof runtime.Mesh === "function" && r instanceof runtime.Mesh) {
       counts.mesh++;
       meshBytes += r.gpuMemory || 0;
     } else if (runtime.RenderTexture && r instanceof runtime.RenderTexture || runtime.RenderTexture2D && r instanceof runtime.RenderTexture2D) {

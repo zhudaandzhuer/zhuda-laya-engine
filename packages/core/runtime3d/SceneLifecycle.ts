@@ -167,7 +167,7 @@ export function inspectSceneResources(runtime: any = (globalThis as any).Laya) {
     renderTargetBytes = 0;
   for (const r of items) {
     if (r.destroyed) continue;
-    if (r instanceof runtime.Mesh) {
+    if (typeof runtime.Mesh === 'function' && r instanceof runtime.Mesh) {
       counts.mesh++;
       meshBytes += r.gpuMemory || 0;
     } else if (
