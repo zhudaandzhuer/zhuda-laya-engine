@@ -1,6 +1,6 @@
 # Agent task: dpr-css-canvas
 
-Status: In progress  
+Status: Implemented within scope  
 Owner: Engine runtime and SDK  
 Last reviewed: 2026-11-06
 

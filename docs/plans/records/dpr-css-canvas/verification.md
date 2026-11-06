@@ -2,7 +2,7 @@
 
 Task: [task.md](task.md)  
 Date: 2026-11-06  
-Status: In progress until the rebuilt SDK is pinned by the consumer.
+Status: Implemented within scope; physical device acceptance remains consumer-owned.
 
 ## Checks
 
@@ -10,8 +10,8 @@ Status: In progress until the rebuilt SDK is pinned by the consumer.
 | --- | --- | --- | --- |
 | Focused sizing regression | `node --test tests/runtime-sizing.test.mjs` | PASS | terminal output |
 | Engine build | `npm run build` | PASS | `dist/sdk/`, `dist/build-manifest.json` |
-| Full engine verify | `npm run verify` | IN PROGRESS | terminal output |
-| Consumer WebGL | SwiftShader Chrome CDP, DPR 2 portrait/landscape and Go URL | PENDING rebuilt SDK | consumer `artifacts/browser/report.json` |
+| Full engine verify | `npm run verify` | PASS, 259 tests | terminal output |
+| Consumer WebGL | SwiftShader Chrome CDP, DPR 2 portrait/landscape and Go URL | PASS after consumer pin | consumer `artifacts/browser/report.json` |
 
 ## Measured acceptance
 

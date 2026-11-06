@@ -30,7 +30,7 @@ device checks and acceptance gates pass.
 | [Cinematic production](cinematic-production/task.md) | Implemented; macOS verified | Synchronous native sampling, physical lens/shutter capture, shared offline audio and atomic MP4; scene-linear HDR and additional platforms remain separate |
 | [Desktop and Agent gates](desktop-and-agent-gates/task.md) | Implemented; macOS verified | [Hardening and evidence](desktop-and-agent-gates/hardening-verification.md): packaged host, PNG sequence comparison, timeline/recorder and actual Meshopt; Windows hardware still pending |
 | [Official mini-game CLI packaging](records/minigame-cli/task.md) | Implemented; macOS packaged | Official LayaAir 3.4.2 headless builds for registered mini-game targets; host/device and store evidence remain consumer-owned |
-| [DPR CSS canvas sizing](records/dpr-css-canvas/task.md) | In progress | Keep responsive CSS coordinates separate from capped WebGL backing pixels |
+| [DPR CSS canvas sizing](records/dpr-css-canvas/task.md) | Implemented within scope | Keep responsive CSS coordinates separate from capped WebGL backing pixels |
 
 Slot-specific rules, RGS, math, wallet and Factory products are outside this
 engine roadmap. Historical pilot documents retain their evidence; reusable
