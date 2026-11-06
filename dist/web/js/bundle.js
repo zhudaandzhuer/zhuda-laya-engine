@@ -642,6 +642,7 @@ var ZhudaAppBundle = (() => {
         canvas.style.width = `${width}px`;
         canvas.style.height = `${height}px`;
         canvas.style.display = "block";
+        canvas.style.touchAction = "none";
       }
       const matrix = runtime.stage._canvasTransform;
       if (canvas?.getBoundingClientRect && matrix) {

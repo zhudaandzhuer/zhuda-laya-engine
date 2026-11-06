@@ -1571,6 +1571,7 @@ function resizeLaya342Stage(runtime2, width, height, designWidth, designHeight, 
       canvas.style.width = `${width}px`;
       canvas.style.height = `${height}px`;
       canvas.style.display = "block";
+      canvas.style.touchAction = "none";
     }
     const matrix = runtime2.stage._canvasTransform;
     if (canvas?.getBoundingClientRect && matrix) {

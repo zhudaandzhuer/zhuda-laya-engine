@@ -54,6 +54,7 @@ export function resizeLaya342Stage(
       canvas.style.width = `${width}px`;
       canvas.style.height = `${height}px`;
       canvas.style.display = "block";
+      canvas.style.touchAction = "none";
     }
     // Laya's input consumes page coordinates, but native setScreenSize only
     // includes canvas.style.left/top. Account for an embedded container after

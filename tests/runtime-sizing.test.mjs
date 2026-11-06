@@ -41,4 +41,5 @@ test('retinal backing pixels do not change the browser CSS canvas box',()=>{
  assert.equal(style.width,'390px');
  assert.equal(style.height,'844px');
  assert.equal(style.display,'block');
+ assert.equal(style.touchAction,'none');
 });
