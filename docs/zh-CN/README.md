@@ -34,6 +34,8 @@ E4ZEhFCYy4b5pYXJUbMC9KjRitkypyqtZvpSRerLWHCb
 
 **基于 LayaAir 3.4.2，为 AI 编程代理打造的游戏 SDK 与工具链。**
 
+**当前稳定版：[v1.14.0](https://github.com/zhudaandzhuer/zhuda-laya-engine/releases/tag/v1.14.0)** · 版本唯一来源是根目录 `package.json`；lockfile 与生成的 manifest 必须保持一致。v1.1.0 等旧 tag 仅代表历史发行版，不是当前 SDK。
+
 [![LayaAir 3.4.2](https://img.shields.io/badge/LayaAir-3.4.2-0ea5e9)](https://github.com/layabox/LayaAir) [![MIT](https://img.shields.io/badge/license-MIT-4ade80)](../../LICENSE) [![Node.js 24+](https://img.shields.io/badge/Node.js-24%2B-6cc24a)](../../package.json)
 
 使用 TypeScript、CLI 和编程代理开发 2D、3D 与 Spine 4.2 游戏。这个分支在上游引擎基础上增加模块依赖排序、组件注册、公开 SDK 类型、视觉移植检查和 MCP 服务；已提供的工作流可以脱离 LayaAir IDE 执行。

@@ -7,7 +7,8 @@ device checks and acceptance gates pass.
 ## Statuses
 
 - **Proposed** — a decision and measurement plan exists; no implementation is promised.
-- **In progress** — the plan is being implemented on a branch with tests.
+- **In progress** — the plan is actively being implemented; its acceptance scope is not yet complete.
+- **Implemented within scope** — the documented implementation and stated environment checks passed; remaining device, product or follow-up work stays explicitly listed.
 - **Accepted** — the implementation and the plan's acceptance evidence passed.
 - **Deferred** — the work remains useful but is waiting for a dependency or decision.
 - **Rejected** — measurements or constraints ruled out the approach.
@@ -16,9 +17,9 @@ device checks and acceptance gates pass.
 
 | Plan | Status | Decision it prepares |
 | --- | --- | --- |
-| [Prefab isolation and consumer tooling](prefab-toolchain.md) | In progress | P0 consumer Prefab preview and evidence gate delivered in 1.1.0; P1/P2 UI, lifecycle, media and device work remains |
-| [Deferred asset packaging](asset-packaging.md) | In progress | Optional shared chunk delivery and embedded Meshopt adapter; production chunk split, Draco/KTX2 and mobile evidence remain pending |
-| [Consumer delivery follow-ups](consumer-delivery-followups.md) | In progress | Original sample/BGM audio in one mixer, component dependency evidence and full vendor declaration repair |
+| [Prefab isolation and consumer tooling](prefab-toolchain.md) | Implemented within scope | P0 consumer Prefab preview and evidence gate delivered; P1/P2 UI, lifecycle, media and device work remains |
+| [Deferred asset packaging](asset-packaging.md) | Implemented within scope | Optional shared chunk delivery and embedded Meshopt adapter; production chunk split, Draco/KTX2 and mobile evidence remain pending |
+| [Consumer delivery follow-ups](consumer-delivery-followups.md) | Implemented within scope | Sample/BGM audio, module-level dependency evidence and strict declaration audit are delivered; broader graph and device work remains |
 | [WebGPU delivery](records/webgpu-delivery/task.md) | Implemented; desktop verified | Real backend, exclusive compiler/browser delivery, GPU lifecycle and Windows reproducible entry; Windows hardware unavailable |
 | [White-label/theme foundation (historical pilot)](records/slot-factory-foundation/task.md) | Implemented; desktop verified | White-label, immutable themes, result presentation recovery and measured neutral 2D pilot; customer/native/device acceptance separate |
 | [Asset showcase hardening](records/asset-showcase-hardening/task.md) | Implemented; desktop verified | Required glTF gates, Morph repairs, public inspector and same-instance presentation; seller/device limits explicit |

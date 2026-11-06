@@ -34,6 +34,8 @@ Keyboard and touch controls. Auto / Performance / Balanced / High settings. The 
 
 **An agent-friendly game SDK and toolchain built on LayaAir 3.4.2.**
 
+**Current stable release: [v1.14.0](https://github.com/zhudaandzhuer/zhuda-laya-engine/releases/tag/v1.14.0)** · The version source of truth is `package.json`; the lockfile and generated manifests must match it. Older tags such as v1.1.0 are historical releases, not the current SDK.
+
 [![LayaAir 3.4.2](https://img.shields.io/badge/LayaAir-3.4.2-0ea5e9)](https://github.com/layabox/LayaAir) [![MIT](https://img.shields.io/badge/license-MIT-4ade80)](LICENSE) [![Node.js 24+](https://img.shields.io/badge/Node.js-24%2B-6cc24a)](package.json) [![Support on Solana](https://img.shields.io/badge/Support-Solana-9945ff)](#support-this-engine)
 
 Build 2D, 3D and Spine 4.2 projects with TypeScript, a CLI and coding agents. This fork adds dependency ordering, component registration, public SDK types, visual migration checks and an MCP server to the upstream engine. The shipped workflows run without the LayaAir IDE.
