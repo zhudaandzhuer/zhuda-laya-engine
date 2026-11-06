@@ -39,4 +39,6 @@ Use [TEMPLATE.md](TEMPLATE.md) for new decision plans. For an implementation
 delegated to an agent, copy [TASK-TEMPLATE.md](TASK-TEMPLATE.md) and finish the
 result with [VERIFICATION-TEMPLATE.md](VERIFICATION-TEMPLATE.md). Keep
 game-specific art, rules and media in consumer repositories; this directory
-describes engine and delivery contracts only.
+describes engine and delivery contracts only. See [verification record
+retention](records/README.md) for the rule that raw Desktop evidence is
+temporary and the normalized record is the durable source.
