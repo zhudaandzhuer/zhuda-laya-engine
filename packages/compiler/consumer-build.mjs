@@ -292,10 +292,18 @@ export async function runConsumerBuild({
     const tags = topology.orderedFiles
       .map((f) => `<script src="libs/${f}"></script>`)
       .join("\n");
+    const spineVersion = topology.orderedFiles.includes("spine-core-3.8.js")
+      ? { version: "3.8", first: 3, second: 8, needsSlot: false }
+      : topology.orderedFiles.includes("spine-core-4.2.js")
+        ? { version: "4.2", first: 4, second: 2, needsSlot: true }
+        : null;
+    const spineAlignment = spineVersion
+      ? `<script>if(window.Laya&&window.Laya.SpineConst){window.Laya.SpineConst.VERSION=${JSON.stringify(spineVersion.version)};window.Laya.SpineConst.VersionFirst=${spineVersion.first};window.Laya.SpineConst.VersionSecond=${spineVersion.second};window.Laya.SpineConst.NEED_SLOT=${spineVersion.needsSlot};}</script>`
+      : "";
     fs.writeFileSync(
       path.join(out, "index.html"),
       html
-        .replace("<!-- ZHUDA_LIBS -->", tags)
+        .replace("<!-- ZHUDA_LIBS -->", `${tags}\n${spineAlignment}`)
         .replace("<!-- ZHUDA_ENTRY -->", '<script src="app.js"></script>'),
     );
     fs.writeFileSync(path.join(out, ".nojekyll"), "");

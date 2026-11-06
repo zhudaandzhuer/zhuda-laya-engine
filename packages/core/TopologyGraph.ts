@@ -16,6 +16,7 @@ export type EngineFeatureTag =
   | 'ui2'
   | 'physics2d'
   | 'physics3d'
+  | 'spine38'
   | 'spine42'
   | 'spine3d'
   | 'navmesh2d'
@@ -170,6 +171,17 @@ export const ZHUDA_ENGINE_MODULES: readonly EngineModuleNode[] = [
     painPointNote: '定義全域 window.spine (4.2 PhysicsConstraint)，必須在 laya.spine.js 之前'
   },
   {
+    id: 'spine-core-38',
+    file: 'spine-core-3.8.js',
+    sizeBytes: 138800,
+    feature: 'spine38',
+    dependsOn: ['core'],
+    conflictsWith: ['spine-core-42'],
+    providesGlobals: ['window.spine', 'window.spine.AnimationState'],
+    priority: 100,
+    painPointNote: 'Game100001 的獨立 Spine 3.8 runtime；不得與 Spine 4.2 core 共用同一頁'
+  },
+  {
     id: 'spine',
     file: 'laya.spine.js',
     sizeBytes: 132824,
@@ -178,6 +190,17 @@ export const ZHUDA_ENGINE_MODULES: readonly EngineModuleNode[] = [
     providesGlobals: ['Laya.SpineTemplet', 'Laya.Spine2DRenderNode'],
     priority: 110,
     painPointNote: '包含 3.4.2 ReusableStructList 與 SpineInstanceBatch 合批管線，依賴 spine-core-4.2.js'
+  },
+  {
+    id: 'spine38',
+    file: 'laya.spine.js',
+    sizeBytes: 132824,
+    feature: 'spine38',
+    dependsOn: ['core', 'webgl2d', 'spine-core-38'],
+    conflictsWith: ['spine'],
+    providesGlobals: ['Laya.SpineTemplet', 'Laya.Spine2DRenderNode'],
+    priority: 110,
+    painPointNote: '同一 Laya Spine adapter 以 3.8 runtime namespace 啟動；必須在 spine-core-3.8.js 之後'
   },
   {
     id: 'spine3d',
@@ -539,12 +562,32 @@ export class TopologyResolver {
     const gpu = files.some(file => file.startsWith('laya.webgpu_'));
     const modules = rendererModules(gpu ? 'webgpu' : 'webgl');
     const moduleMap = new Map(modules.map(node => [node.id, node]));
-    const fileMap = new Map(modules.map(node => [node.file, node]));
+    const fileMap = new Map<string, EngineModuleNode[]>();
+    for (const node of modules) {
+      const candidates = fileMap.get(node.file) || [];
+      candidates.push(node);
+      fileMap.set(node.file, candidates);
+    }
     if (gpu && files.some(file => file.startsWith('laya.webgl_'))) issues.push({type:'CONFLICTING_MODULE', moduleFile:'laya.webgpu_2D.js', requiredFile:'laya.webgl_2D.js', fatalSymptom:'Mixed renderer factories', message:'Load exactly one renderer backend per realm'});
+    if (files.includes('spine-core-3.8.js') && files.includes('spine-core-4.2.js')) issues.push({type:'CONFLICTING_MODULE', moduleFile:'spine-core-3.8.js', requiredFile:'spine-core-4.2.js', fatalSymptom:'Mixed Spine global namespaces', message:'Load exactly one Spine core runtime per realm'});
     const seenFiles = new Set<string>();
 
+    const selectNode = (file: string): EngineModuleNode | undefined => {
+      const candidates = fileMap.get(file);
+      if (!candidates?.length) return undefined;
+      if (candidates.length === 1) return candidates[0];
+      // laya.spine.js is a shared adapter file. Its selected core runtime is
+      // the discriminator, so an audit never silently maps 3.8 to 4.2.
+      const preferred = seenFiles.has('spine-core-3.8.js')
+        ? candidates.find(node => node.id === 'spine38')
+        : seenFiles.has('spine-core-4.2.js')
+          ? candidates.find(node => node.id === 'spine')
+          : undefined;
+      return preferred || candidates[0];
+    };
+
     for (const file of files) {
-      const node = fileMap.get(file);
+      const node = selectNode(file);
       if (!node) {
         seenFiles.add(file);
         continue;

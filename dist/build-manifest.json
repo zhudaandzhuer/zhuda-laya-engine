@@ -12,18 +12,18 @@
   "engine": "zhuda-laya-engine (Zhuda-LayaAir · Agent-Friendly Fork of LayaAir 3.4.2)",
   "baseVersion": "3.4.2",
   "zeroIdeBuild": true,
-  "buildTimeMs": 142.5,
+  "buildTimeMs": 163.6,
   "activeProfile": "full-all-in-one",
-  "bundleSizeKB": 314.7,
+  "bundleSizeKB": 316.7,
   "sdkArtifacts": {
     "esmPath": "dist/sdk/zhuda-laya-engine.esm.js",
-    "esmSizeKB": 641.3,
+    "esmSizeKB": 643.2,
     "cjsPath": "dist/sdk/zhuda-laya-engine.cjs",
-    "cjsSizeKB": 650,
+    "cjsSizeKB": 651.9,
     "typesPath": "packages/types/index.d.ts"
   },
   "enginePayloadSizeKB": 6578.3,
-  "prunedRatioPercent": 0,
+  "prunedRatioPercent": 3.9,
   "orderedLibrariesCount": 29,
   "orderedLibraries": [
     "laya.core.js",
@@ -59,35 +59,35 @@
   "reflectedComponents": [
     {
       "className": "BoardCameraController",
-      "filePath": "/Users/yaowei/Desktop/Zhuda-LayaAir/src/components/BoardCameraController.ts",
+      "filePath": "/Users/yaowei/Documents/BDL/zhuda-laya-engine/src/components/BoardCameraController.ts",
       "baseClass": "Laya.Script",
       "decorator": "zhudaComponent",
       "assetId": "zhuda://BoardCameraController"
     },
     {
       "className": "Spine42PhysicsRigComponent",
-      "filePath": "/Users/yaowei/Desktop/Zhuda-LayaAir/src/components/StaticAssetComponents.ts",
+      "filePath": "/Users/yaowei/Documents/BDL/zhuda-laya-engine/src/components/StaticAssetComponents.ts",
       "baseClass": "Laya.Script",
       "decorator": "zhudaComponent",
       "assetId": "zhuda://Spine42PhysicsRigComponent"
     },
     {
       "className": "ZhudaParticleEmitterComponent",
-      "filePath": "/Users/yaowei/Desktop/Zhuda-LayaAir/src/components/StaticAssetComponents.ts",
+      "filePath": "/Users/yaowei/Documents/BDL/zhuda-laya-engine/src/components/StaticAssetComponents.ts",
       "baseClass": "Laya.Script",
       "decorator": "zhudaComponent",
       "assetId": "zhuda://ZhudaParticleEmitterComponent"
     },
     {
       "className": "ZhudaAnimatorControllerComponent",
-      "filePath": "/Users/yaowei/Desktop/Zhuda-LayaAir/src/components/StaticAssetComponents.ts",
+      "filePath": "/Users/yaowei/Documents/BDL/zhuda-laya-engine/src/components/StaticAssetComponents.ts",
       "baseClass": "Laya.Script",
       "decorator": "zhudaComponent",
       "assetId": "zhuda://ZhudaAnimatorControllerComponent"
     },
     {
       "className": "TilePhysicsBehavior",
-      "filePath": "/Users/yaowei/Desktop/Zhuda-LayaAir/src/components/TilePhysicsBehavior.ts",
+      "filePath": "/Users/yaowei/Documents/BDL/zhuda-laya-engine/src/components/TilePhysicsBehavior.ts",
       "baseClass": "Laya.Script",
       "decorator": "zhudaComponent",
       "assetId": "zhuda://TilePhysicsBehavior"
@@ -176,7 +176,7 @@
     "2d-light": {
       "moduleCount": 3,
       "totalSizeKB": 1233.1,
-      "prunedRatioPercent": 81.3,
+      "prunedRatioPercent": 82,
       "files": [
         "laya.core.js",
         "laya.webgl_2D.js",
@@ -186,7 +186,7 @@
     "3d-standard": {
       "moduleCount": 9,
       "totalSizeKB": 3406.8,
-      "prunedRatioPercent": 48.2,
+      "prunedRatioPercent": 50.2,
       "files": [
         "laya.core.js",
         "laya.d3.js",
@@ -202,7 +202,7 @@
     "spine-hybrid": {
       "moduleCount": 10,
       "totalSizeKB": 3851.1,
-      "prunedRatioPercent": 41.5,
+      "prunedRatioPercent": 43.7,
       "files": [
         "laya.core.js",
         "laya.d3.js",
@@ -219,7 +219,7 @@
     "full-all-in-one": {
       "moduleCount": 29,
       "totalSizeKB": 6578.3,
-      "prunedRatioPercent": 0,
+      "prunedRatioPercent": 3.9,
       "files": [
         "laya.core.js",
         "laya.d3.js",
@@ -253,5 +253,5 @@
       ]
     }
   },
-  "timestamp": "2026-11-05T15:59:21.132Z"
+  "timestamp": "2026-11-06T05:10:15.109Z"
 }

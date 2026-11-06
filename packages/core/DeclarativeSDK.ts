@@ -128,11 +128,14 @@ export class ZhudaEngine {
       if (typeof window !== "undefined") installSandboxStorageFallback();
       EngineGuard.installPrototypeDetox();
 
-      // 2.1 Spine 4.2 核心規格設定 (保證 NEED_SLOT=true 與 VersionFirst=4，消除世界頂點計算異常)
+      // 2.1 Spine core 規格設定。3.8 與 4.2 由拓撲互斥，不能在同一
+      // realm 共存；這裡只對當前選中的 runtime 設定 adapter 版本。
+      const hasSpine38 =
+        Array.isArray(features) && features.includes("spine38");
       const hasSpine42 =
         features === "all" ||
         (Array.isArray(features) && features.includes("spine42"));
-      if (hasSpine42) {
+      if (hasSpine38 || hasSpine42) {
         const spineConst = (
           Laya as unknown as {
             SpineConst?: {
@@ -144,10 +147,10 @@ export class ZhudaEngine {
           }
         ).SpineConst;
         if (spineConst) {
-          spineConst.VERSION = "4.2";
-          spineConst.VersionFirst = 4;
-          spineConst.VersionSecond = 2;
-          spineConst.NEED_SLOT = true;
+          spineConst.VERSION = hasSpine38 ? "3.8" : "4.2";
+          spineConst.VersionFirst = hasSpine38 ? 3 : 4;
+          spineConst.VersionSecond = hasSpine38 ? 8 : 2;
+          spineConst.NEED_SLOT = !hasSpine38;
         }
       }
 

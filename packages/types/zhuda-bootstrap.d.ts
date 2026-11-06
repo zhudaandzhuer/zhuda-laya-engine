@@ -17,6 +17,7 @@ export type EngineFeatureTag =
   | "ui2"
   | "physics2d"
   | "physics3d"
+  | "spine38"
   | "spine42"
   | "spine3d"
   | "navmesh2d"

@@ -109,6 +109,17 @@ var ZHUDA_ENGINE_MODULES = [
     painPointNote: "\u5B9A\u7FA9\u5168\u57DF window.spine (4.2 PhysicsConstraint)\uFF0C\u5FC5\u9808\u5728 laya.spine.js \u4E4B\u524D"
   },
   {
+    id: "spine-core-38",
+    file: "spine-core-3.8.js",
+    sizeBytes: 138800,
+    feature: "spine38",
+    dependsOn: ["core"],
+    conflictsWith: ["spine-core-42"],
+    providesGlobals: ["window.spine", "window.spine.AnimationState"],
+    priority: 100,
+    painPointNote: "Game100001 \u7684\u7368\u7ACB Spine 3.8 runtime\uFF1B\u4E0D\u5F97\u8207 Spine 4.2 core \u5171\u7528\u540C\u4E00\u9801"
+  },
+  {
     id: "spine",
     file: "laya.spine.js",
     sizeBytes: 132824,
@@ -117,6 +128,17 @@ var ZHUDA_ENGINE_MODULES = [
     providesGlobals: ["Laya.SpineTemplet", "Laya.Spine2DRenderNode"],
     priority: 110,
     painPointNote: "\u5305\u542B 3.4.2 ReusableStructList \u8207 SpineInstanceBatch \u5408\u6279\u7BA1\u7DDA\uFF0C\u4F9D\u8CF4 spine-core-4.2.js"
+  },
+  {
+    id: "spine38",
+    file: "laya.spine.js",
+    sizeBytes: 132824,
+    feature: "spine38",
+    dependsOn: ["core", "webgl2d", "spine-core-38"],
+    conflictsWith: ["spine"],
+    providesGlobals: ["Laya.SpineTemplet", "Laya.Spine2DRenderNode"],
+    priority: 110,
+    painPointNote: "\u540C\u4E00 Laya Spine adapter \u4EE5 3.8 runtime namespace \u555F\u52D5\uFF1B\u5FC5\u9808\u5728 spine-core-3.8.js \u4E4B\u5F8C"
   },
   {
     id: "spine3d",
@@ -443,11 +465,25 @@ var TopologyResolver = class {
     const gpu = files.some((file) => file.startsWith("laya.webgpu_"));
     const modules = rendererModules(gpu ? "webgpu" : "webgl");
     const moduleMap = new Map(modules.map((node) => [node.id, node]));
-    const fileMap = new Map(modules.map((node) => [node.file, node]));
+    const fileMap = /* @__PURE__ */ new Map();
+    for (const node of modules) {
+      const candidates = fileMap.get(node.file) || [];
+      candidates.push(node);
+      fileMap.set(node.file, candidates);
+    }
     if (gpu && files.some((file) => file.startsWith("laya.webgl_"))) issues.push({ type: "CONFLICTING_MODULE", moduleFile: "laya.webgpu_2D.js", requiredFile: "laya.webgl_2D.js", fatalSymptom: "Mixed renderer factories", message: "Load exactly one renderer backend per realm" });
+    if (files.includes("spine-core-3.8.js") && files.includes("spine-core-4.2.js")) issues.push({ type: "CONFLICTING_MODULE", moduleFile: "spine-core-3.8.js", requiredFile: "spine-core-4.2.js", fatalSymptom: "Mixed Spine global namespaces", message: "Load exactly one Spine core runtime per realm" });
     const seenFiles = /* @__PURE__ */ new Set();
+    const seenIds = /* @__PURE__ */ new Set();
+    const selectNode = (file) => {
+      const candidates = fileMap.get(file);
+      if (!candidates?.length) return void 0;
+      if (candidates.length === 1) return candidates[0];
+      const preferred = seenFiles.has("spine-core-3.8.js") ? candidates.find((node) => node.id === "spine38") : seenFiles.has("spine-core-4.2.js") ? candidates.find((node) => node.id === "spine") : void 0;
+      return preferred || candidates[0];
+    };
     for (const file of files) {
-      const node = fileMap.get(file);
+      const node = selectNode(file);
       if (!node) {
         seenFiles.add(file);
         continue;
@@ -467,6 +503,7 @@ var TopologyResolver = class {
         }
       }
       seenFiles.add(file);
+      seenIds.add(node.id);
     }
     return issues;
   }
@@ -3815,14 +3852,15 @@ var ZhudaEngine = class {
       const topology = TopologyResolver.resolveByFeatures(features, renderer.backend);
       if (typeof window !== "undefined") installSandboxStorageFallback();
       EngineGuard.installPrototypeDetox();
+      const hasSpine38 = Array.isArray(features) && features.includes("spine38");
       const hasSpine42 = features === "all" || Array.isArray(features) && features.includes("spine42");
-      if (hasSpine42) {
+      if (hasSpine38 || hasSpine42) {
         const spineConst = Laya.SpineConst;
         if (spineConst) {
-          spineConst.VERSION = "4.2";
-          spineConst.VersionFirst = 4;
-          spineConst.VersionSecond = 2;
-          spineConst.NEED_SLOT = true;
+          spineConst.VERSION = hasSpine38 ? "3.8" : "4.2";
+          spineConst.VersionFirst = hasSpine38 ? 3 : 4;
+          spineConst.VersionSecond = hasSpine38 ? 8 : 2;
+          spineConst.NEED_SLOT = !hasSpine38;
         }
       }
       const layaConfig = Laya.Config;

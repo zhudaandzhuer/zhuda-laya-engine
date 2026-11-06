@@ -280,8 +280,13 @@ export async function runZhudaBuild(options = {}) {
     .map((file, idx) => `    <!-- [${idx + 1}/${topology.orderedFiles.length}] -->\n    <script type="text/javascript" src="libs/${file}"></script>`)
     .join('\n');
 
-  if (topology.orderedFiles.includes('laya.spine.js') || topology.orderedFiles.includes('spine-core-4.2.js')) {
-    scriptTags += `\n    <!-- Spine 4.2 Runtime Specification Alignment -->\n    <script>if (window.Laya && window.Laya.SpineConst) { window.Laya.SpineConst.VERSION = '4.2'; window.Laya.SpineConst.VersionFirst = 4; window.Laya.SpineConst.VersionSecond = 2; window.Laya.SpineConst.NEED_SLOT = true; }</script>`;
+  if (topology.orderedFiles.includes('spine-core-3.8.js') || topology.orderedFiles.includes('spine-core-4.2.js')) {
+    const spine38 = topology.orderedFiles.includes('spine-core-3.8.js');
+    const version = spine38 ? '3.8' : '4.2';
+    const first = spine38 ? 3 : 4;
+    const second = spine38 ? 8 : 2;
+    const needSlot = spine38 ? 'false' : 'true';
+    scriptTags += `\n    <!-- Spine ${version} Runtime Specification Alignment -->\n    <script>if (window.Laya && window.Laya.SpineConst) { window.Laya.SpineConst.VERSION = '${version}'; window.Laya.SpineConst.VersionFirst = ${first}; window.Laya.SpineConst.VersionSecond = ${second}; window.Laya.SpineConst.NEED_SLOT = ${needSlot}; }</script>`;
   }
 
   const htmlTitle =
