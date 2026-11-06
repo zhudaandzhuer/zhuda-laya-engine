@@ -12,14 +12,14 @@
   "engine": "zhuda-laya-engine (Zhuda-LayaAir · Agent-Friendly Fork of LayaAir 3.4.2)",
   "baseVersion": "3.4.2",
   "zeroIdeBuild": true,
-  "buildTimeMs": 142.5,
+  "buildTimeMs": 564.1,
   "activeProfile": "full-all-in-one",
-  "bundleSizeKB": 314.7,
+  "bundleSizeKB": 314.9,
   "sdkArtifacts": {
     "esmPath": "dist/sdk/zhuda-laya-engine.esm.js",
-    "esmSizeKB": 641.3,
+    "esmSizeKB": 641.4,
     "cjsPath": "dist/sdk/zhuda-laya-engine.cjs",
-    "cjsSizeKB": 650,
+    "cjsSizeKB": 650.1,
     "typesPath": "packages/types/index.d.ts"
   },
   "enginePayloadSizeKB": 6578.3,
@@ -59,35 +59,35 @@
   "reflectedComponents": [
     {
       "className": "BoardCameraController",
-      "filePath": "/Users/yaowei/Desktop/Zhuda-LayaAir/src/components/BoardCameraController.ts",
+      "filePath": "/Users/yaowei/Documents/ZhudaGameCenter/engines/zhuda-laya-engine/src/components/BoardCameraController.ts",
       "baseClass": "Laya.Script",
       "decorator": "zhudaComponent",
       "assetId": "zhuda://BoardCameraController"
     },
     {
       "className": "Spine42PhysicsRigComponent",
-      "filePath": "/Users/yaowei/Desktop/Zhuda-LayaAir/src/components/StaticAssetComponents.ts",
+      "filePath": "/Users/yaowei/Documents/ZhudaGameCenter/engines/zhuda-laya-engine/src/components/StaticAssetComponents.ts",
       "baseClass": "Laya.Script",
       "decorator": "zhudaComponent",
       "assetId": "zhuda://Spine42PhysicsRigComponent"
     },
     {
       "className": "ZhudaParticleEmitterComponent",
-      "filePath": "/Users/yaowei/Desktop/Zhuda-LayaAir/src/components/StaticAssetComponents.ts",
+      "filePath": "/Users/yaowei/Documents/ZhudaGameCenter/engines/zhuda-laya-engine/src/components/StaticAssetComponents.ts",
       "baseClass": "Laya.Script",
       "decorator": "zhudaComponent",
       "assetId": "zhuda://ZhudaParticleEmitterComponent"
     },
     {
       "className": "ZhudaAnimatorControllerComponent",
-      "filePath": "/Users/yaowei/Desktop/Zhuda-LayaAir/src/components/StaticAssetComponents.ts",
+      "filePath": "/Users/yaowei/Documents/ZhudaGameCenter/engines/zhuda-laya-engine/src/components/StaticAssetComponents.ts",
       "baseClass": "Laya.Script",
       "decorator": "zhudaComponent",
       "assetId": "zhuda://ZhudaAnimatorControllerComponent"
     },
     {
       "className": "TilePhysicsBehavior",
-      "filePath": "/Users/yaowei/Desktop/Zhuda-LayaAir/src/components/TilePhysicsBehavior.ts",
+      "filePath": "/Users/yaowei/Documents/ZhudaGameCenter/engines/zhuda-laya-engine/src/components/TilePhysicsBehavior.ts",
       "baseClass": "Laya.Script",
       "decorator": "zhudaComponent",
       "assetId": "zhuda://TilePhysicsBehavior"
@@ -165,7 +165,7 @@
     "totalAssets": 11,
     "calibratedPrefabs": 10,
     "allPassed": true,
-    "selfConvergenceElapsedMs": 0.2,
+    "selfConvergenceElapsedMs": 0.75,
     "beforePxError": 3,
     "afterPxError": 0,
     "beforeDeltaE2000": 8.98,
@@ -253,5 +253,5 @@
       ]
     }
   },
-  "timestamp": "2026-11-05T15:59:21.132Z"
+  "timestamp": "2026-11-06T06:31:22.583Z"
 }

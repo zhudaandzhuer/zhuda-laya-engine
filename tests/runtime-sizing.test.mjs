@@ -32,3 +32,13 @@ test('managed container sizing cancels the native delayed window resize only',()
  assert.deepEqual(backing,[1280,720]);assert.equal(queue.has(stage),false);assert.equal(queue.has(other),true);
  for(const [caller,fn]of queue)fn.call(caller);assert.deepEqual(backing,[1280,720]);
 });
+
+test('retinal backing pixels do not change the browser CSS canvas box',()=>{
+ const Browser={}, style={};
+ const stage={size(){},setScreenSize() {}};
+ const canvas={width:780,height:1688,style,getBoundingClientRect:()=>({left:0,top:0,width:390,height:844})};
+ resizeLaya342Stage({Browser,stage},390,844,390,844,2,canvas);
+ assert.equal(style.width,'390px');
+ assert.equal(style.height,'844px');
+ assert.equal(style.display,'block');
+});

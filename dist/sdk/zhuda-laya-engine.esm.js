@@ -1385,6 +1385,11 @@ function resizeLaya342Stage(runtime2, width, height, designWidth, designHeight, 
     if (runtime2.stage.updateCanvasSize)
       runtime2.systemTimer?.clearCallLater(runtime2.stage, runtime2.stage.updateCanvasSize);
     runtime2.stage.setScreenSize(width * dpr, height * dpr);
+    if (canvas?.style) {
+      canvas.style.width = `${width}px`;
+      canvas.style.height = `${height}px`;
+      canvas.style.display = "block";
+    }
     const matrix = runtime2.stage._canvasTransform;
     if (canvas?.getBoundingClientRect && matrix) {
       const rect = canvas.getBoundingClientRect();

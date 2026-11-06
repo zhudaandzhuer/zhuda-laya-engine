@@ -44,6 +44,17 @@ export function resizeLaya342Stage(
     if (runtime.stage.updateCanvasSize)
       runtime.systemTimer?.clearCallLater(runtime.stage, runtime.stage.updateCanvasSize);
     runtime.stage.setScreenSize(width * dpr, height * dpr);
+    // Laya 3.4.2's retinal path updates the canvas backing buffer and, in
+    // some browser builds, also writes the backing dimensions into the CSS
+    // width/height attributes.  Those are different coordinate spaces: a
+    // DPR-2 canvas must expose 390 CSS px while retaining a 780 px backing
+    // buffer.  Keep the browser box owned by the responsive container so
+    // pointer coordinates and DOM overlays remain in CSS pixels.
+    if (canvas?.style) {
+      canvas.style.width = `${width}px`;
+      canvas.style.height = `${height}px`;
+      canvas.style.display = "block";
+    }
     // Laya's input consumes page coordinates, but native setScreenSize only
     // includes canvas.style.left/top. Account for an embedded container after
     // native CSS placement; do not move the rendered canvas a second time.
