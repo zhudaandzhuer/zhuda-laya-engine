@@ -1,6 +1,6 @@
 # Layout and media hardening
 
-Status: In progress  
+Status: Accepted for the documented desktop/browser scope
 Owner: Zhuda engine  
 Last reviewed: 2026-11-08
 
