@@ -21,7 +21,6 @@ The matching tag points to the `main` commit that contains the package version.
 | --- | --- | --- |
 | `v1.0.0` | Initial public fork | Historical baseline |
 | `v1.1.0` | Prefab-first consumer workflow | Historical release; kept for reproducibility |
-| `v1.15.0` | Current stable package | Use this version for new consumers |
 | `v1.14.0` | Previous stable package | Keep only for pinned existing consumers |
 
 The feature headings in the README (`1.7.0` through `1.15.0`) describe the
