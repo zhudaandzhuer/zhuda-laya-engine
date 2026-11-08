@@ -65,6 +65,12 @@ export class ZhudaAssetSerializer {
     if (typeof node?.scaleX === 'number' && node.scaleX !== 1) data.scaleX = node.scaleX;
     if (typeof node?.scaleY === 'number' && node.scaleY !== 1) data.scaleY = node.scaleY;
     if (typeof node?.rotation === 'number' && node.rotation !== 0) data.rotation = node.rotation;
+    if (typeof node?.pivotX === 'number' && node.pivotX !== 0) data.pivotX = Number(node.pivotX.toFixed(2));
+    if (typeof node?.pivotY === 'number' && node.pivotY !== 0) data.pivotY = Number(node.pivotY.toFixed(2));
+    if (typeof node?.anchorX === 'number' && node.anchorX !== 0) data.anchorX = Number(node.anchorX.toFixed(4));
+    if (typeof node?.anchorY === 'number' && node.anchorY !== 0) data.anchorY = Number(node.anchorY.toFixed(4));
+    if (typeof node?.skewX === 'number' && node.skewX !== 0) data.skewX = Number(node.skewX.toFixed(4));
+    if (typeof node?.skewY === 'number' && node.skewY !== 0) data.skewY = Number(node.skewY.toFixed(4));
     if (typeof node?.alpha === 'number' && node.alpha !== 1) data.alpha = node.alpha;
     if (typeof node?.visible === 'boolean' && !node.visible) data.visible = false;
     if (typeof node?.mouseEnabled === 'boolean' && node.mouseEnabled) data.mouseEnabled = true;
@@ -81,7 +87,18 @@ export class ZhudaAssetSerializer {
       if (typeof node.bold === 'boolean') data.bold = node.bold;
       if (node.align) data.align = node.align;
       if (node.valign) data.valign = node.valign;
+      if (typeof node.wordWrap === 'boolean') data.wordWrap = node.wordWrap;
+      if (typeof node.overflow === 'string' && node.overflow) data.overflow = node.overflow;
       if (typeof node.leading === 'number' && node.leading !== 0) data.leading = node.leading;
+      if (typeof node.letterSpacing === 'number' && node.letterSpacing !== 0) data.letterSpacing = node.letterSpacing;
+      if (typeof node.stroke === 'number' && node.stroke !== 0) data.stroke = node.stroke;
+      if (node.strokeColor) data.strokeColor = node.strokeColor;
+      if (typeof node.underline === 'boolean' && node.underline) data.underline = true;
+      if (node.underlineColor) data.underlineColor = node.underlineColor;
+      if (typeof node.strikethrough === 'boolean' && node.strikethrough) data.strikethrough = true;
+      if (Array.isArray(node.padding) && node.padding.length === 4) {
+        data.padding = node.padding.map((value: unknown) => Number(value) || 0) as [number, number, number, number];
+      }
     }
 
     // 序列化 Laya.Graphics 向量繪圖指令 (_gcmds)
@@ -1676,9 +1693,15 @@ export class ZhudaPrefab {
       if (typeof data.bold === 'boolean') node.bold = data.bold;
       if (data.align) node.align = data.align;
       if (data.valign) node.valign = data.valign;
+      if (typeof data.wordWrap === 'boolean') node.wordWrap = data.wordWrap;
+      if (data.overflow) node.overflow = data.overflow;
       if (typeof data.leading === 'number') node.leading = data.leading;
+      if (typeof data.letterSpacing === 'number') node.letterSpacing = data.letterSpacing;
       if (typeof data.stroke === 'number') node.stroke = data.stroke;
       if (data.strokeColor) node.strokeColor = data.strokeColor;
+      if (typeof data.underline === 'boolean') node.underline = data.underline;
+      if (data.underlineColor) node.underlineColor = data.underlineColor;
+      if (typeof data.strikethrough === 'boolean') node.strikethrough = data.strikethrough;
       if (data.padding) node.padding = data._$type === 'Label' && L.Label ? data.padding.join(",") : data.padding;
     } else if (data._$type === 'Scene' && L.Scene) {
       node = new L.Scene();
@@ -1698,6 +1721,12 @@ export class ZhudaPrefab {
     if (typeof data.scaleX === 'number') node.scaleX = data.scaleX;
     if (typeof data.scaleY === 'number') node.scaleY = data.scaleY;
     if (typeof data.rotation === 'number') node.rotation = data.rotation;
+    if (typeof data.anchorX === 'number') node.anchorX = data.anchorX;
+    if (typeof data.anchorY === 'number') node.anchorY = data.anchorY;
+    if (typeof data.pivotX === 'number') node.pivotX = data.pivotX;
+    if (typeof data.pivotY === 'number') node.pivotY = data.pivotY;
+    if (typeof data.skewX === 'number') node.skewX = data.skewX;
+    if (typeof data.skewY === 'number') node.skewY = data.skewY;
     if (typeof data.alpha === 'number') node.alpha = data.alpha;
     if (typeof data.visible === 'boolean') node.visible = data.visible;
     if (typeof data.mouseEnabled === 'boolean') node.mouseEnabled = data.mouseEnabled;

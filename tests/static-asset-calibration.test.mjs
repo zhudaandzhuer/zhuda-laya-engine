@@ -66,6 +66,27 @@ test('ZhudaAssetSerializer reverse-serializes runtime nodes into Laya 3.4.2 .lh 
   assert.equal(lh._$child[0].text, 'START');
 });
 
+test('hierarchy serialization preserves transform origins and text layout properties', () => {
+  const lh = ZhudaAssetSerializer.serializeNodeToHierarchy({
+    name: 'rotatedLabel', x: 20, y: 30, width: 160, height: 48,
+    pivotX: 80, pivotY: 24, anchorX: .5, anchorY: .5, rotation: 12, skewX: 2,
+    text: 'JACKPOT', fontSize: 24, align: 'center', valign: 'middle',
+    wordWrap: false, overflow: 'shrink', letterSpacing: 1, padding: [2, 4, 2, 4],
+    underline: true, underlineColor: '#ffd166', strikethrough: false
+  });
+  assert.equal(lh.pivotX, 80);
+  assert.equal(lh.pivotY, 24);
+  assert.equal(lh.anchorX, .5);
+  assert.equal(lh.anchorY, .5);
+  assert.equal(lh.rotation, 12);
+  assert.equal(lh.skewX, 2);
+  assert.equal(lh._$type, 'Text');
+  assert.equal(lh.overflow, 'shrink');
+  assert.equal(lh.letterSpacing, 1);
+  assert.deepEqual(lh.padding, [2, 4, 2, 4]);
+  assert.equal(lh.underline, true);
+});
+
 test('DrawTextureCmd keeps a stable texture ID and hydrates through the preloaded Laya loader', () => {
   const lh = ZhudaAssetSerializer.serializeNodeToHierarchy({
     name: 'RasterPanel',

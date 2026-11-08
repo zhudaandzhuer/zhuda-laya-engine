@@ -34,7 +34,7 @@ Keyboard and touch controls. Auto / Performance / Balanced / High settings. The 
 
 **An agent-friendly game SDK and toolchain built on LayaAir 3.4.2.**
 
-**Current stable release: [v1.14.0](https://github.com/zhudaandzhuer/zhuda-laya-engine/releases/tag/v1.14.0)** · The version source of truth is `package.json`; the lockfile and generated manifests must match it. Older tags such as v1.1.0 are historical releases, not the current SDK.
+**Current stable release: [v1.15.0](https://github.com/zhudaandzhuer/zhuda-laya-engine/releases/tag/v1.15.0)** · The version source of truth is `package.json`; `zhuda.config.json`, the lockfile and generated manifests must match it. Older tags such as v1.1.0 are historical releases, not the current SDK.
 
 [![LayaAir 3.4.2](https://img.shields.io/badge/LayaAir-3.4.2-0ea5e9)](https://github.com/layabox/LayaAir) [![MIT](https://img.shields.io/badge/license-MIT-4ade80)](LICENSE) [![Node.js 24+](https://img.shields.io/badge/Node.js-24%2B-6cc24a)](package.json) [![Support on Solana](https://img.shields.io/badge/Support-Solana-9945ff)](#support-this-engine)
 
@@ -122,6 +122,24 @@ See [audio](docs/audio.md), [runtime sizing and recovery](docs/platform-adapters
 and the [measured scope and migration notes](docs/plans/records/astra-runtime-feedback/verification.md).
 Physical iOS/Android, speaker latency and a production Worklet DSP mixer remain
 unverified; the extension and desktop reference test do not establish full SOP compliance.
+
+## Layout, art text and video surfaces (1.15.0)
+
+`computeZhudaGridLayout` and `computeZhudaTextLayout` keep authored positions in
+design pixels while applying viewport and SafeArea scaling once. Consumers can
+use the same reports for isolated Prefab previews and assembled Scenes, so DPR
+does not get multiplied into individual coordinates. `validateZhudaBitmapFont`
+and `measureZhudaBitmapText` validate glyph coverage and use authored advances
+before a BitmapFont is registered. `ZhudaVideoSurface` wraps LayaAir's
+`VideoNode`; decoder mode is the default because it is nestable in the Laya
+hierarchy and follows normal node disposal. Player mode remains subject to the
+platform's floating-video restrictions.
+
+`createZhudaBitmapFont` registers a validated manifest through Laya's public
+bitmap-font registry. `ZhudaWebViewSurface` provides an explicit Laya anchor
+and lifecycle for a consumer-owned native/DOM WebView adapter; it does not hide
+an iframe inside the canvas or claim that WebView content is a renderable Laya
+texture.
 
 ## Single-HTML browser entry (1.13.0)
 
