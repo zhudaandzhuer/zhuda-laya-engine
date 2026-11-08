@@ -39,6 +39,15 @@ and console messages. Run the consumer's own `npm run verify:webgpu` as well;
 this host check proves the packaged entry and the consumer report, not every
 game scene or Windows driver.
 
+For a consumer fixture that exposes `__ZHUDA_MEDIA_TEST__`, run
+`npm run verify -- --verify-media`. The host sends a real Chromium mouse event
+to the fixture's declared probe point, records whether the WebView adapter's
+surface is the DOM hit target, checks a decoder-mode `ZhudaVideoSurface`, and
+calls the fixture's `__ZHUDA_MEDIA_DISPOSE__` hook. Video files are served with
+their `video/webm` or `video/mp4` MIME type. A packaged macOS run must report
+`os:"darwin"` and `packaged:true`; this check does not establish iOS, Android,
+WebView2, or universal codec support.
+
 The first acceptance target is an unsigned local Squirrel package. Installer
 signing, auto-update, WebView2 parity, Steam and native Laya runtime packaging
 remain separate work. Do not add `--disable-gpu` or silently fall back to WebGL.
