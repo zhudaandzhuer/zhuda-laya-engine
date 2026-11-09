@@ -1,5 +1,5 @@
 /**
- * zhuda-laya-engine v1.14.0 — 豬大 LayaAir (AI-Agent-Friendly Fork Edition)
+ * zhuda-laya-engine v1.15.0 — 豬大 LayaAir (AI-Agent-Friendly Fork Edition)
  * Repository: https://github.com/zhudaandzhuer/zhuda-laya-engine
  * Upstream Official: LayaAir Engine 3.4.2 by Layabox (https://layaair.com/ | https://github.com/layabox/LayaAir)
  * License: MIT
@@ -474,7 +474,6 @@ var TopologyResolver = class {
     if (gpu && files.some((file) => file.startsWith("laya.webgl_"))) issues.push({ type: "CONFLICTING_MODULE", moduleFile: "laya.webgpu_2D.js", requiredFile: "laya.webgl_2D.js", fatalSymptom: "Mixed renderer factories", message: "Load exactly one renderer backend per realm" });
     if (files.includes("spine-core-3.8.js") && files.includes("spine-core-4.2.js")) issues.push({ type: "CONFLICTING_MODULE", moduleFile: "spine-core-3.8.js", requiredFile: "spine-core-4.2.js", fatalSymptom: "Mixed Spine global namespaces", message: "Load exactly one Spine core runtime per realm" });
     const seenFiles = /* @__PURE__ */ new Set();
-    const seenIds = /* @__PURE__ */ new Set();
     const selectNode = (file) => {
       const candidates = fileMap.get(file);
       if (!candidates?.length) return void 0;
@@ -503,7 +502,6 @@ var TopologyResolver = class {
         }
       }
       seenFiles.add(file);
-      seenIds.add(node.id);
     }
     return issues;
   }
@@ -1422,9 +1420,15 @@ function resizeLaya342Stage(runtime2, width, height, designWidth, designHeight, 
     if (runtime2.stage.updateCanvasSize)
       runtime2.systemTimer?.clearCallLater(runtime2.stage, runtime2.stage.updateCanvasSize);
     runtime2.stage.setScreenSize(width * dpr, height * dpr);
+    if (canvas?.style) {
+      canvas.style.width = `${width}px`;
+      canvas.style.height = `${height}px`;
+      canvas.style.display = "block";
+      canvas.style.touchAction = "none";
+    }
     const matrix = runtime2.stage._canvasTransform;
     if (canvas?.getBoundingClientRect && matrix) {
-      const rect = canvas.getBoundingClientRect();
+      const rect2 = canvas.getBoundingClientRect();
       const x = [
         0,
         matrix.a * canvas.width,
@@ -1437,8 +1441,8 @@ function resizeLaya342Stage(runtime2, width, height, designWidth, designHeight, 
         matrix.d * canvas.height,
         matrix.b * canvas.width + matrix.d * canvas.height
       ];
-      matrix.tx = rect.left + (globalThis.scrollX || 0) - Math.min(...x);
-      matrix.ty = rect.top + (globalThis.scrollY || 0) - Math.min(...y);
+      matrix.tx = rect2.left + (globalThis.scrollX || 0) - Math.min(...x);
+      matrix.ty = rect2.top + (globalThis.scrollY || 0) - Math.min(...y);
     }
   } finally {
     if (descriptor)
@@ -1768,7 +1772,7 @@ var ZhudaRuntimeSession = class {
     const l = globalThis.Laya, c = this.options.container;
     if (!c && !this.options.dprCap) return;
     const platform = l.Browser?.isDomSupported === false ? l.PAL?.browser : void 0;
-    const rect = c?.getBoundingClientRect(), width = platform ? platform.getClientWidth() : rect?.width || innerWidth, height = platform ? platform.getClientHeight() : rect?.height || innerHeight, dpr = Math.min(platform ? platform.getPixelRatio() : devicePixelRatio || 1, this.options.dprCap ?? 2);
+    const rect2 = c?.getBoundingClientRect(), width = platform ? platform.getClientWidth() : rect2?.width || innerWidth, height = platform ? platform.getClientHeight() : rect2?.height || innerHeight, dpr = Math.min(platform ? platform.getPixelRatio() : devicePixelRatio || 1, this.options.dprCap ?? 2);
     if (width < 2 || height < 2) return;
     const design = this.options.designSize ?? { width, height };
     if (![design.width, design.height, dpr].every(
@@ -2436,67 +2440,73 @@ function freeze(value) {
 }
 function inventory(d) {
   const meshes = records(d.meshes), accessors = records(d.accessors);
-  return {
-    nodes: records(d.nodes).map((n, index) => ({
+  const nodes = records(d.nodes).map((n, index) => ({
+    index,
+    name: label(n.name),
+    mesh: indexOf(n.mesh),
+    skin: indexOf(n.skin),
+    children: numbers(n.children),
+    morphWeights: numbers(n.weights ?? meshes[indexOf(n.mesh) ?? -1]?.weights)
+  })), meshInventory = meshes.map((m, index) => ({ index, name: label(m.name), primitives: records(m.primitives).map((p) => {
+    const attributes = record(p.attributes), vertices = numeric(accessors[indexOf(attributes.POSITION) ?? -1]?.count);
+    const indices = p.indices === void 0 ? vertices : numeric(accessors[indexOf(p.indices) ?? -1]?.count);
+    const mode = numeric(p.mode, 4);
+    return {
+      mode,
+      vertices,
+      indices,
+      triangles: mode === 4 ? indices / 3 : mode === 5 || mode === 6 ? Math.max(0, indices - 2) : null,
+      material: indexOf(p.material),
+      morphTargets: list(p.targets).length,
+      attributes: Object.keys(attributes)
+    };
+  }) })), materials = records(d.materials).map((m, index) => {
+    const pbr = record(m.pbrMetallicRoughness), textures2 = [];
+    const add = (slot, v, colorSpace) => {
+      const info = record(v), texture = indexOf(info.index);
+      if (texture !== null) textures2.push({ slot, texture, texCoord: numeric(record(record(info.extensions).KHR_texture_transform).texCoord, numeric(info.texCoord)), colorSpace });
+    };
+    add("baseColor", pbr.baseColorTexture, "srgb");
+    add("metallicRoughness", pbr.metallicRoughnessTexture, "linear");
+    add("normal", m.normalTexture, "linear");
+    add("occlusion", m.occlusionTexture, "linear");
+    add("emissive", m.emissiveTexture, "srgb");
+    for (const [extension, value] of Object.entries(record(m.extensions)))
+      for (const [name, texture] of Object.entries(record(value))) if (name.endsWith("Texture"))
+        add(`${extension}.${name}`, texture, name === "sheenColorTexture" || name === "specularColorTexture" ? "srgb" : "linear");
+    return {
       index,
-      name: label(n.name),
-      mesh: indexOf(n.mesh),
-      skin: indexOf(n.skin),
-      children: numbers(n.children),
-      morphWeights: numbers(n.weights ?? meshes[indexOf(n.mesh) ?? -1]?.weights)
-    })),
-    meshes: meshes.map((m, index) => ({ index, name: label(m.name), primitives: records(m.primitives).map((p) => {
-      const attributes = record(p.attributes), vertices = numeric(accessors[indexOf(attributes.POSITION) ?? -1]?.count);
-      const indices = p.indices === void 0 ? vertices : numeric(accessors[indexOf(p.indices) ?? -1]?.count);
-      const mode = numeric(p.mode, 4);
-      return {
-        mode,
-        vertices,
-        indices,
-        triangles: mode === 4 ? indices / 3 : mode === 5 || mode === 6 ? Math.max(0, indices - 2) : null,
-        material: indexOf(p.material),
-        morphTargets: list(p.targets).length,
-        attributes: Object.keys(attributes)
-      };
-    }) })),
-    materials: records(d.materials).map((m, index) => {
-      const pbr = record(m.pbrMetallicRoughness), textures = [];
-      const add = (slot, v, colorSpace) => {
-        const info = record(v), texture = indexOf(info.index);
-        if (texture !== null) textures.push({ slot, texture, texCoord: numeric(record(record(info.extensions).KHR_texture_transform).texCoord, numeric(info.texCoord)), colorSpace });
-      };
-      add("baseColor", pbr.baseColorTexture, "srgb");
-      add("metallicRoughness", pbr.metallicRoughnessTexture, "linear");
-      add("normal", m.normalTexture, "linear");
-      add("occlusion", m.occlusionTexture, "linear");
-      add("emissive", m.emissiveTexture, "srgb");
-      for (const [extension, value] of Object.entries(record(m.extensions)))
-        for (const [name, texture] of Object.entries(record(value))) if (name.endsWith("Texture"))
-          add(`${extension}.${name}`, texture, name === "sheenColorTexture" || name === "specularColorTexture" ? "srgb" : "linear");
-      return {
-        index,
-        name: label(m.name),
-        alphaMode: label(m.alphaMode) || "OPAQUE",
-        doubleSided: m.doubleSided === true,
-        baseColor: pbr.baseColorFactor === void 0 ? [1, 1, 1, 1] : numbers(pbr.baseColorFactor),
-        metallic: numeric(pbr.metallicFactor, 1),
-        roughness: numeric(pbr.roughnessFactor, 1),
-        extensions: Object.keys(record(m.extensions)),
-        textures
-      };
-    }),
-    textures: records(d.textures).map((t, index) => ({ index, image: indexOf(t.source), sampler: indexOf(t.sampler) })),
-    images: records(d.images).map((i, index) => ({
-      index,
-      name: label(i.name),
-      delivery: typeof i.uri === "string" && !i.uri.startsWith("data:") ? "external" : "embedded",
-      mimeType: typeof i.mimeType === "string" ? i.mimeType : null
-    })),
-    animations: records(d.animations).map((a, index) => ({ index, name: label(a.name), channels: records(a.channels).map((c) => {
-      const target = record(c.target), sampler = records(a.samplers)[indexOf(c.sampler) ?? -1];
-      return { node: indexOf(target.node), path: label(target.path), interpolation: label(sampler?.interpolation) || "LINEAR" };
-    }) }))
-  };
+      name: label(m.name),
+      alphaMode: label(m.alphaMode) || "OPAQUE",
+      doubleSided: m.doubleSided === true,
+      baseColor: pbr.baseColorFactor === void 0 ? [1, 1, 1, 1] : numbers(pbr.baseColorFactor),
+      metallic: numeric(pbr.metallicFactor, 1),
+      roughness: numeric(pbr.roughnessFactor, 1),
+      extensions: Object.keys(record(m.extensions)),
+      textures: textures2
+    };
+  }), textures = records(d.textures).map((t, index) => ({ index, image: indexOf(t.source), sampler: indexOf(t.sampler) })), images = records(d.images).map((i, index) => ({
+    index,
+    name: label(i.name),
+    delivery: typeof i.uri === "string" && !i.uri.startsWith("data:") ? "external" : "embedded",
+    mimeType: typeof i.mimeType === "string" ? i.mimeType : null
+  })), animations = records(d.animations).map((a, index) => ({ index, name: label(a.name), channels: records(a.channels).map((c) => {
+    const target = record(c.target), sampler = records(a.samplers)[indexOf(c.sampler) ?? -1];
+    return { node: indexOf(target.node), path: label(target.path), interpolation: label(sampler?.interpolation) || "LINEAR" };
+  }) }));
+  const primitives2 = meshInventory.flatMap((mesh) => mesh.primitives);
+  return { summary: {
+    nodes: nodes.length,
+    meshes: meshInventory.length,
+    primitives: primitives2.length,
+    vertices: primitives2.reduce((sum, primitive) => sum + primitive.vertices, 0),
+    indices: primitives2.reduce((sum, primitive) => sum + primitive.indices, 0),
+    triangles: primitives2.reduce((sum, primitive) => sum + (primitive.triangles ?? 0), 0),
+    materials: materials.length,
+    textures: textures.length,
+    images: images.length,
+    animations: animations.length
+  }, nodes, meshes: meshInventory, materials, textures, images, animations };
 }
 function inspectGltfDocument(document2) {
   const d = record(document2), diagnostics = [];
@@ -3818,6 +3828,81 @@ function renderPrefabTree(tree, shared) {
   }
 }
 
+// packages/core/RealmGuards.ts
+var ZHUDA_LAYA_REALM_MARKER = "__ZHUDA_LAYA_REALM_OWNER__";
+function inspectLayaRealm(value = globalThis) {
+  const target = value;
+  const laya = target.Laya;
+  if (!laya) {
+    return {
+      layaPresent: false,
+      initialized: false,
+      owner: "none",
+      reason: "Laya is not loaded in this realm."
+    };
+  }
+  let stage;
+  let canvas;
+  try {
+    stage = laya.stage;
+    canvas = laya.Browser?.mainCanvas?.source;
+  } catch {
+    return {
+      layaPresent: true,
+      initialized: true,
+      owner: "foreign",
+      reason: "Laya state could not be inspected safely; refusing to attach to an unknown realm."
+    };
+  }
+  const initialized = stage != null || canvas != null;
+  const marker = target[ZHUDA_LAYA_REALM_MARKER];
+  if (marker === "zhuda") {
+    return {
+      layaPresent: true,
+      initialized,
+      owner: "zhuda",
+      reason: "This realm was initialized by Zhuda."
+    };
+  }
+  if (!initialized) {
+    return {
+      layaPresent: true,
+      initialized: false,
+      owner: "uninitialized",
+      reason: "Laya is loaded but Laya.init has not created a stage or canvas yet."
+    };
+  }
+  return {
+    layaPresent: true,
+    initialized: true,
+    owner: "foreign",
+    reason: "Laya has an initialized stage or canvas without the Zhuda realm marker."
+  };
+}
+function markZhudaLayaRealm(value = globalThis) {
+  const target = value;
+  const descriptor = Object.getOwnPropertyDescriptor(target, ZHUDA_LAYA_REALM_MARKER);
+  if (!descriptor) {
+    Object.defineProperty(target, ZHUDA_LAYA_REALM_MARKER, {
+      configurable: true,
+      enumerable: false,
+      writable: true,
+      value: "zhuda"
+    });
+    return;
+  }
+  if (descriptor.writable) target[ZHUDA_LAYA_REALM_MARKER] = "zhuda";
+}
+function assertZhudaRealmAvailable(value = globalThis) {
+  const report = inspectLayaRealm(value);
+  if (report.owner === "foreign") {
+    throw new Error(
+      "ZHUDA_FOREIGN_LAYA_REALM: this page already owns an initialized Laya runtime. Run the editor as a separate page or mount it through ZhudaRuntimeHost (iframe); do not load a second Zhuda/Laya renderer into the existing realm."
+    );
+  }
+  return report;
+}
+
 // packages/core/DeclarativeSDK.ts
 function zhudaComponent(meta) {
   return function(ctor) {
@@ -3834,6 +3919,7 @@ var ZhudaEngine = class {
       throw new Error(
         "An engine session is already active; dispose it or use a separate runtime realm."
       );
+    assertZhudaRealmAvailable();
     const container = typeof options.container === "string" ? document.querySelector(options.container) : options.container;
     if (options.container && !container)
       throw new Error("Canvas container not found");
@@ -3872,6 +3958,7 @@ var ZhudaEngine = class {
       }
       options.beforeInit?.();
       await withDeadline(() => Laya.init(width, height), { signal: options.signal, timeoutMs: options.bootTimeoutMs ?? 3e4 });
+      markZhudaLayaRealm();
       renderer.ready();
       installLaya342LifecycleFix();
       EngineGuard.installPrototypeDetox();
@@ -4745,6 +4832,12 @@ var ZhudaAssetSerializer = class {
     if (typeof node?.scaleX === "number" && node.scaleX !== 1) data.scaleX = node.scaleX;
     if (typeof node?.scaleY === "number" && node.scaleY !== 1) data.scaleY = node.scaleY;
     if (typeof node?.rotation === "number" && node.rotation !== 0) data.rotation = node.rotation;
+    if (typeof node?.pivotX === "number" && node.pivotX !== 0) data.pivotX = Number(node.pivotX.toFixed(2));
+    if (typeof node?.pivotY === "number" && node.pivotY !== 0) data.pivotY = Number(node.pivotY.toFixed(2));
+    if (typeof node?.anchorX === "number" && node.anchorX !== 0) data.anchorX = Number(node.anchorX.toFixed(4));
+    if (typeof node?.anchorY === "number" && node.anchorY !== 0) data.anchorY = Number(node.anchorY.toFixed(4));
+    if (typeof node?.skewX === "number" && node.skewX !== 0) data.skewX = Number(node.skewX.toFixed(4));
+    if (typeof node?.skewY === "number" && node.skewY !== 0) data.skewY = Number(node.skewY.toFixed(4));
     if (typeof node?.alpha === "number" && node.alpha !== 1) data.alpha = node.alpha;
     if (typeof node?.visible === "boolean" && !node.visible) data.visible = false;
     if (typeof node?.mouseEnabled === "boolean" && node.mouseEnabled) data.mouseEnabled = true;
@@ -4759,7 +4852,18 @@ var ZhudaAssetSerializer = class {
       if (typeof node.bold === "boolean") data.bold = node.bold;
       if (node.align) data.align = node.align;
       if (node.valign) data.valign = node.valign;
+      if (typeof node.wordWrap === "boolean") data.wordWrap = node.wordWrap;
+      if (typeof node.overflow === "string" && node.overflow) data.overflow = node.overflow;
       if (typeof node.leading === "number" && node.leading !== 0) data.leading = node.leading;
+      if (typeof node.letterSpacing === "number" && node.letterSpacing !== 0) data.letterSpacing = node.letterSpacing;
+      if (typeof node.stroke === "number" && node.stroke !== 0) data.stroke = node.stroke;
+      if (node.strokeColor) data.strokeColor = node.strokeColor;
+      if (typeof node.underline === "boolean" && node.underline) data.underline = true;
+      if (node.underlineColor) data.underlineColor = node.underlineColor;
+      if (typeof node.strikethrough === "boolean" && node.strikethrough) data.strikethrough = true;
+      if (Array.isArray(node.padding) && node.padding.length === 4) {
+        data.padding = node.padding.map((value) => Number(value) || 0);
+      }
     }
     const rawCmds = node?.graphics?.cmds || node?.graphics?._cmds || node?._gcmds;
     if (Array.isArray(rawCmds) && rawCmds.length > 0) {
@@ -6240,9 +6344,15 @@ var ZhudaPrefab = class {
       if (typeof data.bold === "boolean") node.bold = data.bold;
       if (data.align) node.align = data.align;
       if (data.valign) node.valign = data.valign;
+      if (typeof data.wordWrap === "boolean") node.wordWrap = data.wordWrap;
+      if (data.overflow) node.overflow = data.overflow;
       if (typeof data.leading === "number") node.leading = data.leading;
+      if (typeof data.letterSpacing === "number") node.letterSpacing = data.letterSpacing;
       if (typeof data.stroke === "number") node.stroke = data.stroke;
       if (data.strokeColor) node.strokeColor = data.strokeColor;
+      if (typeof data.underline === "boolean") node.underline = data.underline;
+      if (data.underlineColor) node.underlineColor = data.underlineColor;
+      if (typeof data.strikethrough === "boolean") node.strikethrough = data.strikethrough;
       if (data.padding) node.padding = data._$type === "Label" && L.Label ? data.padding.join(",") : data.padding;
     } else if (data._$type === "Scene" && L.Scene) {
       node = new L.Scene();
@@ -6258,9 +6368,19 @@ var ZhudaPrefab = class {
     if (typeof data.y === "number") node.y = data.y;
     if (typeof data.width === "number") node.width = data.width;
     if (typeof data.height === "number") node.height = data.height;
+    if (typeof data.anchorX === "number") node.anchorX = data.anchorX;
+    if (typeof data.anchorY === "number") node.anchorY = data.anchorY;
+    if (typeof data.pivotX === "number") node.pivotX = data.pivotX;
+    if (typeof data.pivotY === "number") node.pivotY = data.pivotY;
     if (typeof data.scaleX === "number") node.scaleX = data.scaleX;
     if (typeof data.scaleY === "number") node.scaleY = data.scaleY;
     if (typeof data.rotation === "number") node.rotation = data.rotation;
+    if (typeof data.anchorX === "number") node.anchorX = data.anchorX;
+    if (typeof data.anchorY === "number") node.anchorY = data.anchorY;
+    if (typeof data.pivotX === "number") node.pivotX = data.pivotX;
+    if (typeof data.pivotY === "number") node.pivotY = data.pivotY;
+    if (typeof data.skewX === "number") node.skewX = data.skewX;
+    if (typeof data.skewY === "number") node.skewY = data.skewY;
     if (typeof data.alpha === "number") node.alpha = data.alpha;
     if (typeof data.visible === "boolean") node.visible = data.visible;
     if (typeof data.mouseEnabled === "boolean") node.mouseEnabled = data.mouseEnabled;
@@ -8834,6 +8954,92 @@ var ZhudaBenchmarkEngine = class {
   }
 };
 
+// packages/core/BitmapFontContract.ts
+var finite = (value, name, issues) => {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    issues.push(`${name} must be finite.`);
+    return false;
+  }
+  return true;
+};
+function validateZhudaBitmapFont(manifest, requiredText = "") {
+  const issues = [];
+  if (!manifest || manifest.schemaVersion !== 1) issues.push("schemaVersion must be 1.");
+  if (!manifest?.id) issues.push("id is required.");
+  if (!manifest?.textureId) issues.push("textureId is required.");
+  for (const [name, value] of Object.entries({ fontSize: manifest?.fontSize, lineHeight: manifest?.lineHeight, baseline: manifest?.baseline })) {
+    if (finite(value, name, issues) && value <= 0 && name !== "baseline") issues.push(`${name} must be greater than zero.`);
+  }
+  const glyphs = Array.isArray(manifest?.glyphs) ? manifest.glyphs : [];
+  if (!glyphs.length) issues.push("glyphs must contain at least one glyph.");
+  const seen = /* @__PURE__ */ new Set();
+  const widths = /* @__PURE__ */ new Map();
+  for (const glyph of glyphs) {
+    if (!glyph || typeof glyph.char !== "string" || [...glyph.char].length !== 1) {
+      issues.push("each glyph must contain exactly one Unicode character.");
+      continue;
+    }
+    if (seen.has(glyph.char)) issues.push(`duplicate glyph: ${glyph.char}`);
+    seen.add(glyph.char);
+    for (const [name, value] of Object.entries({ x: glyph.x, y: glyph.y, width: glyph.width, height: glyph.height, xAdvance: glyph.xAdvance })) finite(value, `glyph(${glyph.char}).${name}`, issues);
+    if (glyph.width < 0 || glyph.height < 0 || glyph.xAdvance < 0) issues.push(`glyph(${glyph.char}) dimensions cannot be negative.`);
+    widths.set(glyph.char, glyph.xAdvance);
+  }
+  const fallback = manifest?.fallbackChar;
+  if (fallback !== void 0 && (!seen.has(fallback) || [...fallback].length !== 1)) issues.push("fallbackChar must reference one declared glyph.");
+  const missingCharacters = [...new Set([...requiredText].filter((char) => !seen.has(char) && char !== "\n" && char !== "\r"))];
+  if (missingCharacters.length && !fallback) issues.push(`missing glyphs: ${missingCharacters.join("")}`);
+  let measuredWidth = 0;
+  for (const line of requiredText.split(/\r?\n/)) {
+    const lineWidth = [...line].reduce((sum, char) => sum + (widths.get(char) ?? widths.get(fallback ?? "") ?? 0), 0);
+    measuredWidth = Math.max(measuredWidth, lineWidth);
+  }
+  return { passed: issues.length === 0 && (missingCharacters.length === 0 || !!fallback), issues, glyphCount: seen.size, missingCharacters, measuredWidth };
+}
+function measureZhudaBitmapText(manifest, text) {
+  const report = validateZhudaBitmapFont(manifest, text);
+  const advances = new Map(manifest.glyphs.map((g) => [g.char, g.xAdvance]));
+  const fallback = manifest.fallbackChar ? advances.get(manifest.fallbackChar) ?? 0 : 0;
+  const lines = text.split(/\r?\n/);
+  const width = Math.max(...lines.map((line) => [...line].reduce((sum, char) => sum + (advances.get(char) ?? fallback), 0)), 0);
+  return { width: Number(width.toFixed(4)), height: lines.length * manifest.lineHeight, lines: lines.length };
+}
+function createZhudaBitmapFont(manifest, texture, requiredText = "") {
+  const report = validateZhudaBitmapFont(manifest, requiredText);
+  if (!report.passed) throw new Error(`Bitmap font ${manifest?.id || "<unknown>"} failed validation: ${report.issues.join("; ") || `missing glyphs: ${report.missingCharacters.join("")}`}`);
+  const L = globalThis.Laya;
+  if (!L?.BitmapFont || !L.Text?.registerBitmapFont) throw new Error("Laya.BitmapFont is unavailable in this runtime.");
+  const font = new L.BitmapFont();
+  font.texture = texture;
+  font.fontSize = manifest.fontSize;
+  font.lineHeight = manifest.lineHeight;
+  font.autoScaleSize = false;
+  font.padding = [0, 0, 0, 0];
+  const dict = {};
+  for (const glyph of manifest.glyphs) {
+    dict[glyph.char] = {
+      x: glyph.x,
+      y: glyph.y,
+      width: glyph.width,
+      height: glyph.height,
+      advance: glyph.xAdvance
+    };
+    if (glyph.xOffset !== void 0 || glyph.yOffset !== void 0) {
+      dict[glyph.char].xOffset = glyph.xOffset ?? 0;
+      dict[glyph.char].yOffset = glyph.yOffset ?? 0;
+    }
+  }
+  font.dict = dict;
+  L.Text.registerBitmapFont(manifest.id, font);
+  return font;
+}
+function unregisterZhudaBitmapFont(id, destroy = true) {
+  if (!id) throw new Error("Bitmap font id is required.");
+  const L = globalThis.Laya;
+  if (!L?.Text?.unregisterBitmapFont) throw new Error("Laya.Text bitmap-font registry is unavailable in this runtime.");
+  L.Text.unregisterBitmapFont(id, destroy);
+}
+
 // packages/core/NoSleepAdapter.ts
 function errorMessage(error) {
   return error instanceof Error ? error.message : String(error);
@@ -9077,6 +9283,255 @@ var NoSleepAdapter = class {
     this.state = "disposed";
     for (const cleanup of this.cleanupFns.splice(0)) cleanup();
     this.gestureCleanupFns.splice(0);
+  }
+};
+
+// packages/core/ResponsiveLayout.ts
+var finite2 = (value, name) => {
+  if (!Number.isFinite(value)) throw new Error(`Invalid ${name}.`);
+  return value;
+};
+var positive = (value, name) => {
+  finite2(value, name);
+  if (value <= 0) throw new Error(`${name} must be greater than zero.`);
+  return value;
+};
+var insets = (value) => ({
+  top: Math.max(0, finite2(value?.top ?? 0, "insets.top")),
+  right: Math.max(0, finite2(value?.right ?? 0, "insets.right")),
+  bottom: Math.max(0, finite2(value?.bottom ?? 0, "insets.bottom")),
+  left: Math.max(0, finite2(value?.left ?? 0, "insets.left"))
+});
+var rect = (x, y, width, height) => ({
+  x: Number(x.toFixed(4)),
+  y: Number(y.toFixed(4)),
+  width: Number(width.toFixed(4)),
+  height: Number(height.toFixed(4))
+});
+function computeZhudaGridLayout(spec) {
+  const viewportWidth = positive(spec.viewport.width, "viewport.width");
+  const viewportHeight = positive(spec.viewport.height, "viewport.height");
+  const designWidth = positive(spec.design.width, "design.width");
+  const designHeight = positive(spec.design.height, "design.height");
+  if (!Number.isInteger(spec.columns) || spec.columns < 1) throw new Error("columns must be a positive integer.");
+  if (!Number.isInteger(spec.rows) || spec.rows < 1) throw new Error("rows must be a positive integer.");
+  const safe = insets(spec.safeArea);
+  const padding = insets(spec.padding);
+  const safeWidth = Math.max(0, viewportWidth - safe.left - safe.right);
+  const safeHeight = Math.max(0, viewportHeight - safe.top - safe.bottom);
+  const mode = spec.scaleMode ?? "showall";
+  const sx = safeWidth / designWidth;
+  const sy = safeHeight / designHeight;
+  const scale = mode === "none" ? 1 : mode === "cover" ? Math.max(sx, sy) : Math.min(sx, sy);
+  if (!Number.isFinite(scale) || scale <= 0) throw new Error("Unable to compute layout scale.");
+  const scaledDesign = rect(
+    safe.left + (safeWidth - designWidth * scale) / 2,
+    safe.top + (safeHeight - designHeight * scale) / 2,
+    designWidth * scale,
+    designHeight * scale
+  );
+  const designViewport = rect(0, 0, designWidth, designHeight);
+  const safeRect = rect(safe.left, safe.top, safeWidth, safeHeight);
+  const gapX = Math.max(0, finite2(spec.gapX ?? 0, "gapX"));
+  const gapY = Math.max(0, finite2(spec.gapY ?? 0, "gapY"));
+  const innerWidth2 = designWidth - padding.left - padding.right - gapX * (spec.columns - 1);
+  const innerHeight2 = designHeight - padding.top - padding.bottom - gapY * (spec.rows - 1);
+  if (innerWidth2 <= 0 || innerHeight2 <= 0) throw new Error("Grid padding and gaps leave no cell space.");
+  const cellWidth = innerWidth2 / spec.columns;
+  const cellHeight = innerHeight2 / spec.rows;
+  const cells = [];
+  for (let row = 0; row < spec.rows; row++) {
+    for (let column = 0; column < spec.columns; column++) {
+      cells.push(rect(
+        scaledDesign.x + (padding.left + column * (cellWidth + gapX)) * scale,
+        scaledDesign.y + (padding.top + row * (cellHeight + gapY)) * scale,
+        cellWidth * scale,
+        cellHeight * scale
+      ));
+    }
+  }
+  const overflow = mode === "cover" && (scaledDesign.x < safe.left || scaledDesign.y < safe.top || scaledDesign.x + scaledDesign.width > safe.left + safeWidth || scaledDesign.y + scaledDesign.height > safe.top + safeHeight);
+  return { scale: Number(scale.toFixed(6)), designViewport, safeRect, cells, overflow };
+}
+function computeZhudaTextLayout(spec) {
+  const box = spec.box;
+  const metrics = spec.metrics;
+  for (const [name, value] of Object.entries({
+    "box.x": box.x,
+    "box.y": box.y,
+    "box.width": box.width,
+    "box.height": box.height,
+    "metrics.width": metrics.width,
+    "metrics.height": metrics.height,
+    "metrics.baseline": metrics.baseline
+  })) finite2(value, name);
+  if (box.width < 0 || box.height < 0 || metrics.width < 0 || metrics.height < 0) throw new Error("Text layout dimensions cannot be negative.");
+  const padding = insets(spec.padding);
+  const contentWidth = Math.max(0, box.width - padding.left - padding.right);
+  const contentHeight = Math.max(0, box.height - padding.top - padding.bottom);
+  const rawScale = Math.min(1, metrics.width > 0 ? contentWidth / metrics.width : 1, metrics.height > 0 ? contentHeight / metrics.height : 1);
+  const minScale = Math.max(0, Math.min(1, spec.minScale ?? 0.5));
+  const scale = spec.scaleToFit ? Math.max(minScale, rawScale) : 1;
+  const width = metrics.width * scale;
+  const height = metrics.height * scale;
+  const align2 = spec.align ?? "left";
+  const valign = spec.valign ?? "top";
+  const x = align2 === "center" ? padding.left + (contentWidth - width) / 2 : align2 === "right" ? box.width - padding.right - width : padding.left;
+  const y = valign === "middle" ? padding.top + (contentHeight - height) / 2 : valign === "bottom" ? box.height - padding.bottom - height : padding.top;
+  return {
+    rect: rect(box.x + x, box.y + y, width, height),
+    scale: Number(scale.toFixed(6)),
+    baselineX: Number((box.x + x + (align2 === "center" ? width / 2 : align2 === "right" ? width : 0)).toFixed(4)),
+    baselineY: Number((box.y + y + metrics.baseline * scale).toFixed(4)),
+    overflow: width > contentWidth + 1e-4 || height > contentHeight + 1e-4
+  };
+}
+
+// packages/core/VideoSurface.ts
+var ZhudaVideoSurface = class {
+  constructor(options) {
+    this.disposed = false;
+    if (!options?.parent) throw new Error("ZhudaVideoSurface requires a parent Sprite.");
+    const L = globalThis.Laya;
+    if (!L?.VideoNode) throw new Error("Laya.VideoNode is unavailable in this runtime.");
+    this.node = new L.VideoNode();
+    this.node.mode = options.mode ?? "decoder";
+    this.node.autoPlay = options.autoPlay ?? false;
+    this.node.loop = options.loop ?? false;
+    this.node.muted = options.muted ?? true;
+    this.node.allowBackground = options.allowBackground ?? false;
+    options.parent.addChild(this.node);
+    if (options.source) this.node.source = options.source;
+  }
+  get mode() {
+    return this.node.mode;
+  }
+  get source() {
+    return this.node.source;
+  }
+  setSource(source) {
+    this.assertLive();
+    if (!source) throw new Error("Video source is required.");
+    this.node.source = source;
+  }
+  play() {
+    this.assertLive();
+    this.node.play();
+  }
+  pause() {
+    this.assertLive();
+    this.node.pause();
+  }
+  stop() {
+    this.assertLive();
+    this.node.pause();
+    this.node.currentTime = 0;
+  }
+  diagnostics() {
+    return {
+      source: this.node.source,
+      mode: this.node.mode,
+      attached: !!this.node.parent,
+      readyState: this.node.readyState,
+      paused: this.node.paused,
+      ended: this.node.ended,
+      nativeSize: { width: this.node.videoWidth, height: this.node.videoHeight }
+    };
+  }
+  dispose() {
+    if (this.disposed) return;
+    this.disposed = true;
+    this.node.pause();
+    this.node.source = "";
+    this.node.destroy(true);
+  }
+  assertLive() {
+    if (this.disposed) throw new Error("ZhudaVideoSurface is disposed.");
+  }
+};
+
+// packages/core/WebViewSurface.ts
+var finite3 = (value, name) => {
+  if (!Number.isFinite(value)) throw new Error(`Invalid ${name}.`);
+  return value;
+};
+function frameOf(value) {
+  const frame = value ?? { x: 0, y: 0, width: 1, height: 1 };
+  const result = {
+    x: finite3(frame.x, "frame.x"),
+    y: finite3(frame.y, "frame.y"),
+    width: finite3(frame.width, "frame.width"),
+    height: finite3(frame.height, "frame.height"),
+    rotation: finite3(frame.rotation ?? 0, "frame.rotation"),
+    scaleX: finite3(frame.scaleX ?? 1, "frame.scaleX"),
+    scaleY: finite3(frame.scaleY ?? 1, "frame.scaleY")
+  };
+  if (result.width <= 0 || result.height <= 0) throw new Error("WebView frame dimensions must be greater than zero.");
+  return result;
+}
+var ZhudaWebViewSurface = class {
+  constructor(options) {
+    this.disposed = false;
+    if (!options?.parent) throw new Error("ZhudaWebViewSurface requires a parent Sprite.");
+    if (!options?.adapter) throw new Error("ZhudaWebViewSurface requires a platform adapter.");
+    const L = globalThis.Laya;
+    if (!L?.Sprite) throw new Error("Laya.Sprite is unavailable in this runtime.");
+    this.adapter = options.adapter;
+    this.frameValue = frameOf(options.frame);
+    this.urlValue = options.url ?? "";
+    this.visibleValue = options.visible ?? true;
+    this.anchor = new L.Sprite();
+    this.anchor.name = "ZhudaWebViewAnchor";
+    options.parent.addChild(this.anchor);
+    this.applyAnchor();
+    this.adapter.mount({ url: this.urlValue || void 0, frame: this.frameValue, anchor: this.anchor });
+    this.adapter.update({ url: this.urlValue, frame: this.frameValue, visible: this.visibleValue });
+  }
+  get url() {
+    return this.urlValue;
+  }
+  get frame() {
+    return { ...this.frameValue };
+  }
+  setUrl(url) {
+    this.assertLive();
+    this.urlValue = url;
+    this.sync();
+  }
+  setFrame(frame) {
+    this.assertLive();
+    this.frameValue = frameOf(frame);
+    this.applyAnchor();
+    this.sync();
+  }
+  setVisible(visible) {
+    this.assertLive();
+    this.visibleValue = !!visible;
+    this.anchor.visible = this.visibleValue;
+    this.sync();
+  }
+  diagnostics() {
+    return { url: this.urlValue, attached: !!this.anchor.parent, visible: this.visibleValue, frame: this.frame, disposed: this.disposed };
+  }
+  dispose() {
+    if (this.disposed) return;
+    this.disposed = true;
+    this.adapter.dispose();
+    this.anchor.destroy(true);
+  }
+  applyAnchor() {
+    this.anchor.pos(this.frameValue.x, this.frameValue.y);
+    this.anchor.size(this.frameValue.width, this.frameValue.height);
+    this.anchor.rotation = this.frameValue.rotation ?? 0;
+    this.anchor.scaleX = this.frameValue.scaleX ?? 1;
+    this.anchor.scaleY = this.frameValue.scaleY ?? 1;
+    this.anchor.visible = this.visibleValue;
+  }
+  sync() {
+    this.adapter.update({ url: this.urlValue, frame: this.frameValue, visible: this.visibleValue });
+  }
+  assertLive() {
+    if (this.disposed) throw new Error("ZhudaWebViewSurface is disposed.");
   }
 };
 
@@ -9346,7 +9801,7 @@ function validateParticleEffect(value) {
     return ["Expected schemaVersion: 1 and a non-empty emitters array."];
   }
   const ids = /* @__PURE__ */ new Set();
-  const finite2 = (v) => typeof v === "number" && Number.isFinite(v);
+  const finite5 = (v) => typeof v === "number" && Number.isFinite(v);
   for (const e of spec.emitters) {
     if (!e || typeof e !== "object") {
       issues.push("Emitter must be an object.");
@@ -9360,27 +9815,27 @@ function validateParticleEffect(value) {
     if (!Number.isInteger(e.maxParticles) || e.maxParticles < 1 || e.maxParticles > 16383) issues.push(`${id}: maxParticles must be 1..16383.`);
     if (!Number.isInteger(e.seed)) issues.push(`${id}: seed must be an integer.`);
     if (!["world", "local"].includes(e.space) || !["alpha", "additive"].includes(e.blend)) issues.push(`${id}: explicit space and blend are required.`);
-    if (!finite2(e.rate) || e.rate < 0) issues.push(`${id}: rate must be non-negative.`);
+    if (!finite5(e.rate) || e.rate < 0) issues.push(`${id}: rate must be non-negative.`);
     for (const key of ["lifetime", "speed", "angle", "size", "rotation", "angularVelocity"]) {
       const v = e[key];
       if (v === void 0 && ["rotation", "angularVelocity"].includes(key)) continue;
       const range = Array.isArray(v) ? v : [v, v];
-      if (range.length !== 2 || typeof range[0] !== "number" || typeof range[1] !== "number" || !range.every(finite2) || range[0] > range[1]) issues.push(`${id}: invalid ${key} range.`);
+      if (range.length !== 2 || typeof range[0] !== "number" || typeof range[1] !== "number" || !range.every(finite5) || range[0] > range[1]) issues.push(`${id}: invalid ${key} range.`);
       else if ((key === "lifetime" || key === "size") && range[0] <= 0) issues.push(`${id}: ${key} must be positive.`);
     }
     if (!e.shape || !["point", "box", "circle"].includes(e.shape.type)) issues.push(`${id}: invalid shape.`);
-    else if (e.shape.type === "box" && (![e.shape.width, e.shape.height].every(finite2) || e.shape.width < 0 || e.shape.height < 0)) issues.push(`${id}: invalid box dimensions.`);
-    else if (e.shape.type === "circle" && (!finite2(e.shape.radius) || e.shape.radius < 0)) issues.push(`${id}: invalid circle radius.`);
+    else if (e.shape.type === "box" && (![e.shape.width, e.shape.height].every(finite5) || e.shape.width < 0 || e.shape.height < 0)) issues.push(`${id}: invalid box dimensions.`);
+    else if (e.shape.type === "circle" && (!finite5(e.shape.radius) || e.shape.radius < 0)) issues.push(`${id}: invalid circle radius.`);
     for (const key of ["drag", "rateOverDistance", "stretch"]) {
-      if (e[key] !== void 0 && (!finite2(e[key]) || e[key] < 0)) issues.push(`${id}: ${key} must be non-negative.`);
+      if (e[key] !== void 0 && (!finite5(e[key]) || e[key] < 0)) issues.push(`${id}: ${key} must be non-negative.`);
     }
-    if (e.duration !== void 0 && (!finite2(e.duration) || e.duration <= 0)) issues.push(`${id}: duration must be positive.`);
+    if (e.duration !== void 0 && (!finite5(e.duration) || e.duration <= 0)) issues.push(`${id}: duration must be positive.`);
     if (e.loop !== void 0 && typeof e.loop !== "boolean") issues.push(`${id}: loop must be boolean.`);
     if (e.loop && e.duration !== void 0 && e.duration < 1 / 120) issues.push(`${id}: looping duration must be at least 1/120 second.`);
-    if (e.acceleration && ![e.acceleration.x, e.acceleration.y].every(finite2)) issues.push(`${id}: acceleration must be finite.`);
-    if (e.turbulence && (![e.turbulence.strength, e.turbulence.frequency].every(finite2) || e.turbulence.strength < 0 || e.turbulence.frequency < 0)) issues.push(`${id}: invalid turbulence.`);
-    if (e.bursts !== void 0 && (!Array.isArray(e.bursts) || e.bursts.some((b) => !b || !finite2(b.time) || b.time < 0 || !Number.isInteger(b.count) || b.count < 0))) issues.push(`${id}: invalid bursts.`);
-    if (Array.isArray(e.bursts) && finite2(e.duration) && e.bursts.some((b) => b && b.time > e.duration)) issues.push(`${id}: burst time exceeds duration.`);
+    if (e.acceleration && ![e.acceleration.x, e.acceleration.y].every(finite5)) issues.push(`${id}: acceleration must be finite.`);
+    if (e.turbulence && (![e.turbulence.strength, e.turbulence.frequency].every(finite5) || e.turbulence.strength < 0 || e.turbulence.frequency < 0)) issues.push(`${id}: invalid turbulence.`);
+    if (e.bursts !== void 0 && (!Array.isArray(e.bursts) || e.bursts.some((b) => !b || !finite5(b.time) || b.time < 0 || !Number.isInteger(b.count) || b.count < 0))) issues.push(`${id}: invalid bursts.`);
+    if (Array.isArray(e.bursts) && finite5(e.duration) && e.bursts.some((b) => b && b.time > e.duration)) issues.push(`${id}: burst time exceeds duration.`);
     for (const key of ["sizeOverLife", "alphaOverLife", "colorOverLife"]) {
       const keys = e[key];
       if (keys === void 0) continue;
@@ -9390,14 +9845,14 @@ function validateParticleEffect(value) {
       }
       let previous = -1;
       for (const k of keys) {
-        if (!k || !finite2(k.time) || k.time < 0 || k.time > 1 || k.time <= previous) {
+        if (!k || !finite5(k.time) || k.time < 0 || k.time > 1 || k.time <= previous) {
           issues.push(`${id}: ${key} times must increase within 0..1.`);
           break;
         }
         previous = k.time;
         if (key === "colorOverLife") {
           if (!/^#[0-9a-f]{6}$/i.test(k.color)) issues.push(`${id}: colors must use #rrggbb.`);
-        } else if (!finite2(k.value) || k.value < 0 || key === "alphaOverLife" && k.value > 1) issues.push(`${id}: invalid ${key} value.`);
+        } else if (!finite5(k.value) || k.value < 0 || key === "alphaOverLife" && k.value > 1) issues.push(`${id}: invalid ${key} value.`);
       }
     }
   }
@@ -9792,10 +10247,10 @@ var ZhudaLayaParticleRenderer = class {
       const s = this.system.spec, t = Math.min(0.999999, p.age / p.lifetime);
       const batch = this.batches[Math.floor(t * this.batches.length)];
       const i = batch.count++ * 8;
-      const rect = sampleParticleUV(s, p.age, p.lifetime, this.frameUV), source = this.uv;
+      const rect2 = sampleParticleUV(s, p.age, p.lifetime, this.frameUV), source = this.uv;
       const uv = batch.uvs;
       for (let corner = 0; corner < 4; corner++) {
-        const u = rect.x + (corner === 1 || corner === 2 ? rect.width : 0), v = rect.y + (corner >= 2 ? rect.height : 0);
+        const u = rect2.x + (corner === 1 || corner === 2 ? rect2.width : 0), v = rect2.y + (corner >= 2 ? rect2.height : 0);
         uv[i + corner * 2] = source[0] + (source[2] - source[0]) * u + (source[6] - source[0]) * v;
         uv[i + corner * 2 + 1] = source[1] + (source[3] - source[1]) * u + (source[7] - source[1]) * v;
       }
@@ -10473,7 +10928,7 @@ var ZhudaParticleMesh3D = class {
       const bx = (ux * c - rx * sn) * hy, by = (uy * c - ry * sn) * hy, bz = (uz * c - rz * sn) * hy;
       const ci = Math.min(255, Math.floor(p.age / p.lifetime * 255)) * 4;
       const r = this.colors[ci], green = this.colors[ci + 1], b = this.colors[ci + 2], alpha = this.colors[ci + 3] * Math.max(0, Math.min(1, opacity));
-      const rect = sampleParticleUV(spec, p.age, p.lifetime, this.frameUV);
+      const rect2 = sampleParticleUV(spec, p.age, p.lifetime, this.frameUV);
       for (let corner = 0; corner < 4; corner++) {
         const sx = corner === 0 || corner === 3 ? -1 : 1, sy = corner < 2 ? -1 : 1, base = i * 36 + corner * 9;
         const v = g.vertices;
@@ -10484,8 +10939,8 @@ var ZhudaParticleMesh3D = class {
         v[base + 4] = green;
         v[base + 5] = b;
         v[base + 6] = alpha;
-        v[base + 7] = rect.x + (sx > 0 ? rect.width : 0);
-        v[base + 8] = rect.y + (sy > 0 ? 0 : rect.height);
+        v[base + 7] = rect2.x + (sx > 0 ? rect2.width : 0);
+        v[base + 8] = rect2.y + (sy > 0 ? 0 : rect2.height);
       }
     }
     g.vertices.fill(0, this.items.length * 36, previousCount * 9);
@@ -11486,7 +11941,7 @@ async function hash(bytes) {
   return Array.from(new Uint8Array(digest), (n) => n.toString(16).padStart(2, "0")).join("");
 }
 var supportedTypes = /* @__PURE__ */ new Set(["Sprite", "Text", "Label", "Image", "Box"]);
-var numericPatch = /* @__PURE__ */ new Set(["x", "y", "width", "height", "scaleX", "scaleY", "rotation", "alpha", "fontSize"]);
+var numericPatch = /* @__PURE__ */ new Set(["x", "y", "width", "height", "anchorX", "anchorY", "pivotX", "pivotY", "scaleX", "scaleY", "rotation", "alpha", "fontSize"]);
 var stringPatch = /* @__PURE__ */ new Set(["text", "font", "color", "align", "valign", "sizeGrid"]);
 function validateStates(states) {
   for (const patches of Object.values(states)) {
@@ -12088,12 +12543,12 @@ var ZhudaRenderSpace = class {
 };
 
 // packages/core/runtime3d/GraphicsGuard.ts
-function finite(name, value) {
+function finite4(name, value) {
   if (!Number.isFinite(value)) throw Error(`Invalid Graphics ${name}`);
   return value;
 }
 function nonNegative(name, value) {
-  return Math.max(0, finite(name, value));
+  return Math.max(0, finite4(name, value));
 }
 var ZhudaGraphicsGuard = class {
   constructor(target) {
@@ -12105,8 +12560,8 @@ var ZhudaGraphicsGuard = class {
   }
   drawRect(x, y, width, height, fillColor, lineColor, lineWidth = 1, percent = false) {
     return this.target.drawRect(
-      finite("x", x),
-      finite("y", y),
+      finite4("x", x),
+      finite4("y", y),
       nonNegative("width", width),
       nonNegative("height", height),
       fillColor,
@@ -12119,8 +12574,8 @@ var ZhudaGraphicsGuard = class {
     const w = nonNegative("width", width), h = nonNegative("height", height);
     const maxRadius = Math.min(w, h) / 2;
     return this.target.drawRoundRect(
-      finite("x", x),
-      finite("y", y),
+      finite4("x", x),
+      finite4("y", y),
       w,
       h,
       Math.min(maxRadius, nonNegative("lt", lt)),
@@ -12137,8 +12592,8 @@ var ZhudaGraphicsGuard = class {
   }
   drawCircle(x, y, radius, fillColor, lineColor, lineWidth = 1, percent = false) {
     return this.target.drawCircle(
-      finite("x", x),
-      finite("y", y),
+      finite4("x", x),
+      finite4("y", y),
       nonNegative("radius", radius),
       fillColor,
       lineColor,
@@ -12148,8 +12603,8 @@ var ZhudaGraphicsGuard = class {
   }
   drawEllipse(x, y, width, height, fillColor, lineColor, lineWidth = 1, percent = false) {
     return this.target.drawEllipse(
-      finite("x", x),
-      finite("y", y),
+      finite4("x", x),
+      finite4("y", y),
       nonNegative("width", width),
       nonNegative("height", height),
       fillColor,
@@ -12260,11 +12715,11 @@ var ZhudaObjectPool = class {
 };
 
 // packages/core/runtime3d/CombatQueries.ts
-function validateRect(rect) {
-  if (!rect || ![rect.x, rect.y, rect.width, rect.height].every(Number.isFinite))
+function validateRect(rect2) {
+  if (!rect2 || ![rect2.x, rect2.y, rect2.width, rect2.height].every(Number.isFinite))
     throw Error("Combat rectangles must be finite");
-  if (rect.width < 0 || rect.height < 0) throw Error("Combat rectangle size must be non-negative");
-  return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+  if (rect2.width < 0 || rect2.height < 0) throw Error("Combat rectangle size must be non-negative");
+  return { x: rect2.x, y: rect2.y, width: rect2.width, height: rect2.height };
 }
 function validateLayer(name, value) {
   if (!Number.isSafeInteger(value) || value <= 0 || value > 4294967295)
@@ -12321,7 +12776,7 @@ var ZhudaCombatWorld = class {
   updateHitbox(id, patch) {
     const box = this.hitboxes.get(id);
     if (!box) return false;
-    const rect = patch.rect ? validateRect(patch.rect) : box.rect;
+    const rect2 = patch.rect ? validateRect(patch.rect) : box.rect;
     const layer = patch.layer === void 0 ? box.layer : validateLayer("box", patch.layer);
     const mask = patch.mask === void 0 ? box.mask : validateLayer("hitbox mask", patch.mask);
     if (patch.sampleRect !== void 0 && typeof patch.sampleRect !== "function") throw Error("Invalid combat rect sampler");
@@ -12335,7 +12790,7 @@ var ZhudaCombatWorld = class {
       throw Error("Hitbox active window is reversed");
     if (patch.swingId !== void 0 && String(patch.swingId) !== String(box.swingId)) this.clearHitboxSwing(id);
     Object.assign(box, {
-      rect,
+      rect: rect2,
       layer,
       mask,
       swingId,
@@ -12423,7 +12878,7 @@ function validateDescriptor(descriptor) {
   if (!descriptor || !formats.has(descriptor.format) || typeof descriptor.name !== "string" || !descriptor.name.trim() || typeof descriptor.version !== "string" || !descriptor.version.trim() || typeof descriptor.integritySha256 !== "string" || !sha256Pattern.test(descriptor.integritySha256))
     throw new ModelDecoderError("invalid-adapter", "A decoder descriptor requires a format, name, version and SHA-256 metadata.");
 }
-function positive(value) {
+function positive2(value) {
   return Number.isSafeInteger(value) && value > 0;
 }
 function releasePayload(payload) {
@@ -12436,7 +12891,7 @@ var ZhudaModelDecoderRegistry = class {
     this.timeoutMs = options.timeoutMs ?? 15e3;
     this.maxInputBytes = options.maxInputBytes ?? 256 * 1024 * 1024;
     this.maxOutputBytes = options.maxOutputBytes ?? 256 * 1024 * 1024;
-    if (!positive(this.timeoutMs) || this.timeoutMs > 2147483647 || !positive(this.maxInputBytes) || !positive(this.maxOutputBytes))
+    if (!positive2(this.timeoutMs) || this.timeoutMs > 2147483647 || !positive2(this.maxInputBytes) || !positive2(this.maxOutputBytes))
       throw Error("Invalid decoder limits");
   }
   drain(entry) {
@@ -12472,7 +12927,7 @@ var ZhudaModelDecoderRegistry = class {
     if (this.disposed) throw new ModelDecoderError("disposed", "Decoder registry is disposed.", { format, assetId });
     if (!formats.has(format) || normalizeAssetId(assetId) !== assetId) throw new ModelDecoderError("invalid-input", "A normalized logical asset ID is required.", { format, assetId });
     const timeoutMs = options.timeoutMs ?? this.timeoutMs, inputLimit = options.maxInputBytes ?? this.maxInputBytes, outputLimit = options.maxOutputBytes ?? this.maxOutputBytes;
-    if (!positive(timeoutMs) || timeoutMs > 2147483647 || !positive(inputLimit) || !positive(outputLimit) || !(bytes instanceof Uint8Array) || bytes.byteLength > inputLimit)
+    if (!positive2(timeoutMs) || timeoutMs > 2147483647 || !positive2(inputLimit) || !positive2(outputLimit) || !(bytes instanceof Uint8Array) || bytes.byteLength > inputLimit)
       throw new ModelDecoderError("invalid-input", `Invalid decoder bounds/input: ${assetId}.`, { format, assetId });
     if (options.signal?.aborted) throw abortError2(format, assetId, false);
     const entry = this.adapters.get(format);
@@ -16144,12 +16599,16 @@ export {
   ZhudaUI,
   ZhudaVfxCamera,
   ZhudaVfxMaterial,
+  ZhudaVideoSurface,
+  ZhudaWebViewSurface,
   ZhudaWorkerFrameDriver,
   applySceneQuality,
   buildPrefabTree,
   compareVisualFrames,
   compose4,
   computeMeshTangents,
+  computeZhudaGridLayout,
+  computeZhudaTextLayout,
   configureSurfacePasses,
   convertUnityAnimationCurve,
   convertUnityVisualMaterial,
@@ -16158,6 +16617,7 @@ export {
   createProviderAssetCache,
   createSurfaceMaterial,
   createSurfaceTexture,
+  createZhudaBitmapFont,
   disposeMigratedMaterial,
   disposeSurfaceMaterial,
   findPrefabNode,
@@ -16172,6 +16632,7 @@ export {
   installSandboxStorageFallback,
   instantiateMigratedMaterial,
   inverse4,
+  measureZhudaBitmapText,
   multiply4,
   normalizeAssetId,
   normalized,
@@ -16189,6 +16650,7 @@ export {
   shaderRecipes,
   terrainNoise,
   transformPoint,
+  unregisterZhudaBitmapFont,
   validateActionFrameSpec,
   validateAssetManifest,
   validateEffectTimeline,
@@ -16203,6 +16665,7 @@ export {
   validateThemeManifest,
   validateTimelineSpec,
   validateVfxMaterial,
+  validateZhudaBitmapFont,
   zhudaComponent
 };
 //# sourceMappingURL=zhuda-laya-engine.esm.js.map

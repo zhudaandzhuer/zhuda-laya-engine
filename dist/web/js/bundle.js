@@ -638,6 +638,12 @@ var ZhudaAppBundle = (() => {
       if (runtime.stage.updateCanvasSize)
         runtime.systemTimer?.clearCallLater(runtime.stage, runtime.stage.updateCanvasSize);
       runtime.stage.setScreenSize(width * dpr, height * dpr);
+      if (canvas?.style) {
+        canvas.style.width = `${width}px`;
+        canvas.style.height = `${height}px`;
+        canvas.style.display = "block";
+        canvas.style.touchAction = "none";
+      }
       const matrix = runtime.stage._canvasTransform;
       if (canvas?.getBoundingClientRect && matrix) {
         const rect = canvas.getBoundingClientRect();
@@ -1405,6 +1411,81 @@ var ZhudaAppBundle = (() => {
     }
   }
 
+  // packages/core/RealmGuards.ts
+  var ZHUDA_LAYA_REALM_MARKER = "__ZHUDA_LAYA_REALM_OWNER__";
+  function inspectLayaRealm(value = globalThis) {
+    const target = value;
+    const laya = target.Laya;
+    if (!laya) {
+      return {
+        layaPresent: false,
+        initialized: false,
+        owner: "none",
+        reason: "Laya is not loaded in this realm."
+      };
+    }
+    let stage;
+    let canvas;
+    try {
+      stage = laya.stage;
+      canvas = laya.Browser?.mainCanvas?.source;
+    } catch {
+      return {
+        layaPresent: true,
+        initialized: true,
+        owner: "foreign",
+        reason: "Laya state could not be inspected safely; refusing to attach to an unknown realm."
+      };
+    }
+    const initialized = stage != null || canvas != null;
+    const marker = target[ZHUDA_LAYA_REALM_MARKER];
+    if (marker === "zhuda") {
+      return {
+        layaPresent: true,
+        initialized,
+        owner: "zhuda",
+        reason: "This realm was initialized by Zhuda."
+      };
+    }
+    if (!initialized) {
+      return {
+        layaPresent: true,
+        initialized: false,
+        owner: "uninitialized",
+        reason: "Laya is loaded but Laya.init has not created a stage or canvas yet."
+      };
+    }
+    return {
+      layaPresent: true,
+      initialized: true,
+      owner: "foreign",
+      reason: "Laya has an initialized stage or canvas without the Zhuda realm marker."
+    };
+  }
+  function markZhudaLayaRealm(value = globalThis) {
+    const target = value;
+    const descriptor = Object.getOwnPropertyDescriptor(target, ZHUDA_LAYA_REALM_MARKER);
+    if (!descriptor) {
+      Object.defineProperty(target, ZHUDA_LAYA_REALM_MARKER, {
+        configurable: true,
+        enumerable: false,
+        writable: true,
+        value: "zhuda"
+      });
+      return;
+    }
+    if (descriptor.writable) target[ZHUDA_LAYA_REALM_MARKER] = "zhuda";
+  }
+  function assertZhudaRealmAvailable(value = globalThis) {
+    const report = inspectLayaRealm(value);
+    if (report.owner === "foreign") {
+      throw new Error(
+        "ZHUDA_FOREIGN_LAYA_REALM: this page already owns an initialized Laya runtime. Run the editor as a separate page or mount it through ZhudaRuntimeHost (iframe); do not load a second Zhuda/Laya renderer into the existing realm."
+      );
+    }
+    return report;
+  }
+
   // packages/core/TopologyGraph.ts
   var ZHUDA_ENGINE_MODULES = [
     {
@@ -1874,7 +1955,6 @@ var ZhudaAppBundle = (() => {
       if (gpu && files.some((file) => file.startsWith("laya.webgl_"))) issues.push({ type: "CONFLICTING_MODULE", moduleFile: "laya.webgpu_2D.js", requiredFile: "laya.webgl_2D.js", fatalSymptom: "Mixed renderer factories", message: "Load exactly one renderer backend per realm" });
       if (files.includes("spine-core-3.8.js") && files.includes("spine-core-4.2.js")) issues.push({ type: "CONFLICTING_MODULE", moduleFile: "spine-core-3.8.js", requiredFile: "spine-core-4.2.js", fatalSymptom: "Mixed Spine global namespaces", message: "Load exactly one Spine core runtime per realm" });
       const seenFiles = /* @__PURE__ */ new Set();
-      const seenIds = /* @__PURE__ */ new Set();
       const selectNode = (file) => {
         const candidates = fileMap.get(file);
         if (!candidates?.length) return void 0;
@@ -1903,7 +1983,6 @@ var ZhudaAppBundle = (() => {
           }
         }
         seenFiles.add(file);
-        seenIds.add(node.id);
       }
       return issues;
     }
@@ -2066,6 +2145,7 @@ var ZhudaAppBundle = (() => {
         throw new Error(
           "An engine session is already active; dispose it or use a separate runtime realm."
         );
+      assertZhudaRealmAvailable();
       const container = typeof options.container === "string" ? document.querySelector(options.container) : options.container;
       if (options.container && !container)
         throw new Error("Canvas container not found");
@@ -2104,6 +2184,7 @@ var ZhudaAppBundle = (() => {
         }
         options.beforeInit?.();
         await withDeadline(() => Laya.init(width, height), { signal: options.signal, timeoutMs: options.bootTimeoutMs ?? 3e4 });
+        markZhudaLayaRealm();
         renderer.ready();
         installLaya342LifecycleFix();
         EngineGuard.installPrototypeDetox();
@@ -5997,6 +6078,12 @@ var ZhudaAppBundle = (() => {
       if (typeof node?.scaleX === "number" && node.scaleX !== 1) data.scaleX = node.scaleX;
       if (typeof node?.scaleY === "number" && node.scaleY !== 1) data.scaleY = node.scaleY;
       if (typeof node?.rotation === "number" && node.rotation !== 0) data.rotation = node.rotation;
+      if (typeof node?.pivotX === "number" && node.pivotX !== 0) data.pivotX = Number(node.pivotX.toFixed(2));
+      if (typeof node?.pivotY === "number" && node.pivotY !== 0) data.pivotY = Number(node.pivotY.toFixed(2));
+      if (typeof node?.anchorX === "number" && node.anchorX !== 0) data.anchorX = Number(node.anchorX.toFixed(4));
+      if (typeof node?.anchorY === "number" && node.anchorY !== 0) data.anchorY = Number(node.anchorY.toFixed(4));
+      if (typeof node?.skewX === "number" && node.skewX !== 0) data.skewX = Number(node.skewX.toFixed(4));
+      if (typeof node?.skewY === "number" && node.skewY !== 0) data.skewY = Number(node.skewY.toFixed(4));
       if (typeof node?.alpha === "number" && node.alpha !== 1) data.alpha = node.alpha;
       if (typeof node?.visible === "boolean" && !node.visible) data.visible = false;
       if (typeof node?.mouseEnabled === "boolean" && node.mouseEnabled) data.mouseEnabled = true;
@@ -6011,7 +6098,18 @@ var ZhudaAppBundle = (() => {
         if (typeof node.bold === "boolean") data.bold = node.bold;
         if (node.align) data.align = node.align;
         if (node.valign) data.valign = node.valign;
+        if (typeof node.wordWrap === "boolean") data.wordWrap = node.wordWrap;
+        if (typeof node.overflow === "string" && node.overflow) data.overflow = node.overflow;
         if (typeof node.leading === "number" && node.leading !== 0) data.leading = node.leading;
+        if (typeof node.letterSpacing === "number" && node.letterSpacing !== 0) data.letterSpacing = node.letterSpacing;
+        if (typeof node.stroke === "number" && node.stroke !== 0) data.stroke = node.stroke;
+        if (node.strokeColor) data.strokeColor = node.strokeColor;
+        if (typeof node.underline === "boolean" && node.underline) data.underline = true;
+        if (node.underlineColor) data.underlineColor = node.underlineColor;
+        if (typeof node.strikethrough === "boolean" && node.strikethrough) data.strikethrough = true;
+        if (Array.isArray(node.padding) && node.padding.length === 4) {
+          data.padding = node.padding.map((value) => Number(value) || 0);
+        }
       }
       const rawCmds = node?.graphics?.cmds || node?.graphics?._cmds || node?._gcmds;
       if (Array.isArray(rawCmds) && rawCmds.length > 0) {
@@ -7492,9 +7590,15 @@ var ZhudaAppBundle = (() => {
         if (typeof data.bold === "boolean") node.bold = data.bold;
         if (data.align) node.align = data.align;
         if (data.valign) node.valign = data.valign;
+        if (typeof data.wordWrap === "boolean") node.wordWrap = data.wordWrap;
+        if (data.overflow) node.overflow = data.overflow;
         if (typeof data.leading === "number") node.leading = data.leading;
+        if (typeof data.letterSpacing === "number") node.letterSpacing = data.letterSpacing;
         if (typeof data.stroke === "number") node.stroke = data.stroke;
         if (data.strokeColor) node.strokeColor = data.strokeColor;
+        if (typeof data.underline === "boolean") node.underline = data.underline;
+        if (data.underlineColor) node.underlineColor = data.underlineColor;
+        if (typeof data.strikethrough === "boolean") node.strikethrough = data.strikethrough;
         if (data.padding) node.padding = data._$type === "Label" && L.Label ? data.padding.join(",") : data.padding;
       } else if (data._$type === "Scene" && L.Scene) {
         node = new L.Scene();
@@ -7510,9 +7614,19 @@ var ZhudaAppBundle = (() => {
       if (typeof data.y === "number") node.y = data.y;
       if (typeof data.width === "number") node.width = data.width;
       if (typeof data.height === "number") node.height = data.height;
+      if (typeof data.anchorX === "number") node.anchorX = data.anchorX;
+      if (typeof data.anchorY === "number") node.anchorY = data.anchorY;
+      if (typeof data.pivotX === "number") node.pivotX = data.pivotX;
+      if (typeof data.pivotY === "number") node.pivotY = data.pivotY;
       if (typeof data.scaleX === "number") node.scaleX = data.scaleX;
       if (typeof data.scaleY === "number") node.scaleY = data.scaleY;
       if (typeof data.rotation === "number") node.rotation = data.rotation;
+      if (typeof data.anchorX === "number") node.anchorX = data.anchorX;
+      if (typeof data.anchorY === "number") node.anchorY = data.anchorY;
+      if (typeof data.pivotX === "number") node.pivotX = data.pivotX;
+      if (typeof data.pivotY === "number") node.pivotY = data.pivotY;
+      if (typeof data.skewX === "number") node.skewX = data.skewX;
+      if (typeof data.skewY === "number") node.skewY = data.skewY;
       if (typeof data.alpha === "number") node.alpha = data.alpha;
       if (typeof data.visible === "boolean") node.visible = data.visible;
       if (typeof data.mouseEnabled === "boolean") node.mouseEnabled = data.mouseEnabled;

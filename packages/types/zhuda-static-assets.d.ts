@@ -15,6 +15,9 @@ export type StaticAssetCategory =
   | 'particle-emitter'
   | 'vfx-blueprint'
   | 'unity-migrated';
+export interface ZhudaBitmapGlyph { char: string; x: number; y: number; width: number; height: number; xOffset?: number; yOffset?: number; xAdvance: number; }
+export interface ZhudaBitmapFontManifest { schemaVersion: 1; id: string; textureId: string; fontSize: number; lineHeight: number; baseline: number; glyphs: readonly ZhudaBitmapGlyph[]; fallbackChar?: string; }
+export interface ZhudaBitmapFontValidationReport { passed: boolean; issues: string[]; glyphCount: number; missingCharacters: string[]; measuredWidth: number; }
 
 export interface LayaGraphicsCmdData {
   _$type:
@@ -83,6 +86,8 @@ export interface LayaHierarchyNodeData {
   scaleX?: number;
   scaleY?: number;
   rotation?: number;
+  skewX?: number;
+  skewY?: number;
   alpha?: number;
   visible?: boolean;
   mouseEnabled?: boolean;
@@ -93,9 +98,15 @@ export interface LayaHierarchyNodeData {
   bold?: boolean;
   align?: string;
   valign?: string;
+  wordWrap?: boolean;
+  overflow?: string;
   leading?: number;
+  letterSpacing?: number;
   stroke?: number;
   strokeColor?: string;
+  underline?: boolean;
+  underlineColor?: string;
+  strikethrough?: boolean;
   padding?: [number, number, number, number];
   skin?: string;
   sizeGrid?: string;

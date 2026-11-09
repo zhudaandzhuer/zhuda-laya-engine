@@ -3,6 +3,9 @@
 
 export * from './zhuda-core.ts';
 export * from './zhuda-2d-ui.ts';
+export * from './zhuda-layout.ts';
+export * from './zhuda-video.ts';
+export * from './zhuda-webview.ts';
 export * from './zhuda-3d-physics.ts';
 export * from './zhuda-spine42.ts';
 export * from './zhuda-static-assets.ts';

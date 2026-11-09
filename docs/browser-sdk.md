@@ -19,23 +19,26 @@ SDK 無法自行繞過政策，需用允許的附件資源或一般 HTTP 預覽�
 
 ## 固定版本與載入方式
 
-本次固定發行：**1.13.0**（電影取樣／光圈快門擷取、離線音軌、Meshopt 與 WebGPU 材質修正；保留 WebGL 與白牌）。
-[1.11.0 固定版本](https://game.qianlongxundao.com/apps/zhuda-engine-sdk/releases/d736a66a3dc72499963c6266914056da/)保留。
-[1.10.0 固定版本](https://game.qianlongxundao.com/apps/zhuda-engine-sdk/releases/d736a66a3dc72499963c6266914056da/)保留。
-[1.9.0 固定版本](https://game.qianlongxundao.com/apps/zhuda-engine-sdk/releases/d736a66a3dc72499963c6266914056da/)保留。
-[1.8.0 固定版本](https://game.qianlongxundao.com/apps/zhuda-engine-sdk/releases/d736a66a3dc72499963c6266914056da/)、
-[1.7.0 固定版本](https://game.qianlongxundao.com/apps/zhuda-engine-sdk/releases/d736a66a3dc72499963c6266914056da/)及 1.6.0 保留。
+本次固定發行：**1.15.0**（設計座標／DPR、文字與 BitmapFont、Laya 內嵌影片／WebView 生命週期契約；保留電影、WebGPU、WebGL 與白牌）。
+歷史固定版本仍保留，請依需求固定完整版本網址：
+[1.13.0](https://game.qianlongxundao.com/apps/zhuda-engine-sdk/releases/d736a66a3dc72499963c6266914056da/)、
+[1.11.0](https://game.qianlongxundao.com/apps/zhuda-engine-sdk/releases/00b72197334c12e756e8c7e812c927fd/)、
+[1.10.0](https://game.qianlongxundao.com/apps/zhuda-engine-sdk/releases/5d05c7177ff7fd71fd35114f3a324172/)、
+[1.9.0](https://game.qianlongxundao.com/apps/zhuda-engine-sdk/releases/c61d0a83b7094ff5055302d2f8235b8b/)、
+[1.8.0](https://game.qianlongxundao.com/apps/zhuda-engine-sdk/releases/02b2dc8ba9dea9d1f1cd43a37226641c/)、
+[1.7.0](https://game.qianlongxundao.com/apps/zhuda-engine-sdk/releases/e69ecb8850e43d172389f96ab0a9430e/)、
+[1.6.0](https://game.qianlongxundao.com/apps/zhuda-engine-sdk/releases/02b62daf1d3a8cdac423f35428454ce8/)。
 
-`https://game.qianlongxundao.com/apps/zhuda-engine-sdk/releases/d736a66a3dc72499963c6266914056da/`
+`https://game.qianlongxundao.com/apps/zhuda-engine-sdk/releases/9c61e10983b1ba814a16104b4e790f0b/`
 
 | 檔案 | 包含內容 | 未壓縮 bytes |
 | --- | --- | ---: |
-| `zhuda-2d.js` | core、2D WebGL、UI、公開 Zhuda SDK | 1,682,365 |
-| `zhuda-3d.js` | 上述內容加上 3D、3D WebGL | 2,443,999 |
-| `zhuda-3d-gltf.js` | 3D 加上 glTF、postProcess | 2,603,847 |
-| `zhuda-2d-webgpu.js` | 2D WebGPU、UI、內嵌 Shader WASM | 10,260,005 |
-| `zhuda-3d-webgpu.js` | 2D/3D WebGPU、UI、內嵌 Shader WASM | 11,284,846 |
-| `zhuda-3d-gltf-webgpu.js` | WebGPU 加上 glTF、postProcess、Shader WASM | 11,444,694 |
+| `zhuda-2d.js` | core、2D WebGL、UI、公開 Zhuda SDK | 1,695,399 |
+| `zhuda-3d.js` | 上述內容加上 3D、3D WebGL | 2,457,033 |
+| `zhuda-3d-gltf.js` | 3D 加上 glTF、postProcess | 2,616,881 |
+| `zhuda-2d-webgpu.js` | 2D WebGPU、UI、內嵌 Shader WASM | 10,273,039 |
+| `zhuda-3d-webgpu.js` | 2D/3D WebGPU、UI、內嵌 Shader WASM | 11,297,880 |
+| `zhuda-3d-gltf-webgpu.js` | WebGPU 加上 glTF、postProcess、Shader WASM | 11,457,728 |
 
 基本 2d／3d profile（含 WebGPU 變體）沒有打入額外的原生 Spine、物理、粒子、glTF 或其他 plugin。模型展示可選新增的 `3d-gltf` profile；
 [可複製的 HTML 模型檢視器](../examples/browser-sdk/3d-gltf.html)
@@ -52,8 +55,8 @@ WebGPU 用 [3D GPU 範本](../examples/browser-sdk/3d-webgpu.html)、[2D GPU 範
 
 ```html
 <script
-  src="https://game.qianlongxundao.com/apps/zhuda-engine-sdk/releases/d736a66a3dc72499963c6266914056da/zhuda-3d.js"
-  integrity="sha384-DBijLWO+a4DZvRHo0QRD++5P/t9No6LOXJqGYKi8i9GaifurhKLtuVFlSpXphP0C"
+  src="https://game.qianlongxundao.com/apps/zhuda-engine-sdk/releases/9c61e10983b1ba814a16104b4e790f0b/zhuda-3d.js"
+  integrity="sha384-5w1AXjxtR188sgMCZGjHy96UAhjV6kkgk0V3024wCvULx+DiB2MNcBPU2178LlvD"
   crossorigin="anonymous"></script>
 <script>
 const { ZhudaEngine, Zhuda3D } = Zhuda;

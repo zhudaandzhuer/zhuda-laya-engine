@@ -4,6 +4,9 @@
 export * from './zhuda-core';
 export * from './zhuda-bootstrap';
 export * from './zhuda-2d-ui';
+export * from './zhuda-layout';
+export * from './zhuda-video';
+export * from './zhuda-webview';
 export * from './zhuda-3d-physics';
 export * from './zhuda-spine42';
 export * from './zhuda-static-assets';
@@ -54,6 +57,38 @@ export declare class NoSleepAdapter {
   getDiagnostics(): import('./zhuda-core').NoSleepDiagnostics;
   dispose(): void;
 }
+
+export declare class ZhudaVideoSurface {
+  readonly node: Laya.VideoNode;
+  constructor(options: import('./zhuda-video').ZhudaVideoSurfaceOptions);
+  readonly mode: import('./zhuda-video').ZhudaVideoMode;
+  readonly source: string;
+  setSource(source: string): void;
+  play(): void;
+  pause(): void;
+  stop(): void;
+  diagnostics(): import('./zhuda-video').ZhudaVideoDiagnostics;
+  dispose(): void;
+}
+
+export declare class ZhudaWebViewSurface {
+  readonly anchor: Laya.Sprite;
+  constructor(options: import('./zhuda-webview').ZhudaWebViewSurfaceOptions);
+  readonly url: string;
+  readonly frame: import('./zhuda-webview').ZhudaWebViewFrame;
+  setUrl(url: string): void;
+  setFrame(frame: import('./zhuda-webview').ZhudaWebViewFrame): void;
+  setVisible(visible: boolean): void;
+  diagnostics(): import('./zhuda-webview').ZhudaWebViewDiagnostics;
+  dispose(): void;
+}
+
+export declare function computeZhudaGridLayout(spec: import('./zhuda-layout').ZhudaGridLayoutSpec): import('./zhuda-layout').ZhudaGridLayoutReport;
+export declare function computeZhudaTextLayout(spec: import('./zhuda-layout').ZhudaTextLayoutSpec): import('./zhuda-layout').ZhudaTextLayoutReport;
+export declare function validateZhudaBitmapFont(manifest: import('./zhuda-static-assets').ZhudaBitmapFontManifest, requiredText?: string): import('./zhuda-static-assets').ZhudaBitmapFontValidationReport;
+export declare function measureZhudaBitmapText(manifest: import('./zhuda-static-assets').ZhudaBitmapFontManifest, text: string): { width: number; height: number; lines: number };
+export declare function createZhudaBitmapFont(manifest: import('./zhuda-static-assets').ZhudaBitmapFontManifest, texture: Laya.Texture, requiredText?: string): Laya.BitmapFont;
+export declare function unregisterZhudaBitmapFont(id: string, destroy?: boolean): void;
 
 export type * from './zhuda-audio';
 export type * from './zhuda-branding';
