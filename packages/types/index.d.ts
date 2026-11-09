@@ -92,3 +92,4 @@ export declare function unregisterZhudaBitmapFont(id: string, destroy?: boolean)
 
 export type * from './zhuda-audio';
 export type * from './zhuda-branding';
+export type * from './editor-preview';

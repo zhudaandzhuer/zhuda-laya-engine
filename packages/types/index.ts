@@ -21,3 +21,4 @@ export * from "./terrain/index";
 export * from "./shaders/index";
 
 export type * from './zhuda-audio';
+export type * from './editor-preview';

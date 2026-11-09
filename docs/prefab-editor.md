@@ -53,6 +53,61 @@ and preview always refer to the selected source. Other files remain available
 as inspectable project assets and are served through the existing safe
 `/__project/` route. The engine never copies those assets into its repository.
 
+## Interactive Play preview
+
+**Agent View** controls the layout. **Play / Stop** controls interaction in both
+Agent and Editor View. Play creates a disposable instance from your current edit
+snapshot, hides the selection/pivot overlays and disables Inspector edits,
+editing drag, Save, Reload and Undo/Redo. Clicks and drags then reach the consumer
+controller. Stop (or Escape) disposes the controller and restores your existing
+unsaved edits and history. Runtime changes made during Play are never serialized
+back into the authored Prefab.
+
+To enable Play, put a consumer-owned `zhuda.editor.ts`, `zhuda.editor.mjs` or
+`zhuda.editor.js` at the selected project root. Alternatively pass an explicit
+project-relative module:
+
+```sh
+npx zhuda-prefab-editor --project /absolute/game \
+  --prefab assets/prefabs/panel.lh \
+  --preview-controller src/editor-preview.ts
+```
+
+Export `mount(context)` from that module:
+
+```ts
+import type { ZhudaPrefabEditorPreviewContext } from 'zhuda-laya-engine';
+
+export function mount(ctx: ZhudaPrefabEditorPreviewContext) {
+  const button = ctx.find('Button');
+  const label = ctx.find<Laya.Text>('Label');
+  ctx.root.mouseEnabled = true;
+  button.mouseEnabled = true;
+  ctx.listen(button, 'click', () => { label.text = 'Clicked'; });
+}
+```
+
+The context exposes the live `root`, `stage`, `canvas`, existing managed
+`runtime`, source `assetPath`, `signal`, named `find`, logical `assetUrl`, scoped
+`listen` and `onDispose`. A mount may return a `{ dispose() }` controller or a
+Promise of one. Register every resource with `onDispose` immediately, before
+awaiting work; honor `signal`. Stop, mount failure, the 15-second mount deadline,
+page hide and late asynchronous completion all retire owned resources. Page
+restoration returns to Edit. Restart the editor after changing controller code.
+
+The controller and editor import the same public SDK module and use one engine
+session; a controller must not call `ZhudaEngine.boot` or import engine internals.
+Use the existing `IframeSoundAdapter` for audio, with one mixer/playback authority
+and explicit disposal. The module is trusted consumer project code; its resources
+and external side effects belong to that consumer. Keep startup side effects
+inside `mount`, and do not save source files from a preview controller.
+
+Play stays disabled when no controller is configured. The engine supplies the
+interaction host; the consumer supplies the behavior for each supported asset.
+It does not automatically launch the game's Main, wallet/RGS or other scenes.
+The Game305 sound-panel adapter, for example, belongs in the Game305 project,
+with its sound assets and rules outside this engine repository.
+
 ## Save and safety behavior
 
 The server exposes only the selected project-relative Prefab and project assets
@@ -109,3 +164,10 @@ or competing pointers. The same command runs in CI and uploads its JSON report
 and screenshots. Loading successfully or having no runtime exceptions does not
 satisfy these position assertions. Physical devices and other browser engines
 still require separate acceptance.
+
+
+Run `npm run verify:prefab-editor-play` for the independent Play regression. It
+checks real native clicks and drags at DPR 1 / 1.5 / 2, Agent View/resize, edit
+isolation, history restoration, 30 start/stop cycles, page hide/restore, failing
+and timed-out mounts, and non-cooperative late completion. Unit tests also check
+scoped listener cleanup and the strict public consumer controller types.

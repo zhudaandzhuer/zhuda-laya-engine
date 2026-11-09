@@ -36,6 +36,7 @@ device checks and acceptance gates pass.
 | [SVG layout wireframes](records/layout-wireframe/task.md) | Accepted; CLI and consumer gate verified | Model-independent design-coordinate contracts, SVG overlays and self-contained layout preview |
 | [Project asset workspace](records/asset-browser/task.md) | Implemented within scope; API and build verified | Unity/Laya-style asset folders and cards shared by the Web editor; browser/device visual acceptance remains consumer-owned |
 | [3D model editor](records/model-editor-3d/task.md) | In progress; macOS WebGL verified | Public-provider GLB/glTF workspace with live Sprite3D hierarchy and same-instance presentation; Windows/mobile and seller-model acceptance remain pending |
+| [Prefab editor Play preview](records/prefab-editor-play/task.md) | Implemented within scope; desktop verified | Disposable Edit/Play instances, public consumer controllers, interaction isolation and lifecycle cleanup |
 | [Prefab editor coordinates](records/prefab-editor-coordinates/task.md) | Implemented within scope; 174 desktop checks | Retina container sizing, transformed selection/pivot, parent-local dragging and browser position assertions |
 | [Preview runtime hardening](preview-runtime-hardening.md) | Accepted; desktop/browser verified | Foreign Laya realm guard, explicit 2D-only editor profile and release-hidden Scene/3D showcase policy; external device and foreign-app integration remain separate checks |
 

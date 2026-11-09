@@ -1,5 +1,6 @@
-import { ZhudaEngine } from '../core/DeclarativeSDK.ts';
-import { ZhudaPrefab } from '../core/StaticAssetPipeline.ts';
+import { ZhudaEngine, ZhudaPrefab } from 'zhuda-laya-engine';
+import { PrefabEditorPreviewSession } from './prefab-editor-preview.ts';
+import type { ZhudaPrefabEditorPreviewModule } from '../types/editor-preview.ts';
 import type { LayaHierarchyNodeData } from '../types/index.ts';
 
 type JsonObject = LayaHierarchyNodeData & Record<string, any>;
@@ -19,6 +20,9 @@ type EditorState = {
   assetPath: string;
   drag?: { id: string; pointerId: number; canvas: HTMLCanvasElement; start: Laya.Point; before: JsonObject; x: number; y: number };
   loadSerial: number;
+  ready?: boolean;
+  preview?: PrefabEditorPreviewSession;
+  previewConfig?: { url: string; timeoutMs: number };
 };
 
 // Keep the Web Static Asset Editor on the minimal 2D topology. Scene files
@@ -118,8 +122,11 @@ function recordHistory() {
 }
 
 function updateHistoryButtons() {
-  ($('undo') as HTMLButtonElement).disabled = state.historyIndex <= 0;
-  ($('redo') as HTMLButtonElement).disabled = state.historyIndex < 0 || state.historyIndex >= state.history.length - 1;
+  const playing = Boolean(state.preview);
+  ($('save') as HTMLButtonElement).disabled = playing;
+  ($('reload') as HTMLButtonElement).disabled = playing;
+  ($('undo') as HTMLButtonElement).disabled = playing || state.historyIndex <= 0;
+  ($('redo') as HTMLButtonElement).disabled = playing || state.historyIndex < 0 || state.historyIndex >= state.history.length - 1;
 }
 
 function renderTree() {
@@ -131,7 +138,7 @@ function renderTree() {
     item.style.paddingLeft = `${8 + depth * 14}px`;
     item.dataset.nodeId = node._$id;
     item.innerHTML = `${text(node.name || node._$id)} <span class="type">${text(node._$type)}</span>`;
-    item.addEventListener('click', () => { finishDrag(false); state.selectedId = node._$id; renderTree(); renderInspector(); updateSelectionBox(); });
+    item.addEventListener('click', () => { if (state.preview) return; finishDrag(false); state.selectedId = node._$id; renderTree(); renderInspector(); updateSelectionBox(); });
     host.appendChild(item);
     for (const child of node._$child || []) render(child, depth + 1);
   };
@@ -173,6 +180,7 @@ function renderAssetFiles() {
     const detail = document.createElement('span'); detail.className = 'asset-detail'; detail.textContent = `${entry.kind} · ${formatAssetBytes(entry.bytes)}`;
     meta.append(name, detail); card.append(icon, meta); host.appendChild(card);
     card.addEventListener('click', () => {
+      if (state.preview) return;
       if (entry.kind === 'prefab' || entry.kind === 'scene') {
         const next = new URL(window.location.href);
         next.searchParams.set('prefab', entry.path);
@@ -229,6 +237,7 @@ const inspectorFields: Array<{ key: string; label: string; type: 'number' | 'tex
 ];
 
 function editProperty(key: string, raw: string | boolean) {
+  if (state.preview) return;
   const dataNode = findData(state.selectedId); const live = runtimeNode(state.selectedId);
   if (!dataNode || !live) return;
   let value: any = raw;
@@ -255,6 +264,7 @@ function renderInspector() {
     const row = document.createElement('div'); row.className = 'field';
     const label = document.createElement('label'); label.textContent = field.label; row.appendChild(label);
     const input = document.createElement('input'); input.type = field.type; input.value = field.type === 'checkbox' ? '' : text(dataNode[field.key] ?? (field.type === 'number' && ['scaleX', 'scaleY', 'alpha'].includes(field.key) ? field.key === 'alpha' ? 1 : 1 : 0));
+    input.disabled = Boolean(state.preview);
     if (field.type === 'number') input.step = field.step || 'any';
     if (field.type === 'checkbox') input.checked = dataNode[field.key] !== false;
     input.addEventListener('change', () => editProperty(field.key, field.type === 'checkbox' ? input.checked : input.value));
@@ -294,7 +304,7 @@ function updateSelectionBox() {
   const box = $('selection-box');
   const anchor = $('anchor-marker');
   const live = runtimeNode(state.selectedId);
-  if (!live || !state.context) { box.style.display = 'none'; anchor.style.display = 'none'; return; }
+  if (state.preview || !live || !state.context) { box.style.display = 'none'; anchor.style.display = 'none'; return; }
   const project = (x: number, y: number) => stageToOverlay(live.localToGlobal(new Laya.Point(x, y)));
   const origin = project(0, 0), xAxis = project(1, 0), yAxis = project(0, 1);
   // Three transformed points retain rotation, reflection, pivots and every
@@ -351,6 +361,8 @@ async function rebuild() {
 }
 
 async function loadFromServer(resetHistory = true) {
+  if (state.preview) return;
+  state.ready = false; updatePreviewUI();
   finishDrag(false);
   clearError();
   const requested = new URLSearchParams(window.location.search).get('prefab') || new URLSearchParams(window.location.search).get('asset');
@@ -368,11 +380,12 @@ async function loadFromServer(resetHistory = true) {
   const metaLabel = meta?.assetId && meta.assetId !== payload.path ? ` · ${meta.assetId}` : '';
   ($('path') as HTMLElement).textContent = `${payload.path}${metaLabel} · ${canvas?.width || state.data.width || 800}×${canvas?.height || state.data.height || 600}`;
   if (resetHistory) { state.history = [clone(state.data)]; state.historyIndex = 0; setDirty(false); }
-  if (state.context) await rebuild();
+  if (state.context) { await rebuild(); state.ready = true; updatePreviewUI(); }
   updateHistoryButtons();
 }
 
 async function saveToServer() {
+  if (state.preview) return;
   finishDrag(true);
   if (!state.data) return;
   clearError(); setStatus('Saving…');
@@ -384,6 +397,7 @@ async function saveToServer() {
 }
 
 async function moveHistory(delta: number) {
+  if (state.preview) return;
   finishDrag(false);
   const next = state.historyIndex + delta;
   if (next < 0 || next >= state.history.length) return;
@@ -394,7 +408,7 @@ function installDrag() {
   document.addEventListener('pointerdown', event => {
     const canvas = state.context?.canvas as HTMLCanvasElement | undefined;
     const node = runtimeNode(state.selectedId), before = findData(state.selectedId);
-    if (state.drag || event.button !== 0 || !canvas || event.target !== canvas || !node?.parent || !before) return;
+    if (state.preview || state.drag || event.button !== 0 || !canvas || event.target !== canvas || !node?.parent || !before) return;
     const start = pointerInParent(event, node);
     if (!start) return;
     state.drag = { id: state.selectedId, pointerId: event.pointerId, canvas, start, before: clone(before), x: node.x, y: node.y };
@@ -416,6 +430,63 @@ function installDrag() {
   document.addEventListener('lostpointercapture', event => { if (event.pointerId === state.drag?.pointerId) finishDrag(false); });
   window.addEventListener('blur', () => finishDrag(false));
   document.addEventListener('visibilitychange', () => { if (document.hidden) finishDrag(false); });
+}
+
+const editingHelp = document.querySelector('.stage-help')?.textContent || '';
+
+function updatePreviewUI() {
+  const playing = Boolean(state.preview);
+  document.body.classList.toggle('play-mode', playing);
+  const button = $('play') as HTMLButtonElement;
+  button.disabled = !state.ready || !state.context || !state.previewConfig;
+  button.textContent = playing ? '■ Stop' : '▶ Play';
+  button.title = state.previewConfig ? 'Run interactive preview; Stop restores your edits' : 'No interactive preview controller configured for this project';
+  button.setAttribute('aria-pressed', String(playing));
+  const help = document.querySelector('.stage-help');
+  if (help) help.textContent = playing ? 'Play：操作預覽中的控制項。Stop 後還原編輯狀態，互動變更不會寫入原始資產。' : editingHelp;
+  updateHistoryButtons(); renderInspector(); updateSelectionBox();
+}
+
+async function loadPreviewConfig() {
+  const response = await fetch('/api/editor', { cache: 'no-store' });
+  const config = await response.json();
+  if (!response.ok) throw Error(config.error || 'Unable to load preview configuration');
+  state.previewConfig = config.previewController ? { url: config.previewController.url, timeoutMs: config.previewTimeoutMs } : undefined;
+  updatePreviewUI();
+}
+
+async function stopPreview(rebuildRoot = true) {
+  const session = state.preview;
+  if (!session) return;
+  state.preview = undefined;
+  session.dispose(); ++state.loadSerial;
+  if (rebuildRoot) await rebuild();
+  if (!state.preview) { updatePreviewUI(); updateDirtyFromSource(); }
+  if (session.errors.length) showError(Error(`Preview cleanup failed: ${session.errors.map(String).join('; ')}`));
+}
+
+async function startPreview() {
+  if (!state.ready || state.preview || !state.previewConfig || !state.context || !state.data) return;
+  finishDrag(false); clearError();
+  const session = new PrefabEditorPreviewSession();
+  const config = state.previewConfig, assetPath = state.assetPath;
+  state.preview = session; updatePreviewUI(); setStatus('Starting preview…');
+  try {
+    await rebuild();
+    const root = state.root;
+    await session.mount(async () => {
+      const module: ZhudaPrefabEditorPreviewModule = await import(config.url);
+      if (session.signal.aborted) throw session.signal.reason;
+      if (typeof module.mount !== 'function') throw Error('Preview controller must export mount(context)');
+      const context = session.context({ root, assetPath, canvas: state.context.canvas,
+        stage: state.context.stage, runtime: state.context.runtime, assetUrl: encodedProjectUrl });
+      return module.mount(context);
+    }, config.timeoutMs);
+    if (state.preview === session) setStatus('Play · interactive preview');
+  } catch (error) {
+    if (state.preview !== session) return;
+    await stopPreview(); showError(error);
+  }
 }
 
 function applyAgentView() {
@@ -445,16 +516,22 @@ async function boot() {
     window.addEventListener('resize', () => requestAnimationFrame(fitStage));
     installDrag();
     await loadAssets();
+    await loadPreviewConfig();
     await rebuild();
+    state.ready = true; updatePreviewUI();
     requestAnimationFrame(fitStage);
     setStatus('Saved');
   } catch (error) { showError(error); }
 }
 
+$('play').addEventListener('click', () => void (state.preview ? stopPreview() : startPreview()).catch(showError));
+let restoreAfterPageShow = false;
+window.addEventListener('pagehide', () => { if (state.preview) { restoreAfterPageShow = true; void stopPreview(false); } });
+window.addEventListener('pageshow', () => { if (restoreAfterPageShow) { restoreAfterPageShow = false; void rebuild().then(() => { updatePreviewUI(); updateDirtyFromSource(); }).catch(showError); } });
 $('save').addEventListener('click', () => void saveToServer().catch(showError));
 $('reload').addEventListener('click', () => void loadFromServer(true).catch(showError));
 $('undo').addEventListener('click', () => void moveHistory(-1).catch(showError));
 $('redo').addEventListener('click', () => void moveHistory(1).catch(showError));
-window.addEventListener('keydown', event => { if (!(event.ctrlKey || event.metaKey)) return; if (event.key.toLowerCase() === 's') { event.preventDefault(); void saveToServer().catch(showError); } if (event.key.toLowerCase() === 'z') { event.preventDefault(); void moveHistory(event.shiftKey ? 1 : -1).catch(showError); } if (event.key.toLowerCase() === 'y') { event.preventDefault(); void moveHistory(1).catch(showError); } });
+window.addEventListener('keydown', event => { if (event.key === 'Escape' && state.preview) { event.preventDefault(); void stopPreview().catch(showError); return; } if (state.preview) { if ((event.ctrlKey || event.metaKey) && ['s', 'z', 'y'].includes(event.key.toLowerCase())) event.preventDefault(); return; } if (!(event.ctrlKey || event.metaKey)) return; if (event.key.toLowerCase() === 's') { event.preventDefault(); void saveToServer().catch(showError); } if (event.key.toLowerCase() === 'z') { event.preventDefault(); void moveHistory(event.shiftKey ? 1 : -1).catch(showError); } if (event.key.toLowerCase() === 'y') { event.preventDefault(); void moveHistory(1).catch(showError); } });
 applyAgentView();
 void boot();

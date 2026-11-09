@@ -38,6 +38,8 @@ export function parsePrefabEditorArgs(argv = process.argv.slice(2)) {
   const host = read('--host', '127.0.0.1');
   const port = Number(read('--port', '8891'));
   const engineRoot = path.resolve(read('--engine-root', defaultEngineRoot));
+  const previewController = read('--preview-controller');
+  if (argv.includes('--preview-controller') && (!previewController || previewController.startsWith('--'))) throw Error('--preview-controller needs a project-relative module path');
   if (!prefab || prefab.startsWith('/') || prefab.includes('\\') || prefab.split('/').some(part => !part || part === '.' || part === '..')) {
     throw Error('Use --prefab with a project-relative .lh or .ls path (for example assets/prefabs/rocket.lh)');
   }
@@ -45,7 +47,7 @@ export function parsePrefabEditorArgs(argv = process.argv.slice(2)) {
   if (!Number.isInteger(port) || port < 1 || port > 65535) throw Error('Invalid --port');
   if (!host || host.includes('/') || host.includes(':')) throw Error('Invalid --host');
   if (!fs.existsSync(project) || !fs.statSync(project).isDirectory()) throw Error(`Project does not exist: ${project}`);
-  return { project, projectRoot: project, prefab, host, port, engineRoot };
+  return { project, projectRoot: project, prefab, host, port, engineRoot, previewController };
 }
 
 function realPath(value) {
@@ -63,7 +65,7 @@ export function resolveProjectFile(projectRoot, relative, { mustExist = false } 
   }
   const file = path.resolve(root, relative);
   if (!inside(root, file)) throw Error('Path escapes project root');
-  if (mustExist && !fs.existsSync(file)) throw Error(`Prefab does not exist: ${relative}`);
+  if (mustExist && !fs.existsSync(file)) throw Error(`Project file does not exist: ${relative}`);
   if (fs.existsSync(file) && !inside(root, realPath(file))) throw Error('Symlinked path escapes project root');
   return file;
 }
@@ -205,7 +207,7 @@ function editorHtml(engineFiles, assetPath) {
 :root{color-scheme:dark;--bg:#0b1020;--panel:#111a2c;--line:#263858;--text:#e6edf7;--muted:#9db0c9;--accent:#63d8cf;--danger:#ff8f9c}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.4 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;height:100vh;overflow:hidden}
 button,input,select{font:inherit;color:inherit;background:#0c1424;border:1px solid var(--line);border-radius:6px;padding:7px 9px}button{cursor:pointer;white-space:nowrap}button:hover{border-color:var(--accent)}button:disabled{opacity:.45;cursor:not-allowed}
-.top{height:54px;display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--line);background:#0e172a}.top h1{font-size:16px;margin:0 12px 0 0;color:var(--accent);white-space:nowrap}.top .path{color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:80px}.status{min-width:110px;text-align:right;color:var(--muted)}.status.dirty{color:#ffd17a}.status.error{color:var(--danger)}
+.top{height:54px;display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--line);background:#0e172a}.top h1{font-size:16px;margin:0 12px 0 0;color:var(--accent);white-space:nowrap}.top .path{color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:80px}.status{min-width:110px;text-align:right;color:var(--muted)}.status.dirty{color:#ffd17a}.status.error{color:var(--danger)}.play-mode #play{border-color:var(--accent);color:var(--accent)}.play-mode #tree,.play-mode #asset-files{pointer-events:none;opacity:.6}.play-mode .selection-box,.play-mode .anchor-marker{display:none!important}
 .layout{height:calc(100vh - 54px);display:grid;grid-template-columns:minmax(190px,22vw) minmax(280px,1fr) minmax(250px,25vw);grid-template-rows:minmax(0,1fr) minmax(150px,22vh);gap:10px;padding:10px}.panel{background:var(--panel);border:1px solid var(--line);border-radius:9px;min-height:0;overflow:auto}.panel h2{font-size:13px;color:var(--accent);margin:0;padding:12px;border-bottom:1px solid var(--line)}#tree{padding:8px}.tree-node{padding:6px 8px;margin:2px 0;border-radius:5px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tree-node:hover{background:#192743}.tree-node.selected{background:#16434c;color:#fff}.tree-node .type{color:var(--muted);font-size:11px;margin-left:5px}
 .stage-panel{display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;padding:12px;background:repeating-conic-gradient(#121c30 0 25%,#0e1728 0 50%) 0/24px 24px}.stage-shell{box-sizing:content-box;position:relative;box-shadow:0 12px 35px #0008;border:1px solid #38527a;background:#0b1220;flex:0 0 auto}/* The runtime owns logical canvas sizing and the backing-to-CSS transform. */
 #stage{position:relative;width:100%;height:100%;overflow:hidden}.stage-shell canvas{display:block;max-width:none;max-height:none}.selection-box{position:absolute;border:1px dashed var(--accent);pointer-events:none;display:none}.anchor-marker{position:absolute;width:13px;height:13px;transform:translate(-50%,-50%);border:1px solid #ffd166;border-radius:50%;box-shadow:0 0 0 3px #ffd16633;pointer-events:none;display:none;z-index:2}.anchor-marker::before,.anchor-marker::after{content:"";position:absolute;background:#ffd166}.anchor-marker::before{left:5px;top:-5px;width:1px;height:21px}.anchor-marker::after{left:-5px;top:5px;width:21px;height:1px}.anchor-marker span{position:absolute;left:12px;top:-17px;color:#ffd166;font:10px ui-monospace,SFMono-Regular,Menlo,monospace;white-space:nowrap}.stage-help{width:min(800px,100%);padding:8px;color:var(--muted);font-size:12px;text-align:center}.inspector{padding-bottom:18px}.inspector .empty{padding:14px;color:var(--muted)}.field{display:grid;grid-template-columns:1fr minmax(90px,1fr);gap:8px;align-items:center;padding:7px 12px}.field label{color:var(--muted);font-size:12px}.field input[type=checkbox]{justify-self:start;width:18px;height:18px}.field input,.field select{width:100%;min-width:0}.note{margin:10px 12px;padding:9px;border:1px solid #3d4d6d;border-radius:6px;color:var(--muted);font-size:12px}.error{white-space:pre-wrap;margin:10px 12px;color:var(--danger)}code{color:#9be9df}
@@ -214,18 +216,39 @@ button,input,select{font:inherit;color:inherit;background:#0c1424;border:1px sol
 @media(max-width:980px){.top h1{font-size:14px}.top .path{display:none}.layout{grid-template-columns:minmax(170px,24vw) minmax(280px,1fr) minmax(220px,28vw);gap:6px;padding:6px}.stage-panel{padding:8px}.field{grid-template-columns:1fr}.field input[type=checkbox]{justify-self:start}.asset-body{grid-template-columns:150px minmax(0,1fr)}}
 @media(max-width:700px){body{overflow:auto}.top{height:auto;min-height:54px;flex-wrap:wrap}.status{margin-left:auto}.layout{height:auto;min-height:calc(100vh - 54px);display:flex;flex-direction:column}.stage-panel{order:-1;height:55vh;min-height:280px}.panel:not(.stage-panel){max-height:34vh}.asset-panel{order:4;min-height:190px;height:190px}.agent-view .layout{min-height:calc(100vh - 54px)}.agent-view .stage-panel{height:calc(100vh - 74px);min-height:0}}
 `;
-  return `<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Zhuda ${assetLabel} Editor</title><style>${css}</style></head><body><header class="top"><h1>豬大 ${assetLabel} Editor</h1><div class="path" id="path">Loading…</div><button id="agent-view" title="Fit the canvas for an agent screenshot">Agent View</button><button id="undo" title="Undo">↶ Undo</button><button id="redo" title="Redo">↷ Redo</button><button id="reload">Reload</button><button id="save">Save</button><div class="status" id="status">Loading…</div></header><main class="layout"><section class="panel"><h2>Hierarchy</h2><div id="tree"></div><div class="note">編輯目前選定的 ${assetPath.endsWith('.ls') ? '.ls Scene' : '.lh Prefab'}。預覽使用真正的 Zhuda/Laya runtime；拖曳座標以設計像素計算。</div></section><section class="panel stage-panel"><div class="stage-shell" id="stage-shell"><div id="stage"></div><div id="selection-box" class="selection-box"></div><div id="anchor-marker" class="anchor-marker"><span>anchor</span></div></div><div class="stage-help">拖曳選定節點移動位置。選取框會包住節點實際 bounds；黃色十字是 anchor/pivot。按 Save 寫回原始 ${assetPath.endsWith('.ls') ? '.ls' : '.lh'}，編輯器會先驗證並留下 .bak 備份。</div></section><section class="panel inspector"><h2>Inspector</h2><div id="inspector"><div class="empty">選擇一個節點開始編輯。</div></div><div id="error" class="error" role="alert"></div></section><section class="panel asset-panel" aria-label="Project Assets"><div class="asset-head"><h2>Assets</h2><span id="asset-count" class="asset-count">Loading…</span></div><div class="asset-body"><nav id="asset-folders" class="asset-folders" aria-label="Asset folders"></nav><section id="asset-files" class="asset-files" aria-label="Asset files"></section></div></section></main><script>window.__ZHUDA_EDITOR_ENGINE_FILES__=${JSON.stringify(engineFiles)};</script>${tags}<script type="module" src="/__editor/editor.js"></script></body></html>`;
+  return `<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Zhuda ${assetLabel} Editor</title><style>${css}</style></head><body><header class="top"><h1>豬大 ${assetLabel} Editor</h1><div class="path" id="path">Loading…</div><button id="play" disabled title="Loading preview controller">▶ Play</button><button id="agent-view" title="Fit the canvas for an agent screenshot">Agent View</button><button id="undo" title="Undo">↶ Undo</button><button id="redo" title="Redo">↷ Redo</button><button id="reload">Reload</button><button id="save">Save</button><div class="status" id="status">Loading…</div></header><main class="layout"><section class="panel"><h2>Hierarchy</h2><div id="tree"></div><div class="note">編輯目前選定的 ${assetPath.endsWith('.ls') ? '.ls Scene' : '.lh Prefab'}。預覽使用真正的 Zhuda/Laya runtime；拖曳座標以設計像素計算。</div></section><section class="panel stage-panel"><div class="stage-shell" id="stage-shell"><div id="stage"></div><div id="selection-box" class="selection-box"></div><div id="anchor-marker" class="anchor-marker"><span>anchor</span></div></div><div class="stage-help">拖曳選定節點移動位置。選取框會包住節點實際 bounds；黃色十字是 anchor/pivot。按 Save 寫回原始 ${assetPath.endsWith('.ls') ? '.ls' : '.lh'}，編輯器會先驗證並留下 .bak 備份。</div></section><section class="panel inspector"><h2>Inspector</h2><div id="inspector"><div class="empty">選擇一個節點開始編輯。</div></div><div id="error" class="error" role="alert"></div></section><section class="panel asset-panel" aria-label="Project Assets"><div class="asset-head"><h2>Assets</h2><span id="asset-count" class="asset-count">Loading…</span></div><div class="asset-body"><nav id="asset-folders" class="asset-folders" aria-label="Asset folders"></nav><section id="asset-files" class="asset-files" aria-label="Asset files"></section></div></section></main><script>window.__ZHUDA_EDITOR_ENGINE_FILES__=${JSON.stringify(engineFiles)};</script>${tags}<script type="module" src="/__editor/editor.js"></script></body></html>`;
+}
+
+// Share the same public SDK module between the editor and consumer controller.
+// No controller may import a second engine copy through a private subpath.
+const previewSdkPlugin = {
+  name: 'editor-public-sdk',
+  setup(build) {
+    build.onResolve({ filter: /^zhuda-laya-engine$/ }, () => ({ path: '/__editor/sdk.js', external: true }));
+    build.onResolve({ filter: /^zhuda-laya-engine\// }, args => ({ errors: [{ text: `Preview controllers must import the public zhuda-laya-engine entry: ${args.path}` }] }));
+  },
+};
+
+export async function buildPrefabEditorController({ projectRoot, previewController } = {}) {
+  const project = realPath(projectRoot);
+  const selected = previewController ?? (['zhuda.editor.ts', 'zhuda.editor.mjs', 'zhuda.editor.js'].find(file => fs.existsSync(path.join(project, file))) ?? null);
+  if (!selected) return null;
+  if (!/\.(?:ts|js|mjs)$/.test(selected)) throw Error('Preview controller must be a project-relative .ts, .js or .mjs module');
+  const entry = resolveProjectFile(project, selected, { mustExist: true });
+  const result = await esbuild.build({ entryPoints: [entry], bundle: true, format: 'esm', platform: 'browser', target: 'es2020', write: false, sourcemap: 'inline', absWorkingDir: project, plugins: [previewSdkPlugin], logLevel: 'silent' });
+  const code = result.outputFiles[0].text;
+  return { code, path: path.relative(project, entry).split(path.sep).join('/'), url: `/__editor/preview-controller.js?v=${sha256(code)}` };
 }
 
 export async function buildPrefabEditorBundle({ engineRoot = defaultEngineRoot } = {}) {
   engineRoot = path.resolve(engineRoot);
   const candidate = path.join(engineRoot, 'packages', 'compiler', 'prefab-editor-client.ts');
   const entry = fs.existsSync(candidate) ? candidate : path.join(moduleDir, 'prefab-editor-client.ts');
-  const result = await esbuild.build({ entryPoints: [entry], bundle: true, format: 'esm', platform: 'browser', target: 'es2020', write: false, sourcemap: 'inline', absWorkingDir: engineRoot, logLevel: 'silent' });
+  const result = await esbuild.build({ entryPoints: [entry], bundle: true, format: 'esm', platform: 'browser', target: 'es2020', write: false, sourcemap: 'inline', absWorkingDir: engineRoot, plugins: [previewSdkPlugin], logLevel: 'silent' });
   return result.outputFiles[0].text;
 }
 
-export async function createPrefabEditorServer({ projectRoot, prefab, engineRoot = defaultEngineRoot, host = '127.0.0.1', port = 8891, historyLimit = 10, bundle } = {}) {
+export async function createPrefabEditorServer({ projectRoot, prefab, engineRoot = defaultEngineRoot, host = '127.0.0.1', port = 8891, historyLimit = 10, bundle, previewController, previewTimeoutMs = 15000 } = {}) {
   const project = realPath(projectRoot || process.cwd());
   const initialSelection = selectedPrefabPath(project, String(prefab), String(prefab));
   const engine = realPath(engineRoot);
@@ -233,6 +256,10 @@ export async function createPrefabEditorServer({ projectRoot, prefab, engineRoot
   const engineFiles = PREFAB_EDITOR_ENGINE_FILES;
   for (const file of engineFiles) if (!fs.existsSync(path.join(engineLibRoot, file))) throw Error(`Missing pinned engine library: ${file}`);
   const editorBundle = bundle ?? await buildPrefabEditorBundle({ engineRoot: engine });
+  if (!Number.isSafeInteger(previewTimeoutMs) || previewTimeoutMs < 1 || previewTimeoutMs > 60000) throw Error('Invalid preview timeout');
+  const controller = await buildPrefabEditorController({ projectRoot: project, previewController });
+  const sdkFile = path.join(engine, 'dist', 'sdk', 'zhuda-laya-engine.esm.js');
+  if (!fs.existsSync(sdkFile)) throw Error('Editor SDK bundle missing; run npm run build in the engine');
   const initial = await readJson(initialSelection.file);
   let revision = sha256(initial.bytes);
   const history = [];
@@ -252,6 +279,7 @@ export async function createPrefabEditorServer({ projectRoot, prefab, engineRoot
   const server = http.createServer(async (request, response) => {
     try {
       const url = new URL(request.url || '/', 'http://localhost');
+      if (url.pathname === '/api/editor' && request.method === 'GET') { json(response, 200, { previewController: controller ? { path: controller.path, url: controller.url } : null, previewTimeoutMs }); return; }
       if (url.pathname === '/api/prefab' && request.method === 'GET') {
         const selection = selectedPrefabPath(project, url, initialSelection.path);
         const current = await readJson(selection.file); revision = sha256(current.bytes);
@@ -286,6 +314,8 @@ export async function createPrefabEditorServer({ projectRoot, prefab, engineRoot
         const html = editorHtml(engineFiles, selection.path);
         response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }); response.end(html); return;
       }
+      if (url.pathname === '/__editor/sdk.js') { await respondStatic(path.dirname(sdkFile), path.basename(sdkFile), response); return; }
+      if (url.pathname === '/__editor/preview-controller.js' && controller) { response.writeHead(200, { 'Content-Type': 'text/javascript; charset=utf-8', 'Cache-Control': 'no-store' }); response.end(controller.code); return; }
       if (url.pathname === '/__editor/editor.js') { response.writeHead(200, { 'Content-Type': 'text/javascript; charset=utf-8', 'Cache-Control': 'no-store' }); response.end(editorBundle); return; }
       if (url.pathname.startsWith('/__editor/engine/')) { await respondStatic(engineLibRoot, url.pathname.slice('/__editor/engine/'.length), response); return; }
       if (url.pathname.startsWith('/__project/')) { await respondStatic(project, url.pathname.slice('/__project/'.length), response); return; }
