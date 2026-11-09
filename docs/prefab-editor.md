@@ -32,8 +32,11 @@ libraries from the engine, boots a real WebGL canvas at the asset's authored
 `designCanvas` size, and displays the selected `.lh` or `.ls` hierarchy. The left panel selects named nodes, the right panel edits
 common 2D properties, and dragging a node changes its design/CSS-pixel
 position. `Ctrl/Cmd-S` saves; `Undo`, `Redo` and `Reload` are available in the
-top bar. The canvas automatically fits the available CSS viewport while
-retaining design coordinates. Use `Agent View` (or open `/?view=agent`) to
+top bar. The toolbar wraps to the actual available editor width. Narrow Editor
+views stack the preview above vertically scrollable hierarchy, Inspector and
+Assets panels. Agent View uses the full remaining area below the toolbar.
+The canvas fits its preview panel while retaining design coordinates; resizing
+an embedded pane or changing toolbar/help height also recomputes the fit. Use `Agent View` (or open `/?view=agent`) to
 hide the side panels and fit the complete Prefab into one screenshot for visual
 review. The selected-node outline follows the node's local rectangle through every
 ancestor's translation, scale, rotation and pivot, including mirrored parents.
@@ -171,3 +174,13 @@ checks real native clicks and drags at DPR 1 / 1.5 / 2, Agent View/resize, edit
 isolation, history restoration, 30 start/stop cycles, page hide/restore, failing
 and timed-out mounts, and non-cooperative late completion. Unit tests also check
 scoped listener cleanup and the strict public consumer controller types.
+
+
+Run `npm run verify:prefab-editor-responsive` for the full editor layout gate.
+It checks that toolbar actions are visible and reachable, panels remain
+accessible without horizontal overflow, and actual image pixels at all four
+canvas corners remain visible. Coverage includes widths 320–1440, a 240px-high
+window, DPR 1 / 1.5 / 2, actual Chrome zoom 125% / 150% / 200%, host/container
+width changes without an outer window resize, dynamic toolbar height and native
+Play clicks after fitting. This checks the surrounding editor UI as well as
+the canvas; canvas coordinate tests alone do not prove toolbar visibility.

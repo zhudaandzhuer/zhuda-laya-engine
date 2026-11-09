@@ -273,6 +273,29 @@ function renderInspector() {
   if (dataNode.skin) { const row = document.createElement('div'); row.className = 'note'; row.textContent = `Skin: ${dataNode.skin}`; host.appendChild(row); }
 }
 
+let fitFrame = 0;
+function scheduleFitStage() {
+  if (fitFrame) return;
+  fitFrame = requestAnimationFrame(() => { fitFrame = 0; fitStage(); });
+}
+
+function installResponsiveLayout() {
+  const observer = new ResizeObserver(scheduleFitStage);
+  const panel = document.querySelector('.stage-panel'), help = document.querySelector('.stage-help');
+  if (panel) observer.observe(panel);
+  if (help) observer.observe(help);
+  window.addEventListener('resize', scheduleFitStage);
+  window.visualViewport?.addEventListener('resize', scheduleFitStage);
+  const cleanup = (event: PageTransitionEvent) => {
+    if (event.persisted) return;
+    observer.disconnect(); cancelAnimationFrame(fitFrame); fitFrame = 0;
+    window.removeEventListener('resize', scheduleFitStage);
+    window.visualViewport?.removeEventListener('resize', scheduleFitStage);
+    window.removeEventListener('pagehide', cleanup);
+  };
+  window.addEventListener('pagehide', cleanup);
+}
+
 function fitStage() {
   const panel = document.querySelector('.stage-panel') as HTMLElement | null;
   if (!panel) return;
@@ -501,7 +524,7 @@ function applyAgentView() {
     if (agent) next.delete('view'); else next.set('view', 'agent');
     history.replaceState(null, '', `${location.pathname}${next.toString() ? `?${next}` : ''}`);
     applyAgentView();
-    requestAnimationFrame(fitStage);
+    scheduleFitStage();
   };
 }
 
@@ -513,13 +536,13 @@ async function boot() {
     fitStage();
     state.context = await ZhudaEngine.boot({ container: '#stage', width: state.designWidth, height: state.designHeight, designSize: { width: state.designWidth, height: state.designHeight }, dprCap: Math.min(window.devicePixelRatio || 1, 2), features: [...PREFAB_EDITOR_FEATURES], renderer: 'webgl', bgColor: '#0b1220', onResize: () => updateSelectionBox() });
     applyAgentView();
-    window.addEventListener('resize', () => requestAnimationFrame(fitStage));
+    installResponsiveLayout();
     installDrag();
     await loadAssets();
     await loadPreviewConfig();
     await rebuild();
     state.ready = true; updatePreviewUI();
-    requestAnimationFrame(fitStage);
+    scheduleFitStage();
     setStatus('Saved');
   } catch (error) { showError(error); }
 }

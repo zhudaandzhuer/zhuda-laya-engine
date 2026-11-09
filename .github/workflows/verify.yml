@@ -22,6 +22,7 @@ jobs:
         with:
           name: prefab-browser-evidence
           path: /tmp/zhuda-prefab-browser/evidence/
+      - run: EDITOR_RESPONSIVE_EVIDENCE_DIR=/tmp/zhuda-prefab-editor/responsive npm run verify:prefab-editor-responsive
       - run: EDITOR_EVIDENCE_DIR=/tmp/zhuda-prefab-editor npm run verify:prefab-editor
       - run: EDITOR_PLAY_EVIDENCE_DIR=/tmp/zhuda-prefab-editor/play npm run verify:prefab-editor-play
       - uses: actions/upload-artifact@v4
