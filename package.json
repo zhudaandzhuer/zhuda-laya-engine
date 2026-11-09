@@ -104,6 +104,7 @@
     "start": "python3 -m http.server 8890 --bind 127.0.0.1 --directory dist/web",
     "types:runtime3d": "node packages/compiler/runtime3d-types.mjs",
     "build:browser": "node packages/compiler/browser-sdk.mjs",
+    "verify:prefab-editor": "node scripts/verify-prefab-editor-browser.mjs",
     "verify:webgpu": "node scripts/verify-webgpu.mjs",
     "verify:webgpu-consumer": "node scripts/verify-webgpu-consumer.mjs",
     "verify:cinematic": "node scripts/verify-cinematic.mjs",

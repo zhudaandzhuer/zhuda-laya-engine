@@ -3,7 +3,8 @@ import path from "node:path";
 import os from "node:os";
 import { spawn } from "node:child_process";
 /** Isolated headless Chrome for reproducible engine integration tests. */
-export async function chromeFixture() {
+export async function chromeFixture({ zoomFactor = 1 } = {}) {
+  if (!Number.isFinite(zoomFactor) || zoomFactor < 0.25 || zoomFactor > 5) throw Error("Invalid Chrome zoom factor");
   const binary =
     process.env.CHROME_BIN ||
     [
@@ -16,6 +17,12 @@ export async function chromeFixture() {
   const profile = fs.mkdtempSync(
     path.join(os.tmpdir(), "zhuda-runtime-browser-"),
   );
+  // Chrome's real desktop page zoom (not CDP pinch/visual-viewport scaling).
+  // Default partition key: chromium/src/chrome/browser/ui/zoom/chrome_zoom_level_prefs.cc.
+  fs.mkdirSync(path.join(profile, "Default"), { recursive: true });
+  fs.writeFileSync(path.join(profile, "Default", "Preferences"), JSON.stringify({
+    partition: { default_zoom_level: { x: Math.log(zoomFactor) / Math.log(1.2) } },
+  }));
   const child = spawn(
     binary,
     [

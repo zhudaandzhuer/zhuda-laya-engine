@@ -1,7 +1,8 @@
 import { ZhudaEngine } from '../core/DeclarativeSDK.ts';
 import { ZhudaPrefab } from '../core/StaticAssetPipeline.ts';
+import type { LayaHierarchyNodeData } from '../types/index.ts';
 
-type JsonObject = Record<string, any>;
+type JsonObject = LayaHierarchyNodeData & Record<string, any>;
 type AssetEntry = { path: string; kind: string; bytes: number; sha256: string };
 type EditorState = {
   data: JsonObject | null;
@@ -13,11 +14,10 @@ type EditorState = {
   historyIndex: number;
   savedData: JsonObject | null;
   dirty: boolean;
-  stageScale: number;
   designWidth: number;
   designHeight: number;
   assetPath: string;
-  drag?: { startX: number; startY: number; before: JsonObject; scaleX: number; scaleY: number };
+  drag?: { id: string; pointerId: number; canvas: HTMLCanvasElement; start: Laya.Point; before: JsonObject; x: number; y: number };
   loadSerial: number;
 };
 
@@ -26,7 +26,7 @@ type EditorState = {
 // must not inflate every 2D artist preview.
 const PREFAB_EDITOR_FEATURES = ['core', '2d', 'ui'] as const;
 
-const state: EditorState = { data: null, revision: '', root: null, context: null, selectedId: '', history: [], historyIndex: -1, savedData: null, dirty: false, stageScale: 1, designWidth: 800, designHeight: 600, assetPath: '', loadSerial: 0 };
+const state: EditorState = { data: null, revision: '', root: null, context: null, selectedId: '', history: [], historyIndex: -1, savedData: null, dirty: false, designWidth: 800, designHeight: 600, assetPath: '', loadSerial: 0 };
 const $ = (id: string) => document.getElementById(id)!;
 const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value));
 const text = (value: unknown) => String(value ?? '');
@@ -131,7 +131,7 @@ function renderTree() {
     item.style.paddingLeft = `${8 + depth * 14}px`;
     item.dataset.nodeId = node._$id;
     item.innerHTML = `${text(node.name || node._$id)} <span class="type">${text(node._$type)}</span>`;
-    item.addEventListener('click', () => { state.selectedId = node._$id; renderTree(); renderInspector(); updateSelectionBox(); });
+    item.addEventListener('click', () => { finishDrag(false); state.selectedId = node._$id; renderTree(); renderInspector(); updateSelectionBox(); });
     host.appendChild(item);
     for (const child of node._$child || []) render(child, depth + 1);
   };
@@ -265,43 +265,78 @@ function renderInspector() {
 
 function fitStage() {
   const panel = document.querySelector('.stage-panel') as HTMLElement | null;
-  const shell = $('stage-shell') as HTMLElement;
-  const canvas = state.context?.canvas as HTMLCanvasElement | undefined;
-  if (!panel || !canvas) return;
+  if (!panel) return;
+  const shell = $('stage-shell');
   const help = document.querySelector('.stage-help') as HTMLElement | null;
-  const availableWidth = Math.max(160, panel.clientWidth - 24);
-  const availableHeight = Math.max(160, panel.clientHeight - (help?.offsetHeight || 0) - 24);
+  const style = getComputedStyle(panel);
+  const availableWidth = Math.max(1, panel.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight) - 2);
+  const availableHeight = Math.max(1, panel.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom) - (help?.offsetHeight || 0) - 2);
   const scale = Math.min(1, availableWidth / state.designWidth, availableHeight / state.designHeight);
-  const width = Math.max(1, Math.floor(state.designWidth * scale));
-  const height = Math.max(1, Math.floor(state.designHeight * scale));
-  state.stageScale = scale;
-  shell.style.width = `${width}px`;
-  shell.style.height = `${height}px`;
-  canvas.style.width = `${width}px`;
-  canvas.style.height = `${height}px`;
+  // Resize the container, not the managed Retina canvas. Laya owns its backing
+  // dimensions, native CSS transform and corresponding input transform.
+  shell.style.width = `${Math.max(1, state.designWidth * scale)}px`;
+  shell.style.height = `${Math.max(1, state.designHeight * scale)}px`;
+  state.context?.resize();
   updateSelectionBox();
 }
 
+function stageToOverlay(point: Laya.Point) {
+  const canvas = state.context.canvas.getBoundingClientRect();
+  const shell = $('stage-shell');
+  const origin = shell.getBoundingClientRect();
+  return {
+    x: canvas.left - origin.left - shell.clientLeft + point.x * canvas.width / state.context.stage.width,
+    y: canvas.top - origin.top - shell.clientTop + point.y * canvas.height / state.context.stage.height,
+  };
+}
+
 function updateSelectionBox() {
-  const box = $('selection-box') as HTMLElement;
-  const anchor = $('anchor-marker') as HTMLElement;
-  const live = runtimeNode(state.selectedId); const canvas = state.context?.canvas;
-  if (!live || !canvas) { box.style.display = 'none'; anchor.style.display = 'none'; return; }
-  const shell = $('stage-shell') as HTMLElement;
-  const scaleX = shell.clientWidth / state.designWidth || state.stageScale; const scaleY = shell.clientHeight / state.designHeight || state.stageScale;
-  const widthLocal = Math.max(0, Number(live.width || 0)); const heightLocal = Math.max(0, Number(live.height || 0));
-  const nodeScaleX = Number(live.scaleX) || 1; const nodeScaleY = Number(live.scaleY) || 1;
-  const anchorX = Number(live.anchorX) || 0; const anchorY = Number(live.anchorY) || 0;
-  const pivotX = Number.isFinite(Number(live.pivotX)) ? Number(live.pivotX) : widthLocal * anchorX;
-  const pivotY = Number.isFinite(Number(live.pivotY)) ? Number(live.pivotY) : heightLocal * anchorY;
-  const width = widthLocal * Math.abs(nodeScaleX) * scaleX; const height = heightLocal * Math.abs(nodeScaleY) * scaleY;
-  const left = (Number(live.x || 0) - pivotX * nodeScaleX) * scaleX;
-  const top = (Number(live.y || 0) - pivotY * nodeScaleY) * scaleY;
-  box.style.display = 'block'; box.style.left = `${left}px`; box.style.top = `${top}px`; box.style.width = `${Math.max(1, width)}px`; box.style.height = `${Math.max(1, height)}px`;
-  anchor.style.display = 'block'; anchor.style.left = `${Number(live.x || 0) * scaleX}px`; anchor.style.top = `${Number(live.y || 0) * scaleY}px`;
+  const box = $('selection-box');
+  const anchor = $('anchor-marker');
+  const live = runtimeNode(state.selectedId);
+  if (!live || !state.context) { box.style.display = 'none'; anchor.style.display = 'none'; return; }
+  const project = (x: number, y: number) => stageToOverlay(live.localToGlobal(new Laya.Point(x, y)));
+  const origin = project(0, 0), xAxis = project(1, 0), yAxis = project(0, 1);
+  // Three transformed points retain rotation, reflection, pivots and every
+  // ancestor transform. A local x/y rectangle cannot represent nested bounds.
+  box.style.display = 'block'; box.style.left = '0px'; box.style.top = '0px';
+  box.style.width = `${Math.max(0, live.width)}px`; box.style.height = `${Math.max(0, live.height)}px`;
+  box.style.transformOrigin = '0 0';
+  box.style.transform = `matrix(${xAxis.x - origin.x},${xAxis.y - origin.y},${yAxis.x - origin.x},${yAxis.y - origin.y},${origin.x},${origin.y})`;
+  const pivot = project(live.pivotX, live.pivotY);
+  anchor.style.display = 'block'; anchor.style.left = `${pivot.x}px`; anchor.style.top = `${pivot.y}px`;
+}
+
+function pointerInParent(event: PointerEvent, node: any): Laya.Point | undefined {
+  const rect = state.context.canvas.getBoundingClientRect();
+  if (!rect.width || !rect.height) return;
+  const point = new Laya.Point((event.clientX - rect.left) * state.context.stage.width / rect.width,
+    (event.clientY - rect.top) * state.context.stage.height / rect.height);
+  const local = node.parent.globalToLocal(point);
+  // A zero-scale ancestor has no inverse; ignore the gesture without writing NaN.
+  if (Number.isFinite(local.x) && Number.isFinite(local.y)) return local;
+}
+
+function finishDrag(commit: boolean) {
+  const drag = state.drag;
+  if (!drag) return;
+  state.drag = undefined;
+  if (!commit) {
+    const data = findData(drag.id), live = runtimeNode(drag.id);
+    if (data && live) {
+      for (const key of ['x', 'y']) {
+        if (Object.hasOwn(drag.before, key)) data[key] = drag.before[key];
+        else delete data[key];
+      }
+      live.x = drag.x; live.y = drag.y;
+    }
+  } else recordHistory();
+  if (drag.canvas.hasPointerCapture(drag.pointerId)) drag.canvas.releasePointerCapture(drag.pointerId);
+  updateDirtyFromSource(); renderInspector(); updateSelectionBox();
 }
 
 async function rebuild() {
+  finishDrag(false);
   if (!state.data || !state.context) return;
   const serial = ++state.loadSerial;
   if (state.root) { state.root.destroy?.(true); state.root = null; }
@@ -312,10 +347,11 @@ async function rebuild() {
   state.root = ZhudaPrefab.instantiate(preview, state.context.rootScene);
   indexRuntime(state.root, state.data);
   ZhudaEngine.flushRenderFrames(4);
-  renderTree(); renderInspector(); updateSelectionBox();
+  renderTree(); renderInspector(); fitStage();
 }
 
 async function loadFromServer(resetHistory = true) {
+  finishDrag(false);
   clearError();
   const requested = new URLSearchParams(window.location.search).get('prefab') || new URLSearchParams(window.location.search).get('asset');
   const endpoint = requested ? `/api/prefab?prefab=${encodeURIComponent(requested)}` : '/api/prefab';
@@ -337,6 +373,7 @@ async function loadFromServer(resetHistory = true) {
 }
 
 async function saveToServer() {
+  finishDrag(true);
   if (!state.data) return;
   clearError(); setStatus('Saving…');
   const response = await fetch('/api/save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path: state.assetPath, baseRevision: state.revision, prefab: state.data }) });
@@ -347,26 +384,38 @@ async function saveToServer() {
 }
 
 async function moveHistory(delta: number) {
+  finishDrag(false);
   const next = state.historyIndex + delta;
   if (next < 0 || next >= state.history.length) return;
   state.historyIndex = next; state.data = clone(state.history[next]); state.selectedId = state.data._$id; await rebuild(); updateDirtyFromSource(); updateHistoryButtons();
 }
 
 function installDrag() {
-  const canvas = () => state.context?.canvas as HTMLCanvasElement | undefined;
   document.addEventListener('pointerdown', event => {
-    const target = event.target as Node | null; const currentCanvas = canvas(); const node = runtimeNode(state.selectedId);
-    if (!currentCanvas || !node || !target || !currentCanvas.contains(target)) return;
-    const rect = currentCanvas.getBoundingClientRect(); state.drag = { startX: event.clientX, startY: event.clientY, before: clone(findData(state.selectedId)), scaleX: rect.width / state.designWidth, scaleY: rect.height / state.designHeight };
-    currentCanvas.setPointerCapture?.(event.pointerId); event.preventDefault();
+    const canvas = state.context?.canvas as HTMLCanvasElement | undefined;
+    const node = runtimeNode(state.selectedId), before = findData(state.selectedId);
+    if (state.drag || event.button !== 0 || !canvas || event.target !== canvas || !node?.parent || !before) return;
+    const start = pointerInParent(event, node);
+    if (!start) return;
+    state.drag = { id: state.selectedId, pointerId: event.pointerId, canvas, start, before: clone(before), x: node.x, y: node.y };
+    canvas.setPointerCapture(event.pointerId); event.preventDefault();
   });
   document.addEventListener('pointermove', event => {
-    if (!state.drag) return; const dataNode = findData(state.selectedId); const node = runtimeNode(state.selectedId); if (!dataNode || !node) return;
-    dataNode.x = Number(state.drag.before.x || 0) + (event.clientX - state.drag.startX) / (state.drag.scaleX || 1);
-    dataNode.y = Number(state.drag.before.y || 0) + (event.clientY - state.drag.startY) / (state.drag.scaleY || 1);
-    node.x = dataNode.x; node.y = dataNode.y; updateSelectionBox(); renderInspector(); setDirty(true);
+    const drag = state.drag;
+    if (!drag || event.pointerId !== drag.pointerId) return;
+    const data = findData(drag.id), node = runtimeNode(drag.id);
+    if (!data || !node?.parent) return;
+    const point = pointerInParent(event, node);
+    if (!point) return;
+    data.x = drag.x + point.x - drag.start.x; data.y = drag.y + point.y - drag.start.y;
+    node.x = data.x; node.y = data.y;
+    updateSelectionBox(); renderInspector(); updateDirtyFromSource();
   });
-  document.addEventListener('pointerup', () => { if (!state.drag) return; state.drag = undefined; recordHistory(); });
+  document.addEventListener('pointerup', event => { if (event.pointerId === state.drag?.pointerId) finishDrag(true); });
+  document.addEventListener('pointercancel', event => { if (event.pointerId === state.drag?.pointerId) finishDrag(false); });
+  document.addEventListener('lostpointercapture', event => { if (event.pointerId === state.drag?.pointerId) finishDrag(false); });
+  window.addEventListener('blur', () => finishDrag(false));
+  document.addEventListener('visibilitychange', () => { if (document.hidden) finishDrag(false); });
 }
 
 function applyAgentView() {
@@ -390,8 +439,8 @@ async function boot() {
     // Read the static asset first so .ls Scenes boot at their authored design
     // size instead of being clipped into the Prefab editor's old 800×600 box.
     await loadFromServer(true);
-    state.context = await ZhudaEngine.boot({ container: '#stage', width: state.designWidth, height: state.designHeight, designSize: { width: state.designWidth, height: state.designHeight }, dprCap: Math.min(window.devicePixelRatio || 1, 2), features: [...PREFAB_EDITOR_FEATURES], renderer: 'webgl', bgColor: '#0b1220' });
-    state.context.canvas.style.width = `${state.designWidth}px`; state.context.canvas.style.height = `${state.designHeight}px`; state.context.canvas.style.display = 'block';
+    fitStage();
+    state.context = await ZhudaEngine.boot({ container: '#stage', width: state.designWidth, height: state.designHeight, designSize: { width: state.designWidth, height: state.designHeight }, dprCap: Math.min(window.devicePixelRatio || 1, 2), features: [...PREFAB_EDITOR_FEATURES], renderer: 'webgl', bgColor: '#0b1220', onResize: () => updateSelectionBox() });
     applyAgentView();
     window.addEventListener('resize', () => requestAnimationFrame(fitStage));
     installDrag();

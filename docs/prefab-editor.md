@@ -35,10 +35,15 @@ position. `Ctrl/Cmd-S` saves; `Undo`, `Redo` and `Reload` are available in the
 top bar. The canvas automatically fits the available CSS viewport while
 retaining design coordinates. Use `Agent View` (or open `/?view=agent`) to
 hide the side panels and fit the complete Prefab into one screenshot for visual
-review. The selected-node outline is computed from the node's size, scale and
-anchor/pivot, so a centered image is outlined around its real bounds instead of
-from its `x/y` origin. The yellow cross marks that node's anchor/pivot and the
+review. The selected-node outline follows the node's local rectangle through every
+ancestor's translation, scale, rotation and pivot, including mirrored parents.
+The editor fits the container while the runtime owns Retina backing pixels;
+canvas artwork and DOM overlays share the actual displayed canvas rectangle. The yellow cross marks that node's anchor/pivot and the
 Inspector repeats `Size`, `Anchor` (normalized 0–1) and `Pivot` (design pixels).
+Dragging converts the cursor into the selected node's parent coordinates, so a
+nested object stays attached to the grabbed point. Pointer cancellation, lost
+capture or focus loss restores the position from before the gesture; other
+pointers do not take over an active drag.
 
 The lower **Assets** workspace reads the same consumer `assets/` directory. Its
 left side is a folder tree; its right side shows file cards with type, size and
@@ -84,3 +89,23 @@ assets continue to use their isolated preview and evidence workflow.
 
 After saving, run the consumer's normal `zhuda-prefab-check` and Scene evidence
 checks. The editor is a development tool and does not replace those gates.
+
+
+## Browser coordinate regression
+
+From the engine checkout, run:
+
+```sh
+EDITOR_EVIDENCE_DIR=/tmp/zhuda-prefab-editor npm run verify:prefab-editor
+```
+
+The test launches disposable Chrome profiles and a temporary project containing
+neutral image Prefabs and Scenes. It compares actual screenshot pixel bounds,
+all four selection corners and the pivot against independently composed source
+transforms. It checks DPR 1 / 1.5 / 2, resize, Editor / Agent View, actual desktop
+page zoom at 80% / 125% / 150%, translated/rotated/scaled/reflected parents,
+cursor tracking throughout dragging, undo/redo, backup/save/reload and cancelled
+or competing pointers. The same command runs in CI and uploads its JSON report
+and screenshots. Loading successfully or having no runtime exceptions does not
+satisfy these position assertions. Physical devices and other browser engines
+still require separate acceptance.
