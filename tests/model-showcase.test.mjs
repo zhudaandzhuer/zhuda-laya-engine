@@ -47,6 +47,7 @@ test('inventory preserves authored node precedence, primitive counts and color/d
   const r = inspectGltfDocument(data);
   assert.equal(r.status, 'supported'); assert.deepEqual(r.inventory.nodes[0].morphWeights, [1]);
   assert.equal(r.inventory.meshes[0].primitives[0].triangles, 1);
+  assert.deepEqual(r.inventory.summary, {nodes:1,meshes:1,primitives:1,vertices:3,indices:3,triangles:1,materials:1,textures:0,images:0,animations:0});
   assert.deepEqual(r.inventory.materials[0].textures.map(t=>t.colorSpace), ['srgb','linear']);
   assert.equal(data.materials[0].pbrMetallicRoughness.baseColorTexture.index, 0);
 });

@@ -74,6 +74,12 @@ export interface LayaHierarchyNodeData {
   y?: number;
   width?: number;
   height?: number;
+    /** Normalized anchor coordinates (0–1), applied after width/height. */
+    anchorX?: number;
+    anchorY?: number;
+    /** Explicit pivot in local design pixels; overrides the derived anchor pivot. */
+    pivotX?: number;
+    pivotY?: number;
   scaleX?: number;
   scaleY?: number;
   rotation?: number;

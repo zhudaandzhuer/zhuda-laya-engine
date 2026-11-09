@@ -11,6 +11,7 @@ import { createSurfaceMaterial } from "./runtime3d/Surfaces.ts";
 import { installLaya342LifecycleFix } from "./runtime3d/Laya342Adapters.ts";
 import { buildPrefabTree } from './prefabs/PrefabTree3D.ts';
 import type { PrefabTree3D, PrefabTreeInstance3D } from './prefabs/PrefabTree3D.ts';
+import { assertZhudaRealmAvailable, markZhudaLayaRealm } from './RealmGuards.ts';
 /**
  * @zhuda-laya/core — AI-Friendly Declarative SDK (對標 Three.js / R3F 純代碼開發體驗)
  *
@@ -97,6 +98,10 @@ export class ZhudaEngine {
       throw new Error(
         "An engine session is already active; dispose it or use a separate runtime realm.",
       );
+    // LayaAir owns a realm-wide stage, renderer and prototype namespace. Fail
+    // before Laya.init when another application already owns those globals;
+    // the supported escape hatch is ZhudaRuntimeHost/iframe isolation.
+    assertZhudaRealmAvailable();
     const container =
       typeof options.container === "string"
         ? document.querySelector<HTMLElement>(options.container)
@@ -166,6 +171,7 @@ export class ZhudaEngine {
 
       // 3. 初始化 LayaAir 3.4.2 引擎核心與 WebGL/WASM 管線
       await withDeadline(() => Laya.init(width, height), {signal:options.signal, timeoutMs:options.bootTimeoutMs ?? 30000});
+      markZhudaLayaRealm();
       renderer.ready();
       installLaya342LifecycleFix();
 

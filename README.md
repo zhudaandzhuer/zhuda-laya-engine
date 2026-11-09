@@ -99,7 +99,8 @@ Required glTF extensions now fail explicitly when unsupported; node Morph weight
 and CUBICSPLINE Morph animation are preserved. Public compatibility reports,
 a model inspector and same-instance Raw / Gameplay / Cinematic presentation
 are available, with a `3d-gltf` HTML bundle. See the [model showcase contract](docs/model-showcase.md)
-for the tested subset and unsupported features. Cinematic is real-time postprocessing,
+and [model pipeline contract](docs/model-pipeline.md) for the tested subset,
+asset coordinate rules and unsupported features. Cinematic is real-time postprocessing,
 not an offline movie renderer or a guarantee of Unreal Engine parity.
 
 ## Crowd presentation and measurable budgets (1.8.0)
@@ -127,8 +128,40 @@ unverified; the extension and desktop reference test do not establish full SOP c
 
 Use the [hosted SDK and runnable examples](https://game.qianlongxundao.com/play/zhuda-engine-sdk/)
 to load the real runtime with one pinned script. [Browser SDK guide](docs/browser-sdk.md)
+
+## Fast visual Prefab workflow
+
+The [`examples/slot-symbol-prefab`](examples/slot-symbol-prefab/) workbench is a
+small, reusable 2D symbol route for artists: replace one logical image, run a
+manifest update, and open the generated browser Prefab preview with the same
+definition used by the Scene. It includes isolated `Art` and composite-state
+evidence, a 30-cycle lifecycle gate, and a local image replacement control.
 includes fixed URLs, SRI, 2D/3D HTML templates and sandbox limits. The existing
 consumer/Prefab/device gates still apply to a complete game.
+
+For artists who need to adjust a consumer-owned 2D `.lh` Prefab or `.ls` Scene, start the
+engine's local Web editor with
+`npx zhuda-prefab-editor --project /absolute/game --prefab assets/prefabs/item.lh`.
+It uses the real Zhuda/Laya canvas, a named hierarchy, common 2D properties,
+design-pixel dragging, undo/redo, revision-checked saves and a `.bak` backup.
+The lower Assets workspace scans the consumer `assets/` tree, shows folders and
+file cards with metadata, and opens `.lh`/`.ls` cards in the same editor so the
+preview, hierarchy and Inspector always follow the selected source.
+See [Web Static Asset Editor](docs/prefab-editor.md). For the same workflow on a
+consumer-owned self-contained `.glb`/`.gltf`, run
+`npx zhuda-model-editor --project /absolute/game --asset assets/models/item.glb`.
+The [3D Model Editor](docs/model-editor.md) uses the public model library,
+shows the live Sprite3D hierarchy and source inventory, and switches the same
+instance between Raw, Gameplay and Cinematic presentation. It does not replace
+a DCC authoring tool or turn importer support into device acceptance.
+
+## SVG layout wireframes
+
+Use [`zhuda-layout`](docs/layout-wireframe.md) to mark any Scene or Prefab UI
+with stable SVG rectangle IDs before implementing artwork. It generates a
+source-hashed JSON layout contract, a self-contained responsive preview and an
+optional consumer build gate. Model or OCR suggestions remain optional; the
+reviewed SVG/JSON coordinates are the authority.
 
 ## Official mini-game packaging without the IDE (1.14.0)
 

@@ -119,6 +119,25 @@ not artistic parity with an external reference or physical mobile behavior.
 
 ## Candidate and acceptance commands (1.5.0)
 
+### Layout wireframe contracts
+
+Consumers that want a reviewed screenshot wireframe can set
+`layoutContracts` in `zhuda.config.json`:
+
+```json
+{
+  "layoutContracts": [
+    { "layout": "layouts/home.json", "svg": "layouts/home.svg" }
+  ]
+}
+```
+
+The compiler checks the source image SHA/dimensions, stable node IDs, parent
+references and cycles, and exact SVG rectangle geometry before building. The
+contract is design/CSS-pixel data; it does not replace the actual Prefab
+browser/device evidence gate. Use `zhuda-layout preview` for a responsive
+self-contained review page and `zhuda-prefab-check` after the Prefab is built.
+
 ```sh
 zhuda-laya-build --candidate
 zhuda-laya-watch --candidate --port 8890
@@ -156,6 +175,13 @@ to legacy `prefabEvidence`. It verifies the configured selection, reference,
 viewport/DPR, cycles and pixel tolerance. The acceptance command does not approve
 references, run game rules/tests, measure physical devices or deploy a site.
 Keep running consumer strict types, Doctor, game tests and Scene checks.
+
+Each `prefabChecks` entry may set `browserTimeoutMs` from 5,000 to 180,000 ms.
+Use it for a measured heavy model or a Windows Electron/Chrome host after
+recording the model's source complexity; do not use a larger deadline to hide a
+stalled page. The checker reports its phase, requested environment, measured
+environment and browser path on failure, and terminates the browser process
+tree on Windows as well as Unix.
 
 The preview now reports `lifecycleCheck.requestedCycles`, `completedCycles`,
 status and before/after resource estimates. It becomes ready only when all

@@ -1,0 +1,48 @@
+{
+  "name": "slot-symbol-prefab",
+  "entry": "src/Main.ts",
+  "outDir": "dist/web",
+  "features": ["core", "2d", "3d", "ui", "gltf", "postProcess", "particle2d"],
+  "prefabPreview": "src/prefabs.ts",
+  "prefabChecks": [
+    {
+      "id": "slot/symbol",
+      "state": "idle",
+      "node": "Art",
+      "width": 480,
+      "height": 480,
+      "dpr": 1,
+      "cycles": 30,
+      "browserTimeoutMs": 30000,
+      "baseline": "reference/slot-symbol-idle.png",
+      "output": "evidence/slot-symbol-idle.json"
+    },
+    {
+      "id": "slot/symbol",
+      "state": "idle",
+      "width": 480,
+      "height": 480,
+      "dpr": 1,
+      "cycles": 30,
+      "browserTimeoutMs": 30000,
+      "baseline": "reference/slot-symbol-composite-idle.png",
+      "output": "evidence/slot-symbol-composite-idle.json"
+    },
+    {
+      "id": "slot/symbol",
+      "state": "selected",
+      "width": 480,
+      "height": 480,
+      "dpr": 1,
+      "cycles": 30,
+      "browserTimeoutMs": 30000,
+      "baseline": "reference/slot-symbol-composite-selected.png",
+      "output": "evidence/slot-symbol-composite-selected.json"
+    }
+  ],
+  "viewport": {
+    "width": 960,
+    "height": 540,
+    "scaleMode": "noborder"
+  }
+}

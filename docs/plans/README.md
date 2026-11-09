@@ -29,7 +29,13 @@ device checks and acceptance gates pass.
 | [RPG integration feedback](records/rpg-feedback-hardening/task.md) | Implemented; desktop verified | Lifecycle completion, official candidate acceptance, component proofs and leased primitive resources; physical devices unavailable |
 | [Cinematic production](cinematic-production/task.md) | Implemented; macOS verified | Synchronous native sampling, physical lens/shutter capture, shared offline audio and atomic MP4; scene-linear HDR and additional platforms remain separate |
 | [Desktop and Agent gates](desktop-and-agent-gates/task.md) | Implemented; macOS verified | [Hardening and evidence](desktop-and-agent-gates/hardening-verification.md): packaged host, PNG sequence comparison, timeline/recorder and actual Meshopt; Windows hardware still pending |
+| [Windows WebGPU feedback](records/windows-webgpu-feedback/task.md) | Implemented within scope; Windows hardware pending | Cross-platform Prefab cleanup/diagnostics, model complexity preflight and DCC axis contract; ReflectionProbe reproduction and Windows hardware remain unavailable |
 | [Official mini-game CLI packaging](records/minigame-cli/task.md) | Implemented; macOS packaged | Official LayaAir 3.4.2 headless builds for registered mini-game targets; host/device and store evidence remain consumer-owned |
+| [Slot symbol Prefab example](records/slot-symbol-prefab/task.md) | Accepted; desktop WebGL verified | Reusable replace-art symbol Prefab, isolated browser preview, provenance and 30-cycle evidence |
+| [SVG layout wireframes](records/layout-wireframe/task.md) | Accepted; CLI and consumer gate verified | Model-independent design-coordinate contracts, SVG overlays and self-contained layout preview |
+| [Project asset workspace](records/asset-browser/task.md) | Implemented within scope; API and build verified | Unity/Laya-style asset folders and cards shared by the Web editor; browser/device visual acceptance remains consumer-owned |
+| [3D model editor](records/model-editor-3d/task.md) | In progress; macOS WebGL verified | Public-provider GLB/glTF workspace with live Sprite3D hierarchy and same-instance presentation; Windows/mobile and seller-model acceptance remain pending |
+| [Preview runtime hardening](preview-runtime-hardening.md) | Accepted; desktop/browser verified | Foreign Laya realm guard, explicit 2D-only editor profile and release-hidden Scene/3D showcase policy; external device and foreign-app integration remain separate checks |
 
 Slot-specific rules, RGS, math, wallet and Factory products are outside this
 engine roadmap. Historical pilot documents retain their evidence; reusable

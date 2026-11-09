@@ -1,7 +1,7 @@
 import type { LayaHierarchyNodeData } from "../../types/zhuda-static-assets";
 import type { AssetProvider } from "../runtime3d/AssetProvider";
 import type { PrefabTree3D, PrefabNodePatch3D } from "./PrefabTree3D";
-export type PrefabNodePatch = Partial<Pick<LayaHierarchyNodeData, "x" | "y" | "width" | "height" | "scaleX" | "scaleY" | "rotation" | "alpha" | "visible" | "text" | "font" | "fontSize" | "color" | "bold" | "align" | "valign" | "sizeGrid">>;
+export type PrefabNodePatch = Partial<Pick<LayaHierarchyNodeData, "x" | "y" | "width" | "height" | "anchorX" | "anchorY" | "pivotX" | "pivotY" | "scaleX" | "scaleY" | "rotation" | "alpha" | "visible" | "text" | "font" | "fontSize" | "color" | "bold" | "align" | "valign" | "sizeGrid">>;
 export interface PrefabDefinition {
     id: string;
     kind?: "2d";

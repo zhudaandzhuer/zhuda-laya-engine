@@ -15,6 +15,7 @@ import { auditPrefabEnvironment, requestedPrefabEnvironment } from "./prefab-env
 import { auditPrefabLifecycle } from "./prefab-lifecycle.mjs";
 import { buildPrefabDependencies, prefabEvidenceMatches } from './prefab-dependencies.mjs';
 import { validatePrefabChecks } from './prefab-checks.mjs';
+import { validateLayoutContracts } from './layout-contract.mjs';
 import { ENGINE_PRESET_PROFILES, TopologyResolver } from "./compiler-runtime.mjs";
 import {
   collectTsFiles,
@@ -220,6 +221,9 @@ export async function runConsumerBuild({
     throw Error(
       "Visual presentation contract failed: " + visual.issues.join(" | "),
     );
+  const layoutContracts = validateLayoutContracts(projectRoot, config.layoutContracts);
+  if (!layoutContracts.passed)
+    throw Error("Layout wireframe contract failed: " + layoutContracts.issues.join(" | "));
   const guard = auditConsumerSources(projectRoot, config);
   if (!guard.passed) throw Error(guard.issues.map(i => `${i.file}:${i.line} [${i.code}] ${i.message}`).join("\n"));
   const features = config.features ||
@@ -391,6 +395,7 @@ export async function runConsumerBuild({
       supportFiles: topology.supportFiles,
       orderedLibraries: topology.orderedFiles,
       assets: { include: includes ?? null, exclude: excludes },
+      layoutContracts: layoutContracts.contracts,
       route: {
         level: mode === 'candidate' ? 'unverified-candidate' : "engine-backed-static",
         engineDependency: guard.checks.engineDependency,

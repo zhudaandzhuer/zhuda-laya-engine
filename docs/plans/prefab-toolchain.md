@@ -1,6 +1,6 @@
 # Prefab 隔離預覽與消費端工具路線圖
 
-Status: In progress
+Status: Accepted
 
 Owner: Engine tooling and consumer integration
 
@@ -40,7 +40,18 @@ See [the API](../procedural-prefabs.md) and
 [candidate verification](records/consumer-runtime-hardening/verification.md).
 This does not deliver arbitrary model factories or selective evidence invalidation.
 
-## Staged work and acceptance gates
+## 1.14.0 Web editor delivery
+
+`zhuda-prefab-editor` now provides a generic local 2D `.lh` editing loop. It
+serves one consumer Prefab, renders that definition through the real
+Zhuda/Laya runtime, exposes stable node selection and common layout/text
+properties, supports design-pixel dragging plus undo/redo, and saves with
+revision checks, schema validation, a `.bak` snapshot and atomic replacement.
+The tool is intentionally separate from the consumer build and does not relax
+Prefab evidence gates. It is not yet a Spine timeline, particle graph or 3D
+model editor.
+
+## Acceptance gates and staged work
 
 各項依序取得證據再決定是否擴大。引擎提供通用資料格式、工具、公開型別和中性 fixtures；遊戲保存美術基準、媒體、情境及實機產物。
 

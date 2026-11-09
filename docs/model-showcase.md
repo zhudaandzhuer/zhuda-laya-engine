@@ -5,6 +5,9 @@ Use the public `ZhudaModelLibrary`, `ZhudaModelInspector` and
 Animator and Filmic pipeline. They are a browser model-inspection foundation,
 not a promise that every seller asset matches Unreal Engine or a DCC render.
 
+For Blender/glTF axis, unit, mesh-complexity and Windows timeout guidance, see
+[the model pipeline contract](model-pipeline.md).
+
 ## Import contract and diagnostics
 
 `inspectGltfAsset(bytes)` accepts glTF JSON or GLB bytes without allocating GPU

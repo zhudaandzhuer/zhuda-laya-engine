@@ -39,6 +39,13 @@ context.runtime.start(dt => present(dt));
 
 `context.dispose()` 釋放本 session 的更新、監聽器與根場景。Laya 是 realm singleton，沒有承諾完整卸載 vendor 全域引擎；需要完全拆除／預覽隔離／context loss 恢復時，使用 `ZhudaRuntimeHost` 擁有的 iframe。host 只接受目前 frame 的訊息來源，儲存 `zhuda:snapshot`；收到 `zhuda:context-lost` 便替換整個 realm，ready 後傳送 `zhuda:restore`。**不是宣稱 Laya 原生 GPU 資源可無損恢復。** 遊戲須序列化所有必要狀態並在重建時還原；同時清空輸入。
 
+Boot now fails closed with `ZHUDA_FOREIGN_LAYA_REALM` when the page already
+contains an initialized Laya stage or canvas without the Zhuda realm marker.
+This protects existing Laya objects from a second global stage/config/prototype
+owner. Use a separate page or `ZhudaRuntimeHost` iframe for the editor; an
+uninitialized `window.Laya` namespace is still allowed so the pinned vendor
+scripts can initialize normally.
+
 opaque-origin 無法讀取 storage 時，boot 安裝 realm 內記憶體替代。這只供引擎初始化，持久進度須由可信 parent 保存。visibility／blur 暫停 presentation 並清輸入；UI deadline 應由權威時鐘重算。
 
 ## 材質、shader 與網格

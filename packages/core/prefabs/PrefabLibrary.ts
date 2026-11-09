@@ -8,7 +8,7 @@ import { ZhudaResourceScope } from "../runtime3d/SceneLifecycle.ts";
 import { ZhudaAssetCache } from '../runtime3d/Assets.ts';
 
 export type PrefabNodePatch = Partial<Pick<LayaHierarchyNodeData,
-  "x" | "y" | "width" | "height" | "scaleX" | "scaleY" | "rotation" |
+  "x" | "y" | "width" | "height" | "anchorX" | "anchorY" | "pivotX" | "pivotY" | "scaleX" | "scaleY" | "rotation" |
   "alpha" | "visible" | "text" | "font" | "fontSize" | "color" |
   "bold" | "align" | "valign" | "sizeGrid">>;
 export interface PrefabDefinition {
@@ -71,7 +71,7 @@ async function hash(bytes: Uint8Array) {
 }
 type Resource = { hash: string; data?: LayaHierarchyNodeData; url?: string };
 const supportedTypes = new Set(["Sprite", "Text", "Label", "Image", "Box"]);
-const numericPatch = new Set(["x", "y", "width", "height", "scaleX", "scaleY", "rotation", "alpha", "fontSize"]);
+const numericPatch = new Set(["x", "y", "width", "height", "anchorX", "anchorY", "pivotX", "pivotY", "scaleX", "scaleY", "rotation", "alpha", "fontSize"]);
 const stringPatch = new Set(["text", "font", "color", "align", "valign", "sizeGrid"]);
 function validateStates(states: PrefabDefinition["states"]) {
   for (const patches of Object.values(states)) {

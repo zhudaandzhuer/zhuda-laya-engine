@@ -20,7 +20,8 @@ export function validatePrefabChecks(config, projectRoot) {
     const url='http://localhost/?'+new URLSearchParams(Object.fromEntries(Object.entries(check).filter(([key])=>['width','height','dpr','cycles'].includes(key))));
     requestedPrefabCycles(url);requestedPrefabEnvironment(url);
     if (check.maxDiffPixels!==undefined && (!Number.isSafeInteger(check.maxDiffPixels) || check.maxDiffPixels<0)) fail('invalid maxDiffPixels');
-    for (const key of Object.keys(check)) if (!['id','node','state','width','height','dpr','cycles','baseline','output','maxDiffPixels'].includes(key)) fail(`unknown field ${key}`);
+    if (check.browserTimeoutMs !== undefined && (!Number.isSafeInteger(check.browserTimeoutMs) || check.browserTimeoutMs < 5000 || check.browserTimeoutMs > 180000)) fail('invalid browserTimeoutMs');
+    for (const key of Object.keys(check)) if (!['id','node','state','width','height','dpr','cycles','baseline','output','maxDiffPixels','browserTimeoutMs'].includes(key)) fail(`unknown field ${key}`);
   }
   return config.prefabChecks;
 }

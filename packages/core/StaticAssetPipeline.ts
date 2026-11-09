@@ -1695,6 +1695,10 @@ export class ZhudaPrefab {
     if (typeof data.y === 'number') node.y = data.y;
     if (typeof data.width === 'number') node.width = data.width;
     if (typeof data.height === 'number') node.height = data.height;
+    if (typeof data.anchorX === 'number') node.anchorX = data.anchorX;
+    if (typeof data.anchorY === 'number') node.anchorY = data.anchorY;
+    if (typeof data.pivotX === 'number') node.pivotX = data.pivotX;
+    if (typeof data.pivotY === 'number') node.pivotY = data.pivotY;
     if (typeof data.scaleX === 'number') node.scaleX = data.scaleX;
     if (typeof data.scaleY === 'number') node.scaleY = data.scaleY;
     if (typeof data.rotation === 'number') node.rotation = data.rotation;

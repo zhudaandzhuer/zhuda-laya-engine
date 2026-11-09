@@ -45,6 +45,19 @@ export const gltfExtensionCapabilities: readonly GltfExtensionCapability[] = Obj
     visualConformance: 'not-certified' as const })),
 );
 export interface ModelSourceInventory {
+  /** Source complexity only; this does not predict native/GPU upload time. */
+  summary: {
+    nodes: number;
+    meshes: number;
+    primitives: number;
+    vertices: number;
+    indices: number;
+    triangles: number;
+    materials: number;
+    textures: number;
+    images: number;
+    animations: number;
+  };
   nodes: readonly { index: number; name: string; mesh: number | null; skin: number | null;
     children: readonly number[]; morphWeights: readonly number[] }[];
   meshes: readonly { index: number; name: string; primitives: readonly {
@@ -87,17 +100,16 @@ function freeze<T>(value: T): T {
 }
 function inventory(d: RecordValue): ModelSourceInventory {
   const meshes = records(d.meshes), accessors = records(d.accessors);
-  return {
-    nodes: records(d.nodes).map((n, index) => ({ index, name: label(n.name), mesh: indexOf(n.mesh), skin: indexOf(n.skin),
+  const nodes = records(d.nodes).map((n, index) => ({ index, name: label(n.name), mesh: indexOf(n.mesh), skin: indexOf(n.skin),
       children: numbers(n.children), morphWeights: numbers(n.weights ?? meshes[indexOf(n.mesh) ?? -1]?.weights) })),
-    meshes: meshes.map((m, index) => ({ index, name: label(m.name), primitives: records(m.primitives).map(p => {
+    meshInventory = meshes.map((m, index) => ({ index, name: label(m.name), primitives: records(m.primitives).map(p => {
       const attributes = record(p.attributes), vertices = numeric(accessors[indexOf(attributes.POSITION) ?? -1]?.count);
       const indices = p.indices === undefined ? vertices : numeric(accessors[indexOf(p.indices) ?? -1]?.count);
       const mode = numeric(p.mode, 4);
       return { mode, vertices, indices, triangles: mode === 4 ? indices / 3 : mode === 5 || mode === 6 ? Math.max(0, indices - 2) : null,
         material: indexOf(p.material), morphTargets: list(p.targets).length, attributes: Object.keys(attributes) };
     }) })),
-    materials: records(d.materials).map((m, index) => {
+    materials = records(d.materials).map((m, index) => {
       const pbr = record(m.pbrMetallicRoughness), textures: { slot: string; texture: number; texCoord: number; colorSpace: 'srgb' | 'linear' }[] = [];
       const add = (slot: string, v: unknown, colorSpace: 'srgb' | 'linear') => {
         const info = record(v), texture = indexOf(info.index);
@@ -112,14 +124,21 @@ function inventory(d: RecordValue): ModelSourceInventory {
         baseColor: pbr.baseColorFactor === undefined ? [1, 1, 1, 1] : numbers(pbr.baseColorFactor),
         metallic: numeric(pbr.metallicFactor, 1), roughness: numeric(pbr.roughnessFactor, 1), extensions: Object.keys(record(m.extensions)), textures };
     }),
-    textures: records(d.textures).map((t, index) => ({ index, image: indexOf(t.source), sampler: indexOf(t.sampler) })),
-    images: records(d.images).map((i, index) => ({ index, name: label(i.name),
-      delivery: typeof i.uri === 'string' && !i.uri.startsWith('data:') ? 'external' : 'embedded', mimeType: typeof i.mimeType === 'string' ? i.mimeType : null })),
-    animations: records(d.animations).map((a, index) => ({ index, name: label(a.name), channels: records(a.channels).map(c => {
+    textures = records(d.textures).map((t, index) => ({ index, image: indexOf(t.source), sampler: indexOf(t.sampler) })),
+    images: { index: number; name: string; delivery: 'embedded' | 'external'; mimeType: string | null }[] = records(d.images).map((i, index) => ({ index, name: label(i.name),
+      delivery: (typeof i.uri === 'string' && !i.uri.startsWith('data:') ? 'external' : 'embedded') as 'embedded' | 'external', mimeType: typeof i.mimeType === 'string' ? i.mimeType : null })),
+    animations = records(d.animations).map((a, index) => ({ index, name: label(a.name), channels: records(a.channels).map(c => {
       const target = record(c.target), sampler = records(a.samplers)[indexOf(c.sampler) ?? -1];
       return { node: indexOf(target.node), path: label(target.path), interpolation: label(sampler?.interpolation) || 'LINEAR' };
-    }) })),
-  };
+    }) }));
+  const primitives = meshInventory.flatMap(mesh => mesh.primitives);
+  return { summary: {
+      nodes: nodes.length, meshes: meshInventory.length, primitives: primitives.length,
+      vertices: primitives.reduce((sum, primitive) => sum + primitive.vertices, 0),
+      indices: primitives.reduce((sum, primitive) => sum + primitive.indices, 0),
+      triangles: primitives.reduce((sum, primitive) => sum + (primitive.triangles ?? 0), 0),
+      materials: materials.length, textures: textures.length, images: images.length, animations: animations.length,
+    }, nodes, meshes: meshInventory, materials, textures, images, animations };
 }
 export function inspectGltfDocument(document: unknown): ModelCompatibilityReport {
   const d = record(document), diagnostics: ModelDiagnostic[] = [];

@@ -3,22 +3,67 @@ import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
 import crypto from "node:crypto";
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { requestedPrefabEnvironment, measurePrefabEnvironment, auditPrefabEnvironment } from './prefab-environment.mjs';
 import { requestedPrefabCycles, auditPrefabLifecycle } from './prefab-lifecycle.mjs';
 import { selectPrefabDependencyProof } from './prefab-dependencies.mjs';
 
 const sha = bytes => crypto.createHash("sha256").update(bytes).digest("hex");
+/** Resolve Chrome without assuming a Unix installation path. CHROME_BIN remains
+ * the explicit override used by CI and is reported in every browser result. */
+export function resolveChromeBinary(explicit = process.env.CHROME_BIN) {
+  const candidates = [
+    explicit,
+    ...(process.platform === "win32" ? [
+      process.env.PROGRAMFILES && path.join(process.env.PROGRAMFILES, "Google/Chrome/Application/chrome.exe"),
+      process.env["PROGRAMFILES(X86)"] && path.join(process.env["PROGRAMFILES(X86)"], "Google/Chrome/Application/chrome.exe"),
+      process.env.LOCALAPPDATA && path.join(process.env.LOCALAPPDATA, "Google/Chrome/Application/chrome.exe"),
+      process.env.PROGRAMFILES && path.join(process.env.PROGRAMFILES, "Microsoft/Edge/Application/msedge.exe"),
+      process.env["PROGRAMFILES(X86)"] && path.join(process.env["PROGRAMFILES(X86)"], "Microsoft/Edge/Application/msedge.exe"),
+      process.env.LOCALAPPDATA && path.join(process.env.LOCALAPPDATA, "Microsoft/Edge/Application/msedge.exe"),
+    ] : [
+      "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+      "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser",
+    ]),
+  ].filter(Boolean);
+  const found = candidates.find(file => fs.existsSync(file));
+  if (found) return found;
+  const command = process.platform === "win32" ? "where.exe" : "which";
+  for (const name of process.platform === "win32" ? ["chrome.exe", "msedge.exe"] : ["google-chrome", "chromium", "chromium-browser"]) {
+    const result = spawnSync(command, [name], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
+    const value = result.status === 0 ? String(result.stdout || "").split(/\r?\n/).find(Boolean) : undefined;
+    if (value && fs.existsSync(value.trim())) return value.trim();
+  }
+  return undefined;
+}
+
+async function terminateBrowser(child, profile) {
+  const pid = child?.pid;
+  if (pid) {
+    if (process.platform === "win32") {
+      // Negative process groups are not supported by Windows. taskkill /T
+      // retires Chrome's renderer children as well as the browser process.
+      spawnSync("taskkill", ["/PID", String(pid), "/T", "/F"], { stdio: "ignore" });
+    } else {
+      try { process.kill(-pid, "SIGKILL"); } catch {}
+      try { process.kill(pid, "SIGKILL"); } catch {}
+    }
+    if (child.exitCode === null && child.signalCode === null)
+      await Promise.race([
+        new Promise(resolve => child.once("exit", resolve)),
+        new Promise(resolve => setTimeout(resolve, 2000)),
+      ]);
+  }
+  fs.rmSync(profile, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 });
+}
 /** Run an actual browser draw. The consumer exposes the same report bridge in its scene. */
-export async function checkPrefab({ url, baseline, output, updateBaseline = false, chromeBinary, maxDiffPixels = 0, ...metrics }) {
+export async function checkPrefab({ url, baseline, output, updateBaseline = false, chromeBinary, maxDiffPixels = 0, browserTimeoutMs = 30000, ...metrics }) {
   if (!Number.isSafeInteger(maxDiffPixels) || maxDiffPixels < 0) throw Error("Invalid pixel tolerance");
+  if (!Number.isSafeInteger(browserTimeoutMs) || browserTimeoutMs < 5000 || browserTimeoutMs > 180000) throw Error("Invalid browser timeout");
   const requested = requestedPrefabEnvironment(url, metrics);
   requestedPrefabCycles(url);
-  const binary = chromeBinary || process.env.CHROME_BIN || [
-    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-    "/usr/bin/google-chrome", "/usr/bin/chromium"
-  ].find(file => fs.existsSync(file));
+  const binary = resolveChromeBinary(chromeBinary);
   if (!binary) throw Error("Chrome unavailable. Set CHROME_BIN.");
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), "zhuda-prefab-browser-"));
   const child = spawn(binary, ["--headless=new", "--use-mock-keychain", "--no-first-run", "--no-default-browser-check",
@@ -27,6 +72,7 @@ export async function checkPrefab({ url, baseline, output, updateBaseline = fals
     { detached: true, stdio: ["ignore", "ignore", "pipe"] });
   let ws;
   let environment;
+  let phase = "starting-browser";
   const pending = new Map();
   try {
     const endpoint = await new Promise((resolve, reject) => {
@@ -40,6 +86,7 @@ export async function checkPrefab({ url, baseline, output, updateBaseline = fals
         if (match) { clearTimeout(timer); resolve(new URL(match[1])); }
       });
     });
+    phase = "connecting-devtools";
     const pages = await (await fetch(`http://${endpoint.host}/json/list`)).json();
     ws = new WebSocket(pages.find(page => page.type === "page").webSocketDebuggerUrl);
     await new Promise((resolve, reject) => {
@@ -72,6 +119,7 @@ export async function checkPrefab({ url, baseline, output, updateBaseline = fals
       if (result.exceptionDetails) throw Error(result.exceptionDetails.exception?.description || result.exceptionDetails.text);
       return result.result.value;
     };
+    phase = "configuring-emulation";
     await send("Runtime.enable");
     await send("Page.enable");
     await send('Network.enable');
@@ -79,9 +127,12 @@ export async function checkPrefab({ url, baseline, output, updateBaseline = fals
       width: requested.viewport.width, height: requested.viewport.height,
       deviceScaleFactor: requested.dpr, mobile: false,
     });
+    phase = "navigating";
     await send("Page.navigate", { url });
     let report;
-    for (let i = 0; i < 100; i++) {
+    const readyAt = Date.now() + browserTimeoutMs;
+    phase = "waiting-for-prefab";
+    while (Date.now() < readyAt) {
       report = await evaluate("window.__ZHUDA_PREFAB_TEST__?.report()");
       if (report?.error) throw Error(report.error);
       if (report?.ready && auditPrefabLifecycle(report, url).passed) break;
@@ -91,6 +142,7 @@ export async function checkPrefab({ url, baseline, output, updateBaseline = fals
       throw Error("Prefab not ready or missing actual instance provenance: " + errors.join(", "));
     const lifecycleAudit = auditPrefabLifecycle(report, url);
     if (!lifecycleAudit.passed) throw Error(lifecycleAudit.issues.join('; '));
+    phase = "capturing";
     await evaluate("document.fonts.ready.then(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))))");
     await evaluate("new Promise(resolve=>Laya.timer.frameOnce(4,null,resolve))");
     environment = auditPrefabEnvironment(requested, await evaluate(`(${measurePrefabEnvironment.toString()})()`));
@@ -101,6 +153,7 @@ export async function checkPrefab({ url, baseline, output, updateBaseline = fals
     fs.mkdirSync(path.dirname(output), { recursive: true });
     const actualPath = output + ".png";
     fs.writeFileSync(actualPath, actual);
+    phase = "comparing";
     const manifest = await evaluate("fetch('./payload-manifest.json').then(r=>{if(!r.ok)throw Error('Missing payload manifest');return r.json()})");
     let comparison = { passed: false, reason: "Baseline updated; rerun comparison after review" };
     if (updateBaseline) {
@@ -154,15 +207,13 @@ export async function checkPrefab({ url, baseline, output, updateBaseline = fals
     return result;
   } catch (error) {
     fs.mkdirSync(path.dirname(output), {recursive:true});
-    fs.writeFileSync(output, JSON.stringify({schemaVersion:2, passed:false, url, error: String(error),
-      environment: environment || {requested, measured:null, passed:false, issues:['Browser measurement unavailable']}}, null, 2));
+    fs.writeFileSync(output, JSON.stringify({schemaVersion:2, passed:false, url, phase, browser: binary,
+      error: String(error), environment: environment || {requested, measured:null, passed:false, issues:['Browser measurement unavailable']}}, null, 2));
     throw error;
   } finally {
     ws?.close();
     for (const request of pending.values()) clearTimeout(request.timer);
-    if (child.pid) { try { process.kill(-child.pid, "SIGKILL"); } catch {} }
-    if (child.pid) await new Promise(resolve => child.exitCode !== null || child.signalCode !== null ? resolve() : child.once("exit", resolve));
-    fs.rmSync(profile, { recursive: true, force: true });
+    await terminateBrowser(child, profile);
   }
 }
 const cliArg = process.argv[1] || '';
@@ -173,7 +224,7 @@ if (launchedAsCli) {
   const args = Object.fromEntries(process.argv.slice(2).filter(arg => arg.startsWith("--") && arg.includes("=")).map(arg => arg.slice(2).split(/=(.*)/s, 2)));
   try {
     if (!args.url || !args.baseline || !args.output) throw Error("Use --url=... --baseline=... --output=... [--update-baseline]");
-    const result = await checkPrefab({ ...args, maxDiffPixels: Number(args.maxDiffPixels ?? 0), updateBaseline: process.argv.includes("--update-baseline") });
+    const result = await checkPrefab({ ...args, maxDiffPixels: Number(args.maxDiffPixels ?? 0), browserTimeoutMs: Number(args.browserTimeoutMs ?? 30000), updateBaseline: process.argv.includes("--update-baseline") });
     console.log(JSON.stringify(result.comparison));
     if (!result.passed && !process.argv.includes("--update-baseline")) process.exitCode = 1;
   } catch (error) { console.error(error.message); process.exitCode = 1; }

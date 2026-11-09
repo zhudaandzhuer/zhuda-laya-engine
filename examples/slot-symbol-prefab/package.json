@@ -1,0 +1,18 @@
+{
+  "name": "zhuda-slot-symbol-prefab-example",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "zhuda-laya-engine": "1.14.0"
+  },
+  "scripts": {
+    "manifest": "node scripts/update-manifest.mjs",
+    "character": "blender --background --python scripts/generate-character-blender.py",
+    "build": "node scripts/project-tools.mjs --release",
+    "build:candidate": "node scripts/project-tools.mjs --candidate",
+    "preview": "node scripts/serve-preview.mjs",
+    "check:prefab": "node scripts/accept.mjs",
+    "capture:prefab": "node scripts/accept.mjs --capture",
+    "typecheck": "../../node_modules/.bin/tsc --noEmit -p tsconfig.json"
+  }
+}

@@ -25,6 +25,19 @@ export interface GltfAssetCapability {
 export declare const gltfAssetCapabilities: readonly GltfAssetCapability[];
 export declare const gltfExtensionCapabilities: readonly GltfExtensionCapability[];
 export interface ModelSourceInventory {
+    /** Source complexity only; this does not predict native/GPU upload time. */
+    summary: {
+        nodes: number;
+        meshes: number;
+        primitives: number;
+        vertices: number;
+        indices: number;
+        triangles: number;
+        materials: number;
+        textures: number;
+        images: number;
+        animations: number;
+    };
     nodes: readonly {
         index: number;
         name: string;

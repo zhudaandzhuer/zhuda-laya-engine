@@ -3,6 +3,7 @@ node_modules
 *.log
 dist/*.tgz
 dist/browser/
+examples/slot-symbol-prefab/dist/
 
 # Reproducible local verification output; regenerate with the documented gate.
 dist/declaration-audit.json
