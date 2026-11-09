@@ -75,3 +75,14 @@ consumer's candidate build verifies its existing pinned runtime integration;
 editor UI behavior is exercised against the updated official editor host.
 CI runs the new responsive gate alongside the existing coordinate and Play
 checks; remote publication results are recorded in the external evidence.
+
+## CI navigation follow-up
+
+Run `42643759281` on `d166332` failed before the first responsive measurement:
+the CDP navigation command returned before the new document contained `#status`.
+The responsive, coordinate and Play gates now register `Page.loadEventFired` before
+navigating, await that event, then poll a null-safe readiness condition. This
+changes test synchronization only; geometry, pixel and input assertions remain
+intact. Local follow-up: 37 responsive cases, 174 coordinate checks, Play input
+and lifecycle, and `npm run verify` (301 tests) pass. The subsequent CI run is
+recorded in the external evidence.

@@ -50,8 +50,11 @@ async function point(id,x,y){return native(`(()=>{const p=node('${id}').localToG
 const mouse=(type,p,extra={})=>browser.send('Input.dispatchMouseEvent',{type,x:p.x,y:p.y,button:type==='mouseMoved'?'none':'left',buttons:type==='mouseReleased'?0:1,clickCount:type==='mouseMoved'?0:1,...extra});
 async function load(dpr,fixture=''){
  await browser.send('Emulation.setDeviceMetricsOverride',{width:1440,height:1200,deviceScaleFactor:dpr,mobile:false});
+ // Wait for the new document before polling its asynchronous editor boot.
+ const loaded=browser.waitEvent('Page.loadEventFired');
  await browser.send('Page.navigate',{url:base+(fixture?'?fixture='+fixture:'')});
- await browser.waitFor(`document.querySelector('#status').textContent==='Saved' && !document.querySelector('#play').disabled`);await settle();
+ await loaded;
+ await browser.waitFor(`document.querySelector('#status')?.textContent==='Saved' && document.querySelector('#play')?.disabled===false`);await settle();
 }
 try {
  for(const dpr of [1,1.5,2]){

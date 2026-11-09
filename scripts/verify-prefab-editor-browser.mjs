@@ -43,7 +43,9 @@ const settle = () => browser.evaluate('new Promise(resolve => requestAnimationFr
 const click = id => browser.evaluate(`document.getElementById(${JSON.stringify(id)}).click()`);
 async function load(file, width, height, dpr) {
   await browser.send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: dpr, mobile: false });
+  const loaded = browser.waitEvent('Page.loadEventFired');
   await browser.send('Page.navigate', { url: `${base}?prefab=assets/${file}` });
+  await loaded;
   await browser.waitFor(`document.querySelector('[data-node-id="flat"]') && document.querySelector('#status').textContent==='Saved' && document.querySelector('canvas')`);
   await settle();
 }

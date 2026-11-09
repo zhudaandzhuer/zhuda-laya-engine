@@ -27,8 +27,11 @@ const settle=()=>browser.evaluate('new Promise(r=>requestAnimationFrame(()=>requ
 const click=id=>browser.evaluate(`document.getElementById('${id}').click()`);
 async function load(width,height,dpr=1,agent=true){
  await browser.send('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:dpr,mobile:false});
+ // Page.navigate can acknowledge before the new document has a toolbar.
+ const loaded=browser.waitEvent('Page.loadEventFired');
  await browser.send('Page.navigate',{url:base+(agent?'?view=agent':'')});
- await browser.waitFor(`document.querySelector('#status').textContent==='Saved'&&!document.querySelector('#play').disabled`);await settle();
+ await loaded;
+ await browser.waitFor(`document.querySelector('#status')?.textContent==='Saved'&&document.querySelector('#play')?.disabled===false`);await settle();
 }
 async function measure(label,agent,pixels=false){
  const m=await browser.evaluate(`(()=>{
