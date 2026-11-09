@@ -40,6 +40,7 @@ client CSS coordinates at every tested DPR and ancestor transform.
 ### Engine
 
 - Editor client and overlay CSS; neutral browser fixture and npm verification entry.
+- Managed runtime Retina CSS transform composition, regression tests and regenerated SDK/showcase bundles.
 - Editor docs and task/verification records; existing sizing seam only if a
   measured defect requires it.
 
@@ -77,5 +78,6 @@ client CSS coordinates at every tested DPR and ancestor transform.
 
 ## Rollback
 
-Base commit `77acfc7`. Revert this scoped patch if regression gates fail; preserve
+Base commit `77acfc7`. Common runtime correction also addresses the measured
+DPR-2 Prefab-preview failure in GitHub Actions run `42596012076`. Revert this scoped patch if regression gates fail; preserve
 failing measurements and keep the consumer's authored asset positions unchanged.

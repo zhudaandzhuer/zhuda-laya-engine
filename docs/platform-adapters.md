@@ -39,7 +39,9 @@ must follow the consumer's prefab isolation workflow.
 `ZhudaEngine.boot({container, dprCap})` uses responsive **CSS-pixel design units**.
 The canvas backing size scales by `min(devicePixelRatio, dprCap)`; a 198-unit
 control remains 198 CSS px at DPR 1/2/3. Native Laya retinal mode supplies the
-matching stage and input transforms. The version-specific adapter restores the
+matching stage and input transforms. The adapter composes browser canvas CSS
+resampling with the native Retina transform once, while preserving the native
+backing-to-page matrix for input. The version-specific adapter restores the
 browser ratio descriptor after synchronous sizing. Container placement and
 ancestor scrolling are reflected in Laya pointer conversion. DOM
 `ZhudaPointerInput` coordinates remain client CSS pixels; 3D screen queries use

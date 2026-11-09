@@ -44,22 +44,26 @@ export function resizeLaya342Stage(
     if (runtime.stage.updateCanvasSize)
       runtime.systemTimer?.clearCallLater(runtime.stage, runtime.stage.updateCanvasSize);
     runtime.stage.setScreenSize(width * dpr, height * dpr);
-    // Laya 3.4.2's retinal path updates the canvas backing buffer and, in
-    // some browser builds, also writes the backing dimensions into the CSS
-    // width/height attributes.  Those are different coordinate spaces: a
-    // DPR-2 canvas must expose 390 CSS px while retaining a 780 px backing
-    // buffer.  Keep the browser box owned by the responsive container so
-    // pointer coordinates and DOM overlays remain in CSS pixels.
+    // Native _canvasTransform maps backing pixels to browser pixels. When
+    // logical CSS dimensions replace native backing-sized CSS dimensions, the
+    // browser already rescales the backing image. Compose that implicit scale
+    // into the CSS transform once, retaining the native matrix for Laya input.
+    const matrix = runtime.stage._canvasTransform;
     if (canvas?.style) {
       canvas.style.width = `${width}px`;
       canvas.style.height = `${height}px`;
       canvas.style.display = "block";
       canvas.style.touchAction = "none";
+      if (matrix) {
+        const sx = canvas.width / width, sy = canvas.height / height;
+        const tx = matrix.tx - (parseInt(canvas.style.left) || 0);
+        const ty = matrix.ty - (parseInt(canvas.style.top) || 0);
+        canvas.style.transform = `matrix(${matrix.a * sx},${matrix.b * sx},${matrix.c * sy},${matrix.d * sy},${tx},${ty})`;
+      }
     }
     // Laya's input consumes page coordinates, but native setScreenSize only
     // includes canvas.style.left/top. Account for an embedded container after
     // native CSS placement; do not move the rendered canvas a second time.
-    const matrix = runtime.stage._canvasTransform;
     if (canvas?.getBoundingClientRect && matrix) {
       const rect = canvas.getBoundingClientRect();
       const x = [

@@ -43,3 +43,27 @@ test('retinal backing pixels do not change the browser CSS canvas box',()=>{
  assert.equal(style.display,'block');
  assert.equal(style.touchAction,'none');
 });
+
+
+test('retinal CSS transform composes implicit browser sizing without changing native input scale',()=>{
+ for(const dpr of [1,1.5,2]) {
+  const style={left:'7px',top:'9px'}, matrix={a:1/dpr,b:0,c:0,d:1/dpr,tx:7,ty:9};
+  const canvas={width:640*dpr,height:360*dpr,style,getBoundingClientRect:()=>({left:37,top:59})};
+  const stage={_canvasTransform:matrix,size(){},setScreenSize(){}};
+  resizeLaya342Stage({Browser:{},stage},640,360,640,360,dpr,canvas);
+  assert.equal(style.transform,'matrix(1,0,0,1,0,0)');
+  assert.equal(parseFloat(style.width),640);assert.equal(parseFloat(style.height),360);
+  assert.equal(matrix.a,1/dpr);assert.equal(matrix.d,1/dpr);
+  assert.equal(matrix.tx,37);assert.equal(matrix.ty,59);
+ }
+ // Rotated native canvas: compose each backing axis independently and retain
+ // native alignment; embedded page placement still belongs to the input seam.
+ const matrix={a:0,b:0.5,c:-0.5,d:0,tx:187,ty:9};
+ const style={left:'7px',top:'9px'};
+ const canvas={width:640,height:360,style,getBoundingClientRect:()=>({left:30,top:50})};
+ const stage={_canvasTransform:matrix,size(){},setScreenSize(){}};
+ resizeLaya342Stage({Browser:{},stage},320,180,320,180,2,canvas);
+ assert.equal(style.transform,'matrix(0,1,-1,0,180,0)');
+ assert.equal(matrix.a,0);assert.equal(matrix.b,0.5);assert.equal(matrix.c,-0.5);assert.equal(matrix.d,0);
+ assert.equal(matrix.tx,210);assert.equal(matrix.ty,50);
+});

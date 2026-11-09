@@ -2,7 +2,7 @@
 
 Task: [task.md](task.md)
 Date: 2026-11-09
-Implementation: commit containing this record; base `77acfc78846080ec7b60c65ca58c1740562b2edc`.
+Implementation: commit containing this record; original base `77acfc78846080ec7b60c65ca58c1740562b2edc`; editor commit `65f2b7e`, followed by this common-runtime correction.
 Exact executable source hashes and editor bundle SHA-256 are recorded in the browser JSON reports.
 
 ## Environment
@@ -22,11 +22,29 @@ Exact executable source hashes and editor bundle SHA-256 are recorded in the bro
 | Existing Retina reproduction | Original consumer DPR 1 / 2 diagnostic | Original FAIL: canvas 434→217 CSS px; unchanged authored coordinates | Consumer `evidence/game305-editor-anchor-dpr-20261109/README.md` |
 | Editor API / build | `node --test tests/prefab-editor.test.mjs` | PASS, 5/5 | terminal output |
 | Client typecheck | `node node_modules/typescript/bin/tsc --noEmit --allowImportingTsExtensions --target es2022 --module ESNext --moduleResolution bundler --lib es2022,dom --skipLibCheck packages/types/index.d.ts packages/compiler/prefab-editor-client.ts` | PASS | terminal output |
-| Build / types / declaration audit / Doctor / tests | `npm run verify` | PASS, 294/294 tests; Doctor 0 blocking errors | `/tmp/zhuda-editor-verify-20261109.log` |
-| Full position regression | `EDITOR_EVIDENCE_DIR=/tmp/zhuda-editor-coordinates-20261109 npm run verify:prefab-editor` | PASS, 174 position/interaction checks | `/tmp/zhuda-editor-coordinates-20261109/report.json` and PNGs |
-| Independent consumer build | In `/Users/yaowei/Documents/BDL/zhuda-bdl-consumer`: `npm run build -- --candidate` | PASS; consumer remains pinned to its existing clean SDK, since runtime APIs/bundles are unchanged | `/tmp/zhuda-editor-consumer-build-20261109.log` |
+| Build / types / declaration audit / Doctor / tests | `npm run verify` | PASS, 295/295 tests; Doctor 0 blocking errors | `/tmp/zhuda-editor-verify-final-20261109.log` |
+| Full position regression | `EDITOR_EVIDENCE_DIR=/tmp/zhuda-editor-runtime-fixed-20261109 npm run verify:prefab-editor` | PASS, 174 position/interaction checks | `/tmp/zhuda-editor-runtime-fixed-20261109/report.json` and PNGs |
+| Independent consumer build | In `/Users/yaowei/Documents/BDL/zhuda-bdl-consumer`: `npm run build -- --candidate` | PASS; consumer remains pinned to its existing clean SDK; updated-runtime independent consumer builds are checked in the next row | `/tmp/zhuda-editor-consumer-build-20261109.log` |
+| Updated-runtime independent consumer | `PREFAB_FIXTURE_DIR=/tmp/zhuda-prefab-browser-runtime-final node scripts/verify-prefab-browser.mjs` | PASS, Prefab/Scene pixel comparisons, DPR 1 / 2, portrait/landscape, wrong-size/texture/provenance failures, lifecycle and compiler gate | `/tmp/zhuda-prefab-browser-runtime-final/evidence/summary.json` |
+| Common runtime WebGL/input | `RUNTIME_FIXTURE_DIR=/tmp/zhuda-runtime-retina-final node scripts/verify-runtime-feedback-browser.mjs` | PASS, DPR 1 / 2 / 3, cap 1.5, fixed/responsive sizing, actual painted pixels/native cursor, resize, focus/cancel, two pointers, media, worklet and disposal | `/tmp/zhuda-runtime-retina-final/evidence/report.json` |
+| Runtime sizing unit regression | `node --test tests/runtime-sizing.test.mjs` | PASS, 4 tests, including preservation of native input scale and rotated canvas transform composition | terminal output |
 | Actual Game305 selections | `node /tmp/verify-game305-editor-coordinates.mjs` against newly built editor bundle and original game assets | PASS, 6 cases; source SHA-256 unchanged | Consumer `evidence/game305-editor-coordinate-fix-20261109/report.json` and `replay.mjs` |
 | Diff hygiene | `git diff --check` | PASS | terminal output |
+
+## Common runtime correction
+
+The first pushed editor fix passed the isolated editor tests. Its CI exposed the
+same underlying double-scale in the existing standalone Prefab preview:
+[run 42596012076](https://github.com/zhudaandzhuer/zhuda-laya-engine/actions/runs/42596012076)
+failed with requested 1024×576 and measured 512×288 CSS px at DPR 2.
+
+`resizeLaya342Stage` now composes the implicit backing-to-CSS resampling into
+its CSS transform once. It retains the native backing-to-page matrix for Laya
+input and embedded page placement, including rotated canvases. The editor no
+longer needs intrinsic-width CSS overrides. Both independent consumer runtime
+checks above pass after rebuilding the SDK; generated ESM/CJS and showcase
+bundles are committed with the source. Public API/types and source design units
+are unchanged. Final bundle/source hashes are in the external runtime manifest.
 
 ## Position and input criteria
 
@@ -69,7 +87,7 @@ logs are stored below the consumer evidence directory above (`neutral/`,
 Desktop Chromium only. No physical mobile, Windows, Safari, Firefox, WebGPU,
 new npm release or hosted CI result is claimed by this local run. Consumer game
 rule/art parity and production-asset dragging/saving remain outside this scope.
-Runtime ownership, public API and authored game coordinates are preserved.
+Runtime sizing ownership, public API and authored game coordinates are preserved. The current consumer SDK pin is not upgraded by the read-only replay.
 
 Decision: **Implemented within scope; macOS Chromium verified**. All 174 combined
 browser checks passed, with no runtime exceptions. Executable source hashes
