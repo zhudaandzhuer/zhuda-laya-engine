@@ -98,5 +98,5 @@ never re-enable insecure serving as an automatic fallback.
 
 ## Result
 
-See [verification.md](verification.md). Windows hosted CI and consumer
-re-pinning remain open.
+See [verification.md](verification.md). Hosted CI (including full Windows
+tests) passes; consumer re-pinning and Prefab re-approval remain open.

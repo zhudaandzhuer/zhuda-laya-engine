@@ -41,8 +41,8 @@ Date: 2026-11-10
 | Consumer release build | Same copy: `npm run build` | BLOCKED by design: the 15 Prefab evidence reports are stale for the new engine fingerprint. See "Consumer build" below | terminal log |
 | Game305 editor replays | Consumer `evidence/game305-editor-{responsive,coordinate-fix}-20261109/replay.mjs`, output redirected outside the consumer | PASS; Game305 source hashes unchanged | local evidence directory |
 | Game305 Play replay | Consumer `evidence/game305-editor-play-20261109/replay.mjs` | FAIL on both this tree and clean `b8a174f` at the same assertion (`report().audio` is undefined): the replay predates the consumer's current editor controller. Not an engine regression; the consumer owns the refresh | terminal log |
-| Windows full tests | `.github/workflows/verify.yml` `windows` job (`npm test`) | First hosted run (42760722925) FAILED in 6 tests: POSIX-only test assumptions (raw `import()` of drive paths, `/tmp` and `/opt` literals, `/`-only regexes). Tests now use `pathToFileURL`, `os.tmpdir()`, `path.resolve` and separator-agnostic patterns; product code was unchanged. The second run (42762746232) also showed the new module-resolution test spawning `npm` directly, which Windows cannot start without a shell; it now runs npm's CLI through Node. Re-run pending | GitHub Actions |
-| Hosted browser batches | `browser` job | First run FAILED at `verify:crowd`: its image comparison required Python Pillow. It now compares PNGs with the `pngjs` dependency (same RGB threshold and foreground rule); local `verify:crowd` PASS. Re-run pending | GitHub Actions |
+| Windows full tests | `.github/workflows/verify.yml` `windows` job (`npm test`) | First hosted run (42760722925) FAILED in 6 tests: POSIX-only test assumptions (raw `import()` of drive paths, `/tmp` and `/opt` literals, `/`-only regexes). Tests now use `pathToFileURL`, `os.tmpdir()`, `path.resolve` and separator-agnostic patterns; product code was unchanged. The second run (42762746232) also showed the new module-resolution test spawning `npm` directly, which Windows cannot start without a shell; it now runs npm's CLI through Node. Run 42765245489 (`be4b8ea`): PASS, 322/322 | GitHub Actions |
+| Hosted browser batches | `browser` job | First run FAILED at `verify:crowd`: its image comparison required Python Pillow. It now compares PNGs with the `pngjs` dependency (same RGB threshold and foreground rule); local `verify:crowd` PASS. Runs 42763543516 and 42765245489: PASS | GitHub Actions |
 | Diff hygiene | `git diff --check` | PASS | terminal output |
 
 ## Coverage
@@ -69,7 +69,7 @@ were not modified; they are updated by the consumer after push.
 
 ## Limits and decision
 
-- Windows full `npm test` is unverified until hosted CI runs after push.
+- Hosted Windows CI is not Windows GPU hardware acceptance.
 - Physical devices, Windows GPU hardware and a real malicious-site DNS
   rebinding run are not covered; HTTP defenses are tested at the server.
 - The browser SDK for 1.15.0 now builds different bytes from the hosted
@@ -80,5 +80,6 @@ were not modified; they are updated by the consumer after push.
 - The Game305 Play replay must be refreshed in the consumer.
 - Consumer release publication waits on its Prefab re-approval for this engine.
 
-Decision: **Implemented within scope; desktop verified.** Not Accepted until
-Windows CI passes and the consumer pins and re-verifies this commit.
+Decision: **Implemented within scope; desktop verified.** Hosted verify, browser and
+Windows jobs pass (run 42765245489). Not Accepted until the consumer pins
+this engine and re-approves its Prefab evidence.

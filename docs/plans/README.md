@@ -39,7 +39,7 @@ device checks and acceptance gates pass.
 | [Prefab editor responsive layout](records/prefab-editor-responsive/task.md) | Implemented within scope; desktop verified | Wrapping toolbar, scrollable narrow panels, full Agent canvas, container and height-driven fit with 37 browser checks |
 | [Prefab editor Play preview](records/prefab-editor-play/task.md) | Implemented within scope; desktop verified | Disposable Edit/Play instances, public consumer controllers, interaction isolation and lifecycle cleanup |
 | [Prefab editor coordinates](records/prefab-editor-coordinates/task.md) | Implemented within scope; 174 desktop checks | Retina container sizing, transformed selection/pivot, parent-local dragging and browser position assertions |
-| [Disclosure hardening](records/disclosure-hardening/task.md) | Implemented within scope; desktop verified | Editor Host/Origin/capability defenses, working installed CLIs, strict generated types, truthful MCP/health, lean reproducible package and CI; Windows CI and consumer re-pin pending |
+| [Disclosure hardening](records/disclosure-hardening/task.md) | Implemented within scope; desktop verified | Editor Host/Origin/capability defenses, working installed CLIs, strict generated types, truthful MCP/health, lean reproducible package and CI (Windows full tests pass); consumer re-pin pending |
 | [Preview runtime hardening](preview-runtime-hardening.md) | Accepted; desktop/browser verified | Foreign Laya realm guard, explicit 2D-only editor profile and release-hidden Scene/3D showcase policy; external device and foreign-app integration remain separate checks |
 
 Slot-specific rules, RGS, math, wallet and Factory products are outside this
