@@ -8,7 +8,7 @@ import { ViewportMatrixEngine } from '../packages/core/ViewportMatrixEngine.ts';
 import {
   UNITY_CYBER_SHRINE_SCENE,
   UnityAnimatorStateMachine,
-  UnityBridgePipeline
+  UnityBridgePipeline,
 } from '../packages/core/UnityBridgePipeline.ts';
 
 test('Direction 1 (M1): 9-Slice (sizeGrid) locks 4 corners at 16x16px with 0px distortion across arbitrary stretches', () => {
@@ -44,7 +44,7 @@ test('Direction 1 (M2): IframeSoundAdapter handles pre-gesture queue, auto-unloc
     id: 'test-pre-unlock',
     channel: 'sfx',
     startFreq: 520,
-    durationSec: 0.05
+    durationSec: 0.05,
   });
   assert.equal(scheduled, true);
   assert.equal(adapter.getDiagnostics().queuedBeforeUnlockCount, 1);
@@ -61,7 +61,7 @@ test('Direction 1 (M2): IframeSoundAdapter handles pre-gesture queue, auto-unloc
   assert.equal(adapter.getDiagnostics().autoSuspendedByBlur, true);
   assert.equal(
     adapter.scheduleTone({ id: 'blocked-while-blurred', startFreq: 440, durationSec: 0.05 }),
-    false
+    false,
   );
 
   // 4. 模擬焦點恢復
@@ -91,7 +91,7 @@ test('Direction 2 (M3 & M4): Multi-Resolution SafeArea Matrix (5 devices) and 4 
   assert.equal(portraitReport.zeroOverflowPassed, true);
   assert.ok(
     portraitReport.recommendedCameraFov > 45,
-    'Portrait narrow screen should auto-widen vertical FOV to prevent 3D board horizontal clipping'
+    'Portrait narrow screen should auto-widen vertical FOV to prevent 3D board horizontal clipping',
   );
   assert.ok(portraitReport.hudTopBarRect.y >= 59, 'HUD must respect Dynamic Island 59px top inset');
 
@@ -101,7 +101,7 @@ test('Direction 2 (M3 & M4): Multi-Resolution SafeArea Matrix (5 devices) and 4 
     'MineExplosionParticle.lh',
     'CoinFountainVfx.lh',
     'SwordSlashTrailVfx.lh',
-    'LevelUpAuraVfx.lh'
+    'LevelUpAuraVfx.lh',
   ];
   for (const vf of vfxFiles) {
     const report = PixelCalibrationEngine.calibrateAsset(assets[vf]);
@@ -116,14 +116,15 @@ test('Direction 3 (M5): Unity Scene + AnimatorController + Spine 4.2 migration c
   assert.deepEqual(UnityBridgePipeline.convertEulerLHtoRH([15, 45, 15]), [15, -45, -15]);
 
   // 2. 驗證完整場景轉換與 AnimatorController 狀態機過渡軌跡 (Idle -> Charge -> Burst -> Idle)
-  const migrationReport = UnityBridgePipeline.runFullMigrationVerification(UNITY_CYBER_SHRINE_SCENE);
+  const migrationReport =
+    UnityBridgePipeline.runFullMigrationVerification(UNITY_CYBER_SHRINE_SCENE);
   assert.equal(migrationReport.passed, true);
   assert.equal(migrationReport.convertedNodesCount, 5);
   assert.deepEqual(migrationReport.animatorVerification.simulatedTransitionTrace, [
     'Idle',
     'Charge',
     'Burst',
-    'Idle'
+    'Idle',
   ]);
   assert.equal(migrationReport.spine42Verification.physicsConstraintsMounted, 2);
 

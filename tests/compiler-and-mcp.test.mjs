@@ -18,9 +18,18 @@ test('AST Scanner discovers @zhudaComponent classes and generates zhuda-registry
   const classNames = res.classes.map((c) => c.className);
   assert.ok(classNames.includes('BoardCameraController'), 'Should discover BoardCameraController');
   assert.ok(classNames.includes('TilePhysicsBehavior'), 'Should discover TilePhysicsBehavior');
-  assert.ok(classNames.includes('Spine42PhysicsRigComponent'), 'Should discover Spine42PhysicsRigComponent');
-  assert.ok(classNames.includes('ZhudaParticleEmitterComponent'), 'Should discover ZhudaParticleEmitterComponent');
-  assert.ok(classNames.includes('ZhudaAnimatorControllerComponent'), 'Should discover ZhudaAnimatorControllerComponent');
+  assert.ok(
+    classNames.includes('Spine42PhysicsRigComponent'),
+    'Should discover Spine42PhysicsRigComponent',
+  );
+  assert.ok(
+    classNames.includes('ZhudaParticleEmitterComponent'),
+    'Should discover ZhudaParticleEmitterComponent',
+  );
+  assert.ok(
+    classNames.includes('ZhudaAnimatorControllerComponent'),
+    'Should discover ZhudaAnimatorControllerComponent',
+  );
 });
 
 test('MCP Server resolves topology, diagnoses Laya crashes, and serves Golden Examples', () => {
@@ -30,7 +39,7 @@ test('MCP Server resolves topology, diagnoses Laya crashes, and serves Golden Ex
   assert.ok(topoRes.orderedFiles.includes('laya.spine.js'));
 
   const diagRes = executeMcpTool('diagnose_error', {
-    error: 'this._graphics.setState is not a function'
+    error: 'this._graphics.setState is not a function',
   });
   assert.equal(diagRes.diagnosed, true);
   assert.ok(diagRes.matches[0].fix.includes('installPrototypeDetox'));
@@ -39,7 +48,7 @@ test('MCP Server resolves topology, diagnoses Laya crashes, and serves Golden Ex
     jsonrpc: '2.0',
     id: 42,
     method: 'tools/list',
-    params: {}
+    params: {},
   });
   assert.equal(rpcRes.id, 42);
   assert.equal(rpcRes.result.tools.length, 21);
@@ -50,14 +59,34 @@ test('MCP Server resolves topology, diagnoses Laya crashes, and serves Golden Ex
   assert.ok(rpcRes.result.tools.some((tool) => tool.name === 'audit_visual_contract'));
   assert.ok(rpcRes.result.tools.some((tool) => tool.name === 'validate_particle_effect'));
   assert.equal(executeMcpTool('validate_particle_effect', { effect: null }).passed, false);
-  assert.equal(executeMcpTool('validate_particle_effect', { effect: { schemaVersion: 1, emitters: [{
-    id: 'neutral', texture: 'external-key', seed: 1, space: 'world', blend: 'alpha',
-    maxParticles: 16, shape: { type: 'point' }, rate: 10, lifetime: 1, speed: 0, angle: 0, size: 4
-  }] } }).passed, true);
+  assert.equal(
+    executeMcpTool('validate_particle_effect', {
+      effect: {
+        schemaVersion: 1,
+        emitters: [
+          {
+            id: 'neutral',
+            texture: 'external-key',
+            seed: 1,
+            space: 'world',
+            blend: 'alpha',
+            maxParticles: 16,
+            shape: { type: 'point' },
+            rate: 10,
+            lifetime: 1,
+            speed: 0,
+            angle: 0,
+            size: 4,
+          },
+        ],
+      },
+    }).passed,
+    true,
+  );
 
   const visualContractRes = executeMcpTool('audit_visual_contract', {
     projectRoot,
-    manifestPath: 'tests/fixtures/visual-presentation-manifest.json'
+    manifestPath: 'tests/fixtures/visual-presentation-manifest.json',
   });
   assert.equal(visualContractRes.passed, true);
   assert.deepEqual(visualContractRes.contractIds, ['sample-focus']);
@@ -78,12 +107,17 @@ test('agent contract is machine-readable and rejects incomplete task specs', () 
   assert.equal(executeMcpTool('validate_task_spec', { task: { id: 'incomplete' } }).passed, false);
   const valid = executeMcpTool('validate_task_spec', {
     task: {
-      id: 'fixture-task', source: 'issue:123', goal: 'make a bounded change',
-      invariants: ['consumer owns gameplay'], dependencies: [],
+      id: 'fixture-task',
+      source: 'issue:123',
+      goal: 'make a bounded change',
+      invariants: ['consumer owns gameplay'],
+      dependencies: [],
       scope: { engine: ['packages/core'], consumer: [] },
-      nonGoals: ['packed provider'], acceptance: ['npm test'], evidence: [],
-      unverifiedLimits: ['real iPhone']
-    }
+      nonGoals: ['packed provider'],
+      acceptance: ['npm test'],
+      evidence: [],
+      unverifiedLimits: ['real iPhone'],
+    },
   });
   assert.equal(valid.passed, true);
 });
@@ -107,15 +141,20 @@ test('agent contract audit reports missing files and invalid plan status with re
 
 test('an agent can discover the visual gates over MCP and Doctor reports a missing policy', () => {
   const rpc = handleJsonRpcMessage({
-    jsonrpc: '2.0', id: 1, method: 'tools/call',
-    params: { name: 'get_agent_contract', arguments: {} }
+    jsonrpc: '2.0',
+    id: 1,
+    method: 'tools/call',
+    params: { name: 'get_agent_contract', arguments: {} },
   });
   const contract = JSON.parse(rpc.result.content[0].text);
   const { policyFile, stages } = contract.visualWorkflow;
   assert.ok(contract.requiredReading.includes(policyFile));
   assert.deepEqual(stages, [
-    'inventory-assets', 'author-prefab', 'verify-isolated-nodes',
-    'compose-approved-prefabs', 'verify-consumer-scene'
+    'inventory-assets',
+    'author-prefab',
+    'verify-isolated-nodes',
+    'compose-approved-prefabs',
+    'verify-consumer-scene',
   ]);
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'zhuda-prefab-policy-'));
   try {
@@ -139,8 +178,11 @@ test('Zhuda Doctor audit passes with 0 topological inversions and 0 legacy API v
 });
 
 test('zhuda-laya-engine SDK bundles (ESM & CJS) and upstream LayaAir Official attribution are present', async () => {
-  assert.equal(JSON.parse(fs.readFileSync(path.join(projectRoot, 'zhuda.config.json'))).version,
-    JSON.parse(fs.readFileSync(path.join(projectRoot, 'package.json'))).version, 'Engine config version must match the package');
+  assert.equal(
+    JSON.parse(fs.readFileSync(path.join(projectRoot, 'zhuda.config.json'))).version,
+    JSON.parse(fs.readFileSync(path.join(projectRoot, 'package.json'))).version,
+    'Engine config version must match the package',
+  );
   const manifestPath = path.join(projectRoot, 'dist/build-manifest.json');
   assert.equal(fs.existsSync(manifestPath), true);
   const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
@@ -168,13 +210,39 @@ test('zhuda-laya-engine SDK bundles (ESM & CJS) and upstream LayaAir Official at
   assert.ok(demo.UnityBridgePipeline, 'Optional demo entry retains the migration sample');
   assert.ok(sdkMod.VisualFocusContract, 'ESM SDK should export VisualFocusContract');
   const cjsMod = (await import('node:module')).createRequire(import.meta.url)(cjsPath);
-  for (const name of ['NoSleepAdapter', 'ZhudaParticleSystem', 'ZhudaRibbonTrail', 'ZhudaEffectEnvelope', 'ZhudaLayaParticleRenderer',
-    'ZhudaLayeredClock', 'ZhudaActionStateMachine', 'ZhudaInputBuffer', 'buildPrefabTree', 'validatePrefabTree3D',
-    'ZhudaLayaRibbonRenderer', 'validateParticleEffect', 'ZhudaParticleSystem3D', 'ZhudaParticleMesh3D',
-    'ZhudaRibbonTrail3D', 'ZhudaRibbonPath3D', 'ZhudaLayaParticleRenderer3D', 'ZhudaLayaRibbonRenderer3D', 'validateParticleEffect3D',
-    'ZhudaEffectDirector', 'ZhudaEffectBudget', 'ZhudaRuntimeProfiler', 'ZhudaVfxMaterial', 'ZhudaVfxCamera',
-    'ZhudaParticleEventLink', 'sampleParticleUV', 'convertUnityVisualMaterial', 'instantiateMigratedMaterial',
-    'disposeMigratedMaterial', 'convertUnityAnimationCurve', 'compareVisualFrames']) {
+  for (const name of [
+    'NoSleepAdapter',
+    'ZhudaParticleSystem',
+    'ZhudaRibbonTrail',
+    'ZhudaEffectEnvelope',
+    'ZhudaLayaParticleRenderer',
+    'ZhudaLayeredClock',
+    'ZhudaActionStateMachine',
+    'ZhudaInputBuffer',
+    'buildPrefabTree',
+    'validatePrefabTree3D',
+    'ZhudaLayaRibbonRenderer',
+    'validateParticleEffect',
+    'ZhudaParticleSystem3D',
+    'ZhudaParticleMesh3D',
+    'ZhudaRibbonTrail3D',
+    'ZhudaRibbonPath3D',
+    'ZhudaLayaParticleRenderer3D',
+    'ZhudaLayaRibbonRenderer3D',
+    'validateParticleEffect3D',
+    'ZhudaEffectDirector',
+    'ZhudaEffectBudget',
+    'ZhudaRuntimeProfiler',
+    'ZhudaVfxMaterial',
+    'ZhudaVfxCamera',
+    'ZhudaParticleEventLink',
+    'sampleParticleUV',
+    'convertUnityVisualMaterial',
+    'instantiateMigratedMaterial',
+    'disposeMigratedMaterial',
+    'convertUnityAnimationCurve',
+    'compareVisualFrames',
+  ]) {
     assert.equal(typeof sdkMod[name], 'function', `ESM SDK should export ${name}`);
     assert.equal(typeof cjsMod[name], 'function', `CJS SDK should export ${name}`);
   }
@@ -186,11 +254,14 @@ test('zhuda-laya-engine SDK bundles (ESM & CJS) and upstream LayaAir Official at
 });
 
 test('effects and migration public types compose with particle systems in a strict consumer', () => {
-  const temporary=fs.mkdtempSync(path.join(os.tmpdir(),'zhuda-effects-types-'));
+  const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'zhuda-effects-types-'));
   try {
-    fs.mkdirSync(path.join(temporary,'node_modules'));fs.symlinkSync(projectRoot,path.join(temporary,'node_modules/zhuda-laya-engine'),'dir');
-    const fixture=path.join(temporary,'consumer.ts');
-    fs.writeFileSync(fixture,`import { ZhudaEngine, ZhudaEffectDirector, ZhudaEffectBudget, ZhudaRuntimeProfiler, ZhudaVfxCamera,
+    fs.mkdirSync(path.join(temporary, 'node_modules'));
+    fs.symlinkSync(projectRoot, path.join(temporary, 'node_modules/zhuda-laya-engine'), 'dir');
+    const fixture = path.join(temporary, 'consumer.ts');
+    fs.writeFileSync(
+      fixture,
+      `import { ZhudaEngine, ZhudaEffectDirector, ZhudaEffectBudget, ZhudaRuntimeProfiler, ZhudaVfxCamera,
       ZhudaVfxMaterial, ZhudaParticleSystem3D, ZhudaParticleEventLink, convertUnityVisualMaterial,
       instantiateMigratedMaterial, compareVisualFrames } from 'zhuda-laya-engine';
       import type { VfxMaterialSpec, EffectTimelineSpec, ParticleEmitterSpec3D } from 'zhuda-laya-engine';
@@ -214,11 +285,34 @@ test('effects and migration public types compose with particle systems in a stri
       instantiateMigratedMaterial(convertUnityVisualMaterial({id:'metal',shader:'Standard',metallic:.8}),key=>({}));
       const passed:boolean=compareVisualFrames(new Uint8Array(4),new Uint8Array(4),1,1).passed;
       // @ts-expect-error version must match the material contract
-      const invalid:VfxMaterialSpec={version:2};`);
-    const program=ts.createProgram([fixture],{noEmit:true,strict:true,skipLibCheck:true,types:[],target:ts.ScriptTarget.ES2020,module:ts.ModuleKind.ESNext,moduleResolution:ts.ModuleResolutionKind.Bundler});
-    const diagnostics=ts.getPreEmitDiagnostics(program);assert.equal(diagnostics.length,0,ts.formatDiagnosticsWithColorAndContext(diagnostics,{getCurrentDirectory:()=>temporary,getCanonicalFileName:f=>f,getNewLine:()=> '\n'}));
-    assert.equal(program.getSourceFiles().some(f=>f.fileName.includes('/core/effects/')),false);
-  } finally {fs.rmSync(temporary,{recursive:true,force:true});}
+      const invalid:VfxMaterialSpec={version:2};`,
+    );
+    const program = ts.createProgram([fixture], {
+      noEmit: true,
+      strict: true,
+      skipLibCheck: true,
+      types: [],
+      target: ts.ScriptTarget.ES2020,
+      module: ts.ModuleKind.ESNext,
+      moduleResolution: ts.ModuleResolutionKind.Bundler,
+    });
+    const diagnostics = ts.getPreEmitDiagnostics(program);
+    assert.equal(
+      diagnostics.length,
+      0,
+      ts.formatDiagnosticsWithColorAndContext(diagnostics, {
+        getCurrentDirectory: () => temporary,
+        getCanonicalFileName: (f) => f,
+        getNewLine: () => '\n',
+      }),
+    );
+    assert.equal(
+      program.getSourceFiles().some((f) => f.fileName.includes('/core/effects/')),
+      false,
+    );
+  } finally {
+    fs.rmSync(temporary, { recursive: true, force: true });
+  }
 });
 
 test('particle public types compile in a strict consumer without importing implementation files', () => {
@@ -227,7 +321,9 @@ test('particle public types compile in a strict consumer without importing imple
     fs.mkdirSync(path.join(temporary, 'node_modules'));
     fs.symlinkSync(projectRoot, path.join(temporary, 'node_modules/zhuda-laya-engine'), 'dir');
     const fixture = path.join(temporary, 'consumer.ts');
-    fs.writeFileSync(fixture, `import { ZhudaParticleSystem, ZhudaLayaParticleRenderer, ZhudaRibbonTrail,
+    fs.writeFileSync(
+      fixture,
+      `import { ZhudaParticleSystem, ZhudaLayaParticleRenderer, ZhudaRibbonTrail,
       ZhudaLayaRibbonRenderer, ZhudaEffectEnvelope, validateParticleEffect, ZhudaParticleSystem3D, ZhudaParticleMesh3D,
       ZhudaLayaParticleRenderer3D, ZhudaRibbonPath3D, ZhudaRibbonTrail3D, ZhudaLayaRibbonRenderer3D, validateParticleEffect3D } from 'zhuda-laya-engine';
       import type { ParticleEffectSpec, ParticleState, ParticleEffectSpec3D } from 'zhuda-laya-engine';
@@ -252,37 +348,93 @@ test('particle public types compile in a strict consumer without importing imple
       const errors3: string[] = validateParticleEffect3D(spec3);
       // @ts-expect-error unknown emitter spaces must be rejected by the public types
       spec.emitters[0].space = 'screen';
-    `);
+    `,
+    );
     for (const standalone of [false, true]) {
       // The package's pre-existing vendor declarations require skipLibCheck, as in tsconfig.json.
       // Also check the new particle contract alone without skipping declaration checks.
-      const program = ts.createProgram([fixture], { noEmit: true, strict: true, skipLibCheck: !standalone,
-        types: [], target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.ESNext,
+      const program = ts.createProgram([fixture], {
+        noEmit: true,
+        strict: true,
+        skipLibCheck: !standalone,
+        types: [],
+        target: ts.ScriptTarget.ES2020,
+        module: ts.ModuleKind.ESNext,
         moduleResolution: ts.ModuleResolutionKind.Bundler,
-        ...(standalone ? { paths: { 'zhuda-laya-engine': [path.join(projectRoot, 'packages/types/zhuda-particles.d.ts')] } } : {}) });
+        ...(standalone
+          ? {
+              paths: {
+                'zhuda-laya-engine': [
+                  path.join(projectRoot, 'packages/types/zhuda-particles.d.ts'),
+                ],
+              },
+            }
+          : {}),
+      });
       const diagnostics = ts.getPreEmitDiagnostics(program);
-      assert.equal(diagnostics.length, 0, ts.formatDiagnosticsWithColorAndContext(diagnostics.slice(0, 5), {
-        getCurrentDirectory: () => temporary, getCanonicalFileName: f => f, getNewLine: () => '\n'
-      }));
-      assert.equal(program.getSourceFiles().some(f => f.fileName.includes('/core/particles/')), false);
+      assert.equal(
+        diagnostics.length,
+        0,
+        ts.formatDiagnosticsWithColorAndContext(diagnostics.slice(0, 5), {
+          getCurrentDirectory: () => temporary,
+          getCanonicalFileName: (f) => f,
+          getNewLine: () => '\n',
+        }),
+      );
+      assert.equal(
+        program.getSourceFiles().some((f) => f.fileName.includes('/core/particles/')),
+        false,
+      );
     }
-  } finally { fs.rmSync(temporary, { recursive: true, force: true }); }
+  } finally {
+    fs.rmSync(temporary, { recursive: true, force: true });
+  }
 });
 
 test('MCP validates 3D particle descriptors with XYZ direction and cone constraints', () => {
-  const effect={schemaVersion:1,dimension:3,emitters:[{id:'xyz',texture:'external',maxParticles:8,seed:1,space:'world',blend:'alpha',
-    shape:{type:'point'},direction:{x:0,y:0,z:-1},spread:.2,rate:10,lifetime:1,speed:2,size:.1}]};
-  assert.equal(executeMcpTool('validate_particle_effect',{effect}).passed,true);
-  effect.emitters[0].direction.z=0;assert.equal(executeMcpTool('validate_particle_effect',{effect}).passed,false);
+  const effect = {
+    schemaVersion: 1,
+    dimension: 3,
+    emitters: [
+      {
+        id: 'xyz',
+        texture: 'external',
+        maxParticles: 8,
+        seed: 1,
+        space: 'world',
+        blend: 'alpha',
+        shape: { type: 'point' },
+        direction: { x: 0, y: 0, z: -1 },
+        spread: 0.2,
+        rate: 10,
+        lifetime: 1,
+        speed: 2,
+        size: 0.1,
+      },
+    ],
+  };
+  assert.equal(executeMcpTool('validate_particle_effect', { effect }).passed, true);
+  effect.emitters[0].direction.z = 0;
+  assert.equal(executeMcpTool('validate_particle_effect', { effect }).passed, false);
 });
 
-test('MCP crowd guidance separates native animation, provider models and measured platform support',()=>{
- const crowd=executeMcpTool('search_api_guardrails',{query:'crowd'});assert.ok(crowd.guardrails.some(g=>g.zhudaCanonicalApi.includes('ZhudaCrowdScheduler')));
- const unavailable=executeMcpTool('search_api_guardrails',{query:'ZhudaMMOServer'});assert.equal(unavailable.matchCount,1);assert.match(unavailable.guardrails[0].reason,/consumer/);
- const gpu=executeMcpTool('search_api_guardrails',{query:'profiler'});assert.match(gpu.guardrails[0].reason,/disjoint/);
+test('MCP crowd guidance separates native animation, provider models and measured platform support', () => {
+  const crowd = executeMcpTool('search_api_guardrails', { query: 'crowd' });
+  assert.ok(crowd.guardrails.some((g) => g.zhudaCanonicalApi.includes('ZhudaCrowdScheduler')));
+  const unavailable = executeMcpTool('search_api_guardrails', { query: 'ZhudaMMOServer' });
+  assert.equal(unavailable.matchCount, 1);
+  assert.match(unavailable.guardrails[0].reason, /consumer/);
+  const gpu = executeMcpTool('search_api_guardrails', { query: 'profiler' });
+  assert.match(gpu.guardrails[0].reason, /disjoint/);
 });
 
-test('MCP exposes the actual cinematic route and keeps HDR/device limits explicit',()=>{
- const contract=executeMcpTool('get_cinematic_contract');assert.ok(contract.api.includes('ZhudaCinematicCapture'));assert.match(contract.capture.accumulation,/display-linear/);assert.equal(contract.deviceCertification,false);assert.ok(contract.limits.some(x=>x.includes('EXR')));
- const guard=executeMcpTool('search_api_guardrails',{query:'GUARD_CINEMATIC_CAPTURE'});assert.equal(guard.matchCount,1);assert.match(guard.guardrails[0].zhudaCanonicalApi,/zhuda-film-export/);
+test('MCP exposes the actual cinematic route and keeps HDR/device limits explicit', () => {
+  const contract = executeMcpTool('get_cinematic_contract');
+  assert.ok(contract.api.includes('ZhudaCinematicCapture'));
+  assert.match(contract.capture.accumulation, /display-linear/);
+  assert.equal(contract.deviceCertification, false);
+  assert.ok(contract.limits.some((x) => x.includes('EXR')));
+  const guard = executeMcpTool('search_api_guardrails', { query: 'GUARD_CINEMATIC_CAPTURE' });
+  assert.equal(guard.matchCount, 1);
+  assert.match(guard.guardrails[0].zhudaCanonicalApi, /zhuda-film-export/);
 });

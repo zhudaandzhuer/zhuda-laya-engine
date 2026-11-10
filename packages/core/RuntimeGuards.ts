@@ -12,7 +12,7 @@ import { ZHUDA_ENGINE_MODULES } from './TopologyGraph.ts';
 import type {
   Physics2DGuardStatus,
   Physics3DGuardStatus,
-  Spine42PhysicsTelemetry
+  Spine42PhysicsTelemetry,
 } from '../types/index.ts';
 
 export interface EngineHealthReport {
@@ -64,7 +64,7 @@ export class EngineGuard {
           // Safe no-op guard for custom vector Graphics attached to Laya.Button
         },
         writable: true,
-        configurable: true
+        configurable: true,
       });
       patchedTargets.push('Laya.Graphics.prototype.setState');
     }
@@ -83,7 +83,7 @@ export class EngineGuard {
     this.detoxInstalled = true;
     return {
       detoxApplied: true,
-      patchedTargets
+      patchedTargets,
     };
   }
 
@@ -134,7 +134,7 @@ export class EngineGuard {
     return {
       physics2DLoaded,
       box2DFactoryMounted,
-      tilemapShapeRegistered
+      tilemapShapeRegistered,
     };
   }
 
@@ -148,7 +148,9 @@ export class EngineGuard {
         Rigidbody3D?: unknown;
         BoxColliderShape?: unknown;
         Laya3D?: { _PhysicsCreateUtil?: unknown };
-        btStatics?: { bt?: { btVector3_create?: unknown; btDiscreteDynamicsWorld_create?: unknown } };
+        btStatics?: {
+          bt?: { btVector3_create?: unknown; btDiscreteDynamicsWorld_create?: unknown };
+        };
       };
       Physics3D?: unknown;
     };
@@ -156,12 +158,14 @@ export class EngineGuard {
     const bulletLoaded = Boolean(g.Physics3D || g.Laya?.Laya3D);
     const physics3DLoaded = Boolean(g.Laya?.PhysicsCollider && g.Laya?.Rigidbody3D);
     const bullet = g.Laya?.btStatics?.bt;
-    const wasmInitialized = typeof bullet?.btVector3_create === 'function' && typeof bullet?.btDiscreteDynamicsWorld_create === 'function';
+    const wasmInitialized =
+      typeof bullet?.btVector3_create === 'function' &&
+      typeof bullet?.btDiscreteDynamicsWorld_create === 'function';
 
     return {
       bulletLoaded,
       physics3DLoaded,
-      wasmInitialized
+      wasmInitialized,
     };
   }
 
@@ -192,7 +196,9 @@ export class EngineGuard {
     const layaSpine3DReady = Boolean(g.Laya?.Spine3DRenderNode || g.Laya?.SpineTemplet);
 
     return {
-      runtimeVersion: hasPhysicsConstraint ? '4.2.x (PhysicsConstraint Active)' : sp?.version || 'unknown',
+      runtimeVersion: hasPhysicsConstraint
+        ? '4.2.x (PhysicsConstraint Active)'
+        : sp?.version || 'unknown',
       hasPhysicsConstraint,
       hasAnimationState,
       hasSkeleton,
@@ -200,7 +206,7 @@ export class EngineGuard {
       layaSpine3DReady,
       pendulumAngleRad: 0,
       pendulumVelocity: 0,
-      springTension: 0
+      springTension: 0,
     };
   }
 
@@ -220,11 +226,19 @@ export class EngineGuard {
     const sp42 = this.checkSpine42();
     const buttonSetStateGuarded = typeof g.Laya?.Graphics?.prototype?.setState === 'function';
 
-    const loadedCount = ZHUDA_ENGINE_MODULES.filter(module => module.providesGlobals.length > 0 && module.providesGlobals.every(name => {
-      let value: unknown = globalThis;
-      for (const key of name.split('.')) value = value != null && (typeof value === 'object' || typeof value === 'function') ? (value as Record<string, unknown>)[key] : undefined;
-      return value !== undefined && value !== null;
-    })).length;
+    const loadedCount = ZHUDA_ENGINE_MODULES.filter(
+      (module) =>
+        module.providesGlobals.length > 0 &&
+        module.providesGlobals.every((name) => {
+          let value: unknown = globalThis;
+          for (const key of name.split('.'))
+            value =
+              value != null && (typeof value === 'object' || typeof value === 'function')
+                ? (value as Record<string, unknown>)[key]
+                : undefined;
+          return value !== undefined && value !== null;
+        }),
+    ).length;
 
     return {
       timestamp: Date.now(),
@@ -235,7 +249,7 @@ export class EngineGuard {
       physics2D: p2d,
       physics3D: p3d,
       spine42: sp42,
-      loadedGlobalModules: loadedCount
+      loadedGlobalModules: loadedCount,
     };
   }
 }

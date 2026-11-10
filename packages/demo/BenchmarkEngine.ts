@@ -1,6 +1,10 @@
 /** Legacy showcase telemetry. Estimates are labeled; runtime WebGL measurements use ZhudaRuntimeProfiler. */
 
-import { ENGINE_PRESET_PROFILES, type PresetProfileName, TopologyResolver } from '../core/TopologyGraph.ts';
+import {
+  ENGINE_PRESET_PROFILES,
+  type PresetProfileName,
+  TopologyResolver,
+} from '../core/TopologyGraph.ts';
 import { PixelCalibrationEngine } from './PixelCalibrationEngine.ts';
 import { ZhudaAssetSerializer } from './StaticAssetPipeline.ts';
 import { IframeSoundAdapter } from '../core/IframeSoundAdapter.ts';
@@ -82,7 +86,7 @@ export class ZhudaBenchmarkEngine {
       angle += vel * dt;
     }
     const t1 = typeof performance !== 'undefined' ? performance.now() : Date.now();
-    const elapsedMs = Math.max(0.05, t1 - t0 + (angle * 0.000001));
+    const elapsedMs = Math.max(0.05, t1 - t0 + angle * 0.000001);
     const springMathOpsPerMs = Math.round(iterations / elapsedMs);
     const spinePhysicsOpsPerMs = null;
 
@@ -101,14 +105,14 @@ export class ZhudaBenchmarkEngine {
       '2d-light',
       '3d-standard',
       'spine-hybrid',
-      'full-all-in-one'
+      'full-all-in-one',
     ];
     for (const p of profileNames) {
       const res = TopologyResolver.resolveByFeatures(ENGINE_PRESET_PROFILES[p]);
       pruningProfiles[p] = {
         moduleCount: res.orderedModules.length,
         sizeKB: res.totalSizeKB,
-        savedPercent: res.prunedRatioPercent
+        savedPercent: res.prunedRatioPercent,
       };
     }
 
@@ -118,11 +122,11 @@ export class ZhudaBenchmarkEngine {
     const vfxKeys = lhKeys.filter(
       (k) =>
         allStaticAssets[k]._zhudaMeta?.category === 'vfx-blueprint' ||
-        allStaticAssets[k]._zhudaMeta?.category === 'particle-emitter'
+        allStaticAssets[k]._zhudaMeta?.category === 'particle-emitter',
     );
     const convergence = PixelCalibrationEngine.runSelfConvergenceDemo();
     const nineSliceReport = PixelCalibrationEngine.verifyNineSliceIntegrity(
-      allStaticAssets['NineSliceDialogFrame.lh']
+      allStaticAssets['NineSliceDialogFrame.lh'],
     );
     const iframeDiag = IframeSoundAdapter.getShared().getDiagnostics();
     const viewportAudit = ViewportMatrixEngine.auditAllViewportProfiles();
@@ -131,7 +135,8 @@ export class ZhudaBenchmarkEngine {
     return {
       timestamp: Date.now(),
       springMathOpsPerMs,
-      measurementScope: 'Spring arithmetic microbenchmark only; draw calls below are estimates, and no pool speedup or Spine runtime result is claimed.',
+      measurementScope:
+        'Spring arithmetic microbenchmark only; draw calls below are estimates, and no pool speedup or Spine runtime result is claimed.',
       spinePhysicsOpsPerMs,
       zeroGcPoolSpeedupRatio,
       sharedMeshBatchNodes: activeTileNodesCount,
@@ -146,34 +151,34 @@ export class ZhudaBenchmarkEngine {
         beforePxError: convergence.beforeReport.pixelErrors.maxAbsErrorPx,
         afterPxError: convergence.afterReport.pixelErrors.maxAbsErrorPx,
         beforeDeltaE2000: convergence.beforeReport.colorMetrics.maxDeltaE2000,
-        afterDeltaE2000: convergence.afterReport.colorMetrics.maxDeltaE2000
+        afterDeltaE2000: convergence.afterReport.colorMetrics.maxDeltaE2000,
       },
       nineSliceTelemetry: {
         sizeGrid: nineSliceReport.sizeGrid.join(','),
         stretchRatioX: nineSliceReport.stretchRatioX,
         stretchRatioY: nineSliceReport.stretchRatioY,
         maxCornerDistortionPx: nineSliceReport.maxCornerDistortionPx,
-        passed: nineSliceReport.passed
+        passed: nineSliceReport.passed,
       },
       iframeAudioTelemetry: {
         postMessageBridgeActive: iframeDiag.postMessageBridgeActive,
         inIframe: iframeDiag.inIframe,
         autoSuspendOnBlurReady: true,
-        masterVolume: iframeDiag.volumes.master
+        masterVolume: iframeDiag.volumes.master,
       },
       viewportMatrixTelemetry: {
         totalProfiles: viewportAudit.totalProfiles,
         allSafeAreaPassed: viewportAudit.allPassed,
-        deviceAspectRatios: viewportAudit.reports.map((r) => `${r.deviceId}(${r.aspectLabel})`)
+        deviceAspectRatios: viewportAudit.reports.map((r) => `${r.deviceId}(${r.aspectLabel})`),
       },
       unityMigrationTelemetry: {
         sourceSceneName: unityReport.sourceSceneName,
         convertedNodesCount: unityReport.convertedNodesCount,
         animatorTransitionTrace: unityReport.animatorVerification.simulatedTransitionTrace,
         spine42ConstraintsMounted: unityReport.spine42Verification.physicsConstraintsMounted,
-        passed: unityReport.passed
+        passed: unityReport.passed,
       },
-      pruningProfiles
+      pruningProfiles,
     };
   }
 }

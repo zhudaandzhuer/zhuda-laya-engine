@@ -3,24 +3,33 @@ import {
   ZhudaRealtimeClock,
   ZhudaTimerScheduler,
   type ZhudaClockSample,
-} from "./Clocks.ts";
-import { ZhudaSceneMutationQueue } from "./SceneMutation.ts";
-import { resizeLaya342Stage } from "./Laya342Adapters.ts";
-import { ZhudaRafDriver, type ZhudaRuntimeDriver } from "./RuntimeDriver.ts";
+} from './Clocks.ts';
+import { ZhudaSceneMutationQueue } from './SceneMutation.ts';
+import { resizeLaya342Stage } from './Laya342Adapters.ts';
+import { ZhudaRafDriver, type ZhudaRuntimeDriver } from './RuntimeDriver.ts';
 
 /** Wake the same session clock from the platform's existing Laya frame loop. */
 class LayaPlatformDriver implements ZhudaRuntimeDriver {
   private tick?: () => void;
-  now() { return Laya.Browser.now(); }
+  now() {
+    return Laya.Browser.now();
+  }
   start(callback: (nowMs: number) => void) {
     this.stop();
-    const tick = () => { if (this.tick === tick) callback(this.now()); };
+    const tick = () => {
+      if (this.tick === tick) callback(this.now());
+    };
     this.tick = tick;
     Laya.systemTimer.frameLoop(1, this, tick);
   }
   setBackground(_background: boolean) {}
-  stop() { if (this.tick) Laya.systemTimer.clear(this, this.tick); this.tick = undefined; }
-  dispose() { this.stop(); }
+  stop() {
+    if (this.tick) Laya.systemTimer.clear(this, this.tick);
+    this.tick = undefined;
+  }
+  dispose() {
+    this.stop();
+  }
 }
 
 export interface ManagedRuntimeOptions {
@@ -31,15 +40,11 @@ export interface ManagedRuntimeOptions {
   scaleMode?: string;
   /** Owned by this session; defaults to RAF. */
   driver?: ZhudaRuntimeDriver;
-  backgroundPolicy?: "pause" | "continue";
+  backgroundPolicy?: 'pause' | 'continue';
   /** Foreground recovery never replays an unbounded suspended interval. */
-  recoveryPolicy?: "discard" | "bounded";
+  recoveryPolicy?: 'discard' | 'bounded';
   maxFrameDeltaSec?: number;
-  onResume?: (report: {
-    elapsedSec: number;
-    advancedSec: number;
-    discardedSec: number;
-  }) => void;
+  onResume?: (report: { elapsedSec: number; advancedSec: number; discardedSec: number }) => void;
   targetFPS?: 30 | 60;
   timeScale?: number;
   clearInput?: () => void;
@@ -50,11 +55,11 @@ export interface ManagedRuntimeOptions {
 /** Opaque-origin frames cannot access origin storage. Provide realm-local memory
  * so Laya initialization can proceed. Durable saves belong to the trusted host. */
 export function installSandboxStorageFallback() {
-  const modes: Record<string, "persistent" | "memory"> = {};
-  for (const name of ["localStorage", "sessionStorage"] as const) {
+  const modes: Record<string, 'persistent' | 'memory'> = {};
+  for (const name of ['localStorage', 'sessionStorage'] as const) {
     try {
       void window[name];
-      modes[name] = "persistent";
+      modes[name] = 'persistent';
     } catch {
       const values = new Map<string, string>();
       const memory = {
@@ -75,7 +80,7 @@ export function installSandboxStorageFallback() {
         configurable: true,
         value: memory,
       });
-      modes[name] = "memory";
+      modes[name] = 'memory';
     }
   }
   return modes;
@@ -106,60 +111,61 @@ export class ZhudaRuntimeSession {
     this.canvas = canvas;
     this.options = options;
     if (
-      !["pause", "continue"].includes(options.backgroundPolicy ?? "pause") ||
-      !["discard", "bounded"].includes(options.recoveryPolicy ?? "discard") ||
+      !['pause', 'continue'].includes(options.backgroundPolicy ?? 'pause') ||
+      !['discard', 'bounded'].includes(options.recoveryPolicy ?? 'discard') ||
       !Number.isFinite(options.maxFrameDeltaSec ?? 0.1) ||
       (options.maxFrameDeltaSec ?? 0.1) <= 0 ||
       (options.maxFrameDeltaSec ?? 0.1) > 1
     )
-      throw Error("Invalid runtime background/recovery policy");
+      throw Error('Invalid runtime background/recovery policy');
     if (options.timeScale !== undefined) {
       if (!Number.isFinite(options.timeScale) || options.timeScale < 0)
-        throw Error("Invalid runtime time scale");
+        throw Error('Invalid runtime time scale');
       this.clock.timeScale = options.timeScale;
     }
-    const native = (globalThis as unknown as {Laya?: typeof Laya}).Laya;
+    const native = (globalThis as unknown as { Laya?: typeof Laya }).Laya;
     const platform = native?.Browser?.isDomSupported === false ? native.PAL?.browser : undefined;
     this.driver = options.driver ?? (platform ? new LayaPlatformDriver() : new ZhudaRafDriver());
     this.layers.setGlobalTimeScale(this.clock.timeScale);
-    const listen = (
-      target: EventTarget,
-      event: string,
-      fn: EventListener,
-      capture = false,
-    ) => {
+    const listen = (target: EventTarget, event: string, fn: EventListener, capture = false) => {
       target.addEventListener(event, fn, capture);
       this.cleanups.push(() => target.removeEventListener(event, fn, capture));
     };
     if (platform) {
-      if (options.container) throw Error("Mini-game runtime cannot use a DOM container");
+      if (options.container) throw Error('Mini-game runtime cannot use a DOM container');
       const visibility = (visible: boolean) => this.setBackground(!visible);
       const focus = () => this.setBackground(false);
       const blur = () => this.setBackground(true);
       const resize = () => this.resize();
-      for (const [event, callback] of [[Laya.Event.VISIBILITY_CHANGE, visibility], [Laya.Event.FOCUS, focus], [Laya.Event.BLUR, blur], [Laya.Event.RESIZE, resize]] as const) {
+      for (const [event, callback] of [
+        [Laya.Event.VISIBILITY_CHANGE, visibility],
+        [Laya.Event.FOCUS, focus],
+        [Laya.Event.BLUR, blur],
+        [Laya.Event.RESIZE, resize],
+      ] as const) {
         platform.on(event, this, callback);
         this.cleanups.push(() => platform.off(event, this, callback));
       }
       try {
         this.resize();
         if (!platform.getVisibility()) this.setBackground(true);
-      } catch (error) { this.dispose(); throw error; }
+      } catch (error) {
+        this.dispose();
+        throw error;
+      }
       return;
     }
-    listen(document, "visibilitychange", () =>
-      this.setBackground(document.hidden),
-    );
-    listen(window, "blur", () => this.setBackground(true));
-    listen(window, "focus", () => {
+    listen(document, 'visibilitychange', () => this.setBackground(document.hidden));
+    listen(window, 'blur', () => this.setBackground(true));
+    listen(window, 'focus', () => {
       if (!document.hidden && !this.contextLost) this.setBackground(false);
     });
-    listen(window, "pagehide", () => this.setBackground(true));
-    listen(window, "pageshow", () => {
+    listen(window, 'pagehide', () => this.setBackground(true));
+    listen(window, 'pageshow', () => {
       if (!document.hidden) this.setBackground(false);
     });
-    listen(window, "scroll", () => this.resize(), true);
-    listen(canvas, "webglcontextlost", (e) => {
+    listen(window, 'scroll', () => this.resize(), true);
+    listen(canvas, 'webglcontextlost', (e) => {
       e.preventDefault();
       this.notifyContextLost();
     });
@@ -167,7 +173,7 @@ export class ZhudaRuntimeSession {
       if (options.container) {
         this.observer = new ResizeObserver(() => this.resize());
         this.observer.observe(options.container);
-      } else listen(window, "resize", () => this.resize());
+      } else listen(window, 'resize', () => this.resize());
       this.resize();
       if (document.hidden) this.setBackground(true);
     } catch (error) {
@@ -188,7 +194,7 @@ export class ZhudaRuntimeSession {
     this.paused =
       value ||
       this.contextLost ||
-      (this.background && this.options.backgroundPolicy !== "continue");
+      (this.background && this.options.backgroundPolicy !== 'continue');
     this.previous = undefined;
     this.recoveryDelta = 0;
     this.options.onPause?.(this.paused);
@@ -204,12 +210,11 @@ export class ZhudaRuntimeSession {
     } else {
       const elapsedSec = Math.max(0, (now - (this.suspendedAt ?? now)) / 1000);
       const missed =
-        this.options.backgroundPolicy === "continue" &&
-        this.previous !== undefined
+        this.options.backgroundPolicy === 'continue' && this.previous !== undefined
           ? Math.max(0, (now - this.previous) / 1000)
           : elapsedSec;
       this.recoveryDelta =
-        !this.manuallyPaused && this.options.recoveryPolicy === "bounded"
+        !this.manuallyPaused && this.options.recoveryPolicy === 'bounded'
           ? Math.min(missed, this.options.maxFrameDeltaSec ?? 0.1)
           : 0;
       this.options.onResume?.({
@@ -223,7 +228,7 @@ export class ZhudaRuntimeSession {
     this.paused =
       this.manuallyPaused ||
       this.contextLost ||
-      (background && this.options.backgroundPolicy !== "continue");
+      (background && this.options.backgroundPolicy !== 'continue');
     this.options.onPause?.(this.paused);
   }
   resize() {
@@ -235,15 +240,14 @@ export class ZhudaRuntimeSession {
     const rect = c?.getBoundingClientRect(),
       width = platform ? platform.getClientWidth() : rect?.width || innerWidth,
       height = platform ? platform.getClientHeight() : rect?.height || innerHeight,
-      dpr = Math.min(platform ? platform.getPixelRatio() : devicePixelRatio || 1, this.options.dprCap ?? 2);
+      dpr = Math.min(
+        platform ? platform.getPixelRatio() : devicePixelRatio || 1,
+        this.options.dprCap ?? 2,
+      );
     if (width < 2 || height < 2) return;
     const design = this.options.designSize ?? { width, height };
-    if (
-      ![design.width, design.height, dpr].every(
-        (value) => Number.isFinite(value) && value > 0,
-      )
-    )
-      throw Error("Invalid runtime design size or DPR");
+    if (![design.width, design.height, dpr].every((value) => Number.isFinite(value) && value > 0))
+      throw Error('Invalid runtime design size or DPR');
     // Design units must not grow with backing resolution. Native retinal mode
     // supplies the stage scale used by both drawing and Laya input conversion.
     l.Config.useRetinalCanvas = true;
@@ -263,26 +267,17 @@ export class ZhudaRuntimeSession {
     this.options.onResize?.({ width, height, dpr });
   }
   start(update: (dt: number, sample?: ZhudaClockSample) => void) {
-    if (this.disposed) throw Error("Disposed runtime");
+    if (this.disposed) throw Error('Disposed runtime');
     this.task = update;
     if (this.started) return;
     this.started = true;
     const tick = (now: number) => {
       if (this.disposed) return;
-      if (
-        !Number.isFinite(now) ||
-        (this.previous !== undefined && now <= this.previous)
-      )
-        return;
+      if (!Number.isFinite(now) || (this.previous !== undefined && now <= this.previous)) return;
       if (!this.paused) {
         const elapsed =
-          this.previous !== undefined
-            ? now - this.previous
-            : this.recoveryDelta * 1000;
-        if (
-          this.previous === undefined ||
-          elapsed >= 1000 / (this.options.targetFPS || 60) - 2
-        ) {
+          this.previous !== undefined ? now - this.previous : this.recoveryDelta * 1000;
+        if (this.previous === undefined || elapsed >= 1000 / (this.options.targetFPS || 60) - 2) {
           this.previous = now;
           this.recoveryDelta = 0;
           const sample = this.clock.advance(
@@ -350,40 +345,35 @@ export class ZhudaRuntimeHost {
     this.url = url;
     this.options = options;
     const receive = (e: MessageEvent) => {
-      if (
-        e.source !== this.frame?.contentWindow ||
-        !e.data ||
-        typeof e.data !== "object"
-      )
-        return;
+      if (e.source !== this.frame?.contentWindow || !e.data || typeof e.data !== 'object') return;
       const message = e.data;
-      if (message.type === "zhuda:ready") {
-        this.send("zhuda:restore", this.state);
+      if (message.type === 'zhuda:ready') {
+        this.send('zhuda:restore', this.state);
         options.onReady?.(this.generation);
-      } else if (message.type === "zhuda:snapshot") this.state = message.state;
-      else if (message.type === "zhuda:context-lost") {
+      } else if (message.type === 'zhuda:snapshot') this.state = message.state;
+      else if (message.type === 'zhuda:context-lost') {
         this.state = message.state;
         this.restarts++;
         this.restart(this.state);
       }
       options.onMessage?.(message);
     };
-    window.addEventListener("message", receive);
-    this.cleanup = () => window.removeEventListener("message", receive);
+    window.addEventListener('message', receive);
+    this.cleanup = () => window.removeEventListener('message', receive);
     this.restart();
   }
   send(type: string, state?: unknown) {
-    this.frame?.contentWindow?.postMessage({ type, state }, "*");
+    this.frame?.contentWindow?.postMessage({ type, state }, '*');
   }
   restart(state: unknown = this.state) {
-    if (this.disposed) throw Error("Disposed host");
+    if (this.disposed) throw Error('Disposed host');
     this.state = state;
     this.generation++;
     this.frame?.remove();
-    const f = document.createElement("iframe");
-    f.title = "3D runtime";
-    f.style.cssText = "display:block;width:100%;height:100%;border:0";
-    if (this.options.sandbox) f.setAttribute("sandbox", this.options.sandbox);
+    const f = document.createElement('iframe');
+    f.title = '3D runtime';
+    f.style.cssText = 'display:block;width:100%;height:100%;border:0';
+    if (this.options.sandbox) f.setAttribute('sandbox', this.options.sandbox);
     f.src = this.url;
     this.container.appendChild(f);
     this.frame = f;
@@ -423,10 +413,9 @@ export class ZhudaPointerInput {
       target.addEventListener(name, fn);
       this.cleanup.push(() => target.removeEventListener(name, fn));
     };
-    on(element, "pointerdown", ((e: PointerEvent) => {
+    on(element, 'pointerdown', ((e: PointerEvent) => {
       const role = chooseRole(e);
-      if (!role || [...this.pointers.values()].some((p) => p.role === role))
-        return;
+      if (!role || [...this.pointers.values()].some((p) => p.role === role)) return;
       this.pointers.set(e.pointerId, {
         pointerId: e.pointerId,
         role,
@@ -439,7 +428,7 @@ export class ZhudaPointerInput {
       e.preventDefault();
       changed(this.pointers);
     }) as EventListener);
-    on(element, "pointermove", ((e: PointerEvent) => {
+    on(element, 'pointermove', ((e: PointerEvent) => {
       const p = this.pointers.get(e.pointerId);
       if (!p) return;
       p.dx = e.clientX - p.x;
@@ -451,17 +440,15 @@ export class ZhudaPointerInput {
     const up = ((e: PointerEvent) => {
       if (this.pointers.delete(e.pointerId)) changed(this.pointers);
     }) as EventListener;
-    for (const name of ["pointerup", "pointercancel", "lostpointercapture"])
-      on(element, name, up);
-    on(window, "blur", () => this.clear());
-    on(document, "visibilitychange", () => {
+    for (const name of ['pointerup', 'pointercancel', 'lostpointercapture']) on(element, name, up);
+    on(window, 'blur', () => this.clear());
+    on(document, 'visibilitychange', () => {
       if (document.hidden) this.clear();
     });
   }
   clear() {
     for (const id of this.pointers.keys())
-      if (this.element.hasPointerCapture(id))
-        this.element.releasePointerCapture(id);
+      if (this.element.hasPointerCapture(id)) this.element.releasePointerCapture(id);
     this.pointers.clear();
     this.changed(this.pointers);
   }

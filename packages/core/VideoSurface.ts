@@ -1,4 +1,8 @@
-import type { ZhudaVideoDiagnostics, ZhudaVideoMode, ZhudaVideoSurfaceOptions } from '../types/zhuda-video.ts';
+import type {
+  ZhudaVideoDiagnostics,
+  ZhudaVideoMode,
+  ZhudaVideoSurfaceOptions,
+} from '../types/zhuda-video.ts';
 
 /**
  * Small ownership wrapper around LayaAir's VideoNode. It deliberately uses the
@@ -23,16 +27,30 @@ export class ZhudaVideoSurface {
     if (options.source) this.node.source = options.source;
   }
 
-  public get mode(): ZhudaVideoMode { return this.node.mode; }
-  public get source(): string { return this.node.source; }
+  public get mode(): ZhudaVideoMode {
+    return this.node.mode;
+  }
+  public get source(): string {
+    return this.node.source;
+  }
   public setSource(source: string): void {
     this.assertLive();
     if (!source) throw new Error('Video source is required.');
     this.node.source = source;
   }
-  public play(): void { this.assertLive(); this.node.play(); }
-  public pause(): void { this.assertLive(); this.node.pause(); }
-  public stop(): void { this.assertLive(); this.node.pause(); this.node.currentTime = 0; }
+  public play(): void {
+    this.assertLive();
+    this.node.play();
+  }
+  public pause(): void {
+    this.assertLive();
+    this.node.pause();
+  }
+  public stop(): void {
+    this.assertLive();
+    this.node.pause();
+    this.node.currentTime = 0;
+  }
   public diagnostics(): ZhudaVideoDiagnostics {
     return {
       source: this.node.source,
@@ -41,7 +59,7 @@ export class ZhudaVideoSurface {
       readyState: this.node.readyState,
       paused: this.node.paused,
       ended: this.node.ended,
-      nativeSize: { width: this.node.videoWidth, height: this.node.videoHeight }
+      nativeSize: { width: this.node.videoWidth, height: this.node.videoHeight },
     };
   }
   public dispose(): void {
@@ -51,5 +69,7 @@ export class ZhudaVideoSurface {
     this.node.source = '';
     this.node.destroy(true);
   }
-  private assertLive(): void { if (this.disposed) throw new Error('ZhudaVideoSurface is disposed.'); }
+  private assertLive(): void {
+    if (this.disposed) throw new Error('ZhudaVideoSurface is disposed.');
+  }
 }

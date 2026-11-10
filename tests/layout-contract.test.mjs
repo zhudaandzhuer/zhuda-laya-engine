@@ -18,17 +18,34 @@ const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAQAAACe2K4AAAAA', 'bas
 const hash = crypto.createHash('sha256').update(png).digest('hex');
 const source = { path: 'reference/home.png', sha256: hash, bytes: png.length, width: 4, height: 4 };
 const makeContract = () => ({
-  contract: 'zhuda-laya-engine.layout', schemaVersion: 1, id: 'scene/home', design: { width: 4, height: 4 }, source,
+  contract: 'zhuda-laya-engine.layout',
+  schemaVersion: 1,
+  id: 'scene/home',
+  design: { width: 4, height: 4 },
+  source,
   nodes: [
-    { id: 'hud.balance', kind: 'text', rect: { x: 0, y: 0, width: 2, height: 1 }, anchor: 'top-left', states: ['idle', 'win'] },
-    { id: 'hud.spin', kind: 'button', rect: { x: 2, y: 2, width: 2, height: 2 }, anchor: 'bottom-right', parent: 'hud.balance' },
+    {
+      id: 'hud.balance',
+      kind: 'text',
+      rect: { x: 0, y: 0, width: 2, height: 1 },
+      anchor: 'top-left',
+      states: ['idle', 'win'],
+    },
+    {
+      id: 'hud.spin',
+      kind: 'button',
+      rect: { x: 2, y: 2, width: 2, height: 2 },
+      anchor: 'bottom-right',
+      parent: 'hud.balance',
+    },
   ],
 });
 
 test('layout contract validates design coordinates, parent references and source metadata', () => {
   const result = validateLayoutContract(makeContract());
   assert.equal(result.passed, true, result.issues?.join('; '));
-  const broken = makeContract(); broken.nodes[1].parent = 'missing';
+  const broken = makeContract();
+  broken.nodes[1].parent = 'missing';
   assert.equal(validateLayoutContract(broken).passed, false);
   broken.nodes[1].parent = 'hud.spin';
   assert.match(validateLayoutContract(broken).issues.join('; '), /cycle/);
@@ -40,7 +57,10 @@ test('SVG import and export preserve stable IDs and geometry', () => {
   const comparison = compareLayoutSvg(contract, svg);
   assert.equal(comparison.passed, true, comparison.issues.join('; '));
   const imported = parseLayoutSvg(svg, { id: contract.id, sourceInfo: source });
-  assert.deepEqual(imported.nodes.map(node => node.id), ['hud.balance', 'hud.spin']);
+  assert.deepEqual(
+    imported.nodes.map((node) => node.id),
+    ['hud.balance', 'hud.spin'],
+  );
   assert.deepEqual(imported.nodes[1].rect, contract.nodes[1].rect);
   assert.match(svg, /data-layout-id="hud\.spin"/);
 });
@@ -62,14 +82,20 @@ test('consumer layout gate verifies the source hash and linked SVG', () => {
     const contract = makeContract();
     fs.writeFileSync(path.join(root, 'layouts/home.json'), JSON.stringify(contract));
     fs.writeFileSync(path.join(root, 'layouts/home.svg'), layoutToSvg(contract));
-    const passed = validateLayoutContracts(root, [{ layout: 'layouts/home.json', svg: 'layouts/home.svg' }]);
+    const passed = validateLayoutContracts(root, [
+      { layout: 'layouts/home.json', svg: 'layouts/home.svg' },
+    ]);
     assert.equal(passed.passed, true, passed.issues?.join('; '));
     const stale = { ...contract, source: { ...contract.source, sha256: '0'.repeat(64) } };
     fs.writeFileSync(path.join(root, 'layouts/home.json'), JSON.stringify(stale));
-    const failed = validateLayoutContracts(root, [{ layout: 'layouts/home.json', svg: 'layouts/home.svg' }]);
+    const failed = validateLayoutContracts(root, [
+      { layout: 'layouts/home.json', svg: 'layouts/home.svg' },
+    ]);
     assert.equal(failed.passed, false);
     assert.match(failed.issues.join('; '), /SHA-256/);
-  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
 });
 
 test('consumer candidate build records valid layout contracts and rejects stale ones', async () => {
@@ -84,36 +110,93 @@ test('consumer candidate build records valid layout contracts and rejects stale 
     const contract = makeContract();
     fs.writeFileSync(path.join(root, 'layouts/home.json'), JSON.stringify(contract));
     fs.writeFileSync(path.join(root, 'layouts/home.svg'), layoutToSvg(contract));
-    fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ name: 'layout-consumer', private: true, type: 'module', dependencies: { 'zhuda-laya-engine': '1.14.0' } }));
-    fs.writeFileSync(path.join(root, 'zhuda.config.json'), JSON.stringify({ layoutContracts: [{ layout: 'layouts/home.json', svg: 'layouts/home.svg' }] }));
-    fs.writeFileSync(path.join(root, 'src/Main.ts'), "import { ZhudaEngine } from 'zhuda-laya-engine'; async function main(){ await ZhudaEngine.boot({ container: '#game', features: ['core', '2d'] }); } void main();");
-    fs.writeFileSync(path.join(root, 'public/index.html'), '<!doctype html><meta charset="utf-8"><main id="game"></main><!-- ZHUDA_LIBS --><!-- ZHUDA_ENTRY -->');
-    const report = await runConsumerBuild({ projectRoot: root, engineRoot, config: { features: ['core', '2d'], layoutContracts: [{ layout: 'layouts/home.json', svg: 'layouts/home.svg' }] }, mode: 'candidate' });
+    fs.writeFileSync(
+      path.join(root, 'package.json'),
+      JSON.stringify({
+        name: 'layout-consumer',
+        private: true,
+        type: 'module',
+        dependencies: { 'zhuda-laya-engine': '1.14.0' },
+      }),
+    );
+    fs.writeFileSync(
+      path.join(root, 'zhuda.config.json'),
+      JSON.stringify({
+        layoutContracts: [{ layout: 'layouts/home.json', svg: 'layouts/home.svg' }],
+      }),
+    );
+    fs.writeFileSync(
+      path.join(root, 'src/Main.ts'),
+      "import { ZhudaEngine } from 'zhuda-laya-engine'; async function main(){ await ZhudaEngine.boot({ container: '#game', features: ['core', '2d'] }); } void main();",
+    );
+    fs.writeFileSync(
+      path.join(root, 'public/index.html'),
+      '<!doctype html><meta charset="utf-8"><main id="game"></main><!-- ZHUDA_LIBS --><!-- ZHUDA_ENTRY -->',
+    );
+    const report = await runConsumerBuild({
+      projectRoot: root,
+      engineRoot,
+      config: {
+        features: ['core', '2d'],
+        layoutContracts: [{ layout: 'layouts/home.json', svg: 'layouts/home.svg' }],
+      },
+      mode: 'candidate',
+    });
     assert.equal(report.layoutContracts[0].id, 'scene/home');
     const stale = { ...contract, source: { ...contract.source, sha256: '0'.repeat(64) } };
     fs.writeFileSync(path.join(root, 'layouts/home.json'), JSON.stringify(stale));
-    await assert.rejects(runConsumerBuild({ projectRoot: root, engineRoot, config: { features: ['core', '2d'], layoutContracts: [{ layout: 'layouts/home.json', svg: 'layouts/home.svg' }] }, mode: 'candidate' }), /Layout wireframe contract failed/);
-  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+    await assert.rejects(
+      runConsumerBuild({
+        projectRoot: root,
+        engineRoot,
+        config: {
+          features: ['core', '2d'],
+          layoutContracts: [{ layout: 'layouts/home.json', svg: 'layouts/home.svg' }],
+        },
+        mode: 'candidate',
+      }),
+      /Layout wireframe contract failed/,
+    );
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
 });
 
-import { computeZhudaGridLayout, computeZhudaTextLayout } from '../packages/core/ResponsiveLayout.ts';
+import {
+  computeZhudaGridLayout,
+  computeZhudaTextLayout,
+} from '../packages/core/ResponsiveLayout.ts';
 
 test('grid layout stays in design coordinates and respects safe area', () => {
   const report = computeZhudaGridLayout({
-    viewport: {width: 1170, height: 720}, design: {width: 390, height: 240},
-    safeArea: {left: 30, right: 30}, columns: 3, rows: 2, gapX: 6, gapY: 4,
-    padding: {top: 8, right: 8, bottom: 8, left: 8}, scaleMode: 'showall'
+    viewport: { width: 1170, height: 720 },
+    design: { width: 390, height: 240 },
+    safeArea: { left: 30, right: 30 },
+    columns: 3,
+    rows: 2,
+    gapX: 6,
+    gapY: 4,
+    padding: { top: 8, right: 8, bottom: 8, left: 8 },
+    scaleMode: 'showall',
   });
   assert.equal(report.cells.length, 6);
   assert.equal(report.overflow, false);
-  assert.ok(Math.abs(report.cells[0].x - (30 + (1170 - 60 - 390 * report.scale) / 2 + 8 * report.scale)) < 0.001);
-  assert.ok(report.cells.every(cell => cell.x >= report.safeRect.x && cell.y >= report.safeRect.y));
+  assert.ok(
+    Math.abs(report.cells[0].x - (30 + (1170 - 60 - 390 * report.scale) / 2 + 8 * report.scale)) <
+      0.001,
+  );
+  assert.ok(
+    report.cells.every((cell) => cell.x >= report.safeRect.x && cell.y >= report.safeRect.y),
+  );
 });
 
 test('text layout centers measured glyphs and reports overflow instead of hiding it', () => {
   const fit = computeZhudaTextLayout({
-    box: {x: 10, y: 20, width: 200, height: 60}, metrics: {width: 300, height: 30, baseline: 22},
-    align: 'center', valign: 'middle', scaleToFit: true
+    box: { x: 10, y: 20, width: 200, height: 60 },
+    metrics: { width: 300, height: 30, baseline: 22 },
+    align: 'center',
+    valign: 'middle',
+    scaleToFit: true,
   });
   assert.ok(Math.abs(fit.scale - 2 / 3) < 0.000001);
   assert.equal(fit.overflow, false);
@@ -121,12 +204,34 @@ test('text layout centers measured glyphs and reports overflow instead of hiding
   assert.ok(fit.baselineY > fit.rect.y);
 
   const overflow = computeZhudaTextLayout({
-    box: {x: 0, y: 0, width: 40, height: 20}, metrics: {width: 80, height: 24, baseline: 17}, align: 'left', valign: 'top'
+    box: { x: 0, y: 0, width: 40, height: 20 },
+    metrics: { width: 80, height: 24, baseline: 17 },
+    align: 'left',
+    valign: 'top',
   });
   assert.equal(overflow.overflow, true);
 });
 
 test('invalid grid dimensions fail closed', () => {
-  assert.throws(() => computeZhudaGridLayout({viewport: {width: 100, height: 100}, design: {width: 100, height: 100}, columns: 0, rows: 1}), /columns/);
-  assert.throws(() => computeZhudaGridLayout({viewport: {width: 100, height: 100}, design: {width: 10, height: 10}, columns: 1, rows: 1, padding: {left: 6, right: 6}}), /no cell/);
+  assert.throws(
+    () =>
+      computeZhudaGridLayout({
+        viewport: { width: 100, height: 100 },
+        design: { width: 100, height: 100 },
+        columns: 0,
+        rows: 1,
+      }),
+    /columns/,
+  );
+  assert.throws(
+    () =>
+      computeZhudaGridLayout({
+        viewport: { width: 100, height: 100 },
+        design: { width: 10, height: 10 },
+        columns: 1,
+        rows: 1,
+        padding: { left: 6, right: 6 },
+      }),
+    /no cell/,
+  );
 });

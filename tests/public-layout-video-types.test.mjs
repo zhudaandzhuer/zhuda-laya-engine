@@ -11,7 +11,9 @@ test('strict consumer can import layout, BitmapFont and Laya video contracts fro
     fs.mkdirSync(path.join(root, 'node_modules'));
     fs.symlinkSync(path.resolve('.'), path.join(root, 'node_modules/zhuda-laya-engine'), 'dir');
     const file = path.join(root, 'consumer.ts');
-    fs.writeFileSync(file, `
+    fs.writeFileSync(
+      file,
+      `
       import { computeZhudaGridLayout, computeZhudaTextLayout, measureZhudaBitmapText, validateZhudaBitmapFont, ZhudaVideoSurface, ZhudaWebViewSurface } from 'zhuda-laya-engine';
       import type { ZhudaBitmapFontManifest, ZhudaWebViewAdapter } from 'zhuda-laya-engine';
       const grid = computeZhudaGridLayout({viewport:{width:640,height:360},design:{width:320,height:180},columns:2,rows:2});
@@ -26,11 +28,28 @@ test('strict consumer can import layout, BitmapFont and Laya video contracts fro
       const webview = new ZhudaWebViewSurface({parent, adapter});
       webview.dispose();
       void [grid, text, report, width];
-    `);
-    const program = ts.createProgram([file], {noEmit:true, strict:true, skipLibCheck:false, types:[], target:ts.ScriptTarget.ES2020, module:ts.ModuleKind.ESNext, moduleResolution:ts.ModuleResolutionKind.Bundler});
+    `,
+    );
+    const program = ts.createProgram([file], {
+      noEmit: true,
+      strict: true,
+      skipLibCheck: false,
+      types: [],
+      target: ts.ScriptTarget.ES2020,
+      module: ts.ModuleKind.ESNext,
+      moduleResolution: ts.ModuleResolutionKind.Bundler,
+    });
     const diagnostics = ts.getPreEmitDiagnostics(program);
-    assert.equal(diagnostics.length, 0, ts.formatDiagnosticsWithColorAndContext(diagnostics, {getCurrentDirectory:()=>root,getCanonicalFileName:f=>f,getNewLine:()=> '\n'}));
+    assert.equal(
+      diagnostics.length,
+      0,
+      ts.formatDiagnosticsWithColorAndContext(diagnostics, {
+        getCurrentDirectory: () => root,
+        getCanonicalFileName: (f) => f,
+        getNewLine: () => '\n',
+      }),
+    );
   } finally {
-    fs.rmSync(root, {recursive:true, force:true});
+    fs.rmSync(root, { recursive: true, force: true });
   }
 });

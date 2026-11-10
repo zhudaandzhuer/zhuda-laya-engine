@@ -1,7 +1,7 @@
 // Generated from TypeScript source; run npm run types:generate.
-import type { ZhudaAssetCache } from "./Assets";
-export type AssetKind = "binary" | "text" | "image" | "audio" | "model" | "scene" | "shader" | "unknown";
-export type AssetProviderPhase = "downloading" | "verifying" | "ready";
+import type { ZhudaAssetCache } from './Assets';
+export type AssetKind = 'binary' | 'text' | 'image' | 'audio' | 'model' | 'scene' | 'shader' | 'unknown';
+export type AssetProviderPhase = 'downloading' | 'verifying' | 'ready';
 export interface AssetManifestEntry {
     readonly id: string;
     readonly kind?: AssetKind;
@@ -39,10 +39,10 @@ export interface LoadedAssetBytes {
 export interface AssetStreamLease {
     readonly id: string;
     readonly url: string;
-    readonly integrity: "sha256" | "transport";
-    readonly delivery: "native" | "verified-blob";
+    readonly integrity: 'sha256' | 'transport';
+    readonly delivery: 'native' | 'verified-blob';
     readonly retainedBytes: number;
-    readonly crossOrigin?: "anonymous" | "use-credentials";
+    readonly crossOrigin?: 'anonymous' | 'use-credentials';
     release(): void;
 }
 /**
@@ -61,10 +61,10 @@ export interface AssetProvider {
     dispose?(): void;
 }
 export declare class AssetProviderError extends Error {
-    readonly code: "invalid-id" | "aborted" | "timeout" | "http" | "too-large" | "integrity" | "disposed";
+    readonly code: 'invalid-id' | 'aborted' | 'timeout' | 'http' | 'too-large' | 'integrity' | 'disposed';
     readonly id?: string;
     readonly status?: number;
-    constructor(code: AssetProviderError["code"], message: string, details?: {
+    constructor(code: AssetProviderError['code'], message: string, details?: {
         id?: string;
         status?: number;
     });
@@ -84,7 +84,7 @@ export interface DirectoryAssetProviderOptions {
     readonly fetch?: FetchLike;
     /** verified-blob preserves full-byte verification without PCM decode. Native
      * streaming is opt-in and rejects entries requiring a whole-file SHA. */
-    readonly streamMode?: "verified-blob" | "native";
+    readonly streamMode?: 'verified-blob' | 'native';
 }
 export interface ChunkAssetRange extends AssetManifestEntry {
     readonly chunk: string;
@@ -156,5 +156,5 @@ export declare class ChunkedAssetProvider implements AssetProvider {
     dispose(): void;
 }
 /** Adapts a provider to the existing bounded cache without changing cache callers. */
-export declare function createProviderAssetCache<T>(provider: AssetProvider, decode: (asset: LoadedAssetBytes, signal: AbortSignal, phase: (phase: "parsing" | "ready") => void) => Promise<T> | T, destroy: (value: T) => void, maxIdle?: number): ZhudaAssetCache<T>;
+export declare function createProviderAssetCache<T>(provider: AssetProvider, decode: (asset: LoadedAssetBytes, signal: AbortSignal, phase: (phase: 'parsing' | 'ready') => void) => Promise<T> | T, destroy: (value: T) => void, maxIdle?: number): ZhudaAssetCache<T>;
 export {};

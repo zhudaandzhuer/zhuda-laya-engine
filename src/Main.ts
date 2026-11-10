@@ -16,7 +16,7 @@ async function bootstrap() {
     features: 'all',
     beforeInit: () => {
       registerAllReflectedComponents();
-    }
+    },
   });
 
   // 確保 Laya.init 後反射表與實例一致

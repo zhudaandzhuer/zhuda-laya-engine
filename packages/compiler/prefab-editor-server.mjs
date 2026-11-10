@@ -6,7 +6,15 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import esbuild from 'esbuild';
-import { realPath, inside, resolveProjectFile, createEditorAccess, respondStatic, publicAssetPath, scriptJson } from './editor-http.mjs';
+import {
+  realPath,
+  inside,
+  resolveProjectFile,
+  createEditorAccess,
+  respondStatic,
+  publicAssetPath,
+  scriptJson,
+} from './editor-http.mjs';
 export { resolveProjectFile } from './editor-http.mjs';
 
 const moduleDir = path.dirname(fileURLToPath(import.meta.url));
@@ -24,7 +32,7 @@ export const PREFAB_EDITOR_FEATURES = Object.freeze(['core', '2d', 'ui']);
 const MAX_BODY_BYTES = 12 * 1024 * 1024;
 const SUPPORTED_NODE_TYPES = new Set(['Sprite', 'Text', 'Label', 'Image', 'Box', 'Scene']);
 
-const sha256 = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
+const sha256 = (bytes) => crypto.createHash('sha256').update(bytes).digest('hex');
 async function sha256File(file) {
   const hash = crypto.createHash('sha256');
   for await (const chunk of fs.createReadStream(file)) hash.update(chunk);
@@ -42,62 +50,122 @@ export function parsePrefabEditorArgs(argv = process.argv.slice(2)) {
   const port = Number(read('--port', '8891'));
   const engineRoot = path.resolve(read('--engine-root', defaultEngineRoot));
   const previewController = read('--preview-controller');
-  if (argv.includes('--preview-controller') && (!previewController || previewController.startsWith('--'))) throw Error('--preview-controller needs a project-relative module path');
-  if (!prefab || prefab.startsWith('/') || prefab.includes('\\') || prefab.split('/').some(part => !part || part === '.' || part === '..')) {
-    throw Error('Use --prefab with a project-relative .lh or .ls path (for example assets/prefabs/rocket.lh)');
+  if (
+    argv.includes('--preview-controller') &&
+    (!previewController || previewController.startsWith('--'))
+  )
+    throw Error('--preview-controller needs a project-relative module path');
+  if (
+    !prefab ||
+    prefab.startsWith('/') ||
+    prefab.includes('\\') ||
+    prefab.split('/').some((part) => !part || part === '.' || part === '..')
+  ) {
+    throw Error(
+      'Use --prefab with a project-relative .lh or .ls path (for example assets/prefabs/rocket.lh)',
+    );
   }
   if (!/\.(?:lh|ls)$/i.test(prefab)) throw Error('--prefab must point to a .lh or .ls file');
   if (!Number.isInteger(port) || port < 1 || port > 65535) throw Error('Invalid --port');
   if (!host || host.includes('/') || host.includes(':')) throw Error('Invalid --host');
-  if (!fs.existsSync(project) || !fs.statSync(project).isDirectory()) throw Error(`Project does not exist: ${project}`);
+  if (!fs.existsSync(project) || !fs.statSync(project).isDirectory())
+    throw Error(`Project does not exist: ${project}`);
   return { project, projectRoot: project, prefab, host, port, engineRoot, previewController };
 }
 
 function validateNumber(value, label) {
-  if (value !== undefined && (typeof value !== 'number' || !Number.isFinite(value))) throw Error(`${label} must be a finite number`);
+  if (value !== undefined && (typeof value !== 'number' || !Number.isFinite(value)))
+    throw Error(`${label} must be a finite number`);
 }
 
 function validateAnchor(value, label) {
   validateNumber(value, label);
-  if (value !== undefined && (value < 0 || value > 1)) throw Error(`${label} must be between 0 and 1`);
+  if (value !== undefined && (value < 0 || value > 1))
+    throw Error(`${label} must be between 0 and 1`);
 }
 
 export function validatePrefabHierarchy(value) {
   const errors = [];
   const ids = new Set();
   const visit = (node, nodePath, root = false) => {
-    if (!node || typeof node !== 'object' || Array.isArray(node)) { errors.push(`${nodePath}: node must be an object`); return; }
+    if (!node || typeof node !== 'object' || Array.isArray(node)) {
+      errors.push(`${nodePath}: node must be an object`);
+      return;
+    }
     if (typeof node._$id !== 'string' || !node._$id) errors.push(`${nodePath}: _$id is required`);
     else if (ids.has(node._$id)) errors.push(`${nodePath}: _$id must be unique (${node._$id})`);
     else ids.add(node._$id);
-    if (typeof node._$type !== 'string' || !SUPPORTED_NODE_TYPES.has(node._$type)) errors.push(`${nodePath}: unsupported _$type ${String(node._$type)}`);
-    if (node.name !== undefined && (typeof node.name !== 'string' || node.name.includes('/'))) errors.push(`${nodePath}: name must be a slash-free string`);
-    for (const key of ['x', 'y', 'width', 'height', 'pivotX', 'pivotY', 'scaleX', 'scaleY', 'rotation', 'alpha', 'fontSize', 'leading', 'stroke']) validateNumber(node[key], `${nodePath}.${key}`);
+    if (typeof node._$type !== 'string' || !SUPPORTED_NODE_TYPES.has(node._$type))
+      errors.push(`${nodePath}: unsupported _$type ${String(node._$type)}`);
+    if (node.name !== undefined && (typeof node.name !== 'string' || node.name.includes('/')))
+      errors.push(`${nodePath}: name must be a slash-free string`);
+    for (const key of [
+      'x',
+      'y',
+      'width',
+      'height',
+      'pivotX',
+      'pivotY',
+      'scaleX',
+      'scaleY',
+      'rotation',
+      'alpha',
+      'fontSize',
+      'leading',
+      'stroke',
+    ])
+      validateNumber(node[key], `${nodePath}.${key}`);
     for (const key of ['anchorX', 'anchorY']) validateAnchor(node[key], `${nodePath}.${key}`);
-    for (const key of ['visible', 'mouseEnabled', 'bold']) if (node[key] !== undefined && typeof node[key] !== 'boolean') errors.push(`${nodePath}.${key} must be boolean`);
-    for (const key of ['text', 'font', 'color', 'align', 'valign', 'skin', 'sizeGrid', 'strokeColor']) if (node[key] !== undefined && typeof node[key] !== 'string') errors.push(`${nodePath}.${key} must be a string`);
-    if (node._$child !== undefined && !Array.isArray(node._$child)) errors.push(`${nodePath}._$child must be an array`);
+    for (const key of ['visible', 'mouseEnabled', 'bold'])
+      if (node[key] !== undefined && typeof node[key] !== 'boolean')
+        errors.push(`${nodePath}.${key} must be boolean`);
+    for (const key of [
+      'text',
+      'font',
+      'color',
+      'align',
+      'valign',
+      'skin',
+      'sizeGrid',
+      'strokeColor',
+    ])
+      if (node[key] !== undefined && typeof node[key] !== 'string')
+        errors.push(`${nodePath}.${key} must be a string`);
+    if (node._$child !== undefined && !Array.isArray(node._$child))
+      errors.push(`${nodePath}._$child must be an array`);
     const names = new Set();
     for (const [index, child] of (node._$child || []).entries()) {
       const name = child && typeof child.name === 'string' ? child.name : '';
-      if (!name || names.has(name)) errors.push(`${nodePath}: child names must be unique and non-empty`);
+      if (!name || names.has(name))
+        errors.push(`${nodePath}: child names must be unique and non-empty`);
       names.add(name);
       visit(child, `${nodePath}/${name || index}`);
     }
-    if (node._gcmds !== undefined && !Array.isArray(node._gcmds)) errors.push(`${nodePath}._gcmds must be an array`);
-    if (root && node._$type === 'Scene' && typeof node.width !== 'number') errors.push('root Scene needs a finite width');
+    if (node._gcmds !== undefined && !Array.isArray(node._gcmds))
+      errors.push(`${nodePath}._gcmds must be an array`);
+    if (root && node._$type === 'Scene' && typeof node.width !== 'number')
+      errors.push('root Scene needs a finite width');
   };
   visit(value, 'root', true);
-  if (errors.length) throw Error(`Invalid Prefab hierarchy:\n${errors.map(error => `- ${error}`).join('\n')}`);
+  if (errors.length)
+    throw Error(`Invalid Prefab hierarchy:\n${errors.map((error) => `- ${error}`).join('\n')}`);
   return value;
 }
 
 async function readJson(file) {
   let bytes;
-  try { bytes = await fsp.readFile(file); } catch (error) { throw Error(`Unable to read Prefab: ${error.message}`); }
+  try {
+    bytes = await fsp.readFile(file);
+  } catch (error) {
+    throw Error(`Unable to read Prefab: ${error.message}`);
+  }
   if (bytes.length > MAX_BODY_BYTES) throw Error('Prefab exceeds the editor size limit');
   let value;
-  try { value = JSON.parse(bytes.toString('utf8')); } catch (error) { throw Error(`Invalid Prefab JSON: ${error.message}`); }
+  try {
+    value = JSON.parse(bytes.toString('utf8'));
+  } catch (error) {
+    throw Error(`Invalid Prefab JSON: ${error.message}`);
+  }
   validatePrefabHierarchy(value);
   return { value, bytes };
 }
@@ -115,18 +183,23 @@ async function readRequestBody(request) {
 
 function json(response, status, value) {
   const body = Buffer.from(JSON.stringify(value));
-  response.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'Content-Length': body.length });
+  response.writeHead(status, {
+    'Content-Type': 'application/json; charset=utf-8',
+    'Cache-Control': 'no-store',
+    'Content-Length': body.length,
+  });
   response.end(body);
 }
 
-const assetKind = file => {
+const assetKind = (file) => {
   const extension = path.extname(file).toLowerCase();
   if (extension === '.lh') return 'prefab';
   if (extension === '.ls') return 'scene';
   if (['.png', '.jpg', '.jpeg', '.webp', '.gif', '.svg'].includes(extension)) return 'image';
   if (['.mp3', '.wav', '.ogg', '.m4a'].includes(extension)) return 'audio';
   if (['.glb', '.gltf', '.fbx', '.obj'].includes(extension)) return 'model';
-  if (['.json', '.txt', '.csv', '.atlas', '.skel', '.css', '.ts', '.js'].includes(extension)) return 'text';
+  if (['.json', '.txt', '.csv', '.atlas', '.skel', '.css', '.ts', '.js'].includes(extension))
+    return 'text';
   return 'file';
 };
 
@@ -143,7 +216,7 @@ export async function scanProjectAssets(projectRoot) {
   if (!inside(project, root)) throw Error('Asset root escapes project');
   const files = [];
   const visited = new Set();
-  const visit = async directory => {
+  const visit = async (directory) => {
     if (visited.has(directory)) return;
     visited.add(directory);
     const entries = await fsp.readdir(directory, { withFileTypes: true });
@@ -151,13 +224,19 @@ export async function scanProjectAssets(projectRoot) {
       if (!publicAssetPath(entry.name)) continue;
       const candidate = path.join(directory, entry.name);
       const resolved = realPath(candidate);
-      if (!inside(root, resolved)) throw Error(`Asset symlink escapes project assets: ${path.relative(project, candidate)}`);
+      if (!inside(root, resolved))
+        throw Error(`Asset symlink escapes project assets: ${path.relative(project, candidate)}`);
       if (!publicAssetPath(path.relative(project, resolved))) continue;
       const stat = await fsp.stat(resolved);
       if (stat.isDirectory()) await visit(resolved);
       else if (stat.isFile()) {
         const relative = path.relative(project, resolved).split(path.sep).join('/');
-        files.push({ path: relative, kind: assetKind(relative), bytes: stat.size, sha256: await sha256File(resolved) });
+        files.push({
+          path: relative,
+          kind: assetKind(relative),
+          bytes: stat.size,
+          sha256: await sha256File(resolved),
+        });
       }
     }
   };
@@ -166,16 +245,20 @@ export async function scanProjectAssets(projectRoot) {
 }
 
 function selectedPrefabPath(project, urlOrPath, fallback) {
-  const requested = typeof urlOrPath === 'string'
-    ? urlOrPath
-    : urlOrPath.searchParams.get('prefab') || urlOrPath.searchParams.get('asset') || fallback;
-  if (!requested || !/\.(?:lh|ls)$/i.test(requested)) throw Error('Selected asset must be a project-relative .lh or .ls file');
+  const requested =
+    typeof urlOrPath === 'string'
+      ? urlOrPath
+      : urlOrPath.searchParams.get('prefab') || urlOrPath.searchParams.get('asset') || fallback;
+  if (!requested || !/\.(?:lh|ls)$/i.test(requested))
+    throw Error('Selected asset must be a project-relative .lh or .ls file');
   const file = resolveProjectFile(project, requested, { mustExist: true });
   return { file, path: path.relative(project, file).split(path.sep).join('/') };
 }
 
 function editorHtml(engineFiles, assetPath, token) {
-  const tags = engineFiles.map(file => `<script src="/__editor/engine/${file}"></script>`).join('\n');
+  const tags = engineFiles
+    .map((file) => `<script src="/__editor/engine/${file}"></script>`)
+    .join('\n');
   const isScene = /\.ls$/i.test(assetPath);
   const assetLabel = isScene ? 'Scene' : 'Prefab';
   const css = `
@@ -203,99 +286,267 @@ button,input,select{font:inherit;color:inherit;background:#0c1424;border:1px sol
 const previewSdkPlugin = {
   name: 'editor-public-sdk',
   setup(build) {
-    build.onResolve({ filter: /^zhuda-laya-engine$/ }, () => ({ path: '/__editor/sdk.js', external: true }));
-    build.onResolve({ filter: /^zhuda-laya-engine\// }, args => ({ errors: [{ text: `Preview controllers must import the public zhuda-laya-engine entry: ${args.path}` }] }));
+    build.onResolve({ filter: /^zhuda-laya-engine$/ }, () => ({
+      path: '/__editor/sdk.js',
+      external: true,
+    }));
+    build.onResolve({ filter: /^zhuda-laya-engine\// }, (args) => ({
+      errors: [
+        {
+          text: `Preview controllers must import the public zhuda-laya-engine entry: ${args.path}`,
+        },
+      ],
+    }));
   },
 };
 
 export async function buildPrefabEditorController({ projectRoot, previewController } = {}) {
   const project = realPath(projectRoot);
-  const selected = previewController ?? (['zhuda.editor.ts', 'zhuda.editor.mjs', 'zhuda.editor.js'].find(file => fs.existsSync(path.join(project, file))) ?? null);
+  const selected =
+    previewController ??
+    ['zhuda.editor.ts', 'zhuda.editor.mjs', 'zhuda.editor.js'].find((file) =>
+      fs.existsSync(path.join(project, file)),
+    ) ??
+    null;
   if (!selected) return null;
-  if (!/\.(?:ts|js|mjs)$/.test(selected)) throw Error('Preview controller must be a project-relative .ts, .js or .mjs module');
+  if (!/\.(?:ts|js|mjs)$/.test(selected))
+    throw Error('Preview controller must be a project-relative .ts, .js or .mjs module');
   const entry = resolveProjectFile(project, selected, { mustExist: true });
-  const result = await esbuild.build({ entryPoints: [entry], bundle: true, format: 'esm', platform: 'browser', target: 'es2020', write: false, sourcemap: 'inline', absWorkingDir: project, plugins: [previewSdkPlugin], logLevel: 'silent' });
+  const result = await esbuild.build({
+    entryPoints: [entry],
+    bundle: true,
+    format: 'esm',
+    platform: 'browser',
+    target: 'es2020',
+    write: false,
+    sourcemap: 'inline',
+    absWorkingDir: project,
+    plugins: [previewSdkPlugin],
+    logLevel: 'silent',
+  });
   const code = result.outputFiles[0].text;
-  return { code, path: path.relative(project, entry).split(path.sep).join('/'), url: `/__editor/preview-controller.js?v=${sha256(code)}` };
+  return {
+    code,
+    path: path.relative(project, entry).split(path.sep).join('/'),
+    url: `/__editor/preview-controller.js?v=${sha256(code)}`,
+  };
 }
 
 export async function buildPrefabEditorBundle({ engineRoot = defaultEngineRoot } = {}) {
   engineRoot = path.resolve(engineRoot);
   const candidate = path.join(engineRoot, 'packages', 'compiler', 'prefab-editor-client.ts');
-  const entry = fs.existsSync(candidate) ? candidate : path.join(moduleDir, 'prefab-editor-client.ts');
-  const result = await esbuild.build({ entryPoints: [entry], bundle: true, format: 'esm', platform: 'browser', target: 'es2020', write: false, sourcemap: 'inline', absWorkingDir: engineRoot, plugins: [previewSdkPlugin], logLevel: 'silent' });
+  const entry = fs.existsSync(candidate)
+    ? candidate
+    : path.join(moduleDir, 'prefab-editor-client.ts');
+  const result = await esbuild.build({
+    entryPoints: [entry],
+    bundle: true,
+    format: 'esm',
+    platform: 'browser',
+    target: 'es2020',
+    write: false,
+    sourcemap: 'inline',
+    absWorkingDir: engineRoot,
+    plugins: [previewSdkPlugin],
+    logLevel: 'silent',
+  });
   return result.outputFiles[0].text;
 }
 
-export async function createPrefabEditorServer({ projectRoot, prefab, engineRoot = defaultEngineRoot, host = '127.0.0.1', port = 8891, historyLimit = 10, bundle, previewController, previewTimeoutMs = 15000 } = {}) {
+export async function createPrefabEditorServer({
+  projectRoot,
+  prefab,
+  engineRoot = defaultEngineRoot,
+  host = '127.0.0.1',
+  port = 8891,
+  historyLimit = 10,
+  bundle,
+  previewController,
+  previewTimeoutMs = 15000,
+} = {}) {
   const project = realPath(projectRoot || process.cwd());
   const initialSelection = selectedPrefabPath(project, String(prefab), String(prefab));
   const engine = realPath(engineRoot);
   const engineLibRoot = path.join(engine, 'vendor', 'laya-3.4.2', 'libs');
   const engineFiles = PREFAB_EDITOR_ENGINE_FILES;
-  for (const file of engineFiles) if (!fs.existsSync(path.join(engineLibRoot, file))) throw Error(`Missing pinned engine library: ${file}`);
-  const editorBundle = bundle ?? await buildPrefabEditorBundle({ engineRoot: engine });
-  if (!Number.isSafeInteger(previewTimeoutMs) || previewTimeoutMs < 1 || previewTimeoutMs > 60000) throw Error('Invalid preview timeout');
+  for (const file of engineFiles)
+    if (!fs.existsSync(path.join(engineLibRoot, file)))
+      throw Error(`Missing pinned engine library: ${file}`);
+  const editorBundle = bundle ?? (await buildPrefabEditorBundle({ engineRoot: engine }));
+  if (!Number.isSafeInteger(previewTimeoutMs) || previewTimeoutMs < 1 || previewTimeoutMs > 60000)
+    throw Error('Invalid preview timeout');
   const controller = await buildPrefabEditorController({ projectRoot: project, previewController });
   const sdkFile = path.join(engine, 'dist', 'sdk', 'zhuda-laya-engine.esm.js');
-  if (!fs.existsSync(sdkFile)) throw Error('Editor SDK bundle missing; run npm run build in the engine');
+  if (!fs.existsSync(sdkFile))
+    throw Error('Editor SDK bundle missing; run npm run build in the engine');
   const initial = await readJson(initialSelection.file);
   let revision = sha256(initial.bytes);
   const history = [];
-  const addHistory = bytes => { history.push(bytes); while (history.length > Math.max(1, historyLimit)) history.shift(); };
+  const addHistory = (bytes) => {
+    history.push(bytes);
+    while (history.length > Math.max(1, historyLimit)) history.shift();
+  };
   const access = createEditorAccess(host);
   const server = http.createServer(async (request, response) => {
     try {
       const url = access.validate(request, response);
-      if (url.pathname === '/api/editor' && request.method === 'GET') { json(response, 200, { previewController: controller ? { path: controller.path, url: controller.url } : null, previewTimeoutMs }); return; }
+      if (url.pathname === '/api/editor' && request.method === 'GET') {
+        json(response, 200, {
+          previewController: controller ? { path: controller.path, url: controller.url } : null,
+          previewTimeoutMs,
+        });
+        return;
+      }
       if (url.pathname === '/api/prefab' && request.method === 'GET') {
         const selection = selectedPrefabPath(project, url, initialSelection.path);
-        const current = await readJson(selection.file); revision = sha256(current.bytes);
-        json(response, 200, { prefab: current.value, revision, path: selection.path, backup: `${selection.path}.bak` }); return;
+        const current = await readJson(selection.file);
+        revision = sha256(current.bytes);
+        json(response, 200, {
+          prefab: current.value,
+          revision,
+          path: selection.path,
+          backup: `${selection.path}.bak`,
+        });
+        return;
       }
       if (url.pathname === '/api/assets' && request.method === 'GET') {
-        json(response, 200, { root: 'assets', entries: await scanProjectAssets(project) }); return;
+        json(response, 200, { root: 'assets', entries: await scanProjectAssets(project) });
+        return;
       }
       if (url.pathname === '/api/save' && request.method === 'POST') {
         const body = JSON.parse(await readRequestBody(request));
-        if (!body || typeof body !== 'object' || typeof body.baseRevision !== 'string' || !body.prefab) throw Error('Save requires baseRevision and prefab');
-        const selection = selectedPrefabPath(project, typeof body.path === 'string' ? body.path : initialSelection.path, initialSelection.path);
-        const current = await readJson(selection.file); const currentRevision = sha256(current.bytes);
-        if (body.baseRevision !== currentRevision) { json(response, 409, { error: 'Prefab changed on disk; reload before saving', revision: currentRevision }); return; }
+        if (
+          !body ||
+          typeof body !== 'object' ||
+          typeof body.baseRevision !== 'string' ||
+          !body.prefab
+        )
+          throw Error('Save requires baseRevision and prefab');
+        const selection = selectedPrefabPath(
+          project,
+          typeof body.path === 'string' ? body.path : initialSelection.path,
+          initialSelection.path,
+        );
+        const current = await readJson(selection.file);
+        const currentRevision = sha256(current.bytes);
+        if (body.baseRevision !== currentRevision) {
+          json(response, 409, {
+            error: 'Prefab changed on disk; reload before saving',
+            revision: currentRevision,
+          });
+          return;
+        }
         validatePrefabHierarchy(body.prefab);
         const nextBytes = Buffer.from(`${JSON.stringify(body.prefab, null, 2)}\n`);
         const nextRevision = sha256(nextBytes);
-        if (nextRevision === currentRevision) { revision = currentRevision; json(response, 200, { saved: false, revision, path: selection.path }); return; }
+        if (nextRevision === currentRevision) {
+          revision = currentRevision;
+          json(response, 200, { saved: false, revision, path: selection.path });
+          return;
+        }
         addHistory(current.bytes);
         const backup = `${selection.file}.bak`;
         const temporary = `${selection.file}.tmp-${process.pid}-${Date.now()}`;
         await fsp.writeFile(backup, current.bytes, { flag: 'w' });
         const handle = await fsp.open(temporary, 'w');
-        try { await handle.writeFile(nextBytes); await handle.sync(); } finally { await handle.close(); }
+        try {
+          await handle.writeFile(nextBytes);
+          await handle.sync();
+        } finally {
+          await handle.close();
+        }
         await fsp.rename(temporary, selection.file);
         revision = nextRevision;
-        json(response, 200, { saved: true, revision, path: selection.path, backup: path.relative(project, backup).split(path.sep).join('/') }); return;
+        json(response, 200, {
+          saved: true,
+          revision,
+          path: selection.path,
+          backup: path.relative(project, backup).split(path.sep).join('/'),
+        });
+        return;
       }
-      if (url.pathname === '/api/history' && request.method === 'GET') { json(response, 200, { available: history.length, revision }); return; }
+      if (url.pathname === '/api/history' && request.method === 'GET') {
+        json(response, 200, { available: history.length, revision });
+        return;
+      }
       if (url.pathname === '/' || url.pathname === '/index.html') {
         const selection = selectedPrefabPath(project, url, initialSelection.path);
         const html = editorHtml(engineFiles, selection.path, access.token);
-        response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }); response.end(html); return;
+        response.writeHead(200, {
+          'Content-Type': 'text/html; charset=utf-8',
+          'Cache-Control': 'no-store',
+        });
+        response.end(html);
+        return;
       }
-      if (url.pathname === '/__editor/sdk.js') { await respondStatic(path.dirname(sdkFile), path.basename(sdkFile), response); return; }
-      if (url.pathname === '/__editor/preview-controller.js' && controller) { response.writeHead(200, { 'Content-Type': 'text/javascript; charset=utf-8', 'Cache-Control': 'no-store' }); response.end(controller.code); return; }
-      if (url.pathname === '/__editor/editor.js') { response.writeHead(200, { 'Content-Type': 'text/javascript; charset=utf-8', 'Cache-Control': 'no-store' }); response.end(editorBundle); return; }
-      if (url.pathname.startsWith('/__editor/engine/')) { await respondStatic(engineLibRoot, url.pathname.slice('/__editor/engine/'.length), response); return; }
-      if (url.pathname.startsWith('/__project/')) { await respondStatic(project, url.pathname.slice('/__project/'.length), response, { projectAssets: true }); return; }
-      response.writeHead(404); response.end('Not found');
-    } catch (error) { if (!response.headersSent) json(response, error.status || 400, { error: error instanceof Error ? error.message : String(error) }); else response.destroy(); }
+      if (url.pathname === '/__editor/sdk.js') {
+        await respondStatic(path.dirname(sdkFile), path.basename(sdkFile), response);
+        return;
+      }
+      if (url.pathname === '/__editor/preview-controller.js' && controller) {
+        response.writeHead(200, {
+          'Content-Type': 'text/javascript; charset=utf-8',
+          'Cache-Control': 'no-store',
+        });
+        response.end(controller.code);
+        return;
+      }
+      if (url.pathname === '/__editor/editor.js') {
+        response.writeHead(200, {
+          'Content-Type': 'text/javascript; charset=utf-8',
+          'Cache-Control': 'no-store',
+        });
+        response.end(editorBundle);
+        return;
+      }
+      if (url.pathname.startsWith('/__editor/engine/')) {
+        await respondStatic(
+          engineLibRoot,
+          url.pathname.slice('/__editor/engine/'.length),
+          response,
+        );
+        return;
+      }
+      if (url.pathname.startsWith('/__project/')) {
+        await respondStatic(project, url.pathname.slice('/__project/'.length), response, {
+          projectAssets: true,
+        });
+        return;
+      }
+      response.writeHead(404);
+      response.end('Not found');
+    } catch (error) {
+      if (!response.headersSent)
+        json(response, error.status || 400, {
+          error: error instanceof Error ? error.message : String(error),
+        });
+      else response.destroy();
+    }
   });
-  const listening = new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, host, () => resolve(server.address())); });
-  const close = async () => { await new Promise(resolve => server.close(() => resolve())); };
-  return { server, listening, close, token: access.token, projectRoot: project, prefabFile: initialSelection.file, engineRoot: engine, revision: () => revision, history };
+  const listening = new Promise((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(port, host, () => resolve(server.address()));
+  });
+  const close = async () => {
+    await new Promise((resolve) => server.close(() => resolve()));
+  };
+  return {
+    server,
+    listening,
+    close,
+    token: access.token,
+    projectRoot: project,
+    prefabFile: initialSelection.file,
+    engineRoot: engine,
+    revision: () => revision,
+    history,
+  };
 }
 
-const launched = cliMain(import.meta.url, 'Usage: zhuda-prefab-editor --project DIRECTORY --prefab assets/FILE.lh [--host HOST] [--port PORT] [--preview-controller MODULE]');
+const launched = cliMain(
+  import.meta.url,
+  'Usage: zhuda-prefab-editor --project DIRECTORY --prefab assets/FILE.lh [--host HOST] [--port PORT] [--preview-controller MODULE]',
+);
 if (launched) {
   try {
     const args = parsePrefabEditorArgs();
@@ -303,7 +554,14 @@ if (launched) {
     const address = await editor.listening;
     console.log(`[Zhuda Prefab Editor] http://${args.host}:${address.port}/`);
     console.log(`[Zhuda Prefab Editor] editing ${args.prefab}`);
-    const stop = async () => { await editor.close(); process.exit(0); };
-    process.once('SIGINT', stop); process.once('SIGTERM', stop);
-  } catch (error) { console.error(error instanceof Error ? error.message : String(error)); process.exitCode = 1; }
+    const stop = async () => {
+      await editor.close();
+      process.exit(0);
+    };
+    process.once('SIGINT', stop);
+    process.once('SIGTERM', stop);
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exitCode = 1;
+  }
 }

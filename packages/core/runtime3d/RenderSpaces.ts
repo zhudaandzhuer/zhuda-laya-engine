@@ -1,5 +1,5 @@
-export type ZhudaRenderPass = "local" | "world" | "overlay";
-export type ZhudaRenderCoordinates = "local" | "world" | "camera-overlay";
+export type ZhudaRenderPass = 'local' | 'world' | 'overlay';
+export type ZhudaRenderCoordinates = 'local' | 'world' | 'camera-overlay';
 export type ZhudaRenderMatrix = ReadonlyArray<number>;
 
 export interface ZhudaRenderPoint {
@@ -43,13 +43,18 @@ export class ZhudaRenderSpace {
   private disposed = false;
 
   register(callbacks: ZhudaRenderSpaceCallbacks): ZhudaRenderRegistration {
-    if (this.disposed) throw Error("Disposed render space");
-    if (!callbacks || (!callbacks.onRenderLocal && !callbacks.onRenderWorld && !callbacks.onRenderOverlay))
-      throw Error("Render space needs at least one pass callback");
+    if (this.disposed) throw Error('Disposed render space');
+    if (
+      !callbacks ||
+      (!callbacks.onRenderLocal && !callbacks.onRenderWorld && !callbacks.onRenderOverlay)
+    )
+      throw Error('Render space needs at least one pass callback');
     this.registrations.add(callbacks);
     let cancelled = false;
     return {
-      get cancelled() { return cancelled; },
+      get cancelled() {
+        return cancelled;
+      },
       cancel: () => {
         if (cancelled) return false;
         cancelled = true;
@@ -79,18 +84,22 @@ export class ZhudaRenderSpace {
       calls++;
     };
     for (const registration of snapshot) {
-      dispatch("local", "local", frame.localTransform, registration.onRenderLocal);
-      dispatch("world", "world", frame.worldTransform, registration.onRenderWorld);
-      dispatch("overlay", "camera-overlay", frame.overlayTransform, registration.onRenderOverlay);
+      dispatch('local', 'local', frame.localTransform, registration.onRenderLocal);
+      dispatch('world', 'world', frame.worldTransform, registration.onRenderWorld);
+      dispatch('overlay', 'camera-overlay', frame.overlayTransform, registration.onRenderOverlay);
     }
     return calls;
   }
 
-  clear(): void { this.registrations.clear(); }
+  clear(): void {
+    this.registrations.clear();
+  }
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
     this.clear();
   }
-  get size(): number { return this.registrations.size; }
+  get size(): number {
+    return this.registrations.size;
+  }
 }

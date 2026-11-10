@@ -23,8 +23,8 @@ export class ZhudaObjectPool<T> {
 
   constructor(options: ZhudaPoolOptions<T>) {
     if (!options || !Number.isSafeInteger(options.capacity) || options.capacity <= 0)
-      throw Error("Invalid pool capacity");
-    if (typeof options.create !== "function") throw Error("Pool create callback is required");
+      throw Error('Invalid pool capacity');
+    if (typeof options.create !== 'function') throw Error('Pool create callback is required');
     this.capacity = options.capacity;
     this.create = options.create;
     this.reset = options.reset;
@@ -86,8 +86,14 @@ export class ZhudaObjectPool<T> {
     let firstError: unknown;
     let hadError = false;
     const run = (action: () => void) => {
-      try { action(); }
-      catch (error) { if (!hadError) { hadError = true; firstError = error; } }
+      try {
+        action();
+      } catch (error) {
+        if (!hadError) {
+          hadError = true;
+          firstError = error;
+        }
+      }
     };
     for (const item of this.active) {
       run(() => this.onDespawn?.(item));
@@ -99,8 +105,16 @@ export class ZhudaObjectPool<T> {
     if (hadError) throw firstError;
   }
 
-  get activeCount(): number { return this.active.size; }
-  get availableCount(): number { return this.free.length; }
-  get createdCount(): number { return this.created; }
-  get isDisposed(): boolean { return this.disposed; }
+  get activeCount(): number {
+    return this.active.size;
+  }
+  get availableCount(): number {
+    return this.free.length;
+  }
+  get createdCount(): number {
+    return this.created;
+  }
+  get isDisposed(): boolean {
+    return this.disposed;
+  }
 }

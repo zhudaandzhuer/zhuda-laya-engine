@@ -11,6 +11,6 @@ export declare class ZhudaMeshoptModelDecoder implements ModelDecoderAdapter {
         integritySha256: "10b313edaa0e322b0c1b46443f6c8b186b42139fe1eca189d50c09511d0ebedc";
     }>;
     private disposed;
-    decode({ assetId, bytes, signal, maxOutputBytes }: ModelDecoderInput): Promise<ModelDecodedPayload>;
+    decode({ assetId, bytes, signal, maxOutputBytes, }: ModelDecoderInput): Promise<ModelDecodedPayload>;
     dispose(): void;
 }

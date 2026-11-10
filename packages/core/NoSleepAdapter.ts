@@ -11,7 +11,7 @@ import type {
   NoSleepDiagnostics,
   NoSleepState,
   NoSleepWakeLockProvider,
-  NoSleepWakeLockSentinel
+  NoSleepWakeLockSentinel,
 } from '../types/index.ts';
 
 type Cleanup = () => void;
@@ -21,7 +21,10 @@ function errorMessage(error: unknown): string {
 }
 
 export class NoSleepAdapter {
-  private readonly options: Required<Pick<NoSleepAdapterOptions, 'autoEnableOnGesture' | 'releaseOnBlur'>> & NoSleepAdapterOptions;
+  private readonly options: Required<
+    Pick<NoSleepAdapterOptions, 'autoEnableOnGesture' | 'releaseOnBlur'>
+  > &
+    NoSleepAdapterOptions;
   private readonly cleanupFns: Cleanup[] = [];
   private readonly gestureCleanupFns: Cleanup[] = [];
 
@@ -43,7 +46,7 @@ export class NoSleepAdapter {
     this.options = {
       ...options,
       autoEnableOnGesture: options.autoEnableOnGesture ?? true,
-      releaseOnBlur: options.releaseOnBlur ?? true
+      releaseOnBlur: options.releaseOnBlur ?? true,
     };
     this.pageVisible = typeof document === 'undefined' || document.visibilityState !== 'hidden';
     this.installLifecycleGuards();
@@ -55,7 +58,7 @@ export class NoSleepAdapter {
     type: string,
     listener: EventListener,
     options?: AddEventListenerOptions,
-    gesture = false
+    gesture = false,
   ): void {
     target.addEventListener(type, listener, options);
     const cleanup = () => target.removeEventListener(type, listener, options);
@@ -221,7 +224,7 @@ export class NoSleepAdapter {
             this.recordError(error);
           }
           return false;
-        }
+        },
       );
     } catch (error) {
       this.state = 'error';
@@ -229,9 +232,11 @@ export class NoSleepAdapter {
       return Promise.resolve(false);
     }
     this.pendingRequest = request;
-    void request.finally(() => {
-      if (this.pendingRequest === request) this.pendingRequest = null;
-    }).catch((error) => this.recordError(error));
+    void request
+      .finally(() => {
+        if (this.pendingRequest === request) this.pendingRequest = null;
+      })
+      .catch((error) => this.recordError(error));
     return request;
   }
 
@@ -279,7 +284,7 @@ export class NoSleepAdapter {
       requestCount: this.requestCount,
       releaseCount: this.releaseCount,
       staleRequestCount: this.staleRequestCount,
-      lastError: this.lastError
+      lastError: this.lastError,
     };
   }
 

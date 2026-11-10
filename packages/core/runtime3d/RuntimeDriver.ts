@@ -21,8 +21,7 @@ export class ZhudaRafDriver implements ZhudaRuntimeDriver {
       try {
         callback(now);
       } finally {
-        if (generation === this.generation)
-          this.frame = requestAnimationFrame(tick);
+        if (generation === this.generation) this.frame = requestAnimationFrame(tick);
       }
     };
     this.frame = requestAnimationFrame(tick);
@@ -55,18 +54,12 @@ export class ZhudaWorkerFrameDriver implements ZhudaRuntimeDriver {
   private readonly intervalMs: number;
   constructor(options: ZhudaWorkerDriverOptions = {}) {
     this.intervalMs = options.intervalMs ?? 100;
-    if (
-      !Number.isFinite(this.intervalMs) ||
-      this.intervalMs < 16 ||
-      this.intervalMs > 60_000
-    )
-      throw Error("Worker interval must be 16..60000 ms");
+    if (!Number.isFinite(this.intervalMs) || this.intervalMs < 16 || this.intervalMs > 60_000)
+      throw Error('Worker interval must be 16..60000 ms');
     if (options.workerFactory) this.worker = options.workerFactory();
     else {
       const source = `let timer;onmessage=({data})=>{clearInterval(timer);if(data.type==='start')timer=setInterval(()=>postMessage({generation:data.generation}),data.intervalMs);};`;
-      const url = URL.createObjectURL(
-        new Blob([source], { type: "application/javascript" }),
-      );
+      const url = URL.createObjectURL(new Blob([source], { type: 'application/javascript' }));
       try {
         this.worker = new Worker(url);
       } finally {
@@ -84,14 +77,14 @@ export class ZhudaWorkerFrameDriver implements ZhudaRuntimeDriver {
     };
     this.worker.onerror = (event) => {
       this.stop();
-      options.onError?.(Error(event.message || "Background worker failed"));
+      options.onError?.(Error(event.message || 'Background worker failed'));
     };
   }
   now(): number {
     return performance.now();
   }
   start(callback: (nowMs: number) => void): void {
-    if (this.disposed) throw Error("Driver disposed");
+    if (this.disposed) throw Error('Driver disposed');
     this.callback = callback;
     this.switchSource();
   }
@@ -103,11 +96,11 @@ export class ZhudaWorkerFrameDriver implements ZhudaRuntimeDriver {
   private switchSource(): void {
     const generation = ++this.generation;
     this.raf.stop();
-    this.worker.postMessage({ type: "stop" });
+    this.worker.postMessage({ type: 'stop' });
     if (!this.callback) return;
     if (this.background)
       this.worker.postMessage({
-        type: "start",
+        type: 'start',
         generation,
         intervalMs: this.intervalMs,
       });
@@ -120,7 +113,7 @@ export class ZhudaWorkerFrameDriver implements ZhudaRuntimeDriver {
     this.callback = undefined;
     this.generation++;
     this.raf.stop();
-    this.worker.postMessage({ type: "stop" });
+    this.worker.postMessage({ type: 'stop' });
   }
   dispose(): void {
     if (this.disposed) return;

@@ -1,6 +1,6 @@
-import test from "node:test";
-import assert from "node:assert/strict";
-import { fixture, Context, deferred, flush } from "./helpers/audio-fixture.mjs";
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { fixture, Context, deferred, flush } from './helpers/audio-fixture.mjs';
 class Offline extends Context {
   static instances = [];
   job = deferred();
@@ -26,23 +26,23 @@ const options = {
   channels: 1,
   cues: [
     {
-      id: "bgm",
-      sampleId: "a",
+      id: 'bgm',
+      sampleId: 'a',
       atSec: 0,
       durationSec: 1,
-      channel: "bgm",
+      channel: 'bgm',
       loop: true,
       fadeInSec: 0.2,
       fadeOutSec: 0.2,
     },
   ],
 };
-test("offline mix borrows samples/gains, bounds overlap, exports unclipped float WAV and never starts live voices", async () => {
+test('offline mix borrows samples/gains, bounds overlap, exports unclipped float WAV and never starts live voices', async () => {
   globalThis.OfflineAudioContext = Offline;
   const f = fixture({ maxActiveVoices: 1 });
-  await f.audio.loadSample("a");
-  f.audio.setChannelVolume("master", 0.5);
-  f.audio.setChannelVolume("bgm", 0.25);
+  await f.audio.loadSample('a');
+  f.audio.setChannelVolume('master', 0.5);
+  f.audio.setChannelVolume('bgm', 0.25);
   const work = f.audio.renderOffline(options),
     context = Offline.instances.at(-1);
   assert.equal(context.gains[0].gain.value, 0.5);
@@ -60,14 +60,11 @@ test("offline mix borrows samples/gains, bounds overlap, exports unclipped float
   await assert.rejects(
     f.audio.renderOffline({
       ...options,
-      cues: [...options.cues, { ...options.cues[0], id: "second" }],
+      cues: [...options.cues, { ...options.cues[0], id: 'second' }],
     }),
     /capacity/,
   );
-  await assert.rejects(
-    f.audio.renderOffline({ ...options, maxOutputBytes: 1 }),
-    /budget/,
-  );
+  await assert.rejects(f.audio.renderOffline({ ...options, maxOutputBytes: 1 }), /budget/);
   await assert.rejects(
     f.audio.renderOffline({
       ...options,
@@ -77,13 +74,13 @@ test("offline mix borrows samples/gains, bounds overlap, exports unclipped float
   );
   f.audio.dispose();
 });
-test("offline timeout/disposal hold admission until uncancellable native render drains", async () => {
+test('offline timeout/disposal hold admission until uncancellable native render drains', async () => {
   globalThis.OfflineAudioContext = Offline;
   const f = fixture();
-  await f.audio.loadSample("a");
+  await f.audio.loadSample('a');
   const work = f.audio.renderOffline({ ...options, timeoutMs: 5 }),
     context = Offline.instances.at(-1);
-  await assert.rejects(work, (e) => e.name === "TimeoutError");
+  await assert.rejects(work, (e) => e.name === 'TimeoutError');
   await assert.rejects(f.audio.renderOffline(options), /busy/);
   assert.ok(context.gains.every((g) => !g.disconnected));
   context.finish();
@@ -92,7 +89,7 @@ test("offline timeout/disposal hold admission until uncancellable native render 
   const next = f.audio.renderOffline(options),
     second = Offline.instances.at(-1);
   f.audio.dispose();
-  await assert.rejects(next, (e) => e.name === "AbortError");
+  await assert.rejects(next, (e) => e.name === 'AbortError');
   second.finish();
   await flush();
   assert.ok(second.gains.every((g) => g.disconnected));

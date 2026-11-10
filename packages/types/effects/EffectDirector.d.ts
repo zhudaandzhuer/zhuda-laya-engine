@@ -1,5 +1,5 @@
 // Generated from TypeScript source; run npm run types:generate.
-import { type Matrix4, type Quat, type Vec3 } from "../runtime3d/Math3D";
+import { type Matrix4, type Quat, type Vec3 } from '../runtime3d/Math3D';
 export interface EffectKey {
     time: number;
     value: number;
@@ -12,7 +12,7 @@ export interface EffectTrack {
 export interface EffectCue {
     time: number;
     target: string;
-    action: "start" | "stop" | "event";
+    action: 'start' | 'stop' | 'event';
     name?: string;
 }
 export interface EffectAnchor {

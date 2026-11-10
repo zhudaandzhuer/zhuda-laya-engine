@@ -76,7 +76,7 @@ export class SpineCompanion {
       thinking: '專注排雷中',
       flagging: '精準插旗標記！',
       scared: '踩到地雷啦！💥',
-      cheer: '完美排雷通關！🎉'
+      cheer: '完美排雷通關！🎉',
     };
     this.statusLabel.text = `Spine 4.2 豬大精靈 · [${stateTexts[state]}]`;
   }

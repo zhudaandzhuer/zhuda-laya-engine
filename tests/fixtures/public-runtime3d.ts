@@ -26,9 +26,9 @@ import {
   inspectSceneResources,
   type QueryHit,
   type ZhudaBootOptions,
-} from "zhuda-laya-engine";
+} from 'zhuda-laya-engine';
 const options: ZhudaBootOptions = {
-  container: "#game",
+  container: '#game',
   dprCap: 1.5,
   antialias: false,
   preserveDrawingBuffer: false,
@@ -42,7 +42,7 @@ async function consume() {
   applySceneQuality(sceneQuality.low, context.runtime, camera);
   const scope = new ZhudaResourceScope();
   const models = new ZhudaModelLibrary();
-  const instance = await models.instantiate("/models/pig.bin", {
+  const instance = await models.instantiate('/models/pig.bin', {
     independentMaterials: true,
   });
   scope.own(instance, (model) => model.dispose());
@@ -60,11 +60,7 @@ async function consume() {
     collision: { queries, radius: 0.4, clearance: 0.2 },
   });
   rig.update({ x: 0, y: 3, z: 0 });
-  const safe = resolveCameraBoom(
-    { x: 0, y: 3, z: 0 },
-    { x: 0, y: 4, z: 8 },
-    { queries },
-  );
+  const safe = resolveCameraBoom({ x: 0, y: 3, z: 0 }, { x: 0, y: 4, z: 8 }, { queries });
   console.log(safe.blocked);
   const hit: QueryHit | null = queries.raycast(coordinates.screenToRay(10, 20));
   // A miss must remain nullable in the generated public declarations.
@@ -81,8 +77,12 @@ async function consume() {
   scheduler.scheduleOnce(0.01, () => {}, { layer: 'world' });
   scheduler.advance(layered.unscaledDeltaTime, realtime.scaledDeltaTime, layered.scaledDeltas);
   const action = new ZhudaActionStateMachine({
-    id: 'light', frameRate: 60, frameCount: 12,
-    startup: { from: 0, until: 3 }, active: { from: 3, until: 6 }, recovery: { from: 6, until: 12 },
+    id: 'light',
+    frameRate: 60,
+    frameCount: 12,
+    startup: { from: 0, until: 3 },
+    active: { from: 3, until: 6 },
+    recovery: { from: 6, until: 12 },
     sockets: [{ id: 'hand', bone: 'hand_r' }],
   });
   action.play();
@@ -99,17 +99,34 @@ async function consume() {
   const pool = new ZhudaObjectPool({ capacity: 1, create: () => ({}) });
   pool.release(pool.acquire()!);
   const combat = new ZhudaCombatWorld();
-  combat.registerHurtbox({ id: 'hurt', ownerId: 'enemy', layer: 2, rect: { x: 0, y: 0, width: 1, height: 1 } });
-  combat.registerHitbox({ id: 'hit', ownerId: 'hero', layer: 1, mask: 2, swingId: 1, rect: { x: 0, y: 0, width: 1, height: 1 } });
-  console.log(realtime.sample(), scheduler.size, mutations.size, renderSpace.size, pool.activeCount, combat.hurtboxCount);
+  combat.registerHurtbox({
+    id: 'hurt',
+    ownerId: 'enemy',
+    layer: 2,
+    rect: { x: 0, y: 0, width: 1, height: 1 },
+  });
+  combat.registerHitbox({
+    id: 'hit',
+    ownerId: 'hero',
+    layer: 1,
+    mask: 2,
+    swingId: 1,
+    rect: { x: 0, y: 0, width: 1, height: 1 },
+  });
+  console.log(
+    realtime.sample(),
+    scheduler.size,
+    mutations.size,
+    renderSpace.size,
+    pool.activeCount,
+    combat.hurtboxCount,
+  );
   const snapshots = new ZhudaSnapshotBuffer(
-    "round-1",
+    'round-1',
     (a: number, b: number, t) => a + (b - a) * t,
   );
-  const gate = new ZhudaEventGate("round-1");
-  clock.advance(0.016, (_dt, tick) =>
-    gate.dispatch(String(tick), clock.simulationTime, () => {}),
-  );
+  const gate = new ZhudaEventGate('round-1');
+  clock.advance(0.016, (_dt, tick) => gate.dispatch(String(tick), clock.simulationTime, () => {}));
   console.log(snapshots.sample(0)?.value);
   const mesh = new ZhudaDynamicMesh(
     {
@@ -133,15 +150,15 @@ import {
   ZhudaShaderMaterial,
   shaderRecipes,
   type Terrain2DSpec,
-} from "zhuda-laya-engine";
+} from 'zhuda-laya-engine';
 const tiles: Terrain2DSpec = {
   schemaVersion: 1,
   dimension: 2,
   width: 1,
   height: 1,
   tileSize: 20,
-  palette: [{ id: 1, color: "#339955" }],
-  layers: [{ id: "ground", tiles: [1] }],
+  palette: [{ id: 1, color: '#339955' }],
+  layers: [{ id: 'ground', tiles: [1] }],
 };
 const tileData = new ZhudaTerrain2D(tiles);
 const renderer2D = new ZhudaTerrain2DRenderer(tileData);
@@ -176,22 +193,19 @@ import {
   ZhudaPlanarReflection,
   computeMeshTangents,
   createPrefilteredEnvironment,
-} from "zhuda-laya-engine";
+} from 'zhuda-laya-engine';
 const lit = new ZhudaLitSurfaceMaterial({
-  name: "PublicWetStone",
-  normalConvention: "opengl",
-  uniforms: { u_ZhudaWet: { type: "float", value: 0.5 } },
+  name: 'PublicWetStone',
+  normalConvention: 'opengl',
+  uniforms: { u_ZhudaWet: { type: 'float', value: 0.5 } },
   material: { roughness: 0.8, clearCoat: 0.2 },
   surface: `void zhudaSurface(inout ZhudaLitSurface s,vec2 uv,vec3 p,vec3 n){s.roughness=mix(.8,.2,u_ZhudaWet);}`,
 });
-lit.set("u_ZhudaWet", 0.7);
+lit.set('u_ZhudaWet', 0.7);
 const pipeline = new ZhudaFilmicPipeline({}, { temporalAA: true });
 pipeline.resetHistory();
 pipeline.dispose();
-const reflection = new ZhudaPlanarReflection(
-  {},
-  { width: 512, height: 512, excludedLayer: 2 },
-);
+const reflection = new ZhudaPlanarReflection({}, { width: 512, height: 512, excludedLayer: 2 });
 const columns = reflection.update([0, 2, 4], [0, 0, 0], 45, 16 / 9);
 computeMeshTangents({
   positions: new Float32Array(9),
@@ -208,15 +222,21 @@ createPrefilteredEnvironment(
   new Float32Array(24),
 );
 console.log(columns);
-import { ZhudaUI, ZhudaPrefab, ZhudaPrefabLibrary, DirectoryAssetProvider, inspectPrefabInstance } from "zhuda-laya-engine";
+import {
+  ZhudaUI,
+  ZhudaPrefab,
+  ZhudaPrefabLibrary,
+  DirectoryAssetProvider,
+  inspectPrefabInstance,
+} from 'zhuda-laya-engine';
 const prefabLibrary = new ZhudaPrefabLibrary({
-  provider: new DirectoryAssetProvider({ baseUrl: "/assets/" }),
-  definitions: [{ id: "panel", asset: "panel.lh", states: { default: {} } }]
+  provider: new DirectoryAssetProvider({ baseUrl: '/assets/' }),
+  definitions: [{ id: 'panel', asset: 'panel.lh', states: { default: {} } }],
 });
-prefabLibrary.instantiate("panel").then(instance => {
-  const child: Laya.Sprite = instance.find("value");
+prefabLibrary.instantiate('panel').then((instance) => {
+  const child: Laya.Sprite = instance.find('value');
   inspectPrefabInstance(instance.root);
-  ZhudaUI.createVectorButton(child, 0, 0, "OK", { width: 80, height: 30 }, () => {});
-  ZhudaPrefab.instantiate({ _$id: "label", _$type: "Text" }, child);
+  ZhudaUI.createVectorButton(child, 0, 0, 'OK', { width: 80, height: 30 }, () => {});
+  ZhudaPrefab.instantiate({ _$id: 'label', _$type: 'Text' }, child);
   instance.dispose();
 });

@@ -3,10 +3,23 @@ import tseslint from 'typescript-eslint';
 import globals from 'globals';
 
 export default [
-  { ignores: ['**/node_modules/**', 'vendor/**', 'dist/**', 'packages/types/**', '**/dist/**', 'src/.generated/**', 'examples/windows-webgpu/web/**'] },
+  {
+    ignores: [
+      '**/node_modules/**',
+      'vendor/**',
+      'dist/**',
+      'packages/types/**',
+      '**/dist/**',
+      'src/.generated/**',
+      'examples/windows-webgpu/web/**',
+    ],
+  },
   {
     files: ['**/*.mjs', '**/*.js', '**/*.ts'],
-    languageOptions: { parser: tseslint.parser, globals: { ...globals.node, ...globals.browser, Laya: 'readonly' } },
+    languageOptions: {
+      parser: tseslint.parser,
+      globals: { ...globals.node, ...globals.browser, Laya: 'readonly' },
+    },
     rules: {
       ...js.configs.recommended.rules,
       'no-unused-vars': 'off',
@@ -14,7 +27,7 @@ export default [
       'no-dupe-class-members': 'off',
       'no-empty': ['error', { allowEmptyCatch: true }],
       'no-prototype-builtins': 'error',
-      'no-unsafe-finally': 'error'
-    }
-  }
+      'no-unsafe-finally': 'error',
+    },
+  },
 ];

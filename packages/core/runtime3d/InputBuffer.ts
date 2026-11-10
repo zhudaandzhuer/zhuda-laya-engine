@@ -29,15 +29,15 @@ export class ZhudaInputBuffer {
     this.window = options.window ?? 0.12;
     this.capacity = options.capacity ?? 32;
     if (!Number.isFinite(this.window) || this.window <= 0)
-      throw Error("Invalid input buffer window");
+      throw Error('Invalid input buffer window');
     if (!Number.isSafeInteger(this.capacity) || this.capacity <= 0)
-      throw Error("Invalid input buffer capacity");
+      throw Error('Invalid input buffer capacity');
   }
 
   push(action: string, time: number): boolean {
     this.ensureLive();
-    if (typeof action !== "string" || !action.trim() || !Number.isFinite(time))
-      throw Error("Invalid buffered input");
+    if (typeof action !== 'string' || !action.trim() || !Number.isFinite(time))
+      throw Error('Invalid buffered input');
     if (time < this.lastTime) return false;
     this.lastTime = time;
     this.entries.push({ action, time, sequence: this.nextSequence++ });
@@ -82,15 +82,11 @@ export class ZhudaInputBuffer {
    * Unrelated actions may occur between combo steps; each accepted step must
    * arrive within `maxGap` of the previous accepted step.
    */
-  consumeSequence(
-    actions: readonly string[],
-    time: number,
-    maxGap = this.window,
-  ): boolean {
+  consumeSequence(actions: readonly string[], time: number, maxGap = this.window): boolean {
     this.ensureLive();
     this.validateActions(actions);
     this.validateTime(time);
-    if (!Number.isFinite(maxGap) || maxGap < 0) throw Error("Invalid combo gap");
+    if (!Number.isFinite(maxGap) || maxGap < 0) throw Error('Invalid combo gap');
     this.prune(time);
     const indexes: number[] = [];
     let searchFrom = 0;
@@ -131,8 +127,12 @@ export class ZhudaInputBuffer {
     this.clear();
   }
 
-  get size(): number { return this.entries.length; }
-  get isDisposed(): boolean { return this.disposed; }
+  get size(): number {
+    return this.entries.length;
+  }
+  get isDisposed(): boolean {
+    return this.disposed;
+  }
 
   private prune(time: number): void {
     const cutoff = time - this.window;
@@ -140,22 +140,26 @@ export class ZhudaInputBuffer {
   }
 
   private validateRead(action: string, time: number): void {
-    if (typeof action !== "string" || !action.trim()) throw Error("Invalid buffered input action");
+    if (typeof action !== 'string' || !action.trim()) throw Error('Invalid buffered input action');
     this.validateTime(time);
   }
 
   private validateTime(time: number): void {
-    if (!Number.isFinite(time)) throw Error("Invalid buffered input time");
-    if (time < this.lastTime) throw Error("Buffered input time moved backwards");
+    if (!Number.isFinite(time)) throw Error('Invalid buffered input time');
+    if (time < this.lastTime) throw Error('Buffered input time moved backwards');
     this.lastTime = time;
   }
 
   private validateActions(actions: readonly string[]): void {
-    if (!Array.isArray(actions) || !actions.length || actions.some((action) => typeof action !== "string" || !action.trim()))
-      throw Error("Invalid input action sequence");
+    if (
+      !Array.isArray(actions) ||
+      !actions.length ||
+      actions.some((action) => typeof action !== 'string' || !action.trim())
+    )
+      throw Error('Invalid input action sequence');
   }
 
   private ensureLive(): void {
-    if (this.disposed) throw Error("Disposed input buffer");
+    if (this.disposed) throw Error('Disposed input buffer');
   }
 }

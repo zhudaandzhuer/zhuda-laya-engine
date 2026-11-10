@@ -1,5 +1,5 @@
 // Generated from TypeScript source; run npm run types:generate.
-export type ModelDecoderFormat = "draco" | "meshopt" | "ktx2-basis";
+export type ModelDecoderFormat = 'draco' | 'meshopt' | 'ktx2-basis';
 export interface ModelDecoderDescriptor {
     readonly format: ModelDecoderFormat;
     readonly name: string;
@@ -39,7 +39,7 @@ export interface ModelDecodeRequestOptions {
     readonly maxInputBytes?: number;
     readonly maxOutputBytes?: number;
 }
-export type ModelDecoderErrorCode = "invalid-adapter" | "unsupported" | "invalid-input" | "aborted" | "timeout" | "invalid-output" | "disposed";
+export type ModelDecoderErrorCode = 'invalid-adapter' | 'unsupported' | 'invalid-input' | 'aborted' | 'timeout' | 'invalid-output' | 'disposed';
 export declare class ModelDecoderError extends Error {
     readonly code: ModelDecoderErrorCode;
     readonly format?: ModelDecoderFormat;

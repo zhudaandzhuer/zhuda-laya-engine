@@ -7,16 +7,11 @@ export type Terrain3DOptions = {
   /** Optional closed volume, extruded along local -Y. Material is borrowed. */
   solid?: { depth: number; material?: any };
 };
-import { ZhudaHeightfield, type HeightRegion } from "./Heightfield.ts";
-import { ZhudaDynamicMesh } from "../runtime3d/Surfaces.ts";
-import {
-  inverse4,
-  transformPoint,
-  normalized,
-  type Vec3,
-} from "../runtime3d/Math3D.ts";
-import type { QueryRay, QueryProvider } from "../runtime3d/SceneQueries.ts";
-import { buildTerrainShell, shellTriangleDistance } from "./TerrainShell.ts";
+import { ZhudaHeightfield, type HeightRegion } from './Heightfield.ts';
+import { ZhudaDynamicMesh } from '../runtime3d/Surfaces.ts';
+import { inverse4, transformPoint, normalized, type Vec3 } from '../runtime3d/Math3D.ts';
+import type { QueryRay, QueryProvider } from '../runtime3d/SceneQueries.ts';
+import { buildTerrainShell, shellTriangleDistance } from './TerrainShell.ts';
 type Chunk = {
   mesh: ZhudaDynamicMesh;
   xs: number[];
@@ -37,29 +32,26 @@ export class ZhudaTerrain3D {
     this.field = field;
     this.options = options;
     if (!options.material || options.material.destroyed)
-      throw Error("A live terrain material is required");
+      throw Error('A live terrain material is required');
     if (
       options.solid &&
       (!Number.isFinite(options.solid.depth) ||
         options.solid.depth <= 0 ||
         options.solid.material?.destroyed)
     )
-      throw Error("Invalid terrain solid depth/material");
+      throw Error('Invalid terrain solid depth/material');
     const size = options.chunkCells ?? 32;
     if (!Number.isInteger(size) || size < 4 || size > 128 || size % 4)
-      throw Error("chunkCells must be a multiple of 4 within 4..128");
-    if (
-      !Number.isInteger(options.maxResidentChunks ?? 64) ||
-      (options.maxResidentChunks ?? 64) < 1
-    )
-      throw Error("Invalid chunk budget");
+      throw Error('chunkCells must be a multiple of 4 within 4..128');
+    if (!Number.isInteger(options.maxResidentChunks ?? 64) || (options.maxResidentChunks ?? 64) < 1)
+      throw Error('Invalid chunk budget');
     if (
       options.uvScale &&
       (!options.uvScale.every(Number.isFinite) || options.uvScale.length !== 2)
     )
-      throw Error("Invalid UV scale");
+      throw Error('Invalid UV scale');
     const l = (globalThis as any).Laya;
-    this.root = new l.Sprite3D("ZhudaTerrain");
+    this.root = new l.Sprite3D('ZhudaTerrain');
     options.parent?.addChild(this.root);
     this.unsubscribe = field.onChange((r) => {
       for (const chunk of this.chunks.values()) {
@@ -90,14 +82,14 @@ export class ZhudaTerrain3D {
   }
   /** Local x/z bounds; uniform stride avoids neighboring chunks with incompatible edge LODs. */
   setRegion(region: HeightRegion, stride: 1 | 2 | 4 = 1) {
-    if (this.disposed) throw Error("Disposed terrain");
+    if (this.disposed) throw Error('Disposed terrain');
     if (
       ![1, 2, 4].includes(stride) ||
       !Object.values(region).every(Number.isFinite) ||
       region.maxX <= region.minX ||
       region.maxZ <= region.minZ
     )
-      throw Error("Invalid terrain region/stride");
+      throw Error('Invalid terrain region/stride');
     const f = this.field,
       size = this.options.chunkCells ?? 32,
       span = size * f.cellSize,
@@ -115,10 +107,9 @@ export class ZhudaTerrain3D {
       Math.max(0, x1 - x0 + 1) * Math.max(0, z1 - z0 + 1) >
       (this.options.maxResidentChunks ?? 64)
     )
-      throw Error("Terrain region exceeds resident chunk budget");
+      throw Error('Terrain region exceeds resident chunk budget');
     const required = new Set<string>();
-    for (let z = z0; z <= z1; z++)
-      for (let x = x0; x <= x1; x++) required.add(x + ":" + z);
+    for (let z = z0; z <= z1; z++) for (let x = x0; x <= x1; x++) required.add(x + ':' + z);
     for (const [key, c] of this.chunks)
       if (!required.has(key) || this.stride !== stride) {
         c.mesh.dispose();
@@ -129,7 +120,7 @@ export class ZhudaTerrain3D {
     try {
       for (const key of required)
         if (!this.chunks.has(key)) {
-          const [x, z] = key.split(":").map(Number),
+          const [x, z] = key.split(':').map(Number),
             axis = (start: number, end: number) => {
               const a = [];
               for (let i = start; i < end; i += stride) a.push(i);
@@ -161,11 +152,8 @@ export class ZhudaTerrain3D {
               indices.set([c, a, d, a, b, d], k);
               k += 6;
             }
-          const mesh = new ZhudaDynamicMesh(
-            { positions, normals, uvs, indices },
-            this.root,
-          );
-          mesh.node.name = "terrain:" + key;
+          const mesh = new ZhudaDynamicMesh({ positions, normals, uvs, indices }, this.root);
+          mesh.node.name = 'terrain:' + key;
           mesh.node.meshRenderer.sharedMaterial = this.options.material;
           mesh.node.meshRenderer.receiveShadow = true;
           const chunk: Chunk = { mesh, xs, zs };
@@ -197,23 +185,17 @@ export class ZhudaTerrain3D {
   private rebuildShell(chunk: Chunk) {
     if (!this.options.solid) return;
     const shell = new ZhudaDynamicMesh(
-      buildTerrainShell(
-        chunk.mesh.vertices,
-        chunk.xs,
-        chunk.zs,
-        this.options.solid.depth,
-      ),
+      buildTerrainShell(chunk.mesh.vertices, chunk.xs, chunk.zs, this.options.solid.depth),
       this.root,
     );
-    shell.node.name = "terrain-solid";
-    shell.node.meshRenderer.sharedMaterial =
-      this.options.solid.material ?? this.options.material;
+    shell.node.name = 'terrain-solid';
+    shell.node.meshRenderer.sharedMaterial = this.options.solid.material ?? this.options.material;
     shell.node.meshRenderer.receiveShadow = true;
     chunk.shell?.dispose();
     chunk.shell = shell;
   }
   flush() {
-    if (this.disposed) throw Error("Disposed terrain");
+    if (this.disposed) throw Error('Disposed terrain');
     for (const chunk of this.chunks.values()) {
       const r = chunk.dirty;
       if (!r) continue;
@@ -228,10 +210,7 @@ export class ZhudaTerrain3D {
             chunk.zs[j] <= r.maxZ
           ) {
             const k = j * chunk.xs.length + i;
-            chunk.mesh.vertices.set(
-              this.vertex(chunk.xs[i], chunk.zs[j]),
-              k * 8,
-            );
+            chunk.mesh.vertices.set(this.vertex(chunk.xs[i], chunk.zs[j]), k * 8);
             first = Math.min(first, k);
             last = Math.max(last, k);
           }
@@ -247,11 +226,10 @@ export class ZhudaTerrain3D {
   }
   private chunkKeyForCell(x: number, z: number) {
     const size = this.options.chunkCells ?? 32;
-    return Math.floor(x / size) + ":" + Math.floor(z / size);
+    return Math.floor(x / size) + ':' + Math.floor(z / size);
   }
   private raycastLocal(ray: QueryRay, maxDistance: number) {
-    const accept = (x: number, z: number) =>
-      this.chunks.has(this.chunkKeyForCell(x, z));
+    const accept = (x: number, z: number) => this.chunks.has(this.chunkKeyForCell(x, z));
     let hit = this.field.raycast(ray, maxDistance, this.stride, accept);
     if (!this.options.solid) return hit;
     const depth = this.options.solid.depth,
@@ -316,12 +294,9 @@ export class ZhudaTerrain3D {
     return hit;
   }
   raycast(ray: QueryRay, maxDistance = Infinity) {
-    if (this.disposed) throw Error("Disposed terrain");
-    if (
-      maxDistance !== Infinity &&
-      (!Number.isFinite(maxDistance) || maxDistance < 0)
-    )
-      throw Error("Invalid terrain ray distance");
+    if (this.disposed) throw Error('Disposed terrain');
+    if (maxDistance !== Infinity && (!Number.isFinite(maxDistance) || maxDistance < 0))
+      throw Error('Invalid terrain ray distance');
     const world = this.root.transform.worldMatrix.elements,
       inv = inverse4(world),
       direction = normalized(ray.direction),
@@ -374,21 +349,18 @@ export class ZhudaTerrain3D {
       layer,
       raycast: (ray, distance) => {
         const h = this.raycast(ray, distance);
-        return h ? { ...h, instanceId: h.cellX + ":" + h.cellZ } : null;
+        return h ? { ...h, instanceId: h.cellX + ':' + h.cellZ } : null;
       },
     };
   }
   report() {
     return {
       residentChunks: this.chunks.size,
-      renderMeshes:
-        this.chunks.size +
-        [...this.chunks.values()].filter((c) => c.shell).length,
+      renderMeshes: this.chunks.size + [...this.chunks.values()].filter((c) => c.shell).length,
       solidDepth: this.options.solid?.depth ?? 0,
       stride: this.stride,
       vertices: [...this.chunks.values()].reduce(
-        (n, c) =>
-          n + c.mesh.vertices.length / 8 + (c.shell?.vertices.length ?? 0) / 8,
+        (n, c) => n + c.mesh.vertices.length / 8 + (c.shell?.vertices.length ?? 0) / 8,
         0,
       ),
       estimatedBufferBytes: [...this.chunks.values()].reduce(
@@ -396,9 +368,7 @@ export class ZhudaTerrain3D {
           n +
           c.mesh.vertices.byteLength +
           c.mesh.data.indices.byteLength +
-          (c.shell
-            ? c.shell.vertices.byteLength + c.shell.data.indices.byteLength
-            : 0),
+          (c.shell ? c.shell.vertices.byteLength + c.shell.data.indices.byteLength : 0),
         0,
       ),
     };

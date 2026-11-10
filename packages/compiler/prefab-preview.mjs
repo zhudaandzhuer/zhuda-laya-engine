@@ -1,22 +1,29 @@
-import fs from "node:fs";
-import path from "node:path";
-import esbuild from "esbuild";
+import fs from 'node:fs';
+import path from 'node:path';
+import esbuild from 'esbuild';
 import crypto from 'node:crypto';
 import { validatePrefabComponents } from './prefab-dependencies.mjs';
 
 export async function buildPrefabPreview({ projectRoot, engineRoot, out, topology, config }) {
-  const components=validatePrefabComponents(config.prefabComponents);
-  const bundles=Object.create(null);
-  const entries=[[null,config.prefabPreview,'prefab-preview.js'],...Object.entries(components).map(([id,value])=>{
-    const bundle='prefab-component-'+crypto.createHash('sha256').update(id).digest('hex').slice(0,20)+'.js';
-    bundles[id]=bundle;return [id,value.entry,bundle];
-  })];
-  for (const [componentId,moduleEntry,bundle] of entries) {
-  const entry = path.resolve(projectRoot, moduleEntry);
-  if (!entry.startsWith(projectRoot + path.sep) || !fs.existsSync(entry))
-    throw Error("prefabPreview must name an existing consumer module");
-  const sdk = path.join(engineRoot, "dist/sdk/zhuda-laya-engine.esm.js");
-  const code = `
+  const components = validatePrefabComponents(config.prefabComponents);
+  const bundles = Object.create(null);
+  const entries = [
+    [null, config.prefabPreview, 'prefab-preview.js'],
+    ...Object.entries(components).map(([id, value]) => {
+      const bundle =
+        'prefab-component-' +
+        crypto.createHash('sha256').update(id).digest('hex').slice(0, 20) +
+        '.js';
+      bundles[id] = bundle;
+      return [id, value.entry, bundle];
+    }),
+  ];
+  for (const [componentId, moduleEntry, bundle] of entries) {
+    const entry = path.resolve(projectRoot, moduleEntry);
+    if (!entry.startsWith(projectRoot + path.sep) || !fs.existsSync(entry))
+      throw Error('prefabPreview must name an existing consumer module');
+    const sdk = path.join(engineRoot, 'dist/sdk/zhuda-laya-engine.esm.js');
+    const code = `
 import {ZhudaEngine,Zhuda3D,DirectoryAssetProvider,ZhudaPrefabLibrary,ZhudaRequestSlot,ZhudaResourceScope,inspectPrefabInstance,inspectSceneResources} from 'zhuda-laya-engine';
 import * as prefabModule from ${JSON.stringify(entry)};
 const {definitions}=prefabModule;
@@ -95,7 +102,7 @@ window.__ZHUDA_PREFAB_TEST__={
     resources:library.report(),lifecycle,lifecycleCheck,environment:{
       requested:{width,height,dpr},
       measured:{width:innerWidth,height:innerHeight,dpr:devicePixelRatio},
-      provider:provider.name,engine:${JSON.stringify(JSON.parse(fs.readFileSync(path.join(engineRoot,'package.json'),'utf8')).version)}}}
+      provider:provider.name,engine:${JSON.stringify(JSON.parse(fs.readFileSync(path.join(engineRoot, 'package.json'), 'utf8')).version)}}}
  }
 };
 for(const definition of definitions){
@@ -121,19 +128,32 @@ void bootPreview().catch(error=>{
  window.__ZHUDA_PREFAB_TEST__={report:()=>({ready:false,error:String(error)})};
 });
 `;
-  await esbuild.build({
-    stdin: { contents: code, loader: "ts", resolveDir: projectRoot },
-    bundle: true, format: "iife", target: "es2020", minify: true,
-    outfile: path.join(out, bundle),
-    plugins: [{ name: "prefab-sdk", setup(build) {
-      build.onResolve({ filter: /^zhuda-laya-engine$/ }, () => ({ path: sdk }));
-    } }]
-  });
+    await esbuild.build({
+      stdin: { contents: code, loader: 'ts', resolveDir: projectRoot },
+      bundle: true,
+      format: 'iife',
+      target: 'es2020',
+      minify: true,
+      outfile: path.join(out, bundle),
+      plugins: [
+        {
+          name: 'prefab-sdk',
+          setup(build) {
+            build.onResolve({ filter: /^zhuda-laya-engine$/ }, () => ({ path: sdk }));
+          },
+        },
+      ],
+    });
   }
-  const scripts = topology.orderedFiles.map(file => `<script src="libs/${file}"></script>`).join("\n");
-  fs.writeFileSync(path.join(out, "prefab-preview.html"), `<!doctype html><meta charset="utf-8">
+  const scripts = topology.orderedFiles
+    .map((file) => `<script src="libs/${file}"></script>`)
+    .join('\n');
+  fs.writeFileSync(
+    path.join(out, 'prefab-preview.html'),
+    `<!doctype html><meta charset="utf-8">
 <title>Prefab preview</title><style>body{margin:0;background:#152030;color:white;font:14px sans-serif;overflow:auto}header{padding:12px}#preview{display:block;position:relative;width:640px;height:360px;overflow:hidden;background:#152030}</style>
 <header>Prefab <select id="choose"></select><span id="error" role="alert"></span></header>
-<div id="preview"></div>${scripts}<script>const components=${JSON.stringify(bundles).replaceAll('<','\\u003c')};const id=new URLSearchParams(location.search).get('id');const script=document.createElement('script');script.src=Object.hasOwn(components,id)?components[id]:'prefab-preview.js';document.body.appendChild(script);</script>`);
+<div id="preview"></div>${scripts}<script>const components=${JSON.stringify(bundles).replaceAll('<', '\\u003c')};const id=new URLSearchParams(location.search).get('id');const script=document.createElement('script');script.src=Object.hasOwn(components,id)?components[id]:'prefab-preview.js';document.body.appendChild(script);</script>`,
+  );
   return bundles;
 }

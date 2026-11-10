@@ -8,7 +8,7 @@ import { zhudaComponent } from '../../packages/core/DeclarativeSDK';
   className: 'TilePhysicsBehavior',
   assetId: 'zhuda://TilePhysicsBehavior',
   category: 'physics',
-  description: '管理 3D 踩地雷方塊爆破重力飛散與波浪動畫狀態'
+  description: '管理 3D 踩地雷方塊爆破重力飛散與波浪動畫狀態',
 })
 export class TilePhysicsBehavior extends Laya.Script {
   public activeSimulations: number = 0;

@@ -1,9 +1,9 @@
-import test from "node:test";
-import assert from "node:assert/strict";
-import { computeMeshTangents } from "../packages/core/runtime3d/Surfaces.ts";
-import { createPrefilteredEnvironment } from "../packages/core/runtime3d/Filmic.ts";
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { computeMeshTangents } from '../packages/core/runtime3d/Surfaces.ts';
+import { createPrefilteredEnvironment } from '../packages/core/runtime3d/Filmic.ts';
 
-test("normal map frames follow rotated and mirrored UVs, including vertical faces", () => {
+test('normal map frames follow rotated and mirrored UVs, including vertical faces', () => {
   const mesh = {
     positions: new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0]),
     normals: new Float32Array([0, 0, 1, 0, 0, 1, 0, 0, 1]),
@@ -18,16 +18,14 @@ test("normal map frames follow rotated and mirrored UVs, including vertical face
   mesh.uvs.fill(0);
   const fallback = computeMeshTangents(mesh);
   for (let i = 0; i < 3; i++) {
-    assert.ok(
-      Math.abs(Math.hypot(...fallback.slice(i * 4, i * 4 + 3)) - 1) < 1e-6,
-    );
+    assert.ok(Math.abs(Math.hypot(...fallback.slice(i * 4, i * 4 + 3)) - 1) < 1e-6);
     assert.equal(fallback[i * 4 + 2], 0);
   }
   mesh.positions[0] = NaN;
   assert.throws(() => computeMeshTangents(mesh), /finite/);
 });
 
-test("HDR environment rejects missing mips, ambiguous offsets and nonfinite radiance before GPU allocation", () => {
+test('HDR environment rejects missing mips, ambiguous offsets and nonfinite radiance before GPU allocation', () => {
   const spec = {
     size: 2,
     ambientSH: Array(27).fill(0),
@@ -59,16 +57,12 @@ test("HDR environment rejects missing mips, ambiguous offsets and nonfinite radi
   data[40] = Infinity;
   assert.throws(() => createPrefilteredEnvironment(spec, data), /pixels/);
   assert.throws(
-    () =>
-      createPrefilteredEnvironment(
-        { ...spec, ambientSH: Array(26).fill(0) },
-        data,
-      ),
+    () => createPrefilteredEnvironment({ ...spec, ambientSH: Array(26).fill(0) }, data),
     /descriptor/,
   );
 });
 
-test("environment uploads reorder public WebGL faces for every native Laya mip", () => {
+test('environment uploads reorder public WebGL faces for every native Laya mip', () => {
   const saved = globalThis.Laya,
     uploads = [];
   class Cube {

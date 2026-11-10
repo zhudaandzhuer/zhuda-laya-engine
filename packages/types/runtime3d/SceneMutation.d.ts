@@ -1,5 +1,5 @@
 // Generated from TypeScript source; run npm run types:generate.
-export type ZhudaSceneMutationKind = "add" | "remove" | "destroy" | "custom";
+export type ZhudaSceneMutationKind = 'add' | 'remove' | 'destroy' | 'custom';
 export interface ZhudaSceneMutation {
     kind: ZhudaSceneMutationKind;
     apply: () => void;

@@ -5,26 +5,53 @@ The public ESM/CJS SDK exports a renderer-independent CPU simulator, Laya 3.4.2 
 ## Minimal integration
 
 ```ts
-import { ZhudaParticleSystem, ZhudaLayaParticleRenderer, validateParticleEffect } from 'zhuda-laya-engine';
+import {
+  ZhudaParticleSystem,
+  ZhudaLayaParticleRenderer,
+  validateParticleEffect,
+} from 'zhuda-laya-engine';
 import type { ParticleEffectSpec } from 'zhuda-laya-engine';
 
 const effect: ParticleEffectSpec = {
   schemaVersion: 1,
-  emitters: [{
-    id: 'example', texture: 'external-texture-key', maxParticles: 256, seed: 42,
-    space: 'world', blend: 'alpha', shape: { type: 'point' }, rate: 30,
-    lifetime: [0.5, 1], speed: [20, 50], angle: [-1.8, -1.3], size: [8, 16],
-    sizeOverLife: [{ time: 0, value: 0.5 }, { time: 1, value: 1.5 }],
-    alphaOverLife: [{ time: 0, value: 0 }, { time: 0.1, value: 0.8 }, { time: 1, value: 0 }],
-    colorOverLife: [{ time: 0, color: '#ffffff' }, { time: 1, color: '#8899aa' }]
-  }]
+  emitters: [
+    {
+      id: 'example',
+      texture: 'external-texture-key',
+      maxParticles: 256,
+      seed: 42,
+      space: 'world',
+      blend: 'alpha',
+      shape: { type: 'point' },
+      rate: 30,
+      lifetime: [0.5, 1],
+      speed: [20, 50],
+      angle: [-1.8, -1.3],
+      size: [8, 16],
+      sizeOverLife: [
+        { time: 0, value: 0.5 },
+        { time: 1, value: 1.5 },
+      ],
+      alphaOverLife: [
+        { time: 0, value: 0 },
+        { time: 0.1, value: 0.8 },
+        { time: 1, value: 0 },
+      ],
+      colorOverLife: [
+        { time: 0, color: '#ffffff' },
+        { time: 1, color: '#8899aa' },
+      ],
+    },
+  ],
 };
 const issues = validateParticleEffect(effect);
 if (issues.length) throw new Error(issues.join('\n'));
 
 // Boot Laya and load textures before constructing renderers.
 const system = new ZhudaParticleSystem(effect.emitters[0]);
-const renderer = new ZhudaLayaParticleRenderer(system, parentSprite, key => loadedTextures.get(key));
+const renderer = new ZhudaLayaParticleRenderer(system, parentSprite, (key) =>
+  loadedTextures.get(key),
+);
 system.setTransform(100, 200, 0);
 system.play();
 // In the application's update loop:
@@ -68,7 +95,11 @@ This module implements 2D and 3D CPU particles, billboards, mesh trails, bounded
 ```ts
 import { ZhudaRibbonTrail, ZhudaLayaRibbonRenderer, ZhudaEffectEnvelope } from 'zhuda-laya-engine';
 const trail = new ZhudaRibbonTrail({
-  maxPoints: 128, lifetime: 0.8, width: 20, minDistance: 2, teleportDistance: 200
+  maxPoints: 128,
+  lifetime: 0.8,
+  width: 20,
+  minDistance: 2,
+  teleportDistance: 200,
 });
 const ribbon = new ZhudaLayaRibbonRenderer(trail, parentSprite, fullRibbonTexture);
 const envelope = new ZhudaEffectEnvelope(0.15, 0.45);
@@ -97,10 +128,20 @@ Trail history uses a bounded ring buffer. Points expire by age; short movements 
 ```ts
 import { ZhudaParticleSystem3D, ZhudaLayaParticleRenderer3D } from 'zhuda-laya-engine';
 const system = new ZhudaParticleSystem3D({
-  id: 'xyz', texture: 'external-key', seed: 7, maxParticles: 256,
-  space: 'world', blend: 'additive', shape: {type: 'sphere', radius: .1},
-  direction: {x: 0, y: 0, z: 1}, spread: .15,
-  rate: 40, lifetime: [.2, .5], speed: [2, 4], size: [.05, .2], billboard: 'velocity'
+  id: 'xyz',
+  texture: 'external-key',
+  seed: 7,
+  maxParticles: 256,
+  space: 'world',
+  blend: 'additive',
+  shape: { type: 'sphere', radius: 0.1 },
+  direction: { x: 0, y: 0, z: 1 },
+  spread: 0.15,
+  rate: 40,
+  lifetime: [0.2, 0.5],
+  speed: [2, 4],
+  size: [0.05, 0.2],
+  billboard: 'velocity',
 });
 // Boot the core + 3d features and load WebGL 3D modules before construction.
 const renderer = new ZhudaLayaParticleRenderer3D(system, identitySceneRoot, resolveTexture);
@@ -121,8 +162,14 @@ Textures must be full, untrimmed `Texture2D` or full 2D textures backed by one. 
 `ZhudaRibbonPath3D` accepts an application-authored XYZ centerline, useful for flows along any moving surface. The application supplies curved world points through `setPoints(points, widthDirections?)`; optional per-point width directions keep the band aligned to an authored surface instead of facing the camera. Directions are projected perpendicular to the tangent and normalized; the engine contains no vehicle or gameplay geometry. Width, alpha and color curves use normalized arc length. `visibleStart` and `visibleEnd` define a normalized reveal window; positive `edgeFade` softens both boundaries. Increasing `visibleEnd` reveals from the first point; increasing `visibleStart` erases in the same direction. `uvTiles` and `uvOffset` animate texture flow independently of reveal. Reuse supplied point objects to avoid application allocations. Clear a path or pass zero renderer opacity when invisible. Authored paths also reserve arc-length storage and optional width direction objects, in addition to the geometry buffers. Renderer disposal detaches shared textures before Laya material destruction so dependency cleanup cannot destroy application textures.
 
 ```ts
-const flow = new ZhudaRibbonPath3D({maxPoints: 64, width: .4,
-  alphaOverPath: [{time: 0, value: 0}, {time: .15, value: 1}, {time: 1, value: 0}]
+const flow = new ZhudaRibbonPath3D({
+  maxPoints: 64,
+  width: 0.4,
+  alphaOverPath: [
+    { time: 0, value: 0 },
+    { time: 0.15, value: 1 },
+    { time: 1, value: 0 },
+  ],
 });
 flow.setPoints(applicationWorldPoints);
 flow.visibleEnd = revealProgress;

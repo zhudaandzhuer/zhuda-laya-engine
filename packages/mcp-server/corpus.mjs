@@ -8,26 +8,153 @@
  */
 
 export const API_GUARDRAILS = [
- {id:'GUARD_CINEMATIC_CAPTURE',topic:'cinematic movie capture shutter physical camera lens 景深 電影 離線 4K',hallucinatedLegacyApi:'Seek Animator.play and immediately screenshot; TAA means deterministic movie samples; cancelled readback frees GPU immediately',zhudaCanonicalApi:'runtime.setPaused(true); new ZhudaModelAnimationSampler(instance,path,state); new ZhudaPhysicalCameraRig(camera,{focalLengthMm:50}); new ZhudaCinematicCapture(scene,lens,runtime,{width:3840,height:2160}); audio.renderOffline(options); zhuda-film-export report.json --fps 24 --output movie.mp4',reason:'1.13.0 固定時間同步取樣、光圈/快門累積、共用 mixer 離線 WAV、原子 MP4 輸出。取樣 callback 必須同步且無遊戲事件；取消仍保留底層作業至排空。累積為 display-linear SDR，非 scene-linear HDR 或即時 4K 效能；見 docs/cinematics.md 與 get_cinematic_contract。'},
- {id:'GUARD_MESHOPT',topic:'Meshopt Draco KTX2 compressed glTF decoder chunk 資產 壓縮',hallucinatedLegacyApi:'Registering metadata proves a codec; remove required extensions to force parsing',zhudaCanonicalApi:'const decoders=new ZhudaModelDecoderRegistry(); decoders.register(new ZhudaMeshoptModelDecoder()); const models=new ZhudaModelLibrary({provider,decoders,maxIdle:0});',reason:'1.12.0 optional Meshopt 1.3.0 converts embedded glTF/GLB before native parse; raw inspection still reports unsupported without conversion. Registry metadata is not artifact authentication. Draco/KTX2 remain unsupported. Release model leases before disposing library/registry/provider. See docs/model-showcase.md.'},
- {id:'GUARD_TIMELINE',topic:'timeline cinematic offline keyframe sequence 電影 時間軸',hallucinatedLegacyApi:'A metadata recorder exports 4K movies or a hash gate approves visual quality',zhudaCanonicalApi:'new ZhudaTimelineSequencer(spec,bindings); timeline.update(session.layers.scaledDeltas.get("presentation") ?? 0); new ZhudaOfflineFrameRecorder({durationSeconds:1,fps:24,advance,capture}); zhuda-sequence-check report.json --times 0,0.5,1',reason:'Use the existing session clock; offline callbacks explicitly own fixed-step presentation and real capture, obey abort signals and have deadlines. Sequence checks evidence integrity; pixel comparison and review remain separate. See docs/cinematics.md.'},
- {id:'GUARD_WEBGPU',topic:'WebGPU renderer backend Windows browser device lost WASM',hallucinatedLegacyApi:'features:["webgpu"]; force WebGPU in a WebGL bundle; fallback WebGL counts as GPU acceptance',zhudaCanonicalApi:'zhuda.config.json renderer:"webgpu"; await ZhudaEngine.boot({renderer:"webgpu",signal,bootTimeoutMs:30000}); context.renderer; browser profile 3d-webgpu',reason:'1.11.0 使用同版真實WebGPU後端及內附Shader compiler；預設仍為WebGL。同realm只可載一個後端。裝置遺失或GPU釋放後須新realm，不靜默降級。macOS硬體已測，Windows/實體手機及Native仍需裝置證據；見docs/webgpu.md。'},
- {id:'GUARD_CROWD_PRESENTATION',topic:'crowd Animator animation LOD 群體 百人 骨骼',hallucinatedLegacyApi:'Manually tick Animator in every actor timer; ordinary GPU instancing proves skinned batching',zhudaCanonicalApi:'new ZhudaCrowdScheduler({tiers,maxUpdatesPerFrame:50}); new ZhudaAnimatorLOD(animator); scheduler.update(sessionLayerDelta);',reason:'1.8.0 排程只控制呈現。Animator LOD 使用 native manager 的 frame divisor，不能再手動 tick；遊戲權威不降頻。真實模型/材質/設備仍需量測，見 docs/crowd-runtime.md。'},
- {id:'GUARD_FACTORY_FOUNDATION',topic:'white label brand theme slot factory result recovery 白牌 主題 回合 恢復',hallucinatedLegacyApi:'showEngineCredit:false; an EventGate or playback checkpoint settles money exactly once; theme metadata certifies Spine pixels',zhudaCanonicalApi:'branding:{mode:"custom",brandId:"client",logo:"brand/logo.svg"}; new ZhudaThemeController(source,contract); new ZhudaResultPlayback({scope,store,validate}); zhuda-laya-init --template 2d',reason:'1.10.0 預設官方品牌，可選 custom/none；browser bundle 先設定 ZhudaBranding。Theme provider 核對 SHA，失敗保留舊主題；prepare 驗證實際解碼內容。結果必須先 recover，再 accept/advance；交易與帳務仍由後端權威處理。見 docs/white-label-themes.md；Slot/Factory 專屬產品不在引擎範圍，Native/真機驗收獨立。'},
- {id:'GUARD_MODEL_SHOWCASE',topic:'glTF model inspector showcase morph cubic variants cinematic 模型 展示',hallucinatedLegacyApi:'A loaded model proves all materials match UE; Cinematic exports offline movies; unsupported required extensions can be ignored',zhudaCanonicalApi:'inspectGltfAsset(bytes); new ZhudaModelInspector(instance).inspect(); const view=new ZhudaAssetShowcase({library,parent,camera}); await view.load(id); view.setMode("cinematic");',reason:'1.9.0 必需擴充不支援會拋 ZhudaModelCompatibilityError；可選降級、opaqueColor 與 source inventory 有結構化報告。三模式共用實例，不換材質。handler 不代表視覺認證；Cinematic 是即時後製，非離線電影。見 docs/model-showcase.md。'},
- {id:'GUARD_MODEL_PROVIDER',topic:'model glTF GLB provider 模型 動畫',hallucinatedLegacyApi:'Fetch external glTF dependencies behind the provider; clone all materials for every actor',zhudaCanonicalApi:'const models=new ZhudaModelLibrary({provider,maxIdle:2,timeoutMs:15000}); const actor=await models.instantiate("actors/scout.glb",{signal}); actor.dispose(); models.dispose();',reason:'1.8.0 provider 模式只接受自包含 GLB/內嵌 glTF，共用模板/clip；外部URI明確拒絕。native glTF feature 必須載入，基本 browser 3d profile 不含 glTF；1.9.0 可選 3d-gltf profile（含 postProcess）。'},
- {id:'GUARD_REMOTE_PRESENTATION',topic:'snapshot remote network MMO 國戰 快照 重連',hallucinatedLegacyApi:'new ZhudaMMOServer(2000); client animation events decide authoritative damage',zhudaCanonicalApi:'new ZhudaRemoteCharacterPresenter({epoch,interpolate,tiers,maxUpdatesPerFrame:100}); presenter.push(id,snapshot,teleport); presenter.update(layerDelta,serverSampleTime);',reason:'只組合既有 snapshot buffer 與呈現排程。transport、時間同步、AOI、傷害、帳號與CCU驗收屬consumer；舊epoch/sequence和晚到瞬移不得覆蓋新狀態。'},
- {id:'GUARD_EFFECT_MINIMUM',topic:'particle effect budget minimum fallback 粒子 特效 預算',hallucinatedLegacyApi:'Calling update less often reduces fixed 120 Hz particle work; priority alone guarantees telegraphs',zhudaCanonicalApi:'new ZhudaParticleSystem3D(spec,{frequencyHz:30,maxSubsteps:4}); budget.allocate([{id:"warning",particles:48,coverage:.1,priority:10,minimumScale:.25,fallbackId:"ring"}]);',reason:'最低額度先保留；不可行時回報fallbackRequired。fallback由consumer另編預算。頻率改變才減少子步；丟棄視覺時間計入droppedSeconds，不影響遊戲權威。'},
- {id:'GUARD_PROFILER_EVIDENCE',topic:'profiler GPU performance P95 P99 memory Windows Steam 效能 驗收',hallucinatedLegacyApi:'CPU elapsed equals GPU time; ten-second desktop benchmark certifies mobile or Steam',zhudaCanonicalApi:'const p=new ZhudaRuntimeProfiler({capacity:60000}); p.attach(gl); p.enableGpuTiming(gl); p.beginFrame(); p.endFrame(frameMs,cpuMs); p.exportJSON({device,quality,commit});',reason:'GPU僅收非disjoint查詢；raw/percentiles有明確視窗，沒測就是缺值。JS heap不等於GPU/native記憶體。Windows Native/Steam及百人目標硬體仍未驗收。'},
- {id:'GUARD_TERRAIN_2D',topic:'2D terrain tile atlas chunks',hallucinatedLegacyApi:'Tiled JSON automatically supplies game collision rules',zhudaCanonicalApi:'new ZhudaTerrain2D(spec); new ZhudaTerrain2DRenderer(data,{parent,atlas,material}); renderer.setView(localRect); renderer.flush();',reason:'零為空tile；atlas/material是借用；blocked為資料。畫面chunk可卸載，遊戲規則仍由消費端決定。'},
- {id:'GUARD_TERRAIN_3D',topic:'3D terrain heightfield raycast LOD seam',hallucinatedLegacyApi:'bilinear height equals triangle mesh; per-chunk arbitrary LOD needs no seams',zhudaCanonicalApi:'ZhudaHeightfield.generate(config); new ZhudaTerrain3D(field,{parent,material}); terrain.setRegion(localXZBounds,1); field.brush(x,z,radius,delta); terrain.flush();',reason:'高度沿a-d三角對角線插值；同region統一stride1/2/4；field為全解析度權威資料，renderer query符合目前載入區域與stride。'},
- {id:'GUARD_SHADER_CONTRACT',topic:'shader uniform GLSL 2D 3D material',hallucinatedLegacyApi:'ShaderMaterial.ready means GPU compiled; raw shader globals can be copied from Three.js',zhudaCanonicalApi:'new ZhudaShaderMaterial(shaderRecipes.terrain3D); shader.setUniform("u_ZhudaSnowLine",6);',reason:'2D保留graphics premultiplied alpha/clipping/gamma；3D模板處理world normal/fog/output。surface不是完整main。JSON驗證不等於GPU編譯。'},
+  {
+    id: 'GUARD_CINEMATIC_CAPTURE',
+    topic: 'cinematic movie capture shutter physical camera lens 景深 電影 離線 4K',
+    hallucinatedLegacyApi:
+      'Seek Animator.play and immediately screenshot; TAA means deterministic movie samples; cancelled readback frees GPU immediately',
+    zhudaCanonicalApi:
+      'runtime.setPaused(true); new ZhudaModelAnimationSampler(instance,path,state); new ZhudaPhysicalCameraRig(camera,{focalLengthMm:50}); new ZhudaCinematicCapture(scene,lens,runtime,{width:3840,height:2160}); audio.renderOffline(options); zhuda-film-export report.json --fps 24 --output movie.mp4',
+    reason:
+      '1.13.0 固定時間同步取樣、光圈/快門累積、共用 mixer 離線 WAV、原子 MP4 輸出。取樣 callback 必須同步且無遊戲事件；取消仍保留底層作業至排空。累積為 display-linear SDR，非 scene-linear HDR 或即時 4K 效能；見 docs/cinematics.md 與 get_cinematic_contract。',
+  },
+  {
+    id: 'GUARD_MESHOPT',
+    topic: 'Meshopt Draco KTX2 compressed glTF decoder chunk 資產 壓縮',
+    hallucinatedLegacyApi:
+      'Registering metadata proves a codec; remove required extensions to force parsing',
+    zhudaCanonicalApi:
+      'const decoders=new ZhudaModelDecoderRegistry(); decoders.register(new ZhudaMeshoptModelDecoder()); const models=new ZhudaModelLibrary({provider,decoders,maxIdle:0});',
+    reason:
+      '1.12.0 optional Meshopt 1.3.0 converts embedded glTF/GLB before native parse; raw inspection still reports unsupported without conversion. Registry metadata is not artifact authentication. Draco/KTX2 remain unsupported. Release model leases before disposing library/registry/provider. See docs/model-showcase.md.',
+  },
+  {
+    id: 'GUARD_TIMELINE',
+    topic: 'timeline cinematic offline keyframe sequence 電影 時間軸',
+    hallucinatedLegacyApi:
+      'A metadata recorder exports 4K movies or a hash gate approves visual quality',
+    zhudaCanonicalApi:
+      'new ZhudaTimelineSequencer(spec,bindings); timeline.update(session.layers.scaledDeltas.get("presentation") ?? 0); new ZhudaOfflineFrameRecorder({durationSeconds:1,fps:24,advance,capture}); zhuda-sequence-check report.json --times 0,0.5,1',
+    reason:
+      'Use the existing session clock; offline callbacks explicitly own fixed-step presentation and real capture, obey abort signals and have deadlines. Sequence checks evidence integrity; pixel comparison and review remain separate. See docs/cinematics.md.',
+  },
+  {
+    id: 'GUARD_WEBGPU',
+    topic: 'WebGPU renderer backend Windows browser device lost WASM',
+    hallucinatedLegacyApi:
+      'features:["webgpu"]; force WebGPU in a WebGL bundle; fallback WebGL counts as GPU acceptance',
+    zhudaCanonicalApi:
+      'zhuda.config.json renderer:"webgpu"; await ZhudaEngine.boot({renderer:"webgpu",signal,bootTimeoutMs:30000}); context.renderer; browser profile 3d-webgpu',
+    reason:
+      '1.11.0 使用同版真實WebGPU後端及內附Shader compiler；預設仍為WebGL。同realm只可載一個後端。裝置遺失或GPU釋放後須新realm，不靜默降級。macOS硬體已測，Windows/實體手機及Native仍需裝置證據；見docs/webgpu.md。',
+  },
+  {
+    id: 'GUARD_CROWD_PRESENTATION',
+    topic: 'crowd Animator animation LOD 群體 百人 骨骼',
+    hallucinatedLegacyApi:
+      'Manually tick Animator in every actor timer; ordinary GPU instancing proves skinned batching',
+    zhudaCanonicalApi:
+      'new ZhudaCrowdScheduler({tiers,maxUpdatesPerFrame:50}); new ZhudaAnimatorLOD(animator); scheduler.update(sessionLayerDelta);',
+    reason:
+      '1.8.0 排程只控制呈現。Animator LOD 使用 native manager 的 frame divisor，不能再手動 tick；遊戲權威不降頻。真實模型/材質/設備仍需量測，見 docs/crowd-runtime.md。',
+  },
+  {
+    id: 'GUARD_FACTORY_FOUNDATION',
+    topic: 'white label brand theme slot factory result recovery 白牌 主題 回合 恢復',
+    hallucinatedLegacyApi:
+      'showEngineCredit:false; an EventGate or playback checkpoint settles money exactly once; theme metadata certifies Spine pixels',
+    zhudaCanonicalApi:
+      'branding:{mode:"custom",brandId:"client",logo:"brand/logo.svg"}; new ZhudaThemeController(source,contract); new ZhudaResultPlayback({scope,store,validate}); zhuda-laya-init --template 2d',
+    reason:
+      '1.10.0 預設官方品牌，可選 custom/none；browser bundle 先設定 ZhudaBranding。Theme provider 核對 SHA，失敗保留舊主題；prepare 驗證實際解碼內容。結果必須先 recover，再 accept/advance；交易與帳務仍由後端權威處理。見 docs/white-label-themes.md；Slot/Factory 專屬產品不在引擎範圍，Native/真機驗收獨立。',
+  },
+  {
+    id: 'GUARD_MODEL_SHOWCASE',
+    topic: 'glTF model inspector showcase morph cubic variants cinematic 模型 展示',
+    hallucinatedLegacyApi:
+      'A loaded model proves all materials match UE; Cinematic exports offline movies; unsupported required extensions can be ignored',
+    zhudaCanonicalApi:
+      'inspectGltfAsset(bytes); new ZhudaModelInspector(instance).inspect(); const view=new ZhudaAssetShowcase({library,parent,camera}); await view.load(id); view.setMode("cinematic");',
+    reason:
+      '1.9.0 必需擴充不支援會拋 ZhudaModelCompatibilityError；可選降級、opaqueColor 與 source inventory 有結構化報告。三模式共用實例，不換材質。handler 不代表視覺認證；Cinematic 是即時後製，非離線電影。見 docs/model-showcase.md。',
+  },
+  {
+    id: 'GUARD_MODEL_PROVIDER',
+    topic: 'model glTF GLB provider 模型 動畫',
+    hallucinatedLegacyApi:
+      'Fetch external glTF dependencies behind the provider; clone all materials for every actor',
+    zhudaCanonicalApi:
+      'const models=new ZhudaModelLibrary({provider,maxIdle:2,timeoutMs:15000}); const actor=await models.instantiate("actors/scout.glb",{signal}); actor.dispose(); models.dispose();',
+    reason:
+      '1.8.0 provider 模式只接受自包含 GLB/內嵌 glTF，共用模板/clip；外部URI明確拒絕。native glTF feature 必須載入，基本 browser 3d profile 不含 glTF；1.9.0 可選 3d-gltf profile（含 postProcess）。',
+  },
+  {
+    id: 'GUARD_REMOTE_PRESENTATION',
+    topic: 'snapshot remote network MMO 國戰 快照 重連',
+    hallucinatedLegacyApi:
+      'new ZhudaMMOServer(2000); client animation events decide authoritative damage',
+    zhudaCanonicalApi:
+      'new ZhudaRemoteCharacterPresenter({epoch,interpolate,tiers,maxUpdatesPerFrame:100}); presenter.push(id,snapshot,teleport); presenter.update(layerDelta,serverSampleTime);',
+    reason:
+      '只組合既有 snapshot buffer 與呈現排程。transport、時間同步、AOI、傷害、帳號與CCU驗收屬consumer；舊epoch/sequence和晚到瞬移不得覆蓋新狀態。',
+  },
+  {
+    id: 'GUARD_EFFECT_MINIMUM',
+    topic: 'particle effect budget minimum fallback 粒子 特效 預算',
+    hallucinatedLegacyApi:
+      'Calling update less often reduces fixed 120 Hz particle work; priority alone guarantees telegraphs',
+    zhudaCanonicalApi:
+      'new ZhudaParticleSystem3D(spec,{frequencyHz:30,maxSubsteps:4}); budget.allocate([{id:"warning",particles:48,coverage:.1,priority:10,minimumScale:.25,fallbackId:"ring"}]);',
+    reason:
+      '最低額度先保留；不可行時回報fallbackRequired。fallback由consumer另編預算。頻率改變才減少子步；丟棄視覺時間計入droppedSeconds，不影響遊戲權威。',
+  },
+  {
+    id: 'GUARD_PROFILER_EVIDENCE',
+    topic: 'profiler GPU performance P95 P99 memory Windows Steam 效能 驗收',
+    hallucinatedLegacyApi:
+      'CPU elapsed equals GPU time; ten-second desktop benchmark certifies mobile or Steam',
+    zhudaCanonicalApi:
+      'const p=new ZhudaRuntimeProfiler({capacity:60000}); p.attach(gl); p.enableGpuTiming(gl); p.beginFrame(); p.endFrame(frameMs,cpuMs); p.exportJSON({device,quality,commit});',
+    reason:
+      'GPU僅收非disjoint查詢；raw/percentiles有明確視窗，沒測就是缺值。JS heap不等於GPU/native記憶體。Windows Native/Steam及百人目標硬體仍未驗收。',
+  },
+  {
+    id: 'GUARD_TERRAIN_2D',
+    topic: '2D terrain tile atlas chunks',
+    hallucinatedLegacyApi: 'Tiled JSON automatically supplies game collision rules',
+    zhudaCanonicalApi:
+      'new ZhudaTerrain2D(spec); new ZhudaTerrain2DRenderer(data,{parent,atlas,material}); renderer.setView(localRect); renderer.flush();',
+    reason:
+      '零為空tile；atlas/material是借用；blocked為資料。畫面chunk可卸載，遊戲規則仍由消費端決定。',
+  },
+  {
+    id: 'GUARD_TERRAIN_3D',
+    topic: '3D terrain heightfield raycast LOD seam',
+    hallucinatedLegacyApi:
+      'bilinear height equals triangle mesh; per-chunk arbitrary LOD needs no seams',
+    zhudaCanonicalApi:
+      'ZhudaHeightfield.generate(config); new ZhudaTerrain3D(field,{parent,material}); terrain.setRegion(localXZBounds,1); field.brush(x,z,radius,delta); terrain.flush();',
+    reason:
+      '高度沿a-d三角對角線插值；同region統一stride1/2/4；field為全解析度權威資料，renderer query符合目前載入區域與stride。',
+  },
+  {
+    id: 'GUARD_SHADER_CONTRACT',
+    topic: 'shader uniform GLSL 2D 3D material',
+    hallucinatedLegacyApi:
+      'ShaderMaterial.ready means GPU compiled; raw shader globals can be copied from Three.js',
+    zhudaCanonicalApi:
+      'new ZhudaShaderMaterial(shaderRecipes.terrain3D); shader.setUniform("u_ZhudaSnowLine",6);',
+    reason:
+      '2D保留graphics premultiplied alpha/clipping/gamma；3D模板處理world normal/fog/output。surface不是完整main。JSON驗證不等於GPU編譯。',
+  },
   {
     id: 'GUARD_INIT_BOOT',
     topic: '引擎啟動與 Stage 初始化',
     hallucinatedLegacyApi: 'Laya.init(1280, 720, Laya.WebGL); Laya.MiniAdpter.init();',
-    zhudaCanonicalApi: 'const { stage, rootScene } = await ZhudaEngine.boot({ width: 1280, height: 720, features: "all" });',
-    reason: 'Laya 3.4.2 採用非同步 Promise Laya.init(w, h)，且需在初始化前後掛載 Prototype Detox 與拓撲守衛。'
+    zhudaCanonicalApi:
+      'const { stage, rootScene } = await ZhudaEngine.boot({ width: 1280, height: 720, features: "all" });',
+    reason:
+      'Laya 3.4.2 採用非同步 Promise Laya.init(w, h)，且需在初始化前後掛載 Prototype Detox 與拓撲守衛。',
   },
   {
     id: 'GUARD_3D_MESH_CREATE',
@@ -35,36 +162,47 @@ export const API_GUARDRAILS = [
     hallucinatedLegacyApi: 'new Laya.MeshSprite3D(new THREE.BoxGeometry());',
     zhudaCanonicalApi:
       'const sp = new Laya.MeshSprite3D();\nsp.meshFilter.sharedMesh = Zhuda3D.createPrimitiveMesh("box", { width: 1, height: 1, depth: 1 });\nsp.meshRenderer.sharedMaterial = Zhuda3D.createMaterial({ albedoColor: [0.2, 0.5, 0.9, 1], shininess: 32 });',
-    reason: 'Laya 3.4.2 支援 new MeshSprite3D(mesh,name)，也可另設 meshFilter.sharedMesh。必須使用 Laya.Mesh，不能直接塞 Three.js Geometry；材質由 meshRenderer.sharedMaterial 指定。'
+    reason:
+      'Laya 3.4.2 支援 new MeshSprite3D(mesh,name)，也可另設 meshFilter.sharedMesh。必須使用 Laya.Mesh，不能直接塞 Three.js Geometry；材質由 meshRenderer.sharedMaterial 指定。',
   },
   {
     id: 'GUARD_DIRECTIONAL_LIGHT',
     topic: '3D 平行光組件',
     hallucinatedLegacyApi: 'const light = scene3D.addChild(new Laya.DirectionLight());',
-    zhudaCanonicalApi: 'const { node, light } = Zhuda3D.createDirectionalLight(scene3D, { intensity: 1.3, rotationEuler: [-55, 35, 0] });',
-    reason: 'Laya 3.4.2 已全面改為組件化 (Entity-Component)，燈光必須透過 Sprite3D.addComponent(Laya.DirectionLightCom) 掛載。'
+    zhudaCanonicalApi:
+      'const { node, light } = Zhuda3D.createDirectionalLight(scene3D, { intensity: 1.3, rotationEuler: [-55, 35, 0] });',
+    reason:
+      'Laya 3.4.2 已全面改為組件化 (Entity-Component)，燈光必須透過 Sprite3D.addComponent(Laya.DirectionLightCom) 掛載。',
   },
   {
     id: 'GUARD_VECTOR_BUTTON',
     topic: '純代碼 2D 向量按鈕',
-    hallucinatedLegacyApi: 'const btn = new Laya.Button(); btn.graphics.drawRect(0, 0, 100, 40, "#336699");',
-    zhudaCanonicalApi: 'const { root, label } = ZhudaUI.createVectorButton(parent, x, y, "按鈕文字", { width: 100, height: 40 }, onClick);',
-    reason: 'Laya.Button 內部強依賴 AutoBitmap.setState，直接覆寫 graphics 在滑鼠懸停時會拋出 this._graphics.setState is not a function。'
+    hallucinatedLegacyApi:
+      'const btn = new Laya.Button(); btn.graphics.drawRect(0, 0, 100, 40, "#336699");',
+    zhudaCanonicalApi:
+      'const { root, label } = ZhudaUI.createVectorButton(parent, x, y, "按鈕文字", { width: 100, height: 40 }, onClick);',
+    reason:
+      'Laya.Button 內部強依賴 AutoBitmap.setState，直接覆寫 graphics 在滑鼠懸停時會拋出 this._graphics.setState is not a function。',
   },
   {
     id: 'GUARD_COMPONENT_REFLECTION',
     topic: '自定義 Script 組件註冊 (脫離 IDE)',
-    hallucinatedLegacyApi: 'export default class PlayerScript extends Laya.Script {} // 依賴 IDE 黑盒掃描',
-    zhudaCanonicalApi: '@zhudaComponent({ className: "PlayerScript", category: "3d" })\nexport class PlayerScript extends Laya.Script {}',
-    reason: '脫離 IDE 後必須透過 @zhudaComponent 裝飾器與 @zhuda-laya/compiler 的 AST 掃描器自動注入 ClassUtils.regClass。'
+    hallucinatedLegacyApi:
+      'export default class PlayerScript extends Laya.Script {} // 依賴 IDE 黑盒掃描',
+    zhudaCanonicalApi:
+      '@zhudaComponent({ className: "PlayerScript", category: "3d" })\nexport class PlayerScript extends Laya.Script {}',
+    reason:
+      '脫離 IDE 後必須透過 @zhudaComponent 裝飾器與 @zhuda-laya/compiler 的 AST 掃描器自動注入 ClassUtils.regClass。',
   },
   {
     id: 'GUARD_RAYCAST_3D',
     topic: '3D 相機螢幕射線拾取',
-    hallucinatedLegacyApi: 'camera.viewportPointToRay(new Laya.Vector2(x, y)); // 缺少 out Ray 參數',
+    hallucinatedLegacyApi:
+      'camera.viewportPointToRay(new Laya.Vector2(x, y)); // 缺少 out Ray 參數',
     zhudaCanonicalApi:
       'const ray = new Laya.Ray(new Laya.Vector3(), new Laya.Vector3());\ncamera.viewportPointToRay(new Laya.Vector2(screenX, screenY), ray);',
-    reason: 'Laya 3.4.2 viewportPointToRay 為零 GC 設計，必須傳入預先配置的 Laya.Ray 實例作為輸出。'
+    reason:
+      'Laya 3.4.2 viewportPointToRay 為零 GC 設計，必須傳入預先配置的 Laya.Ray 實例作為輸出。',
   },
   {
     id: 'GUARD_STATIC_PREFAB_CALIBRATION',
@@ -72,59 +210,71 @@ export const API_GUARDRAILS = [
     hallucinatedLegacyApi: '每次修改 2px UI 座標或粒子色號都重新啟動完整遊戲 Runtime 肉眼比對',
     zhudaCanonicalApi:
       'const lh = ZhudaAssetSerializer.serializeNodeToHierarchy(node, { assetId: "assets/prefabs/MyCard.lh", targetSpec });\nconst report = PixelCalibrationEngine.calibrateAsset(lh);\nconst converged = ZhudaAssetSerializer.applyCalibrationPatches(lh, report.autoFixPatches);\nconst inst = ZhudaPrefab.instantiate(converged, parent);',
-    reason: 'Laya 3.4.2 的 DrawRoundRectCmd 建構子預設 percent: true，必須透過 ZhudaAssetSerializer 顯式序列化 percent: false 並以 PixelCalibrationEngine 單步收斂至 0px 與 ΔE00=0。'
-  }
+    reason:
+      'Laya 3.4.2 的 DrawRoundRectCmd 建構子預設 percent: true，必須透過 ZhudaAssetSerializer 顯式序列化 percent: false 並以 PixelCalibrationEngine 單步收斂至 0px 與 ΔE00=0。',
+  },
 ];
 
 export const ERROR_DIAGNOSTICS_DB = [
   {
     pattern: "Cannot read properties of undefined (reading 'I')",
     faultyModule: 'laya.box2D.js',
-    rootCause: 'laya.box2D.js 在 laya.physics2D.js 之前被載入，頂層存取 Laya.Physics2D.I._factory 時 Laya.Physics2D 尚未定義。',
-    fix: '使用 TopologyResolver.resolveByFeatures(["physics2d"]) 強制確保 laya.physics2D.js 排在 laya.box2D.js 之前。'
+    rootCause:
+      'laya.box2D.js 在 laya.physics2D.js 之前被載入，頂層存取 Laya.Physics2D.I._factory 時 Laya.Physics2D 尚未定義。',
+    fix: '使用 TopologyResolver.resolveByFeatures(["physics2d"]) 強制確保 laya.physics2D.js 排在 laya.box2D.js 之前。',
   },
   {
     pattern: 'Box2DShapeDef is not a constructor',
     faultyModule: 'laya.tilemap.js',
-    rootCause: '載入了 laya.tilemap.js 卻未先載入 laya.physics2D.js，TileMap 內部在載入期直接繼承 Box2DShapeDef。',
-    fix: '在 TopologyGraph 中將 physics2d 列為 tilemap 的硬性前置依賴 (dependsOn: ["core", "webgl2d", "physics2d"])。'
+    rootCause:
+      '載入了 laya.tilemap.js 卻未先載入 laya.physics2D.js，TileMap 內部在載入期直接繼承 Box2DShapeDef。',
+    fix: '在 TopologyGraph 中將 physics2d 列為 tilemap 的硬性前置依賴 (dependsOn: ["core", "webgl2d", "physics2d"])。',
   },
   {
     pattern: 'this._graphics.setState is not a function',
     faultyModule: 'laya.ui.js (Laya.Button)',
     rootCause: '對 Laya.Button 賦值了一般 Laya.Graphics 實例，而非內部預期的 AutoBitmap。',
-    fix: '呼叫 EngineGuard.installPrototypeDetox() 自動修補 Graphics.prototype.setState，或改用 ZhudaUI.createVectorButton()。'
+    fix: '呼叫 EngineGuard.installPrototypeDetox() 自動修補 Graphics.prototype.setState，或改用 ZhudaUI.createVectorButton()。',
   },
   {
     pattern: 'spine is not defined',
     faultyModule: 'laya.spine.js / laya.spine3D.js',
     rootCause: 'laya.spine.js 在 spine-core-4.2.js 之前載入，或同時混用了 3.8 與 4.2 runtime。',
-    fix: '載入順序必須嚴格為：spine-core-4.2.js -> laya.spine.js -> laya.spine3D.js。'
+    fix: '載入順序必須嚴格為：spine-core-4.2.js -> laya.spine.js -> laya.spine3D.js。',
   },
   {
     pattern: 'Component onAwake / onUpdate never fires after loading prefab',
     faultyModule: 'Laya.ClassUtils',
-    rootCause: '脫離 IDE 後未在資產反序列化前執行 Laya.ClassUtils.regClass(name, Ctor)，引擎靜默降級為空節點。',
-    fix: '為組件加上 @zhudaComponent 裝飾器，並由 @zhuda-laya/compiler AST 掃描器自動生成 zhuda-registry.ts。'
+    rootCause:
+      '脫離 IDE 後未在資產反序列化前執行 Laya.ClassUtils.regClass(name, Ctor)，引擎靜默降級為空節點。',
+    fix: '為組件加上 @zhudaComponent 裝飾器，並由 @zhuda-laya/compiler AST 掃描器自動生成 zhuda-registry.ts。',
   },
   {
     pattern: 'DrawRoundRectCmd width scaled by 100x after HierarchyParser.parse',
     faultyModule: 'laya.core.js (DrawRoundRectCmd / DrawRectCmd)',
-    rootCause: 'Laya 3.4.2 的 DrawRoundRectCmd 建構子預設 this.percent = true，若 .lh JSON 未顯式寫入 "percent": false，反序列化後長寬會被乘上父節點尺寸。',
-    fix: '使用 ZhudaAssetSerializer.serializeNodeToHierarchy() 自動注入 percent: false，並透過 PixelCalibrationEngine.calibrateAsset() 驗證 Tight Bounding Box。'
-  }
+    rootCause:
+      'Laya 3.4.2 的 DrawRoundRectCmd 建構子預設 this.percent = true，若 .lh JSON 未顯式寫入 "percent": false，反序列化後長寬會被乘上父節點尺寸。',
+    fix: '使用 ZhudaAssetSerializer.serializeNodeToHierarchy() 自動注入 percent: false，並透過 PixelCalibrationEngine.calibrateAsset() 驗證 Tight Bounding Box。',
+  },
 ];
 
 export const GOLDEN_EXAMPLES = {
- 'terrain-2d':{title:'分塊2D地形與局部繪製',features:['core'],code:`import {ZhudaEngine,ZhudaTerrain2D,ZhudaTerrain2DRenderer} from 'zhuda-laya-engine';
+  'terrain-2d': {
+    title: '分塊2D地形與局部繪製',
+    features: ['core'],
+    code: `import {ZhudaEngine,ZhudaTerrain2D,ZhudaTerrain2DRenderer} from 'zhuda-laya-engine';
 const {rootScene}=await ZhudaEngine.boot({features:['core']});
 const map=new ZhudaTerrain2D({schemaVersion:1,dimension:2,width:32,height:32,tileSize:20,palette:[{id:1,color:'#339955'}],layers:[{id:'ground',tiles:Array(1024).fill(1)}]});
 const renderer=new ZhudaTerrain2DRenderer(map,{parent:rootScene});
 renderer.setView({x:0,y:0,width:320,height:320});
 map.setTile('ground',15,15,0);renderer.flush();
 // renderer.dispose(); // release graphics commands; borrowed atlas stays owned by caller
-`},
- 'terrain-3d-shader':{title:'定種子高度場、地形Shader、筆刷與查詢',features:['core','3d'],code:`import {ZhudaEngine,Zhuda3D,ZhudaHeightfield,ZhudaTerrain3D,ZhudaShaderMaterial,shaderRecipes} from 'zhuda-laya-engine';
+`,
+  },
+  'terrain-3d-shader': {
+    title: '定種子高度場、地形Shader、筆刷與查詢',
+    features: ['core', '3d'],
+    code: `import {ZhudaEngine,Zhuda3D,ZhudaHeightfield,ZhudaTerrain3D,ZhudaShaderMaterial,shaderRecipes} from 'zhuda-laya-engine';
 const {rootScene}=await ZhudaEngine.boot({features:['core','3d']});
 const scene3D=Zhuda3D.createScene3D(rootScene);
 Zhuda3D.createCamera(scene3D,{position:[32,55,70],rotationEuler:[-55,0,0],far:300});
@@ -136,8 +286,12 @@ field.brush(32,32,4,2);terrain.flush();shader.setUniform('u_ZhudaSnowLine',6);
 const hit=terrain.raycast({origin:{x:32,y:30,z:32},direction:{x:0,y:-1,z:0}});
 console.log(hit?.position);
 // terrain.dispose(); shader.dispose();
-`},
-  'terrain-solid-camera': {title:'Closed terrain and camera boom collision',features:['core','3d'],code:`import {ZhudaEngine,Zhuda3D,ZhudaHeightfield,ZhudaTerrain3D,ZhudaShaderMaterial,shaderRecipes,ZhudaSceneQueries,ZhudaCameraRig} from 'zhuda-laya-engine';
+`,
+  },
+  'terrain-solid-camera': {
+    title: 'Closed terrain and camera boom collision',
+    features: ['core', '3d'],
+    code: `import {ZhudaEngine,Zhuda3D,ZhudaHeightfield,ZhudaTerrain3D,ZhudaShaderMaterial,shaderRecipes,ZhudaSceneQueries,ZhudaCameraRig} from 'zhuda-laya-engine';
 const ctx=await ZhudaEngine.boot({features:['core','3d'],dprCap:1.5});
 const scene=Zhuda3D.createScene3D(ctx.rootScene),camera=Zhuda3D.createCamera(scene,{far:300});
 const field=ZhudaHeightfield.generate({cellsX:64,cellsZ:64,cellSize:1,seed:42,amplitude:8});
@@ -150,7 +304,8 @@ const rig=new ZhudaCameraRig(camera,{collision:{queries,radius:.4,clearance:.2,l
 ctx.runtime.start(()=>rig.update({x:32,y:field.sample(32,32).height+2,z:32}));
 // Inspector-only underside view: rig.options.collision=undefined; rig.pitch=-.5;
 // Stop runtime before terrain.dispose(); shader.dispose(); ctx.dispose();
-`},
+`,
+  },
   'boot-declarative-3d': {
     title: 'Zero-IDE 宣告式 3D 場景與相機燈光初始化',
     features: ['core', '2d', '3d', 'ui'],
@@ -178,7 +333,7 @@ async function main() {
   cube.addComponent(SpinCubeScript);
   scene3D.addChild(cube);
 }
-main();`
+main();`,
   },
   'spine42-physics-companion': {
     title: 'Spine 4.2 PhysicsConstraint 物理骨骼約束與動態渲染',
@@ -191,7 +346,7 @@ export function verifySpine42Physics() {
     throw new Error('Spine 4.2 PhysicsConstraint not loaded!');
   }
   return telemetry;
-}`
+}`,
   },
   'safe-vector-ui-hud': {
     title: '免疫 AutoBitmap 崩潰的玻璃擬態 2D 向量 HUD',
@@ -203,7 +358,7 @@ export function buildHud(stage: Laya.Stage) {
   ZhudaUI.createVectorButton(panel, 16, 12, '🚀 啟動引擎基準測試', { width: 180, height: 40 }, () => {
     console.log('Benchmark triggered!');
   });
-}`
+}`,
   },
   'static-prefab-pixel-calibration': {
     title: '先設計後組裝：動態節點轉靜態 .lh 預製體與像素/色差 (ΔE00) 自動校準',
@@ -220,6 +375,6 @@ export function calibrateAndAssembleButton(stage: Laya.Stage) {
 
   // 3. 後組裝階段 (Assembly Phase)：毫秒級實例化已收斂為 0px / ΔE00=0 的靜態預製體
   return ZhudaPrefab.instantiate(convergedLh, stage, { x: 24, y: 24 });
-}`
-  }
+}`,
+  },
 };

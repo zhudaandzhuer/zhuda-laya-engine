@@ -1,4 +1,4 @@
-export type ZhudaSceneMutationKind = "add" | "remove" | "destroy" | "custom";
+export type ZhudaSceneMutationKind = 'add' | 'remove' | 'destroy' | 'custom';
 
 export interface ZhudaSceneMutation {
   kind: ZhudaSceneMutationKind;
@@ -29,11 +29,10 @@ export class ZhudaSceneMutationQueue {
   private flushing = false;
 
   enqueue(mutation: ZhudaSceneMutation): ZhudaSceneMutationHandle {
-    if (this.disposed) throw Error("Disposed scene mutation queue");
-    if (!mutation || typeof mutation.apply !== "function")
-      throw Error("Invalid scene mutation");
-    if (!["add", "remove", "destroy", "custom"].includes(mutation.kind))
-      throw Error("Invalid scene mutation kind");
+    if (this.disposed) throw Error('Disposed scene mutation queue');
+    if (!mutation || typeof mutation.apply !== 'function') throw Error('Invalid scene mutation');
+    if (!['add', 'remove', 'destroy', 'custom'].includes(mutation.kind))
+      throw Error('Invalid scene mutation kind');
     const item: PendingMutation = {
       ...mutation,
       id: this.nextId++,
@@ -42,21 +41,23 @@ export class ZhudaSceneMutationQueue {
     this.pending.set(item.id, item);
     return {
       id: item.id,
-      get cancelled() { return item.cancelled; },
+      get cancelled() {
+        return item.cancelled;
+      },
       cancel: () => this.cancel(item.id),
     };
   }
 
   deferAdd(apply: () => void): ZhudaSceneMutationHandle {
-    return this.enqueue({ kind: "add", apply });
+    return this.enqueue({ kind: 'add', apply });
   }
 
   deferRemove(apply: () => void): ZhudaSceneMutationHandle {
-    return this.enqueue({ kind: "remove", apply });
+    return this.enqueue({ kind: 'remove', apply });
   }
 
   deferDestroy(apply: () => void): ZhudaSceneMutationHandle {
-    return this.enqueue({ kind: "destroy", apply });
+    return this.enqueue({ kind: 'destroy', apply });
   }
 
   private cancel(id: number): boolean {
@@ -97,6 +98,10 @@ export class ZhudaSceneMutationQueue {
     this.clear();
   }
 
-  get size(): number { return this.pending.size; }
-  get isFlushing(): boolean { return this.flushing; }
+  get size(): number {
+    return this.pending.size;
+  }
+  get isFlushing(): boolean {
+    return this.flushing;
+  }
 }

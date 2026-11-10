@@ -1,5 +1,5 @@
-import type { ModelInstance } from "./Assets.ts";
-import { ZhudaModelInspector } from "./ModelInspector.ts";
+import type { ModelInstance } from './Assets.ts';
+import { ZhudaModelInspector } from './ModelInspector.ts';
 
 // Version-pinned LayaAir 3.4.2 bridge. Native evaluators retain all interpolation,
 // quaternion, skin/morph and property bindings. No state-machine tick or events.
@@ -23,16 +23,9 @@ export class ZhudaModelAnimationSampler {
   private readonly previousSpeed: number;
   private mark = 0;
   private disposed = false;
-  constructor(
-    instance: ModelInstance,
-    path: string,
-    name: string,
-    layerIndex = 0,
-  ) {
+  constructor(instance: ModelInstance, path: string, name: string, layerIndex = 0) {
     const l = (globalThis as unknown as { Laya: typeof Laya }).Laya;
-    const animator = new ZhudaModelInspector(instance)
-      .node(path)
-      .getComponent(l.Animator);
+    const animator = new ZhudaModelInspector(instance).node(path).getComponent(l.Animator);
     if (
       !animator ||
       !Number.isInteger(layerIndex) ||
@@ -40,17 +33,13 @@ export class ZhudaModelAnimationSampler {
       layerIndex >= animator.controllerLayerCount ||
       owners.has(animator)
     )
-      throw Error("Missing or owned animation sampler target");
+      throw Error('Missing or owned animation sampler target');
     const layer = animator.getControllerLayer(layerIndex),
       state = layer.getAnimatorState(name) as NativeState;
-    if (
-      !state?.clip ||
-      layer.blendingMode !== l.AnimatorControllerLayer.BLENDINGMODE_OVERRIDE
-    )
-      throw Error("Sampling requires a named override animation");
+    if (!state?.clip || layer.blendingMode !== l.AnimatorControllerLayer.BLENDINGMODE_OVERRIDE)
+      throw Error('Sampling requires a named override animation');
     const duration = state.clip.duration() * (state.clipEnd - state.clipStart);
-    if (!Number.isFinite(duration) || duration <= 0)
-      throw Error("Invalid animation duration");
+    if (!Number.isFinite(duration) || duration <= 0) throw Error('Invalid animation duration');
     const native = animator as unknown as {
       _bindContext: Laya.AnimatorBindContext;
     };
@@ -73,13 +62,10 @@ export class ZhudaModelAnimationSampler {
   }
   /** Absolute clip-local seconds. Clamps by default; explicit loop wraps endpoint. */
   sample(seconds: number, loop = false): void {
-    if (this.disposed || this.animator.destroyed)
-      throw Error("Disposed animation sampler");
-    if (!Number.isFinite(seconds) || seconds < 0 || typeof loop !== "boolean")
-      throw Error("Invalid animation sample time");
-    const time = loop
-      ? seconds % this.durationSeconds
-      : Math.min(seconds, this.durationSeconds);
+    if (this.disposed || this.animator.destroyed) throw Error('Disposed animation sampler');
+    if (!Number.isFinite(seconds) || seconds < 0 || typeof loop !== 'boolean')
+      throw Error('Invalid animation sample time');
+    const time = loop ? seconds % this.durationSeconds : Math.min(seconds, this.durationSeconds);
     this.state._currentFrameIndices.fill(-1);
     Object.assign(this.play, {
       _duration: this.durationSeconds,

@@ -18,7 +18,7 @@ const REFLECT_BASE_CLASSES = new Set([
   'Script',
   'Script3D',
   'Component',
-  'ZhudaComponent'
+  'ZhudaComponent',
 ]);
 
 const REFLECT_DECORATORS = new Set(['zhudaComponent', 'regClass']);
@@ -50,7 +50,7 @@ export function parseReflectableClassesInFile(filePath) {
     sourceText,
     ts.ScriptTarget.Latest,
     true,
-    ts.ScriptKind.TS
+    ts.ScriptKind.TS,
   );
 
   const discovered = [];
@@ -124,7 +124,7 @@ export function parseReflectableClassesInFile(filePath) {
           filePath,
           baseClass: baseClass || 'Class',
           decorator: decoratorName,
-          assetId: assetId || `zhuda://${className}`
+          assetId: assetId || `zhuda://${className}`,
         });
       }
     }
@@ -154,10 +154,7 @@ export function scanAndGenerateRegistry(projectRoot) {
   fs.mkdirSync(genDir, { recursive: true });
 
   const imports = allClasses.map((cls, idx) => {
-    const relPath = path
-      .relative(genDir, cls.filePath)
-      .replace(/\\/g, '/')
-      .replace(/\.ts$/, '');
+    const relPath = path.relative(genDir, cls.filePath).replace(/\\/g, '/').replace(/\.ts$/, '');
     const normalizedRel = relPath.startsWith('.') ? relPath : `./${relPath}`;
     return `import { ${cls.className} as _Reflected_${idx}_${cls.className} } from '${normalizedRel}';`;
   });
@@ -191,10 +188,10 @@ export const ZHUDA_REFLECTED_MANIFEST: ReflectedClassRecord[] = ${JSON.stringify
       className: c.className,
       baseClass: c.baseClass,
       decorator: c.decorator,
-      assetId: c.assetId
+      assetId: c.assetId,
     })),
     null,
-    2
+    2,
   )};
 
 export function registerAllReflectedComponents(): ReflectedClassRecord[] {
@@ -206,7 +203,7 @@ ${registrations.join('\n')}
   fs.writeFileSync(registryPath, content, 'utf8');
   return {
     registryPath,
-    classes: allClasses
+    classes: allClasses,
   };
 }
 
@@ -220,7 +217,7 @@ export function zhudaReflectionPlugin(projectRoot) {
       build.onStart(() => {
         scanAndGenerateRegistry(projectRoot);
       });
-    }
+    },
   };
 }
 
@@ -232,6 +229,6 @@ export function zhudaVitePlugin(projectRoot) {
     name: 'vite-plugin-zhuda-laya',
     buildStart() {
       scanAndGenerateRegistry(projectRoot);
-    }
+    },
   };
 }

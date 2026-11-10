@@ -20,9 +20,16 @@ declare global {
 }
 
 type SceneLayoutNode = Laya.Node & {
-  width?: number; height?: number; x?: number; y?: number;
-  scaleX?: number; scaleY?: number; anchorX?: number; anchorY?: number;
-  pivotX?: number; pivotY?: number;
+  width?: number;
+  height?: number;
+  x?: number;
+  y?: number;
+  scaleX?: number;
+  scaleY?: number;
+  anchorX?: number;
+  anchorY?: number;
+  pivotX?: number;
+  pivotY?: number;
 };
 
 function sceneNodeType(node: Laya.Node): string {
@@ -58,8 +65,12 @@ function sceneNodeBounds(node: SceneLayoutNode, root: SceneLayoutNode) {
     const parentScaleY = Number(parent.scaleY) || 1;
     const parentAnchorX = Number(parent.anchorX) || 0;
     const parentAnchorY = Number(parent.anchorY) || 0;
-    const parentPivotX = Number.isFinite(Number(parent.pivotX)) ? Number(parent.pivotX) : parentWidth * parentAnchorX;
-    const parentPivotY = Number.isFinite(Number(parent.pivotY)) ? Number(parent.pivotY) : parentHeight * parentAnchorY;
+    const parentPivotX = Number.isFinite(Number(parent.pivotX))
+      ? Number(parent.pivotX)
+      : parentWidth * parentAnchorX;
+    const parentPivotY = Number.isFinite(Number(parent.pivotY))
+      ? Number(parent.pivotY)
+      : parentHeight * parentAnchorY;
     x = Number(parent.x ?? 0) - parentPivotX * parentScaleX + x * parentScaleX;
     y = Number(parent.y ?? 0) - parentPivotY * parentScaleY + y * parentScaleY;
     renderedWidth *= Math.abs(parentScaleX);
@@ -69,17 +80,24 @@ function sceneNodeBounds(node: SceneLayoutNode, root: SceneLayoutNode) {
   return { x, y, width: renderedWidth, height: renderedHeight };
 }
 
-function installSceneInspector(root: Laya.Sprite, context: SceneContext): { remove(): void; selectRoot(): void; copyHierarchy(): Promise<void> } {
+function installSceneInspector(
+  root: Laya.Sprite,
+  context: SceneContext,
+): { remove(): void; selectRoot(): void; copyHierarchy(): Promise<void> } {
   const hierarchyTree = document.querySelector<HTMLElement>('#hierarchy-tree');
   const highlight = document.querySelector<SVGRectElement>('#hierarchy-highlight');
   const overlay = document.querySelector<SVGSVGElement>('#anchor-overlay');
   const note = document.querySelector<HTMLElement>('.metrics .metrics-note');
   const hierarchyTitle = document.querySelector<HTMLElement>('.hierarchy-title');
-  const sourceLabel = Array.from(document.querySelectorAll<HTMLElement>('.metrics dt')).find(item => item.textContent === 'Source image');
+  const sourceLabel = Array.from(document.querySelectorAll<HTMLElement>('.metrics dt')).find(
+    (item) => item.textContent === 'Source image',
+  );
   const summaries = new WeakMap<Laya.Node, HTMLElement>();
   let selected: Laya.Node = root;
   if (overlay) overlay.setAttribute('viewBox', '0 0 1280 720');
-  if (note) note.textContent = 'Scene .ls 由 Laya runtime 水合。點選階層節點查看設計尺寸、世界 bounds、anchor/pivot 與實際 CSS 尺寸；COPY 可複製完整 Scene 階層給 Agent。';
+  if (note)
+    note.textContent =
+      'Scene .ls 由 Laya runtime 水合。點選階層節點查看設計尺寸、世界 bounds、anchor/pivot 與實際 CSS 尺寸；COPY 可複製完整 Scene 階層給 Agent。';
   if (hierarchyTitle) hierarchyTitle.textContent = 'SCENE HIERARCHY';
   if (sourceLabel) sourceLabel.textContent = 'Scene asset';
 
@@ -102,10 +120,19 @@ function installSceneInspector(root: Laya.Sprite, context: SceneContext): { remo
     const pivotX = Number.isFinite(Number(value.pivotX)) ? Number(value.pivotX) : width * anchorX;
     const pivotY = Number.isFinite(Number(value.pivotY)) ? Number(value.pivotY) : height * anchorY;
     return {
-      path, name: node.name || 'Unnamed', type: sceneNodeType(node),
-      x: Number(value.x ?? 0), y: Number(value.y ?? 0), width, height,
-      scaleX: Number(value.scaleX) || 1, scaleY: Number(value.scaleY) || 1,
-      anchorX, anchorY, pivotX, pivotY,
+      path,
+      name: node.name || 'Unnamed',
+      type: sceneNodeType(node),
+      x: Number(value.x ?? 0),
+      y: Number(value.y ?? 0),
+      width,
+      height,
+      scaleX: Number(value.scaleX) || 1,
+      scaleY: Number(value.scaleY) || 1,
+      anchorX,
+      anchorY,
+      pivotX,
+      pivotY,
       children: Array.from({ length: node.numChildren }, (_, index) => {
         const child = node.getChildAt(index) as Laya.Node;
         return snapshot(child, `${path}/${child.name || index}`);
@@ -134,9 +161,12 @@ function installSceneInspector(root: Laya.Sprite, context: SceneContext): { remo
       highlight.setAttribute('visibility', 'visible');
     }
     const selection = metric('#metric-selection');
-    const rootLabel = Array.from(document.querySelectorAll<HTMLElement>('.metrics dt')).find(item => item.textContent === 'Prefab root');
+    const rootLabel = Array.from(document.querySelectorAll<HTMLElement>('.metrics dt')).find(
+      (item) => item.textContent === 'Prefab root',
+    );
     const rootSize = rootLabel?.nextElementSibling as HTMLElement | null;
-    if (selection) selection.textContent = `${selected.name || 'Unnamed'} · ${sceneNodeType(selected)}`;
+    if (selection)
+      selection.textContent = `${selected.name || 'Unnamed'} · ${sceneNodeType(selected)}`;
     if (rootLabel) rootLabel.textContent = 'Scene design';
     if (rootSize?.tagName === 'DD') rootSize.textContent = '1280 × 720 px';
     const nodeRect = metric('#metric-node-rect');
@@ -148,19 +178,28 @@ function installSceneInspector(root: Laya.Sprite, context: SceneContext): { remo
     const screen = metric('#metric-screen');
     const scale = metric('#metric-scale');
     const viewport = metric('#metric-viewport');
-    if (nodeRect) nodeRect.textContent = `x ${bounds.x.toFixed(0)} · y ${bounds.y.toFixed(0)} · ${bounds.width.toFixed(0)} × ${bounds.height.toFixed(0)}`;
-    if (nodePos) nodePos.textContent = `${Number(value.x ?? 0).toFixed(0)}, ${Number(value.y ?? 0).toFixed(0)}`;
+    if (nodeRect)
+      nodeRect.textContent = `x ${bounds.x.toFixed(0)} · y ${bounds.y.toFixed(0)} · ${bounds.width.toFixed(0)} × ${bounds.height.toFixed(0)}`;
+    if (nodePos)
+      nodePos.textContent = `${Number(value.x ?? 0).toFixed(0)}, ${Number(value.y ?? 0).toFixed(0)}`;
     if (nodeScale) nodeScale.textContent = `${scaleX.toFixed(2)} × ${scaleY.toFixed(2)}`;
-    if (nodeAnchor) nodeAnchor.textContent = `${(anchorX * 100).toFixed(0)}% / ${(anchorY * 100).toFixed(0)}% · ${pivotX.toFixed(0)}, ${pivotY.toFixed(0)}`;
+    if (nodeAnchor)
+      nodeAnchor.textContent = `${(anchorX * 100).toFixed(0)}% / ${(anchorY * 100).toFixed(0)}% · ${pivotX.toFixed(0)}, ${pivotY.toFixed(0)}`;
     if (owner) owner.textContent = `Laya.${sceneNodeType(selected)}`;
-    if (source) { source.textContent = 'scenes/slot-machine.ls'; source.title = scenePath(selected); }
-    if (screen) screen.textContent = `${Math.round(bounds.width * screenScaleX)} × ${Math.round(bounds.height * screenScaleY)} CSS px`;
+    if (source) {
+      source.textContent = 'scenes/slot-machine.ls';
+      source.title = scenePath(selected);
+    }
+    if (screen)
+      screen.textContent = `${Math.round(bounds.width * screenScaleX)} × ${Math.round(bounds.height * screenScaleY)} CSS px`;
     if (scale) scale.textContent = `${screenScaleX.toFixed(2)}× screen · ${scenePath(selected)}`;
-    if (viewport) viewport.textContent = `${Math.round(canvas.clientWidth || 0)} × ${Math.round(canvas.clientHeight || 0)} · DPR ${(window.devicePixelRatio || 1).toFixed(2)}`;
+    if (viewport)
+      viewport.textContent = `${Math.round(canvas.clientWidth || 0)} × ${Math.round(canvas.clientHeight || 0)} · DPR ${(window.devicePixelRatio || 1).toFixed(2)}`;
   };
   const select = (node: Laya.Node, summary?: HTMLElement) => {
     selected = node;
-    for (const item of Array.from(hierarchyTree?.querySelectorAll<HTMLElement>('summary') || [])) item.classList.toggle('is-selected', item === summary);
+    for (const item of Array.from(hierarchyTree?.querySelectorAll<HTMLElement>('summary') || []))
+      item.classList.toggle('is-selected', item === summary);
     update();
   };
   const selectRoot = () => select(root, summaries.get(root));
@@ -173,7 +212,8 @@ function installSceneInspector(root: Laya.Sprite, context: SceneContext): { remo
       const summary = document.createElement('summary');
       summary.textContent = node.name || 'Unnamed';
       const type = document.createElement('span');
-      type.className = 'hierarchy-type'; type.textContent = sceneNodeType(node);
+      type.className = 'hierarchy-type';
+      type.textContent = sceneNodeType(node);
       summary.append(' ', type);
       summaries.set(node, summary);
       summary.addEventListener('click', () => select(node, summary));
@@ -181,7 +221,8 @@ function installSceneInspector(root: Laya.Sprite, context: SceneContext): { remo
       if (node.numChildren) {
         const children = document.createElement('div');
         children.className = 'hierarchy-children';
-        for (let index = 0; index < node.numChildren; index += 1) children.appendChild(append(node.getChildAt(index) as Laya.Node, depth + 1));
+        for (let index = 0; index < node.numChildren; index += 1)
+          children.appendChild(append(node.getChildAt(index) as Laya.Node, depth + 1));
         branch.appendChild(children);
       }
       return branch;
@@ -190,20 +231,34 @@ function installSceneInspector(root: Laya.Sprite, context: SceneContext): { remo
     select(root, summaries.get(root));
   };
   const copyHierarchy = async () => {
-    const payload = JSON.stringify({ scene: 'scenes/slot-machine.ls', designCanvas: { width: 1280, height: 720 }, selected: { path: scenePath(selected), type: sceneNodeType(selected) }, hierarchy: snapshot(root, root.name || 'SlotMachineScene') }, null, 2);
+    const payload = JSON.stringify(
+      {
+        scene: 'scenes/slot-machine.ls',
+        designCanvas: { width: 1280, height: 720 },
+        selected: { path: scenePath(selected), type: sceneNodeType(selected) },
+        hierarchy: snapshot(root, root.name || 'SlotMachineScene'),
+      },
+      null,
+      2,
+    );
     try {
       await navigator.clipboard.writeText(payload);
     } catch {
       const fallback = document.createElement('textarea');
       fallback.value = payload;
-      fallback.style.position = 'fixed'; fallback.style.opacity = '0';
-      document.body.appendChild(fallback); fallback.select();
-      document.execCommand('copy'); fallback.remove();
+      fallback.style.position = 'fixed';
+      fallback.style.opacity = '0';
+      document.body.appendChild(fallback);
+      fallback.select();
+      document.execCommand('copy');
+      fallback.remove();
     }
     const hierarchyCopy = document.querySelector<HTMLButtonElement>('#hierarchy-copy');
     if (hierarchyCopy) {
       hierarchyCopy.textContent = 'COPIED';
-      window.setTimeout(() => { hierarchyCopy.textContent = 'COPY'; }, 1200);
+      window.setTimeout(() => {
+        hierarchyCopy.textContent = 'COPY';
+      }, 1200);
     }
   };
   window.addEventListener('resize', update);
@@ -219,7 +274,9 @@ export interface SlotMachineSceneOptions {
   context?: SceneContext;
 }
 
-export async function startSlotMachineScene(options: SlotMachineSceneOptions = {}): Promise<SlotMachineSceneHandle> {
+export async function startSlotMachineScene(
+  options: SlotMachineSceneOptions = {},
+): Promise<SlotMachineSceneHandle> {
   document.body.classList.add('scene-mode');
   const surface = document.querySelector<HTMLElement>('#stage-surface');
   const fitSceneViewport = () => {
@@ -235,25 +292,26 @@ export async function startSlotMachineScene(options: SlotMachineSceneOptions = {
   // the runtime canvas, SVG guides and selection bounds on one 16:9 surface.
   fitSceneViewport();
   const ownsContext = !options.context;
-  const context: SceneContext = options.context ?? await ZhudaEngine.boot({
-    container: '#game',
-    width: 1280,
-    height: 720,
-    dprCap: 3,
-    designSize: { width: 1280, height: 720 },
-    scaleMode: 'noborder',
-    features: ['core', '2d', 'ui', 'particle2d'],
-    bgColor: '#07101f',
-  });
+  const context: SceneContext =
+    options.context ??
+    (await ZhudaEngine.boot({
+      container: '#game',
+      width: 1280,
+      height: 720,
+      dprCap: 3,
+      designSize: { width: 1280, height: 720 },
+      scaleMode: 'noborder',
+      features: ['core', '2d', 'ui', 'particle2d'],
+      bgColor: '#07101f',
+    }));
   fitSceneViewport();
   context.resize();
   const resizeScene = () => {
     fitSceneViewport();
     context.resize();
   };
-  const surfaceObserver = typeof ResizeObserver === 'function' && surface
-    ? new ResizeObserver(resizeScene)
-    : undefined;
+  const surfaceObserver =
+    typeof ResizeObserver === 'function' && surface ? new ResizeObserver(resizeScene) : undefined;
   if (surfaceObserver && surface) surfaceObserver.observe(surface);
   window.addEventListener('resize', resizeScene, { passive: true });
   const provider = createAssetProvider();
@@ -261,7 +319,9 @@ export async function startSlotMachineScene(options: SlotMachineSceneOptions = {
   const sceneAsset = await provider.load('scenes/slot-machine.ls');
   let sceneRoot: Laya.Sprite;
   try {
-    const sceneData = JSON.parse(new TextDecoder().decode(sceneAsset.bytes)) as LayaHierarchyNodeData;
+    const sceneData = JSON.parse(
+      new TextDecoder().decode(sceneAsset.bytes),
+    ) as LayaHierarchyNodeData;
     sceneRoot = ZhudaPrefab.instantiate(sceneData);
   } finally {
     sceneAsset.release?.();
@@ -285,7 +345,10 @@ export async function startSlotMachineScene(options: SlotMachineSceneOptions = {
       instance.root.name = `Symbol_${column + 1}_${row + 1}`;
       instance.root.scaleX = symbolScale;
       instance.root.scaleY = symbolScale;
-      instance.root.pos((cellWidth - 480 * symbolScale) / 2, (cellHeight - 480 * symbolScale) / 2 - 2);
+      instance.root.pos(
+        (cellWidth - 480 * symbolScale) / 2,
+        (cellHeight - 480 * symbolScale) / 2 - 2,
+      );
       instances.push(instance);
       const effect = new SlotSymbolEffect(instance);
       effect.play(states[column]);
@@ -300,7 +363,16 @@ export async function startSlotMachineScene(options: SlotMachineSceneOptions = {
   context.stage.repaint();
   window.slotMachineScene = {
     ready: true,
-    report: () => ({ ready: true, scene: 'slot-machine', sceneAsset: 'scenes/slot-machine.ls', prefab: 'slot/symbol', columns, rows, instances: instances.length, state: states }),
+    report: () => ({
+      ready: true,
+      scene: 'slot-machine',
+      sceneAsset: 'scenes/slot-machine.ls',
+      prefab: 'slot/symbol',
+      columns,
+      rows,
+      instances: instances.length,
+      state: states,
+    }),
   };
 
   let disposed = false;
@@ -317,6 +389,14 @@ export async function startSlotMachineScene(options: SlotMachineSceneOptions = {
     if (ownsContext) context.dispose();
   };
   window.addEventListener('pagehide', dispose, { once: true });
-  const setVisible = (visible: boolean) => { sceneRoot.visible = visible; };
-  return { update, setVisible, selectRoot: inspector.selectRoot, copyHierarchy: inspector.copyHierarchy, dispose };
+  const setVisible = (visible: boolean) => {
+    sceneRoot.visible = visible;
+  };
+  return {
+    update,
+    setVisible,
+    selectRoot: inspector.selectRoot,
+    copyHierarchy: inspector.copyHierarchy,
+    dispose,
+  };
 }

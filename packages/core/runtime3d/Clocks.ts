@@ -13,20 +13,13 @@ export class ZhudaSimulationClock {
   constructor(step = 1 / 60, maxCatchup = 8) {
     this.step = step;
     this.maxCatchup = maxCatchup;
-    if (
-      !(
-        step > 0 &&
-        Number.isFinite(step) &&
-        Number.isInteger(maxCatchup) &&
-        maxCatchup > 0
-      )
-    )
-      throw Error("Invalid fixed clock");
+    if (!(step > 0 && Number.isFinite(step) && Number.isInteger(maxCatchup) && maxCatchup > 0))
+      throw Error('Invalid fixed clock');
   }
   advance(dt: number, simulate: (dt: number, tick: number) => void) {
-    if (!Number.isFinite(dt) || dt < 0) throw Error("Invalid clock delta");
+    if (!Number.isFinite(dt) || dt < 0) throw Error('Invalid clock delta');
     if (!Number.isFinite(this.timeScale) || this.timeScale < 0)
-      throw Error("Invalid clock time scale");
+      throw Error('Invalid clock time scale');
     this.unscaledDeltaTime = this.paused ? 0 : dt;
     this.scaledDeltaTime = this.paused ? 0 : dt * this.timeScale;
     if (this.paused) return 0;
@@ -52,7 +45,7 @@ export class ZhudaSimulationClock {
     return Math.max(0, this.accumulator / this.step);
   }
   reset(tick = 0) {
-    if (!Number.isSafeInteger(tick) || tick < 0) throw Error("Invalid tick");
+    if (!Number.isSafeInteger(tick) || tick < 0) throw Error('Invalid tick');
     this.tick = tick;
     this.renderTime = tick * this.step;
     this.unscaledTime = this.renderTime;
@@ -91,7 +84,7 @@ interface TimeLayerState {
   scaledDeltaTime: number;
 }
 
-const DEFAULT_TIME_LAYERS = ["world", "player", "enemy", "vfx", "ui"] as const;
+const DEFAULT_TIME_LAYERS = ['world', 'player', 'enemy', 'vfx', 'ui'] as const;
 
 /**
  * A single real-time source with independently scaled named channels.
@@ -113,12 +106,12 @@ export class ZhudaLayeredClock {
     layers: readonly string[] | Record<string, ZhudaTimeLayerOptions> = DEFAULT_TIME_LAYERS,
   ) {
     if (Array.isArray(layers)) {
-      if (!layers.length) throw Error("At least one time layer is required");
+      if (!layers.length) throw Error('At least one time layer is required');
       for (const name of layers) this.defineLayer(name);
     } else {
       const definitions = layers as Record<string, ZhudaTimeLayerOptions>;
       const names = Object.keys(definitions);
-      if (!names.length) throw Error("At least one time layer is required");
+      if (!names.length) throw Error('At least one time layer is required');
       for (const name of names) this.defineLayer(name, definitions[name]);
     }
   }
@@ -127,10 +120,9 @@ export class ZhudaLayeredClock {
     this.validateName(name);
     if (this.layerStates.has(name)) throw Error(`Time layer already exists: ${name}`);
     const timeScale = options.timeScale ?? 1;
-    if (!Number.isFinite(timeScale) || timeScale < 0)
-      throw Error("Invalid time layer scale");
-    if (options.paused !== undefined && typeof options.paused !== "boolean")
-      throw Error("Invalid time layer pause state");
+    if (!Number.isFinite(timeScale) || timeScale < 0) throw Error('Invalid time layer scale');
+    if (options.paused !== undefined && typeof options.paused !== 'boolean')
+      throw Error('Invalid time layer pause state');
     this.layerStates.set(name, {
       name,
       timeScale,
@@ -150,20 +142,20 @@ export class ZhudaLayeredClock {
 
   setTimeScale(name: string, value: number): this {
     const layer = this.getLayer(name);
-    if (!Number.isFinite(value) || value < 0) throw Error("Invalid time layer scale");
+    if (!Number.isFinite(value) || value < 0) throw Error('Invalid time layer scale');
     layer.timeScale = value;
     return this;
   }
 
   setGlobalTimeScale(value: number): this {
-    if (!Number.isFinite(value) || value < 0) throw Error("Invalid global time layer scale");
+    if (!Number.isFinite(value) || value < 0) throw Error('Invalid global time layer scale');
     this.globalTimeScale = value;
     return this;
   }
 
   setPaused(name: string, paused: boolean): this {
     const layer = this.getLayer(name);
-    if (typeof paused !== "boolean") throw Error("Invalid time layer pause state");
+    if (typeof paused !== 'boolean') throw Error('Invalid time layer pause state');
     layer.paused = paused;
     return this;
   }
@@ -187,7 +179,7 @@ export class ZhudaLayeredClock {
 
   advance(unscaledDeltaTime: number): void {
     if (!Number.isFinite(unscaledDeltaTime) || unscaledDeltaTime < 0)
-      throw Error("Invalid layered clock delta");
+      throw Error('Invalid layered clock delta');
     this.unscaledDeltaTime = unscaledDeltaTime;
     this.unscaledTime += unscaledDeltaTime;
     for (const layer of this.layerStates.values()) {
@@ -231,7 +223,7 @@ export class ZhudaLayeredClock {
   }
 
   private validateName(name: string): void {
-    if (typeof name !== "string" || !name.trim()) throw Error("Invalid time layer name");
+    if (typeof name !== 'string' || !name.trim()) throw Error('Invalid time layer name');
   }
 }
 
@@ -246,9 +238,9 @@ export class ZhudaRealtimeClock {
 
   advance(unscaledDeltaTime: number): ZhudaClockSample {
     if (!Number.isFinite(unscaledDeltaTime) || unscaledDeltaTime < 0)
-      throw Error("Invalid real-time delta");
+      throw Error('Invalid real-time delta');
     if (!Number.isFinite(this.timeScale) || this.timeScale < 0)
-      throw Error("Invalid clock time scale");
+      throw Error('Invalid clock time scale');
     const unscaled = this.paused ? 0 : unscaledDeltaTime;
     const scaled = unscaled * this.timeScale;
     this.unscaledDeltaTime = unscaled;
@@ -276,7 +268,7 @@ export class ZhudaRealtimeClock {
   }
 }
 
-export type ZhudaTimerChannel = "scaled" | "unscaled";
+export type ZhudaTimerChannel = 'scaled' | 'unscaled';
 export interface ZhudaTimerOptions {
   channel?: ZhudaTimerChannel;
   /** When set, the timer consumes that named layer's scaled delta. */
@@ -311,33 +303,45 @@ export class ZhudaTimerScheduler {
 
   constructor(maxCallbacksPerAdvance = 64) {
     if (!Number.isSafeInteger(maxCallbacksPerAdvance) || maxCallbacksPerAdvance <= 0)
-      throw Error("Invalid timer callback bound");
+      throw Error('Invalid timer callback bound');
     this.maxCallbacksPerAdvance = maxCallbacksPerAdvance;
   }
 
-  scheduleOnce(delay: number, callback: () => void, options: ZhudaTimerOptions = {}): ZhudaTimerHandle {
+  scheduleOnce(
+    delay: number,
+    callback: () => void,
+    options: ZhudaTimerOptions = {},
+  ): ZhudaTimerHandle {
     return this.schedule(delay, callback, { ...options, repeat: false });
   }
 
-  scheduleLoop(interval: number, callback: () => void, options: ZhudaTimerOptions = {}): ZhudaTimerHandle {
+  scheduleLoop(
+    interval: number,
+    callback: () => void,
+    options: ZhudaTimerOptions = {},
+  ): ZhudaTimerHandle {
     return this.schedule(interval, callback, { ...options, repeat: true });
   }
 
-  private schedule(delay: number, callback: () => void, options: ZhudaTimerOptions & { repeat: boolean }): ZhudaTimerHandle {
-    if (this.disposed) throw Error("Disposed timer scheduler");
+  private schedule(
+    delay: number,
+    callback: () => void,
+    options: ZhudaTimerOptions & { repeat: boolean },
+  ): ZhudaTimerHandle {
+    if (this.disposed) throw Error('Disposed timer scheduler');
     if (!Number.isFinite(delay) || delay < 0 || (options.repeat && delay <= 0))
-      throw Error("Invalid timer delay");
-    if (typeof callback !== "function") throw Error("Invalid timer callback");
-    if (options.layer !== undefined && (typeof options.layer !== "string" || !options.layer.trim()))
-      throw Error("Invalid timer layer");
+      throw Error('Invalid timer delay');
+    if (typeof callback !== 'function') throw Error('Invalid timer callback');
+    if (options.layer !== undefined && (typeof options.layer !== 'string' || !options.layer.trim()))
+      throw Error('Invalid timer layer');
     if (options.layer !== undefined && options.channel !== undefined)
-      throw Error("Timer layer cannot be combined with a timer channel");
+      throw Error('Timer layer cannot be combined with a timer channel');
     const task: TimerTask = {
       id: this.nextId++,
       remaining: delay,
       interval: delay,
       repeat: options.repeat,
-      channel: options.channel ?? "scaled",
+      channel: options.channel ?? 'scaled',
       layer: options.layer,
       owner: options.owner,
       callback,
@@ -355,7 +359,9 @@ export class ZhudaTimerScheduler {
   private handle(task: TimerTask): ZhudaTimerHandle {
     return {
       id: task.id,
-      get cancelled() { return task.cancelled; },
+      get cancelled() {
+        return task.cancelled;
+      },
       cancel: () => this.cancel(task.id),
     };
   }
@@ -385,12 +391,12 @@ export class ZhudaTimerScheduler {
     layerDeltas?: ReadonlyMap<string, number>,
   ): number {
     if (this.disposed) return 0;
-    if (![unscaledDeltaTime, scaledDeltaTime].every(v => Number.isFinite(v) && v >= 0))
-      throw Error("Invalid timer delta");
+    if (![unscaledDeltaTime, scaledDeltaTime].every((v) => Number.isFinite(v) && v >= 0))
+      throw Error('Invalid timer delta');
     if (layerDeltas) {
       for (const [name, delta] of layerDeltas) {
-        if (typeof name !== "string" || !name.trim() || !Number.isFinite(delta) || delta < 0)
-          throw Error("Invalid timer layer delta");
+        if (typeof name !== 'string' || !name.trim() || !Number.isFinite(delta) || delta < 0)
+          throw Error('Invalid timer layer delta');
       }
     }
     let callbacks = 0;
@@ -399,10 +405,17 @@ export class ZhudaTimerScheduler {
       if (callbacks >= this.maxCallbacksPerAdvance) break;
       if (task.cancelled || !this.tasks.has(task.id)) continue;
       const delta = task.layer
-        ? layerDeltas?.get(task.layer) ?? 0
-        : task.channel === "scaled" ? scaledDeltaTime : unscaledDeltaTime;
+        ? (layerDeltas?.get(task.layer) ?? 0)
+        : task.channel === 'scaled'
+          ? scaledDeltaTime
+          : unscaledDeltaTime;
       task.remaining -= delta;
-      while (task.remaining <= 1e-10 && !task.cancelled && this.tasks.has(task.id) && callbacks < this.maxCallbacksPerAdvance) {
+      while (
+        task.remaining <= 1e-10 &&
+        !task.cancelled &&
+        this.tasks.has(task.id) &&
+        callbacks < this.maxCallbacksPerAdvance
+      ) {
         task.callback();
         callbacks++;
         if (!task.repeat) {
@@ -411,7 +424,12 @@ export class ZhudaTimerScheduler {
         }
         task.remaining += task.interval;
       }
-      if (callbacks >= this.maxCallbacksPerAdvance && task.repeat && !task.cancelled && task.remaining <= 1e-10)
+      if (
+        callbacks >= this.maxCallbacksPerAdvance &&
+        task.repeat &&
+        !task.cancelled &&
+        task.remaining <= 1e-10
+      )
         task.remaining = task.interval;
     }
     return callbacks;
@@ -428,7 +446,9 @@ export class ZhudaTimerScheduler {
     this.owners.clear();
   }
 
-  get size(): number { return this.tasks.size; }
+  get size(): number {
+    return this.tasks.size;
+  }
 }
 export interface TimedSnapshot<T> {
   epoch: string;
@@ -460,7 +480,7 @@ export class ZhudaSnapshotBuffer<T> {
       capacity < 2 ||
       !Number.isInteger(capacity)
     )
-      throw Error("Invalid snapshot bounds");
+      throw Error('Invalid snapshot bounds');
   }
   push(s: TimedSnapshot<T>) {
     if (
@@ -470,44 +490,35 @@ export class ZhudaSnapshotBuffer<T> {
       !Number.isFinite(s.time)
     )
       return false;
-    if (this.items.length && s.time <= this.items[this.items.length - 1].time)
-      return false;
+    if (this.items.length && s.time <= this.items[this.items.length - 1].time) return false;
     this.sequence = s.sequence;
     this.items.push(s);
     if (this.items.length > this.capacity) this.items.shift();
     return true;
   }
   sample(time: number) {
-    if (!Number.isFinite(time)) throw Error("Invalid sample time");
+    if (!Number.isFinite(time)) throw Error('Invalid sample time');
     const a = this.items;
     if (!a.length) return null;
     if (a.length === 1 || time <= a[0].time)
-      return { value: a[0].value, time: a[0].time, mode: "held" as const };
+      return { value: a[0].value, time: a[0].time, mode: 'held' as const };
     for (let i = 1; i < a.length; i++)
       if (time <= a[i].time) {
         const x = a[i - 1],
           y = a[i];
         return {
-          value: this.interpolate(
-            x.value,
-            y.value,
-            (time - x.time) / (y.time - x.time),
-          ),
+          value: this.interpolate(x.value, y.value, (time - x.time) / (y.time - x.time)),
           time,
-          mode: "interpolated" as const,
+          mode: 'interpolated' as const,
         };
       }
     const x = a[a.length - 2],
       y = a[a.length - 1],
       t = Math.min(time, y.time + this.maxExtrapolation);
     return {
-      value: this.interpolate(
-        x.value,
-        y.value,
-        (t - x.time) / (y.time - x.time),
-      ),
+      value: this.interpolate(x.value, y.value, (t - x.time) / (y.time - x.time)),
       time: t,
-      mode: "extrapolated" as const,
+      mode: 'extrapolated' as const,
     };
   }
   reset(epoch: string) {
@@ -529,15 +540,8 @@ export class ZhudaEventGate {
     this.epoch = epoch;
     this.ttl = ttl;
     this.capacity = capacity;
-    if (
-      !(
-        ttl > 0 &&
-        Number.isFinite(ttl) &&
-        Number.isInteger(capacity) &&
-        capacity > 0
-      )
-    )
-      throw Error("Invalid event bounds");
+    if (!(ttl > 0 && Number.isFinite(ttl) && Number.isInteger(capacity) && capacity > 0))
+      throw Error('Invalid event bounds');
   }
   dispatch(
     id: string,
@@ -545,14 +549,12 @@ export class ZhudaEventGate {
     action: () => void,
     options: { epoch?: string; replay?: boolean } = {},
   ) {
-    if (!id || !Number.isFinite(now)) throw Error("Invalid event");
-    if (options.replay || (options.epoch && options.epoch !== this.epoch))
-      return false;
+    if (!id || !Number.isFinite(now)) throw Error('Invalid event');
+    if (options.replay || (options.epoch && options.epoch !== this.epoch)) return false;
     for (const [k, t] of this.seen) if (now - t > this.ttl) this.seen.delete(k);
     if (this.seen.has(id)) return false;
     this.seen.set(id, now);
-    while (this.seen.size > this.capacity)
-      this.seen.delete(this.seen.keys().next().value!);
+    while (this.seen.size > this.capacity) this.seen.delete(this.seen.keys().next().value!);
     action();
     return true;
   }

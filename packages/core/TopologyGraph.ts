@@ -77,7 +77,7 @@ export const ZHUDA_ENGINE_MODULES: readonly EngineModuleNode[] = [
     dependsOn: [],
     providesGlobals: ['Laya', 'Laya.Node', 'Laya.Sprite', 'Laya.ClassUtils'],
     priority: 10,
-    painPointNote: '所有模組的根基底，定義全域 window.Laya 與 ClassUtils 反射系統'
+    painPointNote: '所有模組的根基底，定義全域 window.Laya 與 ClassUtils 反射系統',
   },
   {
     id: 'd3',
@@ -87,7 +87,7 @@ export const ZHUDA_ENGINE_MODULES: readonly EngineModuleNode[] = [
     dependsOn: ['core'],
     providesGlobals: ['Laya.Scene3D', 'Laya.Sprite3D', 'Laya.Camera', 'Laya.BlinnPhongMaterial'],
     priority: 20,
-    painPointNote: '必須在 webgl_3D、physics3D、particle3D、postProcess 之前載入'
+    painPointNote: '必須在 webgl_3D、physics3D、particle3D、postProcess 之前載入',
   },
   {
     id: 'webgl2d',
@@ -97,7 +97,7 @@ export const ZHUDA_ENGINE_MODULES: readonly EngineModuleNode[] = [
     dependsOn: ['core'],
     providesGlobals: ['Laya.WebGLRenderEngineFactory'],
     priority: 30,
-    painPointNote: '2D WebGL 渲染管線後端，Laya.init 初始化前必須就緒'
+    painPointNote: '2D WebGL 渲染管線後端，Laya.init 初始化前必須就緒',
   },
   {
     id: 'webgl3d',
@@ -107,7 +107,7 @@ export const ZHUDA_ENGINE_MODULES: readonly EngineModuleNode[] = [
     dependsOn: ['core', 'd3', 'webgl2d'],
     providesGlobals: ['Laya.WebGL3DRenderPass'],
     priority: 40,
-    painPointNote: '依賴 laya.d3 與 webgl_2D，提供 3D WebGL 渲染設備實作'
+    painPointNote: '依賴 laya.d3 與 webgl_2D，提供 3D WebGL 渲染設備實作',
   },
   {
     id: 'ui',
@@ -117,7 +117,7 @@ export const ZHUDA_ENGINE_MODULES: readonly EngineModuleNode[] = [
     dependsOn: ['core', 'webgl2d'],
     providesGlobals: ['Laya.Button', 'Laya.Dialog', 'Laya.AutoBitmap'],
     priority: 50,
-    painPointNote: '內部 Button 強依賴 AutoBitmap.setState，需搭配 RuntimeGuards 原型保護'
+    painPointNote: '內部 Button 強依賴 AutoBitmap.setState，需搭配 RuntimeGuards 原型保護',
   },
   {
     id: 'physics2d',
@@ -127,7 +127,8 @@ export const ZHUDA_ENGINE_MODULES: readonly EngineModuleNode[] = [
     dependsOn: ['core', 'webgl2d'],
     providesGlobals: ['Laya.Physics2D', 'Laya.Box2DShapeDef', 'Laya.RigidBody'],
     priority: 60,
-    painPointNote: '定義 Laya.Physics2D 與 Box2DShapeDef，必須在 laya.box2D.js 與 laya.tilemap.js 之前'
+    painPointNote:
+      '定義 Laya.Physics2D 與 Box2DShapeDef，必須在 laya.box2D.js 與 laya.tilemap.js 之前',
   },
   {
     id: 'box2d',
@@ -137,7 +138,8 @@ export const ZHUDA_ENGINE_MODULES: readonly EngineModuleNode[] = [
     dependsOn: ['core', 'physics2d'],
     providesGlobals: ['window.box2d', 'Laya.Physics2D.I._factory'],
     priority: 70,
-    painPointNote: '頂層直接存取 Laya.Physics2D.I._factory，若早於 physics2D 載入會拋出 reading "I" 崩潰'
+    painPointNote:
+      '頂層直接存取 Laya.Physics2D.I._factory，若早於 physics2D 載入會拋出 reading "I" 崩潰',
   },
   {
     id: 'bullet',
@@ -147,7 +149,7 @@ export const ZHUDA_ENGINE_MODULES: readonly EngineModuleNode[] = [
     dependsOn: ['core', 'd3'],
     providesGlobals: ['Laya.Physics3D'],
     priority: 80,
-    painPointNote: '裝配 Bullet 3D 物理核心，必須在 laya.physics3D.js 之前完成載入'
+    painPointNote: '裝配 Bullet 3D 物理核心，必須在 laya.physics3D.js 之前完成載入',
   },
   {
     id: 'physics3d',
@@ -157,7 +159,7 @@ export const ZHUDA_ENGINE_MODULES: readonly EngineModuleNode[] = [
     dependsOn: ['core', 'd3', 'bullet'],
     providesGlobals: ['Laya.PhysicsCollider', 'Laya.Rigidbody3D', 'Laya.BoxColliderShape'],
     priority: 90,
-    painPointNote: '掛載 3D 物理組件至 Laya3D，依賴 laya.bullet.js 已注入之工廠'
+    painPointNote: '掛載 3D 物理組件至 Laya3D，依賴 laya.bullet.js 已注入之工廠',
   },
   {
     id: 'spine-core-42',
@@ -166,9 +168,13 @@ export const ZHUDA_ENGINE_MODULES: readonly EngineModuleNode[] = [
     feature: 'spine42',
     dependsOn: ['core'],
     conflictsWith: ['spine-core-38'],
-    providesGlobals: ['window.spine', 'window.spine.PhysicsConstraint', 'window.spine.AnimationState'],
+    providesGlobals: [
+      'window.spine',
+      'window.spine.PhysicsConstraint',
+      'window.spine.AnimationState',
+    ],
     priority: 100,
-    painPointNote: '定義全域 window.spine (4.2 PhysicsConstraint)，必須在 laya.spine.js 之前'
+    painPointNote: '定義全域 window.spine (4.2 PhysicsConstraint)，必須在 laya.spine.js 之前',
   },
   {
     id: 'spine-core-38',
@@ -179,7 +185,7 @@ export const ZHUDA_ENGINE_MODULES: readonly EngineModuleNode[] = [
     conflictsWith: ['spine-core-42'],
     providesGlobals: ['window.spine', 'window.spine.AnimationState'],
     priority: 100,
-    painPointNote: 'Game100001 的獨立 Spine 3.8 runtime；不得與 Spine 4.2 core 共用同一頁'
+    painPointNote: 'Game100001 的獨立 Spine 3.8 runtime；不得與 Spine 4.2 core 共用同一頁',
   },
   {
     id: 'spine',
@@ -189,7 +195,8 @@ export const ZHUDA_ENGINE_MODULES: readonly EngineModuleNode[] = [
     dependsOn: ['core', 'webgl2d', 'spine-core-42'],
     providesGlobals: ['Laya.SpineTemplet', 'Laya.Spine2DRenderNode'],
     priority: 110,
-    painPointNote: '包含 3.4.2 ReusableStructList 與 SpineInstanceBatch 合批管線，依賴 spine-core-4.2.js'
+    painPointNote:
+      '包含 3.4.2 ReusableStructList 與 SpineInstanceBatch 合批管線，依賴 spine-core-4.2.js',
   },
   {
     id: 'spine38',
@@ -200,7 +207,8 @@ export const ZHUDA_ENGINE_MODULES: readonly EngineModuleNode[] = [
     conflictsWith: ['spine'],
     providesGlobals: ['Laya.SpineTemplet', 'Laya.Spine2DRenderNode'],
     priority: 110,
-    painPointNote: '同一 Laya Spine adapter 以 3.8 runtime namespace 啟動；必須在 spine-core-3.8.js 之後'
+    painPointNote:
+      '同一 Laya Spine adapter 以 3.8 runtime namespace 啟動；必須在 spine-core-3.8.js 之後',
   },
   {
     id: 'spine3d',
@@ -210,7 +218,7 @@ export const ZHUDA_ENGINE_MODULES: readonly EngineModuleNode[] = [
     dependsOn: ['core', 'd3', 'spine-core-42', 'spine'],
     providesGlobals: ['Laya.Spine3DRenderNode'],
     priority: 120,
-    painPointNote: '將 Spine 骨骼掛載至 3D 場景樹，必須在 laya.d3 與 laya.spine 之後'
+    painPointNote: '將 Spine 骨骼掛載至 3D 場景樹，必須在 laya.d3 與 laya.spine 之後',
   },
   {
     id: 'navmesh-common',
@@ -220,7 +228,7 @@ export const ZHUDA_ENGINE_MODULES: readonly EngineModuleNode[] = [
     dependsOn: ['core'],
     providesGlobals: ['Laya.RecastNavigation'],
     priority: 130,
-    painPointNote: '定義 Recast 尋路共用基底，必須在 navMesh2d 與 navMesh3d 之前'
+    painPointNote: '定義 Recast 尋路共用基底，必須在 navMesh2d 與 navMesh3d 之前',
   },
   {
     id: 'navmesh2d',
@@ -229,7 +237,7 @@ export const ZHUDA_ENGINE_MODULES: readonly EngineModuleNode[] = [
     feature: 'navmesh2d',
     dependsOn: ['core', 'navmesh-common'],
     providesGlobals: ['Laya.NavMesh2D'],
-    priority: 140
+    priority: 140,
   },
   {
     id: 'navmesh3d',
@@ -238,7 +246,7 @@ export const ZHUDA_ENGINE_MODULES: readonly EngineModuleNode[] = [
     feature: 'navmesh3d',
     dependsOn: ['core', 'd3', 'navmesh-common'],
     providesGlobals: ['Laya.NavMesh3D'],
-    priority: 150
+    priority: 150,
   },
   {
     id: 'particle-common',
@@ -248,7 +256,7 @@ export const ZHUDA_ENGINE_MODULES: readonly EngineModuleNode[] = [
     dependsOn: ['core'],
     providesGlobals: ['Laya.GradientDataNumber'],
     priority: 160,
-    painPointNote: '2D/3D 粒子共用插值基底，必須在 particle 與 particle3D 之前'
+    painPointNote: '2D/3D 粒子共用插值基底，必須在 particle 與 particle3D 之前',
   },
   {
     id: 'particle2d',
@@ -257,7 +265,7 @@ export const ZHUDA_ENGINE_MODULES: readonly EngineModuleNode[] = [
     feature: 'particle2d',
     dependsOn: ['core', 'webgl2d', 'particle-common'],
     providesGlobals: ['Laya.Particle2D'],
-    priority: 170
+    priority: 170,
   },
   {
     id: 'particle3d',
@@ -266,7 +274,7 @@ export const ZHUDA_ENGINE_MODULES: readonly EngineModuleNode[] = [
     feature: 'particle3d',
     dependsOn: ['core', 'd3', 'particle-common'],
     providesGlobals: ['Laya.ShuriKenParticle3D'],
-    priority: 180
+    priority: 180,
   },
   {
     id: 'trail-common',
@@ -276,7 +284,7 @@ export const ZHUDA_ENGINE_MODULES: readonly EngineModuleNode[] = [
     dependsOn: ['core'],
     providesGlobals: ['Laya.TrailFilter'],
     priority: 190,
-    painPointNote: '2D/3D 拖尾共用幾何構造基底，必須在 trail2D 與 trail3D 之前'
+    painPointNote: '2D/3D 拖尾共用幾何構造基底，必須在 trail2D 與 trail3D 之前',
   },
   {
     id: 'trail2d',
@@ -285,7 +293,7 @@ export const ZHUDA_ENGINE_MODULES: readonly EngineModuleNode[] = [
     feature: 'trail2d',
     dependsOn: ['core', 'webgl2d', 'trail-common'],
     providesGlobals: ['Laya.Trail2DRender'],
-    priority: 200
+    priority: 200,
   },
   {
     id: 'trail3d',
@@ -294,7 +302,7 @@ export const ZHUDA_ENGINE_MODULES: readonly EngineModuleNode[] = [
     feature: 'trail3d',
     dependsOn: ['core', 'd3', 'trail-common'],
     providesGlobals: ['Laya.TrailSprite3D'],
-    priority: 210
+    priority: 210,
   },
   {
     id: 'light2d',
@@ -303,7 +311,7 @@ export const ZHUDA_ENGINE_MODULES: readonly EngineModuleNode[] = [
     feature: 'effects2d',
     dependsOn: ['core', 'webgl2d'],
     providesGlobals: ['Laya.Light2DRender'],
-    priority: 220
+    priority: 220,
   },
   {
     id: 'line2d',
@@ -312,7 +320,7 @@ export const ZHUDA_ENGINE_MODULES: readonly EngineModuleNode[] = [
     feature: 'effects2d',
     dependsOn: ['core', 'webgl2d'],
     providesGlobals: ['Laya.Line2DRender'],
-    priority: 230
+    priority: 230,
   },
   {
     id: 'tilemap',
@@ -322,7 +330,8 @@ export const ZHUDA_ENGINE_MODULES: readonly EngineModuleNode[] = [
     dependsOn: ['core', 'webgl2d', 'physics2d'],
     providesGlobals: ['Laya.TileMapLayer'],
     priority: 240,
-    painPointNote: '內部直接向 Box2DShapeDef 註冊瓦片碰撞體，若未先載入 laya.physics2D.js 會直接崩潰'
+    painPointNote:
+      '內部直接向 Box2DShapeDef 註冊瓦片碰撞體，若未先載入 laya.physics2D.js 會直接崩潰',
   },
   {
     id: 'ani',
@@ -331,7 +340,7 @@ export const ZHUDA_ENGINE_MODULES: readonly EngineModuleNode[] = [
     feature: 'ani',
     dependsOn: ['core', 'webgl2d'],
     providesGlobals: ['Laya.Templet'],
-    priority: 250
+    priority: 250,
   },
   {
     id: 'gltf',
@@ -340,7 +349,7 @@ export const ZHUDA_ENGINE_MODULES: readonly EngineModuleNode[] = [
     feature: 'gltf',
     dependsOn: ['core', 'd3'],
     providesGlobals: ['Laya.glTFLoader'],
-    priority: 260
+    priority: 260,
   },
   {
     id: 'ik',
@@ -349,7 +358,7 @@ export const ZHUDA_ENGINE_MODULES: readonly EngineModuleNode[] = [
     feature: 'ik',
     dependsOn: ['core', 'd3'],
     providesGlobals: ['Laya.IKConstraint'],
-    priority: 270
+    priority: 270,
   },
   {
     id: 'postProcess',
@@ -359,7 +368,7 @@ export const ZHUDA_ENGINE_MODULES: readonly EngineModuleNode[] = [
     dependsOn: ['core', 'd3', 'webgl3d'],
     providesGlobals: ['Laya.PostProcess', 'Laya.BloomEffect'],
     priority: 280,
-    painPointNote: '頂層自執行註冊 SubShader，必須在首幀 Camera 渲染前載入'
+    painPointNote: '頂層自執行註冊 SubShader，必須在首幀 Camera 渲染前載入',
   },
   {
     id: 'device',
@@ -368,24 +377,46 @@ export const ZHUDA_ENGINE_MODULES: readonly EngineModuleNode[] = [
     feature: 'device',
     dependsOn: ['core'],
     providesGlobals: ['Laya.Accelerator', 'Laya.Geolocation'],
-    priority: 290
-  }
+    priority: 290,
+  },
 ] as const;
 
 /** Renderer is a separate build axis; never load both backends in one realm. */
 function rendererModules(renderer: RendererBackend): readonly EngineModuleNode[] {
-  if (renderer !== 'webgl' && renderer !== 'webgpu') throw Error('[ZhudaTopology] renderer must be webgl or webgpu');
+  if (renderer !== 'webgl' && renderer !== 'webgpu')
+    throw Error('[ZhudaTopology] renderer must be webgl or webgpu');
   if (renderer === 'webgl') return ZHUDA_ENGINE_MODULES;
   const id = (value: string) => value.replace('webgl', 'webgpu');
   return [
-    ...ZHUDA_ENGINE_MODULES.map(node => ({...node, id: id(node.id),
+    ...ZHUDA_ENGINE_MODULES.map((node) => ({
+      ...node,
+      id: id(node.id),
       file: node.file.replace('webgl', 'webgpu'),
       sizeBytes: node.id === 'webgl2d' ? 858378 : node.id === 'webgl3d' ? 335455 : node.sizeBytes,
-      dependsOn: [...node.dependsOn.map(id), ...(node.id === 'webgl2d' ? ['shader-compiler', 'naga'] : [])],
-      providesGlobals: node.providesGlobals.map(value => value.replace('WebGL', 'WebGPU')),
+      dependsOn: [
+        ...node.dependsOn.map(id),
+        ...(node.id === 'webgl2d' ? ['shader-compiler', 'naga'] : []),
+      ],
+      providesGlobals: node.providesGlobals.map((value) => value.replace('WebGL', 'WebGPU')),
     })),
-    {id:'shader-compiler', file:'shader_compiler_web.js', sizeBytes: 61401, feature:'2d', dependsOn:['core'], providesGlobals:['ShaderCompiler'], priority:25},
-    {id:'naga', file:'nagabind.js', sizeBytes:13996, feature:'2d', dependsOn:['core'], providesGlobals:['wasm_bindgen'], priority:26},
+    {
+      id: 'shader-compiler',
+      file: 'shader_compiler_web.js',
+      sizeBytes: 61401,
+      feature: '2d',
+      dependsOn: ['core'],
+      providesGlobals: ['ShaderCompiler'],
+      priority: 25,
+    },
+    {
+      id: 'naga',
+      file: 'nagabind.js',
+      sizeBytes: 13996,
+      feature: '2d',
+      dependsOn: ['core'],
+      providesGlobals: ['wasm_bindgen'],
+      priority: 26,
+    },
   ];
 }
 
@@ -416,8 +447,8 @@ export const ENGINE_PRESET_PROFILES: Record<PresetProfileName, EngineFeatureTag[
     'gltf',
     'ik',
     'postProcess',
-    'device'
-  ]
+    'device',
+  ],
 };
 
 /**
@@ -425,11 +456,11 @@ export const ENGINE_PRESET_PROFILES: Record<PresetProfileName, EngineFeatureTag[
  */
 export class TopologyResolver {
   private static readonly moduleMap: Map<string, EngineModuleNode> = new Map(
-    ZHUDA_ENGINE_MODULES.map((m) => [m.id, m])
+    ZHUDA_ENGINE_MODULES.map((m) => [m.id, m]),
   );
 
   private static readonly fileMap: Map<string, EngineModuleNode> = new Map(
-    ZHUDA_ENGINE_MODULES.map((m) => [m.file, m])
+    ZHUDA_ENGINE_MODULES.map((m) => [m.file, m]),
   );
 
   public static getFullEngineSizeBytes(): number {
@@ -439,13 +470,18 @@ export class TopologyResolver {
   /**
    * 根據 Feature Tags 解析最小必備模組並執行拓撲排序
    */
-  public static resolveByFeatures(features: EngineFeatureTag[] | 'all', renderer: RendererBackend = 'webgl'): TopologyResolutionResult {
+  public static resolveByFeatures(
+    features: EngineFeatureTag[] | 'all',
+    renderer: RendererBackend = 'webgl',
+  ): TopologyResolutionResult {
     const targetFeatures =
-      features === 'all' ? ENGINE_PRESET_PROFILES['full-all-in-one'] : Array.from(new Set(['core', ...features]));
+      features === 'all'
+        ? ENGINE_PRESET_PROFILES['full-all-in-one']
+        : Array.from(new Set(['core', ...features]));
 
-    const seedIds = rendererModules(renderer).filter((m) =>
-      targetFeatures.includes(m.feature)
-    ).map((m) => m.id);
+    const seedIds = rendererModules(renderer)
+      .filter((m) => targetFeatures.includes(m.feature))
+      .map((m) => m.id);
 
     return this.resolveByModuleIds(seedIds, renderer);
   }
@@ -453,15 +489,20 @@ export class TopologyResolver {
   /**
    * 根據 Module IDs 展開傳遞依賴閉包並以 Kahn's Algorithm 排序
    */
-  public static resolveByModuleIds(seedModuleIds: string[], renderer: RendererBackend = 'webgl'): TopologyResolutionResult {
+  public static resolveByModuleIds(
+    seedModuleIds: string[],
+    renderer: RendererBackend = 'webgl',
+  ): TopologyResolutionResult {
     const modules = rendererModules(renderer);
-    const moduleMap = new Map(modules.map(node => [node.id, node]));
+    const moduleMap = new Map(modules.map((node) => [node.id, node]));
     const closure = new Set<string>();
     const diagnostics: string[] = [];
 
     const visit = (id: string, chain: string[]) => {
       if (chain.includes(id)) {
-        throw new Error(`[ZhudaTopology] 偵測到循環依賴 (Cycle Detected): ${[...chain, id].join(' -> ')}`);
+        throw new Error(
+          `[ZhudaTopology] 偵測到循環依賴 (Cycle Detected): ${[...chain, id].join(' -> ')}`,
+        );
       }
       const node = moduleMap.get(id);
       if (!node) {
@@ -469,7 +510,9 @@ export class TopologyResolver {
       }
       for (const depId of node.dependsOn) {
         if (!closure.has(depId)) {
-          diagnostics.push(`[Auto-Dependency] 模組 "${node.file}" 自動拉入前置依賴 "${moduleMap.get(depId)?.file}"`);
+          diagnostics.push(
+            `[Auto-Dependency] 模組 "${node.file}" 自動拉入前置依賴 "${moduleMap.get(depId)?.file}"`,
+          );
         }
         visit(depId, [...chain, id]);
       }
@@ -486,7 +529,9 @@ export class TopologyResolver {
       if (node.conflictsWith) {
         for (const conflictId of node.conflictsWith) {
           if (closure.has(conflictId)) {
-            throw new Error(`[ZhudaTopology] 模組互斥衝突: "${id}" 與 "${conflictId}" 不可同時載入`);
+            throw new Error(
+              `[ZhudaTopology] 模組互斥衝突: "${id}" 與 "${conflictId}" 不可同時載入`,
+            );
           }
         }
       }
@@ -539,7 +584,9 @@ export class TopologyResolver {
     const supportSizeBytes = renderer === 'webgpu' ? 5942257 : 0;
     const totalSizeBytes = orderedModules.reduce((acc, m) => acc + m.sizeBytes, supportSizeBytes);
     const fullSizeBytes = modules.reduce((acc, m) => acc + m.sizeBytes, supportSizeBytes);
-    const prunedRatioPercent = Number((((fullSizeBytes - totalSizeBytes) / fullSizeBytes) * 100).toFixed(1));
+    const prunedRatioPercent = Number(
+      (((fullSizeBytes - totalSizeBytes) / fullSizeBytes) * 100).toFixed(1),
+    );
 
     return {
       renderer,
@@ -550,7 +597,7 @@ export class TopologyResolver {
       totalSizeKB: Number((totalSizeBytes / 1024).toFixed(1)),
       prunedRatioPercent: Math.max(0, prunedRatioPercent),
       fullEngineSizeBytes: fullSizeBytes,
-      diagnostics
+      diagnostics,
     };
   }
 
@@ -559,17 +606,31 @@ export class TopologyResolver {
    */
   public static auditFileSequence(files: string[]): SequenceAuditIssue[] {
     const issues: SequenceAuditIssue[] = [];
-    const gpu = files.some(file => file.startsWith('laya.webgpu_'));
+    const gpu = files.some((file) => file.startsWith('laya.webgpu_'));
     const modules = rendererModules(gpu ? 'webgpu' : 'webgl');
-    const moduleMap = new Map(modules.map(node => [node.id, node]));
+    const moduleMap = new Map(modules.map((node) => [node.id, node]));
     const fileMap = new Map<string, EngineModuleNode[]>();
     for (const node of modules) {
       const candidates = fileMap.get(node.file) || [];
       candidates.push(node);
       fileMap.set(node.file, candidates);
     }
-    if (gpu && files.some(file => file.startsWith('laya.webgl_'))) issues.push({type:'CONFLICTING_MODULE', moduleFile:'laya.webgpu_2D.js', requiredFile:'laya.webgl_2D.js', fatalSymptom:'Mixed renderer factories', message:'Load exactly one renderer backend per realm'});
-    if (files.includes('spine-core-3.8.js') && files.includes('spine-core-4.2.js')) issues.push({type:'CONFLICTING_MODULE', moduleFile:'spine-core-3.8.js', requiredFile:'spine-core-4.2.js', fatalSymptom:'Mixed Spine global namespaces', message:'Load exactly one Spine core runtime per realm'});
+    if (gpu && files.some((file) => file.startsWith('laya.webgl_')))
+      issues.push({
+        type: 'CONFLICTING_MODULE',
+        moduleFile: 'laya.webgpu_2D.js',
+        requiredFile: 'laya.webgl_2D.js',
+        fatalSymptom: 'Mixed renderer factories',
+        message: 'Load exactly one renderer backend per realm',
+      });
+    if (files.includes('spine-core-3.8.js') && files.includes('spine-core-4.2.js'))
+      issues.push({
+        type: 'CONFLICTING_MODULE',
+        moduleFile: 'spine-core-3.8.js',
+        requiredFile: 'spine-core-4.2.js',
+        fatalSymptom: 'Mixed Spine global namespaces',
+        message: 'Load exactly one Spine core runtime per realm',
+      });
     const seenFiles = new Set<string>();
 
     const selectNode = (file: string): EngineModuleNode | undefined => {
@@ -579,9 +640,9 @@ export class TopologyResolver {
       // laya.spine.js is a shared adapter file. Its selected core runtime is
       // the discriminator, so an audit never silently maps 3.8 to 4.2.
       const preferred = seenFiles.has('spine-core-3.8.js')
-        ? candidates.find(node => node.id === 'spine38')
+        ? candidates.find((node) => node.id === 'spine38')
         : seenFiles.has('spine-core-4.2.js')
-          ? candidates.find(node => node.id === 'spine')
+          ? candidates.find((node) => node.id === 'spine')
           : undefined;
       return preferred || candidates[0];
     };
@@ -606,7 +667,7 @@ export class TopologyResolver {
             fatalSymptom: node.painPointNote || `${node.file} 需要在 ${depNode.file} 之後載入`,
             message: isPresentLater
               ? `[順序倒置死鎖] "${node.file}" 出現在前置依賴 "${depNode.file}" 之前！(${node.painPointNote || 'Global Mutation Error'})`
-              : `[缺失前置依賴] 載入 "${node.file}" 前未載入必備庫 "${depNode.file}"！`
+              : `[缺失前置依賴] 載入 "${node.file}" 前未載入必備庫 "${depNode.file}"！`,
           });
         }
       }

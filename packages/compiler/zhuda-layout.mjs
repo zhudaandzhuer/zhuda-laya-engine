@@ -22,10 +22,14 @@ function parseArgs(argv = process.argv.slice(2)) {
     const value = argv[index];
     if (!value.startsWith('--')) throw Error(`Unexpected argument: ${value}`);
     const key = value.slice(2);
-    if (key === 'help') { args.help = true; continue; }
+    if (key === 'help') {
+      args.help = true;
+      continue;
+    }
     const next = argv[index + 1];
     if (next === undefined || next.startsWith('--')) throw Error(`--${key} requires a value`);
-    args[key] = next; index++;
+    args[key] = next;
+    index++;
   }
   return { command, args };
 }
@@ -34,7 +38,9 @@ function required(args, key) {
   if (!args[key]) throw Error(`--${key} is required`);
   return args[key];
 }
-function rootOf(args) { return path.resolve(args.root || process.cwd()); }
+function rootOf(args) {
+  return path.resolve(args.root || process.cwd());
+}
 function resolveInside(root, value, field) {
   const normalized = normalizeLayoutPath(value, field);
   const file = path.resolve(root, normalized);
@@ -47,7 +53,10 @@ function sourcePathFor(root, value) {
   return path.relative(root, absolute).split(path.sep).join('/');
 }
 function writeOutput(output, value) {
-  if (!output) { process.stdout.write(value); return; }
+  if (!output) {
+    process.stdout.write(value);
+    return;
+  }
   fs.mkdirSync(path.dirname(path.resolve(output)), { recursive: true });
   fs.writeFileSync(output, value, 'utf8');
   console.log(`Wrote ${path.resolve(output)}`);
@@ -69,7 +78,10 @@ backing pixels.`);
 }
 
 export function runLayoutCommand(command, args) {
-  if (args.help || command === 'help') { printHelp(); return { passed: true }; }
+  if (args.help || command === 'help') {
+    printHelp();
+    return { passed: true };
+  }
   if (command === 'from-svg') {
     const root = rootOf(args);
     const svgRef = resolveInside(root, required(args, 'svg'), '--svg');
@@ -77,8 +89,15 @@ export function runLayoutCommand(command, args) {
     const sourceBytes = fs.readFileSync(sourceRef.file);
     const dimensions = readImageDimensions(sourceBytes, sourceRef.normalized);
     const contract = parseLayoutSvg(fs.readFileSync(svgRef.file, 'utf8'), {
-      id: args.id || 'scene/layout', sourcePath: sourceRef.normalized,
-      sourceInfo: { path: sourceRef.normalized, sha256: crypto.createHash('sha256').update(sourceBytes).digest('hex'), bytes: sourceBytes.byteLength, width: dimensions.width, height: dimensions.height },
+      id: args.id || 'scene/layout',
+      sourcePath: sourceRef.normalized,
+      sourceInfo: {
+        path: sourceRef.normalized,
+        sha256: crypto.createHash('sha256').update(sourceBytes).digest('hex'),
+        bytes: sourceBytes.byteLength,
+        width: dimensions.width,
+        height: dimensions.height,
+      },
     });
     writeOutput(args.output, `${JSON.stringify(contract, null, 2)}\n`);
     return { passed: true, command, nodes: contract.nodes.length, id: contract.id };
@@ -94,15 +113,24 @@ export function runLayoutCommand(command, args) {
     const layoutRef = resolveInside(root, required(args, 'layout'), '--layout');
     const contract = readLayoutContract(layoutRef.file);
     const sourceRef = resolveInside(root, contract.source.path, 'source.path');
-    const html = buildLayoutPreview(contract, fs.readFileSync(sourceRef.file), { title: args.title || contract.id });
+    const html = buildLayoutPreview(contract, fs.readFileSync(sourceRef.file), {
+      title: args.title || contract.id,
+    });
     writeOutput(args.output, html);
     return { passed: true, command, id: contract.id, nodes: contract.nodes.length };
   }
   if (command === 'validate') {
     const root = rootOf(args);
     const layoutRef = resolveInside(root, required(args, 'layout'), '--layout');
-    const svg = args.svg ? fs.readFileSync(resolveInside(root, args.svg, '--svg').file, 'utf8') : undefined;
-    const result = validateLayoutContracts(root, [{ layout: layoutRef.normalized, ...(args.svg ? { svg: normalizeLayoutPath(args.svg, '--svg') } : {}) }]);
+    const svg = args.svg
+      ? fs.readFileSync(resolveInside(root, args.svg, '--svg').file, 'utf8')
+      : undefined;
+    const result = validateLayoutContracts(root, [
+      {
+        layout: layoutRef.normalized,
+        ...(args.svg ? { svg: normalizeLayoutPath(args.svg, '--svg') } : {}),
+      },
+    ]);
     if (!result.passed) throw Error(result.issues.join('; '));
     if (svg) {
       const contract = readLayoutContract(layoutRef.file);
@@ -114,7 +142,9 @@ export function runLayoutCommand(command, args) {
   }
   if (command === 'check') {
     const root = path.resolve(required(args, 'project'));
-    const configured = [{ layout: required(args, 'layout'), ...(args.svg ? { svg: args.svg } : {}) }];
+    const configured = [
+      { layout: required(args, 'layout'), ...(args.svg ? { svg: args.svg } : {}) },
+    ];
     const result = validateLayoutContracts(root, configured);
     console.log(JSON.stringify(result, null, 2));
     if (!result.passed) throw Error(result.issues.join('; '));
@@ -123,12 +153,17 @@ export function runLayoutCommand(command, args) {
   throw Error(`Unknown command: ${command}`);
 }
 
-const launched = cliMain(import.meta.url, 'Usage: zhuda-layout <init|render|validate|preview> [--project DIRECTORY] [--layout FILE] [--svg FILE]');
+const launched = cliMain(
+  import.meta.url,
+  'Usage: zhuda-layout <init|render|validate|preview> [--project DIRECTORY] [--layout FILE] [--svg FILE]',
+);
 if (launched) {
   try {
     const input = process.argv.slice(2);
     if (input[0] === '--help' || input[0] === '-h') printHelp();
     else runLayoutCommand(...Object.values(parseArgs(input)));
+  } catch (error) {
+    console.error(`zhuda-layout: ${error.message}`);
+    process.exitCode = 1;
   }
-  catch (error) { console.error(`zhuda-layout: ${error.message}`); process.exitCode = 1; }
 }

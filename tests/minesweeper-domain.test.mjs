@@ -12,7 +12,11 @@ test('MinesweeperGame guarantees 3x3 safe zone on first click and flood-fills em
   for (let dr = -1; dr <= 1; dr++) {
     for (let dc = -1; dc <= 1; dc++) {
       const cell = game.getCell(4 + dr, 4 + dc);
-      assert.equal(cell.isMine, false, `Cell (${4 + dr}, ${4 + dc}) in first-click 3x3 zone must be safe`);
+      assert.equal(
+        cell.isMine,
+        false,
+        `Cell (${4 + dr}, ${4 + dc}) in first-click 3x3 zone must be safe`,
+      );
     }
   }
 });

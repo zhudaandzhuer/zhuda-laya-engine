@@ -1,5 +1,5 @@
-import { ZhudaRequestSlot } from "./Assets.ts";
-import type { Vec3 } from "./Math3D.ts";
+import { ZhudaRequestSlot } from './Assets.ts';
+import type { Vec3 } from './Math3D.ts';
 
 /** Owned releases execute in reverse order. Borrowed resources must not be registered here. */
 export class ZhudaResourceScope {
@@ -8,7 +8,7 @@ export class ZhudaResourceScope {
   own<T>(value: T, release: (value: T) => void): T {
     if (this.disposed) {
       release(value);
-      throw Error("Disposed resource scope");
+      throw Error('Disposed resource scope');
     }
     this.releases.push(() => release(value));
     return value;
@@ -27,8 +27,7 @@ export class ZhudaResourceScope {
         errors.push(e);
       }
     this.releases = [];
-    if (errors.length)
-      throw Object.assign(Error("Resource release failed"), { errors });
+    if (errors.length) throw Object.assign(Error('Resource release failed'), { errors });
   }
 }
 export interface SceneRegion {
@@ -36,15 +35,9 @@ export interface SceneRegion {
 }
 /** Regions are consumer-defined. Leaving a region cancels pending work and rejects late additions. */
 export class ZhudaSceneRegions {
-  private regions = new Map<
-    string,
-    { slot: ZhudaRequestSlot; value?: SceneRegion }
-  >();
-  async enter(
-    id: string,
-    create: (signal: AbortSignal) => Promise<SceneRegion>,
-  ) {
-    if (!id) throw Error("Missing region ID");
+  private regions = new Map<string, { slot: ZhudaRequestSlot; value?: SceneRegion }>();
+  async enter(id: string, create: (signal: AbortSignal) => Promise<SceneRegion>) {
+    if (!id) throw Error('Missing region ID');
     this.leave(id);
     const record = {
       slot: new ZhudaRequestSlot(),
@@ -76,32 +69,24 @@ export class ZhudaSceneRegions {
     return this.regions.size;
   }
 }
-export type SceneResourceKind = "mesh" | "texture" | "renderTarget";
+export type SceneResourceKind = 'mesh' | 'texture' | 'renderTarget';
 export class ZhudaSceneBudget {
-  private resources = new Map<
-    string,
-    { kind: SceneResourceKind; estimatedBytes: number }
-  >();
+  private resources = new Map<string, { kind: SceneResourceKind; estimatedBytes: number }>();
   track(id: string, kind: SceneResourceKind, estimatedBytes: number) {
-    if (
-      !id ||
-      this.resources.has(id) ||
-      !Number.isFinite(estimatedBytes) ||
-      estimatedBytes < 0
-    )
-      throw Error("Invalid/duplicate resource budget");
+    if (!id || this.resources.has(id) || !Number.isFinite(estimatedBytes) || estimatedBytes < 0)
+      throw Error('Invalid/duplicate resource budget');
     this.resources.set(id, { kind, estimatedBytes });
     return () => this.resources.delete(id);
   }
   report() {
     const counts = { mesh: 0, texture: 0, renderTarget: 0 };
-  const animation = { clips: 0, materials: 0 };
+    const animation = { clips: 0, materials: 0 };
     let estimatedBytes = 0;
     for (const r of this.resources.values()) {
       counts[r.kind]++;
       estimatedBytes += r.estimatedBytes;
     }
-    return { counts, estimatedBytes, memoryMeasurement: "estimate" as const };
+    return { counts, estimatedBytes, memoryMeasurement: 'estimate' as const };
   }
 }
 export interface SceneQuality {
@@ -111,7 +96,7 @@ export interface SceneQuality {
   extraPasses: number;
   lodDistance: number;
 }
-export const sceneQuality: Record<"low" | "medium" | "high", SceneQuality> = {
+export const sceneQuality: Record<'low' | 'medium' | 'high', SceneQuality> = {
   low: {
     dprCap: 1,
     shadowDistance: 0,
@@ -142,15 +127,10 @@ export class ZhudaDistanceLOD {
   constructor(distance: number, hysteresis = 2) {
     this.distance = distance;
     this.hysteresis = hysteresis;
-    if (!(distance > hysteresis && hysteresis >= 0))
-      throw Error("Invalid LOD bounds");
+    if (!(distance > hysteresis && hysteresis >= 0)) throw Error('Invalid LOD bounds');
   }
   update(camera: Vec3, object: Vec3) {
-    const d = Math.hypot(
-      camera.x - object.x,
-      camera.y - object.y,
-      camera.z - object.z,
-    );
+    const d = Math.hypot(camera.x - object.x, camera.y - object.y, camera.z - object.z);
     if (d > this.distance + this.hysteresis) this.near = false;
     else if (d < this.distance - this.hysteresis) this.near = true;
     return this.near;
@@ -160,8 +140,7 @@ export class ZhudaDistanceLOD {
 /** Logical resource inventory. Byte totals are estimates, never driver/GPU measurements. */
 export function inspectSceneResources(runtime: any = (globalThis as any).Laya) {
   const map = runtime.Resource._idResourcesMap,
-    items: any[] =
-      map instanceof Map ? [...map.values()] : Object.values(map || {});
+    items: any[] = map instanceof Map ? [...map.values()] : Object.values(map || {});
   const counts = { mesh: 0, texture: 0, renderTarget: 0 };
   const animation = { clips: 0, materials: 0 };
   let meshBytes = 0,
@@ -169,8 +148,10 @@ export function inspectSceneResources(runtime: any = (globalThis as any).Laya) {
     renderTargetBytes = 0;
   for (const r of items) {
     if (r.destroyed) continue;
-    if (typeof runtime.AnimationClip === 'function' && r instanceof runtime.AnimationClip) animation.clips++;
-    if (typeof runtime.Material === 'function' && r instanceof runtime.Material) animation.materials++;
+    if (typeof runtime.AnimationClip === 'function' && r instanceof runtime.AnimationClip)
+      animation.clips++;
+    if (typeof runtime.Material === 'function' && r instanceof runtime.Material)
+      animation.materials++;
     if (typeof runtime.Mesh === 'function' && r instanceof runtime.Mesh) {
       counts.mesh++;
       meshBytes += r.gpuMemory || 0;
@@ -179,16 +160,11 @@ export function inspectSceneResources(runtime: any = (globalThis as any).Laya) {
       (runtime.RenderTexture2D && r instanceof runtime.RenderTexture2D)
     ) {
       counts.renderTarget++;
-      renderTargetBytes +=
-        (r.width || 0) * (r.height || 0) * 8 * Math.max(1, r.samples || 1);
+      renderTargetBytes += (r.width || 0) * (r.height || 0) * 8 * Math.max(1, r.samples || 1);
     } else if (r instanceof runtime.BaseTexture) {
       counts.texture++;
       textureBytes +=
-        (r.width || 0) *
-        (r.height || 0) *
-        4 *
-        (r.mipmap ? 4 / 3 : 1) *
-        (r.isCube ? 6 : 1);
+        (r.width || 0) * (r.height || 0) * 4 * (r.mipmap ? 4 / 3 : 1) * (r.isCube ? 6 : 1);
     }
   }
   return {
@@ -199,9 +175,9 @@ export function inspectSceneResources(runtime: any = (globalThis as any).Laya) {
     meshBytes,
     textureBytes,
     renderTargetBytes,
-    memoryMeasurement: "estimate" as const,
+    memoryMeasurement: 'estimate' as const,
     assumptions:
-      "Texture RGBA8, render target RGBA8 + 32-bit depth; vendor mesh accounting. Excludes driver overhead and compressed/HDR format corrections.",
+      'Texture RGBA8, render target RGBA8 + 32-bit depth; vendor mesh accounting. Excludes driver overhead and compressed/HDR format corrections.',
   };
 }
 
@@ -214,9 +190,7 @@ export function applySceneQuality(
 ) {
   const l = (globalThis as any).Laya;
   if (
-    ![quality.dprCap, quality.shadowDistance, quality.extraPasses].every(
-      Number.isFinite,
-    ) ||
+    ![quality.dprCap, quality.shadowDistance, quality.extraPasses].every(Number.isFinite) ||
     quality.dprCap < 0.5 ||
     quality.dprCap > 4 ||
     quality.shadowDistance < 0 ||
@@ -225,15 +199,14 @@ export function applySceneQuality(
     quality.lodDistance <= 0 ||
     ![512, 1024, 2048].includes(quality.shadowResolution)
   )
-    throw Error("Invalid scene quality");
+    throw Error('Invalid scene quality');
   session.options.dprCap = quality.dprCap;
   session.resize();
   camera.msaa = false;
   for (const light of lights) {
     light.shadowDistance = quality.shadowDistance;
     light.shadowResolution = quality.shadowResolution;
-    light.shadowMode =
-      quality.shadowDistance > 0 ? l.ShadowMode.SoftLow : l.ShadowMode.None;
+    light.shadowMode = quality.shadowDistance > 0 ? l.ShadowMode.SoftLow : l.ShadowMode.None;
   }
   return { ...quality, additionalPassBudget: quality.extraPasses };
 }

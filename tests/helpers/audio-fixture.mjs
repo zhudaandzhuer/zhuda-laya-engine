@@ -1,4 +1,4 @@
-import { IframeSoundAdapter } from "../../packages/core/IframeSoundAdapter.ts";
+import { IframeSoundAdapter } from '../../packages/core/IframeSoundAdapter.ts';
 export const flush = () => new Promise((resolve) => setImmediate(resolve));
 export const deferred = () => {
   let resolve, reject;
@@ -13,11 +13,11 @@ class Param {
   events = [];
   setValueAtTime(v, t) {
     this.value = v;
-    this.events.push(["set", v, t]);
+    this.events.push(['set', v, t]);
   }
   linearRampToValueAtTime(v, t) {
     this.value = v;
-    this.events.push(["linear", v, t]);
+    this.events.push(['linear', v, t]);
   }
   cancelScheduledValues() {}
   exponentialRampToValueAtTime(v, t) {
@@ -51,7 +51,7 @@ export class Source extends Gain {
   }
 }
 export class Context {
-  state = "running";
+  state = 'running';
   currentTime = 10;
   sampleRate = 24000;
   destination = {};
@@ -88,17 +88,17 @@ export class Context {
     return this.createBuffer();
   }
   async resume() {
-    this.state = "running";
+    this.state = 'running';
   }
   async suspend() {
-    this.state = "suspended";
+    this.state = 'suspended';
   }
   async close() {
-    this.state = "closed";
+    this.state = 'closed';
   }
 }
 export class Media extends EventTarget {
-  src = "";
+  src = '';
   currentTime = 0;
   paused = true;
   plays = 0;
@@ -116,7 +116,7 @@ export class Media extends EventTarget {
     this.loads++;
   }
   removeAttribute(key) {
-    if (key === "src") this.src = "";
+    if (key === 'src') this.src = '';
   }
 }
 export function fixture(options = {}) {
@@ -126,7 +126,7 @@ export function fixture(options = {}) {
   let releases = 0,
     opens = 0;
   const provider = {
-    name: "neutral",
+    name: 'neutral',
     async load(id) {
       return { id, bytes: new Uint8Array([1]) };
     },
@@ -134,9 +134,9 @@ export function fixture(options = {}) {
       opens++;
       return {
         id,
-        url: "https://fixture.test/" + id,
-        integrity: "transport",
-        delivery: "native",
+        url: 'https://fixture.test/' + id,
+        integrity: 'transport',
+        delivery: 'native',
         retainedBytes: 0,
         release() {
           releases++;

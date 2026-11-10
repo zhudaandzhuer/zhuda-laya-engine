@@ -28,12 +28,9 @@ export function resizeLaya342Stage(
   dpr: number,
   canvas?: HTMLCanvasElement,
 ): void {
-  const descriptor = Object.getOwnPropertyDescriptor(
-    runtime.Browser,
-    "pixelRatio",
-  );
+  const descriptor = Object.getOwnPropertyDescriptor(runtime.Browser, 'pixelRatio');
   try {
-    Object.defineProperty(runtime.Browser, "pixelRatio", {
+    Object.defineProperty(runtime.Browser, 'pixelRatio', {
       configurable: true,
       get: () => dpr,
     });
@@ -52,10 +49,11 @@ export function resizeLaya342Stage(
     if (canvas?.style) {
       canvas.style.width = `${width}px`;
       canvas.style.height = `${height}px`;
-      canvas.style.display = "block";
-      canvas.style.touchAction = "none";
+      canvas.style.display = 'block';
+      canvas.style.touchAction = 'none';
       if (matrix) {
-        const sx = canvas.width / width, sy = canvas.height / height;
+        const sx = canvas.width / width,
+          sy = canvas.height / height;
         const tx = matrix.tx - (parseInt(canvas.style.left) || 0);
         const ty = matrix.ty - (parseInt(canvas.style.top) || 0);
         canvas.style.transform = `matrix(${matrix.a * sx},${matrix.b * sx},${matrix.c * sy},${matrix.d * sy},${tx},${ty})`;
@@ -82,20 +80,17 @@ export function resizeLaya342Stage(
       matrix.ty = rect.top + (globalThis.scrollY || 0) - Math.min(...y);
     }
   } finally {
-    if (descriptor)
-      Object.defineProperty(runtime.Browser, "pixelRatio", descriptor);
-    else Reflect.deleteProperty(runtime.Browser, "pixelRatio");
+    if (descriptor) Object.defineProperty(runtime.Browser, 'pixelRatio', descriptor);
+    else Reflect.deleteProperty(runtime.Browser, 'pixelRatio');
   }
 }
 /** Laya 3.4.2 allocates two process-owned fallback textures but releases only depth.
  * Keep this version-specific repair isolated from consumer scene code. */
-export function installLaya342LifecycleFix(
-  runtime: any = (globalThis as any).Laya,
-) {
+export function installLaya342LifecycleFix(runtime: any = (globalThis as any).Laya) {
   const prototype = runtime?.WebRender3DProcess?.prototype;
   if (!prototype || patched.has(prototype)) return;
   const destroy = prototype.destroy;
-  if (typeof destroy !== "function") return;
+  if (typeof destroy !== 'function') return;
   const retired = new WeakSet<object>();
   prototype.destroy = function (...args: any[]) {
     if (retired.has(this)) return;
@@ -120,7 +115,10 @@ export function destroyLaya342ModelTree(node: any, runtime: any = (globalThis as
   const pending: { component: any; queue: Set<any> | undefined }[] = [];
   const collect = (n: any) => {
     for (const component of n._components ?? [])
-      pending.push({ component, queue: (component._driver || runtime?.stage?._componentDriver)?._toDestroys });
+      pending.push({
+        component,
+        queue: (component._driver || runtime?.stage?._componentDriver)?._toDestroys,
+      });
     for (let i = 0; i < (n.numChildren || 0); i++) collect(n.getChildAt(i));
   };
   collect(node);

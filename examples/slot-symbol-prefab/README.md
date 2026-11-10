@@ -115,12 +115,12 @@ npm run check:prefab
 
 ## 穩定節點與狀態
 
-| 節點 | 用途 |
-| --- | --- |
-| `Art` | 唯一需要替換的 symbol 圖片 |
-| SVG design grid | 固定 `viewBox="0 0 960 540"` 的座標與自適應外框；不屬於火箭 Prefab |
+| 節點               | 用途                                                               |
+| ------------------ | ------------------------------------------------------------------ |
+| `Art`              | 唯一需要替換的 symbol 圖片                                         |
+| SVG design grid    | 固定 `viewBox="0 0 960 540"` 的座標與自適應外框；不屬於火箭 Prefab |
 | SVG particle layer | Selected/Win/Jackpot 的引擎粒子呈現，受 symbol clip 限制，不會越界 |
-| `Badge` | 可換文字標籤 |
+| `Badge`            | 可換文字標籤                                                       |
 
 Scene 定義在 `assets/scenes/slot-machine.ls`，Prefab 定義在
 `assets/prefabs/slot-symbol.lh`，狀態與 asset provider 在 `src/prefabs.ts`，效果時間軸在

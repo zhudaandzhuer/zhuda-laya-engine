@@ -1,4 +1,9 @@
-import type { ZhudaWebViewAdapter, ZhudaWebViewDiagnostics, ZhudaWebViewFrame, ZhudaWebViewSurfaceOptions } from '../types/zhuda-webview.ts';
+import type {
+  ZhudaWebViewAdapter,
+  ZhudaWebViewDiagnostics,
+  ZhudaWebViewFrame,
+  ZhudaWebViewSurfaceOptions,
+} from '../types/zhuda-webview.ts';
 
 const finite = (value: number, name: string): number => {
   if (!Number.isFinite(value)) throw new Error(`Invalid ${name}.`);
@@ -6,7 +11,7 @@ const finite = (value: number, name: string): number => {
 };
 
 function frameOf(value: ZhudaWebViewFrame | undefined): ZhudaWebViewFrame {
-  const frame = value ?? {x: 0, y: 0, width: 1, height: 1};
+  const frame = value ?? { x: 0, y: 0, width: 1, height: 1 };
   const result = {
     x: finite(frame.x, 'frame.x'),
     y: finite(frame.y, 'frame.y'),
@@ -14,9 +19,10 @@ function frameOf(value: ZhudaWebViewFrame | undefined): ZhudaWebViewFrame {
     height: finite(frame.height, 'frame.height'),
     rotation: finite(frame.rotation ?? 0, 'frame.rotation'),
     scaleX: finite(frame.scaleX ?? 1, 'frame.scaleX'),
-    scaleY: finite(frame.scaleY ?? 1, 'frame.scaleY')
+    scaleY: finite(frame.scaleY ?? 1, 'frame.scaleY'),
   };
-  if (result.width <= 0 || result.height <= 0) throw new Error('WebView frame dimensions must be greater than zero.');
+  if (result.width <= 0 || result.height <= 0)
+    throw new Error('WebView frame dimensions must be greater than zero.');
   return result;
 }
 
@@ -46,16 +52,46 @@ export class ZhudaWebViewSurface {
     this.anchor.name = 'ZhudaWebViewAnchor';
     options.parent.addChild(this.anchor);
     this.applyAnchor();
-    this.adapter.mount({url: this.urlValue || undefined, frame: this.frameValue, anchor: this.anchor});
-    this.adapter.update({url: this.urlValue, frame: this.frameValue, visible: this.visibleValue});
+    this.adapter.mount({
+      url: this.urlValue || undefined,
+      frame: this.frameValue,
+      anchor: this.anchor,
+    });
+    this.adapter.update({ url: this.urlValue, frame: this.frameValue, visible: this.visibleValue });
   }
 
-  public get url(): string { return this.urlValue; }
-  public get frame(): ZhudaWebViewFrame { return {...this.frameValue}; }
-  public setUrl(url: string): void { this.assertLive(); this.urlValue = url; this.sync(); }
-  public setFrame(frame: ZhudaWebViewFrame): void { this.assertLive(); this.frameValue = frameOf(frame); this.applyAnchor(); this.sync(); }
-  public setVisible(visible: boolean): void { this.assertLive(); this.visibleValue = !!visible; this.anchor.visible = this.visibleValue; this.sync(); }
-  public diagnostics(): ZhudaWebViewDiagnostics { return {url: this.urlValue, attached: !!this.anchor.parent, visible: this.visibleValue, frame: this.frame, disposed: this.disposed}; }
+  public get url(): string {
+    return this.urlValue;
+  }
+  public get frame(): ZhudaWebViewFrame {
+    return { ...this.frameValue };
+  }
+  public setUrl(url: string): void {
+    this.assertLive();
+    this.urlValue = url;
+    this.sync();
+  }
+  public setFrame(frame: ZhudaWebViewFrame): void {
+    this.assertLive();
+    this.frameValue = frameOf(frame);
+    this.applyAnchor();
+    this.sync();
+  }
+  public setVisible(visible: boolean): void {
+    this.assertLive();
+    this.visibleValue = !!visible;
+    this.anchor.visible = this.visibleValue;
+    this.sync();
+  }
+  public diagnostics(): ZhudaWebViewDiagnostics {
+    return {
+      url: this.urlValue,
+      attached: !!this.anchor.parent,
+      visible: this.visibleValue,
+      frame: this.frame,
+      disposed: this.disposed,
+    };
+  }
   public dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
@@ -71,6 +107,10 @@ export class ZhudaWebViewSurface {
     this.anchor.scaleY = this.frameValue.scaleY ?? 1;
     this.anchor.visible = this.visibleValue;
   }
-  private sync(): void { this.adapter.update({url: this.urlValue, frame: this.frameValue, visible: this.visibleValue}); }
-  private assertLive(): void { if (this.disposed) throw new Error('ZhudaWebViewSurface is disposed.'); }
+  private sync(): void {
+    this.adapter.update({ url: this.urlValue, frame: this.frameValue, visible: this.visibleValue });
+  }
+  private assertLive(): void {
+    if (this.disposed) throw new Error('ZhudaWebViewSurface is disposed.');
+  }
 }

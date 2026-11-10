@@ -1,6 +1,6 @@
 /** A neutral, asset-free recipe shared by isolated selection and the demo Scene. */
-export function browserExample(entry){
-  const is3D=entry.profile.startsWith('3d');
+export function browserExample(entry) {
+  const is3D = entry.profile.startsWith('3d');
   return `<!doctype html>
 <html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Zhuda ${entry.profile.toUpperCase()} · 單一 HTML 範例</title>
 <style>body{margin:0;padding:20px;background:#101c2a;color:#e5f1ff;font:16px/1.5 system-ui}main{max-width:900px;margin:auto}#view{position:relative;width:min(100%,640px);aspect-ratio:4/3;overflow:hidden;background:#152030}button{padding:10px;margin:12px 8px 12px 0}pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:300px;overflow:auto}a{color:#72d6eb}</style></head>
@@ -10,8 +10,8 @@ export function browserExample(entry){
 const {ZhudaEngine,Zhuda3D,ZhudaPrefabLibrary,ZhudaResourceScope,inspectSceneResources}=Zhuda;
 const scope=new ZhudaResourceScope(),cancel=new AbortController();scope.defer(()=>cancel.abort());
 window.addEventListener('pagehide',()=>scope.dispose(),{once:true});
-const params=new URLSearchParams(location.search),id='browser-${is3D?'3d':'2d'}';
-const definition=${JSON.stringify(is3D?{id:'browser-3d',kind:'3d',tree:{materials:{blue:{type:'unlit',albedoColor:[.15,.65,.95,1]}},root:{name:'Root',children:[{name:'Body',mesh:{type:'box'},material:'blue',localRotationEuler:[0,20,0]}]}},states:{idle:{},turned:{Body:{localRotationEuler:[0,65,0]}}}}:{id:'browser-2d',asset:'panel.lh',states:{idle:{},turned:{Body:{x:220}}}})};
+const params=new URLSearchParams(location.search),id='browser-${is3D ? '3d' : '2d'}';
+const definition=${JSON.stringify(is3D ? { id: 'browser-3d', kind: '3d', tree: { materials: { blue: { type: 'unlit', albedoColor: [0.15, 0.65, 0.95, 1] } }, root: { name: 'Root', children: [{ name: 'Body', mesh: { type: 'box' }, material: 'blue', localRotationEuler: [0, 20, 0] }] } }, states: { idle: {}, turned: { Body: { localRotationEuler: [0, 65, 0] } } } } : { id: 'browser-2d', asset: 'panel.lh', states: { idle: {}, turned: { Body: { x: 220 } } } })};
 const panel={_$ver:1,_$id:'panel',_$type:'Sprite',name:'Root',width:640,height:480,_$child:[{_$id:'body',_$type:'Sprite',name:'Body',x:160,y:140,width:240,height:200,_gcmds:[{_$type:'DrawRectCmd',x:0,y:0,width:240,height:200,fillColor:'#26a6f2',lineColor:'#b6e8ff',lineWidth:3,percent:false}]}]};
 const provider={name:'inline-neutral',async load(asset,options){if(options?.signal?.aborted)throw new DOMException('Cancelled','AbortError');if(asset!=='panel.lh')throw Error('Unknown logical asset');return {id:asset,bytes:new TextEncoder().encode(JSON.stringify(panel))};},dispose(){}};
 let context,library,instance,ready=false,error,disposed=false,state=params.get('state')||'idle';
@@ -34,7 +34,7 @@ async function main(){
  context=scope.own(await ZhudaEngine.boot({renderer:ZhudaBundle.renderer,container:view,width,height,dprCap:dpr,features:[...ZhudaBundle.features],preserveDrawingBuffer:true}),value=>value.dispose());
  scope.own(provider,value=>value.dispose());library=scope.own(new ZhudaPrefabLibrary({provider,definitions:[definition],share3DResources:true}),value=>value.dispose());
  let parent=context.rootScene;
- ${is3D?"parent=Zhuda3D.createScene3D(context.rootScene,{ambientColor:[.4,.4,.4,1]});Zhuda3D.createCamera(parent,{position:[0,2,6],rotationEuler:[-15,0,0],clearColor:[.08,.12,.18,1]});Zhuda3D.createDirectionalLight(parent,{rotationEuler:[-35,-30,0],intensity:1});":''}
+ ${is3D ? 'parent=Zhuda3D.createScene3D(context.rootScene,{ambientColor:[.4,.4,.4,1]});Zhuda3D.createCamera(parent,{position:[0,2,6],rotationEuler:[-15,0,0],clearColor:[.08,.12,.18,1]});Zhuda3D.createDirectionalLight(parent,{rotationEuler:[-35,-30,0],intensity:1});' : ''}
  instance=await library.instantiate(id,{parent,state,signal:cancel.signal});
  if(selection.node){const target=instance.find(selection.node);const keep=new Set();for(let p=target;p;p=p.parent)keep.add(p);const walk=node=>{for(let i=0;i<node.numChildren;i++){const child=node.getChildAt(i);if(!keep.has(child)&&node!==target)child[instance.provenance.kind==='3d'?'active':'visible']=false;else walk(child);}};walk(instance.root);}
  context.runtime.start(()=>{});await document.fonts.ready;ZhudaEngine.flushRenderFrames(3);

@@ -13,7 +13,7 @@ import type {
   UnityAnimatorControllerSpec,
   UnityAnimatorState,
   UnityMigrationReport,
-  UnitySceneDescriptor
+  UnitySceneDescriptor,
 } from '../types/index.ts';
 
 export const UNITY_CYBER_SHRINE_SCENE: UnitySceneDescriptor = {
@@ -28,7 +28,7 @@ export const UNITY_CYBER_SHRINE_SCENE: UnitySceneDescriptor = {
       unityType: 'Camera',
       positionLH: [0, 8.5, -11.5],
       rotationEulerLH: [32, 0, 0],
-      scale: [1, 1, 1]
+      scale: [1, 1, 1],
     },
     {
       guid: 'u-light-002',
@@ -36,7 +36,7 @@ export const UNITY_CYBER_SHRINE_SCENE: UnitySceneDescriptor = {
       unityType: 'DirectionalLight',
       positionLH: [4.2, 12.0, -6.0],
       rotationEulerLH: [50, -30, 0],
-      scale: [1, 1, 1]
+      scale: [1, 1, 1],
     },
     {
       guid: 'u-altar-003',
@@ -50,8 +50,8 @@ export const UNITY_CYBER_SHRINE_SCENE: UnitySceneDescriptor = {
         shader: 'Universal Render Pipeline/Lit',
         albedoColor: [0.16, 0.24, 0.38, 1.0],
         metallic: 0.65,
-        smoothness: 0.78
-      }
+        smoothness: 0.78,
+      },
     },
     {
       guid: 'u-crystal-004',
@@ -66,7 +66,7 @@ export const UNITY_CYBER_SHRINE_SCENE: UnitySceneDescriptor = {
         albedoColor: [0.22, 0.74, 0.97, 1.0],
         metallic: 0.85,
         smoothness: 0.92,
-        emissionHex: '#38bdf8'
+        emissionHex: '#38bdf8',
       },
       animatorController: {
         controllerName: 'CrystalGuardian.controller',
@@ -74,7 +74,7 @@ export const UNITY_CYBER_SHRINE_SCENE: UnitySceneDescriptor = {
         parameters: [
           { name: 'Speed', type: 'float', defaultValue: 0.0 },
           { name: 'Overcharge', type: 'bool', defaultValue: false },
-          { name: 'BurstTrigger', type: 'trigger', defaultValue: false }
+          { name: 'BurstTrigger', type: 'trigger', defaultValue: false },
         ],
         states: [
           {
@@ -85,7 +85,7 @@ export const UNITY_CYBER_SHRINE_SCENE: UnitySceneDescriptor = {
             spineAnimationName: 'idle',
             scalePulseAmplitude: 0.04,
             rotationSpeedDeg: 35,
-            tintHex: '#38bdf8'
+            tintHex: '#38bdf8',
           },
           {
             name: 'Charge',
@@ -95,7 +95,7 @@ export const UNITY_CYBER_SHRINE_SCENE: UnitySceneDescriptor = {
             spineAnimationName: 'thinking',
             scalePulseAmplitude: 0.14,
             rotationSpeedDeg: 140,
-            tintHex: '#fbbf24'
+            tintHex: '#fbbf24',
           },
           {
             name: 'Burst',
@@ -105,8 +105,8 @@ export const UNITY_CYBER_SHRINE_SCENE: UnitySceneDescriptor = {
             spineAnimationName: 'cheer',
             scalePulseAmplitude: 0.28,
             rotationSpeedDeg: 320,
-            tintHex: '#4ade80'
-          }
+            tintHex: '#4ade80',
+          },
         ],
         transitions: [
           {
@@ -114,24 +114,24 @@ export const UNITY_CYBER_SHRINE_SCENE: UnitySceneDescriptor = {
             toState: 'Charge',
             durationSec: 0.2,
             hasExitTime: false,
-            conditions: [{ parameter: 'Speed', mode: 'Greater', threshold: 0.5 }]
+            conditions: [{ parameter: 'Speed', mode: 'Greater', threshold: 0.5 }],
           },
           {
             fromState: 'Charge',
             toState: 'Burst',
             durationSec: 0.15,
             hasExitTime: false,
-            conditions: [{ parameter: 'Overcharge', mode: 'If' }]
+            conditions: [{ parameter: 'Overcharge', mode: 'If' }],
           },
           {
             fromState: 'Burst',
             toState: 'Idle',
             durationSec: 0.25,
             hasExitTime: true,
-            conditions: [{ parameter: 'Speed', mode: 'Less', threshold: 0.1 }]
-          }
-        ]
-      }
+            conditions: [{ parameter: 'Speed', mode: 'Less', threshold: 0.1 }],
+          },
+        ],
+      },
     },
     {
       guid: 'u-spine42-005',
@@ -147,10 +147,10 @@ export const UNITY_CYBER_SHRINE_SCENE: UnitySceneDescriptor = {
         defaultAnimation: 'idle',
         physicsConstraintsCount: 2,
         stiffness: 95.0,
-        damping: 0.88
-      }
-    }
-  ]
+        damping: 0.88,
+      },
+    },
+  ],
 };
 
 /**
@@ -173,9 +173,7 @@ export class UnityAnimatorStateMachine {
   }
 
   public getCurrentState(): UnityAnimatorState {
-    return (
-      this.spec.states.find((s) => s.name === this.currentStateName) || this.spec.states[0]
-    );
+    return this.spec.states.find((s) => s.name === this.currentStateName) || this.spec.states[0];
   }
 
   public getStateHistory(): string[] {
@@ -242,7 +240,7 @@ export class UnityBridgePipeline {
     return [
       Number((Object.is(nx, -0) ? 0 : nx).toFixed(3)),
       Number(posLH[1].toFixed(3)),
-      Number(posLH[2].toFixed(3))
+      Number(posLH[2].toFixed(3)),
     ];
   }
 
@@ -255,7 +253,7 @@ export class UnityBridgePipeline {
     return [
       Number(eulerLH[0].toFixed(3)),
       Number((Object.is(nry, -0) ? 0 : nry).toFixed(3)),
-      Number((Object.is(nrz, -0) ? 0 : nrz).toFixed(3))
+      Number((Object.is(nrz, -0) ? 0 : nrz).toFixed(3)),
     ];
   }
 
@@ -280,10 +278,12 @@ export class UnityBridgePipeline {
    * 將 Unity 場景中的「CrystalGuardian (含 AnimatorController + Spine 4.2 聯動)」轉為 LayaAir 靜態預製體 (.lh)
    */
   public static buildUnityCrystalGuardianPrefab(
-    scene: UnitySceneDescriptor = UNITY_CYBER_SHRINE_SCENE
+    scene: UnitySceneDescriptor = UNITY_CYBER_SHRINE_SCENE,
   ): LayaHierarchyNodeData {
-    const crystalNode = scene.nodes.find((n) => n.name === 'UnityCrystalGuardian') || scene.nodes[3];
-    const spineNode = scene.nodes.find((n) => n.unityType === 'Spine42SkeletonAnimation') || scene.nodes[4];
+    const crystalNode =
+      scene.nodes.find((n) => n.name === 'UnityCrystalGuardian') || scene.nodes[3];
+    const spineNode =
+      scene.nodes.find((n) => n.unityType === 'Spine42SkeletonAnimation') || scene.nodes[4];
     const animSpec = crystalNode.animatorController!;
 
     const targetSpec: PixelCalibrationSpec = {
@@ -293,10 +293,10 @@ export class UnityBridgePipeline {
       targetColors: {
         primaryFill: '#111c2d',
         borderStroke: '#38bdf8',
-        accentOrText: '#4ade80'
+        accentOrText: '#4ade80',
       },
       tolerancePx: 0,
-      toleranceDeltaE: 1.5
+      toleranceDeltaE: 1.5,
     };
 
     const posRH = this.convertPositionLHtoRH(crystalNode.positionLH);
@@ -326,7 +326,7 @@ export class UnityBridgePipeline {
           fillColor: '#111c2d',
           lineColor: '#38bdf8',
           lineWidth: 2,
-          percent: false
+          percent: false,
         },
         // 祭壇能量外環
         {
@@ -337,7 +337,7 @@ export class UnityBridgePipeline {
           fillColor: '#0a1220',
           lineColor: '#0284c7',
           lineWidth: 2,
-          percent: false
+          percent: false,
         },
         // Unity 移植之六角能量水晶主體
         {
@@ -347,7 +347,7 @@ export class UnityBridgePipeline {
           points: [0, -34, 26, -12, 20, 26, 0, 36, -20, 26, -26, -12],
           fillColor: '#38bdf8',
           lineColor: '#e0f2fe',
-          lineWidth: 2
+          lineWidth: 2,
         },
         // Spine 4.2 聯動守護印記核心
         {
@@ -358,8 +358,8 @@ export class UnityBridgePipeline {
           fillColor: '#4ade80',
           lineColor: '#ffffff',
           lineWidth: 1.5,
-          percent: false
-        }
+          percent: false,
+        },
       ],
       _$comp: [
         {
@@ -372,8 +372,8 @@ export class UnityBridgePipeline {
           spine42RigFile: spineNode.spine42Asset?.skeletonFile || 'ZhudaGuardianPig_v4.2.skel',
           statesJson: JSON.stringify(animSpec.states),
           transitionsJson: JSON.stringify(animSpec.transitions),
-          parametersJson: JSON.stringify(animSpec.parameters)
-        }
+          parametersJson: JSON.stringify(animSpec.parameters),
+        },
       ],
       _$child: [
         {
@@ -388,7 +388,7 @@ export class UnityBridgePipeline {
           fontSize: 12,
           bold: true,
           color: '#4ade80',
-          align: 'center'
+          align: 'center',
         },
         {
           _$id: 'unity_animator_status',
@@ -401,16 +401,16 @@ export class UnityBridgePipeline {
           text: `Animator: ${animSpec.defaultState} (RH: ${posRH.join(', ')})`,
           fontSize: 11,
           color: '#7df9ff',
-          align: 'center'
-        }
+          align: 'center',
+        },
       ],
       _zhudaMeta: {
         assetId: 'assets/prefabs/UnityCrystalGuardian.lh',
         category: 'unity-migrated',
         version: '3.4.2-zhuda-static-v1',
         designCanvas: { width: 220, height: 188, padding: 10 },
-        targetSpec
-      }
+        targetSpec,
+      },
     };
   }
 
@@ -418,14 +418,14 @@ export class UnityBridgePipeline {
    * 執行完整 Unity 場景 + AnimatorController + Spine 4.2 轉換與狀態機過渡驗測
    */
   public static runFullMigrationVerification(
-    scene: UnitySceneDescriptor = UNITY_CYBER_SHRINE_SCENE
+    scene: UnitySceneDescriptor = UNITY_CYBER_SHRINE_SCENE,
   ): UnityMigrationReport {
     const handednessConvertedNodes = scene.nodes.map((n) => ({
       name: n.name,
       unityPosLH: n.positionLH,
       layaPosRH: this.convertPositionLHtoRH(n.positionLH),
       unityEulerLH: n.rotationEulerLH,
-      layaEulerRH: this.convertEulerLHtoRH(n.rotationEulerLH)
+      layaEulerRH: this.convertEulerLHtoRH(n.rotationEulerLH),
     }));
 
     const mappedMaterials = scene.nodes
@@ -433,7 +433,7 @@ export class UnityBridgePipeline {
       .map((n) => ({
         nodeName: n.name,
         unityShader: n.material!.shader,
-        layaMaterialClass: this.mapUnityShaderToLayaMaterialClass(n.material!.shader)
+        layaMaterialClass: this.mapUnityShaderToLayaMaterialClass(n.material!.shader),
       }));
 
     const crystalNode = scene.nodes.find((n) => Boolean(n.animatorController))!;
@@ -449,8 +449,7 @@ export class UnityBridgePipeline {
     const trace = fsm.getStateHistory();
     const expectedTrace = ['Idle', 'Charge', 'Burst', 'Idle'];
     const transitionPassed =
-      trace.length === expectedTrace.length &&
-      trace.every((st, idx) => st === expectedTrace[idx]);
+      trace.length === expectedTrace.length && trace.every((st, idx) => st === expectedTrace[idx]);
 
     const spineNode = scene.nodes.find((n) => Boolean(n.spine42Asset))!;
     const spineAsset = spineNode.spine42Asset!;
@@ -473,14 +472,14 @@ export class UnityBridgePipeline {
         statesCount: animSpec.states.length,
         transitionsCount: animSpec.transitions.length,
         simulatedTransitionTrace: trace,
-        transitionPassed
+        transitionPassed,
       },
       spine42Verification: {
         skeletonFile: spineAsset.skeletonFile,
         physicsConstraintsMounted: spineAsset.physicsConstraintsCount,
-        compatibleWithRuntime42: true
+        compatibleWithRuntime42: true,
       },
-      passed
+      passed,
     };
   }
 }

@@ -1,5 +1,5 @@
-import { normalized, type Vec3 } from "../runtime3d/Math3D.ts";
-import type { QueryRay } from "../runtime3d/SceneQueries.ts";
+import { normalized, type Vec3 } from '../runtime3d/Math3D.ts';
+import type { QueryRay } from '../runtime3d/SceneQueries.ts';
 export interface HeightfieldSpec {
   schemaVersion: 1;
   dimension: 3;
@@ -19,37 +19,29 @@ export function validateHeightfield(spec: unknown): string[] {
   const s = spec as HeightfieldSpec,
     e: string[] = [];
   if (!s || s.schemaVersion !== 1 || s.dimension !== 3)
-    return ["Expected schemaVersion:1, dimension:3"];
+    return ['Expected schemaVersion:1, dimension:3'];
   if (
-    ![s.cellsX, s.cellsZ].every(
-      (n) => Number.isInteger(n) && n > 0 && n <= 2048,
-    ) ||
+    ![s.cellsX, s.cellsZ].every((n) => Number.isInteger(n) && n > 0 && n <= 2048) ||
     (s.cellsX + 1) * (s.cellsZ + 1) > 4194304
   )
-    e.push(
-      "Invalid heightfield dimensions (1..2048, at most 4194304 vertices)",
-    );
-  if (!Number.isFinite(s.cellSize) || s.cellSize <= 0)
-    e.push("cellSize must be positive");
+    e.push('Invalid heightfield dimensions (1..2048, at most 4194304 vertices)');
+  if (!Number.isFinite(s.cellSize) || s.cellSize <= 0) e.push('cellSize must be positive');
   if (
     s.origin &&
-    (!Array.isArray(s.origin) ||
-      s.origin.length !== 2 ||
-      !s.origin.every(Number.isFinite))
+    (!Array.isArray(s.origin) || s.origin.length !== 2 || !s.origin.every(Number.isFinite))
   )
-    e.push("Invalid origin");
+    e.push('Invalid origin');
   if (
     !Array.isArray(s.heights) ||
     s.heights.length !== (s.cellsX + 1) * (s.cellsZ + 1) ||
     s.heights.some((h) => !Number.isFinite(h) || Math.abs(h) > 1e6)
   )
-    e.push("Invalid finite height data");
+    e.push('Invalid finite height data');
   return e;
 }
 /** Integer hash-based smooth noise; no global random state. */
 export function terrainNoise(seed: number, x: number, z: number) {
-  if (![seed, x, z].every(Number.isFinite))
-    throw Error("Invalid noise coordinates");
+  if (![seed, x, z].every(Number.isFinite)) throw Error('Invalid noise coordinates');
   const hash = (a: number, b: number) => {
     let h = Math.imul(a ^ seed, 374761393) ^ Math.imul(b, 668265263);
     h = Math.imul(h ^ (h >>> 13), 1274126177);
@@ -74,14 +66,11 @@ export class ZhudaHeightfield {
   private listeners = new Set<(r: HeightRegion) => void>();
   constructor(spec: HeightfieldSpec) {
     const e = validateHeightfield(spec);
-    if (e.length) throw Error(e.join("; "));
+    if (e.length) throw Error(e.join('; '));
     this.cellsX = spec.cellsX;
     this.cellsZ = spec.cellsZ;
     this.cellSize = spec.cellSize;
-    this.origin = Object.freeze([...(spec.origin || [0, 0])]) as readonly [
-      number,
-      number,
-    ];
+    this.origin = Object.freeze([...(spec.origin || [0, 0])]) as readonly [number, number];
     this.heights = new Float32Array(spec.heights);
   }
   static generate(options: {
@@ -98,11 +87,9 @@ export class ZhudaHeightfield {
       !Number.isSafeInteger(count) ||
       count < 4 ||
       count > 4194304 ||
-      ![options.seed, options.amplitude ?? 4, options.frequency ?? 0.1].every(
-        Number.isFinite,
-      )
+      ![options.seed, options.amplitude ?? 4, options.frequency ?? 0.1].every(Number.isFinite)
     )
-      throw Error("Invalid generation bounds");
+      throw Error('Invalid generation bounds');
     const heights = Array.from(
       { length: count },
       (_, i) =>
@@ -128,7 +115,7 @@ export class ZhudaHeightfield {
       x > this.cellsX ||
       z > this.cellsZ
     )
-      throw Error("Vertex outside heightfield");
+      throw Error('Vertex outside heightfield');
     return z * (this.cellsX + 1) + x;
   }
   heightAtVertex(x: number, z: number) {
@@ -141,25 +128,15 @@ export class ZhudaHeightfield {
       az = Math.max(0, z - 1),
       bz = Math.min(this.cellsZ, z + 1);
     return normalized({
-      x:
-        -(this.heightAtVertex(bx, z) - this.heightAtVertex(ax, z)) /
-        ((bx - ax) * this.cellSize),
+      x: -(this.heightAtVertex(bx, z) - this.heightAtVertex(ax, z)) / ((bx - ax) * this.cellSize),
       y: 1,
-      z:
-        -(this.heightAtVertex(x, bz) - this.heightAtVertex(x, az)) /
-        ((bz - az) * this.cellSize),
+      z: -(this.heightAtVertex(x, bz) - this.heightAtVertex(x, az)) / ((bz - az) * this.cellSize),
     });
   }
   setHeight(x: number, z: number, height: number) {
     this.applyPatch(x, z, 1, 1, [height]);
   }
-  applyPatch(
-    x: number,
-    z: number,
-    width: number,
-    depth: number,
-    values: ArrayLike<number>,
-  ) {
+  applyPatch(x: number, z: number, width: number, depth: number, values: ArrayLike<number>) {
     if (
       ![x, z, width, depth].every(Number.isInteger) ||
       width < 1 ||
@@ -167,18 +144,17 @@ export class ZhudaHeightfield {
       values.length !== width * depth ||
       Array.from(values).some((h) => !Number.isFinite(h) || Math.abs(h) > 1e6)
     )
-      throw Error("Invalid height patch");
+      throw Error('Invalid height patch');
     this.index(x, z);
     this.index(x + width - 1, z + depth - 1);
     for (let j = 0; j < depth; j++)
       for (let i = 0; i < width; i++)
-        this.heights[(z + j) * (this.cellsX + 1) + x + i] =
-          values[j * width + i];
+        this.heights[(z + j) * (this.cellsX + 1) + x + i] = values[j * width + i];
     this.emit({ minX: x, minZ: z, maxX: x + width - 1, maxZ: z + depth - 1 });
   }
   brush(x: number, z: number, radius: number, delta: number) {
     if (![x, z, radius, delta].every(Number.isFinite) || radius <= 0)
-      throw Error("Invalid height brush");
+      throw Error('Invalid height brush');
     const cx = (x - this.origin[0]) / this.cellSize,
       cz = (z - this.origin[1]) / this.cellSize,
       r = radius / this.cellSize;
@@ -193,7 +169,7 @@ export class ZhudaHeightfield {
         if (d > 1) continue;
         const a = 1 - d,
           h = this.heightAtVertex(i, j) + delta * a * a * (3 - 2 * a);
-        if (Math.abs(h) > 1e6) throw Error("Brush exceeds height bound");
+        if (Math.abs(h) > 1e6) throw Error('Brush exceeds height bound');
         patch.push({ i: j * (this.cellsX + 1) + i, h });
       }
     if (!patch.length) return;
@@ -209,8 +185,8 @@ export class ZhudaHeightfield {
   }
   /** Exact same diagonal and barycentric interpolation as rendered triangles. */
   sample(x: number, z: number, stride: 1 | 2 | 4 = 1) {
-    if (![1, 2, 4].includes(stride)) throw Error("Invalid terrain stride");
-    if (![x, z].every(Number.isFinite)) throw Error("Invalid sample");
+    if (![1, 2, 4].includes(stride)) throw Error('Invalid terrain stride');
+    if (![x, z].every(Number.isFinite)) throw Error('Invalid sample');
     const gx = (x - this.origin[0]) / this.cellSize,
       gz = (z - this.origin[1]) / this.cellSize;
     if (gx < 0 || gz < 0 || gx > this.cellsX || gz > this.cellsZ) return null;
@@ -230,10 +206,7 @@ export class ZhudaHeightfield {
       b = this.heightAtVertex(bx, iz),
       c = this.heightAtVertex(ix, bz),
       d = this.heightAtVertex(bx, bz);
-    const height =
-      u >= v
-        ? a * (1 - u) + b * (u - v) + d * v
-        : a * (1 - v) + c * (v - u) + d * u;
+    const height = u >= v ? a * (1 - u) + b * (u - v) + d * v : a * (1 - v) + c * (v - u) + d * u;
     const normal =
       u >= v
         ? normalized({
@@ -255,15 +228,13 @@ export class ZhudaHeightfield {
     stride: 1 | 2 | 4 = 1,
     acceptCell?: (x: number, z: number) => boolean,
   ) {
-    if (![1, 2, 4].includes(stride)) throw Error("Invalid terrain stride");
+    if (![1, 2, 4].includes(stride)) throw Error('Invalid terrain stride');
     if (
       !(maxDistance >= 0) ||
-      ![...Object.values(ray.origin), ...Object.values(ray.direction)].every(
-        Number.isFinite,
-      ) ||
+      ![...Object.values(ray.origin), ...Object.values(ray.direction)].every(Number.isFinite) ||
       Math.hypot(...Object.values(ray.direction)) < 1e-12
     )
-      throw Error("Invalid terrain ray");
+      throw Error('Invalid terrain ray');
     const o = ray.origin,
       d = ray.direction,
       minX = this.origin[0],
@@ -273,8 +244,8 @@ export class ZhudaHeightfield {
     let near = 0,
       far = maxDistance;
     for (const [key, min, max] of [
-      ["x", minX, maxX],
-      ["z", minZ, maxZ],
+      ['x', minX, maxX],
+      ['z', minZ, maxZ],
     ] as const) {
       if (Math.abs(d[key]) < 1e-12) {
         if (o[key] < min || o[key] > max) return null;
@@ -290,28 +261,18 @@ export class ZhudaHeightfield {
     const epsilon = 1e-7 * this.cellSize;
     let x = Math.min(
         this.cellsX - 1,
-        Math.max(
-          0,
-          Math.floor((o.x + d.x * (t + epsilon) - minX) / this.cellSize),
-        ),
+        Math.max(0, Math.floor((o.x + d.x * (t + epsilon) - minX) / this.cellSize)),
       ),
       z = Math.min(
         this.cellsZ - 1,
-        Math.max(
-          0,
-          Math.floor((o.z + d.z * (t + epsilon) - minZ) / this.cellSize),
-        ),
+        Math.max(0, Math.floor((o.z + d.z * (t + epsilon) - minZ) / this.cellSize)),
       );
     const stepX = Math.sign(d.x),
       stepZ = Math.sign(d.z),
       dtX = stepX ? this.cellSize / Math.abs(d.x) : Infinity,
       dtZ = stepZ ? this.cellSize / Math.abs(d.z) : Infinity;
-    let nextX = stepX
-        ? (minX + (x + (stepX > 0 ? 1 : 0)) * this.cellSize - o.x) / d.x
-        : Infinity,
-      nextZ = stepZ
-        ? (minZ + (z + (stepZ > 0 ? 1 : 0)) * this.cellSize - o.z) / d.z
-        : Infinity;
+    let nextX = stepX ? (minX + (x + (stepX > 0 ? 1 : 0)) * this.cellSize - o.x) / d.x : Infinity,
+      nextZ = stepZ ? (minZ + (z + (stepZ > 0 ? 1 : 0)) * this.cellSize - o.z) / d.z : Infinity;
     for (
       let n = 0;
       n < this.cellsX + this.cellsZ + 4 &&

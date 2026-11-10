@@ -4,7 +4,7 @@ export class ZhudaPrefab {
   public static instantiate(
     lhData: LayaHierarchyNodeData,
     parent?: Laya.Node,
-    positionOverride?: { x: number; y: number }
+    positionOverride?: { x: number; y: number },
   ): Laya.Sprite {
     const clonedData: LayaHierarchyNodeData = JSON.parse(JSON.stringify(lhData));
     const g = globalThis as unknown as {
@@ -82,7 +82,8 @@ export class ZhudaPrefab {
       if (typeof data.underline === 'boolean') node.underline = data.underline;
       if (data.underlineColor) node.underlineColor = data.underlineColor;
       if (typeof data.strikethrough === 'boolean') node.strikethrough = data.strikethrough;
-      if (data.padding) node.padding = data._$type === 'Label' && L.Label ? data.padding.join(",") : data.padding;
+      if (data.padding)
+        node.padding = data._$type === 'Label' && L.Label ? data.padding.join(',') : data.padding;
     } else if (data._$type === 'Scene' && L.Scene) {
       node = new L.Scene();
     } else if (data._$type === 'Image' && L.Image) {
@@ -195,7 +196,7 @@ export class ZhudaPrefab {
             cmd.rb ?? 6,
             cmd.fillColor ?? null,
             cmd.lineColor ?? null,
-            cmd.lineWidth ?? 1
+            cmd.lineWidth ?? 1,
           );
           break;
         case 'DrawRectCmd':
@@ -206,7 +207,7 @@ export class ZhudaPrefab {
             cmd.height ?? 40,
             cmd.fillColor ?? null,
             cmd.lineColor ?? null,
-            cmd.lineWidth ?? 1
+            cmd.lineWidth ?? 1,
           );
           break;
         case 'DrawCircleCmd':
@@ -216,7 +217,7 @@ export class ZhudaPrefab {
             cmd.radius ?? 10,
             cmd.fillColor ?? null,
             cmd.lineColor ?? null,
-            cmd.lineWidth ?? 1
+            cmd.lineWidth ?? 1,
           );
           break;
         case 'DrawEllipseCmd':
@@ -228,7 +229,7 @@ export class ZhudaPrefab {
               cmd.height ?? 10,
               cmd.fillColor ?? null,
               cmd.lineColor ?? null,
-              cmd.lineWidth ?? 1
+              cmd.lineWidth ?? 1,
             );
           } else {
             graphics.drawCircle(
@@ -237,7 +238,7 @@ export class ZhudaPrefab {
               cmd.width ?? 15,
               cmd.fillColor ?? null,
               cmd.lineColor ?? null,
-              cmd.lineWidth ?? 1
+              cmd.lineWidth ?? 1,
             );
           }
           break;
@@ -248,7 +249,7 @@ export class ZhudaPrefab {
             cmd.toX ?? 10,
             cmd.toY ?? 10,
             cmd.lineColor ?? '#ffffff',
-            cmd.lineWidth ?? 1
+            cmd.lineWidth ?? 1,
           );
           break;
         case 'DrawPolyCmd':
@@ -259,7 +260,7 @@ export class ZhudaPrefab {
               cmd.points,
               cmd.fillColor ?? null,
               cmd.lineColor ?? null,
-              cmd.lineWidth ?? 1
+              cmd.lineWidth ?? 1,
             );
           }
           break;
@@ -272,7 +273,7 @@ export class ZhudaPrefab {
             cmd.endAngle ?? 90,
             cmd.fillColor ?? null,
             cmd.lineColor ?? null,
-            cmd.lineWidth ?? 1
+            cmd.lineWidth ?? 1,
           );
           break;
         case 'DrawTextureCmd': {
@@ -280,7 +281,9 @@ export class ZhudaPrefab {
           const runtime = (globalThis as unknown as { Laya?: any }).Laya;
           const texture = textureId && runtime?.loader?.getRes?.(textureId);
           if (!texture) {
-            throw Error(`DrawTextureCmd texture is not loaded: ${textureId || '<missing textureId>'}`);
+            throw Error(
+              `DrawTextureCmd texture is not loaded: ${textureId || '<missing textureId>'}`,
+            );
           }
           if (typeof graphics.drawTexture !== 'function') {
             throw Error('DrawTextureCmd requires Graphics.drawTexture');
@@ -299,7 +302,7 @@ export class ZhudaPrefab {
             cmd.alpha,
             cmd.color ?? null,
             cmd.blendMode ?? null,
-            cmd.uv
+            cmd.uv,
           );
           break;
         }

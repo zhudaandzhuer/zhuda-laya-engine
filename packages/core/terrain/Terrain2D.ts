@@ -24,44 +24,29 @@ export function validateTerrain2D(spec: unknown): string[] {
   const s = spec as Terrain2DSpec,
     e: string[] = [];
   if (!s || s.schemaVersion !== 1 || s.dimension !== 2)
-    return ["Expected schemaVersion:1, dimension:2"];
+    return ['Expected schemaVersion:1, dimension:2'];
   if (
-    ![s.width, s.height].every(
-      (n) => Number.isInteger(n) && n > 0 && n <= 4096,
-    ) ||
+    ![s.width, s.height].every((n) => Number.isInteger(n) && n > 0 && n <= 4096) ||
     s.width * s.height > 1048576
   )
-    e.push("width/height must be 1..4096 and at most 1048576 cells");
-  if (!Number.isFinite(s.tileSize) || s.tileSize <= 0)
-    e.push("tileSize must be positive");
+    e.push('width/height must be 1..4096 and at most 1048576 cells');
+  if (!Number.isFinite(s.tileSize) || s.tileSize <= 0) e.push('tileSize must be positive');
   if (
     s.origin &&
-    (!Array.isArray(s.origin) ||
-      s.origin.length !== 2 ||
-      !s.origin.every(Number.isFinite))
+    (!Array.isArray(s.origin) || s.origin.length !== 2 || !s.origin.every(Number.isFinite))
   )
-    e.push("Invalid origin");
+    e.push('Invalid origin');
   const ids = new Set<number>([0]);
-  if (!Array.isArray(s.palette) || s.palette.length > 65535)
-    e.push("Invalid palette");
+  if (!Array.isArray(s.palette) || s.palette.length > 65535) e.push('Invalid palette');
   else
     for (const t of s.palette) {
-      if (
-        !t ||
-        !Number.isInteger(t.id) ||
-        t.id < 1 ||
-        t.id > 65535 ||
-        ids.has(t.id)
-      ) {
-        e.push("Palette IDs must be unique integers 1..65535");
+      if (!t || !Number.isInteger(t.id) || t.id < 1 || t.id > 65535 || ids.has(t.id)) {
+        e.push('Palette IDs must be unique integers 1..65535');
         continue;
       }
       ids.add(t.id);
-      if (
-        t.color !== undefined &&
-        !/^#[0-9a-f]{6}([0-9a-f]{2})?$/i.test(t.color)
-      )
-        e.push("Tile color must be #RRGGBB or #RRGGBBAA");
+      if (t.color !== undefined && !/^#[0-9a-f]{6}([0-9a-f]{2})?$/i.test(t.color))
+        e.push('Tile color must be #RRGGBB or #RRGGBBAA');
       if (
         t.uv &&
         (!Array.isArray(t.uv) ||
@@ -70,7 +55,7 @@ export function validateTerrain2D(spec: unknown): string[] {
           t.uv[0] >= t.uv[2] ||
           t.uv[1] >= t.uv[3])
       )
-        e.push("Invalid normalized atlas rectangle");
+        e.push('Invalid normalized atlas rectangle');
     }
   if (
     !Array.isArray(s.layers) ||
@@ -78,12 +63,12 @@ export function validateTerrain2D(spec: unknown): string[] {
     s.layers.length > 8 ||
     s.layers.length * s.width * s.height > 2097152
   )
-    e.push("Expected 1..8 layers and at most 2097152 total cells");
+    e.push('Expected 1..8 layers and at most 2097152 total cells');
   else {
     const names = new Set<string>();
     for (const l of s.layers) {
-      if (!l || typeof l.id !== "string" || !l.id || names.has(l.id)) {
-        e.push("Layer IDs must be unique nonempty strings");
+      if (!l || typeof l.id !== 'string' || !l.id || names.has(l.id)) {
+        e.push('Layer IDs must be unique nonempty strings');
         continue;
       }
       names.add(l.id);
@@ -108,27 +93,21 @@ export class ZhudaTerrain2D {
   private listeners = new Set<(r: TerrainRect) => void>();
   constructor(spec: Terrain2DSpec) {
     const errors = validateTerrain2D(spec);
-    if (errors.length) throw Error(errors.join("; "));
+    if (errors.length) throw Error(errors.join('; '));
     this.width = spec.width;
     this.height = spec.height;
     this.tileSize = spec.tileSize;
-    this.origin = Object.freeze([...(spec.origin || [0, 0])]) as readonly [
-      number,
-      number,
-    ];
+    this.origin = Object.freeze([...(spec.origin || [0, 0])]) as readonly [number, number];
     this.palette = new Map(
       spec.palette.map((t) => [
         t.id,
         Object.freeze({
           ...t,
-          uv: t.uv
-            ? (Object.freeze([...t.uv]) as unknown as TerrainTile2D["uv"])
-            : undefined,
+          uv: t.uv ? (Object.freeze([...t.uv]) as unknown as TerrainTile2D['uv']) : undefined,
         }),
       ]),
     );
-    for (const layer of spec.layers)
-      this.layers.set(layer.id, new Uint16Array(layer.tiles));
+    for (const layer of spec.layers) this.layers.set(layer.id, new Uint16Array(layer.tiles));
   }
   get layerIds() {
     return [...this.layers.keys()];
@@ -142,12 +121,12 @@ export class ZhudaTerrain2D {
       x >= this.width ||
       y >= this.height
     )
-      throw Error("Tile outside terrain");
+      throw Error('Tile outside terrain');
     return y * this.width + x;
   }
   private layer(id: string) {
     const l = this.layers.get(id);
-    if (!l) throw Error("Unknown layer " + id);
+    if (!l) throw Error('Unknown layer ' + id);
     return l;
   }
   getTile(layer: string, x: number, y: number) {
@@ -158,13 +137,9 @@ export class ZhudaTerrain2D {
   }
   paintRect(layer: string, r: TerrainRect, id: number) {
     const l = this.layer(layer);
-    if (id !== 0 && !this.palette.has(id)) throw Error("Unknown tile ID");
-    if (
-      ![r.x, r.y, r.width, r.height].every(Number.isInteger) ||
-      r.width < 1 ||
-      r.height < 1
-    )
-      throw Error("Invalid tile rectangle");
+    if (id !== 0 && !this.palette.has(id)) throw Error('Unknown tile ID');
+    if (![r.x, r.y, r.width, r.height].every(Number.isInteger) || r.width < 1 || r.height < 1)
+      throw Error('Invalid tile rectangle');
     this.index(r.x, r.y);
     this.index(r.x + r.width - 1, r.y + r.height - 1);
     for (let y = r.y; y < r.y + r.height; y++)
@@ -172,12 +147,10 @@ export class ZhudaTerrain2D {
     for (const f of this.listeners) f({ ...r });
   }
   localToTile(x: number, y: number) {
-    if (![x, y].every(Number.isFinite)) throw Error("Invalid terrain point");
+    if (![x, y].every(Number.isFinite)) throw Error('Invalid terrain point');
     const col = Math.floor((x - this.origin[0]) / this.tileSize),
       row = Math.floor((y - this.origin[1]) / this.tileSize);
-    return col >= 0 && row >= 0 && col < this.width && row < this.height
-      ? { col, row }
-      : null;
+    return col >= 0 && row >= 0 && col < this.width && row < this.height ? { col, row } : null;
   }
   tileToLocal(col: number, row: number) {
     this.index(col, row);
@@ -188,9 +161,7 @@ export class ZhudaTerrain2D {
   }
   isBlocked(col: number, row: number) {
     const i = this.index(col, row);
-    return [...this.layers.values()].some(
-      (l) => this.palette.get(l[i])?.blocked === true,
-    );
+    return [...this.layers.values()].some((l) => this.palette.get(l[i])?.blocked === true);
   }
   onChange(f: (r: TerrainRect) => void) {
     this.listeners.add(f);
@@ -218,10 +189,7 @@ export class ZhudaTerrain2D {
 /** Visible chunks own graphics commands; atlas and shader material are borrowed. */
 export class ZhudaTerrain2DRenderer {
   readonly root: any;
-  private chunks = new Map<
-    string,
-    { node: any; x: number; y: number; dirty: boolean }
-  >();
+  private chunks = new Map<string, { node: any; x: number; y: number; dirty: boolean }>();
   private unsubscribe: () => void;
   private disposed = false;
   readonly terrain: ZhudaTerrain2D;
@@ -238,15 +206,15 @@ export class ZhudaTerrain2DRenderer {
     this.terrain = terrain;
     this.options = options;
     const c = options.chunkCells ?? 16;
-    if (!Number.isInteger(c) || c < 1 || c > 128)
-      throw Error("chunkCells must be 1..128");
+    if (!Number.isInteger(c) || c < 1 || c > 128) throw Error('chunkCells must be 1..128');
     if (
       !Number.isInteger(options.maxResidentChunks ?? 128) ||
       (options.maxResidentChunks ?? 128) < 1
     )
-      throw Error("Invalid chunk budget");
-    if([...terrain.palette.values()].some(tile=>tile.uv)&&!options.atlas)throw Error('Atlas texture required for UV tiles');
-    if(options.atlas?.destroyed)throw Error('Atlas texture is destroyed');
+      throw Error('Invalid chunk budget');
+    if ([...terrain.palette.values()].some((tile) => tile.uv) && !options.atlas)
+      throw Error('Atlas texture required for UV tiles');
+    if (options.atlas?.destroyed) throw Error('Atlas texture is destroyed');
     const l = (globalThis as any).Laya;
     this.root = new l.Sprite();
     options.parent?.addChild(this.root);
@@ -269,13 +237,9 @@ export class ZhudaTerrain2DRenderer {
     maxResidentChunks?: number;
   };
   setView(r: TerrainRect) {
-    if (this.disposed) throw Error("Disposed terrain renderer");
-    if (
-      !Object.values(r).every(Number.isFinite) ||
-      r.width <= 0 ||
-      r.height <= 0
-    )
-      throw Error("Invalid local view");
+    if (this.disposed) throw Error('Disposed terrain renderer');
+    if (!Object.values(r).every(Number.isFinite) || r.width <= 0 || r.height <= 0)
+      throw Error('Invalid local view');
     const t = this.terrain,
       c = this.options.chunkCells ?? 16,
       size = t.tileSize * c;
@@ -293,10 +257,9 @@ export class ZhudaTerrain2DRenderer {
       Math.max(0, x1 - x0 + 1) * Math.max(0, y1 - y0 + 1) >
       (this.options.maxResidentChunks ?? 128)
     )
-      throw Error("Visible terrain exceeds chunk budget");
+      throw Error('Visible terrain exceeds chunk budget');
     const needed = new Set<string>();
-    for (let y = y0; y <= y1; y++)
-      for (let x = x0; x <= x1; x++) needed.add(x + ":" + y);
+    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) needed.add(x + ':' + y);
     for (const [key, r] of this.chunks)
       if (!needed.has(key)) {
         r.node.destroy(true);
@@ -305,7 +268,7 @@ export class ZhudaTerrain2DRenderer {
     const l = (globalThis as any).Laya;
     for (const key of needed)
       if (!this.chunks.has(key)) {
-        const [x, y] = key.split(":").map(Number),
+        const [x, y] = key.split(':').map(Number),
           node = new l.Sprite();
         node.pos(t.origin[0] + x * size, t.origin[1] + y * size);
         node.graphics.material = this.options.material || null;
@@ -315,7 +278,7 @@ export class ZhudaTerrain2DRenderer {
     this.flush();
   }
   flush() {
-    if (this.disposed) throw Error("Disposed terrain renderer");
+    if (this.disposed) throw Error('Disposed terrain renderer');
     const t = this.terrain,
       c = this.options.chunkCells ?? 16;
     for (const chunk of this.chunks.values()) {
@@ -323,16 +286,8 @@ export class ZhudaTerrain2DRenderer {
       const g = chunk.node.graphics;
       g.clear();
       for (const layer of t.layerIds)
-        for (
-          let y = chunk.y * c;
-          y < Math.min(t.height, (chunk.y + 1) * c);
-          y++
-        )
-          for (
-            let x = chunk.x * c;
-            x < Math.min(t.width, (chunk.x + 1) * c);
-            x++
-          ) {
+        for (let y = chunk.y * c; y < Math.min(t.height, (chunk.y + 1) * c); y++)
+          for (let x = chunk.x * c; x < Math.min(t.width, (chunk.x + 1) * c); x++) {
             const tile = t.palette.get(t.getTile(layer, x, y));
             if (!tile) continue;
             const px = (x - chunk.x * c) * t.tileSize,
@@ -347,18 +302,11 @@ export class ZhudaTerrain2DRenderer {
                 t.tileSize,
                 null,
                 1,
-                tile.color || "#ffffff",
+                tile.color || '#ffffff',
                 null,
                 [u0, v0, u1, v0, u1, v1, u0, v1],
               );
-            } else
-              g.drawRect(
-                px,
-                py,
-                t.tileSize,
-                t.tileSize,
-                tile.color || "#ffffff",
-              );
+            } else g.drawRect(px, py, t.tileSize, t.tileSize, tile.color || '#ffffff');
           }
       chunk.dirty = false;
     }

@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { resolvePreviewResourcePolicy, shouldReleaseHiddenPreview } from '../examples/slot-symbol-prefab/src/preview-resource-policy.ts';
+import {
+  resolvePreviewResourcePolicy,
+  shouldReleaseHiddenPreview,
+} from '../examples/slot-symbol-prefab/src/preview-resource-policy.ts';
 
 test('slot preview releases hidden large modes by default and can retain them explicitly', () => {
   assert.equal(resolvePreviewResourcePolicy(''), 'release');

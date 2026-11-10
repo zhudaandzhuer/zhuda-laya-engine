@@ -13,7 +13,10 @@ class FakeEventTarget {
   }
   removeEventListener(type, listener) {
     const list = this.listeners.get(type) ?? [];
-    this.listeners.set(type, list.filter((candidate) => candidate !== listener));
+    this.listeners.set(
+      type,
+      list.filter((candidate) => candidate !== listener),
+    );
   }
   dispatch(type, event = {}) {
     for (const listener of [...(this.listeners.get(type) ?? [])]) listener({ type, ...event });
@@ -56,7 +59,7 @@ function installFakeDom() {
       else globalThis.window = previousWindow;
       if (previousDocument === undefined) delete globalThis.document;
       else globalThis.document = previousDocument;
-    }
+    },
   };
 }
 
@@ -67,8 +70,8 @@ function deferredProvider() {
     provider: {
       request() {
         return new Promise((resolve, reject) => requests.push({ resolve, reject }));
-      }
-    }
+      },
+    },
   };
 }
 
@@ -82,8 +85,8 @@ test('NoSleepAdapter acquires, releases and reports the native sentinel', async 
         assert.equal(type, 'screen');
         calls++;
         return Promise.resolve(sentinel);
-      }
-    })
+      },
+    }),
   });
   assert.equal(await adapter.enable(), true);
   assert.equal(adapter.isEnabled(), true);
@@ -97,7 +100,10 @@ test('NoSleepAdapter acquires, releases and reports the native sentinel', async 
 });
 
 test('NoSleepAdapter handles unsupported and denied providers without claiming a lock', async () => {
-  const unsupported = new NoSleepAdapter({ autoEnableOnGesture: false, wakeLockProvider: () => null });
+  const unsupported = new NoSleepAdapter({
+    autoEnableOnGesture: false,
+    wakeLockProvider: () => null,
+  });
   assert.equal(await unsupported.enable(), false);
   assert.equal(unsupported.isEnabled(), false);
   assert.equal(unsupported.getDiagnostics().state, 'unsupported');
@@ -111,8 +117,8 @@ test('NoSleepAdapter handles unsupported and denied providers without claiming a
         const error = new Error('permission denied');
         error.name = 'NotAllowedError';
         return Promise.reject(error);
-      }
-    })
+      },
+    }),
   });
   assert.equal(await denied.enable(), false);
   assert.equal(denied.getDiagnostics().state, 'denied');
@@ -128,7 +134,7 @@ test('visibility and blur release then reacquire an enabled owner', async () => 
     const sentinels = [first, second];
     const adapter = new NoSleepAdapter({
       autoEnableOnGesture: false,
-      wakeLockProvider: () => ({ request: () => Promise.resolve(sentinels.shift()) })
+      wakeLockProvider: () => ({ request: () => Promise.resolve(sentinels.shift()) }),
     });
     assert.equal(await adapter.enable(), true);
     dom.document.visibilityState = 'hidden';
@@ -152,7 +158,10 @@ test('stale request results are released after disable and gesture auto-enable i
   const dom = installFakeDom();
   try {
     const deferred = deferredProvider();
-    const adapter = new NoSleepAdapter({ autoEnableOnGesture: false, wakeLockProvider: () => deferred.provider });
+    const adapter = new NoSleepAdapter({
+      autoEnableOnGesture: false,
+      wakeLockProvider: () => deferred.provider,
+    });
     const pending = adapter.enable();
     assert.equal(adapter.getDiagnostics().state, 'requesting');
     adapter.disable();
@@ -165,7 +174,7 @@ test('stale request results are released after disable and gesture auto-enable i
 
     const gestureSentinel = new FakeSentinel();
     const gestureAdapter = new NoSleepAdapter({
-      wakeLockProvider: () => ({ request: () => Promise.resolve(gestureSentinel) })
+      wakeLockProvider: () => ({ request: () => Promise.resolve(gestureSentinel) }),
     });
     dom.window.dispatch('pointerdown');
     await new Promise((resolve) => setImmediate(resolve));
@@ -181,7 +190,7 @@ test('sentinel release events reacquire while the owner remains visible and enab
   const sentinels = [first, new FakeSentinel()];
   const adapter = new NoSleepAdapter({
     autoEnableOnGesture: false,
-    wakeLockProvider: () => ({ request: () => Promise.resolve(sentinels.shift()) })
+    wakeLockProvider: () => ({ request: () => Promise.resolve(sentinels.shift()) }),
   });
   assert.equal(await adapter.enable(), true);
   first.externalRelease();
@@ -196,7 +205,7 @@ test('sentinel release failures are reported without an unhandled rejection', as
   sentinel.rejectRelease = true;
   const adapter = new NoSleepAdapter({
     autoEnableOnGesture: false,
-    wakeLockProvider: () => ({ request: () => Promise.resolve(sentinel) })
+    wakeLockProvider: () => ({ request: () => Promise.resolve(sentinel) }),
   });
   assert.equal(await adapter.enable(), true);
   adapter.disable();

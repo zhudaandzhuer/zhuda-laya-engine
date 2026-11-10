@@ -47,7 +47,7 @@ export class MinesweeperUI {
       radius: 12,
       fillColor: '#141d2ce6',
       borderColor: '#304565',
-      borderWidth: 1.5
+      borderWidth: 1.5,
     });
 
     // 剩餘地雷計數器 (LED 紅字)
@@ -59,7 +59,7 @@ export class MinesweeperUI {
       radius: 6,
       fillColor: '#0b0f17',
       borderColor: '#ff336655',
-      borderWidth: 1.5
+      borderWidth: 1.5,
     });
 
     this.mineCountText = new Laya.Text();
@@ -80,7 +80,7 @@ export class MinesweeperUI {
       14,
       '🙂',
       { width: 44, height: 44, fontSize: 22, bgColor: '#233349', borderColor: '#48658b' },
-      () => this.callbacks.onRestart()
+      () => this.callbacks.onRestart(),
     );
     this.faceText = faceBtn.label;
 
@@ -93,7 +93,7 @@ export class MinesweeperUI {
       radius: 6,
       fillColor: '#0b0f17',
       borderColor: '#00ff8855',
-      borderWidth: 1.5
+      borderWidth: 1.5,
     });
 
     this.timerText = new Laya.Text();
@@ -114,7 +114,7 @@ export class MinesweeperUI {
       14,
       '初級 9x9',
       { width: 86, height: 44, fontSize: 13 },
-      () => this.callbacks.onDifficultyChange(DIFFICULTIES.beginner)
+      () => this.callbacks.onDifficultyChange(DIFFICULTIES.beginner),
     );
     ZhudaUI.createVectorButton(
       this.topPanel,
@@ -122,7 +122,7 @@ export class MinesweeperUI {
       14,
       '中級 12x12',
       { width: 92, height: 44, fontSize: 13 },
-      () => this.callbacks.onDifficultyChange(DIFFICULTIES.intermediate)
+      () => this.callbacks.onDifficultyChange(DIFFICULTIES.intermediate),
     );
     ZhudaUI.createVectorButton(
       this.topPanel,
@@ -130,7 +130,7 @@ export class MinesweeperUI {
       14,
       '專家 16x16',
       { width: 92, height: 44, fontSize: 13 },
-      () => this.callbacks.onDifficultyChange(DIFFICULTIES.expert)
+      () => this.callbacks.onDifficultyChange(DIFFICULTIES.expert),
     );
 
     // 視角切換
@@ -143,7 +143,7 @@ export class MinesweeperUI {
       () => {
         this.is3DView = this.callbacks.onToggleView();
         this.viewModeLabel.text = this.is3DView ? '🎥 3D視角' : '🗺️ 2D頂視';
-      }
+      },
     );
     this.viewModeLabel = viewBtn.label;
 
@@ -157,7 +157,7 @@ export class MinesweeperUI {
       () => {
         this.flagMode = this.callbacks.onToggleFlagMode();
         this.flagModeLabel.text = this.flagMode ? '🚩 插旗模式' : '⛏️ 揭開模式';
-      }
+      },
     );
     this.flagModeLabel = flagBtn.label;
 
@@ -171,7 +171,7 @@ export class MinesweeperUI {
       () => {
         this.isAudioOn = this.callbacks.onToggleAudio();
         this.audioLabel.text = this.isAudioOn ? '🔊 音效: 開' : '🔇 音效: 關';
-      }
+      },
     );
     this.audioLabel = audioBtn.label;
 
@@ -188,12 +188,12 @@ export class MinesweeperUI {
         bgColor: '#1b3a3a',
         hoverBgColor: '#235353',
         borderColor: '#00e5ff',
-        textColor: '#64ffda'
+        textColor: '#64ffda',
       },
       () => {
         const report = this.callbacks.onRunBenchmark();
         this.refreshTelemetry(report);
-      }
+      },
     );
 
     // Zero-IDE 架構徽章
@@ -205,7 +205,7 @@ export class MinesweeperUI {
       radius: 8,
       fillColor: '#102436',
       borderColor: '#3b82f6',
-      borderWidth: 1
+      borderWidth: 1,
     });
     const badgeTxt = new Laya.Text();
     badgeTxt.text = 'ZERO-IDE\nAI-NATIVE';
@@ -236,7 +236,7 @@ export class MinesweeperUI {
       radius: 12,
       fillColor: '#121a28eb',
       borderColor: '#2d4464',
-      borderWidth: 1.5
+      borderWidth: 1.5,
     });
 
     const teleHeader = new Laya.Text();
@@ -269,7 +269,7 @@ export class MinesweeperUI {
       innerSurfaceColor: '#0c1524',
       titleText:
         '✔ [M1 九宮格 sizeGrid: 4角0px變形] · [M2 iframe 音訊/失焦守衛] · [M3 5視口 SafeArea 通過] · [M4 VFX 藍圖: 4套] · [M5 Unity+Animator+Spine4.2]',
-      titleColor: '#7df9ff'
+      titleColor: '#7df9ff',
     });
     this.nineSliceBannerText = nineSliceBanner.root.getChildByName('NineSliceTitle') as Laya.Text;
     if (this.nineSliceBannerText) {
@@ -313,7 +313,7 @@ export class MinesweeperUI {
       `  ✔ ${vp.totalProfiles}/5 終端比例 0 裁切通過`,
       `[5] M5 Unity + Animator + Spine4.2`,
       `  ✔ 轉換 ${um.convertedNodesCount} 節點 (LH→RH 座標)`,
-      `  ✔ 狀態機: ${um.animatorTransitionTrace.join('→')}`
+      `  ✔ 狀態機: ${um.animatorTransitionTrace.join('→')}`,
     ];
     this.telemetryText.text = lines.join('\n');
   }

@@ -1,5 +1,5 @@
-import type { MeshData } from "../runtime3d/Surfaces.ts";
-import type { QueryRay } from "../runtime3d/SceneQueries.ts";
+import type { MeshData } from '../runtime3d/Surfaces.ts';
+import type { QueryRay } from '../runtime3d/SceneQueries.ts';
 
 /** Two-sided ray intersection; distance follows the supplied ray parameter. */
 export function shellTriangleDistance(
@@ -45,17 +45,14 @@ export function buildTerrainShell(
   zs: number[],
   depth: number,
 ): MeshData {
-  if (!Number.isFinite(depth) || depth <= 0)
-    throw Error("Terrain solid depth must be positive");
+  if (!Number.isFinite(depth) || depth <= 0) throw Error('Terrain solid depth must be positive');
   const nx = xs.length,
     nz = zs.length,
     n = nx * nz;
   const edges: [number, number][] = [];
   for (let x = 0; x < nx - 1; x++) edges.push([x, x + 1]);
-  for (let z = 0; z < nz - 1; z++)
-    edges.push([z * nx + nx - 1, (z + 1) * nx + nx - 1]);
-  for (let x = nx - 1; x > 0; x--)
-    edges.push([(nz - 1) * nx + x, (nz - 1) * nx + x - 1]);
+  for (let z = 0; z < nz - 1; z++) edges.push([z * nx + nx - 1, (z + 1) * nx + nx - 1]);
+  for (let x = nx - 1; x > 0; x--) edges.push([(nz - 1) * nx + x, (nz - 1) * nx + x - 1]);
   for (let z = nz - 1; z > 0; z--) edges.push([z * nx, (z - 1) * nx]);
   const count = n + edges.length * 4,
     positions = new Float32Array(count * 3),
@@ -84,10 +81,7 @@ export function buildTerrainShell(
       len = Math.hypot(dx, dz);
     for (let v = 0; v < 4; v++) {
       const src = (v % 2 ? b : a) * 8;
-      positions.set(
-        [top[src], top[src + 1] - (v >= 2 ? depth : 0), top[src + 2]],
-        (i + v) * 3,
-      );
+      positions.set([top[src], top[src + 1] - (v >= 2 ? depth : 0), top[src + 2]], (i + v) * 3);
       normals.set([dz / len, 0, -dx / len], (i + v) * 3);
       uvs.set([v % 2 ? len : 0, v >= 2 ? depth : 0], (i + v) * 2);
     }

@@ -1,5 +1,12 @@
 /** Uses the official public editor build API in a headless CLI script. */
-export function officialBridgeSource({target, output, app, libraries, platformSettings, modules = {}}) {
+export function officialBridgeSource({
+  target,
+  output,
+  app,
+  libraries,
+  platformSettings,
+  modules = {},
+}) {
   return String.raw`import fs from 'node:fs';
 import path from 'node:path';
 @IEditorEnv.regClass()

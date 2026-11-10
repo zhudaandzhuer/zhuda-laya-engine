@@ -30,8 +30,8 @@ export * from './VisualMigrationPipeline.ts';
 export * from './prefabs/index.ts';
 export * from './runtime3d/index.ts';
 
-export * from "./terrain/index";
-export * from "./shaders/index";
+export * from './terrain/index';
+export * from './shaders/index';
 
 export type * from '../types/editor-preview.ts';
 export type * from '../types/zhuda-audio.ts';

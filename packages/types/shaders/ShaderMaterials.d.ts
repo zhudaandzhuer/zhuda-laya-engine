@@ -1,6 +1,6 @@
 // Generated from TypeScript source; run npm run types:generate.
-import { type SurfacePassRequirements } from "../runtime3d/Surfaces";
-export type ShaderUniformType = "float" | "vec2" | "vec3" | "vec4" | "texture2D";
+import { type SurfacePassRequirements } from '../runtime3d/Surfaces';
+export type ShaderUniformType = 'float' | 'vec2' | 'vec3' | 'vec4' | 'texture2D';
 export interface ShaderUniformSpec {
     type: ShaderUniformType;
     value?: number | number[];
@@ -11,7 +11,7 @@ export interface ZhudaShaderSpec {
     dimension: 2 | 3;
     surface: string;
     uniforms: Record<string, ShaderUniformSpec>;
-    blend?: "opaque" | "alpha" | "additive";
+    blend?: 'opaque' | 'alpha' | 'additive';
     doubleSided?: boolean;
     depthWrite?: boolean;
     /** Opt out for sky domes/backgrounds; scene fog remains enabled for other surfaces. */
@@ -38,4 +38,4 @@ export declare class ZhudaShaderMaterial {
     };
     dispose(): void;
 }
-export declare const shaderRecipes: Record<"terrain3D" | "textured3D" | "dissolve3D" | "tint2D", ZhudaShaderSpec>;
+export declare const shaderRecipes: Record<'terrain3D' | 'textured3D' | 'dissolve3D' | 'tint2D', ZhudaShaderSpec>;

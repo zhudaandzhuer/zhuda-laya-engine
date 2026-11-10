@@ -8,12 +8,19 @@ import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import esbuild from 'esbuild';
 import { scanProjectAssets } from './prefab-editor-server.mjs';
-import { realPath, inside, resolveProjectFile, createEditorAccess, respondStatic, scriptJson } from './editor-http.mjs';
+import {
+  realPath,
+  inside,
+  resolveProjectFile,
+  createEditorAccess,
+  respondStatic,
+  scriptJson,
+} from './editor-http.mjs';
 
 const moduleDir = path.dirname(fileURLToPath(import.meta.url));
 const defaultEngineRoot = path.resolve(moduleDir, '..', '..');
 
-const sha256 = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
+const sha256 = (bytes) => crypto.createHash('sha256').update(bytes).digest('hex');
 
 export function parseModelEditorArgs(argv = process.argv.slice(2)) {
   const read = (name, fallback) => {
@@ -25,18 +32,26 @@ export function parseModelEditorArgs(argv = process.argv.slice(2)) {
   const host = read('--host', '127.0.0.1');
   const port = Number(read('--port', '8892'));
   const engineRoot = path.resolve(read('--engine-root', defaultEngineRoot));
-  if (!asset || asset.startsWith('/') || asset.includes('\\') || asset.split('/').some(part => !part || part === '.' || part === '..'))
+  if (
+    !asset ||
+    asset.startsWith('/') ||
+    asset.includes('\\') ||
+    asset.split('/').some((part) => !part || part === '.' || part === '..')
+  )
     throw Error('Use --asset with a project-relative assets/**/*.glb or assets/**/*.gltf path');
-  if (!/^assets\/.+\.(?:glb|gltf)$/i.test(asset)) throw Error('--asset must point to a project-relative .glb or .gltf file inside assets/');
+  if (!/^assets\/.+\.(?:glb|gltf)$/i.test(asset))
+    throw Error('--asset must point to a project-relative .glb or .gltf file inside assets/');
   if (!Number.isInteger(port) || port < 1 || port > 65535) throw Error('Invalid --port');
   if (!host || host.includes('/') || host.includes(':')) throw Error('Invalid --host');
-  if (!fs.existsSync(project) || !fs.statSync(project).isDirectory()) throw Error(`Project does not exist: ${project}`);
+  if (!fs.existsSync(project) || !fs.statSync(project).isDirectory())
+    throw Error(`Project does not exist: ${project}`);
   return { project, projectRoot: project, asset, prefab: asset, host, port, engineRoot };
 }
 
 function resolveModelFile(project, requested, fallback) {
   const relative = typeof requested === 'string' && requested ? requested : fallback;
-  if (!/^assets\/.+\.(?:glb|gltf)$/i.test(relative)) throw Error('Selected asset must be an assets/**/*.glb or assets/**/*.gltf file');
+  if (!/^assets\/.+\.(?:glb|gltf)$/i.test(relative))
+    throw Error('Selected asset must be an assets/**/*.glb or assets/**/*.gltf file');
   const file = resolveProjectFile(project, relative, { mustExist: true });
   const assetsRoot = realPath(path.join(project, 'assets'));
   if (!inside(assetsRoot, realPath(file))) throw Error('Model must remain inside project assets');
@@ -44,7 +59,9 @@ function resolveModelFile(project, requested, fallback) {
 }
 
 function html(engineFiles, assetPath, token) {
-  const tags = engineFiles.map(file => `<script src="/__editor/engine/${file}"></script>`).join('\n');
+  const tags = engineFiles
+    .map((file) => `<script src="/__editor/engine/${file}"></script>`)
+    .join('\n');
   const css = `
 :root{color-scheme:dark;--bg:#080f1c;--panel:#101a2c;--line:#263858;--text:#e8f1ff;--muted:#8ea5c9;--accent:#73e4d8;--warn:#ffd166;--danger:#ff8f9c}
 *{box-sizing:border-box}html,body{width:100%;height:100%;margin:0;overflow:hidden;background:var(--bg);color:var(--text);font:13px/1.4 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}button{font:inherit;color:inherit;background:#0b1425;border:1px solid var(--line);border-radius:7px;padding:7px 9px;cursor:pointer}button:hover{border-color:var(--accent)}button:disabled{opacity:.45;cursor:not-allowed}
@@ -59,50 +76,151 @@ function html(engineFiles, assetPath, token) {
 export async function buildModelEditorBundle({ engineRoot = defaultEngineRoot } = {}) {
   engineRoot = path.resolve(engineRoot);
   const entry = path.join(engineRoot, 'packages', 'compiler', 'model-editor-client.ts');
-  const result = await esbuild.build({ entryPoints: [entry], bundle: true, format: 'esm', platform: 'browser', target: 'es2020', write: false, sourcemap: 'inline', absWorkingDir: engineRoot, logLevel: 'silent' });
+  const result = await esbuild.build({
+    entryPoints: [entry],
+    bundle: true,
+    format: 'esm',
+    platform: 'browser',
+    target: 'es2020',
+    write: false,
+    sourcemap: 'inline',
+    absWorkingDir: engineRoot,
+    logLevel: 'silent',
+  });
   return result.outputFiles[0].text;
 }
 
-export async function createModelEditorServer({ projectRoot, asset, prefab, engineRoot = defaultEngineRoot, host = '127.0.0.1', port = 8892, bundle } = {}) {
+export async function createModelEditorServer({
+  projectRoot,
+  asset,
+  prefab,
+  engineRoot = defaultEngineRoot,
+  host = '127.0.0.1',
+  port = 8892,
+  bundle,
+} = {}) {
   const project = realPath(projectRoot || process.cwd());
-  const initialSelection = resolveModelFile(project, String(asset || prefab || ''), String(asset || prefab || ''));
+  const initialSelection = resolveModelFile(
+    project,
+    String(asset || prefab || ''),
+    String(asset || prefab || ''),
+  );
   const engine = realPath(engineRoot);
   const engineLibRoot = path.join(engine, 'vendor', 'laya-3.4.2', 'libs');
-  const engineFiles = ['laya.core.js', 'laya.d3.js', 'laya.webgl_2D.js', 'laya.webgl_3D.js', 'laya.ui.js', 'laya.gltf.js', 'laya.postProcess.js'];
-  for (const file of engineFiles) if (!fs.existsSync(path.join(engineLibRoot, file))) throw Error(`Missing pinned engine library: ${file}`);
-  const editorBundle = bundle ?? await buildModelEditorBundle({ engineRoot: engine });
+  const engineFiles = [
+    'laya.core.js',
+    'laya.d3.js',
+    'laya.webgl_2D.js',
+    'laya.webgl_3D.js',
+    'laya.ui.js',
+    'laya.gltf.js',
+    'laya.postProcess.js',
+  ];
+  for (const file of engineFiles)
+    if (!fs.existsSync(path.join(engineLibRoot, file)))
+      throw Error(`Missing pinned engine library: ${file}`);
+  const editorBundle = bundle ?? (await buildModelEditorBundle({ engineRoot: engine }));
   const access = createEditorAccess(host);
   const server = http.createServer(async (request, response) => {
     try {
       const url = access.validate(request, response);
       if (url.pathname === '/api/assets' && request.method === 'GET') {
-        response.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
-        response.end(JSON.stringify({ root: 'assets', entries: await scanProjectAssets(project) })); return;
+        response.writeHead(200, {
+          'Content-Type': 'application/json; charset=utf-8',
+          'Cache-Control': 'no-store',
+        });
+        response.end(JSON.stringify({ root: 'assets', entries: await scanProjectAssets(project) }));
+        return;
       }
       if (url.pathname === '/' || url.pathname === '/index.html') {
-        const selection = resolveModelFile(project, url.searchParams.get('asset') || url.searchParams.get('model') || initialSelection.path, initialSelection.path);
+        const selection = resolveModelFile(
+          project,
+          url.searchParams.get('asset') || url.searchParams.get('model') || initialSelection.path,
+          initialSelection.path,
+        );
         const bytes = await fsp.readFile(selection.file);
-        response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Zhuda-Asset-SHA256': sha256(bytes) }); response.end(html(engineFiles, selection.path, access.token)); return;
+        response.writeHead(200, {
+          'Content-Type': 'text/html; charset=utf-8',
+          'Cache-Control': 'no-store',
+          'X-Zhuda-Asset-SHA256': sha256(bytes),
+        });
+        response.end(html(engineFiles, selection.path, access.token));
+        return;
       }
-      if (url.pathname === '/__editor/model.js') { response.writeHead(200, { 'Content-Type': 'text/javascript; charset=utf-8', 'Cache-Control': 'no-store' }); response.end(editorBundle); return; }
-      if (url.pathname.startsWith('/__editor/engine/')) { await respondStatic(engineLibRoot, url.pathname.slice('/__editor/engine/'.length), response); return; }
-      if (url.pathname.startsWith('/__project/')) { await respondStatic(project, url.pathname.slice('/__project/'.length), response, { projectAssets: true }); return; }
-      response.writeHead(404); response.end('Not found');
-    } catch (error) { if (!response.headersSent) { response.writeHead(error.status || 400, { 'Content-Type': 'application/json; charset=utf-8' }); response.end(JSON.stringify({ error: error instanceof Error ? error.message : String(error) })); } else response.destroy(); }
+      if (url.pathname === '/__editor/model.js') {
+        response.writeHead(200, {
+          'Content-Type': 'text/javascript; charset=utf-8',
+          'Cache-Control': 'no-store',
+        });
+        response.end(editorBundle);
+        return;
+      }
+      if (url.pathname.startsWith('/__editor/engine/')) {
+        await respondStatic(
+          engineLibRoot,
+          url.pathname.slice('/__editor/engine/'.length),
+          response,
+        );
+        return;
+      }
+      if (url.pathname.startsWith('/__project/')) {
+        await respondStatic(project, url.pathname.slice('/__project/'.length), response, {
+          projectAssets: true,
+        });
+        return;
+      }
+      response.writeHead(404);
+      response.end('Not found');
+    } catch (error) {
+      if (!response.headersSent) {
+        response.writeHead(error.status || 400, {
+          'Content-Type': 'application/json; charset=utf-8',
+        });
+        response.end(
+          JSON.stringify({ error: error instanceof Error ? error.message : String(error) }),
+        );
+      } else response.destroy();
+    }
   });
-  const listening = new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, host, () => resolve(server.address())); });
-  const close = async () => { await new Promise(resolve => server.close(() => resolve())); };
-  return { server, listening, close, token: access.token, projectRoot: project, assetFile: initialSelection.file, engineRoot: engine };
+  const listening = new Promise((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(port, host, () => resolve(server.address()));
+  });
+  const close = async () => {
+    await new Promise((resolve) => server.close(() => resolve()));
+  };
+  return {
+    server,
+    listening,
+    close,
+    token: access.token,
+    projectRoot: project,
+    assetFile: initialSelection.file,
+    engineRoot: engine,
+  };
 }
 
-const launched = cliMain(import.meta.url, 'Usage: zhuda-model-editor --project DIRECTORY --asset assets/FILE.glb [--host HOST] [--port PORT]');
+const launched = cliMain(
+  import.meta.url,
+  'Usage: zhuda-model-editor --project DIRECTORY --asset assets/FILE.glb [--host HOST] [--port PORT]',
+);
 if (launched) {
   try {
-    const args = parseModelEditorArgs(); const editor = await createModelEditorServer(args); const address = await editor.listening;
-    console.log(`[Zhuda 3D Model Editor] http://${args.host}:${address.port}/?asset=${encodeURIComponent(args.asset)}`);
+    const args = parseModelEditorArgs();
+    const editor = await createModelEditorServer(args);
+    const address = await editor.listening;
+    console.log(
+      `[Zhuda 3D Model Editor] http://${args.host}:${address.port}/?asset=${encodeURIComponent(args.asset)}`,
+    );
     console.log(`[Zhuda 3D Model Editor] editing ${args.asset}`);
-    const stop = async () => { await editor.close(); process.exit(0); };
-    process.once('SIGINT', stop); process.once('SIGTERM', stop);
-  } catch (error) { console.error(error instanceof Error ? error.message : String(error)); process.exitCode = 1; }
+    const stop = async () => {
+      await editor.close();
+      process.exit(0);
+    };
+    process.once('SIGINT', stop);
+    process.once('SIGTERM', stop);
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exitCode = 1;
+  }
 }
-

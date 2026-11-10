@@ -91,32 +91,59 @@ export const brandSplashCss = `      html.zhuda-splash-active, html.zhuda-splash
 
 /** Strict shared policy: visual branding is independent of attribution notices. */
 export function normalizeBranding(value = {}) {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) throw Error('branding must be an object');
+  if (!value || typeof value !== 'object' || Array.isArray(value))
+    throw Error('branding must be an object');
   const mode = value.mode ?? 'engine';
-  if (!['engine', 'custom', 'none'].includes(mode)) throw Error('branding.mode must be engine, custom or none');
+  if (!['engine', 'custom', 'none'].includes(mode))
+    throw Error('branding.mode must be engine, custom or none');
   const allowed = mode === 'custom' ? ['mode', 'brandId', 'logo', 'title', 'caption'] : ['mode'];
-  for (const key of Object.keys(value)) if (!allowed.includes(key)) throw Error(`Unsupported branding.${key} for ${mode}`);
-  if (mode !== 'custom') return Object.freeze({mode});
-  if (typeof value.brandId !== 'string' || !/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,79}$/.test(value.brandId)) throw Error('branding.brandId must be a stable identifier');
-  if (typeof value.logo !== 'string' || !value.logo.trim() || value.logo.length > 3_000_000) throw Error('branding.logo is required (max 3 MB encoded)');
-  for (const key of ['title', 'caption']) if (value[key] !== undefined && (typeof value[key] !== 'string' || value[key].length > 160)) throw Error(`branding.${key} must be text up to 160 characters`);
-  return Object.freeze({mode, brandId: value.brandId, logo: value.logo, title: value.title ?? value.brandId, caption: value.caption ?? ''});
+  for (const key of Object.keys(value))
+    if (!allowed.includes(key)) throw Error(`Unsupported branding.${key} for ${mode}`);
+  if (mode !== 'custom') return Object.freeze({ mode });
+  if (typeof value.brandId !== 'string' || !/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,79}$/.test(value.brandId))
+    throw Error('branding.brandId must be a stable identifier');
+  if (typeof value.logo !== 'string' || !value.logo.trim() || value.logo.length > 3_000_000)
+    throw Error('branding.logo is required (max 3 MB encoded)');
+  for (const key of ['title', 'caption'])
+    if (value[key] !== undefined && (typeof value[key] !== 'string' || value[key].length > 160))
+      throw Error(`branding.${key} must be text up to 160 characters`);
+  return Object.freeze({
+    mode,
+    brandId: value.brandId,
+    logo: value.logo,
+    title: value.title ?? value.brandId,
+    caption: value.caption ?? '',
+  });
 }
 function escapeHtml(value) {
-  return String(value).replace(/[&<>"']/g, c => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'}[c]));
+  return String(value).replace(
+    /[&<>"']/g,
+    (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c],
+  );
 }
 export function validateBrandLogo(source) {
-  // eslint-disable-next-line no-control-regex -- reject control characters in logo URLs
-  if (typeof source !== 'string' || /[\u0000-\u0020\u007f\\]/.test(source) ||
-      (!/^https:\/\//i.test(source) && !/^data:image\/(png|jpeg|webp|svg\+xml);base64,[a-z0-9+/=]+$/i.test(source) &&
-       (/^[a-z][a-z0-9+.-]*:/i.test(source) || source.startsWith('//') || source.split('/').includes('..'))))
+  if (
+    typeof source !== 'string' ||
+    // eslint-disable-next-line no-control-regex -- reject control characters in logo URLs
+    /[\u0000-\u0020\u007f\\]/.test(source) ||
+    (!/^https:\/\//i.test(source) &&
+      !/^data:image\/(png|jpeg|webp|svg\+xml);base64,[a-z0-9+/=]+$/i.test(source) &&
+      (/^[a-z][a-z0-9+.-]*:/i.test(source) ||
+        source.startsWith('//') ||
+        source.split('/').includes('..')))
+  )
     throw Error('branding.logo must be a relative image, HTTPS URL or base64 image data URL');
   return source;
 }
 /** Boot UI only: this timeout never advances the simulation clock. */
 export function runBrandSplash(mode) {
   const splash = document.getElementById('zhudaLogoSplash');
-  const state = { started: true, durationMs: mode === 'none' ? 0 : 2180, completed: mode === 'none', mode };
+  const state = {
+    started: true,
+    durationMs: mode === 'none' ? 0 : 2180,
+    completed: mode === 'none',
+    mode,
+  };
   window.__ZHUDA_SPLASH__ = state;
   if (mode === 'none' || !splash) return;
   document.documentElement.classList.add('zhuda-splash-active');
@@ -134,52 +161,72 @@ export function brandSplashMarkup(source, options) {
   const logo = config.mode === 'custom' ? config.logo : source;
   const title = config.mode === 'custom' ? config.title : '豬大 × LayaAir';
   const caption = config.mode === 'custom' ? config.caption : 'AI-FRIENDLY GAME ENGINE';
-  const markup = config.mode === 'none' ? '' : `<div id="zhudaLogoSplash" role="status" aria-live="polite" aria-label="${escapeHtml(title)}">
+  const markup =
+    config.mode === 'none'
+      ? ''
+      : `<div id="zhudaLogoSplash" role="status" aria-live="polite" aria-label="${escapeHtml(title)}">
     <div class="zhuda-splash-shell">
       <img src="${escapeHtml(validateBrandLogo(logo))}" alt="${escapeHtml(title)}" decoding="async" />
       <p class="zhuda-splash-caption">${escapeHtml(caption)}</p>
       <div class="zhuda-splash-progress" aria-hidden="true"></div>
     </div>
   </div>`;
-  return markup + `<script>(${runBrandSplash.toString()})(${JSON.stringify(config.mode)});</script>`;
+  return (
+    markup + `<script>(${runBrandSplash.toString()})(${JSON.stringify(config.mode)});</script>`
+  );
 }
 export function mountBrandSplash(source, options) {
   const config = normalizeBranding(options);
   // Validate before modifying the document, including before DOMContentLoaded.
   if (config.mode === 'custom') validateBrandLogo(config.logo);
   const mount = () => {
-    if (document.getElementById('zhudaLogoSplash')) throw Error('Reserved #zhudaLogoSplash; browser SDK supplies branding');
+    if (document.getElementById('zhudaLogoSplash'))
+      throw Error('Reserved #zhudaLogoSplash; browser SDK supplies branding');
     if (config.mode !== 'none') {
       const style = document.createElement('style');
-      style.dataset.zhudaBrand = ''; style.textContent = brandSplashCss; document.head.append(style);
+      style.dataset.zhudaBrand = '';
+      style.textContent = brandSplashCss;
+      document.head.append(style);
       const holder = document.createElement('div');
-      holder.innerHTML = brandSplashMarkup(source, config).replace(/<script>[\s\S]*<\/script>$/, '');
+      holder.innerHTML = brandSplashMarkup(source, config).replace(
+        /<script>[\s\S]*<\/script>$/,
+        '',
+      );
       document.body.prepend(holder.firstElementChild);
     }
     runBrandSplash(config.mode);
   };
-  if (document.body) mount(); else document.addEventListener('DOMContentLoaded', mount, {once: true});
+  if (document.body) mount();
+  else document.addEventListener('DOMContentLoaded', mount, { once: true });
 }
 
 /** Official brand is embedded so consumer asset allowlists cannot remove it. */
 export function injectBrandSplash(html, svg, options) {
   const config = normalizeBranding(options);
   if (/\bid\s*=\s*["']zhudaLogoSplash["']/i.test(html))
-    throw Error('Reserved #zhudaLogoSplash in consumer HTML; remove the custom splash and use branding config on the public compiler.');
+    throw Error(
+      'Reserved #zhudaLogoSplash in consumer HTML; remove the custom splash and use branding config on the public compiler.',
+    );
   // Fragment templates are valid consumer inputs. Keep a real document header
   // before the large embedded SVG, or charset detection can fall back to a
   // legacy encoding and make Unicode runtime scripts fail to parse.
   if (!/<body\b[^>]*>/i.test(html)) {
     const head = html.match(/<head\b[^>]*>([\s\S]*?)<\/head>/i)?.[1] || '';
-    const content = html.replace(/<!doctype\b[^>]*>/ig, '').replace(/<head\b[^>]*>[\s\S]*?<\/head>/ig, '').replace(/<\/?html\b[^>]*>/ig, '');
+    const content = html
+      .replace(/<!doctype\b[^>]*>/gi, '')
+      .replace(/<head\b[^>]*>[\s\S]*?<\/head>/gi, '')
+      .replace(/<\/?html\b[^>]*>/gi, '');
     html = `<!doctype html><html><head><meta charset="utf-8">${head}</head><body>${content}</body></html>`;
   }
   if (!/<head\b[^>]*>/i.test(html))
-    html = html.replace(/<body\b[^>]*>/i, tag => '<head><meta charset="utf-8"></head>' + tag);
+    html = html.replace(/<body\b[^>]*>/i, (tag) => '<head><meta charset="utf-8"></head>' + tag);
   const source = `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
-  const styles = config.mode === 'none' ? '' : `<style data-zhuda-brand>\n${brandSplashCss}</style>`;
-  const result = /<\/head>/i.test(html) ? html.replace(/<\/head>/i, styles + '</head>') : styles + html;
+  const styles =
+    config.mode === 'none' ? '' : `<style data-zhuda-brand>\n${brandSplashCss}</style>`;
+  const result = /<\/head>/i.test(html)
+    ? html.replace(/<\/head>/i, styles + '</head>')
+    : styles + html;
   return /<body\b[^>]*>/i.test(result)
-    ? result.replace(/<body\b[^>]*>/i, tag => tag + brandSplashMarkup(source, config))
+    ? result.replace(/<body\b[^>]*>/i, (tag) => tag + brandSplashMarkup(source, config))
     : brandSplashMarkup(source, config) + result;
 }

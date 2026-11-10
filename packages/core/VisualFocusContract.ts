@@ -39,11 +39,9 @@ export class VisualFocusContract {
 
   public static apply<TId>(
     targets: readonly VisualFocusTarget<TId>[],
-    request: VisualFocusRequest<TId>
+    request: VisualFocusRequest<TId>,
   ): VisualFocusReport<TId> {
-    const winningIds = request.mode === 'focus'
-      ? [...new Set(request.winningIds || [])]
-      : [];
+    const winningIds = request.mode === 'focus' ? [...new Set(request.winningIds || [])] : [];
     const winningSet = new Set(winningIds);
     const dimmedIds: TId[] = [];
 
@@ -58,19 +56,19 @@ export class VisualFocusContract {
       active: request.mode === 'focus' && winningIds.length > 0,
       targetCount: targets.length,
       winningIds,
-      dimmedIds
+      dimmedIds,
     };
   }
 
   public static assert<TId>(
     targets: readonly VisualFocusTarget<TId>[],
     request: VisualFocusRequest<TId>,
-    expectedDimmedCount?: number
+    expectedDimmedCount?: number,
   ): VisualFocusReport<TId> {
     const report = this.apply(targets, request);
     if (expectedDimmedCount !== undefined && report.dimmedIds.length !== expectedDimmedCount) {
       throw new Error(
-        `[VisualFocusContract] Expected ${expectedDimmedCount} dimmed targets, got ${report.dimmedIds.length}.`
+        `[VisualFocusContract] Expected ${expectedDimmedCount} dimmed targets, got ${report.dimmedIds.length}.`,
       );
     }
     return report;

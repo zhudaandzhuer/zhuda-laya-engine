@@ -15,7 +15,7 @@ import type {
   LayaHierarchyNodeData,
   NineSliceCalibrationReport,
   PixelCalibrationReport,
-  PixelCalibrationSpec
+  PixelCalibrationSpec,
 } from '../types/index.ts';
 
 export class PixelCalibrationEngine {
@@ -38,7 +38,7 @@ export class PixelCalibrationEngine {
       r: Number.isNaN(r) ? 0 : r,
       g: Number.isNaN(g) ? 0 : g,
       b: Number.isNaN(b) ? 0 : b,
-      a: Number.isNaN(a) ? 255 : a
+      a: Number.isNaN(a) ? 255 : a,
     };
   }
 
@@ -69,7 +69,7 @@ export class PixelCalibrationEngine {
     return {
       L: 116 * fy - 16,
       a: 500 * (fx - fy),
-      b: 200 * (fy - fz)
+      b: 200 * (fy - fz),
     };
   }
 
@@ -107,8 +107,14 @@ export class PixelCalibrationEngine {
     const c2p = Math.sqrt(a2p * a2p + lab2.b * lab2.b);
     const avgCp = (c1p + c2p) / 2;
 
-    const h1p = a1p === 0 && lab1.b === 0 ? 0 : (Math.atan2(lab1.b, a1p) * 180) / Math.PI + (Math.atan2(lab1.b, a1p) < 0 ? 360 : 0);
-    const h2p = a2p === 0 && lab2.b === 0 ? 0 : (Math.atan2(lab2.b, a2p) * 180) / Math.PI + (Math.atan2(lab2.b, a2p) < 0 ? 360 : 0);
+    const h1p =
+      a1p === 0 && lab1.b === 0
+        ? 0
+        : (Math.atan2(lab1.b, a1p) * 180) / Math.PI + (Math.atan2(lab1.b, a1p) < 0 ? 360 : 0);
+    const h2p =
+      a2p === 0 && lab2.b === 0
+        ? 0
+        : (Math.atan2(lab2.b, a2p) * 180) / Math.PI + (Math.atan2(lab2.b, a2p) < 0 ? 360 : 0);
 
     let dhp = 0;
     if (c1p * c2p !== 0) {
@@ -131,7 +137,7 @@ export class PixelCalibrationEngine {
     const T =
       1 -
       0.17 * Math.cos(((avgHp - 30) * Math.PI) / 180) +
-      0.24 * Math.cos(((2 * avgHp) * Math.PI) / 180) +
+      0.24 * Math.cos((2 * avgHp * Math.PI) / 180) +
       0.32 * Math.cos(((3 * avgHp + 6) * Math.PI) / 180) -
       0.2 * Math.cos(((4 * avgHp - 63) * Math.PI) / 180);
 
@@ -140,13 +146,13 @@ export class PixelCalibrationEngine {
     const sl = 1 + (0.015 * Math.pow(avgL - 50, 2)) / Math.sqrt(20 + Math.pow(avgL - 50, 2));
     const sc = 1 + 0.045 * avgCp;
     const sh = 1 + 0.015 * avgCp * T;
-    const rt = -Math.sin(((2 * dRo) * Math.PI) / 180) * rc;
+    const rt = -Math.sin((2 * dRo * Math.PI) / 180) * rc;
 
     const dE = Math.sqrt(
       Math.pow(dLp / sl, 2) +
         Math.pow(dCp / sc, 2) +
         Math.pow(dHp / sh, 2) +
-        rt * (dCp / sc) * (dHp / sh)
+        rt * (dCp / sc) * (dHp / sh),
     );
 
     return Number(dE.toFixed(2));
@@ -223,11 +229,11 @@ export class PixelCalibrationEngine {
         x: Math.round(minX),
         y: Math.round(minY),
         width: Math.round(maxX - minX),
-        height: Math.round(maxY - minY)
+        height: Math.round(maxY - minY),
       },
       primaryFill: (primaryFill || '#000000').slice(0, 7),
       borderStroke: (borderStroke || '#000000').slice(0, 7),
-      accentOrText: (accentOrText || '#ffffff').slice(0, 7)
+      accentOrText: (accentOrText || '#ffffff').slice(0, 7),
     };
   }
 
@@ -238,7 +244,7 @@ export class PixelCalibrationEngine {
     rgba: Uint8Array | Uint8ClampedArray,
     canvasWidth: number,
     canvasHeight: number,
-    bgRgb: { r: number; g: number; b: number } = { r: 11, g: 15, b: 23 }
+    bgRgb: { r: number; g: number; b: number } = { r: 11, g: 15, b: 23 },
   ): {
     tightBox: { x: number; y: number; width: number; height: number };
     nonTransparentPixels: number;
@@ -263,9 +269,7 @@ export class PixelCalibrationEngine {
 
         const isForeground =
           a > 20 &&
-          (Math.abs(r - bgRgb.r) > 8 ||
-            Math.abs(g - bgRgb.g) > 8 ||
-            Math.abs(b - bgRgb.b) > 8);
+          (Math.abs(r - bgRgb.r) > 8 || Math.abs(g - bgRgb.g) > 8 || Math.abs(b - bgRgb.b) > 8);
 
         if (isForeground) {
           activeCount++;
@@ -300,12 +304,14 @@ export class PixelCalibrationEngine {
             x: minX,
             y: minY,
             width: maxX - minX + 1,
-            height: maxY - minY + 1
+            height: maxY - minY + 1,
           }
         : { x: 0, y: 0, width: 0, height: 0 },
       nonTransparentPixels: activeCount,
-      coveragePercent: Number(((activeCount / Math.max(1, canvasWidth * canvasHeight)) * 100).toFixed(2)),
-      sampledDominantHex: dominantHex
+      coveragePercent: Number(
+        ((activeCount / Math.max(1, canvasWidth * canvasHeight)) * 100).toFixed(2),
+      ),
+      sampledDominantHex: dominantHex,
     };
   }
 
@@ -319,7 +325,7 @@ export class PixelCalibrationEngine {
       rgba: Uint8Array | Uint8ClampedArray;
       width: number;
       height: number;
-    }
+    },
   ): PixelCalibrationReport {
     const spec = specOverride || data._zhudaMeta?.targetSpec;
     if (!spec) {
@@ -338,7 +344,7 @@ export class PixelCalibrationEngine {
       Math.abs(xDiffPx),
       Math.abs(yDiffPx),
       Math.abs(widthDiffPx),
-      Math.abs(heightDiffPx)
+      Math.abs(heightDiffPx),
     );
 
     const targetPrimaryFill = spec.targetColors.primaryFill;
@@ -350,7 +356,7 @@ export class PixelCalibrationEngine {
     const borderDeltaE2000 = this.computeDeltaE2000(staticMetrics.borderStroke, targetBorderStroke);
     const accentDeltaE2000 = this.computeDeltaE2000(staticMetrics.accentOrText, targetAccentOrText);
     const maxDeltaE2000 = Number(
-      Math.max(primaryDeltaE2000, borderDeltaE2000, accentDeltaE2000).toFixed(2)
+      Math.max(primaryDeltaE2000, borderDeltaE2000, accentDeltaE2000).toFixed(2),
     );
 
     const tolerancePx = spec.tolerancePx ?? 0;
@@ -364,7 +370,7 @@ export class PixelCalibrationEngine {
         property: 'x',
         currentValue: data.x ?? 0,
         suggestedValue: expectedBox.x,
-        reason: `X 座標偏移 ${xDiffPx > 0 ? '+' : ''}${xDiffPx}px (預期 ${expectedBox.x}px)`
+        reason: `X 座標偏移 ${xDiffPx > 0 ? '+' : ''}${xDiffPx}px (預期 ${expectedBox.x}px)`,
       });
     }
     if (Math.abs(yDiffPx) > tolerancePx) {
@@ -373,7 +379,7 @@ export class PixelCalibrationEngine {
         property: 'y',
         currentValue: data.y ?? 0,
         suggestedValue: expectedBox.y,
-        reason: `Y 座標偏移 ${yDiffPx > 0 ? '+' : ''}${yDiffPx}px (預期 ${expectedBox.y}px)`
+        reason: `Y 座標偏移 ${yDiffPx > 0 ? '+' : ''}${yDiffPx}px (預期 ${expectedBox.y}px)`,
       });
     }
     if (Math.abs(widthDiffPx) > tolerancePx) {
@@ -382,7 +388,7 @@ export class PixelCalibrationEngine {
         property: 'width',
         currentValue: data.width ?? measuredBox.width,
         suggestedValue: expectedBox.width,
-        reason: `節點寬度誤差 ${widthDiffPx > 0 ? '+' : ''}${widthDiffPx}px (預期 ${expectedBox.width}px)`
+        reason: `節點寬度誤差 ${widthDiffPx > 0 ? '+' : ''}${widthDiffPx}px (預期 ${expectedBox.width}px)`,
       });
       if (Array.isArray(data._gcmds) && data._gcmds[0]) {
         autoFixPatches.push({
@@ -390,7 +396,7 @@ export class PixelCalibrationEngine {
           property: 'width',
           currentValue: data._gcmds[0].width ?? measuredBox.width,
           suggestedValue: expectedBox.width,
-          reason: `底圖指令 DrawRoundRectCmd 寬度誤差 ${widthDiffPx > 0 ? '+' : ''}${widthDiffPx}px`
+          reason: `底圖指令 DrawRoundRectCmd 寬度誤差 ${widthDiffPx > 0 ? '+' : ''}${widthDiffPx}px`,
         });
       }
     }
@@ -400,7 +406,7 @@ export class PixelCalibrationEngine {
         property: 'height',
         currentValue: data.height ?? measuredBox.height,
         suggestedValue: expectedBox.height,
-        reason: `節點高度誤差 ${heightDiffPx > 0 ? '+' : ''}${heightDiffPx}px (預期 ${expectedBox.height}px)`
+        reason: `節點高度誤差 ${heightDiffPx > 0 ? '+' : ''}${heightDiffPx}px (預期 ${expectedBox.height}px)`,
       });
       if (Array.isArray(data._gcmds) && data._gcmds[0]) {
         autoFixPatches.push({
@@ -408,7 +414,7 @@ export class PixelCalibrationEngine {
           property: 'height',
           currentValue: data._gcmds[0].height ?? measuredBox.height,
           suggestedValue: expectedBox.height,
-          reason: `底圖指令高度誤差 ${heightDiffPx > 0 ? '+' : ''}${heightDiffPx}px`
+          reason: `底圖指令高度誤差 ${heightDiffPx > 0 ? '+' : ''}${heightDiffPx}px`,
         });
       }
     }
@@ -419,7 +425,7 @@ export class PixelCalibrationEngine {
         property: 'fillColor',
         currentValue: staticMetrics.primaryFill,
         suggestedValue: targetPrimaryFill,
-        reason: `主填充色差 ΔE00 = ${primaryDeltaE2000} 超出容許值 ${toleranceDeltaE} (目標 ${targetPrimaryFill})`
+        reason: `主填充色差 ΔE00 = ${primaryDeltaE2000} 超出容許值 ${toleranceDeltaE} (目標 ${targetPrimaryFill})`,
       });
     }
     if (borderDeltaE2000 > toleranceDeltaE && Array.isArray(data._gcmds) && data._gcmds[0]) {
@@ -428,7 +434,7 @@ export class PixelCalibrationEngine {
         property: 'lineColor',
         currentValue: staticMetrics.borderStroke,
         suggestedValue: targetBorderStroke,
-        reason: `邊框色差 ΔE00 = ${borderDeltaE2000} 超出容許值 ${toleranceDeltaE} (目標 ${targetBorderStroke})`
+        reason: `邊框色差 ΔE00 = ${borderDeltaE2000} 超出容許值 ${toleranceDeltaE} (目標 ${targetBorderStroke})`,
       });
     }
     if (accentDeltaE2000 > toleranceDeltaE && Array.isArray(data._$child) && data._$child[0]) {
@@ -437,7 +443,7 @@ export class PixelCalibrationEngine {
         property: 'color',
         currentValue: staticMetrics.accentOrText,
         suggestedValue: targetAccentOrText,
-        reason: `文字/強調色差 ΔE00 = ${accentDeltaE2000} 超出容許值 ${toleranceDeltaE} (目標 ${targetAccentOrText})`
+        reason: `文字/強調色差 ΔE00 = ${accentDeltaE2000} 超出容許值 ${toleranceDeltaE} (目標 ${targetAccentOrText})`,
       });
     }
 
@@ -448,14 +454,14 @@ export class PixelCalibrationEngine {
       const bufRes = this.measurePixelBuffer(
         pixelBufferInfo.rgba,
         pixelBufferInfo.width,
-        pixelBufferInfo.height
+        pixelBufferInfo.height,
       );
       pixelBufferTelemetry = {
         canvasWidth: pixelBufferInfo.width,
         canvasHeight: pixelBufferInfo.height,
         nonTransparentPixels: bufRes.nonTransparentPixels,
         coveragePercent: bufRes.coveragePercent,
-        sampledDominantHex: bufRes.sampledDominantHex
+        sampledDominantHex: bufRes.sampledDominantHex,
       };
     }
 
@@ -470,7 +476,7 @@ export class PixelCalibrationEngine {
         yDiffPx,
         widthDiffPx,
         heightDiffPx,
-        maxAbsErrorPx
+        maxAbsErrorPx,
       },
       colorMetrics: {
         measuredPrimaryFill: staticMetrics.primaryFill,
@@ -483,13 +489,13 @@ export class PixelCalibrationEngine {
         measuredAccentOrText: staticMetrics.accentOrText,
         targetAccentOrText,
         accentDeltaE2000,
-        maxDeltaE2000
+        maxDeltaE2000,
       },
       ...(pixelBufferTelemetry ? { pixelBufferTelemetry } : {}),
       autoFixPatches,
       summary: passed
         ? `✅ 像素邊界誤差 0px 且色差 ΔE00=${maxDeltaE2000} (通過校準)`
-        : `⚠️ 偵測到像素誤差 ${maxAbsErrorPx}px 與色差 ΔE00=${maxDeltaE2000}，已產出 ${autoFixPatches.length} 項自動修復 Patch`
+        : `⚠️ 偵測到像素誤差 ${maxAbsErrorPx}px 與色差 ΔE00=${maxDeltaE2000}，已產出 ${autoFixPatches.length} 項自動修復 Patch`,
     };
   }
 
@@ -500,9 +506,7 @@ export class PixelCalibrationEngine {
   /**
    * 驗證 M1 九宮格 (9-Slice / sizeGrid) 預製體拉伸後四角錨塊是否維持 1:1 零變形
    */
-  public static verifyNineSliceIntegrity(
-    data: LayaHierarchyNodeData
-  ): NineSliceCalibrationReport {
+  public static verifyNineSliceIntegrity(data: LayaHierarchyNodeData): NineSliceCalibrationReport {
     const targetData = data;
     const rawGrid = (targetData.sizeGrid || '16,16,16,16,0')
       .split(',')
@@ -512,7 +516,7 @@ export class PixelCalibrationEngine {
       rawGrid[1] ?? 16,
       rawGrid[2] ?? 16,
       rawGrid[3] ?? 16,
-      rawGrid[4] ?? 0
+      rawGrid[4] ?? 0,
     ];
     const [top, right, bottom, left] = sizeGrid;
 
@@ -522,17 +526,47 @@ export class PixelCalibrationEngine {
     const stretchedHeight = targetData.height ?? 140;
 
     const cmds = targetData._gcmds || [];
-    const centerCmd = cmds[1] || { x: left, y: top, width: stretchedWidth - left - right, height: stretchedHeight - top - bottom };
+    const centerCmd = cmds[1] || {
+      x: left,
+      y: top,
+      width: stretchedWidth - left - right,
+      height: stretchedHeight - top - bottom,
+    };
     const tlCmd = cmds[2] || { x: 0, y: 0, width: left, height: top };
     const trCmd = cmds[3] || { x: stretchedWidth - right, y: 0, width: right, height: top };
     const blCmd = cmds[4] || { x: 0, y: stretchedHeight - bottom, width: left, height: bottom };
-    const brCmd = cmds[5] || { x: stretchedWidth - right, y: stretchedHeight - bottom, width: right, height: bottom };
+    const brCmd = cmds[5] || {
+      x: stretchedWidth - right,
+      y: stretchedHeight - bottom,
+      width: right,
+      height: bottom,
+    };
 
     const cornerPins = {
-      topLeft: { x: tlCmd.x ?? 0, y: tlCmd.y ?? 0, width: tlCmd.width ?? left, height: tlCmd.height ?? top },
-      topRight: { x: trCmd.x ?? 0, y: trCmd.y ?? 0, width: trCmd.width ?? right, height: trCmd.height ?? top },
-      bottomLeft: { x: blCmd.x ?? 0, y: blCmd.y ?? 0, width: blCmd.width ?? left, height: blCmd.height ?? bottom },
-      bottomRight: { x: brCmd.x ?? 0, y: brCmd.y ?? 0, width: brCmd.width ?? right, height: brCmd.height ?? bottom }
+      topLeft: {
+        x: tlCmd.x ?? 0,
+        y: tlCmd.y ?? 0,
+        width: tlCmd.width ?? left,
+        height: tlCmd.height ?? top,
+      },
+      topRight: {
+        x: trCmd.x ?? 0,
+        y: trCmd.y ?? 0,
+        width: trCmd.width ?? right,
+        height: trCmd.height ?? top,
+      },
+      bottomLeft: {
+        x: blCmd.x ?? 0,
+        y: blCmd.y ?? 0,
+        width: blCmd.width ?? left,
+        height: blCmd.height ?? bottom,
+      },
+      bottomRight: {
+        x: brCmd.x ?? 0,
+        y: brCmd.y ?? 0,
+        width: brCmd.width ?? right,
+        height: brCmd.height ?? bottom,
+      },
     };
 
     const errors = [
@@ -545,7 +579,7 @@ export class PixelCalibrationEngine {
       Math.abs(cornerPins.bottomRight.width - right),
       Math.abs(cornerPins.bottomRight.height - bottom),
       Math.abs(cornerPins.topRight.x - (stretchedWidth - right)),
-      Math.abs(cornerPins.bottomRight.y - (stretchedHeight - bottom))
+      Math.abs(cornerPins.bottomRight.y - (stretchedHeight - bottom)),
     ];
     const maxCornerDistortionPx = Math.max(...errors);
 
@@ -560,9 +594,9 @@ export class PixelCalibrationEngine {
       maxCornerDistortionPx,
       centerSliceSize: {
         width: centerCmd.width ?? stretchedWidth - left - right,
-        height: centerCmd.height ?? stretchedHeight - top - bottom
+        height: centerCmd.height ?? stretchedHeight - top - bottom,
       },
-      passed: maxCornerDistortionPx === 0 && Boolean(targetData.sizeGrid)
+      passed: maxCornerDistortionPx === 0 && Boolean(targetData.sizeGrid),
     };
   }
 }

@@ -1,10 +1,4 @@
-import {
-  compose4,
-  multiply4,
-  type Matrix4,
-  type Quat,
-  type Vec3,
-} from "../runtime3d/Math3D.ts";
+import { compose4, multiply4, type Matrix4, type Quat, type Vec3 } from '../runtime3d/Math3D.ts';
 export interface EffectKey {
   time: number;
   value: number;
@@ -17,7 +11,7 @@ export interface EffectTrack {
 export interface EffectCue {
   time: number;
   target: string;
-  action: "start" | "stop" | "event";
+  action: 'start' | 'stop' | 'event';
   name?: string;
 }
 export interface EffectAnchor {
@@ -54,21 +48,14 @@ export interface EffectBinding {
 }
 export function validateEffectTimeline(s: EffectTimelineSpec): string[] {
   const errors: string[] = [];
-  if (
-    !s ||
-    s.version !== 1 ||
-    !Number.isFinite(s.duration) ||
-    s.duration < 1 / 120
-  )
-    return ["Timeline requires version 1 and duration >= 1/120."];
-  for (const key of ["tracks", "cues", "attachments"] as const)
-    if (s[key] !== undefined && !Array.isArray(s[key]))
-      return [`${key} must be an array.`];
-  if (s.loop !== undefined && typeof s.loop !== "boolean")
-    errors.push("loop must be boolean.");
+  if (!s || s.version !== 1 || !Number.isFinite(s.duration) || s.duration < 1 / 120)
+    return ['Timeline requires version 1 and duration >= 1/120.'];
+  for (const key of ['tracks', 'cues', 'attachments'] as const)
+    if (s[key] !== undefined && !Array.isArray(s[key])) return [`${key} must be an array.`];
+  if (s.loop !== undefined && typeof s.loop !== 'boolean') errors.push('loop must be boolean.');
   for (const t of s.tracks || []) {
     if (!t.target || !t.parameter || !Array.isArray(t.keys) || !t.keys.length) {
-      errors.push("Track needs target, parameter and keys.");
+      errors.push('Track needs target, parameter and keys.');
       continue;
     }
     let previous = -1;
@@ -80,20 +67,20 @@ export function validateEffectTimeline(s: EffectTimelineSpec): string[] {
         k.time <= previous ||
         !Number.isFinite(k.value)
       )
-        errors.push("Invalid or unordered track key.");
+        errors.push('Invalid or unordered track key.');
       previous = k.time;
     }
   }
   for (const c of s.cues || [])
     if (
       !c.target ||
-      !["start", "stop", "event"].includes(c.action) ||
+      !['start', 'stop', 'event'].includes(c.action) ||
       !Number.isFinite(c.time) ||
       c.time < 0 ||
       c.time > s.duration ||
-      (c.action === "event" && !c.name)
+      (c.action === 'event' && !c.name)
     )
-      errors.push("Invalid cue.");
+      errors.push('Invalid cue.');
   for (const a of s.attachments || [])
     if (
       !a.target ||
@@ -110,10 +97,9 @@ export function validateEffectTimeline(s: EffectTimelineSpec): string[] {
           ...Array.from(a.offset.worldMatrix || []),
         ].every(Number.isFinite) ||
           (a.offset.worldMatrix && a.offset.worldMatrix.length !== 16) ||
-          (a.offset.quaternion &&
-            Math.hypot(...Object.values(a.offset.quaternion)) < 1e-12)))
+          (a.offset.quaternion && Math.hypot(...Object.values(a.offset.quaternion)) < 1e-12)))
     )
-      errors.push("Invalid attachment.");
+      errors.push('Invalid attachment.');
   return errors;
 }
 /** Serializable choreography. Bindings own scene objects, sound and Spine APIs. Seek suppresses external event cues by default. */
@@ -124,12 +110,9 @@ export class ZhudaEffectDirector {
   cycle = 0;
   private initial = true;
   private readonly bindings: Record<string, EffectBinding>;
-  constructor(
-    spec: EffectTimelineSpec,
-    bindings: Record<string, EffectBinding>,
-  ) {
+  constructor(spec: EffectTimelineSpec, bindings: Record<string, EffectBinding>) {
     const errors = validateEffectTimeline(spec);
-    if (errors.length) throw new Error(errors.join(" | "));
+    if (errors.length) throw new Error(errors.join(' | '));
     this.spec = JSON.parse(JSON.stringify(spec));
     this.bindings = bindings;
     for (const t of spec.tracks || [])
@@ -139,11 +122,8 @@ export class ZhudaEffectDirector {
       if (!bindings[c.target]?.[c.action])
         throw new Error(`Missing ${c.action} binding: ${c.target}`);
     for (const a of spec.attachments || [])
-      if (
-        !bindings[a.source]?.resolveAnchor ||
-        !bindings[a.target]?.setTransform
-      )
-        throw new Error("Missing attachment binding.");
+      if (!bindings[a.source]?.resolveAnchor || !bindings[a.target]?.setTransform)
+        throw new Error('Missing attachment binding.');
   }
   reset(): void {
     for (const b of Object.values(this.bindings)) b.reset();
@@ -166,13 +146,13 @@ export class ZhudaEffectDirector {
   }
   update(dt: number): void {
     if (!Number.isFinite(dt) || dt < 0 || dt > 10)
-      throw new Error("Timeline delta must be 0..10 seconds.");
+      throw new Error('Timeline delta must be 0..10 seconds.');
     if (this.playing) this.advance(dt, true);
     else this.apply();
   }
   seek(time: number, dispatchEvents = false): void {
     if (!Number.isFinite(time) || time < 0 || time > this.spec.duration)
-      throw new Error("Seek outside timeline.");
+      throw new Error('Seek outside timeline.');
     this.reset();
     this.advance(time, dispatchEvents);
     this.playing = false;
@@ -183,18 +163,14 @@ export class ZhudaEffectDirector {
     do {
       const end = Math.min(this.spec.duration, this.time + remaining);
       const cues = (this.spec.cues || [])
-        .filter(
-          (c) =>
-            (c.time > this.time || (this.initial && c.time === 0)) &&
-            c.time <= end,
-        )
+        .filter((c) => (c.time > this.time || (this.initial && c.time === 0)) && c.time <= end)
         .sort((a, b) => a.time - b.time);
       for (const c of cues) {
-        if (++events > 4096) throw new Error("Timeline cue budget exceeded.");
-        if (c.action !== "event" || dispatchEvents) {
+        if (++events > 4096) throw new Error('Timeline cue budget exceeded.');
+        if (c.action !== 'event' || dispatchEvents) {
           const b = this.bindings[c.target];
-          if (c.action === "event") b.event!(c.name!);
-          else if (c.action === "start") b.start!(c.name);
+          if (c.action === 'event') b.event!(c.name!);
+          else if (c.action === 'start') b.start!(c.name);
           else b.stop!();
         }
       }
@@ -224,9 +200,7 @@ export class ZhudaEffectDirector {
           value =
             !b || this.time >= b.time
               ? a.value
-              : a.value +
-                ((b.value - a.value) * (this.time - a.time)) /
-                  (b.time - a.time);
+              : a.value + ((b.value - a.value) * (this.time - a.time)) / (b.time - a.time);
       }
       this.bindings[t.target].setParameter!(t.parameter, value);
     }
@@ -256,10 +230,7 @@ export class ZhudaEffectDirector {
             },
             v.scale,
           );
-        const worldMatrix = multiply4(
-          matrix(p),
-          matrix(a.offset || { x: 0, y: 0 }),
-        );
+        const worldMatrix = multiply4(matrix(p), matrix(a.offset || { x: 0, y: 0 }));
         this.bindings[a.target].setTransform!({
           x: worldMatrix[12],
           y: worldMatrix[13],

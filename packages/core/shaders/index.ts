@@ -1,2 +1,2 @@
-export * from "./ShaderMaterials.ts";
-export * from "./LitSurfaceMaterial.ts";
+export * from './ShaderMaterials.ts';
+export * from './LitSurfaceMaterial.ts';

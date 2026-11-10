@@ -1,6 +1,6 @@
 /** A deterministic authored model, shared by isolated selection and all presentation modes. */
 export function modelBrowserExample(entry, document) {
- return `<!doctype html><html lang="zh-Hant"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Zhuda 模型檢視 ${entry.version}</title>
+  return `<!doctype html><html lang="zh-Hant"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Zhuda 模型檢視 ${entry.version}</title>
 <style>body{margin:0;background:#101924;color:#e6f0fa;font:15px/1.6 system-ui}main{max-width:1100px;margin:auto;padding:24px}#view{width:min(100%,720px);aspect-ratio:3/2;position:relative;overflow:hidden}button,select,input{margin:8px 8px 8px 0;padding:8px}pre{white-space:pre-wrap;max-height:340px;overflow:auto;background:#182737;padding:16px}label{display:inline-block}small{color:#a9bbce}</style>
 <main><h1>模型檢視 / ${entry.version}</h1><p>同一模型切換無後製、遊戲與即時電影後製；模式保留材質及幾何。下方是中性 Morph 回歸模型，可載入自己的自包含 GLB / glTF。</p>
 <div id="view"></div><label>展示模式 <select id="mode"><option value="raw">Raw · 無後製</option><option value="gameplay">Gameplay · ACES</option><option value="cinematic">Cinematic · AO / Bloom / ACES</option></select></label>

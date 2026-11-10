@@ -1,8 +1,4 @@
-import {
-  sampleParticleColor,
-  sampleParticleCurve,
-  ZhudaParticleSystem,
-} from 'zhuda-laya-engine';
+import { sampleParticleColor, sampleParticleCurve, ZhudaParticleSystem } from 'zhuda-laya-engine';
 import type { ParticleState } from 'zhuda-laya-engine';
 
 export type SymbolLayout = { x: number; y: number; scale: number };
@@ -90,7 +86,12 @@ export class SvgParticleRenderer {
     // Emit from four authored sockets around the symbol. The particles then
     // read as a contained sparkle field instead of a radial cross or a ring
     // stamped over the artwork.
-    const sockets = [[88, 92], [392, 92], [88, 388], [392, 388]] as const;
+    const sockets = [
+      [88, 92],
+      [392, 92],
+      [88, 388],
+      [392, 388],
+    ] as const;
     sockets.forEach(([x, y], index) => {
       const remaining = count - Math.floor(count / sockets.length) * index;
       this.system.burst(Math.max(0, Math.ceil(remaining / (sockets.length - index))), x, y);
@@ -104,7 +105,8 @@ export class SvgParticleRenderer {
   }
 
   private hideUnused(start: number): void {
-    for (let i = start; i < this.particles.length; i++) this.particles[i].setAttribute('visibility', 'hidden');
+    for (let i = start; i < this.particles.length; i++)
+      this.particles[i].setAttribute('visibility', 'hidden');
   }
 
   private renderParticle(group: SVGGElement, particle: ParticleState): void {
@@ -115,7 +117,10 @@ export class SvgParticleRenderer {
     const y = this.layout.y + particle.y * this.layout.scale;
     const size = Math.max(0.5, particle.size * this.layout.scale);
     group.setAttribute('visibility', 'visible');
-    group.setAttribute('transform', `translate(${x.toFixed(2)} ${y.toFixed(2)}) rotate(${(particle.rotation * 180 / Math.PI).toFixed(2)})`);
+    group.setAttribute(
+      'transform',
+      `translate(${x.toFixed(2)} ${y.toFixed(2)}) rotate(${((particle.rotation * 180) / Math.PI).toFixed(2)})`,
+    );
     const halo = group.querySelector<SVGCircleElement>('.particle-halo');
     const core = group.querySelector<SVGCircleElement>('.particle-core');
     halo?.setAttribute('r', (size * 2.5).toFixed(2));

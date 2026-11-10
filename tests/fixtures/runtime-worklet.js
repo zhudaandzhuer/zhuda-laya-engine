@@ -10,14 +10,14 @@ class NeutralSample extends AudioWorkletProcessor {
     this.last = -1;
     this.maxGap = 0;
     this.port.onmessage = ({ data }) => {
-      if (data.type === "start") {
+      if (data.type === 'start') {
         this.data = data.data;
         this.rate = data.rate;
         this.pos = data.offset * this.rate;
         this.loop = !!data.loop;
         this.startAt = data.when;
         this.stopAt = Infinity;
-      } else if (data.type === "stop") this.stopAt = data.when;
+      } else if (data.type === 'stop') this.stopAt = data.when;
     };
   }
   process(_inputs, outputs) {
@@ -25,8 +25,7 @@ class NeutralSample extends AudioWorkletProcessor {
     const n = out[0]?.length || 128;
     // Exclude graph construction before the first playable sample.
     const active = this.data && currentTime >= this.startAt && currentTime < this.stopAt;
-    if (active && this.last >= 0)
-      this.maxGap = Math.max(this.maxGap, currentFrame - this.last - n);
+    if (active && this.last >= 0) this.maxGap = Math.max(this.maxGap, currentFrame - this.last - n);
     this.last = active ? currentFrame : -1;
     if (active) this.blocks++;
     for (let i = 0; i < n; i++) {
@@ -35,13 +34,13 @@ class NeutralSample extends AudioWorkletProcessor {
       if (this.data && time >= this.startAt) {
         if (time >= this.stopAt) {
           this.data = null;
-          this.port.postMessage({ type: "ended" });
+          this.port.postMessage({ type: 'ended' });
         } else {
           if (this.pos >= this.data.length) {
             if (this.loop) this.pos %= this.data.length;
             else {
               this.data = null;
-              this.port.postMessage({ type: "ended" });
+              this.port.postMessage({ type: 'ended' });
             }
           }
           if (this.data) {
@@ -54,7 +53,7 @@ class NeutralSample extends AudioWorkletProcessor {
     }
     if (active && this.blocks % 32 === 0)
       this.port.postMessage({
-        type: "progress",
+        type: 'progress',
         blocks: this.blocks,
         frame: currentFrame,
         maxGapFrames: this.maxGap,
@@ -62,4 +61,4 @@ class NeutralSample extends AudioWorkletProcessor {
     return true;
   }
 }
-registerProcessor("neutral-sample", NeutralSample);
+registerProcessor('neutral-sample', NeutralSample);

@@ -25,10 +25,10 @@ test('ZhudaAssetSerializer reverse-serializes runtime nodes into Laya 3.4.2 .lh 
           rb: 8,
           fillColor: '#1e3a5f',
           lineColor: '#3b82f6',
-          lineWidth: 2
+          lineWidth: 2,
           // 模擬 runtime 未顯式設定 percent (undefined)
-        }
-      ]
+        },
+      ],
     },
     _children: [
       {
@@ -41,14 +41,14 @@ test('ZhudaAssetSerializer reverse-serializes runtime nodes into Laya 3.4.2 .lh 
         fontSize: 15,
         bold: true,
         color: '#e2f1ff',
-        align: 'center'
-      }
-    ]
+        align: 'center',
+      },
+    ],
   };
 
   const lh = ZhudaAssetSerializer.serializeNodeToHierarchy(mockRuntimeButton, {
     assetId: 'assets/prefabs/DynamicRuntimeBtn.lh',
-    category: 'ui-prefab'
+    category: 'ui-prefab',
   });
 
   assert.equal(lh._$ver, 1);
@@ -59,7 +59,7 @@ test('ZhudaAssetSerializer reverse-serializes runtime nodes into Laya 3.4.2 .lh 
   assert.equal(
     lh._gcmds[0].percent,
     false,
-    'Must explicitly set percent:false to prevent Laya 3.4.2 DrawRoundRectCmd 100x scaling trap'
+    'Must explicitly set percent:false to prevent Laya 3.4.2 DrawRoundRectCmd 100x scaling trap',
   );
   assert.equal(lh._$child.length, 1);
   assert.equal(lh._$child[0]._$type, 'Text');
@@ -68,16 +68,33 @@ test('ZhudaAssetSerializer reverse-serializes runtime nodes into Laya 3.4.2 .lh 
 
 test('hierarchy serialization preserves transform origins and text layout properties', () => {
   const lh = ZhudaAssetSerializer.serializeNodeToHierarchy({
-    name: 'rotatedLabel', x: 20, y: 30, width: 160, height: 48,
-    pivotX: 80, pivotY: 24, anchorX: .5, anchorY: .5, rotation: 12, skewX: 2,
-    text: 'JACKPOT', fontSize: 24, align: 'center', valign: 'middle',
-    wordWrap: false, overflow: 'shrink', letterSpacing: 1, padding: [2, 4, 2, 4],
-    underline: true, underlineColor: '#ffd166', strikethrough: false
+    name: 'rotatedLabel',
+    x: 20,
+    y: 30,
+    width: 160,
+    height: 48,
+    pivotX: 80,
+    pivotY: 24,
+    anchorX: 0.5,
+    anchorY: 0.5,
+    rotation: 12,
+    skewX: 2,
+    text: 'JACKPOT',
+    fontSize: 24,
+    align: 'center',
+    valign: 'middle',
+    wordWrap: false,
+    overflow: 'shrink',
+    letterSpacing: 1,
+    padding: [2, 4, 2, 4],
+    underline: true,
+    underlineColor: '#ffd166',
+    strikethrough: false,
   });
   assert.equal(lh.pivotX, 80);
   assert.equal(lh.pivotY, 24);
-  assert.equal(lh.anchorX, .5);
-  assert.equal(lh.anchorY, .5);
+  assert.equal(lh.anchorX, 0.5);
+  assert.equal(lh.anchorY, 0.5);
   assert.equal(lh.rotation, 12);
   assert.equal(lh.skewX, 2);
   assert.equal(lh._$type, 'Text');
@@ -91,16 +108,18 @@ test('DrawTextureCmd keeps a stable texture ID and hydrates through the preloade
   const lh = ZhudaAssetSerializer.serializeNodeToHierarchy({
     name: 'RasterPanel',
     graphics: {
-      cmds: [{
-        cmdID: 'DrawTextureCmd',
-        textureId: 'ui/panel.png',
-        x: 4,
-        y: 8,
-        width: 120,
-        height: 40,
-        alpha: 0.8
-      }]
-    }
+      cmds: [
+        {
+          cmdID: 'DrawTextureCmd',
+          textureId: 'ui/panel.png',
+          x: 4,
+          y: 8,
+          width: 120,
+          height: 40,
+          alpha: 0.8,
+        },
+      ],
+    },
   });
   assert.deepEqual(lh._gcmds[0], {
     _$type: 'DrawTextureCmd',
@@ -114,29 +133,43 @@ test('DrawTextureCmd keeps a stable texture ID and hydrates through the preloade
     color: null,
     blendMode: undefined,
     uv: undefined,
-    percent: false
+    percent: false,
   });
 
   const previous = globalThis.Laya;
   const calls = [];
   globalThis.Laya = {
-    loader: { getRes: id => id === 'ui/panel.png' ? { id } : null },
+    loader: { getRes: (id) => (id === 'ui/panel.png' ? { id } : null) },
     Matrix: class Matrix {
-      constructor(...values) { this.values = values; }
-    }
+      constructor(...values) {
+        this.values = values;
+      }
+    },
   };
   try {
-    ZhudaPrefab.applyGraphicsCommands({
-      clear() {},
-      drawTexture(...args) { calls.push(args); }
-    }, lh._gcmds);
+    ZhudaPrefab.applyGraphicsCommands(
+      {
+        clear() {},
+        drawTexture(...args) {
+          calls.push(args);
+        },
+      },
+      lh._gcmds,
+    );
     assert.equal(calls.length, 1);
     assert.equal(calls[0][0].id, 'ui/panel.png');
     assert.equal(calls[0][5], null);
-    assert.throws(() => ZhudaPrefab.applyGraphicsCommands({
-      clear() {},
-      drawTexture() {}
-    }, [{ _$type: 'DrawTextureCmd', textureId: 'ui/missing.png' }]), /ui\/missing\.png/);
+    assert.throws(
+      () =>
+        ZhudaPrefab.applyGraphicsCommands(
+          {
+            clear() {},
+            drawTexture() {},
+          },
+          [{ _$type: 'DrawTextureCmd', textureId: 'ui/missing.png' }],
+        ),
+      /ui\/missing\.png/,
+    );
   } finally {
     globalThis.Laya = previous;
   }
@@ -144,10 +177,21 @@ test('DrawTextureCmd keeps a stable texture ID and hydrates through the preloade
 
 test('native hierarchy hydration restores omitted Image children for stable Prefab paths', () => {
   class Node {
-    constructor() { this.children = []; this.name = ''; this.graphics = { cmds: [] }; }
-    get numChildren() { return this.children.length; }
-    getChildAt(index) { return this.children[index]; }
-    addChild(child) { this.children.push(child); return child; }
+    constructor() {
+      this.children = [];
+      this.name = '';
+      this.graphics = { cmds: [] };
+    }
+    get numChildren() {
+      return this.children.length;
+    }
+    getChildAt(index) {
+      return this.children[index];
+    }
+    addChild(child) {
+      this.children.push(child);
+      return child;
+    }
   }
   class Image extends Node {}
   class Text extends Node {}
@@ -156,16 +200,20 @@ test('native hierarchy hydration restores omitted Image children for stable Pref
     Sprite: Node,
     Image,
     Text,
-    HierarchyParser: { parse: data => {
-      const root = data._$type === 'Image' ? new Image() : new Node();
-      root.name = data.name;
-      return root;
-    } }
+    HierarchyParser: {
+      parse: (data) => {
+        const root = data._$type === 'Image' ? new Image() : new Node();
+        root.name = data.name;
+        return root;
+      },
+    },
   };
   try {
     const root = ZhudaPrefab.instantiate({
-      _$id: 'root', _$type: 'Image', name: 'root',
-      _$child: [{ _$id: 'label', _$type: 'Text', name: 'label', text: 'OK' }]
+      _$id: 'root',
+      _$type: 'Image',
+      name: 'root',
+      _$child: [{ _$id: 'label', _$type: 'Text', name: 'label', text: 'OK' }],
     });
     assert.equal(root.numChildren, 1);
     assert.equal(root.getChildAt(0).name, 'label');
@@ -203,7 +251,7 @@ test('All 10 builtin static prefabs (UI, 9-Slice, Spine 4.2 Rig, 4 VFX Blueprint
     'SwordSlashTrailVfx.lh',
     'LevelUpAuraVfx.lh',
     'UnityCrystalGuardian.lh',
-    'TelemetryDashboard.lh'
+    'TelemetryDashboard.lh',
   ];
 
   for (const name of prefabNames) {
@@ -217,7 +265,10 @@ test('All 10 builtin static prefabs (UI, 9-Slice, Spine 4.2 Rig, 4 VFX Blueprint
 
   // 檢查 Spine 4.2 預製體與粒子預製體皆掛載對應反射組件
   assert.equal(assets['ZhudaSpine42Mascot.lh']._$comp[0]._$type, 'Spine42PhysicsRigComponent');
-  assert.equal(assets['MineExplosionParticle.lh']._$comp[0]._$type, 'ZhudaParticleEmitterComponent');
+  assert.equal(
+    assets['MineExplosionParticle.lh']._$comp[0]._$type,
+    'ZhudaParticleEmitterComponent',
+  );
 });
 
 test('PixelCalibrationEngine scans RGBA pixel buffers for tight bounding box and dominant hex color', () => {

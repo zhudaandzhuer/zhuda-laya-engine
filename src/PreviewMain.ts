@@ -32,7 +32,7 @@ async function bootMicroPreview() {
     width: 1280,
     height: 720,
     bgColor: '#080c14',
-    features: ['core', '2d', 'ui', 'spine42']
+    features: ['core', '2d', 'ui', 'spine42'],
   });
 
   const stageRoot = new Laya.Sprite();
@@ -79,7 +79,7 @@ async function bootMicroPreview() {
       10,
       '#0e1525',
       isHighlighted ? '#38bdf8' : '#1e293b',
-      isHighlighted ? 2 : 1.2
+      isHighlighted ? 2 : 1.2,
     );
 
     // 標題列
@@ -116,7 +116,7 @@ async function bootMicroPreview() {
     // 實例化靜態預製體 (凍結 Spine 動態更新以便像素比對)
     const inst = ZhudaPrefab.instantiate(lhData, quadrantLayer, {
       x: baseOriginX + (lhData.x ?? 10),
-      y: baseOriginY + (lhData.y ?? 10)
+      y: baseOriginY + (lhData.y ?? 10),
     });
 
     // 繪製預期框 (青色) 與實測 Tight Bounding Box (翠綠/玫紅)
@@ -128,7 +128,7 @@ async function bootMicroPreview() {
       report.expectedBox.height,
       null,
       '#38bdf888',
-      1.2
+      1.2,
     );
 
     const statusColor = report.passed ? '#4ade80' : '#fb7185';
@@ -139,7 +139,7 @@ async function bootMicroPreview() {
       report.measuredBox.height,
       null,
       statusColor,
-      1.8
+      1.8,
     );
 
     // 底部像素與色差度量摘要列
@@ -158,7 +158,7 @@ async function bootMicroPreview() {
 
   const renderFullCalibrationWorkbench = (
     focusAssetKey: string,
-    driftMode: boolean = false
+    driftMode: boolean = false,
   ): PixelCalibrationReport => {
     gridLayer.graphics.clear();
     overlayLayer.graphics.clear();
@@ -173,7 +173,7 @@ async function bootMicroPreview() {
       qh: 298,
       title: '[1] 校準前：ConfirmActionButton.lh (未校準偏差態)',
       lhData: uncalibratedBtn,
-      isHighlighted: focusAssetKey === 'ConfirmActionButton.lh' && driftMode
+      isHighlighted: focusAssetKey === 'ConfirmActionButton.lh' && driftMode,
     });
 
     // Q2: 自動收斂後態 (或目前選取的 UI / 9-Slice 預製體)
@@ -195,7 +195,7 @@ async function bootMicroPreview() {
         (focusAssetKey === 'ConfirmActionButton.lh' ||
           focusAssetKey === 'NineSliceDialogFrame.lh' ||
           focusAssetKey === 'TacticalHudBar.lh' ||
-          focusAssetKey === 'TelemetryDashboard.lh')
+          focusAssetKey === 'TelemetryDashboard.lh'),
     });
 
     // Q3: Spine 4.2 PhysicsConstraint 靜態骨骼 或 Unity 移植預製體
@@ -214,7 +214,7 @@ async function bootMicroPreview() {
           : '[3] Spine 4.2 靜態骨骼資產：ZhudaSpine42Mascot.lh',
       lhData: q3Asset,
       isHighlighted:
-        focusAssetKey === 'ZhudaSpine42Mascot.lh' || focusAssetKey === 'UnityCrystalGuardian.lh'
+        focusAssetKey === 'ZhudaSpine42Mascot.lh' || focusAssetKey === 'UnityCrystalGuardian.lh',
     });
 
     // Q4: 決定性粒子快照或 VFX 特效藍圖預製體
@@ -235,7 +235,7 @@ async function bootMicroPreview() {
         focusAssetKey === 'MineExplosionParticle.lh' ||
         focusAssetKey === 'CoinFountainVfx.lh' ||
         focusAssetKey === 'SwordSlashTrailVfx.lh' ||
-        focusAssetKey === 'LevelUpAuraVfx.lh'
+        focusAssetKey === 'LevelUpAuraVfx.lh',
     });
 
     ZhudaEngine.flushRenderFrames(4);
@@ -274,7 +274,7 @@ async function bootMicroPreview() {
         assetKey: focusAssetKey,
         driftMode,
         lhData: selectedLh,
-        report: selectedReport
+        report: selectedReport,
       });
     }
 
@@ -284,7 +284,7 @@ async function bootMicroPreview() {
   const convergenceDemo = PixelCalibrationEngine.runSelfConvergenceDemo();
   const calibratedAssetKeys = Object.keys(builtinAssets).filter((k) => k.endsWith('.lh'));
   const allReports = calibratedAssetKeys.map((k) =>
-    PixelCalibrationEngine.calibrateAsset(builtinAssets[k])
+    PixelCalibrationEngine.calibrateAsset(builtinAssets[k]),
   );
   const allPassed = allReports.every((r) => r.passed);
 
@@ -306,7 +306,7 @@ async function bootMicroPreview() {
         const pxMetrics = PixelCalibrationEngine.measurePixelBuffer(buf, w, h, {
           r: 8,
           g: 12,
-          b: 20
+          b: 20,
         });
         sampledNonBgPixels = pxMetrics.nonTransparentPixels;
       }
@@ -321,27 +321,28 @@ async function bootMicroPreview() {
     document.body.dataset.zhudaCalibratedAssets = String(calibratedAssetKeys.length);
     document.body.dataset.zhudaAllAssetsPassed = String(allPassed);
     document.body.dataset.zhudaBeforePxError = String(
-      convergenceDemo.beforeReport.pixelErrors.maxAbsErrorPx
+      convergenceDemo.beforeReport.pixelErrors.maxAbsErrorPx,
     );
     document.body.dataset.zhudaAfterPxError = String(
-      convergenceDemo.afterReport.pixelErrors.maxAbsErrorPx
+      convergenceDemo.afterReport.pixelErrors.maxAbsErrorPx,
     );
     document.body.dataset.zhudaBeforeDeltaE = String(
-      convergenceDemo.beforeReport.colorMetrics.maxDeltaE2000
+      convergenceDemo.beforeReport.colorMetrics.maxDeltaE2000,
     );
     document.body.dataset.zhudaAfterDeltaE = String(
-      convergenceDemo.afterReport.colorMetrics.maxDeltaE2000
+      convergenceDemo.afterReport.colorMetrics.maxDeltaE2000,
     );
     document.body.dataset.zhudaGlPixelsSampled = String(sampledNonBgPixels);
   }
 
   const controller: MicroPreviewController = {
     switchAsset: (key: string, drift = false) => renderFullCalibrationWorkbench(key, drift),
-    runAutoConverge: () => renderFullCalibrationWorkbench('ConfirmActionButton.lh', false)
+    runAutoConverge: () => renderFullCalibrationWorkbench('ConfirmActionButton.lh', false),
   };
 
-  (globalThis as unknown as { __ZHUDA_MICRO_PREVIEW__?: MicroPreviewController }).__ZHUDA_MICRO_PREVIEW__ =
-    controller;
+  (
+    globalThis as unknown as { __ZHUDA_MICRO_PREVIEW__?: MicroPreviewController }
+  ).__ZHUDA_MICRO_PREVIEW__ = controller;
 }
 
 bootMicroPreview().catch((err) => {

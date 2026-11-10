@@ -24,7 +24,7 @@ const DEFAULT_IGNORED_DIRS = new Set([
   'Artifacts',
   'TestResults',
   'node_modules',
-  'dist'
+  'dist',
 ]);
 
 const IMAGE_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.webp']);
@@ -91,7 +91,7 @@ function loadVisualContract(targetRoot, explicitPath) {
         path.join(targetRoot, 'visual-migration-manifest.json'),
         path.join(targetRoot, 'visual-material-contract.json'),
         path.join(targetRoot, 'assets', 'visual-migration-manifest.json'),
-        path.join(targetRoot, 'assets', 'visual-material-contract.json')
+        path.join(targetRoot, 'assets', 'visual-material-contract.json'),
       ];
   for (const candidate of candidates) {
     if (!fs.existsSync(candidate)) continue;
@@ -125,13 +125,16 @@ function spineDescriptor(filePath, root) {
       bones: [],
       slots: [],
       constraints: { ik: 0, transform: 0, path: 0, physics: 0 },
-      version: null
+      version: null,
     };
   }
   const value = parsed.value;
   const animations = Object.keys(value.animations || {}).sort();
   const skins = Array.isArray(value.skins)
-    ? value.skins.map((skin) => typeof skin === 'string' ? skin : skin.name).filter(Boolean).sort()
+    ? value.skins
+        .map((skin) => (typeof skin === 'string' ? skin : skin.name))
+        .filter(Boolean)
+        .sort()
     : Object.keys(value.skins || {}).sort();
   return {
     sourcePath: rel,
@@ -144,7 +147,7 @@ function spineDescriptor(filePath, root) {
       x: value.skeleton?.x ?? null,
       y: value.skeleton?.y ?? null,
       width: value.skeleton?.width ?? null,
-      height: value.skeleton?.height ?? null
+      height: value.skeleton?.height ?? null,
     },
     animations,
     skins,
@@ -154,8 +157,8 @@ function spineDescriptor(filePath, root) {
       ik: Array.isArray(value.ik) ? value.ik.length : 0,
       transform: Array.isArray(value.transform) ? value.transform.length : 0,
       path: Array.isArray(value.path) ? value.path.length : 0,
-      physics: Array.isArray(value.physics) ? value.physics.length : 0
-    }
+      physics: Array.isArray(value.physics) ? value.physics.length : 0,
+    },
   };
 }
 
@@ -171,7 +174,13 @@ function atlasDescriptor(filePath, root) {
       currentPage = false;
       continue;
     }
-    if (!line.includes(':') && (line.endsWith('.png') || line.endsWith('.jpg') || line.endsWith('.jpeg') || line.endsWith('.webp'))) {
+    if (
+      !line.includes(':') &&
+      (line.endsWith('.png') ||
+        line.endsWith('.jpg') ||
+        line.endsWith('.jpeg') ||
+        line.endsWith('.webp'))
+    ) {
       pages += 1;
       currentPage = true;
       continue;
@@ -183,7 +192,7 @@ function atlasDescriptor(filePath, root) {
     key: normalizeName(filePath),
     sha256: sha256(filePath),
     pages,
-    regions
+    regions,
   };
 }
 
@@ -198,7 +207,7 @@ function collectInventory(root, role) {
     spineJson: [],
     atlases: [],
     imageFiles: [],
-    unityWrappers: []
+    unityWrappers: [],
   };
   for (const filePath of files) {
     const extension = extensionOf(filePath);
@@ -209,7 +218,7 @@ function collectInventory(root, role) {
       key: normalizeName(filePath),
       extension,
       bytes: fs.statSync(filePath).size,
-      sha256: sha256(filePath)
+      sha256: sha256(filePath),
     };
     const spine = isSpineJson(filePath);
     const atlas = extension === '.atlas' || extension === '.atlas.txt';
@@ -224,7 +233,10 @@ function collectInventory(root, role) {
       inventory.visualFiles.push({ ...record, kind: 'spine-atlas', ...descriptor });
     } else if (image) {
       inventory.imageFiles.push(record);
-      if (relative.toLowerCase().includes('/spine/') || relative.toLowerCase().includes('/animation/')) {
+      if (
+        relative.toLowerCase().includes('/spine/') ||
+        relative.toLowerCase().includes('/animation/')
+      ) {
         inventory.visualFiles.push({ ...record, kind: 'spine-texture' });
       }
     }
@@ -237,7 +249,7 @@ function collectInventory(root, role) {
         kind: extension.slice(1),
         declaredName: nameMatch?.[1]?.trim() || path.basename(filePath, extension),
         shaderGuid: shaderMatch?.[1]?.trim() || null,
-        additive: /additive|blendadd|_blend/i.test(`${relative}\n${text}`)
+        additive: /additive|blendadd|_blend/i.test(`${relative}\n${text}`),
       });
     }
   }
@@ -267,7 +279,7 @@ function compareSpine(source, target) {
       status: 'missing-target',
       issues: ['No target Spine JSON with the same normalized asset key.'],
       source,
-      target: null
+      target: null,
     };
   }
   const missingAnimations = setDifference(source.animations, target.animations);
@@ -275,7 +287,9 @@ function compareSpine(source, target) {
   const missingSkins = setDifference(source.skins, target.skins);
   const missingBones = setDifference(source.bones, target.bones);
   const missingSlots = setDifference(source.slots, target.slots);
-  const constraintMismatch = Object.entries(source.constraints).filter(([key, value]) => value !== target.constraints[key]);
+  const constraintMismatch = Object.entries(source.constraints).filter(
+    ([key, value]) => value !== target.constraints[key],
+  );
   const issues = [];
   if (source.parseError) issues.push(`Source JSON parse error: ${source.parseError}`);
   if (target.parseError) issues.push(`Target JSON parse error: ${target.parseError}`);
@@ -283,9 +297,14 @@ function compareSpine(source, target) {
   if (missingSkins.length) issues.push(`Missing skins: ${missingSkins.join(', ')}`);
   if (missingBones.length) issues.push(`${missingBones.length} bones missing from target`);
   if (missingSlots.length) issues.push(`${missingSlots.length} slots missing from target`);
-  if (constraintMismatch.length) issues.push(`Constraint counts differ: ${constraintMismatch.map(([key, value]) => `${key} ${value}->${target.constraints[key]}`).join(', ')}`);
-  if (source.version && !String(source.version).startsWith('4.2')) issues.push(`Source Spine version is ${source.version}, expected 4.2`);
-  if (target.version && !String(target.version).startsWith('4.2')) issues.push(`Target Spine version is ${target.version}, expected 4.2`);
+  if (constraintMismatch.length)
+    issues.push(
+      `Constraint counts differ: ${constraintMismatch.map(([key, value]) => `${key} ${value}->${target.constraints[key]}`).join(', ')}`,
+    );
+  if (source.version && !String(source.version).startsWith('4.2'))
+    issues.push(`Source Spine version is ${source.version}, expected 4.2`);
+  if (target.version && !String(target.version).startsWith('4.2'))
+    issues.push(`Target Spine version is ${target.version}, expected 4.2`);
   return {
     key: source.key,
     sourcePath: source.sourcePath,
@@ -299,20 +318,28 @@ function compareSpine(source, target) {
     missingSlots,
     constraintMismatch,
     source,
-    target
+    target,
   };
 }
 
 function animationWrapperCoverage(unityWrappers, targetSpine, visualContract) {
   const targetAnimations = new Set(targetSpine.flatMap((asset) => asset.animations));
-  const explicitMappings = Array.isArray(visualContract?.animations) ? visualContract.animations : [];
+  const explicitMappings = Array.isArray(visualContract?.animations)
+    ? visualContract.animations
+    : [];
   const wrappers = unityWrappers.filter((wrapper) => wrapper.kind === 'anim');
   return wrappers.map((wrapper) => {
     const declared = wrapper.declaredName || path.basename(wrapper.path, '.anim');
     const candidates = [declared, declared.replace(/^Ani[_-]/i, '')];
-    const explicit = explicitMappings.find((mapping) => mapping.sourcePath === wrapper.path || mapping.sourceName === declared);
-    const matchedAnimation = explicit?.targetAnimation || candidates.find((candidate) => targetAnimations.has(candidate)) ||
-      [...targetAnimations].find((candidate) => normalizeName(candidate) === normalizeName(declared));
+    const explicit = explicitMappings.find(
+      (mapping) => mapping.sourcePath === wrapper.path || mapping.sourceName === declared,
+    );
+    const matchedAnimation =
+      explicit?.targetAnimation ||
+      candidates.find((candidate) => targetAnimations.has(candidate)) ||
+      [...targetAnimations].find(
+        (candidate) => normalizeName(candidate) === normalizeName(declared),
+      );
     return {
       sourcePath: wrapper.path,
       declaredName: declared,
@@ -322,7 +349,13 @@ function animationWrapperCoverage(unityWrappers, targetSpine, visualContract) {
       // runtime presenter or a documented static state instead of a Spine
       // animation. That is still represented when the mapping is explicit;
       // strict mode must only block genuinely unaccounted-for wrappers.
-      status: matchedAnimation ? (explicit ? 'mapped-by-contract' : 'represented-by-spine') : (explicit ? 'mapped-by-contract' : 'unmapped')
+      status: matchedAnimation
+        ? explicit
+          ? 'mapped-by-contract'
+          : 'represented-by-spine'
+        : explicit
+          ? 'mapped-by-contract'
+          : 'unmapped',
     };
   });
 }
@@ -332,7 +365,10 @@ function materialReview(unityWrappers, visualContract) {
   return unityWrappers
     .filter((wrapper) => wrapper.kind === 'mat')
     .map((wrapper) => {
-      const explicit = explicitMappings.find((mapping) => mapping.sourcePath === wrapper.path || mapping.sourceName === wrapper.declaredName);
+      const explicit = explicitMappings.find(
+        (mapping) =>
+          mapping.sourcePath === wrapper.path || mapping.sourceName === wrapper.declaredName,
+      );
       return {
         sourcePath: wrapper.path,
         declaredName: wrapper.declaredName,
@@ -341,7 +377,9 @@ function materialReview(unityWrappers, visualContract) {
         blendMode: explicit?.blendMode || null,
         mapping: explicit || null,
         status: explicit ? 'mapped-by-contract' : 'requires-target-material-contract',
-        message: explicit ? 'Unity material wrapper is represented by an explicit Laya material contract.' : 'Unity material wrapper must be mapped to a Laya blend/material contract; file presence alone cannot prove visual equivalence.'
+        message: explicit
+          ? 'Unity material wrapper is represented by an explicit Laya material contract.'
+          : 'Unity material wrapper must be mapped to a Laya blend/material contract; file presence alone cannot prove visual equivalence.',
       };
     });
 }
@@ -350,18 +388,39 @@ function compareAtlases(sourceInventory, targetInventory) {
   const targetByKey = indexByKey(targetInventory.atlases);
   return sourceInventory.atlases.map((source) => {
     const target = targetByKey.get(source.key)?.[0];
-    if (!target) return { key: source.key, sourcePath: source.sourcePath, targetPath: null, status: 'missing-target', issues: ['Missing target atlas.'] };
+    if (!target)
+      return {
+        key: source.key,
+        sourcePath: source.sourcePath,
+        targetPath: null,
+        status: 'missing-target',
+        issues: ['Missing target atlas.'],
+      };
     const issues = [];
-    if (source.pages !== target.pages) issues.push(`Atlas page count differs: ${source.pages}->${target.pages}`);
-    if (source.regions !== target.regions) issues.push(`Atlas region count differs: ${source.regions}->${target.regions}`);
-    return { key: source.key, sourcePath: source.sourcePath, targetPath: target.sourcePath, status: issues.length ? 'mismatch' : 'matched', issues, source, target };
+    if (source.pages !== target.pages)
+      issues.push(`Atlas page count differs: ${source.pages}->${target.pages}`);
+    if (source.regions !== target.regions)
+      issues.push(`Atlas region count differs: ${source.regions}->${target.regions}`);
+    return {
+      key: source.key,
+      sourcePath: source.sourcePath,
+      targetPath: target.sourcePath,
+      status: issues.length ? 'mismatch' : 'matched',
+      issues,
+      source,
+      target,
+    };
   });
 }
 
 function compareSpineTextures(sourceInventory, targetInventory) {
   const targetByKey = indexByKey(targetInventory.imageFiles);
   return sourceInventory.imageFiles
-    .filter((file) => file.path.toLowerCase().includes('/animation/') || file.path.toLowerCase().includes('/spine/'))
+    .filter(
+      (file) =>
+        file.path.toLowerCase().includes('/animation/') ||
+        file.path.toLowerCase().includes('/spine/'),
+    )
     .map((source) => {
       const target = targetByKey.get(source.key)?.[0];
       return {
@@ -371,12 +430,17 @@ function compareSpineTextures(sourceInventory, targetInventory) {
         status: target ? 'matched' : 'missing-target',
         sourceBytes: source.bytes,
         targetBytes: target?.bytes || null,
-        byteIdentical: Boolean(target && target.sha256 === source.sha256)
+        byteIdentical: Boolean(target && target.sha256 === source.sha256),
       };
     });
 }
 
-export function auditVisualAssetMigration({ sourceRoot, targetRoot, strict = false, contractPath } = {}) {
+export function auditVisualAssetMigration({
+  sourceRoot,
+  targetRoot,
+  strict = false,
+  contractPath,
+} = {}) {
   if (!sourceRoot || !targetRoot) throw new Error('sourceRoot and targetRoot are required');
   const source = path.resolve(sourceRoot);
   const target = path.resolve(targetRoot);
@@ -387,10 +451,16 @@ export function auditVisualAssetMigration({ sourceRoot, targetRoot, strict = fal
   const targetInventory = collectInventory(target, 'laya');
   const visualContract = loadVisualContract(target, contractPath);
   const targetSpineByKey = indexByKey(targetInventory.spineJson);
-  const spine = sourceInventory.spineJson.map((asset) => compareSpine(asset, targetSpineByKey.get(asset.key)?.[0]));
+  const spine = sourceInventory.spineJson.map((asset) =>
+    compareSpine(asset, targetSpineByKey.get(asset.key)?.[0]),
+  );
   const atlases = compareAtlases(sourceInventory, targetInventory);
   const textures = compareSpineTextures(sourceInventory, targetInventory);
-  const animations = animationWrapperCoverage(sourceInventory.unityWrappers, targetInventory.spineJson, visualContract.value);
+  const animations = animationWrapperCoverage(
+    sourceInventory.unityWrappers,
+    targetInventory.spineJson,
+    visualContract.value,
+  );
   const materials = materialReview(sourceInventory.unityWrappers, visualContract.value);
   const unmappedMaterials = materials.filter((item) => item.status !== 'mapped-by-contract');
   const issues = [];
@@ -403,11 +473,21 @@ export function auditVisualAssetMigration({ sourceRoot, targetRoot, strict = fal
   }
   const unmappedAnimations = animations.filter((item) => item.status === 'unmapped');
   if (unmappedAnimations.length) {
-    issues.push({ severity: strict ? 'error' : 'warning', category: 'animation-contract', count: unmappedAnimations.length, items: unmappedAnimations });
+    issues.push({
+      severity: strict ? 'error' : 'warning',
+      category: 'animation-contract',
+      count: unmappedAnimations.length,
+      items: unmappedAnimations,
+    });
     if (strict) blockers.push(...unmappedAnimations);
   }
   if (unmappedMaterials.length) {
-    issues.push({ severity: strict ? 'error' : 'warning', category: 'material-contract', count: unmappedMaterials.length, items: unmappedMaterials });
+    issues.push({
+      severity: strict ? 'error' : 'warning',
+      category: 'material-contract',
+      count: unmappedMaterials.length,
+      items: unmappedMaterials,
+    });
     if (strict) blockers.push(...unmappedMaterials);
   }
   const matchedSpine = spine.filter((result) => result.status === 'matched').length;
@@ -419,16 +499,44 @@ export function auditVisualAssetMigration({ sourceRoot, targetRoot, strict = fal
     sourceRoot: source,
     targetRoot: target,
     strict,
-    contract: { path: visualContract.path, loaded: Boolean(visualContract.path), parseError: visualContract.error },
+    contract: {
+      path: visualContract.path,
+      loaded: Boolean(visualContract.path),
+      parseError: visualContract.error,
+    },
     source: sourceInventory,
     target: targetInventory,
     parity: { spine, atlases, textures, animations, materials },
     coverage: {
-      spine: { matched: matchedSpine, total: spine.length, ratio: spine.length ? matchedSpine / spine.length : 1 },
-      atlases: { matched: matchedAtlases, total: atlases.length, ratio: atlases.length ? matchedAtlases / atlases.length : 1 },
-      textures: { matched: matchedTextures, total: textures.length, ratio: textures.length ? matchedTextures / textures.length : 1 },
-      animationWrappers: { represented: animations.filter((item) => item.status === 'represented-by-spine' || item.status === 'mapped-by-contract').length, byContract: animations.filter((item) => item.status === 'mapped-by-contract').length, total: animations.length, ratio: animations.length ? animations.filter((item) => item.status === 'represented-by-spine' || item.status === 'mapped-by-contract').length / animations.length : 1 },
-      materialsRequiringContract: unmappedMaterials.length
+      spine: {
+        matched: matchedSpine,
+        total: spine.length,
+        ratio: spine.length ? matchedSpine / spine.length : 1,
+      },
+      atlases: {
+        matched: matchedAtlases,
+        total: atlases.length,
+        ratio: atlases.length ? matchedAtlases / atlases.length : 1,
+      },
+      textures: {
+        matched: matchedTextures,
+        total: textures.length,
+        ratio: textures.length ? matchedTextures / textures.length : 1,
+      },
+      animationWrappers: {
+        represented: animations.filter(
+          (item) => item.status === 'represented-by-spine' || item.status === 'mapped-by-contract',
+        ).length,
+        byContract: animations.filter((item) => item.status === 'mapped-by-contract').length,
+        total: animations.length,
+        ratio: animations.length
+          ? animations.filter(
+              (item) =>
+                item.status === 'represented-by-spine' || item.status === 'mapped-by-contract',
+            ).length / animations.length
+          : 1,
+      },
+      materialsRequiringContract: unmappedMaterials.length,
     },
     issues,
     passed: blockers.length === 0,
@@ -440,9 +548,12 @@ export function auditVisualAssetMigration({ sourceRoot, targetRoot, strict = fal
       targetFileCount: targetInventory.totalFiles,
       sourceSpineCount: sourceInventory.spineJson.length,
       targetSpineCount: targetInventory.spineJson.length,
-      sourceAnimationCount: sourceInventory.unityWrappers.filter((wrapper) => wrapper.kind === 'anim').length,
-      sourceMaterialCount: sourceInventory.unityWrappers.filter((wrapper) => wrapper.kind === 'mat').length
-    }
+      sourceAnimationCount: sourceInventory.unityWrappers.filter(
+        (wrapper) => wrapper.kind === 'anim',
+      ).length,
+      sourceMaterialCount: sourceInventory.unityWrappers.filter((wrapper) => wrapper.kind === 'mat')
+        .length,
+    },
   };
   return report;
 }
@@ -459,26 +570,41 @@ function parseArgs(argv) {
   return args;
 }
 
-if (cliMain(import.meta.url, 'Usage: zhuda-visual-asset --source DIRECTORY --target DIRECTORY [--strict] [--report FILE]')) {
+if (
+  cliMain(
+    import.meta.url,
+    'Usage: zhuda-visual-asset --source DIRECTORY --target DIRECTORY [--strict] [--report FILE]',
+  )
+) {
   try {
     const args = parseArgs(process.argv.slice(2));
-    const report = auditVisualAssetMigration({ sourceRoot: args.source, targetRoot: args.target, strict: Boolean(args.strict), contractPath: args.contract });
+    const report = auditVisualAssetMigration({
+      sourceRoot: args.source,
+      targetRoot: args.target,
+      strict: Boolean(args.strict),
+      contractPath: args.contract,
+    });
     const output = args.report ? path.resolve(args.report) : null;
     if (output) {
       fs.mkdirSync(path.dirname(output), { recursive: true });
       fs.writeFileSync(output, `${JSON.stringify(report, null, 2)}\n`);
     }
-    console.log(JSON.stringify({
-      passed: report.passed,
-      strict: report.strict,
-      coverage: report.coverage,
-      summary: report.summary,
-      report: output
-    }, null, 2));
+    console.log(
+      JSON.stringify(
+        {
+          passed: report.passed,
+          strict: report.strict,
+          coverage: report.coverage,
+          summary: report.summary,
+          report: output,
+        },
+        null,
+        2,
+      ),
+    );
     if (!report.passed) process.exitCode = 1;
   } catch (error) {
     console.error(error instanceof Error ? error.message : error);
     process.exitCode = 2;
   }
 }
-

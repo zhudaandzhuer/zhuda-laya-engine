@@ -1,6 +1,6 @@
 // Generated from TypeScript source; run npm run types:generate.
-import type { IframeOfflineMixOptions, IframeOfflineMix } from "../zhuda-audio";
-import type { IframeAudioChannel } from "../zhuda-2d-ui";
+import type { IframeOfflineMixOptions, IframeOfflineMix } from '../zhuda-audio';
+import type { IframeAudioChannel } from '../zhuda-2d-ui';
 export interface OfflineMixSnapshot {
     samples: ReadonlyMap<string, AudioBuffer>;
     volumes: Readonly<Record<IframeAudioChannel, number>>;

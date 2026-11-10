@@ -7,12 +7,12 @@
  * Laya application that was initialized by somebody else.
  */
 
-export const ZHUDA_LAYA_REALM_MARKER = "__ZHUDA_LAYA_REALM_OWNER__";
+export const ZHUDA_LAYA_REALM_MARKER = '__ZHUDA_LAYA_REALM_OWNER__';
 
 export interface LayaRealmReport {
   layaPresent: boolean;
   initialized: boolean;
-  owner: "none" | "uninitialized" | "zhuda" | "foreign";
+  owner: 'none' | 'uninitialized' | 'zhuda' | 'foreign';
   reason: string;
 }
 
@@ -32,8 +32,8 @@ export function inspectLayaRealm(value: typeof globalThis = globalThis): LayaRea
     return {
       layaPresent: false,
       initialized: false,
-      owner: "none",
-      reason: "Laya is not loaded in this realm.",
+      owner: 'none',
+      reason: 'Laya is not loaded in this realm.',
     };
   }
 
@@ -46,34 +46,34 @@ export function inspectLayaRealm(value: typeof globalThis = globalThis): LayaRea
     return {
       layaPresent: true,
       initialized: true,
-      owner: "foreign",
-      reason: "Laya state could not be inspected safely; refusing to attach to an unknown realm.",
+      owner: 'foreign',
+      reason: 'Laya state could not be inspected safely; refusing to attach to an unknown realm.',
     };
   }
 
   const initialized = stage != null || canvas != null;
   const marker = target[ZHUDA_LAYA_REALM_MARKER];
-  if (marker === "zhuda") {
+  if (marker === 'zhuda') {
     return {
       layaPresent: true,
       initialized,
-      owner: "zhuda",
-      reason: "This realm was initialized by Zhuda.",
+      owner: 'zhuda',
+      reason: 'This realm was initialized by Zhuda.',
     };
   }
   if (!initialized) {
     return {
       layaPresent: true,
       initialized: false,
-      owner: "uninitialized",
-      reason: "Laya is loaded but Laya.init has not created a stage or canvas yet.",
+      owner: 'uninitialized',
+      reason: 'Laya is loaded but Laya.init has not created a stage or canvas yet.',
     };
   }
   return {
     layaPresent: true,
     initialized: true,
-    owner: "foreign",
-    reason: "Laya has an initialized stage or canvas without the Zhuda realm marker.",
+    owner: 'foreign',
+    reason: 'Laya has an initialized stage or canvas without the Zhuda realm marker.',
   };
 }
 
@@ -86,11 +86,11 @@ export function markZhudaLayaRealm(value: typeof globalThis = globalThis): void 
       configurable: true,
       enumerable: false,
       writable: true,
-      value: "zhuda",
+      value: 'zhuda',
     });
     return;
   }
-  if (descriptor.writable) target[ZHUDA_LAYA_REALM_MARKER] = "zhuda";
+  if (descriptor.writable) target[ZHUDA_LAYA_REALM_MARKER] = 'zhuda';
 }
 
 /**
@@ -100,11 +100,11 @@ export function markZhudaLayaRealm(value: typeof globalThis = globalThis): void 
  */
 export function assertZhudaRealmAvailable(value: typeof globalThis = globalThis): LayaRealmReport {
   const report = inspectLayaRealm(value);
-  if (report.owner === "foreign") {
+  if (report.owner === 'foreign') {
     throw new Error(
-      "ZHUDA_FOREIGN_LAYA_REALM: this page already owns an initialized Laya runtime. " +
-      "Run the editor as a separate page or mount it through ZhudaRuntimeHost (iframe); " +
-      "do not load a second Zhuda/Laya renderer into the existing realm.",
+      'ZHUDA_FOREIGN_LAYA_REALM: this page already owns an initialized Laya runtime. ' +
+        'Run the editor as a separate page or mount it through ZhudaRuntimeHost (iframe); ' +
+        'do not load a second Zhuda/Laya renderer into the existing realm.',
     );
   }
   return report;

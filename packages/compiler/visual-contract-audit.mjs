@@ -15,24 +15,29 @@ import process from 'node:process';
 
 const MANIFEST_NAMES = [
   'visual-presentation-manifest.json',
-  'assets/visual-presentation-manifest.json'
+  'assets/visual-presentation-manifest.json',
 ];
 
 const ALLOWED_SCOPES = new Set(['board', 'reel', 'cell', 'scene', 'popup']);
 const REQUIRED_INVARIANTS = new Set([
   'winningTargetsRemainBright',
   'nonWinningTargetsAreDimmed',
-  'clearRestoresOriginalVisuals'
+  'clearRestoresOriginalVisuals',
 ]);
 
 function resolveManifestPath(projectRoot, explicitPath) {
   if (explicitPath) return path.resolve(projectRoot, explicitPath);
-  return MANIFEST_NAMES
-    .map((name) => path.join(projectRoot, name))
-    .find((candidate) => fs.existsSync(candidate)) || null;
+  return (
+    MANIFEST_NAMES.map((name) => path.join(projectRoot, name)).find((candidate) =>
+      fs.existsSync(candidate),
+    ) || null
+  );
 }
 
-export function auditVisualPresentationContracts({ projectRoot = process.cwd(), manifestPath } = {}) {
+export function auditVisualPresentationContracts({
+  projectRoot = process.cwd(),
+  manifestPath,
+} = {}) {
   const root = path.resolve(projectRoot);
   const resolvedPath = resolveManifestPath(root, manifestPath);
   const issues = [];
@@ -43,7 +48,7 @@ export function auditVisualPresentationContracts({ projectRoot = process.cwd(), 
       projectRoot: root,
       manifestPath: null,
       contractCount: 0,
-      issues: ['Missing visual-presentation-manifest.json.']
+      issues: ['Missing visual-presentation-manifest.json.'],
     };
   }
 
@@ -56,7 +61,7 @@ export function auditVisualPresentationContracts({ projectRoot = process.cwd(), 
       projectRoot: root,
       manifestPath: path.relative(root, resolvedPath),
       contractCount: 0,
-      issues: [`Cannot parse manifest: ${error.message}`]
+      issues: [`Cannot parse manifest: ${error.message}`],
     };
   }
 
@@ -73,7 +78,8 @@ export function auditVisualPresentationContracts({ projectRoot = process.cwd(), 
   }
 
   const contracts = Array.isArray(manifest.contracts) ? manifest.contracts : [];
-  if (contracts.length === 0) issues.push('contracts must contain at least one presentation contract.');
+  if (contracts.length === 0)
+    issues.push('contracts must contain at least one presentation contract.');
   const contractIds = new Set();
 
   for (const [index, contract] of contracts.entries()) {
@@ -103,7 +109,11 @@ export function auditVisualPresentationContracts({ projectRoot = process.cwd(), 
         issues.push(`${label}.invariants is missing ${invariant}.`);
       }
     }
-    if (!Array.isArray(contract.evidence) || contract.evidence.length === 0 || contract.evidence.some((item) => typeof item !== 'string' || !item.trim())) {
+    if (
+      !Array.isArray(contract.evidence) ||
+      contract.evidence.length === 0 ||
+      contract.evidence.some((item) => typeof item !== 'string' || !item.trim())
+    ) {
       issues.push(`${label}.evidence must contain at least one source/test reference.`);
     }
     const states = Array.isArray(contract.states) ? contract.states : [];
@@ -113,7 +123,12 @@ export function auditVisualPresentationContracts({ projectRoot = process.cwd(), 
     const stateNames = new Set();
     for (const [stateIndex, state] of states.entries()) {
       const stateLabel = `${label}.states[${stateIndex}]`;
-      if (!state || typeof state !== 'object' || typeof state.name !== 'string' || !state.name.trim()) {
+      if (
+        !state ||
+        typeof state !== 'object' ||
+        typeof state.name !== 'string' ||
+        !state.name.trim()
+      ) {
         issues.push(`${stateLabel}.name is required.`);
       } else if (stateNames.has(state.name)) {
         issues.push(`${stateLabel}.name duplicates ${state.name}.`);
@@ -132,7 +147,7 @@ export function auditVisualPresentationContracts({ projectRoot = process.cwd(), 
     manifestPath: path.relative(root, resolvedPath),
     contractCount: contracts.length,
     contractIds: [...contractIds],
-    issues
+    issues,
   };
 }
 
@@ -145,7 +160,9 @@ function parseArgs(argv) {
   return args;
 }
 
-if (cliMain(import.meta.url, 'Usage: zhuda-visual-contract [--project DIRECTORY] [--manifest FILE]')) {
+if (
+  cliMain(import.meta.url, 'Usage: zhuda-visual-contract [--project DIRECTORY] [--manifest FILE]')
+) {
   const report = auditVisualPresentationContracts(parseArgs(process.argv));
   console.log('🎭 [Zhuda-Visual-Contract] 視覺演出契約閘門:');
   console.log(`  • 契約數量: ${report.contractCount}`);

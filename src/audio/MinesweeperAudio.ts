@@ -31,7 +31,7 @@ export class MinesweeperAudio {
       startFreq: 620,
       endFreq: 310,
       durationSec: 0.06,
-      peakGain: 0.18
+      peakGain: 0.18,
     });
   }
 
@@ -44,7 +44,7 @@ export class MinesweeperAudio {
       startFreq: 820,
       endFreq: 1240,
       durationSec: 0.08,
-      peakGain: 0.2
+      peakGain: 0.2,
     });
   }
 
@@ -58,7 +58,7 @@ export class MinesweeperAudio {
       waveType: 'sine',
       startFreq: notes[index],
       durationSec: 0.12,
-      peakGain: 0.15
+      peakGain: 0.15,
     });
   }
 
@@ -73,7 +73,7 @@ export class MinesweeperAudio {
       startFreq: 150,
       endFreq: 30,
       durationSec: 0.6,
-      peakGain: 0.4
+      peakGain: 0.4,
     });
   }
 
@@ -88,7 +88,7 @@ export class MinesweeperAudio {
         startFreq: frequency,
         durationSec: 0.35,
         delaySec: index * 0.12,
-        peakGain: 0.2
+        peakGain: 0.2,
       });
     });
   }

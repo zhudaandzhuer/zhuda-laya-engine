@@ -78,7 +78,7 @@ export declare class ZhudaRealtimeClock {
     sample(): ZhudaClockSample;
     reset(): void;
 }
-export type ZhudaTimerChannel = "scaled" | "unscaled";
+export type ZhudaTimerChannel = 'scaled' | 'unscaled';
 export interface ZhudaTimerOptions {
     channel?: ZhudaTimerChannel;
     /** When set, the timer consumes that named layer's scaled delta. */

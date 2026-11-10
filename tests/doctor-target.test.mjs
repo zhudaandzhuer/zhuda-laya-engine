@@ -12,7 +12,8 @@ test('Doctor defaults to consumer cwd, reports its path and fails deliberate bad
   try {
     const game = path.join(root, 'game');
     initConsumer({ target: game, engine: '1.3.0' });
-    const run = (...args) => spawnSync(process.execPath, [cli, ...args], { cwd: game, encoding: 'utf8' });
+    const run = (...args) =>
+      spawnSync(process.execPath, [cli, ...args], { cwd: game, encoding: 'utf8' });
     let result = run();
     assert.equal(result.status, 0, result.stdout + result.stderr);
     assert.ok(result.stdout.includes(game));
@@ -23,7 +24,8 @@ test('Doctor defaults to consumer cwd, reports its path and fails deliberate bad
     assert.match(result.stdout, /UNTYPED_LAYA.*src\/Main.ts:\d+/);
     assert.match(result.stdout, /new Laya.Vector3/);
     assert.equal(run('--project').status, 1);
-    const empty = path.join(root, 'empty'); fs.mkdirSync(empty);
+    const empty = path.join(root, 'empty');
+    fs.mkdirSync(empty);
     result = run('--project', empty);
     assert.equal(result.status, 1);
     assert.match(result.stdout, /EMPTY_SOURCE_SCAN/);
@@ -31,5 +33,7 @@ test('Doctor defaults to consumer cwd, reports its path and fails deliberate bad
     result = run('--project', path.join(root, 'missing'));
     assert.equal(result.status, 1);
     assert.match(result.stdout, /EMPTY_SOURCE_SCAN/);
-  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
 });

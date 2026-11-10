@@ -43,7 +43,7 @@ export class Minesweeper3DView {
     // 使用 @zhuda-laya/core 的 Zhuda3D 宣告式 SDK 建立 3D 場景、相機與燈光
     this.scene3D = Zhuda3D.createScene3D(parentScene, {
       name: 'ZhudaMinesweeperScene3D',
-      ambientColor: [0.42, 0.47, 0.58, 1]
+      ambientColor: [0.42, 0.47, 0.58, 1],
     });
 
     this.camera = Zhuda3D.createCamera(this.scene3D, {
@@ -52,7 +52,7 @@ export class Minesweeper3DView {
       far: 1000,
       position: [4, 15, 17],
       rotationEuler: [-48, 0, 0],
-      clearColor: [0.06, 0.08, 0.12, 1]
+      clearColor: [0.06, 0.08, 0.12, 1],
     });
 
     // 掛載由 AST 自動反射註冊的 BoardCameraController 組件
@@ -61,7 +61,7 @@ export class Minesweeper3DView {
     Zhuda3D.createDirectionalLight(this.scene3D, {
       color: [1, 0.98, 0.92, 1],
       intensity: 1.35,
-      rotationEuler: [-55, 35, 0]
+      rotationEuler: [-55, 35, 0],
     });
 
     this.boardRoot = new Laya.Sprite3D('BoardRoot');
@@ -70,8 +70,14 @@ export class Minesweeper3DView {
 
     // 使用 Zhuda3D 建立共享材質 (Shared Material 合批)
     this.matHidden = Zhuda3D.createMaterial({ albedoColor: [0.23, 0.33, 0.46, 1], shininess: 36 });
-    this.matRevealed = Zhuda3D.createMaterial({ albedoColor: [0.11, 0.15, 0.22, 1], shininess: 10 });
-    this.matExploded = Zhuda3D.createMaterial({ albedoColor: [0.92, 0.22, 0.24, 1], shininess: 24 });
+    this.matRevealed = Zhuda3D.createMaterial({
+      albedoColor: [0.11, 0.15, 0.22, 1],
+      shininess: 10,
+    });
+    this.matExploded = Zhuda3D.createMaterial({
+      albedoColor: [0.92, 0.22, 0.24, 1],
+      shininess: 24,
+    });
     this.matFlag = Zhuda3D.createMaterial({ albedoColor: [1.0, 0.82, 0.12, 1], shininess: 48 });
     this.matMine = Zhuda3D.createMaterial({ albedoColor: [0.15, 0.15, 0.17, 1], shininess: 64 });
 
@@ -129,7 +135,7 @@ export class Minesweeper3DView {
     const boxMesh = Zhuda3D.createPrimitiveMesh('box', {
       width: 0.92,
       height: 0.35,
-      depth: 0.92
+      depth: 0.92,
     });
 
     for (let r = 0; r < this.game.rows; r++) {
@@ -154,7 +160,7 @@ export class Minesweeper3DView {
           revealed: false,
           baseY: 0,
           velocity: new Laya.Vector3(0, 0, 0),
-          angularVelocity: new Laya.Vector3(0, 0, 0)
+          angularVelocity: new Laya.Vector3(0, 0, 0),
         });
       }
     }
@@ -196,7 +202,7 @@ export class Minesweeper3DView {
           tile.flagSprite.transform,
           { localPositionY: 0.35, localScaleX: 1, localScaleY: 1, localScaleZ: 1 },
           200,
-          Laya.Ease.backOut
+          Laya.Ease.backOut,
         );
       }
     } else if (cell.state === 'question') {
@@ -231,7 +237,11 @@ export class Minesweeper3DView {
     flagRoot.addChild(pole);
     pole.transform.localPosition = new Laya.Vector3(0, 0.3, 0);
 
-    const clothMesh = Zhuda3D.createPrimitiveMesh('box', { width: 0.28, height: 0.18, depth: 0.04 });
+    const clothMesh = Zhuda3D.createPrimitiveMesh('box', {
+      width: 0.28,
+      height: 0.18,
+      depth: 0.04,
+    });
     const cloth = new Laya.MeshSprite3D();
     cloth.meshFilter.sharedMesh = clothMesh;
     cloth.meshRenderer.sharedMaterial = this.matFlag;
@@ -288,7 +298,7 @@ export class Minesweeper3DView {
       '#ff6d00',
       '#0097a7',
       '#212121',
-      '#757575'
+      '#757575',
     ];
     label.color = colors[num] || '#ffffff';
     this.overlay2D.addChild(label);
@@ -323,8 +333,22 @@ export class Minesweeper3DView {
       const dist = Math.sqrt(tile.c * tile.c + tile.r * tile.r);
       const delay = dist * 60;
       const targetRestY = tile.revealed ? -0.16 : 0;
-      Laya.Tween.to(tile.root.transform, { localPositionY: 0.75 }, 220, Laya.Ease.sineOut, undefined, delay);
-      Laya.Tween.to(tile.root.transform, { localPositionY: targetRestY }, 280, Laya.Ease.bounceOut, undefined, delay + 220);
+      Laya.Tween.to(
+        tile.root.transform,
+        { localPositionY: 0.75 },
+        220,
+        Laya.Ease.sineOut,
+        undefined,
+        delay,
+      );
+      Laya.Tween.to(
+        tile.root.transform,
+        { localPositionY: targetRestY },
+        280,
+        Laya.Ease.bounceOut,
+        undefined,
+        delay + 220,
+      );
     }
   }
 
@@ -338,7 +362,7 @@ export class Minesweeper3DView {
         this.camera.viewport.project(
           new Laya.Vector3(worldPos.x, worldPos.y + 0.22, worldPos.z),
           this.camera.projectionViewMatrix,
-          outPos
+          outPos,
         );
         tile.textNode.pos(outPos.x, outPos.y);
       }

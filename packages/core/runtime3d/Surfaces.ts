@@ -1,5 +1,5 @@
 export interface SurfaceMaterialSpec {
-  type: "pbr" | "unlit";
+  type: 'pbr' | 'unlit';
   color?: [number, number, number, number];
   metallic?: number;
   roughness?: number;
@@ -10,14 +10,14 @@ export interface SurfaceMaterialSpec {
     metallicGloss?: any;
     emission?: any;
   };
-  blend?: "opaque" | "alpha" | "additive" | "cutout";
+  blend?: 'opaque' | 'alpha' | 'additive' | 'cutout';
   alphaCutoff?: number;
   doubleSided?: boolean;
   depthWrite?: boolean;
 }
 /** glTF/Three.js G=roughness,B=metallic -> Laya R=metallic,A=smoothness. Data stays linear. */
 export function packMetallicRoughness(rgba: Uint8Array) {
-  if (rgba.length % 4) throw Error("RGBA data required");
+  if (rgba.length % 4) throw Error('RGBA data required');
   const out = new Uint8Array(rgba.length);
   for (let i = 0; i < out.length; i += 4) {
     out[i] = rgba[i + 2];
@@ -29,7 +29,7 @@ export function createSurfaceTexture(
   width: number,
   height: number,
   pixels: Uint8Array,
-  role: "color" | "emission" | "normal" | "data",
+  role: 'color' | 'emission' | 'normal' | 'data',
 ) {
   if (
     !Number.isInteger(width) ||
@@ -38,7 +38,7 @@ export function createSurfaceTexture(
     height < 1 ||
     pixels.length !== width * height * 4
   )
-    throw Error("Invalid texture payload");
+    throw Error('Invalid texture payload');
   const l = (globalThis as any).Laya,
     t = new l.Texture2D(
       width,
@@ -46,24 +46,23 @@ export function createSurfaceTexture(
       l.TextureFormat.R8G8B8A8,
       false,
       true,
-      role === "color" || role === "emission",
+      role === 'color' || role === 'emission',
     );
   t.setPixelsData(pixels, false, false);
   return t;
 }
 export function createSurfaceMaterial(s: SurfaceMaterialSpec) {
   const l = (globalThis as any).Laya;
-  if (!["pbr", "unlit"].includes(s.type)) throw Error("Unknown material type");
+  if (!['pbr', 'unlit'].includes(s.type)) throw Error('Unknown material type');
   if (
     [s.metallic ?? 0, s.roughness ?? 0.5, s.alphaCutoff ?? 0.5].some(
       (v) => !Number.isFinite(v) || v < 0 || v > 1,
     )
   )
-    throw Error("Invalid material factors");
-  const m =
-    s.type === "pbr" ? new l.PBRStandardMaterial() : new l.UnlitMaterial();
+    throw Error('Invalid material factors');
+  const m = s.type === 'pbr' ? new l.PBRStandardMaterial() : new l.UnlitMaterial();
   m.albedoColor = new l.Color(...(s.color || [1, 1, 1, 1]));
-  if (s.type === "pbr") {
+  if (s.type === 'pbr') {
     m.metallic = s.metallic ?? 0;
     m.smoothness = 1 - (s.roughness ?? 0.5);
     if (s.emission) {
@@ -75,37 +74,32 @@ export function createSurfaceMaterial(s: SurfaceMaterialSpec) {
     m[
       (
         {
-          albedo: "albedoTexture",
-          normal: "normalTexture",
-          metallicGloss: "metallicGlossTexture",
-          emission: "emissionTexture",
+          albedo: 'albedoTexture',
+          normal: 'normalTexture',
+          metallicGloss: 'metallicGlossTexture',
+          emission: 'emissionTexture',
         } as any
       )[key]
     ] = value?.bitmap || value;
-  const blend = s.blend || "opaque",
-    Class = s.type === "pbr" ? l.PBRStandardMaterial : l.UnlitMaterial;
-  if (blend === "alpha") m.renderMode = Class.RENDERMODE_TRANSPARENT;
-  else if (blend === "cutout") {
+  const blend = s.blend || 'opaque',
+    Class = s.type === 'pbr' ? l.PBRStandardMaterial : l.UnlitMaterial;
+  if (blend === 'alpha') m.renderMode = Class.RENDERMODE_TRANSPARENT;
+  else if (blend === 'cutout') {
     m.alphaTest = true;
     m.alphaTestValue = s.alphaCutoff ?? 0.5;
-  } else if (blend === "additive") {
+  } else if (blend === 'additive') {
     m.renderQueue = 3000;
     m.blend = l.RenderState.BLEND_ENABLE_ALL;
     m.blendSrc = l.RenderState.BLENDPARAM_SRC_ALPHA;
     m.blendDst = l.RenderState.BLENDPARAM_ONE;
   }
   if (s.doubleSided) m.cull = l.RenderState.CULL_NONE;
-  m.depthWrite = s.depthWrite ?? (blend === "opaque" || blend === "cutout");
+  m.depthWrite = s.depthWrite ?? (blend === 'opaque' || blend === 'cutout');
   return m;
 }
 /** Detach borrowed texture slots before destroying an owned material. */
 export function disposeSurfaceMaterial(m: any) {
-  for (const k of [
-    "albedoTexture",
-    "normalTexture",
-    "metallicGlossTexture",
-    "emissionTexture",
-  ])
+  for (const k of ['albedoTexture', 'normalTexture', 'metallicGlossTexture', 'emissionTexture'])
     if (k in m) m[k] = null;
   m.destroy();
 }
@@ -121,25 +115,19 @@ export interface CustomSurfaceShader {
 const registeredShaders = new WeakMap<object, Map<string, string>>();
 export function createCustomSurfaceMaterial(s: CustomSurfaceShader) {
   const l = (globalThis as any).Laya;
-  if (!s.name || !s.vertex || !s.fragment)
-    throw Error("Incomplete custom shader");
+  if (!s.name || !s.vertex || !s.fragment) throw Error('Incomplete custom shader');
   let registry = registeredShaders.get(l.Shader3D);
   if (!registry) registeredShaders.set(l.Shader3D, (registry = new Map()));
   const signature = JSON.stringify(s);
   if (l.Shader3D.find(s.name)) {
-    if (registry.get(s.name) !== signature)
-      throw Error("Shader name has a different contract");
+    if (registry.get(s.name) !== signature) throw Error('Shader name has a different contract');
   } else {
     const shader = l.Shader3D.add(s.name, !!s.instancing, false);
     shader.shaderType =
-      s.dimension === 2
-        ? l.ShaderFeatureType.D2_TextureSV
-        : l.ShaderFeatureType.D3;
+      s.dimension === 2 ? l.ShaderFeatureType.D2_TextureSV : l.ShaderFeatureType.D3;
     const sub = new l.SubShader(
       s.attributes ||
-        (s.dimension === 2
-          ? l.Shader2D.graphicsAttribute
-          : l.SubShader.DefaultAttributeMap),
+        (s.dimension === 2 ? l.Shader2D.graphicsAttribute : l.SubShader.DefaultAttributeMap),
       s.uniforms,
     );
     shader.addSubShader(sub);
@@ -151,15 +139,10 @@ export function createCustomSurfaceMaterial(s: CustomSurfaceShader) {
         /\buniform\s+((?:(?:lowp|mediump|highp)\s+)?\w+)\s+([^;]+);/g,
         (original, type, names) => {
           const retained = names
-            .split(",")
+            .split(',')
             .map((n: string) => n.trim())
-            .filter(
-              (n: string) =>
-                !Object.prototype.hasOwnProperty.call(s.uniforms, n),
-            );
-          return retained.length
-            ? `uniform ${type} ${retained.join(",")};`
-            : "";
+            .filter((n: string) => !Object.prototype.hasOwnProperty.call(s.uniforms, n));
+          return retained.length ? `uniform ${type} ${retained.join(',')};` : '';
         },
       );
     sub.addShaderPass(source(s.vertex), source(s.fragment));
@@ -189,15 +172,11 @@ export function computeMeshTangents(data: MeshData): Float32Array {
     [...data.indices].some((i) => i >= n) ||
     ![...data.positions, ...data.normals, ...data.uvs].every(Number.isFinite)
   )
-    throw Error("Tangents require finite position/normal/UV triangles");
+    throw Error('Tangents require finite position/normal/UV triangles');
   const a = new Float64Array(n * 3),
     b = new Float64Array(n * 3);
   for (let i = 0; i < data.indices.length; i += 3) {
-    const [i0, i1, i2] = [
-      data.indices[i],
-      data.indices[i + 1],
-      data.indices[i + 2],
-    ];
+    const [i0, i1, i2] = [data.indices[i], data.indices[i + 1], data.indices[i + 2]];
     const du1 = data.uvs[i1 * 2] - data.uvs[i0 * 2],
       dv1 = data.uvs[i1 * 2 + 1] - data.uvs[i0 * 2 + 1],
       du2 = data.uvs[i2 * 2] - data.uvs[i0 * 2],
@@ -219,7 +198,7 @@ export function computeMeshTangents(data: MeshData): Float32Array {
       ny = data.normals[i * 3 + 1],
       nz = data.normals[i * 3 + 2],
       length = Math.hypot(nx, ny, nz);
-    if (length < 1e-9) throw Error("Zero mesh normal");
+    if (length < 1e-9) throw Error('Zero mesh normal');
     nx /= length;
     ny /= length;
     nz /= length;
@@ -267,7 +246,7 @@ export class ZhudaDynamicMesh {
     const l = (globalThis as any).Laya,
       n = data.positions.length / 3;
     if (!Number.isInteger(n) || n < 3 || n > 65535)
-      throw Error("Mesh requires 3..65535 vertices per chunk");
+      throw Error('Mesh requires 3..65535 vertices per chunk');
     if (
       (data.normals && data.normals.length !== n * 3) ||
       (data.uvs && data.uvs.length !== n * 2) ||
@@ -276,33 +255,20 @@ export class ZhudaDynamicMesh {
       data.indices.length % 3 ||
       [...data.indices].some((i) => i >= n)
     )
-      throw Error("Invalid mesh attributes or indices");
+      throw Error('Invalid mesh attributes or indices');
     this.stride = data.tangents ? 12 : 8;
     this.vertices = new Float32Array(n * this.stride);
     for (let i = 0; i < n; i++) {
-      this.vertices.set(
-        data.positions.subarray(i * 3, i * 3 + 3),
-        i * this.stride,
-      );
-      this.vertices.set(
-        data.normals?.subarray(i * 3, i * 3 + 3) || [0, 1, 0],
-        i * this.stride + 3,
-      );
-      this.vertices.set(
-        data.uvs?.subarray(i * 2, i * 2 + 2) || [0, 0],
-        i * this.stride + 6,
-      );
+      this.vertices.set(data.positions.subarray(i * 3, i * 3 + 3), i * this.stride);
+      this.vertices.set(data.normals?.subarray(i * 3, i * 3 + 3) || [0, 1, 0], i * this.stride + 3);
+      this.vertices.set(data.uvs?.subarray(i * 2, i * 2 + 2) || [0, 0], i * this.stride + 6);
       if (data.tangents)
-        this.vertices.set(
-          data.tangents.subarray(i * 4, i * 4 + 4),
-          i * this.stride + 8,
-        );
+        this.vertices.set(data.tangents.subarray(i * 4, i * 4 + 4), i * this.stride + 8);
     }
-    if (!this.vertices.every(Number.isFinite))
-      throw Error("Non-finite mesh data");
+    if (!this.vertices.every(Number.isFinite)) throw Error('Non-finite mesh data');
     this.mesh = l.PrimitiveMesh._createMesh(
       l.VertexMesh.getVertexDeclaration(
-        data.tangents ? "POSITION,NORMAL,UV,TANGENT" : "POSITION,NORMAL,UV",
+        data.tangents ? 'POSITION,NORMAL,UV,TANGENT' : 'POSITION,NORMAL,UV',
       ),
       this.vertices,
       new Uint16Array(data.indices),
@@ -312,7 +278,7 @@ export class ZhudaDynamicMesh {
     this.refreshBounds();
   }
   updateRange(first: number, count: number) {
-    if (this.disposed) throw Error("Disposed mesh");
+    if (this.disposed) throw Error('Disposed mesh');
     if (
       !Number.isInteger(first) ||
       !Number.isInteger(count) ||
@@ -320,13 +286,13 @@ export class ZhudaDynamicMesh {
       count < 1 ||
       (first + count) * this.stride > this.vertices.length
     )
-      throw Error("Invalid vertex range");
+      throw Error('Invalid vertex range');
     if (
       !this.vertices
         .subarray(first * this.stride, (first + count) * this.stride)
         .every(Number.isFinite)
     )
-      throw Error("Non-finite mesh update");
+      throw Error('Non-finite mesh update');
     const bytes = first * this.stride * 4,
       length = count * this.stride * 4;
     this.mesh._vertexBuffer.setData(this.vertices.buffer, bytes, bytes, length);
@@ -339,7 +305,7 @@ export class ZhudaDynamicMesh {
       i * this.stride >= this.vertices.length ||
       ![x, y, z].every(Number.isFinite)
     )
-      throw Error("Invalid vertex");
+      throw Error('Invalid vertex');
     this.vertices.set([x, y, z], i * this.stride);
   }
   refreshBounds() {
@@ -378,11 +344,10 @@ export class ZhudaInstanceGroup {
     material.enableInstancing = true;
   }
   set(id: string, matrix: ArrayLike<number>) {
-    if (this.disposed) throw Error("Disposed instance group");
-    if (!id || matrix.length !== 16) throw Error("Invalid instance");
+    if (this.disposed) throw Error('Disposed instance group');
+    if (!id || matrix.length !== 16) throw Error('Invalid instance');
     // Validate before touching retained storage: failed updates are atomic.
-    for (let i = 0; i < 16; i++)
-      if (!Number.isFinite(matrix[i])) throw Error("Invalid instance");
+    for (let i = 0; i < 16; i++) if (!Number.isFinite(matrix[i])) throw Error('Invalid instance');
     let entry = this.nodes.get(id);
     if (!entry) {
       const l = (globalThis as any).Laya;
@@ -403,8 +368,12 @@ export class ZhudaInstanceGroup {
     this.nodes.delete(id);
     return true;
   }
-  get(id: string) { return this.nodes.get(id)?.node; }
-  get size() { return this.nodes.size; }
+  get(id: string) {
+    return this.nodes.get(id)?.node;
+  }
+  get size() {
+    return this.nodes.size;
+  }
   dispose() {
     if (this.disposed) return;
     this.disposed = true;
@@ -425,7 +394,7 @@ export function configureSurfacePasses(
   maxAdditionalPasses: number,
 ) {
   if (!Number.isInteger(maxAdditionalPasses) || maxAdditionalPasses < 0)
-    throw Error("Invalid additional pass budget");
+    throw Error('Invalid additional pass budget');
   const l = (globalThis as any).Laya;
   const depth = requirements.some((r) => r.depth),
     opaqueColor = requirements.some((r) => r.opaqueColor);
@@ -434,8 +403,7 @@ export function configureSurfacePasses(
   camera.depthTextureMode =
     withinBudget && depth ? l.DepthTextureMode.Depth : l.DepthTextureMode.None;
   camera.opaquePass = withinBudget && opaqueColor;
-  const supported =
-    !depth || !!(camera.depthTextureMode & l.DepthTextureMode.Depth);
+  const supported = !depth || !!(camera.depthTextureMode & l.DepthTextureMode.Depth);
   if (!supported) {
     camera.depthTextureMode = l.DepthTextureMode.None;
     camera.opaquePass = false;
@@ -445,6 +413,6 @@ export function configureSurfacePasses(
     requestedPasses,
     enabledPasses: withinBudget && supported ? requestedPasses : 0,
     ready: withinBudget && supported,
-    reason: !withinBudget ? "budget" : !supported ? "depth-unsupported" : null,
+    reason: !withinBudget ? 'budget' : !supported ? 'depth-unsupported' : null,
   };
 }

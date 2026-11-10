@@ -5,7 +5,7 @@ import {
   transformPoint,
   type Vec3,
   type Matrix4,
-} from "./Math3D.ts";
+} from './Math3D.ts';
 export interface QueryRay {
   origin: Vec3;
   direction: Vec3;
@@ -21,27 +21,19 @@ export interface QueryProvider {
   entityId: string;
   instanceId?: string | number;
   layer?: number;
-  raycast: (
-    ray: QueryRay,
-    maxDistance: number,
-  ) => Omit<QueryHit, "entityId"> | null;
-  sweepSphere?: (
-    from: Vec3,
-    to: Vec3,
-    radius: number,
-  ) => Omit<QueryHit, "entityId"> | null;
+  raycast: (ray: QueryRay, maxDistance: number) => Omit<QueryHit, 'entityId'> | null;
+  sweepSphere?: (from: Vec3, to: Vec3, radius: number) => Omit<QueryHit, 'entityId'> | null;
 }
 export class ZhudaSceneQueries {
   private providers = new Map<string, QueryProvider>();
   register(p: QueryProvider) {
-    const key = p.entityId + "\0" + (p.instanceId ?? "");
-    if (!p.entityId || this.providers.has(key))
-      throw Error("Duplicate/missing stable query ID");
+    const key = p.entityId + '\0' + (p.instanceId ?? '');
+    if (!p.entityId || this.providers.has(key)) throw Error('Duplicate/missing stable query ID');
     this.providers.set(key, p);
     return () => this.providers.delete(key);
   }
   raycast(ray: QueryRay, maxDistance = Infinity, layerMask = 0xffffffff) {
-    if (!(maxDistance >= 0)) throw Error("Invalid ray distance");
+    if (!(maxDistance >= 0)) throw Error('Invalid ray distance');
     const r = { origin: ray.origin, direction: normalized(ray.direction) };
     let hit: QueryHit | null = null;
     for (const p of this.providers.values()) {
@@ -63,8 +55,7 @@ export class ZhudaSceneQueries {
     return hit;
   }
   sweepSphere(from: Vec3, to: Vec3, radius: number, layerMask = 0xffffffff) {
-    if (!Number.isFinite(radius) || radius < 0)
-      throw Error("Invalid sweep radius");
+    if (!Number.isFinite(radius) || radius < 0) throw Error('Invalid sweep radius');
     let hit: QueryHit | null = null;
     for (const p of this.providers.values()) {
       if (!((p.layer ?? 1) & layerMask) || !p.sweepSphere) continue;
@@ -90,16 +81,11 @@ export class ZhudaSceneQueries {
     return this.providers.size;
   }
 }
-export function rayBox(
-  ray: QueryRay,
-  min: Vec3,
-  max: Vec3,
-  maxDistance = Infinity,
-) {
+export function rayBox(ray: QueryRay, min: Vec3, max: Vec3, maxDistance = Infinity) {
   let near = 0,
     far = maxDistance;
   let normal: Vec3 = { x: 0, y: 0, z: 0 };
-  for (const axis of ["x", "y", "z"] as const) {
+  for (const axis of ['x', 'y', 'z'] as const) {
     const d = ray.direction[axis],
       o = ray.origin[axis];
     if (Math.abs(d) < 1e-10) {
@@ -149,16 +135,13 @@ export class ZhudaCameraCoordinates {
     this.viewport = viewport;
   }
   private matrices() {
-    return multiply4(
-      this.camera.projectionMatrix.elements,
-      this.camera.viewMatrix.elements,
-    );
+    return multiply4(this.camera.projectionMatrix.elements, this.camera.viewMatrix.elements);
   }
   private rect() {
     const v = this.viewport(),
       n = this.camera.normalizedViewport || { x: 0, y: 0, width: 1, height: 1 };
     if (!(v.width > 0 && v.height > 0 && n.width > 0 && n.height > 0))
-      throw Error("Empty camera viewport");
+      throw Error('Empty camera viewport');
     return {
       left: v.left + n.x * v.width,
       top: v.top + n.y * v.height,
@@ -167,7 +150,7 @@ export class ZhudaCameraCoordinates {
     };
   }
   screenToRay(x: number, y: number): QueryRay {
-    if (![x, y].every(Number.isFinite)) throw Error("Invalid screen point");
+    if (![x, y].every(Number.isFinite)) throw Error('Invalid screen point');
     const r = this.rect(),
       inv = inverse4(this.matrices()),
       nx = ((x - r.left) / r.width) * 2 - 1,
@@ -192,8 +175,7 @@ export class ZhudaCameraCoordinates {
       x: r.left + (v.x + 1) * 0.5 * r.width,
       y: r.top + (1 - v.y) * 0.5 * r.height,
       depth: (v.z + 1) * 0.5,
-      visible:
-        w > 0 && Math.abs(v.x) <= 1 && Math.abs(v.y) <= 1 && Math.abs(v.z) <= 1,
+      visible: w > 0 && Math.abs(v.x) <= 1 && Math.abs(v.y) <= 1 && Math.abs(v.z) <= 1,
     };
   }
 }
@@ -205,14 +187,11 @@ export interface SurfaceSample {
 }
 export class ZhudaSurfaceQuery {
   readonly sample: (x: number, z: number, time: number) => SurfaceSample | null;
-  constructor(
-    sample: (x: number, z: number, time: number) => SurfaceSample | null,
-  ) {
+  constructor(sample: (x: number, z: number, time: number) => SurfaceSample | null) {
     this.sample = sample;
   }
   at(x: number, z: number, time: number) {
-    if (![x, z, time].every(Number.isFinite))
-      throw Error("Invalid surface query");
+    if (![x, z, time].every(Number.isFinite)) throw Error('Invalid surface query');
     return this.sample(x, z, time);
   }
 }

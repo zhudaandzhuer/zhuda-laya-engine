@@ -1,7 +1,7 @@
 // Generated from TypeScript source; run npm run types:generate.
-import { ZhudaLayeredClock, ZhudaRealtimeClock, ZhudaTimerScheduler, type ZhudaClockSample } from "./Clocks";
-import { ZhudaSceneMutationQueue } from "./SceneMutation";
-import { type ZhudaRuntimeDriver } from "./RuntimeDriver";
+import { ZhudaLayeredClock, ZhudaRealtimeClock, ZhudaTimerScheduler, type ZhudaClockSample } from './Clocks';
+import { ZhudaSceneMutationQueue } from './SceneMutation';
+import { type ZhudaRuntimeDriver } from './RuntimeDriver';
 export interface ManagedRuntimeOptions {
     container?: HTMLElement;
     dprCap?: number;
@@ -13,9 +13,9 @@ export interface ManagedRuntimeOptions {
     scaleMode?: string;
     /** Owned by this session; defaults to RAF. */
     driver?: ZhudaRuntimeDriver;
-    backgroundPolicy?: "pause" | "continue";
+    backgroundPolicy?: 'pause' | 'continue';
     /** Foreground recovery never replays an unbounded suspended interval. */
-    recoveryPolicy?: "discard" | "bounded";
+    recoveryPolicy?: 'discard' | 'bounded';
     maxFrameDeltaSec?: number;
     onResume?: (report: {
         elapsedSec: number;

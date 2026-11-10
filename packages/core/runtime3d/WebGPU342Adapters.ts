@@ -8,12 +8,15 @@ export function installLaya342WebGPUFix(native: any): void {
   const prototype = native.WebGPUMeshRenderBatchAgent?.prototype;
   if (!prototype || patched.has(prototype)) return;
   const append = prototype.appendRenderElement;
-  prototype.appendRenderElement = function(...args: unknown[]) {
+  prototype.appendRenderElement = function (...args: unknown[]) {
     if (this._checkCPUCullList?.length || this._changeElementBatchMark?.length) {
       this._canKipCull = native.Stat.loopCount;
-      this._cameraChangeMask = this._dirCullChangeMask = this._spotCullChangeMask = native.Stat.loopCount;
+      this._cameraChangeMask =
+        this._dirCullChangeMask =
+        this._spotCullChangeMask =
+          native.Stat.loopCount;
     }
-    return append.apply(this,args);
+    return append.apply(this, args);
   };
   patched.add(prototype);
 }

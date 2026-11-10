@@ -11,9 +11,9 @@ export type Terrain3DOptions = {
         material?: any;
     };
 };
-import { ZhudaHeightfield, type HeightRegion } from "./Heightfield";
-import { type Vec3 } from "../runtime3d/Math3D";
-import type { QueryRay, QueryProvider } from "../runtime3d/SceneQueries";
+import { ZhudaHeightfield, type HeightRegion } from './Heightfield';
+import { type Vec3 } from '../runtime3d/Math3D';
+import type { QueryRay, QueryProvider } from '../runtime3d/SceneQueries';
 /** Resident heightfield chunks. The supplied material is borrowed; dispose releases only terrain meshes/nodes. */
 export declare class ZhudaTerrain3D {
     readonly field: ZhudaHeightfield;

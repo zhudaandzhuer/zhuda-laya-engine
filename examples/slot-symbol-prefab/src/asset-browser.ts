@@ -40,17 +40,20 @@ export function installAssetBrowser(options: AssetBrowserOptions): void {
   for (const entry of entries) {
     const parts = entry.id.split('/');
     parts.pop();
-    for (let index = 1; index <= parts.length; index += 1) folders.add(parts.slice(0, index).join('/'));
+    for (let index = 1; index <= parts.length; index += 1)
+      folders.add(parts.slice(0, index).join('/'));
   }
   const sortedFolders = [...folders].sort((a, b) => a.localeCompare(b));
   const normalizedSelectedId = options.selectedId?.replace(/^assets\//, '');
-  const selectedEntry = normalizedSelectedId ? entries.find(entry => entry.id === normalizedSelectedId) : undefined;
+  const selectedEntry = normalizedSelectedId
+    ? entries.find((entry) => entry.id === normalizedSelectedId)
+    : undefined;
   let selectedFolder = selectedEntry ? selectedEntry.id.split('/').slice(0, -1).join('/') : '';
   let selectedId = selectedEntry?.id || '';
 
   const directEntries = (folder: string) => {
     const prefix = folder ? `${folder}/` : '';
-    return entries.filter(entry => {
+    return entries.filter((entry) => {
       if (!entry.id.startsWith(prefix)) return false;
       return !entry.id.slice(prefix.length).includes('/');
     });
@@ -85,7 +88,8 @@ export function installAssetBrowser(options: AssetBrowserOptions): void {
   const renderFiles = () => {
     const currentEntries = directEntries(selectedFolder);
     if (pathLabel) pathLabel.textContent = selectedFolder ? `Assets / ${selectedFolder}` : 'Assets';
-    if (countLabel) countLabel.textContent = `${currentEntries.length} file${currentEntries.length === 1 ? '' : 's'} · manifest locked`;
+    if (countLabel)
+      countLabel.textContent = `${currentEntries.length} file${currentEntries.length === 1 ? '' : 's'} · manifest locked`;
     filesHost.replaceChildren();
     if (!currentEntries.length) {
       const empty = document.createElement('div');
@@ -109,7 +113,14 @@ export function installAssetBrowser(options: AssetBrowserOptions): void {
         image.src = `assets/${entry.id}`;
         thumb.appendChild(image);
       } else {
-        thumb.textContent = kind === 'scene' ? 'LS' : kind === 'prefab' ? 'LH' : kind === 'model' ? '3D' : kind.slice(0, 3).toUpperCase();
+        thumb.textContent =
+          kind === 'scene'
+            ? 'LS'
+            : kind === 'prefab'
+              ? 'LH'
+              : kind === 'model'
+                ? '3D'
+                : kind.slice(0, 3).toUpperCase();
       }
       const meta = document.createElement('span');
       meta.className = 'asset-card-meta';

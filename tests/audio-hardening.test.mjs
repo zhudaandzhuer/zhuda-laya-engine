@@ -114,7 +114,10 @@ class FakeEventTarget {
   }
   removeEventListener(type, listener) {
     const list = this.listeners.get(type) ?? [];
-    this.listeners.set(type, list.filter((candidate) => candidate !== listener));
+    this.listeners.set(
+      type,
+      list.filter((candidate) => candidate !== listener),
+    );
   }
   dispatch(type, event = {}) {
     for (const listener of [...(this.listeners.get(type) ?? [])]) {
@@ -132,11 +135,11 @@ function installFakeDom(origin = 'https://game.example') {
     self: windowTarget,
     top: windowTarget,
     location: { origin },
-    parent: windowTarget
+    parent: windowTarget,
   });
   const fakeDocument = Object.assign(documentTarget, {
     visibilityState: 'visible',
-    body: { dataset: {} }
+    body: { dataset: {} },
   });
   globalThis.window = fakeWindow;
   globalThis.document = fakeDocument;
@@ -148,7 +151,7 @@ function installFakeDom(origin = 'https://game.example') {
       else globalThis.window = previousWindow;
       if (previousDocument === undefined) delete globalThis.document;
       else globalThis.document = previousDocument;
-    }
+    },
   };
 }
 
@@ -156,8 +159,14 @@ test('audio mixer queues once, applies volume in the mixer, and exposes stoppabl
   const context = new FakeAudioContext();
   const adapter = new IframeSoundAdapter({ audioContextFactory: () => context });
 
-  assert.equal(adapter.scheduleTone({ id: 'queued', startFreq: 440, durationSec: 0.2, peakGain: 0.5 }), true);
-  assert.equal(adapter.scheduleTone({ id: 'queued', startFreq: 440, durationSec: 0.2, peakGain: 0.5 }), false);
+  assert.equal(
+    adapter.scheduleTone({ id: 'queued', startFreq: 440, durationSec: 0.2, peakGain: 0.5 }),
+    true,
+  );
+  assert.equal(
+    adapter.scheduleTone({ id: 'queued', startFreq: 440, durationSec: 0.2, peakGain: 0.5 }),
+    false,
+  );
   assert.equal(adapter.getDiagnostics().pendingQueue, 1);
   assert.equal(adapter.unlockAudio('test'), true);
   assert.equal(adapter.getDiagnostics().pendingQueue, 0);
@@ -166,13 +175,30 @@ test('audio mixer queues once, applies volume in the mixer, and exposes stoppabl
 
   assert.equal(adapter.setChannelVolume('sfx', 0.25), true);
   assert.equal(adapter.setChannelVolume('master', 0.4), true);
-  assert.equal(adapter.scheduleTone({ id: 'mixed', channel: 'sfx', startFreq: 500, durationSec: 0.2, peakGain: 0.6 }), true);
+  assert.equal(
+    adapter.scheduleTone({
+      id: 'mixed',
+      channel: 'sfx',
+      startFreq: 500,
+      durationSec: 0.2,
+      peakGain: 0.6,
+    }),
+    true,
+  );
   const voiceGain = context.gains.at(-1);
-  assert.equal(voiceGain.gain.events[0].value, 0.6, 'voice gain must not include master/channel volume');
+  assert.equal(
+    voiceGain.gain.events[0].value,
+    0.6,
+    'voice gain must not include master/channel volume',
+  );
   assert.equal(context.gains[2].gain.value, 0.25, 'channel gain owns sfx volume');
   assert.equal(context.gains[0].gain.value, 0.4, 'master gain owns master volume');
   assert.equal(adapter.stop('mixed'), true);
-  assert.equal(adapter.getDiagnostics().activeVoices, 1, 'the queued voice remains until its scheduled end');
+  assert.equal(
+    adapter.getDiagnostics().activeVoices,
+    1,
+    'the queued voice remains until its scheduled end',
+  );
   assert.equal(adapter.stopAll(), 1);
   assert.equal(adapter.getDiagnostics().activeVoices, 0);
   adapter.dispose();
@@ -183,7 +209,10 @@ test('audio mixer rejects malformed input and does not claim unlock after resume
   const context = new FakeAudioContext({ state: 'suspended', rejectResume: true });
   const adapter = new IframeSoundAdapter({ audioContextFactory: () => context });
   for (const value of [NaN, Infinity, -1]) {
-    assert.equal(adapter.scheduleTone({ id: `bad-${String(value)}`, startFreq: value, durationSec: 0.1 }), false);
+    assert.equal(
+      adapter.scheduleTone({ id: `bad-${String(value)}`, startFreq: value, durationSec: 0.1 }),
+      false,
+    );
   }
   assert.equal(adapter.setChannelVolume('sfx', NaN), false);
   assert.equal(adapter.setChannelVolume('sfx', -0.1), false);
@@ -202,15 +231,19 @@ test('postMessage bridge requires an allowed origin and acknowledges using that 
     const context = new FakeAudioContext();
     const adapter = new IframeSoundAdapter({
       audioContextFactory: () => context,
-      allowedParentOrigins: ['https://parent.example']
+      allowedParentOrigins: ['https://parent.example'],
     });
     const replies = [];
-    const source = { postMessage(message, targetOrigin) { replies.push({ message, targetOrigin }); } };
+    const source = {
+      postMessage(message, targetOrigin) {
+        replies.push({ message, targetOrigin });
+      },
+    };
 
     dom.window.dispatch('message', {
       origin: 'https://evil.example',
       source,
-      data: { type: 'zhuda:audio:mute' }
+      data: { type: 'zhuda:audio:mute' },
     });
     assert.equal(adapter.isMuted(), false);
     assert.equal(replies.length, 0);
@@ -218,7 +251,7 @@ test('postMessage bridge requires an allowed origin and acknowledges using that 
     dom.window.dispatch('message', {
       origin: 'https://parent.example',
       source,
-      data: { type: 'zhuda:audio:setVolume', channel: 'sfx', volume: 0.3 }
+      data: { type: 'zhuda:audio:setVolume', channel: 'sfx', volume: 0.3 },
     });
     assert.equal(adapter.getChannelVolume('sfx'), 0.3);
     assert.equal(replies.length, 1);
@@ -235,7 +268,10 @@ test('dispose removes voices and bridge/listeners, while blur silences the share
     const context = new FakeAudioContext();
     const adapter = new IframeSoundAdapter({ audioContextFactory: () => context });
     adapter.unlockAudio('test');
-    assert.equal(adapter.scheduleTone({ id: 'active', startFreq: 440, durationSec: 1, peakGain: 0.4 }), true);
+    assert.equal(
+      adapter.scheduleTone({ id: 'active', startFreq: 440, durationSec: 1, peakGain: 0.4 }),
+      true,
+    );
     adapter.handleFocusOrVisibilityChange(false, false);
     assert.equal(context.gains[0].gain.value, 0);
     assert.equal(adapter.scheduleTone({ id: 'blocked', startFreq: 440, durationSec: 0.1 }), false);
@@ -255,16 +291,22 @@ test('stale queue entries are dropped and a closed context cannot play without a
   const contexts = [first, second];
   const adapter = new IframeSoundAdapter({
     audioContextFactory: () => contexts.shift() ?? null,
-    now: () => now
+    now: () => now,
   });
   assert.equal(adapter.scheduleTone({ id: 'stale', startFreq: 440, durationSec: 0.1 }), true);
   now = 501;
   assert.equal(adapter.unlockAudio('test'), true);
   assert.equal(adapter.getDiagnostics().droppedQueue, 1);
 
-  assert.equal(adapter.scheduleTone({ id: 'before-close', startFreq: 440, durationSec: 0.1 }), true);
+  assert.equal(
+    adapter.scheduleTone({ id: 'before-close', startFreq: 440, durationSec: 0.1 }),
+    true,
+  );
   first.state = 'closed';
-  assert.equal(adapter.scheduleTone({ id: 'after-close', startFreq: 440, durationSec: 0.1 }), false);
+  assert.equal(
+    adapter.scheduleTone({ id: 'after-close', startFreq: 440, durationSec: 0.1 }),
+    false,
+  );
   assert.equal(adapter.getDiagnostics().unlockedByGesture, false);
   assert.equal(adapter.unlockAudio('replacement'), true);
   assert.equal(adapter.getDiagnostics().contextState, 'running');

@@ -19,9 +19,7 @@ export interface PhysicalCameraSettings {
   exposureCompensation: number;
   referenceEV100: number;
 }
-export function physicalCameraSettings(
-  spec: PhysicalCameraSpec,
-): Readonly<PhysicalCameraSettings> {
+export function physicalCameraSettings(spec: PhysicalCameraSpec): Readonly<PhysicalCameraSettings> {
   const value = {
     sensorHeightMm: 24,
     fStop: 2.8,
@@ -32,10 +30,7 @@ export function physicalCameraSettings(
     referenceEV100: 10,
     ...spec,
   };
-  const bounds: Record<
-    keyof PhysicalCameraSettings,
-    readonly [number, number]
-  > = {
+  const bounds: Record<keyof PhysicalCameraSettings, readonly [number, number]> = {
     focalLengthMm: [1, 2000],
     sensorHeightMm: [1, 200],
     fStop: [0.1, 128],
@@ -46,35 +41,27 @@ export function physicalCameraSettings(
     referenceEV100: [-24, 32],
   };
   for (const key of Object.keys(bounds) as (keyof PhysicalCameraSettings)[])
-    if (
-      !Number.isFinite(value[key]) ||
-      value[key] < bounds[key][0] ||
-      value[key] > bounds[key][1]
-    )
-      throw Error("Invalid physical camera " + key);
+    if (!Number.isFinite(value[key]) || value[key] < bounds[key][0] || value[key] > bounds[key][1])
+      throw Error('Invalid physical camera ' + key);
   if (value.focusDistanceM <= value.focalLengthMm / 1000)
-    throw Error("Focus must lie beyond focal length");
+    throw Error('Focus must lie beyond focal length');
   return Object.freeze(value);
 }
 export function physicalCameraMetrics(spec: PhysicalCameraSpec, fps: number) {
   const s = physicalCameraSettings(spec);
-  if (!Number.isFinite(fps) || fps <= 0 || fps > 1000)
-    throw Error("Invalid camera frame rate");
+  if (!Number.isFinite(fps) || fps <= 0 || fps > 1000) throw Error('Invalid camera frame rate');
   const exposureSeconds = s.shutterAngle / 360 / fps;
   const ev100 =
     exposureSeconds === 0
       ? Infinity
       : Math.log2((((s.fStop * s.fStop) / exposureSeconds) * 100) / s.iso);
   return Object.freeze({
-    verticalFovDegrees:
-      (2 * Math.atan(s.sensorHeightMm / (2 * s.focalLengthMm)) * 180) / Math.PI,
+    verticalFovDegrees: (2 * Math.atan(s.sensorHeightMm / (2 * s.focalLengthMm)) * 180) / Math.PI,
     apertureRadiusM: s.focalLengthMm / s.fStop / 2000,
     exposureSeconds,
     ev100,
     exposureMultiplier:
-      exposureSeconds === 0
-        ? 0
-        : Math.pow(2, s.referenceEV100 - ev100 + s.exposureCompensation),
+      exposureSeconds === 0 ? 0 : Math.pow(2, s.referenceEV100 - ev100 + s.exposureCompensation),
   });
 }
 
@@ -94,50 +81,40 @@ export class ZhudaPhysicalCameraRig {
   constructor(camera: Laya.Camera, spec: PhysicalCameraSpec) {
     this.settings = physicalCameraSettings(spec);
     if (camera.destroyed || camera.orthographic || lenses.has(camera))
-      throw Error("Physical camera requires an unowned perspective camera");
+      throw Error('Physical camera requires an unowned perspective camera');
     this.camera = camera;
     // The getter resolves auto-aspect (0) to today's viewport. Preserve the mode
     // so disposing this rig does not accidentally disable future resize updates.
     this.previous = {
       fov: camera.fieldOfView,
-      aspect:
-        (camera as unknown as { _aspectRatio: number })._aspectRatio ??
-        camera.aspectRatio,
+      aspect: (camera as unknown as { _aspectRatio: number })._aspectRatio ?? camera.aspectRatio,
       projection: camera.projectionMatrix.clone(),
-      custom: (camera as unknown as { _useUserProjectionMatrix: boolean })
-        ._useUserProjectionMatrix,
+      custom: (camera as unknown as { _useUserProjectionMatrix: boolean })._useUserProjectionMatrix,
     };
     lenses.add(camera);
   }
   private check() {
-    if (this.disposed || this.camera.destroyed)
-      throw Error("Disposed physical camera");
+    if (this.disposed || this.camera.destroyed) throw Error('Disposed physical camera');
   }
   get spec(): Readonly<PhysicalCameraSettings> {
     return this.settings;
   }
   configure(patch: Partial<PhysicalCameraSettings>) {
     this.check();
-    if (this.restoreSample) throw Error("Restore active lens sample first");
+    if (this.restoreSample) throw Error('Restore active lens sample first');
     this.settings = physicalCameraSettings({ ...this.settings, ...patch });
   }
   apply(aspect: number) {
     this.check();
-    if (this.restoreSample) throw Error("Restore active lens sample first");
-    if (!Number.isFinite(aspect) || aspect <= 0)
-      throw Error("Invalid camera aspect");
+    if (this.restoreSample) throw Error('Restore active lens sample first');
+    if (!Number.isFinite(aspect) || aspect <= 0) throw Error('Invalid camera aspect');
     this.camera.resetProjectionMatrix();
     this.camera.aspectRatio = aspect;
-    this.camera.fieldOfView = physicalCameraMetrics(
-      this.settings,
-      24,
-    ).verticalFovDegrees;
+    this.camera.fieldOfView = physicalCameraMetrics(this.settings, 24).verticalFovDegrees;
   }
   applyExposure(pipeline: { setExposure(value: number): void }, fps: number) {
     this.check();
-    pipeline.setExposure(
-      physicalCameraMetrics(this.settings, fps).exposureMultiplier,
-    );
+    pipeline.setExposure(physicalCameraMetrics(this.settings, fps).exposureMultiplier);
   }
   /** Temporary aperture and subpixel offsets; always call the returned restore. */
   sample(
@@ -149,7 +126,7 @@ export class ZhudaPhysicalCameraRig {
     height: number,
   ): () => void {
     this.check();
-    if (this.restoreSample) throw Error("Restore active lens sample first");
+    if (this.restoreSample) throw Error('Restore active lens sample first');
     if (
       ![lensX, lensY, jitterX, jitterY, width, height].every(Number.isFinite) ||
       Math.hypot(lensX, lensY) > 1.000001 ||
@@ -158,7 +135,7 @@ export class ZhudaPhysicalCameraRig {
       width < 1 ||
       height < 1
     )
-      throw Error("Invalid lens sample");
+      throw Error('Invalid lens sample');
     const l = (globalThis as unknown as { Laya: typeof Laya }).Laya,
       camera = this.camera;
     const position = camera.transform.position.clone(),
@@ -168,22 +145,16 @@ export class ZhudaPhysicalCameraRig {
     const matrix = camera.transform.worldMatrix.elements,
       radius = physicalCameraMetrics(this.settings, 24).apertureRadiusM;
     for (const start of [0, 4, 8])
-      if (
-        Math.abs(
-          Math.hypot(matrix[start], matrix[start + 1], matrix[start + 2]) - 1,
-        ) > 1e-4
-      )
-        throw Error("Physical camera requires unit world scale");
+      if (Math.abs(Math.hypot(matrix[start], matrix[start + 1], matrix[start + 2]) - 1) > 1e-4)
+        throw Error('Physical camera requires unit world scale');
     const x = lensX * radius,
       y = lensY * radius,
       shifted = projection.clone();
     // Move the aperture, then shift the frustum so the focus plane stays fixed.
     shifted.elements[8] -=
-      (projection.elements[0] * x) / this.settings.focusDistanceM +
-      (2 * jitterX) / width;
+      (projection.elements[0] * x) / this.settings.focusDistanceM + (2 * jitterX) / width;
     shifted.elements[9] -=
-      (projection.elements[5] * y) / this.settings.focusDistanceM +
-      (2 * jitterY) / height;
+      (projection.elements[5] * y) / this.settings.focusDistanceM + (2 * jitterY) / height;
     camera.transform.position = new l.Vector3(
       position.x + matrix[0] * x + matrix[4] * y,
       position.y + matrix[1] * x + matrix[5] * y,
@@ -209,8 +180,7 @@ export class ZhudaPhysicalCameraRig {
     if (this.camera.destroyed) return;
     this.camera.fieldOfView = this.previous.fov;
     this.camera.aspectRatio = this.previous.aspect;
-    if (this.previous.custom)
-      this.camera.projectionMatrix = this.previous.projection;
+    if (this.previous.custom) this.camera.projectionMatrix = this.previous.projection;
     else this.camera.resetProjectionMatrix();
   }
 }

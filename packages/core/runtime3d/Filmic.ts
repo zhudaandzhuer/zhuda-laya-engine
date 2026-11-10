@@ -6,7 +6,7 @@ export interface PrefilteredEnvironmentSpec {
 function requireCapabilities(l: any, names: string[]) {
   for (const name of names)
     if (!l.LayaGL.renderEngine.getCapable(l.RenderCapable[name]))
-      throw Error("Filmic rendering requires " + name);
+      throw Error('Filmic rendering requires ' + name);
 }
 /** Upload an offline convolved GGX mip chain. Offsets are float32 elements, not bytes.
  * Data is scene-linear RGBA in WebGL cube face order +X,-X,+Y,-Y,+Z,-Z.
@@ -22,37 +22,21 @@ export function createPrefilteredEnvironment(
     spec.ambientSH.length !== 27 ||
     !spec.ambientSH.every(Number.isFinite)
   )
-    throw Error("Invalid environment descriptor");
-  if (spec.levels.length !== Math.log2(spec.size) + 1)
-    throw Error("Incomplete GGX mip chain");
+    throw Error('Invalid environment descriptor');
+  if (spec.levels.length !== Math.log2(spec.size) + 1) throw Error('Incomplete GGX mip chain');
   let offset = 0;
   for (const [i, level] of spec.levels.entries()) {
     const size = Math.max(1, spec.size >> i),
       elements = size * size * 4 * 6;
-    if (
-      level.size !== size ||
-      level.offset !== offset ||
-      level.elements !== elements
-    )
-      throw Error("Invalid environment mip layout");
+    if (level.size !== size || level.offset !== offset || level.elements !== elements)
+      throw Error('Invalid environment mip layout');
     offset += elements;
   }
-  if (
-    offset !== pixels.length ||
-    !pixels.every((v) => Number.isFinite(v) && v >= 0)
-  )
-    throw Error("Invalid environment pixels");
+  if (offset !== pixels.length || !pixels.every((v) => Number.isFinite(v) && v >= 0))
+    throw Error('Invalid environment pixels');
   const l = (globalThis as any).Laya;
-  requireCapabilities(l, [
-    "TextureFormat_R32G32B32A32",
-    "Texture_FloatLinearFiltering",
-  ]);
-  const texture = new l.TextureCube(
-    spec.size,
-    l.TextureFormat.R32G32B32A32,
-    true,
-    false,
-  );
+  requireCapabilities(l, ['TextureFormat_R32G32B32A32', 'Texture_FloatLinearFiltering']);
+  const texture = new l.TextureCube(spec.size, l.TextureFormat.R32G32B32A32, true, false);
   texture.filterMode = l.FilterMode.Trilinear;
   // Laya's pixel upload order is +Z,-Z,+X,-X,+Y,-Y, unlike WebGL/DDS.
   const faces = (level: { size: number; offset: number }) =>
@@ -65,17 +49,7 @@ export function createPrefilteredEnvironment(
   texture.setPixelsData(faces(spec.levels[0]), false, false);
   for (let i = 1; i < spec.levels.length; i++) {
     const level = spec.levels[i];
-    texture.updateSubPixelsData(
-      faces(level),
-      0,
-      0,
-      level.size,
-      level.size,
-      i,
-      false,
-      false,
-      false,
-    );
+    texture.updateSubPixelsData(faces(level), 0, 0, level.size, level.size, i, false, false, false);
   }
   return {
     texture,
@@ -119,21 +93,17 @@ export class ZhudaFilmicPipeline {
     this.camera = camera;
     const l = (globalThis as any).Laya;
     for (const k of [
-      "exposure",
-      "contrast",
-      "saturation",
-      "aoIntensity",
-      "aoRadius",
-      "bloomIntensity",
+      'exposure',
+      'contrast',
+      'saturation',
+      'aoIntensity',
+      'aoRadius',
+      'bloomIntensity',
     ] as const)
-      if (
-        options[k] !== undefined &&
-        (!Number.isFinite(options[k]) || (options[k] as number) < 0)
-      )
-        throw Error("Invalid filmic option " + k);
-    if (camera.postProcess)
-      throw Error("Camera already owns a postprocess chain");
-    requireCapabilities(l, ["RenderTextureFormat_R16G16B16A16"]);
+      if (options[k] !== undefined && (!Number.isFinite(options[k]) || (options[k] as number) < 0))
+        throw Error('Invalid filmic option ' + k);
+    if (camera.postProcess) throw Error('Camera already owns a postprocess chain');
+    requireCapabilities(l, ['RenderTextureFormat_R16G16B16A16']);
     this.previous = camera.postProcess;
     this.previousHDR = camera.enableHDR;
     this.previousMSAA = camera.msaa;
@@ -168,14 +138,14 @@ export class ZhudaFilmicPipeline {
   }
   /** Update the existing ACES grading exposure multiplier. */
   setExposure(value: number) {
-    if (this.disposed) throw Error("Disposed filmic pipeline");
+    if (this.disposed) throw Error('Disposed filmic pipeline');
     if (!Number.isFinite(value) || value < 0 || value > 1048576)
-      throw Error("Invalid filmic exposure");
+      throw Error('Invalid filmic exposure');
     this.grade.postExposure = value;
   }
   /** Call on camera cuts, teleports and timeline seeks, not on ordinary movement. */
   resetHistory() {
-    if (this.disposed) throw Error("Disposed filmic pipeline");
+    if (this.disposed) throw Error('Disposed filmic pipeline');
     if (this.ownsTAA) this.camera.taaSettings.resetHistory();
   }
   dispose() {
@@ -203,7 +173,7 @@ export class ZhudaFilmicPipeline {
     ]);
     for (const resource of owned)
       if (resource && !resource.destroyed) {
-        if ("lock" in resource) resource.lock = false;
+        if ('lock' in resource) resource.lock = false;
         resource.destroy();
       }
     this.post._context.camera = null;
@@ -229,25 +199,18 @@ export class ZhudaPlanarReflection {
   ) {
     const l = (globalThis as any).Laya;
     if (
-      ![options.width, options.height].every(
-        (v) => Number.isInteger(v) && v > 0 && v <= 8192,
-      ) ||
+      ![options.width, options.height].every((v) => Number.isInteger(v) && v > 0 && v <= 8192) ||
       !Number.isInteger(options.excludedLayer) ||
       options.excludedLayer < 0 ||
       options.excludedLayer > 30 ||
       !Number.isFinite(options.planeY ?? 0)
     )
-      throw Error("Invalid planar reflection options");
+      throw Error('Invalid planar reflection options');
     const near = options.near ?? 0.08,
       far = options.far ?? 1500;
-    if (
-      !Number.isFinite(near) ||
-      !Number.isFinite(far) ||
-      near <= 0 ||
-      far <= near
-    )
-      throw Error("Invalid reflection clipping range");
-    requireCapabilities(l, ["RenderTextureFormat_R16G16B16A16"]);
+    if (!Number.isFinite(near) || !Number.isFinite(far) || near <= 0 || far <= near)
+      throw Error('Invalid reflection clipping range');
+    requireCapabilities(l, ['RenderTextureFormat_R16G16B16A16']);
     this.planeY = options.planeY ?? 0;
     this.texture = new l.RenderTexture(
       options.width,
@@ -258,7 +221,7 @@ export class ZhudaPlanarReflection {
       1,
     );
     this.camera = new l.Camera(options.width / options.height, near, far);
-    this.camera.name = "zhuda-planar-reflection";
+    this.camera.name = 'zhuda-planar-reflection';
     this.camera.enableHDR = true;
     this.camera.renderTarget = this.texture;
     this.camera.renderingOrder = -100;
@@ -267,13 +230,8 @@ export class ZhudaPlanarReflection {
   }
   private planeY: number;
   private disposed = false;
-  update(
-    eye: readonly number[],
-    target: readonly number[],
-    fieldOfView: number,
-    aspect?: number,
-  ) {
-    if (this.disposed) throw Error("Disposed reflection");
+  update(eye: readonly number[], target: readonly number[], fieldOfView: number, aspect?: number) {
+    if (this.disposed) throw Error('Disposed reflection');
     if (
       eye.length !== 3 ||
       target.length !== 3 ||
@@ -281,21 +239,16 @@ export class ZhudaPlanarReflection {
       fieldOfView <= 0 ||
       fieldOfView >= 179
     )
-      throw Error("Invalid reflection pose");
+      throw Error('Invalid reflection pose');
     if (Math.hypot(...eye.map((v, i) => v - target[i])) < 1e-9)
-      throw Error("Reflection eye and target must differ");
+      throw Error('Reflection eye and target must differ');
     const l = (globalThis as any).Laya;
     if (aspect !== undefined) {
-      if (!Number.isFinite(aspect) || aspect <= 0)
-        throw Error("Invalid reflection aspect");
+      if (!Number.isFinite(aspect) || aspect <= 0) throw Error('Invalid reflection aspect');
       this.camera.aspectRatio = aspect;
     }
     this.camera.fieldOfView = fieldOfView;
-    this.camera.transform.position = new l.Vector3(
-      eye[0],
-      2 * this.planeY - eye[1],
-      eye[2],
-    );
+    this.camera.transform.position = new l.Vector3(eye[0], 2 * this.planeY - eye[1], eye[2]);
     const vertical = Math.hypot(eye[0] - target[0], eye[2] - target[2]) < 1e-9;
     this.camera.transform.lookAt(
       new l.Vector3(target[0], 2 * this.planeY - target[1], target[2]),

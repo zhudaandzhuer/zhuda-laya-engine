@@ -16,7 +16,7 @@ import type {
   ParticleEmitterStaticConfig,
   PixelCalibrationSpec,
   Spine42StaticRigConfig,
-  StaticAssetCategory
+  StaticAssetCategory,
 } from '../types/index.ts';
 import { UnityBridgePipeline } from './UnityBridgePipeline.ts';
 
@@ -39,7 +39,7 @@ export class ZhudaAssetSerializer {
       designCanvas?: { width: number; height: number; padding: number };
       targetSpec?: PixelCalibrationSpec;
       isRoot?: boolean;
-    } = {}
+    } = {},
   ): LayaHierarchyNodeData {
     const isRoot = options.isRoot ?? true;
     if (isRoot) {
@@ -51,7 +51,7 @@ export class ZhudaAssetSerializer {
       ...(isRoot ? { _$ver: 1 } : {}),
       _$id: node?._$id || this.nextId(nodeType.toLowerCase()),
       _$type: nodeType,
-      name: node?.name || nodeType
+      name: node?.name || nodeType,
     };
 
     if (typeof node?.x === 'number' && node.x !== 0) data.x = Number(node.x.toFixed(2));
@@ -60,17 +60,25 @@ export class ZhudaAssetSerializer {
     if (typeof node?.y === 'number' && node.y !== 0) data.y = Number(node.y.toFixed(2));
     else if (typeof node?.y === 'number' && isRoot) data.y = 0;
 
-    if (typeof node?.width === 'number' && node.width > 0) data.width = Number(node.width.toFixed(2));
-    if (typeof node?.height === 'number' && node.height > 0) data.height = Number(node.height.toFixed(2));
+    if (typeof node?.width === 'number' && node.width > 0)
+      data.width = Number(node.width.toFixed(2));
+    if (typeof node?.height === 'number' && node.height > 0)
+      data.height = Number(node.height.toFixed(2));
     if (typeof node?.scaleX === 'number' && node.scaleX !== 1) data.scaleX = node.scaleX;
     if (typeof node?.scaleY === 'number' && node.scaleY !== 1) data.scaleY = node.scaleY;
     if (typeof node?.rotation === 'number' && node.rotation !== 0) data.rotation = node.rotation;
-    if (typeof node?.pivotX === 'number' && node.pivotX !== 0) data.pivotX = Number(node.pivotX.toFixed(2));
-    if (typeof node?.pivotY === 'number' && node.pivotY !== 0) data.pivotY = Number(node.pivotY.toFixed(2));
-    if (typeof node?.anchorX === 'number' && node.anchorX !== 0) data.anchorX = Number(node.anchorX.toFixed(4));
-    if (typeof node?.anchorY === 'number' && node.anchorY !== 0) data.anchorY = Number(node.anchorY.toFixed(4));
-    if (typeof node?.skewX === 'number' && node.skewX !== 0) data.skewX = Number(node.skewX.toFixed(4));
-    if (typeof node?.skewY === 'number' && node.skewY !== 0) data.skewY = Number(node.skewY.toFixed(4));
+    if (typeof node?.pivotX === 'number' && node.pivotX !== 0)
+      data.pivotX = Number(node.pivotX.toFixed(2));
+    if (typeof node?.pivotY === 'number' && node.pivotY !== 0)
+      data.pivotY = Number(node.pivotY.toFixed(2));
+    if (typeof node?.anchorX === 'number' && node.anchorX !== 0)
+      data.anchorX = Number(node.anchorX.toFixed(4));
+    if (typeof node?.anchorY === 'number' && node.anchorY !== 0)
+      data.anchorY = Number(node.anchorY.toFixed(4));
+    if (typeof node?.skewX === 'number' && node.skewX !== 0)
+      data.skewX = Number(node.skewX.toFixed(4));
+    if (typeof node?.skewY === 'number' && node.skewY !== 0)
+      data.skewY = Number(node.skewY.toFixed(4));
     if (typeof node?.alpha === 'number' && node.alpha !== 1) data.alpha = node.alpha;
     if (typeof node?.visible === 'boolean' && !node.visible) data.visible = false;
     if (typeof node?.mouseEnabled === 'boolean' && node.mouseEnabled) data.mouseEnabled = true;
@@ -90,14 +98,20 @@ export class ZhudaAssetSerializer {
       if (typeof node.wordWrap === 'boolean') data.wordWrap = node.wordWrap;
       if (typeof node.overflow === 'string' && node.overflow) data.overflow = node.overflow;
       if (typeof node.leading === 'number' && node.leading !== 0) data.leading = node.leading;
-      if (typeof node.letterSpacing === 'number' && node.letterSpacing !== 0) data.letterSpacing = node.letterSpacing;
+      if (typeof node.letterSpacing === 'number' && node.letterSpacing !== 0)
+        data.letterSpacing = node.letterSpacing;
       if (typeof node.stroke === 'number' && node.stroke !== 0) data.stroke = node.stroke;
       if (node.strokeColor) data.strokeColor = node.strokeColor;
       if (typeof node.underline === 'boolean' && node.underline) data.underline = true;
       if (node.underlineColor) data.underlineColor = node.underlineColor;
       if (typeof node.strikethrough === 'boolean' && node.strikethrough) data.strikethrough = true;
       if (Array.isArray(node.padding) && node.padding.length === 4) {
-        data.padding = node.padding.map((value: unknown) => Number(value) || 0) as [number, number, number, number];
+        data.padding = node.padding.map((value: unknown) => Number(value) || 0) as [
+          number,
+          number,
+          number,
+          number,
+        ];
       }
     }
 
@@ -122,15 +136,10 @@ export class ZhudaAssetSerializer {
         if (!comp) continue;
         const compType = comp._$type || comp.constructor?.name || 'Script';
         const compObj: LayaComponentData = {
-          _$type: compType
+          _$type: compType,
         };
         for (const [k, v] of Object.entries(comp)) {
-          if (
-            k.startsWith('_') ||
-            k === 'owner' ||
-            k === 'enabled' ||
-            typeof v === 'function'
-          ) {
+          if (k.startsWith('_') || k === 'owner' || k === 'enabled' || typeof v === 'function') {
             continue;
           }
           if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') {
@@ -158,7 +167,7 @@ export class ZhudaAssetSerializer {
 
     if (children.length > 0) {
       data._$child = children.map((child) =>
-        this.serializeNodeToHierarchy(child, { isRoot: false })
+        this.serializeNodeToHierarchy(child, { isRoot: false }),
       );
     }
 
@@ -170,9 +179,9 @@ export class ZhudaAssetSerializer {
         designCanvas: options.designCanvas ?? {
           width: (data.width ?? 160) + 20,
           height: (data.height ?? 48) + 20,
-          padding: 10
+          padding: 10,
         },
-        ...(options.targetSpec ? { targetSpec: options.targetSpec } : {})
+        ...(options.targetSpec ? { targetSpec: options.targetSpec } : {}),
       };
     }
 
@@ -225,7 +234,7 @@ export class ZhudaAssetSerializer {
           fillColor: cmd.fillColor ?? null,
           lineColor: cmd.lineColor ?? null,
           lineWidth: cmd.lineWidth ?? 0,
-          percent
+          percent,
         };
       case 'DrawRectCmd':
         return {
@@ -237,7 +246,7 @@ export class ZhudaAssetSerializer {
           fillColor: cmd.fillColor ?? null,
           lineColor: cmd.lineColor ?? null,
           lineWidth: cmd.lineWidth ?? 0,
-          percent
+          percent,
         };
       case 'DrawCircleCmd':
         return {
@@ -248,7 +257,7 @@ export class ZhudaAssetSerializer {
           fillColor: cmd.fillColor ?? null,
           lineColor: cmd.lineColor ?? null,
           lineWidth: cmd.lineWidth ?? 0,
-          percent
+          percent,
         };
       case 'DrawEllipseCmd':
         return {
@@ -260,7 +269,7 @@ export class ZhudaAssetSerializer {
           fillColor: cmd.fillColor ?? null,
           lineColor: cmd.lineColor ?? null,
           lineWidth: cmd.lineWidth ?? 0,
-          percent
+          percent,
         };
       case 'DrawLineCmd':
         return {
@@ -271,7 +280,7 @@ export class ZhudaAssetSerializer {
           toY: cmd.toY ?? 10,
           lineColor: cmd.lineColor ?? '#ffffff',
           lineWidth: cmd.lineWidth ?? 1,
-          percent
+          percent,
         };
       case 'DrawPolyCmd':
         return {
@@ -281,7 +290,7 @@ export class ZhudaAssetSerializer {
           points: Array.isArray(cmd.points) ? [...cmd.points] : [],
           fillColor: cmd.fillColor ?? null,
           lineColor: cmd.lineColor ?? null,
-          lineWidth: cmd.lineWidth ?? 0
+          lineWidth: cmd.lineWidth ?? 0,
         };
       case 'DrawPieCmd':
         return {
@@ -293,7 +302,7 @@ export class ZhudaAssetSerializer {
           endAngle: cmd.endAngle ?? 90,
           fillColor: cmd.fillColor ?? null,
           lineColor: cmd.lineColor ?? null,
-          lineWidth: cmd.lineWidth ?? 0
+          lineWidth: cmd.lineWidth ?? 0,
         };
       case 'DrawTextureCmd': {
         // Texture objects are runtime-only. Keep only a stable loader/provider
@@ -320,7 +329,7 @@ export class ZhudaAssetSerializer {
           color: cmd.color ?? null,
           blendMode: cmd.blendMode,
           uv: Array.isArray(cmd.uv) ? [...cmd.uv] : undefined,
-          percent
+          percent,
         };
       }
       default:
@@ -333,7 +342,7 @@ export class ZhudaAssetSerializer {
    * 支援產出 'uncalibrated-drift' (含 +3px 寬度偏差與色差 ΔE=6.1) 與 'calibrated' (0px 誤差 / ΔE=0.00)
    */
   public static buildConfirmButtonPrefab(
-    variant: 'calibrated' | 'uncalibrated-drift' = 'calibrated'
+    variant: 'calibrated' | 'uncalibrated-drift' = 'calibrated',
   ): LayaHierarchyNodeData {
     const isDrift = variant === 'uncalibrated-drift';
     const x = isDrift ? 12 : 10;
@@ -351,10 +360,10 @@ export class ZhudaAssetSerializer {
       targetColors: {
         primaryFill: '#1e3a5f',
         borderStroke: '#3b82f6',
-        accentOrText: '#e2f1ff'
+        accentOrText: '#e2f1ff',
       },
       tolerancePx: 0,
-      toleranceDeltaE: 1.5
+      toleranceDeltaE: 1.5,
     };
 
     return {
@@ -381,7 +390,7 @@ export class ZhudaAssetSerializer {
           fillColor,
           lineColor: borderColor,
           lineWidth: 2,
-          percent: false
+          percent: false,
         },
         {
           _$type: 'DrawCircleCmd',
@@ -391,8 +400,8 @@ export class ZhudaAssetSerializer {
           fillColor: '#64ffda',
           lineColor: null,
           lineWidth: 0,
-          percent: false
-        }
+          percent: false,
+        },
       ],
       _$child: [
         {
@@ -408,16 +417,16 @@ export class ZhudaAssetSerializer {
           bold: true,
           color: textColor,
           align: 'center',
-          valign: 'middle'
-        }
+          valign: 'middle',
+        },
       ],
       _zhudaMeta: {
         assetId: 'assets/prefabs/ConfirmActionButton.lh',
         category: 'ui-prefab',
         version: '3.4.2-zhuda-static-v1',
         designCanvas: { width: 180, height: 68, padding: 10 },
-        targetSpec
-      }
+        targetSpec,
+      },
     };
   }
 
@@ -432,10 +441,10 @@ export class ZhudaAssetSerializer {
       targetColors: {
         primaryFill: '#141d2c',
         borderStroke: '#304565',
-        accentOrText: '#ff3366'
+        accentOrText: '#ff3366',
       },
       tolerancePx: 0,
-      toleranceDeltaE: 1.5
+      toleranceDeltaE: 1.5,
     };
 
     return {
@@ -461,7 +470,7 @@ export class ZhudaAssetSerializer {
           fillColor: '#141d2c',
           lineColor: '#304565',
           lineWidth: 2,
-          percent: false
+          percent: false,
         },
         {
           _$type: 'DrawRoundRectCmd',
@@ -476,7 +485,7 @@ export class ZhudaAssetSerializer {
           fillColor: '#0b0f17',
           lineColor: '#ff3366',
           lineWidth: 1.5,
-          percent: false
+          percent: false,
         },
         {
           _$type: 'DrawRoundRectCmd',
@@ -491,8 +500,8 @@ export class ZhudaAssetSerializer {
           fillColor: '#0b0f17',
           lineColor: '#00ff88',
           lineWidth: 1.5,
-          percent: false
-        }
+          percent: false,
+        },
       ],
       _$child: [
         {
@@ -508,7 +517,7 @@ export class ZhudaAssetSerializer {
           fontSize: 25,
           bold: true,
           color: '#ff3366',
-          align: 'center'
+          align: 'center',
         },
         {
           _$id: 'hud_face_badge',
@@ -521,7 +530,7 @@ export class ZhudaAssetSerializer {
           text: '🙂',
           fontSize: 24,
           color: '#e2f1ff',
-          align: 'center'
+          align: 'center',
         },
         {
           _$id: 'hud_timer_led',
@@ -536,16 +545,16 @@ export class ZhudaAssetSerializer {
           fontSize: 25,
           bold: true,
           color: '#00ff88',
-          align: 'center'
-        }
+          align: 'center',
+        },
       ],
       _zhudaMeta: {
         assetId: 'assets/prefabs/TacticalHudBar.lh',
         category: 'ui-prefab',
         version: '3.4.2-zhuda-static-v1',
         designCanvas: { width: 330, height: 84, padding: 10 },
-        targetSpec
-      }
+        targetSpec,
+      },
     };
   }
 
@@ -554,7 +563,7 @@ export class ZhudaAssetSerializer {
    * 先在靜態層校準各部位骨骼座標與配色，再於組裝階段由 Spine42PhysicsRigComponent 驅動二階彈簧擺
    */
   public static buildSpine42MascotPrefab(
-    overrides: Partial<Spine42StaticRigConfig> = {}
+    overrides: Partial<Spine42StaticRigConfig> = {},
   ): LayaHierarchyNodeData {
     const cfg: Spine42StaticRigConfig = {
       rigName: 'ZhudaGuardianPig_v4.2',
@@ -567,7 +576,7 @@ export class ZhudaAssetSerializer {
       skinBorderColor: '#ff6b98',
       bellyHighlightColor: '#ffd0df',
       snoutColor: '#ffa6c2',
-      ...overrides
+      ...overrides,
     };
 
     const targetSpec: PixelCalibrationSpec = {
@@ -577,10 +586,10 @@ export class ZhudaAssetSerializer {
       targetColors: {
         primaryFill: '#141d2b',
         borderStroke: '#2c415e',
-        accentOrText: '#ff9ebb'
+        accentOrText: '#ff9ebb',
       },
       tolerancePx: 0,
-      toleranceDeltaE: 1.5
+      toleranceDeltaE: 1.5,
     };
 
     const cx = 105;
@@ -609,7 +618,7 @@ export class ZhudaAssetSerializer {
           fillColor: '#141d2b',
           lineColor: '#2c415e',
           lineWidth: 2,
-          percent: false
+          percent: false,
         },
         {
           _$type: 'DrawCircleCmd',
@@ -619,7 +628,7 @@ export class ZhudaAssetSerializer {
           fillColor: '#090d14',
           lineColor: null,
           lineWidth: 0,
-          percent: false
+          percent: false,
         },
         {
           _$type: 'DrawCircleCmd',
@@ -629,7 +638,7 @@ export class ZhudaAssetSerializer {
           fillColor: cfg.skinPrimaryColor,
           lineColor: cfg.skinBorderColor,
           lineWidth: 2,
-          percent: false
+          percent: false,
         },
         {
           _$type: 'DrawCircleCmd',
@@ -639,7 +648,7 @@ export class ZhudaAssetSerializer {
           fillColor: cfg.bellyHighlightColor,
           lineColor: null,
           lineWidth: 0,
-          percent: false
+          percent: false,
         },
         {
           _$type: 'DrawCircleCmd',
@@ -649,7 +658,7 @@ export class ZhudaAssetSerializer {
           fillColor: cfg.skinBorderColor,
           lineColor: null,
           lineWidth: 0,
-          percent: false
+          percent: false,
         },
         {
           _$type: 'DrawCircleCmd',
@@ -659,7 +668,7 @@ export class ZhudaAssetSerializer {
           fillColor: cfg.skinBorderColor,
           lineColor: null,
           lineWidth: 0,
-          percent: false
+          percent: false,
         },
         {
           _$type: 'DrawCircleCmd',
@@ -669,7 +678,7 @@ export class ZhudaAssetSerializer {
           fillColor: cfg.snoutColor,
           lineColor: '#e05882',
           lineWidth: 1.5,
-          percent: false
+          percent: false,
         },
         {
           _$type: 'DrawCircleCmd',
@@ -679,7 +688,7 @@ export class ZhudaAssetSerializer {
           fillColor: '#222222',
           lineColor: null,
           lineWidth: 0,
-          percent: false
+          percent: false,
         },
         {
           _$type: 'DrawCircleCmd',
@@ -689,14 +698,14 @@ export class ZhudaAssetSerializer {
           fillColor: '#222222',
           lineColor: null,
           lineWidth: 0,
-          percent: false
-        }
+          percent: false,
+        },
       ],
       _$comp: [
         {
           _$type: 'Spine42PhysicsRigComponent',
-          ...cfg
-        }
+          ...cfg,
+        },
       ],
       _$child: [
         {
@@ -711,7 +720,7 @@ export class ZhudaAssetSerializer {
           fontSize: 13,
           bold: true,
           color: '#7df9ff',
-          align: 'center'
+          align: 'center',
         },
         {
           _$id: 'spine42_physics_badge',
@@ -724,16 +733,16 @@ export class ZhudaAssetSerializer {
           text: '✔ PhysicsConstraint (k=95, d=0.88)',
           fontSize: 11,
           color: '#64ffda',
-          align: 'center'
-        }
+          align: 'center',
+        },
       ],
       _zhudaMeta: {
         assetId: 'assets/prefabs/ZhudaSpine42Mascot.lh',
         category: 'spine42-rig',
         version: '3.4.2-zhuda-static-v1',
         designCanvas: { width: 230, height: 192, padding: 10 },
-        targetSpec
-      }
+        targetSpec,
+      },
     };
   }
 
@@ -742,7 +751,7 @@ export class ZhudaAssetSerializer {
    * 以決定性種子 (seed=20261028) 烘焙 t=240ms 的快照供微預覽與像素/色差校準，並附帶運行期發射器組件
    */
   public static buildParticleExplosionPrefab(
-    overrides: Partial<ParticleEmitterStaticConfig> = {}
+    overrides: Partial<ParticleEmitterStaticConfig> = {},
   ): LayaHierarchyNodeData {
     const cfg: ParticleEmitterStaticConfig = {
       emitterName: 'TacticalMineBurst_v1',
@@ -757,7 +766,7 @@ export class ZhudaAssetSerializer {
       secondaryColor: '#ffaa00',
       sparkColor: '#64ffda',
       coreGlowColor: '#231424',
-      ...overrides
+      ...overrides,
     };
 
     const targetSpec: PixelCalibrationSpec = {
@@ -767,10 +776,10 @@ export class ZhudaAssetSerializer {
       targetColors: {
         primaryFill: '#231424',
         borderStroke: '#ff5533',
-        accentOrText: '#ffaa00'
+        accentOrText: '#ffaa00',
       },
       tolerancePx: 0,
-      toleranceDeltaE: 1.5
+      toleranceDeltaE: 1.5,
     };
 
     const cmds: LayaGraphicsCmdData[] = [
@@ -788,7 +797,7 @@ export class ZhudaAssetSerializer {
         fillColor: cfg.coreGlowColor,
         lineColor: cfg.primaryColor,
         lineWidth: 2,
-        percent: false
+        percent: false,
       },
       // 外層震波光圈
       {
@@ -799,7 +808,7 @@ export class ZhudaAssetSerializer {
         fillColor: null,
         lineColor: cfg.secondaryColor,
         lineWidth: 2,
-        percent: false
+        percent: false,
       },
       // 內層高溫火球核心
       {
@@ -810,8 +819,8 @@ export class ZhudaAssetSerializer {
         fillColor: cfg.primaryColor,
         lineColor: cfg.secondaryColor,
         lineWidth: 3,
-        percent: false
-      }
+        percent: false,
+      },
     ];
 
     // 決定性粒子位置烘焙 (t = previewTimestampMs)
@@ -840,7 +849,7 @@ export class ZhudaAssetSerializer {
         fillColor: color,
         lineColor: null,
         lineWidth: 0,
-        percent: false
+        percent: false,
       });
     }
 
@@ -857,8 +866,8 @@ export class ZhudaAssetSerializer {
       _$comp: [
         {
           _$type: 'ZhudaParticleEmitterComponent',
-          ...cfg
-        }
+          ...cfg,
+        },
       ],
       _$child: [
         {
@@ -873,16 +882,16 @@ export class ZhudaAssetSerializer {
           fontSize: 11,
           bold: true,
           color: cfg.secondaryColor,
-          align: 'center'
-        }
+          align: 'center',
+        },
       ],
       _zhudaMeta: {
         assetId: 'assets/prefabs/MineExplosionParticle.lh',
         category: 'particle-emitter',
         version: '3.4.2-zhuda-static-v1',
         designCanvas: { width: 200, height: 200, padding: 12 },
-        targetSpec
-      }
+        targetSpec,
+      },
     };
   }
 
@@ -897,10 +906,10 @@ export class ZhudaAssetSerializer {
       targetColors: {
         primaryFill: '#121a28',
         borderStroke: '#2d4464',
-        accentOrText: '#64ffda'
+        accentOrText: '#64ffda',
       },
       tolerancePx: 0,
-      toleranceDeltaE: 1.5
+      toleranceDeltaE: 1.5,
     };
 
     return {
@@ -926,8 +935,8 @@ export class ZhudaAssetSerializer {
           fillColor: '#121a28',
           lineColor: '#2d4464',
           lineWidth: 2,
-          percent: false
-        }
+          percent: false,
+        },
       ],
       _$child: [
         {
@@ -941,7 +950,7 @@ export class ZhudaAssetSerializer {
           text: '🛡️ 豬大引擎 · 6 大基建遙測',
           fontSize: 13,
           bold: true,
-          color: '#64ffda'
+          color: '#64ffda',
         },
         {
           _$id: 'telemetry_body_txt',
@@ -954,16 +963,16 @@ export class ZhudaAssetSerializer {
           text: '[1] 拓撲載入器 (29/29 庫)\n[2] AST 自動類別反射\n[3] 原型解毒與準備守衛\n[4] Spine 4.2 PhysicsConstraint\n[5] 合批 DrawCall 對標 Three.js\n[6] 靜態資產 (.lh) & ΔE 校準',
           fontSize: 12,
           leading: 5,
-          color: '#cbd5e1'
-        }
+          color: '#cbd5e1',
+        },
       ],
       _zhudaMeta: {
         assetId: 'assets/prefabs/TelemetryDashboard.lh',
         category: 'ui-prefab',
         version: '3.4.2-zhuda-static-v1',
         designCanvas: { width: 245, height: 412, padding: 10 },
-        targetSpec
-      }
+        targetSpec,
+      },
     };
   }
 
@@ -973,7 +982,7 @@ export class ZhudaAssetSerializer {
    */
   public static buildNineSliceDialogPrefab(
     stretchedWidth: number = 320,
-    stretchedHeight: number = 140
+    stretchedHeight: number = 140,
   ): LayaHierarchyNodeData {
     const top = 16;
     const right = 16;
@@ -989,10 +998,10 @@ export class ZhudaAssetSerializer {
       targetColors: {
         primaryFill: '#132036',
         borderStroke: '#38bdf8',
-        accentOrText: '#2dd4bf'
+        accentOrText: '#2dd4bf',
       },
       tolerancePx: 0,
-      toleranceDeltaE: 1.5
+      toleranceDeltaE: 1.5,
     };
 
     return {
@@ -1020,7 +1029,7 @@ export class ZhudaAssetSerializer {
           fillColor: '#132036',
           lineColor: '#38bdf8',
           lineWidth: 2,
-          percent: false
+          percent: false,
         },
         // 2. 中央雙向拉伸區 (Center Slice #5)
         {
@@ -1032,7 +1041,7 @@ export class ZhudaAssetSerializer {
           fillColor: '#0c1524',
           lineColor: '#233858',
           lineWidth: 1,
-          percent: false
+          percent: false,
         },
         // 3. 四角 1:1 鎖定保護錨塊 (Slices #1, #3, #7, #9 — 尺寸恆定 16×16px)
         {
@@ -1048,7 +1057,7 @@ export class ZhudaAssetSerializer {
           fillColor: '#2dd4bf',
           lineColor: '#38bdf8',
           lineWidth: 1.5,
-          percent: false
+          percent: false,
         },
         {
           _$type: 'DrawRoundRectCmd',
@@ -1063,7 +1072,7 @@ export class ZhudaAssetSerializer {
           fillColor: '#2dd4bf',
           lineColor: '#38bdf8',
           lineWidth: 1.5,
-          percent: false
+          percent: false,
         },
         {
           _$type: 'DrawRoundRectCmd',
@@ -1078,7 +1087,7 @@ export class ZhudaAssetSerializer {
           fillColor: '#2dd4bf',
           lineColor: '#38bdf8',
           lineWidth: 1.5,
-          percent: false
+          percent: false,
         },
         {
           _$type: 'DrawRoundRectCmd',
@@ -1093,8 +1102,8 @@ export class ZhudaAssetSerializer {
           fillColor: '#2dd4bf',
           lineColor: '#38bdf8',
           lineWidth: 1.5,
-          percent: false
-        }
+          percent: false,
+        },
       ],
       _$child: [
         {
@@ -1109,7 +1118,7 @@ export class ZhudaAssetSerializer {
           fontSize: 14,
           bold: true,
           color: '#2dd4bf',
-          align: 'center'
+          align: 'center',
         },
         {
           _$id: 'nine_slice_sub_txt',
@@ -1122,8 +1131,8 @@ export class ZhudaAssetSerializer {
           text: `Stretched ${stretchedWidth}×${stretchedHeight}px · 4 Corners Locked 16×16px`,
           fontSize: 12,
           color: '#e2f1ff',
-          align: 'center'
-        }
+          align: 'center',
+        },
       ],
       _zhudaMeta: {
         assetId: 'assets/prefabs/NineSliceDialogFrame.lh',
@@ -1134,9 +1143,9 @@ export class ZhudaAssetSerializer {
         nineSliceSpec: {
           sizeGrid: [top, right, bottom, left, 0],
           baseWidth: 160,
-          baseHeight: 80
-        }
-      }
+          baseHeight: 80,
+        },
+      },
     };
   }
 
@@ -1151,10 +1160,10 @@ export class ZhudaAssetSerializer {
       targetColors: {
         primaryFill: '#1f1a10',
         borderStroke: '#fbbf24',
-        accentOrText: '#fef08a'
+        accentOrText: '#fef08a',
       },
       tolerancePx: 0,
-      toleranceDeltaE: 1.5
+      toleranceDeltaE: 1.5,
     };
 
     const cmds: LayaGraphicsCmdData[] = [
@@ -1171,7 +1180,7 @@ export class ZhudaAssetSerializer {
         fillColor: '#1f1a10',
         lineColor: '#fbbf24',
         lineWidth: 2,
-        percent: false
+        percent: false,
       },
       // 聚寶盆底座金光
       {
@@ -1183,8 +1192,8 @@ export class ZhudaAssetSerializer {
         fillColor: '#f59e0b',
         lineColor: '#fef08a',
         lineWidth: 2,
-        percent: false
-      }
+        percent: false,
+      },
     ];
 
     // 決定性拋物線金幣粒子軌跡
@@ -1198,7 +1207,7 @@ export class ZhudaAssetSerializer {
       [102, 82, 10],
       [54, 110, 7.5],
       [122, 110, 7.5],
-      [88, 112, 9]
+      [88, 112, 9],
     ];
 
     for (const [cx, cy, r] of coinPositions) {
@@ -1210,7 +1219,7 @@ export class ZhudaAssetSerializer {
         fillColor: '#fbbf24',
         lineColor: '#fef08a',
         lineWidth: 1.5,
-        percent: false
+        percent: false,
       });
     }
 
@@ -1232,8 +1241,8 @@ export class ZhudaAssetSerializer {
           previewTimestampMs: 280,
           primaryColor: '#fbbf24',
           secondaryColor: '#fef08a',
-          sparkColor: '#38bdf8'
-        }
+          sparkColor: '#38bdf8',
+        },
       ],
       _$child: [
         {
@@ -1248,16 +1257,16 @@ export class ZhudaAssetSerializer {
           fontSize: 11,
           bold: true,
           color: '#fef08a',
-          align: 'center'
-        }
+          align: 'center',
+        },
       ],
       _zhudaMeta: {
         assetId: 'assets/prefabs/CoinFountainVfx.lh',
         category: 'vfx-blueprint',
         version: '3.4.2-zhuda-static-v1',
         designCanvas: { width: 200, height: 200, padding: 12 },
-        targetSpec
-      }
+        targetSpec,
+      },
     };
   }
 
@@ -1272,10 +1281,10 @@ export class ZhudaAssetSerializer {
       targetColors: {
         primaryFill: '#0d1b2a',
         borderStroke: '#00e5ff',
-        accentOrText: '#7df9ff'
+        accentOrText: '#7df9ff',
       },
       tolerancePx: 0,
-      toleranceDeltaE: 1.5
+      toleranceDeltaE: 1.5,
     };
 
     return {
@@ -1301,7 +1310,7 @@ export class ZhudaAssetSerializer {
           fillColor: '#0d1b2a',
           lineColor: '#00e5ff',
           lineWidth: 2,
-          percent: false
+          percent: false,
         },
         // 弧形半月刀氣主軌跡
         {
@@ -1313,7 +1322,7 @@ export class ZhudaAssetSerializer {
           endAngle: 75,
           fillColor: '#00e5ff',
           lineColor: '#ffffff',
-          lineWidth: 2
+          lineWidth: 2,
         },
         // 內層遮罩形成新月刃弧
         {
@@ -1324,7 +1333,7 @@ export class ZhudaAssetSerializer {
           fillColor: '#0d1b2a',
           lineColor: '#38bdf8',
           lineWidth: 1.5,
-          percent: false
+          percent: false,
         },
         // 破空十字星芒
         {
@@ -1335,8 +1344,8 @@ export class ZhudaAssetSerializer {
           toY: 36,
           lineColor: '#ffffff',
           lineWidth: 3,
-          percent: false
-        }
+          percent: false,
+        },
       ],
       _$comp: [
         {
@@ -1346,8 +1355,8 @@ export class ZhudaAssetSerializer {
           previewTimestampMs: 120,
           primaryColor: '#00e5ff',
           secondaryColor: '#7df9ff',
-          sparkColor: '#ffffff'
-        }
+          sparkColor: '#ffffff',
+        },
       ],
       _$child: [
         {
@@ -1362,16 +1371,16 @@ export class ZhudaAssetSerializer {
           fontSize: 11,
           bold: true,
           color: '#7df9ff',
-          align: 'center'
-        }
+          align: 'center',
+        },
       ],
       _zhudaMeta: {
         assetId: 'assets/prefabs/SwordSlashTrailVfx.lh',
         category: 'vfx-blueprint',
         version: '3.4.2-zhuda-static-v1',
         designCanvas: { width: 200, height: 200, padding: 12 },
-        targetSpec
-      }
+        targetSpec,
+      },
     };
   }
 
@@ -1386,10 +1395,10 @@ export class ZhudaAssetSerializer {
       targetColors: {
         primaryFill: '#13162b',
         borderStroke: '#a855f7',
-        accentOrText: '#e9d5ff'
+        accentOrText: '#e9d5ff',
       },
       tolerancePx: 0,
-      toleranceDeltaE: 1.5
+      toleranceDeltaE: 1.5,
     };
 
     return {
@@ -1415,7 +1424,7 @@ export class ZhudaAssetSerializer {
           fillColor: '#13162b',
           lineColor: '#a855f7',
           lineWidth: 2,
-          percent: false
+          percent: false,
         },
         // 外層覺醒法陣環
         {
@@ -1426,7 +1435,7 @@ export class ZhudaAssetSerializer {
           fillColor: null,
           lineColor: '#c084fc',
           lineWidth: 2.5,
-          percent: false
+          percent: false,
         },
         // 內層能量核心
         {
@@ -1437,7 +1446,7 @@ export class ZhudaAssetSerializer {
           fillColor: '#581c87',
           lineColor: '#e9d5ff',
           lineWidth: 2,
-          percent: false
+          percent: false,
         },
         // 上升光柱粒子
         {
@@ -1448,7 +1457,7 @@ export class ZhudaAssetSerializer {
           toY: 36,
           lineColor: '#64ffda',
           lineWidth: 2.5,
-          percent: false
+          percent: false,
         },
         {
           _$type: 'DrawLineCmd',
@@ -1458,7 +1467,7 @@ export class ZhudaAssetSerializer {
           toY: 24,
           lineColor: '#e9d5ff',
           lineWidth: 3,
-          percent: false
+          percent: false,
         },
         {
           _$type: 'DrawLineCmd',
@@ -1468,8 +1477,8 @@ export class ZhudaAssetSerializer {
           toY: 36,
           lineColor: '#64ffda',
           lineWidth: 2.5,
-          percent: false
-        }
+          percent: false,
+        },
       ],
       _$comp: [
         {
@@ -1479,8 +1488,8 @@ export class ZhudaAssetSerializer {
           previewTimestampMs: 320,
           primaryColor: '#a855f7',
           secondaryColor: '#e9d5ff',
-          sparkColor: '#64ffda'
-        }
+          sparkColor: '#64ffda',
+        },
       ],
       _$child: [
         {
@@ -1495,16 +1504,16 @@ export class ZhudaAssetSerializer {
           fontSize: 11,
           bold: true,
           color: '#e9d5ff',
-          align: 'center'
-        }
+          align: 'center',
+        },
       ],
       _zhudaMeta: {
         assetId: 'assets/prefabs/LevelUpAuraVfx.lh',
         category: 'vfx-blueprint',
         version: '3.4.2-zhuda-static-v1',
         designCanvas: { width: 200, height: 200, padding: 12 },
-        targetSpec
-      }
+        targetSpec,
+      },
     };
   }
 
@@ -1549,8 +1558,8 @@ export class ZhudaAssetSerializer {
         assetId: 'assets/scenes/MinesweeperStage.ls',
         category: 'scene-lh',
         version: '3.4.2-zhuda-static-v1',
-        designCanvas: { width: 1280, height: 720, padding: 0 }
-      }
+        designCanvas: { width: 1280, height: 720, padding: 0 },
+      },
     };
   }
 
@@ -1569,7 +1578,7 @@ export class ZhudaAssetSerializer {
       'LevelUpAuraVfx.lh': this.buildLevelUpAuraVfxPrefab(),
       'UnityCrystalGuardian.lh': UnityBridgePipeline.buildUnityCrystalGuardianPrefab(),
       'TelemetryDashboard.lh': this.buildTelemetryDashboardPrefab(),
-      'MinesweeperStage.ls': this.buildMinesweeperSceneAsset()
+      'MinesweeperStage.ls': this.buildMinesweeperSceneAsset(),
     };
   }
 
@@ -1578,7 +1587,7 @@ export class ZhudaAssetSerializer {
    */
   public static applyCalibrationPatches(
     sourceData: LayaHierarchyNodeData,
-    patches: AutoFixPatch[]
+    patches: AutoFixPatch[],
   ): LayaHierarchyNodeData {
     const cloned: LayaHierarchyNodeData = JSON.parse(JSON.stringify(sourceData));
 

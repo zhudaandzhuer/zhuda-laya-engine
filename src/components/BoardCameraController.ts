@@ -9,7 +9,7 @@ import { zhudaComponent } from '../../packages/core/DeclarativeSDK';
   className: 'BoardCameraController',
   assetId: 'zhuda://BoardCameraController',
   category: '3d',
-  description: '3D 戰術棋盤相機平滑插值與微幅呼吸運鏡組件'
+  description: '3D 戰術棋盤相機平滑插值與微幅呼吸運鏡組件',
 })
 export class BoardCameraController extends Laya.Script {
   public targetPosition: Laya.Vector3 = new Laya.Vector3(4, 15, 17);

@@ -1,5 +1,5 @@
 // Generated from TypeScript source; run npm run types:generate.
-import { transformPoint, type Vec3 } from "./Math3D";
+import { transformPoint, type Vec3 } from './Math3D';
 export interface QueryRay {
     origin: Vec3;
     direction: Vec3;
@@ -15,8 +15,8 @@ export interface QueryProvider {
     entityId: string;
     instanceId?: string | number;
     layer?: number;
-    raycast: (ray: QueryRay, maxDistance: number) => Omit<QueryHit, "entityId"> | null;
-    sweepSphere?: (from: Vec3, to: Vec3, radius: number) => Omit<QueryHit, "entityId"> | null;
+    raycast: (ray: QueryRay, maxDistance: number) => Omit<QueryHit, 'entityId'> | null;
+    sweepSphere?: (from: Vec3, to: Vec3, radius: number) => Omit<QueryHit, 'entityId'> | null;
 }
 export declare class ZhudaSceneQueries {
     private providers;

@@ -9,8 +9,5 @@ test('consumer engineRoot resolves relative to the consumer project', () => {
     resolveEngineRoot(project, 'node_modules/zhuda-laya-engine'),
     path.resolve(project, 'node_modules/zhuda-laya-engine'),
   );
-  assert.equal(
-    resolveEngineRoot(project, '/opt/zhuda-laya-engine'),
-    '/opt/zhuda-laya-engine',
-  );
+  assert.equal(resolveEngineRoot(project, '/opt/zhuda-laya-engine'), '/opt/zhuda-laya-engine');
 });

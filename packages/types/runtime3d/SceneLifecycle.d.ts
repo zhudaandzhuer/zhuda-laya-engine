@@ -1,5 +1,5 @@
 // Generated from TypeScript source; run npm run types:generate.
-import type { Vec3 } from "./Math3D";
+import type { Vec3 } from './Math3D';
 /** Owned releases execute in reverse order. Borrowed resources must not be registered here. */
 export declare class ZhudaResourceScope {
     private releases;
@@ -19,7 +19,7 @@ export declare class ZhudaSceneRegions {
     clear(): void;
     get size(): number;
 }
-export type SceneResourceKind = "mesh" | "texture" | "renderTarget";
+export type SceneResourceKind = 'mesh' | 'texture' | 'renderTarget';
 export declare class ZhudaSceneBudget {
     private resources;
     track(id: string, kind: SceneResourceKind, estimatedBytes: number): () => boolean;
@@ -40,7 +40,7 @@ export interface SceneQuality {
     extraPasses: number;
     lodDistance: number;
 }
-export declare const sceneQuality: Record<"low" | "medium" | "high", SceneQuality>;
+export declare const sceneQuality: Record<'low' | 'medium' | 'high', SceneQuality>;
 /** Hysteresis avoids repeated mesh swaps at a distance boundary. Consumer owns LOD meshes. */
 export declare class ZhudaDistanceLOD {
     readonly distance: number;

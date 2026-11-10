@@ -1,6 +1,6 @@
 // Generated from TypeScript source; run npm run types:generate.
-import type { MeshData } from "../runtime3d/Surfaces";
-import type { QueryRay } from "../runtime3d/SceneQueries";
+import type { MeshData } from '../runtime3d/Surfaces';
+import type { QueryRay } from '../runtime3d/SceneQueries';
 /** Two-sided ray intersection; distance follows the supplied ray parameter. */
 export declare function shellTriangleDistance(ray: QueryRay, p: Float32Array, a: number, b: number, c: number): number | null;
 /** Clockwise Laya faces. Extrudes along local -Y; the underside follows the top. */

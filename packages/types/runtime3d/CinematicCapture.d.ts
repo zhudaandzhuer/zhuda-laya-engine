@@ -1,6 +1,6 @@
 // Generated from TypeScript source; run npm run types:generate.
-import { ZhudaPhysicalCameraRig } from "./PhysicalCamera";
-import type { ZhudaRuntimeSession } from "./Runtime";
+import { ZhudaPhysicalCameraRig } from './PhysicalCamera';
+import type { ZhudaRuntimeSession } from './Runtime';
 export interface CinematicCaptureOptions {
     width: number;
     height: number;
@@ -24,9 +24,9 @@ export interface CinematicFramePixels {
     index: number;
     time: number;
     samples: number;
-    colorSpace: "srgb";
-    accumulation: "display-linear";
-    alpha: "opaque";
+    colorSpace: 'srgb';
+    accumulation: 'display-linear';
+    alpha: 'opaque';
     /** Top-left origin. Caller owns returned bytes. */
     rgba: Uint8Array;
 }

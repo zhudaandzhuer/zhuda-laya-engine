@@ -10,5 +10,9 @@ export function shouldReleaseHiddenPreview(
   activeMode: 'prefab' | 'scene' | 'model',
   nextMode: 'prefab' | 'scene' | 'model',
 ): boolean {
-  return policy === 'release' && activeMode !== nextMode && (activeMode === 'scene' || activeMode === 'model');
+  return (
+    policy === 'release' &&
+    activeMode !== nextMode &&
+    (activeMode === 'scene' || activeMode === 'model')
+  );
 }

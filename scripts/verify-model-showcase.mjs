@@ -1,47 +1,291 @@
-import fs from 'node:fs';import path from 'node:path';import http from 'node:http';import assert from 'node:assert/strict';import crypto from 'node:crypto';import os from 'node:os';import {execFileSync} from 'node:child_process';import ts from 'typescript';
-import {chromeFixture} from './lib/chrome-fixture.mjs';import {runConsumerBuild} from '../packages/compiler/consumer-build.mjs';
-const engine=path.resolve(import.meta.dirname,'..'),root=path.resolve(process.env.SHOWCASE_OUT||'/tmp/zhuda-model-showcase'),consumer=path.join(root,'consumer'),evidence=path.join(root,'evidence');
-for(const sub of ['src','public/assets','node_modules'])fs.mkdirSync(path.join(consumer,sub),{recursive:true});fs.mkdirSync(evidence,{recursive:true});
-fs.cpSync(path.join(engine,'tests/fixtures/model-showcase'),path.join(consumer,'src'),{recursive:true});
-for(const file of fs.readdirSync(path.join(engine,'tests/fixtures/gltf-review')).filter(f=>f.endsWith('.gltf')))fs.copyFileSync(path.join(engine,'tests/fixtures/gltf-review',file),path.join(consumer,'public/assets',file));
-const invalid=JSON.parse(fs.readFileSync(path.join(consumer,'public/assets/multi-cubicspline.gltf')));const payload=Buffer.from(invalid.buffers[0].uri.split(',')[1],'base64');const input=invalid.accessors[invalid.animations[0].samplers[0].input];const offset=invalid.bufferViews[input.bufferView].byteOffset+(input.byteOffset||0);payload.writeFloatLE(0,offset+4);invalid.buffers[0].uri='data:application/octet-stream;base64,'+payload.toString('base64');fs.writeFileSync(path.join(consumer,'public/assets/invalid-cubic.gltf'),JSON.stringify(invalid));
-const version=JSON.parse(fs.readFileSync(path.join(engine,'package.json'))).version;
-const packed=JSON.parse(execFileSync('npm',['pack','--json','--pack-destination',root],{cwd:engine,encoding:'utf8',maxBuffer:16e6}))[0];
-const sdk=path.join(consumer,'node_modules/zhuda-laya-engine');fs.mkdirSync(sdk,{recursive:true});execFileSync('tar',['-xzf',path.join(root,packed.filename),'-C',sdk,'--strip-components=1']);
-for(const dependency of ['@webgpu','i18next','typescript','esbuild']){const dest=path.join(consumer,'node_modules',dependency);if(!fs.existsSync(dest))fs.symlinkSync(path.join(engine,'node_modules',dependency),dest);}
-fs.writeFileSync(path.join(consumer,'package.json'),JSON.stringify({name:'model-showcase-consumer',private:true,type:'module',dependencies:{'zhuda-laya-engine':version}},null,2));
-const config={name:'model-showcase',entry:'src/Main.ts',features:['core','2d','3d','gltf','postProcess'],assetInclude:fs.readdirSync(path.join(consumer,'public/assets'))};fs.writeFileSync(path.join(consumer,'zhuda.config.json'),JSON.stringify(config,null,2));
-fs.writeFileSync(path.join(consumer,'public/index.html'),'<!doctype html><meta charset="utf-8"><style>html,body{margin:0;background:#111}#game{width:720px;height:480px}</style><div id="game"></div><!-- ZHUDA_LIBS --><!-- ZHUDA_ENTRY -->');
-const program=ts.createProgram([path.join(consumer,'src/Main.ts')],{noEmit:true,strict:true,skipLibCheck:false,types:[],target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext,moduleResolution:ts.ModuleResolutionKind.Bundler});const diagnostics=ts.getPreEmitDiagnostics(program);assert.equal(diagnostics.length,0,ts.formatDiagnosticsWithColorAndContext(diagnostics,{getCurrentDirectory:()=>consumer,getCanonicalFileName:f=>f,getNewLine:()=> '\n'}));
-await runConsumerBuild({projectRoot:consumer,engineRoot:sdk,config});
-const esm=await import(path.join(sdk,'dist/sdk/zhuda-laya-engine.esm.js'));const {createRequire}=await import('node:module');const cjs=createRequire(import.meta.url)(path.join(sdk,'dist/sdk/zhuda-laya-engine.cjs'));
-for(const name of ['ZhudaModelInspector','ZhudaAssetShowcase','inspectGltfAsset','ZhudaModelCompatibilityError']){assert.equal(typeof esm[name],'function');assert.equal(typeof cjs[name],'function');}
-const sha=b=>crypto.createHash('sha256').update(b).digest('hex');const identity={version,baseCommit:execFileSync('git',['rev-parse','HEAD'],{cwd:engine,encoding:'utf8'}).trim(),tarballSha256:sha(fs.readFileSync(path.join(root,packed.filename))),node:process.version,os:os.platform()+' '+os.release(),sources:Object.fromEntries(fs.readdirSync(path.join(consumer,'public/assets')).map(f=>[f,sha(fs.readFileSync(path.join(consumer,'public/assets',f)))]))};fs.writeFileSync(path.join(evidence,'identity.json'),JSON.stringify(identity,null,2));
-const server=http.createServer((req,res)=>{const url=new URL(req.url,'http://localhost');let pathname=url.pathname==='/'?'/index.html':url.pathname;const slow=pathname==='/assets/slow.gltf';if(slow)pathname='/assets/multi-cubicspline.gltf';const file=path.join(consumer,'dist/web',pathname);const send=()=>{try{res.setHeader('Content-Type',file.endsWith('.js')?'application/javascript':file.endsWith('.html')?'text/html':'application/json');res.end(fs.readFileSync(file));}catch{res.writeHead(404).end();}};if(slow)setTimeout(send,250);else send();});await new Promise(r=>server.listen(0,'127.0.0.1',r));
-const base=`http://127.0.0.1:${server.address().port}`,reports=[];let browser;
-const morph=info=>info.nodes.find(n=>'bend' in n.morphWeights).morphWeights;
-try{
- for(const dpr of [1,2,3]){
-  browser=await chromeFixture();await browser.send('Emulation.setDeviceMetricsOverride',{width:800,height:600,deviceScaleFactor:dpr,mobile:false});
-  await browser.send('Page.addScriptToEvaluateOnNewDocument',{source:`window.draws=0;const seen=new WeakSet(),original=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(...args){const gl=original.apply(this,args);if(gl&&!seen.has(gl)&&gl.drawArrays){seen.add(gl);for(const name of ['drawArrays','drawElements']){const f=gl[name];gl[name]=function(...a){window.draws++;return f.apply(gl,a);};}}return gl;};`});
-  const open=async query=>{await browser.send('Page.navigate',{url:base+'/?dpr='+dpr+'&'+query});await browser.waitFor('!!window.modelTest');assert.equal(await browser.evaluate('window.modelTest.ready'),true,JSON.stringify(await browser.evaluate('window.modelTest')));await browser.waitFor('!document.querySelector("#zhudaLogoSplash")');};
-  const comparisons=[];
-  for(const selection of ['node=Probe','node=Probe&state=weighted','mode=raw','mode=gameplay','mode=cinematic']){
-   const id=selection.replaceAll(/[=&]/g,'-');let first;
-   for(const pass of ['reference','actual']){await open(selection);const pixels=await browser.evaluate('Array.from(document.querySelector("canvas").getContext("webgl2").getParameter(document.querySelector("canvas").getContext("webgl2").VIEWPORT))');assert.ok(pixels[2]>0);const image=await browser.evaluate('document.querySelector("canvas").toDataURL()');fs.writeFileSync(path.join(evidence,`${dpr}-${id}-${pass}.png`),Buffer.from(image.split(',')[1],'base64'));if(pass==='reference')first=image;else {comparisons.push({selection,exactReplay:first===image});assert.equal(first,image,'Deterministic same-state canvas replay');}await browser.evaluate('window.modelTest.dispose()');}
+import fs from 'node:fs';
+import path from 'node:path';
+import http from 'node:http';
+import assert from 'node:assert/strict';
+import crypto from 'node:crypto';
+import os from 'node:os';
+import { execFileSync } from 'node:child_process';
+import ts from 'typescript';
+import { chromeFixture } from './lib/chrome-fixture.mjs';
+import { runConsumerBuild } from '../packages/compiler/consumer-build.mjs';
+const engine = path.resolve(import.meta.dirname, '..'),
+  root = path.resolve(process.env.SHOWCASE_OUT || '/tmp/zhuda-model-showcase'),
+  consumer = path.join(root, 'consumer'),
+  evidence = path.join(root, 'evidence');
+for (const sub of ['src', 'public/assets', 'node_modules'])
+  fs.mkdirSync(path.join(consumer, sub), { recursive: true });
+fs.mkdirSync(evidence, { recursive: true });
+fs.cpSync(path.join(engine, 'tests/fixtures/model-showcase'), path.join(consumer, 'src'), {
+  recursive: true,
+});
+for (const file of fs
+  .readdirSync(path.join(engine, 'tests/fixtures/gltf-review'))
+  .filter((f) => f.endsWith('.gltf')))
+  fs.copyFileSync(
+    path.join(engine, 'tests/fixtures/gltf-review', file),
+    path.join(consumer, 'public/assets', file),
+  );
+const invalid = JSON.parse(
+  fs.readFileSync(path.join(consumer, 'public/assets/multi-cubicspline.gltf')),
+);
+const payload = Buffer.from(invalid.buffers[0].uri.split(',')[1], 'base64');
+const input = invalid.accessors[invalid.animations[0].samplers[0].input];
+const offset = invalid.bufferViews[input.bufferView].byteOffset + (input.byteOffset || 0);
+payload.writeFloatLE(0, offset + 4);
+invalid.buffers[0].uri = 'data:application/octet-stream;base64,' + payload.toString('base64');
+fs.writeFileSync(path.join(consumer, 'public/assets/invalid-cubic.gltf'), JSON.stringify(invalid));
+const version = JSON.parse(fs.readFileSync(path.join(engine, 'package.json'))).version;
+const packed = JSON.parse(
+  execFileSync('npm', ['pack', '--json', '--pack-destination', root], {
+    cwd: engine,
+    encoding: 'utf8',
+    maxBuffer: 16e6,
+  }),
+)[0];
+const sdk = path.join(consumer, 'node_modules/zhuda-laya-engine');
+fs.mkdirSync(sdk, { recursive: true });
+execFileSync('tar', ['-xzf', path.join(root, packed.filename), '-C', sdk, '--strip-components=1']);
+for (const dependency of ['@webgpu', 'i18next', 'typescript', 'esbuild']) {
+  const dest = path.join(consumer, 'node_modules', dependency);
+  if (!fs.existsSync(dest)) fs.symlinkSync(path.join(engine, 'node_modules', dependency), dest);
+}
+fs.writeFileSync(
+  path.join(consumer, 'package.json'),
+  JSON.stringify(
+    {
+      name: 'model-showcase-consumer',
+      private: true,
+      type: 'module',
+      dependencies: { 'zhuda-laya-engine': version },
+    },
+    null,
+    2,
+  ),
+);
+const config = {
+  name: 'model-showcase',
+  entry: 'src/Main.ts',
+  features: ['core', '2d', '3d', 'gltf', 'postProcess'],
+  assetInclude: fs.readdirSync(path.join(consumer, 'public/assets')),
+};
+fs.writeFileSync(path.join(consumer, 'zhuda.config.json'), JSON.stringify(config, null, 2));
+fs.writeFileSync(
+  path.join(consumer, 'public/index.html'),
+  '<!doctype html><meta charset="utf-8"><style>html,body{margin:0;background:#111}#game{width:720px;height:480px}</style><div id="game"></div><!-- ZHUDA_LIBS --><!-- ZHUDA_ENTRY -->',
+);
+const program = ts.createProgram([path.join(consumer, 'src/Main.ts')], {
+  noEmit: true,
+  strict: true,
+  skipLibCheck: false,
+  types: [],
+  target: ts.ScriptTarget.ES2022,
+  module: ts.ModuleKind.ESNext,
+  moduleResolution: ts.ModuleResolutionKind.Bundler,
+});
+const diagnostics = ts.getPreEmitDiagnostics(program);
+assert.equal(
+  diagnostics.length,
+  0,
+  ts.formatDiagnosticsWithColorAndContext(diagnostics, {
+    getCurrentDirectory: () => consumer,
+    getCanonicalFileName: (f) => f,
+    getNewLine: () => '\n',
+  }),
+);
+await runConsumerBuild({ projectRoot: consumer, engineRoot: sdk, config });
+const esm = await import(path.join(sdk, 'dist/sdk/zhuda-laya-engine.esm.js'));
+const { createRequire } = await import('node:module');
+const cjs = createRequire(import.meta.url)(path.join(sdk, 'dist/sdk/zhuda-laya-engine.cjs'));
+for (const name of [
+  'ZhudaModelInspector',
+  'ZhudaAssetShowcase',
+  'inspectGltfAsset',
+  'ZhudaModelCompatibilityError',
+]) {
+  assert.equal(typeof esm[name], 'function');
+  assert.equal(typeof cjs[name], 'function');
+}
+const sha = (b) => crypto.createHash('sha256').update(b).digest('hex');
+const identity = {
+  version,
+  baseCommit: execFileSync('git', ['rev-parse', 'HEAD'], { cwd: engine, encoding: 'utf8' }).trim(),
+  tarballSha256: sha(fs.readFileSync(path.join(root, packed.filename))),
+  node: process.version,
+  os: os.platform() + ' ' + os.release(),
+  sources: Object.fromEntries(
+    fs
+      .readdirSync(path.join(consumer, 'public/assets'))
+      .map((f) => [f, sha(fs.readFileSync(path.join(consumer, 'public/assets', f)))]),
+  ),
+};
+fs.writeFileSync(path.join(evidence, 'identity.json'), JSON.stringify(identity, null, 2));
+const server = http.createServer((req, res) => {
+  const url = new URL(req.url, 'http://localhost');
+  let pathname = url.pathname === '/' ? '/index.html' : url.pathname;
+  const slow = pathname === '/assets/slow.gltf';
+  if (slow) pathname = '/assets/multi-cubicspline.gltf';
+  const file = path.join(consumer, 'dist/web', pathname);
+  const send = () => {
+    try {
+      res.setHeader(
+        'Content-Type',
+        file.endsWith('.js')
+          ? 'application/javascript'
+          : file.endsWith('.html')
+            ? 'text/html'
+            : 'application/json',
+      );
+      res.end(fs.readFileSync(file));
+    } catch {
+      res.writeHead(404).end();
+    }
+  };
+  if (slow) setTimeout(send, 250);
+  else send();
+});
+await new Promise((r) => server.listen(0, '127.0.0.1', r));
+const base = `http://127.0.0.1:${server.address().port}`,
+  reports = [];
+let browser;
+const morph = (info) => info.nodes.find((n) => 'bend' in n.morphWeights).morphWeights;
+try {
+  for (const dpr of [1, 2, 3]) {
+    browser = await chromeFixture();
+    await browser.send('Emulation.setDeviceMetricsOverride', {
+      width: 800,
+      height: 600,
+      deviceScaleFactor: dpr,
+      mobile: false,
+    });
+    await browser.send('Page.addScriptToEvaluateOnNewDocument', {
+      source: `window.draws=0;const seen=new WeakSet(),original=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(...args){const gl=original.apply(this,args);if(gl&&!seen.has(gl)&&gl.drawArrays){seen.add(gl);for(const name of ['drawArrays','drawElements']){const f=gl[name];gl[name]=function(...a){window.draws++;return f.apply(gl,a);};}}return gl;};`,
+    });
+    const open = async (query) => {
+      await browser.send('Page.navigate', { url: base + '/?dpr=' + dpr + '&' + query });
+      await browser.waitFor('!!window.modelTest');
+      assert.equal(
+        await browser.evaluate('window.modelTest.ready'),
+        true,
+        JSON.stringify(await browser.evaluate('window.modelTest')),
+      );
+      await browser.waitFor('!document.querySelector("#zhudaLogoSplash")');
+    };
+    const comparisons = [];
+    for (const selection of [
+      'node=Probe',
+      'node=Probe&state=weighted',
+      'mode=raw',
+      'mode=gameplay',
+      'mode=cinematic',
+    ]) {
+      const id = selection.replaceAll(/[=&]/g, '-');
+      let first;
+      for (const pass of ['reference', 'actual']) {
+        await open(selection);
+        const pixels = await browser.evaluate(
+          'Array.from(document.querySelector("canvas").getContext("webgl2").getParameter(document.querySelector("canvas").getContext("webgl2").VIEWPORT))',
+        );
+        assert.ok(pixels[2] > 0);
+        const image = await browser.evaluate('document.querySelector("canvas").toDataURL()');
+        fs.writeFileSync(
+          path.join(evidence, `${dpr}-${id}-${pass}.png`),
+          Buffer.from(image.split(',')[1], 'base64'),
+        );
+        if (pass === 'reference') first = image;
+        else {
+          comparisons.push({ selection, exactReplay: first === image });
+          assert.equal(first, image, 'Deterministic same-state canvas replay');
+        }
+        await browser.evaluate('window.modelTest.dispose()');
+      }
+    }
+    await open('');
+    const initial = await browser.evaluate('window.modelTest.report()');
+    assert.equal(initial.dpr, dpr);
+    assert.deepEqual(initial.canvas, [720 * dpr, 480 * dpr]);
+    assert.ok(await browser.evaluate('window.draws>0'));
+    const identities = initial.inspection.nodes.map((n) => [n.mesh?.id, n.materialIds]);
+    for (const mode of ['gameplay', 'cinematic', 'raw']) {
+      const state = await browser.evaluate(`window.modelTest.mode('${mode}')`);
+      assert.deepEqual(
+        state.inspection.nodes.map((n) => [n.mesh?.id, n.materialIds]),
+        identities,
+      );
+    }
+    const poses = [];
+    for (const interpolation of ['linear', 'step', 'cubicspline'])
+      for (const skin of ['', '-skin'])
+        for (const t of [0.25, 0.75]) {
+          const info = await browser.evaluate(
+              `window.modelTest.sample('multi-${interpolation}${skin}.gltf',${t})`,
+            ),
+            weights = morph(info);
+          const expected =
+            interpolation === 'linear'
+              ? [t, 0.2 + 0.6 * t]
+              : interpolation === 'step'
+                ? [0, 0.2]
+                : t === 0.25
+                  ? [0.2875, 0.18125]
+                  : [0.9375, 0.51875];
+          for (const [i, key] of ['bend', 'lift'].entries())
+            assert.ok(
+              Math.abs(weights[key] - expected[i]) < 1e-5,
+              JSON.stringify({ interpolation, skin, t, weights, expected }),
+            );
+          assert.equal(info.animations[0].durationSeconds, 2);
+          poses.push({ interpolation, skin, t, weights, expected });
+        }
+    const clones = await browser.evaluate('window.modelTest.clones()');
+    assert.ok(Math.abs(morph(clones[0]).bend - 0.3) < 1e-6);
+    assert.equal(morph(clones[1]).bend, 1);
+    const preFailure = await browser.evaluate('window.modelTest.report().resources');
+    const failure = await browser.evaluate('window.modelTest.failure()');
+    assert.equal(failure.malformed.length, 30);
+    assert.ok(failure.malformed.every((x) => x.includes('sample times')));
+    assert.deepEqual(
+      failure.failureResources,
+      preFailure,
+      'Partial model failure must not leak resources',
+    );
+    assert.match(failure.rejected, /UNSUPPORTED_REQUIRED_EXTENSION/);
+    assert.equal(failure.kept, true);
+    assert.match(failure.aborted, /AbortError/);
+    assert.match(failure.timeout, /TimeoutError/);
+    assert.equal(failure.stale, false);
+    const lifecycle = dpr === 1 ? await browser.evaluate('window.modelTest.lifecycle()') : [];
+    if (lifecycle.length) {
+      assert.equal(lifecycle.length, 33);
+      for (const r of lifecycle)
+        assert.equal(r.models.references + r.models.instances + r.models.entries, 0);
+      assert.deepEqual(
+        lifecycle[3].resources,
+        lifecycle.at(-1).resources,
+        'Resources must plateau after warmup',
+      );
+    }
+    const disposed = await browser.evaluate('window.modelTest.dispose()');
+    assert.equal(disposed.restored, true);
+    assert.equal(disposed.models.references + disposed.models.instances, 0);
+    assert.deepEqual(browser.errors, []);
+    reports.push({
+      dpr,
+      comparisons,
+      initial,
+      poses,
+      failure,
+      clones,
+      lifecycle,
+      disposed,
+      browser: await browser.send('Browser.getVersion'),
+      errors: browser.errors,
+    });
+    fs.writeFileSync(path.join(evidence, 'results.json'), JSON.stringify(reports, null, 2));
+    await browser.close();
+    browser = null;
+    console.log('PASS showcase DPR ' + dpr);
   }
-  await open('');const initial=await browser.evaluate('window.modelTest.report()');assert.equal(initial.dpr,dpr);assert.deepEqual(initial.canvas,[720*dpr,480*dpr]);assert.ok(await browser.evaluate('window.draws>0'));
-  const identities=initial.inspection.nodes.map(n=>[n.mesh?.id,n.materialIds]);for(const mode of ['gameplay','cinematic','raw']){const state=await browser.evaluate(`window.modelTest.mode('${mode}')`);assert.deepEqual(state.inspection.nodes.map(n=>[n.mesh?.id,n.materialIds]),identities);}
-  const poses=[];
-  for(const interpolation of ['linear','step','cubicspline'])for(const skin of ['', '-skin'])for(const t of [.25,.75]){
-   const info=await browser.evaluate(`window.modelTest.sample('multi-${interpolation}${skin}.gltf',${t})`),weights=morph(info);const expected=interpolation==='linear'?[t,.2+.6*t]:interpolation==='step'?[0,.2]:(t===.25?[.2875,.18125]:[.9375,.51875]);
-   for(const [i,key]of ['bend','lift'].entries())assert.ok(Math.abs(weights[key]-expected[i])<1e-5,JSON.stringify({interpolation,skin,t,weights,expected}));assert.equal(info.animations[0].durationSeconds,2);poses.push({interpolation,skin,t,weights,expected});
-  }
-  const clones=await browser.evaluate('window.modelTest.clones()');assert.ok(Math.abs(morph(clones[0]).bend-.3)<1e-6);assert.equal(morph(clones[1]).bend,1);
-  const preFailure=await browser.evaluate('window.modelTest.report().resources');const failure=await browser.evaluate('window.modelTest.failure()');assert.equal(failure.malformed.length,30);assert.ok(failure.malformed.every(x=>x.includes('sample times')));assert.deepEqual(failure.failureResources,preFailure,'Partial model failure must not leak resources');assert.match(failure.rejected,/UNSUPPORTED_REQUIRED_EXTENSION/);assert.equal(failure.kept,true);assert.match(failure.aborted,/AbortError/);assert.match(failure.timeout,/TimeoutError/);assert.equal(failure.stale,false);
-  const lifecycle=dpr===1?await browser.evaluate('window.modelTest.lifecycle()'):[];
-  if(lifecycle.length){assert.equal(lifecycle.length,33);for(const r of lifecycle)assert.equal(r.models.references+r.models.instances+r.models.entries,0);assert.deepEqual(lifecycle[3].resources,lifecycle.at(-1).resources,'Resources must plateau after warmup');}
-  const disposed=await browser.evaluate('window.modelTest.dispose()');assert.equal(disposed.restored,true);assert.equal(disposed.models.references+disposed.models.instances,0);assert.deepEqual(browser.errors,[]);
-  reports.push({dpr,comparisons,initial,poses,failure,clones,lifecycle,disposed,browser:await browser.send('Browser.getVersion'),errors:browser.errors});fs.writeFileSync(path.join(evidence,'results.json'),JSON.stringify(reports,null,2));await browser.close();browser=null;console.log('PASS showcase DPR '+dpr);
- }
-}finally{await browser?.close();await new Promise(r=>server.close(r));}
+} finally {
+  await browser?.close();
+  await new Promise((r) => server.close(r));
+}

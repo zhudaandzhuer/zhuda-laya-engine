@@ -41,14 +41,23 @@ test('consumer compiler keeps Spine 3.8 library ordering and version alignment',
   try {
     fs.mkdirSync(path.join(root, 'public'), { recursive: true });
     fs.mkdirSync(path.join(root, 'src'), { recursive: true });
-    fs.writeFileSync(path.join(root, 'public/index.html'), '<div id="game"></div><!-- ZHUDA_LIBS --><!-- ZHUDA_ENTRY -->');
-    fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({
-      name: 'spine38-consumer-fixture',
-      private: true,
-      type: 'module',
-      dependencies: { 'zhuda-laya-engine': '1.14.0' },
-    }));
-    fs.writeFileSync(path.join(root, 'src/Main.ts'), 'import { ZhudaEngine } from "zhuda-laya-engine"; void ZhudaEngine.boot({features:["core","2d","ui","spine38"]});');
+    fs.writeFileSync(
+      path.join(root, 'public/index.html'),
+      '<div id="game"></div><!-- ZHUDA_LIBS --><!-- ZHUDA_ENTRY -->',
+    );
+    fs.writeFileSync(
+      path.join(root, 'package.json'),
+      JSON.stringify({
+        name: 'spine38-consumer-fixture',
+        private: true,
+        type: 'module',
+        dependencies: { 'zhuda-laya-engine': '1.14.0' },
+      }),
+    );
+    fs.writeFileSync(
+      path.join(root, 'src/Main.ts'),
+      'import { ZhudaEngine } from "zhuda-laya-engine"; void ZhudaEngine.boot({features:["core","2d","ui","spine38"]});',
+    );
     const result = await runConsumerBuild({
       projectRoot: root,
       engineRoot,

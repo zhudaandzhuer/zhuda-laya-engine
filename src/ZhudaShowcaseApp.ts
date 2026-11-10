@@ -8,7 +8,7 @@ import { ZhudaAssetSerializer, ZhudaPrefab } from '../packages/core/StaticAssetP
 import { UnityBridgePipeline } from '../packages/core/UnityBridgePipeline';
 import {
   ZhudaAnimatorControllerComponent,
-  ZhudaParticleEmitterComponent
+  ZhudaParticleEmitterComponent,
 } from './components/StaticAssetComponents';
 
 export class ZhudaShowcaseApp {
@@ -43,7 +43,10 @@ export class ZhudaShowcaseApp {
 
     // 後組裝階段 (Assembly Phase)：透過 ZhudaPrefab.instantiate 載入預先設計並完成像素校準之粒子預製體 (MineExplosionParticle.lh)
     const particlePrefabData = ZhudaAssetSerializer.buildParticleExplosionPrefab();
-    const particleNode = ZhudaPrefab.instantiate(particlePrefabData, Laya.stage, { x: 460, y: 270 });
+    const particleNode = ZhudaPrefab.instantiate(particlePrefabData, Laya.stage, {
+      x: 460,
+      y: 270,
+    });
     particleNode.visible = false;
     this.particleEmitter =
       (particleNode.getComponent(ZhudaParticleEmitterComponent) as ZhudaParticleEmitterComponent) ||
@@ -51,14 +54,17 @@ export class ZhudaShowcaseApp {
 
     // 後組裝階段：掛載由 Unity 場景移植之 CrystalGuardian 靜態預製體與 AnimatorController 狀態機
     const unityGuardianPrefab = UnityBridgePipeline.buildUnityCrystalGuardianPrefab();
-    const unityGuardianNode = ZhudaPrefab.instantiate(unityGuardianPrefab, Laya.stage, { x: 460, y: 270 });
+    const unityGuardianNode = ZhudaPrefab.instantiate(unityGuardianPrefab, Laya.stage, {
+      x: 460,
+      y: 270,
+    });
     unityGuardianNode.visible = false;
     this.unityAnimator =
       (unityGuardianNode.getComponent(
-        ZhudaAnimatorControllerComponent
+        ZhudaAnimatorControllerComponent,
       ) as ZhudaAnimatorControllerComponent) ||
       (unityGuardianNode.addComponent(
-        ZhudaAnimatorControllerComponent
+        ZhudaAnimatorControllerComponent,
       ) as ZhudaAnimatorControllerComponent);
 
     this.ui = new MinesweeperUI(Laya.stage, {
@@ -74,7 +80,7 @@ export class ZhudaShowcaseApp {
         this.flagMode = !this.flagMode;
         return this.flagMode;
       },
-      onRunBenchmark: () => this.executeLiveBenchmark()
+      onRunBenchmark: () => this.executeLiveBenchmark(),
     });
 
     this.latestBenchmark = ZhudaBenchmarkEngine.runSuite(this.view3D.getTileCount());
@@ -88,7 +94,7 @@ export class ZhudaShowcaseApp {
     this.syncGlobalTelemetry();
 
     console.log(
-      '[ZhudaShowcaseApp] 豬大 LayaAir (AI-Friendly) 初始化完畢：29 模組、AST 反射、Spine 4.2 PhysicsConstraint、靜態資產 (.lh) 像素/ΔE 校準與 3D 棋盤全數就緒！'
+      '[ZhudaShowcaseApp] 豬大 LayaAir (AI-Friendly) 初始化完畢：29 模組、AST 反射、Spine 4.2 PhysicsConstraint、靜態資產 (.lh) 像素/ΔE 校準與 3D 棋盤全數就緒！',
     );
   }
 
@@ -102,7 +108,7 @@ export class ZhudaShowcaseApp {
       'coin-fountain',
       'sword-slash',
       'levelup-aura',
-      'victory'
+      'victory',
     ];
     const activeVfx = vfxModes[this.vfxCycleIndex % vfxModes.length];
     this.vfxCycleIndex++;
@@ -132,7 +138,7 @@ export class ZhudaShowcaseApp {
       revealedCount: this.game.revealedCount,
       remainingMines: this.game.remainingMines,
       tileNodes3D: this.view3D.getTileCount(),
-      benchmark: this.latestBenchmark
+      benchmark: this.latestBenchmark,
     };
     if (typeof document !== 'undefined' && document.body) {
       document.body.dataset.zhudaTiles = String(this.view3D.getTileCount());
@@ -140,32 +146,32 @@ export class ZhudaShowcaseApp {
       document.body.dataset.zhudaDrawcalls = String(this.latestBenchmark.estimatedDrawCallsZhuda);
       document.body.dataset.zhudaStageChildren = String(Laya.stage ? Laya.stage.numChildren : 0);
       document.body.dataset.zhudaStaticAssets = String(
-        this.latestBenchmark.staticAssetTelemetry.totalAssetsCount
+        this.latestBenchmark.staticAssetTelemetry.totalAssetsCount,
       );
       document.body.dataset.zhudaCalibratedDeltaE = String(
-        this.latestBenchmark.staticAssetTelemetry.afterDeltaE2000
+        this.latestBenchmark.staticAssetTelemetry.afterDeltaE2000,
       );
       document.body.dataset.zhudaPrefabAssembled = String(
-        Boolean(this.particleEmitter && this.unityAnimator)
+        Boolean(this.particleEmitter && this.unityAnimator),
       );
       document.body.dataset.zhudaNineSlicePassed = String(
-        this.latestBenchmark.nineSliceTelemetry.passed
+        this.latestBenchmark.nineSliceTelemetry.passed,
       );
       document.body.dataset.zhudaIframeAudio = this.latestBenchmark.iframeAudioTelemetry
         .postMessageBridgeActive
         ? 'ready'
         : 'inactive';
       document.body.dataset.zhudaViewportProfiles = String(
-        this.latestBenchmark.viewportMatrixTelemetry.totalProfiles
+        this.latestBenchmark.viewportMatrixTelemetry.totalProfiles,
       );
       document.body.dataset.zhudaSafeareaPassed = String(
-        this.latestBenchmark.viewportMatrixTelemetry.allSafeAreaPassed
+        this.latestBenchmark.viewportMatrixTelemetry.allSafeAreaPassed,
       );
       document.body.dataset.zhudaVfxBlueprints = String(
-        this.latestBenchmark.staticAssetTelemetry.vfxBlueprintsCount
+        this.latestBenchmark.staticAssetTelemetry.vfxBlueprintsCount,
       );
       document.body.dataset.zhudaUnityMigrated = String(
-        this.latestBenchmark.unityMigrationTelemetry.passed
+        this.latestBenchmark.unityMigrationTelemetry.passed,
       );
       document.body.dataset.zhudaUnityAnimatorTrace =
         this.latestBenchmark.unityMigrationTelemetry.animatorTransitionTrace.join('->');

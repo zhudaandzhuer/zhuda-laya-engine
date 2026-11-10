@@ -11,7 +11,7 @@ export declare const ZHUDA_LAYA_REALM_MARKER = "__ZHUDA_LAYA_REALM_OWNER__";
 export interface LayaRealmReport {
     layaPresent: boolean;
     initialized: boolean;
-    owner: "none" | "uninitialized" | "zhuda" | "foreign";
+    owner: 'none' | 'uninitialized' | 'zhuda' | 'foreign';
     reason: string;
 }
 /** Inspect only the observable Laya initialization state; this is side-effect free. */

@@ -9,11 +9,7 @@
  * 5. ultrawide-21-9         (1680×720, 21:9 超寬螢幕)
  */
 
-import type {
-  ViewportDeviceId,
-  ViewportDeviceSpec,
-  ViewportLayoutReport
-} from '../types/index.ts';
+import type { ViewportDeviceId, ViewportDeviceSpec, ViewportLayoutReport } from '../types/index.ts';
 
 export const VIEWPORT_DEVICE_PROFILES: Record<ViewportDeviceId, ViewportDeviceSpec> = {
   'desktop-fhd-16-9': {
@@ -23,7 +19,7 @@ export const VIEWPORT_DEVICE_PROFILES: Record<ViewportDeviceId, ViewportDeviceSp
     viewportWidth: 1280,
     viewportHeight: 720,
     devicePixelRatio: 2,
-    safeArea: { top: 0, right: 0, bottom: 0, left: 0 }
+    safeArea: { top: 0, right: 0, bottom: 0, left: 0 },
   },
   'iphone-15-pro-portrait': {
     id: 'iphone-15-pro-portrait',
@@ -32,7 +28,7 @@ export const VIEWPORT_DEVICE_PROFILES: Record<ViewportDeviceId, ViewportDeviceSp
     viewportWidth: 393,
     viewportHeight: 852,
     devicePixelRatio: 3,
-    safeArea: { top: 59, right: 0, bottom: 34, left: 0 }
+    safeArea: { top: 59, right: 0, bottom: 34, left: 0 },
   },
   'iphone-15-pro-landscape': {
     id: 'iphone-15-pro-landscape',
@@ -41,7 +37,7 @@ export const VIEWPORT_DEVICE_PROFILES: Record<ViewportDeviceId, ViewportDeviceSp
     viewportWidth: 852,
     viewportHeight: 393,
     devicePixelRatio: 3,
-    safeArea: { top: 0, right: 59, bottom: 21, left: 59 }
+    safeArea: { top: 0, right: 59, bottom: 21, left: 59 },
   },
   'ipad-air-4-3': {
     id: 'ipad-air-4-3',
@@ -50,7 +46,7 @@ export const VIEWPORT_DEVICE_PROFILES: Record<ViewportDeviceId, ViewportDeviceSp
     viewportWidth: 1024,
     viewportHeight: 768,
     devicePixelRatio: 2,
-    safeArea: { top: 24, right: 0, bottom: 20, left: 0 }
+    safeArea: { top: 24, right: 0, bottom: 20, left: 0 },
   },
   'ultrawide-21-9': {
     id: 'ultrawide-21-9',
@@ -59,8 +55,8 @@ export const VIEWPORT_DEVICE_PROFILES: Record<ViewportDeviceId, ViewportDeviceSp
     viewportWidth: 1680,
     viewportHeight: 720,
     devicePixelRatio: 2,
-    safeArea: { top: 0, right: 0, bottom: 0, left: 0 }
-  }
+    safeArea: { top: 0, right: 0, bottom: 0, left: 0 },
+  },
 };
 
 export class ViewportMatrixEngine {
@@ -68,7 +64,7 @@ export class ViewportMatrixEngine {
    * 針對指定設備視口與 SafeArea 計算無裁切 UI 錨點與 3D 相機 FOV 自適應補償
    */
   public static computeLayoutForDevice(
-    deviceOrId: ViewportDeviceId | ViewportDeviceSpec
+    deviceOrId: ViewportDeviceId | ViewportDeviceSpec,
   ): ViewportLayoutReport {
     const spec: ViewportDeviceSpec =
       typeof deviceOrId === 'string'
@@ -97,8 +93,7 @@ export class ViewportMatrixEngine {
         : aspect < 1.5
           ? 50
           : 45;
-    const recommendedCameraDist =
-      orientation === 'portrait' ? 19.2 : aspect < 1.5 ? 15.6 : 14.0;
+    const recommendedCameraDist = orientation === 'portrait' ? 19.2 : aspect < 1.5 ? 15.6 : 14.0;
 
     const pad = orientation === 'portrait' ? 10 : 16;
 
@@ -113,7 +108,7 @@ export class ViewportMatrixEngine {
         x: safeX + pad,
         y: safeY + pad,
         width: safeW - pad * 2,
-        height: topH
+        height: topH,
       };
 
       const sideW = Math.min(225, Math.round(safeW * 0.21));
@@ -122,7 +117,7 @@ export class ViewportMatrixEngine {
         x: safeX + safeW - pad - sideW,
         y: hudTopBarRect.y + topH + pad,
         width: sideW,
-        height: mascotH
+        height: mascotH,
       };
 
       const teleY = mascotRect.y + mascotH + pad;
@@ -131,14 +126,14 @@ export class ViewportMatrixEngine {
         x: mascotRect.x,
         y: teleY,
         width: sideW,
-        height: teleH
+        height: teleH,
       };
 
       boardViewportRect = {
         x: safeX + pad,
         y: hudTopBarRect.y + topH + pad,
         width: Math.max(120, mascotRect.x - (safeX + pad) - pad),
-        height: Math.max(120, safeH - topH - pad * 3)
+        height: Math.max(120, safeH - topH - pad * 3),
       };
     } else {
       // 直向佈局 (Portrait Mobile)：頂部 HUD -> 中央 3D 棋盤 -> 底部並排 Mascot 與遙測面板
@@ -147,7 +142,7 @@ export class ViewportMatrixEngine {
         x: safeX + pad,
         y: safeY + pad,
         width: safeW - pad * 2,
-        height: topH
+        height: topH,
       };
 
       const bottomRowH = 148;
@@ -158,14 +153,14 @@ export class ViewportMatrixEngine {
         x: safeX + pad,
         y: bottomY,
         width: halfW,
-        height: bottomRowH
+        height: bottomRowH,
       };
 
       telemetryRect = {
         x: safeX + pad * 2 + halfW,
         y: bottomY,
         width: safeW - pad * 3 - halfW,
-        height: bottomRowH
+        height: bottomRowH,
       };
 
       const boardY = hudTopBarRect.y + topH + pad;
@@ -173,7 +168,7 @@ export class ViewportMatrixEngine {
         x: safeX + pad,
         y: boardY,
         width: safeW - pad * 2,
-        height: Math.max(160, bottomY - boardY - pad)
+        height: Math.max(160, bottomY - boardY - pad),
       };
     }
 
@@ -188,11 +183,11 @@ export class ViewportMatrixEngine {
         r.x + r.width <= safeRight &&
         r.y + r.height <= safeBottom &&
         r.width > 0 &&
-        r.height > 0
+        r.height > 0,
     );
 
     const zeroOverflowPassed = allRects.every(
-      (r) => r.x >= 0 && r.y >= 0 && r.x + r.width <= vw && r.y + r.height <= vh
+      (r) => r.x >= 0 && r.y >= 0 && r.x + r.width <= vw && r.y + r.height <= vh,
     );
 
     return {
@@ -212,7 +207,7 @@ export class ViewportMatrixEngine {
       telemetryRect,
       boardViewportRect,
       safeAreaCompliant,
-      zeroOverflowPassed
+      zeroOverflowPassed,
     };
   }
 
@@ -236,7 +231,7 @@ export class ViewportMatrixEngine {
     return {
       totalProfiles: reports.length,
       allPassed,
-      reports
+      reports,
     };
   }
 }

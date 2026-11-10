@@ -22,7 +22,7 @@ export interface DifficultyConfig {
 export const DIFFICULTIES: Record<string, DifficultyConfig> = {
   beginner: { name: '初級', rows: 9, cols: 9, mines: 10 },
   intermediate: { name: '中級', rows: 12, cols: 12, mines: 20 },
-  expert: { name: '專家', rows: 16, cols: 16, mines: 40 }
+  expert: { name: '專家', rows: 16, cols: 16, mines: 40 },
 };
 
 export class MinesweeperGame {
@@ -66,7 +66,7 @@ export class MinesweeperGame {
           y: r,
           isMine: false,
           neighborMines: 0,
-          state: 'hidden'
+          state: 'hidden',
         });
       }
       this.grid.push(row);

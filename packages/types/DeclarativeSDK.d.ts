@@ -1,8 +1,8 @@
 // Generated from TypeScript source; run npm run types:generate.
 import { type RendererDiagnostics } from './runtime3d/Renderer';
 import type { RendererBackend } from './TopologyGraph';
-import { ZhudaRuntimeSession } from "./runtime3d/Runtime";
-import type { ManagedRuntimeOptions } from "./runtime3d/Runtime";
+import { ZhudaRuntimeSession } from './runtime3d/Runtime';
+import type { ManagedRuntimeOptions } from './runtime3d/Runtime';
 import type { PrefabTree3D, PrefabTreeInstance3D } from './prefabs/PrefabTree3D';
 /**
  * @zhuda-laya/core — AI-Friendly Declarative SDK (對標 Three.js / R3F 純代碼開發體驗)
@@ -12,10 +12,10 @@ import type { PrefabTree3D, PrefabTreeInstance3D } from './prefabs/PrefabTree3D'
  * - 不依賴 LayaAir IDE；同時支援可版本控制的 .lh/.ls 序列化與程序式建構
  * - 消除 AI 生成 Laya 程式碼時常見的 1.x / 2.x 廢棄 API 幻覺
  */
-import { type EngineFeatureTag, type TopologyResolutionResult } from "./TopologyGraph";
-import { type EngineHealthReport } from "./RuntimeGuards";
-import type { DeclarativeCameraOptions, DeclarativeLightOptions, DeclarativeMaterialOptions, GlassPanelOptions, NineSliceGridInput, NineSlicePanelOptions, PrimitiveType3D, VectorButtonStyle, ZhudaClassMetadata } from "./index";
-export interface ZhudaBootOptions extends Omit<ManagedRuntimeOptions, "container"> {
+import { type EngineFeatureTag, type TopologyResolutionResult } from './TopologyGraph';
+import { type EngineHealthReport } from './RuntimeGuards';
+import type { DeclarativeCameraOptions, DeclarativeLightOptions, DeclarativeMaterialOptions, GlassPanelOptions, NineSliceGridInput, NineSlicePanelOptions, PrimitiveType3D, VectorButtonStyle, ZhudaClassMetadata } from './index';
+export interface ZhudaBootOptions extends Omit<ManagedRuntimeOptions, 'container'> {
     container?: HTMLElement | string;
     antialias?: boolean;
     preserveDrawingBuffer?: boolean;
@@ -24,7 +24,7 @@ export interface ZhudaBootOptions extends Omit<ManagedRuntimeOptions, "container
     bgColor?: string;
     scaleMode?: string;
     screenMode?: string;
-    features?: EngineFeatureTag[] | "all";
+    features?: EngineFeatureTag[] | 'all';
     beforeInit?: () => void;
     renderer?: RendererBackend;
     signal?: AbortSignal;
@@ -75,13 +75,13 @@ export declare class Zhuda3D {
         light: Laya.DirectionLightCom;
     };
     static createMaterial(options: DeclarativeMaterialOptions & {
-        type: "pbr";
+        type: 'pbr';
     }): Laya.PBRStandardMaterial;
     static createMaterial(options: DeclarativeMaterialOptions & {
-        type: "unlit";
+        type: 'unlit';
     }): Laya.UnlitMaterial;
-    static createMaterial(options: Omit<DeclarativeMaterialOptions, "type"> & {
-        type?: "blinn-phong";
+    static createMaterial(options: Omit<DeclarativeMaterialOptions, 'type'> & {
+        type?: 'blinn-phong';
     }): Laya.BlinnPhongMaterial;
     static createMaterial(options: DeclarativeMaterialOptions): Laya.BlinnPhongMaterial | Laya.PBRStandardMaterial | Laya.UnlitMaterial;
     static createPrimitiveMesh(type: PrimitiveType3D, dims?: {

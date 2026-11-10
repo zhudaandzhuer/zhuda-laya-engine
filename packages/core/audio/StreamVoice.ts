@@ -1,8 +1,5 @@
-import type {
-  IframeBackendVoice,
-  IframeStreamOptions,
-} from "../../types/zhuda-audio.ts";
-import type { AssetStreamLease } from "../runtime3d/AssetProvider.ts";
+import type { IframeBackendVoice, IframeStreamOptions } from '../../types/zhuda-audio.ts';
+import type { AssetStreamLease } from '../runtime3d/AssetProvider.ts';
 
 /** One media element, routed exclusively through the owning adapter's graph. */
 export class StreamVoice implements IframeBackendVoice {
@@ -19,7 +16,7 @@ export class StreamVoice implements IframeBackendVoice {
   private readonly errorListener = () =>
     this.fail(
       Error(
-        `Media playback failed: ${this.media.error?.message || this.media.error?.code || "unknown"}`,
+        `Media playback failed: ${this.media.error?.message || this.media.error?.code || 'unknown'}`,
       ),
     );
   private readonly context: AudioContext;
@@ -41,13 +38,13 @@ export class StreamVoice implements IframeBackendVoice {
     this.timeoutMs = timeoutMs;
     this.onFailure = onFailure;
     this.onStarted = onStarted;
-    media.crossOrigin = lease.crossOrigin ?? "anonymous";
-    media.preload = "metadata";
+    media.crossOrigin = lease.crossOrigin ?? 'anonymous';
+    media.preload = 'metadata';
     media.loop = options.loop ?? false;
     media.volume = 1;
     media.muted = false;
-    media.addEventListener("ended", this.endedListener);
-    media.addEventListener("error", this.errorListener);
+    media.addEventListener('ended', this.endedListener);
+    media.addEventListener('error', this.errorListener);
     try {
       media.src = lease.url;
       this.output = context.createMediaElementSource(media);
@@ -57,7 +54,7 @@ export class StreamVoice implements IframeBackendVoice {
     }
   }
   start(_when: number, offsetSec: number): void {
-    if (this.ended) throw Error("Stream voice ended");
+    if (this.ended) throw Error('Stream voice ended');
     this.media.currentTime = offsetSec;
     this.started = true;
     this.play();
@@ -66,15 +63,11 @@ export class StreamVoice implements IframeBackendVoice {
     if (this.ended || this.paused || !this.started) return;
     const generation = ++this.generation;
     clearTimeout(this.deadline);
-    this.deadline = setTimeout(
-      () => this.fail(Error("Stream playback timeout")),
-      this.timeoutMs,
-    );
+    this.deadline = setTimeout(() => this.fail(Error('Stream playback timeout')), this.timeoutMs);
     try {
       Promise.resolve(this.media.play()).then(
         () => {
-          if (generation !== this.generation || this.ended || this.paused)
-            return;
+          if (generation !== this.generation || this.ended || this.paused) return;
           clearTimeout(this.deadline);
           if (!this.reportedStart) {
             this.reportedStart = true;
@@ -138,10 +131,10 @@ export class StreamVoice implements IframeBackendVoice {
     this.onended?.();
   }
   private releaseMedia(): void {
-    this.media.removeEventListener("ended", this.endedListener);
-    this.media.removeEventListener("error", this.errorListener);
+    this.media.removeEventListener('ended', this.endedListener);
+    this.media.removeEventListener('error', this.errorListener);
     this.media.pause();
-    this.media.removeAttribute("src");
+    this.media.removeAttribute('src');
     this.media.load();
   }
   disconnect(): void {

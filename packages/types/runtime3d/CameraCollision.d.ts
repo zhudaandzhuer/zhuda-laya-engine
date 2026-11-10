@@ -1,8 +1,8 @@
 // Generated from TypeScript source; run npm run types:generate.
-import { type Vec3 } from "./Math3D";
-import type { ZhudaSceneQueries } from "./SceneQueries";
+import { type Vec3 } from './Math3D';
+import type { ZhudaSceneQueries } from './SceneQueries';
 export interface CameraCollisionOptions {
-    queries: Pick<ZhudaSceneQueries, "raycast">;
+    queries: Pick<ZhudaSceneQueries, 'raycast'>;
     radius?: number;
     clearance?: number;
     layerMask?: number;

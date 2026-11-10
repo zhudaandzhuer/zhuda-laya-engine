@@ -20,18 +20,19 @@ const BANNED_HALLUCINATION_PATTERNS = [
   {
     regex: /Laya\.MeshSprite3D\.load\b/g,
     ruleId: 'LAYA2_LEGACY_MESH_LOAD',
-    message: '禁止使用 Laya 2.x 的 MeshSprite3D.load，請改用 Laya.loader.load 或 Zhuda3D.createPrimitiveMesh'
+    message:
+      '禁止使用 Laya 2.x 的 MeshSprite3D.load，請改用 Laya.loader.load 或 Zhuda3D.createPrimitiveMesh',
   },
   {
     regex: /Laya\.SubShader\.regSubShader\b/g,
     ruleId: 'LAYA2_LEGACY_SUBSHADER',
-    message: '禁止使用舊版 SubShader.regSubShader，請使用 Laya 3.4.2 Shader3D.add'
+    message: '禁止使用舊版 SubShader.regSubShader，請使用 Laya 3.4.2 Shader3D.add',
   },
   {
     regex: /new\s+Laya\.WebGL\s*\(/g,
     ruleId: 'LAYA1_LEGACY_WEBGL_INIT',
-    message: '禁止使用 Laya 1.x WebGL 建構子，請使用 await ZhudaEngine.boot()'
-  }
+    message: '禁止使用 Laya 1.x WebGL 建構子，請使用 await ZhudaEngine.boot()',
+  },
 ];
 
 export function runDoctorAudit(options = {}) {
@@ -41,20 +42,27 @@ export function runDoctorAudit(options = {}) {
 
   const tsFiles = collectTsFiles(srcDir);
   const sourceFiles = [];
-  const collectSources = dir => {
+  const collectSources = (dir) => {
     if (!fs.existsSync(dir)) return;
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
       if (entry.name.startsWith('.') || entry.name === 'node_modules') continue;
       const file = path.join(dir, entry.name);
       if (entry.isDirectory()) collectSources(file);
-      else if (/\.(?:tsx?|jsx?|mjs|cjs)$/.test(entry.name) && !entry.name.endsWith('.d.ts')) sourceFiles.push(file);
+      else if (/\.(?:tsx?|jsx?|mjs|cjs)$/.test(entry.name) && !entry.name.endsWith('.d.ts'))
+        sourceFiles.push(file);
     }
   };
   collectSources(srcDir);
-  const scanIssues = sourceFiles.length ? [] : [{
-    file: srcDir, line: 1, code: 'EMPTY_SOURCE_SCAN',
-    message: `No application source files found in ${srcDir}. Run from the consumer directory or pass --project /path/to/game.`,
-  }];
+  const scanIssues = sourceFiles.length
+    ? []
+    : [
+        {
+          file: srcDir,
+          line: 1,
+          code: 'EMPTY_SOURCE_SCAN',
+          message: `No application source files found in ${srcDir}. Run from the consumer directory or pass --project /path/to/game.`,
+        },
+      ];
   const apiViolations = [];
   const discoveredComponents = [];
 
@@ -68,7 +76,7 @@ export function runDoctorAudit(options = {}) {
         apiViolations.push({
           file: rel,
           ruleId: rule.ruleId,
-          message: rule.message
+          message: rule.message,
         });
       }
     }
@@ -102,28 +110,39 @@ export function runDoctorAudit(options = {}) {
     topologyIssues,
     apiViolations,
     consumer,
-    agentContract
+    agentContract,
   };
 }
 
 const launchedAsCli = cliMain(import.meta.url, 'Usage: zhuda-laya-doctor [--project DIRECTORY]');
 if (launchedAsCli) {
   const projectIndex = process.argv.indexOf('--project');
-  if (projectIndex >= 0 && (!process.argv[projectIndex + 1] || process.argv[projectIndex + 1].startsWith('--'))) {
+  if (
+    projectIndex >= 0 &&
+    (!process.argv[projectIndex + 1] || process.argv[projectIndex + 1].startsWith('--'))
+  ) {
     console.error('--project requires a project directory. Example: zhuda-laya-doctor --project .');
     process.exit(1);
   }
-  const report = runDoctorAudit({ projectRoot: projectIndex < 0 ? undefined : process.argv[projectIndex + 1] });
+  const report = runDoctorAudit({
+    projectRoot: projectIndex < 0 ? undefined : process.argv[projectIndex + 1],
+  });
   console.log('🩺 [Zhuda-Doctor] 引擎相依性與 AI 防幻覺體檢報告:');
   console.log(`  • 掃描專案: ${report.projectRoot}`);
   console.log(`  • 應用來源檔案: ${report.scannedSourceFilesCount}`);
   console.log(`  • 掃描 TS 檔案數: ${report.scannedTsFilesCount}`);
-  console.log(`  • 反射組件數量:   ${report.discoveredComponentsCount} (${report.discoveredComponents.join(', ')})`);
-  console.log(`  • HTML 拓撲模組:  ${report.htmlScriptCount} 個庫 (順序衝突: ${report.topologyIssues.length})`);
+  console.log(
+    `  • 反射組件數量:   ${report.discoveredComponentsCount} (${report.discoveredComponents.join(', ')})`,
+  );
+  console.log(
+    `  • HTML 拓撲模組:  ${report.htmlScriptCount} 個庫 (順序衝突: ${report.topologyIssues.length})`,
+  );
   console.log(`  • 廢棄 API 違規:  ${report.apiViolations.length} 處`);
   if (report.consumer.checks) {
     const pin = report.consumer.checks.engineDependency?.value || 'missing';
-    console.log(`  • Consumer 路線:   ${report.consumer.checks.publicSdkImport && report.consumer.checks.engineBoot ? 'engine-backed static' : 'incomplete'} (pin: ${pin})`);
+    console.log(
+      `  • Consumer 路線:   ${report.consumer.checks.publicSdkImport && report.consumer.checks.engineBoot ? 'engine-backed static' : 'incomplete'} (pin: ${pin})`,
+    );
   }
   console.log(`  • Agent 契約守衛: ${report.agentContract.issues.length} 處`);
   for (const item of report.scanIssues)

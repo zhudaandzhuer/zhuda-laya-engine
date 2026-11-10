@@ -1,11 +1,11 @@
 // Generated from TypeScript source; run npm run types:generate.
-import { type Vec3 } from "./Math3D";
-import { type CameraCollisionOptions } from "./CameraCollision";
+import { type Vec3 } from './Math3D';
+import { type CameraCollisionOptions } from './CameraCollision';
 /** Camera presentation only: movement/support authority remains in the consumer's simulation. */
 export declare class ZhudaCameraRig {
     readonly camera: any;
     readonly options: {
-        mode?: "orbit" | "firstPerson";
+        mode?: 'orbit' | 'firstPerson';
         minDistance?: number;
         maxDistance?: number;
         sensitivity?: number;
@@ -15,7 +15,7 @@ export declare class ZhudaCameraRig {
     pitch: number;
     distance: number;
     constructor(camera: any, options?: {
-        mode?: "orbit" | "firstPerson";
+        mode?: 'orbit' | 'firstPerson';
         minDistance?: number;
         maxDistance?: number;
         sensitivity?: number;

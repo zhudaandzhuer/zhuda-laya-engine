@@ -1,5 +1,5 @@
 // Generated from TypeScript source; run npm run types:generate.
-export type ZhudaActionPhase = "startup" | "active" | "recovery" | "complete";
+export type ZhudaActionPhase = 'startup' | 'active' | 'recovery' | 'complete';
 /** A half-open frame interval: `from` is included and `until` is excluded. */
 export interface ZhudaFrameWindow {
     from: number;

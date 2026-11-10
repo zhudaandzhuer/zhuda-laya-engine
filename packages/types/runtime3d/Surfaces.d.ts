@@ -1,6 +1,6 @@
 // Generated from TypeScript source; run npm run types:generate.
 export interface SurfaceMaterialSpec {
-    type: "pbr" | "unlit";
+    type: 'pbr' | 'unlit';
     color?: [number, number, number, number];
     metallic?: number;
     roughness?: number;
@@ -11,14 +11,14 @@ export interface SurfaceMaterialSpec {
         metallicGloss?: any;
         emission?: any;
     };
-    blend?: "opaque" | "alpha" | "additive" | "cutout";
+    blend?: 'opaque' | 'alpha' | 'additive' | 'cutout';
     alphaCutoff?: number;
     doubleSided?: boolean;
     depthWrite?: boolean;
 }
 /** glTF/Three.js G=roughness,B=metallic -> Laya R=metallic,A=smoothness. Data stays linear. */
 export declare function packMetallicRoughness(rgba: Uint8Array): Uint8Array<ArrayBuffer>;
-export declare function createSurfaceTexture(width: number, height: number, pixels: Uint8Array, role: "color" | "emission" | "normal" | "data"): any;
+export declare function createSurfaceTexture(width: number, height: number, pixels: Uint8Array, role: 'color' | 'emission' | 'normal' | 'data'): any;
 export declare function createSurfaceMaterial(s: SurfaceMaterialSpec): any;
 /** Detach borrowed texture slots before destroying an owned material. */
 export declare function disposeSurfaceMaterial(m: any): void;

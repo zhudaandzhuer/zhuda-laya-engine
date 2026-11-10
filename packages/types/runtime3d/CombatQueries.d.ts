@@ -38,8 +38,8 @@ export declare class ZhudaCombatWorld {
     registerHurtbox(definition: ZhudaCombatBoxDefinition): () => boolean;
     registerHitbox(definition: ZhudaHitboxDefinition): () => boolean;
     private validateBox;
-    updateHurtbox(id: string, patch: Partial<Pick<ZhudaCombatBoxDefinition, "rect" | "layer" | "enabled" | "sampleRect">>): boolean;
-    updateHitbox(id: string, patch: Partial<Pick<ZhudaHitboxDefinition, "rect" | "layer" | "mask" | "enabled" | "sampleRect" | "swingId" | "activeFrom" | "activeUntil">>): boolean;
+    updateHurtbox(id: string, patch: Partial<Pick<ZhudaCombatBoxDefinition, 'rect' | 'layer' | 'enabled' | 'sampleRect'>>): boolean;
+    updateHitbox(id: string, patch: Partial<Pick<ZhudaHitboxDefinition, 'rect' | 'layer' | 'mask' | 'enabled' | 'sampleRect' | 'swingId' | 'activeFrom' | 'activeUntil'>>): boolean;
     queryHitbox(id: string, time: number): ZhudaCombatHit[];
     queryAll(time: number): ZhudaCombatHit[];
     clearHitboxSwing(hitboxId: string, swingId?: string | number): number;

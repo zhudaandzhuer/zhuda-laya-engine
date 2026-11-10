@@ -7,7 +7,7 @@
 import { zhudaComponent } from '../../packages/core/DeclarativeSDK';
 import {
   UNITY_CYBER_SHRINE_SCENE,
-  UnityAnimatorStateMachine
+  UnityAnimatorStateMachine,
 } from '../../packages/core/UnityBridgePipeline';
 import type { UnityAnimatorControllerSpec } from '../../packages/types/index';
 
@@ -27,7 +27,7 @@ interface LiveParticle {
   className: 'Spine42PhysicsRigComponent',
   assetId: 'zhuda://Spine42PhysicsRigComponent',
   category: 'spine',
-  description: 'Spine 4.2 靜態預製體骨骼物理約束組件，支援孤立靜態幀校準與運行期彈簧擺解算'
+  description: 'Spine 4.2 靜態預製體骨骼物理約束組件，支援孤立靜態幀校準與運行期彈簧擺解算',
 })
 export class Spine42PhysicsRigComponent extends Laya.Script {
   public rigName: string = 'ZhudaGuardianPig_v4.2';
@@ -63,7 +63,7 @@ export class Spine42PhysicsRigComponent extends Laya.Script {
   className: 'ZhudaParticleEmitterComponent',
   assetId: 'zhuda://ZhudaParticleEmitterComponent',
   category: '2d',
-  description: '決定性靜態粒子發射器組件，支援 t=240ms 靜態像素校準快照與運行期即時爆破特效'
+  description: '決定性靜態粒子發射器組件，支援 t=240ms 靜態像素校準快照與運行期即時爆破特效',
 })
 export class ZhudaParticleEmitterComponent extends Laya.Script {
   public emitterName: string = 'TacticalMineBurst_v1';
@@ -89,7 +89,13 @@ export class ZhudaParticleEmitterComponent extends Laya.Script {
   public playBurst(
     worldX: number,
     worldY: number,
-    paletteMode: 'explode' | 'reveal' | 'victory' | 'coin-fountain' | 'sword-slash' | 'levelup-aura' = 'explode'
+    paletteMode:
+      | 'explode'
+      | 'reveal'
+      | 'victory'
+      | 'coin-fountain'
+      | 'sword-slash'
+      | 'levelup-aura' = 'explode',
   ): void {
     const sp = this.owner as Laya.Sprite;
     if (!sp) return;
@@ -137,7 +143,7 @@ export class ZhudaParticleEmitterComponent extends Laya.Script {
         color: i % 3 === 0 ? c2 : i % 3 === 1 ? c1 : c3,
         alpha: 1,
         ageMs: 0,
-        maxAgeMs: this.lifetimeMs * (0.7 + nextRand() * 0.3)
+        maxAgeMs: this.lifetimeMs * (0.7 + nextRand() * 0.3),
       });
     }
   }
@@ -181,7 +187,8 @@ export class ZhudaParticleEmitterComponent extends Laya.Script {
   className: 'ZhudaAnimatorControllerComponent',
   assetId: 'zhuda://ZhudaAnimatorControllerComponent',
   category: '3d',
-  description: 'M5 Unity AnimatorController 跨引擎狀態機組件，支援 Float/Bool/Trigger 條件轉移與 Spine 4.2 聯動'
+  description:
+    'M5 Unity AnimatorController 跨引擎狀態機組件，支援 Float/Bool/Trigger 條件轉移與 Spine 4.2 聯動',
 })
 export class ZhudaAnimatorControllerComponent extends Laya.Script {
   public controllerName: string = 'CrystalGuardian.controller';
@@ -199,8 +206,9 @@ export class ZhudaAnimatorControllerComponent extends Laya.Script {
 
   private ensureFsm(): UnityAnimatorStateMachine {
     if (!this.fsm) {
-      const defaultSpec = UNITY_CYBER_SHRINE_SCENE.nodes.find((n) => Boolean(n.animatorController))!
-        .animatorController!;
+      const defaultSpec = UNITY_CYBER_SHRINE_SCENE.nodes.find((n) =>
+        Boolean(n.animatorController),
+      )!.animatorController!;
       let spec: UnityAnimatorControllerSpec = defaultSpec;
       if (this.statesJson && this.transitionsJson && this.parametersJson) {
         try {
@@ -209,7 +217,7 @@ export class ZhudaAnimatorControllerComponent extends Laya.Script {
             defaultState: this.defaultState,
             states: JSON.parse(this.statesJson),
             transitions: JSON.parse(this.transitionsJson),
-            parameters: JSON.parse(this.parametersJson)
+            parameters: JSON.parse(this.parametersJson),
           };
         } catch (_e) {
           spec = defaultSpec;
@@ -245,7 +253,7 @@ export class ZhudaAnimatorControllerComponent extends Laya.Script {
     return {
       stateName: st.name,
       spineAnim: st.spineAnimationName || 'idle',
-      tintHex: st.tintHex || '#38bdf8'
+      tintHex: st.tintHex || '#38bdf8',
     };
   }
 }

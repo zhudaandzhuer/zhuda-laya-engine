@@ -29,16 +29,25 @@ export function publishConsumerOutput({ staging, output }) {
   } catch (error) {
     const rollbackErrors = [];
     for (const destination of installed.reverse()) {
-      try { fs.rmSync(destination, { recursive: true, force: true }); }
-      catch (failure) { rollbackErrors.push(failure); }
+      try {
+        fs.rmSync(destination, { recursive: true, force: true });
+      } catch (failure) {
+        rollbackErrors.push(failure);
+      }
     }
     for (const [backup, destination] of backups.reverse()) {
-      try { fs.renameSync(backup, destination); }
-      catch (failure) { rollbackErrors.push(failure); }
+      try {
+        fs.renameSync(backup, destination);
+      } catch (failure) {
+        rollbackErrors.push(failure);
+      }
     }
     if (rollbackErrors.length) {
       // Do not destroy the only remaining last-good files in the caller's cleanup.
-      const failure = new AggregateError([error, ...rollbackErrors], `Publication rollback incomplete; recover backups from ${staging}`);
+      const failure = new AggregateError(
+        [error, ...rollbackErrors],
+        `Publication rollback incomplete; recover backups from ${staging}`,
+      );
       failure.recoveryDirectory = staging;
       throw failure;
     }

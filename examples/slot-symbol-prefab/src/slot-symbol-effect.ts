@@ -7,23 +7,67 @@ const bind = (node: Laya.Sprite): EffectBinding => ({
   reset: () => {},
   setParameter: (name, value) => {
     if (name === 'alpha') node.alpha = value;
-    else if (name === 'scale') { node.scaleX = value; node.scaleY = value; }
-    else if (name === 'rotation') node.rotation = value;
+    else if (name === 'scale') {
+      node.scaleX = value;
+      node.scaleY = value;
+    } else if (name === 'rotation') node.rotation = value;
   },
   event: () => {},
 });
 
 const timeline = (state: SlotSymbolState): EffectTimelineSpec => {
   if (state === 'idle') return { version: 1, duration: 1.4, loop: true, tracks: [] };
-  if (state === 'selected') return { version: 1, duration: 1.1, loop: true, tracks: [
-    { target: 'art', parameter: 'scale', keys: [{ time: 0, value: 1.02 }, { time: 0.55, value: 1.07 }, { time: 1.1, value: 1.02 }] },
-  ] };
-  if (state === 'win') return { version: 1, duration: 1.2, loop: false, tracks: [
-    { target: 'art', parameter: 'scale', keys: [{ time: 0, value: 1.02 }, { time: 0.32, value: 1.18 }, { time: 1.2, value: 1.04 }] },
-  ] };
-  return { version: 1, duration: 1.8, loop: true, tracks: [
-    { target: 'art', parameter: 'scale', keys: [{ time: 0, value: 1.08 }, { time: 0.45, value: 1.2 }, { time: 0.9, value: 1.08 }, { time: 1.8, value: 1.2 }] },
-  ] };
+  if (state === 'selected')
+    return {
+      version: 1,
+      duration: 1.1,
+      loop: true,
+      tracks: [
+        {
+          target: 'art',
+          parameter: 'scale',
+          keys: [
+            { time: 0, value: 1.02 },
+            { time: 0.55, value: 1.07 },
+            { time: 1.1, value: 1.02 },
+          ],
+        },
+      ],
+    };
+  if (state === 'win')
+    return {
+      version: 1,
+      duration: 1.2,
+      loop: false,
+      tracks: [
+        {
+          target: 'art',
+          parameter: 'scale',
+          keys: [
+            { time: 0, value: 1.02 },
+            { time: 0.32, value: 1.18 },
+            { time: 1.2, value: 1.04 },
+          ],
+        },
+      ],
+    };
+  return {
+    version: 1,
+    duration: 1.8,
+    loop: true,
+    tracks: [
+      {
+        target: 'art',
+        parameter: 'scale',
+        keys: [
+          { time: 0, value: 1.08 },
+          { time: 0.45, value: 1.2 },
+          { time: 0.9, value: 1.08 },
+          { time: 1.8, value: 1.2 },
+        ],
+      },
+    ],
+  };
 };
 
 export class SlotSymbolEffect {
@@ -47,7 +91,13 @@ export class SlotSymbolEffect {
     this.director.play(true);
   }
 
-  update(dt: number): void { this.director.update(dt); }
-  get currentState(): SlotSymbolState { return this.state; }
-  dispose(): void { this.director.stop(); }
+  update(dt: number): void {
+    this.director.update(dt);
+  }
+  get currentState(): SlotSymbolState {
+    return this.state;
+  }
+  dispose(): void {
+    this.director.stop();
+  }
 }

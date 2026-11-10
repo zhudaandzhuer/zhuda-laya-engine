@@ -15,14 +15,11 @@ import type {
   IframeToneOptions,
   IframeSampleOptions,
   IframeSampleInfo,
-} from "../types/index.ts";
+} from '../types/index.ts';
 
-import {
-  createProviderAssetCache,
-  normalizeAssetId,
-} from "./runtime3d/AssetProvider.ts";
-import type { AssetStreamLease } from "./runtime3d/AssetProvider.ts";
-import { ZhudaAssetCache, type AssetLease } from "./runtime3d/Assets.ts";
+import { createProviderAssetCache, normalizeAssetId } from './runtime3d/AssetProvider.ts';
+import type { AssetStreamLease } from './runtime3d/AssetProvider.ts';
+import { ZhudaAssetCache, type AssetLease } from './runtime3d/Assets.ts';
 import type {
   IframeVoiceOptions,
   IframeVoiceEvent,
@@ -30,14 +27,11 @@ import type {
   IframeStreamInfo,
   IframeSampleBackend,
   IframeBackendVoice,
-} from "../types/zhuda-audio.ts";
-import { StreamVoice } from "./audio/StreamVoice.ts";
-import { renderOfflineMix } from "./audio/OfflineMix.ts";
-import { awaitAbortable } from "./runtime3d/AsyncOperation.ts";
-import type {
-  IframeOfflineMixOptions,
-  IframeOfflineMix,
-} from "../types/zhuda-audio.ts";
+} from '../types/zhuda-audio.ts';
+import { StreamVoice } from './audio/StreamVoice.ts';
+import { renderOfflineMix } from './audio/OfflineMix.ts';
+import { awaitAbortable } from './runtime3d/AsyncOperation.ts';
+import type { IframeOfflineMixOptions, IframeOfflineMix } from '../types/zhuda-audio.ts';
 
 export interface QueuedAudioTask {
   sampleId?: string;
@@ -60,23 +54,16 @@ type VoiceState = IframeVoiceOptions & {
   stopped: boolean;
 };
 
-const CHANNELS: readonly IframeAudioChannel[] = ["bgm", "sfx", "ui"];
-const AUDIO_WAVE_TYPES: readonly OscillatorType[] = [
-  "sine",
-  "square",
-  "sawtooth",
-  "triangle",
-];
-const CONTEXT_STATES = new Set(["suspended", "running", "closed"]);
+const CHANNELS: readonly IframeAudioChannel[] = ['bgm', 'sfx', 'ui'];
+const AUDIO_WAVE_TYPES: readonly OscillatorType[] = ['sine', 'square', 'sawtooth', 'triangle'];
+const CONTEXT_STATES = new Set(['suspended', 'running', 'closed']);
 
 function isAudioChannel(value: unknown): value is IframeAudioChannel {
-  return (
-    value === "master" || value === "bgm" || value === "sfx" || value === "ui"
-  );
+  return value === 'master' || value === 'bgm' || value === 'sfx' || value === 'ui';
 }
 
 function isFiniteNumber(value: unknown): value is number {
-  return typeof value === "number" && Number.isFinite(value);
+  return typeof value === 'number' && Number.isFinite(value);
 }
 
 export class IframeSoundAdapter {
@@ -85,10 +72,7 @@ export class IframeSoundAdapter {
   private readonly options: Required<
     Pick<
       IframeSoundAdapterOptions,
-      | "queueMaxAgeMs"
-      | "maxPendingQueue"
-      | "maxActiveVoices"
-      | "syncLayaSoundManager"
+      'queueMaxAgeMs' | 'maxPendingQueue' | 'maxActiveVoices' | 'syncLayaSoundManager'
     >
   > &
     IframeSoundAdapterOptions;
@@ -103,13 +87,13 @@ export class IframeSoundAdapter {
 
   private inIframe = false;
   private unlockedByGesture = false;
-  private unlockGestureType = "none";
+  private unlockGestureType = 'none';
   private pageVisible = true;
   private windowFocused = true;
   private autoSuspendedByBlur = false;
   private userMuted = false;
   private postMessageBridgeActive = false;
-  private lastBridgeCommand = "init";
+  private lastBridgeCommand = 'init';
   private lastError: string | null = null;
   private disposed = false;
   private unlockAttempt = 0;
@@ -138,10 +122,7 @@ export class IframeSoundAdapter {
   private streamCache?: ZhudaAssetCache<AssetStreamLease>;
   private readonly streams = new Map<string, AssetLease<AssetStreamLease>>();
   private readonly streamLoads = new Map<AbortController, string>();
-  private readonly admissions = new Map<
-    string,
-    Omit<QueuedAudioTask, "createdAt">
-  >();
+  private readonly admissions = new Map<string, Omit<QueuedAudioTask, 'createdAt'>>();
   private retiredVoices = 0;
   private sampleBackend?: IframeSampleBackend;
   private backendPreparing?: AbortController;
@@ -165,24 +146,18 @@ export class IframeSoundAdapter {
     };
     this.sampleTimeoutMs = options.sampleTimeoutMs ?? 15_000;
     this.maxSamples = options.maxSamples ?? 32;
-    this.maxRetainedStreamBytes =
-      options.maxRetainedStreamBytes ?? 64 * 1024 * 1024;
-    this.maxDecodedSampleBytes =
-      options.maxDecodedSampleBytes ?? 64 * 1024 * 1024;
-    if (
-      !["reject", "fifo", "priority"].includes(
-        options.voiceOverflow ?? "reject",
-      )
-    )
-      throw Error("Invalid voice overflow");
+    this.maxRetainedStreamBytes = options.maxRetainedStreamBytes ?? 64 * 1024 * 1024;
+    this.maxDecodedSampleBytes = options.maxDecodedSampleBytes ?? 64 * 1024 * 1024;
+    if (!['reject', 'fifo', 'priority'].includes(options.voiceOverflow ?? 'reject'))
+      throw Error('Invalid voice overflow');
     if (
       !Number.isFinite(options.retireFadeSec ?? 0.005) ||
       (options.retireFadeSec ?? 0.005) < 0 ||
       (options.retireFadeSec ?? 0.005) > 1
     )
-      throw Error("Invalid retirement fade");
+      throw Error('Invalid retirement fade');
     if (options.protectedChannels?.some((channel) => !isAudioChannel(channel)))
-      throw Error("Invalid protected channel");
+      throw Error('Invalid protected channel');
     const streamProvider = options.streamProvider ?? options.sampleProvider;
     if (streamProvider?.openStream)
       this.streamCache = new ZhudaAssetCache(
@@ -190,18 +165,18 @@ export class IframeSoundAdapter {
           const lease = await streamProvider.openStream!(id, { signal });
           if (signal.aborted || this.disposed) {
             lease.release();
-            throw new DOMException("Stream load cancelled", "AbortError");
+            throw new DOMException('Stream load cancelled', 'AbortError');
           }
           if (
             lease.id !== id ||
             !lease.url ||
-            !["native", "verified-blob"].includes(lease.delivery) ||
-            !["sha256", "transport"].includes(lease.integrity) ||
+            !['native', 'verified-blob'].includes(lease.delivery) ||
+            !['sha256', 'transport'].includes(lease.integrity) ||
             !Number.isSafeInteger(lease.retainedBytes) ||
             lease.retainedBytes < 0
           ) {
             lease.release();
-            throw Error("Invalid stream lease");
+            throw Error('Invalid stream lease');
           }
           return lease;
         },
@@ -217,31 +192,26 @@ export class IframeSoundAdapter {
       maxPendingQueue: this.options.maxPendingQueue,
       queueMaxAgeMs: this.options.queueMaxAgeMs,
     }))
-      if (!Number.isSafeInteger(value) || value <= 0)
-        throw Error(`Invalid audio limit: ${name}`);
+      if (!Number.isSafeInteger(value) || value <= 0) throw Error(`Invalid audio limit: ${name}`);
     if (options.sampleProvider)
       this.sampleCache = createProviderAssetCache(
         options.sampleProvider,
         async (asset, signal) => {
           const context = this.ensureAudioContext();
-          if (!context) throw Error("WebAudio decoder unavailable");
-          if (signal.aborted)
-            throw new DOMException("Sample decode cancelled", "AbortError");
+          if (!context) throw Error('WebAudio decoder unavailable');
+          if (signal.aborted) throw new DOMException('Sample decode cancelled', 'AbortError');
           let cancel: () => void = () => {};
           try {
             const decoded = await Promise.race([
               context.decodeAudioData(new Uint8Array(asset.bytes).buffer),
               new Promise<never>((_, reject) => {
-                cancel = () =>
-                  reject(
-                    new DOMException("Sample decode cancelled", "AbortError"),
-                  );
-                signal.addEventListener("abort", cancel, { once: true });
+                cancel = () => reject(new DOMException('Sample decode cancelled', 'AbortError'));
+                signal.addEventListener('abort', cancel, { once: true });
                 if (signal.aborted) cancel();
               }),
             ]);
             if (signal.aborted || this.disposed)
-              throw new DOMException("Sample decode cancelled", "AbortError");
+              throw new DOMException('Sample decode cancelled', 'AbortError');
             const bytes = decoded.length * decoded.numberOfChannels * 4;
             if (
               !Number.isSafeInteger(bytes) ||
@@ -250,10 +220,10 @@ export class IframeSoundAdapter {
               !Number.isFinite(decoded.duration) ||
               decoded.duration <= 0
             )
-              throw Error("Decoded sample exceeds PCM bound or is empty");
+              throw Error('Decoded sample exceeds PCM bound or is empty');
             return decoded;
           } finally {
-            signal.removeEventListener("abort", cancel);
+            signal.removeEventListener('abort', cancel);
           }
         },
         () => {},
@@ -261,7 +231,7 @@ export class IframeSoundAdapter {
     this.allowedParentOrigins = new Set(
       (options.allowedParentOrigins ?? []).filter(
         (origin): origin is string =>
-          typeof origin === "string" && origin.length > 0 && origin !== "*",
+          typeof origin === 'string' && origin.length > 0 && origin !== '*',
       ),
     );
     this.now = options.now ?? (() => Date.now());
@@ -289,19 +259,18 @@ export class IframeSoundAdapter {
   private validVoice(options: IframeVoiceOptions): boolean {
     return (
       (options.priority === undefined || Number.isFinite(options.priority)) &&
-      (options.protected === undefined ||
-        typeof options.protected === "boolean")
+      (options.protected === undefined || typeof options.protected === 'boolean')
     );
   }
 
   private admit(
     options: IframeVoiceOptions,
-    task: Omit<QueuedAudioTask, "createdAt">,
+    task: Omit<QueuedAudioTask, 'createdAt'>,
     exclude: readonly string[] = [],
-  ): "ready" | "queued" | "rejected" {
-    if (this.activeVoices.size < this.options.maxActiveVoices) return "ready";
-    const mode = this.options.voiceOverflow ?? "reject";
-    const protectedChannels = this.options.protectedChannels ?? ["bgm"];
+  ): 'ready' | 'queued' | 'rejected' {
+    if (this.activeVoices.size < this.options.maxActiveVoices) return 'ready';
+    const mode = this.options.voiceOverflow ?? 'reject';
+    const protectedChannels = this.options.protectedChannels ?? ['bgm'];
     const candidates = [...this.activeVoices].filter(
       ([key, voice]) =>
         !exclude.includes(key) &&
@@ -309,31 +278,25 @@ export class IframeSoundAdapter {
         !this.admissions.has(key) &&
         !voice.protected &&
         !protectedChannels.includes(voice.channel) &&
-        (mode !== "priority" ||
-          (voice.priority ?? 0) <= (options.priority ?? 0)),
+        (mode !== 'priority' || (voice.priority ?? 0) <= (options.priority ?? 0)),
     );
-    if (mode === "priority")
-      candidates.sort((a, b) => (a[1].priority ?? 0) - (b[1].priority ?? 0));
+    if (mode === 'priority') candidates.sort((a, b) => (a[1].priority ?? 0) - (b[1].priority ?? 0));
     const victim = candidates[0];
-    if (
-      mode === "reject" ||
-      !victim ||
-      this.admissions.size >= this.options.maxPendingQueue
-    ) {
+    if (mode === 'reject' || !victim || this.admissions.size >= this.options.maxPendingQueue) {
       this.droppedVoices++;
       this.voiceEvent({
-        type: "rejected",
+        type: 'rejected',
         id: task.id,
         channel: task.channel,
-        reason: "voice-capacity",
+        reason: 'voice-capacity',
       });
       this.syncDomTelemetry();
-      return "rejected";
+      return 'rejected';
     }
     this.admissions.set(victim[0], task);
     this.retiredVoices++;
     this.voiceEvent({
-      type: "retiring",
+      type: 'retiring',
       id: victim[1].logicalId,
       channel: victim[1].channel,
       replacedBy: task.id,
@@ -341,11 +304,11 @@ export class IframeSoundAdapter {
     });
     this.stopVoice(victim[0], this.options.retireFadeSec ?? 0.005);
     this.syncDomTelemetry();
-    return "queued";
+    return 'queued';
   }
 
   private detectIframeContext(): void {
-    if (typeof window === "undefined") {
+    if (typeof window === 'undefined') {
       this.inIframe = false;
       return;
     }
@@ -357,20 +320,19 @@ export class IframeSoundAdapter {
   }
 
   private defaultAudioContextFactory(): AudioContext | null {
-    if (typeof window === "undefined") return null;
+    if (typeof window === 'undefined') return null;
     const AudioCtx =
       window.AudioContext ||
-      (window as unknown as { webkitAudioContext?: typeof AudioContext })
-        .webkitAudioContext;
+      (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!AudioCtx) return null;
     return new AudioCtx();
   }
 
   private ensureAudioContext(recreateClosed = true): AudioContext | null {
     if (this.disposed || this.backendContextLost) return null;
-    if (this.ctx && this.ctx.state !== "closed") return this.ctx;
-    if (this.ctx?.state === "closed") {
-      this.recordError("AudioContext is closed");
+    if (this.ctx && this.ctx.state !== 'closed') return this.ctx;
+    if (this.ctx?.state === 'closed') {
+      this.recordError('AudioContext is closed');
       this.unlockedByGesture = false;
       for (const key of [...this.activeVoices.keys()]) this.finishVoice(key);
       if (this.sampleBackend) {
@@ -380,9 +342,7 @@ export class IframeSoundAdapter {
         } catch (error) {
           this.recordError(error);
         }
-        this.recordError(
-          "Sample backend context closed; dispose and recreate the adapter",
-        );
+        this.recordError('Sample backend context closed; dispose and recreate the adapter');
         return null;
       }
       this.ctx = null;
@@ -414,7 +374,7 @@ export class IframeSoundAdapter {
     } catch (error) {
       this.recordError(error);
       try {
-        if (context && context.state !== "closed") void context.close();
+        if (context && context.state !== 'closed') void context.close();
       } catch (_closeError) {
         // Keep the original construction error as the actionable diagnostic.
       }
@@ -439,8 +399,7 @@ export class IframeSoundAdapter {
   }
 
   private updateGainNodes(): void {
-    if (this.masterGain)
-      this.setGainValue(this.masterGain, this.getEffectiveMasterVolume());
+    if (this.masterGain) this.setGainValue(this.masterGain, this.getEffectiveMasterVolume());
     for (const channel of CHANNELS) {
       const node = this.channelGains[channel];
       if (node) this.setGainValue(node, this.volumes[channel]);
@@ -452,9 +411,7 @@ export class IframeSoundAdapter {
 
   private syncStreamFocus(): void {
     const paused =
-      this.autoSuspendedByBlur ||
-      !this.unlockedByGesture ||
-      this.ctx?.state !== "running";
+      this.autoSuspendedByBlur || !this.unlockedByGesture || this.ctx?.state !== 'running';
     for (const voice of this.activeVoices.values())
       if (voice.source instanceof StreamVoice) voice.source.setPaused(paused);
   }
@@ -476,12 +433,8 @@ export class IframeSoundAdapter {
     if (!soundManager) return;
     soundManager.muted = this.userMuted || this.autoSuspendedByBlur;
     soundManager.autoStopMusic = true;
-    soundManager.setMusicVolume?.(
-      Number((this.volumes.master * this.volumes.bgm).toFixed(2)),
-    );
-    soundManager.setSoundVolume?.(
-      Number((this.volumes.master * this.volumes.sfx).toFixed(2)),
-    );
+    soundManager.setMusicVolume?.(Number((this.volumes.master * this.volumes.bgm).toFixed(2)));
+    soundManager.setSoundVolume?.(Number((this.volumes.master * this.volumes.sfx).toFixed(2)));
   }
 
   private addEventListener(
@@ -506,20 +459,14 @@ export class IframeSoundAdapter {
   }
 
   private installGestureUnlockGuards(): void {
-    if (typeof window === "undefined") return;
-    const events = ["pointerdown", "touchstart", "mousedown", "keydown"];
+    if (typeof window === 'undefined') return;
+    const events = ['pointerdown', 'touchstart', 'mousedown', 'keydown'];
     const onFirstGesture: EventListener = (event) => {
-      this.unlockAudio(event.type || "gesture");
+      this.unlockAudio(event.type || 'gesture');
       if (this.unlockedByGesture) this.removeGestureUnlockGuards();
     };
     for (const event of events) {
-      this.addEventListener(
-        window,
-        event,
-        onFirstGesture,
-        { capture: true, passive: true },
-        true,
-      );
+      this.addEventListener(window, event, onFirstGesture, { capture: true, passive: true }, true);
     }
   }
 
@@ -547,24 +494,24 @@ export class IframeSoundAdapter {
   }
 
   /** Unlocks only after a real context exists and resume succeeds or is already running. */
-  public unlockAudio(gestureSource = "programmatic-unlock"): boolean {
+  public unlockAudio(gestureSource = 'programmatic-unlock'): boolean {
     if (this.disposed) return false;
     // Record the attempted source separately from unlockedByGesture. A headless
     // or blocked context may receive a gesture without becoming playable.
     this.unlockGestureType = gestureSource;
     const context = this.ensureAudioContext();
     if (!context) {
-      this.recordError("WebAudio is unavailable");
+      this.recordError('WebAudio is unavailable');
       this.syncDomTelemetry();
       return false;
     }
 
     const attempt = ++this.unlockAttempt;
-    if (context.state === "running") {
+    if (context.state === 'running') {
       this.markUnlocked(gestureSource);
       return true;
     }
-    if (context.state !== "suspended" || typeof context.resume !== "function") {
+    if (context.state !== 'suspended' || typeof context.resume !== 'function') {
       this.recordError(`AudioContext cannot resume from ${context.state}`);
       this.syncDomTelemetry();
       return false;
@@ -574,13 +521,8 @@ export class IframeSoundAdapter {
       const result = context.resume();
       Promise.resolve(result).then(
         () => {
-          if (
-            this.disposed ||
-            attempt !== this.unlockAttempt ||
-            this.ctx !== context
-          )
-            return;
-          if (context.state === "running") {
+          if (this.disposed || attempt !== this.unlockAttempt || this.ctx !== context) return;
+          if (context.state === 'running') {
             this.markUnlocked(gestureSource);
             this.removeGestureUnlockGuards();
           } else {
@@ -630,33 +572,26 @@ export class IframeSoundAdapter {
   }
 
   private installVisibilityAndFocusGuards(): void {
-    if (typeof window === "undefined" || typeof document === "undefined")
-      return;
+    if (typeof window === 'undefined' || typeof document === 'undefined') return;
 
-    this.addEventListener(document, "visibilitychange", () => {
-      this.handleFocusOrVisibilityChange(
-        document.visibilityState !== "hidden",
-        this.windowFocused,
-      );
+    this.addEventListener(document, 'visibilitychange', () => {
+      this.handleFocusOrVisibilityChange(document.visibilityState !== 'hidden', this.windowFocused);
     });
-    this.addEventListener(window, "blur", () => {
+    this.addEventListener(window, 'blur', () => {
       this.handleFocusOrVisibilityChange(this.pageVisible, false);
     });
-    this.addEventListener(window, "focus", () => {
+    this.addEventListener(window, 'focus', () => {
       this.handleFocusOrVisibilityChange(true, true);
     });
-    this.addEventListener(window, "pagehide", () => {
+    this.addEventListener(window, 'pagehide', () => {
       this.handleFocusOrVisibilityChange(false, false);
     });
-    this.addEventListener(window, "pageshow", () => {
+    this.addEventListener(window, 'pageshow', () => {
       this.handleFocusOrVisibilityChange(true, true);
     });
   }
 
-  public handleFocusOrVisibilityChange(
-    visible: boolean,
-    focused: boolean,
-  ): void {
+  public handleFocusOrVisibilityChange(visible: boolean, focused: boolean): void {
     if (this.disposed) return;
     this.pageVisible = Boolean(visible);
     this.windowFocused = Boolean(focused);
@@ -665,13 +600,11 @@ export class IframeSoundAdapter {
     if (this.ctx) {
       if (
         this.autoSuspendedByBlur &&
-        this.ctx.state === "running" &&
-        typeof this.ctx.suspend === "function"
+        this.ctx.state === 'running' &&
+        typeof this.ctx.suspend === 'function'
       ) {
         try {
-          Promise.resolve(this.ctx.suspend()).catch((error) =>
-            this.recordError(error),
-          );
+          Promise.resolve(this.ctx.suspend()).catch((error) => this.recordError(error));
         } catch (error) {
           this.recordError(error);
         }
@@ -679,8 +612,8 @@ export class IframeSoundAdapter {
         !this.autoSuspendedByBlur &&
         !this.userMuted &&
         this.unlockedByGesture &&
-        this.ctx.state === "suspended" &&
-        typeof this.ctx.resume === "function"
+        this.ctx.state === 'suspended' &&
+        typeof this.ctx.resume === 'function'
       ) {
         try {
           Promise.resolve(this.ctx.resume()).then(
@@ -696,30 +629,28 @@ export class IframeSoundAdapter {
   }
 
   private isAllowedBridgeOrigin(origin: string): boolean {
-    if (!origin || origin === "null") return false;
-    if (this.allowedParentOrigins.size > 0)
-      return this.allowedParentOrigins.has(origin);
-    if (typeof window === "undefined" || !window.location) return false;
+    if (!origin || origin === 'null') return false;
+    if (this.allowedParentOrigins.size > 0) return this.allowedParentOrigins.has(origin);
+    if (typeof window === 'undefined' || !window.location) return false;
     return origin === window.location.origin;
   }
 
   private installPostMessageBridge(): void {
-    if (typeof window === "undefined") return;
+    if (typeof window === 'undefined') return;
     const listener = (event: Event) => {
       const messageEvent = event as MessageEvent;
       if (!this.isAllowedBridgeOrigin(messageEvent.origin)) return;
       const data = messageEvent.data;
-      if (!data || typeof data !== "object" || typeof data.type !== "string")
-        return;
-      if (!data.type.startsWith("zhuda:")) return;
+      if (!data || typeof data !== 'object' || typeof data.type !== 'string') return;
+      if (!data.type.startsWith('zhuda:')) return;
 
       this.handleBridgeMessage(data);
       const source = messageEvent.source as WindowProxy | null;
-      if (source && typeof source.postMessage === "function") {
+      if (source && typeof source.postMessage === 'function') {
         try {
           source.postMessage(
             {
-              type: "zhuda:telemetry:ack",
+              type: 'zhuda:telemetry:ack',
               receivedCommand: data.type,
               diagnostics: this.getDiagnostics(),
             },
@@ -730,7 +661,7 @@ export class IframeSoundAdapter {
         }
       }
     };
-    this.addEventListener(window, "message", listener);
+    this.addEventListener(window, 'message', listener);
     this.postMessageBridgeActive = true;
   }
 
@@ -740,29 +671,28 @@ export class IframeSoundAdapter {
     volume?: number;
   }): IframeSoundDiagnostics {
     if (this.disposed) return this.getDiagnostics();
-    this.lastBridgeCommand =
-      typeof msg?.type === "string" ? msg.type : "invalid";
+    this.lastBridgeCommand = typeof msg?.type === 'string' ? msg.type : 'invalid';
     switch (msg?.type) {
-      case "zhuda:audio:mute":
+      case 'zhuda:audio:mute':
         this.setMuted(true);
         break;
-      case "zhuda:audio:unmute":
+      case 'zhuda:audio:unmute':
         this.setMuted(false);
-        this.unlockAudio("bridge-unmute");
+        this.unlockAudio('bridge-unmute');
         break;
-      case "zhuda:audio:setVolume":
+      case 'zhuda:audio:setVolume':
         if (isAudioChannel(msg.channel) && isFiniteNumber(msg.volume)) {
           this.setChannelVolume(msg.channel, msg.volume);
         }
         break;
-      case "zhuda:lifecycle:pause":
+      case 'zhuda:lifecycle:pause':
         this.handleFocusOrVisibilityChange(false, false);
         break;
-      case "zhuda:lifecycle:resume":
+      case 'zhuda:lifecycle:resume':
         this.handleFocusOrVisibilityChange(true, true);
         break;
-      case "zhuda:audio:unlock":
-        this.unlockAudio("bridge-unlock");
+      case 'zhuda:audio:unlock':
+        this.unlockAudio('bridge-unlock');
         break;
       default:
         break;
@@ -781,16 +711,8 @@ export class IframeSoundAdapter {
     return this.userMuted;
   }
 
-  public setChannelVolume(
-    channel: IframeAudioChannel,
-    volume: number,
-  ): boolean {
-    if (
-      !isAudioChannel(channel) ||
-      !isFiniteNumber(volume) ||
-      volume < 0 ||
-      volume > 1
-    )
+  public setChannelVolume(channel: IframeAudioChannel, volume: number): boolean {
+    if (!isAudioChannel(channel) || !isFiniteNumber(volume) || volume < 0 || volume > 1)
       return false;
     this.volumes[channel] = volume;
     this.updateGainNodes();
@@ -804,24 +726,18 @@ export class IframeSoundAdapter {
   private validateTone(options: IframeToneOptions): IframeAudioChannel | null {
     if (
       !options ||
-      typeof options.id !== "string" ||
+      typeof options.id !== 'string' ||
       options.id.trim().length === 0 ||
       !this.validVoice(options)
     )
       return null;
-    const channel = options.channel ?? "sfx";
+    const channel = options.channel ?? 'sfx';
     if (!isAudioChannel(channel)) return null;
-    if (
-      !isFiniteNumber(options.startFreq) ||
-      options.startFreq <= 0 ||
-      options.startFreq > 24000
-    )
+    if (!isFiniteNumber(options.startFreq) || options.startFreq <= 0 || options.startFreq > 24000)
       return null;
     if (
       options.endFreq !== undefined &&
-      (!isFiniteNumber(options.endFreq) ||
-        options.endFreq <= 0 ||
-        options.endFreq > 24000)
+      (!isFiniteNumber(options.endFreq) || options.endFreq <= 0 || options.endFreq > 24000)
     )
       return null;
     if (
@@ -832,23 +748,15 @@ export class IframeSoundAdapter {
       return null;
     if (
       options.peakGain !== undefined &&
-      (!isFiniteNumber(options.peakGain) ||
-        options.peakGain < 0 ||
-        options.peakGain > 1)
+      (!isFiniteNumber(options.peakGain) || options.peakGain < 0 || options.peakGain > 1)
     )
       return null;
     if (
       options.delaySec !== undefined &&
-      (!isFiniteNumber(options.delaySec) ||
-        options.delaySec < 0 ||
-        options.delaySec > 60)
+      (!isFiniteNumber(options.delaySec) || options.delaySec < 0 || options.delaySec > 60)
     )
       return null;
-    if (
-      options.waveType !== undefined &&
-      !AUDIO_WAVE_TYPES.includes(options.waveType)
-    )
-      return null;
+    if (options.waveType !== undefined && !AUDIO_WAVE_TYPES.includes(options.waveType)) return null;
     return channel;
   }
 
@@ -857,10 +765,9 @@ export class IframeSoundAdapter {
     channel: IframeAudioChannel,
   ): AudioVoiceHandle | true | null {
     const context = this.ensureAudioContext(false);
-    const channelGain =
-      channel === "master" ? this.masterGain : this.channelGains[channel];
+    const channelGain = channel === 'master' ? this.masterGain : this.channelGains[channel];
     if (!context || !this.masterGain || !channelGain) {
-      this.recordError("WebAudio mixer is unavailable");
+      this.recordError('WebAudio mixer is unavailable');
       this.syncDomTelemetry();
       return null;
     }
@@ -869,7 +776,7 @@ export class IframeSoundAdapter {
       channel,
       execute: () => this.runSynthesis(options, channel) !== null,
     });
-    if (admission !== "ready") return admission === "queued" ? true : null;
+    if (admission !== 'ready') return admission === 'queued' ? true : null;
 
     const voiceKey = `${options.id}:${++this.voiceSerial}`;
     const when = context.currentTime + (options.delaySec ?? 0);
@@ -887,16 +794,10 @@ export class IframeSoundAdapter {
       const gain = context.createGain();
       state.source = source;
       state.gain = gain;
-      source.type = options.waveType ?? "triangle";
+      source.type = options.waveType ?? 'triangle';
       source.frequency.setValueAtTime(options.startFreq, when);
-      if (
-        options.endFreq !== undefined &&
-        options.endFreq !== options.startFreq
-      ) {
-        source.frequency.exponentialRampToValueAtTime(
-          options.endFreq,
-          when + duration,
-        );
+      if (options.endFreq !== undefined && options.endFreq !== options.startFreq) {
+        source.frequency.exponentialRampToValueAtTime(options.endFreq, when + duration);
       }
 
       const peak = options.peakGain ?? 0.18;
@@ -911,7 +812,7 @@ export class IframeSoundAdapter {
       source.start(when);
       source.stop(when + duration);
       this.playedEventsCount++;
-      this.voiceEvent({ type: "started", id: options.id, channel });
+      this.voiceEvent({ type: 'started', id: options.id, channel });
 
       const handle: AudioVoiceHandle = {
         id: options.id,
@@ -938,14 +839,9 @@ export class IframeSoundAdapter {
     }
   }
 
-  private submit(
-    task: Omit<QueuedAudioTask, "createdAt">,
-    replace = false,
-  ): boolean {
-    if (this.disposed || this.userMuted || this.autoSuspendedByBlur)
-      return false;
-    if ([...this.admissions.values()].some((value) => value.id === task.id))
-      return false;
+  private submit(task: Omit<QueuedAudioTask, 'createdAt'>, replace = false): boolean {
+    if (this.disposed || this.userMuted || this.autoSuspendedByBlur) return false;
+    if ([...this.admissions.values()].some((value) => value.id === task.id)) return false;
     if (this.unlockedByGesture) return task.execute();
     const old = this.pendingQueue.findIndex((value) => value.id === task.id);
     if (old >= 0 && !replace) {
@@ -996,21 +892,15 @@ export class IframeSoundAdapter {
   ): Promise<IframeSampleInfo> {
     normalizeAssetId(id);
     if (this.disposed || !this.sampleCache)
-      throw Error("Sample loading requires a live adapter with sampleProvider");
-    if (options.signal?.aborted)
-      throw new DOMException("Sample load cancelled", "AbortError");
+      throw Error('Sample loading requires a live adapter with sampleProvider');
+    if (options.signal?.aborted) throw new DOMException('Sample load cancelled', 'AbortError');
     const existing = this.samples.get(id);
     if (existing) return this.sampleInfo(id, existing.value);
-    const reserved = new Set([
-      ...this.samples.keys(),
-      ...this.sampleLoads.values(),
-      id,
-    ]);
-    if (reserved.size > this.maxSamples)
-      throw Error("Audio sample capacity exceeded");
+    const reserved = new Set([...this.samples.keys(), ...this.sampleLoads.values(), id]);
+    if (reserved.size > this.maxSamples) throw Error('Audio sample capacity exceeded');
     const controller = new AbortController();
     const abort = () => controller.abort();
-    options.signal?.addEventListener("abort", abort, { once: true });
+    options.signal?.addEventListener('abort', abort, { once: true });
     this.sampleLoads.set(controller, id);
     let timedOut = false;
     const timer = setTimeout(() => {
@@ -1021,28 +911,26 @@ export class IframeSoundAdapter {
     try {
       lease = await this.sampleCache.acquire(id, { signal: controller.signal });
       if (controller.signal.aborted || this.disposed)
-        throw new DOMException("Sample load cancelled", "AbortError");
+        throw new DOMException('Sample load cancelled', 'AbortError');
       const info = this.sampleInfo(id, lease.value);
       if (!this.samples.has(id)) {
         if (
           this.getDiagnostics().decodedSampleBytes + info.decodedBytes >
           this.maxDecodedSampleBytes
         )
-          throw Error("Total decoded sample PCM bound exceeded");
+          throw Error('Total decoded sample PCM bound exceeded');
         this.samples.set(id, lease);
         lease = undefined;
       }
       return info;
     } catch (error) {
-      const failure = timedOut
-        ? new Error(`Audio sample load/decode timeout: ${id}`)
-        : error;
+      const failure = timedOut ? new Error(`Audio sample load/decode timeout: ${id}`) : error;
       this.recordError(failure);
       throw failure;
     } finally {
       lease?.release();
       clearTimeout(timer);
-      options.signal?.removeEventListener("abort", abort);
+      options.signal?.removeEventListener('abort', abort);
       this.sampleLoads.delete(controller);
       if (this.disposed && !this.sampleLoads.size) this.sampleCache.dispose();
       this.syncDomTelemetry();
@@ -1068,9 +956,7 @@ export class IframeSoundAdapter {
         changed = true;
       }
     const before = this.pendingQueue.length;
-    this.pendingQueue = this.pendingQueue.filter(
-      (task) => task.sampleId !== id,
-    );
+    this.pendingQueue = this.pendingQueue.filter((task) => task.sampleId !== id);
     changed ||= before !== this.pendingQueue.length;
     const lease = this.samples.get(id);
     if (lease) {
@@ -1096,32 +982,24 @@ export class IframeSoundAdapter {
       this.pendingQueue.length ||
       this.admissions.size
     )
-      throw Error(
-        "Backend preparation requires an idle, live adapter without a backend",
-      );
+      throw Error('Backend preparation requires an idle, live adapter without a backend');
     const provider = this.options.sampleProvider;
     const context = this.ensureAudioContext();
     if (!provider || !context || !backend?.name)
-      throw Error("Backend requires provider, context and name");
+      throw Error('Backend requires provider, context and name');
     const controller = (this.backendPreparing = new AbortController());
     const abort = () => controller.abort(options.signal?.reason);
-    options.signal?.addEventListener("abort", abort, { once: true });
+    options.signal?.addEventListener('abort', abort, { once: true });
     if (options.signal?.aborted) abort();
     const timer = setTimeout(
-      () =>
-        controller.abort(
-          new DOMException("Backend prepare timeout", "TimeoutError"),
-        ),
+      () => controller.abort(new DOMException('Backend prepare timeout', 'TimeoutError')),
       this.sampleTimeoutMs,
     );
     let cancel: () => void = () => {};
     let accepted = false;
     const work = Promise.resolve().then(() => {
       if (controller.signal.aborted)
-        throw (
-          controller.signal.reason ??
-          new DOMException("Cancelled", "AbortError")
-        );
+        throw controller.signal.reason ?? new DOMException('Cancelled', 'AbortError');
       return backend.prepare({ context, provider, signal: controller.signal });
     });
     // An uncooperative late preparation may allocate after the first dispose.
@@ -1142,16 +1020,13 @@ export class IframeSoundAdapter {
         work,
         new Promise<never>((_, reject) => {
           cancel = () =>
-            reject(
-              controller.signal.reason ??
-                new DOMException("Cancelled", "AbortError"),
-            );
-          controller.signal.addEventListener("abort", cancel, { once: true });
+            reject(controller.signal.reason ?? new DOMException('Cancelled', 'AbortError'));
+          controller.signal.addEventListener('abort', cancel, { once: true });
           if (controller.signal.aborted) cancel();
         }),
       ]);
       if (this.disposed || controller.signal.aborted)
-        throw new DOMException("Backend cancelled", "AbortError");
+        throw new DOMException('Backend cancelled', 'AbortError');
       this.sampleBackend = backend;
       accepted = true;
     } catch (error) {
@@ -1159,8 +1034,8 @@ export class IframeSoundAdapter {
       throw error;
     } finally {
       clearTimeout(timer);
-      options.signal?.removeEventListener("abort", abort);
-      controller.signal.removeEventListener("abort", cancel);
+      options.signal?.removeEventListener('abort', abort);
+      controller.signal.removeEventListener('abort', cancel);
       this.backendPreparing = undefined;
       if (!accepted) {
         try {
@@ -1178,9 +1053,8 @@ export class IframeSoundAdapter {
   ): Promise<IframeStreamInfo> {
     id = normalizeAssetId(id);
     if (this.disposed || !this.streamCache)
-      throw Error("Stream loading requires a live provider with openStream");
-    if (options.signal?.aborted)
-      throw new DOMException("Stream cancelled", "AbortError");
+      throw Error('Stream loading requires a live provider with openStream');
+    if (options.signal?.aborted) throw new DOMException('Stream cancelled', 'AbortError');
     const info = (lease: AssetStreamLease): IframeStreamInfo => ({
       id,
       integrity: lease.integrity,
@@ -1189,14 +1063,11 @@ export class IframeSoundAdapter {
     });
     const existing = this.streams.get(id);
     if (existing) return info(existing.value);
-    if (
-      new Set([...this.streams.keys(), ...this.streamLoads.values(), id]).size >
-      this.maxSamples
-    )
-      throw Error("Stream capacity exceeded");
+    if (new Set([...this.streams.keys(), ...this.streamLoads.values(), id]).size > this.maxSamples)
+      throw Error('Stream capacity exceeded');
     const controller = new AbortController();
     const abort = () => controller.abort(options.signal?.reason);
-    options.signal?.addEventListener("abort", abort, { once: true });
+    options.signal?.addEventListener('abort', abort, { once: true });
     this.streamLoads.set(controller, id);
     let timeout = false;
     const timer = setTimeout(() => {
@@ -1207,14 +1078,14 @@ export class IframeSoundAdapter {
     try {
       lease = await this.streamCache.acquire(id, { signal: controller.signal });
       if (controller.signal.aborted || this.disposed)
-        throw new DOMException("Stream cancelled", "AbortError");
+        throw new DOMException('Stream cancelled', 'AbortError');
       const result = info(lease.value);
       if (!this.streams.has(id)) {
         if (
           this.getDiagnostics().retainedStreamBytes + result.retainedBytes >
           this.maxRetainedStreamBytes
         )
-          throw Error("Total retained stream byte bound exceeded");
+          throw Error('Total retained stream byte bound exceeded');
         this.streams.set(id, lease);
         lease = undefined;
       }
@@ -1226,7 +1097,7 @@ export class IframeSoundAdapter {
     } finally {
       lease?.release();
       clearTimeout(timer);
-      options.signal?.removeEventListener("abort", abort);
+      options.signal?.removeEventListener('abort', abort);
       this.streamLoads.delete(controller);
       if (this.disposed && !this.streamLoads.size) this.streamCache.dispose();
       this.syncDomTelemetry();
@@ -1246,9 +1117,7 @@ export class IframeSoundAdapter {
         changed = true;
       }
     const before = this.pendingQueue.length;
-    this.pendingQueue = this.pendingQueue.filter(
-      (task) => task.streamId !== id,
-    );
+    this.pendingQueue = this.pendingQueue.filter((task) => task.streamId !== id);
     changed ||= before !== this.pendingQueue.length;
     for (const [key, voice] of [...this.activeVoices])
       if (voice.streamId === id) {
@@ -1266,29 +1135,26 @@ export class IframeSoundAdapter {
   }
 
   public playStream(options: IframeStreamOptions): boolean {
-    if (!options || !options.id?.trim() || !this.validVoice(options))
-      return false;
+    if (!options || !options.id?.trim() || !this.validVoice(options)) return false;
     const lease = this.streams.get(options.streamId),
-      channel = options.channel ?? "bgm";
+      channel = options.channel ?? 'bgm';
     if (!lease || !isAudioChannel(channel)) return false;
     const offset = options.offsetSec ?? 0,
       fade = options.fadeInSec ?? options.crossFadeSec ?? 0,
       crossFade = options.crossFadeSec ?? 0,
       peak = options.peakGain ?? 1;
     if (
-      ![offset, fade, crossFade, peak].every(
-        (v) => Number.isFinite(v) && v >= 0,
-      ) ||
+      ![offset, fade, crossFade, peak].every((v) => Number.isFinite(v) && v >= 0) ||
       peak > 1 ||
       fade > 60 ||
       crossFade > 60 ||
       (crossFade > 0 && !options.replace) ||
-      (options.loop !== undefined && typeof options.loop !== "boolean") ||
-      (options.replace !== undefined && typeof options.replace !== "boolean")
+      (options.loop !== undefined && typeof options.loop !== 'boolean') ||
+      (options.replace !== undefined && typeof options.replace !== 'boolean')
     )
       return false;
     const snapshot = { ...options };
-    const task: Omit<QueuedAudioTask, "createdAt"> = {
+    const task: Omit<QueuedAudioTask, 'createdAt'> = {
       id: snapshot.id,
       streamId: snapshot.streamId,
       channel,
@@ -1305,17 +1171,14 @@ export class IframeSoundAdapter {
           .map(([k]) => k);
         if (previous.length && !snapshot.replace) return false;
         const context = this.ensureAudioContext(false),
-          channelGain =
-            channel === "master" ? this.masterGain : this.channelGains[channel];
+          channelGain = channel === 'master' ? this.masterGain : this.channelGains[channel];
         if (!context || !channelGain) return false;
         const admission = this.admit(snapshot, task, previous);
-        if (admission !== "ready") return admission === "queued";
+        if (admission !== 'ready') return admission === 'queued';
         const key = `${snapshot.id}:${++this.voiceSerial}`;
         let source: StreamVoice | undefined, gain: GainNode | undefined;
         try {
-          const media =
-            this.options.mediaElementFactory?.() ??
-            document.createElement("audio");
+          const media = this.options.mediaElementFactory?.() ?? document.createElement('audio');
           source = new StreamVoice(
             context,
             media,
@@ -1325,7 +1188,7 @@ export class IframeSoundAdapter {
             (error) => {
               this.recordError(error);
               this.voiceEvent({
-                type: "failed",
+                type: 'failed',
                 id: snapshot.id,
                 channel,
                 reason: String(error),
@@ -1334,14 +1197,10 @@ export class IframeSoundAdapter {
             () => {
               if (!this.activeVoices.has(key) || this.disposed) return;
               gain!.gain.setValueAtTime(fade ? 0 : peak, context.currentTime);
-              if (fade)
-                gain!.gain.linearRampToValueAtTime(
-                  peak,
-                  context.currentTime + fade,
-                );
+              if (fade) gain!.gain.linearRampToValueAtTime(peak, context.currentTime + fade);
               for (const old of previous) this.stopVoice(old, crossFade);
               this.playedEventsCount++;
-              this.voiceEvent({ type: "started", id: snapshot.id, channel });
+              this.voiceEvent({ type: 'started', id: snapshot.id, channel });
               this.syncDomTelemetry();
             },
           );
@@ -1378,14 +1237,14 @@ export class IframeSoundAdapter {
   public playSample(options: IframeSampleOptions): boolean {
     if (
       !options ||
-      typeof options.id !== "string" ||
+      typeof options.id !== 'string' ||
       !options.id.trim() ||
       !this.validVoice(options) ||
       this.backendPreparing
     )
       return false;
     const lease = this.samples.get(options.sampleId);
-    const channel = options.channel ?? "sfx";
+    const channel = options.channel ?? 'sfx';
     if (!lease || !isAudioChannel(channel)) return false;
     const buffer = lease.value;
     const offset = options.offsetSec ?? 0,
@@ -1404,15 +1263,13 @@ export class IframeSoundAdapter {
       offset >= buffer.duration ||
       loopStart >= loopEnd ||
       loopEnd > buffer.duration ||
-      (options.loop !== undefined && typeof options.loop !== "boolean") ||
-      (options.replace !== undefined && typeof options.replace !== "boolean") ||
+      (options.loop !== undefined && typeof options.loop !== 'boolean') ||
+      (options.replace !== undefined && typeof options.replace !== 'boolean') ||
       ((options.crossFadeSec ?? 0) > 0 && !options.replace) ||
       (options.durationSec !== undefined &&
         (!Number.isFinite(options.durationSec) || options.durationSec <= 0)) ||
       (options.peakGain !== undefined &&
-        (!Number.isFinite(options.peakGain) ||
-          options.peakGain < 0 ||
-          options.peakGain > 1))
+        (!Number.isFinite(options.peakGain) || options.peakGain < 0 || options.peakGain > 1))
     )
       return false;
     const duration = options.loop
@@ -1428,7 +1285,7 @@ export class IframeSoundAdapter {
     )
       return false;
     const snapshot = { ...options };
-    const task: Omit<QueuedAudioTask, "createdAt"> = {
+    const task: Omit<QueuedAudioTask, 'createdAt'> = {
       id: snapshot.id,
       sampleId: snapshot.sampleId,
       channel,
@@ -1444,17 +1301,15 @@ export class IframeSoundAdapter {
           .map(([key]) => key);
         if (previous.length && !snapshot.replace) return false;
         const context = this.ensureAudioContext(false);
-        const channelGain =
-          channel === "master" ? this.masterGain : this.channelGains[channel];
+        const channelGain = channel === 'master' ? this.masterGain : this.channelGains[channel];
         if (!context || !channelGain) return false;
         const admission = this.admit(snapshot, task, previous);
-        if (admission !== "ready") return admission === "queued";
+        if (admission !== 'ready') return admission === 'queued';
         const key = `${snapshot.id}:${++this.voiceSerial}`;
         let source: AudioBufferSourceNode | IframeBackendVoice | undefined,
           gain: GainNode | undefined;
         try {
-          if (this.sampleBackend)
-            source = this.sampleBackend.createVoice(buffer, snapshot);
+          if (this.sampleBackend) source = this.sampleBackend.createVoice(buffer, snapshot);
           else {
             source = context.createBufferSource();
             source.buffer = buffer;
@@ -1471,7 +1326,7 @@ export class IframeSoundAdapter {
             gain.gain.setValueAtTime(peak, now + duration - fadeOut);
             gain.gain.linearRampToValueAtTime(0, now + duration);
           }
-          ("output" in source ? source.output : source).connect(gain);
+          ('output' in source ? source.output : source).connect(gain);
           gain.connect(channelGain);
           source.onended = () => this.finishVoice(key);
           this.activeVoices.set(key, {
@@ -1486,10 +1341,9 @@ export class IframeSoundAdapter {
           });
           source.start(now, offset);
           if (duration !== undefined) source.stop(now + duration);
-          for (const old of previous)
-            this.stopVoice(old, snapshot.crossFadeSec ?? 0);
+          for (const old of previous) this.stopVoice(old, snapshot.crossFadeSec ?? 0);
           this.playedEventsCount++;
-          this.voiceEvent({ type: "started", id: snapshot.id, channel });
+          this.voiceEvent({ type: 'started', id: snapshot.id, channel });
           this.syncDomTelemetry();
           return true;
         } catch (error) {
@@ -1512,36 +1366,24 @@ export class IframeSoundAdapter {
 
   /** Explicit offline soundtrack using loaded samples and this mixer's gain snapshot.
    * Does not play live voices, use a second live AudioContext or dispatch events. */
-  public async renderOffline(
-    options: IframeOfflineMixOptions,
-  ): Promise<IframeOfflineMix> {
-    if (this.disposed || this.offlineMix)
-      throw Error("Offline mixer is disposed or busy");
+  public async renderOffline(options: IframeOfflineMixOptions): Promise<IframeOfflineMix> {
+    if (this.disposed || this.offlineMix) throw Error('Offline mixer is disposed or busy');
     const timeout = options.timeoutMs ?? 30000;
     if (!Number.isSafeInteger(timeout) || timeout <= 0 || timeout > 2147483647)
-      throw Error("Invalid offline audio deadline");
+      throw Error('Invalid offline audio deadline');
     if (options.signal?.aborted)
-      throw (
-        options.signal.reason ?? new DOMException("Cancelled", "AbortError")
-      );
+      throw options.signal.reason ?? new DOMException('Cancelled', 'AbortError');
     const controller = (this.offlineMix = new AbortController()),
       abort = () =>
-        controller.abort(
-          options.signal?.reason ?? new DOMException("Cancelled", "AbortError"),
-        );
-    options.signal?.addEventListener("abort", abort, { once: true });
+        controller.abort(options.signal?.reason ?? new DOMException('Cancelled', 'AbortError'));
+    options.signal?.addEventListener('abort', abort, { once: true });
     const timer = setTimeout(
-      () =>
-        controller.abort(
-          new DOMException("Offline mix timed out", "TimeoutError"),
-        ),
+      () => controller.abort(new DOMException('Offline mix timed out', 'TimeoutError')),
       timeout,
     );
     const work = renderOfflineMix(
       {
-        samples: new Map(
-          [...this.samples].map(([id, lease]) => [id, lease.value]),
-        ),
+        samples: new Map([...this.samples].map(([id, lease]) => [id, lease.value])),
         volumes: {
           ...this.volumes,
           master: this.userMuted ? 0 : this.volumes.master,
@@ -1559,13 +1401,12 @@ export class IframeSoundAdapter {
       return await awaitAbortable(work, controller.signal);
     } finally {
       clearTimeout(timer);
-      options.signal?.removeEventListener("abort", abort);
+      options.signal?.removeEventListener('abort', abort);
     }
   }
 
   public stop(id: string, fadeOutSec = 0): boolean {
-    if (!Number.isFinite(fadeOutSec) || fadeOutSec < 0 || fadeOutSec > 60)
-      return false;
+    if (!Number.isFinite(fadeOutSec) || fadeOutSec < 0 || fadeOutSec > 60) return false;
     let stopped = false;
     for (const [key, task] of this.admissions)
       if (task.id === id) {
@@ -1573,8 +1414,7 @@ export class IframeSoundAdapter {
         stopped = true;
       }
     for (const [voiceKey, voice] of [...this.activeVoices.entries()]) {
-      if (voice.logicalId === id)
-        stopped = this.stopVoice(voiceKey, fadeOutSec) || stopped;
+      if (voice.logicalId === id) stopped = this.stopVoice(voiceKey, fadeOutSec) || stopped;
     }
     const before = this.pendingQueue.length;
     this.pendingQueue = this.pendingQueue.filter((task) => task.id !== id);
@@ -1602,12 +1442,11 @@ export class IframeSoundAdapter {
     const next = this.admissions.get(voiceKey);
     this.admissions.delete(voiceKey);
     this.voiceEvent({
-      type: "ended",
+      type: 'ended',
       id: voice.logicalId,
       channel: voice.channel,
     });
-    if (next && !this.disposed && !this.userMuted && !this.autoSuspendedByBlur)
-      next.execute();
+    if (next && !this.disposed && !this.userMuted && !this.autoSuspendedByBlur) next.execute();
     this.syncDomTelemetry();
   }
 
@@ -1635,8 +1474,7 @@ export class IframeSoundAdapter {
 
   public stopAll(channel?: IframeAudioChannel): number {
     for (const [key, task] of this.admissions)
-      if (channel === undefined || task.channel === channel)
-        this.admissions.delete(key);
+      if (channel === undefined || task.channel === channel) this.admissions.delete(key);
     const before = this.pendingQueue.length;
     this.pendingQueue = this.pendingQueue.filter(
       (task) => channel !== undefined && task.channel !== channel,
@@ -1654,8 +1492,8 @@ export class IframeSoundAdapter {
   public getDiagnostics(): IframeSoundDiagnostics {
     const state =
       this.ctx && CONTEXT_STATES.has(this.ctx.state)
-        ? (this.ctx.state as IframeSoundDiagnostics["contextState"])
-        : "uninitialized";
+        ? (this.ctx.state as IframeSoundDiagnostics['contextState'])
+        : 'uninitialized';
     return {
       loadedStreams: this.streams.size,
       pendingStreamLoads: this.streamLoads.size,
@@ -1665,12 +1503,11 @@ export class IframeSoundAdapter {
       ),
       pendingAdmissions: this.admissions.size,
       retiredVoices: this.retiredVoices,
-      sampleBackend: this.sampleBackend?.name ?? "native",
+      sampleBackend: this.sampleBackend?.name ?? 'native',
       loadedSamples: this.samples.size,
       pendingSampleLoads: this.sampleLoads.size,
       decodedSampleBytes: [...this.samples.values()].reduce(
-        (sum, lease) =>
-          sum + lease.value.length * lease.value.numberOfChannels * 4,
+        (sum, lease) => sum + lease.value.length * lease.value.numberOfChannels * 4,
         0,
       ),
       inIframe: this.inIframe,
@@ -1690,7 +1527,7 @@ export class IframeSoundAdapter {
       playedEventsCount: this.playedEventsCount,
       postMessageBridgeActive: this.postMessageBridgeActive,
       lastBridgeCommand: this.lastBridgeCommand,
-      backend: this.ctx ? "webaudio" : "unavailable",
+      backend: this.ctx ? 'webaudio' : 'unavailable',
       contextAvailable: this.ctx !== null,
       lastError: this.lastError,
     };
@@ -1705,13 +1542,9 @@ export class IframeSoundAdapter {
     win.__ZHUDA_IFRAME_AUDIO__ = diagnostics;
     if (!this.disposed) win.__ZHUDA_IFRAME_ADAPTER__ = this;
 
-    if (typeof document !== "undefined" && document.body) {
-      document.body.dataset.zhudaIframeAudio = this.postMessageBridgeActive
-        ? "ready"
-        : "inactive";
-      document.body.dataset.zhudaAudioMuted = String(
-        this.userMuted || this.autoSuspendedByBlur,
-      );
+    if (typeof document !== 'undefined' && document.body) {
+      document.body.dataset.zhudaIframeAudio = this.postMessageBridgeActive ? 'ready' : 'inactive';
+      document.body.dataset.zhudaAudioMuted = String(this.userMuted || this.autoSuspendedByBlur);
       document.body.dataset.zhudaAudioPlayed = String(this.playedEventsCount);
     }
   }
@@ -1720,7 +1553,7 @@ export class IframeSoundAdapter {
   public dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
-    this.offlineMix?.abort(new DOMException("Mixer disposed", "AbortError"));
+    this.offlineMix?.abort(new DOMException('Mixer disposed', 'AbortError'));
     this.backendPreparing?.abort();
     this.unlockAttempt++;
     this.pendingQueue = [];
@@ -1745,21 +1578,14 @@ export class IframeSoundAdapter {
     for (const cleanup of this.cleanupFns.splice(0)) cleanup();
     this.gestureCleanupFns.splice(0);
     this.postMessageBridgeActive = false;
-    if (
-      this.ctx &&
-      typeof this.ctx.close === "function" &&
-      this.ctx.state !== "closed"
-    ) {
+    if (this.ctx && typeof this.ctx.close === 'function' && this.ctx.state !== 'closed') {
       try {
-        Promise.resolve(this.ctx.close()).catch((error) =>
-          this.recordError(error),
-        );
+        Promise.resolve(this.ctx.close()).catch((error) => this.recordError(error));
       } catch (error) {
         this.recordError(error);
       }
     }
     this.syncDomTelemetry();
-    if (IframeSoundAdapter.instance === this)
-      IframeSoundAdapter.instance = null;
+    if (IframeSoundAdapter.instance === this) IframeSoundAdapter.instance = null;
   }
 }

@@ -1,6 +1,6 @@
 // Generated from TypeScript source; run npm run types:generate.
-import { type Vec3 } from "../runtime3d/Math3D";
-import type { QueryRay } from "../runtime3d/SceneQueries";
+import { type Vec3 } from '../runtime3d/Math3D';
+import type { QueryRay } from '../runtime3d/SceneQueries';
 export interface HeightfieldSpec {
     schemaVersion: 1;
     dimension: 3;

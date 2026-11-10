@@ -32,9 +32,18 @@ export async function buildIsolated({ mode = 'candidate', keep = true } = {}) {
   const isolated = createIsolatedProject();
   try {
     const config = JSON.parse(fs.readFileSync(path.join(isolated, 'zhuda.config.json'), 'utf8'));
-    const report = await runZhudaBuild({ projectRoot: isolated, engineRoot, config, candidate: mode === 'candidate' });
+    const report = await runZhudaBuild({
+      projectRoot: isolated,
+      engineRoot,
+      config,
+      candidate: mode === 'candidate',
+    });
     const sourceArtifacts = path.join(isolated, 'dist', mode === 'candidate' ? 'candidate' : '');
-    const destinationArtifacts = path.join(projectRoot, 'dist', mode === 'candidate' ? 'candidate' : 'release');
+    const destinationArtifacts = path.join(
+      projectRoot,
+      'dist',
+      mode === 'candidate' ? 'candidate' : 'release',
+    );
     replaceDirectory(sourceArtifacts, destinationArtifacts);
     return { report, isolated, artifacts: destinationArtifacts };
   } finally {
@@ -49,5 +58,11 @@ export function removeIsolated(root) {
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const mode = process.argv.includes('--release') ? 'release' : 'candidate';
   const result = await buildIsolated({ mode, keep: false });
-  console.log(JSON.stringify({ mode, output: result.artifacts, fingerprint: result.report.fingerprint }, null, 2));
+  console.log(
+    JSON.stringify(
+      { mode, output: result.artifacts, fingerprint: result.report.fingerprint },
+      null,
+      2,
+    ),
+  );
 }

@@ -1,6 +1,6 @@
-import { awaitAbortable } from "./AsyncOperation.ts";
-import { ZhudaPhysicalCameraRig } from "./PhysicalCamera.ts";
-import type { ZhudaRuntimeSession } from "./Runtime.ts";
+import { awaitAbortable } from './AsyncOperation.ts';
+import { ZhudaPhysicalCameraRig } from './PhysicalCamera.ts';
+import type { ZhudaRuntimeSession } from './Runtime.ts';
 
 export interface CinematicCaptureOptions {
   width: number;
@@ -25,9 +25,9 @@ export interface CinematicFramePixels {
   index: number;
   time: number;
   samples: number;
-  colorSpace: "srgb";
-  accumulation: "display-linear";
-  alpha: "opaque";
+  colorSpace: 'srgb';
+  accumulation: 'display-linear';
+  alpha: 'opaque';
   /** Top-left origin. Caller owns returned bytes. */
   rgba: Uint8Array;
 }
@@ -54,13 +54,8 @@ const linear = Float32Array.from({ length: 256 }, (_, i) => {
 });
 const srgb = (x: number) =>
   Math.round(
-    Math.min(
-      1,
-      Math.max(
-        0,
-        x <= 0.0031308 ? 12.92 * x : 1.055 * Math.pow(x, 1 / 2.4) - 0.055,
-      ),
-    ) * 255,
+    Math.min(1, Math.max(0, x <= 0.0031308 ? 12.92 * x : 1.055 * Math.pow(x, 1 / 2.4) - 0.055)) *
+      255,
   );
 
 /** Owns one offscreen target and a native scene freeze. The runtime must be paused.
@@ -95,16 +90,14 @@ export class ZhudaCinematicCapture {
       limit = options.maxWorkingBytes ?? 512 * 1024 * 1024,
       timeout = options.timeoutMs ?? 30000;
     if (
-      ![width, height].every(
-        (v) => Number.isInteger(v) && v > 0 && v <= 8192,
-      ) ||
+      ![width, height].every((v) => Number.isInteger(v) && v > 0 && v <= 8192) ||
       !Number.isSafeInteger(limit) ||
       limit <= 0 ||
       width * height * 24 > limit
     )
-      throw Error("Cinematic pixel budget exceeded");
+      throw Error('Cinematic pixel budget exceeded');
     if (!Number.isSafeInteger(timeout) || timeout <= 0 || timeout > 2147483647)
-      throw Error("Invalid cinematic deadline");
+      throw Error('Invalid cinematic deadline');
     if (
       scene.destroyed ||
       !scene.parent ||
@@ -112,11 +105,8 @@ export class ZhudaCinematicCapture {
       locked.has(scene) ||
       !runtime.paused
     )
-      throw Error(
-        "Capture requires a mounted unowned scene and paused runtime",
-      );
-    if (lens.camera.taa)
-      throw Error("Disable temporal AA for independently sampled capture");
+      throw Error('Capture requires a mounted unowned scene and paused runtime');
+    if (lens.camera.taa) throw Error('Disable temporal AA for independently sampled capture');
     this.scene = scene as CaptureScene;
     this.lens = lens;
     this.runtime = runtime;
@@ -143,24 +133,14 @@ export class ZhudaCinematicCapture {
     locked.add(scene);
   }
   private check() {
-    if (
-      this.disposed ||
-      this.scene.destroyed ||
-      this.lens.camera.destroyed ||
-      !this.runtime.paused
-    )
-      throw Error("Capture is disposed or runtime resumed");
-    if (this.lens.camera.taa)
-      throw Error("Disable temporal AA for independently sampled capture");
+    if (this.disposed || this.scene.destroyed || this.lens.camera.destroyed || !this.runtime.paused)
+      throw Error('Capture is disposed or runtime resumed');
+    if (this.lens.camera.taa) throw Error('Disable temporal AA for independently sampled capture');
   }
-  async renderFrame(
-    request: CinematicFrameRequest,
-  ): Promise<CinematicFramePixels> {
+  async renderFrame(request: CinematicFrameRequest): Promise<CinematicFramePixels> {
     this.check();
     if (this.busy || this.reading)
-      throw Error(
-        "Cinematic capture is already rendering or draining readback",
-      );
+      throw Error('Cinematic capture is already rendering or draining readback');
     const count = request.samples ?? 1;
     if (
       !Number.isSafeInteger(request.index) ||
@@ -171,25 +151,18 @@ export class ZhudaCinematicCapture {
       !Number.isInteger(count) ||
       count < 1 ||
       count > 256 ||
-      typeof request.sample !== "function"
+      typeof request.sample !== 'function'
     )
-      throw Error("Invalid cinematic frame request");
+      throw Error('Invalid cinematic frame request');
     if (request.signal?.aborted)
-      throw (
-        request.signal.reason ?? new DOMException("Cancelled", "AbortError")
-      );
+      throw request.signal.reason ?? new DOMException('Cancelled', 'AbortError');
     this.busy = true;
     const controller = (this.controller = new AbortController());
     const abort = () =>
-      controller.abort(
-        request.signal?.reason ?? new DOMException("Cancelled", "AbortError"),
-      );
-    request.signal?.addEventListener("abort", abort, { once: true });
+      controller.abort(request.signal?.reason ?? new DOMException('Cancelled', 'AbortError'));
+    request.signal?.addEventListener('abort', abort, { once: true });
     const timer = setTimeout(
-      () =>
-        controller.abort(
-          new DOMException("Cinematic capture timed out", "TimeoutError"),
-        ),
+      () => controller.abort(new DOMException('Cinematic capture timed out', 'TimeoutError')),
       this.timeoutMs,
     );
     const l = (globalThis as unknown as { Laya: typeof Laya }).Laya;
@@ -203,27 +176,16 @@ export class ZhudaCinematicCapture {
         // Forward shutter interval; no negative time or cross-cut history dependency.
         const seconds =
           time +
-          ((count === 1 ? 0 : (i + 0.5) / count) *
-            this.lens.spec.shutterAngle) /
-            360 /
-            request.fps;
+          ((count === 1 ? 0 : (i + 0.5) / count) * this.lens.spec.shutterAngle) / 360 / request.fps;
         const sampled = request.sample(seconds) as unknown;
-        if (
-          sampled &&
-          typeof (sampled as PromiseLike<unknown>).then === "function"
-        ) {
+        if (sampled && typeof (sampled as PromiseLike<unknown>).then === 'function') {
           void Promise.resolve(sampled).catch(() => {});
-          throw Error(
-            "Cinematic sample must be synchronous; load assets before capture",
-          );
+          throw Error('Cinematic sample must be synchronous; load assets before capture');
         }
         this.check();
         this.lens.apply(this.width / this.height);
         this.scene._time = seconds;
-        this.scene._shaderValues.setNumber(
-          l.Shader3D.propertyNameToID("u_Time"),
-          seconds,
-        );
+        this.scene._shaderValues.setNumber(l.Shader3D.propertyNameToID('u_Time'), seconds);
         const radius = Math.sqrt(halton(i + 1, 5)),
           angle = 2 * Math.PI * halton(i + 1, 7),
           aperture = count > 1 && request.aperture !== false;
@@ -242,11 +204,7 @@ export class ZhudaCinematicCapture {
           l.LayaGL.renderEngine.startFrame();
           const previousTarget = this.lens.camera.renderTarget;
           try {
-            l.Camera.drawRenderTextureByScene(
-              this.lens.camera,
-              this.scene,
-              this.target,
-            );
+            l.Camera.drawRenderTextureByScene(this.lens.camera, this.scene, this.target);
           } finally {
             this.lens.camera.renderTarget = previousTarget;
             this.scene.recaculateCullCamera();
@@ -255,13 +213,7 @@ export class ZhudaCinematicCapture {
         } finally {
           restore();
         }
-        const readback = this.target.getDataAsync(
-          0,
-          0,
-          this.width,
-          this.height,
-          pixels,
-        );
+        const readback = this.target.getDataAsync(0, 0, this.width, this.height, pixels);
         this.reading = true;
         const drained = () => {
           this.reading = false;
@@ -298,14 +250,14 @@ export class ZhudaCinematicCapture {
         index: request.index,
         time,
         samples: count,
-        colorSpace: "srgb",
-        accumulation: "display-linear",
-        alpha: "opaque",
+        colorSpace: 'srgb',
+        accumulation: 'display-linear',
+        alpha: 'opaque',
         rgba: output,
       };
     } finally {
       clearTimeout(timer);
-      request.signal?.removeEventListener("abort", abort);
+      request.signal?.removeEventListener('abort', abort);
       this.busy = false;
       this.controller = null;
       this.releaseTarget();
@@ -321,16 +273,13 @@ export class ZhudaCinematicCapture {
   dispose() {
     if (this.disposed) return;
     this.disposed = true;
-    this.controller?.abort(new DOMException("Capture disposed", "AbortError"));
+    this.controller?.abort(new DOMException('Capture disposed', 'AbortError'));
     if (!this.scene.destroyed) {
       this.scene._update = this.previous.update;
       this.scene._renderByEditor = this.previous.editor;
       this.scene._time = this.previous.time;
       const l = (globalThis as unknown as { Laya: typeof Laya }).Laya;
-      this.scene._shaderValues.setNumber(
-        l.Shader3D.propertyNameToID("u_Time"),
-        this.previous.time,
-      );
+      this.scene._shaderValues.setNumber(l.Shader3D.propertyNameToID('u_Time'), this.previous.time);
     }
     this.releaseTarget();
   }

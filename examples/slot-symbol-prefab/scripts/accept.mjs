@@ -3,7 +3,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { acceptConsumer } from '../../../packages/compiler/consumer-accept.mjs';
-import { createIsolatedProject, engineRoot, projectRoot, removeIsolated } from './project-tools.mjs';
+import {
+  createIsolatedProject,
+  engineRoot,
+  projectRoot,
+  removeIsolated,
+} from './project-tools.mjs';
 import { writeManifest } from './update-manifest.mjs';
 
 const copyBack = (isolated, relative) => {
@@ -24,7 +29,9 @@ try {
   copyBack(isolated, 'reference');
   copyBack(isolated, 'evidence');
   if (result.published) copyBack(isolated, 'dist');
-  console.log(JSON.stringify({ capture, published: result.published, reports: result.reports }, null, 2));
+  console.log(
+    JSON.stringify({ capture, published: result.published, reports: result.reports }, null, 2),
+  );
 } finally {
   removeIsolated(isolated);
 }

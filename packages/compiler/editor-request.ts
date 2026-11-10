@@ -1,5 +1,7 @@
 declare global {
-  interface Window { __ZHUDA_EDITOR_TOKEN__?: string; }
+  interface Window {
+    __ZHUDA_EDITOR_TOKEN__?: string;
+  }
 }
 
 /** Same-origin editor API capability; static engine/assets remain ordinary URLs. */

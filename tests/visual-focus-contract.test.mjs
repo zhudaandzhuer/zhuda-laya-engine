@@ -8,17 +8,14 @@ function makeTargets(ids) {
     id,
     setDimmed(dimmed) {
       state.set(id, dimmed);
-    }
+    },
   }));
   return { targets, state };
 }
 
 test('VisualFocusContract dims every target outside the winning set', () => {
   const { targets, state } = makeTargets(['reel0:row0', 'reel1:row0', 'reel2:row0']);
-  const report = VisualFocusContract.apply(
-    targets,
-    VisualFocusContract.focus(['reel1:row0'])
-  );
+  const report = VisualFocusContract.apply(targets, VisualFocusContract.focus(['reel1:row0']));
 
   assert.equal(report.mode, 'focus');
   assert.equal(report.active, true);

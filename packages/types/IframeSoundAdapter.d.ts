@@ -7,9 +7,9 @@
  * logical events through scheduleTone; they must not create another
  * AudioContext for the same event.
  */
-import type { IframeAudioChannel, IframeSoundAdapterOptions, IframeSoundDiagnostics, IframeToneOptions, IframeSampleOptions, IframeSampleInfo } from "./index";
-import type { IframeStreamOptions, IframeStreamInfo, IframeSampleBackend } from "./zhuda-audio";
-import type { IframeOfflineMixOptions, IframeOfflineMix } from "./zhuda-audio";
+import type { IframeAudioChannel, IframeSoundAdapterOptions, IframeSoundDiagnostics, IframeToneOptions, IframeSampleOptions, IframeSampleInfo } from './index';
+import type { IframeStreamOptions, IframeStreamInfo, IframeSampleBackend } from './zhuda-audio';
+import type { IframeOfflineMixOptions, IframeOfflineMix } from './zhuda-audio';
 export interface QueuedAudioTask {
     sampleId?: string;
     streamId?: string;

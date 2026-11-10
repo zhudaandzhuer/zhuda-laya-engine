@@ -12,13 +12,20 @@ import { brandSplashCss, brandSplashMarkup } from './branding.mjs';
  * 4. 產出無順序死鎖的 dist/web/index.html 與 dist/build-manifest.json
  */
 
-import {copyEngineLibraries} from './webgpu-loader.mjs';
+import { copyEngineLibraries } from './webgpu-loader.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import esbuild from 'esbuild';
 import { scanAndGenerateRegistry, zhudaReflectionPlugin } from './ast-scanner.mjs';
-import {ENGINE_PRESET_PROFILES,TopologyResolver,ZhudaAssetSerializer,PixelCalibrationEngine,ViewportMatrixEngine,UnityBridgePipeline} from './compiler-runtime.mjs';
+import {
+  ENGINE_PRESET_PROFILES,
+  TopologyResolver,
+  ZhudaAssetSerializer,
+  PixelCalibrationEngine,
+  ViewportMatrixEngine,
+  UnityBridgePipeline,
+} from './compiler-runtime.mjs';
 import { runConsumerBuild } from './consumer-build.mjs';
 import { auditVisualPresentationContracts } from './visual-contract-audit.mjs';
 
@@ -35,12 +42,23 @@ export async function runZhudaBuild(options = {}) {
   const startTime = performance.now();
   const projectRoot = path.resolve(options.projectRoot || process.cwd());
   const configPath = path.join(projectRoot, 'zhuda.config.json');
-  if (!fs.existsSync(configPath)) throw Error('Missing zhuda.config.json in selected project; use --project DIRECTORY or zhuda-laya-init');
+  if (!fs.existsSync(configPath))
+    throw Error(
+      'Missing zhuda.config.json in selected project; use --project DIRECTORY or zhuda-laya-init',
+    );
   const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
   const engineRoot = resolveEngineRoot(projectRoot, options.engineRoot || config.engineRoot);
-  const engineVersion = JSON.parse(fs.readFileSync(path.join(engineRoot, 'package.json'), 'utf8')).version;
+  const engineVersion = JSON.parse(
+    fs.readFileSync(path.join(engineRoot, 'package.json'), 'utf8'),
+  ).version;
 
-  if (projectRoot !== engineRoot && config.demoAssets !== true) return runConsumerBuild({projectRoot,engineRoot,config,mode:options.candidate?'candidate':'release'});
+  if (projectRoot !== engineRoot && config.demoAssets !== true)
+    return runConsumerBuild({
+      projectRoot,
+      engineRoot,
+      config,
+      mode: options.candidate ? 'candidate' : 'release',
+    });
   if (options.candidate) throw Error('--candidate requires an independent consumer project');
 
   // A project that declares a visual presentation manifest must pass its
@@ -50,34 +68,33 @@ export async function runZhudaBuild(options = {}) {
   const visualContractConfigured = typeof config.visualContract === 'string';
   const visualContractReport = auditVisualPresentationContracts({
     projectRoot,
-    manifestPath: visualContractConfigured ? config.visualContract : undefined
+    manifestPath: visualContractConfigured ? config.visualContract : undefined,
   });
   if (visualContractConfigured || visualContractReport.manifestPath) {
     if (!visualContractReport.passed) {
       throw new Error(
-        `[Zhuda-Compiler] 視覺演出契約閘門失敗:\n${visualContractReport.issues.map((issue) => `- ${issue}`).join('\n')}`
+        `[Zhuda-Compiler] 視覺演出契約閘門失敗:\n${visualContractReport.issues.map((issue) => `- ${issue}`).join('\n')}`,
       );
     }
     console.log(
-      `  ✔ [Visual Contract Gate] 已驗證 ${visualContractReport.contractCount} 個演出契約 (${visualContractReport.contractIds.join(', ')})`
+      `  ✔ [Visual Contract Gate] 已驗證 ${visualContractReport.contractCount} 個演出契約 (${visualContractReport.contractIds.join(', ')})`,
     );
   }
 
   const requestedProfile = options.profile || config.profile || 'full-all-in-one';
   const features =
-    options.features ||
-    config.features ||
-    ENGINE_PRESET_PROFILES[requestedProfile] ||
-    'all';
+    options.features || config.features || ENGINE_PRESET_PROFILES[requestedProfile] || 'all';
 
-  console.log(`\n🚀 [Zhuda-Compiler] 啟動 Zero-IDE 建置管線 (Project: ${projectRoot}, Profile: ${requestedProfile})...`);
+  console.log(
+    `\n🚀 [Zhuda-Compiler] 啟動 Zero-IDE 建置管線 (Project: ${projectRoot}, Profile: ${requestedProfile})...`,
+  );
 
   // Step 1: AST 掃描並生成自動類別反射註冊表
   const reflectionResult = scanAndGenerateRegistry(projectRoot);
   console.log(
     `  ✔ [AST Reflection] 掃描完成，自動註冊 ${reflectionResult.classes.length} 個組件類別: ${reflectionResult.classes
       .map((c) => c.className)
-      .join(', ')}`
+      .join(', ')}`,
   );
 
   // Step 2: 拓撲依賴解析與序列審計
@@ -85,11 +102,11 @@ export async function runZhudaBuild(options = {}) {
   const sequenceIssues = TopologyResolver.auditFileSequence(topology.orderedFiles);
   if (sequenceIssues.length > 0) {
     throw new Error(
-      `[Zhuda-Compiler] 拓撲序列審計失敗:\n${sequenceIssues.map((i) => i.message).join('\n')}`
+      `[Zhuda-Compiler] 拓撲序列審計失敗:\n${sequenceIssues.map((i) => i.message).join('\n')}`,
     );
   }
   console.log(
-    `  ✔ [Topology Guard] 已解析 ${topology.orderedFiles.length} 個引擎模組 (${topology.totalSizeKB} KB，剪枝縮減率: ${topology.prunedRatioPercent}%)，0 順序死鎖！`
+    `  ✔ [Topology Guard] 已解析 ${topology.orderedFiles.length} 個引擎模組 (${topology.totalSizeKB} KB，剪枝縮減率: ${topology.prunedRatioPercent}%)，0 順序死鎖！`,
   );
 
   // Step 3: 同步引擎庫至 dist/web/libs
@@ -126,7 +143,7 @@ export async function runZhudaBuild(options = {}) {
       fileName,
       category: hierarchyData._zhudaMeta?.category || (isScene ? 'scene-lh' : 'ui-prefab'),
       sizeBytes: Buffer.byteLength(jsonText, 'utf8'),
-      path: isScene ? `assets/scenes/${fileName}` : `assets/prefabs/${fileName}`
+      path: isScene ? `assets/scenes/${fileName}` : `assets/prefabs/${fileName}`,
     });
 
     if (!isScene && hierarchyData._zhudaMeta?.targetSpec) {
@@ -136,7 +153,7 @@ export async function runZhudaBuild(options = {}) {
 
   const convergenceDemo = PixelCalibrationEngine.runSelfConvergenceDemo();
   const nineSliceVerification = PixelCalibrationEngine.verifyNineSliceIntegrity(
-    builtinAssets['NineSliceDialogFrame.lh']
+    builtinAssets['NineSliceDialogFrame.lh'],
   );
   const viewportMatrixVerification = ViewportMatrixEngine.auditAllViewportProfiles();
   const unityMigrationVerification = UnityBridgePipeline.runFullMigrationVerification();
@@ -155,7 +172,7 @@ export async function runZhudaBuild(options = {}) {
         measuredBox: convergenceDemo.beforeReport.measuredBox,
         expectedBox: convergenceDemo.beforeReport.expectedBox,
         pixelErrors: convergenceDemo.beforeReport.pixelErrors,
-        colorMetrics: convergenceDemo.beforeReport.colorMetrics
+        colorMetrics: convergenceDemo.beforeReport.colorMetrics,
       },
       appliedPatches: convergenceDemo.appliedPatches,
       after: {
@@ -163,19 +180,23 @@ export async function runZhudaBuild(options = {}) {
         expectedBox: convergenceDemo.afterReport.expectedBox,
         pixelErrors: convergenceDemo.afterReport.pixelErrors,
         colorMetrics: convergenceDemo.afterReport.colorMetrics,
-        passed: convergenceDemo.afterReport.passed
-      }
+        passed: convergenceDemo.afterReport.passed,
+      },
     },
     nineSliceVerification,
     viewportMatrixVerification,
     unityMigrationVerification,
-    assets: calibrationReports
+    assets: calibrationReports,
   };
 
   const calibrationReportPath = path.join(projectRoot, 'dist/asset-calibration-report.json');
-  fs.writeFileSync(calibrationReportPath, JSON.stringify(calibrationReportPayload, null, 2), 'utf8');
+  fs.writeFileSync(
+    calibrationReportPath,
+    JSON.stringify(calibrationReportPayload, null, 2),
+    'utf8',
+  );
   console.log(
-    `  ✔ [Static Assets & ΔE Gate] 已序列化 ${staticAssetFiles.length} 份 .lh/.ls 靜態資產，${calibrationReports.length}/${calibrationReports.length} 通過 0px 邊界與 ΔE00 色差校準！`
+    `  ✔ [Static Assets & ΔE Gate] 已序列化 ${staticAssetFiles.length} 份 .lh/.ls 靜態資產，${calibrationReports.length}/${calibrationReports.length} 通過 0px 邊界與 ΔE00 色差校準！`,
   );
 
   copyEngineLibraries(topology, vendorLibsDir, outLibsDir);
@@ -185,7 +206,7 @@ export async function runZhudaBuild(options = {}) {
   if (fs.existsSync(projectAssetsDir)) {
     fs.cpSync(projectAssetsDir, path.join(outWebDir, 'assets'), {
       recursive: true,
-      filter: (src) => !src.includes('.DS_Store')
+      filter: (src) => !src.includes('.DS_Store'),
     });
   }
 
@@ -203,7 +224,7 @@ export async function runZhudaBuild(options = {}) {
     target: ['es2020'],
     sourcemap: true,
     plugins: [zhudaReflectionPlugin(projectRoot)],
-    logLevel: 'silent'
+    logLevel: 'silent',
   });
 
   const bundleSizeKB = Number((fs.statSync(bundleOutFile).size / 1024).toFixed(1));
@@ -224,13 +245,27 @@ export async function runZhudaBuild(options = {}) {
  * License: MIT
  */`;
 
-    for (const [entry, stem] of [[sdkEntryFile, 'zhuda-laya-engine'], [path.join(engineRoot, 'packages/demo/index.ts'), 'zhuda-laya-demo']]) {
-      for (const [format, extension, platform] of [['esm', '.esm.js', 'neutral'], ['cjs', '.cjs', 'node']]) {
+    for (const [entry, stem] of [
+      [sdkEntryFile, 'zhuda-laya-engine'],
+      [path.join(engineRoot, 'packages/demo/index.ts'), 'zhuda-laya-demo'],
+    ]) {
+      for (const [format, extension, platform] of [
+        ['esm', '.esm.js', 'neutral'],
+        ['cjs', '.cjs', 'node'],
+      ]) {
         for (const minify of [false, true]) {
-          await esbuild.build({ entryPoints: [entry], bundle: true,
+          await esbuild.build({
+            entryPoints: [entry],
+            bundle: true,
             outfile: path.join(sdkOutDir, stem + (minify ? '.min' : '') + extension),
-            format, platform, target: ['es2020'], minify, sourcemap: false,
-            banner: { js: sdkBanner }, logLevel: 'silent' });
+            format,
+            platform,
+            target: ['es2020'],
+            minify,
+            sourcemap: false,
+            banner: { js: sdkBanner },
+            logLevel: 'silent',
+          });
         }
       }
     }
@@ -238,7 +273,7 @@ export async function runZhudaBuild(options = {}) {
     sdkEsmSizeKB = Number((fs.statSync(sdkEsmFile).size / 1024).toFixed(1));
     sdkCjsSizeKB = Number((fs.statSync(sdkCjsFile).size / 1024).toFixed(1));
     console.log(
-      `  ✔ [SDK Package] 產出 dist/sdk/zhuda-laya-engine.esm.js (${sdkEsmSizeKB} KB) & .cjs (${sdkCjsSizeKB} KB)`
+      `  ✔ [SDK Package] 產出 dist/sdk/zhuda-laya-engine.esm.js (${sdkEsmSizeKB} KB) & .cjs (${sdkCjsSizeKB} KB)`,
     );
   }
 
@@ -256,16 +291,22 @@ export async function runZhudaBuild(options = {}) {
       target: ['es2020'],
       sourcemap: true,
       plugins: [zhudaReflectionPlugin(projectRoot)],
-      logLevel: 'silent'
+      logLevel: 'silent',
     });
   }
 
   // Step 5: 生成嚴格拓撲順序的 dist/web/index.html 與孤立微預覽 dist/web/preview.html
   let scriptTags = topology.orderedFiles
-    .map((file, idx) => `    <!-- [${idx + 1}/${topology.orderedFiles.length}] -->\n    <script type="text/javascript" src="libs/${file}"></script>`)
+    .map(
+      (file, idx) =>
+        `    <!-- [${idx + 1}/${topology.orderedFiles.length}] -->\n    <script type="text/javascript" src="libs/${file}"></script>`,
+    )
     .join('\n');
 
-  if (topology.orderedFiles.includes('spine-core-3.8.js') || topology.orderedFiles.includes('spine-core-4.2.js')) {
+  if (
+    topology.orderedFiles.includes('spine-core-3.8.js') ||
+    topology.orderedFiles.includes('spine-core-4.2.js')
+  ) {
     const spine38 = topology.orderedFiles.includes('spine-core-3.8.js');
     const version = spine38 ? '3.8' : '4.2';
     const first = spine38 ? 3 : 4;
@@ -332,11 +373,14 @@ ${scriptTags}
   fs.writeFileSync(indexHtmlPath, htmlContent, 'utf8');
 
   // 生成孤立微預覽工作台 dist/web/preview.html (僅載入 2d+ui+spine42 輕量拓撲，50ms 極速啟動)
-  const previewTopology = TopologyResolver.resolveByFeatures(['core', '2d', 'ui', 'spine42'], config.renderer);
+  const previewTopology = TopologyResolver.resolveByFeatures(
+    ['core', '2d', 'ui', 'spine42'],
+    config.renderer,
+  );
   const previewScriptTags = previewTopology.orderedFiles
     .map(
       (file, idx) =>
-        `    <!-- [${idx + 1}/${previewTopology.orderedFiles.length}] -->\n    <script type="text/javascript" src="libs/${file}"></script>`
+        `    <!-- [${idx + 1}/${previewTopology.orderedFiles.length}] -->\n    <script type="text/javascript" src="libs/${file}"></script>`,
     )
     .join('\n');
 
@@ -521,7 +565,7 @@ ${previewScriptTags}
       moduleCount: res.orderedFiles.length,
       totalSizeKB: res.totalSizeKB,
       prunedRatioPercent: res.prunedRatioPercent,
-      files: res.orderedFiles
+      files: res.orderedFiles,
     };
   }
 
@@ -536,7 +580,7 @@ ${previewScriptTags}
       website: 'https://layaair.com/',
       repository: 'https://github.com/layabox/LayaAir',
       baseVersion: '3.4.2',
-      edition: '豬大 (zhudaandzhuer) AI-Agent-Friendly 開源分支版本'
+      edition: '豬大 (zhudaandzhuer) AI-Agent-Friendly 開源分支版本',
     },
     engine: 'zhuda-laya-engine (Zhuda-LayaAir · Agent-Friendly Fork of LayaAir 3.4.2)',
     baseVersion: '3.4.2',
@@ -548,13 +592,16 @@ ${previewScriptTags}
       esmSizeKB: sdkEsmSizeKB,
       cjsPath: 'dist/sdk/zhuda-laya-engine.cjs',
       cjsSizeKB: sdkCjsSizeKB,
-      typesPath: 'packages/types/index.d.ts'
+      typesPath: 'packages/types/index.d.ts',
     },
     enginePayloadSizeKB: topology.totalSizeKB,
     prunedRatioPercent: topology.prunedRatioPercent,
     orderedLibrariesCount: topology.orderedFiles.length,
     orderedLibraries: topology.orderedFiles,
-    reflectedComponents: reflectionResult.classes.map(component => ({ ...component, filePath: path.relative(projectRoot, component.filePath).split(path.sep).join('/') })),
+    reflectedComponents: reflectionResult.classes.map((component) => ({
+      ...component,
+      filePath: path.relative(projectRoot, component.filePath).split(path.sep).join('/'),
+    })),
     staticAssets: staticAssetFiles,
     staticCalibrationSummary: {
       totalAssets: staticAssetFiles.length,
@@ -563,14 +610,17 @@ ${previewScriptTags}
       beforePxError: convergenceDemo.beforeReport.pixelErrors.maxAbsErrorPx,
       afterPxError: convergenceDemo.afterReport.pixelErrors.maxAbsErrorPx,
       beforeDeltaE2000: convergenceDemo.beforeReport.colorMetrics.maxDeltaE2000,
-      afterDeltaE2000: convergenceDemo.afterReport.colorMetrics.maxDeltaE2000
+      afterDeltaE2000: convergenceDemo.afterReport.colorMetrics.maxDeltaE2000,
     },
     visualPresentationContract: visualContractReport.manifestPath
       ? {
-          path: path.relative(projectRoot, visualContractReport.manifestPath).split(path.sep).join('/'),
+          path: path
+            .relative(projectRoot, visualContractReport.manifestPath)
+            .split(path.sep)
+            .join('/'),
           contractCount: visualContractReport.contractCount,
           contractIds: visualContractReport.contractIds,
-          passed: visualContractReport.passed
+          passed: visualContractReport.passed,
         }
       : null,
     profileComparisons,
@@ -580,25 +630,36 @@ ${previewScriptTags}
   fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2), 'utf8');
 
   console.log(
-    `  ✔ [esbuild Bundle] 產出 dist/web/js/bundle.js (${bundleSizeKB} KB)，總耗時 ${elapsedMs} ms！`
+    `  ✔ [esbuild Bundle] 產出 dist/web/js/bundle.js (${bundleSizeKB} KB)，總耗時 ${elapsedMs} ms！`,
   );
   console.log(`  ✔ [Manifest] 已寫入 dist/build-manifest.json\n`);
 
   return manifest;
 }
 
-const launchedAsCli = cliMain(import.meta.url, 'Usage: zhuda-laya-build [--project DIRECTORY] [--profile NAME] [--candidate]\nRequires zhuda.config.json in the selected project.');
+const launchedAsCli = cliMain(
+  import.meta.url,
+  'Usage: zhuda-laya-build [--project DIRECTORY] [--profile NAME] [--candidate]\nRequires zhuda.config.json in the selected project.',
+);
 if (launchedAsCli) {
   if (process.argv.includes('--platform') || process.argv.includes('--list-platforms')) {
-    import('./zhuda-minigame.mjs').then(({miniGameCli})=>miniGameCli()).catch(error=>{console.error(error.message);process.exitCode=1;});
+    import('./zhuda-minigame.mjs')
+      .then(({ miniGameCli }) => miniGameCli())
+      .catch((error) => {
+        console.error(error.message);
+        process.exitCode = 1;
+      });
   } else {
-  const argProfileIdx = process.argv.indexOf('--profile');
-  const profile = argProfileIdx !== -1 ? process.argv[argProfileIdx + 1] : undefined;
-  const argProjectIdx = process.argv.indexOf('--project');
-  const projectRoot = argProjectIdx !== -1 ? path.resolve(process.argv[argProjectIdx + 1]) : undefined;
-  runZhudaBuild({ profile, projectRoot, candidate:process.argv.includes('--candidate') }).catch((err) => {
-    console.error(err);
-    process.exit(1);
-  });
+    const argProfileIdx = process.argv.indexOf('--profile');
+    const profile = argProfileIdx !== -1 ? process.argv[argProfileIdx + 1] : undefined;
+    const argProjectIdx = process.argv.indexOf('--project');
+    const projectRoot =
+      argProjectIdx !== -1 ? path.resolve(process.argv[argProjectIdx + 1]) : undefined;
+    runZhudaBuild({ profile, projectRoot, candidate: process.argv.includes('--candidate') }).catch(
+      (err) => {
+        console.error(err);
+        process.exit(1);
+      },
+    );
   }
 }

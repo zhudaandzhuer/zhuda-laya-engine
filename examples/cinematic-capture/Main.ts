@@ -12,14 +12,14 @@ import {
   IframeSoundAdapter,
   inspectSceneResources,
   type PrefabTree3D,
-} from "zhuda-laya-engine";
+} from 'zhuda-laya-engine';
 async function start() {
   const context = await ZhudaEngine.boot({
-    container: "#game",
+    container: '#game',
     width: 640,
     height: 360,
     dprCap: 3,
-    features: ["core", "2d", "3d", "gltf", "postProcess"],
+    features: ['core', '2d', '3d', 'gltf', 'postProcess'],
     preserveDrawingBuffer: true,
   });
   const scene = Zhuda3D.createScene3D(context.rootScene),
@@ -29,51 +29,47 @@ async function start() {
     });
   const chartSpec: PrefabTree3D = {
     materials: {
-      white: { type: "unlit", albedoColor: [1, 1, 1, 1] },
-      red: { type: "unlit", albedoColor: [1, 0, 0, 1] },
-      blue: { type: "unlit", albedoColor: [0, 0, 1, 1] },
-      yellow: { type: "unlit", albedoColor: [1, 1, 0, 1] },
+      white: { type: 'unlit', albedoColor: [1, 1, 1, 1] },
+      red: { type: 'unlit', albedoColor: [1, 0, 0, 1] },
+      blue: { type: 'unlit', albedoColor: [0, 0, 1, 1] },
+      yellow: { type: 'unlit', albedoColor: [1, 1, 0, 1] },
     },
     root: {
-      name: "LensChart",
+      name: 'LensChart',
       children: [
         ...[-1, 0, 1].flatMap((x, i) =>
           Array.from({ length: 7 }, (_, k) => ({
-            name: "bar" + i + "_" + k,
+            name: 'bar' + i + '_' + k,
             mesh: {
-              type: "box" as const,
+              type: 'box' as const,
               dimensions: { width: 0.025, height: 0.5, depth: 0.01 },
             },
-            material: "white",
-            localPosition: [x + (k - 3) * 0.045, 0.35, [2, 0, -2][i]] as [
-              number,
-              number,
-              number,
-            ],
+            material: 'white',
+            localPosition: [x + (k - 3) * 0.045, 0.35, [2, 0, -2][i]] as [number, number, number],
           })),
         ),
         {
-          name: "Top",
+          name: 'Top',
           mesh: {
-            type: "box",
+            type: 'box',
             dimensions: { width: 0.4, height: 0.08, depth: 0.01 },
           },
-          material: "blue",
+          material: 'blue',
           localPosition: [0, 0.9, 0],
         },
         {
-          name: "Bottom",
+          name: 'Bottom',
           mesh: {
-            type: "box",
+            type: 'box',
             dimensions: { width: 0.4, height: 0.08, depth: 0.01 },
           },
-          material: "yellow",
+          material: 'yellow',
           localPosition: [0, -0.9, 0],
         },
         {
-          name: "Mover",
-          mesh: { type: "sphere", dimensions: { radius: 0.1 } },
-          material: "red",
+          name: 'Mover',
+          mesh: { type: 'sphere', dimensions: { radius: 0.1 } },
+          material: 'red',
           localPosition: [-1, -0.7, 1],
         },
       ],
@@ -81,9 +77,9 @@ async function start() {
   };
   const chart = Zhuda3D.buildPrefabTree(chartSpec);
   scene.addChild(chart.root);
-  const provider = new DirectoryAssetProvider({ baseUrl: "./assets/" }),
+  const provider = new DirectoryAssetProvider({ baseUrl: './assets/' }),
     library = new ZhudaModelLibrary({ provider, maxIdle: 0 });
-  let model = await library.instantiate("multi-linear-skin.gltf");
+  let model = await library.instantiate('multi-linear-skin.gltf');
   scene.addChild(model.node);
   let inspector = new ZhudaModelInspector(model);
   let animation = inspector.inspect().animations[0];
@@ -112,37 +108,24 @@ async function start() {
   setup();
   const pose = (seconds: number) => {
     sampler.sample(seconds);
-    const p = chart.find("Mover").transform.localPosition.clone();
+    const p = chart.find('Mover').transform.localPosition.clone();
     p.x = -1 + seconds * 8;
-    chart.find("Mover").transform.localPosition = p;
+    chart.find('Mover').transform.localPosition = p;
   };
-  const encode = (frame: {
-    width: number;
-    height: number;
-    rgba: Uint8Array;
-  }) => {
-    const canvas = document.createElement("canvas");
+  const encode = (frame: { width: number; height: number; rgba: Uint8Array }) => {
+    const canvas = document.createElement('canvas');
     canvas.width = frame.width;
     canvas.height = frame.height;
     canvas
-      .getContext("2d")!
+      .getContext('2d')!
       .putImageData(
-        new ImageData(
-          new Uint8ClampedArray(frame.rgba),
-          frame.width,
-          frame.height,
-        ),
+        new ImageData(new Uint8ClampedArray(frame.rgba), frame.width, frame.height),
         0,
         0,
       );
     return canvas.toDataURL();
   };
-  const png = async (
-    index: number,
-    samples = 1,
-    aperture = true,
-    motion = true,
-  ) =>
+  const png = async (index: number, samples = 1, aperture = true, motion = true) =>
     encode(
       await capture!.renderFrame({
         index,
@@ -156,12 +139,11 @@ async function start() {
     sampleProvider: provider,
     maxActiveVoices: 24,
   });
-  await audio.loadSample("tone.wav");
-  await audio.loadSample("score.wav");
+  await audio.loadSample('tone.wav');
+  await audio.loadSample('score.wav');
   const bytes = (b: Uint8Array) => {
-    let s = "";
-    for (let i = 0; i < b.length; i += 8192)
-      s += String.fromCharCode(...b.subarray(i, i + 8192));
+    let s = '';
+    for (let i = 0; i < b.length; i += 8192) s += String.fromCharCode(...b.subarray(i, i + 8192));
     return btoa(s);
   };
   Object.assign(window, {
@@ -205,21 +187,19 @@ async function start() {
         sampler.sample(seconds, loop);
         return {
           inspection: inspector.inspect(),
-          nodes: inspector
-            .inspect()
-            .nodes.map((n) => ({
-              name: n.name,
-              position: [
-                inspector.node(n.path).transform.localPosition.x,
-                inspector.node(n.path).transform.localPosition.y,
-                inspector.node(n.path).transform.localPosition.z,
-              ],
-            })),
+          nodes: inspector.inspect().nodes.map((n) => ({
+            name: n.name,
+            position: [
+              inspector.node(n.path).transform.localPosition.x,
+              inspector.node(n.path).transform.localPosition.y,
+              inspector.node(n.path).transform.localPosition.z,
+            ],
+          })),
         };
       },
       async audio(muted = false) {
-        audio.setChannelVolume("master", 0.5);
-        audio.setChannelVolume("bgm", 0.4);
+        audio.setChannelVolume('master', 0.5);
+        audio.setChannelVolume('bgm', 0.4);
         audio.setMuted(muted);
         const result = await audio.renderOffline({
           durationSec: 1,
@@ -227,12 +207,12 @@ async function start() {
           channels: 2,
           cues: [
             {
-              id: "score",
-              sampleId: "tone.wav",
+              id: 'score',
+              sampleId: 'tone.wav',
               atSec: 0.125,
               durationSec: 0.75,
               loop: true,
-              channel: "bgm",
+              channel: 'bgm',
               fadeInSec: 0.125,
               fadeOutSec: 0.125,
             },
@@ -248,11 +228,11 @@ async function start() {
               durationSec: 1,
               cues: [
                 {
-                  id: "note",
-                  sampleId: "score.wav",
+                  id: 'note',
+                  sampleId: 'score.wav',
                   atSec: 0,
                   durationSec: 1,
-                  channel: "bgm",
+                  channel: 'bgm',
                   fadeInSec: 0.05,
                   fadeOutSec: 0.1,
                 },
