@@ -67,6 +67,29 @@ stages `game305` assets in its own build script (`assetInclude path is missing:
 game305`). The consumer's real pin, its evidence and the editor on port 8891
 were not modified; they are updated by the consumer after push.
 
+### Consumer adoption (consumer-owned record)
+
+The consumer adopted `c5bfb5f` in its own session; its record is
+`docs/plans/ENGINE_UPDATE_C5BFB5F_20261110.md` with evidence under
+`evidence/engine-c5bfb5f-adoption-20261110/` and
+`evidence/game305-prefab-compare-c5bfb5f-20261110/` in the consumer repository
+(not copied here). It reports:
+
+- Consumer `npm run verify` PASS (146/146 tests, 108 math checks, visual
+  contract), candidate builds for all four games PASS, and a candidate menu/
+  WebView browser check at DPR 1/2 PASS.
+- All 15 configured Prefab checks re-rendered on `c5bfb5f` against the
+  2026-11-09 baselines without touching the gate folder: 12 are pixel-identical;
+  `ui-hud`, `ui-auto` and `ui-sound` differ, each traced by changed source
+  hashes to consumer Prefab edits made after those baselines. The engine change
+  therefore shows no rendering difference on unedited Prefabs.
+- Release build remains BLOCKED on the consumer's approval of new baselines.
+
+Later engine commits change the package only in `0a95a52` (declaration
+specifiers and `packages/types/.npmignore`); the consumer's Bundler typecheck
+passes against that tarball. `d6588d8`, `be4b8ea` and this record's updates
+touch tests, scripts and documentation only.
+
 ## Limits and decision
 
 - Hosted Windows CI is not Windows GPU hardware acceptance.
@@ -81,5 +104,10 @@ were not modified; they are updated by the consumer after push.
 - Consumer release publication waits on its Prefab re-approval for this engine.
 
 Decision: **Implemented within scope; desktop verified.** Hosted verify, browser and
-Windows jobs pass (run 42765245489). Not Accepted until the consumer pins
-this engine and re-approves its Prefab evidence.
+Windows jobs pass (run 42765245489). The consumer has pinned `c5bfb5f` and its
+verify/candidate checks pass. Not Accepted until the consumer approves its
+Prefab baselines and its release build passes.
+
+Next step: user review of the consumer's
+`evidence/game305-prefab-compare-c5bfb5f-20261110/review/`; separately, decide
+whether the changed browser bundle ships as a new version.
