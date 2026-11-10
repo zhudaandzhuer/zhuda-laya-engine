@@ -1,6 +1,6 @@
 // Generated from TypeScript source; run npm run types:generate.
-import type { ParticleEvent } from './ParticleExtras';
-import type { ParticleEmitterSpec, ParticleState, ParticleTransform } from './ParticleTypes';
+import type { ParticleEvent } from './ParticleExtras.js';
+import type { ParticleEmitterSpec, ParticleState, ParticleTransform } from './ParticleTypes.js';
 /** Fixed-step CPU simulation, preallocated pool, seeded replay, bounded catch-up. */
 export declare class ZhudaParticleSystem {
     readonly spec: ParticleEmitterSpec;

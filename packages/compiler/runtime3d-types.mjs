@@ -55,7 +55,9 @@ program.emit(undefined, (file, text) => {
         .relative(path.dirname(target), destination(resolved))
         .split(path.sep)
         .join('/')
-        .replace(/\.d\.ts$/, '');
+        // Explicit .js specifiers resolve to the sibling .d.ts under Bundler,
+        // Node16 and NodeNext; extensionless paths fail under Node16/NodeNext.
+        .replace(/\.d\.ts$/, '.js');
       if (!rewritten.startsWith('.')) rewritten = './' + rewritten;
       return prefix + rewritten + quote;
     },

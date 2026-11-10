@@ -1,6 +1,6 @@
 // Generated from TypeScript source; run npm run types:generate.
 /** Generated public effects and visual migration declarations. */
-import type { ZhudaParticleSystem, ZhudaParticleSystem3D } from './zhuda-particles';
+import type { ZhudaParticleSystem, ZhudaParticleSystem3D } from './zhuda-particles.js';
 export interface EffectKey {
     time: number;
     value: number;

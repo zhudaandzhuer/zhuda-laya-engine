@@ -1,6 +1,6 @@
 // Generated from TypeScript source; run npm run types:generate.
-import type { EffectKey } from './effects/EffectDirector';
-import type { VfxMaterialSpec } from './effects/VfxMaterial';
+import type { EffectKey } from './effects/EffectDirector.js';
+import type { VfxMaterialSpec } from './effects/VfxMaterial.js';
 export interface UnityVisualMaterial {
     id: string;
     shader: string;

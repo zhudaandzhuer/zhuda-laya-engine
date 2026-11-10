@@ -1,6 +1,6 @@
 // Generated from TypeScript source; run npm run types:generate.
-import type { IframeBackendVoice, IframeStreamOptions } from '../zhuda-audio';
-import type { AssetStreamLease } from '../runtime3d/AssetProvider';
+import type { IframeBackendVoice, IframeStreamOptions } from '../zhuda-audio.js';
+import type { AssetStreamLease } from '../runtime3d/AssetProvider.js';
 /** One media element, routed exclusively through the owning adapter's graph. */
 export declare class StreamVoice implements IframeBackendVoice {
     readonly output: MediaElementAudioSourceNode;

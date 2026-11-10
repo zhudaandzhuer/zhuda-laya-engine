@@ -1,5 +1,5 @@
 // Generated from TypeScript source; run npm run types:generate.
-import { type AssetProvider, type AssetManifest, type AssetManifestEntry, type AssetLoadOptions, type LoadedAssetBytes } from './AssetProvider';
+import { type AssetProvider, type AssetManifest, type AssetManifestEntry, type AssetLoadOptions, type LoadedAssetBytes } from './AssetProvider.js';
 export interface ZhudaThemeAsset extends AssetManifestEntry {
     /** Logical ID is stable across themes; source is a provider-relative ID. */
     readonly source: string;

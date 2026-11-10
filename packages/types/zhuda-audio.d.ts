@@ -1,6 +1,6 @@
 // Generated from TypeScript source; run npm run types:generate.
-import type { AssetProvider } from "./runtime3d/AssetProvider";
-import type { IframeAudioChannel, IframeSampleOptions } from "./zhuda-2d-ui";
+import type { AssetProvider } from "./runtime3d/AssetProvider.js";
+import type { IframeAudioChannel, IframeSampleOptions } from "./zhuda-2d-ui.js";
 export interface IframeVoiceOptions {
     /** Higher values survive priority eviction; ties retire the oldest voice. */
     priority?: number;

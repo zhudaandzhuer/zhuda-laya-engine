@@ -1,6 +1,6 @@
 // Generated from TypeScript source; run npm run types:generate.
-import { type Vec3 } from './Math3D';
-import { type CameraCollisionOptions } from './CameraCollision';
+import { type Vec3 } from './Math3D.js';
+import { type CameraCollisionOptions } from './CameraCollision.js';
 /** Camera presentation only: movement/support authority remains in the consumer's simulation. */
 export declare class ZhudaCameraRig {
     readonly camera: any;

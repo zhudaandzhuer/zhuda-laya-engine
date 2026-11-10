@@ -6,7 +6,7 @@
  * UI/runtime dependency. Consumers explicitly enable it from a user gesture;
  * this adapter owns re-acquisition, stale request rejection and cleanup.
  */
-import type { NoSleepAdapterOptions, NoSleepDiagnostics } from './index';
+import type { NoSleepAdapterOptions, NoSleepDiagnostics } from './index.js';
 export declare class NoSleepAdapter {
     private readonly options;
     private readonly cleanupFns;

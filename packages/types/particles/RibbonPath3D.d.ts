@@ -1,7 +1,7 @@
 // Generated from TypeScript source; run npm run types:generate.
-import type { ParticleColorKey, ParticleCurveKey } from './ParticleTypes';
-import type { ParticleGeometry3D } from './ParticleMesh3D';
-import type { ParticleVector3 } from './ParticleTypes3D';
+import type { ParticleColorKey, ParticleCurveKey } from './ParticleTypes.js';
+import type { ParticleGeometry3D } from './ParticleMesh3D.js';
+import type { ParticleVector3 } from './ParticleTypes3D.js';
 export interface RibbonPathSpec3D {
     maxPoints: number;
     width: number;

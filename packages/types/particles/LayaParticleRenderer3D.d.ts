@@ -1,9 +1,9 @@
 // Generated from TypeScript source; run npm run types:generate.
-import { ZhudaVfxMaterial } from '../effects/VfxMaterial';
-import type { ZhudaParticleSystem3D } from './ParticleSystem3D';
-import type { ZhudaRibbonTrail3D } from './RibbonTrail3D';
-import type { ZhudaRibbonPath3D } from './RibbonPath3D';
-import type { ParticleTextureResolver } from './LayaParticleRenderer';
+import { ZhudaVfxMaterial } from '../effects/VfxMaterial.js';
+import type { ZhudaParticleSystem3D } from './ParticleSystem3D.js';
+import type { ZhudaRibbonTrail3D } from './RibbonTrail3D.js';
+import type { ZhudaRibbonPath3D } from './RibbonPath3D.js';
+import type { ParticleTextureResolver } from './LayaParticleRenderer.js';
 export declare class ZhudaLayaParticleRenderer3D {
     readonly node: any;
     readonly system: ZhudaParticleSystem3D;

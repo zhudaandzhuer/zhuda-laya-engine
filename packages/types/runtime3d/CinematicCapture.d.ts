@@ -1,6 +1,6 @@
 // Generated from TypeScript source; run npm run types:generate.
-import { ZhudaPhysicalCameraRig } from './PhysicalCamera';
-import type { ZhudaRuntimeSession } from './Runtime';
+import { ZhudaPhysicalCameraRig } from './PhysicalCamera.js';
+import type { ZhudaRuntimeSession } from './Runtime.js';
 export interface CinematicCaptureOptions {
     width: number;
     height: number;

@@ -1,5 +1,5 @@
 // Generated from TypeScript source; run npm run types:generate.
-import type { ZhudaVideoDiagnostics, ZhudaVideoMode, ZhudaVideoSurfaceOptions } from './zhuda-video';
+import type { ZhudaVideoDiagnostics, ZhudaVideoMode, ZhudaVideoSurfaceOptions } from './zhuda-video.js';
 /**
  * Small ownership wrapper around LayaAir's VideoNode. It deliberately uses the
  * vendor node rather than a DOM overlay, so decoder-mode video participates in

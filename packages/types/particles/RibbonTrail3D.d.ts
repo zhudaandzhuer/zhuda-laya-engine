@@ -1,7 +1,7 @@
 // Generated from TypeScript source; run npm run types:generate.
-import type { RibbonTrailSpec } from './RibbonTrail';
-import type { ParticleGeometry3D } from './ParticleMesh3D';
-import type { ParticleVector3 } from './ParticleTypes3D';
+import type { RibbonTrailSpec } from './RibbonTrail.js';
+import type { ParticleGeometry3D } from './ParticleMesh3D.js';
+import type { ParticleVector3 } from './ParticleTypes3D.js';
 /** Bounded XYZ world history; camera-facing ribbon with stable normals. */
 export declare class ZhudaRibbonTrail3D {
     readonly spec: RibbonTrailSpec;

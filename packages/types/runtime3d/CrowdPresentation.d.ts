@@ -1,5 +1,5 @@
 // Generated from TypeScript source; run npm run types:generate.
-import type { TimedSnapshot } from './Clocks';
+import type { TimedSnapshot } from './Clocks.js';
 export type CrowdAnimationMode = 'full' | 'low' | 'paused';
 export interface CrowdPresentationTier {
     /** Ascending outer distance, last tier must be Infinity. */

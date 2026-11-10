@@ -1,6 +1,6 @@
 // Generated from TypeScript source; run npm run types:generate.
 /** Legacy showcase telemetry. Estimates are labeled; runtime WebGL measurements use ZhudaRuntimeProfiler. */
-import { type PresetProfileName } from '../TopologyGraph';
+import { type PresetProfileName } from '../TopologyGraph.js';
 export interface BenchmarkReport {
     timestamp: number;
     /** @deprecated No actual Spine runtime benchmark is performed here. */

@@ -1,5 +1,5 @@
 // Generated from TypeScript source; run npm run types:generate.
-import type { ZhudaRuntimeSession } from './runtime3d/Runtime';
+import type { ZhudaRuntimeSession } from './runtime3d/Runtime.js';
 /** A disposable Play instance. Authored data and editor history are not exposed. */
 export interface ZhudaPrefabEditorPreviewContext {
     readonly root: Laya.Sprite;

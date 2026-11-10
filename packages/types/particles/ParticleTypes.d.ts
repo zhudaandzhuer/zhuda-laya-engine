@@ -1,5 +1,5 @@
 // Generated from TypeScript source; run npm run types:generate.
-import type { ParticleUVRect, ParticleFlipbook, ParticleCollisionSpec } from './ParticleExtras';
+import type { ParticleUVRect, ParticleFlipbook, ParticleCollisionSpec } from './ParticleExtras.js';
 /** Serializable, renderer-independent particle descriptors. Units: pixels, seconds, radians. */
 export type ParticleRange = number | [number, number];
 export interface ParticleCurveKey {

@@ -8,7 +8,7 @@
  * - 痛點五：3D 材質與 Shader 管線安全降級守衛
  * - 痛點六：Laya.Button AutoBitmap.setState 原型崩潰免疫補丁 (Prototype Detox)
  */
-import type { Physics2DGuardStatus, Physics3DGuardStatus, Spine42PhysicsTelemetry } from './index';
+import type { Physics2DGuardStatus, Physics3DGuardStatus, Spine42PhysicsTelemetry } from './index.js';
 export interface EngineHealthReport {
     timestamp: number;
     engineVersion: string;

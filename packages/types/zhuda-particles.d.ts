@@ -1,6 +1,6 @@
 // Generated from TypeScript source; run npm run types:generate.
 /** Generated public particle declarations. */
-import type { VfxMaterialSpec, ZhudaVfxMaterial } from './zhuda-effects';
+import type { VfxMaterialSpec, ZhudaVfxMaterial } from './zhuda-effects.js';
 export interface ParticleUVRect {
     x: number;
     y: number;

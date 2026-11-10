@@ -1,7 +1,7 @@
 // Generated from TypeScript source; run npm run types:generate.
-import { type ZhudaModelLibrary, type ModelInstance } from './Assets';
-import { type FilmicOptions } from './Filmic';
-import { ZhudaModelInspector } from './ModelInspector';
+import { type ZhudaModelLibrary, type ModelInstance } from './Assets.js';
+import { type FilmicOptions } from './Filmic.js';
+import { ZhudaModelInspector } from './ModelInspector.js';
 export type AssetShowcaseMode = 'raw' | 'gameplay' | 'cinematic';
 export interface AssetShowcasePresentation {
     /** Raw always disables postprocessing. Other modes may opt out explicitly. */

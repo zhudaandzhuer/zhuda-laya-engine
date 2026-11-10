@@ -1,5 +1,5 @@
 // Generated from TypeScript source; run npm run types:generate.
-import type { ZhudaGridLayoutReport, ZhudaGridLayoutSpec, ZhudaTextLayoutReport, ZhudaTextLayoutSpec } from './zhuda-layout';
+import type { ZhudaGridLayoutReport, ZhudaGridLayoutSpec, ZhudaTextLayoutReport, ZhudaTextLayoutSpec } from './zhuda-layout.js';
 /**
  * Computes all positions in design pixels. DPR only changes the backing canvas;
  * it never enters this calculation. The same report can therefore drive a

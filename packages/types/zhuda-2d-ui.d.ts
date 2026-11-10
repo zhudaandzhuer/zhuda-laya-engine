@@ -1,5 +1,5 @@
 // Generated from TypeScript source; run npm run types:generate.
-import type { IframeVoiceOptions } from './zhuda-audio';
+import type { IframeVoiceOptions } from './zhuda-audio.js';
 /**
  * @zhuda-laya/types — Layer 2: 2D Rendering, Vector UI & Physics2D (Box2D) Contracts
  * 包含 AutoBitmap 安全防護介面與宣告式 2D UI 建構器型別
@@ -53,7 +53,7 @@ export interface NineSlicePanelOptions {
 export type IframeAudioChannel = 'master' | 'bgm' | 'sfx' | 'ui';
 export interface IframeSoundAdapterOptions {
     /** Borrowed provider; the adapter owns decoded sample leases, not this provider. */
-    sampleProvider?: import('./runtime3d/AssetProvider').AssetProvider;
+    sampleProvider?: import('./runtime3d/AssetProvider.js').AssetProvider;
     sampleTimeoutMs?: number;
     maxSamples?: number;
     /** Total retained decoded PCM bound (channels * frames * 4). Default 64 MiB. */
@@ -73,9 +73,9 @@ export interface IframeSoundAdapterOptions {
     protectedChannels?: readonly IframeAudioChannel[];
     /** Eviction fade, default 0.005 seconds. A fading voice still occupies its slot. */
     retireFadeSec?: number;
-    onVoiceEvent?: (event: import('./zhuda-audio').IframeVoiceEvent) => void;
+    onVoiceEvent?: (event: import('./zhuda-audio.js').IframeVoiceEvent) => void;
     /** Borrowed provider; defaults to sampleProvider. */
-    streamProvider?: import('./runtime3d/AssetProvider').AssetProvider;
+    streamProvider?: import('./runtime3d/AssetProvider.js').AssetProvider;
     /** Injectable for platform integration and tests. One element per live stream voice. */
     mediaElementFactory?: () => HTMLAudioElement;
     /** Optional factory used by hosts and deterministic tests. */

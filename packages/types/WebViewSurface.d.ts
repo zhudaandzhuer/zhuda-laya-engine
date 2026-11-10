@@ -1,5 +1,5 @@
 // Generated from TypeScript source; run npm run types:generate.
-import type { ZhudaWebViewDiagnostics, ZhudaWebViewFrame, ZhudaWebViewSurfaceOptions } from './zhuda-webview';
+import type { ZhudaWebViewDiagnostics, ZhudaWebViewFrame, ZhudaWebViewSurfaceOptions } from './zhuda-webview.js';
 /**
  * Keeps a platform WebView aligned with a Laya hierarchy anchor. The WebView
  * itself remains outside the canvas when the platform requires it; this class

@@ -1,7 +1,7 @@
 // Generated from TypeScript source; run npm run types:generate.
-import type { LayaHierarchyNodeData } from '../zhuda-static-assets';
-import type { AssetProvider } from '../runtime3d/AssetProvider';
-import type { PrefabTree3D, PrefabNodePatch3D } from './PrefabTree3D';
+import type { LayaHierarchyNodeData } from '../zhuda-static-assets.js';
+import type { AssetProvider } from '../runtime3d/AssetProvider.js';
+import type { PrefabTree3D, PrefabNodePatch3D } from './PrefabTree3D.js';
 export type PrefabNodePatch = Partial<Pick<LayaHierarchyNodeData, 'x' | 'y' | 'width' | 'height' | 'anchorX' | 'anchorY' | 'pivotX' | 'pivotY' | 'scaleX' | 'scaleY' | 'rotation' | 'alpha' | 'visible' | 'text' | 'font' | 'fontSize' | 'color' | 'bold' | 'align' | 'valign' | 'sizeGrid'>>;
 export interface PrefabDefinition {
     id: string;
@@ -70,7 +70,7 @@ export declare class ZhudaPrefabLibrary<T extends AnyPrefabDefinition = PrefabDe
             loads: number;
             phases: {
                 key: string;
-                phase: import("../index").AssetPhase;
+                phase: import("../index.js").AssetPhase;
                 references: number;
             }[];
             gpuReady: "requires-first-draw";
@@ -81,7 +81,7 @@ export declare class ZhudaPrefabLibrary<T extends AnyPrefabDefinition = PrefabDe
         loads: number;
         phases: {
             key: string;
-            phase: import("../index").AssetPhase;
+            phase: import("../index.js").AssetPhase;
             references: number;
         }[];
         gpuReady: "requires-first-draw";

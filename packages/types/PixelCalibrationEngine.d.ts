@@ -9,7 +9,7 @@
  *   2. sRGB -> XYZ (D65) -> CIE L*a*b* 轉換與 CIEDE2000 (ΔE00) 感知色差計算
  *   3. 自動生成 JSON 路徑級別的 AutoFixPatch 並單步收斂至 0px / ΔE = 0.00
  */
-import type { ColorLab, LayaHierarchyNodeData, NineSliceCalibrationReport, PixelCalibrationReport, PixelCalibrationSpec } from './index';
+import type { ColorLab, LayaHierarchyNodeData, NineSliceCalibrationReport, PixelCalibrationReport, PixelCalibrationSpec } from './index.js';
 export declare class PixelCalibrationEngine {
     /**
      * 將 #RRGGBB 或 #RRGGBBAA 轉為 0..255 RGB

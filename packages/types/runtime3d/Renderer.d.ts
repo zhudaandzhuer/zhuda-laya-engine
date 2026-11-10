@@ -1,6 +1,6 @@
 // Generated from TypeScript source; run npm run types:generate.
 export type RendererBackend = 'webgl' | 'webgpu';
-import type { ZhudaRuntimeSession } from './Runtime';
+import type { ZhudaRuntimeSession } from './Runtime.js';
 export interface RendererDiagnostics {
     requested: RendererBackend;
     selected: RendererBackend;

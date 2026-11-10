@@ -1,5 +1,5 @@
 // Generated from TypeScript source; run npm run types:generate.
-import { type SurfacePassRequirements } from '../runtime3d/Surfaces';
+import { type SurfacePassRequirements } from '../runtime3d/Surfaces.js';
 export type ShaderUniformType = 'float' | 'vec2' | 'vec3' | 'vec4' | 'texture2D';
 export interface ShaderUniformSpec {
     type: ShaderUniformType;

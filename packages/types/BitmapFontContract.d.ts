@@ -1,5 +1,5 @@
 // Generated from TypeScript source; run npm run types:generate.
-import type { ZhudaBitmapFontManifest, ZhudaBitmapFontValidationReport } from './zhuda-static-assets';
+import type { ZhudaBitmapFontManifest, ZhudaBitmapFontValidationReport } from './zhuda-static-assets.js';
 /** Validates authored art-text metadata before a Laya BitmapFont is registered. */
 export declare function validateZhudaBitmapFont(manifest: ZhudaBitmapFontManifest, requiredText?: string): ZhudaBitmapFontValidationReport;
 /** Deterministic art-text width using the authored advance values, including fallback glyphs. */

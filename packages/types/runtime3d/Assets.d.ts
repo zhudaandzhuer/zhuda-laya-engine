@@ -1,7 +1,7 @@
 // Generated from TypeScript source; run npm run types:generate.
-import type { ZhudaModelDecoderRegistry } from './ModelDecoder';
-import { type ModelCompatibilityReport } from './ModelCompatibility';
-import type { AssetProvider } from './AssetProvider';
+import type { ZhudaModelDecoderRegistry } from './ModelDecoder.js';
+import { type ModelCompatibilityReport } from './ModelCompatibility.js';
+import type { AssetProvider } from './AssetProvider.js';
 export type AssetPhase = 'downloading' | 'parsing' | 'ready';
 export interface AssetLease<T> {
     readonly value: T;

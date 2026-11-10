@@ -1,5 +1,5 @@
 // Generated from TypeScript source; run npm run types:generate.
-import { type Matrix4, type Quat, type Vec3 } from '../runtime3d/Math3D';
+import { type Matrix4, type Quat, type Vec3 } from '../runtime3d/Math3D.js';
 export interface EffectKey {
     time: number;
     value: number;

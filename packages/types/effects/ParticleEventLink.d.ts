@@ -1,6 +1,6 @@
 // Generated from TypeScript source; run npm run types:generate.
-import type { ZhudaParticleSystem } from '../particles/ParticleSystem';
-import type { ZhudaParticleSystem3D } from '../particles/ParticleSystem3D';
+import type { ZhudaParticleSystem } from '../particles/ParticleSystem.js';
+import type { ZhudaParticleSystem3D } from '../particles/ParticleSystem3D.js';
 /** Links collision/death events to a bounded child emitter. The child is advanced by its application's loop. */
 export declare class ZhudaParticleEventLink {
     private disposed;

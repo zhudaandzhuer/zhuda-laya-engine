@@ -1,5 +1,5 @@
 // Generated from TypeScript source; run npm run types:generate.
-import type { ParticleCurveKey } from './ParticleTypes';
+import type { ParticleCurveKey } from './ParticleTypes.js';
 export interface RibbonTrailSpec {
     maxPoints: number;
     lifetime: number;

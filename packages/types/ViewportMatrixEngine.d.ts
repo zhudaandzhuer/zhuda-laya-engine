@@ -9,7 +9,7 @@
  * 4. ipad-air-4-3           (1024×768, 4:3 平板比例 Top=24px, Bottom=20px)
  * 5. ultrawide-21-9         (1680×720, 21:9 超寬螢幕)
  */
-import type { ViewportDeviceId, ViewportDeviceSpec, ViewportLayoutReport } from './index';
+import type { ViewportDeviceId, ViewportDeviceSpec, ViewportLayoutReport } from './index.js';
 export declare const VIEWPORT_DEVICE_PROFILES: Record<ViewportDeviceId, ViewportDeviceSpec>;
 export declare class ViewportMatrixEngine {
     /**

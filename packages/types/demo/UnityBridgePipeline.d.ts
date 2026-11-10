@@ -6,7 +6,7 @@
  * Production material and curve conversion lives in VisualMigrationPipeline.ts; unknown shaders must block migration.
 
  */
-import type { LayaHierarchyNodeData, UnityAnimatorControllerSpec, UnityAnimatorState, UnityMigrationReport, UnitySceneDescriptor } from '../index';
+import type { LayaHierarchyNodeData, UnityAnimatorControllerSpec, UnityAnimatorState, UnityMigrationReport, UnitySceneDescriptor } from '../index.js';
 export declare const UNITY_CYBER_SHRINE_SCENE: UnitySceneDescriptor;
 /**
  * Unity AnimatorController 運行期確定性狀態機求值器

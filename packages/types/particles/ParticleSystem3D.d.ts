@@ -1,6 +1,6 @@
 // Generated from TypeScript source; run npm run types:generate.
-import type { ParticleEvent } from './ParticleExtras';
-import type { ParticleEmitterSpec3D, ParticleQuaternion, ParticleState3D, ParticleTransform3D, ParticleVector3 } from './ParticleTypes3D';
+import type { ParticleEvent } from './ParticleExtras.js';
+import type { ParticleEmitterSpec3D, ParticleQuaternion, ParticleState3D, ParticleTransform3D, ParticleVector3 } from './ParticleTypes3D.js';
 export interface ParticleSimulationOptions3D {
     /** Visual simulation rate, 15–240 Hz. Default 120. Does not control game rules. */
     frequencyHz?: number;

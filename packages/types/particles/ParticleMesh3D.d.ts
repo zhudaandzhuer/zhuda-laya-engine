@@ -1,6 +1,6 @@
 // Generated from TypeScript source; run npm run types:generate.
-import type { ParticleView3D } from './ParticleTypes3D';
-import type { ZhudaParticleSystem3D } from './ParticleSystem3D';
+import type { ParticleView3D } from './ParticleTypes3D.js';
+import type { ZhudaParticleSystem3D } from './ParticleSystem3D.js';
 /** Interleaved POSITION(3), COLOR(4), UV(2), in scene units. */
 export interface ParticleGeometry3D {
     vertices: Float32Array;

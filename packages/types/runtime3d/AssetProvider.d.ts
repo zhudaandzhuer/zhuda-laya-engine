@@ -1,5 +1,5 @@
 // Generated from TypeScript source; run npm run types:generate.
-import type { ZhudaAssetCache } from './Assets';
+import type { ZhudaAssetCache } from './Assets.js';
 export type AssetKind = 'binary' | 'text' | 'image' | 'audio' | 'model' | 'scene' | 'shader' | 'unknown';
 export type AssetProviderPhase = 'downloading' | 'verifying' | 'ready';
 export interface AssetManifestEntry {

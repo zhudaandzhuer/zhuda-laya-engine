@@ -1,9 +1,9 @@
 // Generated from TypeScript source; run npm run types:generate.
-import { type RendererDiagnostics } from './runtime3d/Renderer';
-import type { RendererBackend } from './TopologyGraph';
-import { ZhudaRuntimeSession } from './runtime3d/Runtime';
-import type { ManagedRuntimeOptions } from './runtime3d/Runtime';
-import type { PrefabTree3D, PrefabTreeInstance3D } from './prefabs/PrefabTree3D';
+import { type RendererDiagnostics } from './runtime3d/Renderer.js';
+import type { RendererBackend } from './TopologyGraph.js';
+import { ZhudaRuntimeSession } from './runtime3d/Runtime.js';
+import type { ManagedRuntimeOptions } from './runtime3d/Runtime.js';
+import type { PrefabTree3D, PrefabTreeInstance3D } from './prefabs/PrefabTree3D.js';
 /**
  * @zhuda-laya/core — AI-Friendly Declarative SDK (對標 Three.js / R3F 純代碼開發體驗)
  *
@@ -12,9 +12,9 @@ import type { PrefabTree3D, PrefabTreeInstance3D } from './prefabs/PrefabTree3D'
  * - 不依賴 LayaAir IDE；同時支援可版本控制的 .lh/.ls 序列化與程序式建構
  * - 消除 AI 生成 Laya 程式碼時常見的 1.x / 2.x 廢棄 API 幻覺
  */
-import { type EngineFeatureTag, type TopologyResolutionResult } from './TopologyGraph';
-import { type EngineHealthReport } from './RuntimeGuards';
-import type { DeclarativeCameraOptions, DeclarativeLightOptions, DeclarativeMaterialOptions, GlassPanelOptions, NineSliceGridInput, NineSlicePanelOptions, PrimitiveType3D, VectorButtonStyle, ZhudaClassMetadata } from './index';
+import { type EngineFeatureTag, type TopologyResolutionResult } from './TopologyGraph.js';
+import { type EngineHealthReport } from './RuntimeGuards.js';
+import type { DeclarativeCameraOptions, DeclarativeLightOptions, DeclarativeMaterialOptions, GlassPanelOptions, NineSliceGridInput, NineSlicePanelOptions, PrimitiveType3D, VectorButtonStyle, ZhudaClassMetadata } from './index.js';
 export interface ZhudaBootOptions extends Omit<ManagedRuntimeOptions, 'container'> {
     container?: HTMLElement | string;
     antialias?: boolean;

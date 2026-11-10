@@ -8,7 +8,7 @@
  * 2. 內建 UI Prefab、Spine 4.2 PhysicsConstraint 靜態骨骼資產、Particle 決定性粒子爆發資產藍圖
  * 3. ZhudaPrefab：基於 Laya.HierarchyParser.parse 毫秒級實例化靜態資產並掛載 @zhudaComponent 腳本
  */
-import type { AutoFixPatch, LayaHierarchyNodeData, ParticleEmitterStaticConfig, PixelCalibrationSpec, Spine42StaticRigConfig, StaticAssetCategory } from '../index';
+import type { AutoFixPatch, LayaHierarchyNodeData, ParticleEmitterStaticConfig, PixelCalibrationSpec, Spine42StaticRigConfig, StaticAssetCategory } from '../index.js';
 export declare class ZhudaAssetSerializer {
     private static idCounter;
     private static nextId;

@@ -3,14 +3,14 @@ import type {
   DeclarativeLightOptions,
   DeclarativeMaterialOptions,
   PrimitiveType3D,
-} from "./zhuda-3d-physics";
-import type { ZhudaClassMetadata } from "./zhuda-core";
-import type { LayaHierarchyNodeData, LayaGraphicsCmdData } from "./zhuda-static-assets";
+} from "./zhuda-3d-physics.js";
+import type { ZhudaClassMetadata } from "./zhuda-core.js";
+import type { LayaHierarchyNodeData, LayaGraphicsCmdData } from "./zhuda-static-assets.js";
 export declare class ZhudaPrefab {
   static instantiate(data: LayaHierarchyNodeData, parent?: Laya.Node, positionOverride?: { x: number; y: number }): Laya.Sprite;
   static applyGraphicsCommands(graphics: Laya.Graphics, commands: LayaGraphicsCmdData[]): void;
 }
-import type { GlassPanelOptions, VectorButtonStyle, NineSliceGridInput, NineSlicePanelOptions } from "./zhuda-2d-ui";
+import type { GlassPanelOptions, VectorButtonStyle, NineSliceGridInput, NineSlicePanelOptions } from "./zhuda-2d-ui.js";
 export declare class ZhudaUI {
   static createGlassPanel(parent: Laya.Node, opts: GlassPanelOptions): Laya.Sprite;
   static createVectorButton(parent: Laya.Node, x: number, y: number, text: string,
@@ -29,7 +29,7 @@ export declare function zhudaComponent(
   meta: string | ZhudaClassMetadata,
 ): <T extends new (...args: any[]) => any>(ctor: T) => T;
 export declare class Zhuda3D {
-  static buildPrefabTree(spec: import('./prefabs/PrefabTree3D').PrefabTree3D): import('./prefabs/PrefabTree3D').PrefabTreeInstance3D;
+  static buildPrefabTree(spec: import('./prefabs/PrefabTree3D.js').PrefabTree3D): import('./prefabs/PrefabTree3D.js').PrefabTreeInstance3D;
   static createScene3D(
     parent: Laya.Node,
     options?: {

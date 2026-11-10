@@ -1,0 +1,4 @@
+# TypeScript contract sources stay in the repository; the package ships only
+# the .d.ts files generated from them, so consumers never type-check sources.
+/*.ts
+!/*.d.ts

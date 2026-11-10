@@ -20,13 +20,14 @@ Date: 2026-11-10
 | Check | Exact command or procedure | Result | Artifact |
 | --- | --- | --- | --- |
 | Clean install | `npm ci` | PASS | terminal log |
-| Build/types/declarations/Doctor/tests | `npm run verify` | PASS, 321/321 | terminal log |
+| Build/types/declarations/Doctor/tests | `npm run verify` | PASS, 322/322 (321 before the module-resolution follow-up) | terminal log |
 | Lint / format | `npm run lint`, `npm run format:check` | PASS | terminal log |
 | Repeated build leaves tree unchanged | `npm run build` then `git status --porcelain` | PASS (no change after verify, build and all browser batches) | terminal log |
 | New disclosure tests | `node --test tests/editor-security.test.mjs tests/cli-entry.test.mjs tests/disclosure-contracts.test.mjs tests/agent-contract-package.test.mjs tests/terrain3d-runtime.test.mjs tests/declarative-facade.test.mjs tests/build-failure-paths.test.mjs` | PASS, 20/20 | terminal log |
 | Original audit reproduction | Audit `reproduce.mjs` re-run against this tree (output redirected; unknown-asset call wrapped because it now throws) | PASS: every `/__project/.env`, `.git/config`, hidden asset read is 403 on both servers; cross-origin `text/plain` save is 403 and the file is untouched; MCP, visual-contract, visual-asset and layout produce identical output directly and through a symlink; notification returns nothing, unknown method returns -32601, serverInfo version 1.15.0, unknown asset raises | local reproduction JSON (not committed) |
 | Packed tarball | `npm pack --json --foreground-scripts=false` | PASS: 408 files, 5.79 MB packed / 24.4 MB unpacked, no `.map`, no `docs/plans/records`, no `/Users/` string | terminal log |
 | Clean tarball install | Install the tarball in a directory whose path contains a space and CJK characters; run every `node_modules/.bin/*` with `--help`; import `zhuda-laya-engine`, `/min`, `/demo` | PASS: all 19 bins exit 0; main 162 / min 162 / demo 6 exports; `UnityBridgePipeline` only in `/demo` | terminal log |
+| Published types under Node16/NodeNext | `node --test tests/types-module-resolution.test.mjs` (stages the `npm pack` declaration set, strict, no `skipLibCheck`); plus a real tarball install compiled with `tsc --module nodenext/node16/bundler` | PASS for Bundler, Node16 and NodeNext. Without the fix the test fails (Node16: `has no exported member 'TopologyResolver'`): generated declarations used extensionless relative paths, and the package shipped `packages/types/*.ts` sources that consumers type-checked instead of the `.d.ts`. Declarations now use `.js` specifiers and the sources are excluded by `packages/types/.npmignore`; an installed package still bundles the editor client | terminal log |
 | Empty-directory build | `zhuda-laya-build` in an empty directory | PASS: exit 1, zero files written | terminal log |
 | Prefab browser gate | `npm run verify:prefab-browser` | PASS | local evidence directory |
 | Editor batches | `npm run verify:prefab-editor-responsive`, `verify:prefab-editor`, `verify:prefab-editor-play` | PASS | local evidence directory |

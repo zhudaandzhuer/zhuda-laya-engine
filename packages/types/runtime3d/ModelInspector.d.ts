@@ -1,6 +1,6 @@
 // Generated from TypeScript source; run npm run types:generate.
-import type { ModelInstance } from './Assets';
-import type { ModelCompatibilityReport } from './ModelCompatibility';
+import type { ModelInstance } from './Assets.js';
+import type { ModelCompatibilityReport } from './ModelCompatibility.js';
 export interface ModelInspection {
     compatibility: ModelCompatibilityReport;
     /** Paths identify child indices in this instance, not glTF source node indices. */

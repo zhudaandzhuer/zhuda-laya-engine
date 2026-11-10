@@ -1,6 +1,6 @@
 // Generated from TypeScript source; run npm run types:generate.
-import type { ZhudaParticleSystem } from './ParticleSystem';
-import type { ZhudaRibbonTrail } from './RibbonTrail';
+import type { ZhudaParticleSystem } from './ParticleSystem.js';
+import type { ZhudaRibbonTrail } from './RibbonTrail.js';
 export type ParticleTextureResolver = (key: string) => any;
 /** Laya WebGL textured quads, batched by lifetime band. No display object per particle. */
 export declare class ZhudaLayaParticleRenderer {

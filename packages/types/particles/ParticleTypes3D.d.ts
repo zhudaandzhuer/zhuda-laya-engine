@@ -1,6 +1,6 @@
 // Generated from TypeScript source; run npm run types:generate.
-import type { VfxMaterialSpec } from '../effects/VfxMaterial';
-import type { ParticleEmitterSpec, ParticleState } from './ParticleTypes';
+import type { VfxMaterialSpec } from '../effects/VfxMaterial.js';
+import type { ParticleEmitterSpec, ParticleState } from './ParticleTypes.js';
 export interface ParticleVector3 {
     x: number;
     y: number;

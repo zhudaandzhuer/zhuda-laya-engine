@@ -1,5 +1,5 @@
 // Generated from TypeScript source; run npm run types:generate.
-import { transformPoint, type Vec3 } from './Math3D';
+import { transformPoint, type Vec3 } from './Math3D.js';
 export interface QueryRay {
     origin: Vec3;
     direction: Vec3;

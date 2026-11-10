@@ -1,13 +1,13 @@
-import type { RendererDiagnostics } from './runtime3d/Renderer';
-import type { RendererBackend } from './runtime3d/Renderer';
-export type { RendererBackend } from './runtime3d/Renderer';
+import type { RendererDiagnostics } from './runtime3d/Renderer.js';
+import type { RendererBackend } from './runtime3d/Renderer.js';
+export type { RendererBackend } from './runtime3d/Renderer.js';
 import type {
   ManagedRuntimeOptions,
   ZhudaRuntimeSession,
-} from "./runtime3d/Runtime";
-import type { Physics2DGuardStatus } from "./zhuda-2d-ui";
-import type { Physics3DGuardStatus } from "./zhuda-3d-physics";
-import type { Spine42PhysicsTelemetry } from "./zhuda-spine42";
+} from "./runtime3d/Runtime.js";
+import type { Physics2DGuardStatus } from "./zhuda-2d-ui.js";
+import type { Physics3DGuardStatus } from "./zhuda-3d-physics.js";
+import type { Spine42PhysicsTelemetry } from "./zhuda-spine42.js";
 
 export type EngineFeatureTag =
   | "core"
