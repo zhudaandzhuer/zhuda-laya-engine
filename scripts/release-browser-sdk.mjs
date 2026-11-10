@@ -206,9 +206,13 @@ async function publish(outDir, record, summary) {
         curl(['--http1.1', '--max-time', '600', '--config', '-'], config).toString(),
       );
     } catch (error) {
+      const stderr = String(error.stderr || '');
       const transport = [52, 55, 56, 92].includes(error.status);
-      if (!transport || attempt >= 3) throw error;
-      console.error(`Upload attempt ${attempt} failed (curl ${error.status}); retrying`);
+      const gateway = error.status === 22 && /returned error: 50[234]\b/.test(stderr);
+      if ((!transport && !gateway) || attempt >= 4) throw error;
+      const wait = 15 * attempt;
+      console.error(`Upload attempt ${attempt} failed (${stderr.trim()}); retrying in ${wait}s`);
+      await new Promise((resolve) => setTimeout(resolve, wait * 1000));
     }
   }
   if (response.sha256 !== zipSha256) throw Error('Upload response SHA-256 differs from the ZIP');
