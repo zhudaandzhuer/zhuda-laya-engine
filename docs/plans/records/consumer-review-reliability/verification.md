@@ -13,7 +13,7 @@ Date: 2026-11-04
 - Root declaration audit: TypeScript 5.9.3, `types:[]`; independent starter
   strict application check uses its pinned TypeScript 5.6.3 with `skipLibCheck:true`.
 - Engine source identification: `/tmp/zhuda-consumer-reliability/source-hashes.json`.
-- Neutral consumer: `/tmp/zhuda-consumer-reliability`; no BDL/game1 source,
+- Neutral consumer: `/tmp/zhuda-consumer-reliability`; no BDLthe consumer source,
   production assets, pins or evidence were modified.
 - Requested/measured environments: 1024×576/DPR 1, 1024×576/DPR 2,
   360×640/DPR 2; loopback HTTP, CDP desktop emulation. Physical mobile: UNAVAILABLE.
@@ -82,7 +82,7 @@ the reported review mismatch independently of pixel equality.
 
 The two reported reliability defects and the provider/asset-selection seams are
 implemented and measured within the scope above. Version metadata now agrees
-at 1.3.0; this does not publish a release. BDL's complete migration and device
+at 1.3.0; this does not publish a release. The consumer's complete migration and device
 acceptance remain **In progress**; this engine work does not accept its game gates.
 
 Publication is staged and rollback-capable, not power-loss/SIGKILL atomic across

@@ -1,18 +1,18 @@
-# Verification record: rpg-feedback-hardening
+# Verification record: lifecycle-feedback-hardening
 
 Task: [task.md](task.md)  
 Date: 2026-11-05  
 Source: 1.5.0 implementation in the commit containing this record, based on
 `5ab0ff592dac027f1ad3754c402902d9c2e13d94`. The published commit is recorded in the
 external acceptance `source-revisions.json` after commit/push. Consumer baseline:
-`dawn-realm-rpg` at `007fc30b07af13971130455e65a9b5b729d8b8aa`.
+the external consumer at `007fc30b07af13971130455e65a9b5b729d8b8aa`.
 
 ## Environment and reproducibility
 
 macOS 27.0.1 (26A434), Node 26.12.0, npm 11.20.0, Chrome 156.0.8078.80.
 Independent consumers install the packed SDK without source aliases. Acceptance
 root outside this repository:
-`<external-evidence>/zhuda-rpg-hardening-acceptance-20261105` (below: `A`).
+`<external-evidence>/lifecycle-feedback-acceptance-20261105` (below: `A`).
 Packed SDK SHA-256:
 `7f59e96b88aef37b775123d3a39b0c99e4d834be86d735280b4438be6d948dd7`.
 Installed runtime/preview/check/build bytes were compared with engine source.
@@ -55,7 +55,7 @@ atomic snapshot guarantee.
 
 - Neutral: leaf, parent, other; 640×480, DPR 1, 30 completed cycles each;
   `A/neutral/evidence/final/*.json`, all zero different pixels and scoped proofs.
-- RPG: 17 selections from `A/game/zhuda.config.json`, unchanged approved references
+- Consumer: 17 selections from `A/game/zhuda.config.json`, unchanged approved references
   in `A/game/evidence/references/` (exact relative paths are in each report);
   `A/game/evidence/shared/*.json`, all zero different pixels and 30 completed
   cycles. Same definitions/options are mounted by the World.
@@ -81,7 +81,7 @@ UNAVAILABLE, so this is not unrestricted platform acceptance. Dependency scope
 is conservative at emitted-module level: a shared giant definitions file still
 invalidates its users together; undeclared/external loads fall back to the whole
 payload. Parents with restrictive asset lists must include observed child assets.
-Different visual states still need independent checks. The RPG keeps its existing
+Different visual states still need independent checks. The consumer keeps its existing
 combined definitions file and whole-payload gate; the neutral consumer demonstrates
 the granular route. No arbitrary dependency inference is claimed.
 

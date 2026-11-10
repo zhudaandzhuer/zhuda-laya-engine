@@ -7,6 +7,11 @@ for every public stable version.
 
 ## Current stable release
 
+**v1.16.0** — editor request hardening, working installed CLIs, generated
+public declarations (Bundler/Node16/NodeNext), a lean reproducible package and
+the full Windows test suite. Breaking: legacy samples moved from the main entry
+to `zhuda-laya-engine/demo`.
+
 **v1.15.0** — deterministic layout/text contracts, bitmap-font validation and
 Laya-nested video surfaces, while retaining the official headless LayaAir 3.4.2
 mini-game packaging from 1.14.0.
@@ -21,9 +26,10 @@ The matching tag points to the `main` commit that contains the package version.
 | --- | --- | --- |
 | `v1.0.0` | Initial public fork | Historical baseline |
 | `v1.1.0` | Prefab-first consumer workflow | Historical release; kept for reproducibility |
-| `v1.14.0` | Previous stable package | Keep only for pinned existing consumers |
+| `v1.14.0` | Older stable package | Keep only for pinned existing consumers |
+| `v1.15.0` | Previous stable package | Main entry still exports the legacy samples |
 
-The feature headings in the README (`1.7.0` through `1.15.0`) describe the
+The feature headings in the README (`1.7.0` through `1.16.0`) describe the
 milestone that introduced each capability. They are not separate currently
 installed versions. When a new stable release is cut, update `package.json`
 and the lockfile, run the full verification gate, commit, tag the exact commit,

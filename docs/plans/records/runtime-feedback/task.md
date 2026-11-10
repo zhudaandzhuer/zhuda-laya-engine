@@ -1,4 +1,4 @@
-# Agent task: astra-runtime-feedback
+# Agent task: runtime-feedback
 
 Status: Implemented; desktop verified; physical-device acceptance in progress  
 Owner: Engine runtime and SDK  
@@ -6,7 +6,7 @@ Last reviewed: 2026-11-05
 
 ## Source requirement
 
-User: “開始優化”, after the six-item Codex Astra review: high-DPR design
+User: “開始優化”, after the six-item Codex consumer review: high-DPR design
 coordinates, streaming BGM, configurable voice retirement, Worklet backend or
 extension contract, pluggable background clock/recovery, and vendor declarations.
 Independent baseline evidence is outside the engine at
@@ -79,7 +79,7 @@ Worklet extension support is not a claim of a production DSP mixer or latency SL
 
 Task-specific tests, full verify log, full declaration audit, neutral independent
 consumer build/browser reports, raw measurement/screenshots and source revision.
-External artifacts: `<external-evidence>/zhuda-astra-runtime-acceptance-20261105`.
+External artifacts: `<external-evidence>/runtime-feedback-acceptance-20261105`.
 
 ## Unverified limits
 

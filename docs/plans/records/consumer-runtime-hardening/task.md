@@ -6,7 +6,7 @@ Last reviewed: 2026-11-06
 
 ## Source requirement
 
-User request: 「你開始補強我們的引擎吧」, following the Astra v0.2 and
+User request: 「你開始補強我們的引擎吧」, following the consumer v0.2 and
 Argon/Spark consumer reviews of f6726e7. Reproduced gaps: Doctor can report
 HEALTHY after scanning zero consumer files; the mixer has no original-sample
 ingress; the shared Prefab library/preview only accepts static 2D hierarchies.

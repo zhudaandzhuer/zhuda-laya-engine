@@ -8,7 +8,7 @@ Last reviewed: 2026-11-05
 
 ## Objective
 
-Close common engine integration gaps identified by the BDL review of `0127bd2`.
+Close common engine integration gaps identified by the consumer review of `0127bd2`.
 Let games supply original audio and precise visual dependencies through public
 interfaces, without maintaining private engine patches or inventing PASS results.
 
@@ -68,7 +68,7 @@ for measured scope. This does not mark the entire plan Accepted.
 
 ### Component evidence graph (module-level implementation; broader inference proposed)
 
-The [RPG feedback task](records/rpg-feedback-hardening/task.md) implements opt-in
+The [consumer integration feedback task](records/lifecycle-feedback-hardening/task.md) implements opt-in
 component entries, emitted bundle/runtime/shell/asset fingerprints and explicit
 parent edges. Checker-observed requests and provider provenance must be covered;
 otherwise evidence remains whole-payload. Components in a shared monolithic
@@ -95,7 +95,7 @@ incompatible inheritance/signatures. Preserve the actual vendor API; do not
 replace it with `any`, blanket suppression or empty declarations. Add strict
 public fixtures for repaired groups and validate ESM/CJS behavior. Maintain
 the full audit alongside strict consumer checks to prevent recurrence. The
-[1.7.0 record](records/astra-runtime-feedback/verification.md) includes the zero-diagnostic result.
+[1.7.0 record](records/runtime-feedback/verification.md) includes the zero-diagnostic result.
 
 ## Staged work
 

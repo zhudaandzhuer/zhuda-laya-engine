@@ -19,16 +19,16 @@ Exact executable source hashes and editor bundle SHA-256 are recorded in the bro
 | Check | Exact command / procedure | Result | Artifact |
 | --- | --- | --- | --- |
 | Pre-fix failure | Initial neutral browser fixture against unmodified `77acfc7` | FAIL as expected: first nested selection corner x=441.920625 instead of 522.646875 CSS px | `/tmp/zhuda-editor-coordinates-before-20261109/report.json` and `failure.png` |
-| Existing Retina reproduction | Original consumer DPR 1 / 2 diagnostic | Original FAIL: canvas 434→217 CSS px; unchanged authored coordinates | Consumer `evidence/game305-editor-anchor-dpr-20261109/README.md` |
+| Existing Retina reproduction | Original consumer DPR 1 / 2 diagnostic | Original FAIL: canvas 434→217 CSS px; unchanged authored coordinates | Consumer `evidence/consumer-editor-anchor-dpr-20261109/README.md` |
 | Editor API / build | `node --test tests/prefab-editor.test.mjs` | PASS, 5/5 | terminal output |
 | Client typecheck | `node node_modules/typescript/bin/tsc --noEmit --allowImportingTsExtensions --target es2022 --module ESNext --moduleResolution bundler --lib es2022,dom --skipLibCheck packages/types/index.d.ts packages/compiler/prefab-editor-client.ts` | PASS | terminal output |
 | Build / types / declaration audit / Doctor / tests | `npm run verify` | PASS, 295/295 tests; Doctor 0 blocking errors | `/tmp/zhuda-editor-verify-final-20261109.log` |
 | Full position regression | `EDITOR_EVIDENCE_DIR=/tmp/zhuda-editor-runtime-fixed-20261109 npm run verify:prefab-editor` | PASS, 174 position/interaction checks | `/tmp/zhuda-editor-runtime-fixed-20261109/report.json` and PNGs |
-| Independent consumer build | In `<external-evidence>/zhuda-bdl-consumer`: `npm run build -- --candidate` | PASS; consumer remains pinned to its existing clean SDK; updated-runtime independent consumer builds are checked in the next row | `/tmp/zhuda-editor-consumer-build-20261109.log` |
+| Independent consumer build | In `<external-evidence>/consumer`: `npm run build -- --candidate` | PASS; consumer remains pinned to its existing clean SDK; updated-runtime independent consumer builds are checked in the next row | `/tmp/zhuda-editor-consumer-build-20261109.log` |
 | Updated-runtime independent consumer | `PREFAB_FIXTURE_DIR=/tmp/zhuda-prefab-browser-runtime-final node scripts/verify-prefab-browser.mjs` | PASS, Prefab/Scene pixel comparisons, DPR 1 / 2, portrait/landscape, wrong-size/texture/provenance failures, lifecycle and compiler gate | `/tmp/zhuda-prefab-browser-runtime-final/evidence/summary.json` |
 | Common runtime WebGL/input | `RUNTIME_FIXTURE_DIR=/tmp/zhuda-runtime-retina-final node scripts/verify-runtime-feedback-browser.mjs` | PASS, DPR 1 / 2 / 3, cap 1.5, fixed/responsive sizing, actual painted pixels/native cursor, resize, focus/cancel, two pointers, media, worklet and disposal | `/tmp/zhuda-runtime-retina-final/evidence/report.json` |
 | Runtime sizing unit regression | `node --test tests/runtime-sizing.test.mjs` | PASS, 4 tests, including preservation of native input scale and rotated canvas transform composition | terminal output |
-| Actual Game305 selections | `node /tmp/verify-game305-editor-coordinates.mjs` against newly built editor bundle and original game assets | PASS, 6 cases; source SHA-256 unchanged | Consumer `evidence/game305-editor-coordinate-fix-20261109/report.json` and `replay.mjs` |
+| Actual consumer selections | `node /tmp/verify-consumer-editor-coordinates.mjs` against newly built editor bundle and original game assets | PASS, 6 cases; source SHA-256 unchanged | Consumer `evidence/consumer-editor-coordinate-fix-20261109/report.json` and `replay.mjs` |
 | Diff hygiene | `git diff --check` | PASS | terminal output |
 
 ## Common runtime correction
@@ -70,7 +70,7 @@ production game assets; save/drag testing uses only generated temporary files.
 
 ## Actual consumer evidence
 
-Game305 `hud.lh / PortraitSoundButton` and
+consumer `hud.lh / PortraitSoundButton` and
 `auto.lh / Panel / Frame` were selected at DPR 1 / 1.5 / 2. The fitted canvas is
 approximately 435×774 CSS px in all cases, with only backing-pixel rounding;
 DPR 2 no longer halves the display. All four corners and pivot agree with the

@@ -185,7 +185,7 @@ export const ZHUDA_ENGINE_MODULES: readonly EngineModuleNode[] = [
     conflictsWith: ['spine-core-42'],
     providesGlobals: ['window.spine', 'window.spine.AnimationState'],
     priority: 100,
-    painPointNote: 'Game100001 的獨立 Spine 3.8 runtime；不得與 Spine 4.2 core 共用同一頁',
+    painPointNote: 'Spine 3.8 consumer 的獨立 runtime；不得與 Spine 4.2 core 共用同一頁',
   },
   {
     id: 'spine',

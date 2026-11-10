@@ -34,7 +34,7 @@ Keyboard and touch controls. Auto / Performance / Balanced / High settings. The 
 
 **An agent-friendly game SDK and toolchain built on LayaAir 3.4.2.**
 
-**Current stable release: [v1.15.0](https://github.com/zhudaandzhuer/zhuda-laya-engine/releases/tag/v1.15.0)** · The version source of truth is `package.json`; `zhuda.config.json`, the lockfile and generated manifests must match it. Older tags such as v1.1.0 are historical releases, not the current SDK.
+**Current stable release: [v1.16.0](https://github.com/zhudaandzhuer/zhuda-laya-engine/releases/tag/v1.16.0)** · The version source of truth is `package.json`; `zhuda.config.json`, the lockfile and generated manifests must match it. Older tags such as v1.1.0 are historical releases, not the current SDK.
 
 [![LayaAir 3.4.2](https://img.shields.io/badge/LayaAir-3.4.2-0ea5e9)](https://github.com/layabox/LayaAir) [![MIT](https://img.shields.io/badge/license-MIT-4ade80)](LICENSE) [![Node.js 24+](https://img.shields.io/badge/Node.js-24%2B-6cc24a)](package.json) [![Support on Solana](https://img.shields.io/badge/Support-Solana-9945ff)](#support-this-engine)
 
@@ -120,9 +120,25 @@ FIFO/priority voice retirement, a sample-backend extension and an optional
 Worker frame driver are available. The full vendor declaration audit now passes
 with `skipLibCheck:false` and runs inside `npm run verify`.
 See [audio](docs/audio.md), [runtime sizing and recovery](docs/platform-adapters.md),
-and the [measured scope and migration notes](docs/plans/records/astra-runtime-feedback/verification.md).
+and the [measured scope and migration notes](docs/plans/records/runtime-feedback/verification.md).
 Physical iOS/Android, speaker latency and a production Worklet DSP mixer remain
 unverified; the extension and desktop reference test do not establish full SOP compliance.
+
+## Security, packaging and public types (1.16.0)
+
+The Prefab and Model editors accept only their own Host and Origin, a per-launch
+capability token and JSON writes, and `/__project/` serves approved assets only.
+Every npm bin works through symlinks, spaces and non-ASCII paths, and
+`zhuda-laya-build` fails instead of writing output when no project
+configuration exists. Public declarations are generated from the TypeScript
+sources and resolve under Bundler, Node16 and NodeNext. The package ships
+`./min` and `sideEffects: false`, no source maps or plan records.
+
+**Breaking:** the legacy samples (`BenchmarkEngine`, `StaticAssetPipeline`,
+`UnityBridgePipeline` and related exports) moved from the main entry to
+`zhuda-laya-engine/demo`, and MCP's sample tool is now
+`demo_verify_unity_migration`. Unknown MCP assets and JSON-RPC methods now fail
+explicitly. See the [verification record](docs/plans/records/disclosure-hardening/verification.md).
 
 ## Layout, art text and video surfaces (1.15.0)
 
@@ -228,7 +244,7 @@ nodes, states, material slots and sockets. See [audio](docs/audio.md),
 [verification scope](docs/plans/records/consumer-runtime-hardening/verification.md).
 These additions do not establish physical mobile acceptance or approve game art.
 
-The RPG integration adds explicit lifecycle completion checks, official
+Consumer integration feedback adds explicit lifecycle completion checks, official
 `zhuda-laya-build --candidate` / `zhuda-laya-accept` commands, conservative
 component dependency proofs and opt-in shared primitive Prefab resources.
 Start with [candidate and evidence configuration](docs/consumer-tooling.md)

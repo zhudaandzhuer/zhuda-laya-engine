@@ -8,7 +8,7 @@ Last reviewed: 2026-11-04
 
 ## Source requirement
 
-User supplied the 2026-11-04 BDL engine review and asked us to examine the other
+User supplied the 2026-11-04 consumer engine review and asked us to examine the other
 agent's optimization suggestions as part of improving our engine responsibilities.
 Source: `<external-evidence>/ENGINE_MAIN_REVIEW_20261104.md`,
 sections B (requested DPR 2, measured DPR 1 nevertheless PASS), C (failed build
@@ -50,7 +50,7 @@ tracking the larger audio, dependency graph and vendor declaration work.
 ### Consumer or adapter
 
 - Temporary independent neutral consumer used for actual browser checks.
-- BDL review is read-only; no pin change, game modification or deployment.
+- consumer review is read-only; no pin change, game modification or deployment.
 
 ## Non-goals
 

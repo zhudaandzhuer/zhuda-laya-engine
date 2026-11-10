@@ -214,7 +214,7 @@ backend** (its single-channel loop subset is deliberate). The Chrome check
 measures processor progress during a 250 ms main-thread block. Hardware output
 latency, glitch-free speakers, mobile autoplay and full SOP compliance remain
 unverified. Unsupported Worklet/module/CSP environments must handle preparation
-failure explicitly. See the [1.7.0 verification record](plans/records/astra-runtime-feedback/verification.md).
+failure explicitly. See the [1.7.0 verification record](plans/records/runtime-feedback/verification.md).
 
 ## Offline movie soundtrack (1.13.0)
 

@@ -108,7 +108,7 @@ inside `mount`, and do not save source files from a preview controller.
 Play stays disabled when no controller is configured. The engine supplies the
 interaction host; the consumer supplies the behavior for each supported asset.
 It does not automatically launch the game's Main, wallet/RGS or other scenes.
-The Game305 sound-panel adapter, for example, belongs in the Game305 project,
+The sound-panel adapter of a game, for example, belongs in that game project,
 with its sound assets and rules outside this engine repository.
 
 ## Save and safety behavior

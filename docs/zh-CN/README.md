@@ -34,7 +34,7 @@ E4ZEhFCYy4b5pYXJUbMC9KjRitkypyqtZvpSRerLWHCb
 
 **基于 LayaAir 3.4.2，为 AI 编程代理打造的游戏 SDK 与工具链。**
 
-**当前稳定版：[v1.15.0](https://github.com/zhudaandzhuer/zhuda-laya-engine/releases/tag/v1.15.0)** · 版本唯一来源是根目录 `package.json`；`zhuda.config.json`、lockfile 与生成的 manifest 必须保持一致。v1.1.0 等旧 tag 仅代表历史发行版，不是当前 SDK。
+**当前稳定版：[v1.16.0](https://github.com/zhudaandzhuer/zhuda-laya-engine/releases/tag/v1.16.0)** · 版本唯一来源是根目录 `package.json`；`zhuda.config.json`、lockfile 与生成的 manifest 必须保持一致。v1.1.0 等旧 tag 仅代表历史发行版，不是当前 SDK。
 
 [![LayaAir 3.4.2](https://img.shields.io/badge/LayaAir-3.4.2-0ea5e9)](https://github.com/layabox/LayaAir) [![MIT](https://img.shields.io/badge/license-MIT-4ade80)](../../LICENSE) [![Node.js 24+](https://img.shields.io/badge/Node.js-24%2B-6cc24a)](../../package.json)
 
@@ -70,7 +70,7 @@ Cinematic 是实时后处理，不等于离线电影管线，也不保证所有�
 修复高 DPR 下的设计坐标，增加同一 mixer 内的串流 BGM、FIFO／优先级声道回收、
 样本后端扩展，以及可插拔后台时钟与恢复策略。完整 vendor 声明检查已从 506 项
 错误降到 0，并加入必跑验证。详情与未验证的真机／Worklet 限制见
-[本轮验收记录](../plans/records/astra-runtime-feedback/verification.md)。
+[本轮验收记录](../plans/records/runtime-feedback/verification.md)。
 
 ## 从这里开始：建立真正的消费项目
 

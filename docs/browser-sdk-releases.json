@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "host": "https://game.qianlongxundao.com",
+  "gameId": "zhuda-engine-sdk",
+  "launchUrl": "https://game.qianlongxundao.com/play/zhuda-engine-sdk/",
+  "releases": [
+    {
+      "version": "1.15.0",
+      "contentUrl": "https://game.qianlongxundao.com/apps/zhuda-engine-sdk/releases/9c61e10983b1ba814a16104b4e790f0b/",
+      "summary": "設計座標／DPR、文字與 BitmapFont、Laya 內嵌影片／WebView 生命週期契約；保留電影、WebGPU、WebGL 與白牌",
+      "zipSha256": "b10b248deb2580c8cea2eafa81a1bfed451a6a2c8be894c9196d5c8e525120ac",
+      "files": {
+        "zhuda-2d.js": {
+          "bytes": 1695399,
+          "integrity": "sha384-pjQaJ62vNI0OdKiXKu3yfckWIVuBFKNObpi37KMmCAD8ra03qT/r6x2YbOsD++S8"
+        },
+        "zhuda-3d.js": {
+          "bytes": 2457033,
+          "integrity": "sha384-5w1AXjxtR188sgMCZGjHy96UAhjV6kkgk0V3024wCvULx+DiB2MNcBPU2178LlvD"
+        },
+        "zhuda-3d-gltf.js": {
+          "bytes": 2616881,
+          "integrity": "sha384-UHsrb0hgk64iX/qp/kYLye706la8vWrJ4w+/CvrcRLPvndaGUajmdDa7ndn7jqm0"
+        },
+        "zhuda-2d-webgpu.js": {
+          "bytes": 10273039,
+          "integrity": "sha384-QXFO/MusEyh76qoiZ2gGJ051+V5IlZiy1JVROLVsmcRLbRMaVwInpK6l4NWWe2mi"
+        },
+        "zhuda-3d-webgpu.js": {
+          "bytes": 11297880,
+          "integrity": "sha384-9qRpBHu1VyF12uSrWT9JUckn3MSqMDQPSlYhjggfVP3/u+/pWOsjF/DQfEZ9nuhm"
+        },
+        "zhuda-3d-gltf-webgpu.js": {
+          "bytes": 11457728,
+          "integrity": "sha384-cZoJASWvT5xHMX0doGKGd6pLCDd8VYgL8KF++zxImby6uX2NRbrfYBHRhW5v+aP7"
+        }
+      }
+    },
+    {
+      "version": "1.13.0",
+      "contentUrl": "https://game.qianlongxundao.com/apps/zhuda-engine-sdk/releases/d736a66a3dc72499963c6266914056da/"
+    },
+    {
+      "version": "1.11.0",
+      "contentUrl": "https://game.qianlongxundao.com/apps/zhuda-engine-sdk/releases/00b72197334c12e756e8c7e812c927fd/"
+    },
+    {
+      "version": "1.10.0",
+      "contentUrl": "https://game.qianlongxundao.com/apps/zhuda-engine-sdk/releases/5d05c7177ff7fd71fd35114f3a324172/"
+    },
+    {
+      "version": "1.9.0",
+      "contentUrl": "https://game.qianlongxundao.com/apps/zhuda-engine-sdk/releases/c61d0a83b7094ff5055302d2f8235b8b/"
+    },
+    {
+      "version": "1.8.0",
+      "contentUrl": "https://game.qianlongxundao.com/apps/zhuda-engine-sdk/releases/02b2dc8ba9dea9d1f1cd43a37226641c/"
+    },
+    {
+      "version": "1.7.0",
+      "contentUrl": "https://game.qianlongxundao.com/apps/zhuda-engine-sdk/releases/e69ecb8850e43d172389f96ab0a9430e/"
+    },
+    {
+      "version": "1.6.0",
+      "contentUrl": "https://game.qianlongxundao.com/apps/zhuda-engine-sdk/releases/02b62daf1d3a8cdac423f35428454ce8/"
+    }
+  ]
+}

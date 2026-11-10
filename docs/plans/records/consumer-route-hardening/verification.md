@@ -22,7 +22,7 @@ Date: 2026-11-04
 | Markdown links | Node link scan over `AGENTS.md`, README files and `docs/*.md` | PASS; all checked links exist | command output |
 | Build, types, Doctor and regression | `npm run verify` | PASS; 125 tests, 0 Doctor blockers | command output |
 | Diff hygiene | `git diff --check` | PASS | command output |
-| Consumer Doctor regression | `node packages/compiler/zhuda-doctor.mjs --project <external-evidence>/game1` | PASS; engine-backed static, pinned `8c630ad` | external consumer output |
+| Consumer Doctor regression | `node packages/compiler/zhuda-doctor.mjs --project <external-evidence>/consumer` | PASS; engine-backed static, pinned `8c630ad` | external consumer output |
 | Real WebGL/device | target browser and mobile device procedure | UNAVAILABLE for this repository-only tooling change | none |
 
 ## Lifecycle and failure cases

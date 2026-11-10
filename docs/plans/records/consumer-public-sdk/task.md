@@ -6,7 +6,7 @@ Last reviewed: 2026-11-03
 
 ## Source requirement
 
-The Gates of Olympus consumer still contains a copied `packages/` engine and
+One consumer still contains a copied `packages/` engine and
 imports engine source paths directly. Its previous dynamic Scene workflow must
 use the verified Prefab definition in both the isolated preview and the game,
 through the pinned public `zhuda-laya-engine` entry.
@@ -29,7 +29,7 @@ Prefab-first control-bar provenance and the existing game behavior gates.
 ## Dependencies
 
 - Engine commit `99116a147a0df7a6d66703aa0e0f762a73dbc9f0` on GitHub.
-- Consumer `<external-evidence>/game1` and its `AGENTS.md`.
+- Consumer `<external-evidence>/consumer` and its `AGENTS.md`.
 - `docs/prefab-workflow.md`, `packages/compiler/consumer-build.mjs`, and the
   public declarations under `packages/types/`.
 

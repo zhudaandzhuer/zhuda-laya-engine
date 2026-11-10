@@ -8,7 +8,7 @@ Last reviewed: 2026-11-06
 
 User request: the engine should provide a small live preview window so an
 agent can see Prefab and Scene asset edits immediately, and the consumer
-`/game1` control bar must match its visual reference without stretched buttons
+The consumer control bar must match its visual reference without stretched buttons
 or color drift.
 
 ## Goal
@@ -23,7 +23,7 @@ with browser evidence.
 
 - Prefab IDs, named child paths and `AssetProvider` logical IDs remain stable.
 - The Scene instantiates the same definition used by the isolated preview.
-- Consumer gameplay rules and assets remain in `/game1`; the engine exposes only
+- Consumer gameplay rules and assets remain in The consumer; the engine exposes only
   generic tooling and runtime support.
 - A failed rebuild never reloads a stale preview or reports a passing visual
   result.
@@ -32,7 +32,7 @@ with browser evidence.
 
 - `packages/compiler/consumer-build.mjs` and `packages/compiler/prefab-preview.mjs`.
 - Consumer public SDK pinned to the engine commit containing the implementation.
-- `<external-evidence>/game1` assets and its Prefab evidence workflow.
+- `<external-evidence>/consumer` assets and its Prefab evidence workflow.
 
 ## Scope
 
@@ -45,7 +45,7 @@ with browser evidence.
 
 ### Consumer or adapter
 
-- `<external-evidence>/game1`: control-bar Prefab, runtime dependency pin,
+- `<external-evidence>/consumer`: control-bar Prefab, runtime dependency pin,
   watch script, evidence and verification report.
 
 ## Non-goals
@@ -62,7 +62,7 @@ with browser evidence.
    `prefab-preview.html` and `index.html`.
 3. `ui/control-bar` isolated preview and Scene use the same source hashes and
    render the capsule nodes without native nine-slice distortion.
-4. `/game1` `npm run verify` passes and records the isolated and Scene evidence.
+4. The consumer `npm run verify` passes and records the isolated and Scene evidence.
 
 ## Evidence to attach
 

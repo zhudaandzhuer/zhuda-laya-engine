@@ -1,4 +1,4 @@
-# Verification: Astra runtime feedback / 1.7.0
+# Verification: runtime feedback / 1.7.0
 
 Task: [task.md](task.md)  
 Date: 2026-11-05  
@@ -8,7 +8,7 @@ The following documentation commit records this identity; exact source hashes
 and baseline are also in the external `source-revisions.json`.
 
 Evidence root (abbreviated **E** below):
-`<external-evidence>/zhuda-astra-runtime-acceptance-20261105`.
+`<external-evidence>/runtime-feedback-acceptance-20261105`.
 No consumer production assets were copied into the engine. The fixture's plate,
 box, WAV and processor are generated neutral regression inputs.
 

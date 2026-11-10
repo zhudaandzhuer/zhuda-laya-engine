@@ -30,8 +30,8 @@ removing the displayed game.
 
 ```json
 {
-  "assetInclude": ["game305/runtime", "shared/fonts", "shared/palette.png"],
-  "assetExclude": ["game305/runtime/source"]
+  "assetInclude": ["game/runtime", "shared/fonts", "shared/palette.png"],
+  "assetExclude": ["game/runtime/source"]
 }
 ```
 
@@ -257,7 +257,7 @@ backing pixels alone are insufficient: the former 198/99/66 CSS-pixel regression
 at DPR 1/2/3 must fail. Rebuild candidates and recapture/review affected evidence;
 do not re-label a pre-fix reference as approved. Default preview design units
 match the requested CSS canvas dimensions. See [runtime sizing](platform-adapters.md)
-for fixed-design consumers and [measured results](plans/records/astra-runtime-feedback/verification.md).
+for fixed-design consumers and [measured results](plans/records/runtime-feedback/verification.md).
 
 ## Branding and neutral 2D starter (1.10.0)
 

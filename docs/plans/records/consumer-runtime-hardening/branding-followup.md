@@ -1,7 +1,7 @@
 # Consumer boot branding follow-up
 
 Source: the user's mandatory responsive 豬大 × LayaAir boot-logo requirement;
-independent RPG integration found that only the engine showcase generated it.
+independent consumer integration found that only the engine showcase generated it.
 Scope: shared compiler markup/CSS, consumer HTML injection, reserved-ID guard.
 No gameplay or consumer artwork is added to the engine.
 
@@ -17,7 +17,7 @@ Validation: `npm run verify` passed 145/145 on Node 26.12.0 / macOS arm64.
 Log: `/tmp/zhuda-branding-verify.log`. Shared markup preserves the already tested
 showcase behavior; the new test rejects duplicate IDs and verifies embedded
 image bytes, responsive constraints and placement before runtime scripts.
-The independent neutral consumer and RPG provide the real browser check; their
+The independent neutral consumer and a second consumer provide the real browser check; their
 media remains outside this engine repository.
 
 Independent package check: neutral consumer `npm run verify` PASS with packed

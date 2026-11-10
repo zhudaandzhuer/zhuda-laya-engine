@@ -20,10 +20,10 @@ consumer integration; it does not claim native-device coverage.
 
 | Consumer | Result |
 | --- | --- |
-| `games/deep-tide-survival/client` | PASS: 152 client tests + 6 Go transport tests; build, typecheck and Doctor passed |
-| `games/dungeon-spin/client` | PASS: 6 tests; asset manifest, build, typecheck and Doctor passed |
-| `games/gates-of-olympus-1000/client` | PASS: 95/95 gates; build, typecheck and Doctor passed |
-| `games/pigfall-apocalypse/client` | PASS: 19 tests; build, typecheck and Doctor passed |
+| `consumer A client` | PASS: 152 client tests + 6 Go transport tests; build, typecheck and Doctor passed |
+| `consumer B client` | PASS: 6 tests; asset manifest, build, typecheck and Doctor passed |
+| `consumer C client` | PASS: 95/95 gates; build, typecheck and Doctor passed |
+| `consumer D client` | PASS: 19 tests; build, typecheck and Doctor passed |
 
 ## Hosted SDK
 
@@ -41,7 +41,7 @@ the exact per-profile SHA-384 values.
   matrices, autoplay gesture recovery and hardware GPU evidence still require
   the target platform. The engine exposes the adapter contract; it cannot
   certify a platform it has not run on.
-- The Gates consumer still has a legacy DOM WebM effect pool for its own
+- One consumer still has a legacy DOM WebM effect pool for its own
   transparent-video art. It uses `pointer-events:none`, but migrating that
   consumer to `ZhudaVideoSurface` is a separate consumer change; the engine
   contract itself does not create an untracked DOM overlay.

@@ -34,7 +34,7 @@ preserved for back/forward-cache restoration.
 | Engine verify | `npm run verify` | PASS, 301/301; build/types/declaration audit/Doctor/tests | `/tmp/zhuda-responsive-final-verify-20261109.log` |
 | Client typecheck | `node node_modules/typescript/bin/tsc --noEmit --allowImportingTsExtensions --target es2022 --module ESNext --moduleResolution bundler --lib es2022,dom --skipLibCheck packages/types/index.d.ts packages/compiler/prefab-editor-client.ts` | PASS | terminal output |
 | Actual consumer viewport/input | `node <external-evidence>/replay.mjs` | PASS, original sound.lh at narrow/zoomed sizes, Edit/Play and native mute/volume input | External consumer evidence described below |
-| Independent consumer candidate build | Consumer root: `npm run build -- --candidate` | PASS | `/tmp/game305-editor-responsive-build-20261109.log` |
+| Independent consumer candidate build | Consumer root: `npm run build -- --candidate` | PASS | `/tmp/consumer-editor-responsive-build-20261109.log` |
 | Diff hygiene | `git diff --check` | PASS | terminal output |
 
 ## Measured acceptance
@@ -47,7 +47,7 @@ targets, no workspace horizontal overflow, panel access by vertical scrolling,
 full canvas containment and actual painted pixels at all four image corners.
 Agent View must use the entire remaining row, not leave a hidden Assets row.
 
-Actual Game305 sound.lh was checked at 800×650 DPR 2, 600×600 DPR 1.5,
+Actual consumer sound.lh was checked at 800×650 DPR 2, 600×600 DPR 1.5,
 360×640 DPR 2, and 1000×800 with actual 150% page zoom. Both Edit and Play fit,
 buttons remain visible, mute icons toggle and volume/percentage track native
 input. The consumer's current `zhuda.editor.ts` shared sound-panel controller is
@@ -55,7 +55,7 @@ used; no controller, game or art source is changed. sound.lh is byte-identical.
 
 ## Persistent evidence and local delivery
 
-`<external-evidence>/game305-editor-responsive-20261109`
+`<external-evidence>/consumer-editor-responsive-20261109`
 contains the actual report/screenshots, optional-baseline replay, neutral and
 coordinate/Play reports, exact source hashes and logs. Consumer game media stays
 outside the engine repository. The pre-fix diagnostic is historical; replay the

@@ -1,4 +1,4 @@
-# Task: finish game1 handoff and add the engine splash mark
+# Task: engine splash mark
 
 Status: Implemented; desktop/build scope verified; physical-device acceptance deferred
 Owner: Codex
@@ -6,7 +6,7 @@ Last reviewed: 2026-11-06
 
 ## Source requirement
 
-User request: finish the interrupted game1 handoff, remove redundant and stale
+User request: finish the interrupted consumer handoff, remove redundant and stale
 design artifacts, write the handoff documentation into the consumer project,
 and ensure the engine `index.html` always plays a responsive Zhuda × LayaAir
 logo animation before the workbench starts.
@@ -20,7 +20,7 @@ brand asset.
 
 ## Invariants
 
-- Game rules, consumer art and consumer evidence stay in `game1/`; the engine
+- Game rules, consumer art and consumer evidence stay in `consumer/`; the engine
   owns only the generic splash asset and build template.
 - The consumer continues to use public `zhuda-laya-engine` APIs and a pinned
   Git revision.
@@ -37,12 +37,12 @@ brand asset.
 Engine: `packages/compiler/zhuda-build.mjs`, `assets/branding/`, generated
 `dist/web/index.html`, tests and verification records.
 
-Consumer: `<external-evidence>/game1` cleanup manifest, handoff docs,
+Consumer: `<external-evidence>/consumer` cleanup manifest, handoff docs,
 dependency metadata, canonical evidence and stale artifact removal.
 
 ## Non-goals
 
-- Creating or guessing a GitHub remote for `game1`.
+- Creating or guessing a GitHub remote for `consumer`.
 - Changing game rules, payout math, gameplay timing or consumer visual design.
 - Reauthoring the existing game assets or deleting source references used by
   the final reports.
@@ -52,17 +52,17 @@ dependency metadata, canonical evidence and stale artifact removal.
 - `npm run verify` and `git diff --check` pass in the engine.
 - Generated engine `dist/web/index.html` contains the splash markup, asset and
   responsive animation markers.
-- `game1` build, strict typecheck, doctor, unit gates and control-bar parity
+- `consumer` build, strict typecheck, doctor, unit gates and control-bar parity
   pass against the pinned engine revision.
 - A handoff record states the exact engine revision, commands, retained and
   removed artifact classes, result and unverified browser/device limits.
 
 ## Evidence
 
-- `docs/plans/records/game1-cleanup-and-engine-splash/verification.md`
-- `game1/HANDOFF.md`
-- `game1/CLEANUP-REPORT.md`
-- `game1/evidence/prefabs/control-bar-parity-report.json`
+- `docs/plans/records/engine-splash-mark/verification.md`
+- `consumer/HANDOFF.md`
+- `consumer/CLEANUP-REPORT.md`
+- `consumer/evidence/prefabs/control-bar-parity-report.json`
 
 ## Unverified limits
 

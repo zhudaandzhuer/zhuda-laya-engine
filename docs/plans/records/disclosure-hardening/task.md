@@ -1,6 +1,6 @@
 # Agent task: disclosure-hardening
 
-Status: Implemented within scope; desktop verified  
+Status: Accepted within engine scope  
 Owner: Engine/toolchain  
 Last reviewed: 2026-11-10
 
@@ -29,7 +29,7 @@ packages, and run the corresponding regressions on a main-only repository.
 ## Dependencies
 
 - Existing editor HTTP routes, browser fixtures, public declarations and the 301-test baseline.
-- Release/build pipeline, package lock, independent consumer and browser gates.
+- Release/build pipeline, package lock, packed-install and browser gates.
 - Baseline review evidence is external; repository records contain portable paths.
 
 ## Scope
@@ -48,8 +48,9 @@ packages, and run the corresponding regressions on a main-only repository.
 
 ### Consumer or adapter
 
-- Existing independent consumer build and original Prefab browser replay only.
-- Preserve consumer pins and authored data; restart owned editor hosts after fixes.
+- None. Consumers adopt the release and verify it in their own repositories
+  (scope narrowed by the user on 2026-11-10: the engine repository covers the
+  engine only).
 
 ## Non-goals
 
@@ -73,7 +74,7 @@ packages, and run the corresponding regressions on a main-only repository.
 6. Main SDK excludes legacy demo code; explicit demo entry retains examples.
    Minified exports load and audited tree shaking retains required behavior.
 7. npm ci, npm run verify, lint/format, full Windows tests, registered browser
-   batches, geometry/paint/input gates and independent consumer build pass.
+   batches, geometry/paint/input gates and a clean packed install pass.
 8. Current README reports computed evidence; coverage adds meaningful facade,
    terrain and build failure-path checks without counting browser draws as unit coverage.
 9. Local and remote branch inventories contain main only; working tree is clean.
@@ -82,7 +83,7 @@ packages, and run the corresponding regressions on a main-only repository.
 
 - Negative HTTP/CLI fixtures, protocol/export/package tests and exact commands.
 - Full verification, coverage summary, browser reports and CI URLs.
-- External consumer evidence with source hashes; portable repository records.
+- Packed-install evidence; portable repository records.
 - Git branch/worktree inventories and retained ancestry.
 
 ## Unverified limits
@@ -99,4 +100,4 @@ never re-enable insecure serving as an automatic fallback.
 ## Result
 
 See [verification.md](verification.md). Hosted CI (including full Windows
-tests) passes; consumer re-pinning and Prefab re-approval remain open.
+tests) passes. Consumer adoption is consumer-owned.

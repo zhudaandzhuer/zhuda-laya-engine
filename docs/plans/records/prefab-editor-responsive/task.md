@@ -38,7 +38,7 @@ switches. Narrow Editor panels remain accessible through vertical scrolling.
 
 ### Consumer or adapter
 
-- Read-only Game305 sound-panel replay at real project dimensions.
+- Read-only consumer sound-panel replay at real project dimensions.
 - Refresh local editor services after verifying the replacement, without changing game source or forcing browser reloads.
 
 ## Non-goals
@@ -56,7 +56,7 @@ switches. Narrow Editor panels remain accessible through vertical scrolling.
    complete canvas bounds and actual corner pixels; native Play clicks still work.
 3. Existing 174 coordinate checks, Play lifecycle gate, engine `npm run verify`,
    strict client typecheck and `git diff --check` remain green.
-4. Actual Game305 sound.lh stays byte-identical; narrow/zoomed snapshots and native
+4. Actual consumer sound.lh stays byte-identical; narrow/zoomed snapshots and native
    interaction are stored in external consumer evidence. Existing consumer build passes.
 
 ## Evidence to attach

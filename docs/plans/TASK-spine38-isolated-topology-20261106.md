@@ -1,12 +1,12 @@
 # Agent task: spine38-isolated-topology-20261106
 
 Status: In progress  
-Owner: Zhuda engine / BDL consumer integration  
+Owner: Zhuda engine / consumer integration  
 Last reviewed: 2026-11-06
 
 ## Source requirement
 
-Game100001 has real Spine 3.8.99 source assets and must remain isolated from
+the Spine 3.8 consumer game has real Spine 3.8.99 source assets and must remain isolated from
 the existing Spine 4.2 package. The consumer migration is blocked because the
 engine vendor contains `spine-core-3.8.js`, but the public topology and boot
 contracts do not expose a `spine38` feature.
@@ -25,7 +25,7 @@ an isolated package, and reports the selected Spine version at boot.
 - Game assets stay in the consumer repository; this engine change only exposes
   public runtime/compiler contracts and tests.
 - A topology PASS proves ordering and package composition only. It does not
-  claim Game100001 visual or device parity.
+  claim the Spine 3.8 consumer game visual or device parity.
 - Every async Spine load remains subject to the consumer lifecycle and release
   gates.
 
@@ -34,7 +34,7 @@ an isolated package, and reports the selected Spine version at boot.
 - `vendor/laya-3.4.2/libs/spine-core-3.8.js`
 - `vendor/laya-3.4.2/libs/spine-core-4.2.js`
 - `vendor/laya-3.4.2/libs/laya.spine.js`
-- BDL consumer Game100001 source probe and real Thor Spine 3.8 assets
+- consumer the Spine 3.8 consumer game source probe and real Spine 3.8 assets
 
 ## Scope
 
@@ -49,12 +49,12 @@ an isolated package, and reports the selected Spine version at boot.
 
 ### Consumer or adapter
 
-- BDL consumer updates its feature tag, runtime probe, manifest and pinned
+- consumer updates its feature tag, runtime probe, manifest and pinned
   engine SHA after the engine commit is created.
 
 ## Non-goals
 
-- Do not port Game100001 game rules, HUD, audio, or Unity scene behavior here.
+- Do not port consumer game rules, HUD, audio, or Unity scene behavior here.
 - Do not convert the 3.8 asset to Spine 4.2 or draw a PNG fallback.
 - Do not claim acceptance gates or device parity from a build-only result.
 
@@ -65,16 +65,16 @@ an isolated package, and reports the selected Spine version at boot.
    script composition.
 3. `npm run build` emits the SDK with the updated public topology.
 4. `npm run verify` passes, including Doctor and all existing regressions.
-5. The BDL consumer builds Game100001 with `spine-core-3.8.js` and
+5. The consumer builds the Spine 3.8 consumer game with `spine-core-3.8.js` and
    `laya.spine.js`, with no `spine-core-4.2.js` in that artifact.
-6. A browser probe parses the real Thor JSON/atlas with the isolated runtime;
+6. A browser probe parses the real Spine 3.8 JSON/atlas with the isolated runtime;
    if rendering or lifecycle evidence is unavailable, the package remains
    `asset-migration` and the acceptance report remains BLOCKED.
 
 ## Evidence to attach
 
 - Engine test/build output and `dist/build-manifest.json`
-- Consumer Game100001 build report and ordered library list
+- Consumer the Spine 3.8 consumer game build report and ordered library list
 - Browser console/runtime probe report, including parse and disposal results
 
 ## Unverified limits
@@ -85,5 +85,5 @@ an isolated package, and reports the selected Spine version at boot.
 ## Rollback
 
 Revert to engine commit `cb02e44e048451a14282c07faa24b617b3c3483d` and keep
-Game100001 on the source-only probe if any topology, compiler, or runtime
+the Spine 3.8 consumer game on the source-only probe if any topology, compiler, or runtime
 regression appears.

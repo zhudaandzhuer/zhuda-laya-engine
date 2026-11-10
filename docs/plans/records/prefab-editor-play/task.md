@@ -8,7 +8,7 @@ Last reviewed: 2026-11-09
 
 User requests the missing interactive Agent View shown in their screenshot:
 Edit/Play switching, editing drag disabled in Play, and a consumer-owned preview
-controller interface. First real selection: Game305 `assets/prefabs/ui/sound.lh`,
+controller interface. First real selection: consumer `assets/prefabs/ui/sound.lh`,
 including `Panel/Mute` and `Panel/Volume`.
 
 ## Goal
@@ -18,7 +18,7 @@ volume, then stop and recover the exact authored/unsaved edit state.
 
 ## Invariants
 
-- Game behavior and assets stay in the consumer; the engine knows no Game305 rules.
+- Game behavior and assets stay in the consumer; the engine knows no consumer rules.
 - Play mutates only a disposable runtime clone, never source JSON or edit history.
 - Save, undo/redo, Inspector and editing drag cannot mutate source during Play.
 - One shared public SDK module/renderer; controllers never boot a second engine.
@@ -30,7 +30,7 @@ volume, then stop and recover the exact authored/unsaved edit state.
 
 - Existing revision-checked editor, public SDK, named Prefab hierarchy and DPR fix.
 - Existing deadline helper and managed runtime lifecycle.
-- Consumer Game305 sound panel and its existing visual control semantics.
+- A consumer sound panel and its existing visual control semantics.
 
 ## Scope
 
@@ -60,7 +60,7 @@ volume, then stop and recover the exact authored/unsaved edit state.
 3. Real WebGL at DPR 1/1.5/2: click and drag modify preview state; no editing
    movement, save or history mutation. Agent View/resizing work in Play. Stop
    restores authored state plus existing unsaved edits. Repeated Play/Stop clean.
-4. Real Game305 sound.lh: mute On/Off, percent/fill/grip track pointer; original
+4. Real consumer sound.lh: mute On/Off, percent/fill/grip track pointer; original
    source SHA-256 unchanged. Record audio diagnostics separately from speaker sound.
 5. Strict public consumer typecheck, `npm run verify`, existing coordinate gate,
    `git diff --check`, independent consumer build and published CI where available.
@@ -68,7 +68,7 @@ volume, then stop and recover the exact authored/unsaved edit state.
 ## Evidence to attach
 
 - Task verification record, exact commands/base commit/source and bundle hashes.
-- Neutral browser report/screenshots and external Game305 replay/evidence.
+- Neutral browser report/screenshots and external consumer replay/evidence.
 - Lifecycle counts and deliberate failing cases.
 
 ## Unverified limits
