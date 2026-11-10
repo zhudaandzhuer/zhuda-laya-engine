@@ -5,6 +5,38 @@
   "launchUrl": "https://game.qianlongxundao.com/play/zhuda-engine-sdk/",
   "releases": [
     {
+      "version": "1.16.0",
+      "contentUrl": "https://game.qianlongxundao.com/apps/zhuda-engine-sdk/releases/b01e6d56ee85df1b0c529760aa80b3c1/",
+      "summary": "編輯器請求防護、可安裝的 CLI、由原始碼產生的公開型別（Bundler／Node16／NodeNext）、精簡且可重現的套件；舊示範程式只在 /demo 子路徑",
+      "zipSha256": "e47b8ffe98574e52116fd02c653752dd8ed17aeb9cd567c6f3c0c195882b1aab",
+      "files": {
+        "zhuda-2d.js": {
+          "bytes": 1664501,
+          "integrity": "sha384-WhmijbLEpaN+O/kkqHCaSCRXZCZWcvzzICLMhs41y5QBGMppHl9Tx8h5GhFUCDNV"
+        },
+        "zhuda-3d.js": {
+          "bytes": 2426135,
+          "integrity": "sha384-zmHAcJXhNAKiluI48y5IGB303epH5OTvsuox/gPlssvuuhMszBRqs4ET8m8M6MMo"
+        },
+        "zhuda-3d-gltf.js": {
+          "bytes": 2585983,
+          "integrity": "sha384-7rC9jcd68wYFHToQKCjjPb4+xlmBL5ht0BmCNOlucmO0hWc1MFP7rlvJmwcd7e86"
+        },
+        "zhuda-2d-webgpu.js": {
+          "bytes": 10242141,
+          "integrity": "sha384-omzaxwTsc/ZJA7d1172b7IF3bYfmbh7092zwGwTgNY6Wu5fD020fvsfoMDkWb6q5"
+        },
+        "zhuda-3d-webgpu.js": {
+          "bytes": 11266982,
+          "integrity": "sha384-DrQNptfjUNThQfxmDWHEIRC3k1yjM6jWg9x/Ptt0mQMU8gd38UGEVqPajhO8n7sf"
+        },
+        "zhuda-3d-gltf-webgpu.js": {
+          "bytes": 11426830,
+          "integrity": "sha384-THrCfUEZAD1Q0Q3pkijV4X+C0mzaGTmV24c6C6knpRdb5gYZC4nP777OP5oBXeNm"
+        }
+      }
+    },
+    {
       "version": "1.15.0",
       "contentUrl": "https://game.qianlongxundao.com/apps/zhuda-engine-sdk/releases/9c61e10983b1ba814a16104b4e790f0b/",
       "summary": "設計座標／DPR、文字與 BitmapFont、Laya 內嵌影片／WebView 生命週期契約；保留電影、WebGPU、WebGL 與白牌",

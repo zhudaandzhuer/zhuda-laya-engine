@@ -58,11 +58,13 @@ evidence in its own repository; those results are not recorded here.
 - Hosted Windows CI is not Windows GPU hardware acceptance.
 - Physical devices, Windows GPU hardware and a real malicious-site DNS
   rebinding run are not covered; HTTP defenses are tested at the server.
-- The browser SDK for 1.15.0 now builds different bytes from the hosted
-  1.15.0 release that `examples/browser-sdk/` pins (demo split, strict build).
-  The templates still point at the published release. A new browser release
-  needs a version bump; moving demo exports to `/demo` is a breaking change
-  for anyone importing them from the main entry.
+- Released as 1.16.0. The browser SDK is published at
+  `https://game.qianlongxundao.com/apps/zhuda-engine-sdk/releases/b01e6d56ee85df1b0c529760aa80b3c1/`
+  (ZIP SHA-256 `e47b8ffe98574e52116fd02c653752dd8ed17aeb9cd567c6f3c0c195882b1aab`);
+  every hosted file matched the build byte for byte, and the hosted bundle passed
+  12 cross-origin browser scenarios with SRI. Templates and docs pin it through
+  `docs/browser-sdk-releases.json`. Moving the legacy samples to `/demo` is a
+  breaking change called out in the 1.16.0 notes.
 
 Decision: **Accepted within engine scope.** Local verification and hosted
 verify, browser and Windows jobs pass (run 42765245489). Remaining limits are
