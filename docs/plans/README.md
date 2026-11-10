@@ -41,6 +41,7 @@ device checks and acceptance gates pass.
 | [Prefab editor coordinates](records/prefab-editor-coordinates/task.md) | Implemented within scope; 174 desktop checks | Retina container sizing, transformed selection/pivot, parent-local dragging and browser position assertions |
 | [Disclosure hardening](records/disclosure-hardening/task.md) | Accepted within engine scope | Editor Host/Origin/capability defenses, working installed CLIs, strict generated types, truthful MCP/health, lean reproducible package and CI (Windows full tests pass) |
 | [Procedural asset pipeline](records/procedural-pipeline/task.md) | Implemented within scope; desktop WebGL verified | CPU-baked seamless PBR recipes, geometry kit, props with colliders and per-material merging, synth audio and provider integration; WebGPU, mobile and art approval pending |
+| [Film scene loop for agents](records/film-scene-loop/task.md) | Implemented within scope; desktop WebGL verified | Phase 1 of the 67js-style film workflow: JSON scenes with revisions, MCP previews, four-shot review grids, still and MP4 render jobs through the cinematic capture; shadows, sky, fog, splines and path tracing are later phases |
 | [Preview runtime hardening](preview-runtime-hardening.md) | Accepted; desktop/browser verified | Foreign Laya realm guard, explicit 2D-only editor profile and release-hidden Scene/3D showcase policy; external device and foreign-app integration remain separate checks |
 
 Slot-specific rules, RGS, math, wallet and Factory products are outside this

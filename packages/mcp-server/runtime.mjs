@@ -27,11 +27,13 @@ const runtime = installed
           'runtime3d/ModelCompatibility',
           'procedural/TextureRecipe',
           'procedural/SynthAudio',
+          'film/FilmScene',
+          'ProceduralStarter',
         ].map(
           (name) =>
             import(
               new URL(
-                `../${['BenchmarkEngine', 'StaticAssetPipeline', 'UnityBridgePipeline', 'PixelCalibrationEngine'].includes(name) ? 'demo' : 'core'}/${name}.ts`,
+                `../${['BenchmarkEngine', 'StaticAssetPipeline', 'UnityBridgePipeline', 'PixelCalibrationEngine', 'ProceduralStarter'].includes(name) ? 'demo' : 'core'}/${name}.ts`,
                 import.meta.url,
               )
             ),
@@ -55,4 +57,12 @@ export const {
   gltfExtensionCapabilities,
   validateZhudaTextureRecipe,
   validateZhudaSynthRecipe,
+  validateZhudaFilmScene,
+  parseZhudaFilmScene,
+  applyZhudaFilmScenePatch,
+  validateZhudaFilmCameraPath,
+  sampleZhudaFilmCameraPath,
+  resolveZhudaFilmCamera,
+  ZHUDA_STARTER_PROPS,
+  ZHUDA_STARTER_TEXTURES,
 } = runtime;

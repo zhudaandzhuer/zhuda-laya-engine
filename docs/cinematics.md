@@ -1,5 +1,7 @@
 # Deterministic presentation timelines
 
+Agents that author whole scenes as data use [film scenes](film-scenes.md), which render through the capture described below.
+
 `ZhudaTimelineSequencer` binds number, boolean, vector and string event tracks to
 consumer presentation. It borrows the existing runtime time source:
 

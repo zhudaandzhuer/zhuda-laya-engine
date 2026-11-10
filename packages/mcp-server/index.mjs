@@ -13,6 +13,13 @@ import { cliMain } from '../compiler/cli.mjs';
  */
 
 import readline from 'node:readline';
+import {
+  FILM_TOOLS_MANIFEST,
+  isFilmTool,
+  executeFilmTool,
+  configureFilmTools,
+  closeFilmTools,
+} from './film-tools.mjs';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import {
@@ -44,6 +51,7 @@ const packageVersion = JSON.parse(
 ).version;
 
 export const MCP_TOOLS_MANIFEST = [
+  ...FILM_TOOLS_MANIFEST,
   {
     name: 'validate_texture_recipe',
     description:
@@ -667,6 +675,12 @@ export function handleJsonRpcMessage(msg) {
             Array.isArray(params.arguments)))
       )
         throw Error('Invalid tool parameters');
+      if (isFilmTool(params.name))
+        // Film tools render in a browser and answer asynchronously, with image blocks.
+        return executeFilmTool(params.name, params.arguments || {}).then(
+          (content) => ({ jsonrpc: '2.0', id, result: { content } }),
+          (err) => ({ jsonrpc: '2.0', id, error: { code: -32602, message: err.message } }),
+        );
       const output = executeMcpTool(params.name, params.arguments || {});
       return {
         jsonrpc: '2.0',
@@ -705,14 +719,32 @@ export function handleJsonRpcMessage(msg) {
 if (
   cliMain(
     import.meta.url,
-    'Usage: zhuda-laya-mcp [--tool NAME --args JSON]\nWithout --tool, starts the JSON-RPC stdio server.',
+    'Usage: zhuda-laya-mcp [--tool NAME --args JSON] [--film-output DIRECTORY]\nWithout --tool, starts the JSON-RPC stdio server. --film-output lets film_render_job write stills and MP4 there.',
   )
 ) {
+  const filmIdx = process.argv.indexOf('--film-output');
+  if (filmIdx !== -1) {
+    const dir = process.argv[filmIdx + 1];
+    if (!dir) throw Error('--film-output needs a directory');
+    configureFilmTools({ output: (await import('node:path')).resolve(dir) });
+  }
   const toolIdx = process.argv.indexOf('--tool');
   if (toolIdx !== -1) {
     const toolName = process.argv[toolIdx + 1];
     const argsIdx = process.argv.indexOf('--args');
     const rawArgs = argsIdx !== -1 ? JSON.parse(process.argv[argsIdx + 1]) : {};
+    if (isFilmTool(toolName)) {
+      const content = await executeFilmTool(toolName, rawArgs);
+      await closeFilmTools();
+      console.log(
+        JSON.stringify(
+          content.filter((block) => block.type === 'text').map((b) => JSON.parse(b.text)),
+          null,
+          2,
+        ),
+      );
+      process.exit(0);
+    }
     const result = executeMcpTool(toolName, rawArgs);
     console.log(JSON.stringify(result, null, 2));
     process.exit(0);
@@ -725,12 +757,25 @@ if (
     terminal: false,
   });
 
+  // The film host owns a browser; close it with the server.
+  // Answer every request already received before closing.
+  const pending = new Set();
+  rl.on('close', () => {
+    Promise.allSettled([...pending])
+      .then(() => closeFilmTools())
+      .finally(() => process.exit(0));
+  });
+
   rl.on('line', (line) => {
     if (!line.trim()) return;
     try {
       const req = JSON.parse(line);
       const res = handleJsonRpcMessage(req);
-      if (res !== null) process.stdout.write(JSON.stringify(res) + '\n');
+      if (res && typeof res.then === 'function') {
+        const reply = res.then((done) => process.stdout.write(JSON.stringify(done) + '\n'));
+        pending.add(reply);
+        reply.finally(() => pending.delete(reply));
+      } else if (res !== null) process.stdout.write(JSON.stringify(res) + '\n');
     } catch (e) {
       process.stdout.write(
         JSON.stringify({

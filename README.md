@@ -207,6 +207,10 @@ the package fingerprint. See [mini-game packaging](docs/minigame-packaging.md).
 Kuaishou, store submission and device execution are not claimed without an
 official adapter and separate platform evidence.
 
+## Film scenes for agents
+
+An agent builds a film scene as JSON (props, materials, sun and camera), changes it under revision checks, gets PNG previews and four-shot review grids back over MCP, and renders final stills or MP4 through the same cinematic capture. Start the server with `npx zhuda-laya-mcp --film-output ./films`. See [film scenes](docs/film-scenes.md); the loop follows the agent workflow of [67js](https://github.com/codepawl/67.js), re-implemented on our renderer.
+
 ## Procedural assets (1.17.0)
 
 Bake seamless PBR texture sets from JSON recipes, build props from a small geometry kit with colliders and surface tags, merge a whole yard into one mesh per material, and synthesise sound effects, all deterministic and file-free. Generated assets sit behind the same `AssetProvider` boundary as downloaded ones. See [procedural assets](docs/procedural-assets.md) for the API, the starter samples in `zhuda-laya-engine/demo`, and the verification scope: the data contracts are tested in Node, and a desktop WebGL draw verifies normal direction and mipmaps; WebGPU and mobile are not yet recorded.
