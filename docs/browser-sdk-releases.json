@@ -5,6 +5,38 @@
   "launchUrl": "https://game.qianlongxundao.com/play/zhuda-engine-sdk/",
   "releases": [
     {
+      "version": "1.17.0",
+      "contentUrl": "https://game.qianlongxundao.com/apps/zhuda-engine-sdk/releases/b7eb3412d6025fb0d2facb448d77c606/",
+      "summary": "程序化資產管線（CPU 烘焙無縫 PBR 配方、幾何工具、帶碰撞的道具與依材質合併、合成音效）；編輯器預設拒絕遠端綁定",
+      "zipSha256": "5746e2e5bb97ae26149ec5af064767ca8af89c9c3e0586d3ef94983e9bc8d0cf",
+      "files": {
+        "zhuda-2d.js": {
+          "bytes": 1693231,
+          "integrity": "sha384-BDDbJEVe2HoEzVzFefzvFJz7DbZIbpAG/uU1LTGrQNGjBSsMjdI8e/T0AL6iE+pB"
+        },
+        "zhuda-3d.js": {
+          "bytes": 2454865,
+          "integrity": "sha384-e0IgtTwm8STcgMcPmZKPH3TB8tBSQQk15egr3chALF9cj5VybCgbZhHJovpAhUZ3"
+        },
+        "zhuda-3d-gltf.js": {
+          "bytes": 2614713,
+          "integrity": "sha384-rvnFKMgm5aNAT5flLhK6QuQbKZXzLn6Qr74DpAU6rEBjl5vXxKjUMYaPDl8/1NQa"
+        },
+        "zhuda-2d-webgpu.js": {
+          "bytes": 10270871,
+          "integrity": "sha384-XZDGoNiF8X6nhbAywSmAxzDOduvP7bk/zkc5kNzXjvNH9dKoxg8foEf/71wlzBJ6"
+        },
+        "zhuda-3d-webgpu.js": {
+          "bytes": 11295712,
+          "integrity": "sha384-m0cZ1z/Uo15GhaM0XY2FejMTGTyXztiFjyabQRHt8N1ThGujETjjliUE7gA3oNX1"
+        },
+        "zhuda-3d-gltf-webgpu.js": {
+          "bytes": 11455560,
+          "integrity": "sha384-Os6zGYStQlfCc6Q7X2MzbQcae4lLMji3FN4pY2EiOSOykZb2uED3qHQCK5DvTZEW"
+        }
+      }
+    },
+    {
       "version": "1.16.0",
       "contentUrl": "https://game.qianlongxundao.com/apps/zhuda-engine-sdk/releases/b01e6d56ee85df1b0c529760aa80b3c1/",
       "summary": "編輯器請求防護、可安裝的 CLI、由原始碼產生的公開型別（Bundler／Node16／NodeNext）、精簡且可重現的套件；舊示範程式只在 /demo 子路徑",
