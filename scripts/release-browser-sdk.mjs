@@ -197,7 +197,20 @@ async function publish(outDir, record, summary) {
     `data-binary = "@${zipFile}"`,
     '',
   ].join('\n');
-  const response = JSON.parse(curl(['--max-time', '300', '--config', '-'], config).toString());
+  // The host is idempotent for identical ZIP bytes + title, so a transport
+  // failure (TLS reset, dropped connection) is retried with the same request.
+  let response;
+  for (let attempt = 1; !response; attempt++) {
+    try {
+      response = JSON.parse(
+        curl(['--http1.1', '--max-time', '600', '--config', '-'], config).toString(),
+      );
+    } catch (error) {
+      const transport = [52, 55, 56, 92].includes(error.status);
+      if (!transport || attempt >= 3) throw error;
+      console.error(`Upload attempt ${attempt} failed (curl ${error.status}); retrying`);
+    }
+  }
   if (response.sha256 !== zipSha256) throw Error('Upload response SHA-256 differs from the ZIP');
   if (!/^[0-9a-f]{32}$/.test(response.version)) throw Error('Upload response has no version');
   const contentUrl = response.content_url;
