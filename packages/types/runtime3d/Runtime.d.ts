@@ -1,3 +1,4 @@
+// Generated from TypeScript source; run npm run types:generate.
 import { ZhudaLayeredClock, ZhudaRealtimeClock, ZhudaTimerScheduler, type ZhudaClockSample } from "./Clocks";
 import { ZhudaSceneMutationQueue } from "./SceneMutation";
 import { type ZhudaRuntimeDriver } from "./RuntimeDriver";

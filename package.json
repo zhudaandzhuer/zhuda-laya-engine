@@ -31,7 +31,12 @@
       "require": "./dist/sdk/zhuda-laya-engine.cjs",
       "default": "./packages/core/index.ts"
     },
-    "./core": "./packages/core/index.ts",
+    "./core": {
+      "types": "./packages/types/index.d.ts",
+      "import": "./dist/sdk/zhuda-laya-engine.esm.js",
+      "require": "./dist/sdk/zhuda-laya-engine.cjs",
+      "default": "./packages/core/index.ts"
+    },
     "./compiler": "./packages/compiler/zhuda-build.mjs",
     "./doctor": "./packages/compiler/zhuda-doctor.mjs",
     "./mcp-server": "./packages/mcp-server/index.mjs",
@@ -39,6 +44,16 @@
     "./compiler/consumer": "./packages/compiler/consumer-build.mjs",
     "./browser": {
       "types": "./packages/types/browser.d.ts"
+    },
+    "./demo": {
+      "types": "./packages/types/demo/index.d.ts",
+      "import": "./dist/sdk/zhuda-laya-demo.esm.js",
+      "require": "./dist/sdk/zhuda-laya-demo.cjs"
+    },
+    "./min": {
+      "types": "./packages/types/index.d.ts",
+      "import": "./dist/sdk/zhuda-laya-engine.min.esm.js",
+      "require": "./dist/sdk/zhuda-laya-engine.min.cjs"
     }
   },
   "bin": {
@@ -62,7 +77,8 @@
     "packages",
     "vendor",
     "assets",
-    "dist/sdk",
+    "dist/sdk/*.js",
+    "dist/sdk/*.cjs",
     "dist/build-manifest.json",
     "dist/asset-calibration-report.json",
     "zhuda.config.json",
@@ -90,7 +106,7 @@
   ],
   "scripts": {
     "ast:scan": "node -e \"import('./packages/compiler/ast-scanner.mjs').then(m => m.scanAndGenerateRegistry(process.cwd()))\"",
-    "typecheck": "npm run types:runtime3d && npm run ast:scan && tsc --noEmit -p tsconfig.json",
+    "typecheck": "npm run types:check && npm run ast:scan && tsc --noEmit -p tsconfig.json",
     "audit:declarations": "node scripts/audit-public-declarations.mjs",
     "build": "npm run types:runtime3d && node packages/compiler/zhuda-build.mjs",
     "doctor": "node packages/compiler/zhuda-doctor.mjs",
@@ -110,19 +126,34 @@
     "verify:webgpu": "node scripts/verify-webgpu.mjs",
     "verify:webgpu-consumer": "node scripts/verify-webgpu-consumer.mjs",
     "verify:cinematic": "node scripts/verify-cinematic.mjs",
-    "verify:minigame": "node scripts/verify-minigame.mjs"
+    "verify:minigame": "node scripts/verify-minigame.mjs",
+    "types:generate": "node packages/compiler/runtime3d-types.mjs",
+    "types:check": "node packages/compiler/runtime3d-types.mjs --check",
+    "prepare": "npm run build",
+    "prepack": "npm run build",
+    "lint": "eslint packages src scripts tests examples",
+    "format": "prettier --write --ignore-unknown packages/core packages/compiler packages/demo packages/mcp-server packages/ci-gate src scripts tests examples eslint.config.mjs package.json tsconfig.json",
+    "format:check": "prettier --check --ignore-unknown packages/core packages/compiler packages/demo packages/mcp-server packages/ci-gate src scripts tests examples eslint.config.mjs package.json tsconfig.json"
   },
   "dependencies": {
     "@webgpu/types": "0.1.74",
+    "abortcontroller-polyfill": "1.7.8",
     "esbuild": "0.27.1",
     "i18next": "26.7.1",
     "meshoptimizer": "1.3.0",
     "pngjs": "7.0.0",
-    "typescript": "^5.6.0",
-    "abortcontroller-polyfill": "1.7.8",
-    "sharp": "0.35.5"
+    "sharp": "0.35.5",
+    "typescript": "^5.6.0"
   },
   "engines": {
     "node": ">=24"
-  }
+  },
+  "devDependencies": {
+    "@eslint/js": "9.39.1",
+    "eslint": "9.39.1",
+    "globals": "17.14.0",
+    "prettier": "3.6.2",
+    "typescript-eslint": "8.46.4"
+  },
+  "sideEffects": false
 }

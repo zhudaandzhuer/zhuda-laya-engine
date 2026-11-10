@@ -1,3 +1,4 @@
+// Generated from TypeScript source; run npm run types:generate.
 import type { ZhudaAssetCache } from "./Assets";
 export type AssetKind = "binary" | "text" | "image" | "audio" | "model" | "scene" | "shader" | "unknown";
 export type AssetProviderPhase = "downloading" | "verifying" | "ready";

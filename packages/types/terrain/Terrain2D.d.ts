@@ -1,3 +1,4 @@
+// Generated from TypeScript source; run npm run types:generate.
 export interface TerrainTile2D {
     id: number;
     color?: string;

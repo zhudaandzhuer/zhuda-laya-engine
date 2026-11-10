@@ -1,3 +1,4 @@
+import { authorizedFetch } from './helpers/editor-request.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
@@ -34,14 +35,14 @@ test('model editor serves real 3D libraries, asset inventory and public client b
     editor = await createModelEditorServer({ projectRoot: project, asset: 'assets/models/probe.gltf', host: '127.0.0.1', port: 0, engineRoot: repoRoot });
     const address = await editor.listening;
     const base = `http://127.0.0.1:${address.port}`;
-    const page = await (await fetch(`${base}/?asset=assets/models/probe.gltf`)).text();
+    const page = await (await authorizedFetch(editor, `${base}/?asset=assets/models/probe.gltf`)).text();
     assert.match(page, /laya\.d3\.js/);
     assert.match(page, /laya\.gltf\.js/);
     assert.match(page, /__ZHUDA_MODEL_ASSET__/);
-    const assets = await (await fetch(`${base}/api/assets`)).json();
+    const assets = await (await authorizedFetch(editor, `${base}/api/assets`)).json();
     assert.equal(assets.entries.length, 1);
     assert.equal(assets.entries[0].kind, 'model');
-    const bundle = await (await fetch(`${base}/__editor/model.js`)).text();
+    const bundle = await (await authorizedFetch(editor, `${base}/__editor/model.js`)).text();
     assert.match(bundle, /ZhudaModelLibrary/);
     assert.match(bundle, /ZhudaAssetShowcase/);
   } finally {

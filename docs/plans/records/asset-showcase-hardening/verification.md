@@ -15,7 +15,7 @@ glTF conformance, Unreal parity or an offline movie pipeline.
 - Node 26.12.0; macOS / Darwin 27.0.0; Chrome 156.0.8078.80 headless WebGL.
 - Viewport 800 × 600; model CSS canvas 720 × 480; actual DPR 1 / 2 / 3.
   Backing canvas 720 × 480, 1440 × 960 and 2160 × 1440 respectively.
-- Evidence root **E**: `/Users/yaowei/Desktop/zhuda-asset-showcase-acceptance-20261105`.
+- Evidence root **E**: `<external-evidence>/zhuda-asset-showcase-acceptance-20261105`.
   Media remains external; checked-in glTF files are engine-authored neutral fixtures.
 - Final measured consumer tarball: `E/release-final/zhuda-laya-engine-1.9.0.tgz`, SHA-256
   `5a08c87876d5639366aa5c50ce3f7bc63948b841e0c3586974c0e54ae1d24458`.

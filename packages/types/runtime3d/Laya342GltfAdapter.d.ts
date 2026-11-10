@@ -1,3 +1,4 @@
+// Generated from TypeScript source; run npm run types:generate.
 /** Version-pinned importer repairs. Applied to one owned glTFResource, never to
  * global prototypes. The native Animator remains the sole pose evaluator. */
 export declare function prepareLaya342GltfResource(resource: any, runtime: any): void;

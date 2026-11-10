@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { cliMain } from './cli.mjs';
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import http from 'node:http';
@@ -6,13 +7,12 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import esbuild from 'esbuild';
-import { resolveProjectFile, scanProjectAssets } from './prefab-editor-server.mjs';
+import { scanProjectAssets } from './prefab-editor-server.mjs';
+import { realPath, inside, resolveProjectFile, createEditorAccess, respondStatic, scriptJson } from './editor-http.mjs';
 
 const moduleDir = path.dirname(fileURLToPath(import.meta.url));
 const defaultEngineRoot = path.resolve(moduleDir, '..', '..');
 
-const realPath = value => fs.realpathSync(value);
-const inside = (root, file) => file === root || file.startsWith(`${root}${path.sep}`);
 const sha256 = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
 
 export function parseModelEditorArgs(argv = process.argv.slice(2)) {
@@ -43,19 +43,7 @@ function resolveModelFile(project, requested, fallback) {
   return { file, path: relative.replace(/\\/g, '/') };
 }
 
-function contentType(file) {
-  return ({ '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.json': 'application/json; charset=utf-8', '.css': 'text/css; charset=utf-8', '.gltf': 'model/gltf+json', '.glb': 'model/gltf-binary', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.svg': 'image/svg+xml' })[path.extname(file).toLowerCase()] || 'application/octet-stream';
-}
-
-function safePath(root, requestPath) {
-  try {
-    const decoded = decodeURIComponent(requestPath.split('?')[0]);
-    const target = path.resolve(root, decoded.replace(/^\/+/, ''));
-    return inside(realPath(root), target) ? target : null;
-  } catch { return null; }
-}
-
-function html(engineFiles, assetPath) {
+function html(engineFiles, assetPath, token) {
   const tags = engineFiles.map(file => `<script src="/__editor/engine/${file}"></script>`).join('\n');
   const css = `
 :root{color-scheme:dark;--bg:#080f1c;--panel:#101a2c;--line:#263858;--text:#e8f1ff;--muted:#8ea5c9;--accent:#73e4d8;--warn:#ffd166;--danger:#ff8f9c}
@@ -65,7 +53,7 @@ function html(engineFiles, assetPath) {
 .asset-panel{grid-column:1/-1;grid-row:2;display:grid;grid-template-rows:auto minmax(0,1fr);overflow:hidden}.asset-head{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line)}.asset-head h2{border:0}.asset-count{padding:0 12px;color:var(--muted);font:11px ui-monospace,SFMono-Regular,Menlo,monospace}.asset-body{display:grid;grid-template-columns:minmax(170px,22%) minmax(0,1fr);min-height:0}.asset-folders{padding:6px;overflow:auto;border-right:1px solid var(--line)}.asset-folder{display:block;width:100%;border:0;padding:6px 8px;color:var(--muted);background:transparent;text-align:left;font:11px ui-monospace,SFMono-Regular,Menlo,monospace}.asset-folder:hover,.asset-folder.selected{background:#16434c;color:#fff}.asset-files{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));align-content:start;gap:7px;padding:7px;overflow:auto}.asset-card{display:grid;grid-template-columns:30px minmax(0,1fr);gap:7px;align-items:center;min-width:0;padding:6px;text-align:left}.asset-icon{display:grid;place-items:center;width:30px;height:30px;border-radius:5px;background:#182743;color:var(--accent);font:700 10px ui-monospace,SFMono-Regular,Menlo,monospace}.asset-icon.model{color:var(--warn);background:#2b2a1b}.asset-meta{min-width:0}.asset-name,.asset-detail{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.asset-name{font-size:11px}.asset-detail{margin-top:2px;color:var(--muted);font:10px ui-monospace,SFMono-Regular,Menlo,monospace}.asset-empty{grid-column:1/-1;align-self:center;justify-self:center;color:var(--muted)}.agent-view .layout{grid-template-columns:1fr}.agent-view .layout>.panel:not(.stage-panel){display:none}.agent-view .stage-panel{padding:10px}.agent-view .stage-help{display:none}.agent-view .top .path{display:none}.agent-view .top h1{margin-right:auto}
 @media(max-width:900px){.layout{grid-template-columns:minmax(170px,24vw) minmax(260px,1fr) minmax(230px,28vw);gap:6px;padding:6px}.path{display:none}.top{gap:4px}.mode{gap:2px}.mode button{padding:5px 6px}.status{min-width:0}}
 @media(max-width:700px){body{overflow:auto}.top{height:auto;min-height:54px;flex-wrap:wrap}.status{margin-left:auto}.layout{height:auto;min-height:calc(100vh - 54px);display:flex;flex-direction:column}.stage-panel{order:-1;height:56vh;min-height:280px}.panel:not(.stage-panel){max-height:32vh}.asset-panel{order:4;min-height:190px;height:190px}.agent-view .layout{min-height:calc(100vh - 54px)}.agent-view .stage-panel{height:calc(100vh - 74px);min-height:0}.asset-body{grid-template-columns:130px minmax(0,1fr)}}`;
-  return `<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Zhuda 3D Model Editor</title><style>${css}</style></head><body><header class="top"><h1>豬大 3D Model Editor</h1><div id="path" class="path">Loading…</div><div class="mode"><button id="mode-raw" type="button">Raw</button><button id="mode-gameplay" type="button">Gameplay</button><button id="mode-cinematic" type="button">Cinematic</button></div><button id="agent-view" type="button">Agent View</button><button id="copy" type="button">COPY</button><button id="reload" type="button">Reload</button><button id="dispose" type="button">Dispose</button><div id="status" class="status">Loading…</div></header><main class="layout"><section class="panel"><h2>3D HIERARCHY</h2><div id="tree" class="tree"></div><div class="note">模型階層來自真正的 Laya Sprite3D。點節點查看 mesh、材質、morph 與 active 狀態；Isolate 只改預覽可見性，不寫回模型。</div></section><section id="stage-panel" class="panel stage-panel"><div id="stage-shell" class="stage-shell"><div id="stage"></div></div><div class="stage-help">拖曳預覽旋轉模型，滾輪縮放。Raw／Gameplay／Cinematic 使用同一個 ModelInstance；網格只是預覽定位輔助，不是模型內容。</div></section><section class="panel inspector"><h2>3D INSPECTOR</h2><div id="inspector"><div class="empty">載入模型中…</div></div><div id="error" class="error" role="alert"></div></section><section class="panel asset-panel" aria-label="Project Assets"><div class="asset-head"><h2>ASSETS</h2><span id="asset-count" class="asset-count">Loading…</span></div><div class="asset-body"><nav id="asset-folders" class="asset-folders" aria-label="Asset folders"></nav><section id="asset-files" class="asset-files" aria-label="Asset files"></section></div></section></main><script>window.__ZHUDA_MODEL_ASSET__=${JSON.stringify(assetPath)};</script>${tags}<script type="module" src="/__editor/model.js"></script></body></html>`;
+  return `<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Zhuda 3D Model Editor</title><style>${css}</style></head><body><header class="top"><h1>豬大 3D Model Editor</h1><div id="path" class="path">Loading…</div><div class="mode"><button id="mode-raw" type="button">Raw</button><button id="mode-gameplay" type="button">Gameplay</button><button id="mode-cinematic" type="button">Cinematic</button></div><button id="agent-view" type="button">Agent View</button><button id="copy" type="button">COPY</button><button id="reload" type="button">Reload</button><button id="dispose" type="button">Dispose</button><div id="status" class="status">Loading…</div></header><main class="layout"><section class="panel"><h2>3D HIERARCHY</h2><div id="tree" class="tree"></div><div class="note">模型階層來自真正的 Laya Sprite3D。點節點查看 mesh、材質、morph 與 active 狀態；Isolate 只改預覽可見性，不寫回模型。</div></section><section id="stage-panel" class="panel stage-panel"><div id="stage-shell" class="stage-shell"><div id="stage"></div></div><div class="stage-help">拖曳預覽旋轉模型，滾輪縮放。Raw／Gameplay／Cinematic 使用同一個 ModelInstance；網格只是預覽定位輔助，不是模型內容。</div></section><section class="panel inspector"><h2>3D INSPECTOR</h2><div id="inspector"><div class="empty">載入模型中…</div></div><div id="error" class="error" role="alert"></div></section><section class="panel asset-panel" aria-label="Project Assets"><div class="asset-head"><h2>ASSETS</h2><span id="asset-count" class="asset-count">Loading…</span></div><div class="asset-body"><nav id="asset-folders" class="asset-folders" aria-label="Asset folders"></nav><section id="asset-files" class="asset-files" aria-label="Asset files"></section></div></section></main><script>window.__ZHUDA_EDITOR_TOKEN__=${scriptJson(token)};window.__ZHUDA_MODEL_ASSET__=${scriptJson(assetPath)};</script>${tags}<script type="module" src="/__editor/model.js"></script></body></html>`;
 }
 
 export async function buildModelEditorBundle({ engineRoot = defaultEngineRoot } = {}) {
@@ -83,18 +71,10 @@ export async function createModelEditorServer({ projectRoot, asset, prefab, engi
   const engineFiles = ['laya.core.js', 'laya.d3.js', 'laya.webgl_2D.js', 'laya.webgl_3D.js', 'laya.ui.js', 'laya.gltf.js', 'laya.postProcess.js'];
   for (const file of engineFiles) if (!fs.existsSync(path.join(engineLibRoot, file))) throw Error(`Missing pinned engine library: ${file}`);
   const editorBundle = bundle ?? await buildModelEditorBundle({ engineRoot: engine });
-  const respondStatic = async (root, requestPath, response) => {
-    const file = safePath(root, requestPath);
-    if (!file) { response.writeHead(400); response.end('Bad path'); return; }
-    try {
-      const resolved = realPath(file); if (!inside(realPath(root), resolved)) throw Error('Symlinked asset escapes root');
-      const stat = await fsp.stat(resolved); if (!stat.isFile()) throw Object.assign(Error('Not found'), { code: 'ENOENT' });
-      response.writeHead(200, { 'Content-Type': contentType(resolved), 'Cache-Control': 'no-store' }); response.end(await fsp.readFile(resolved));
-    } catch (error) { response.writeHead(error.code === 'ENOENT' ? 404 : 500); response.end(error.code === 'ENOENT' ? 'Not found' : 'Read failed'); }
-  };
+  const access = createEditorAccess(host);
   const server = http.createServer(async (request, response) => {
     try {
-      const url = new URL(request.url || '/', 'http://localhost');
+      const url = access.validate(request, response);
       if (url.pathname === '/api/assets' && request.method === 'GET') {
         response.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
         response.end(JSON.stringify({ root: 'assets', entries: await scanProjectAssets(project) })); return;
@@ -102,20 +82,20 @@ export async function createModelEditorServer({ projectRoot, asset, prefab, engi
       if (url.pathname === '/' || url.pathname === '/index.html') {
         const selection = resolveModelFile(project, url.searchParams.get('asset') || url.searchParams.get('model') || initialSelection.path, initialSelection.path);
         const bytes = await fsp.readFile(selection.file);
-        response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Zhuda-Asset-SHA256': sha256(bytes) }); response.end(html(engineFiles, selection.path)); return;
+        response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Zhuda-Asset-SHA256': sha256(bytes) }); response.end(html(engineFiles, selection.path, access.token)); return;
       }
       if (url.pathname === '/__editor/model.js') { response.writeHead(200, { 'Content-Type': 'text/javascript; charset=utf-8', 'Cache-Control': 'no-store' }); response.end(editorBundle); return; }
       if (url.pathname.startsWith('/__editor/engine/')) { await respondStatic(engineLibRoot, url.pathname.slice('/__editor/engine/'.length), response); return; }
-      if (url.pathname.startsWith('/__project/')) { await respondStatic(project, url.pathname.slice('/__project/'.length), response); return; }
+      if (url.pathname.startsWith('/__project/')) { await respondStatic(project, url.pathname.slice('/__project/'.length), response, { projectAssets: true }); return; }
       response.writeHead(404); response.end('Not found');
-    } catch (error) { if (!response.headersSent) { response.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' }); response.end(JSON.stringify({ error: error instanceof Error ? error.message : String(error) })); } else response.destroy(); }
+    } catch (error) { if (!response.headersSent) { response.writeHead(error.status || 400, { 'Content-Type': 'application/json; charset=utf-8' }); response.end(JSON.stringify({ error: error instanceof Error ? error.message : String(error) })); } else response.destroy(); }
   });
   const listening = new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, host, () => resolve(server.address())); });
   const close = async () => { await new Promise(resolve => server.close(() => resolve())); };
-  return { server, listening, close, projectRoot: project, assetFile: initialSelection.file, engineRoot: engine };
+  return { server, listening, close, token: access.token, projectRoot: project, assetFile: initialSelection.file, engineRoot: engine };
 }
 
-const launched = (() => { try { return process.argv[1] && realPath(process.argv[1]) === realPath(fileURLToPath(import.meta.url)); } catch { return false; } })();
+const launched = cliMain(import.meta.url, 'Usage: zhuda-model-editor --project DIRECTORY --asset assets/FILE.glb [--host HOST] [--port PORT]');
 if (launched) {
   try {
     const args = parseModelEditorArgs(); const editor = await createModelEditorServer(args); const address = await editor.listening;

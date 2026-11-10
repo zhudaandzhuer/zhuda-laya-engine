@@ -1,3 +1,4 @@
+// Generated from TypeScript source; run npm run types:generate.
 import type { TimedSnapshot } from './Clocks';
 export type CrowdAnimationMode = 'full' | 'low' | 'paused';
 export interface CrowdPresentationTier {

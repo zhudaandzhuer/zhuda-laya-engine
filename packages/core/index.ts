@@ -1,8 +1,7 @@
 export * from './TopologyGraph';
 export * from './RuntimeGuards';
 export * from './DeclarativeSDK';
-export * from './BenchmarkEngine';
-export * from './StaticAssetPipeline';
+export * from './Prefab.ts';
 export * from './BitmapFontContract';
 export * from './PixelCalibrationEngine';
 export * from './IframeSoundAdapter';
@@ -11,7 +10,6 @@ export * from './ViewportMatrixEngine';
 export * from './ResponsiveLayout';
 export * from './VideoSurface';
 export * from './WebViewSurface';
-export * from './UnityBridgePipeline';
 export * from './SpineVisualContract';
 export * from './VisualFocusContract';
 export * from './particles/index.ts';
@@ -34,3 +32,7 @@ export * from './runtime3d/index.ts';
 
 export * from "./terrain/index";
 export * from "./shaders/index";
+
+export type * from '../types/editor-preview.ts';
+export type * from '../types/zhuda-audio.ts';
+export type * from '../types/zhuda-branding';

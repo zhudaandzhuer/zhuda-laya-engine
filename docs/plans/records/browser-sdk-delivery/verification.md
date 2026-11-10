@@ -5,7 +5,7 @@ Task: [task.md](task.md). Date: 2026-11-05. Engine: 1.6.0, based on
 recorded after commit in external `source-revisions.json` (no self-referential SHA).
 
 External evidence root (`A`):
-`/Users/yaowei/Desktop/zhuda-browser-sdk-acceptance-20261105`.
+`<external-evidence>/zhuda-browser-sdk-acceptance-20261105`.
 Environment: macOS 27.0.1, Node 26.12.0, npm 11.20.0, esbuild 0.27.1;
 Chrome 156.0.8078.80 for checker, Codex Chromium for interaction. No device claim.
 
@@ -31,8 +31,8 @@ points to the exact public release):
 ```sh
 node packages/compiler/prefab-check.mjs \
   --url='http://127.0.0.1:51882/example-3d.html?id=browser-3d&state=idle&width=640&height=480&dpr=1&cycles=30' \
-  --baseline=/Users/yaowei/Desktop/zhuda-browser-sdk-acceptance-20261105/references/3d.png \
-  --output=/Users/yaowei/Desktop/zhuda-browser-sdk-acceptance-20261105/remote-3d.json
+  --baseline=<external-evidence>/3d.png \
+  --output=<external-evidence>/remote-3d.json
 ```
 
 Use `2d` consistently for the other profile. References were captured locally,

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { cliMain } from './cli.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -122,7 +123,7 @@ export function runLayoutCommand(command, args) {
   throw Error(`Unknown command: ${command}`);
 }
 
-const launched = process.argv[1] && path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url));
+const launched = cliMain(import.meta.url, 'Usage: zhuda-layout <init|render|validate|preview> [--project DIRECTORY] [--layout FILE] [--svg FILE]');
 if (launched) {
   try {
     const input = process.argv.slice(2);

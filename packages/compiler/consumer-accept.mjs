@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { cliMain } from './cli.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -37,7 +38,7 @@ export async function acceptConsumer({projectRoot=process.cwd(), engineRoot, cap
   } finally { await preview.close(); }
 }
 
-const launched=process.argv[1] && fs.realpathSync(process.argv[1])===fileURLToPath(import.meta.url);
+const launched = cliMain(import.meta.url, 'Usage: zhuda-laya-accept [--project DIRECTORY] [--capture]');
 if (launched) {
   const args=process.argv.slice(2), index=args.indexOf('--project');
   acceptConsumer({projectRoot:index<0?process.cwd():args[index+1],capture:args.includes('--capture')})

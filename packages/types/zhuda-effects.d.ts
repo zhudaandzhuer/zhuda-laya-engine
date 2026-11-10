@@ -1,5 +1,6 @@
+// Generated from TypeScript source; run npm run types:generate.
 /** Generated public effects and visual migration declarations. */
-import type { ZhudaParticleSystem, ZhudaParticleSystem3D, ParticleEvent } from './zhuda-particles';
+import type { ZhudaParticleSystem, ZhudaParticleSystem3D } from './zhuda-particles';
 export interface EffectKey {
     time: number;
     value: number;
@@ -20,8 +21,17 @@ export interface EffectAnchor {
     y: number;
     z?: number;
     rotation?: number;
-    quaternion?: {x:number;y:number;z:number;w:number};
-    scale?: {x:number;y:number;z:number};
+    quaternion?: {
+        x: number;
+        y: number;
+        z: number;
+        w: number;
+    };
+    scale?: {
+        x: number;
+        y: number;
+        z: number;
+    };
     worldMatrix?: ArrayLike<number>;
 }
 export interface EffectAttachment {
@@ -66,7 +76,6 @@ export declare class ZhudaEffectDirector {
     private advance;
     private apply;
 }
-
 export interface EffectBudgetSpec {
     maxParticles: number;
     maxCoverage: number;
@@ -179,7 +188,6 @@ export declare class ZhudaRuntimeProfiler {
     exportJSON(metadata?: Record<string, unknown>): string;
     dispose(): void;
 }
-
 export interface VfxMaterialSpec {
     version: 1;
     maskTexture?: string;
@@ -229,7 +237,6 @@ export declare class ZhudaVfxCamera {
     });
     dispose(): void;
 }
-
 /** Links collision/death events to a bounded child emitter. The child is advanced by its application's loop. */
 export declare class ZhudaParticleEventLink {
     private disposed;
@@ -243,7 +250,6 @@ export declare class ZhudaParticleEventLink {
     });
     dispose(): void;
 }
-
 export interface UnityVisualMaterial {
     id: string;
     shader: string;

@@ -8,14 +8,14 @@ Date: 2026-11-06
 
 - OS: macOS Darwin 27.0.0, arm64
 - Node: v26.12.0; official LayaAir CLI 3.4.2 at `~/.layaair/3.4.2`
-- Independent consumer: `/Users/yaowei/Desktop/zhuda-minigame-acceptance-20261106/consumer`
+- Independent consumer: `<external-evidence>/consumer`
 - Consumer and engine source stayed outside each other's production assets.
 
 ## Checks
 
 | Check | Exact command or procedure | Result | Artifact |
 | --- | --- | --- | --- |
-| Toolchain and consumer | `MINIGAME_OUT=/Users/yaowei/Desktop/zhuda-minigame-acceptance-20261106 node scripts/verify-minigame.mjs` | PASS | `.../evidence/identity.json`, `platforms.json` |
+| Toolchain and consumer | `MINIGAME_OUT=<external-evidence>/zhuda-minigame-acceptance-20261106 node scripts/verify-minigame.mjs` | PASS | `.../evidence/identity.json`, `platforms.json` |
 | Strict types | same command (`tsc --noEmit -p consumer`) | PASS | `.../evidence/typecheck.log` |
 | Doctor | same command (`zhuda-doctor --project consumer`) | PASS | `.../evidence/doctor.log` |
 | Browser build | same command (`zhuda-build --project consumer`) | PASS | `.../evidence/web-build.log` |

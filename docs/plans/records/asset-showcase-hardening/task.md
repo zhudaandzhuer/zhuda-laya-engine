@@ -10,7 +10,7 @@ Last reviewed: 2026-11-05
 
 User: “好，去優化”, following the 3D asset seller assessment and the reproduced
 ASSET-01/02/03 failures. Review and original fixtures:
-`/Users/yaowei/Desktop/zhuda-asset-showcase-review-20261105/REVIEW.md`.
+`<external-evidence>/REVIEW.md`.
 Baseline: 1.8.0 / `2e92e5932cac9128f3e33309719a0e035af9ca5e`.
 
 ## Goal
@@ -85,7 +85,7 @@ visual parity for unprovided seller assets. These remain explicit later phases.
 
 ## Evidence to attach
 
-External directory: `/Users/yaowei/Desktop/zhuda-asset-showcase-acceptance-20261105`.
+External directory: `<external-evidence>/zhuda-asset-showcase-acceptance-20261105`.
 Keep package/source hashes, test and build logs, official validator output,
 browser model/clip/pose snapshots, mode comparisons, lifecycle and screenshots.
 Complete verification.md with command/commit/environment/result/artifact.

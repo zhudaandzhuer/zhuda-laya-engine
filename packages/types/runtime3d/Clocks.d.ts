@@ -1,3 +1,4 @@
+// Generated from TypeScript source; run npm run types:generate.
 export declare class ZhudaSimulationClock {
     readonly step: number;
     readonly maxCatchup: number;

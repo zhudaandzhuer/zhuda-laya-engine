@@ -1,3 +1,4 @@
+// Generated from TypeScript source; run npm run types:generate.
 export interface SurfaceMaterialSpec {
     type: "pbr" | "unlit";
     color?: [number, number, number, number];

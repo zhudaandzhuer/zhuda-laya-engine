@@ -1,3 +1,4 @@
+import { authorizedFetch } from './helpers/editor-request.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
@@ -77,10 +78,10 @@ test('editor controller is opt-in, project confined and shares the public SDK',a
     const editor=await createPrefabEditorServer({projectRoot:project,prefab:'assets/a.lh',port:0,bundle});
     try {
       const {port}=await editor.listening,base=`http://127.0.0.1:${port}`;
-      const config=await(await fetch(base+'/api/editor')).json();assert.equal(config.previewController.path,'zhuda.editor.ts');
-      assert.match(await(await fetch(base+config.previewController.url)).text(),/mount/);
-      assert.equal((await fetch(base+'/__editor/sdk.js')).status,200);
-      assert.match(await(await fetch(base)).text(),/id="play"/);
+      const config=await(await authorizedFetch(editor, base+'/api/editor')).json();assert.equal(config.previewController.path,'zhuda.editor.ts');
+      assert.match(await(await authorizedFetch(editor, base+config.previewController.url)).text(),/mount/);
+      assert.equal((await authorizedFetch(editor, base+'/__editor/sdk.js')).status,200);
+      assert.match(await(await authorizedFetch(editor, base)).text(),/id="play"/);
     } finally {await editor.close()}
   } finally {await fs.rm(project,{recursive:true,force:true})}
 });

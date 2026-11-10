@@ -44,7 +44,7 @@ fixtures, verification scripts, Windows test entry and documentation.
 ### Consumer or adapter
 
 Generated independent consumer and raw browser/device media outside the repo:
-`/Users/yaowei/Desktop/zhuda-webgpu-acceptance-20261105/`.
+`<external-evidence>/zhuda-webgpu-acceptance-20261105`.
 Only authored neutral engine fixtures may be checked in.
 
 ## Non-goals

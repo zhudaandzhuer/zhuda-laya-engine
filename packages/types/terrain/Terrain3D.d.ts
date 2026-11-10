@@ -1,3 +1,4 @@
+// Generated from TypeScript source; run npm run types:generate.
 export type Terrain3DOptions = {
     parent?: any;
     material: any;

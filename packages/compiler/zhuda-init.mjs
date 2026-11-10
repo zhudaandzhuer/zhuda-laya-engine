@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { cliMain } from './cli.mjs';
 import {starter2D} from './consumer-starter-2d.mjs';
 import {starterMiniGame} from './consumer-starter-minigame.mjs';
 import fs from "node:fs";
@@ -179,11 +180,7 @@ export function printHelp() {
   console.log("Creates a public-SDK consumer with pinned engine dependency, required HTML markers and verify scripts.");
 }
 
-const launched = (() => {
-  if (!process.argv[1]) return false;
-  try { return fs.realpathSync(process.argv[1]) === fs.realpathSync(fileURLToPath(import.meta.url)); }
-  catch { return false; }
-})();
+const launched = cliMain(import.meta.url, 'Usage: zhuda-laya-init DIRECTORY [--template 2d|3d|minigame] [--engine PIN]');
 if (launched) {
   try {
     const options = parseInitArgs();

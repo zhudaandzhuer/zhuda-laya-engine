@@ -1,3 +1,4 @@
+// Generated from TypeScript source; run npm run types:generate.
 /** All timestamps are monotonic milliseconds in the driver's single time domain. */
 export interface ZhudaRuntimeDriver {
     now(): number;

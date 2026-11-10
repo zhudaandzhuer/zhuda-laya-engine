@@ -17,7 +17,6 @@ import type {
   PixelCalibrationReport,
   PixelCalibrationSpec
 } from '../types/index.ts';
-import { ZhudaAssetSerializer } from './StaticAssetPipeline.ts';
 
 export class PixelCalibrationEngine {
   /**
@@ -498,39 +497,13 @@ export class PixelCalibrationEngine {
    * 演示 AI Agent 靜態資產自動校準閉環：
    * 從帶有 +3px 寬度偏差、+2px 內距偏移與 ΔE00 色差的未校準 Prefab，自動檢測並單步收斂至 0 誤差
    */
-  public static runSelfConvergenceDemo(): {
-    beforeReport: PixelCalibrationReport;
-    appliedPatches: AutoFixPatch[];
-    afterReport: PixelCalibrationReport;
-    convergedHierarchy: LayaHierarchyNodeData;
-    elapsedMs: number;
-  } {
-    const t0 = typeof performance !== 'undefined' ? performance.now() : Date.now();
-    const uncalibrated = ZhudaAssetSerializer.buildConfirmButtonPrefab('uncalibrated-drift');
-    const beforeReport = this.calibrateAsset(uncalibrated);
-    const convergedHierarchy = ZhudaAssetSerializer.applyCalibrationPatches(
-      uncalibrated,
-      beforeReport.autoFixPatches
-    );
-    const afterReport = this.calibrateAsset(convergedHierarchy);
-    const t1 = typeof performance !== 'undefined' ? performance.now() : Date.now();
-
-    return {
-      beforeReport,
-      appliedPatches: beforeReport.autoFixPatches,
-      afterReport,
-      convergedHierarchy,
-      elapsedMs: Number(Math.max(0.1, t1 - t0).toFixed(2))
-    };
-  }
-
   /**
    * 驗證 M1 九宮格 (9-Slice / sizeGrid) 預製體拉伸後四角錨塊是否維持 1:1 零變形
    */
   public static verifyNineSliceIntegrity(
-    data?: LayaHierarchyNodeData
+    data: LayaHierarchyNodeData
   ): NineSliceCalibrationReport {
-    const targetData = data || ZhudaAssetSerializer.buildNineSliceDialogPrefab(320, 140);
+    const targetData = data;
     const rawGrid = (targetData.sizeGrid || '16,16,16,16,0')
       .split(',')
       .map((n) => Number(n.trim()));

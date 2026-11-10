@@ -1,3 +1,4 @@
+import { editorFetch } from './editor-request.ts';
 import { ZhudaEngine, ZhudaPrefab } from 'zhuda-laya-engine';
 import { PrefabEditorPreviewSession } from './prefab-editor-preview.ts';
 import type { ZhudaPrefabEditorPreviewModule } from '../types/editor-preview.ts';
@@ -51,7 +52,7 @@ function walkData(node: JsonObject, callback: (node: JsonObject, parent: JsonObj
   for (const child of node._$child || []) walkData(child, callback, node);
 }
 
-function findData(id: string) {
+function findData(id: string): JsonObject | null {
   let result: JsonObject | null = null;
   if (state.data) walkData(state.data, node => { if (node._$id === id) result = node; });
   return result;
@@ -215,7 +216,7 @@ function renderAssetFolders() {
 }
 
 async function loadAssets() {
-  const response = await fetch('/api/assets', { cache: 'no-store' });
+  const response = await editorFetch('/api/assets', { cache: 'no-store' });
   const payload = await response.json();
   if (!response.ok) throw Error(payload.error || 'Unable to load project assets');
   assetEntries = Array.isArray(payload.entries) ? payload.entries : [];
@@ -390,19 +391,20 @@ async function loadFromServer(resetHistory = true) {
   clearError();
   const requested = new URLSearchParams(window.location.search).get('prefab') || new URLSearchParams(window.location.search).get('asset');
   const endpoint = requested ? `/api/prefab?prefab=${encodeURIComponent(requested)}` : '/api/prefab';
-  const response = await fetch(endpoint, { cache: 'no-store' });
+  const response = await editorFetch(endpoint, { cache: 'no-store' });
   const payload = await response.json(); if (!response.ok) throw Error(payload.error || 'Unable to load Prefab');
-  state.data = payload.prefab; state.revision = payload.revision; state.assetPath = payload.path; state.selectedId = state.data._$id;
-  state.savedData = clone(state.data);
-  const meta = state.data._zhudaMeta;
+  const data = payload.prefab as JsonObject;
+  state.data = data; state.revision = payload.revision; state.assetPath = payload.path; state.selectedId = data._$id;
+  state.savedData = clone(data);
+  const meta = data._zhudaMeta;
   const canvas = meta?.designCanvas;
-  const width = Number(canvas?.width ?? state.data.width ?? 800);
-  const height = Number(canvas?.height ?? state.data.height ?? 600);
+  const width = Number(canvas?.width ?? data.width ?? 800);
+  const height = Number(canvas?.height ?? data.height ?? 600);
   state.designWidth = Number.isFinite(width) && width > 0 ? width : 800;
   state.designHeight = Number.isFinite(height) && height > 0 ? height : 600;
   const metaLabel = meta?.assetId && meta.assetId !== payload.path ? ` · ${meta.assetId}` : '';
-  ($('path') as HTMLElement).textContent = `${payload.path}${metaLabel} · ${canvas?.width || state.data.width || 800}×${canvas?.height || state.data.height || 600}`;
-  if (resetHistory) { state.history = [clone(state.data)]; state.historyIndex = 0; setDirty(false); }
+  ($('path') as HTMLElement).textContent = `${payload.path}${metaLabel} · ${canvas?.width || data.width || 800}×${canvas?.height || data.height || 600}`;
+  if (resetHistory) { state.history = [clone(data)]; state.historyIndex = 0; setDirty(false); }
   if (state.context) { await rebuild(); state.ready = true; updatePreviewUI(); }
   updateHistoryButtons();
 }
@@ -412,7 +414,7 @@ async function saveToServer() {
   finishDrag(true);
   if (!state.data) return;
   clearError(); setStatus('Saving…');
-  const response = await fetch('/api/save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path: state.assetPath, baseRevision: state.revision, prefab: state.data }) });
+  const response = await editorFetch('/api/save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path: state.assetPath, baseRevision: state.revision, prefab: state.data }) });
   const payload = await response.json();
   if (response.status === 409) throw Error(`${payload.error}\nReload first to avoid overwriting another artist's changes.`);
   if (!response.ok) throw Error(payload.error || 'Save failed');
@@ -471,7 +473,7 @@ function updatePreviewUI() {
 }
 
 async function loadPreviewConfig() {
-  const response = await fetch('/api/editor', { cache: 'no-store' });
+  const response = await editorFetch('/api/editor', { cache: 'no-store' });
   const config = await response.json();
   if (!response.ok) throw Error(config.error || 'Unable to load preview configuration');
   state.previewConfig = config.previewController ? { url: config.previewController.url, timeoutMs: config.previewTimeoutMs } : undefined;

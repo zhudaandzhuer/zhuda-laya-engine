@@ -14,13 +14,13 @@ Last reviewed: 2026-11-06
 
 ## Browser and consumer evidence
 
-The external consumer `/Users/yaowei/Desktop/game1` pins the engine package and
+The external consumer `<external-evidence>/game1` pins the engine package and
 uses the same `ui/control-bar` Prefab definition in both entry points.
 
 | Command | Result | Artifact |
 | --- | --- | --- |
-| `npm run test:controlbar` | PASS; isolated and Scene captures are 572x174 and the rendered Prefab region has 0 differing pixels after excluding the Scene-owned 30px host area | `/Users/yaowei/Desktop/game1/evidence/prefabs/control-bar-parity-report.json` |
-| `npm run verify` | PENDING after the final engine pin is updated | `/Users/yaowei/Desktop/game1/evidence/` |
+| `npm run test:controlbar` | PASS; isolated and Scene captures are 572x174 and the rendered Prefab region has 0 differing pixels after excluding the Scene-owned 30px host area | `<external-evidence>/control-bar-parity-report.json` |
+| `npm run verify` | PENDING after the final engine pin is updated | `<external-evidence>/evidence` |
 | `npm run preview:watch` | PASS; serves `prefab-preview.html` and `index.html`, reloads both after watched source changes, and keeps the previous output after a failed build | `/tmp/game1-watch.log` |
 
 The preview page now sets its observed container to the requested design

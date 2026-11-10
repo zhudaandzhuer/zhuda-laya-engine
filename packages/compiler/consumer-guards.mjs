@@ -180,7 +180,7 @@ export function auditConsumerSources(projectRoot, overrides = {}) {
     if (!html.includes("<!-- ZHUDA_LIBS -->") || !html.includes("<!-- ZHUDA_ENTRY -->")) {
       issues.push({ file: path.relative(root, template), line: 1, code: "CONSUMER_MARKERS_MISSING", message: "Keep <!-- ZHUDA_LIBS --> and <!-- ZHUDA_ENTRY --> in the consumer HTML template." });
     }
-    addTextIssue(issues, root, template, "EXTERNAL_RENDERER_SCRIPT", "Do not load Three.js as the consumer renderer; let runConsumerBuild inject the pinned Laya runtime.", html, /(?:three(?:\.min)?\.js|cdnjs\.cloudflare\.com\/ajax\/libs\/three|(?:unpkg|cdn\.jsdelivr\.net)\/[^\"']*three)/i);
+    addTextIssue(issues, root, template, "EXTERNAL_RENDERER_SCRIPT", "Do not load Three.js as the consumer renderer; let runConsumerBuild inject the pinned Laya runtime.", html, /(?:three(?:\.min)?\.js|cdnjs\.cloudflare\.com\/ajax\/libs\/three|(?:unpkg|cdn\.jsdelivr\.net)\/[^"']*three)/i);
     addTextIssue(issues, root, template, "FAKE_ENGINE_FACADE", "Do not define a fake Zhuda/Laya facade in HTML; boot the public SDK from src/Main.ts.", html, /\bclass\s+(?:ZhudaEngine|Zhuda3D|Laya(?:Vector3|Transform3D|Sprite3D|MeshSprite3D))\b/);
     addTextIssue(issues, root, template, "EXTERNAL_RENDERER_USAGE", "Do not create a Three.js renderer in the consumer HTML; use the injected Zhuda/Laya runtime.", html, /\b(?:THREE\.(?:WebGLRenderer|Scene|PerspectiveCamera|Mesh|Group)|new\s+THREE\.)\b/);
   }

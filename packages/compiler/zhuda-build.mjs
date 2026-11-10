@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { cliMain } from './cli.mjs';
 import { brandSplashCss, brandSplashMarkup } from './branding.mjs';
 /**
  * zhuda-laya-engine (@zhuda-laya/compiler) — Zero-IDE Lightning Bundler (esbuild + AST Reflection + Topological Loader)
@@ -32,11 +33,10 @@ export function resolveEngineRoot(projectRoot, configuredRoot, fallback = defaul
 
 export async function runZhudaBuild(options = {}) {
   const startTime = performance.now();
-  const projectRoot = path.resolve(options.projectRoot || (fs.existsSync(path.join(process.cwd(), 'zhuda.config.json')) ? process.cwd() : defaultEngineRoot));
+  const projectRoot = path.resolve(options.projectRoot || process.cwd());
   const configPath = path.join(projectRoot, 'zhuda.config.json');
-  const config = fs.existsSync(configPath)
-    ? JSON.parse(fs.readFileSync(configPath, 'utf8'))
-    : {};
+  if (!fs.existsSync(configPath)) throw Error('Missing zhuda.config.json in selected project; use --project DIRECTORY or zhuda-laya-init');
+  const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
   const engineRoot = resolveEngineRoot(projectRoot, options.engineRoot || config.engineRoot);
   const engineVersion = JSON.parse(fs.readFileSync(path.join(engineRoot, 'package.json'), 'utf8')).version;
 
@@ -142,7 +142,6 @@ export async function runZhudaBuild(options = {}) {
   const unityMigrationVerification = UnityBridgePipeline.runFullMigrationVerification();
 
   const calibrationReportPayload = {
-    generatedAt: new Date().toISOString(),
     totalStaticAssets: staticAssetFiles.length,
     calibratedPrefabsCount: calibrationReports.length,
     allPassed:
@@ -152,7 +151,6 @@ export async function runZhudaBuild(options = {}) {
       unityMigrationVerification.passed,
     selfConvergenceDemo: {
       assetName: convergenceDemo.beforeReport.assetName,
-      elapsedMs: convergenceDemo.elapsedMs,
       before: {
         measuredBox: convergenceDemo.beforeReport.measuredBox,
         expectedBox: convergenceDemo.beforeReport.expectedBox,
@@ -226,29 +224,16 @@ export async function runZhudaBuild(options = {}) {
  * License: MIT
  */`;
 
-    await esbuild.build({
-      entryPoints: [sdkEntryFile],
-      bundle: true,
-      outfile: sdkEsmFile,
-      format: 'esm',
-      platform: 'neutral',
-      target: ['es2020'],
-      sourcemap: true,
-      banner: { js: sdkBanner },
-      logLevel: 'silent'
-    });
-
-    await esbuild.build({
-      entryPoints: [sdkEntryFile],
-      bundle: true,
-      outfile: sdkCjsFile,
-      format: 'cjs',
-      platform: 'node',
-      target: ['es2020'],
-      sourcemap: true,
-      banner: { js: sdkBanner },
-      logLevel: 'silent'
-    });
+    for (const [entry, stem] of [[sdkEntryFile, 'zhuda-laya-engine'], [path.join(engineRoot, 'packages/demo/index.ts'), 'zhuda-laya-demo']]) {
+      for (const [format, extension, platform] of [['esm', '.esm.js', 'neutral'], ['cjs', '.cjs', 'node']]) {
+        for (const minify of [false, true]) {
+          await esbuild.build({ entryPoints: [entry], bundle: true,
+            outfile: path.join(sdkOutDir, stem + (minify ? '.min' : '') + extension),
+            format, platform, target: ['es2020'], minify, sourcemap: false,
+            banner: { js: sdkBanner }, logLevel: 'silent' });
+        }
+      }
+    }
 
     sdkEsmSizeKB = Number((fs.statSync(sdkEsmFile).size / 1024).toFixed(1));
     sdkCjsSizeKB = Number((fs.statSync(sdkCjsFile).size / 1024).toFixed(1));
@@ -556,7 +541,6 @@ ${previewScriptTags}
     engine: 'zhuda-laya-engine (Zhuda-LayaAir · Agent-Friendly Fork of LayaAir 3.4.2)',
     baseVersion: '3.4.2',
     zeroIdeBuild: true,
-    buildTimeMs: elapsedMs,
     activeProfile: requestedProfile,
     bundleSizeKB,
     sdkArtifacts: {
@@ -570,13 +554,12 @@ ${previewScriptTags}
     prunedRatioPercent: topology.prunedRatioPercent,
     orderedLibrariesCount: topology.orderedFiles.length,
     orderedLibraries: topology.orderedFiles,
-    reflectedComponents: reflectionResult.classes,
+    reflectedComponents: reflectionResult.classes.map(component => ({ ...component, filePath: path.relative(projectRoot, component.filePath).split(path.sep).join('/') })),
     staticAssets: staticAssetFiles,
     staticCalibrationSummary: {
       totalAssets: staticAssetFiles.length,
       calibratedPrefabs: calibrationReports.length,
       allPassed: calibrationReportPayload.allPassed,
-      selfConvergenceElapsedMs: convergenceDemo.elapsedMs,
       beforePxError: convergenceDemo.beforeReport.pixelErrors.maxAbsErrorPx,
       afterPxError: convergenceDemo.afterReport.pixelErrors.maxAbsErrorPx,
       beforeDeltaE2000: convergenceDemo.beforeReport.colorMetrics.maxDeltaE2000,
@@ -584,14 +567,13 @@ ${previewScriptTags}
     },
     visualPresentationContract: visualContractReport.manifestPath
       ? {
-          path: visualContractReport.manifestPath,
+          path: path.relative(projectRoot, visualContractReport.manifestPath).split(path.sep).join('/'),
           contractCount: visualContractReport.contractCount,
           contractIds: visualContractReport.contractIds,
           passed: visualContractReport.passed
         }
       : null,
     profileComparisons,
-    timestamp: new Date().toISOString()
   };
 
   const manifestPath = path.join(projectRoot, 'dist/build-manifest.json');
@@ -605,10 +587,7 @@ ${previewScriptTags}
   return manifest;
 }
 
-const cliArg = process.argv[1] || '';
-const modulePath = fileURLToPath(import.meta.url);
-const launchedAsCli = Boolean(cliArg) && (path.basename(cliArg) === path.basename(modulePath) ||
-  fs.realpathSync(cliArg) === fs.realpathSync(modulePath));
+const launchedAsCli = cliMain(import.meta.url, 'Usage: zhuda-laya-build [--project DIRECTORY] [--profile NAME] [--candidate]\nRequires zhuda.config.json in the selected project.');
 if (launchedAsCli) {
   if (process.argv.includes('--platform') || process.argv.includes('--list-platforms')) {
     import('./zhuda-minigame.mjs').then(({miniGameCli})=>miniGameCli()).catch(error=>{console.error(error.message);process.exitCode=1;});

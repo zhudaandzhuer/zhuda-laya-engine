@@ -106,6 +106,7 @@ function escapeHtml(value) {
   return String(value).replace(/[&<>"']/g, c => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'}[c]));
 }
 export function validateBrandLogo(source) {
+  // eslint-disable-next-line no-control-regex -- reject control characters in logo URLs
   if (typeof source !== 'string' || /[\u0000-\u0020\u007f\\]/.test(source) ||
       (!/^https:\/\//i.test(source) && !/^data:image\/(png|jpeg|webp|svg\+xml);base64,[a-z0-9+/=]+$/i.test(source) &&
        (/^[a-z][a-z0-9+.-]*:/i.test(source) || source.startsWith('//') || source.split('/').includes('..'))))

@@ -10,7 +10,7 @@ User: “開始優化”, after the six-item Codex Astra review: high-DPR design
 coordinates, streaming BGM, configurable voice retirement, Worklet backend or
 extension contract, pluggable background clock/recovery, and vendor declarations.
 Independent baseline evidence is outside the engine at
-`/Users/yaowei/Desktop/zhuda-astra-feedback-review-20261105/REVIEW.md`.
+`<external-evidence>/REVIEW.md`.
 Baseline: 1.6.0 / `4ce9255`; 198-unit Prefab renders at 198/99/66 CSS px for
 DPR 1/2/3; vendor audit fails with 506 diagnostics.
 
@@ -79,7 +79,7 @@ Worklet extension support is not a claim of a production DSP mixer or latency SL
 
 Task-specific tests, full verify log, full declaration audit, neutral independent
 consumer build/browser reports, raw measurement/screenshots and source revision.
-External artifacts: `/Users/yaowei/Desktop/zhuda-astra-runtime-acceptance-20261105`.
+External artifacts: `<external-evidence>/zhuda-astra-runtime-acceptance-20261105`.
 
 ## Unverified limits
 

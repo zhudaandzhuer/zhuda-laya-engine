@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { cliMain } from '../compiler/cli.mjs';
 import fs from "node:fs";
 import fsp from "node:fs/promises";
 import path from "node:path";
@@ -386,11 +387,7 @@ export async function filmCli(argv) {
     process.removeListener("SIGTERM", abort);
   }
 }
-const invoked =
-  process.argv[1] &&
-  fs.existsSync(process.argv[1]) &&
-  fs.realpathSync(process.argv[1]) ===
-    fs.realpathSync(fileURLToPath(import.meta.url));
+const invoked = cliMain(import.meta.url, 'Usage: zhuda-film-export report.json --fps NUMBER --output FILE [--ffmpeg FILE]');
 if (invoked)
   try {
     const result = await filmCli(process.argv.slice(2));

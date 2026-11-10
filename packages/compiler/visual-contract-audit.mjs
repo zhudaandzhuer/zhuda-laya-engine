@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { cliMain } from './cli.mjs';
 /**
  * Static gate for runtime visual presentation contracts.
  *
@@ -144,7 +145,7 @@ function parseArgs(argv) {
   return args;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (cliMain(import.meta.url, 'Usage: zhuda-visual-contract [--project DIRECTORY] [--manifest FILE]')) {
   const report = auditVisualPresentationContracts(parseArgs(process.argv));
   console.log('🎭 [Zhuda-Visual-Contract] 視覺演出契約閘門:');
   console.log(`  • 契約數量: ${report.contractCount}`);

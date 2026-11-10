@@ -23,7 +23,7 @@ media remains outside this engine repository.
 Independent package check: neutral consumer `npm run verify` PASS with packed
 1.4.1, tarball SHA-256
 `66e0e6f56bd360ad15792844b98ba1708322af946c8dd78bac16478adfb54878`.
-Evidence directory: `/Users/yaowei/Desktop/zhuda-runtime-acceptance-20261105`;
+Evidence directory: `<external-evidence>/zhuda-runtime-acceptance-20261105`;
 log `branding-verify.log`, images `evidence/consumer-brand-{desktop,portrait,landscape}.png`.
 Measured browser viewport/DPR: 1280×720/2, 390×844/1, 844×390/1.
 During the animation, portrait image bounds were x≈24–367, y≈341–449;

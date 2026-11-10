@@ -24,7 +24,7 @@ export function instantiateMigratedMaterial(spec:MigratedVisualMaterial,resolve:
   const textures:Record<string,any>={};for(const [name,key]of Object.entries(spec.textures)){const t=resolve(key);if(!t)throw new Error(`Missing migrated texture ${key}`);textures[name]=t.bitmap||t;}
   const m=new l[spec.target](),p=spec.properties;m.albedoColor=new l.Color(...p.albedoColor);
   if(spec.target==='PBRStandardMaterial'){m.metallic=p.metallic;m.smoothness=p.smoothness;m.enableEmission=p.emission.some((v:number)=>v>0);m.emissionColor=new l.Color(...p.emission,1);}
-  const map={albedo:'albedoTexture',normal:'normalTexture',metallicGloss:'metallicGlossTexture',emission:'emissionTexture'};
+  const map:Record<string,string>={albedo:'albedoTexture',normal:'normalTexture',metallicGloss:'metallicGlossTexture',emission:'emissionTexture'};
   for(const [name,t]of Object.entries(textures))m[map[name]]=t;
   if(p.transparent)m.renderMode=l[spec.target].RENDERMODE_TRANSPARENT;
   return m;

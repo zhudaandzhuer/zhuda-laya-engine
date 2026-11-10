@@ -8,7 +8,7 @@ Source: the commit containing this record, based on
 ## Environment
 
 - macOS Darwin 27 arm64, Node 26.12.0; Chrome 156.0.8078.80.
-- Independent consumer: `/Users/yaowei/Desktop/zhuda-runtime-acceptance-20261105`.
+- Independent consumer: `<external-evidence>/zhuda-runtime-acceptance-20261105`.
 - Consumer installed an npm-packed SDK, without source aliases or private imports.
 - Candidate tarball SHA-256: `d6732f01b0684090ad7ba25612fc256ea6af70aa085fa3cd7d0e96e7ba63621d`.
   The later checker-only Label guard ran from this checkout; the runtime bundles

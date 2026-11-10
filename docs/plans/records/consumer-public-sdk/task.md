@@ -29,7 +29,7 @@ Prefab-first control-bar provenance and the existing game behavior gates.
 ## Dependencies
 
 - Engine commit `99116a147a0df7a6d66703aa0e0f762a73dbc9f0` on GitHub.
-- Consumer `/Users/yaowei/Desktop/game1` and its `AGENTS.md`.
+- Consumer `<external-evidence>/game1` and its `AGENTS.md`.
 - `docs/prefab-workflow.md`, `packages/compiler/consumer-build.mjs`, and the
   public declarations under `packages/types/`.
 

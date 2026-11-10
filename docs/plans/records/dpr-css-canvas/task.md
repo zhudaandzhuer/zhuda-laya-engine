@@ -7,7 +7,7 @@ Last reviewed: 2026-11-06
 ## Source requirement
 
 Deep Tide Survival browser acceptance at
-`/Users/yaowei/Documents/ZhudaGameCenter/games/deep-tide-survival/artifacts/browser/report.json`
+`<external-evidence>/report.json`
 measured a 390×844 CSS viewport at DPR 2 with a 780×1688 canvas whose CSS box
 was also 780×1688. This reopens the DPR defect described by
 `docs/plans/records/astra-runtime-feedback/task.md` and violates the public

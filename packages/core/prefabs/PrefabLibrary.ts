@@ -1,5 +1,5 @@
 import type { LayaHierarchyNodeData } from "../../types/zhuda-static-assets.ts";
-import { ZhudaPrefab } from "../StaticAssetPipeline.ts";
+import { ZhudaPrefab } from "../Prefab.ts";
 import { createProviderAssetCache, normalizeAssetId } from "../runtime3d/AssetProvider.ts";
 import type { AssetProvider } from "../runtime3d/AssetProvider.ts";
 import { buildPrefabTree, buildSharedPrefabTree, createPrefabTreeResources, validatePrefabTree3D, validatePrefabPatch3D } from "./PrefabTree3D.ts";

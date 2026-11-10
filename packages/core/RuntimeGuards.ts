@@ -1,3 +1,4 @@
+import { ZHUDA_ENGINE_MODULES } from './TopologyGraph.ts';
 /**
  * @zhuda-laya/core — Runtime Ready Guards & Prototype Detox
  *
@@ -147,13 +148,15 @@ export class EngineGuard {
         Rigidbody3D?: unknown;
         BoxColliderShape?: unknown;
         Laya3D?: { _PhysicsCreateUtil?: unknown };
+        btStatics?: { bt?: { btVector3_create?: unknown; btDiscreteDynamicsWorld_create?: unknown } };
       };
       Physics3D?: unknown;
     };
 
     const bulletLoaded = Boolean(g.Physics3D || g.Laya?.Laya3D);
     const physics3DLoaded = Boolean(g.Laya?.PhysicsCollider && g.Laya?.Rigidbody3D);
-    const wasmInitialized = Boolean(bulletLoaded && physics3DLoaded);
+    const bullet = g.Laya?.btStatics?.bt;
+    const wasmInitialized = typeof bullet?.btVector3_create === 'function' && typeof bullet?.btDiscreteDynamicsWorld_create === 'function';
 
     return {
       bulletLoaded,
@@ -217,11 +220,11 @@ export class EngineGuard {
     const sp42 = this.checkSpine42();
     const buttonSetStateGuarded = typeof g.Laya?.Graphics?.prototype?.setState === 'function';
 
-    let loadedCount = 0;
-    if (g.Laya) loadedCount += 5;
-    if (p2d.physics2DLoaded) loadedCount += 2;
-    if (p3d.physics3DLoaded) loadedCount += 2;
-    if (sp42.hasPhysicsConstraint) loadedCount += 3;
+    const loadedCount = ZHUDA_ENGINE_MODULES.filter(module => module.providesGlobals.length > 0 && module.providesGlobals.every(name => {
+      let value: unknown = globalThis;
+      for (const key of name.split('.')) value = value != null && (typeof value === 'object' || typeof value === 'function') ? (value as Record<string, unknown>)[key] : undefined;
+      return value !== undefined && value !== null;
+    })).length;
 
     return {
       timestamp: Date.now(),
@@ -232,7 +235,7 @@ export class EngineGuard {
       physics2D: p2d,
       physics3D: p3d,
       spine42: sp42,
-      loadedGlobalModules: Math.max(loadedCount, 29)
+      loadedGlobalModules: loadedCount
     };
   }
 }

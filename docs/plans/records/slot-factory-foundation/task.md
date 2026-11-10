@@ -8,7 +8,7 @@ Last reviewed: 2026-11-05
 
 User: 「讓他支持白牌…但預設還是我們的 logo，其他按照規劃優化」。
 The Slot architect review compared 1.8.0 and 1.9.0; its external evidence is
-`/Users/yaowei/Desktop/zhuda-slot-factory-review-20261105/REVIEW.md`.
+`<external-evidence>/REVIEW.md`.
 
 ## Goal
 
@@ -73,7 +73,7 @@ pilot does not authorize game-specific engine roadmap work.
 ## Evidence to attach
 
 Tests/build logs, packed consumer, browser screenshots and raw measurements:
-`/Users/yaowei/Desktop/zhuda-slot-foundation-acceptance-20261105/`.
+`<external-evidence>/zhuda-slot-foundation-acceptance-20261105`.
 
 ## Unverified limits
 

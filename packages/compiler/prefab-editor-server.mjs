@@ -1,3 +1,4 @@
+import { cliMain } from './cli.mjs';
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import http from 'node:http';
@@ -5,6 +6,8 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import esbuild from 'esbuild';
+import { realPath, inside, resolveProjectFile, createEditorAccess, respondStatic, publicAssetPath, scriptJson } from './editor-http.mjs';
+export { resolveProjectFile } from './editor-http.mjs';
 
 const moduleDir = path.dirname(fileURLToPath(import.meta.url));
 const defaultEngineRoot = path.resolve(moduleDir, '..', '..');
@@ -48,26 +51,6 @@ export function parsePrefabEditorArgs(argv = process.argv.slice(2)) {
   if (!host || host.includes('/') || host.includes(':')) throw Error('Invalid --host');
   if (!fs.existsSync(project) || !fs.statSync(project).isDirectory()) throw Error(`Project does not exist: ${project}`);
   return { project, projectRoot: project, prefab, host, port, engineRoot, previewController };
-}
-
-function realPath(value) {
-  return fs.realpathSync(value);
-}
-
-function inside(root, file) {
-  return file === root || file.startsWith(`${root}${path.sep}`);
-}
-
-export function resolveProjectFile(projectRoot, relative, { mustExist = false } = {}) {
-  const root = realPath(projectRoot);
-  if (typeof relative !== 'string' || !relative || path.isAbsolute(relative) || relative.includes('\\')) {
-    throw Error('Path must be project-relative');
-  }
-  const file = path.resolve(root, relative);
-  if (!inside(root, file)) throw Error('Path escapes project root');
-  if (mustExist && !fs.existsSync(file)) throw Error(`Project file does not exist: ${relative}`);
-  if (fs.existsSync(file) && !inside(root, realPath(file))) throw Error('Symlinked path escapes project root');
-  return file;
 }
 
 function validateNumber(value, label) {
@@ -136,19 +119,6 @@ function json(response, status, value) {
   response.end(body);
 }
 
-function contentType(file) {
-  return ({ '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.json': 'application/json; charset=utf-8', '.css': 'text/css; charset=utf-8', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.mp3': 'audio/mpeg', '.wav': 'audio/wav' })[path.extname(file).toLowerCase()] || 'application/octet-stream';
-}
-
-function safePath(root, requestPath) {
-  try {
-    const decoded = decodeURIComponent(requestPath.split('?')[0]);
-    const relative = decoded.replace(/^\/+/, '');
-    const target = path.resolve(root, relative);
-    return inside(root, target) ? target : null;
-  } catch { return null; }
-}
-
 const assetKind = file => {
   const extension = path.extname(file).toLowerCase();
   if (extension === '.lh') return 'prefab';
@@ -170,14 +140,19 @@ export async function scanProjectAssets(projectRoot) {
   const assetsRoot = path.join(project, 'assets');
   if (!fs.existsSync(assetsRoot)) return [];
   const root = realPath(assetsRoot);
+  if (!inside(project, root)) throw Error('Asset root escapes project');
   const files = [];
+  const visited = new Set();
   const visit = async directory => {
+    if (visited.has(directory)) return;
+    visited.add(directory);
     const entries = await fsp.readdir(directory, { withFileTypes: true });
     for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
-      if (entry.name === '.DS_Store' || entry.name.endsWith('.bak') || entry.name.includes('.tmp-')) continue;
+      if (!publicAssetPath(entry.name)) continue;
       const candidate = path.join(directory, entry.name);
       const resolved = realPath(candidate);
       if (!inside(root, resolved)) throw Error(`Asset symlink escapes project assets: ${path.relative(project, candidate)}`);
+      if (!publicAssetPath(path.relative(project, resolved))) continue;
       const stat = await fsp.stat(resolved);
       if (stat.isDirectory()) await visit(resolved);
       else if (stat.isFile()) {
@@ -199,7 +174,7 @@ function selectedPrefabPath(project, urlOrPath, fallback) {
   return { file, path: path.relative(project, file).split(path.sep).join('/') };
 }
 
-function editorHtml(engineFiles, assetPath) {
+function editorHtml(engineFiles, assetPath, token) {
   const tags = engineFiles.map(file => `<script src="/__editor/engine/${file}"></script>`).join('\n');
   const isScene = /\.ls$/i.test(assetPath);
   const assetLabel = isScene ? 'Scene' : 'Prefab';
@@ -220,7 +195,7 @@ button,input,select{font:inherit;color:inherit;background:#0c1424;border:1px sol
 .agent-view .layout{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr);overflow:hidden}.agent-view .layout>.panel:not(.stage-panel){display:none}.agent-view .stage-panel{grid-column:1;grid-row:1;padding:10px}.agent-view .stage-help{display:none}.agent-view .top .path{display:none}.agent-view .top h1{flex:1 1 180px;margin-right:0}
 
 `;
-  return `<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Zhuda ${assetLabel} Editor</title><style>${css}</style></head><body><header class="top"><h1>豬大 ${assetLabel} Editor</h1><div class="path" id="path">Loading…</div><button id="play" disabled title="Loading preview controller">▶ Play</button><button id="agent-view" title="Fit the canvas for an agent screenshot">Agent View</button><button id="undo" title="Undo">↶ Undo</button><button id="redo" title="Redo">↷ Redo</button><button id="reload">Reload</button><button id="save">Save</button><div class="status" id="status">Loading…</div></header><main class="layout"><section class="panel"><h2>Hierarchy</h2><div id="tree"></div><div class="note">編輯目前選定的 ${assetPath.endsWith('.ls') ? '.ls Scene' : '.lh Prefab'}。預覽使用真正的 Zhuda/Laya runtime；拖曳座標以設計像素計算。</div></section><section class="panel stage-panel"><div class="stage-shell" id="stage-shell"><div id="stage"></div><div id="selection-box" class="selection-box"></div><div id="anchor-marker" class="anchor-marker"><span>anchor</span></div></div><div class="stage-help">拖曳選定節點移動位置。選取框會包住節點實際 bounds；黃色十字是 anchor/pivot。按 Save 寫回原始 ${assetPath.endsWith('.ls') ? '.ls' : '.lh'}，編輯器會先驗證並留下 .bak 備份。</div></section><section class="panel inspector"><h2>Inspector</h2><div id="inspector"><div class="empty">選擇一個節點開始編輯。</div></div><div id="error" class="error" role="alert"></div></section><section class="panel asset-panel" aria-label="Project Assets"><div class="asset-head"><h2>Assets</h2><span id="asset-count" class="asset-count">Loading…</span></div><div class="asset-body"><nav id="asset-folders" class="asset-folders" aria-label="Asset folders"></nav><section id="asset-files" class="asset-files" aria-label="Asset files"></section></div></section></main><script>window.__ZHUDA_EDITOR_ENGINE_FILES__=${JSON.stringify(engineFiles)};</script>${tags}<script type="module" src="/__editor/editor.js"></script></body></html>`;
+  return `<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Zhuda ${assetLabel} Editor</title><style>${css}</style></head><body><header class="top"><h1>豬大 ${assetLabel} Editor</h1><div class="path" id="path">Loading…</div><button id="play" disabled title="Loading preview controller">▶ Play</button><button id="agent-view" title="Fit the canvas for an agent screenshot">Agent View</button><button id="undo" title="Undo">↶ Undo</button><button id="redo" title="Redo">↷ Redo</button><button id="reload">Reload</button><button id="save">Save</button><div class="status" id="status">Loading…</div></header><main class="layout"><section class="panel"><h2>Hierarchy</h2><div id="tree"></div><div class="note">編輯目前選定的 ${assetPath.endsWith('.ls') ? '.ls Scene' : '.lh Prefab'}。預覽使用真正的 Zhuda/Laya runtime；拖曳座標以設計像素計算。</div></section><section class="panel stage-panel"><div class="stage-shell" id="stage-shell"><div id="stage"></div><div id="selection-box" class="selection-box"></div><div id="anchor-marker" class="anchor-marker"><span>anchor</span></div></div><div class="stage-help">拖曳選定節點移動位置。選取框會包住節點實際 bounds；黃色十字是 anchor/pivot。按 Save 寫回原始 ${assetPath.endsWith('.ls') ? '.ls' : '.lh'}，編輯器會先驗證並留下 .bak 備份。</div></section><section class="panel inspector"><h2>Inspector</h2><div id="inspector"><div class="empty">選擇一個節點開始編輯。</div></div><div id="error" class="error" role="alert"></div></section><section class="panel asset-panel" aria-label="Project Assets"><div class="asset-head"><h2>Assets</h2><span id="asset-count" class="asset-count">Loading…</span></div><div class="asset-body"><nav id="asset-folders" class="asset-folders" aria-label="Asset folders"></nav><section id="asset-files" class="asset-files" aria-label="Asset files"></section></div></section></main><script>window.__ZHUDA_EDITOR_TOKEN__=${scriptJson(token)};window.__ZHUDA_EDITOR_ENGINE_FILES__=${scriptJson(engineFiles)};</script>${tags}<script type="module" src="/__editor/editor.js"></script></body></html>`;
 }
 
 // Share the same public SDK module between the editor and consumer controller.
@@ -268,21 +243,10 @@ export async function createPrefabEditorServer({ projectRoot, prefab, engineRoot
   let revision = sha256(initial.bytes);
   const history = [];
   const addHistory = bytes => { history.push(bytes); while (history.length > Math.max(1, historyLimit)) history.shift(); };
-  const respondStatic = async (root, requestPath, response) => {
-    const file = safePath(root, requestPath);
-    if (!file) { response.writeHead(400); response.end('Bad path'); return; }
-    let target = file;
-    try {
-      const resolvedRoot = realPath(root);
-      if ((await fsp.stat(target)).isDirectory()) target = path.join(target, 'index.html');
-      if (!inside(resolvedRoot, realPath(target))) throw Error('Symlinked asset escapes root');
-      const bytes = await fsp.readFile(target); response.writeHead(200, { 'Content-Type': contentType(target), 'Cache-Control': 'no-store' }); response.end(bytes);
-    }
-    catch (error) { response.writeHead(error.code === 'ENOENT' ? 404 : 500); response.end(error.code === 'ENOENT' ? 'Not found' : 'Read failed'); }
-  };
+  const access = createEditorAccess(host);
   const server = http.createServer(async (request, response) => {
     try {
-      const url = new URL(request.url || '/', 'http://localhost');
+      const url = access.validate(request, response);
       if (url.pathname === '/api/editor' && request.method === 'GET') { json(response, 200, { previewController: controller ? { path: controller.path, url: controller.url } : null, previewTimeoutMs }); return; }
       if (url.pathname === '/api/prefab' && request.method === 'GET') {
         const selection = selectedPrefabPath(project, url, initialSelection.path);
@@ -315,23 +279,23 @@ export async function createPrefabEditorServer({ projectRoot, prefab, engineRoot
       if (url.pathname === '/api/history' && request.method === 'GET') { json(response, 200, { available: history.length, revision }); return; }
       if (url.pathname === '/' || url.pathname === '/index.html') {
         const selection = selectedPrefabPath(project, url, initialSelection.path);
-        const html = editorHtml(engineFiles, selection.path);
+        const html = editorHtml(engineFiles, selection.path, access.token);
         response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }); response.end(html); return;
       }
       if (url.pathname === '/__editor/sdk.js') { await respondStatic(path.dirname(sdkFile), path.basename(sdkFile), response); return; }
       if (url.pathname === '/__editor/preview-controller.js' && controller) { response.writeHead(200, { 'Content-Type': 'text/javascript; charset=utf-8', 'Cache-Control': 'no-store' }); response.end(controller.code); return; }
       if (url.pathname === '/__editor/editor.js') { response.writeHead(200, { 'Content-Type': 'text/javascript; charset=utf-8', 'Cache-Control': 'no-store' }); response.end(editorBundle); return; }
       if (url.pathname.startsWith('/__editor/engine/')) { await respondStatic(engineLibRoot, url.pathname.slice('/__editor/engine/'.length), response); return; }
-      if (url.pathname.startsWith('/__project/')) { await respondStatic(project, url.pathname.slice('/__project/'.length), response); return; }
+      if (url.pathname.startsWith('/__project/')) { await respondStatic(project, url.pathname.slice('/__project/'.length), response, { projectAssets: true }); return; }
       response.writeHead(404); response.end('Not found');
-    } catch (error) { if (!response.headersSent) json(response, 400, { error: error instanceof Error ? error.message : String(error) }); else response.destroy(); }
+    } catch (error) { if (!response.headersSent) json(response, error.status || 400, { error: error instanceof Error ? error.message : String(error) }); else response.destroy(); }
   });
   const listening = new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, host, () => resolve(server.address())); });
   const close = async () => { await new Promise(resolve => server.close(() => resolve())); };
-  return { server, listening, close, projectRoot: project, prefabFile: initialSelection.file, engineRoot: engine, revision: () => revision, history };
+  return { server, listening, close, token: access.token, projectRoot: project, prefabFile: initialSelection.file, engineRoot: engine, revision: () => revision, history };
 }
 
-const launched = (() => { try { return process.argv[1] && realPath(process.argv[1]) === realPath(fileURLToPath(import.meta.url)); } catch { return false; } })();
+const launched = cliMain(import.meta.url, 'Usage: zhuda-prefab-editor --project DIRECTORY --prefab assets/FILE.lh [--host HOST] [--port PORT] [--preview-controller MODULE]');
 if (launched) {
   try {
     const args = parsePrefabEditorArgs();

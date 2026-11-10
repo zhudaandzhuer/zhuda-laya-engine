@@ -1,3 +1,4 @@
+// Generated from TypeScript source; run npm run types:generate.
 import type { ModelDecoderAdapter, ModelDecoderInput, ModelDecodedPayload } from './ModelDecoder';
 /** Optional pinned CPU decoder: embedded glTF/GLB -> ordinary self-contained GLB.
  * Uses existing ModelLibrary/provider ownership; no second renderer or cache.

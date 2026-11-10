@@ -12,7 +12,7 @@ external acceptance `source-revisions.json` after commit/push. Consumer baseline
 macOS 27.0.1 (26A434), Node 26.12.0, npm 11.20.0, Chrome 156.0.8078.80.
 Independent consumers install the packed SDK without source aliases. Acceptance
 root outside this repository:
-`/Users/yaowei/Desktop/zhuda-rpg-hardening-acceptance-20261105` (below: `A`).
+`<external-evidence>/zhuda-rpg-hardening-acceptance-20261105` (below: `A`).
 Packed SDK SHA-256:
 `7f59e96b88aef37b775123d3a39b0c99e4d834be86d735280b4438be6d948dd7`.
 Installed runtime/preview/check/build bytes were compared with engine source.

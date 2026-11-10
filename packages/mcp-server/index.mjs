@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { cliMain } from '../compiler/cli.mjs';
 /**
  * @zhuda-laya/mcp-server — Model Context Protocol (MCP) Server for Zhuda-LayaAir
  *
@@ -12,6 +13,7 @@
  */
 
 import readline from 'node:readline';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import {TopologyResolver,ZhudaBenchmarkEngine,ZhudaAssetSerializer,PixelCalibrationEngine,ViewportMatrixEngine,UnityBridgePipeline,validateParticleEffect,validateParticleEffect3D,validateTerrain2D,validateHeightfield,validateShaderSpec,validateTimelineSpec,gltfAssetCapabilities,gltfExtensionCapabilities} from './runtime.mjs';
 import { auditVisualAssetMigration } from '../compiler/visual-asset-audit.mjs';
@@ -20,6 +22,7 @@ import { getAgentContract, validateTaskSpec } from '../compiler/agent-contract.m
 import { API_GUARDRAILS, ERROR_DIAGNOSTICS_DB, GOLDEN_EXAMPLES } from './corpus.mjs';
 
 const projectRoot = fileURLToPath(new URL('../..', import.meta.url));
+const packageVersion = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8')).version;
 
 export const MCP_TOOLS_MANIFEST = [
   {name:'get_cinematic_contract',description:'Return the deterministic movie API, export route and explicit HDR/device limits. Does not render or certify quality.',inputSchema:{type:'object',properties:{}}},
@@ -175,7 +178,7 @@ export const MCP_TOOLS_MANIFEST = [
     }
   },
   {
-    name: 'verify_unity_migration',
+    name: 'demo_verify_unity_migration',
     description: '執行 M5 Unity 場景 (LH→RH 座標轉換) + AnimatorController 狀態機過渡 + Spine 4.2 PhysicsConstraint 完整移植驗證。',
     inputSchema: {
       type: 'object',
@@ -212,7 +215,7 @@ export const MCP_TOOLS_MANIFEST = [
 
 export function executeMcpTool(toolName, args = {}) {
   switch (toolName) {
-    case 'get_cinematic_contract': return {tool:toolName,version:'1.13.0',
+    case 'get_cinematic_contract': return {tool:toolName,version:packageVersion,
       api:['ZhudaTimelineSequencer','ZhudaModelAnimationSampler','ZhudaPhysicalCameraRig','ZhudaCinematicCapture','IframeSoundAdapter.renderOffline'],
       export:'zhuda-film-export sequence.json --fps 24 --output movie.mp4 --audio soundtrack.wav',
       capture:{pose:'synchronous absolute time',runtime:'paused',samples:'1..256',pixels:'opaque sRGB top-left',accumulation:'display-linear after tone mapping',shutter:'forward interval; single sample at frame start'},
@@ -324,7 +327,8 @@ export function executeMcpTool(toolName, args = {}) {
         hierarchy = ZhudaAssetSerializer.buildConfirmButtonPrefab('uncalibrated-drift');
       } else {
         const all = ZhudaAssetSerializer.getAllBuiltinStaticAssets();
-        hierarchy = all[name] || all['ConfirmActionButton.lh'];
+        if (!Object.hasOwn(all, name)) throw Error(`Unknown built-in static asset: ${name}`);
+        hierarchy = all[name];
       }
       return {
         tool: 'compile_static_asset',
@@ -347,7 +351,8 @@ export function executeMcpTool(toolName, args = {}) {
       }
       const name = args.assetName || 'ConfirmActionButton.lh';
       const all = ZhudaAssetSerializer.getAllBuiltinStaticAssets();
-      const target = all[name] || all['ConfirmActionButton.lh'];
+      if (!Object.hasOwn(all, name)) throw Error(`Unknown built-in static asset: ${name}`);
+      const target = all[name];
       const report = PixelCalibrationEngine.calibrateAsset(target);
       return {
         tool: 'calibrate_asset_pixels',
@@ -375,10 +380,10 @@ export function executeMcpTool(toolName, args = {}) {
       };
     }
 
-    case 'verify_unity_migration': {
+    case 'demo_verify_unity_migration': {
       const report = UnityBridgePipeline.runFullMigrationVerification();
       return {
-        tool: 'verify_unity_migration',
+        tool: 'demo_verify_unity_migration',
         report
       };
     }
@@ -416,7 +421,14 @@ export function executeMcpTool(toolName, args = {}) {
  * 處理單筆 JSON-RPC 2.0 請求
  */
 export function handleJsonRpcMessage(msg) {
-  const { id, method, params } = msg;
+  if (!msg || typeof msg !== 'object' || Array.isArray(msg) || msg.jsonrpc !== '2.0' || typeof msg.method !== 'string') {
+    return { jsonrpc: '2.0', id: null, error: { code: -32600, message: 'Invalid Request' } };
+  }
+  if (!Object.hasOwn(msg, 'id')) return null;
+  const { id, method, params = {} } = msg;
+  if (!(id === null || typeof id === 'string' || (typeof id === 'number' && Number.isFinite(id)))) {
+    return { jsonrpc: '2.0', id: null, error: { code: -32600, message: 'Invalid id' } };
+  }
 
   if (method === 'initialize') {
     return {
@@ -426,7 +438,7 @@ export function handleJsonRpcMessage(msg) {
         protocolVersion: '2024-11-05',
         serverInfo: {
           name: '@zhuda-laya/mcp-server',
-          version: '1.2.0'
+          version: packageVersion
         },
         capabilities: {
           tools: {}
@@ -447,6 +459,7 @@ export function handleJsonRpcMessage(msg) {
 
   if (method === 'tools/call') {
     try {
+      if (!params || typeof params !== 'object' || typeof params.name !== 'string' || (params.arguments !== undefined && (!params.arguments || typeof params.arguments !== 'object' || Array.isArray(params.arguments)))) throw Error('Invalid tool parameters');
       const output = executeMcpTool(params.name, params.arguments || {});
       return {
         jsonrpc: '2.0',
@@ -475,12 +488,12 @@ export function handleJsonRpcMessage(msg) {
   return {
     jsonrpc: '2.0',
     id,
-    result: {}
+    ...(method === 'ping' ? { result: {} } : { error: { code: -32601, message: 'Method not found' } })
   };
 }
 
 // CLI 或 stdio 入口
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (cliMain(import.meta.url, 'Usage: zhuda-laya-mcp [--tool NAME --args JSON]\nWithout --tool, starts the JSON-RPC stdio server.')) {
   const toolIdx = process.argv.indexOf('--tool');
   if (toolIdx !== -1) {
     const toolName = process.argv[toolIdx + 1];
@@ -503,7 +516,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     try {
       const req = JSON.parse(line);
       const res = handleJsonRpcMessage(req);
-      process.stdout.write(JSON.stringify(res) + '\n');
+      if (res !== null) process.stdout.write(JSON.stringify(res) + '\n');
     } catch (e) {
       process.stdout.write(
         JSON.stringify({

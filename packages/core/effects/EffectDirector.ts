@@ -61,7 +61,7 @@ export function validateEffectTimeline(s: EffectTimelineSpec): string[] {
     s.duration < 1 / 120
   )
     return ["Timeline requires version 1 and duration >= 1/120."];
-  for (const key of ["tracks", "cues", "attachments"])
+  for (const key of ["tracks", "cues", "attachments"] as const)
     if (s[key] !== undefined && !Array.isArray(s[key]))
       return [`${key} must be an array.`];
   if (s.loop !== undefined && typeof s.loop !== "boolean")

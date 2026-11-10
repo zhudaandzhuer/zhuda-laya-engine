@@ -1,3 +1,4 @@
+// Generated from TypeScript source; run npm run types:generate.
 /** Import diagnostics describe the shipped importer, not complete glTF conformance. */
 export interface ModelDiagnostic {
     code: 'INVALID_DOCUMENT' | 'INVALID_EXTENSION_DECLARATION' | 'UNDECLARED_EXTENSION' | 'UNSUPPORTED_REQUIRED_EXTENSION' | 'UNSUPPORTED_OPTIONAL_EXTENSION' | 'REQUIRED_RENDER_INPUT' | 'INVALID_MORPH_WEIGHTS';

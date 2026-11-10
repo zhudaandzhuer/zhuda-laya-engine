@@ -1,3 +1,4 @@
+// Generated from TypeScript source; run npm run types:generate.
 export interface Vec3 {
     x: number;
     y: number;

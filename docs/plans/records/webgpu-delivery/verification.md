@@ -17,7 +17,7 @@ macOS darwin 27.0.0, Chrome 156.0.8078.80, Apple Metal-3 hardware adapter
 consumer canvas 640×360 CSS px. Browser SDK matrix at DPR 2, 1100×1000.
 No Windows GPU host or physical mobile device was used.
 
-External evidence root: `/Users/yaowei/Desktop/zhuda-webgpu-acceptance-20261105/`.
+External evidence root: `<external-evidence>/zhuda-webgpu-acceptance-20261105`.
 Neutral authored geometry/text only; no customer art or game logic.
 
 | Check | Command / procedure | Result | Artifact |

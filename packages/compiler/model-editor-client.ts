@@ -1,3 +1,4 @@
+import { editorFetch } from './editor-request.ts';
 import {
   DirectoryAssetProvider,
   ZhudaAssetShowcase,
@@ -17,7 +18,7 @@ declare global {
   }
 }
 
-type ModelAssetEntry = AssetManifestEntry & { path: string; kind: string };
+type ModelAssetEntry = Omit<AssetManifestEntry, 'kind'> & { path: string; kind: string };
 type ModelInspection = ReturnType<ZhudaModelInspector['inspect']>;
 type ModelEditorState = {
   assetPath: string;
@@ -138,14 +139,14 @@ function renderAssets(entries: ModelAssetEntry[], selectedFolder: string, open: 
     icon.textContent = entry.kind === 'model' ? '3D' : entry.kind === 'scene' ? 'LS' : entry.kind === 'prefab' ? 'LH' : entry.kind.slice(0, 3).toUpperCase();
     const meta = document.createElement('span'); meta.className = 'asset-meta';
     const name = document.createElement('span'); name.className = 'asset-name'; name.textContent = assetLabel(entry.path);
-    const detail = document.createElement('span'); detail.className = 'asset-detail'; detail.textContent = `${entry.kind} · ${formatBytes(entry.bytes)}`;
+    const detail = document.createElement('span'); detail.className = 'asset-detail'; detail.textContent = `${entry.kind} · ${formatBytes(entry.bytes ?? 0)}`;
     meta.append(name, detail); card.append(icon, meta); card.title = `${entry.path}\nSHA-256 ${entry.sha256 || '—'}`;
     card.onclick = () => open(entry); host.appendChild(card);
   }
 }
 
 async function loadAssetIndex(): Promise<ModelAssetEntry[]> {
-  const response = await fetch('/api/assets', { cache: 'no-store' });
+  const response = await editorFetch('/api/assets', { cache: 'no-store' });
   const payload = await response.json() as { entries?: Array<AssetManifestEntry & { path: string; kind: string }>; error?: string };
   if (!response.ok) throw Error(payload.error || 'Unable to read project assets');
   return (payload.entries || []).map(entry => ({ ...entry, path: entry.path.replace(/^assets\//, '') }));
@@ -264,9 +265,8 @@ function frameModel(): void {
       const renderer = node.getComponent(type);
       const bounds = renderer?.bounds;
       if (!bounds) continue;
-      const center = new Laya.Vector3(0, 0, 0); const extent = new Laya.Vector3(0, 0, 0);
-      bounds.getCenter(center); bounds.getExtent(extent);
-      for (let axis = 0; axis < 3; axis += 1) { minimum[axis] = Math.min(minimum[axis], center[axis] - extent[axis]); maximum[axis] = Math.max(maximum[axis], center[axis] + extent[axis]); }
+      const center = bounds.getCenter(); const extent = bounds.getExtent();
+      for (let axis = 0; axis < 3; axis += 1) { minimum[axis] = Math.min(minimum[axis], [center.x, center.y, center.z][axis] - [extent.x, extent.y, extent.z][axis]); maximum[axis] = Math.max(maximum[axis], [center.x, center.y, center.z][axis] + [extent.x, extent.y, extent.z][axis]); }
     }
     for (let index = 0; index < node.numChildren; index += 1) visit(node.getChildAt(index) as Laya.Sprite3D);
   };
@@ -286,13 +286,13 @@ function frameModel(): void {
 }
 
 function fitStage(): void {
-  const panel = $('stage-panel'); const shell = $('stage-shell'); const canvas = state.context?.canvas;
+  const context = state.context; const panel = $('stage-panel'); const shell = $('stage-shell'); const canvas = context?.canvas;
   if (!canvas) return;
   const width = Math.max(1, panel.clientWidth - 24); const height = Math.max(1, panel.clientHeight - 56);
   const scale = Math.min(1, width / 720, height / 480);
   shell.style.width = `${Math.max(160, Math.floor(720 * scale))}px`; shell.style.height = `${Math.max(120, Math.floor(480 * scale))}px`;
   canvas.style.width = '100%'; canvas.style.height = '100%';
-  state.context.resize();
+  context!.resize();
 }
 
 function installPointerControls(): void {

@@ -37,7 +37,7 @@ brand asset.
 Engine: `packages/compiler/zhuda-build.mjs`, `assets/branding/`, generated
 `dist/web/index.html`, tests and verification records.
 
-Consumer: `/Users/yaowei/Desktop/game1` cleanup manifest, handoff docs,
+Consumer: `<external-evidence>/game1` cleanup manifest, handoff docs,
 dependency metadata, canonical evidence and stale artifact removal.
 
 ## Non-goals

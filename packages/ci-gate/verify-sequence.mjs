@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { cliMain } from '../compiler/cli.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -115,5 +116,5 @@ export function sequenceCli(argv) {
   const referenceFile=path.resolve(values.reference);
   return compareSequenceReports(actual,JSON.parse(fs.readFileSync(referenceFile,'utf8')),{...settings,referenceRoot:path.dirname(referenceFile),maxDiffPixels:values['max-diff-pixels']===undefined?0:Number(values['max-diff-pixels']),channelTolerance:values['channel-tolerance']===undefined?2:Number(values['channel-tolerance'])});
 }
-const invoked=process.argv[1] && fs.existsSync(process.argv[1]) && fs.realpathSync(process.argv[1])===fs.realpathSync(fileURLToPath(import.meta.url));
+const invoked = cliMain(import.meta.url, 'Usage: zhuda-sequence-check report.json [--backend webgl|webgpu]');
 if(invoked)try{const value=sequenceCli(process.argv.slice(2));console.log(typeof value==='string'?value:JSON.stringify(value,null,2));if(typeof value!=='string' && !value.passed)process.exitCode=1;}catch(error){console.error(error.message);process.exitCode=1;}

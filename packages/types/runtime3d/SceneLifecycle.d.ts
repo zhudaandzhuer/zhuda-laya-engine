@@ -1,3 +1,4 @@
+// Generated from TypeScript source; run npm run types:generate.
 import type { Vec3 } from "./Math3D";
 /** Owned releases execute in reverse order. Borrowed resources must not be registered here. */
 export declare class ZhudaResourceScope {

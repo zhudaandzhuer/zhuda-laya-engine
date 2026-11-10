@@ -1,3 +1,4 @@
+// Generated from TypeScript source; run npm run types:generate.
 export type RendererBackend = 'webgl' | 'webgpu';
 import type { ZhudaRuntimeSession } from './Runtime';
 export interface RendererDiagnostics {

@@ -1,3 +1,4 @@
+// Generated from TypeScript source; run npm run types:generate.
 /** Version-specific sizing seam. Native retinal sizing preserves design units
  * and scales the stage transform, including pointer conversion and text caches.
  * Override the browser ratio only during the synchronous resize so a render

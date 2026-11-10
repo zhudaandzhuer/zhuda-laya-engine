@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { cliMain } from './cli.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import {createRequire} from 'node:module';
@@ -198,4 +199,4 @@ export async function miniGameCli(argv=process.argv.slice(2)) {
     else console.log(JSON.stringify(await buildMiniGame({...options,signal:controller.signal,onOutput:text=>process.stdout.write(text)}),null,2));
   } finally {process.removeListener('SIGINT',cancel);process.removeListener('SIGTERM',cancel);}
 }
-if(process.argv[1]&&fs.realpathSync(process.argv[1])===fileURLToPath(import.meta.url))miniGameCli().catch(error=>{console.error(error.message);process.exitCode=1;});
+if(cliMain(import.meta.url, 'Usage: zhuda-laya-minigame --platform ID [--project DIRECTORY] [--toolchain DIRECTORY] [--candidate] [--list-platforms]'))miniGameCli().catch(error=>{console.error(error.message);process.exitCode=1;});

@@ -14,7 +14,7 @@ User report against SDK 1.15.0 / `77acfc78846080ec7b60c65ca58c1740562b2edc`:
    resize, Agent View, nested selection and drag, including save/reload.
 
 Source: `packages/compiler/prefab-editor-client.ts`, and the external read-only
-reproduction `/Users/yaowei/Documents/BDL/zhuda-bdl-consumer/evidence/game305-editor-anchor-dpr-20261109/README.md`.
+reproduction `<external-evidence>/README.md`.
 Handoff: Codex chat `01a1a481-8fdb-77f3-9c6e-f815f5940cad` confirms editor tooling is on upstream main.
 
 ## Goal

@@ -13,7 +13,7 @@
 import { registerAllReflectedComponents } from './.generated/zhuda-registry';
 import { ZhudaEngine } from '../packages/core/DeclarativeSDK';
 import { ZhudaAssetSerializer, ZhudaPrefab } from '../packages/core/StaticAssetPipeline';
-import { PixelCalibrationEngine } from '../packages/core/PixelCalibrationEngine';
+import { PixelCalibrationEngine } from '../packages/demo/PixelCalibrationEngine';
 import type { LayaHierarchyNodeData, PixelCalibrationReport } from '../packages/types/index';
 
 interface MicroPreviewController {

@@ -163,7 +163,9 @@ test('zhuda-laya-engine SDK bundles (ESM & CJS) and upstream LayaAir Official at
   assert.ok(sdkMod.IframeSoundAdapter, 'ESM SDK should export IframeSoundAdapter');
   assert.ok(sdkMod.NoSleepAdapter, 'ESM SDK should export NoSleepAdapter');
   assert.ok(sdkMod.ViewportMatrixEngine, 'ESM SDK should export ViewportMatrixEngine');
-  assert.ok(sdkMod.UnityBridgePipeline, 'ESM SDK should export UnityBridgePipeline');
+  assert.equal(sdkMod.UnityBridgePipeline, undefined, 'Legacy scenes stay outside the main SDK');
+  const demo = await import(path.join(projectRoot, 'dist/sdk/zhuda-laya-demo.esm.js'));
+  assert.ok(demo.UnityBridgePipeline, 'Optional demo entry retains the migration sample');
   assert.ok(sdkMod.VisualFocusContract, 'ESM SDK should export VisualFocusContract');
   const cjsMod = (await import('node:module')).createRequire(import.meta.url)(cjsPath);
   for (const name of ['NoSleepAdapter', 'ZhudaParticleSystem', 'ZhudaRibbonTrail', 'ZhudaEffectEnvelope', 'ZhudaLayaParticleRenderer',

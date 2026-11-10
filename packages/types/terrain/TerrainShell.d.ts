@@ -1,3 +1,4 @@
+// Generated from TypeScript source; run npm run types:generate.
 import type { MeshData } from "../runtime3d/Surfaces";
 import type { QueryRay } from "../runtime3d/SceneQueries";
 /** Two-sided ray intersection; distance follows the supplied ray parameter. */

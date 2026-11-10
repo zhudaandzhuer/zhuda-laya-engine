@@ -9,7 +9,7 @@ Last reviewed: 2026-11-05
 User: 「去優化」, accepting the preceding four priorities from the Dawn Realm
 integration: premature lifecycle PASS, official candidate workflow, selective
 evidence invalidation and shared primitive Prefab resources.
-Reproduction: external consumer `/Users/yaowei/Desktop/dawn-realm-rpg`,
+Reproduction: external consumer `<external-evidence>/dawn-realm-rpg`,
 `evidence/lifecycle-hero.json` (requested 30, captured zero lifecycle entries)
 and `evidence/final-browser-campaign.json` (180 instances, 860 meshes).
 

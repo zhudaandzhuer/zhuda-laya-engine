@@ -1,3 +1,4 @@
+// Generated from TypeScript source; run npm run types:generate.
 export * from "./Math3D";
 export * from "./Clocks";
 export * from "./ActionFrames";

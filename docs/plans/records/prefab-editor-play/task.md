@@ -42,7 +42,7 @@ volume, then stop and recover the exact authored/unsaved edit state.
 
 ### Consumer or adapter
 
-- `/Users/yaowei/Documents/BDL/zhuda-bdl-consumer/games/game305/zhuda.editor.mjs`:
+- `<external-evidence>/zhuda.editor.mjs`:
   local preview adapter for original sound panel; game art/Prefab JSON unchanged.
 - Evidence remains outside the engine repository.
 

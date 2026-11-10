@@ -1,3 +1,4 @@
+// Generated from TypeScript source; run npm run types:generate.
 import { type ZhudaModelLibrary, type ModelInstance } from './Assets';
 import { type FilmicOptions } from './Filmic';
 import { ZhudaModelInspector } from './ModelInspector';

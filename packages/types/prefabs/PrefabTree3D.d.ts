@@ -1,4 +1,5 @@
-import type { DeclarativeMaterialOptions, DeclarativeCameraOptions, DeclarativeLightOptions, PrimitiveType3D } from '../../types/zhuda-3d-physics';
+// Generated from TypeScript source; run npm run types:generate.
+import type { DeclarativeMaterialOptions, DeclarativeCameraOptions, DeclarativeLightOptions, PrimitiveType3D } from '../zhuda-3d-physics';
 export type PrefabVector3 = [number, number, number];
 export interface PrefabNodePatch3D {
     active?: boolean;

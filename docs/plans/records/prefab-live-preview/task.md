@@ -32,7 +32,7 @@ with browser evidence.
 
 - `packages/compiler/consumer-build.mjs` and `packages/compiler/prefab-preview.mjs`.
 - Consumer public SDK pinned to the engine commit containing the implementation.
-- `/Users/yaowei/Desktop/game1` assets and its Prefab evidence workflow.
+- `<external-evidence>/game1` assets and its Prefab evidence workflow.
 
 ## Scope
 
@@ -45,7 +45,7 @@ with browser evidence.
 
 ### Consumer or adapter
 
-- `/Users/yaowei/Desktop/game1`: control-bar Prefab, runtime dependency pin,
+- `<external-evidence>/game1`: control-bar Prefab, runtime dependency pin,
   watch script, evidence and verification report.
 
 ## Non-goals

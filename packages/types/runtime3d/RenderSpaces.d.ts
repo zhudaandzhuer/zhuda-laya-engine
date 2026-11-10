@@ -1,3 +1,4 @@
+// Generated from TypeScript source; run npm run types:generate.
 export type ZhudaRenderPass = "local" | "world" | "overlay";
 export type ZhudaRenderCoordinates = "local" | "world" | "camera-overlay";
 export type ZhudaRenderMatrix = ReadonlyArray<number>;

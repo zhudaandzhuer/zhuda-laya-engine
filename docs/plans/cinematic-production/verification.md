@@ -17,8 +17,8 @@ Date: 2026-11-05
 | Check | Exact command or procedure | Result | Artifact |
 | --- | --- | --- | --- |
 | Build / types / Doctor / tests | `PATH=<Node24> npm run verify` | PASS; 254/254 | `/tmp/zhuda-cinema-verify.log` |
-| Cinematic consumer | `node scripts/verify-cinematic.mjs` | PASS WebGL + WebGPU | `/Users/yaowei/Desktop/zhuda-cinematic-acceptance-20261105/evidence/results.json` |
-| Browser SDK | `node scripts/verify-browser-sdk.mjs` with `SDK_BROWSER_DIR=dist/browser/1.13.0-final` and published URL | PASS; 12 scenarios, zero browser errors | `/Users/yaowei/Desktop/zhuda-cinematic-acceptance-20261105/browser-sdk-final2/hosted-browser.json` |
+| Cinematic consumer | `node scripts/verify-cinematic.mjs` | PASS WebGL + WebGPU | `<external-evidence>` |
+| Browser SDK | `node scripts/verify-browser-sdk.mjs` with `SDK_BROWSER_DIR=dist/browser/1.13.0-final` and published URL | PASS; 12 scenarios, zero browser errors | `<external-evidence>` |
 | MP4 exporter | `zhuda-film-export ... --fps 24 --audio ...` | PASS; 3840x2160, 24 frames, 24 FPS, 1 sec | `evidence/*-video-probe.json`, `evidence/*-movie.mp4` |
 | Failure atomicity | missing ffprobe after a successful export | PASS; previous movie SHA preserved | `results.json` (`failurePreservedPrevious:true`) |
 | DPR / resize | CDP DPR 1/2/3 and changed viewport | PASS; fixed output dimensions | `evidence/results.json` |

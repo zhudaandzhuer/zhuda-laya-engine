@@ -6,7 +6,7 @@ const installed = fileURLToPath(import.meta.url)
   .split(path.sep)
   .includes("node_modules");
 const runtime = installed
-  ? await import("../../dist/sdk/zhuda-laya-engine.esm.js")
+  ? Object.assign({}, await import("../../dist/sdk/zhuda-laya-engine.esm.js"), await import("../../dist/sdk/zhuda-laya-demo.esm.js"))
   : Object.assign(
       {},
       ...(await Promise.all(
@@ -16,7 +16,7 @@ const runtime = installed
           "PixelCalibrationEngine",
           "ViewportMatrixEngine",
           "UnityBridgePipeline",
-        ].map((name) => import(new URL(`../core/${name}.ts`, import.meta.url))),
+        ].map((name) => import(new URL(`../${["BenchmarkEngine","StaticAssetPipeline","UnityBridgePipeline","PixelCalibrationEngine"].includes(name) ? "demo" : "core"}/${name}.ts`, import.meta.url))),
       )),
     );
 export const {

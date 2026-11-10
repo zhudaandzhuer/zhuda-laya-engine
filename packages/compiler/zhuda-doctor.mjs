@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { cliMain } from './cli.mjs';
 // zhuda-laya-engine (@zhuda-laya/compiler) — Zhuda Doctor (靜態與拓撲相依性體檢工具)
 // 1. 掃描 dist/web/index.html 中的 <script> 順序，驗證是否符合 DAG 拓撲規範
 // 2. 掃描 src/ 下所有 .ts 檔案是否誤用 Laya 1.x/2.x 廢棄幻覺 API 或未受保護的原型危險操作
@@ -105,10 +106,7 @@ export function runDoctorAudit(options = {}) {
   };
 }
 
-const cliArg = process.argv[1] || '';
-const modulePath = fileURLToPath(import.meta.url);
-const launchedAsCli = Boolean(cliArg) && (path.basename(cliArg) === path.basename(modulePath) ||
-  fs.realpathSync(cliArg) === fs.realpathSync(modulePath));
+const launchedAsCli = cliMain(import.meta.url, 'Usage: zhuda-laya-doctor [--project DIRECTORY]');
 if (launchedAsCli) {
   const projectIndex = process.argv.indexOf('--project');
   if (projectIndex >= 0 && (!process.argv[projectIndex + 1] || process.argv[projectIndex + 1].startsWith('--'))) {

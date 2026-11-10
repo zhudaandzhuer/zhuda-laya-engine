@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { ZhudaAssetSerializer, ZhudaPrefab } from '../packages/core/StaticAssetPipeline.ts';
-import { PixelCalibrationEngine } from '../packages/core/PixelCalibrationEngine.ts';
+import { PixelCalibrationEngine } from '../packages/demo/PixelCalibrationEngine.ts';
 
 test('ZhudaAssetSerializer reverse-serializes runtime nodes into Laya 3.4.2 .lh JSON with explicit percent:false', () => {
   const mockRuntimeButton = {

@@ -1,3 +1,4 @@
+import { authorizedFetch } from './helpers/editor-request.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
@@ -56,15 +57,15 @@ test('asset inventory is rooted at assets and supports selecting another static 
     try {
       const address = await editor.listening;
       const base = `http://127.0.0.1:${address.port}`;
-      let response = await fetch(`${base}/api/assets`);
+      let response = await authorizedFetch(editor, `${base}/api/assets`);
       assert.equal(response.status, 200);
       const inventory = await response.json();
       assert.equal(inventory.root, 'assets');
       assert.equal(inventory.entries.length, 3);
-      response = await fetch(`${base}/api/prefab?prefab=${encodeURIComponent('assets/scenes/nested/fixture.ls')}`);
+      response = await authorizedFetch(editor, `${base}/api/prefab?prefab=${encodeURIComponent('assets/scenes/nested/fixture.ls')}`);
       assert.equal(response.status, 200);
       assert.equal((await response.json()).path, 'assets/scenes/nested/fixture.ls');
-      response = await fetch(`${base}/api/prefab?prefab=${encodeURIComponent('../secret.lh')}`);
+      response = await authorizedFetch(editor, `${base}/api/prefab?prefab=${encodeURIComponent('../secret.lh')}`);
       assert.equal(response.status, 400);
     } finally {
       await editor.close();
@@ -81,23 +82,23 @@ test('prefab editor API performs revision-checked atomic saves and backups', asy
   try {
     const address = await editor.listening;
     const base = `http://127.0.0.1:${address.port}`;
-    let response = await fetch(`${base}/api/prefab`);
+    let response = await authorizedFetch(editor, `${base}/api/prefab`);
     assert.equal(response.status, 200);
     const loaded = await response.json();
     const changed = structuredClone(loaded.prefab);
     changed._$child[0].x = 44;
-    response = await fetch(`${base}/api/save`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ baseRevision: 'stale', prefab: changed }) });
+    response = await authorizedFetch(editor, `${base}/api/save`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ baseRevision: 'stale', prefab: changed }) });
     assert.equal(response.status, 409);
     const before = await fs.readFile(path.join(project, 'assets', 'prefabs', 'fixture.lh'), 'utf8');
     assert.match(before, /"x": 12/);
-    response = await fetch(`${base}/api/save`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ baseRevision: loaded.revision, prefab: changed }) });
+    response = await authorizedFetch(editor, `${base}/api/save`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ baseRevision: loaded.revision, prefab: changed }) });
     assert.equal(response.status, 200);
     const saved = await response.json();
     assert.equal(saved.saved, true);
     assert.equal((await fs.readFile(path.join(project, 'assets', 'prefabs', 'fixture.lh.bak'), 'utf8')).includes('"x": 12'), true);
     assert.equal((await fs.readFile(path.join(project, 'assets', 'prefabs', 'fixture.lh'), 'utf8')).includes('"x": 44'), true);
     const invalid = { ...changed, _$child: [{ _$id: 'bad', _$type: 'Sprite', name: 'dup' }, { _$id: 'bad2', _$type: 'Sprite', name: 'dup' }] };
-    response = await fetch(`${base}/api/save`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ baseRevision: saved.revision, prefab: invalid }) });
+    response = await authorizedFetch(editor, `${base}/api/save`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ baseRevision: saved.revision, prefab: invalid }) });
     assert.equal(response.status, 400);
     assert.equal((await fs.readFile(path.join(project, 'assets', 'prefabs', 'fixture.lh'), 'utf8')).includes('"x": 44'), true);
   } finally {
@@ -115,14 +116,14 @@ test('scene editor loads and saves the same hierarchy contract as a prefab', asy
   try {
     const address = await editor.listening;
     const base = `http://127.0.0.1:${address.port}`;
-    const response = await fetch(`${base}/api/prefab`);
+    const response = await authorizedFetch(editor, `${base}/api/prefab`);
     assert.equal(response.status, 200);
     const loaded = await response.json();
     assert.equal(loaded.path, 'assets/scenes/fixture.ls');
     assert.equal(loaded.prefab._$type, 'Scene');
     const changed = structuredClone(loaded.prefab);
     changed._$child[0].x = 64;
-    const saved = await fetch(`${base}/api/save`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ baseRevision: loaded.revision, prefab: changed }) });
+    const saved = await authorizedFetch(editor, `${base}/api/save`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ baseRevision: loaded.revision, prefab: changed }) });
     assert.equal(saved.status, 200);
     assert.match(await fs.readFile(file, 'utf8'), /"x": 64/);
     assert.match(await fs.readFile(`${file}.bak`, 'utf8'), /"name": "Panel"/);

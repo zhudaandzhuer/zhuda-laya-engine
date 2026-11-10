@@ -1,3 +1,4 @@
+// Generated from TypeScript source; run npm run types:generate.
 export interface ZhudaGraphicsTarget {
     clear(...args: any[]): any;
     drawRect(x: number, y: number, width: number, height: number, fillColor: any, lineColor?: any, lineWidth?: number, percent?: boolean): any;

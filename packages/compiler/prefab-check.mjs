@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { cliMain } from './cli.mjs';
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
@@ -216,10 +217,7 @@ export async function checkPrefab({ url, baseline, output, updateBaseline = fals
     await terminateBrowser(child, profile);
   }
 }
-const cliArg = process.argv[1] || '';
-const modulePath = fileURLToPath(import.meta.url);
-const launchedAsCli = Boolean(cliArg) && (path.basename(cliArg) === path.basename(modulePath) ||
-  fs.realpathSync(cliArg) === fs.realpathSync(modulePath));
+const launchedAsCli = cliMain(import.meta.url, 'Usage: zhuda-prefab-check --url=URL --baseline=FILE --output=FILE [--update-baseline]');
 if (launchedAsCli) {
   const args = Object.fromEntries(process.argv.slice(2).filter(arg => arg.startsWith("--") && arg.includes("=")).map(arg => arg.slice(2).split(/=(.*)/s, 2)));
   try {

@@ -1,9 +1,12 @@
 #!/usr/bin/env node
+import { cliMain } from './cli.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 import esbuild from 'esbuild';
+// Pin TypeScript transform options so bytes and SRI never depend on a tsconfig.json next to the install.
+const TSCONFIG_RAW={compilerOptions:{experimentalDecorators:true,useDefineForClassFields:false}};
 import {webgpuPreparation,webgpuResources} from './webgpu-loader.mjs';
 import {TopologyResolver} from './compiler-runtime.mjs';
 
@@ -23,7 +26,7 @@ const defaultRoot=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../
 
 async function branding(svg, engineRoot) {
   const source = `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
-  const result = await esbuild.build({absWorkingDir:engineRoot,minify:true,stdin:{contents:`import {mountBrandSplash} from './packages/compiler/branding.mjs'; mountBrandSplash(${JSON.stringify(source)}, globalThis.ZhudaBranding);`,resolveDir:engineRoot},bundle:true,write:false,format:'iife',platform:'browser',target:'es2020'});
+  const result = await esbuild.build({absWorkingDir:engineRoot,minify:true,stdin:{contents:`import {mountBrandSplash} from './packages/compiler/branding.mjs'; mountBrandSplash(${JSON.stringify(source)}, globalThis.ZhudaBranding);`,resolveDir:engineRoot},bundle:true,write:false,format:'iife',platform:'browser',target:'es2020',tsconfigRaw:TSCONFIG_RAW});
   return result.outputFiles[0].text;
 }
 
@@ -40,7 +43,7 @@ export async function buildBrowserSdk({engineRoot=defaultRoot,outDir,profiles=['
   if(!sdk.includes(`zhuda-laya-engine v${version}`))throw Error('SDK version is stale; run npm run build before browser packaging');
   const svg=fs.readFileSync(path.join(engineRoot,'assets/branding/zhuda-layaair-mark.svg'),'utf8');
   const brandCode=await branding(svg,engineRoot);
-  const bundled=await esbuild.build({entryPoints:[sdkFile],bundle:true,write:false,minify:true,format:'iife',globalName:'__zhudaSdk',platform:'browser',target:'es2020',legalComments:'inline'});
+  const bundled=await esbuild.build({entryPoints:[sdkFile],bundle:true,write:false,minify:true,format:'iife',globalName:'__zhudaSdk',platform:'browser',target:'es2020',tsconfigRaw:TSCONFIG_RAW,legalComments:'inline'});
   const output=path.resolve(outDir||path.join(engineRoot,'dist/browser',version));
   const files=new Map();
   const manifest={schemaVersion:1,engine:'zhuda-laya-engine',version,upstream:'LayaAir 3.4.2',profiles:{}};
@@ -90,7 +93,7 @@ export async function buildBrowserSdk({engineRoot=defaultRoot,outDir,profiles=['
   return {output,manifest,reused:false};
 }
 
-if(process.argv[1]&&fs.realpathSync(process.argv[1])===fileURLToPath(import.meta.url)){
+if(cliMain(import.meta.url, 'Usage: zhuda-laya-browser-sdk [--out DIRECTORY] [--profile NAME]')){
   const args=process.argv.slice(2);let outDir,profiles;
   try{
     for(let i=0;i<args.length;i++){

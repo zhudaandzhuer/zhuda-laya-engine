@@ -1,0 +1,16 @@
+node_modules/
+vendor/
+dist/
+packages/types/**/*.d.ts
+packages/types/vendor/
+src/.generated/
+examples/**/dist/
+examples/**/node_modules/
+package-lock.json
+# Generated outputs, pinned templates and recorded evidence keep their exact bytes.
+examples/browser-sdk/
+examples/windows-webgpu/web/
+examples/windows-webgpu/windows-webgpu-evidence/
+examples/**/evidence/
+tests/fixtures/**/*.gltf
+tests/fixtures/**/*.json

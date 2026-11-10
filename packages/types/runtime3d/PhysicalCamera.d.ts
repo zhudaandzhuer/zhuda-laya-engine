@@ -1,3 +1,4 @@
+// Generated from TypeScript source; run npm run types:generate.
 /** Millimetres for lens/sensor, metres for focus; right-handed native camera. */
 export interface PhysicalCameraSpec {
     focalLengthMm: number;

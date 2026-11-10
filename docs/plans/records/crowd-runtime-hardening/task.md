@@ -7,7 +7,7 @@ Last reviewed: 2026-11-05
 ## Source requirement
 
 User: “去按照上面優化咱們的repo，確保用戶能安心使用，開發各種遊戲”.
-Source review: `/Users/yaowei/Desktop/zhuda-national-war-review-20261105.md`.
+Source review: `<external-evidence>/zhuda-national-war-review-20261105.md`.
 Baseline: 1.7.0 / `70c7e000eb9f4eb8eda64d8093626e30da441bb3`.
 
 ## Goal
@@ -82,7 +82,7 @@ fabricated binary or passing result.
 
 ## Evidence to attach
 
-`/Users/yaowei/Desktop/zhuda-crowd-acceptance-20261105`: source hashes, model
+`<external-evidence>/zhuda-crowd-acceptance-20261105`: source hashes, model
 inventory/license, browser screenshots/reports, test/pack/type/build logs, raw
 performance streams and any deliberate failure results. Complete verification.md.
 

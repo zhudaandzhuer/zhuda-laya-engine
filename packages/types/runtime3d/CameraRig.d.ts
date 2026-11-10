@@ -1,3 +1,4 @@
+// Generated from TypeScript source; run npm run types:generate.
 import { type Vec3 } from "./Math3D";
 import { type CameraCollisionOptions } from "./CameraCollision";
 /** Camera presentation only: movement/support authority remains in the consumer's simulation. */

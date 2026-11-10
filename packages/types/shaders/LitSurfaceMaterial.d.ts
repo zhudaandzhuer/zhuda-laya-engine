@@ -1,3 +1,4 @@
+// Generated from TypeScript source; run npm run types:generate.
 import { type SurfaceMaterialSpec } from "../runtime3d/Surfaces";
 import { type ShaderUniformSpec } from "./ShaderMaterials";
 export interface ZhudaLitSurfaceSpec {

@@ -18,7 +18,7 @@ target PCs, mobile, Windows Native, Steam, or 2,000 concurrent connections.
 - Node 26.12.0. Public package 1.8.0; esbuild 0.27.1. Strict independent
   consumer uses `skipLibCheck:false`; ESM/CJS exports checked.
 - Artifact root **E**:
-  `/Users/yaowei/Desktop/zhuda-crowd-acceptance-20261105`.
+  `<external-evidence>/zhuda-crowd-acceptance-20261105`.
   Media/model bytes remain outside the engine repository.
 - Final-runtime 10-minute package: `E/long-run/zhuda-laya-engine-1.8.0.tgz`,
   SHA-256 `53a3f427b9dccf816962d8ae893d05318aade522d83f47427444dd48253bd22f`.

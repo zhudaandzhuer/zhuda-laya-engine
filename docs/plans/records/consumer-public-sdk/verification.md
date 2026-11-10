@@ -10,7 +10,7 @@ Date: 2026-11-03
   SwiftShader fallback; no iOS or Android hardware was available.
 - Node and package manager: Node 26.12.0, npm 11.20.0.
 - Engine and consumer commits: engine `99116a147a0df7a6d66703aa0e0f762a73dbc9f0`;
-  consumer `/Users/yaowei/Desktop/game1` pins the public SDK to
+  consumer `<external-evidence>/game1` pins the public SDK to
   `99116a147a0df7a6d66703aa0e0f762a73dbc9f0` in `package-lock.json`.
 - DPR, viewport and network mode: DPR 1; game browser checks use 572×1024;
   Prefab preview uses 640×360 logical pixels; local HTTP directory provider.
@@ -19,11 +19,11 @@ Date: 2026-11-03
 
 | Check | Exact command or procedure | Result | Artifact |
 | --- | --- | --- | --- |
-| Engine build, types, Doctor and regression | `cd /Users/yaowei/Desktop/Zhuda-LayaAir && npm run verify` | PASS; 115 tests | `/tmp/zhuda-engine-verify-99116a1.log` |
-| Consumer build, types, Doctor, unit tests and game gates | `cd /Users/yaowei/Desktop/game1 && npm run verify` | PASS; 95/95 gates and 3/3 unit tests | `/tmp/game1-verify-99116a1-final.log` |
-| Main Scene browser/CDP | `cd /Users/yaowei/Desktop/game1 && node scripts/verify-browser-cdp.mjs` with `npm start` serving `dist/web` on 127.0.0.1:8891 | PASS; boot, 13 probes, six key frames, zero console errors | `/tmp/game1-browser-cdp-99116a1-final2.log`, `/Users/yaowei/Desktop/game1/evidence/01-idle-corridor.png` through `08-small-win-tumble.png` |
-| Isolated Prefab browser lifecycle | `cd /Users/yaowei/Desktop/game1 && node scripts/verify-showcase-cdp.mjs` | PASS; all 11 Prefab IDs, navigation teardown, zero errors | `/tmp/game1-showcase-cdp-99116a1-final3.log` |
-| Public SDK Prefab pixel comparison | `node node_modules/zhuda-laya-engine/packages/compiler/prefab-check.mjs --url="http://127.0.0.1:8891/prefab-preview.html?id=ui/control-bar" --baseline=evidence/prefabs/control-bar-baseline.png --output=evidence/prefabs/control-bar-public-sdk-report.json` | PASS; 0 different pixels | `/Users/yaowei/Desktop/game1/evidence/prefabs/control-bar-public-sdk-report.json` and its `.png`/baseline |
+| Engine build, types, Doctor and regression | `cd <external-evidence>/Zhuda-LayaAir && npm run verify` | PASS; 115 tests | `/tmp/zhuda-engine-verify-99116a1.log` |
+| Consumer build, types, Doctor, unit tests and game gates | `cd <external-evidence>/game1 && npm run verify` | PASS; 95/95 gates and 3/3 unit tests | `/tmp/game1-verify-99116a1-final.log` |
+| Main Scene browser/CDP | `cd <external-evidence>/game1 && node scripts/verify-browser-cdp.mjs` with `npm start` serving `dist/web` on 127.0.0.1:8891 | PASS; boot, 13 probes, six key frames, zero console errors | `/tmp/game1-browser-cdp-99116a1-final2.log`, `<external-evidence>/01-idle-corridor.png` through `08-small-win-tumble.png` |
+| Isolated Prefab browser lifecycle | `cd <external-evidence>/game1 && node scripts/verify-showcase-cdp.mjs` | PASS; all 11 Prefab IDs, navigation teardown, zero errors | `/tmp/game1-showcase-cdp-99116a1-final3.log` |
+| Public SDK Prefab pixel comparison | `node node_modules/zhuda-laya-engine/packages/compiler/prefab-check.mjs --url="http://127.0.0.1:8891/prefab-preview.html?id=ui/control-bar" --baseline=evidence/prefabs/control-bar-baseline.png --output=evidence/prefabs/control-bar-public-sdk-report.json` | PASS; 0 different pixels | `<external-evidence>/control-bar-public-sdk-report.json` and its `.png`/baseline |
 | Diff and status | `git diff --check && git status --short` from the engine root | PASS; no source changes after verification | engine checkout |
 
 ## Lifecycle and failure cases

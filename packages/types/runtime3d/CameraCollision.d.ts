@@ -1,3 +1,4 @@
+// Generated from TypeScript source; run npm run types:generate.
 import { type Vec3 } from "./Math3D";
 import type { ZhudaSceneQueries } from "./SceneQueries";
 export interface CameraCollisionOptions {

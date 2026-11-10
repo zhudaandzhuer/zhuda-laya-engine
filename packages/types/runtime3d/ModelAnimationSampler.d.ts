@@ -1,3 +1,4 @@
+// Generated from TypeScript source; run npm run types:generate.
 import type { ModelInstance } from "./Assets";
 export declare class ZhudaModelAnimationSampler {
     readonly durationSeconds: number;

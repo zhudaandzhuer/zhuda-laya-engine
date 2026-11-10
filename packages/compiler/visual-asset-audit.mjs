@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { cliMain } from './cli.mjs';
 /**
  * Visual asset migration audit for Unity -> zhuda-laya-engine projects.
  *
@@ -458,7 +459,7 @@ function parseArgs(argv) {
   return args;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (cliMain(import.meta.url, 'Usage: zhuda-visual-asset --source DIRECTORY --target DIRECTORY [--strict] [--report FILE]')) {
   try {
     const args = parseArgs(process.argv.slice(2));
     const report = auditVisualAssetMigration({ sourceRoot: args.source, targetRoot: args.target, strict: Boolean(args.strict), contractPath: args.contract });

@@ -1,3 +1,4 @@
+// Generated from TypeScript source; run npm run types:generate.
 export type ModelDecoderFormat = "draco" | "meshopt" | "ktx2-basis";
 export interface ModelDecoderDescriptor {
     readonly format: ModelDecoderFormat;

@@ -1,3 +1,4 @@
+// Generated from TypeScript source; run npm run types:generate.
 /** Generated public particle declarations. */
 import type { VfxMaterialSpec, ZhudaVfxMaterial } from './zhuda-effects';
 export interface ParticleUVRect {
@@ -49,7 +50,6 @@ export declare function sampleParticleUV(spec: {
 }, age: number, lifetime: number, out: ParticleUVRect): ParticleUVRect;
 /** Plane convention: dot(position, normal) >= offset is free space, in the simulator's chosen world/local coordinates. */
 export declare function resolveParticleCollision(p: any, spec: ParticleCollisionSpec, dimension: number, hit: (plane: number) => void): boolean;
-
 /** Serializable, renderer-independent particle descriptors. Units: pixels, seconds, radians. */
 export type ParticleRange = number | [number, number];
 export interface ParticleCurveKey {
@@ -137,7 +137,6 @@ export interface ParticleState {
 export declare function sampleParticleCurve(keys: ParticleCurveKey[] | undefined, time: number, fallback?: number): number;
 export declare function sampleParticleColor(keys: ParticleColorKey[] | undefined, time: number): string;
 export declare function validateParticleEffect(value: unknown): string[];
-
 export interface ParticleVector3 {
     x: number;
     y: number;
@@ -191,7 +190,6 @@ export interface ParticleEffectSpec3D {
 }
 export declare function rotateParticleVector3(v: ParticleVector3, q: ParticleQuaternion, out: ParticleVector3): void;
 export declare function validateParticleEffect3D(value: unknown): string[];
-
 /** Fixed-step CPU simulation, preallocated pool, seeded replay, bounded catch-up. */
 export declare class ZhudaParticleSystem {
     readonly spec: ParticleEmitterSpec;
@@ -241,7 +239,6 @@ export declare class ZhudaParticleSystem {
     private spawn;
     private step;
 }
-
 export interface ParticleSimulationOptions3D {
     /** Visual simulation rate, 15–240 Hz. Default 120. Does not control game rules. */
     frequencyHz?: number;
@@ -308,7 +305,6 @@ export declare class ZhudaParticleSystem3D {
     private spawn;
     private step;
 }
-
 export interface RibbonTrailSpec {
     maxPoints: number;
     lifetime: number;
@@ -345,7 +341,6 @@ export declare class ZhudaRibbonTrail {
     }>;
     private at;
 }
-
 export type EffectPhase = 'idle' | 'attack' | 'sustain' | 'release';
 /** Generic attack/sustain/release envelope. Stopping releases the effect without clearing live particles. */
 export declare class ZhudaEffectEnvelope {
@@ -363,7 +358,6 @@ export declare class ZhudaEffectEnvelope {
     reset(): void;
     update(dt: number): number;
 }
-
 export type ParticleTextureResolver = (key: string) => any;
 /** Laya WebGL textured quads, batched by lifetime band. No display object per particle. */
 export declare class ZhudaLayaParticleRenderer {
@@ -391,7 +385,6 @@ export declare class ZhudaLayaRibbonRenderer {
     render(opacity?: number): void;
     dispose(): void;
 }
-
 /** Interleaved POSITION(3), COLOR(4), UV(2), in scene units. */
 export interface ParticleGeometry3D {
     vertices: Float32Array;
@@ -413,7 +406,6 @@ export declare class ZhudaParticleMesh3D {
     constructor(system: ZhudaParticleSystem3D);
     build(view: ParticleView3D, opacity?: number): ParticleGeometry3D;
 }
-
 /** Bounded XYZ world history; camera-facing ribbon with stable normals. */
 export declare class ZhudaRibbonTrail3D {
     readonly spec: RibbonTrailSpec;
@@ -432,7 +424,6 @@ export declare class ZhudaRibbonTrail3D {
     }>;
     private at;
 }
-
 export interface RibbonPathSpec3D {
     maxPoints: number;
     width: number;
@@ -461,7 +452,6 @@ export declare class ZhudaRibbonPath3D {
     snapshot(): ParticleVector3[];
     buildMesh(camera: ParticleVector3, opacity?: number): ParticleGeometry3D;
 }
-
 export declare class ZhudaLayaParticleRenderer3D {
     readonly node: any;
     readonly system: ZhudaParticleSystem3D;

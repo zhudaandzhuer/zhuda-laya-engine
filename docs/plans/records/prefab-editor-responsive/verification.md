@@ -33,7 +33,7 @@ preserved for back/forward-cache restoration.
 | Existing Play gate | `EDITOR_PLAY_EVIDENCE_DIR=/tmp/zhuda-responsive-published-play-20261109 npm run verify:prefab-editor-play` | PASS, native input, edit isolation and lifecycle | report and PNGs in that directory |
 | Engine verify | `npm run verify` | PASS, 301/301; build/types/declaration audit/Doctor/tests | `/tmp/zhuda-responsive-final-verify-20261109.log` |
 | Client typecheck | `node node_modules/typescript/bin/tsc --noEmit --allowImportingTsExtensions --target es2022 --module ESNext --moduleResolution bundler --lib es2022,dom --skipLibCheck packages/types/index.d.ts packages/compiler/prefab-editor-client.ts` | PASS | terminal output |
-| Actual consumer viewport/input | `node /Users/yaowei/Documents/BDL/zhuda-bdl-consumer/evidence/game305-editor-responsive-20261109/replay.mjs` | PASS, original sound.lh at narrow/zoomed sizes, Edit/Play and native mute/volume input | External consumer evidence described below |
+| Actual consumer viewport/input | `node <external-evidence>/replay.mjs` | PASS, original sound.lh at narrow/zoomed sizes, Edit/Play and native mute/volume input | External consumer evidence described below |
 | Independent consumer candidate build | Consumer root: `npm run build -- --candidate` | PASS | `/tmp/game305-editor-responsive-build-20261109.log` |
 | Diff hygiene | `git diff --check` | PASS | terminal output |
 
@@ -55,7 +55,7 @@ used; no controller, game or art source is changed. sound.lh is byte-identical.
 
 ## Persistent evidence and local delivery
 
-`/Users/yaowei/Documents/BDL/zhuda-bdl-consumer/evidence/game305-editor-responsive-20261109/`
+`<external-evidence>/game305-editor-responsive-20261109`
 contains the actual report/screenshots, optional-baseline replay, neutral and
 coordinate/Play reports, exact source hashes and logs. Consumer game media stays
 outside the engine repository. The pre-fix diagnostic is historical; replay the

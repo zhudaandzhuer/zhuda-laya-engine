@@ -10,7 +10,7 @@ Last reviewed: 2026-11-04
 
 User supplied the 2026-11-04 BDL engine review and asked us to examine the other
 agent's optimization suggestions as part of improving our engine responsibilities.
-Source: `/Users/yaowei/Documents/BDL/zhuda-bdl-consumer/docs/plans/porting-master-20261102/ENGINE_MAIN_REVIEW_20261104.md`,
+Source: `<external-evidence>/ENGINE_MAIN_REVIEW_20261104.md`,
 sections B (requested DPR 2, measured DPR 1 nevertheless PASS), C (failed build
 replaced successful web output but retained the old ZIP), D–F (audio, provider,
 evidence dependency and declaration gaps). Review base: `0127bd2`.

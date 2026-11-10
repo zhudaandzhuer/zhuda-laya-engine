@@ -206,7 +206,9 @@ async function main() {
     audio.playSample({ id: "worklet", sampleId: "tone.wav", loop: true });
     await wait(100);
     const before = performance.now();
-    while (performance.now() - before < 250) {}
+    while (performance.now() - before < 250) {
+      // Busy-wait on purpose: block the main thread to prove the Worklet keeps running.
+    }
     await wait(150);
     const active = audio.getDiagnostics();
     audio.stop("worklet", 0.02);

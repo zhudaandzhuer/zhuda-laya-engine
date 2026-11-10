@@ -59,7 +59,7 @@ module delivery, permissive CSP, new engine gameplay APIs, mobile certification.
 
 ## Evidence and rollback
 
-External artifact/evidence root: /Users/yaowei/Desktop/zhuda-browser-sdk-acceptance-20261105.
+External artifact/evidence root: <external-evidence>/zhuda-browser-sdk-acceptance-20261105.
 Last good engine commit: ce9dfccf45d7ef07956f7350370d3af997ac0014.
 Keep existing game releases unchanged; use immutable SDK URLs, never /latest.
 

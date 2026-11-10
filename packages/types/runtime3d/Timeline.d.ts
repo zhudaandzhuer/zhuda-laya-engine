@@ -1,3 +1,4 @@
+// Generated from TypeScript source; run npm run types:generate.
 export type TimelineValue = number | boolean | string | readonly number[];
 export type TimelineTrackKind = 'number' | 'boolean' | 'vector' | 'event';
 export interface TimelineKey<T extends TimelineValue = TimelineValue> {

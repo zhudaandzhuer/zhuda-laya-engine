@@ -1,3 +1,4 @@
+// Generated from TypeScript source; run npm run types:generate.
 import { ZhudaPhysicalCameraRig } from "./PhysicalCamera";
 import type { ZhudaRuntimeSession } from "./Runtime";
 export interface CinematicCaptureOptions {

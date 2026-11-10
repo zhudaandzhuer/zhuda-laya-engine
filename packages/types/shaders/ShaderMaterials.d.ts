@@ -1,3 +1,4 @@
+// Generated from TypeScript source; run npm run types:generate.
 import { type SurfacePassRequirements } from "../runtime3d/Surfaces";
 export type ShaderUniformType = "float" | "vec2" | "vec3" | "vec4" | "texture2D";
 export interface ShaderUniformSpec {
@@ -29,7 +30,7 @@ export declare class ZhudaShaderMaterial {
     setTexture(name: string, texture: any): void;
     report(): {
         name: string;
-        dimension: 2 | 3;
+        dimension: 3 | 2;
         uniforms: string[];
         passes: SurfacePassRequirements;
         gpuStatus: "requires-first-draw";

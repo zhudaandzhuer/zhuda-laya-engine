@@ -1,3 +1,4 @@
+// Generated from TypeScript source; run npm run types:generate.
 export type ZhudaJsonValue = null | boolean | number | string | readonly ZhudaJsonValue[] | {
     readonly [key: string]: ZhudaJsonValue;
 };
