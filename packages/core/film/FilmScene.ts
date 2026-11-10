@@ -26,21 +26,68 @@ export interface ZhudaFilmCamera {
 }
 
 export interface ZhudaFilmSun {
-  /** Turns the sun about +Y, degrees. At 0 the light travels toward -Z. */
-  azimuthDeg: number;
-  /** Height above the horizon, degrees (0..90). */
-  elevationDeg: number;
+  /** Turns the sun about +Y, degrees. At 0 the light travels toward -Z. Defaults to the preset. */
+  azimuthDeg?: number;
+  /** Height above the horizon, degrees (0..90). Defaults to the preset. */
+  elevationDeg?: number;
   intensity?: number;
   /** Linear RGB 0..1. */
   color?: ZhudaFilmVec3;
 }
 
+export type ZhudaFilmLookPreset = 'day' | 'dawn' | 'dusk' | 'night' | 'overcast';
+
+/** Sun shadows (native `DirectionLightCom` shadow maps). */
+export interface ZhudaFilmShadows {
+  /** Metres from the camera that receive shadows (default 60). */
+  distance?: number;
+  /** 'soft' filters the edge (default); 'hard' does not. */
+  softness?: 'hard' | 'soft';
+  /** 0..1 (default 1). */
+  strength?: number;
+  /** Shadow map size (default 2048). */
+  resolution?: 1024 | 2048 | 4096;
+}
+
+/** Procedural sky (native `SkyProceduralMaterial`); the sun disk follows the sun. */
+export interface ZhudaFilmAtmosphere {
+  /** Air density, 0..5 (default 1); higher is redder near the horizon. */
+  thickness?: number;
+  /** Linear RGB 0..1. */
+  skyTint?: ZhudaFilmVec3;
+  /** Colour below the horizon, linear RGB 0..1. */
+  groundTint?: ZhudaFilmVec3;
+  /** 0..8 (default 1.3). */
+  exposure?: number;
+  /** Sun disk size, 0..1 (default 0.04). */
+  sunSize?: number;
+}
+
+/** Linear distance fog (native scene fog). */
+export interface ZhudaFilmFog {
+  /** Linear RGB 0..1; defaults to the sky or horizon colour. */
+  color?: ZhudaFilmVec3;
+  /** Metres where fog starts and where it is complete. */
+  start: number;
+  end: number;
+}
+
 export interface ZhudaFilmLook {
-  /** Background colour, linear RGB 0..1. */
+  /**
+   * A time of day. Every other field overrides the preset. Without a preset
+   * the look is the plain one: flat sky colour, no shadows, sky or fog.
+   */
+  preset?: ZhudaFilmLookPreset;
+  /** Flat background colour (used when there is no atmosphere), linear RGB 0..1. */
   sky?: ZhudaFilmVec3;
   /** Ambient light colour, linear RGB 0..1. */
   ambient?: ZhudaFilmVec3;
   sun?: ZhudaFilmSun;
+  /** `false` turns sun shadows off. */
+  shadows?: ZhudaFilmShadows | false;
+  /** `false` uses the flat `sky` colour instead of a procedural sky. */
+  atmosphere?: ZhudaFilmAtmosphere | false;
+  fog?: ZhudaFilmFog | false;
 }
 
 /** A baked recipe (a registered recipe name or an inline recipe) or a flat PBR colour. */
@@ -51,7 +98,13 @@ export type ZhudaFilmMaterial =
       /** Bake size; 128, 256 or 512 (default 256). */
       size?: 128 | 256 | 512;
     }
-  | { color: ZhudaFilmVec3; roughness?: number; metallic?: number };
+  | {
+      color: ZhudaFilmVec3;
+      roughness?: number;
+      metallic?: number;
+      /** Self-lit colour (lamp heads, signs), linear RGB 0..8. */
+      emission?: ZhudaFilmVec3;
+    };
 
 export type ZhudaFilmNode =
   | {
@@ -81,6 +134,23 @@ export type ZhudaFilmNode =
       /** Width (X) and depth (Z) in metres; the top surface sits at y = 0. */
       size: [number, number];
       material: string;
+    }
+  | {
+      id: string;
+      type: 'light';
+      /** Point lights shine all around; spot lights shine at `target`. */
+      kind: 'point' | 'spot';
+      position: ZhudaFilmVec3;
+      /** Linear RGB 0..1 (default warm white). */
+      color?: ZhudaFilmVec3;
+      /** 0..20 (default 2). */
+      intensity?: number;
+      /** Metres the light reaches, 0.1..200 (default 12). */
+      range?: number;
+      /** Spot lights: the point they aim at. */
+      target?: ZhudaFilmVec3;
+      /** Spot lights: full cone angle, 1..179 degrees (default 60). */
+      spotAngleDeg?: number;
     };
 
 export interface ZhudaFilmScene {
@@ -119,9 +189,12 @@ export const ZHUDA_FILM_LIMITS = Object.freeze({
   materials: 64,
   extent: 10_000,
   idLength: 64,
+  /** Laya 3.4.2 `Config3D.maxLightCount` default. */
+  lights: 32,
 });
 
-export const ZHUDA_FILM_DEFAULT_LOOK: Readonly<Required<ZhudaFilmLook>> = Object.freeze({
+/** The plain look of scenes without a preset (phase 1 behaviour). */
+export const ZHUDA_FILM_DEFAULT_LOOK = Object.freeze({
   sky: [0.55, 0.65, 0.78] as ZhudaFilmVec3,
   ambient: [0.3, 0.3, 0.32] as ZhudaFilmVec3,
   sun: Object.freeze({
@@ -131,6 +204,97 @@ export const ZHUDA_FILM_DEFAULT_LOOK: Readonly<Required<ZhudaFilmLook>> = Object
     color: [1, 0.97, 0.92] as ZhudaFilmVec3,
   }),
 });
+
+type PresetLook = {
+  sky: ZhudaFilmVec3;
+  ambient: ZhudaFilmVec3;
+  sun: Required<ZhudaFilmSun>;
+  shadows: Required<ZhudaFilmShadows>;
+  atmosphere: Required<ZhudaFilmAtmosphere>;
+  fog: Required<ZhudaFilmFog> | false;
+};
+const shadows = (strength: number): Required<ZhudaFilmShadows> => ({
+  distance: 60,
+  softness: 'soft',
+  strength,
+  resolution: 2048,
+});
+
+/** Starting points for a time of day; any look field overrides them. */
+export const ZHUDA_FILM_LOOK_PRESETS: Readonly<Record<ZhudaFilmLookPreset, PresetLook>> =
+  Object.freeze({
+    day: {
+      sky: [0.5, 0.66, 0.9],
+      ambient: [0.34, 0.36, 0.4],
+      sun: { azimuthDeg: 40, elevationDeg: 55, intensity: 1.3, color: [1, 0.97, 0.92] },
+      shadows: shadows(0.85),
+      atmosphere: {
+        thickness: 1,
+        skyTint: [0.5, 0.5, 0.5],
+        groundTint: [0.37, 0.35, 0.33],
+        exposure: 1.3,
+        sunSize: 0.04,
+      },
+      fog: { color: [0.72, 0.8, 0.9], start: 120, end: 600 },
+    },
+    dawn: {
+      sky: [0.93, 0.6, 0.42],
+      ambient: [0.36, 0.29, 0.26],
+      sun: { azimuthDeg: -70, elevationDeg: 9, intensity: 1.35, color: [1, 0.72, 0.46] },
+      shadows: shadows(0.8),
+      atmosphere: {
+        thickness: 1.9,
+        skyTint: [0.55, 0.45, 0.45],
+        groundTint: [0.3, 0.25, 0.22],
+        exposure: 1.2,
+        sunSize: 0.05,
+      },
+      fog: { color: [0.9, 0.66, 0.52], start: 60, end: 400 },
+    },
+    dusk: {
+      sky: [0.82, 0.45, 0.35],
+      ambient: [0.3, 0.24, 0.26],
+      sun: { azimuthDeg: 110, elevationDeg: 6, intensity: 1.2, color: [1, 0.6, 0.38] },
+      shadows: shadows(0.75),
+      atmosphere: {
+        thickness: 2.2,
+        skyTint: [0.5, 0.4, 0.5],
+        groundTint: [0.25, 0.2, 0.2],
+        exposure: 1.1,
+        sunSize: 0.06,
+      },
+      fog: { color: [0.7, 0.45, 0.4], start: 50, end: 350 },
+    },
+    night: {
+      sky: [0.025, 0.04, 0.09],
+      ambient: [0.08, 0.1, 0.17],
+      // Moonlight: a dim, cool key that still casts soft shadows.
+      sun: { azimuthDeg: 125, elevationDeg: 38, intensity: 0.45, color: [0.62, 0.72, 1] },
+      shadows: shadows(0.6),
+      atmosphere: {
+        thickness: 0.6,
+        skyTint: [0.12, 0.16, 0.3],
+        groundTint: [0.05, 0.06, 0.09],
+        exposure: 0.35,
+        sunSize: 0.02,
+      },
+      fog: { color: [0.05, 0.07, 0.12], start: 40, end: 260 },
+    },
+    overcast: {
+      sky: [0.62, 0.66, 0.7],
+      ambient: [0.45, 0.47, 0.5],
+      sun: { azimuthDeg: 30, elevationDeg: 60, intensity: 0.55, color: [0.92, 0.94, 1] },
+      shadows: shadows(0.3),
+      atmosphere: {
+        thickness: 1.4,
+        skyTint: [0.55, 0.55, 0.58],
+        groundTint: [0.4, 0.4, 0.42],
+        exposure: 1,
+        sunSize: 0,
+      },
+      fog: { color: [0.66, 0.69, 0.72], start: 30, end: 300 },
+    },
+  });
 
 const ID = /^[a-z0-9][a-z0-9._-]*$/;
 const finite = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
@@ -205,16 +369,87 @@ function validateCamera(camera: unknown, path: string, issues: string[], partial
 
 function validateLook(look: unknown, path: string, issues: string[]) {
   if (!object(look)) return void issues.push(`${path}: look object required`);
-  unknownKeys(look, ['sky', 'ambient', 'sun'], path, issues);
+  unknownKeys(
+    look,
+    ['preset', 'sky', 'ambient', 'sun', 'shadows', 'atmosphere', 'fog'],
+    path,
+    issues,
+  );
+  if (look.preset !== undefined && !Object.hasOwn(ZHUDA_FILM_LOOK_PRESETS, String(look.preset)))
+    issues.push(`${path}.preset: use ${Object.keys(ZHUDA_FILM_LOOK_PRESETS).join(', ')}`);
+  const range = (value: unknown, at: string, lo: number, hi: number) => {
+    if (value !== undefined && !(finite(value) && value >= lo && value <= hi))
+      issues.push(`${at}: use ${lo}..${hi}`);
+  };
+  if (look.shadows !== undefined && look.shadows !== false) {
+    const sh = look.shadows;
+    if (!object(sh)) issues.push(`${path}.shadows: object or false required`);
+    else {
+      unknownKeys(
+        sh,
+        ['distance', 'softness', 'strength', 'resolution'],
+        `${path}.shadows`,
+        issues,
+      );
+      range(sh.distance, `${path}.shadows.distance`, 5, 500);
+      range(sh.strength, `${path}.shadows.strength`, 0, 1);
+      if (sh.softness !== undefined && sh.softness !== 'hard' && sh.softness !== 'soft')
+        issues.push(`${path}.shadows.softness: use hard or soft`);
+      if (sh.resolution !== undefined && ![1024, 2048, 4096].includes(sh.resolution as number))
+        issues.push(`${path}.shadows.resolution: use 1024, 2048 or 4096`);
+    }
+  }
+  if (look.atmosphere !== undefined && look.atmosphere !== false) {
+    const at = look.atmosphere;
+    if (!object(at)) issues.push(`${path}.atmosphere: object or false required`);
+    else {
+      unknownKeys(
+        at,
+        ['thickness', 'skyTint', 'groundTint', 'exposure', 'sunSize'],
+        `${path}.atmosphere`,
+        issues,
+      );
+      range(at.thickness, `${path}.atmosphere.thickness`, 0, 5);
+      range(at.exposure, `${path}.atmosphere.exposure`, 0, 8);
+      range(at.sunSize, `${path}.atmosphere.sunSize`, 0, 1);
+      if (at.skyTint !== undefined) colour(at.skyTint, `${path}.atmosphere.skyTint`, issues);
+      if (at.groundTint !== undefined)
+        colour(at.groundTint, `${path}.atmosphere.groundTint`, issues);
+    }
+  }
+  if (look.fog !== undefined && look.fog !== false) {
+    const fog = look.fog;
+    if (!object(fog)) issues.push(`${path}.fog: object or false required`);
+    else {
+      unknownKeys(fog, ['color', 'start', 'end'], `${path}.fog`, issues);
+      if (fog.color !== undefined) colour(fog.color, `${path}.fog.color`, issues);
+      if (
+        !(
+          finite(fog.start) &&
+          fog.start >= 0 &&
+          finite(fog.end) &&
+          fog.end > fog.start &&
+          fog.end <= ZHUDA_FILM_LIMITS.extent
+        )
+      )
+        issues.push(`${path}.fog: start >= 0 and end > start (metres)`);
+    }
+  }
   if (look.sky !== undefined) colour(look.sky, `${path}.sky`, issues);
   if (look.ambient !== undefined) colour(look.ambient, `${path}.ambient`, issues);
   if (look.sun !== undefined) {
     const sun = look.sun;
     if (!object(sun)) return void issues.push(`${path}.sun: object required`);
     unknownKeys(sun, ['azimuthDeg', 'elevationDeg', 'intensity', 'color'], `${path}.sun`, issues);
-    if (!(finite(sun.azimuthDeg) && Math.abs(sun.azimuthDeg) <= 360))
+    if (
+      sun.azimuthDeg !== undefined &&
+      !(finite(sun.azimuthDeg) && Math.abs(sun.azimuthDeg) <= 360)
+    )
       issues.push(`${path}.sun.azimuthDeg: use -360..360`);
-    if (!(finite(sun.elevationDeg) && sun.elevationDeg >= 0 && sun.elevationDeg <= 90))
+    if (
+      sun.elevationDeg !== undefined &&
+      !(finite(sun.elevationDeg) && sun.elevationDeg >= 0 && sun.elevationDeg <= 90)
+    )
       issues.push(`${path}.sun.elevationDeg: use 0..90`);
     if (
       sun.intensity !== undefined &&
@@ -254,8 +489,17 @@ function validateMaterial(
     if (material.size !== undefined && ![128, 256, 512].includes(material.size as number))
       issues.push(`${path}.size: use 128, 256 or 512`);
   } else if ('color' in material) {
-    unknownKeys(material, ['color', 'roughness', 'metallic'], path, issues);
+    unknownKeys(material, ['color', 'roughness', 'metallic', 'emission'], path, issues);
     colour(material.color, `${path}.color`, issues);
+    if (
+      material.emission !== undefined &&
+      !(
+        Array.isArray(material.emission) &&
+        material.emission.length === 3 &&
+        material.emission.every((n) => finite(n) && n >= 0 && n <= 8)
+      )
+    )
+      issues.push(`${path}.emission: use linear RGB with three values between 0 and 8`);
     for (const key of ['roughness', 'metallic'] as const)
       if (
         material[key] !== undefined &&
@@ -334,8 +578,49 @@ function validateNode(
         issues.push(`${path}.size: use [width, depth] in metres`);
       usesMaterial();
       break;
+    case 'light':
+      unknownKeys(
+        node,
+        ['id', 'type', 'kind', 'position', 'color', 'intensity', 'range', 'target', 'spotAngleDeg'],
+        path,
+        issues,
+      );
+      if (node.kind !== 'point' && node.kind !== 'spot')
+        issues.push(`${path}.kind: use point or spot`);
+      vec3(node.position, `${path}.position`, issues);
+      if (node.color !== undefined) colour(node.color, `${path}.color`, issues);
+      if (
+        node.intensity !== undefined &&
+        !(finite(node.intensity) && node.intensity >= 0 && node.intensity <= 20)
+      )
+        issues.push(`${path}.intensity: use 0..20`);
+      if (
+        node.range !== undefined &&
+        !(finite(node.range) && node.range >= 0.1 && node.range <= 200)
+      )
+        issues.push(`${path}.range: use 0.1..200 metres`);
+      if (node.kind === 'spot') {
+        vec3(node.target, `${path}.target`, issues);
+        if (
+          Array.isArray(node.target) &&
+          Array.isArray(node.position) &&
+          node.target.every((v, i) => v === (node.position as number[])[i])
+        )
+          issues.push(`${path}.target: must differ from position`);
+      } else if (node.target !== undefined) issues.push(`${path}.target: only spot lights aim`);
+      if (
+        node.spotAngleDeg !== undefined &&
+        !(
+          node.kind === 'spot' &&
+          finite(node.spotAngleDeg) &&
+          node.spotAngleDeg >= 1 &&
+          node.spotAngleDeg <= 179
+        )
+      )
+        issues.push(`${path}.spotAngleDeg: spot lights only, 1..179`);
+      break;
     default:
-      issues.push(`${path}.type: use prop, box or ground`);
+      issues.push(`${path}.type: use prop, box, ground or light`);
   }
 }
 
@@ -384,6 +669,11 @@ export function validateZhudaFilmScene(
         ids.add(id);
       }
     });
+    const lights = scene.nodes.filter((node) => object(node) && node.type === 'light').length;
+    if (lights > ZHUDA_FILM_LIMITS.lights)
+      issues.push(
+        `scene.nodes: at most ${ZHUDA_FILM_LIMITS.lights} lights (Laya Config3D.maxLightCount)`,
+      );
   }
   return issues;
 }
@@ -424,7 +714,11 @@ export function applyZhudaFilmScenePatch(
   if (patch.camera) next.camera = { ...next.camera, ...structuredClone(patch.camera) };
   if (patch.look) {
     const look = { ...(next.look ?? {}), ...structuredClone(patch.look) };
-    if (patch.look.sun && next.look?.sun) look.sun = { ...next.look.sun, ...patch.look.sun };
+    for (const key of ['sun', 'shadows', 'atmosphere', 'fog'] as const) {
+      const before = next.look?.[key],
+        after = patch.look[key];
+      if (after && before) (look as Record<string, unknown>)[key] = { ...before, ...after };
+    }
     next.look = look;
   }
   if (patch.materials) {
@@ -466,22 +760,73 @@ export function resolveZhudaFilmCamera(camera: ZhudaFilmCamera): Required<ZhudaF
 
 /** Look with every default filled in. */
 export interface ZhudaResolvedFilmLook {
+  preset: ZhudaFilmLookPreset | null;
   sky: ZhudaFilmVec3;
   ambient: ZhudaFilmVec3;
   sun: Required<ZhudaFilmSun>;
+  shadows: Required<ZhudaFilmShadows> | false;
+  atmosphere: Required<ZhudaFilmAtmosphere> | false;
+  fog: Required<ZhudaFilmFog> | false;
 }
 
+/**
+ * Look with every value filled in: the preset (if any) first, then the
+ * scene's own fields. Without a preset, shadows, atmosphere and fog stay off
+ * unless the scene turns them on.
+ */
 export function resolveZhudaFilmLook(look: ZhudaFilmLook = {}): ZhudaResolvedFilmLook {
+  const preset = look.preset ? ZHUDA_FILM_LOOK_PRESETS[look.preset] : null;
   const d = ZHUDA_FILM_DEFAULT_LOOK;
+  const base = preset ?? {
+    sky: [...d.sky] as ZhudaFilmVec3,
+    ambient: [...d.ambient] as ZhudaFilmVec3,
+    sun: { ...d.sun, color: [...d.sun.color] as ZhudaFilmVec3 } as Required<ZhudaFilmSun>,
+  };
+  const sky = look.sky ?? ([...base.sky] as ZhudaFilmVec3);
+  const merge = <T extends object>(
+    value: T | false | undefined,
+    fallback: Required<T> | false,
+    blank: Required<T>,
+  ): Required<T> | false => {
+    if (value === false) return false;
+    if (value === undefined) return fallback ? { ...fallback } : false;
+    return { ...(fallback || blank), ...value } as Required<T>;
+  };
+  const atmosphere = merge<ZhudaFilmAtmosphere>(look.atmosphere, preset?.atmosphere ?? false, {
+    thickness: 1,
+    skyTint: [0.5, 0.5, 0.5],
+    groundTint: [0.37, 0.35, 0.33],
+    exposure: 1.3,
+    sunSize: 0.04,
+  });
+  const fog = (() => {
+    if (look.fog === false) return false as const;
+    const from = look.fog ?? (preset?.fog || undefined);
+    if (!from) return false as const;
+    return {
+      color: from.color ?? (preset?.fog ? preset.fog.color : sky),
+      start: from.start,
+      end: from.end,
+    } as Required<ZhudaFilmFog>;
+  })();
   return {
-    sky: look.sky ?? [...d.sky],
-    ambient: look.ambient ?? [...d.ambient],
+    preset: look.preset ?? null,
+    sky,
+    ambient: look.ambient ?? ([...base.ambient] as ZhudaFilmVec3),
     sun: {
-      azimuthDeg: look.sun?.azimuthDeg ?? d.sun.azimuthDeg,
-      elevationDeg: look.sun?.elevationDeg ?? d.sun.elevationDeg,
-      intensity: look.sun?.intensity ?? d.sun.intensity ?? 1.2,
-      color: look.sun?.color ?? ([...d.sun.color!] as ZhudaFilmVec3),
+      azimuthDeg: look.sun?.azimuthDeg ?? base.sun.azimuthDeg,
+      elevationDeg: look.sun?.elevationDeg ?? base.sun.elevationDeg,
+      intensity: look.sun?.intensity ?? base.sun.intensity,
+      color: look.sun?.color ?? ([...base.sun.color] as ZhudaFilmVec3),
     },
+    shadows: merge<ZhudaFilmShadows>(look.shadows, preset?.shadows ?? false, {
+      distance: 60,
+      softness: 'soft',
+      strength: 1,
+      resolution: 2048,
+    }),
+    atmosphere,
+    fog,
   };
 }
 

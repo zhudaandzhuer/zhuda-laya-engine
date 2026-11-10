@@ -59,9 +59,21 @@ export class ZhudaFilmHost {
   #closed = false;
   info;
 
-  constructor({ outputDir, chrome = chromeFixture } = {}) {
+  #packs;
+  /**
+   * `packs`: operator-chosen modules exporting `{ props, recipes }` (default
+   * or named). They are trusted like any server code; agents only name what
+   * they provide.
+   */
+  constructor({ outputDir, chrome = chromeFixture, packs = [] } = {}) {
     this.#outputDir = outputDir ? path.resolve(outputDir) : null;
     this.#chrome = chrome;
+    this.#packs = packs.map((file) => {
+      const resolved = path.resolve(file);
+      if (!fs.existsSync(resolved) || !fs.statSync(resolved).isFile())
+        throw Error(`Film pack not found: ${file}`);
+      return resolved;
+    });
   }
 
   /** Runs browser work one call at a time. */
@@ -78,13 +90,48 @@ export class ZhudaFilmHost {
       this.#work = await fsp.mkdtemp(path.join(os.tmpdir(), 'zhuda-film-host-'));
       const web = path.join(this.#work, 'web');
       await buildBrowserSdk({ engineRoot, outDir: web, profiles: ['3d'] });
+      // Packs import the public SDK; in the page that is the loaded `Zhuda`
+      // bundle, so the import is mapped to it instead of bundling a copy.
+      const imports = this.#packs.map(
+        (file, i) => `import * as pack${i} from ${JSON.stringify(file)};`,
+      );
+      const list = this.#packs.map(
+        (file, i) =>
+          `{ name: ${JSON.stringify(path.basename(file))}, ...(pack${i}.default ?? pack${i}) }`,
+      );
       await esbuild.build({
-        entryPoints: [path.join(engineRoot, 'packages/compiler/film-host-client.ts')],
+        stdin: {
+          contents: [
+            ...imports,
+            `import { startFilmHost } from ${JSON.stringify(path.join(engineRoot, 'packages/compiler/film-host-client.ts'))};`,
+            `startFilmHost([${list.join(', ')}]);`,
+          ].join('\n'),
+          resolveDir: engineRoot,
+          loader: 'js',
+        },
         bundle: true,
         format: 'iife',
         target: 'es2020',
         outfile: path.join(web, 'film-host.js'),
         logLevel: 'silent',
+        plugins: [
+          {
+            name: 'zhuda-sdk-global',
+            setup(build) {
+              build.onResolve({ filter: /^zhuda-laya-engine$/ }, () => ({
+                path: 'zhuda-sdk-global',
+                namespace: 'zhuda-sdk',
+              }));
+              build.onResolve({ filter: /^zhuda-laya-engine\/demo$/ }, () => ({
+                path: path.join(engineRoot, 'packages/demo/index.ts'),
+              }));
+              build.onLoad({ filter: /.*/, namespace: 'zhuda-sdk' }, () => ({
+                contents: 'module.exports = globalThis.Zhuda;',
+                loader: 'js',
+              }));
+            },
+          },
+        ],
       });
       await fsp.writeFile(
         path.join(web, 'index.html'),
@@ -147,6 +194,11 @@ export class ZhudaFilmHost {
       await this.close();
       throw error;
     }
+  }
+
+  /** Starts the browser and loads the page (and its packs). */
+  ready() {
+    return this.#serial(() => this.#start());
   }
 
   async #call(method, args, timeoutMs = 120000) {

@@ -157,6 +157,10 @@ pixels independent of CSS size or DPR. Inputs are capped at 8192 per axis,
 256 samples/frame and the configured CPU working-set estimate. GPU/driver
 memory is additional. Call serially and drain each returned frame to storage.
 
+Laya registers newly added meshes on its next native frame, and a capture
+freezes the scene, so run `ZhudaEngine.flushRenderFrames(2)` after adding
+objects and before the first capture (`ZhudaFilmRenderer` does this);
+otherwise a frame can intermittently contain only the clear colour.
 The mounted target scene's native update/time are frozen until capture disposal;
 its original update, editor-render flag and time are restored. Other scenes and
 Stage-level callbacks are not frozen. The existing RuntimeSession must stay

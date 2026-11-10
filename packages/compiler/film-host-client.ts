@@ -1,9 +1,31 @@
 /**
  * Page script of the film host. It runs next to the public browser SDK bundle
- * (`Zhuda` global) and only bundles the neutral starter props and recipes.
- * The Node side drives it through `window.__ZHUDA_FILM__`.
+ * (`Zhuda` global) and bundles the neutral starter props and recipes plus any
+ * prop packs the server operator configured (`--film-pack`). The Node side
+ * drives it through `window.__ZHUDA_FILM__`.
  */
 import { ZHUDA_STARTER_PROPS, ZHUDA_STARTER_TEXTURES } from '../demo/ProceduralStarter.ts';
+
+type Pack = { name: string; props?: { id: string }[]; recipes?: Record<string, unknown> };
+/** Starter set first, then each operator pack; duplicate ids are an error. */
+function catalogue(packs: readonly Pack[]) {
+  const props: any[] = [...ZHUDA_STARTER_PROPS],
+    recipes: Record<string, unknown> = { ...ZHUDA_STARTER_TEXTURES };
+  for (const pack of packs) {
+    for (const prop of pack.props ?? []) {
+      if (props.some((existing) => existing.id === prop.id))
+        throw Error(`Film pack ${pack.name}: duplicate prop ${prop.id}`);
+      props.push(prop);
+    }
+    for (const [name, recipe] of Object.entries(pack.recipes ?? {})) {
+      if (Object.hasOwn(recipes, name))
+        throw Error(`Film pack ${pack.name}: duplicate recipe ${name}`);
+      recipes[name] = recipe;
+    }
+  }
+  return { props, recipes };
+}
+let library: ReturnType<typeof catalogue> | undefined;
 
 type Camera = {
   eye: number[];
@@ -43,8 +65,8 @@ async function mount(scene: unknown) {
   state.renderer = state.stage = undefined;
   const started = performance.now();
   state.stage = Z.mountZhudaFilmScene(state.context.rootScene, scene, {
-    props: ZHUDA_STARTER_PROPS,
-    recipes: ZHUDA_STARTER_TEXTURES,
+    props: library!.props,
+    recipes: library!.recipes,
     bakeCache: state.bakeCache,
   });
   state.renderer = new Z.ZhudaFilmRenderer(state.stage, state.context.runtime);
@@ -98,7 +120,8 @@ async function review(options: {
   };
 }
 
-async function boot() {
+async function boot(packs: readonly Pack[]) {
+  library = catalogue(packs);
   state.context = await Z.ZhudaEngine.boot({
     renderer: 'webgl',
     container: document.querySelector('#view'),
@@ -113,19 +136,26 @@ async function boot() {
   state.ready = true;
 }
 
-(globalThis as any).__ZHUDA_FILM__ = {
-  state,
-  mount,
-  render,
-  review,
-  info: () => ({
-    ready: state.ready,
-    error: state.error,
-    version: (globalThis as any).ZhudaBundle?.version,
-    props: ZHUDA_STARTER_PROPS.map((p: { id: string }) => p.id),
-    recipes: Object.keys(ZHUDA_STARTER_TEXTURES),
-  }),
-};
-boot().catch((error) => {
-  state.error = String(error?.stack || error);
-});
+/**
+ * Called by the host's entry with the operator packs. An explicit call, not a
+ * side-effect import: the package declares `sideEffects: false`, so a bare
+ * import of this file would be dropped by the bundler.
+ */
+export function startFilmHost(packs: readonly Pack[] = []) {
+  (globalThis as any).__ZHUDA_FILM__ = {
+    state,
+    mount,
+    render,
+    review,
+    info: () => ({
+      ready: state.ready,
+      error: state.error,
+      version: (globalThis as any).ZhudaBundle?.version,
+      props: library ? library.props.map((p: { id: string }) => p.id).sort() : [],
+      recipes: library ? Object.keys(library.recipes).sort() : [],
+    }),
+  };
+  boot(packs).catch((error) => {
+    state.error = String(error?.stack || error);
+  });
+}

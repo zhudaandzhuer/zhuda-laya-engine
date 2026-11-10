@@ -257,3 +257,111 @@ test('the film host page draws through Laya only', () => {
   assert.match(review, /new l\.Text\(\)/);
   assert.match(page, /composeZhudaFilmReview/);
 });
+
+test('looks resolve presets and overrides; phase 1 scenes keep the plain look', async () => {
+  const { resolveZhudaFilmLook, ZHUDA_FILM_LOOK_PRESETS } = await import(
+    '../packages/core/film/FilmScene.ts'
+  );
+  const plain = resolveZhudaFilmLook({ sky: [0.1, 0.2, 0.3] });
+  assert.equal(plain.preset, null);
+  assert.equal(plain.shadows, false);
+  assert.equal(plain.atmosphere, false);
+  assert.equal(plain.fog, false);
+  assert.deepEqual(plain.sky, [0.1, 0.2, 0.3]);
+  const night = resolveZhudaFilmLook({
+    preset: 'night',
+    sun: { elevationDeg: 20 },
+    fog: { start: 5, end: 50 },
+  });
+  assert.equal(night.sun.elevationDeg, 20);
+  assert.equal(night.sun.azimuthDeg, ZHUDA_FILM_LOOK_PRESETS.night.sun.azimuthDeg);
+  assert.equal(night.shadows.strength, ZHUDA_FILM_LOOK_PRESETS.night.shadows.strength);
+  assert.deepEqual(night.fog, {
+    color: ZHUDA_FILM_LOOK_PRESETS.night.fog.color,
+    start: 5,
+    end: 50,
+  });
+  const off = resolveZhudaFilmLook({
+    preset: 'day',
+    shadows: false,
+    atmosphere: false,
+    fog: false,
+  });
+  assert.deepEqual([off.shadows, off.atmosphere, off.fog], [false, false, false]);
+  // Opting in without a preset uses explicit defaults.
+  const custom = resolveZhudaFilmLook({
+    shadows: { softness: 'hard' },
+    atmosphere: { thickness: 2 },
+  });
+  assert.equal(custom.shadows.softness, 'hard');
+  assert.equal(custom.shadows.distance, 60);
+  assert.equal(custom.atmosphere.thickness, 2);
+  for (const preset of Object.keys(ZHUDA_FILM_LOOK_PRESETS))
+    assert.deepEqual(validateZhudaFilmScene({ ...scene(), look: { preset } }, context), [], preset);
+});
+
+test('look, light and emission fields are validated with paths', () => {
+  const bad = scene();
+  bad.look = {
+    preset: 'sunset',
+    shadows: { distance: 1, softness: 'blurry', resolution: 3000 },
+    atmosphere: { thickness: 9, skyTint: [2, 0, 0] },
+    fog: { start: 50, end: 10 },
+  };
+  bad.materials.lamp = { color: [1, 0, 0], emission: [9, 0, 0] };
+  bad.nodes.push(
+    { id: 'l1', type: 'light', kind: 'laser', position: [0, 1, 0] },
+    {
+      id: 'l2',
+      type: 'light',
+      kind: 'spot',
+      position: [0, 1, 0],
+      target: [0, 1, 0],
+      spotAngleDeg: 200,
+    },
+    {
+      id: 'l3',
+      type: 'light',
+      kind: 'point',
+      position: [0, 1, 0],
+      target: [1, 0, 0],
+      intensity: 50,
+    },
+  );
+  const issues = validateZhudaFilmScene(bad, context);
+  for (const fragment of [
+    'scene.look.preset',
+    'scene.look.shadows.distance',
+    'scene.look.shadows.softness',
+    'scene.look.shadows.resolution',
+    'scene.look.atmosphere.thickness',
+    'scene.look.atmosphere.skyTint',
+    'scene.look.fog',
+    'scene.materials.lamp.emission',
+    'kind: use point or spot',
+    'target: must differ from position',
+    'spotAngleDeg',
+    'target: only spot lights aim',
+    'intensity: use 0..20',
+  ])
+    assert.ok(
+      issues.some((issue) => issue.includes(fragment)),
+      `missing ${fragment} in\n${issues.join('\n')}`,
+    );
+  const many = scene();
+  for (let i = 0; i < 33; i++)
+    many.nodes.push({ id: `l${i}`, type: 'light', kind: 'point', position: [i, 2, 0] });
+  assert.ok(validateZhudaFilmScene(many, context).some((issue) => /at most 32 lights/.test(issue)));
+  // Nested look objects merge in patches.
+  const base = parseZhudaFilmScene(
+    { ...scene(), look: { preset: 'night', fog: { start: 10, end: 80 } } },
+    context,
+  );
+  const next = applyZhudaFilmScenePatch(
+    base,
+    { look: { fog: { end: 120 }, sun: { intensity: 0.3 } } },
+    context,
+  );
+  assert.deepEqual(next.look.fog, { start: 10, end: 120 });
+  assert.equal(next.look.sun.intensity, 0.3);
+});

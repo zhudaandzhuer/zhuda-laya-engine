@@ -38,6 +38,7 @@ import {
   type ZhudaFilmCamera,
   type ZhudaFilmMaterial,
   type ZhudaFilmScene,
+  type ZhudaResolvedFilmLook,
 } from './FilmScene.ts';
 
 export interface ZhudaFilmStageOptions {
@@ -114,7 +115,7 @@ export function mountZhudaFilmScene(
       intensity: look.sun.intensity,
       color: [...look.sun.color, 1] as [number, number, number, number],
     });
-    void sun;
+    applyLook(l, scene3D, camera, sun.light, look, cleanups);
     const resolveMaterial = (name: string): any => {
       const existing = materials.get(name);
       if (existing) return existing;
@@ -141,6 +142,7 @@ export function mountZhudaFilmScene(
           color: [...spec.color, 1],
           metallic: spec.metallic ?? 0,
           roughness: spec.roughness ?? 0.6,
+          emission: spec.emission,
         });
         cleanups.push(() => disposeSurfaceMaterial(material));
       }
@@ -170,6 +172,7 @@ export function mountZhudaFilmScene(
       );
       cleanups.push(() => props.dispose());
       for (const mesh of props.meshes) {
+        castsShadow(mesh.node);
         const name = materialName(mesh.node.meshRenderer.sharedMaterial, materials);
         batches.set(name, (batches.get(name) ?? 0) + 1);
       }
@@ -214,8 +217,27 @@ export function mountZhudaFilmScene(
           scene3D,
         );
         mesh.node.meshRenderer.sharedMaterial = material;
+        castsShadow(mesh.node);
         cleanups.push(() => mesh.dispose());
         batches.set(name, (batches.get(name) ?? 0) + 1);
+      }
+    }
+
+    // Practical lights: native point and spot light components.
+    for (const node of scene.nodes) {
+      if (node.type !== 'light') continue;
+      const holder = new l.Sprite3D(`ZhudaFilmLight:${node.id}`);
+      scene3D.addChild(holder);
+      cleanups.push(() => holder.destroy(true));
+      holder.transform.position = new l.Vector3(...node.position);
+      const light = holder.addComponent(node.kind === 'spot' ? l.SpotLightCom : l.PointLightCom);
+      const [r, g, b] = node.color ?? [1, 0.82, 0.6];
+      light.color = new l.Color(r, g, b, 1);
+      light.intensity = node.intensity ?? 2;
+      light.range = node.range ?? 12;
+      if (node.kind === 'spot') {
+        light.spotAngle = node.spotAngleDeg ?? 60;
+        holder.transform.lookAt(new l.Vector3(...node.target!), new l.Vector3(0, 1, 0));
       }
     }
 
@@ -254,6 +276,60 @@ export function mountZhudaFilmScene(
   }
 }
 
+function castsShadow(node: any) {
+  node.meshRenderer.castShadow = true;
+  node.meshRenderer.receiveShadow = true;
+}
+
+/** Shadows, procedural sky and fog, all native Laya 3.4.2 features. */
+function applyLook(
+  l: any,
+  scene3D: any,
+  camera: any,
+  sun: any,
+  look: ZhudaResolvedFilmLook,
+  cleanups: (() => void)[],
+) {
+  if (look.shadows) {
+    sun.shadowMode = look.shadows.softness === 'hard' ? l.ShadowMode.Hard : l.ShadowMode.SoftHigh;
+    sun.shadowDistance = look.shadows.distance;
+    sun.shadowResolution = look.shadows.resolution;
+    sun.shadowStrength = look.shadows.strength;
+    sun.shadowCascadesMode = l.ShadowCascadesMode.TwoCascades;
+    // Switch shadows off before the scene is destroyed (see the stage tests).
+    cleanups.push(() => (sun.shadowMode = l.ShadowMode.None));
+  } else sun.shadowMode = l.ShadowMode.None;
+  if (look.atmosphere) {
+    const sky = new l.SkyProceduralMaterial();
+    sky.sunDisk = l.SkyProceduralMaterial.SUN_HIGH_QUALITY;
+    sky.sunSize = look.atmosphere.sunSize;
+    sky.atmosphereThickness = look.atmosphere.thickness;
+    sky.skyTint = new l.Color(...look.atmosphere.skyTint, 1);
+    sky.groundTint = new l.Color(...look.atmosphere.groundTint, 1);
+    sky.exposure = look.atmosphere.exposure;
+    // Own the dome: the shared SkyDome.instance would be destroyed with this
+    // scene and break every scene drawn after it.
+    const dome = new l.SkyDome();
+    scene3D.skyRenderer.mesh = dome;
+    scene3D.skyRenderer.material = sky;
+    camera.clearFlag = l.CameraClearFlags.Sky;
+    cleanups.push(() => {
+      scene3D.skyRenderer.material = null;
+      scene3D.skyRenderer.mesh = null;
+      sky.destroy();
+      dome.destroy();
+    });
+  }
+  if (look.fog) {
+    scene3D.enableFog = true;
+    scene3D.fogMode = l.FogMode.Linear;
+    scene3D.fogColor = new l.Color(...look.fog.color, 1);
+    scene3D.fogStart = look.fog.start;
+    scene3D.fogEnd = look.fog.end;
+    cleanups.push(() => (scene3D.enableFog = false));
+  }
+}
+
 function materialName(material: unknown, materials: Map<string, any>): string {
   for (const [name, value] of materials) if (value === material) return name;
   return 'unknown';
@@ -281,6 +357,10 @@ export class ZhudaFilmRenderer {
     private readonly stage: ZhudaFilmStage,
     private readonly runtime: ZhudaRuntimeSession,
   ) {
+    // Laya registers newly added meshes on its next frame. Captures freeze the
+    // scene, so run two native frames first or a fresh stage can render
+    // nothing but its clear colour (intermittently, depending on timing).
+    ZhudaEngine.flushRenderFrames(2);
     this.wasPaused = runtime.paused;
     runtime.setPaused(true);
   }

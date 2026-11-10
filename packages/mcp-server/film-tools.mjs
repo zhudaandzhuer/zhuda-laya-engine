@@ -29,7 +29,7 @@ export const FILM_TOOLS_MANIFEST = [
   {
     name: 'film_scene_create',
     description:
-      'Create a film scene session from a ZhudaFilmScene (schemaVersion 1): camera, look (sky, ambient, sun), materials (recipe or flat colour) and nodes (prop, box, ground). Returns the session id, revision 0 and the props/recipes this host can build. Data only; no code runs.',
+      'Create a film scene session from a ZhudaFilmScene (schemaVersion 1): camera; look (preset day/dawn/dusk/night/overcast, then sky, ambient, sun, shadows, atmosphere, fog overrides); materials (recipe, or flat colour with optional emission); nodes (prop, box, ground, light point/spot, up to 32 lights). Returns the session id, revision 0 and the props/recipes this host can build, including operator packs. Data only; no code runs.',
     inputSchema: {
       type: 'object',
       properties: { scene: { type: 'object' } },
@@ -132,21 +132,39 @@ export const FILM_TOOLS_MANIFEST = [
 const FILM_TOOL_NAMES = new Set(FILM_TOOLS_MANIFEST.map((tool) => tool.name));
 export const isFilmTool = (name) => FILM_TOOL_NAMES.has(name);
 
-const sessions = new ZhudaFilmSessions();
 let outputDir = process.env.ZHUDA_FILM_OUTPUT || null;
+let packs = [];
 let host;
+let sessions = new ZhudaFilmSessions();
+let context = ZHUDA_FILM_HOST_CONTEXT;
 
-/** Sets the directory render jobs may write into (the server's --film-output). */
-export function configureFilmTools({ output } = {}) {
+/**
+ * `output`: directory render jobs may write into (--film-output).
+ * `packs`: operator prop/recipe modules (--film-pack), loaded into the page.
+ */
+export function configureFilmTools({ output, packs: list } = {}) {
   if (output !== undefined) outputDir = output;
+  if (list !== undefined) packs = [...list];
 }
 
 async function filmHost() {
   if (!host) {
     const { ZhudaFilmHost } = await import('./film-host.mjs');
-    host = new ZhudaFilmHost({ outputDir });
+    host = new ZhudaFilmHost({ outputDir, packs });
   }
   return host;
+}
+
+/** With packs, the page reports which props and recipes it can build. */
+async function filmContext() {
+  if (!packs.length) return context;
+  if (context === ZHUDA_FILM_HOST_CONTEXT) {
+    const film = await filmHost();
+    await film.ready();
+    context = Object.freeze({ props: film.info.props, recipes: film.info.recipes });
+    sessions = new ZhudaFilmSessions({ context });
+  }
+  return context;
 }
 
 export async function closeFilmTools() {
@@ -171,14 +189,15 @@ function current(args) {
 export async function executeFilmTool(name, args = {}) {
   switch (name) {
     case 'film_scene_create': {
+      await filmContext();
       const created = sessions.create(args.scene);
       return [
         text({
           tool: name,
           sessionId: created.sessionId,
           revision: created.revision,
-          props: ZHUDA_FILM_HOST_CONTEXT.props,
-          recipes: ZHUDA_FILM_HOST_CONTEXT.recipes,
+          props: context.props,
+          recipes: context.recipes,
         }),
       ];
     }

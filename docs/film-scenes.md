@@ -92,6 +92,61 @@ A patch has `camera` and `look` (merged), `materials` (a `null` value removes
 one), `remove` (node ids, applied first) and `upsert` (nodes replaced by id or
 added). The whole result is validated before it is accepted.
 
+## Look: time of day, shadows, sky, fog and lights
+
+`look.preset` picks a time of day (`day`, `dawn`, `dusk`, `night`,
+`overcast`). Every other look field overrides the preset; a scene without a
+preset keeps the plain look (flat sky colour, no shadows, sky or fog).
+
+```json
+"look": {
+  "preset": "night",
+  "sun": { "elevationDeg": 30 },
+  "shadows": { "softness": "soft", "distance": 60 },
+  "atmosphere": { "thickness": 0.6, "exposure": 0.4 },
+  "fog": { "color": [0.05, 0.065, 0.11], "start": 25, "end": 170 }
+}
+```
+
+| Field | Native Laya 3.4.2 feature |
+| --- | --- |
+| `shadows` (`false` to turn off) | `DirectionLightCom` shadow maps, two cascades; every mesh casts and receives |
+| `atmosphere` (`false` for a flat `sky`) | `SkyProceduralMaterial` on a `SkyDome`; the sun disk follows the sun |
+| `fog` (`false` to turn off) | Linear scene fog |
+| `light` nodes | `PointLightCom` / `SpotLightCom` (at most 32, `Config3D.maxLightCount`) |
+| `emission` on a flat material | PBR emission, for lamp heads and signs |
+
+```json
+{ "id": "lamp", "type": "light", "kind": "point", "position": [4, 2.5, 6],
+  "color": [1, 0.45, 0.2], "intensity": 2.6, "range": 9 }
+{ "id": "spot", "type": "light", "kind": "spot", "position": [0, 6, 4],
+  "target": [0, 0, 2], "spotAngleDeg": 40 }
+```
+
+`resolveZhudaFilmLook(look)` returns the values a scene will actually use.
+
+## Your own props and recipes
+
+The host ships the neutral starter set. The person who starts the server can
+add packs: modules that export `props` (prop definitions) and `recipes`
+(texture recipes), written against the public API.
+
+```sh
+npx zhuda-laya-mcp --film-output ./films --film-pack ./my-city/pack.mjs
+```
+
+```js
+// my-city/pack.mjs
+import { createZhudaBoxMesh } from 'zhuda-laya-engine';
+export const recipes = { 'stone-paving': { /* ZhudaTextureRecipe */ } };
+export const props = [{ id: 'lamp-post', size: [0.4, 3, 0.4], defaults: {}, build() { /* … */ } }];
+```
+
+Packs are trusted like server code; an agent only names what they provide,
+and `film_scene_create` lists every prop and recipe the host can build. In the
+page, `zhuda-laya-engine` resolves to the loaded browser SDK, so a pack adds no
+second engine copy. Duplicate ids across packs are refused.
+
 ## Camera paths
 
 A video job takes `cameraPath`: two or more keys `{ time, camera }`, the first
@@ -139,7 +194,13 @@ preview, refused changes, apply with preview, a four-shot review, two
 identical still jobs (byte-identical PNGs) and an MP4, and checks the MP4 with
 `ffprobe`. See the [verification record](plans/records/film-scene-loop/verification.md).
 
-Not in this phase: sun shadows, physical sky, fog, look presets, spline camera
-paths, shot lists, path tracing, audio in render jobs and glTF assets in film
-scenes. Previews and renders are desktop WebGL evidence; WebGPU and mobile are
+`npm run verify:film-look` switches each look feature on and off on a real GPU
+and asserts the pixel change (shadows darken and never brighten, the sky has a
+vertical gradient, fog and a point light change the frame), remounts nine
+looks in a row and draws a prop from a pack. See the
+[look verification record](plans/records/film-look/verification.md).
+
+Not yet: animated look or light tracks, bloom and tone-mapping in film
+renders, spline camera paths, shot lists, path tracing, audio in render jobs
+and glTF assets in film scenes. Previews and renders are desktop WebGL evidence; WebGPU and mobile are
 not covered.

@@ -47,7 +47,8 @@ export async function chromeFixture({ zoomFactor = 1 } = {}) {
     serial = 0;
   const eventWaiters = new Map();
   const pending = new Map(),
-    errors = [];
+    errors = [],
+    consoleMessages = [];
   const close = async () => {
     ws?.close();
     for (const r of pending.values()) {
@@ -121,6 +122,17 @@ export async function chromeFixture({ zoomFactor = 1 } = {}) {
         clearTimeout(waiter.timer);
         waiter.resolve(m.params);
       }
+      if (
+        m.method === 'Runtime.consoleAPICalled' &&
+        (m.params.type === 'error' || m.params.type === 'warning')
+      )
+        consoleMessages.push(
+          `${m.params.type}: ` +
+            m.params.args
+              .map((a) => a.value ?? a.description ?? '')
+              .join(' ')
+              .slice(0, 2000),
+        );
       if (m.method === 'Runtime.exceptionThrown')
         errors.push(
           m.params.exceptionDetails.exception?.description || m.params.exceptionDetails.text,
@@ -180,6 +192,8 @@ export async function chromeFixture({ zoomFactor = 1 } = {}) {
       evaluate,
       waitFor,
       errors,
+      /** console.error and console.warn text (WebGL shader logs land here). */
+      consoleMessages,
       close,
       screenshot: async (file) => {
         const r = await send('Page.captureScreenshot', { format: 'png' });

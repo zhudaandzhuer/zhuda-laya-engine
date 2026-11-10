@@ -719,15 +719,23 @@ export function handleJsonRpcMessage(msg) {
 if (
   cliMain(
     import.meta.url,
-    'Usage: zhuda-laya-mcp [--tool NAME --args JSON] [--film-output DIRECTORY]\nWithout --tool, starts the JSON-RPC stdio server. --film-output lets film_render_job write stills and MP4 there.',
+    'Usage: zhuda-laya-mcp [--tool NAME --args JSON] [--film-output DIRECTORY] [--film-pack MODULE ...]\nWithout --tool, starts the JSON-RPC stdio server. --film-output lets film_render_job write stills and MP4 there; --film-pack adds an operator prop/recipe module (repeatable).',
   )
 ) {
+  const { resolve } = await import('node:path');
   const filmIdx = process.argv.indexOf('--film-output');
   if (filmIdx !== -1) {
     const dir = process.argv[filmIdx + 1];
     if (!dir) throw Error('--film-output needs a directory');
-    configureFilmTools({ output: (await import('node:path')).resolve(dir) });
+    configureFilmTools({ output: resolve(dir) });
   }
+  const packList = process.argv.flatMap((arg, i) => {
+    if (arg !== '--film-pack') return [];
+    const file = process.argv[i + 1];
+    if (!file) throw Error('--film-pack needs a module path');
+    return [resolve(file)];
+  });
+  if (packList.length) configureFilmTools({ packs: packList });
   const toolIdx = process.argv.indexOf('--tool');
   if (toolIdx !== -1) {
     const toolName = process.argv[toolIdx + 1];

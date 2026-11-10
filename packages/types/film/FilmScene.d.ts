@@ -21,20 +21,63 @@ export interface ZhudaFilmCamera {
     focusDistanceM?: number;
 }
 export interface ZhudaFilmSun {
-    /** Turns the sun about +Y, degrees. At 0 the light travels toward -Z. */
-    azimuthDeg: number;
-    /** Height above the horizon, degrees (0..90). */
-    elevationDeg: number;
+    /** Turns the sun about +Y, degrees. At 0 the light travels toward -Z. Defaults to the preset. */
+    azimuthDeg?: number;
+    /** Height above the horizon, degrees (0..90). Defaults to the preset. */
+    elevationDeg?: number;
     intensity?: number;
     /** Linear RGB 0..1. */
     color?: ZhudaFilmVec3;
 }
+export type ZhudaFilmLookPreset = 'day' | 'dawn' | 'dusk' | 'night' | 'overcast';
+/** Sun shadows (native `DirectionLightCom` shadow maps). */
+export interface ZhudaFilmShadows {
+    /** Metres from the camera that receive shadows (default 60). */
+    distance?: number;
+    /** 'soft' filters the edge (default); 'hard' does not. */
+    softness?: 'hard' | 'soft';
+    /** 0..1 (default 1). */
+    strength?: number;
+    /** Shadow map size (default 2048). */
+    resolution?: 1024 | 2048 | 4096;
+}
+/** Procedural sky (native `SkyProceduralMaterial`); the sun disk follows the sun. */
+export interface ZhudaFilmAtmosphere {
+    /** Air density, 0..5 (default 1); higher is redder near the horizon. */
+    thickness?: number;
+    /** Linear RGB 0..1. */
+    skyTint?: ZhudaFilmVec3;
+    /** Colour below the horizon, linear RGB 0..1. */
+    groundTint?: ZhudaFilmVec3;
+    /** 0..8 (default 1.3). */
+    exposure?: number;
+    /** Sun disk size, 0..1 (default 0.04). */
+    sunSize?: number;
+}
+/** Linear distance fog (native scene fog). */
+export interface ZhudaFilmFog {
+    /** Linear RGB 0..1; defaults to the sky or horizon colour. */
+    color?: ZhudaFilmVec3;
+    /** Metres where fog starts and where it is complete. */
+    start: number;
+    end: number;
+}
 export interface ZhudaFilmLook {
-    /** Background colour, linear RGB 0..1. */
+    /**
+     * A time of day. Every other field overrides the preset. Without a preset
+     * the look is the plain one: flat sky colour, no shadows, sky or fog.
+     */
+    preset?: ZhudaFilmLookPreset;
+    /** Flat background colour (used when there is no atmosphere), linear RGB 0..1. */
     sky?: ZhudaFilmVec3;
     /** Ambient light colour, linear RGB 0..1. */
     ambient?: ZhudaFilmVec3;
     sun?: ZhudaFilmSun;
+    /** `false` turns sun shadows off. */
+    shadows?: ZhudaFilmShadows | false;
+    /** `false` uses the flat `sky` colour instead of a procedural sky. */
+    atmosphere?: ZhudaFilmAtmosphere | false;
+    fog?: ZhudaFilmFog | false;
 }
 /** A baked recipe (a registered recipe name or an inline recipe) or a flat PBR colour. */
 export type ZhudaFilmMaterial = {
@@ -46,6 +89,8 @@ export type ZhudaFilmMaterial = {
     color: ZhudaFilmVec3;
     roughness?: number;
     metallic?: number;
+    /** Self-lit colour (lamp heads, signs), linear RGB 0..8. */
+    emission?: ZhudaFilmVec3;
 };
 export type ZhudaFilmNode = {
     id: string;
@@ -72,6 +117,22 @@ export type ZhudaFilmNode = {
     /** Width (X) and depth (Z) in metres; the top surface sits at y = 0. */
     size: [number, number];
     material: string;
+} | {
+    id: string;
+    type: 'light';
+    /** Point lights shine all around; spot lights shine at `target`. */
+    kind: 'point' | 'spot';
+    position: ZhudaFilmVec3;
+    /** Linear RGB 0..1 (default warm white). */
+    color?: ZhudaFilmVec3;
+    /** 0..20 (default 2). */
+    intensity?: number;
+    /** Metres the light reaches, 0.1..200 (default 12). */
+    range?: number;
+    /** Spot lights: the point they aim at. */
+    target?: ZhudaFilmVec3;
+    /** Spot lights: full cone angle, 1..179 degrees (default 60). */
+    spotAngleDeg?: number;
 };
 export interface ZhudaFilmScene {
     schemaVersion: 1;
@@ -105,8 +166,30 @@ export declare const ZHUDA_FILM_LIMITS: Readonly<{
     materials: 64;
     extent: 10000;
     idLength: 64;
+    /** Laya 3.4.2 `Config3D.maxLightCount` default. */
+    lights: 32;
 }>;
-export declare const ZHUDA_FILM_DEFAULT_LOOK: Readonly<Required<ZhudaFilmLook>>;
+/** The plain look of scenes without a preset (phase 1 behaviour). */
+export declare const ZHUDA_FILM_DEFAULT_LOOK: Readonly<{
+    sky: ZhudaFilmVec3;
+    ambient: ZhudaFilmVec3;
+    sun: Readonly<{
+        azimuthDeg: 50;
+        elevationDeg: 40;
+        intensity: 1.2;
+        color: ZhudaFilmVec3;
+    }>;
+}>;
+type PresetLook = {
+    sky: ZhudaFilmVec3;
+    ambient: ZhudaFilmVec3;
+    sun: Required<ZhudaFilmSun>;
+    shadows: Required<ZhudaFilmShadows>;
+    atmosphere: Required<ZhudaFilmAtmosphere>;
+    fog: Required<ZhudaFilmFog> | false;
+};
+/** Starting points for a time of day; any look field overrides them. */
+export declare const ZHUDA_FILM_LOOK_PRESETS: Readonly<Record<ZhudaFilmLookPreset, PresetLook>>;
 /** Lists every problem with a path; an empty list means the scene is valid. */
 export declare function validateZhudaFilmScene(scene: unknown, context?: ZhudaFilmValidationContext): string[];
 /** Throws with every problem listed; returns a detached copy otherwise. */
@@ -117,10 +200,19 @@ export declare function applyZhudaFilmScenePatch(scene: ZhudaFilmScene, patch: Z
 export declare function resolveZhudaFilmCamera(camera: ZhudaFilmCamera): Required<ZhudaFilmCamera>;
 /** Look with every default filled in. */
 export interface ZhudaResolvedFilmLook {
+    preset: ZhudaFilmLookPreset | null;
     sky: ZhudaFilmVec3;
     ambient: ZhudaFilmVec3;
     sun: Required<ZhudaFilmSun>;
+    shadows: Required<ZhudaFilmShadows> | false;
+    atmosphere: Required<ZhudaFilmAtmosphere> | false;
+    fog: Required<ZhudaFilmFog> | false;
 }
+/**
+ * Look with every value filled in: the preset (if any) first, then the
+ * scene's own fields. Without a preset, shadows, atmosphere and fog stay off
+ * unless the scene turns them on.
+ */
 export declare function resolveZhudaFilmLook(look?: ZhudaFilmLook): ZhudaResolvedFilmLook;
 /** Checks a keyed camera move: two to 256 keys, strictly increasing times from 0. */
 export declare function validateZhudaFilmCameraPath(keys: unknown): string[];
@@ -129,3 +221,4 @@ export declare function validateZhudaFilmCameraPath(keys: unknown): string[];
  * (smoothstep). Times outside the path hold the first or last key.
  */
 export declare function sampleZhudaFilmCameraPath(keys: readonly ZhudaFilmCameraKey[], t: number): Required<ZhudaFilmCamera>;
+export {};
