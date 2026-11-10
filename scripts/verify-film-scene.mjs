@@ -186,6 +186,28 @@ try {
   fs.writeFileSync(path.join(evidence, 'review.png'), review.images[0]);
   report.steps.review = review.json;
 
+  // The sheet is composed with Laya 2D; a cell must reproduce the single
+  // preview of the same camera exactly (outside its label plate).
+  const side = await call('film_scene_preview', {
+    sessionId: id,
+    expectedRevision: 1,
+    width: 320,
+    height: 240,
+    camera: { eye: [16, 2, 1.5], target: [0, 1.3, 1.5] },
+  });
+  const single = png(side.images[0]),
+    cell = review.json.cells[1];
+  let different = 0;
+  for (let y = 0; y < 240; y++)
+    for (let x = 0; x < 320; x++) {
+      if (y < 30 && x < 140) continue;
+      const a = (y * 320 + x) * 4,
+        b = ((cell.y + y) * grid.width + cell.x + x) * 4;
+      if ([0, 1, 2].some((k) => single.data[a + k] !== grid.data[b + k])) different++;
+    }
+  assert.equal(different, 0, 'review cell equals the single preview');
+  report.steps.reviewCellMatchesPreview = true;
+
   const still = (name) =>
     call('film_render_job', {
       sessionId: id,
@@ -260,6 +282,6 @@ try {
   fs.writeFileSync(path.join(evidence, 'report.json'), JSON.stringify(report, null, 2) + '\n');
 }
 console.log(
-  `PASS film scene loop: ${log.length} MCP calls, apply changed ${(report.steps.applyChangedPixels * 100).toFixed(1)}% of pixels, ` +
+  `PASS film scene loop: ${log.length} MCP calls, Laya 2D review cell = preview, apply changed ${(report.steps.applyChangedPixels * 100).toFixed(1)}% of pixels, ` +
     `still ${report.steps.still.sha256.slice(0, 12)} (twice identical), MP4 ${report.steps.video.probedFrames} frames; evidence ${evidence}`,
 );

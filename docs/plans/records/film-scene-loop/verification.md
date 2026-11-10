@@ -16,7 +16,7 @@ Date: 2026-11-10
 | Schema, patches, camera paths, sessions, JSON-RPC data calls | `node --test tests/film-scene.test.mjs` | PASS, 5 tests: every malformed field reported with its path (including an injected `onLoad` field); patches leave the input untouched and fail as a whole; stale and missing revisions refused; LRU eviction; non-film tools still answer synchronously |
 | Full gate | `npm run verify` | PASS, 357/357 |
 | Lint / format | `npm run lint`, `npm run format:check` | PASS |
-| End-to-end over MCP stdio | `npm run verify:film` | PASS, 14 calls (below) |
+| End-to-end over MCP stdio | `npm run verify:film` | PASS, 15 calls (below, plus a review-cell = preview check) |
 | Installed package | `npm pack`, install into a path with a space and CJK characters, run `node_modules/.bin/zhuda-laya-mcp --film-output films`, create, preview, still job, close stdin early | PASS: preview image returned, `films/packed.png` written, server answered every request before exiting |
 | Moved Chrome launcher | `verify:prefab-browser`, `prefab-editor-play`, `runtime-feedback`, `procedural`, `cinematic` | PASS, all five |
 
@@ -45,6 +45,14 @@ Date: 2026-11-10
   jitter and aperture samples. The runtime is paused while a renderer exists.
 - The page bundles only the neutral starter props and recipes next to the
   public `3d` browser bundle; scene JSON is the only input it receives.
+- Follow-up (2026-11-11): the page no longer uses a DOM canvas. It returns raw
+  Laya pixels; Node encodes PNG with pngjs, and the review sheet is composed
+  with `Laya.Sprite`, `Laya.Text` and `drawToRenderTexture2D`
+  (`composeZhudaFilmReview`). Shots are uploaded as sRGB colour because the
+  2D target encodes to sRGB; with that, a review cell equals the single preview
+  of the same camera in all 145,200 compared pixels (worst channel delta 0),
+  and `verify:film` now asserts it. Still bytes changed with the encoder
+  (`c202a1b4…`); two identical jobs remain byte-identical.
 - The host serves three fixed files on 127.0.0.1 with a Host check.
 - The headless Chrome launcher moved from `scripts/lib` into
   `packages/compiler/chrome-host.mjs` so the installed package can start it;

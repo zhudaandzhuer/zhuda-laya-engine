@@ -24,13 +24,12 @@ const state: {
   error?: string;
 } = { bakeCache: new Map(), ready: false };
 
-function toPng(frame: Frame): string {
-  const canvas = document.createElement('canvas');
-  canvas.width = frame.width;
-  canvas.height = frame.height;
-  const g = canvas.getContext('2d')!;
-  g.putImageData(new ImageData(new Uint8ClampedArray(frame.rgba), frame.width, frame.height), 0, 0);
-  return canvas.toDataURL('image/png').slice('data:image/png;base64,'.length);
+/** Raw RGBA as base64; the Node host encodes PNG. No DOM canvas is involved. */
+function toBase64(bytes: Uint8Array): string {
+  let text = '';
+  for (let i = 0; i < bytes.length; i += 0x8000)
+    text += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000) as unknown as number[]);
+  return btoa(text);
 }
 
 function requireStage() {
@@ -62,9 +61,9 @@ async function render(options: {
 }) {
   requireStage();
   const started = performance.now();
-  const frame = await state.renderer.render(options);
+  const frame: Frame = await state.renderer.render(options);
   return {
-    png: toPng(frame),
+    rgba: toBase64(frame.rgba),
     width: frame.width,
     height: frame.height,
     renderMs: Math.round(performance.now() - started),
@@ -78,46 +77,24 @@ async function review(options: {
   samples?: number;
 }) {
   requireStage();
-  const count = options.shots.length,
-    columns = count === 1 ? 1 : 2,
-    rows = Math.ceil(count / columns),
-    gap = 4;
-  const canvas = document.createElement('canvas');
-  canvas.width = columns * options.width + (columns - 1) * gap;
-  canvas.height = rows * options.height + (rows - 1) * gap;
-  const g = canvas.getContext('2d')!;
-  g.fillStyle = '#111';
-  g.fillRect(0, 0, canvas.width, canvas.height);
-  const cells = [];
-  for (let i = 0; i < count; i++) {
-    const shot = options.shots[i];
-    const frame: Frame = await state.renderer.render({
-      camera: shot.camera,
-      width: options.width,
-      height: options.height,
-      samples: options.samples ?? 1,
+  const shots = [];
+  for (const shot of options.shots)
+    shots.push({
+      label: shot.label,
+      frame: await state.renderer.render({
+        camera: shot.camera,
+        width: options.width,
+        height: options.height,
+        samples: options.samples ?? 1,
+      }),
     });
-    const x = (i % columns) * (options.width + gap),
-      y = Math.floor(i / columns) * (options.height + gap);
-    g.putImageData(
-      new ImageData(new Uint8ClampedArray(frame.rgba), frame.width, frame.height),
-      x,
-      y,
-    );
-    g.font = 'bold 14px system-ui, sans-serif';
-    const label = shot.label,
-      w = g.measureText(label).width + 12;
-    g.fillStyle = 'rgba(0,0,0,0.65)';
-    g.fillRect(x + 6, y + 6, w, 22);
-    g.fillStyle = '#fff';
-    g.fillText(label, x + 12, y + 22);
-    cells.push({ label, x, y, width: options.width, height: options.height });
-  }
+  // The sheet is composed with Laya 2D (Sprite, Text, RenderTexture2D).
+  const sheet = await Z.composeZhudaFilmReview(shots);
   return {
-    png: canvas.toDataURL('image/png').slice('data:image/png;base64,'.length),
-    width: canvas.width,
-    height: canvas.height,
-    cells,
+    rgba: toBase64(sheet.rgba),
+    width: sheet.width,
+    height: sheet.height,
+    cells: sheet.cells,
   };
 }
 

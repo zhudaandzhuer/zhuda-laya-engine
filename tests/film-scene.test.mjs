@@ -1,4 +1,5 @@
 import test from 'node:test';
+import fs from 'node:fs';
 import assert from 'node:assert/strict';
 import {
   validateZhudaFilmScene,
@@ -231,4 +232,28 @@ test('film tools are listed and answer over JSON-RPC without a browser for data 
     params: { name: 'get_agent_contract' },
   });
   assert.equal(typeof sync.then, 'undefined');
+});
+
+test('the film host page draws through Laya only', () => {
+  const page = fs.readFileSync(
+    new URL('../packages/compiler/film-host-client.ts', import.meta.url),
+    'utf8',
+  );
+  const review = fs.readFileSync(
+    new URL('../packages/core/film/FilmReview.ts', import.meta.url),
+    'utf8',
+  );
+  for (const [name, source] of [
+    ['film-host-client.ts', page],
+    ['FilmReview.ts', review],
+  ]) {
+    assert.doesNotMatch(
+      source,
+      /getContext\(|createElement\(['"]canvas|toDataURL|AudioContext/,
+      name,
+    );
+  }
+  assert.match(review, /drawToRenderTexture2D/);
+  assert.match(review, /new l\.Text\(\)/);
+  assert.match(page, /composeZhudaFilmReview/);
 });

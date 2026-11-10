@@ -11,6 +11,13 @@ Every image, from a one-sample preview to a final 4K frame, goes through
 `ZhudaCinematicCapture` with a physical lens, so what the agent previews is
 what the job renders, only with fewer samples.
 
+Everything is drawn by Laya 3.4.2: the scene through `Laya.Scene3D` and an
+offscreen `RenderTexture`, the review sheet through `Laya.Sprite`,
+`Laya.Text` and `drawToRenderTexture2D`. The page returns raw pixels and the
+Node side encodes PNG; no DOM canvas, second renderer or extra
+`AudioContext` is involved. A review cell is pixel-identical to a single
+preview of the same camera (checked by `verify:film`).
+
 ## Start the MCP server
 
 ```sh
@@ -105,6 +112,7 @@ import {
   sampleZhudaFilmCameraPath,
   mountZhudaFilmScene,
   ZhudaFilmRenderer,
+  composeZhudaFilmReview,
 } from 'zhuda-laya-engine';
 import { ZHUDA_STARTER_PROPS, ZHUDA_STARTER_TEXTURES } from 'zhuda-laya-engine/demo';
 
@@ -114,6 +122,10 @@ const stage = mountZhudaFilmScene(context.rootScene, scene, {
 });
 const renderer = new ZhudaFilmRenderer(stage, context.runtime); // pauses the runtime
 const frame = await renderer.render({ width: 1920, height: 1080, samples: 16 });
+const sheet = await composeZhudaFilmReview([
+  { label: 'Wide', frame },
+  { label: 'Close', frame: await renderer.render({ camera: close, width: 1920, height: 1080 }) },
+]); // Laya 2D sheet, top-left RGBA
 renderer.dispose(); // restores the pause state
 stage.dispose();
 ```

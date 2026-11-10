@@ -14,6 +14,7 @@ import http from 'node:http';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import esbuild from 'esbuild';
+import { PNG } from 'pngjs';
 import { buildBrowserSdk } from '../compiler/browser-sdk.mjs';
 import { chromeFixture } from '../compiler/chrome-host.mjs';
 import { exportFilm } from '../ci-gate/export-film.mjs';
@@ -22,6 +23,13 @@ import { sampleZhudaFilmCameraPath, validateZhudaFilmCameraPath } from './runtim
 const engineRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const NAME = /^[a-z0-9][a-z0-9._-]{0,63}$/;
 const sha = (bytes) => crypto.createHash('sha256').update(bytes).digest('hex');
+/** Opaque sRGB RGBA from the page, encoded here (no DOM canvas in the page). */
+function encodePng({ rgba, width, height }) {
+  const image = new PNG({ width, height });
+  Buffer.from(rgba, 'base64').copy(image.data);
+  if (image.data.length !== width * height * 4) throw Error('Film host returned a malformed frame');
+  return PNG.sync.write(image, { colorType: 2, inputColorType: 6, inputHasAlpha: true });
+}
 
 function size(width, height, { max = 3840, even = false } = {}) {
   for (const [label, value] of [
@@ -122,7 +130,8 @@ export class ZhudaFilmHost {
           this.info = {
             ...info,
             gpu: await this.#browser.evaluate(
-              `(()=>{const c=document.createElement('canvas').getContext('webgl2');const d=c&&c.getExtension('WEBGL_debug_renderer_info');return c?(d?c.getParameter(d.UNMASKED_RENDERER_WEBGL):c.getParameter(c.RENDERER)):'none'})()`,
+              // Ask Laya's own WebGL context, not a new canvas.
+              `(()=>{const c=document.querySelector('#view canvas')?.getContext('webgl2');const d=c&&c.getExtension('WEBGL_debug_renderer_info');return c?(d?c.getParameter(d.UNMASKED_RENDERER_WEBGL):c.getParameter(c.RENDERER)):'unknown'})()`,
             ),
           };
           break;
@@ -177,7 +186,7 @@ export class ZhudaFilmHost {
       await this.#start();
       const mounted = await this.#mount(scene);
       const frame = await this.#call('render', { camera, width, height, samples: 1 });
-      return { png: Buffer.from(frame.png, 'base64'), ...mounted, renderMs: frame.renderMs };
+      return { png: encodePng(frame), ...mounted, renderMs: frame.renderMs };
     });
   }
 
@@ -200,7 +209,7 @@ export class ZhudaFilmHost {
       await this.#mount(scene);
       const grid = await this.#call('review', { shots, width, height });
       return {
-        png: Buffer.from(grid.png, 'base64'),
+        png: encodePng(grid),
         width: grid.width,
         height: grid.height,
         cells: grid.cells,
@@ -217,7 +226,7 @@ export class ZhudaFilmHost {
       await this.#start();
       await this.#mount(scene);
       const frame = await this.#call('render', { camera, width, height, samples: count }, 600000);
-      const bytes = Buffer.from(frame.png, 'base64');
+      const bytes = encodePng(frame);
       await fsp.writeFile(file, bytes, { flag: 'wx' });
       return {
         path: file,
@@ -270,7 +279,7 @@ export class ZhudaFilmHost {
             { camera, width, height, samples: count, index, fps },
             600000,
           );
-          const bytes = Buffer.from(frame.png, 'base64'),
+          const bytes = encodePng(frame),
             imagePath = `frame-${String(index).padStart(5, '0')}.png`;
           await fsp.writeFile(path.join(stage, imagePath), bytes);
           report.expectedTimes.push(time);

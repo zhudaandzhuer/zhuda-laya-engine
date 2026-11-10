@@ -28,7 +28,9 @@ import {
   ProceduralAssetProvider,
   parseZhudaRunParams,
   bootZhudaModules,
+  createZhudaRunClock,
 } from '../packages/core/procedural/index.ts';
+import { ZhudaSimulationClock } from '../packages/core/runtime3d/Clocks.ts';
 import { AssetProviderError } from '../packages/core/runtime3d/AssetProvider.ts';
 
 const near = (a, b, eps = 1e-9) => Math.abs(a - b) <= eps;
@@ -901,5 +903,41 @@ test('run parameters and module boot give isolated showcases and stub fallbacks'
       },
     ),
     /Module "render" failed and has no stub: lost context/,
+  );
+});
+
+test('run parameters use the engine clock and Prefab showcases use the scene library', async () => {
+  // ?dt becomes the engine's own fixed-step clock, not a second time source.
+  const clock = createZhudaRunClock(parseZhudaRunParams('?dt=0.02'));
+  assert.ok(clock instanceof ZhudaSimulationClock);
+  assert.equal(clock.step, 0.02);
+  assert.equal(createZhudaRunClock(parseZhudaRunParams('')).step, 1 / 60);
+  let steps = 0;
+  clock.advance(0.05, () => steps++);
+  assert.equal(steps, 2);
+
+  const calls = [];
+  const prefabs = {
+    instantiate: async (id, options) => {
+      calls.push({ id, ...options });
+      return { prefab: id };
+    },
+  };
+  const parent = { name: 'preview-root' };
+  const modules = {
+    props: { create: () => 'props', showcase: { prefab: 'yard/container', state: 'rusty' } },
+    hud: { create: () => 'hud', showcase: () => 'hud-view' },
+  };
+  const shown = await bootZhudaModules({}, modules, { show: 'props', prefabs, parent });
+  assert.deepEqual(shown.showcaseResult, { prefab: 'yard/container' });
+  assert.deepEqual(calls, [{ id: 'yard/container', state: 'rusty', parent, signal: undefined }]);
+  assert.deepEqual(shown.modules, { props: 'ready', hud: 'skipped' });
+  await assert.rejects(
+    bootZhudaModules({}, modules, { show: 'props' }),
+    /is a Prefab; pass the scene's prefabs library/,
+  );
+  await assert.rejects(
+    bootZhudaModules({}, modules, { show: 'audio', prefabs }),
+    /Available: props, hud/,
   );
 });

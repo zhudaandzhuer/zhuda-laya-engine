@@ -146,10 +146,19 @@ file later needs no change outside this registration.
 ## Module boot contract
 
 `bootZhudaModules(context, modules, { show })` creates modules in order and
-stores each on the context. A module may provide a `showcase` (an isolated
-scene that proves it alone) and a `stub` (used when `create` throws, so one
-failing system does not hide the others). `parseZhudaRunParams` reads `seed`,
-`show`, `dt`, `shot` and `bench` from the URL so a capture can be repeated.
+stores each on the context. A module may provide a `stub` (used when `create`
+throws, so one failing system does not hide the others) and a `showcase` that
+proves it alone. `parseZhudaRunParams` reads `seed`, `show`, `dt`, `shot` and
+`bench` from the URL so a run can be repeated.
+
+The contract reuses the engine instead of adding a second path:
+
+| Parameter | Engine piece |
+| --- | --- |
+| `?dt=` | `createZhudaRunClock(params)` returns the engine's `ZhudaSimulationClock` with that step. Advance it from the runtime session, the only wall-clock source: `context.runtime.start((dt) => clock.advance(dt, step))`. |
+| `?show=` | A showcase is a function or a Prefab: `showcase: { prefab: 'yard/container', state: 'rusty' }`. Pass the scene's `ZhudaPrefabLibrary` as `prefabs` (and a `parent`), and the Prefab is instantiated alone from the same definition the scene uses. |
+| `?shot=1` | Render the still through `ZhudaCinematicCapture` or `ZhudaFilmRenderer`. |
+| `?seed=` | `createZhudaRandom(seed)`, below. |
 
 ## Seeds
 
