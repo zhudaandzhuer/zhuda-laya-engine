@@ -23,7 +23,9 @@ if (
     const query = [model ? `asset=${encodeURIComponent(args.asset)}` : '', editor.startQuery]
       .filter(Boolean)
       .join('&');
-    console.log(`[Zhuda Asset Editor] http://${args.host}:${address.port}/${query ? '?' + query : ''}`);
+    console.log(
+      `[Zhuda Asset Editor] http://${args.host}:${address.port}/${query ? '?' + query : ''}`,
+    );
     if (editor.remote)
       console.warn(
         '[Zhuda Asset Editor] --allow-remote: anyone holding this URL can reach the project. Do not share it.',

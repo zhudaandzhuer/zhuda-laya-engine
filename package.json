@@ -136,6 +136,7 @@
     "verify:next-round": "node scripts/verify-next-round.mjs",
     "verify:runtime-feedback": "node scripts/verify-runtime-feedback-browser.mjs",
     "verify:slot-foundation": "node scripts/verify-slot-foundation.mjs",
+    "verify:procedural": "node scripts/verify-procedural-draw.mjs",
     "types:generate": "node packages/compiler/runtime3d-types.mjs",
     "types:check": "node packages/compiler/runtime3d-types.mjs --check",
     "prepare": "npm run build 1>&2",

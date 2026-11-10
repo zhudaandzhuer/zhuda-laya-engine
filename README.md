@@ -209,7 +209,7 @@ official adapter and separate platform evidence.
 
 ## Procedural assets
 
-Bake seamless PBR texture sets from JSON recipes, build props from a small geometry kit with colliders and surface tags, merge a whole yard into one mesh per material, and synthesise sound effects, all deterministic and file-free. Generated assets sit behind the same `AssetProvider` boundary as downloaded ones. See [procedural assets](docs/procedural-assets.md) for the API, the starter samples in `zhuda-laya-engine/demo`, and the verification scope: the data contracts are tested in Node; a real draw of baked materials is not yet recorded.
+Bake seamless PBR texture sets from JSON recipes, build props from a small geometry kit with colliders and surface tags, merge a whole yard into one mesh per material, and synthesise sound effects, all deterministic and file-free. Generated assets sit behind the same `AssetProvider` boundary as downloaded ones. See [procedural assets](docs/procedural-assets.md) for the API, the starter samples in `zhuda-laya-engine/demo`, and the verification scope: the data contracts are tested in Node, and a desktop WebGL draw verifies normal direction and mipmaps; WebGPU and mobile are not yet recorded.
 
 ## Start here: build a real consumer
 

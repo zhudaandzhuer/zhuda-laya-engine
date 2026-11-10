@@ -23,7 +23,10 @@ const response = () => {
 
 test('editors refuse a non-loopback bind unless remote access is requested', () => {
   for (const host of ['0.0.0.0', '192.168.1.20', 'devbox.local'])
-    assert.throws(() => createEditorAccess(host), /Refusing to serve the editor on non-loopback host/);
+    assert.throws(
+      () => createEditorAccess(host),
+      /Refusing to serve the editor on non-loopback host/,
+    );
   for (const host of ['127.0.0.1', 'localhost']) {
     const access = createEditorAccess(host);
     assert.equal(access.remote, false);
@@ -39,20 +42,35 @@ test('remote editor mode needs the start key or its session cookie for every req
   const host = { host: '192.168.1.20:8891' };
   // The page that carries the API token is no longer handed to anyone who can reach the port.
   assert.throws(() => access.validate(request(host), response()), /Remote editor session required/);
-  assert.throws(() => access.validate(request(host, '/__project/assets/a.png'), response()), /session required/);
-  assert.throws(() => access.validate(request(host, `/?key=${'a'.repeat(64)}`), response()), /session required/);
   assert.throws(
-    () => access.validate(request({ ...host, cookie: `zhuda_editor=${'b'.repeat(64)}` }), response()),
+    () => access.validate(request(host, '/__project/assets/a.png'), response()),
+    /session required/,
+  );
+  assert.throws(
+    () => access.validate(request(host, `/?key=${'a'.repeat(64)}`), response()),
+    /session required/,
+  );
+  assert.throws(
+    () =>
+      access.validate(
+        request({ ...host, cookie: `zhuda_editor_8891=${'b'.repeat(64)}` }),
+        response(),
+      ),
     /session required/,
   );
 
   const first = response();
   access.validate(request(host, `/?${access.startQuery}`), first);
   const cookie = String(first.headers['Set-Cookie']);
-  assert.match(cookie, /^zhuda_editor=[a-f0-9]{64}; HttpOnly; SameSite=Strict; Path=\/$/);
+  assert.match(cookie, /^zhuda_editor_8891=[a-f0-9]{64}; HttpOnly; SameSite=Strict; Path=\/$/);
   const session = cookie.split(';')[0];
   const later = response();
-  assert.doesNotThrow(() => access.validate(request({ ...host, cookie: `theme=dark; ${session}` }, '/__editor/editor.js'), later));
+  assert.doesNotThrow(() =>
+    access.validate(
+      request({ ...host, cookie: `theme=dark; ${session}` }, '/__editor/editor.js'),
+      later,
+    ),
+  );
   assert.equal(later.headers['Set-Cookie'], undefined, 'the cookie is issued once');
   // The API still needs its own capability on top of the session.
   assert.throws(
@@ -68,7 +86,8 @@ test('remote editor mode needs the start key or its session cookie for every req
   // A specific remote bind still pins the Host name.
   const pinned = createEditorAccess('192.168.1.20', { allowRemote: true });
   assert.throws(
-    () => pinned.validate(request({ host: 'evil.example:8891' }, `/?${pinned.startQuery}`), response()),
+    () =>
+      pinned.validate(request({ host: 'evil.example:8891' }, `/?${pinned.startQuery}`), response()),
     /Invalid Host/,
   );
 });
@@ -130,7 +149,11 @@ test('a rejected download is cancelled instead of streaming on in the background
       { status: 200 },
     );
   };
-  const provider = new DirectoryAssetProvider({ baseUrl: 'https://cdn.example/a/', fetch, maxBytes: 2048 });
+  const provider = new DirectoryAssetProvider({
+    baseUrl: 'https://cdn.example/a/',
+    fetch,
+    maxBytes: 2048,
+  });
   await assert.rejects(provider.load('big.bin'), (error) => error.code === 'too-large');
   assert.equal(aborted, true, 'the request signal is aborted');
   await new Promise((resolve) => setTimeout(resolve, 20));
@@ -162,7 +185,9 @@ test('a manifest can be enforced as an allowlist', async () => {
     ],
   };
   const fetch = async (url) =>
-    new Response(new TextEncoder().encode(String(url).endsWith('known.txt') ? 'hello' : 'anything'));
+    new Response(
+      new TextEncoder().encode(String(url).endsWith('known.txt') ? 'hello' : 'anything'),
+    );
   const options = { baseUrl: 'https://cdn.example/a/', fetch, manifest };
   // Default keeps the previous behaviour.
   assert.equal((await new DirectoryAssetProvider(options).load('extra.txt')).manifest, undefined);
@@ -172,7 +197,10 @@ test('a manifest can be enforced as an allowlist', async () => {
     strict.load('extra.txt'),
     (error) => error.code === 'integrity' && /not listed in the manifest/.test(error.message),
   );
-  assert.throws(() => new DirectoryAssetProvider({ ...options, unlisted: 'warn' }), /Invalid unlisted policy/);
+  assert.throws(
+    () => new DirectoryAssetProvider({ ...options, unlisted: 'warn' }),
+    /Invalid unlisted policy/,
+  );
 });
 
 test('engine health reports only what is actually loaded', (t) => {
@@ -204,4 +232,32 @@ test('package manifest ships built entries only and builds once per pack', () =>
   assert.match(pkg.scripts.prepare, /1>&2$/, 'build output must not pollute npm pack --json');
   assert.doesNotMatch(pkg.scripts.start, /python/);
   assert.match(pkg.dependencies.typescript, /^\d+\.\d+\.\d+$/);
+});
+
+test('two remote editors on one host keep separate session cookies', () => {
+  const prefab = createEditorAccess('0.0.0.0', { allowRemote: true });
+  const model = createEditorAccess('0.0.0.0', { allowRemote: true });
+  const issue = (access, port) => {
+    const res = response();
+    access.validate(
+      request({ host: `192.168.1.20:${port}` }, `/?${access.startQuery}`, 'GET', port),
+      res,
+    );
+    return String(res.headers['Set-Cookie']).split(';')[0];
+  };
+  const prefabCookie = issue(prefab, 8891);
+  const modelCookie = issue(model, 8892);
+  assert.notEqual(prefabCookie.split('=')[0], modelCookie.split('=')[0]);
+  // The browser sends both cookies to both ports; each editor finds its own.
+  const both = `${prefabCookie}; ${modelCookie}`;
+  for (const [access, port] of [
+    [prefab, 8891],
+    [model, 8892],
+  ])
+    assert.doesNotThrow(() =>
+      access.validate(
+        request({ host: `192.168.1.20:${port}`, cookie: both }, '/__editor/editor.js', 'GET', port),
+        response(),
+      ),
+    );
 });

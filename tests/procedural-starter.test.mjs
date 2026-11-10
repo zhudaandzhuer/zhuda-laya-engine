@@ -37,7 +37,10 @@ test('starter props fit their real-world sizes and a yard merges into one mesh p
     const build = props.build(id, { seed: 1 });
     assert.ok(build.colliders.length >= 1 && build.colliders.every((c) => c.surface));
     for (const part of build.parts)
-      assert.ok(Object.hasOwn(ZHUDA_STARTER_TEXTURES, part.material), `${id}/${part.name} uses a starter texture`);
+      assert.ok(
+        Object.hasOwn(ZHUDA_STARTER_TEXTURES, part.material),
+        `${id}/${part.name} uses a starter texture`,
+      );
   }
   const random = createZhudaRandom(4207),
     placed = [];
@@ -51,7 +54,12 @@ test('starter props fit their real-world sizes and a yard merges into one mesh p
         }),
       );
   for (let i = 0; i < 10; i++)
-    placed.push(props.place('pallet', { position: [random.range(-20, -5), 0, random.range(0, 12)], yawDeg: random.range(0, 360) }));
+    placed.push(
+      props.place('pallet', {
+        position: [random.range(-20, -5), 0, random.range(0, 12)],
+        yawDeg: random.range(0, 360),
+      }),
+    );
   const batches = mergeZhudaPlacedProps(placed);
   assert.deepEqual(
     batches.map((batch) => [batch.material, batch.meshes.length]),
@@ -62,7 +70,10 @@ test('starter props fit their real-world sizes and a yard merges into one mesh p
     ],
   );
   // 34 props with 92 source parts become three draws.
-  assert.equal(placed.reduce((sum, prop) => sum + prop.parts.length, 0), 92);
+  assert.equal(
+    placed.reduce((sum, prop) => sum + prop.parts.length, 0),
+    92,
+  );
   assert.ok(placed.flatMap((prop) => prop.colliders).length >= 34);
 });
 

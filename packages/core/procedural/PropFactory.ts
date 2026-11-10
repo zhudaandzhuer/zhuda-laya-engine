@@ -6,7 +6,7 @@
  * The engine owns this mechanism. Which props exist, what they look like and
  * what a surface tag means (footsteps, impacts) stay with the consumer.
  */
-import { ZhudaDynamicMesh, type MeshData } from '../runtime3d/Surfaces.ts';
+import { ZhudaDynamicMesh, computeMeshTangents, type MeshData } from '../runtime3d/Surfaces.ts';
 import {
   computeZhudaMeshBounds,
   mergeZhudaMeshes,
@@ -203,7 +203,8 @@ export class ZhudaPropRegistry {
   }
   private require(id: string): ZhudaPropDefinition<any> {
     const definition = this.definitions.get(id);
-    if (!definition) throw Error(`Unknown prop: ${id}. Registered: ${this.ids().join(', ') || 'none'}`);
+    if (!definition)
+      throw Error(`Unknown prop: ${id}. Registered: ${this.ids().join(', ') || 'none'}`);
     return definition;
   }
   /** Local-space build. The same id, params and seed always give the same result. */
@@ -288,7 +289,12 @@ export function instantiateZhudaPropBatches(
       const material = resolveMaterial(batch.material);
       if (!material) throw Error(`No material resolved for ${batch.material}`);
       for (const data of batch.meshes) {
-        const mesh = new ZhudaDynamicMesh(data, parent);
+        // Baked materials carry a normal map, which needs a tangent frame; the
+        // geometry kit and merge produce POSITION/NORMAL/UV only.
+        const mesh = new ZhudaDynamicMesh(
+          data.tangents ? data : { ...data, tangents: computeMeshTangents(data) },
+          parent,
+        );
         meshes.push(mesh);
         mesh.node.meshRenderer.sharedMaterial = material;
       }

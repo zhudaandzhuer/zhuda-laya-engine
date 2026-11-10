@@ -87,7 +87,8 @@ export interface ZhudaBakedTextureSet {
 }
 
 const ID = /^[a-z0-9][a-z0-9_.-]{0,63}$/;
-const finite = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value);
+const finite = (value: unknown): value is number =>
+  typeof value === 'number' && Number.isFinite(value);
 const unit = (value: unknown): value is number => finite(value) && value >= 0 && value <= 1;
 const wholeIn = (value: unknown, min: number, max: number): value is number =>
   Number.isInteger(value) && (value as number) >= min && (value as number) <= max;
@@ -149,8 +150,7 @@ function validateMask(mask: unknown, path: string, issues: string[]): void {
   }
 }
 
-const colorOk = (value: unknown) =>
-  Array.isArray(value) && value.length === 3 && value.every(unit);
+const colorOk = (value: unknown) => Array.isArray(value) && value.length === 3 && value.every(unit);
 
 /** Returns every problem found; an empty list means the recipe can be baked. */
 export function validateZhudaTextureRecipe(recipe: unknown): string[] {
@@ -311,7 +311,8 @@ export function bakeZhudaTextureSet(
       for (let k = 0; k < layers.length; k++) {
         const layer = layers[k];
         let amount = evaluateZhudaTextureMask(layer.mask, u, v, seed + k * 101);
-        if (layer.within) amount *= evaluateZhudaTextureMask(layer.within, u, v, seed + k * 101 + 53);
+        if (layer.within)
+          amount *= evaluateZhudaTextureMask(layer.within, u, v, seed + k * 101 + 53);
         amount *= layer.opacity ?? 1;
         if (amount <= 0) continue;
         if (layer.color) {

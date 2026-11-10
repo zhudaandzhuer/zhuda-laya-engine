@@ -50,7 +50,9 @@ export const MCP_TOOLS_MANIFEST = [
       'Validate a procedural PBR texture recipe (base surface plus seamless mask layers) and list every problem. Configuration only; no baking, rendering or visual approval.',
     inputSchema: {
       type: 'object',
-      properties: { recipe: { type: 'object', description: 'ZhudaTextureRecipe, schemaVersion 1' } },
+      properties: {
+        recipe: { type: 'object', description: 'ZhudaTextureRecipe, schemaVersion 1' },
+      },
       required: ['recipe'],
     },
   },
@@ -328,11 +330,21 @@ export function executeMcpTool(toolName, args = {}) {
   switch (toolName) {
     case 'validate_texture_recipe': {
       const issues = validateZhudaTextureRecipe(args.recipe);
-      return { tool: toolName, passed: issues.length === 0, issues, rendering: 'requires-real-draw' };
+      return {
+        tool: toolName,
+        passed: issues.length === 0,
+        issues,
+        rendering: 'requires-real-draw',
+      };
     }
     case 'validate_synth_recipe': {
       const issues = validateZhudaSynthRecipe(args.recipe);
-      return { tool: toolName, passed: issues.length === 0, issues, listening: 'requires-playback' };
+      return {
+        tool: toolName,
+        passed: issues.length === 0,
+        issues,
+        listening: 'requires-playback',
+      };
     }
     case 'get_cinematic_contract':
       return {

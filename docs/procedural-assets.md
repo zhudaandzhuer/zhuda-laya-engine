@@ -94,7 +94,10 @@ Pure functions that return the engine's `MeshData`:
 `createZhudaTubeMesh`, `createZhudaRodMesh`, `createZhudaIBeamMesh`,
 `transformZhudaMesh`, `mergeZhudaMeshes`, `computeZhudaMeshBounds`.
 
-Units are metres and UVs are metres. Triangles follow the same front-face
+Units are metres and UVs are metres. Baked materials are normal-mapped and
+need a tangent frame: `instantiateZhudaPropBatches` adds tangents itself; for
+your own `MeshData` pass `tangents: computeMeshTangents(data)` before creating a
+`ZhudaDynamicMesh`, otherwise the relief does not show. Triangles follow the same front-face
 winding as the terrain meshes. `mergeZhudaMeshes` splits its output at 65,535
 vertices so each chunk fits one `ZhudaDynamicMesh`.
 
@@ -163,10 +166,16 @@ bounds, prop validation and placement, collider slicing, merging, WAV
 structure, provider limits and cancellation, and the boot contract. The
 renderer hand-off is tested against a stand-in for the Laya classes.
 
-Not yet verified: a real WebGL or WebGPU draw of a baked material or a merged
-prop batch, the look of any starter recipe, mip and tiling behaviour on a
-device, and performance of runtime baking on mobile hardware. Treat those as
-open until a browser run records them.
+Real WebGL draw (desktop Chrome, Apple M4 / ANGLE Metal, 2026-11-10): a
+starter yard (7 props merged into 4 batches plus ground) renders without
+errors; 512 maps upload with 10 mip levels. A flat normal-mapped panel and real
+geometry with the same relief correlate at 0.986 (U / red) and 0.998
+(V / green) under the same light, so the `directx` packing is decoded with the
+right signs; without the normal map the panel is flat. This run found and fixed
+missing tangents on prop batches.
+
+Not yet verified: WebGPU, mobile devices, runtime baking cost on mobile
+hardware, and the art quality of the starter recipes (they are samples).
 
 ## Limits
 

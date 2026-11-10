@@ -147,7 +147,13 @@ const container20: ZhudaPropDefinition<{ paint: string }> = {
       for (const sz of [-1, 1])
         posts.push(
           transformZhudaMesh(
-            createZhudaBoxMesh({ width: 0.16, height: h, depth: 0.16, origin: 'bottom', bevel: 0.01 }),
+            createZhudaBoxMesh({
+              width: 0.16,
+              height: h,
+              depth: 0.16,
+              origin: 'bottom',
+              bevel: 0.01,
+            }),
             { position: [sx * (w / 2 - 0.08), 0, sz * (d / 2 - 0.08)] },
           ),
         );
@@ -228,13 +234,25 @@ const barrier: ZhudaPropDefinition<Record<string, never>> = {
         {
           name: 'foot',
           material: 'concrete',
-          mesh: createZhudaBoxMesh({ width: 3, height: 0.25, depth: 0.6, origin: 'bottom', bevel: 0.02 }),
+          mesh: createZhudaBoxMesh({
+            width: 3,
+            height: 0.25,
+            depth: 0.6,
+            origin: 'bottom',
+            bevel: 0.02,
+          }),
         },
         {
           name: 'stem',
           material: 'concrete',
           mesh: transformZhudaMesh(
-            createZhudaBoxMesh({ width: 3, height: 0.56, depth: 0.24, origin: 'bottom', bevel: 0.02 }),
+            createZhudaBoxMesh({
+              width: 3,
+              height: 0.56,
+              depth: 0.24,
+              origin: 'bottom',
+              bevel: 0.02,
+            }),
             { position: [0, 0.25, 0] },
           ),
         },

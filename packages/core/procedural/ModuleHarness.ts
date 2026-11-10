@@ -22,7 +22,11 @@ export interface ZhudaRunParams {
 
 export function parseZhudaRunParams(search = '', hash = ''): ZhudaRunParams {
   const raw: Record<string, string> = {};
-  for (const [key, value] of new URLSearchParams(search)) raw[key] = value;
+  // forEach, not for…of: URLSearchParams iteration needs lib DOM.Iterable,
+  // which consumers on TypeScript 5.x may not enable.
+  new URLSearchParams(search).forEach((value, key) => {
+    raw[key] = value;
+  });
   const seed = raw.seed === undefined ? 1 : Number(raw.seed);
   if (!Number.isInteger(seed) || seed < 0 || seed > 0x7fffffff)
     throw Error('seed must be a non-negative integer');
@@ -32,7 +36,8 @@ export function parseZhudaRunParams(search = '', hash = ''): ZhudaRunParams {
     if (!Number.isFinite(fixedDt) || fixedDt <= 0 || fixedDt > 1)
       throw Error('dt must be a step in seconds above 0 and at most 1');
   }
-  const on = (value: string | undefined) => value !== undefined && value !== '0' && value !== 'false';
+  const on = (value: string | undefined) =>
+    value !== undefined && value !== '0' && value !== 'false';
   return {
     seed,
     show: raw.show || undefined,
@@ -71,7 +76,10 @@ const now = () => (typeof performance !== 'undefined' ? performance.now() : Date
 export async function bootZhudaModules<C extends Record<string, unknown>>(
   context: C,
   modules: Record<string, ZhudaGameModule<C>>,
-  options: { show?: string; onProgress?: (module: string, index: number, total: number) => void } = {},
+  options: {
+    show?: string;
+    onProgress?: (module: string, index: number, total: number) => void;
+  } = {},
 ): Promise<ZhudaBootReport> {
   const names = Object.keys(modules),
     report: ZhudaBootReport = { modules: {}, errors: [], ms: {} };

@@ -59,7 +59,10 @@ class MeshWriter {
   }
   /** Adds one triangle, ordering it for the engine winding relative to `outward`. */
   triangle(a: number, b: number, c: number, outward: ZhudaVec3): void {
-    const facing = dot(cross(sub(this.point(b), this.point(a)), sub(this.point(c), this.point(a))), outward);
+    const facing = dot(
+      cross(sub(this.point(b), this.point(a)), sub(this.point(c), this.point(a))),
+      outward,
+    );
     if (facing > 0) this.indices.push(a, c, b);
     else this.indices.push(a, b, c);
   }
@@ -264,9 +267,7 @@ export function createZhudaTubeMesh(options: ZhudaTubeOptions): MeshData {
   if (caps)
     for (const end of [0, path.length - 1]) {
       const outward: ZhudaVec3 =
-          end === 0
-            ? [-tangents[0][0], -tangents[0][1], -tangents[0][2]]
-            : tangents[end],
+          end === 0 ? [-tangents[0][0], -tangents[0][1], -tangents[0][2]] : tangents[end],
         centre = writer.vertex(path[end], outward, 0, 0),
         rim: number[] = [];
       for (let s = 0; s <= sides; s++) {
@@ -330,9 +331,12 @@ export function createZhudaIBeamMesh(options: ZhudaIBeamOptions): MeshData {
   if (flange * 2 >= depth) throw Error('flangeThickness must be less than half the depth');
   if (web > width) throw Error('webThickness cannot exceed the flange width');
   if (axis !== 'x' && axis !== 'y' && axis !== 'z') throw Error('axis must be x, y or z');
-  const top = transformZhudaMesh(createZhudaBoxMesh({ width: length, height: flange, depth: width }), {
-      position: [0, depth / 2 - flange / 2, 0],
-    }),
+  const top = transformZhudaMesh(
+      createZhudaBoxMesh({ width: length, height: flange, depth: width }),
+      {
+        position: [0, depth / 2 - flange / 2, 0],
+      },
+    ),
     bottom = transformZhudaMesh(
       createZhudaBoxMesh({ width: length, height: flange, depth: width }),
       { position: [0, -depth / 2 + flange / 2, 0] },
@@ -382,7 +386,13 @@ export function transformZhudaMesh(data: MeshData, transform: ZhudaMeshTransform
     sy * sz + cy * sx * cz,
     cy * cx,
   ];
-  const rotate = (source: Float32Array, i: number, k: number, target: Float32Array, add: number[]) => {
+  const rotate = (
+    source: Float32Array,
+    i: number,
+    k: number,
+    target: Float32Array,
+    add: number[],
+  ) => {
     const x = source[i] * k,
       y = source[i + 1] * k,
       z = source[i + 2] * k;

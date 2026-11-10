@@ -89,7 +89,10 @@ test('random streams are deterministic, bounded and forkable without disturbing 
     Array.from({ length: 64 }, () => b.next()),
   );
   assert.ok(first.every((v) => v >= 0 && v < 1));
-  assert.notDeepEqual(first.slice(0, 8), Array.from({ length: 8 }, () => createZhudaRandom(4208).next()));
+  assert.notDeepEqual(
+    first.slice(0, 8),
+    Array.from({ length: 8 }, () => createZhudaRandom(4208).next()),
+  );
 
   const parent = createZhudaRandom(9),
     child = parent.fork('props').next();
@@ -123,8 +126,14 @@ test('noise is stable, in range and exactly periodic on integer lattices', () =>
     const g = gradientNoise(u * 8, v * 8, 8, 8, 3);
     min = Math.min(min, g);
     max = Math.max(max, g);
-    assert.ok(near(g, gradientNoise((u + 1) * 8, v * 8, 8, 8, 3), 1e-9), 'gradient noise wraps in u');
-    assert.ok(near(g, gradientNoise(u * 8, (v - 1) * 8, 8, 8, 3), 1e-9), 'gradient noise wraps in v');
+    assert.ok(
+      near(g, gradientNoise((u + 1) * 8, v * 8, 8, 8, 3), 1e-9),
+      'gradient noise wraps in u',
+    );
+    assert.ok(
+      near(g, gradientNoise(u * 8, (v - 1) * 8, 8, 8, 3), 1e-9),
+      'gradient noise wraps in v',
+    );
     const f = fractalNoise(u, v, 3, 5, 5, 11);
     assert.ok(f >= 0 && f <= 1);
     assert.ok(near(f, fractalNoise(u + 1, v + 1, 3, 5, 5, 11), 1e-9), 'fractal noise wraps');
@@ -174,9 +183,15 @@ test('texture recipes are validated with every problem listed', () => {
       issues.some((issue) => issue.startsWith(expected)),
       `missing issue ${expected} in ${JSON.stringify(issues)}`,
     );
-  assert.throws(() => bakeZhudaTextureSet({ ...paintedSteel, id: 'X' }), /Invalid texture recipe: id/);
+  assert.throws(
+    () => bakeZhudaTextureSet({ ...paintedSteel, id: 'X' }),
+    /Invalid texture recipe: id/,
+  );
   assert.throws(() => bakeZhudaTextureSet(paintedSteel, { size: 100 }), /power of two/);
-  assert.throws(() => bakeZhudaTextureSet(paintedSteel, { normalConvention: 'unity' }), /directx or opengl/);
+  assert.throws(
+    () => bakeZhudaTextureSet(paintedSteel, { normalConvention: 'unity' }),
+    /directx or opengl/,
+  );
 });
 
 test('every mask type stays in 0..1 and repeats with period one', () => {
@@ -193,7 +208,7 @@ test('every mask type stays in 0..1 and repeats with period one', () => {
   for (const mask of masks)
     for (let i = 0; i < 300; i++) {
       const u = (i * 0.754877) % 1,
-        v = (i * 0.569840) % 1,
+        v = (i * 0.56984) % 1,
         value = evaluateZhudaTextureMask(mask, u, v, 13);
       assert.ok(value >= 0 && value <= 1, `${mask.type} out of range: ${value}`);
       assert.ok(
@@ -264,7 +279,11 @@ test('a known slope gives the documented normal direction and channel packing', 
   assert.equal(dx.albedo[0], 188);
 
   // Convention flip: a ridge across v changes green in opposite directions.
-  const acrossV = { ...ridge, id: 'ridge-v', layers: [{ mask: { type: 'stripes', axis: 'v', count: 1 }, heightMm: 100 }] };
+  const acrossV = {
+    ...ridge,
+    id: 'ridge-v',
+    layers: [{ mask: { type: 'stripes', axis: 'v', count: 1 }, heightMm: 100 }],
+  };
   const glV = bakeZhudaTextureSet(acrossV, { size: 32, normalConvention: 'opengl' }),
     dxV = bakeZhudaTextureSet(acrossV, { size: 32, normalConvention: 'directx' });
   const o = (8 * 32 + 16) * 4 + 1;
@@ -295,11 +314,16 @@ test('boxes have metre UVs, exact bounds, optional bevels and engine winding', (
   const bb = computeZhudaMeshBounds(bevel);
   assert.ok(near(bb.min[0], -0.5, 1e-6) && near(bb.max[1], 0.5, 1e-6));
   for (let i = 0; i < bevel.normals.length; i += 3)
-    assert.ok(near(Math.hypot(bevel.normals[i], bevel.normals[i + 1], bevel.normals[i + 2]), 1, 1e-5));
+    assert.ok(
+      near(Math.hypot(bevel.normals[i], bevel.normals[i + 1], bevel.normals[i + 2]), 1, 1e-5),
+    );
 
   assert.throws(() => createZhudaBoxMesh({ width: 0, height: 1, depth: 1 }), /width/);
   assert.throws(() => createZhudaBoxMesh({ width: 1, height: 1, depth: 1, bevel: 0.5 }), /bevel/);
-  assert.throws(() => createZhudaBoxMesh({ width: 1, height: 1, depth: 1, origin: 'top' }), /origin/);
+  assert.throws(
+    () => createZhudaBoxMesh({ width: 1, height: 1, depth: 1, origin: 'top' }),
+    /origin/,
+  );
 });
 
 test('tubes, rods and I-beams are closed, correctly wound and sized', () => {
@@ -351,7 +375,13 @@ test('tubes, rods and I-beams are closed, correctly wound and sized', () => {
   );
   assert.throws(
     () =>
-      createZhudaIBeamMesh({ length: 1, depth: 0.1, width: 0.1, flangeThickness: 0.06, webThickness: 0.01 }),
+      createZhudaIBeamMesh({
+        length: 1,
+        depth: 0.1,
+        width: 0.1,
+        flangeThickness: 0.06,
+        webThickness: 0.01,
+      }),
     /flangeThickness/,
   );
 });
@@ -367,7 +397,9 @@ test('transform keeps winding and merge keeps every triangle within the vertex l
   assert.notEqual(moved.positions, box.positions, 'transform returns a copy');
   assert.throws(() => transformZhudaMesh(box, { scale: -1 }), /scale/);
 
-  const parts = Array.from({ length: 10 }, (_, i) => transformZhudaMesh(box, { position: [i * 3, 0, 0] }));
+  const parts = Array.from({ length: 10 }, (_, i) =>
+    transformZhudaMesh(box, { position: [i * 3, 0, 0] }),
+  );
   const one = mergeZhudaMeshes(parts);
   assert.equal(one.length, 1);
   assert.equal(one[0].positions.length / 3, 240);
@@ -394,12 +426,23 @@ function containerProp() {
           {
             name: 'body',
             material: params.paint,
-            mesh: createZhudaBoxMesh({ width: 6.06, height: 2.59, depth: 2.44, origin: 'bottom', bevel: 0.03 }),
+            mesh: createZhudaBoxMesh({
+              width: 6.06,
+              height: 2.59,
+              depth: 2.44,
+              origin: 'bottom',
+              bevel: 0.03,
+            }),
           },
           {
             name: 'lock-bar',
             material: 'steel_galv',
-            mesh: createZhudaRodMesh([3.04, 0.2, random.range(-0.6, -0.4)], [3.04, 2.4, -0.5], 0.02, 6),
+            mesh: createZhudaRodMesh(
+              [3.04, 0.2, random.range(-0.6, -0.4)],
+              [3.04, 2.4, -0.5],
+              0.02,
+              6,
+            ),
           },
         ],
         colliders: [{ min: [-3.03, 0, -1.22], max: [3.03, 2.59, 1.22], surface: 'metal' }],
@@ -418,22 +461,37 @@ test('prop registry builds reproducible props and rejects mis-sized or malformed
     c = props.build('container20', { seed: 4 });
   assert.deepEqual([...a.parts[1].mesh.positions], [...b.parts[1].mesh.positions]);
   assert.notDeepEqual([...a.parts[1].mesh.positions], [...c.parts[1].mesh.positions]);
-  assert.equal(props.build('container20', { params: { paint: 'paint_blue' } }).parts[0].material, 'paint_blue');
-  assert.throws(() => props.build('container20', { params: { colour: 'x' } }), /unknown parameter colour/);
+  assert.equal(
+    props.build('container20', { params: { paint: 'paint_blue' } }).parts[0].material,
+    'paint_blue',
+  );
+  assert.throws(
+    () => props.build('container20', { params: { colour: 'x' } }),
+    /unknown parameter colour/,
+  );
   assert.throws(() => props.build('crate'), /Unknown prop: crate. Registered: container20/);
   assert.throws(() => props.register(containerProp()), /Duplicate prop id/);
-  assert.throws(() => new ZhudaPropRegistry().register({ ...containerProp(), id: 'Bad Id' }), /Prop id/);
+  assert.throws(
+    () => new ZhudaPropRegistry().register({ ...containerProp(), id: 'Bad Id' }),
+    /Prop id/,
+  );
 
   const oversized = new ZhudaPropRegistry().register({
     ...containerProp(),
     id: 'wrong-scale',
     size: [0.6, 0.26, 0.24],
   });
-  assert.throws(() => oversized.build('wrong-scale'), /leaves the declared 0.6 x 0.26 x 0.24 m size/);
+  assert.throws(
+    () => oversized.build('wrong-scale'),
+    /leaves the declared 0.6 x 0.26 x 0.24 m size/,
+  );
   const noSurface = new ZhudaPropRegistry().register({
     ...containerProp(),
     id: 'no-surface',
-    build: () => ({ ...containerProp().build({ paint: 'p' }, createZhudaRandom(1)), colliders: [{ min: [0, 0, 0], max: [1, 1, 1] }] }),
+    build: () => ({
+      ...containerProp().build({ paint: 'p' }, createZhudaRandom(1)),
+      colliders: [{ min: [0, 0, 0], max: [1, 1, 1] }],
+    }),
   });
   assert.throws(() => noSurface.build('no-surface'), /surface tag/);
 });
@@ -449,7 +507,10 @@ test('placement moves parts, sockets and colliders; oblique boxes are sliced', (
   assert.ok(near(box.min[1], 0) && near(box.max[1], 2.59, 1e-6) && box.surface === 'metal');
   assert.ok(near(straight.sockets.roof[0], 10) && near(straight.sockets.roof[1], 2.59, 1e-6));
   const world = computeZhudaMeshBounds(straight.parts[0].mesh);
-  assert.ok(near((world.min[0] + world.max[0]) / 2, 10, 1e-4) && near((world.min[2] + world.max[2]) / 2, 5, 1e-4));
+  assert.ok(
+    near((world.min[0] + world.max[0]) / 2, 10, 1e-4) &&
+      near((world.min[2] + world.max[2]) / 2, 5, 1e-4),
+  );
 
   const oblique = rotateZhudaCollider(
     { min: [-3, 0, -1], max: [3, 2, 1], surface: 'metal' },
@@ -458,16 +519,20 @@ test('placement moves parts, sockets and colliders; oblique boxes are sliced', (
   );
   assert.equal(oblique.length, 3, 'a 6 x 2 box at 30 degrees becomes three slices');
   const area = (c) => (c.max[0] - c.min[0]) * (c.max[2] - c.min[2]);
-  const single = rotateZhudaCollider({ min: [-3, 0, -1], max: [3, 2, 1], surface: 'metal' }, 30, [0, 0, 0]).reduce(
-    (sum, c) => sum + area(c),
-    0,
-  );
+  const single = rotateZhudaCollider(
+    { min: [-3, 0, -1], max: [3, 2, 1], surface: 'metal' },
+    30,
+    [0, 0, 0],
+  ).reduce((sum, c) => sum + area(c), 0);
   // One bounding box of the same rotated footprint would cover far more ground.
   const c = Math.cos(Math.PI / 6),
     s = Math.sin(Math.PI / 6),
     loose = (6 * c + 2 * s) * (6 * s + 2 * c);
   assert.ok(single < loose * 0.8, `sliced area ${single} vs single box ${loose}`);
-  assert.equal(props.place('container20', { position: [0, 0, 0], instance: 'gate-left' }).instance, 'gate-left');
+  assert.equal(
+    props.place('container20', { position: [0, 0, 0], instance: 'gate-left' }).instance,
+    'gate-left',
+  );
   assert.throws(() => props.place('container20', { position: [0, 0] }), /position required/);
 });
 
@@ -578,10 +643,19 @@ test('renderer hand-off binds baked maps and merged meshes through the existing 
   assert.equal(surface.material.metallicGlossTexture, surface.textures[2]);
   assert.equal(surface.material.smoothness, 1, 'the gloss map is not scaled down');
   assert.deepEqual(surface.material.albedoColor.rgba, [0.2, 0.4, 1, 1]);
-  assert.ok(near(surface.material.tilingOffset.v[0], 1 / 0.762) && near(surface.material.tilingOffset.v[1], 1 / 2.286));
-  assert.equal(createZhudaProceduralMaterial(set, { uvUnit: 'tile', mipmap: false }).textures[0].mipmap, false);
+  assert.ok(
+    near(surface.material.tilingOffset.v[0], 1 / 0.762) &&
+      near(surface.material.tilingOffset.v[1], 1 / 2.286),
+  );
+  assert.equal(
+    createZhudaProceduralMaterial(set, { uvUnit: 'tile', mipmap: false }).textures[0].mipmap,
+    false,
+  );
   assert.throws(
-    () => createZhudaProceduralMaterial(bakeZhudaTextureSet(paintedSteel, { size: 32, normalConvention: 'opengl' })),
+    () =>
+      createZhudaProceduralMaterial(
+        bakeZhudaTextureSet(paintedSteel, { size: 32, normalConvention: 'opengl' }),
+      ),
     /directx/,
   );
   destroyed.length = 0;
@@ -601,10 +675,20 @@ test('renderer hand-off binds baked maps and merged meshes through the existing 
     scene.meshes.map((mesh) => mesh.node.meshRenderer.sharedMaterial.name),
     ['red', 'galv'],
   );
-  assert.equal(created[0].declaration, 'POSITION,NORMAL,UV');
+  // Baked materials are normal-mapped, so every batch mesh needs a tangent frame;
+  // without TANGENT the normal map has no effect on a real GPU.
+  assert.equal(created[0].declaration, 'POSITION,NORMAL,UV,TANGENT');
+  assert.ok(scene.meshes.every((mesh) => mesh.stride === 12 && mesh.data.tangents?.length));
   destroyed.length = 0;
-  assert.throws(() => instantiateZhudaPropBatches(batches, (name) => (name === 'paint_red' ? {} : null)), /No material resolved for steel_galv/);
-  assert.deepEqual(destroyed, ['node', 'mesh'], 'a failed hand-off releases what it already created');
+  assert.throws(
+    () => instantiateZhudaPropBatches(batches, (name) => (name === 'paint_red' ? {} : null)),
+    /No material resolved for steel_galv/,
+  );
+  assert.deepEqual(
+    destroyed,
+    ['node', 'mesh'],
+    'a failed hand-off releases what it already created',
+  );
   scene.dispose();
 });
 
@@ -616,8 +700,22 @@ const impact = {
   seed: 5,
   layers: [
     { type: 'noise', color: 'white', gain: 1, envelope: { releaseSec: 0.04 }, highpassHz: 1200 },
-    { type: 'tone', wave: 'sine', frequencyHz: 880, endFrequencyHz: 640, gain: 0.6, envelope: { attackSec: 0.002, releaseSec: 0.2 } },
-    { type: 'noise', color: 'brown', gain: 0.3, envelope: { releaseSec: 0.1 }, lowpassHz: 400, startSec: 0.01 },
+    {
+      type: 'tone',
+      wave: 'sine',
+      frequencyHz: 880,
+      endFrequencyHz: 640,
+      gain: 0.6,
+      envelope: { attackSec: 0.002, releaseSec: 0.2 },
+    },
+    {
+      type: 'noise',
+      color: 'brown',
+      gain: 0.3,
+      envelope: { releaseSec: 0.1 },
+      lowpassHz: 400,
+      startSec: 0.01,
+    },
   ],
 };
 
@@ -661,8 +759,18 @@ test('synth recipes render deterministic, normalised audio and a valid WAV', () 
       { type: 'hum', gain: 1, envelope: { releaseSec: 1 } },
     ],
   });
-  for (const expected of ['durationSec', 'sampleRate', 'layers[0].gain', 'layers[0].envelope.releaseSec', 'layers[0].frequencyHz', 'layers[1].type'])
-    assert.ok(issues.some((issue) => issue.startsWith(expected)), `missing ${expected}`);
+  for (const expected of [
+    'durationSec',
+    'sampleRate',
+    'layers[0].gain',
+    'layers[0].envelope.releaseSec',
+    'layers[0].frequencyHz',
+    'layers[1].type',
+  ])
+    assert.ok(
+      issues.some((issue) => issue.startsWith(expected)),
+      `missing ${expected}`,
+    );
   assert.throws(() => renderZhudaSynth({ ...impact, layers: [] }), /Invalid synth recipe: layers/);
 });
 
@@ -684,28 +792,49 @@ test('procedural provider serves generated bytes, honours limits and delegates t
   assert.throws(() => provider.register('../escape', () => new Uint8Array(1)), /Invalid asset id/);
 
   const phases = [];
-  const loaded = await provider.load('audio/impact.wav', { onProgress: (p) => phases.push(p.phase) });
+  const loaded = await provider.load('audio/impact.wav', {
+    onProgress: (p) => phases.push(p.phase),
+  });
   assert.equal(loaded.id, 'audio/impact.wav');
   assert.equal(loaded.manifest.kind, 'audio');
   assert.equal(loaded.manifest.bytes, loaded.bytes.byteLength);
   assert.deepEqual(phases, ['downloading', 'ready']);
-  assert.deepEqual((await provider.getManifest()).entries.map((entry) => entry.id), ['audio/impact.wav', 'bad.bin', 'big.bin']);
+  assert.deepEqual(
+    (await provider.getManifest()).entries.map((entry) => entry.id),
+    ['audio/impact.wav', 'bad.bin', 'big.bin'],
+  );
 
-  await assert.rejects(provider.load('big.bin'), (error) => error instanceof AssetProviderError && error.code === 'too-large');
+  await assert.rejects(
+    provider.load('big.bin'),
+    (error) => error instanceof AssetProviderError && error.code === 'too-large',
+  );
   await assert.rejects(provider.load('bad.bin'), (error) => error.code === 'integrity');
   const controller = new AbortController();
   controller.abort();
-  await assert.rejects(provider.load('audio/impact.wav', { signal: controller.signal }), (error) => error.code === 'aborted');
+  await assert.rejects(
+    provider.load('audio/impact.wav', { signal: controller.signal }),
+    (error) => error.code === 'aborted',
+  );
 
   assert.deepEqual([...(await provider.load('textures/logo.png')).bytes], [9]);
   assert.deepEqual(calls, ['textures/logo.png']);
-  await assert.rejects(new ProceduralAssetProvider().load('missing.bin'), (error) => error.code === 'http' && error.status === 404);
+  await assert.rejects(
+    new ProceduralAssetProvider().load('missing.bin'),
+    (error) => error.code === 'http' && error.status === 404,
+  );
   provider.dispose();
   await assert.rejects(provider.load('audio/impact.wav'), (error) => error.code === 'disposed');
 });
 
 test('run parameters and module boot give isolated showcases and stub fallbacks', async () => {
-  assert.deepEqual(parseZhudaRunParams(''), { seed: 1, show: undefined, fixedDt: undefined, shot: false, bench: false, raw: {} });
+  assert.deepEqual(parseZhudaRunParams(''), {
+    seed: 1,
+    show: undefined,
+    fixedDt: undefined,
+    shot: false,
+    bench: false,
+    raw: {},
+  });
   const params = parseZhudaRunParams('?seed=4207&show=mats&dt=0.016&shot=1', '#bench');
   assert.equal(params.seed, 4207);
   assert.equal(params.show, 'mats');
@@ -732,7 +861,12 @@ test('run parameters and module boot give isolated showcases and stub fallbacks'
   };
   const full = {};
   const report = await bootZhudaModules(full, modules);
-  assert.deepEqual(report.modules, { render: 'ready', mats: 'ready', audio: 'stub', level: 'ready' });
+  assert.deepEqual(report.modules, {
+    render: 'ready',
+    mats: 'ready',
+    audio: 'stub',
+    level: 'ready',
+  });
   assert.deepEqual(report.errors, [{ module: 'audio', message: 'no device' }]);
   assert.deepEqual(full.audio, { stub: true });
   assert.equal(full.mats.uses, full.render);
@@ -741,14 +875,31 @@ test('run parameters and module boot give isolated showcases and stub fallbacks'
 
   const isolated = {};
   const shown = await bootZhudaModules(isolated, modules, { show: 'mats' });
-  assert.deepEqual(shown.modules, { render: 'ready', mats: 'ready', audio: 'skipped', level: 'skipped' });
+  assert.deepEqual(shown.modules, {
+    render: 'ready',
+    mats: 'ready',
+    audio: 'skipped',
+    level: 'skipped',
+  });
   assert.equal(shown.showcase, 'mats');
   assert.deepEqual(shown.showcaseResult, { camera: [0, 1, 2], sawMats: true });
   assert.equal('level' in isolated, false);
 
-  await assert.rejects(bootZhudaModules({}, modules, { show: 'audio' }), /Unknown showcase "audio". Available: mats, level/);
   await assert.rejects(
-    bootZhudaModules({}, { render: { create: () => { throw Error('lost context'); } } }),
+    bootZhudaModules({}, modules, { show: 'audio' }),
+    /Unknown showcase "audio". Available: mats, level/,
+  );
+  await assert.rejects(
+    bootZhudaModules(
+      {},
+      {
+        render: {
+          create: () => {
+            throw Error('lost context');
+          },
+        },
+      },
+    ),
     /Module "render" failed and has no stub: lost context/,
   );
 });

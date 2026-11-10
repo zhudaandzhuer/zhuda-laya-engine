@@ -106,16 +106,16 @@ export function createEditorAccess(host, { allowRemote = false } = {}) {
       const url = new URL(request.url || '/', authority.origin);
       if (url.origin !== authority.origin) throw fail(403, 'Foreign request target');
       if (session) {
-        const cookie = /(?:^|;\s*)zhuda_editor=([a-f0-9]{64})(?:;|$)/.exec(
+        // Cookies are shared by every port on a host, so the name carries the
+        // port: two remote editors on one machine keep separate sessions.
+        const name = `zhuda_editor_${request.socket.localPort}`;
+        const cookie = new RegExp(`(?:^|;\\s*)${name}=([a-f0-9]{64})(?:;|$)`).exec(
           String(request.headers.cookie || ''),
         )?.[1];
         if (!matches(cookie)) {
           if (!matches(url.searchParams.get('key')))
             throw fail(403, 'Remote editor session required; open the URL printed at startup');
-          response.setHeader(
-            'Set-Cookie',
-            `zhuda_editor=${session}; HttpOnly; SameSite=Strict; Path=/`,
-          );
+          response.setHeader('Set-Cookie', `${name}=${session}; HttpOnly; SameSite=Strict; Path=/`);
         }
       }
       if (!['GET', 'HEAD', 'POST'].includes(request.method)) throw fail(405, 'Unsupported method');

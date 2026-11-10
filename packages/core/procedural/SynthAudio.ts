@@ -45,7 +45,8 @@ export interface ZhudaSynthRecipe {
 
 const ID = /^[a-z0-9][a-z0-9_.-]{0,63}$/;
 const RATES = [8000, 11025, 16000, 22050, 32000, 44100, 48000];
-const finite = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value);
+const finite = (value: unknown): value is number =>
+  typeof value === 'number' && Number.isFinite(value);
 const within = (value: unknown, min: number, max: number): value is number =>
   finite(value) && value >= min && value <= max;
 
@@ -149,7 +150,8 @@ export function renderZhudaSynth(recipe: ZhudaSynthRecipe): {
       } else {
         const progress = count - start > 1 ? (n - start) / (count - start - 1) : 0,
           frequency =
-            layer.frequencyHz + ((layer.endFrequencyHz ?? layer.frequencyHz) - layer.frequencyHz) * progress;
+            layer.frequencyHz +
+            ((layer.endFrequencyHz ?? layer.frequencyHz) - layer.frequencyHz) * progress;
         phase += frequency / sampleRate;
         phase -= Math.floor(phase);
         x =
@@ -166,7 +168,11 @@ export function renderZhudaSynth(recipe: ZhudaSynthRecipe): {
       low += lowpass * (x - low);
       high += highpass * (low - high);
       const level =
-        t < attack ? t / attack : t < attack + hold ? 1 : Math.exp((-4.6 * (t - attack - hold)) / release);
+        t < attack
+          ? t / attack
+          : t < attack + hold
+            ? 1
+            : Math.exp((-4.6 * (t - attack - hold)) / release);
       samples[n] += (low - high) * level * layer.gain;
     }
   });

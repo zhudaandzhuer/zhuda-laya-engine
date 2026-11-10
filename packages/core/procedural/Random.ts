@@ -62,7 +62,9 @@ export function createZhudaRandom(seed: number): ZhudaRandom {
       return items[Math.floor(next() * items.length)];
     },
     fork(label) {
-      return createZhudaRandom(mixLabel(initial, label === undefined ? `#${forks++}` : String(label)));
+      return createZhudaRandom(
+        mixLabel(initial, label === undefined ? `#${forks++}` : String(label)),
+      );
     },
   };
 }
