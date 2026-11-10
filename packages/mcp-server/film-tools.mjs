@@ -29,7 +29,7 @@ export const FILM_TOOLS_MANIFEST = [
   {
     name: 'film_scene_create',
     description:
-      'Create a film scene session from a ZhudaFilmScene (schemaVersion 1): camera; look (preset day/dawn/dusk/night/overcast, then sky, ambient, sun, shadows, atmosphere, fog overrides); materials (recipe, or flat colour with optional emission); nodes (prop, box, ground, light point/spot, up to 32 lights). Returns the session id, revision 0 and the props/recipes this host can build, including operator packs. Data only; no code runs.',
+      'Create a film scene session from a ZhudaFilmScene (schemaVersion 1): camera; look (preset day/dawn/dusk/night/overcast, then sky, ambient, sun, shadows, atmosphere, fog overrides, and grade for HDR tone mapping, bloom and ambient occlusion); materials (recipe, or flat colour with optional emission); nodes (prop, box, ground, light point/spot, up to 32 lights). Returns the session id, revision 0 and the props/recipes this host can build, including operator packs. Data only; no code runs.',
     inputSchema: {
       type: 'object',
       properties: { scene: { type: 'object' } },

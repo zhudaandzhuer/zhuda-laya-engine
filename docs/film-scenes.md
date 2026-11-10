@@ -113,6 +113,7 @@ preset keeps the plain look (flat sky colour, no shadows, sky or fog).
 | `shadows` (`false` to turn off) | `DirectionLightCom` shadow maps, two cascades; every mesh casts and receives |
 | `atmosphere` (`false` for a flat `sky`) | `SkyProceduralMaterial` on a `SkyDome`; the sun disk follows the sun |
 | `fog` (`false` to turn off) | Linear scene fog |
+| `grade` (off unless given) | The existing `ZhudaFilmicPipeline`: HDR, ACES tone mapping, bloom and ambient occlusion |
 | `light` nodes | `PointLightCom` / `SpotLightCom` (at most 32, `Config3D.maxLightCount`) |
 | `emission` on a flat material | PBR emission, for lamp heads and signs |
 
@@ -122,6 +123,14 @@ preset keeps the plain look (flat sky colour, no shadows, sky or fog).
 { "id": "spot", "type": "light", "kind": "spot", "position": [0, 6, 4],
   "target": [0, 0, 2], "spotAngleDeg": 40 }
 ```
+
+```json
+"grade": { "exposure": 1.7, "contrast": 1.06, "saturation": 0.96, "bloom": 0.3, "ao": 1.1 }
+```
+
+With a grade, lamps and lit windows can be brighter than white and glow
+instead of clipping; without one the render is the plain SDR output. The film
+host uses the `3d-gltf` browser bundle, which carries the post-process module.
 
 `resolveZhudaFilmLook(look)` returns the values a scene will actually use.
 
@@ -200,7 +209,7 @@ vertical gradient, fog and a point light change the frame), remounts nine
 looks in a row and draws a prop from a pack. See the
 [look verification record](plans/records/film-look/verification.md).
 
-Not yet: animated look or light tracks, bloom and tone-mapping in film
-renders, spline camera paths, shot lists, path tracing, audio in render jobs
+Not yet: animated look or light tracks, shadows from point lights, reflections,
+spline camera paths, shot lists, path tracing, audio in render jobs
 and glTF assets in film scenes. Previews and renders are desktop WebGL evidence; WebGPU and mobile are
 not covered.

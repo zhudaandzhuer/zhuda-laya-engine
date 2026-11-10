@@ -365,3 +365,32 @@ test('look, light and emission fields are validated with paths', () => {
   assert.deepEqual(next.look.fog, { start: 10, end: 120 });
   assert.equal(next.look.sun.intensity, 0.3);
 });
+
+test('grade is off unless asked for and validated with paths', async () => {
+  const { resolveZhudaFilmLook } = await import('../packages/core/film/FilmScene.ts');
+  assert.equal(resolveZhudaFilmLook({ preset: 'night' }).grade, false);
+  assert.deepEqual(resolveZhudaFilmLook({ grade: { exposure: 1.6 } }).grade, {
+    exposure: 1.6,
+    contrast: 1,
+    saturation: 1,
+    bloom: 0.1,
+    ao: 0.5,
+    aoRadius: 0.5,
+  });
+  assert.equal(resolveZhudaFilmLook({ grade: false }).grade, false);
+  const issues = validateZhudaFilmScene(
+    { ...scene(), look: { grade: { exposure: 99, bloom: -1, glow: 1 } } },
+    context,
+  );
+  for (const fragment of ['grade.exposure', 'grade.bloom', 'grade.glow: unknown field'])
+    assert.ok(
+      issues.some((issue) => issue.includes(fragment)),
+      fragment,
+    );
+  const base = parseZhudaFilmScene(
+    { ...scene(), look: { grade: { exposure: 1.2, bloom: 0.3 } } },
+    context,
+  );
+  const next = applyZhudaFilmScenePatch(base, { look: { grade: { exposure: 2 } } }, context);
+  assert.deepEqual(next.look.grade, { exposure: 2, bloom: 0.3 });
+});

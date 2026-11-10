@@ -72,6 +72,22 @@ export interface ZhudaFilmFog {
   end: number;
 }
 
+/** Filmic camera chain (existing `ZhudaFilmicPipeline`): HDR, ACES, bloom, AO. */
+export interface ZhudaFilmGrade {
+  /** Linear exposure multiplier, 0.05..16 (default 1). */
+  exposure?: number;
+  /** 0.5..2 (default 1). */
+  contrast?: number;
+  /** 0..2 (default 1). */
+  saturation?: number;
+  /** Bloom intensity, 0..2; 0 turns bloom off (default 0.1). */
+  bloom?: number;
+  /** Ambient occlusion intensity, 0..4; 0 turns it off (default 0.5). */
+  ao?: number;
+  /** Ambient occlusion radius in metres, 0.05..5 (default 0.5). */
+  aoRadius?: number;
+}
+
 export interface ZhudaFilmLook {
   /**
    * A time of day. Every other field overrides the preset. Without a preset
@@ -88,6 +104,8 @@ export interface ZhudaFilmLook {
   /** `false` uses the flat `sky` colour instead of a procedural sky. */
   atmosphere?: ZhudaFilmAtmosphere | false;
   fog?: ZhudaFilmFog | false;
+  /** HDR tone-mapped rendering with bloom and ambient occlusion; off unless given. */
+  grade?: ZhudaFilmGrade | false;
 }
 
 /** A baked recipe (a registered recipe name or an inline recipe) or a flat PBR colour. */
@@ -371,7 +389,7 @@ function validateLook(look: unknown, path: string, issues: string[]) {
   if (!object(look)) return void issues.push(`${path}: look object required`);
   unknownKeys(
     look,
-    ['preset', 'sky', 'ambient', 'sun', 'shadows', 'atmosphere', 'fog'],
+    ['preset', 'sky', 'ambient', 'sun', 'shadows', 'atmosphere', 'fog', 'grade'],
     path,
     issues,
   );
@@ -433,6 +451,24 @@ function validateLook(look: unknown, path: string, issues: string[]) {
         )
       )
         issues.push(`${path}.fog: start >= 0 and end > start (metres)`);
+    }
+  }
+  if (look.grade !== undefined && look.grade !== false) {
+    const g = look.grade;
+    if (!object(g)) issues.push(`${path}.grade: object or false required`);
+    else {
+      unknownKeys(
+        g,
+        ['exposure', 'contrast', 'saturation', 'bloom', 'ao', 'aoRadius'],
+        `${path}.grade`,
+        issues,
+      );
+      range(g.exposure, `${path}.grade.exposure`, 0.05, 16);
+      range(g.contrast, `${path}.grade.contrast`, 0.5, 2);
+      range(g.saturation, `${path}.grade.saturation`, 0, 2);
+      range(g.bloom, `${path}.grade.bloom`, 0, 2);
+      range(g.ao, `${path}.grade.ao`, 0, 4);
+      range(g.aoRadius, `${path}.grade.aoRadius`, 0.05, 5);
     }
   }
   if (look.sky !== undefined) colour(look.sky, `${path}.sky`, issues);
@@ -714,7 +750,7 @@ export function applyZhudaFilmScenePatch(
   if (patch.camera) next.camera = { ...next.camera, ...structuredClone(patch.camera) };
   if (patch.look) {
     const look = { ...(next.look ?? {}), ...structuredClone(patch.look) };
-    for (const key of ['sun', 'shadows', 'atmosphere', 'fog'] as const) {
+    for (const key of ['sun', 'shadows', 'atmosphere', 'fog', 'grade'] as const) {
       const before = next.look?.[key],
         after = patch.look[key];
       if (after && before) (look as Record<string, unknown>)[key] = { ...before, ...after };
@@ -767,6 +803,7 @@ export interface ZhudaResolvedFilmLook {
   shadows: Required<ZhudaFilmShadows> | false;
   atmosphere: Required<ZhudaFilmAtmosphere> | false;
   fog: Required<ZhudaFilmFog> | false;
+  grade: Required<ZhudaFilmGrade> | false;
 }
 
 /**
@@ -827,6 +864,14 @@ export function resolveZhudaFilmLook(look: ZhudaFilmLook = {}): ZhudaResolvedFil
     }),
     atmosphere,
     fog,
+    grade: merge<ZhudaFilmGrade>(look.grade, false, {
+      exposure: 1,
+      contrast: 1,
+      saturation: 1,
+      bloom: 0.1,
+      ao: 0.5,
+      aoRadius: 0.5,
+    }),
   };
 }
 

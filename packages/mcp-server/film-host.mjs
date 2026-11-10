@@ -89,7 +89,7 @@ export class ZhudaFilmHost {
     this.#starting ??= (async () => {
       this.#work = await fsp.mkdtemp(path.join(os.tmpdir(), 'zhuda-film-host-'));
       const web = path.join(this.#work, 'web');
-      await buildBrowserSdk({ engineRoot, outDir: web, profiles: ['3d'] });
+      await buildBrowserSdk({ engineRoot, outDir: web, profiles: ['3d-gltf'] });
       // Packs import the public SDK; in the page that is the loaded `Zhuda`
       // bundle, so the import is mapped to it instead of bundling a copy.
       const imports = this.#packs.map(
@@ -138,10 +138,10 @@ export class ZhudaFilmHost {
         '<!doctype html><meta charset="utf-8"><title>Zhuda film host</title>' +
           '<script>window.ZhudaBranding={mode:"none"}</script>' +
           '<div id="view" style="width:64px;height:64px"></div>' +
-          '<script src="zhuda-3d.js"></script><script src="film-host.js"></script>',
+          '<script src="zhuda-3d-gltf.js"></script><script src="film-host.js"></script>',
       );
       const files = new Map(
-        ['index.html', 'zhuda-3d.js', 'film-host.js'].map((name) => [
+        ['index.html', 'zhuda-3d-gltf.js', 'film-host.js'].map((name) => [
           `/${name}`,
           path.join(web, name),
         ]),

@@ -62,6 +62,21 @@ export interface ZhudaFilmFog {
     start: number;
     end: number;
 }
+/** Filmic camera chain (existing `ZhudaFilmicPipeline`): HDR, ACES, bloom, AO. */
+export interface ZhudaFilmGrade {
+    /** Linear exposure multiplier, 0.05..16 (default 1). */
+    exposure?: number;
+    /** 0.5..2 (default 1). */
+    contrast?: number;
+    /** 0..2 (default 1). */
+    saturation?: number;
+    /** Bloom intensity, 0..2; 0 turns bloom off (default 0.1). */
+    bloom?: number;
+    /** Ambient occlusion intensity, 0..4; 0 turns it off (default 0.5). */
+    ao?: number;
+    /** Ambient occlusion radius in metres, 0.05..5 (default 0.5). */
+    aoRadius?: number;
+}
 export interface ZhudaFilmLook {
     /**
      * A time of day. Every other field overrides the preset. Without a preset
@@ -78,6 +93,8 @@ export interface ZhudaFilmLook {
     /** `false` uses the flat `sky` colour instead of a procedural sky. */
     atmosphere?: ZhudaFilmAtmosphere | false;
     fog?: ZhudaFilmFog | false;
+    /** HDR tone-mapped rendering with bloom and ambient occlusion; off unless given. */
+    grade?: ZhudaFilmGrade | false;
 }
 /** A baked recipe (a registered recipe name or an inline recipe) or a flat PBR colour. */
 export type ZhudaFilmMaterial = {
@@ -207,6 +224,7 @@ export interface ZhudaResolvedFilmLook {
     shadows: Required<ZhudaFilmShadows> | false;
     atmosphere: Required<ZhudaFilmAtmosphere> | false;
     fog: Required<ZhudaFilmFog> | false;
+    grade: Required<ZhudaFilmGrade> | false;
 }
 /**
  * Look with every value filled in: the preset (if any) first, then the

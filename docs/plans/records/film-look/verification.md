@@ -46,6 +46,15 @@ Date: 2026-11-11
 - A look override such as `sun: { elevationDeg: 20 }` was refused because both
   sun angles were required; they now default to the preset.
 
+## Follow-up: filmic grade
+
+`look.grade` mounts the existing `ZhudaFilmicPipeline` on the film camera (HDR,
+ACES, bloom, ambient occlusion); it is off unless a scene asks for it. The host
+bundle moved from `3d` to `3d-gltf` because post-processing lives there.
+`verify:film-look` asserts that the grade changes the frame and that bloom
+brightens pixels around an emissive lamp; unit tests cover defaults, paths and
+patch merging.
+
 ## Use in a film
 
 The ancient-city test film (a consumer pack outside this repository: houses
@@ -55,7 +64,7 @@ with `--film-pack`; 864 frames re-rendered byte-identical in size.
 
 ## Limits and decision
 
-- No animated look or light tracks, bloom or tone-mapping in film renders.
+- No animated look or light tracks; point lights cast no shadows; no reflections.
 - Shadows use two cascades over 60 m by default; long views lose distant
   shadows.
 - Desktop WebGL only; WebGPU and mobile are not covered.

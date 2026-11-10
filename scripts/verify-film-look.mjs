@@ -26,6 +26,7 @@ const scene = (look, extra = []) => ({
   materials: {
     stone: { color: [0.6, 0.58, 0.55], roughness: 0.8 },
     'roof-red': { color: [0.5, 0.08, 0.05] },
+    'lamp-head': { color: [1, 0.6, 0.3], emission: [6, 3, 1] },
   },
   nodes: [
     { id: 'ground', type: 'ground', size: [400, 400], material: 'concrete' },
@@ -162,6 +163,26 @@ try {
   );
   report.lampBrighter = +changed(dark, lit, 15, 1).toFixed(4);
   assert.ok(report.lampBrighter > 0.03, 'a point light brightens the ground near it');
+
+  // Filmic grade: HDR tone mapping changes the frame, and bloom spreads light
+  // around an emissive lamp head into pixels that were dark without it.
+  const lampScene = (grade) =>
+    scene({ preset: 'night', grade }, [
+      {
+        id: 'head',
+        type: 'box',
+        size: [0.6, 0.6, 0.6],
+        position: [6, 1.2, 7],
+        material: 'lamp-head',
+      },
+    ]);
+  const ungraded = await render('grade-off', lampScene(false));
+  const graded = await render('grade-on', lampScene({ exposure: 1.5, bloom: 0.9, ao: 1 }));
+  const noBloom = await render('grade-no-bloom', lampScene({ exposure: 1.5, bloom: 0, ao: 1 }));
+  report.gradeChanged = +changed(ungraded, graded, 6).toFixed(4);
+  report.bloomBrighter = +changed(noBloom, graded, 6, 1).toFixed(4);
+  assert.ok(report.gradeChanged > 0.2, 'the filmic grade changes the frame');
+  assert.ok(report.bloomBrighter > 0.003, 'bloom brightens pixels around the lamp');
 
   const kiosk = await render(
     'pack-prop',

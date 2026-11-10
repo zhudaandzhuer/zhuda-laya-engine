@@ -12,6 +12,7 @@ import {
   type MeshData,
 } from '../runtime3d/Surfaces.ts';
 import { ZhudaPhysicalCameraRig } from '../runtime3d/PhysicalCamera.ts';
+import { ZhudaFilmicPipeline } from '../runtime3d/Filmic.ts';
 import { ZhudaCinematicCapture, type CinematicFramePixels } from '../runtime3d/CinematicCapture.ts';
 import type { ZhudaRuntimeSession } from '../runtime3d/Runtime.ts';
 import {
@@ -319,6 +320,20 @@ function applyLook(
       sky.destroy();
       dome.destroy();
     });
+  }
+  if (look.grade) {
+    const film = new ZhudaFilmicPipeline(camera, {
+      exposure: look.grade.exposure,
+      contrast: look.grade.contrast,
+      saturation: look.grade.saturation,
+      bloom: look.grade.bloom > 0,
+      bloomIntensity: look.grade.bloom,
+      ao: look.grade.ao > 0,
+      aoIntensity: look.grade.ao,
+      aoRadius: look.grade.aoRadius,
+      temporalAA: false,
+    });
+    cleanups.push(() => film.dispose());
   }
   if (look.fog) {
     scene3D.enableFog = true;
