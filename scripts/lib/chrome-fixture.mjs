@@ -91,8 +91,18 @@ export async function chromeFixture({ zoomFactor = 1 } = {}) {
         }
       });
     });
-    const tabs = await (await fetch(`http://${endpoint.host}/json/list`)).json();
-    ws = new WebSocket(tabs.find((t) => t.type === 'page').webSocketDebuggerUrl);
+    // DevTools can announce its endpoint before the initial about:blank target
+    // is listed; poll briefly instead of racing the first /json/list response.
+    let page;
+    for (let attempt = 0; !page; attempt++) {
+      const tabs = await (await fetch(`http://${endpoint.host}/json/list`)).json();
+      page = tabs.find((t) => t.type === 'page');
+      if (!page) {
+        if (attempt >= 100) throw Error('Chrome did not expose a page target');
+        await new Promise((r) => setTimeout(r, 50));
+      }
+    }
+    ws = new WebSocket(page.webSocketDebuggerUrl);
     await new Promise((resolve, reject) => {
       ws.addEventListener('open', resolve, { once: true });
       ws.addEventListener('error', reject, { once: true });

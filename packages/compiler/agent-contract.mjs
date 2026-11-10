@@ -125,9 +125,14 @@ export function auditAgentContract(projectRoot) {
   }
 
   const planIndex = readText(projectRoot, 'docs/plans/README.md');
+  // The npm package deliberately omits docs/plans/records (task/verification
+  // history). When that whole directory is absent, its index links are not
+  // broken plans; in a checkout with records every link is still enforced.
+  const recordsPublished = fs.existsSync(path.join(plansRoot, 'records'));
   for (const match of planIndex.matchAll(/\]\(([^)]+\.md)\)/g)) {
     const link = match[1];
     if (link.startsWith('http://') || link.startsWith('https://')) continue;
+    if (!recordsPublished && link.startsWith('records/')) continue;
     const resolved = path.resolve(plansRoot, link);
     if (!fs.existsSync(resolved)) {
       issues.push(

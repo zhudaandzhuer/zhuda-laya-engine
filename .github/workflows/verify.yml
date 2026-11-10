@@ -14,33 +14,57 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - run: npm install
+          cache: npm
+      - run: npm ci
       - run: npm run verify
-      - run: PREFAB_FIXTURE_DIR=/tmp/zhuda-prefab-browser node scripts/verify-prefab-browser.mjs
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: prefab-browser-evidence
-          path: /tmp/zhuda-prefab-browser/evidence/
-      - run: EDITOR_RESPONSIVE_EVIDENCE_DIR=/tmp/zhuda-prefab-editor/responsive npm run verify:prefab-editor-responsive
-      - run: EDITOR_EVIDENCE_DIR=/tmp/zhuda-prefab-editor npm run verify:prefab-editor
-      - run: EDITOR_PLAY_EVIDENCE_DIR=/tmp/zhuda-prefab-editor/play npm run verify:prefab-editor-play
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: prefab-editor-browser-evidence
-          path: /tmp/zhuda-prefab-editor/
+      - run: npm run lint
+      - run: npm run format:check
+      - name: Repeated build leaves tracked files unchanged
+        run: npm run build && git diff --exit-code && test -z "$(git status --porcelain)"
 
-  windows-contracts:
+  browser:
+    # Headless Chrome with SwiftShader. These batches prove geometry, paint,
+    # input and lifecycle contracts; they are not GPU/device acceptance.
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Prefab browser gate
+        run: PREFAB_FIXTURE_DIR=/tmp/zhuda-browser/prefab npm run verify:prefab-browser
+      - name: Prefab editor batches
+        run: |
+          EDITOR_RESPONSIVE_EVIDENCE_DIR=/tmp/zhuda-browser/editor/responsive npm run verify:prefab-editor-responsive
+          EDITOR_EVIDENCE_DIR=/tmp/zhuda-browser/editor npm run verify:prefab-editor
+          EDITOR_PLAY_EVIDENCE_DIR=/tmp/zhuda-browser/editor/play npm run verify:prefab-editor-play
+      - name: Consumer runtime batches
+        run: |
+          FACTORY_OUT=/tmp/zhuda-browser/slot-foundation npm run verify:slot-foundation
+          RUNTIME_FIXTURE_DIR=/tmp/zhuda-browser/runtime-feedback npm run verify:runtime-feedback
+          CROWD_FIXTURE_DIR=/tmp/zhuda-browser/crowd npm run verify:crowd
+          npm run build:browser
+          SDK_EVIDENCE_DIR=/tmp/zhuda-browser/branding npm run verify:branding
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: browser-evidence
+          path: /tmp/zhuda-browser/
+
+  windows:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - run: npm install
+          cache: npm
+      - run: npm ci
       - run: npm run build
       - run: npm run typecheck
       - run: npm run audit:declarations
-      - run: node --test tests/webgpu.test.mjs tests/topology-and-guards.test.mjs tests/browser-sdk.test.mjs tests/cinematic-capture.test.mjs tests/offline-audio.test.mjs tests/film-export.test.mjs
+      - run: npm test
       # Hosted CI is not a Windows hardware WebGPU acceptance run.

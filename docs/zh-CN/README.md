@@ -146,7 +146,7 @@ npm run verify
 
 公开 3D SDK 补充独立消费端构建、资源 lease、PBR/自定义材质、动态网格、相机/输入/查询契约、时钟、2D tile 地图与支持分块载卸、编辑、LOD 1/2/4 的 3D 高度场。
 
-该接入通过 91 项自动化引擎测试与 41 项真实 WebGL 检查。Shader 验证包含图集 UV、染色、透明度、裁切、贴图/雾/溶解变体与真实编译诊断。具体用法和范围见[3D 接入文档](../3d-integration.md)、[地形/Shader 契约](../terrain-shader.md)与[验收限制](../3d-acceptance.md)。[独立消费端](https://github.com/zhudaandzhuer/zhuda-3d-lab)固定引擎 commit，并保存实机报告；小场景数据不能推导完整游戏地图与服务器性能。
+`npm run verify` 会执行全部自动化引擎测试并输出当前测试数量（本文不写死数字）；该接入另有 41 项真实 WebGL 检查。Shader 验证包含图集 UV、染色、透明度、裁切、贴图/雾/溶解变体与真实编译诊断。具体用法和范围见[3D 接入文档](../3d-integration.md)、[地形/Shader 契约](../terrain-shader.md)与[验收限制](../3d-acceptance.md)。[独立消费端](https://github.com/zhudaandzhuer/zhuda-3d-lab)固定引擎 commit，并保存实机报告；小场景数据不能推导完整游戏地图与服务器性能。
 
 ### 资产来源边界
 

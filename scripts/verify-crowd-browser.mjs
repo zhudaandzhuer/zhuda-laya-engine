@@ -57,11 +57,15 @@ fs.cpSync(path.join(engineRoot, 'tests/fixtures/crowd'), path.join(consumer, 'sr
 });
 const version = JSON.parse(fs.readFileSync(path.join(engineRoot, 'package.json'))).version;
 const packed = JSON.parse(
-  execFileSync('npm', ['pack', '--json', '--pack-destination', root], {
-    cwd: engineRoot,
-    encoding: 'utf8',
-    maxBuffer: 16 * 1024 * 1024,
-  }),
+  execFileSync(
+    'npm',
+    ['pack', '--json', '--foreground-scripts=false', '--pack-destination', root],
+    {
+      cwd: engineRoot,
+      encoding: 'utf8',
+      maxBuffer: 16 * 1024 * 1024,
+    },
+  ),
 )[0];
 const sdk = path.join(consumer, 'node_modules/zhuda-laya-engine');
 fs.mkdirSync(sdk, { recursive: true });

@@ -19,11 +19,15 @@ const write = (p, v) => fs.writeFileSync(path.join(consumer, p), v),
   sha = (b) => crypto.createHash('sha256').update(b).digest('hex');
 const version = JSON.parse(fs.readFileSync(path.join(engine, 'package.json'))).version;
 const packed = JSON.parse(
-  execFileSync('npm', ['pack', '--json', '--pack-destination', root], {
-    cwd: engine,
-    encoding: 'utf8',
-    maxBuffer: 16e6,
-  }),
+  execFileSync(
+    'npm',
+    ['pack', '--json', '--foreground-scripts=false', '--pack-destination', root],
+    {
+      cwd: engine,
+      encoding: 'utf8',
+      maxBuffer: 16e6,
+    },
+  ),
 )[0];
 const sdk = path.join(consumer, 'node_modules/zhuda-laya-engine');
 fs.mkdirSync(sdk, { recursive: true });

@@ -75,6 +75,7 @@ program.emit(undefined, (file, text) => {
 });
 if (process.argv.includes('--check') && changes.length)
   throw Error('Stale generated declarations: ' + changes.join(', '));
-console.log(
+// Status goes to stderr so `npm pack --json` (prepack -> build) keeps stdout machine-readable.
+console.error(
   `Public declarations: ${changes.length} ${process.argv.includes('--check') ? 'stale' : 'updated'}`,
 );

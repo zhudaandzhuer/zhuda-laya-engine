@@ -1,6 +1,6 @@
 # Agent task: disclosure-hardening
 
-Status: In progress  
+Status: Implemented within scope; desktop verified  
 Owner: Engine/toolchain  
 Last reviewed: 2026-11-10
 
@@ -28,7 +28,7 @@ packages, and run the corresponding regressions on a main-only repository.
 
 ## Dependencies
 
-- Existing editor HTTP routes, browser fixtures, public declarations and 301 tests.
+- Existing editor HTTP routes, browser fixtures, public declarations and the 301-test baseline.
 - Release/build pipeline, package lock, independent consumer and browser gates.
 - Baseline review evidence is external; repository records contain portable paths.
 
@@ -95,3 +95,8 @@ packages, and run the corresponding regressions on a main-only repository.
 
 Baseline b8a174f remains in main history. Revert scoped commits if necessary;
 never re-enable insecure serving as an automatic fallback.
+
+## Result
+
+See [verification.md](verification.md). Windows hosted CI and consumer
+re-pinning remain open.

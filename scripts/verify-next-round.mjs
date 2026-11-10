@@ -72,11 +72,15 @@ async function start(){
 }start().catch(error=>Object.assign(window,{nextRound:{ready:false,error:String(error)}}));`,
 );
 const packed = JSON.parse(
-    execFileSync('npm', ['pack', '--json', '--pack-destination', root], {
-      cwd: engine,
-      encoding: 'utf8',
-      maxBuffer: 32e6,
-    }),
+    execFileSync(
+      'npm',
+      ['pack', '--json', '--foreground-scripts=false', '--pack-destination', root],
+      {
+        cwd: engine,
+        encoding: 'utf8',
+        maxBuffer: 32e6,
+      },
+    ),
   )[0],
   sdk = path.join(consumer, 'node_modules/zhuda-laya-engine');
 fs.rmSync(sdk, { recursive: true, force: true });

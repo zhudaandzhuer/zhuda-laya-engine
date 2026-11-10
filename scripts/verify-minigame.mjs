@@ -28,11 +28,15 @@ if (declaredEngine !== version)
     `Consumer must pin zhuda-laya-engine ${version}; found ${declaredEngine || 'missing'}`,
   );
 const packed = JSON.parse(
-  execFileSync('npm', ['pack', '--json', '--pack-destination', root], {
-    cwd: engine,
-    encoding: 'utf8',
-    maxBuffer: 16e6,
-  }),
+  execFileSync(
+    'npm',
+    ['pack', '--json', '--foreground-scripts=false', '--pack-destination', root],
+    {
+      cwd: engine,
+      encoding: 'utf8',
+      maxBuffer: 16e6,
+    },
+  ),
 )[0];
 const sdk = path.join(consumer, 'node_modules/zhuda-laya-engine');
 fs.mkdirSync(sdk, { recursive: true });
