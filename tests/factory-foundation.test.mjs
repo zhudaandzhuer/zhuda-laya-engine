@@ -26,6 +26,15 @@ const theme = (id = 'a') => ({
   ],
 });
 const tick = () => new Promise((r) => setTimeout(r, 5));
+// Late results are released after an async SHA-256 check, which can take more
+// than one tick on a loaded CI runner; poll instead of guessing a delay.
+const until = async (condition, timeoutMs = 2000) => {
+  const end = Date.now() + timeoutMs;
+  while (!condition()) {
+    if (Date.now() > end) return;
+    await tick();
+  }
+};
 const scope = { gameId: 'fixture', sessionId: 'session1', epoch: 'e1' };
 const result = (sequence = 1, extra = {}) => ({
   schemaVersion: 1,
@@ -132,14 +141,14 @@ test('theme deadlines and disposal release non-cooperative late byte results', a
   );
   await assert.rejects(p.load('symbol'), (e) => e.name === 'TimeoutError');
   finish({ id: 'x', bytes, release: () => released++ });
-  await tick();
+  await until(() => released === 1);
   assert.equal(released, 1);
   const waiting = p.load('symbol');
   await tick();
   p.dispose();
   await assert.rejects(waiting, /cancel/i);
   finish({ id: 'x', bytes, release: () => released++ });
-  await tick();
+  await until(() => released === 2);
   assert.equal(released, 2);
 });
 
