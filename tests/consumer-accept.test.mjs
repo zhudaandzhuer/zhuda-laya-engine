@@ -46,7 +46,7 @@ test('candidate workflow leaves release intact; capture/failure/source race cann
     });
     assert.equal(candidate.mode, 'candidate');
     assert.deepEqual(snapshot(root), previous);
-    assert.match(candidate.output, /dist\/candidate\/web$/);
+    assert.match(candidate.output, /dist[\\/]candidate[\\/]web$/);
     await assert.rejects(runConsumerBuild({ projectRoot: root, engineRoot, config }), /ENOENT/);
     await assert.rejects(
       acceptConsumer({ projectRoot: root, engineRoot, check: async () => ({ passed: false }) }),

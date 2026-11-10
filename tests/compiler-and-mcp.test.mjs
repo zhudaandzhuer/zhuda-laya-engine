@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import ts from 'typescript';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { scanAndGenerateRegistry } from '../packages/compiler/ast-scanner.mjs';
 import { runDoctorAudit } from '../packages/compiler/zhuda-doctor.mjs';
 import { auditAgentContract } from '../packages/compiler/agent-contract.mjs';
@@ -197,7 +197,7 @@ test('zhuda-laya-engine SDK bundles (ESM & CJS) and upstream LayaAir Official at
   assert.equal(fs.existsSync(esmPath), true, 'ESM SDK bundle must exist');
   assert.equal(fs.existsSync(cjsPath), true, 'CJS SDK bundle must exist');
 
-  const sdkMod = await import(esmPath);
+  const sdkMod = await import(pathToFileURL(esmPath).href);
   assert.ok(sdkMod.TopologyResolver, 'ESM SDK should export TopologyResolver');
   assert.ok(sdkMod.EngineGuard, 'ESM SDK should export EngineGuard');
   assert.ok(sdkMod.ZhudaEngine, 'ESM SDK should export ZhudaEngine');
@@ -206,7 +206,9 @@ test('zhuda-laya-engine SDK bundles (ESM & CJS) and upstream LayaAir Official at
   assert.ok(sdkMod.NoSleepAdapter, 'ESM SDK should export NoSleepAdapter');
   assert.ok(sdkMod.ViewportMatrixEngine, 'ESM SDK should export ViewportMatrixEngine');
   assert.equal(sdkMod.UnityBridgePipeline, undefined, 'Legacy scenes stay outside the main SDK');
-  const demo = await import(path.join(projectRoot, 'dist/sdk/zhuda-laya-demo.esm.js'));
+  const demo = await import(
+    pathToFileURL(path.join(projectRoot, 'dist/sdk/zhuda-laya-demo.esm.js')).href
+  );
   assert.ok(demo.UnityBridgePipeline, 'Optional demo entry retains the migration sample');
   assert.ok(sdkMod.VisualFocusContract, 'ESM SDK should export VisualFocusContract');
   const cjsMod = (await import('node:module')).createRequire(import.meta.url)(cjsPath);

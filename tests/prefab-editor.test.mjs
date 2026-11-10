@@ -89,17 +89,19 @@ test('prefab editor validates hierarchy and rejects traversal', () => {
       }),
     /unique/,
   );
-  const args = parsePrefabEditorArgs(['--project', '/tmp', '--prefab', 'assets/a.lh']);
-  assert.equal(args.projectRoot, '/tmp');
+  // Any existing directory works; os.tmpdir() exists on every platform.
+  const existingProject = os.tmpdir();
+  const args = parsePrefabEditorArgs(['--project', existingProject, '--prefab', 'assets/a.lh']);
+  assert.equal(args.projectRoot, path.resolve(existingProject));
   assert.doesNotThrow(() =>
-    parsePrefabEditorArgs(['--project', '/tmp', '--prefab', 'assets/scenes/a.ls']),
+    parsePrefabEditorArgs(['--project', existingProject, '--prefab', 'assets/scenes/a.ls']),
   );
   assert.throws(
-    () => parsePrefabEditorArgs(['--project', '/tmp', '--prefab', '../secret.lh']),
+    () => parsePrefabEditorArgs(['--project', existingProject, '--prefab', '../secret.lh']),
     /project-relative/,
   );
   assert.throws(
-    () => parsePrefabEditorArgs(['--project', '/tmp', '--prefab', 'assets/a.json']),
+    () => parsePrefabEditorArgs(['--project', existingProject, '--prefab', 'assets/a.json']),
     /\.lh or \.ls/,
   );
   assert.doesNotThrow(() => validatePrefabHierarchy(validScene()));

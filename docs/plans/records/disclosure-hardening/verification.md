@@ -41,7 +41,8 @@ Date: 2026-11-10
 | Consumer release build | Same copy: `npm run build` | BLOCKED by design: the 15 Prefab evidence reports are stale for the new engine fingerprint. See "Consumer build" below | terminal log |
 | Game305 editor replays | Consumer `evidence/game305-editor-{responsive,coordinate-fix}-20261109/replay.mjs`, output redirected outside the consumer | PASS; Game305 source hashes unchanged | local evidence directory |
 | Game305 Play replay | Consumer `evidence/game305-editor-play-20261109/replay.mjs` | FAIL on both this tree and clean `b8a174f` at the same assertion (`report().audio` is undefined): the replay predates the consumer's current editor controller. Not an engine regression; the consumer owns the refresh | terminal log |
-| Windows full tests | `.github/workflows/verify.yml` `windows` job (`npm test`) | UNAVAILABLE until pushed | — |
+| Windows full tests | `.github/workflows/verify.yml` `windows` job (`npm test`) | First hosted run (42760722925) FAILED in 6 tests: POSIX-only test assumptions (raw `import()` of drive paths, `/tmp` and `/opt` literals, `/`-only regexes). Tests now use `pathToFileURL`, `os.tmpdir()`, `path.resolve` and separator-agnostic patterns; product code was unchanged. Re-run pending | GitHub Actions |
+| Hosted browser batches | `browser` job | First run FAILED at `verify:crowd`: its image comparison required Python Pillow. It now compares PNGs with the `pngjs` dependency (same RGB threshold and foreground rule); local `verify:crowd` PASS. Re-run pending | GitHub Actions |
 | Diff hygiene | `git diff --check` | PASS | terminal output |
 
 ## Coverage

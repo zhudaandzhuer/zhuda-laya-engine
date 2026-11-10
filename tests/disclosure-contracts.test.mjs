@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import ts from 'typescript';
@@ -109,7 +110,7 @@ test('every main/demo runtime export has a generated value declaration; minified
           ts.SymbolFlags.Value,
       )
       .map((symbol) => symbol.name);
-    const esm = await import(path.join(repo, 'dist/sdk', stem + '.esm.js'));
+    const esm = await import(pathToFileURL(path.join(repo, 'dist/sdk', stem + '.esm.js')).href);
     for (const name of Object.keys(esm))
       assert.ok(values.includes(name), `${stem}: missing declaration ${name}`);
     for (const suffix of ['.cjs', '.min.cjs'])
@@ -117,7 +118,7 @@ test('every main/demo runtime export has a generated value declaration; minified
         Object.keys(require(path.join(repo, 'dist/sdk', stem + suffix))).sort(),
         Object.keys(esm).sort(),
       );
-    const min = await import(path.join(repo, 'dist/sdk', stem + '.min.esm.js'));
+    const min = await import(pathToFileURL(path.join(repo, 'dist/sdk', stem + '.min.esm.js')).href);
     assert.deepEqual(Object.keys(min).sort(), Object.keys(esm).sort());
   }
   const main = fs.readFileSync(path.join(repo, 'dist/sdk/zhuda-laya-engine.esm.js'), 'utf8');

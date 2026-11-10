@@ -6,9 +6,40 @@ import os from 'node:os';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import ts from 'typescript';
+import { PNG } from 'pngjs';
 import { chromeFixture } from './lib/chrome-fixture.mjs';
 import { runConsumerBuild } from '../packages/compiler/consumer-build.mjs';
 const engineRoot = path.resolve(import.meta.dirname, '..');
+// RGB comparison (alpha ignored): a pixel changes when any channel differs by
+// more than 2; foreground is every pixel outside the most common colour.
+function comparePng(referenceFile, actualFile) {
+  const a = PNG.sync.read(fs.readFileSync(referenceFile));
+  const b = PNG.sync.read(fs.readFileSync(actualFile));
+  assert.equal(a.width, b.width, 'screenshot width');
+  assert.equal(a.height, b.height, 'screenshot height');
+  const pixels = b.width * b.height;
+  const colors = new Map();
+  let changedPixels = 0;
+  for (let i = 0; i < pixels * 4; i += 4) {
+    if (
+      Math.max(
+        Math.abs(a.data[i] - b.data[i]),
+        Math.abs(a.data[i + 1] - b.data[i + 1]),
+        Math.abs(a.data[i + 2] - b.data[i + 2]),
+      ) > 2
+    )
+      changedPixels++;
+    const key = (b.data[i] << 16) | (b.data[i + 1] << 8) | b.data[i + 2];
+    colors.set(key, (colors.get(key) || 0) + 1);
+  }
+  const foregroundPixels = pixels - Math.max(...colors.values());
+  return {
+    changedPixels,
+    foregroundPixels,
+    pixels,
+    passed: foregroundPixels > 32 && changedPixels / pixels < 0.001,
+  };
+}
 const root = path.resolve(process.env.CROWD_FIXTURE_DIR || '/tmp/zhuda-crowd-acceptance');
 const consumer = path.join(root, 'consumer'),
   evidence = path.join(root, 'evidence');
@@ -262,22 +293,9 @@ try {
       await browser.evaluate('window.crowd.start()');
       await new Promise((r) => setTimeout(r, 500));
       await browser.screenshot(path.join(evidence, scenario + '-actual.png'));
-      const comparison = JSON.parse(
-        execFileSync(
-          'python3',
-          [
-            '-c',
-            `import sys,json
-from PIL import Image,ImageChops
-a=Image.open(sys.argv[1]).convert('RGB');b=Image.open(sys.argv[2]).convert('RGB')
-d=ImageChops.difference(a,b);changed=sum(1 for p in d.getdata() if max(p)>2)
-colors=b.getcolors(b.width*b.height);foreground=b.width*b.height-max(n for n,c in colors)
-print(json.dumps({'changedPixels':changed,'foregroundPixels':foreground,'pixels':b.width*b.height,'passed':foreground>32 and changed/(b.width*b.height)<.001}))`,
-            path.join(evidence, scenario + '-reference.png'),
-            path.join(evidence, scenario + '-actual.png'),
-          ],
-          { encoding: 'utf8' },
-        ),
+      const comparison = comparePng(
+        path.join(evidence, scenario + '-reference.png'),
+        path.join(evidence, scenario + '-actual.png'),
       );
       fs.writeFileSync(
         path.join(evidence, scenario + '-comparison.json'),

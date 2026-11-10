@@ -9,5 +9,9 @@ test('consumer engineRoot resolves relative to the consumer project', () => {
     resolveEngineRoot(project, 'node_modules/zhuda-laya-engine'),
     path.resolve(project, 'node_modules/zhuda-laya-engine'),
   );
-  assert.equal(resolveEngineRoot(project, '/opt/zhuda-laya-engine'), '/opt/zhuda-laya-engine');
+  // Absolute roots are kept as-is (on Windows path.resolve adds the current drive).
+  assert.equal(
+    resolveEngineRoot(project, '/opt/zhuda-laya-engine'),
+    path.resolve('/opt/zhuda-laya-engine'),
+  );
 });

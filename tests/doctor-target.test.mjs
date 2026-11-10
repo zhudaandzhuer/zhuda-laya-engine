@@ -21,7 +21,7 @@ test('Doctor defaults to consumer cwd, reports its path and fails deliberate bad
     fs.appendFileSync(path.join(game, 'src/Main.ts'), '\ndeclare const Laya: any;\n');
     result = run();
     assert.equal(result.status, 1);
-    assert.match(result.stdout, /UNTYPED_LAYA.*src\/Main.ts:\d+/);
+    assert.match(result.stdout, /UNTYPED_LAYA.*src[\\/]Main\.ts:\d+/);
     assert.match(result.stdout, /new Laya.Vector3/);
     assert.equal(run('--project').status, 1);
     const empty = path.join(root, 'empty');
