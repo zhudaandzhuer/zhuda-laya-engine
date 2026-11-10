@@ -33,8 +33,7 @@ contribution's claims and land it on `main`.
 
 ## Non-goals
 
-GPU baking, WebGPU or mobile acceptance, art approval of the starter samples,
-version bump and browser SDK publication.
+GPU baking, WebGPU or mobile acceptance, art approval of the starter samples.
 
 ## Acceptance checks
 

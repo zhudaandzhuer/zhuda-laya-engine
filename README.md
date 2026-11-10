@@ -34,7 +34,7 @@ Keyboard and touch controls. Auto / Performance / Balanced / High settings. The 
 
 **An agent-friendly game SDK and toolchain built on LayaAir 3.4.2.**
 
-**Current stable release: [v1.16.0](https://github.com/zhudaandzhuer/zhuda-laya-engine/releases/tag/v1.16.0)** · The version source of truth is `package.json`; `zhuda.config.json`, the lockfile and generated manifests must match it. Older tags such as v1.1.0 are historical releases, not the current SDK.
+**Current stable release: [v1.17.0](https://github.com/zhudaandzhuer/zhuda-laya-engine/releases/tag/v1.17.0)** · The version source of truth is `package.json`; `zhuda.config.json`, the lockfile and generated manifests must match it. Older tags such as v1.1.0 are historical releases, not the current SDK.
 
 [![LayaAir 3.4.2](https://img.shields.io/badge/LayaAir-3.4.2-0ea5e9)](https://github.com/layabox/LayaAir) [![MIT](https://img.shields.io/badge/license-MIT-4ade80)](LICENSE) [![Node.js 24+](https://img.shields.io/badge/Node.js-24%2B-6cc24a)](package.json) [![Support on Solana](https://img.shields.io/badge/Support-Solana-9945ff)](#support-this-engine)
 
@@ -207,7 +207,7 @@ the package fingerprint. See [mini-game packaging](docs/minigame-packaging.md).
 Kuaishou, store submission and device execution are not claimed without an
 official adapter and separate platform evidence.
 
-## Procedural assets
+## Procedural assets (1.17.0)
 
 Bake seamless PBR texture sets from JSON recipes, build props from a small geometry kit with colliders and surface tags, merge a whole yard into one mesh per material, and synthesise sound effects, all deterministic and file-free. Generated assets sit behind the same `AssetProvider` boundary as downloaded ones. See [procedural assets](docs/procedural-assets.md) for the API, the starter samples in `zhuda-laya-engine/demo`, and the verification scope: the data contracts are tested in Node, and a desktop WebGL draw verifies normal direction and mipmaps; WebGPU and mobile are not yet recorded.
 

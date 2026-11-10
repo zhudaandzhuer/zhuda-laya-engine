@@ -58,6 +58,7 @@ white under this light.
 
 - WebGPU, mobile devices and runtime baking cost on mobile are not measured.
 - The starter recipes are samples; their art quality is not approved.
-- Version stays 1.16.0 and no browser SDK is published by this change.
+- Released as 1.17.0; the browser SDK publication is recorded in
+  `docs/browser-sdk-releases.json`.
 
 Decision: **Implemented within scope; desktop WebGL verified.**
