@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { cliMain } from './cli.mjs';
+import { isAllowedRequestHost } from './editor-http.mjs';
 
 /**
  * Build a consumer once and keep its Scene / isolated Prefab preview in sync.
@@ -82,7 +83,12 @@ function contentType(file) {
 }
 
 function safeFile(root, requestPath) {
-  const decoded = decodeURIComponent(requestPath.split('?')[0]);
+  let decoded;
+  try {
+    decoded = decodeURIComponent(requestPath.split('?')[0]);
+  } catch {
+    return null;
+  }
   const relative = decoded.replace(/^\/+/, '') || 'index.html';
   const file = path.resolve(root, relative);
   if (file !== root && !file.startsWith(`${root}${path.sep}`)) return null;
@@ -98,12 +104,18 @@ export function createPreviewServer({
 }) {
   const clients = new Set();
   const server = http.createServer((request, response) => {
+    // A page on another origin must not be able to read the preview through a
+    // rebinding hostname. Binding to 0.0.0.0 stays open for device testing.
+    if (!isAllowedRequestHost(request, host)) {
+      response.writeHead(403);
+      response.end('Invalid Host');
+      return;
+    }
     if (request.url?.split('?')[0] === '/__zhuda_reload') {
       response.writeHead(200, {
         'Content-Type': 'text/event-stream; charset=utf-8',
         'Cache-Control': 'no-cache',
         Connection: 'keep-alive',
-        'Access-Control-Allow-Origin': '*',
       });
       response.write(`event: ready\ndata: ${Date.now()}\n\n`);
       clients.add(response);

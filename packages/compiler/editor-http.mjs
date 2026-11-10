@@ -8,13 +8,66 @@ export const inside = (root, file) => file === root || file.startsWith(root + pa
 export const scriptJson = (value) => JSON.stringify(value).replace(/</g, '\\u003c');
 const fail = (status, message) => Object.assign(new Error(message), { status });
 
-/** One capability per editor process. Do not put it in URLs, logs or referrers. */
-export function createEditorAccess(host) {
+const LOOPBACK = new Set(['localhost', '127.0.0.1', '::1', '[::1]']);
+const ANY_INTERFACE = new Set(['0.0.0.0', '::']);
+export const isLoopbackHost = (host) => LOOPBACK.has(String(host).toLowerCase());
+
+/**
+ * Host-header check for local tool servers (DNS-rebinding guard). A server
+ * bound to every interface accepts any name; it must authenticate instead.
+ */
+export function isAllowedRequestHost(request, boundHost) {
+  const raw = request.headers.host;
+  if (
+    typeof raw !== 'string' ||
+    request.rawHeaders.filter(
+      (_, i) => i % 2 === 0 && request.rawHeaders[i].toLowerCase() === 'host',
+    ).length !== 1
+  )
+    return false;
+  let authority;
+  try {
+    authority = new URL('http://' + raw);
+  } catch {
+    return false;
+  }
+  if (raw !== authority.host || Number(authority.port || 80) !== request.socket.localPort)
+    return false;
+  if (ANY_INTERFACE.has(boundHost)) return true;
+  const name = authority.hostname.toLowerCase();
+  return LOOPBACK.has(name) || name === String(boundHost).toLowerCase();
+}
+
+/**
+ * One capability per editor process. Do not put the API token in URLs, logs
+ * or referrers.
+ *
+ * Loopback is the default and needs nothing else. Any other bind address must
+ * be requested with `allowRemote`; the editor then also requires a session:
+ * the start URL carries a one-time key that is exchanged for an HttpOnly
+ * cookie, and every request without it is refused, including the page that
+ * would otherwise hand out the API token.
+ */
+export function createEditorAccess(host, { allowRemote = false } = {}) {
+  const remote = !isLoopbackHost(host);
+  if (remote && !allowRemote)
+    throw Error(
+      `Refusing to serve the editor on non-loopback host ${host}: it can write project files. ` +
+        'Use 127.0.0.1, or pass --allow-remote on a network you trust.',
+    );
   const token = crypto.randomBytes(32).toString('hex');
+  const session = remote ? crypto.randomBytes(32).toString('hex') : null;
+  const matches = (value) =>
+    typeof value === 'string' &&
+    /^[a-f0-9]{64}$/.test(value) &&
+    crypto.timingSafeEqual(Buffer.from(value), Buffer.from(session));
   const hosts = new Set(['localhost', '127.0.0.1', '[::1]']);
-  if (!['0.0.0.0', '::'].includes(host)) hosts.add(host.toLowerCase());
+  if (!ANY_INTERFACE.has(host)) hosts.add(host.toLowerCase());
   return {
     token,
+    remote,
+    /** Append to the start URL printed in the terminal; empty on loopback. */
+    startQuery: session ? `key=${session}` : '',
     validate(request, response) {
       response.setHeader('X-Content-Type-Options', 'nosniff');
       response.setHeader('Referrer-Policy', 'no-referrer');
@@ -36,7 +89,7 @@ export function createEditorAccess(host) {
         throw fail(403, 'Invalid Host');
       }
       if (
-        !hosts.has(authority.hostname.toLowerCase()) ||
+        (!hosts.has(authority.hostname.toLowerCase()) && !(session && ANY_INTERFACE.has(host))) ||
         authority.username ||
         authority.password ||
         authority.pathname !== '/' ||
@@ -52,6 +105,19 @@ export function createEditorAccess(host) {
         throw fail(403, 'Cross-site editor request');
       const url = new URL(request.url || '/', authority.origin);
       if (url.origin !== authority.origin) throw fail(403, 'Foreign request target');
+      if (session) {
+        const cookie = /(?:^|;\s*)zhuda_editor=([a-f0-9]{64})(?:;|$)/.exec(
+          String(request.headers.cookie || ''),
+        )?.[1];
+        if (!matches(cookie)) {
+          if (!matches(url.searchParams.get('key')))
+            throw fail(403, 'Remote editor session required; open the URL printed at startup');
+          response.setHeader(
+            'Set-Cookie',
+            `zhuda_editor=${session}; HttpOnly; SameSite=Strict; Path=/`,
+          );
+        }
+      }
       if (!['GET', 'HEAD', 'POST'].includes(request.method)) throw fail(405, 'Unsupported method');
       if (url.pathname.startsWith('/api/')) {
         const supplied = request.headers['x-zhuda-editor-token'];

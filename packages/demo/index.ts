@@ -3,3 +3,4 @@ export * from './BenchmarkEngine.ts';
 export * from './StaticAssetPipeline.ts';
 export * from './UnityBridgePipeline.ts';
 export * from './PixelCalibrationEngine.ts';
+export * from './ProceduralStarter.ts';

@@ -30,6 +30,8 @@ import {
   validateTimelineSpec,
   gltfAssetCapabilities,
   gltfExtensionCapabilities,
+  validateZhudaTextureRecipe,
+  validateZhudaSynthRecipe,
 } from './runtime.mjs';
 import { auditVisualAssetMigration } from '../compiler/visual-asset-audit.mjs';
 import { auditVisualPresentationContracts } from '../compiler/visual-contract-audit.mjs';
@@ -42,6 +44,26 @@ const packageVersion = JSON.parse(
 ).version;
 
 export const MCP_TOOLS_MANIFEST = [
+  {
+    name: 'validate_texture_recipe',
+    description:
+      'Validate a procedural PBR texture recipe (base surface plus seamless mask layers) and list every problem. Configuration only; no baking, rendering or visual approval.',
+    inputSchema: {
+      type: 'object',
+      properties: { recipe: { type: 'object', description: 'ZhudaTextureRecipe, schemaVersion 1' } },
+      required: ['recipe'],
+    },
+  },
+  {
+    name: 'validate_synth_recipe',
+    description:
+      'Validate a synthesised sound recipe (noise and tone layers with envelopes and filters) and list every problem. Configuration only; no audio is rendered or judged.',
+    inputSchema: {
+      type: 'object',
+      properties: { recipe: { type: 'object', description: 'ZhudaSynthRecipe, schemaVersion 1' } },
+      required: ['recipe'],
+    },
+  },
   {
     name: 'get_cinematic_contract',
     description:
@@ -159,7 +181,8 @@ export const MCP_TOOLS_MANIFEST = [
   },
   {
     name: 'get_golden_example',
-    description: '取得 100% 經過驗證的 @zhuda-laya/core 純代碼標準範例 (Golden Examples)。',
+    description:
+      '取得 @zhuda-laya/core 純代碼標準範例 (Golden Examples)；範例示範 API 用法，畫面與裝置表現仍需實際繪製驗收。',
     inputSchema: {
       type: 'object',
       properties: {
@@ -303,6 +326,14 @@ export const MCP_TOOLS_MANIFEST = [
 
 export function executeMcpTool(toolName, args = {}) {
   switch (toolName) {
+    case 'validate_texture_recipe': {
+      const issues = validateZhudaTextureRecipe(args.recipe);
+      return { tool: toolName, passed: issues.length === 0, issues, rendering: 'requires-real-draw' };
+    }
+    case 'validate_synth_recipe': {
+      const issues = validateZhudaSynthRecipe(args.recipe);
+      return { tool: toolName, passed: issues.length === 0, issues, listening: 'requires-playback' };
+    }
     case 'get_cinematic_contract':
       return {
         tool: toolName,

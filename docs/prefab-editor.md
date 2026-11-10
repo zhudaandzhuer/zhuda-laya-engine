@@ -184,3 +184,11 @@ window, DPR 1 / 1.5 / 2, actual Chrome zoom 125% / 150% / 200%, host/container
 width changes without an outer window resize, dynamic toolbar height and native
 Play clicks after fitting. This checks the surrounding editor UI as well as
 the canvas; canvas coordinate tests alone do not prove toolbar visibility.
+
+## Network access
+
+The editors bind to `127.0.0.1` and refuse any other `--host` unless
+`--allow-remote` is passed. In that mode the start URL printed in the terminal
+carries a one-time key; the first visit exchanges it for a session cookie and
+every request without that session is refused. Anyone holding the URL can edit
+project files, so use it only on a network you trust.

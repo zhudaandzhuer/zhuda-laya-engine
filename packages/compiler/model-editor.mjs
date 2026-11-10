@@ -45,7 +45,16 @@ export function parseModelEditorArgs(argv = process.argv.slice(2)) {
   if (!host || host.includes('/') || host.includes(':')) throw Error('Invalid --host');
   if (!fs.existsSync(project) || !fs.statSync(project).isDirectory())
     throw Error(`Project does not exist: ${project}`);
-  return { project, projectRoot: project, asset, prefab: asset, host, port, engineRoot };
+  return {
+    project,
+    projectRoot: project,
+    asset,
+    prefab: asset,
+    host,
+    port,
+    engineRoot,
+    allowRemote: argv.includes('--allow-remote'),
+  };
 }
 
 function resolveModelFile(project, requested, fallback) {
@@ -98,6 +107,7 @@ export async function createModelEditorServer({
   host = '127.0.0.1',
   port = 8892,
   bundle,
+  allowRemote = false,
 } = {}) {
   const project = realPath(projectRoot || process.cwd());
   const initialSelection = resolveModelFile(
@@ -120,7 +130,7 @@ export async function createModelEditorServer({
     if (!fs.existsSync(path.join(engineLibRoot, file)))
       throw Error(`Missing pinned engine library: ${file}`);
   const editorBundle = bundle ?? (await buildModelEditorBundle({ engineRoot: engine }));
-  const access = createEditorAccess(host);
+  const access = createEditorAccess(host, { allowRemote });
   const server = http.createServer(async (request, response) => {
     try {
       const url = access.validate(request, response);
@@ -194,6 +204,8 @@ export async function createModelEditorServer({
     listening,
     close,
     token: access.token,
+    remote: access.remote,
+    startQuery: access.startQuery,
     projectRoot: project,
     assetFile: initialSelection.file,
     engineRoot: engine,
@@ -202,7 +214,7 @@ export async function createModelEditorServer({
 
 const launched = cliMain(
   import.meta.url,
-  'Usage: zhuda-model-editor --project DIRECTORY --asset assets/FILE.glb [--host HOST] [--port PORT]',
+  'Usage: zhuda-model-editor --project DIRECTORY --asset assets/FILE.glb [--host HOST] [--port PORT] [--allow-remote]',
 );
 if (launched) {
   try {
@@ -210,8 +222,12 @@ if (launched) {
     const editor = await createModelEditorServer(args);
     const address = await editor.listening;
     console.log(
-      `[Zhuda 3D Model Editor] http://${args.host}:${address.port}/?asset=${encodeURIComponent(args.asset)}`,
+      `[Zhuda 3D Model Editor] http://${args.host}:${address.port}/?asset=${encodeURIComponent(args.asset)}${editor.startQuery ? '&' + editor.startQuery : ''}`,
     );
+    if (editor.remote)
+      console.warn(
+        '[Zhuda 3D Model Editor] --allow-remote: anyone holding this URL can read project assets. Do not share it.',
+      );
     console.log(`[Zhuda 3D Model Editor] editing ${args.asset}`);
     const stop = async () => {
       await editor.close();

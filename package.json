@@ -28,14 +28,12 @@
     ".": {
       "types": "./packages/types/index.d.ts",
       "import": "./dist/sdk/zhuda-laya-engine.esm.js",
-      "require": "./dist/sdk/zhuda-laya-engine.cjs",
-      "default": "./packages/core/index.ts"
+      "require": "./dist/sdk/zhuda-laya-engine.cjs"
     },
     "./core": {
       "types": "./packages/types/index.d.ts",
       "import": "./dist/sdk/zhuda-laya-engine.esm.js",
-      "require": "./dist/sdk/zhuda-laya-engine.cjs",
-      "default": "./packages/core/index.ts"
+      "require": "./dist/sdk/zhuda-laya-engine.cjs"
     },
     "./compiler": "./packages/compiler/zhuda-build.mjs",
     "./doctor": "./packages/compiler/zhuda-doctor.mjs",
@@ -117,7 +115,7 @@
     "test": "node --test tests/*.test.mjs",
     "pack:tarball": "npm pack --pack-destination dist",
     "verify": "npm run build && npm run typecheck && npm run audit:declarations && npm run doctor && npm run test",
-    "start": "python3 -m http.server 8890 --bind 127.0.0.1 --directory dist/web",
+    "start": "node scripts/serve.mjs dist/web 8890",
     "types:runtime3d": "node packages/compiler/runtime3d-types.mjs",
     "build:browser": "node packages/compiler/browser-sdk.mjs",
     "release:browser": "node scripts/release-browser-sdk.mjs --publish",
@@ -140,8 +138,7 @@
     "verify:slot-foundation": "node scripts/verify-slot-foundation.mjs",
     "types:generate": "node packages/compiler/runtime3d-types.mjs",
     "types:check": "node packages/compiler/runtime3d-types.mjs --check",
-    "prepare": "npm run build",
-    "prepack": "npm run build",
+    "prepare": "npm run build 1>&2",
     "lint": "eslint packages src scripts tests examples",
     "format": "prettier --write --ignore-unknown packages/core packages/compiler packages/demo packages/mcp-server packages/ci-gate src scripts tests examples eslint.config.mjs package.json tsconfig.json",
     "format:check": "prettier --check --ignore-unknown packages/core packages/compiler packages/demo packages/mcp-server packages/ci-gate src scripts tests examples eslint.config.mjs package.json tsconfig.json"
@@ -154,7 +151,7 @@
     "meshoptimizer": "1.3.0",
     "pngjs": "7.0.0",
     "sharp": "0.35.5",
-    "typescript": "^5.6.0"
+    "typescript": "5.9.3"
   },
   "engines": {
     "node": ">=24"

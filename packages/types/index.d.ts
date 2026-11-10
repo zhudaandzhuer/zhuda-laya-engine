@@ -32,6 +32,7 @@ export * from './effects/ParticleEventLink.js';
 export * from './VisualMigrationPipeline.js';
 export * from './prefabs/index.js';
 export * from './runtime3d/index.js';
+export * from './procedural/index.js';
 export * from './terrain/index.js';
 export * from './shaders/index.js';
 export type * from './editor-preview.js';

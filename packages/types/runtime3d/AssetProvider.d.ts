@@ -85,6 +85,12 @@ export interface DirectoryAssetProviderOptions {
     /** verified-blob preserves full-byte verification without PCM decode. Native
      * streaming is opt-in and rejects entries requiring a whole-file SHA. */
     readonly streamMode?: 'verified-blob' | 'native';
+    /**
+     * What to do when a manifest is configured and the requested ID is not in
+     * it. 'allow' (default) loads it without size or checksum verification;
+     * 'reject' fails with an integrity error so nothing unverified is used.
+     */
+    readonly unlisted?: 'allow' | 'reject';
 }
 export interface ChunkAssetRange extends AssetManifestEntry {
     readonly chunk: string;
@@ -124,6 +130,7 @@ export declare class DirectoryAssetProvider implements AssetProvider {
     private readonly active;
     private disposed;
     private readonly streamMode;
+    private readonly unlisted;
     private readonly streamReleases;
     constructor(options: DirectoryAssetProviderOptions);
     getManifest(signal?: AbortSignal): Promise<AssetManifest>;

@@ -157,6 +157,12 @@ export interface DirectoryAssetProviderOptions {
   /** verified-blob preserves full-byte verification without PCM decode. Native
    * streaming is opt-in and rejects entries requiring a whole-file SHA. */
   readonly streamMode?: 'verified-blob' | 'native';
+  /**
+   * What to do when a manifest is configured and the requested ID is not in
+   * it. 'allow' (default) loads it without size or checksum verification;
+   * 'reject' fails with an integrity error so nothing unverified is used.
+   */
+  readonly unlisted?: 'allow' | 'reject';
 }
 
 export interface ChunkAssetRange extends AssetManifestEntry {
@@ -251,6 +257,7 @@ export class DirectoryAssetProvider implements AssetProvider {
   private readonly active = new Set<AbortController>();
   private disposed = false;
   private readonly streamMode: 'verified-blob' | 'native';
+  private readonly unlisted: 'allow' | 'reject';
   private readonly streamReleases = new Set<() => void>();
 
   constructor(options: DirectoryAssetProviderOptions) {
@@ -267,6 +274,8 @@ export class DirectoryAssetProvider implements AssetProvider {
     this.fetchImpl = options.fetch || globalThis.fetch.bind(globalThis);
     this.streamMode = options.streamMode ?? 'verified-blob';
     if (!['native', 'verified-blob'].includes(this.streamMode)) throw Error('Invalid streamMode');
+    this.unlisted = options.unlisted ?? 'allow';
+    if (!['allow', 'reject'].includes(this.unlisted)) throw Error('Invalid unlisted policy');
     if (!Number.isInteger(this.timeoutMs) || this.timeoutMs <= 0)
       throw Error('timeoutMs must be a positive integer');
     if (!Number.isInteger(this.maxBytes) || this.maxBytes <= 0)
@@ -306,8 +315,13 @@ export class DirectoryAssetProvider implements AssetProvider {
     if (this.manifestId && id !== this.manifestId && !this.manifest)
       await this.getManifest(options.signal);
     const entry = this.manifest?.entries.find((candidate) => candidate.id === id);
+    if (this.manifest && !entry && this.unlisted === 'reject' && id !== this.manifestId)
+      throw new AssetProviderError('integrity', `Asset is not listed in the manifest: ${id}`, {
+        id,
+      });
     const maxBytes = options.maxBytes ?? this.maxBytes;
     const url = new URL(id.split('/').map(encodeURIComponent).join('/'), this.baseUrl);
+    let completed = false;
     const combined = combineSignals(options.signal, this.timeoutMs, id);
     const request = new AbortController();
     const relay = () => request.abort(combined.signal.reason);
@@ -385,14 +399,15 @@ export class DirectoryAssetProvider implements AssetProvider {
         loadedBytes: total,
         totalBytes: total,
       });
+      completed = true;
       return { id, bytes, manifest: entry };
     } catch (error) {
-      if (combined.signal.aborted || request.signal.aborted) {
-        if (combined.signal.reason?.name === 'TimeoutError') throw abortReason(combined.signal, id);
-        throw abortReason(combined.signal, id);
-      }
+      if (combined.signal.aborted || request.signal.aborted) throw abortReason(combined.signal, id);
       throw error;
     } finally {
+      // A rejected download (too large, bad checksum, HTTP error) must not keep
+      // streaming in the background.
+      if (!completed) request.abort();
       this.active.delete(request);
       combined.signal.removeEventListener('abort', relay);
       combined.cleanup();

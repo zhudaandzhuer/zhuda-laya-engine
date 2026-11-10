@@ -30,6 +30,7 @@ export function createSurfaceTexture(
   height: number,
   pixels: Uint8Array,
   role: 'color' | 'emission' | 'normal' | 'data',
+  options: { mipmap?: boolean } = {},
 ) {
   if (
     !Number.isInteger(width) ||
@@ -44,7 +45,7 @@ export function createSurfaceTexture(
       width,
       height,
       l.TextureFormat.R8G8B8A8,
-      false,
+      options.mipmap === true,
       true,
       role === 'color' || role === 'emission',
     );

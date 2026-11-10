@@ -4,7 +4,7 @@
  * 解決痛點四 (AI 語料赤字與版本混淆)：
  * - 內建 Laya 1.x/2.x vs Laya 3.4.2 (@zhuda-laya/core) 對照護欄
  * - 內建 6 大致命崩潰診斷知識庫
- * - 內建 5 組 100% 零幻覺 Golden Examples 範例模版
+ * - 內建 5 組 Golden Examples 範例模版（示範 API 用法，不代表畫面驗收）
  */
 
 export const API_GUARDRAILS = [

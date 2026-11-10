@@ -155,7 +155,8 @@ export class EngineGuard {
       Physics3D?: unknown;
     };
 
-    const bulletLoaded = Boolean(g.Physics3D || g.Laya?.Laya3D);
+    // The 3D core alone does not prove the Bullet module is present.
+    const bulletLoaded = Boolean(g.Physics3D || g.Laya?.btStatics);
     const physics3DLoaded = Boolean(g.Laya?.PhysicsCollider && g.Laya?.Rigidbody3D);
     const bullet = g.Laya?.btStatics?.bt;
     const wasmInitialized =
@@ -242,7 +243,7 @@ export class EngineGuard {
 
     return {
       timestamp: Date.now(),
-      engineVersion: g.Laya?.version || '3.4.2-zhuda-ai',
+      engineVersion: g.Laya?.version || 'unknown',
       prototypeDetoxApplied: this.detoxInstalled,
       buttonSetStateGuarded,
       registeredComponents: this.getRegisteredComponents(),

@@ -6,7 +6,7 @@ import { createModelEditorServer, parseModelEditorArgs } from './model-editor.mj
 if (
   cliMain(
     import.meta.url,
-    'Usage: zhuda-prefab-editor --project DIRECTORY --prefab assets/FILE.lh [--port PORT] [--preview-controller MODULE]',
+    'Usage: zhuda-prefab-editor --project DIRECTORY --prefab assets/FILE.lh [--port PORT] [--preview-controller MODULE] [--allow-remote]',
   )
 )
   try {
@@ -20,7 +20,14 @@ if (
       ? await createModelEditorServer(args)
       : await createPrefabEditorServer(args);
     const address = await editor.listening;
-    console.log(`[Zhuda Asset Editor] http://${args.host}:${address.port}/`);
+    const query = [model ? `asset=${encodeURIComponent(args.asset)}` : '', editor.startQuery]
+      .filter(Boolean)
+      .join('&');
+    console.log(`[Zhuda Asset Editor] http://${args.host}:${address.port}/${query ? '?' + query : ''}`);
+    if (editor.remote)
+      console.warn(
+        '[Zhuda Asset Editor] --allow-remote: anyone holding this URL can reach the project. Do not share it.',
+      );
     console.log(`[Zhuda Asset Editor] editing ${args.prefab || args.asset}`);
     const stop = async () => {
       await editor.close();

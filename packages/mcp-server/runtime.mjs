@@ -25,6 +25,8 @@ const runtime = installed
           'shaders/index',
           'runtime3d/Timeline',
           'runtime3d/ModelCompatibility',
+          'procedural/TextureRecipe',
+          'procedural/SynthAudio',
         ].map(
           (name) =>
             import(
@@ -51,4 +53,6 @@ export const {
   validateTimelineSpec,
   gltfAssetCapabilities,
   gltfExtensionCapabilities,
+  validateZhudaTextureRecipe,
+  validateZhudaSynthRecipe,
 } = runtime;

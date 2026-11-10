@@ -70,7 +70,16 @@ export function parsePrefabEditorArgs(argv = process.argv.slice(2)) {
   if (!host || host.includes('/') || host.includes(':')) throw Error('Invalid --host');
   if (!fs.existsSync(project) || !fs.statSync(project).isDirectory())
     throw Error(`Project does not exist: ${project}`);
-  return { project, projectRoot: project, prefab, host, port, engineRoot, previewController };
+  return {
+    project,
+    projectRoot: project,
+    prefab,
+    host,
+    port,
+    engineRoot,
+    previewController,
+    allowRemote: argv.includes('--allow-remote'),
+  };
 }
 
 function validateNumber(value, label) {
@@ -363,6 +372,7 @@ export async function createPrefabEditorServer({
   bundle,
   previewController,
   previewTimeoutMs = 15000,
+  allowRemote = false,
 } = {}) {
   const project = realPath(projectRoot || process.cwd());
   const initialSelection = selectedPrefabPath(project, String(prefab), String(prefab));
@@ -386,7 +396,7 @@ export async function createPrefabEditorServer({
     history.push(bytes);
     while (history.length > Math.max(1, historyLimit)) history.shift();
   };
-  const access = createEditorAccess(host);
+  const access = createEditorAccess(host, { allowRemote });
   const server = http.createServer(async (request, response) => {
     try {
       const url = access.validate(request, response);
@@ -535,6 +545,8 @@ export async function createPrefabEditorServer({
     listening,
     close,
     token: access.token,
+    remote: access.remote,
+    startQuery: access.startQuery,
     projectRoot: project,
     prefabFile: initialSelection.file,
     engineRoot: engine,
@@ -545,14 +557,20 @@ export async function createPrefabEditorServer({
 
 const launched = cliMain(
   import.meta.url,
-  'Usage: zhuda-prefab-editor --project DIRECTORY --prefab assets/FILE.lh [--host HOST] [--port PORT] [--preview-controller MODULE]',
+  'Usage: zhuda-prefab-editor --project DIRECTORY --prefab assets/FILE.lh [--host HOST] [--port PORT] [--preview-controller MODULE] [--allow-remote]',
 );
 if (launched) {
   try {
     const args = parsePrefabEditorArgs();
     const editor = await createPrefabEditorServer(args);
     const address = await editor.listening;
-    console.log(`[Zhuda Prefab Editor] http://${args.host}:${address.port}/`);
+    console.log(
+      `[Zhuda Prefab Editor] http://${args.host}:${address.port}/${editor.startQuery ? '?' + editor.startQuery : ''}`,
+    );
+    if (editor.remote)
+      console.warn(
+        '[Zhuda Prefab Editor] --allow-remote: anyone holding this URL can edit project files. Do not share it.',
+      );
     console.log(`[Zhuda Prefab Editor] editing ${args.prefab}`);
     const stop = async () => {
       await editor.close();

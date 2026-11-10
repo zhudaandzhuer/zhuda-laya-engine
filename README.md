@@ -207,6 +207,10 @@ the package fingerprint. See [mini-game packaging](docs/minigame-packaging.md).
 Kuaishou, store submission and device execution are not claimed without an
 official adapter and separate platform evidence.
 
+## Procedural assets
+
+Bake seamless PBR texture sets from JSON recipes, build props from a small geometry kit with colliders and surface tags, merge a whole yard into one mesh per material, and synthesise sound effects, all deterministic and file-free. Generated assets sit behind the same `AssetProvider` boundary as downloaded ones. See [procedural assets](docs/procedural-assets.md) for the API, the starter samples in `zhuda-laya-engine/demo`, and the verification scope: the data contracts are tested in Node; a real draw of baked materials is not yet recorded.
+
 ## Start here: build a real consumer
 
 Use the engine checkout for SDK work. Put a game in its own repository and

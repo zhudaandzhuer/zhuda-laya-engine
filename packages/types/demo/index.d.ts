@@ -4,3 +4,4 @@ export * from './BenchmarkEngine.js';
 export * from './StaticAssetPipeline.js';
 export * from './UnityBridgePipeline.js';
 export * from './PixelCalibrationEngine.js';
+export * from './ProceduralStarter.js';
