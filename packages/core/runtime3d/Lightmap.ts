@@ -154,8 +154,41 @@ export interface ZhudaLightmap {
   dispose(): void;
 }
 
-/** Uploads a decoded lightmap. The caller disposes it after the scene stops using it. */
-export function createZhudaLightmap(image: ZhudaHdrImage, intensity = 1): ZhudaLightmap {
+/**
+ * Encodes a direction picture for Laya's directional lightmaps: RGB holds a
+ * world-space unit vector toward the dominant light as `d * 0.5 + 0.5`.
+ * Alpha is 1, so the colour lightmap must already be divided by the
+ * geometric surface's own factor (see `createZhudaLightmap`).
+ */
+export function encodeZhudaLightmapDirection(image: ZhudaHdrImage): Uint8Array {
+  const { width, height, rgb } = image;
+  if (rgb.length !== width * height * 3) throw Error('Invalid lightmap direction pixels');
+  const out = new Uint8Array(width * height * 4);
+  for (let i = 0, o = 0; i < rgb.length; i += 3, o += 4) {
+    for (let c = 0; c < 3; c++) {
+      const value = rgb[i + c];
+      out[o + c] = Math.round(255 * (value > 0 ? Math.min(1, value) : 0));
+    }
+    out[o + 3] = 255;
+  }
+  return out;
+}
+
+/**
+ * Uploads a decoded lightmap. The caller disposes it after the scene stops
+ * using it.
+ *
+ * With `direction`, a surface is lit by `lightmap * (0.5 * max(0, n . d) + 0.5)`
+ * where `n` is its shading normal (normal map included) and `d` the direction
+ * stored for that texel, so relief shows under baked light. The baker keeps
+ * flat surfaces unchanged by storing `light / (0.5 * max(0, N . d) + 0.5)` in
+ * the colour picture, `N` being the surface's geometric normal.
+ */
+export function createZhudaLightmap(
+  image: ZhudaHdrImage,
+  intensity = 1,
+  direction?: ZhudaHdrImage,
+): ZhudaLightmap {
   const l = (globalThis as any).Laya;
   if (!l?.Lightmap || !l.Texture2D) throw Error('Lightmaps need the Laya 3D runtime');
   const pixels = encodeZhudaLightmapRgbm(image, intensity);
@@ -173,6 +206,21 @@ export function createZhudaLightmap(image: ZhudaHdrImage, intensity = 1): ZhudaL
   texture.setPixelsData(pixels, false, false);
   const lightmap = new l.Lightmap();
   lightmap.lightmapColor = texture;
+  let directionTexture: any;
+  if (direction) {
+    directionTexture = new l.Texture2D(
+      direction.width,
+      direction.height,
+      l.TextureFormat.R8G8B8A8,
+      false,
+      false,
+      false,
+    );
+    directionTexture.filterMode = l.FilterMode.Bilinear;
+    directionTexture.wrapModeU = directionTexture.wrapModeV = l.WrapMode.Clamp;
+    directionTexture.setPixelsData(encodeZhudaLightmapDirection(direction), false, false);
+    lightmap.lightmapDirection = directionTexture;
+  }
   let disposed = false;
   return {
     width: image.width,
@@ -182,7 +230,9 @@ export function createZhudaLightmap(image: ZhudaHdrImage, intensity = 1): ZhudaL
       if (disposed) return;
       disposed = true;
       lightmap.lightmapColor = null;
+      lightmap.lightmapDirection = null;
       texture.destroy();
+      directionTexture?.destroy();
     },
   };
 }

@@ -46,6 +46,17 @@ and the model is not mirrored on screen.
 - None in shipped code. During the work an edit truncated `FilmStage.ts`;
   the build caught it and the file was restored before any check ran.
 
+## Follow-up: directional lightmaps
+
+`lightmapDirection` names a second picture with the dominant light direction
+per texel; Laya's native directional lightmap then shades with the normal
+map. `verify:film-model` draws a floor with four directions and measures
+the stated factor `0.5 * max(0, n . d) + 0.5`: 188 for +Y (unchanged), 137
+for +X and for −Y (half), 118 against 117 expected for the grey quadrant at
+0.9. Unit tests cover the encoding and the validation (a direction needs a
+lightmap and an unturned model). The response is half-Lambert, so relief is
+shown but not physically exact, and directions do not rotate with the model.
+
 ## Use in a film
 
 The ancient-city test film (kept outside this repository) was rebuilt on this

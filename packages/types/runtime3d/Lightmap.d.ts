@@ -35,5 +35,21 @@ export interface ZhudaLightmap {
     readonly lightmap: any;
     dispose(): void;
 }
-/** Uploads a decoded lightmap. The caller disposes it after the scene stops using it. */
-export declare function createZhudaLightmap(image: ZhudaHdrImage, intensity?: number): ZhudaLightmap;
+/**
+ * Encodes a direction picture for Laya's directional lightmaps: RGB holds a
+ * world-space unit vector toward the dominant light as `d * 0.5 + 0.5`.
+ * Alpha is 1, so the colour lightmap must already be divided by the
+ * geometric surface's own factor (see `createZhudaLightmap`).
+ */
+export declare function encodeZhudaLightmapDirection(image: ZhudaHdrImage): Uint8Array;
+/**
+ * Uploads a decoded lightmap. The caller disposes it after the scene stops
+ * using it.
+ *
+ * With `direction`, a surface is lit by `lightmap * (0.5 * max(0, n . d) + 0.5)`
+ * where `n` is its shading normal (normal map included) and `d` the direction
+ * stored for that texel, so relief shows under baked light. The baker keeps
+ * flat surfaces unchanged by storing `light / (0.5 * max(0, N . d) + 0.5)` in
+ * the colour picture, `N` being the surface's geometric normal.
+ */
+export declare function createZhudaLightmap(image: ZhudaHdrImage, intensity?: number, direction?: ZhudaHdrImage): ZhudaLightmap;

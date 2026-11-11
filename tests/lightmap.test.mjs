@@ -104,3 +104,17 @@ test('RGBM lightmap encoding round-trips, scales and clamps', () => {
   );
   assert.throws(() => encodeZhudaLightmapRgbm(image, -1), /Invalid lightmap intensity/);
 });
+
+test('direction pictures encode d * 0.5 + 0.5 with opaque alpha and clamp', async () => {
+  const { encodeZhudaLightmapDirection } = await import('../packages/core/runtime3d/Lightmap.ts');
+  const out = encodeZhudaLightmapDirection({
+    width: 2,
+    height: 1,
+    rgb: new Float32Array([0.5, 1, 0, 2, -1, 0.25]),
+  });
+  assert.deepEqual([...out], [128, 255, 0, 255, 255, 0, 64, 255]);
+  assert.throws(
+    () => encodeZhudaLightmapDirection({ width: 2, height: 2, rgb: new Float32Array(3) }),
+    /Invalid lightmap direction pixels/,
+  );
+});

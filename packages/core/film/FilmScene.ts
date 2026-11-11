@@ -173,6 +173,13 @@ export type ZhudaFilmNode =
       lightmap?: string;
       /** Scales the lightmap, 0..16 (default 1). */
       lightmapIntensity?: number;
+      /**
+       * Logical id of a Radiance `.hdr` picture of the dominant light
+       * direction per lightmap texel (`d * 0.5 + 0.5`, world space). With it,
+       * normal maps show relief under baked light. Needs `lightmap`; the
+       * model must not be turned (`yawDeg` 0).
+       */
+      lightmapDirection?: string;
     }
   | {
       id: string;
@@ -670,11 +677,21 @@ function validateNode(
     case 'model': {
       unknownKeys(
         node,
-        ['id', 'type', 'asset', 'position', 'yawDeg', 'scale', 'lightmap', 'lightmapIntensity'],
+        [
+          'id',
+          'type',
+          'asset',
+          'position',
+          'yawDeg',
+          'scale',
+          'lightmap',
+          'lightmapIntensity',
+          'lightmapDirection',
+        ],
         path,
         issues,
       );
-      const asset = (key: 'asset' | 'lightmap', extension: string) => {
+      const asset = (key: 'asset' | 'lightmap' | 'lightmapDirection', extension: string) => {
         const value = node[key];
         let id: string | undefined;
         try {
@@ -694,6 +711,12 @@ function validateNode(
       };
       asset('asset', '.glb');
       if (node.lightmap !== undefined) asset('lightmap', '.hdr');
+      if (node.lightmapDirection !== undefined) {
+        asset('lightmapDirection', '.hdr');
+        if (node.lightmap === undefined) issues.push(`${path}.lightmapDirection: needs a lightmap`);
+        if (node.yawDeg !== undefined && node.yawDeg !== 0)
+          issues.push(`${path}.lightmapDirection: directions are in world space; keep yawDeg 0`);
+      }
       vec3(node.position, `${path}.position`, issues);
       yaw();
       if (

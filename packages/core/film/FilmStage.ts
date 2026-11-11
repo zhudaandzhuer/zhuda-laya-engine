@@ -128,6 +128,7 @@ export class ZhudaFilmAssets {
 interface LoadedFilmModel {
   instance: ModelInstance;
   lightmap?: AssetLease<ZhudaHdrImage>;
+  direction?: AssetLease<ZhudaHdrImage>;
 }
 
 function releaseLoaded(loaded: Iterable<LoadedFilmModel>) {
@@ -138,6 +139,7 @@ function releaseLoaded(loaded: Iterable<LoadedFilmModel>) {
       // Keep releasing the rest.
     }
     item.lightmap?.release();
+    item.direction?.release();
   }
 }
 
@@ -161,19 +163,33 @@ export async function loadZhudaFilmScene(
   const nodes = scene.nodes.flatMap((node) => (node.type === 'model' ? [node] : []));
   const results = await Promise.allSettled(
     nodes.map(async (node): Promise<LoadedFilmModel> => {
-      const [instance, lightmap] = await Promise.allSettled([
-        options.assets.models.instantiate(node.asset, { signal: options.signal }),
-        node.lightmap === undefined
+      const picture = (id: string | undefined) =>
+        id === undefined
           ? undefined
-          : options.assets.lightmaps.acquire(node.lightmap, { signal: options.signal }),
+          : options.assets.lightmaps.acquire(id, { signal: options.signal });
+      const [instance, lightmap, direction] = await Promise.allSettled([
+        options.assets.models.instantiate(node.asset, { signal: options.signal }),
+        picture(node.lightmap),
+        picture(node.lightmapDirection),
       ]);
-      if (instance.status === 'fulfilled' && lightmap.status === 'fulfilled')
-        return { instance: instance.value, lightmap: lightmap.value };
+      if (
+        instance.status === 'fulfilled' &&
+        lightmap.status === 'fulfilled' &&
+        direction.status === 'fulfilled'
+      )
+        return { instance: instance.value, lightmap: lightmap.value, direction: direction.value };
       if (instance.status === 'fulfilled') instance.value.dispose();
       if (lightmap.status === 'fulfilled') lightmap.value?.release();
-      const failed =
-        instance.status === 'rejected' ? instance : (lightmap as PromiseRejectedResult);
-      const which = instance.status === 'rejected' ? node.asset : node.lightmap;
+      if (direction.status === 'fulfilled') direction.value?.release();
+      const failed = [instance, lightmap, direction].find(
+        (result) => result.status === 'rejected',
+      ) as PromiseRejectedResult;
+      const which =
+        instance.status === 'rejected'
+          ? node.asset
+          : lightmap.status === 'rejected'
+            ? node.lightmap
+            : node.lightmapDirection;
       if (options.signal?.aborted) throw failed.reason;
       throw Error(
         `Film scene model ${node.id}: cannot load ${which}: ${failed.reason?.message ?? failed.reason}`,
@@ -414,7 +430,11 @@ function buildFilmStageContents(
             throw Error(
               `Film scene model ${node.id}: ${node.asset} has a mesh without a second UV set (TEXCOORD_1); a lightmap needs one`,
             );
-        const baked = createZhudaLightmap(item.lightmap.value, node.lightmapIntensity ?? 1);
+        const baked = createZhudaLightmap(
+          item.lightmap.value,
+          node.lightmapIntensity ?? 1,
+          item.direction?.value,
+        );
         cleanups.push(() => baked.dispose());
         const index = lightmaps.push(baked.lightmap) - 1;
         for (const renderer of renderers) lightmapped.push({ renderer, index });

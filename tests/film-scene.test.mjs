@@ -513,3 +513,33 @@ test('reflector nodes are validated with paths, one per scene, hiding only model
     validateZhudaFilmScene(two, context).some((issue) => /one reflector per scene/.test(issue)),
   );
 });
+
+test('a lightmap direction needs a lightmap and an unturned model', () => {
+  const model = (extra) => ({
+    ...scene(),
+    nodes: [{ id: 'street', type: 'model', asset: 'street.glb', position: [0, 0, 0], ...extra }],
+  });
+  assert.deepEqual(
+    validateZhudaFilmScene(
+      model({ lightmap: 'street.hdr', lightmapDirection: 'street-dir.hdr' }),
+      context,
+    ),
+    [],
+  );
+  const cases = [
+    [{ lightmapDirection: 'street-dir.hdr' }, 'lightmapDirection: needs a lightmap'],
+    [
+      { lightmap: 'street.hdr', lightmapDirection: 'street-dir.hdr', yawDeg: 90 },
+      'lightmapDirection: directions are in world space; keep yawDeg 0',
+    ],
+    [
+      { lightmap: 'street.hdr', lightmapDirection: 'street-dir.png' },
+      'lightmapDirection: use a logical asset id ending in .hdr',
+    ],
+  ];
+  for (const [extra, fragment] of cases)
+    assert.ok(
+      validateZhudaFilmScene(model(extra), context).some((issue) => issue.includes(fragment)),
+      fragment,
+    );
+});

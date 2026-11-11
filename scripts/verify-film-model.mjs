@@ -113,6 +113,36 @@ try {
   const turned = await render('lightmap-turned', scene({ ...mapped, yawDeg: 180 }));
   expectQuadrants(turned, [QUADRANTS[3], QUADRANTS[2], QUADRANTS[1], QUADRANTS[0]], 1, 'turned');
 
+  // 4b. A direction picture scales the light by 0.5 * max(0, n . d) + 0.5:
+  // the floor's normal is +Y, so +Y keeps the light, +X and -Y halve it.
+  const DIRECTIONS = [
+    [0, 1, 0],
+    [1, 0, 0],
+    [0, -1, 0],
+    [0.6, 0.8, 0],
+  ];
+  fs.writeFileSync(
+    path.join(assets, 'set/floor-direction.hdr'),
+    radianceHdr(64, (x, y) =>
+      DIRECTIONS[(y < 32 ? 0 : 2) + (x < 32 ? 0 : 1)].map((v) => v * 0.5 + 0.5),
+    ),
+  );
+  const directed = await render(
+    'lightmap-direction',
+    scene({ ...mapped, lightmapDirection: 'set/floor-direction.hdr' }),
+  );
+  report.direction = SPOTS.map(([u, v], i) => {
+    const factor = 0.5 * Math.max(0, DIRECTIONS[i][1]) + 0.5;
+    const got = patch(directed, u, v),
+      want = QUADRANTS[i].map((value) => display(value * factor));
+    for (let c = 0; c < 3; c++)
+      assert.ok(
+        Math.abs(got[c] - want[c]) <= 14,
+        `direction quadrant ${i} channel ${c}: got ${got[c].toFixed(1)}, want ${want[c].toFixed(1)}`,
+      );
+    return got.map((value) => +value.toFixed(1));
+  });
+
   // 5. Failures are reported, and the host keeps working afterwards.
   await assert.rejects(
     host.preview(scene({ asset: 'set/missing.glb' }), { width: W, height: H }),

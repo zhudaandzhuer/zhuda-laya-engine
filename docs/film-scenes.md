@@ -233,6 +233,18 @@ with Laya's native lightmap path:
 
 Props, boxes and the ground are not lightmapped; they keep the flat ambient.
 
+A lightmap alone lights every pixel as if the surface were flat, so normal
+maps show nothing and stone or brick looks smooth. `lightmapDirection` fixes
+that: a second `.hdr` picture, on the same UV set, whose RGB is the
+world-space unit vector toward the dominant light as `d * 0.5 + 0.5`. The
+engine then lights a pixel with `lightmap * (0.5 * max(0, n . d) + 0.5)`,
+where `n` includes the normal map (Laya's native directional lightmap). So
+that flat surfaces stay as baked, the baker stores
+`light / (0.5 * max(0, N . d) + 0.5)` in the colour picture, `N` being the
+geometric normal. Directions are in world space: a model with a direction
+picture must keep `yawDeg` 0. This is a half-Lambert response, not a
+physically exact one.
+
 ## Reflections: wet ground and still water
 
 A `reflector` node is a horizontal rectangle that mirrors the scene above it:
@@ -343,7 +355,8 @@ looks in a row and draws a prop from a pack. See the
 `npm run verify:film-model` generates a GLB and an HDR lightmap, draws them on
 a real GPU and checks that the lit regions follow the second UV set at the
 encoded brightness, that scale and yaw apply, that a missing asset and a model
-without `TEXCOORD_1` are refused, that 30 mounts leave one instance and that a
+without `TEXCOORD_1` are refused, that a direction picture scales the light
+by the stated factor, that 30 mounts leave one instance and that a
 rewritten lightmap is picked up. See the
 [model verification record](plans/records/film-model-gi/verification.md).
 

@@ -143,6 +143,13 @@ export type ZhudaFilmNode = {
     lightmap?: string;
     /** Scales the lightmap, 0..16 (default 1). */
     lightmapIntensity?: number;
+    /**
+     * Logical id of a Radiance `.hdr` picture of the dominant light
+     * direction per lightmap texel (`d * 0.5 + 0.5`, world space). With it,
+     * normal maps show relief under baked light. Needs `lightmap`; the
+     * model must not be turned (`yawDeg` 0).
+     */
+    lightmapDirection?: string;
 } | {
     id: string;
     type: 'reflector';
