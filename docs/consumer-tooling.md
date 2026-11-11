@@ -307,6 +307,9 @@ export const preview3D: PrefabPreview3D = {
   cameras belong to the Scene. `zhudaPrefabFromFilmScene(scene, id)` turns the
   model nodes of a film scene into this definition and lists what it left for
   the Scene to supply (look, water, lights, lightmaps, animation).
+- Large prefabs take longer than the library's default 15 s to load: export
+  `libraryOptions = { timeoutMs }` from the preview module; the generated
+  preview passes it on, and the Scene should spread the same object.
 - The preview needs the `gltf` feature in the consumer's configuration.
   Provenance records the definition hash; the SHA-256 of each model file is
   enforced by the provider's manifest, not repeated in `provenance.sources`.

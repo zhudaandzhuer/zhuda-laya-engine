@@ -66,7 +66,7 @@ const provider=typeof createAssetProvider==='function'
   ? createAssetProvider() : new DirectoryAssetProvider({baseUrl:'./assets/'});
 if(!provider||typeof provider.load!=='function')throw Error('createAssetProvider must return an AssetProvider synchronously');
 scope.own(provider,value=>value.dispose?.());
-const library=scope.own(new ZhudaPrefabLibrary({provider,definitions,share3DResources:Reflect.get(prefabModule,'libraryOptions')?.share3DResources}),value=>value.dispose());
+const library=scope.own(new ZhudaPrefabLibrary({provider,definitions,share3DResources:Reflect.get(prefabModule,'libraryOptions')?.share3DResources,timeoutMs:Reflect.get(prefabModule,'libraryOptions')?.timeoutMs}),value=>value.dispose());
 const slot=scope.own(new ZhudaRequestSlot(),value=>value.cancel());
 let instance,selection,error,ready=false;
 const lifecycle=[];
