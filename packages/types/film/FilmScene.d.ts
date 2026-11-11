@@ -1,13 +1,4 @@
 // Generated from TypeScript source; run npm run types:generate.
-/**
- * Film scenes as data. An agent (or a person) authors a `ZhudaFilmScene`,
- * changes it with patches and renders it through the existing cinematic
- * capture. Everything here is pure and runs in Node, a Worker or a browser.
- *
- * The scene only names things the engine already owns: registered procedural
- * props, texture recipes and flat PBR colours. It never carries code, file
- * paths or URLs.
- */
 import { type ZhudaTextureRecipe } from '../procedural/TextureRecipe.js';
 export type ZhudaFilmVec3 = [number, number, number];
 export interface ZhudaFilmCamera {
@@ -136,6 +127,24 @@ export type ZhudaFilmNode = {
     material: string;
 } | {
     id: string;
+    type: 'model';
+    /** Logical id of a self-contained `.glb` the host's asset provider delivers. */
+    asset: string;
+    /** Where the model's origin goes. */
+    position: ZhudaFilmVec3;
+    yawDeg?: number;
+    /** Uniform scale, 0.001..1000 (default 1). */
+    scale?: number;
+    /**
+     * Logical id of a Radiance `.hdr` lightmap baked for this model: the
+     * diffuse light reaching its surfaces (direct and bounced), laid out by
+     * the meshes' second UV set. Replaces the flat ambient on this model.
+     */
+    lightmap?: string;
+    /** Scales the lightmap, 0..16 (default 1). */
+    lightmapIntensity?: number;
+} | {
+    id: string;
     type: 'light';
     /** Point lights shine all around; spot lights shine at `target`. */
     kind: 'point' | 'spot';
@@ -173,6 +182,8 @@ export interface ZhudaFilmValidationContext {
     props?: readonly string[];
     /** Recipe names the host can bake. When omitted, recipe names are not checked. */
     recipes?: readonly string[];
+    /** Asset ids the host can deliver. When omitted, asset ids are not checked. */
+    assets?: readonly string[];
 }
 export interface ZhudaFilmCameraKey {
     time: number;
@@ -185,6 +196,7 @@ export declare const ZHUDA_FILM_LIMITS: Readonly<{
     idLength: 64;
     /** Laya 3.4.2 `Config3D.maxLightCount` default. */
     lights: 32;
+    models: 64;
 }>;
 /** The plain look of scenes without a preset (phase 1 behaviour). */
 export declare const ZHUDA_FILM_DEFAULT_LOOK: Readonly<{

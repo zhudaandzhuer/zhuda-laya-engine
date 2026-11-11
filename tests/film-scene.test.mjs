@@ -394,3 +394,73 @@ test('grade is off unless asked for and validated with paths', async () => {
   const next = applyZhudaFilmScenePatch(base, { look: { grade: { exposure: 2 } } }, context);
   assert.deepEqual(next.look.grade, { exposure: 2, bloom: 0.3 });
 });
+
+test('model nodes name logical assets and report every bad field with a path', () => {
+  const model = (extra = {}) => ({
+    ...scene(),
+    nodes: [{ id: 'house', type: 'model', asset: 'city/house.glb', position: [0, 0, 0], ...extra }],
+  });
+  assert.deepEqual(validateZhudaFilmScene(model(), context), []);
+  assert.deepEqual(
+    validateZhudaFilmScene(
+      model({ lightmap: 'city/house.hdr', lightmapIntensity: 2, scale: 0.5, yawDeg: 90 }),
+      { ...context, assets: ['city/house.glb', 'city/house.hdr'] },
+    ),
+    [],
+  );
+  const cases = [
+    [{ asset: '../house.glb' }, 'nodes[0].asset: use a logical asset id ending in .glb'],
+    [{ asset: 'https://example.com/house.glb' }, 'nodes[0].asset: use a logical asset id'],
+    [{ asset: '/abs/house.glb' }, 'nodes[0].asset: use a logical asset id'],
+    [{ asset: 'city/house.gltf' }, 'nodes[0].asset: use a logical asset id ending in .glb'],
+    [{ lightmap: 'city/house.png' }, 'nodes[0].lightmap: use a logical asset id ending in .hdr'],
+    [{ lightmapIntensity: 1 }, 'nodes[0].lightmapIntensity: needs a lightmap'],
+    [{ lightmap: 'a.hdr', lightmapIntensity: 99 }, 'nodes[0].lightmapIntensity'],
+    [{ scale: 0 }, 'nodes[0].scale: use 0.001..1000'],
+    [{ url: 'x' }, 'nodes[0].url: unknown field'],
+  ];
+  for (const [extra, fragment] of cases)
+    assert.ok(
+      validateZhudaFilmScene(model(extra), context).some((issue) => issue.includes(fragment)),
+      fragment,
+    );
+  // A host that lists its assets refuses unknown ids and says what it has.
+  const listed = validateZhudaFilmScene(model({ lightmap: 'city/other.hdr' }), {
+    ...context,
+    assets: ['city/house.glb', 'city/house.hdr'],
+  });
+  assert.deepEqual(listed, [
+    'scene.nodes[0].lightmap: unknown asset city/other.hdr; known: city/house.hdr',
+  ]);
+  const many = {
+    ...scene(),
+    nodes: Array.from({ length: 65 }, (_, i) => ({
+      id: 'm' + i,
+      type: 'model',
+      asset: 'a.glb',
+      position: [i, 0, 0],
+    })),
+  };
+  assert.ok(validateZhudaFilmScene(many, context).some((issue) => /at most 64 models/.test(issue)));
+  // Patches add and remove models like any other node.
+  const base = parseZhudaFilmScene(model(), context);
+  const next = applyZhudaFilmScenePatch(
+    base,
+    { upsert: [{ ...base.nodes[0], lightmap: 'city/house.hdr' }] },
+    context,
+  );
+  assert.equal(next.nodes[0].lightmap, 'city/house.hdr');
+});
+
+test('the bundled host without an asset directory refuses model nodes', () => {
+  const sessions = new ZhudaFilmSessions();
+  assert.throws(
+    () =>
+      sessions.create({
+        ...scene(),
+        materials: {},
+        nodes: [{ id: 'house', type: 'model', asset: 'house.glb', position: [0, 0, 0] }],
+      }),
+    /unknown asset house\.glb; known: none/,
+  );
+});

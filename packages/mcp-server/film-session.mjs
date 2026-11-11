@@ -11,10 +11,12 @@ import {
   ZHUDA_STARTER_TEXTURES,
 } from './runtime.mjs';
 
-/** What the bundled film host can build: the neutral starter props and recipes. */
+/** What the bundled film host can build: the neutral starter props and recipes, no assets. */
 export const ZHUDA_FILM_HOST_CONTEXT = Object.freeze({
   props: Object.freeze(ZHUDA_STARTER_PROPS.map((prop) => prop.id).sort()),
   recipes: Object.freeze(Object.keys(ZHUDA_STARTER_TEXTURES).sort()),
+  /** No asset directory: model nodes are refused until the operator serves one. */
+  assets: Object.freeze([]),
 });
 
 const MAX_SCENE_BYTES = 1024 * 1024;

@@ -65,9 +65,21 @@ when more than 16 are open.
   "nodes": [
     { "id": "ground", "type": "ground", "size": [80, 80], "material": "asphalt" },
     { "id": "c1", "type": "prop", "prop": "container20", "position": [0, 0, 0], "seed": 1 },
-    { "id": "c2", "type": "prop", "prop": "container20", "position": [0, 0, 3.2], "yawDeg": 180,
-      "params": { "paint": "red-paint" } },
-    { "id": "wall", "type": "box", "size": [6, 2.4, 0.3], "position": [0, 0, -6], "material": "plaster" }
+    {
+      "id": "c2",
+      "type": "prop",
+      "prop": "container20",
+      "position": [0, 0, 3.2],
+      "yawDeg": 180,
+      "params": { "paint": "red-paint" }
+    },
+    {
+      "id": "wall",
+      "type": "box",
+      "size": [6, 2.4, 0.3],
+      "position": [0, 0, -6],
+      "material": "plaster"
+    }
   ]
 }
 ```
@@ -108,14 +120,14 @@ preset keeps the plain look (flat sky colour, no shadows, sky or fog).
 }
 ```
 
-| Field | Native Laya 3.4.2 feature |
-| --- | --- |
-| `shadows` (`false` to turn off) | `DirectionLightCom` shadow maps, two cascades; every mesh casts and receives |
-| `atmosphere` (`false` for a flat `sky`) | `SkyProceduralMaterial` on a `SkyDome`; the sun disk follows the sun |
-| `fog` (`false` to turn off) | Linear scene fog |
-| `grade` (off unless given) | The existing `ZhudaFilmicPipeline`: HDR, ACES tone mapping, bloom and ambient occlusion |
-| `light` nodes | `PointLightCom` / `SpotLightCom` (at most 32, `Config3D.maxLightCount`) |
-| `emission` on a flat material | PBR emission, for lamp heads and signs |
+| Field                                   | Native Laya 3.4.2 feature                                                               |
+| --------------------------------------- | --------------------------------------------------------------------------------------- |
+| `shadows` (`false` to turn off)         | `DirectionLightCom` shadow maps, two cascades; every mesh casts and receives            |
+| `atmosphere` (`false` for a flat `sky`) | `SkyProceduralMaterial` on a `SkyDome`; the sun disk follows the sun                    |
+| `fog` (`false` to turn off)             | Linear scene fog                                                                        |
+| `grade` (off unless given)              | The existing `ZhudaFilmicPipeline`: HDR, ACES tone mapping, bloom and ambient occlusion |
+| `light` nodes                           | `PointLightCom` / `SpotLightCom` (at most 32, `Config3D.maxLightCount`)                 |
+| `emission` on a flat material           | PBR emission, for lamp heads and signs                                                  |
 
 ```json
 { "id": "lamp", "type": "light", "kind": "point", "position": [4, 2.5, 6],
@@ -147,14 +159,79 @@ npx zhuda-laya-mcp --film-output ./films --film-pack ./my-city/pack.mjs
 ```js
 // my-city/pack.mjs
 import { createZhudaBoxMesh } from 'zhuda-laya-engine';
-export const recipes = { 'stone-paving': { /* ZhudaTextureRecipe */ } };
-export const props = [{ id: 'lamp-post', size: [0.4, 3, 0.4], defaults: {}, build() { /* … */ } }];
+export const recipes = {
+  'stone-paving': {
+    /* ZhudaTextureRecipe */
+  },
+};
+export const props = [
+  {
+    id: 'lamp-post',
+    size: [0.4, 3, 0.4],
+    defaults: {},
+    build() {
+      /* … */
+    },
+  },
+];
 ```
 
 Packs are trusted like server code; an agent only names what they provide,
 and `film_scene_create` lists every prop and recipe the host can build. In the
 page, `zhuda-laya-engine` resolves to the loaded browser SDK, so a pack adds no
 second engine copy. Duplicate ids across packs are refused.
+
+## Models and baked global illumination
+
+A `model` node places a self-contained `.glb` by logical asset id. The person
+who starts the server chooses the directory the ids resolve in:
+
+```sh
+npx zhuda-laya-mcp --film-output ./films --film-assets ./my-city/assets
+```
+
+```json
+{
+  "id": "street",
+  "type": "model",
+  "asset": "city/street.glb",
+  "position": [0, 0, 0],
+  "yawDeg": 0,
+  "scale": 1,
+  "lightmap": "city/street.hdr",
+  "lightmapIntensity": 1
+}
+```
+
+`film_scene_create` lists the `.glb` and `.hdr` files in the directory; a
+scene that names anything else is refused, and without `--film-assets` model
+nodes are refused. Ids never contain a path outside the directory, a URL or a
+query. Models load through the engine's model library and asset provider, so
+an edited scene does not download or parse an unchanged model again; a file
+rewritten on disk is picked up by the next mount. Up to 64 models per scene.
+A model keeps the transforms, materials and textures in its file; animations
+are not played in film renders.
+
+`lightmap` is how a film scene gets global illumination. It is a Radiance
+`.hdr` picture of the diffuse light that reaches the model's surfaces, both
+direct and bounced, baked offline (for example with Blender's Cycles, bake
+type Diffuse with Direct and Indirect and without Color). The engine draws it
+with Laya's native lightmap path:
+
+- Every mesh in the model needs a second UV set (`TEXCOORD_1`) that does not
+  overlap; glTF's convention applies, so UV (0, 0) is the picture's top-left
+  texel. One picture covers the whole model.
+- Values are scene-linear. They are stored as 8-bit RGBM, so light above
+  about 34 is clamped and very dark texels lose precision; keep the bake's
+  exposure sensible and use `lightmapIntensity` (0..16) to scale it.
+- A lightmap replaces the flat `ambient` on that model. The sun and `light`
+  nodes still add their own direct light on top, so a light that is already
+  in the bake should not also be a `light` node (or it counts twice). For a
+  fully baked scene set the sun intensity to 0.
+- The picture holds diffuse light only. Glossy highlights from baked lights
+  and reflections of the surroundings are not part of it.
+
+Props, boxes and the ground are not lightmapped; they keep the flat ambient.
 
 ## Camera paths
 
@@ -175,6 +252,8 @@ import {
   applyZhudaFilmScenePatch,
   sampleZhudaFilmCameraPath,
   mountZhudaFilmScene,
+  loadZhudaFilmScene,
+  ZhudaFilmAssets,
   ZhudaFilmRenderer,
   composeZhudaFilmReview,
 } from 'zhuda-laya-engine';
@@ -196,6 +275,20 @@ stage.dispose();
 
 A game passes its own props and recipes; the starter set is a neutral sample.
 
+Scenes with `model` nodes load assets first, through any `AssetProvider`:
+
+```ts
+const assets = new ZhudaFilmAssets(provider); // one per host; the provider is borrowed
+const stage = await loadZhudaFilmScene(context.rootScene, scene, { assets, signal });
+// … render …
+stage.dispose(); // releases its model instances and lightmap textures
+assets.dispose(); // after every stage
+```
+
+Cancelling `signal`, a timeout or a failed asset rejects, releases what was
+already loaded and adds nothing to the scene. `decodeRadianceHdr`,
+`encodeZhudaLightmapRgbm` and `createZhudaLightmap` are public for tools.
+
 ## Verification and limits
 
 `npm run verify:film` drives the real MCP stdio server through create,
@@ -209,7 +302,15 @@ vertical gradient, fog and a point light change the frame), remounts nine
 looks in a row and draws a prop from a pack. See the
 [look verification record](plans/records/film-look/verification.md).
 
-Not yet: animated look or light tracks, shadows from point lights, reflections,
-spline camera paths, shot lists, path tracing, audio in render jobs
-and glTF assets in film scenes. Previews and renders are desktop WebGL evidence; WebGPU and mobile are
+`npm run verify:film-model` generates a GLB and an HDR lightmap, draws them on
+a real GPU and checks that the lit regions follow the second UV set at the
+encoded brightness, that scale and yaw apply, that a missing asset and a model
+without `TEXCOORD_1` are refused, that 30 mounts leave one instance and that a
+rewritten lightmap is picked up. See the
+[model verification record](plans/records/film-model-gi/verification.md).
+
+Not yet: animated look or light tracks, real-time shadows from point lights
+(bake them into a lightmap), reflections and reflection probes, real-time
+global illumination, animated models, spline camera paths, shot lists, path
+tracing and audio in render jobs. Previews and renders are desktop WebGL evidence; WebGPU and mobile are
 not covered.

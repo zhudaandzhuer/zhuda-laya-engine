@@ -719,7 +719,7 @@ export function handleJsonRpcMessage(msg) {
 if (
   cliMain(
     import.meta.url,
-    'Usage: zhuda-laya-mcp [--tool NAME --args JSON] [--film-output DIRECTORY] [--film-pack MODULE ...]\nWithout --tool, starts the JSON-RPC stdio server. --film-output lets film_render_job write stills and MP4 there; --film-pack adds an operator prop/recipe module (repeatable).',
+    'Usage: zhuda-laya-mcp [--tool NAME --args JSON] [--film-output DIRECTORY] [--film-pack MODULE ...] [--film-assets DIRECTORY]\nWithout --tool, starts the JSON-RPC stdio server. --film-output lets film_render_job write stills and MP4 there; --film-pack adds an operator prop/recipe module (repeatable); --film-assets serves a directory of .glb models and .hdr lightmaps to film scenes.',
   )
 ) {
   const { resolve } = await import('node:path');
@@ -728,6 +728,12 @@ if (
     const dir = process.argv[filmIdx + 1];
     if (!dir) throw Error('--film-output needs a directory');
     configureFilmTools({ output: resolve(dir) });
+  }
+  const assetsIdx = process.argv.indexOf('--film-assets');
+  if (assetsIdx !== -1) {
+    const dir = process.argv[assetsIdx + 1];
+    if (!dir) throw Error('--film-assets needs a directory');
+    configureFilmTools({ assets: resolve(dir) });
   }
   const packList = process.argv.flatMap((arg, i) => {
     if (arg !== '--film-pack') return [];

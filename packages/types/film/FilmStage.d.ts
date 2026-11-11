@@ -2,6 +2,10 @@
 import { ZhudaPhysicalCameraRig } from '../runtime3d/PhysicalCamera.js';
 import { type CinematicFramePixels } from '../runtime3d/CinematicCapture.js';
 import type { ZhudaRuntimeSession } from '../runtime3d/Runtime.js';
+import { ZhudaModelLibrary } from '../runtime3d/Assets.js';
+import type { ZhudaAssetCache } from '../runtime3d/Assets.js';
+import { type AssetProvider } from '../runtime3d/AssetProvider.js';
+import { type ZhudaHdrImage } from '../runtime3d/Lightmap.js';
 import { type ZhudaBakedTextureSet, type ZhudaTextureRecipe } from '../procedural/TextureRecipe.js';
 import { type ZhudaPropDefinition } from '../procedural/PropFactory.js';
 import { type ZhudaFilmCamera, type ZhudaFilmScene } from './FilmScene.js';
@@ -26,13 +30,51 @@ export interface ZhudaFilmStage {
         material: string;
         meshes: number;
     }[];
+    /** Models placed by the scene, in node order. */
+    readonly models: readonly {
+        id: string;
+        asset: string;
+        meshes: number;
+        lightmap: boolean;
+    }[];
     /** Moves the camera and sets its lens; ignores depth of field until a render asks for it. */
     setCamera(camera: ZhudaFilmCamera): void;
     dispose(): void;
 }
+export interface ZhudaFilmAssetsOptions {
+    /** Download and parse deadline per asset (default 30000 ms). */
+    timeoutMs?: number;
+    /** Unused models and lightmaps kept warm for the next mount (default 16). */
+    maxIdle?: number;
+}
+/**
+ * Models and lightmaps a film scene names by logical asset id. One instance
+ * serves every stage a host mounts, so an edited scene does not download or
+ * parse unchanged assets again. The provider is borrowed.
+ */
+export declare class ZhudaFilmAssets {
+    readonly models: ZhudaModelLibrary;
+    /** Decoded lightmap pictures; each stage uploads and owns its own texture. */
+    readonly lightmaps: ZhudaAssetCache<ZhudaHdrImage>;
+    private disposed;
+    constructor(provider: AssetProvider, options?: ZhudaFilmAssetsOptions);
+    /** Dispose every stage first. */
+    dispose(): void;
+}
+/**
+ * Mounts a scene that places models: loads every model and lightmap through
+ * `assets`, then builds the stage. Cancelling `signal`, a timeout or a failed
+ * asset releases everything already loaded and rejects; nothing is added to
+ * `rootScene` in that case.
+ */
+export declare function loadZhudaFilmScene(rootScene: any, input: ZhudaFilmScene, options: ZhudaFilmStageOptions & {
+    assets: ZhudaFilmAssets;
+    signal?: AbortSignal;
+}): Promise<ZhudaFilmStage>;
 /**
  * Builds the scene under `rootScene`. Every Laya object is released by
- * `dispose()`, including on a failure part-way through.
+ * `dispose()`, including on a failure part-way through. Scenes that place
+ * models load assets first: use `loadZhudaFilmScene`.
  */
 export declare function mountZhudaFilmScene(rootScene: any, input: ZhudaFilmScene, options?: ZhudaFilmStageOptions): ZhudaFilmStage;
 export interface ZhudaFilmRenderOptions {

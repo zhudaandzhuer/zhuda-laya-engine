@@ -29,7 +29,7 @@ export const FILM_TOOLS_MANIFEST = [
   {
     name: 'film_scene_create',
     description:
-      'Create a film scene session from a ZhudaFilmScene (schemaVersion 1): camera; look (preset day/dawn/dusk/night/overcast, then sky, ambient, sun, shadows, atmosphere, fog overrides, and grade for HDR tone mapping, bloom and ambient occlusion); materials (recipe, or flat colour with optional emission); nodes (prop, box, ground, light point/spot, up to 32 lights). Returns the session id, revision 0 and the props/recipes this host can build, including operator packs. Data only; no code runs.',
+      'Create a film scene session from a ZhudaFilmScene (schemaVersion 1): camera; look (preset day/dawn/dusk/night/overcast, then sky, ambient, sun, shadows, atmosphere, fog overrides, and grade for HDR tone mapping, bloom and ambient occlusion); materials (recipe, or flat colour with optional emission); nodes (prop, box, ground, light point/spot up to 32, and model: a .glb asset id with position, yawDeg, scale and an optional baked .hdr lightmap that carries global illumination through the second UV set of the model). Returns the session id, revision 0 and the props, recipes and assets (--film-assets) this host can use, including operator packs. Data only; no code runs.',
     inputSchema: {
       type: 'object',
       properties: { scene: { type: 'object' } },
@@ -134,6 +134,7 @@ export const isFilmTool = (name) => FILM_TOOL_NAMES.has(name);
 
 let outputDir = process.env.ZHUDA_FILM_OUTPUT || null;
 let packs = [];
+let assetsDir = null;
 let host;
 let sessions = new ZhudaFilmSessions();
 let context = ZHUDA_FILM_HOST_CONTEXT;
@@ -141,29 +142,45 @@ let context = ZHUDA_FILM_HOST_CONTEXT;
 /**
  * `output`: directory render jobs may write into (--film-output).
  * `packs`: operator prop/recipe modules (--film-pack), loaded into the page.
+ * `assets`: directory of models (.glb) and lightmaps (.hdr) scenes may name
+ * (--film-assets).
  */
-export function configureFilmTools({ output, packs: list } = {}) {
+export function configureFilmTools({ output, packs: list, assets } = {}) {
   if (output !== undefined) outputDir = output;
+  if (assets !== undefined) assetsDir = assets;
   if (list !== undefined) packs = [...list];
 }
 
 async function filmHost() {
   if (!host) {
     const { ZhudaFilmHost } = await import('./film-host.mjs');
-    host = new ZhudaFilmHost({ outputDir, packs });
+    host = new ZhudaFilmHost({ outputDir, packs, assets: assetsDir ?? undefined });
   }
   return host;
 }
 
-/** With packs, the page reports which props and recipes it can build. */
+/**
+ * With packs, the page reports which props and recipes it can build. The
+ * asset list is read from disk on every use, so new exports are accepted
+ * without restarting the server; without an asset directory it is empty and
+ * model nodes are refused.
+ */
 async function filmContext() {
-  if (!packs.length) return context;
-  if (context === ZHUDA_FILM_HOST_CONTEXT) {
-    const film = await filmHost();
+  if (context !== ZHUDA_FILM_HOST_CONTEXT) return context;
+  let base = ZHUDA_FILM_HOST_CONTEXT;
+  const film = packs.length || assetsDir ? await filmHost() : undefined;
+  if (packs.length) {
     await film.ready();
-    context = Object.freeze({ props: film.info.props, recipes: film.info.recipes });
-    sessions = new ZhudaFilmSessions({ context });
+    base = { props: film.info.props, recipes: film.info.recipes };
   }
+  context = Object.freeze({
+    props: base.props,
+    recipes: base.recipes,
+    get assets() {
+      return film ? film.assetList().ids : [];
+    },
+  });
+  sessions = new ZhudaFilmSessions({ context });
   return context;
 }
 
@@ -198,6 +215,7 @@ export async function executeFilmTool(name, args = {}) {
           revision: created.revision,
           props: context.props,
           recipes: context.recipes,
+          assets: context.assets,
         }),
       ];
     }

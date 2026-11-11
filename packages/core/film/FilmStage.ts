@@ -15,6 +15,14 @@ import { ZhudaPhysicalCameraRig } from '../runtime3d/PhysicalCamera.ts';
 import { ZhudaFilmicPipeline } from '../runtime3d/Filmic.ts';
 import { ZhudaCinematicCapture, type CinematicFramePixels } from '../runtime3d/CinematicCapture.ts';
 import type { ZhudaRuntimeSession } from '../runtime3d/Runtime.ts';
+import { ZhudaModelLibrary, type AssetLease, type ModelInstance } from '../runtime3d/Assets.ts';
+import type { ZhudaAssetCache } from '../runtime3d/Assets.ts';
+import { createProviderAssetCache, type AssetProvider } from '../runtime3d/AssetProvider.ts';
+import {
+  createZhudaLightmap,
+  decodeRadianceHdr,
+  type ZhudaHdrImage,
+} from '../runtime3d/Lightmap.ts';
 import {
   bakeZhudaTextureSet,
   type ZhudaBakedTextureSet,
@@ -61,35 +69,151 @@ export interface ZhudaFilmStage {
   readonly lens: ZhudaPhysicalCameraRig;
   /** Material names in use and how many meshes each one draws. */
   readonly batches: readonly { material: string; meshes: number }[];
+  /** Models placed by the scene, in node order. */
+  readonly models: readonly { id: string; asset: string; meshes: number; lightmap: boolean }[];
   /** Moves the camera and sets its lens; ignores depth of field until a render asks for it. */
   setCamera(camera: ZhudaFilmCamera): void;
   dispose(): void;
+}
+
+export interface ZhudaFilmAssetsOptions {
+  /** Download and parse deadline per asset (default 30000 ms). */
+  timeoutMs?: number;
+  /** Unused models and lightmaps kept warm for the next mount (default 16). */
+  maxIdle?: number;
+}
+
+/**
+ * Models and lightmaps a film scene names by logical asset id. One instance
+ * serves every stage a host mounts, so an edited scene does not download or
+ * parse unchanged assets again. The provider is borrowed.
+ */
+export class ZhudaFilmAssets {
+  readonly models: ZhudaModelLibrary;
+  /** Decoded lightmap pictures; each stage uploads and owns its own texture. */
+  readonly lightmaps: ZhudaAssetCache<ZhudaHdrImage>;
+  private disposed = false;
+  constructor(provider: AssetProvider, options: ZhudaFilmAssetsOptions = {}) {
+    const maxIdle = options.maxIdle ?? 16;
+    this.models = new ZhudaModelLibrary({
+      provider,
+      maxIdle,
+      timeoutMs: options.timeoutMs ?? 30_000,
+    });
+    this.lightmaps = createProviderAssetCache(
+      provider,
+      (asset) => decodeRadianceHdr(asset.bytes),
+      () => {},
+      maxIdle,
+    );
+  }
+  /** Dispose every stage first. */
+  dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true;
+    try {
+      this.models.dispose();
+    } finally {
+      this.lightmaps.dispose();
+    }
+  }
+}
+
+interface LoadedFilmModel {
+  instance: ModelInstance;
+  lightmap?: AssetLease<ZhudaHdrImage>;
+}
+
+function releaseLoaded(loaded: Iterable<LoadedFilmModel>) {
+  for (const item of loaded) {
+    try {
+      item.instance.dispose();
+    } catch {
+      // Keep releasing the rest.
+    }
+    item.lightmap?.release();
+  }
+}
+
+/**
+ * Mounts a scene that places models: loads every model and lightmap through
+ * `assets`, then builds the stage. Cancelling `signal`, a timeout or a failed
+ * asset releases everything already loaded and rejects; nothing is added to
+ * `rootScene` in that case.
+ */
+export async function loadZhudaFilmScene(
+  rootScene: any,
+  input: ZhudaFilmScene,
+  options: ZhudaFilmStageOptions & { assets: ZhudaFilmAssets; signal?: AbortSignal },
+): Promise<ZhudaFilmStage> {
+  const registry = new ZhudaPropRegistry();
+  for (const definition of options.props ?? []) registry.register(definition);
+  const scene = parseZhudaFilmScene(input, {
+    props: registry.ids(),
+    recipes: Object.keys(options.recipes ?? {}),
+  });
+  const nodes = scene.nodes.flatMap((node) => (node.type === 'model' ? [node] : []));
+  const results = await Promise.allSettled(
+    nodes.map(async (node): Promise<LoadedFilmModel> => {
+      const [instance, lightmap] = await Promise.allSettled([
+        options.assets.models.instantiate(node.asset, { signal: options.signal }),
+        node.lightmap === undefined
+          ? undefined
+          : options.assets.lightmaps.acquire(node.lightmap, { signal: options.signal }),
+      ]);
+      if (instance.status === 'fulfilled' && lightmap.status === 'fulfilled')
+        return { instance: instance.value, lightmap: lightmap.value };
+      if (instance.status === 'fulfilled') instance.value.dispose();
+      if (lightmap.status === 'fulfilled') lightmap.value?.release();
+      const failed =
+        instance.status === 'rejected' ? instance : (lightmap as PromiseRejectedResult);
+      const which = instance.status === 'rejected' ? node.asset : node.lightmap;
+      if (options.signal?.aborted) throw failed.reason;
+      throw Error(
+        `Film scene model ${node.id}: cannot load ${which}: ${failed.reason?.message ?? failed.reason}`,
+        { cause: failed.reason },
+      );
+    }),
+  );
+  const loaded = new Map<string, LoadedFilmModel>();
+  results.forEach((result, i) => {
+    if (result.status === 'fulfilled') loaded.set(nodes[i].id, result.value);
+  });
+  const failure = results.find((result) => result.status === 'rejected');
+  if (failure || options.signal?.aborted) {
+    releaseLoaded(loaded.values());
+    if (options.signal?.aborted)
+      throw options.signal.reason ?? new DOMException('Film scene load cancelled', 'AbortError');
+    throw (failure as PromiseRejectedResult).reason;
+  }
+  // The stage owns the loaded assets from here, including on a failed mount.
+  return buildFilmStage(rootScene, scene, options, loaded);
 }
 
 const bakeKey = (recipe: ZhudaTextureRecipe, size: number) => `${size}:${JSON.stringify(recipe)}`;
 
 /**
  * Builds the scene under `rootScene`. Every Laya object is released by
- * `dispose()`, including on a failure part-way through.
+ * `dispose()`, including on a failure part-way through. Scenes that place
+ * models load assets first: use `loadZhudaFilmScene`.
  */
 export function mountZhudaFilmScene(
   rootScene: any,
   input: ZhudaFilmScene,
   options: ZhudaFilmStageOptions = {},
 ): ZhudaFilmStage {
-  const l = (globalThis as any).Laya;
-  if (!l?.Scene3D) throw Error('Film scenes need the Laya 3D runtime');
-  const registry = new ZhudaPropRegistry();
-  for (const definition of options.props ?? []) registry.register(definition);
-  const recipes = options.recipes ?? {};
-  const scene = parseZhudaFilmScene(input, {
-    props: registry.ids(),
-    recipes: Object.keys(recipes),
-  });
-  const bakeCache = options.bakeCache ?? new Map<string, ZhudaBakedTextureSet>();
-  const look = resolveZhudaFilmLook(scene.look);
-  const cleanups: (() => void)[] = [];
-  const materials = new Map<string, any>();
+  if (Array.isArray(input?.nodes) && input.nodes.some((node) => node?.type === 'model'))
+    throw Error('Film scene places models; mount it with loadZhudaFilmScene');
+  return buildFilmStage(rootScene, input, options, new Map());
+}
+
+function buildFilmStage(
+  rootScene: any,
+  input: ZhudaFilmScene,
+  options: ZhudaFilmStageOptions,
+  loaded: Map<string, LoadedFilmModel>,
+): ZhudaFilmStage {
+  const cleanups: (() => void)[] = [() => releaseLoaded(loaded.values())];
   let disposed = false;
   const dispose = () => {
     if (disposed) return;
@@ -103,6 +227,34 @@ export function mountZhudaFilmScene(
     }
   };
   try {
+    return buildFilmStageContents(rootScene, input, options, loaded, cleanups, dispose);
+  } catch (error) {
+    dispose();
+    throw error;
+  }
+}
+
+function buildFilmStageContents(
+  rootScene: any,
+  input: ZhudaFilmScene,
+  options: ZhudaFilmStageOptions,
+  loaded: Map<string, LoadedFilmModel>,
+  cleanups: (() => void)[],
+  dispose: () => void,
+): ZhudaFilmStage {
+  const l = (globalThis as any).Laya;
+  if (!l?.Scene3D) throw Error('Film scenes need the Laya 3D runtime');
+  const registry = new ZhudaPropRegistry();
+  for (const definition of options.props ?? []) registry.register(definition);
+  const recipes = options.recipes ?? {};
+  const scene = parseZhudaFilmScene(input, {
+    props: registry.ids(),
+    recipes: Object.keys(recipes),
+  });
+  const bakeCache = options.bakeCache ?? new Map<string, ZhudaBakedTextureSet>();
+  const look = resolveZhudaFilmLook(scene.look);
+  const materials = new Map<string, any>();
+  {
     const scene3D = Zhuda3D.createScene3D(rootScene, { ambientColor: [...look.ambient, 1] });
     cleanups.push(() => scene3D.destroy(true));
     const camera = Zhuda3D.createCamera(scene3D, {
@@ -224,6 +376,60 @@ export function mountZhudaFilmScene(
       }
     }
 
+    // Models: clones from the shared library; baked lightmaps through Laya's
+    // native lightmap path (`Scene3D.lightmaps`, renderer `lightmapIndex`).
+    const models: { id: string; asset: string; meshes: number; lightmap: boolean }[] = [];
+    const lightmaps: any[] = [];
+    const lightmapped: { renderer: any; index: number }[] = [];
+    for (const node of scene.nodes) {
+      if (node.type !== 'model') continue;
+      const item = loaded.get(node.id);
+      if (!item) throw Error(`Film scene model ${node.id}: not loaded`);
+      const holder = new l.Sprite3D(`ZhudaFilmModel:${node.id}`);
+      scene3D.addChild(holder);
+      cleanups.push(() => holder.destroy(false));
+      holder.transform.position = new l.Vector3(...node.position);
+      holder.transform.rotationEuler = new l.Vector3(0, node.yawDeg ?? 0, 0);
+      const scale = node.scale ?? 1;
+      holder.transform.localScale = new l.Vector3(scale, scale, scale);
+      holder.addChild(item.instance.node);
+      // The library destroys the clone; detach it first so the holder does not.
+      cleanups.push(() => item.instance.node.removeSelf());
+      const renderers = modelRenderers(l, item.instance.node);
+      if (!renderers.length) throw Error(`Film scene model ${node.id}: ${node.asset} has no mesh`);
+      for (const renderer of renderers) {
+        renderer.castShadow = true;
+        renderer.receiveShadow = true;
+      }
+      if (item.lightmap) {
+        for (const renderer of renderers)
+          if (!hasSecondUv(l, renderer))
+            throw Error(
+              `Film scene model ${node.id}: ${node.asset} has a mesh without a second UV set (TEXCOORD_1); a lightmap needs one`,
+            );
+        const baked = createZhudaLightmap(item.lightmap.value, node.lightmapIntensity ?? 1);
+        cleanups.push(() => baked.dispose());
+        const index = lightmaps.push(baked.lightmap) - 1;
+        for (const renderer of renderers) lightmapped.push({ renderer, index });
+      }
+      models.push({
+        id: node.id,
+        asset: node.asset,
+        meshes: renderers.length,
+        lightmap: !!item.lightmap,
+      });
+    }
+    if (lightmaps.length) {
+      scene3D.lightmaps = lightmaps;
+      // Clear the list before the textures go (cleanups run in reverse).
+      cleanups.push(() => (scene3D.lightmaps = []));
+      for (const { renderer, index } of lightmapped) {
+        renderer.lightmapScaleOffset = new l.Vector4(1, 1, 0, 0);
+        renderer.lightmapIndex = index;
+        renderer.setLightmapIndex?.(index);
+      }
+    }
+
     // Practical lights: native point and spot light components.
     for (const node of scene.nodes) {
       if (node.type !== 'light') continue;
@@ -268,13 +474,33 @@ export function mountZhudaFilmScene(
       batches: [...batches]
         .map(([material, meshes]) => ({ material, meshes }))
         .sort((a, b) => a.material.localeCompare(b.material)),
+      models,
       setCamera,
       dispose,
     };
-  } catch (error) {
-    dispose();
-    throw error;
   }
+}
+
+function modelRenderers(l: any, root: any): any[] {
+  const found: any[] = [];
+  const visit = (node: any) => {
+    const renderer =
+      node.meshRenderer ?? node.skinnedMeshRenderer ?? node.getComponent?.(l.MeshRenderer);
+    if (renderer) found.push(renderer);
+    for (let i = 0; i < (node.numChildren || 0); i++) visit(node.getChildAt(i));
+  };
+  visit(root);
+  return found;
+}
+
+function hasSecondUv(l: any, renderer: any): boolean {
+  const owner = renderer.owner;
+  const mesh =
+    owner?.meshFilter?.sharedMesh ??
+    owner?.getComponent?.(l.MeshFilter)?.sharedMesh ??
+    renderer.sharedMesh;
+  const declaration = mesh?.getVertexDeclaration?.();
+  return !!declaration?.getVertexElementByUsage?.(l.VertexMesh.MESH_TEXTURECOORDINATE1);
 }
 
 function castsShadow(node: any) {

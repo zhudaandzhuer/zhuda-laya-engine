@@ -20,6 +20,7 @@ export * from './SceneLifecycle.js';
 export * from './CameraRig.js';
 export * from './CameraCollision.js';
 export * from './Filmic.js';
+export * from './Lightmap.js';
 export { installLaya342LifecycleFix } from './Laya342Adapters.js';
 export * from './CrowdPresentation.js';
 export * from './ModelInspector.js';

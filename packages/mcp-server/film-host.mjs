@@ -60,13 +60,20 @@ export class ZhudaFilmHost {
   info;
 
   #packs;
+  #assetsDir;
   /**
    * `packs`: operator-chosen modules exporting `{ props, recipes }` (default
    * or named). They are trusted like any server code; agents only name what
    * they provide.
    */
-  constructor({ outputDir, chrome = chromeFixture, packs = [] } = {}) {
+  constructor({ outputDir, chrome = chromeFixture, packs = [], assets } = {}) {
     this.#outputDir = outputDir ? path.resolve(outputDir) : null;
+    if (assets) {
+      const dir = path.resolve(assets);
+      if (!fs.existsSync(dir) || !fs.statSync(dir).isDirectory())
+        throw Error(`Film asset directory not found: ${assets}`);
+      this.#assetsDir = fs.realpathSync(dir);
+    }
     this.#chrome = chrome;
     this.#packs = packs.map((file) => {
       const resolved = path.resolve(file);
@@ -74,6 +81,61 @@ export class ZhudaFilmHost {
         throw Error(`Film pack not found: ${file}`);
       return resolved;
     });
+  }
+
+  /**
+   * Models (.glb) and lightmaps (.hdr) below the asset directory, as logical
+   * ids, with a version that changes when any of them is rewritten.
+   */
+  assetList() {
+    if (!this.#assetsDir) return { ids: [], version: '' };
+    const found = [];
+    const walk = (dir, prefix) => {
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        if (entry.name.startsWith('.')) continue;
+        const id = prefix + entry.name;
+        if (entry.isDirectory()) walk(path.join(dir, entry.name), id + '/');
+        else if (entry.isFile() && /\.(glb|hdr)$/i.test(entry.name)) {
+          const stat = fs.statSync(path.join(dir, entry.name));
+          found.push({ id, stamp: `${id}:${stat.size}:${stat.mtimeMs}` });
+        }
+        if (found.length > 4096) throw Error('Film asset directory: more than 4096 assets');
+      }
+    };
+    walk(this.#assetsDir, '');
+    found.sort((a, b) => a.id.localeCompare(b.id));
+    return {
+      ids: found.map((item) => item.id),
+      version: crypto
+        .createHash('sha256')
+        .update(found.map((item) => item.stamp).join('\n'))
+        .digest('hex'),
+    };
+  }
+
+  /** The file an `/assets/` request names, or null when it is outside the directory. */
+  #assetFile(pathname) {
+    if (!this.#assetsDir || !pathname.startsWith('/assets/')) return null;
+    let id;
+    try {
+      id = decodeURIComponent(pathname.slice('/assets/'.length));
+    } catch {
+      return null;
+    }
+    if (
+      !id ||
+      id.includes('\0') ||
+      id.split('/').some((part) => !part || part === '.' || part === '..')
+    )
+      return null;
+    const file = path.join(this.#assetsDir, ...id.split('/'));
+    try {
+      const real = fs.realpathSync(file);
+      if (!real.startsWith(this.#assetsDir + path.sep) || !fs.statSync(real).isFile()) return null;
+      return real;
+    } catch {
+      return null;
+    }
   }
 
   /** Runs browser work one call at a time. */
@@ -104,7 +166,7 @@ export class ZhudaFilmHost {
           contents: [
             ...imports,
             `import { startFilmHost } from ${JSON.stringify(path.join(engineRoot, 'packages/compiler/film-host-client.ts'))};`,
-            `startFilmHost([${list.join(', ')}]);`,
+            `startFilmHost([${list.join(', ')}], { assets: ${!!this.#assetsDir} });`,
           ].join('\n'),
           resolveDir: engineRoot,
           loader: 'js',
@@ -153,13 +215,19 @@ export class ZhudaFilmHost {
           response.writeHead(403).end();
           return;
         }
-        const file = files.get(new URL(request.url, 'http://127.0.0.1').pathname);
+        const pathname = new URL(request.url, 'http://127.0.0.1').pathname;
+        const asset = this.#assetFile(pathname);
+        const file = asset ?? files.get(pathname);
         if (!file) {
           response.writeHead(404).end();
           return;
         }
         response.writeHead(200, {
-          'Content-Type': file.endsWith('.html') ? 'text/html; charset=utf-8' : 'text/javascript',
+          'Content-Type': asset
+            ? 'application/octet-stream'
+            : file.endsWith('.html')
+              ? 'text/html; charset=utf-8'
+              : 'text/javascript',
           'Cache-Control': 'no-store',
         });
         fs.createReadStream(file).pipe(response);
@@ -212,10 +280,11 @@ export class ZhudaFilmHost {
   }
 
   async #mount(scene) {
-    const key = JSON.stringify(scene);
+    const assetsVersion = this.assetList().version;
+    const key = assetsVersion + JSON.stringify(scene);
     if (this.#mounted?.key === key) return this.#mounted.result;
     this.#mounted = undefined;
-    const result = await this.#call('mount', scene);
+    const result = await this.#call('mount', { scene, assetsVersion });
     this.#mounted = { key, result };
     return result;
   }
@@ -229,6 +298,14 @@ export class ZhudaFilmHost {
     if (path.dirname(file) !== this.#outputDir) throw Error('Output escapes the film directory');
     if (fs.existsSync(file)) throw Error(`${path.basename(file)} exists; choose another name`);
     return file;
+  }
+
+  /** Mounts the scene and reports its batches, models and asset cache (no render). */
+  mountReport(scene) {
+    return this.#serial(async () => {
+      await this.#start();
+      return this.#mount(scene);
+    });
   }
 
   /** PNG preview at the scene camera or the camera given. */

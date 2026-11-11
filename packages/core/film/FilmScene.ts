@@ -3,10 +3,12 @@
  * changes it with patches and renders it through the existing cinematic
  * capture. Everything here is pure and runs in Node, a Worker or a browser.
  *
- * The scene only names things the engine already owns: registered procedural
- * props, texture recipes and flat PBR colours. It never carries code, file
- * paths or URLs.
+ * The scene only names things the host already owns: registered procedural
+ * props, texture recipes, flat PBR colours and logical asset ids (models and
+ * lightmaps an `AssetProvider` delivers). It never carries code, file paths
+ * or URLs.
  */
+import { normalizeAssetId } from '../runtime3d/AssetProvider.ts';
 import {
   validateZhudaTextureRecipe,
   type ZhudaTextureRecipe,
@@ -155,6 +157,25 @@ export type ZhudaFilmNode =
     }
   | {
       id: string;
+      type: 'model';
+      /** Logical id of a self-contained `.glb` the host's asset provider delivers. */
+      asset: string;
+      /** Where the model's origin goes. */
+      position: ZhudaFilmVec3;
+      yawDeg?: number;
+      /** Uniform scale, 0.001..1000 (default 1). */
+      scale?: number;
+      /**
+       * Logical id of a Radiance `.hdr` lightmap baked for this model: the
+       * diffuse light reaching its surfaces (direct and bounced), laid out by
+       * the meshes' second UV set. Replaces the flat ambient on this model.
+       */
+      lightmap?: string;
+      /** Scales the lightmap, 0..16 (default 1). */
+      lightmapIntensity?: number;
+    }
+  | {
+      id: string;
       type: 'light';
       /** Point lights shine all around; spot lights shine at `target`. */
       kind: 'point' | 'spot';
@@ -195,6 +216,8 @@ export interface ZhudaFilmValidationContext {
   props?: readonly string[];
   /** Recipe names the host can bake. When omitted, recipe names are not checked. */
   recipes?: readonly string[];
+  /** Asset ids the host can deliver. When omitted, asset ids are not checked. */
+  assets?: readonly string[];
 }
 
 export interface ZhudaFilmCameraKey {
@@ -209,6 +232,7 @@ export const ZHUDA_FILM_LIMITS = Object.freeze({
   idLength: 64,
   /** Laya 3.4.2 `Config3D.maxLightCount` default. */
   lights: 32,
+  models: 64,
 });
 
 /** The plain look of scenes without a preset (phase 1 behaviour). */
@@ -614,6 +638,52 @@ function validateNode(
         issues.push(`${path}.size: use [width, depth] in metres`);
       usesMaterial();
       break;
+    case 'model': {
+      unknownKeys(
+        node,
+        ['id', 'type', 'asset', 'position', 'yawDeg', 'scale', 'lightmap', 'lightmapIntensity'],
+        path,
+        issues,
+      );
+      const asset = (key: 'asset' | 'lightmap', extension: string) => {
+        const value = node[key];
+        let id: string | undefined;
+        try {
+          id = normalizeAssetId(value as string);
+        } catch {
+          // Reported below.
+        }
+        if (id === undefined || id !== value || !id.toLowerCase().endsWith(extension))
+          issues.push(`${path}.${key}: use a logical asset id ending in ${extension}`);
+        else if (context.assets && !context.assets.includes(id))
+          issues.push(
+            `${path}.${key}: unknown asset ${id}; known: ${
+              context.assets.filter((name) => name.toLowerCase().endsWith(extension)).join(', ') ||
+              'none'
+            }`,
+          );
+      };
+      asset('asset', '.glb');
+      if (node.lightmap !== undefined) asset('lightmap', '.hdr');
+      vec3(node.position, `${path}.position`, issues);
+      yaw();
+      if (
+        node.scale !== undefined &&
+        !(finite(node.scale) && node.scale >= 0.001 && node.scale <= 1000)
+      )
+        issues.push(`${path}.scale: use 0.001..1000`);
+      if (
+        node.lightmapIntensity !== undefined &&
+        !(
+          node.lightmap !== undefined &&
+          finite(node.lightmapIntensity) &&
+          node.lightmapIntensity >= 0 &&
+          node.lightmapIntensity <= 16
+        )
+      )
+        issues.push(`${path}.lightmapIntensity: needs a lightmap, 0..16`);
+      break;
+    }
     case 'light':
       unknownKeys(
         node,
@@ -656,7 +726,7 @@ function validateNode(
         issues.push(`${path}.spotAngleDeg: spot lights only, 1..179`);
       break;
     default:
-      issues.push(`${path}.type: use prop, box, ground or light`);
+      issues.push(`${path}.type: use prop, box, ground, model or light`);
   }
 }
 
@@ -705,6 +775,9 @@ export function validateZhudaFilmScene(
         ids.add(id);
       }
     });
+    const models = scene.nodes.filter((node) => object(node) && node.type === 'model').length;
+    if (models > ZHUDA_FILM_LIMITS.models)
+      issues.push(`scene.nodes: at most ${ZHUDA_FILM_LIMITS.models} models`);
     const lights = scene.nodes.filter((node) => object(node) && node.type === 'light').length;
     if (lights > ZHUDA_FILM_LIMITS.lights)
       issues.push(

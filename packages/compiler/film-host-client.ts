@@ -42,6 +42,10 @@ const state: {
   stage?: any;
   renderer?: any;
   bakeCache: Map<string, unknown>;
+  /** Models and lightmaps from the operator's asset directory, when one is served. */
+  provider?: any;
+  assets?: any;
+  assetsVersion?: string;
   ready: boolean;
   error?: string;
 } = { bakeCache: new Map(), ready: false };
@@ -59,18 +63,36 @@ function requireStage() {
   return state.stage;
 }
 
-async function mount(scene: unknown) {
+async function mount(request: { scene: unknown; assetsVersion?: string }) {
   state.renderer?.dispose();
   state.stage?.dispose();
   state.renderer = state.stage = undefined;
   const started = performance.now();
-  state.stage = Z.mountZhudaFilmScene(state.context.rootScene, scene, {
+  const options = {
     props: library!.props,
     recipes: library!.recipes,
     bakeCache: state.bakeCache,
-  });
+  };
+  if (state.provider) {
+    // Files changed on disk: drop the warm models and lightmaps.
+    if (state.assets && state.assetsVersion !== request.assetsVersion) {
+      state.assets.dispose();
+      state.assets = undefined;
+    }
+    state.assets ??= new Z.ZhudaFilmAssets(state.provider);
+    state.assetsVersion = request.assetsVersion;
+    state.stage = await Z.loadZhudaFilmScene(state.context.rootScene, request.scene, {
+      ...options,
+      assets: state.assets,
+    });
+  } else state.stage = Z.mountZhudaFilmScene(state.context.rootScene, request.scene, options);
   state.renderer = new Z.ZhudaFilmRenderer(state.stage, state.context.runtime);
-  return { batches: state.stage.batches, mountMs: Math.round(performance.now() - started) };
+  return {
+    batches: state.stage.batches,
+    models: state.stage.models,
+    mountMs: Math.round(performance.now() - started),
+    assetCache: state.assets ? state.assets.models.report() : undefined,
+  };
 }
 
 async function render(options: {
@@ -120,8 +142,14 @@ async function review(options: {
   };
 }
 
-async function boot(packs: readonly Pack[]) {
+async function boot(packs: readonly Pack[], options: { assets?: boolean }) {
   library = catalogue(packs);
+  if (options.assets)
+    state.provider = new Z.DirectoryAssetProvider({
+      baseUrl: 'assets/',
+      timeoutMs: 60_000,
+      maxBytes: 512 * 1024 * 1024,
+    });
   state.context = await Z.ZhudaEngine.boot({
     renderer: 'webgl',
     container: document.querySelector('#view'),
@@ -141,7 +169,7 @@ async function boot(packs: readonly Pack[]) {
  * side-effect import: the package declares `sideEffects: false`, so a bare
  * import of this file would be dropped by the bundler.
  */
-export function startFilmHost(packs: readonly Pack[] = []) {
+export function startFilmHost(packs: readonly Pack[] = [], options: { assets?: boolean } = {}) {
   (globalThis as any).__ZHUDA_FILM__ = {
     state,
     mount,
@@ -155,7 +183,7 @@ export function startFilmHost(packs: readonly Pack[] = []) {
       recipes: library ? Object.keys(library.recipes).sort() : [],
     }),
   };
-  boot(packs).catch((error) => {
+  boot(packs, options).catch((error) => {
     state.error = String(error?.stack || error);
   });
 }

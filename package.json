@@ -139,6 +139,7 @@
     "verify:procedural": "node scripts/verify-procedural-draw.mjs",
     "verify:film": "node scripts/verify-film-scene.mjs",
     "verify:film-look": "node scripts/verify-film-look.mjs",
+    "verify:film-model": "node scripts/verify-film-model.mjs",
     "types:generate": "node packages/compiler/runtime3d-types.mjs",
     "types:check": "node packages/compiler/runtime3d-types.mjs --check",
     "prepare": "npm run build 1>&2",
