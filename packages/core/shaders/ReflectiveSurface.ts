@@ -5,6 +5,7 @@
  * whatever is drawn underneath, so the lit surface below keeps its material
  * and lightmap. Requires the Laya runtime.
  */
+import { prepareLaya342ManualDraw } from '../runtime3d/Laya342Adapters.ts';
 import { ZhudaPlanarReflection } from '../runtime3d/Filmic.ts';
 import { ZhudaDynamicMesh } from '../runtime3d/Surfaces.ts';
 import { ZhudaShaderMaterial, type ZhudaShaderSpec } from './ShaderMaterials.ts';
@@ -257,6 +258,7 @@ export class ZhudaReflectiveSurface {
     const camera = this.reflection.camera,
       target = this.reflection.texture;
     try {
+      prepareLaya342ManualDraw(this.scene);
       l.Camera.drawRenderTextureByScene(camera, this.scene, target);
     } finally {
       camera.renderTarget = target;

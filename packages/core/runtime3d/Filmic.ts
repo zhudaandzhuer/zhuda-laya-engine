@@ -1,3 +1,4 @@
+import { prepareLaya342ManualDraw } from './Laya342Adapters.ts';
 export interface PrefilteredEnvironmentSpec {
   size: number;
   levels: { size: number; offset: number; elements: number }[];
@@ -365,6 +366,7 @@ export class ZhudaPlanarReflection {
     const before = l.Stat.enableShadow;
     if (!this.shadows) l.Stat.enableShadow = false;
     try {
+      prepareLaya342ManualDraw(this.scene);
       l.Camera.drawRenderTextureByScene(this.camera, this.scene, this.texture);
     } finally {
       l.Stat.enableShadow = before;

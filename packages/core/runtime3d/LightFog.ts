@@ -16,6 +16,7 @@
  * `zhudaFogOpticalDepth` and `zhudaFogAirlight` are the shader's formulas in
  * TypeScript. Only the class needs the Laya runtime.
  */
+import { prepareLaya342ManualDraw } from './Laya342Adapters.ts';
 
 export interface ZhudaLightFogOptions {
   /** Extinction per metre at `baseY`, 0..1 (default 0.012). */
@@ -459,6 +460,7 @@ export class ZhudaLightFog {
     const before = l.Stat.enableShadow;
     l.Stat.enableShadow = false;
     try {
+      prepareLaya342ManualDraw(scene);
       l.Camera.drawRenderTextureByScene(camera, scene, target);
     } finally {
       l.Stat.enableShadow = before;

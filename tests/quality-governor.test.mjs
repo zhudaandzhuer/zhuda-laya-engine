@@ -58,7 +58,8 @@ test('a hitch is not the renderer and bad input is refused', () => {
   const governor = new ZhudaQualityGovernor({ window: 4 });
   for (let i = 0; i < 40; i++) assert.equal(governor.sample(900), undefined);
   assert.equal(governor.level, 3);
-  assert.throws(() => governor.sample(0), /Invalid frame time/);
+  assert.equal(governor.sample(0), undefined, 'a frame of no time is skipped');
+  assert.throws(() => governor.sample(-1), /Invalid frame time/);
   assert.throws(() => governor.sample(Number.NaN), /Invalid frame time/);
   for (const options of [
     { levels: 0 },

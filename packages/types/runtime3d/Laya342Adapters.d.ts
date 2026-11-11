@@ -41,3 +41,18 @@ export declare const ZHUDA_TRANSLUCENT_DEFINE = "ZHUDA_TRANSLUCENT";
  * the lighting include and compiles the PBR shaders from it.
  */
 export declare function installLaya342Translucency(runtime?: any): boolean;
+/**
+ * Call before drawing a scene by hand (`Camera.drawRenderTextureByScene`)
+ * from inside an update: a mirror, a depth picture, a capture.
+ *
+ * Laya 3.4.2 gives renderers their reflection probe in the scene's own
+ * update. A hand-drawn pass in a scene that is on the stage skips that step,
+ * so a renderer added since the last frame is drawn without a probe. Its
+ * shaders are then compiled without the probe's uniform block; on WebGPU the
+ * probe's uniforms are added to the shared material map instead, and every
+ * pass of that shader compiled afterwards fails ("nameless block contains a
+ * member that already has a name", "u_IBLTex_Texture: redefinition").
+ * This runs the scene's own probe assignment; it does nothing when no
+ * renderer is waiting.
+ */
+export declare function prepareLaya342ManualDraw(scene: any): void;

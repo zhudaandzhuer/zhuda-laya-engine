@@ -28,6 +28,7 @@ export class ZhudaSceneLook {
   private level: ZhudaLookQuality;
   private frame = 0;
   private disposed = false;
+  private restoreAmbient: (() => void) | undefined;
 
   private readonly scene3D: any;
   private readonly camera: any;
@@ -54,9 +55,20 @@ export class ZhudaSceneLook {
     this.sun = made.light;
     this.sunNode = made.node;
     try {
+      // Sky and ground light is the same at every quality level: it is set up
+      // once, so changing the level never destroys a texture a frame still uses.
+      if (this.look.ambientGround) {
+        this.scene3D.ambientColor = new l.Color(...this.look.ambient, 1);
+        this.restoreAmbient = applyZhudaHemisphereAmbient(
+          this.scene3D,
+          this.look.ambient,
+          this.look.ambientGround,
+        );
+      }
       this.apply(l);
     } catch (error) {
       this.release();
+      this.restoreAmbient?.();
       this.sunNode.destroy(true);
       throw error;
     }
@@ -103,6 +115,7 @@ export class ZhudaSceneLook {
     if (this.disposed) return;
     this.disposed = true;
     this.release();
+    this.restoreAmbient?.();
     this.sunNode.destroy(true);
   }
 
@@ -121,8 +134,6 @@ export class ZhudaSceneLook {
       this.camera.clearFlag = before.clearFlag;
       this.camera.clearColor = before.clearColor;
     });
-    if (look.ambientGround)
-      cleanups.push(applyZhudaHemisphereAmbient(this.scene3D, look.ambient, look.ambientGround));
     this.lightFog = applyResolvedFilmLook(
       l,
       this.scene3D,

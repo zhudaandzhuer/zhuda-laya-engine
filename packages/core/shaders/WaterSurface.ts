@@ -241,6 +241,7 @@ export class ZhudaWaterSurface {
   private readonly mesh: ZhudaDynamicMesh;
   private readonly scene: any;
   private readonly flow: readonly [number, number];
+  private foamDepth = 0.12;
   private disposed = false;
 
   constructor(scene: any, options: ZhudaWaterSurfaceOptions) {
@@ -280,7 +281,8 @@ export class ZhudaWaterSurface {
       ]);
       set('u_ZhudaWaterFlow', [this.flow[0], this.flow[1], 0, 0]);
       set('u_ZhudaWaterTint', [colour[0], colour[1], colour[2], options.clarity ?? 1.5]);
-      set('u_ZhudaWaterFlags', [options.flipScreen ? 1 : 0, options.foamDepth ?? 0.12, 0, 0]);
+      this.foamDepth = options.foamDepth ?? 0.12;
+      set('u_ZhudaWaterFlags', [options.flipScreen ? 1 : 0, this.foamDepth, 0, 0]);
       const sun = options.sun;
       set('u_ZhudaWaterSun', sun ? [...sun.toward] : [0, 1, 0]);
       set('u_ZhudaWaterSunColor', sun ? [...sun.color, 0] : [0, 0, 0, 0]);
@@ -326,6 +328,17 @@ export class ZhudaWaterSurface {
   /** The mirrored camera, for matching the main camera's clear flag, sky and fog. */
   get camera(): any {
     return this.reflection.camera;
+  }
+
+  /**
+   * Whether the lookup into the camera's depth and colour textures is flipped
+   * vertically (see `flipScreen`). A game that switches its camera between
+   * drawing through a post-process chain and straight to the canvas changes
+   * it at the same time.
+   */
+  setScreenFlip(flip: boolean): void {
+    if (this.disposed) throw Error('Disposed water surface');
+    this.material.setUniform('u_ZhudaWaterFlags', [flip ? 1 : 0, this.foamDepth, 0, 0]);
   }
 
   /** Seconds of flow: where the waves and the foam are. */

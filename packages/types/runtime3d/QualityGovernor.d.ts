@@ -44,7 +44,7 @@ export declare class ZhudaQualityGovernor {
     /**
      * One frame took `frameMs`. Returns the new level when it changed, else
      * undefined. Frames longer than a quarter second (a tab switch, a load) are
-     * not the renderer's fault and are ignored.
+     * not the renderer's fault and are ignored, as are frames of no time.
      */
     sample(frameMs: number): number | undefined;
     /** Forget the history, for example after a scene change. */

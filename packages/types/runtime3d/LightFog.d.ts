@@ -1,22 +1,4 @@
 // Generated from TypeScript source; run npm run types:generate.
-/**
- * Height fog lit by point lights, as one post-process effect.
- *
- * Fog density falls off exponentially with height. Along each view ray the
- * effect computes, in closed form, how much the fog hides the scene and how
- * much light every source scatters toward the camera, so lanterns and candles
- * get halos and distant streets sink into haze. For point lights there is no
- * ray marching and no shadowing: geometry between a light and the ray does
- * not cut the glow, only geometry on the ray itself ends it.
- *
- * With `shafts`, the sun or moon also shines into the fog, and what stands in
- * its way cuts the light: beams between trees, roofs and window bars. That
- * part marches along the view ray and looks each step up in a depth picture
- * drawn from the light's direction (`attachSun`, `renderShafts`).
- *
- * `zhudaFogOpticalDepth` and `zhudaFogAirlight` are the shader's formulas in
- * TypeScript. Only the class needs the Laya runtime.
- */
 export interface ZhudaLightFogOptions {
     /** Extinction per metre at `baseY`, 0..1 (default 0.012). */
     density?: number;

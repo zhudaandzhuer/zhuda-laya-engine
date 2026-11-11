@@ -337,3 +337,25 @@ test('WebGPU batches copy 32-bit index buffers as 32-bit', async () => {
   merge.addMesh({ globalId: 2, base: 100 }, buffer(11, 2, new Uint32Array([0, 70000, 131072])));
   assert.equal(uploads.length, 1);
 });
+
+test('a hand-drawn pass first gives new renderers their reflection probe', async () => {
+  const { prepareLaya342ManualDraw } = await import(
+    '../packages/core/runtime3d/Laya342Adapters.ts'
+  );
+  const calls = [];
+  const scene = (all) => ({
+    _sceneRenderManager: { list: 'renderers' },
+    _volumeManager: {
+      needreCaculateAllRenderObjects: () => all,
+      reCaculateAllRenderObjects: (list) => calls.push(['all', list]),
+      handleMotionlist: () => calls.push(['waiting']),
+    },
+  });
+  prepareLaya342ManualDraw(scene(false));
+  prepareLaya342ManualDraw(scene(true));
+  assert.deepEqual(calls, [['waiting'], ['all', 'renderers']]);
+  // A scene without the manager (another Laya build, a destroyed scene) is left alone.
+  prepareLaya342ManualDraw({});
+  prepareLaya342ManualDraw(null);
+  assert.equal(calls.length, 2);
+});

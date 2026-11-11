@@ -1,3 +1,4 @@
+import { prepareLaya342ManualDraw } from './Laya342Adapters.ts';
 import { awaitAbortable } from './AsyncOperation.ts';
 import { ZhudaPhysicalCameraRig } from './PhysicalCamera.ts';
 import type { ZhudaRuntimeSession } from './Runtime.ts';
@@ -211,6 +212,7 @@ export class ZhudaCinematicCapture {
           const previousTarget = this.lens.camera.renderTarget;
           try {
             request.prepare?.();
+            prepareLaya342ManualDraw(this.scene);
             l.Camera.drawRenderTextureByScene(this.lens.camera, this.scene, this.target);
           } finally {
             this.lens.camera.renderTarget = previousTarget;

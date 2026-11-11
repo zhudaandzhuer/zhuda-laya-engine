@@ -10,6 +10,7 @@
  *
  * One probe: reflections are correct at the probe and approximate elsewhere.
  */
+import { prepareLaya342ManualDraw } from './Laya342Adapters.ts';
 import { readLaya342FloatTarget } from './WebGPU342Adapters.ts';
 import { createPrefilteredEnvironment, type PrefilteredEnvironmentSpec } from './Filmic.ts';
 
@@ -437,6 +438,7 @@ export class ZhudaEnvironmentProbe {
         l.Stat.loopCount++;
         l.LayaGL.renderEngine.startFrame();
         try {
+          prepareLaya342ManualDraw(this.scene);
           l.Camera.drawRenderTextureByScene(camera, this.scene, target);
         } finally {
           this.scene.recaculateCullCamera();

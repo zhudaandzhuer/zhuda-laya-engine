@@ -11,6 +11,7 @@ export declare class ZhudaSceneLook {
     private level;
     private frame;
     private disposed;
+    private restoreAmbient;
     private readonly scene3D;
     private readonly camera;
     constructor(scene3D: any, camera: any, look: ZhudaFilmLook, options?: {

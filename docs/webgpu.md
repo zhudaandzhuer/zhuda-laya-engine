@@ -106,7 +106,7 @@ unmodified and their source/hash/notices are pinned in
 models with lightmaps, the reflector, light fog, animation, the environment
 probe, looks, mixed lighting, water, placements, stills and MP4. More upstream seams are
 contained in `WebGPU342Adapters.ts` for it, and apply to every WebGPU scene
-(the list has four entries):
+(listed below):
 
 - A camera or shadow light that moved is culled in the same frame. Upstream
   defers that by up to two frames, which drew the previous view after a cut, a
@@ -116,6 +116,16 @@ contained in `WebGPU342Adapters.ts` for it, and apply to every WebGPU scene
 - The glTF PBR depth-normal pass no longer takes the fog define. Upstream
   fails to compile it once a fogged scene draws a glTF model with ambient
   occlusion.
+- Hand-drawn passes (mirrors, depth pictures, captures) first give renderers
+  added since the last frame their reflection probe
+  (`prepareLaya342ManualDraw`). Upstream does that only in the scene's own
+  update; a new renderer drawn by hand first was compiled without the probe's
+  uniform block, the probe's uniforms went into the shared material map, and
+  every pass of that shader compiled afterwards failed ("nameless block
+  contains a member that already has a name", "u_IBLTex_Texture:
+  redefinition"). Scenery loaded while a game runs hit this.
+- A shader the compiler rejects is recorded in `context.renderer.errors` with
+  the compiler's message and the source lines it points at.
 - Batches copy 32-bit index buffers as 32-bit. Upstream reads every index
   buffer as 16-bit when it merges a batch, so a mesh with more than 65 535
   vertices drawn more than once came out as a fan of shards.

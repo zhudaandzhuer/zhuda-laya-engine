@@ -60,10 +60,18 @@ export declare class ZhudaWaterSurface {
     private readonly mesh;
     private readonly scene;
     private readonly flow;
+    private foamDepth;
     private disposed;
     constructor(scene: any, options: ZhudaWaterSurfaceOptions);
     /** The mirrored camera, for matching the main camera's clear flag, sky and fog. */
     get camera(): any;
+    /**
+     * Whether the lookup into the camera's depth and colour textures is flipped
+     * vertically (see `flipScreen`). A game that switches its camera between
+     * drawing through a post-process chain and straight to the canvas changes
+     * it at the same time.
+     */
+    setScreenFlip(flip: boolean): void;
     /** Seconds of flow: where the waves and the foam are. */
     setTime(seconds: number): void;
     /** Call after the main camera moves or its field of view changes. */

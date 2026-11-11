@@ -74,11 +74,12 @@ export class ZhudaQualityGovernor {
   /**
    * One frame took `frameMs`. Returns the new level when it changed, else
    * undefined. Frames longer than a quarter second (a tab switch, a load) are
-   * not the renderer's fault and are ignored.
+   * not the renderer's fault and are ignored, as are frames of no time.
    */
   sample(frameMs: number): number | undefined {
-    if (!Number.isFinite(frameMs) || frameMs <= 0) throw Error('Invalid frame time');
-    if (frameMs > 250) return undefined;
+    if (!Number.isFinite(frameMs) || frameMs < 0) throw Error('Invalid frame time');
+    // A first frame or a paused clock reports no time at all.
+    if (frameMs === 0 || frameMs > 250) return undefined;
     this.sum += frameMs;
     if (++this.count < this.window) return undefined;
     const average = this.sum / this.count,

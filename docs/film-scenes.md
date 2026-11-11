@@ -489,6 +489,53 @@ A `water` node is clear running water on a horizontal rectangle:
 - Water needs `grade`. A scene has one mirror: one `water` or one
   `reflector`. The rectangle is flat and level: no waterfalls or slopes.
 
+## The same look in a game
+
+`ZhudaSceneLook` puts a film look on a game's own `Scene3D` and camera: the
+sun and its shadows, sky and ground light, the procedural sky, distance fog,
+ground fog with beams, and the HDR grade.
+
+```ts
+import { ZhudaSceneLook, ZhudaQualityGovernor } from 'zhuda-laya-engine';
+
+const look = new ZhudaSceneLook(scene, camera, {
+  preset: 'day',
+  ambient: [0.78, 0.86, 1],
+  ambientGround: [0.3, 0.3, 0.17],
+  shadows: { distance: 60, resolution: 4096, cascades: 4 },
+  grade: { exposure: 1.15, bloom: 0.3, ao: 0.55 },
+  lightFog: { density: 0.006, shafts: { strength: 0.8, distance: 60 } },
+});
+const governor = new ZhudaQualityGovernor({ budgetMs: 1000 / 60 });
+
+runtime.start((dt) => {
+  // ... move the camera ...
+  look.update(eye, target, fieldOfViewDeg, aspect);
+  const level = governor.sample(dt * 1000);
+  if (level !== undefined) look.setQuality(level);
+});
+```
+
+- `setQuality(3)` is the look as authored. Level 2 drops ambient occlusion,
+  halves the steps of the beams and caps shadow maps at 2048; level 1 drops
+  the beams and the lens finish and uses two shadow cascades; level 0 drops
+  the HDR chain altogether and draws one small shadow map. Sky, ground light
+  and distance fog stay at every level. `zhudaLookForQuality` is that table
+  as a pure function.
+- `ZhudaQualityGovernor` holds a frame budget: it steps down as soon as a
+  window of frames averages over the budget, tries the next level up after a
+  calm stretch, and waits twice as long before retrying a level that failed.
+  It decides; the caller applies the level, to the look and to whatever else
+  it wants to scale.
+- The depth picture of the beams follows the camera in steps and is redrawn
+  only when the camera has left its box, since a game's scenery stands still.
+  Call `ZhudaLightFog.invalidateShafts()` (through your own handle) when
+  scenery changes; things that move do not cut the beams until the next redraw.
+- A panorama sky and `environment` need assets or a capture and are refused.
+- With water: `ZhudaWaterSurface` takes `mirrorShadows: false` so the mirror
+  uses the shadow maps of the main view, and its `render()` is called once per
+  frame by the game (the engine's loop no longer draws the mirror itself).
+
 ## Camera paths
 
 A video job takes `cameraPath`: two or more keys `{ time, camera }`, the first
