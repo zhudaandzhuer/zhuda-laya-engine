@@ -464,3 +464,52 @@ test('the bundled host without an asset directory refuses model nodes', () => {
     /unknown asset house\.glb; known: none/,
   );
 });
+
+test('reflector nodes are validated with paths, one per scene, hiding only model nodes', () => {
+  const wet = (extra = {}) => ({
+    ...scene(),
+    nodes: [
+      ...scene().nodes,
+      { id: 'floor', type: 'model', asset: 'floor.glb', position: [0, 0, 0] },
+      { id: 'wet', type: 'reflector', position: [0, 0.01, 0], size: [20, 40], ...extra },
+    ],
+  });
+  assert.deepEqual(validateZhudaFilmScene(wet(), context), []);
+  assert.deepEqual(
+    validateZhudaFilmScene(
+      wet({
+        strength: 2,
+        wetness: 0.6,
+        roughness: 0.2,
+        ripple: 0.5,
+        patternMeters: 4,
+        resolution: 2048,
+        hides: ['floor'],
+      }),
+      context,
+    ),
+    [],
+  );
+  const cases = [
+    [{ size: [0, 40] }, 'nodes[4].size: use [width, depth]'],
+    [{ strength: 9 }, 'nodes[4].strength: use 0..4'],
+    [{ wetness: -1 }, 'nodes[4].wetness: use 0..1'],
+    [{ roughness: 2 }, 'nodes[4].roughness: use 0..1'],
+    [{ ripple: 'x' }, 'nodes[4].ripple: use 0..1'],
+    [{ patternMeters: 0 }, 'nodes[4].patternMeters: use 0.1..100'],
+    [{ resolution: 300 }, 'nodes[4].resolution: use 256, 512, 1024 or 2048'],
+    [{ hides: ['c1'] }, 'nodes[4].hides: c1 is not a model node in this scene'],
+    [{ hides: 'floor' }, 'nodes[4].hides: list model node ids'],
+    [{ blur: 1 }, 'nodes[4].blur: unknown field'],
+  ];
+  for (const [extra, fragment] of cases)
+    assert.ok(
+      validateZhudaFilmScene(wet(extra), context).some((issue) => issue.includes(fragment)),
+      fragment,
+    );
+  const two = wet();
+  two.nodes.push({ id: 'wet2', type: 'reflector', position: [0, 0, 9], size: [2, 2] });
+  assert.ok(
+    validateZhudaFilmScene(two, context).some((issue) => /one reflector per scene/.test(issue)),
+  );
+});

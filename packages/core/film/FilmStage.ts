@@ -18,6 +18,7 @@ import type { ZhudaRuntimeSession } from '../runtime3d/Runtime.ts';
 import { ZhudaModelLibrary, type AssetLease, type ModelInstance } from '../runtime3d/Assets.ts';
 import type { ZhudaAssetCache } from '../runtime3d/Assets.ts';
 import { createProviderAssetCache, type AssetProvider } from '../runtime3d/AssetProvider.ts';
+import { ZhudaReflectiveSurface } from '../shaders/ReflectiveSurface.ts';
 import {
   createZhudaLightmap,
   decodeRadianceHdr,
@@ -73,6 +74,11 @@ export interface ZhudaFilmStage {
   readonly models: readonly { id: string; asset: string; meshes: number; lightmap: boolean }[];
   /** Moves the camera and sets its lens; ignores depth of field until a render asks for it. */
   setCamera(camera: ZhudaFilmCamera): void;
+  /**
+   * Draws what the main camera reads (a reflector's mirrored view) for the
+   * camera last set. `ZhudaFilmRenderer` calls it before every sample.
+   */
+  prepare(aspect: number): void;
   dispose(): void;
 }
 
@@ -379,6 +385,7 @@ function buildFilmStageContents(
     // Models: clones from the shared library; baked lightmaps through Laya's
     // native lightmap path (`Scene3D.lightmaps`, renderer `lightmapIndex`).
     const models: { id: string; asset: string; meshes: number; lightmap: boolean }[] = [];
+    const modelHolders = new Map<string, any>();
     const lightmaps: any[] = [];
     const lightmapped: { renderer: any; index: number }[] = [];
     for (const node of scene.nodes) {
@@ -412,6 +419,7 @@ function buildFilmStageContents(
         const index = lightmaps.push(baked.lightmap) - 1;
         for (const renderer of renderers) lightmapped.push({ renderer, index });
       }
+      modelHolders.set(node.id, holder);
       models.push({
         id: node.id,
         asset: node.asset,
@@ -428,6 +436,27 @@ function buildFilmStageContents(
         renderer.lightmapIndex = index;
         renderer.setLightmapIndex?.(index);
       }
+    }
+
+    // Reflector: a mirrored scene camera plus an additive surface.
+    let reflector: ZhudaReflectiveSurface | undefined;
+    for (const node of scene.nodes) {
+      if (node.type !== 'reflector') continue;
+      const surface = new ZhudaReflectiveSurface(scene3D, {
+        position: node.position,
+        size: node.size,
+        strength: node.strength,
+        wetness: node.wetness,
+        roughness: node.roughness,
+        ripple: node.ripple,
+        patternMeters: node.patternMeters,
+        resolution: node.resolution,
+      });
+      cleanups.push(() => surface.dispose());
+      surface.camera.clearFlag = camera.clearFlag;
+      surface.camera.clearColor = camera.clearColor;
+      for (const id of node.hides ?? []) setLayer(modelHolders.get(id), surface.layer);
+      reflector = surface;
     }
 
     // Practical lights: native point and spot light components.
@@ -455,8 +484,15 @@ function buildFilmStageContents(
       focusDistanceM: first.focusDistanceM,
     });
     cleanups.push(() => lens.dispose());
+    let current = resolveZhudaFilmCamera(scene.camera);
+    const prepare = (aspect: number) => {
+      if (!reflector) return;
+      reflector.update(current.eye, current.target, camera.fieldOfView, aspect);
+      reflector.render();
+    };
     const setCamera = (value: ZhudaFilmCamera) => {
       const c = resolveZhudaFilmCamera(value);
+      current = c;
       camera.transform.position = new l.Vector3(...c.eye);
       camera.transform.lookAt(new l.Vector3(...c.target), new l.Vector3(0, 1, 0));
       lens.configure({
@@ -476,9 +512,16 @@ function buildFilmStageContents(
         .sort((a, b) => a.material.localeCompare(b.material)),
       models,
       setCamera,
+      prepare,
       dispose,
     };
   }
+}
+
+function setLayer(node: any, layer: number) {
+  if (!node) return;
+  node.layer = layer;
+  for (let i = 0; i < (node.numChildren || 0); i++) setLayer(node.getChildAt(i), layer);
 }
 
 function modelRenderers(l: any, root: any): any[] {
@@ -626,6 +669,7 @@ export class ZhudaFilmRenderer {
         aperture: options.aperture ?? samples > 1,
         jitter: samples > 1,
         sample: () => this.stage.setCamera(camera),
+        prepare: () => this.stage.prepare(options.width / options.height),
       });
     } finally {
       capture.dispose();

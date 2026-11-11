@@ -145,6 +145,34 @@ export type ZhudaFilmNode = {
     lightmapIntensity?: number;
 } | {
     id: string;
+    type: 'reflector';
+    /**
+     * A horizontal rectangle that mirrors the scene above it (wet paving,
+     * still water). `position` is its centre; `y` is the mirror height and
+     * should sit a few millimetres above the surface it covers.
+     */
+    position: ZhudaFilmVec3;
+    /** Width (X) and depth (Z) in metres. */
+    size: [number, number];
+    /** Brightness of the reflection, 0..4 (default 1). */
+    strength?: number;
+    /** Share of the surface that is standing water, 0..1 (default 0.45). */
+    wetness?: number;
+    /** Blur on damp areas, 0..1 (default 0.35). */
+    roughness?: number;
+    /** How much damp areas break the reflection up, 0..1 (default 0.4). */
+    ripple?: number;
+    /** Size of the puddle pattern in metres, 0.1..100 (default 3). */
+    patternMeters?: number;
+    /** Longer side of the mirrored picture (default 1024). */
+    resolution?: 256 | 512 | 1024 | 2048;
+    /**
+     * Ids of model nodes the mirror must not draw: the ground under the
+     * reflector, which would otherwise block the view from below.
+     */
+    hides?: string[];
+} | {
+    id: string;
     type: 'light';
     /** Point lights shine all around; spot lights shine at `target`. */
     kind: 'point' | 'spot';

@@ -252,7 +252,10 @@ export class ZhudaPlanarReflection {
     const vertical = Math.hypot(eye[0] - target[0], eye[2] - target[2]) < 1e-9;
     this.camera.transform.lookAt(
       new l.Vector3(target[0], 2 * this.planeY - target[1], target[2]),
-      vertical ? new l.Vector3(0, 0, 1) : new l.Vector3(0, -1, 0),
+      // A plain +Y up: with a flipped up Laya 3.4.2 draws no geometry from this
+      // camera. The returned matrix is this camera's own, so projected sampling
+      // stays exact either way.
+      vertical ? new l.Vector3(0, 0, 1) : new l.Vector3(0, 1, 0),
       false,
     );
     const e = this.camera.projectionViewMatrix.elements;

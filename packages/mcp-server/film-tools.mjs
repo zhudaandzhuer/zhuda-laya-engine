@@ -29,7 +29,7 @@ export const FILM_TOOLS_MANIFEST = [
   {
     name: 'film_scene_create',
     description:
-      'Create a film scene session from a ZhudaFilmScene (schemaVersion 1): camera; look (preset day/dawn/dusk/night/overcast, then sky, ambient, sun, shadows, atmosphere, fog overrides, and grade for HDR tone mapping, bloom and ambient occlusion); materials (recipe, or flat colour with optional emission); nodes (prop, box, ground, light point/spot up to 32, and model: a .glb asset id with position, yawDeg, scale and an optional baked .hdr lightmap that carries global illumination through the second UV set of the model). Returns the session id, revision 0 and the props, recipes and assets (--film-assets) this host can use, including operator packs. Data only; no code runs.',
+      'Create a film scene session from a ZhudaFilmScene (schemaVersion 1): camera; look (preset day/dawn/dusk/night/overcast, then sky, ambient, sun, shadows, atmosphere, fog overrides, and grade for HDR tone mapping, bloom and ambient occlusion); materials (recipe, or flat colour with optional emission); nodes (prop, box, ground, light point/spot up to 32, reflector: one horizontal rectangle that mirrors the scene above it for wet ground or water, with strength, wetness, roughness, ripple and hides listing ground model ids, and model: a .glb asset id with position, yawDeg, scale and an optional baked .hdr lightmap that carries global illumination through the second UV set of the model). Returns the session id, revision 0 and the props, recipes and assets (--film-assets) this host can use, including operator packs. Data only; no code runs.',
     inputSchema: {
       type: 'object',
       properties: { scene: { type: 'object' } },

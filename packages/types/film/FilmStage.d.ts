@@ -39,6 +39,11 @@ export interface ZhudaFilmStage {
     }[];
     /** Moves the camera and sets its lens; ignores depth of field until a render asks for it. */
     setCamera(camera: ZhudaFilmCamera): void;
+    /**
+     * Draws what the main camera reads (a reflector's mirrored view) for the
+     * camera last set. `ZhudaFilmRenderer` calls it before every sample.
+     */
+    prepare(aspect: number): void;
     dispose(): void;
 }
 export interface ZhudaFilmAssetsOptions {

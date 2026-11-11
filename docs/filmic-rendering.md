@@ -7,15 +7,11 @@ These APIs expose the bundled LayaAir 3.4.2 PBR, HDR and post-processing rendere
 Use `ZhudaLitSurfaceMaterial` when a procedural surface needs native lights, environment reflections, shadow reception/casting, fog and depth normals. `ZhudaShaderMaterial` remains useful for explicitly unlit effects and sky materials.
 
 ```ts
-import {
-  ZhudaLitSurfaceMaterial,
-  ZhudaDynamicMesh,
-  computeMeshTangents,
-} from "zhuda-laya-engine";
+import { ZhudaLitSurfaceMaterial, ZhudaDynamicMesh, computeMeshTangents } from 'zhuda-laya-engine';
 
 const surface = new ZhudaLitSurfaceMaterial({
-  name: "WetStone",
-  normalConvention: "opengl", // +Y maps; native Laya defaults to DirectX -Y
+  name: 'WetStone',
+  normalConvention: 'opengl', // +Y maps; native Laya defaults to DirectX -Y
   material: {
     color: [1, 1, 1, 1],
     roughness: 0.8,
@@ -24,14 +20,14 @@ const surface = new ZhudaLitSurfaceMaterial({
     clearCoat: 0.15,
     clearCoatRoughness: 0.2,
   },
-  uniforms: { u_ZhudaWet: { type: "float", value: 0.4 } },
+  uniforms: { u_ZhudaWet: { type: 'float', value: 0.4 } },
   surface: `void zhudaSurface(inout ZhudaLitSurface s,
       vec2 uv, vec3 worldPosition, vec3 worldNormal) {
     s.baseColor *= mix(1.0, .65, u_ZhudaWet);
     s.roughness = mix(s.roughness, .16, u_ZhudaWet);
   }`,
 });
-surface.set("u_ZhudaWet", 0.7);
+surface.set('u_ZhudaWet', 0.7);
 const mesh = new ZhudaDynamicMesh(
   {
     ...geometry,
@@ -53,7 +49,7 @@ Color/albedo and emission textures must be uploaded with the appropriate sRGB fl
 ## Offline convolved HDR environments
 
 ```ts
-import { createPrefilteredEnvironment } from "zhuda-laya-engine";
+import { createPrefilteredEnvironment } from 'zhuda-laya-engine';
 const lighting = createPrefilteredEnvironment(descriptor, float32Pixels);
 lighting.apply(scene);
 ```
@@ -72,7 +68,7 @@ Native IBL mirrors world X before sampling/evaluation; the offline producer must
 ## HDR camera pipeline
 
 ```ts
-import { ZhudaFilmicPipeline } from "zhuda-laya-engine";
+import { ZhudaFilmicPipeline } from 'zhuda-laya-engine';
 const film = new ZhudaFilmicPipeline(camera, {
   exposure: 1.45,
   contrast: 1.01,
@@ -91,7 +87,9 @@ The pipeline owns HDR, high-quality scalable AO, bloom, ACES/color grading and o
 
 ## Horizontal planar reflection
 
-`ZhudaPlanarReflection(scene, { width, height, planeY, excludedLayer })` owns a mirrored camera and half-float target. `update(eye, target, fovDegrees, sourceAspect?)` returns four column-major view-projection columns for projected texture sampling. The source aspect can differ from the target's aspect. It mirrors the camera position, target and up vector; set the main surface and all unwanted geometry to the excluded layer. `dispose()` destroys both owned objects.
+`ZhudaPlanarReflection(scene, { width, height, planeY, excludedLayer })` owns a mirrored camera and half-float target. `update(eye, target, fovDegrees, sourceAspect?)` returns four column-major view-projection columns for projected texture sampling. The source aspect can differ from the target's aspect. It mirrors the camera position and target and keeps +Y up (with a flipped up, Laya 3.4.2 draws no geometry from the camera); the returned matrix is that camera's own, so projected sampling is exact. Set the main surface and all unwanted geometry to the excluded layer. `dispose()` destroys both owned objects.
+
+`ZhudaReflectiveSurface(scene, { position, size, strength, wetness, roughness, ripple, patternMeters, resolution, layer })` is the ready-made consumer: it owns the mirrored camera, a rectangle mesh and an additive material that adds the reflection on top of whatever is drawn underneath (Fresnel, puddles against damp areas, blur and break-up on damp areas). Call `update(eye, target, fovDegrees, aspect)` when the main camera moves; call `render()` only for frames drawn outside the engine's frame loop. `zhudaMirrorProjection` is the pure matrix it samples with.
 
 This is a real second scene render, with its associated rendering cost. It handles **horizontal planes only**, has no general oblique clipping plane and no rough-reflection convolution. Geometry below the plane must be excluded by the consumer to prevent it occluding the reflected scene. Reflecting surfaces must be excluded to prevent feedback. The consumer owns Fresnel, edge masks, transparency and any ripple distortion. This API does not implement screen-space reflections or general global illumination.
 

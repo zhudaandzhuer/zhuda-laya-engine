@@ -15,6 +15,12 @@ export interface CinematicFrameRequest {
     signal?: AbortSignal;
     /** Stateless absolute-time pose; must not trigger game events or live audio. */
     sample: (timeSeconds: number) => void;
+    /**
+     * Runs for every sample after the lens is set and right before the main
+     * camera draws: render targets the frame reads (mirrored views) go here.
+     * Must be synchronous and must not advance simulation.
+     */
+    prepare?: () => void;
     aperture?: boolean;
     jitter?: boolean;
 }

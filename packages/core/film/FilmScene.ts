@@ -176,6 +176,35 @@ export type ZhudaFilmNode =
     }
   | {
       id: string;
+      type: 'reflector';
+      /**
+       * A horizontal rectangle that mirrors the scene above it (wet paving,
+       * still water). `position` is its centre; `y` is the mirror height and
+       * should sit a few millimetres above the surface it covers.
+       */
+      position: ZhudaFilmVec3;
+      /** Width (X) and depth (Z) in metres. */
+      size: [number, number];
+      /** Brightness of the reflection, 0..4 (default 1). */
+      strength?: number;
+      /** Share of the surface that is standing water, 0..1 (default 0.45). */
+      wetness?: number;
+      /** Blur on damp areas, 0..1 (default 0.35). */
+      roughness?: number;
+      /** How much damp areas break the reflection up, 0..1 (default 0.4). */
+      ripple?: number;
+      /** Size of the puddle pattern in metres, 0.1..100 (default 3). */
+      patternMeters?: number;
+      /** Longer side of the mirrored picture (default 1024). */
+      resolution?: 256 | 512 | 1024 | 2048;
+      /**
+       * Ids of model nodes the mirror must not draw: the ground under the
+       * reflector, which would otherwise block the view from below.
+       */
+      hides?: string[];
+    }
+  | {
+      id: string;
       type: 'light';
       /** Point lights shine all around; spot lights shine at `target`. */
       kind: 'point' | 'spot';
@@ -684,6 +713,56 @@ function validateNode(
         issues.push(`${path}.lightmapIntensity: needs a lightmap, 0..16`);
       break;
     }
+    case 'reflector': {
+      unknownKeys(
+        node,
+        [
+          'id',
+          'type',
+          'position',
+          'size',
+          'strength',
+          'wetness',
+          'roughness',
+          'ripple',
+          'patternMeters',
+          'resolution',
+          'hides',
+        ],
+        path,
+        issues,
+      );
+      vec3(node.position, `${path}.position`, issues);
+      if (
+        !Array.isArray(node.size) ||
+        node.size.length !== 2 ||
+        !node.size.every((n) => finite(n) && n >= 0.1 && n <= 4000)
+      )
+        issues.push(`${path}.size: use [width, depth] between 0.1 and 4000 metres`);
+      const ranges: [string, number, number][] = [
+        ['strength', 0, 4],
+        ['wetness', 0, 1],
+        ['roughness', 0, 1],
+        ['ripple', 0, 1],
+        ['patternMeters', 0.1, 100],
+      ];
+      for (const [key, min, max] of ranges) {
+        const value = node[key];
+        if (value !== undefined && !(finite(value) && value >= min && value <= max))
+          issues.push(`${path}.${key}: use ${min}..${max}`);
+      }
+      if (
+        node.resolution !== undefined &&
+        ![256, 512, 1024, 2048].includes(node.resolution as number)
+      )
+        issues.push(`${path}.resolution: use 256, 512, 1024 or 2048`);
+      if (
+        node.hides !== undefined &&
+        !(Array.isArray(node.hides) && node.hides.every((id) => typeof id === 'string'))
+      )
+        issues.push(`${path}.hides: list model node ids`);
+      break;
+    }
     case 'light':
       unknownKeys(
         node,
@@ -726,7 +805,7 @@ function validateNode(
         issues.push(`${path}.spotAngleDeg: spot lights only, 1..179`);
       break;
     default:
-      issues.push(`${path}.type: use prop, box, ground, model or light`);
+      issues.push(`${path}.type: use prop, box, ground, model, reflector or light`);
   }
 }
 
@@ -778,6 +857,21 @@ export function validateZhudaFilmScene(
     const models = scene.nodes.filter((node) => object(node) && node.type === 'model').length;
     if (models > ZHUDA_FILM_LIMITS.models)
       issues.push(`scene.nodes: at most ${ZHUDA_FILM_LIMITS.models} models`);
+    const modelIds = new Set(
+      scene.nodes.flatMap((node) =>
+        object(node) && node.type === 'model' && typeof node.id === 'string' ? [node.id] : [],
+      ),
+    );
+    let reflectors = 0;
+    scene.nodes.forEach((node, i) => {
+      if (!object(node) || node.type !== 'reflector') return;
+      if (++reflectors === 2)
+        issues.push(`scene.nodes[${i}]: one reflector per scene (each is a second scene render)`);
+      if (Array.isArray(node.hides))
+        for (const id of node.hides)
+          if (typeof id === 'string' && !modelIds.has(id))
+            issues.push(`scene.nodes[${i}].hides: ${id} is not a model node in this scene`);
+    });
     const lights = scene.nodes.filter((node) => object(node) && node.type === 'light').length;
     if (lights > ZHUDA_FILM_LIMITS.lights)
       issues.push(

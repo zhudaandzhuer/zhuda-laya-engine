@@ -233,6 +233,44 @@ with Laya's native lightmap path:
 
 Props, boxes and the ground are not lightmapped; they keep the flat ambient.
 
+## Reflections: wet ground and still water
+
+A `reflector` node is a horizontal rectangle that mirrors the scene above it:
+lanterns, lit windows, buildings and the sky appear in wet paving or a pond.
+
+```json
+{
+  "id": "wet-street",
+  "type": "reflector",
+  "position": [0, 0.065, -38],
+  "size": [15, 100],
+  "strength": 1,
+  "wetness": 0.45,
+  "roughness": 0.35,
+  "ripple": 0.4,
+  "patternMeters": 3,
+  "resolution": 1024,
+  "hides": ["street", "earth"]
+}
+```
+
+- `position` is the centre; its `y` is the mirror height. Put it a few
+  millimetres above the surface it covers.
+- The reflection is added on top of what is under it, so the paving keeps
+  its material and lightmap. It is strongest at grazing angles (Fresnel).
+- `wetness` is the share that is standing water and mirrors sharply; the
+  rest is damp, dimmer, blurred by `roughness` and broken up by `ripple`.
+  `patternMeters` sizes the puddles.
+- `hides` lists `model` nodes the mirror must not draw: the ground under the
+  reflector, which would otherwise block the view from below. Boxes, the
+  `ground` node and props cannot be hidden; keep them out from under a
+  reflector or accept that they block it.
+- One reflector per scene. It is a second render of the scene for every
+  sample of every frame, at `resolution` pixels wide.
+
+This is how a scene lit only by lightmaps gets highlights: a lightmap holds
+diffuse light, and the reflector adds the mirror image of the lights.
+
 ## Camera paths
 
 A video job takes `cameraPath`: two or more keys `{ time, camera }`, the first
@@ -309,8 +347,14 @@ without `TEXCOORD_1` are refused, that 30 mounts leave one instance and that a
 rewritten lightmap is picked up. See the
 [model verification record](plans/records/film-model-gi/verification.md).
 
+`npm run verify:film-reflector` puts a lit box above a reflector on a real GPU
+and checks that its mirror image appears at the projected pixel with the same
+colour and nowhere else, that strength and dampness scale it, that a ground
+model blocks it unless hidden and that the frame is identical after 30 mounts.
+See the [reflector verification record](plans/records/film-reflector/verification.md).
+
 Not yet: animated look or light tracks, real-time shadows from point lights
-(bake them into a lightmap), reflections and reflection probes, real-time
+(bake them into a lightmap), reflections on walls or slopes, reflection probes, real-time
 global illumination, animated models, spline camera paths, shot lists, path
 tracing and audio in render jobs. Previews and renders are desktop WebGL evidence; WebGPU and mobile are
 not covered.
