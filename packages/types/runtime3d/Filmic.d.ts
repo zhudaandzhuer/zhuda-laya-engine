@@ -79,10 +79,25 @@ export declare class ZhudaPlanarReflection {
          * and would otherwise cover the mirrored view.
          */
         clipBelowPlane?: boolean;
+        /**
+         * Leave the mirrored camera out of the engine's frame loop: the owner
+         * draws it with `draw()` when it wants (default false: the loop draws it).
+         */
+        manual?: boolean;
+        /**
+         * Whether `draw()` also redraws the shadow maps for the mirrored view
+         * (default true). Without it the mirror uses the shadow maps of the
+         * main view, which saves a full shadow pass per frame.
+         */
+        shadows?: boolean;
     });
     private planeY;
+    private readonly shadows;
+    private readonly scene;
     private clip?;
     private disposed;
     update(eye: readonly number[], target: readonly number[], fieldOfView: number, aspect?: number): any[][];
+    /** Draws the mirrored view now (captures, or a `manual` mirror in a game loop). */
+    draw(): void;
     dispose(): void;
 }

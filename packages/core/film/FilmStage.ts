@@ -387,7 +387,7 @@ function buildFilmStageContents(
       intensity: look.sun.intensity,
       color: [...look.sun.color, 1] as [number, number, number, number],
     });
-    const effects = applyLook(l, scene3D, camera, sun.light, look, cleanups);
+    const effects = applyResolvedFilmLook(l, scene3D, camera, sun.light, look, cleanups);
     const lightFog = effects.lightFog;
     // What moves with shot time; filled in below, applied by `setTime`.
     const timed: ((seconds: number) => void)[] = [];
@@ -841,7 +841,8 @@ function castsShadow(node: any) {
 }
 
 /** Shadows, procedural sky and fog, all native Laya 3.4.2 features. */
-function applyLook(
+/** Shared with `ZhudaSceneLook`: shadows, sky, fog and the HDR chain of a resolved look. */
+export function applyResolvedFilmLook(
   l: any,
   scene3D: any,
   camera: any,
@@ -877,12 +878,19 @@ function applyLook(
     // Own the dome: the shared SkyDome.instance would be destroyed with this
     // scene and break every scene drawn after it.
     const dome = new l.SkyDome();
+    const previousMesh = scene3D.skyRenderer.mesh;
     scene3D.skyRenderer.mesh = dome;
     scene3D.skyRenderer.material = sky;
     camera.clearFlag = l.CameraClearFlags.Sky;
     cleanups.push(() => {
       scene3D.skyRenderer.material = null;
-      scene3D.skyRenderer.mesh = null;
+      try {
+        scene3D.skyRenderer.mesh = null;
+      } catch {
+        // A scene that has drawn (a game changing its look while it runs)
+        // cannot hold no sky mesh in Laya 3.4.2: give it back the one it had.
+        if (previousMesh && !previousMesh.destroyed) scene3D.skyRenderer.mesh = previousMesh;
+      }
       sky.destroy();
       dome.destroy();
     });

@@ -115,6 +115,10 @@ export declare class ZhudaLightFog {
     private count;
     private disposed;
     private shaft?;
+    private refresh;
+    /** What the depth picture was last drawn for; undefined forces a redraw. */
+    private drawnFor;
+    private boxCentre;
     private frame;
     constructor(options?: ZhudaLightFogOptions);
     /** Replaces the lights that shine into the fog (at most `ZHUDA_FOG_MAX_LIGHTS`). */
@@ -122,15 +126,25 @@ export declare class ZhudaLightFog {
     /**
      * Lets the sun or moon shine into the fog (`shafts` options required). A
      * camera in `scene` draws what the light sees into a depth picture; call
-     * `update` and then `renderShafts` before a frame drawn outside the engine's
-     * frame loop. Calling it again replaces the light.
+     * `update` and then `renderShafts` before every frame. Calling it again
+     * replaces the light.
      */
     attachSun(scene: any, sun: ZhudaFogSun): void;
     /** Which frame of a sequence is drawn: moves the step noise so samples average it away. */
     setFrame(index: number): void;
     /**
-     * Draws the depth picture now. The engine's frame loop already draws it;
-     * call this only when a frame is rendered outside that loop (captures).
+     * `always` (default): `renderShafts` redraws the depth picture every time,
+     * which moving things in the light need. `moved`: the picture covers a
+     * larger box that follows the camera in steps and is redrawn only when the
+     * camera has left it, which suits a game with still scenery.
+     */
+    setShaftRefresh(mode: 'always' | 'moved'): void;
+    /** Forces the next `renderShafts` to redraw (the scenery changed). */
+    invalidateShafts(): void;
+    /**
+     * Draws the depth picture of the light. Call it after `update`, before the
+     * main camera draws; the engine's frame loop does not draw it. The pass
+     * needs no shadow maps of its own and does not draw any.
      */
     renderShafts(): void;
     /** Call when the camera moves or its field of view or aspect changes. */

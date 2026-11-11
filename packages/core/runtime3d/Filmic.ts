@@ -217,6 +217,17 @@ export class ZhudaPlanarReflection {
        * and would otherwise cover the mirrored view.
        */
       clipBelowPlane?: boolean;
+      /**
+       * Leave the mirrored camera out of the engine's frame loop: the owner
+       * draws it with `draw()` when it wants (default false: the loop draws it).
+       */
+      manual?: boolean;
+      /**
+       * Whether `draw()` also redraws the shadow maps for the mirrored view
+       * (default true). Without it the mirror uses the shadow maps of the
+       * main view, which saves a full shadow pass per frame.
+       */
+      shadows?: boolean;
     },
   ) {
     const l = (globalThis as any).Laya;
@@ -249,9 +260,14 @@ export class ZhudaPlanarReflection {
     this.camera.renderTarget = this.texture;
     this.camera.renderingOrder = -100;
     this.camera.cullingMask = ~(1 << options.excludedLayer);
+    if (options.manual) this.camera.enableRender = false;
+    this.shadows = options.shadows ?? true;
+    this.scene = scene;
     scene.addChild(this.camera);
   }
   private planeY: number;
+  private readonly shadows: boolean;
+  private readonly scene: any;
   private clip?: { near: number; far: number };
   private disposed = false;
   update(eye: readonly number[], target: readonly number[], fieldOfView: number, aspect?: number) {
@@ -341,6 +357,19 @@ export class ZhudaPlanarReflection {
       e[i * 4 + 2],
       e[i * 4 + 3],
     ]);
+  }
+  /** Draws the mirrored view now (captures, or a `manual` mirror in a game loop). */
+  draw(): void {
+    if (this.disposed) throw Error('Disposed reflection');
+    const l = (globalThis as any).Laya;
+    const before = l.Stat.enableShadow;
+    if (!this.shadows) l.Stat.enableShadow = false;
+    try {
+      l.Camera.drawRenderTextureByScene(this.camera, this.scene, this.texture);
+    } finally {
+      l.Stat.enableShadow = before;
+      this.camera.renderTarget = this.texture;
+    }
   }
   dispose() {
     if (this.disposed) return;

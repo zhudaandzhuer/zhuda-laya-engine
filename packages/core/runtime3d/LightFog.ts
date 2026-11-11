@@ -301,6 +301,10 @@ export class ZhudaLightFog {
   private count = 0;
   private disposed = false;
   private shaft?: { scene: any; camera: any; target: any; sun: ZhudaFogSun };
+  private refresh: 'always' | 'moved' = 'always';
+  /** What the depth picture was last drawn for; undefined forces a redraw. */
+  private drawnFor: string | undefined;
+  private boxCentre: number[] | undefined;
   private frame = 0;
 
   constructor(options: ZhudaLightFogOptions = {}) {
@@ -360,8 +364,8 @@ export class ZhudaLightFog {
   /**
    * Lets the sun or moon shine into the fog (`shafts` options required). A
    * camera in `scene` draws what the light sees into a depth picture; call
-   * `update` and then `renderShafts` before a frame drawn outside the engine's
-   * frame loop. Calling it again replaces the light.
+   * `update` and then `renderShafts` before every frame. Calling it again
+   * replaces the light.
    */
   attachSun(scene: any, sun: ZhudaFogSun): void {
     if (this.disposed) throw Error('Disposed light fog');
@@ -401,6 +405,8 @@ export class ZhudaLightFog {
     camera.enableHDR = false;
     camera.renderTarget = target;
     camera.renderingOrder = -200;
+    // Drawn by `renderShafts`, not by the engine's frame loop.
+    camera.enableRender = false;
     scene.addChild(camera);
     this.shaft = {
       scene,
@@ -419,17 +425,43 @@ export class ZhudaLightFog {
   }
 
   /**
-   * Draws the depth picture now. The engine's frame loop already draws it;
-   * call this only when a frame is rendered outside that loop (captures).
+   * `always` (default): `renderShafts` redraws the depth picture every time,
+   * which moving things in the light need. `moved`: the picture covers a
+   * larger box that follows the camera in steps and is redrawn only when the
+   * camera has left it, which suits a game with still scenery.
+   */
+  setShaftRefresh(mode: 'always' | 'moved'): void {
+    if (mode !== 'always' && mode !== 'moved') throw Error('Shaft refresh: always or moved');
+    this.refresh = mode;
+    this.drawnFor = undefined;
+  }
+
+  /** Forces the next `renderShafts` to redraw (the scenery changed). */
+  invalidateShafts(): void {
+    this.drawnFor = undefined;
+  }
+
+  /**
+   * Draws the depth picture of the light. Call it after `update`, before the
+   * main camera draws; the engine's frame loop does not draw it. The pass
+   * needs no shadow maps of its own and does not draw any.
    */
   renderShafts(): void {
     if (this.disposed) throw Error('Disposed light fog');
     if (!this.shaft) return;
     const l = (globalThis as any).Laya;
-    const { camera, scene, target } = this.shaft;
+    const { camera, scene, target, sun } = this.shaft;
+    if (this.refresh === 'moved') {
+      const key = JSON.stringify([this.boxCentre, sun.toward]);
+      if (key === this.drawnFor) return;
+      this.drawnFor = key;
+    }
+    const before = l.Stat.enableShadow;
+    l.Stat.enableShadow = false;
     try {
       l.Camera.drawRenderTextureByScene(camera, scene, target);
     } finally {
+      l.Stat.enableShadow = before;
       camera.renderTarget = target;
     }
   }
@@ -486,9 +518,16 @@ export class ZhudaLightFog {
       // The light's camera covers a box around the stretch of view where beams are drawn.
       const options = this.fog.shafts,
         { camera, sun } = this.shaft;
-      const half = options.distance * 0.6,
+      // `moved`: the box is larger and its centre snaps to a grid, so the
+      // same picture serves until the camera has travelled a grid cell.
+      const grid = this.refresh === 'moved' ? options.distance * 0.25 : 0;
+      const half = options.distance * 0.6 + grid,
         back = half + 300;
-      const centre = eye.map((v, i) => v + forward[i] * options.distance * 0.5);
+      const centre = eye.map((v, i) => {
+        const at = v + forward[i] * options.distance * 0.5;
+        return grid ? Math.round(at / grid) * grid : at;
+      });
+      this.boxCentre = centre;
       camera.orthographicVerticalSize = half * 2;
       camera.aspectRatio = 1;
       camera.nearPlane = 0.5;

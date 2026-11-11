@@ -53,6 +53,12 @@ export interface ZhudaWaterSurfaceOptions {
    * chains); a camera drawing straight to the canvas may need it.
    */
   flipScreen?: boolean;
+  /**
+   * The mirrored view redraws the shadow maps (default true). A game turns it
+   * off to save a shadow pass per frame; the mirror then uses the shadows of
+   * the main view.
+   */
+  mirrorShadows?: boolean;
   /** Laya layer for the surface; the mirrored camera does not draw this layer (default 29). */
   layer?: number;
 }
@@ -251,6 +257,9 @@ export class ZhudaWaterSurface {
       planeY: this.planeY,
       excludedLayer: this.layer,
       clipBelowPlane: true,
+      // The owner draws the mirror with `render()`: once per frame, not twice.
+      manual: true,
+      shadows: options.mirrorShadows ?? true,
     });
     try {
       this.material = new ZhudaShaderMaterial(SPEC, {
@@ -340,19 +349,12 @@ export class ZhudaWaterSurface {
   }
 
   /**
-   * Draws the mirrored view now. The engine's normal frame loop already draws
-   * it; call this only when a frame is rendered outside that loop (captures).
+   * Draws the mirrored view. Call it once per frame before the main camera
+   * draws (the engine's frame loop does not draw it), or less often to save time.
    */
   render(): void {
     if (this.disposed) throw Error('Disposed water surface');
-    const l = (globalThis as any).Laya;
-    const camera = this.reflection.camera,
-      target = this.reflection.texture;
-    try {
-      l.Camera.drawRenderTextureByScene(camera, this.scene, target);
-    } finally {
-      camera.renderTarget = target;
-    }
+    this.reflection.draw();
   }
 
   dispose(): void {

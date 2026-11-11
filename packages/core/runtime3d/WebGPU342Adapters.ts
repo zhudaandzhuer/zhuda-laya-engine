@@ -66,9 +66,11 @@ function fixMergedIndices(native: any): void {
 /**
  * The glTF PBR depth-normal pass (drawn for ambient occlusion and other depth
  * effects) includes the fog code in its fragment stage, but its vertex stage
- * writes no fog factor. WebGL links that; the WebGPU compiler rejects it and
- * the frame is lost as soon as a fogged scene draws a glTF model with ambient
- * occlusion. Depth and normals need no fog: the pass stops accepting the define.
+ * writes no fog factor. The WebGPU compiler rejects it and the frame is lost
+ * as soon as a fogged scene draws a glTF model with ambient occlusion; WebGL
+ * logs a link warning and skips the model in that pass, so it gets no
+ * ambient occlusion. Depth and normals need no fog: the pass stops accepting
+ * the define, on both backends.
  */
 /** Call once the native engine has initialized (shaders are registered by then). */
 export function fixLaya342WebGPUShaders(native: any): void {

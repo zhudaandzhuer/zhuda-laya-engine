@@ -5,10 +5,12 @@ import type { ZhudaRuntimeSession } from '../runtime3d/Runtime.js';
 import { ZhudaModelLibrary } from '../runtime3d/Assets.js';
 import type { ZhudaAssetCache } from '../runtime3d/Assets.js';
 import { type AssetProvider } from '../runtime3d/AssetProvider.js';
+import { ZhudaLightFog } from '../runtime3d/LightFog.js';
+import { ZhudaLensFinish } from '../runtime3d/LensFinish.js';
 import { type ZhudaHdrImage } from '../runtime3d/Lightmap.js';
 import { type ZhudaBakedTextureSet, type ZhudaTextureRecipe } from '../procedural/TextureRecipe.js';
 import { type ZhudaPropDefinition } from '../procedural/PropFactory.js';
-import { type ZhudaFilmCamera, type ZhudaFilmScene } from './FilmScene.js';
+import { type ZhudaFilmCamera, type ZhudaFilmScene, type ZhudaResolvedFilmLook } from './FilmScene.js';
 export interface ZhudaFilmStageOptions {
     /** Props a scene may place, by id. */
     props?: readonly ZhudaPropDefinition<any>[];
@@ -100,6 +102,12 @@ export declare function loadZhudaFilmScene(rootScene: any, input: ZhudaFilmScene
  * models load assets first: use `loadZhudaFilmScene`.
  */
 export declare function mountZhudaFilmScene(rootScene: any, input: ZhudaFilmScene, options?: ZhudaFilmStageOptions): ZhudaFilmStage;
+/** Shadows, procedural sky and fog, all native Laya 3.4.2 features. */
+/** Shared with `ZhudaSceneLook`: shadows, sky, fog and the HDR chain of a resolved look. */
+export declare function applyResolvedFilmLook(l: any, scene3D: any, camera: any, sun: any, look: ZhudaResolvedFilmLook, cleanups: (() => void)[]): {
+    lightFog?: ZhudaLightFog;
+    finish?: ZhudaLensFinish;
+};
 export interface ZhudaFilmRenderOptions {
     width: number;
     height: number;

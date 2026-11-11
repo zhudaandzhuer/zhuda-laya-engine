@@ -145,6 +145,31 @@ export function prepareRenderer(
                 'WEBGPU_SHADER_COMPILER',
                 'GLSL/WGSL compiler failed; verify the packaged WASM resources and CSP',
               );
+            // A shader the compiler rejects is only logged upstream, and the
+            // draw then throws on a null buffer. Keep the compiler's message
+            // with the source lines it points at, so the cause can be read
+            // from `context.renderer.errors`.
+            const glslang = this.glslang;
+            const compile = glslang.glsl450_to_spirv;
+            if (typeof compile === 'function' && !glslang.__zhudaReports) {
+              glslang.__zhudaReports = true;
+              glslang.glsl450_to_spirv = function (source: string, stage: string) {
+                const result = compile.call(this, source, stage);
+                if (result && !result.success && diagnostics.errors.length < 64) {
+                  const log = String(result.info_log ?? '').trim();
+                  const line = Number(/ERROR: :?(\d+):/.exec(log)?.[1]);
+                  const lines = String(source).split('\n');
+                  const context = Number.isFinite(line)
+                    ? lines
+                        .slice(Math.max(0, line - 3), line + 1)
+                        .map((text, i) => `${Math.max(1, line - 2) + i}: ${text.slice(0, 240)}`)
+                        .join('\n')
+                    : '';
+                  diagnostics.errors.push(`Shader compile failed (${stage}): ${log}\n${context}`);
+                }
+                return result;
+              };
+            }
           },
       );
       patch(
@@ -205,7 +230,8 @@ export function prepareRenderer(
         const actual = native.LayaGL?.renderEngine;
         diagnostics.nativeEngine = actual?.objectName ?? actual?.constructor?.name ?? 'unknown';
         const actualGpu = typeof actual?.getDevice === 'function' && !!actual.getDevice();
-        if (actualGpu) fixLaya342WebGPUShaders(native);
+        // On WebGL the same shader only logs a warning and draws nothing in that pass.
+        fixLaya342WebGPUShaders(native);
         if (selected === 'webgpu' && (!actualGpu || diagnostics.status === 'lost'))
           throw new ZhudaRendererError(
             'WEBGPU_NOT_READY',

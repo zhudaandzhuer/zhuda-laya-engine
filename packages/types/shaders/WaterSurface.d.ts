@@ -38,6 +38,12 @@ export interface ZhudaWaterSurfaceOptions {
      * chains); a camera drawing straight to the canvas may need it.
      */
     flipScreen?: boolean;
+    /**
+     * The mirrored view redraws the shadow maps (default true). A game turns it
+     * off to save a shadow pass per frame; the mirror then uses the shadows of
+     * the main view.
+     */
+    mirrorShadows?: boolean;
     /** Laya layer for the surface; the mirrored camera does not draw this layer (default 29). */
     layer?: number;
 }
@@ -63,8 +69,8 @@ export declare class ZhudaWaterSurface {
     /** Call after the main camera moves or its field of view changes. */
     update(eye: readonly [number, number, number], target: readonly [number, number, number], fieldOfViewDeg: number, aspect: number): void;
     /**
-     * Draws the mirrored view now. The engine's normal frame loop already draws
-     * it; call this only when a frame is rendered outside that loop (captures).
+     * Draws the mirrored view. Call it once per frame before the main camera
+     * draws (the engine's frame loop does not draw it), or less often to save time.
      */
     render(): void;
     dispose(): void;
