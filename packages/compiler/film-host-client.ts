@@ -144,7 +144,10 @@ async function review(options: {
   };
 }
 
-async function boot(packs: readonly Pack[], options: { assets?: boolean }) {
+async function boot(
+  packs: readonly Pack[],
+  options: { assets?: boolean; renderer?: 'webgl' | 'webgpu' },
+) {
   library = catalogue(packs);
   if (options.assets)
     state.provider = new Z.DirectoryAssetProvider({
@@ -153,7 +156,7 @@ async function boot(packs: readonly Pack[], options: { assets?: boolean }) {
       maxBytes: 512 * 1024 * 1024,
     });
   state.context = await Z.ZhudaEngine.boot({
-    renderer: 'webgl',
+    renderer: options.renderer ?? 'webgl',
     container: document.querySelector('#view'),
     width: 64,
     height: 64,
@@ -173,7 +176,10 @@ async function boot(packs: readonly Pack[], options: { assets?: boolean }) {
  * side-effect import: the package declares `sideEffects: false`, so a bare
  * import of this file would be dropped by the bundler.
  */
-export function startFilmHost(packs: readonly Pack[] = [], options: { assets?: boolean } = {}) {
+export function startFilmHost(
+  packs: readonly Pack[] = [],
+  options: { assets?: boolean; renderer?: 'webgl' | 'webgpu' } = {},
+) {
   (globalThis as any).__ZHUDA_FILM__ = {
     state,
     mount,

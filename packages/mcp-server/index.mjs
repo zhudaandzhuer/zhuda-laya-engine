@@ -719,7 +719,7 @@ export function handleJsonRpcMessage(msg) {
 if (
   cliMain(
     import.meta.url,
-    'Usage: zhuda-laya-mcp [--tool NAME --args JSON] [--film-output DIRECTORY] [--film-pack MODULE ...] [--film-assets DIRECTORY]\nWithout --tool, starts the JSON-RPC stdio server. --film-output lets film_render_job write stills and MP4 there; --film-pack adds an operator prop/recipe module (repeatable); --film-assets serves a directory of .glb models and .hdr lightmaps to film scenes.',
+    'Usage: zhuda-laya-mcp [--tool NAME --args JSON] [--film-output DIRECTORY] [--film-pack MODULE ...] [--film-assets DIRECTORY] [--film-renderer webgl|webgpu]\nWithout --tool, starts the JSON-RPC stdio server. --film-output lets film_render_job write stills and MP4 there; --film-pack adds an operator prop/recipe module (repeatable); --film-assets serves a directory of .glb models and .hdr lightmaps to film scenes; --film-renderer picks the backend film scenes are drawn with (default webgl, or ZHUDA_FILM_RENDERER).',
   )
 ) {
   const { resolve } = await import('node:path');
@@ -734,6 +734,13 @@ if (
     const dir = process.argv[assetsIdx + 1];
     if (!dir) throw Error('--film-assets needs a directory');
     configureFilmTools({ assets: resolve(dir) });
+  }
+  const rendererIdx = process.argv.indexOf('--film-renderer');
+  if (rendererIdx !== -1) {
+    const backend = process.argv[rendererIdx + 1];
+    if (backend !== 'webgl' && backend !== 'webgpu')
+      throw Error('--film-renderer needs webgl or webgpu');
+    configureFilmTools({ renderer: backend });
   }
   const packList = process.argv.flatMap((arg, i) => {
     if (arg !== '--film-pack') return [];

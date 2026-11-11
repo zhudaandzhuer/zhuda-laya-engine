@@ -173,3 +173,111 @@ test('WebGPU consumes between-frame removals before reusing culled render elemen
   native.Stat.loopCount = 8;
   assert.equal(agent.appendRenderElement(), 'reuse');
 });
+
+test('WebGPU culls in the frame a camera or shadow light moved', async () => {
+  const { installLaya342WebGPUFix } = await import(
+    '../packages/core/runtime3d/WebGPU342Adapters.ts'
+  );
+  class Agent {
+    appendRenderElement() {
+      return this._canKipCull === native.Stat.loopCount ? 'cull' : 'reuse';
+    }
+  }
+  const native = { WebGPUMeshRenderBatchAgent: Agent, Stat: { loopCount: 7 } };
+  installLaya342WebGPUFix(native);
+  for (const mask of ['_cameraChangeMask', '_dirCullChangeMask', '_spotCullChangeMask']) {
+    const agent = new Agent();
+    assert.equal(agent.appendRenderElement(), 'reuse', 'a still view keeps the upstream skip');
+    agent[mask] = 7;
+    assert.equal(agent.appendRenderElement(), 'cull', mask);
+  }
+});
+
+test('WebGPU keeps fog out of the glTF depth-normal pass only', async () => {
+  const { fixLaya342WebGPUShaders } = await import(
+    '../packages/core/runtime3d/WebGPU342Adapters.ts'
+  );
+  const removed = [];
+  const pass = (mode) => ({
+    pipelineMode: mode,
+    _validDefine: { remove: (define) => removed.push([mode, define]) },
+  });
+  const native = {
+    Shader3D: {
+      find: (name) =>
+        name === 'glTFPBR'
+          ? {
+              _subShaders: [
+                { _passes: [pass('Forward'), pass('ShadowCaster'), pass('DepthNormal')] },
+              ],
+            }
+          : null,
+      getDefineByName: (name) => 'define:' + name,
+    },
+  };
+  fixLaya342WebGPUShaders(native);
+  assert.deepEqual(removed, [['DepthNormal', 'define:FOG']]);
+  // Without the glTF shader (a build without the feature) nothing happens.
+  fixLaya342WebGPUShaders({ Shader3D: { find: () => null, getDefineByName: () => 1 } });
+});
+
+test('float render targets read back whole on WebGPU and natively on WebGL', async () => {
+  const { readLaya342FloatTarget } = await import(
+    '../packages/core/runtime3d/WebGPU342Adapters.ts'
+  );
+  // WebGL: the native read-back fills the array.
+  const gl = await readLaya342FloatTarget(
+    { LayaGL: { renderEngine: {} } },
+    { getDataAsync: async (x, y, w, h, out) => out.fill(0.25) },
+    2,
+    2,
+  );
+  assert.deepEqual([...gl], Array(16).fill(0.25));
+  // WebGPU: half floats, rows padded to 256 bytes; every row must arrive.
+  const width = 3,
+    height = 2,
+    stride = 128;
+  const raw = new Uint16Array(stride * height);
+  const half = { 0: 0, 0.5: 0x3800, 1: 0x3c00, 2: 0x4000, 28: 0x4f00 };
+  const rows = [
+    [1, 0, 0, 1, 0.5, 0.5, 0.5, 1, 2, 2, 2, 1],
+    [28, 0, 0, 1, 0, 1, 0, 1, 0, 0, 2, 1],
+  ];
+  rows.forEach((row, j) => row.forEach((value, i) => (raw[j * stride + i] = half[value])));
+  const calls = [];
+  const buffer = {
+    mapAsync: async () => calls.push('map'),
+    getMappedRange: () => raw.buffer,
+    unmap: () => calls.push('unmap'),
+    destroy: () => calls.push('destroy'),
+  };
+  const device = {
+    createBuffer: (descriptor) => (calls.push(['buffer', descriptor.size]), buffer),
+    createCommandEncoder: () => ({
+      copyTextureToBuffer: (source, target, extent) =>
+        calls.push(['copy', source.texture, target.bytesPerRow, extent.width, extent.height]),
+      finish: () => 'commands',
+    }),
+    queue: { submit: (list) => calls.push(['submit', list.length]) },
+  };
+  const previous = [globalThis.GPUBufferUsage, globalThis.GPUMapMode];
+  globalThis.GPUBufferUsage = { COPY_DST: 8, MAP_READ: 1 };
+  globalThis.GPUMapMode = { READ: 1 };
+  try {
+    const native = { LayaGL: { renderEngine: { getDevice: () => device } } };
+    const target = { _renderTarget: { _textures: [{ resource: 'texture' }] } };
+    const out = await readLaya342FloatTarget(native, target, width, height);
+    assert.deepEqual([...out], rows.flat());
+    assert.deepEqual(calls, [
+      ['buffer', 512],
+      ['copy', 'texture', 256, 3, 2],
+      ['submit', 1],
+      'map',
+      'unmap',
+      'destroy',
+    ]);
+    await assert.rejects(readLaya342FloatTarget(native, {}, 1, 1), /no WebGPU colour texture/);
+  } finally {
+    [globalThis.GPUBufferUsage, globalThis.GPUMapMode] = previous;
+  }
+});

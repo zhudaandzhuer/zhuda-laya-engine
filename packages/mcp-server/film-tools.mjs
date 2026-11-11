@@ -140,6 +140,7 @@ export const isFilmTool = (name) => FILM_TOOL_NAMES.has(name);
 let outputDir = process.env.ZHUDA_FILM_OUTPUT || null;
 let packs = [];
 let assetsDir = null;
+let renderer;
 let host;
 let sessions = new ZhudaFilmSessions();
 let context = ZHUDA_FILM_HOST_CONTEXT;
@@ -149,8 +150,10 @@ let context = ZHUDA_FILM_HOST_CONTEXT;
  * `packs`: operator prop/recipe modules (--film-pack), loaded into the page.
  * `assets`: directory of models (.glb) and lightmaps (.hdr) scenes may name
  * (--film-assets).
+ * `renderer`: `webgl` or `webgpu` (--film-renderer); unset uses the host default.
  */
-export function configureFilmTools({ output, packs: list, assets } = {}) {
+export function configureFilmTools({ output, packs: list, assets, renderer: backend } = {}) {
+  if (backend !== undefined) renderer = backend;
   if (output !== undefined) outputDir = output;
   if (assets !== undefined) assetsDir = assets;
   if (list !== undefined) packs = [...list];
@@ -159,7 +162,7 @@ export function configureFilmTools({ output, packs: list, assets } = {}) {
 async function filmHost() {
   if (!host) {
     const { ZhudaFilmHost } = await import('./film-host.mjs');
-    host = new ZhudaFilmHost({ outputDir, packs, assets: assetsDir ?? undefined });
+    host = new ZhudaFilmHost({ outputDir, packs, assets: assetsDir ?? undefined, renderer });
   }
   return host;
 }
@@ -258,6 +261,7 @@ export async function executeFilmTool(name, args = {}) {
           revision: snapshot.revision,
           batches: preview.batches,
           renderMs: preview.renderMs,
+          gpu: (await filmHost()).info?.gpu,
           scope: 'one-sample preview through ZhudaCinematicCapture; not a final render',
         }),
       ];

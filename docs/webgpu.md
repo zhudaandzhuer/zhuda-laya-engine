@@ -21,10 +21,14 @@ Start with the [canonical consumer](consumer-route.md). In `zhuda.config.json`:
 import { ZhudaEngine } from 'zhuda-laya-engine';
 const cancellation = new AbortController();
 const context = await ZhudaEngine.boot({
-  container: '#game', width: 1280, height: 720, dprCap: 2,
+  container: '#game',
+  width: 1280,
+  height: 720,
+  dprCap: 2,
   renderer: 'webgpu',
   features: ['core', '2d', '3d', 'ui', 'gltf', 'postProcess'],
-  signal: cancellation.signal, bootTimeoutMs: 30000,
+  signal: cancellation.signal,
+  bootTimeoutMs: 30000,
   clearInput: () => inputBuffer.clear(),
   onContextLost: () => requestFreshRuntimeRealm(),
 });
@@ -58,7 +62,8 @@ payload is approximately 5.94 MB before base64 encoding, excluding JS/runtime.
 
 ```js
 const context = await Zhuda.ZhudaEngine.boot({
-  container: '#game', renderer: 'webgpu',
+  container: '#game',
+  renderer: 'webgpu',
   features: [...ZhudaBundle.features],
 });
 ```
@@ -94,6 +99,26 @@ failures are surfaced, and pending scene removals invalidate skipped WebGPU cull
 frames before destroyed render elements can be reused. Vendor artifacts stay
 unmodified and their source/hash/notices are pinned in
 [`webgpu-provenance.json`](../vendor/laya-3.4.2/webgpu-provenance.json).
+
+## Film scenes
+
+[Film scenes](film-scenes.md) render on WebGPU with `--film-renderer webgpu`:
+models with lightmaps, the reflector, light fog, animation, the environment
+probe, looks, mixed lighting, stills and MP4. Three more upstream seams are
+contained in `WebGPU342Adapters.ts` for it, and apply to every WebGPU scene:
+
+- A camera or shadow light that moved is culled in the same frame. Upstream
+  defers that by up to two frames, which drew the previous view after a cut, a
+  probe face or a mirrored camera.
+- Half-float render targets are read back whole (`readLaya342FloatTarget`).
+  The upstream read-back returns every other row for 16-bit formats.
+- The glTF PBR depth-normal pass no longer takes the fog define. Upstream
+  fails to compile it once a fogged scene draws a glTF model with ambient
+  occlusion.
+
+Custom surface shaders must sample textures in uniform control flow (no
+`return` or `discard` before a sample): WGSL rejects the shader otherwise and
+the film host reports the device's message.
 
 ## Evidence and platform boundaries
 

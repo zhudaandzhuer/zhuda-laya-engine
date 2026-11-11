@@ -69,12 +69,24 @@ export class ZhudaFilmHost {
 
   #packs;
   #assetsDir;
+  #renderer;
   /**
    * `packs`: operator-chosen modules exporting `{ props, recipes }` (default
    * or named). They are trusted like any server code; agents only name what
-   * they provide.
+   * they provide. `renderer`: `webgl` (default, or `ZHUDA_FILM_RENDERER`) or
+   * `webgpu`; WebGPU needs a browser with a hardware adapter and fails
+   * instead of falling back.
    */
-  constructor({ outputDir, chrome = chromeFixture, packs = [], assets } = {}) {
+  constructor({
+    outputDir,
+    chrome = chromeFixture,
+    packs = [],
+    assets,
+    renderer = process.env.ZHUDA_FILM_RENDERER || 'webgl',
+  } = {}) {
+    if (renderer !== 'webgl' && renderer !== 'webgpu')
+      throw Error('Film renderer must be webgl or webgpu');
+    this.#renderer = renderer;
     this.#outputDir = outputDir ? path.resolve(outputDir) : null;
     if (assets) {
       const dir = path.resolve(assets);
@@ -159,7 +171,8 @@ export class ZhudaFilmHost {
     this.#starting ??= (async () => {
       this.#work = await fsp.mkdtemp(path.join(os.tmpdir(), 'zhuda-film-host-'));
       const web = path.join(this.#work, 'web');
-      await buildBrowserSdk({ engineRoot, outDir: web, profiles: ['3d-gltf'] });
+      const profile = this.#renderer === 'webgpu' ? '3d-gltf-webgpu' : '3d-gltf';
+      await buildBrowserSdk({ engineRoot, outDir: web, profiles: [profile] });
       // Packs import the public SDK; in the page that is the loaded `Zhuda`
       // bundle, so the import is mapped to it instead of bundling a copy.
       const imports = this.#packs.map(
@@ -174,7 +187,7 @@ export class ZhudaFilmHost {
           contents: [
             ...imports,
             `import { startFilmHost } from ${JSON.stringify(path.join(engineRoot, 'packages/compiler/film-host-client.ts'))};`,
-            `startFilmHost([${list.join(', ')}], { assets: ${!!this.#assetsDir} });`,
+            `startFilmHost([${list.join(', ')}], { assets: ${!!this.#assetsDir}, renderer: ${JSON.stringify(this.#renderer)} });`,
           ].join('\n'),
           resolveDir: engineRoot,
           loader: 'js',
@@ -208,10 +221,10 @@ export class ZhudaFilmHost {
         '<!doctype html><meta charset="utf-8"><title>Zhuda film host</title>' +
           '<script>window.ZhudaBranding={mode:"none"}</script>' +
           '<div id="view" style="width:64px;height:64px"></div>' +
-          '<script src="zhuda-3d-gltf.js"></script><script src="film-host.js"></script>',
+          `<script src="zhuda-${profile}.js"></script><script src="film-host.js"></script>`,
       );
       const files = new Map(
-        ['index.html', 'zhuda-3d-gltf.js', 'film-host.js'].map((name) => [
+        ['index.html', `zhuda-${profile}.js`, 'film-host.js'].map((name) => [
           `/${name}`,
           path.join(web, name),
         ]),
@@ -252,9 +265,12 @@ export class ZhudaFilmHost {
         if (info?.ready) {
           this.info = {
             ...info,
+            renderer: this.#renderer,
             gpu: await this.#browser.evaluate(
-              // Ask Laya's own WebGL context, not a new canvas.
-              `(()=>{const c=document.querySelector('#view canvas')?.getContext('webgl2');const d=c&&c.getExtension('WEBGL_debug_renderer_info');return c?(d?c.getParameter(d.UNMASKED_RENDERER_WEBGL):c.getParameter(c.RENDERER)):'unknown'})()`,
+              this.#renderer === 'webgpu'
+                ? `(()=>{const r=window.__ZHUDA_FILM__.state.context.renderer;return 'WebGPU '+[r.adapter?.vendor,r.adapter?.architecture,r.adapter?.description].filter(Boolean).join(' ')+(r.status?' ('+r.status+')':'')})()`
+                : // Ask Laya's own WebGL context, not a new canvas.
+                  `(()=>{const c=document.querySelector('#view canvas')?.getContext('webgl2');const d=c&&c.getExtension('WEBGL_debug_renderer_info');return c?(d?c.getParameter(d.UNMASKED_RENDERER_WEBGL):c.getParameter(c.RENDERER)):'unknown'})()`,
             ),
           };
           break;
@@ -284,6 +300,14 @@ export class ZhudaFilmHost {
     );
     const errors = this.#browser.errors.splice(0);
     if (errors.length) throw Error('Film host page error: ' + errors.join('; '));
+    if (this.#renderer === 'webgpu') {
+      // A shader or pipeline WebGPU rejects draws nothing and throws nothing:
+      // the device's validation errors are the only sign.
+      const gpu = await this.#browser.evaluate(
+        'window.__ZHUDA_FILM__.state.context.renderer.errors.splice(0)',
+      );
+      if (gpu?.length) throw Error('Film host WebGPU error: ' + String(gpu[0]).slice(0, 1500));
+    }
     return result;
   }
 

@@ -24,6 +24,14 @@ preview of the same camera (checked by `verify:film`).
 npx zhuda-laya-mcp --film-output ./films
 ```
 
+Film scenes are drawn with WebGL by default. `--film-renderer webgpu` (or
+`ZHUDA_FILM_RENDERER=webgpu`) draws them with Laya's WebGPU backend instead:
+the same scenes, tools and capture path, on the `3d-gltf-webgpu` bundle. It
+needs a hardware WebGPU adapter and fails rather than falling back; a shader
+or pipeline the device rejects fails the call with the device's message.
+Pixels differ slightly between the backends, so compare images within one.
+`npm run verify:film-webgpu` runs every film verification on WebGPU.
+
 The server needs a local Chrome (set `CHROME_BIN` if it is not in the usual
 place) and, for MP4, `ffmpeg` and `ffprobe`. The browser starts on the first
 image request and closes with the server. Render jobs write only into the
@@ -503,5 +511,5 @@ Not yet: several probes or box projection, blending between clips, shadows insid
 animated look or light tracks, real-time shadows from point lights
 (bake them into a lightmap), reflections on walls or slopes, reflection probes, real-time
 global illumination, animated models, spline camera paths, shot lists, path
-tracing and audio in render jobs. Previews and renders are desktop WebGL evidence; WebGPU and mobile are
-not covered.
+tracing and audio in render jobs. Previews and renders are desktop evidence (WebGL, and WebGPU on
+Apple Metal hardware); mobile is not covered.

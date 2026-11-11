@@ -10,6 +10,7 @@
  *
  * One probe: reflections are correct at the probe and approximate elsewhere.
  */
+import { readLaya342FloatTarget } from './WebGPU342Adapters.ts';
 import { createPrefilteredEnvironment, type PrefilteredEnvironmentSpec } from './Filmic.ts';
 
 /**
@@ -374,8 +375,7 @@ export class ZhudaEnvironmentProbe {
           this.scene.recaculateCullCamera();
           l.LayaGL.renderEngine.endFrame();
         }
-        const pixels = new Float32Array(n * n * 4);
-        await target.getDataAsync(0, 0, n, n, pixels);
+        const pixels = await readLaya342FloatTarget(l, target, n, n);
         if (signal?.aborted)
           throw signal.reason ?? new DOMException('Capture cancelled', 'AbortError');
         if (this.disposed) throw Error('Disposed environment probe');

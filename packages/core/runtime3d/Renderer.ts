@@ -1,4 +1,4 @@
-import { installLaya342WebGPUFix } from './WebGPU342Adapters.ts';
+import { fixLaya342WebGPUShaders, installLaya342WebGPUFix } from './WebGPU342Adapters.ts';
 export type RendererBackend = 'webgl' | 'webgpu';
 import type { ZhudaRuntimeSession } from './Runtime.ts';
 
@@ -205,6 +205,7 @@ export function prepareRenderer(
         const actual = native.LayaGL?.renderEngine;
         diagnostics.nativeEngine = actual?.objectName ?? actual?.constructor?.name ?? 'unknown';
         const actualGpu = typeof actual?.getDevice === 'function' && !!actual.getDevice();
+        if (actualGpu) fixLaya342WebGPUShaders(native);
         if (selected === 'webgpu' && (!actualGpu || diagnostics.status === 'lost'))
           throw new ZhudaRendererError(
             'WEBGPU_NOT_READY',

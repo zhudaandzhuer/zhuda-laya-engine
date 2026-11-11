@@ -282,6 +282,6 @@ try {
   fs.writeFileSync(path.join(evidence, 'report.json'), JSON.stringify(report, null, 2) + '\n');
 }
 console.log(
-  `PASS film scene loop: ${log.length} MCP calls, Laya 2D review cell = preview, apply changed ${(report.steps.applyChangedPixels * 100).toFixed(1)}% of pixels, ` +
+  `PASS film scene loop on ${report.steps.preview.gpu}: ${log.length} MCP calls, Laya 2D review cell = preview, apply changed ${(report.steps.applyChangedPixels * 100).toFixed(1)}% of pixels, ` +
     `still ${report.steps.still.sha256.slice(0, 12)} (twice identical), MP4 ${report.steps.video.probedFrames} frames; evidence ${evidence}`,
 );

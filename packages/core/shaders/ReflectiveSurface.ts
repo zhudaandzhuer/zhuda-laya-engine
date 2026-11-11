@@ -39,8 +39,9 @@ vec2 q=p.xz/u_ZhudaWetShape.z;
 float puddle=smoothstep(-0.07,0.07,zhudaWetFbm(q)-mix(0.82,0.12,u_ZhudaWetShape.y));
 vec2 bump=vec2(zhudaWetNoise(q*11.0+3.0),zhudaWetNoise(q*11.0+41.0))-0.5;
 vec4 clip=u_ZhudaWetC0*p.x+u_ZhudaWetC1*p.y+u_ZhudaWetC2*p.z+u_ZhudaWetC3;
-if(clip.w<=0.0)return vec4(0.0);
-vec2 r=clip.xy/clip.w*0.5+0.5;
+// No early return: WGSL allows texture sampling only in uniform control flow.
+float front=step(0.00001,clip.w);
+vec2 r=clip.xy/max(clip.w,0.00001)*0.5+0.5;
 r.y=mix(r.y,1.0-r.y,u_ZhudaWetBlur.y);
 float damp=1.0-puddle;
 r+=bump*u_ZhudaWetShape.w*0.06*damp;
@@ -53,7 +54,7 @@ c+=zhudaSample_u_ZhudaWetReflection(r+vec2(-blur*0.5,-blur)).rgb*0.16;
 float fresnel=0.04+0.96*pow(1.0-clamp(v.y,0.0,1.0),5.0);
 float gloss=mix(0.3,1.0,puddle);
 float edge=smoothstep(0.0,0.03,uv.x)*smoothstep(0.0,0.03,1.0-uv.x)*smoothstep(0.0,0.03,uv.y)*smoothstep(0.0,0.03,1.0-uv.y);
-float inside=step(0.0,r.x)*step(r.x,1.0)*step(0.0,r.y)*step(r.y,1.0);
+float inside=front*step(0.0,r.x)*step(r.x,1.0)*step(0.0,r.y)*step(r.y,1.0);
 return vec4(c*fresnel*gloss*u_ZhudaWetShape.x*edge*inside,1.0);}`;
 
 const SPEC: ZhudaShaderSpec = {
@@ -186,7 +187,8 @@ export class ZhudaReflectiveSurface {
         options.patternMeters ?? 3,
         options.ripple ?? 0.4,
       ]);
-      // Laya render targets are stored bottom row first: flip V when sampling.
+      // Laya render targets are sampled bottom row first on WebGL and WebGPU
+      // alike (measured on both): flip V.
       this.material.setUniform('u_ZhudaWetBlur', [options.roughness ?? 0.35, 1, 0, 0]);
       const [x, y, z] = options.position,
         hw = options.size[0] / 2,

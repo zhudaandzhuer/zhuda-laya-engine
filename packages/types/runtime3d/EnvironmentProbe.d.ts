@@ -1,16 +1,4 @@
 // Generated from TypeScript source; run npm run types:generate.
-/**
- * Environment captured from the scene itself.
- *
- * `prefilterZhudaEnvironment` (pure) turns a cube picture of the surroundings
- * into what Laya's image-based lighting needs: a mip chain blurred for
- * increasing roughness (GGX) and nine spherical-harmonic colours for ambient
- * light. `ZhudaEnvironmentProbe` renders that cube picture with a Laya camera
- * from one point and applies the result, so glossy surfaces reflect the
- * scene around them and unlit surfaces pick up its ambient light.
- *
- * One probe: reflections are correct at the probe and approximate elsewhere.
- */
 import { type PrefilteredEnvironmentSpec } from './Filmic.js';
 /**
  * A cube picture: six square faces of `size` pixels, RGBA float32, scene-linear,
