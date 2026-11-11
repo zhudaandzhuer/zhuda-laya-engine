@@ -64,26 +64,25 @@ export function zhudaWaterAbsorption(metres: number, clarity: number): number {
 
 const SURFACE = `float zhudaWaterHash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
 float zhudaWaterNoise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);return mix(mix(zhudaWaterHash(i),zhudaWaterHash(i+vec2(1.0,0.0)),f.x),mix(zhudaWaterHash(i+vec2(0.0,1.0)),zhudaWaterHash(i+vec2(1.0,1.0)),f.x),f.y);}
-// Waves that travel with the flow: four trains fanned around its direction,
-// each with its own length and speed, and a little noise so they never repeat.
 float zhudaWaterTrain(vec2 q,vec2 along,float turn,float scale,float speed,float phase){
 float c=cos(turn),sn=sin(turn);
 vec2 d=vec2(along.x*c-along.y*sn,along.x*sn+along.y*c);
 return sin(dot(q,d)*scale-u_ZhudaWaterFlow.z*speed+phase);}
+// Ripples of a stream: five layers of drifting noise, each turned and moving
+// at its own pace, drawn out along the flow. No layer repeats, so the surface
+// has no stripes and no lattice; one faint wave train gives it a direction.
 float zhudaWaterHeight(vec2 q0){
 float pace=length(u_ZhudaWaterFlow.xy);
 vec2 along=pace>0.0001?u_ZhudaWaterFlow.xy/pace:vec2(1.0,0.0);
-float rate=max(pace,0.15)/u_ZhudaWaterShape.x;
-vec2 drift=u_ZhudaWaterFlow.xy*u_ZhudaWaterFlow.z/u_ZhudaWaterShape.x;
-// Bend the wave fronts: straight trains cross into a lattice that no river shows.
-vec2 q=q0+0.55*(vec2(zhudaWaterNoise(q0*0.37-drift*0.3),zhudaWaterNoise(q0*0.37+vec2(19.0,43.0)-drift*0.3))-0.5);
-float h=0.34*zhudaWaterTrain(q,along,0.0,6.2832,6.2832*rate,0.0);
-h+=0.2*zhudaWaterTrain(q,along,0.61,8.9,8.9*rate*1.15,1.7);
-h+=0.16*zhudaWaterTrain(q,along,-0.47,14.3,14.3*rate*0.9,4.1);
-h+=0.08*zhudaWaterTrain(q,along,1.13,23.7,23.7*rate*1.3,2.6);
-h+=0.42*(zhudaWaterNoise(q0*1.3-drift)-0.5);
-h+=0.2*(zhudaWaterNoise(q0*3.1-drift*1.6+vec2(7.0,3.0))-0.5);
-return h*0.16;}
+float t=u_ZhudaWaterFlow.z*max(pace,0.15)/u_ZhudaWaterShape.x;
+vec2 p=vec2(dot(q0,along)*0.6,dot(q0,vec2(-along.y,along.x)));
+float h=0.5*(zhudaWaterNoise(p-vec2(t,0.0))-0.5);
+h+=0.3*(zhudaWaterNoise(mat2(0.8,-0.6,0.6,0.8)*p*2.1-vec2(t*1.6,t*0.3))-0.5);
+h+=0.18*(zhudaWaterNoise(mat2(0.6,0.8,-0.8,0.6)*p*4.3-vec2(t*2.3,-t*0.5))-0.5);
+h+=0.1*(zhudaWaterNoise(p*8.9-vec2(t*3.1,t*0.9)+7.0)-0.5);
+h+=0.06*(zhudaWaterNoise(mat2(0.8,-0.6,0.6,0.8)*p*17.0-vec2(t*4.0,0.0))-0.5);
+h+=0.05*zhudaWaterTrain(q0,along,0.0,6.2832,6.2832*t/max(u_ZhudaWaterFlow.z,0.0001),0.0);
+return h*0.22;}
 vec4 zhudaSurface(vec2 uv,vec3 p,vec3 n){
 vec3 v=normalize(u_CameraPos-p);
 vec2 q=p.xz/u_ZhudaWaterShape.x;
@@ -110,9 +109,14 @@ bed=gammaToLinear(vec4(bed,1.0)).rgb;
 // Depth of the water under this pixel, not the length of the slanted view through it.
 float deep=thick*max(v.y,0.2);
 float through=exp(-deep/u_ZhudaWaterTint.w);
-// Deep water is not dark: light scattered inside it gives it its own colour
-// (glow), which is what makes a clear river look jade rather than black.
-vec3 body=bed*mix(u_ZhudaWaterTint.rgb*2.0,vec3(1.0),through)*mix(0.35,1.0,through)+u_ZhudaWaterTint.rgb*u_ZhudaWaterLight.rgb*u_ZhudaWaterLight.w*(1.0-through);
+// Where the sun reaches the water: read from how bright the scene behind the
+// surface is against the sun (an estimate; the surface has no shadow map).
+float sunPower=max(u_ZhudaWaterSunColor.r,max(u_ZhudaWaterSunColor.g,u_ZhudaWaterSunColor.b));
+float sunlit=sunPower>0.0001?smoothstep(0.5,1.1,max(bed.r,max(bed.g,bed.b))/(sunPower*0.2)):1.0;
+// Light scattered inside deep water gives it its own colour (glow), mostly
+// where the sun shines into it: water in the shade stays dark and clear.
+float scatter=u_ZhudaWaterLight.w*mix(0.3,1.0,sunlit);
+vec3 body=bed*mix(u_ZhudaWaterTint.rgb*2.0,vec3(1.0),through)*mix(0.35,1.0,through)+u_ZhudaWaterTint.rgb*u_ZhudaWaterLight.rgb*scatter*(1.0-through);
 // The mirrored scene, shifted by the waves.
 vec4 mc=u_ZhudaWaterC0*p.x+u_ZhudaWaterC1*p.y+u_ZhudaWaterC2*p.z+u_ZhudaWaterC3;
 float front=step(0.00001,mc.w);
@@ -130,17 +134,21 @@ mirror*=front*u_ZhudaWaterShape.w;
 float fresnel=0.02+0.98*pow(1.0-clamp(dot(v,wn),0.0,1.0),5.0);
 vec3 colour=mix(body,mirror,fresnel);
 vec3 between=normalize(v+u_ZhudaWaterSun);
-// Sparkle: fine ripples the wave trains do not carry tilt the surface a little more.
-vec2 fine=vec2(zhudaWaterNoise(q*23.0-u_ZhudaWaterFlow.xy*u_ZhudaWaterFlow.z*5.0),zhudaWaterNoise(q*23.0+vec2(31.0,7.0)-u_ZhudaWaterFlow.xy*u_ZhudaWaterFlow.z*5.0))-0.5;
-vec3 sn=normalize(wn+vec3(fine.x,0.0,fine.y)*0.12*u_ZhudaWaterShape.y);
-colour+=u_ZhudaWaterSunColor.rgb*pow(max(dot(sn,between),0.0),900.0)*5.0;
+// Sparkle: ripples too fine for the height field tilt the surface a little
+// more, so the sun breaks into many small glints, and only where it shines.
+vec2 fq=q*61.0-u_ZhudaWaterFlow.xy*u_ZhudaWaterFlow.z*9.0;
+vec2 fine=vec2(zhudaWaterNoise(fq),zhudaWaterNoise(fq+vec2(31.0,7.0)))-0.5;
+fine+=0.6*(vec2(zhudaWaterNoise(fq*2.3+3.0),zhudaWaterNoise(fq*2.3+vec2(13.0,57.0)))-0.5);
+vec3 sn=normalize(wn+vec3(fine.x,0.0,fine.y)*0.16*u_ZhudaWaterShape.y);
+colour+=u_ZhudaWaterSunColor.rgb*pow(max(dot(sn,between),0.0),1300.0)*5.0*sunlit;
 // Foam where the water is shallow, broken up and drifting with the flow.
 // A soft line of foam where the water meets a bank or a stone, thicker where the waves lap.
 float churn=zhudaWaterNoise(q*2.2-u_ZhudaWaterFlow.xy*u_ZhudaWaterFlow.z*1.5/u_ZhudaWaterShape.x);
 float reach=max(u_ZhudaWaterFlags.y,0.0001)*(0.55+0.9*churn);
 float foam=(1.0-smoothstep(0.0,reach,thick))*smoothstep(0.004,0.02,thick)*step(0.0001,u_ZhudaWaterFlags.y);
-foam*=0.75;
-colour=mix(colour,u_ZhudaWaterLight.rgb*0.85,foam);
+// Foam is the brightest thing on the water where the sun reaches it, grey in the shade.
+foam*=0.6;
+colour=mix(colour,u_ZhudaWaterLight.rgb*1.3*mix(0.35,1.0,sunlit),foam);
 return vec4(colour,smoothstep(0.0,0.015,thick));}`;
 
 const SPEC: ZhudaShaderSpec = {

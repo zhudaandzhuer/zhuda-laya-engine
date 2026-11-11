@@ -101,3 +101,25 @@ regular lattice of dark spots.
 `npm run verify` (405 tests), lint, format and `git diff --check` pass;
 `npm run verify:film-water` passes on WebGL and WebGPU. The look itself was
 judged by eye in the river still; no pixel check covers the lattice.
+
+## Follow-up: water that takes its colour from the scene (2026-11-12)
+
+Source: the user and their colleagues found the water unreal: an even green
+that did not belong among the trees, and ripples with a mechanical rhythm.
+
+- Ripples are five layers of drifting noise, each turned and moving at its
+  own pace and drawn out along the flow, plus one faint wave train. The
+  earlier wave trains showed as stripes far away and a lattice close by.
+- The surface estimates where the sun reaches it from the brightness of the
+  scene behind it. Glow, sun glints and the brightness of foam follow that
+  estimate, so water in the shade is dark and clear instead of glowing.
+- Glints are smaller (finer ripples, tighter highlight).
+
+`npm run verify` (405 tests), lint, format and `git diff --check` pass;
+`npm run verify:film-water` passes on WebGL and WebGPU (foam brightens 620
+pixels of the shallows in the fixture).
+
+Limits: the sunlit estimate is a heuristic on scene brightness, not a shadow
+lookup: a dark bed in full sun reads as shade and a pale bed in shade may read
+as lit. In the river still almost no sun glints remain; whether that is the
+estimate being too strict was not measured. Judged by eye only.
