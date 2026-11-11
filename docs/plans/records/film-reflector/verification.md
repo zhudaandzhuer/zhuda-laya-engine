@@ -49,6 +49,20 @@ projection in the script.
 - The surface samples with its own matrix (`zhudaMirrorProjection`), tested
   in Node, instead of reading the camera's matrix.
 
+## Use in a film
+
+The ancient-city test film (kept outside this repository) was rendered again
+with a 15 × 100 m reflector over the street (2048 px, 42 % standing water)
+on top of the baked lightmaps: 864 frames at 1280×720 with 6 samples in
+390 s, against 303 s without the reflector. Lanterns, lit windows, the gate
+and the moon now show in the paving. In the same pass the asset script gave
+emissive materials a separate display value, so lanterns keep their colour
+under the grade, and a brighter moon in the bake.
+
+Still open for that film: no characters, the reflection is the only
+highlight (roof tiles and timber have none), and the puddle pattern does not
+follow the paving joints.
+
 ## Limits and decision
 
 - Horizontal planes only; one reflector per film scene; each is a second
