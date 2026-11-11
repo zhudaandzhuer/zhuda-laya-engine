@@ -20,6 +20,7 @@ import type { ZhudaAssetCache } from '../runtime3d/Assets.ts';
 import { createProviderAssetCache, type AssetProvider } from '../runtime3d/AssetProvider.ts';
 import { ZhudaReflectiveSurface } from '../shaders/ReflectiveSurface.ts';
 import { ZhudaLightFog } from '../runtime3d/LightFog.ts';
+import { ZhudaEnvironmentProbe } from '../runtime3d/EnvironmentProbe.ts';
 import { ZhudaModelInspector } from '../runtime3d/ModelInspector.ts';
 import { ZhudaModelAnimationSampler } from '../runtime3d/ModelAnimationSampler.ts';
 import {
@@ -95,6 +96,8 @@ export interface ZhudaFilmStage {
    * camera last set. `ZhudaFilmRenderer` calls it before every sample.
    */
   prepare(aspect: number): void;
+  /** Hands the stage something to release when it is disposed (before the scene goes). */
+  adopt(release: () => void): void;
   dispose(): void;
 }
 
@@ -168,7 +171,7 @@ function releaseLoaded(loaded: Iterable<LoadedFilmModel>) {
 export async function loadZhudaFilmScene(
   rootScene: any,
   input: ZhudaFilmScene,
-  options: ZhudaFilmStageOptions & { assets: ZhudaFilmAssets; signal?: AbortSignal },
+  options: ZhudaFilmStageOptions & { assets?: ZhudaFilmAssets; signal?: AbortSignal },
 ): Promise<ZhudaFilmStage> {
   const registry = new ZhudaPropRegistry();
   for (const definition of options.props ?? []) registry.register(definition);
@@ -177,14 +180,15 @@ export async function loadZhudaFilmScene(
     recipes: Object.keys(options.recipes ?? {}),
   });
   const nodes = scene.nodes.flatMap((node) => (node.type === 'model' ? [node] : []));
+  if (nodes.length && !options.assets)
+    throw Error('Film scene places models; give loadZhudaFilmScene an assets library');
+  const library = options.assets as ZhudaFilmAssets;
   const results = await Promise.allSettled(
     nodes.map(async (node): Promise<LoadedFilmModel> => {
       const picture = (id: string | undefined) =>
-        id === undefined
-          ? undefined
-          : options.assets.lightmaps.acquire(id, { signal: options.signal });
+        id === undefined ? undefined : library.lightmaps.acquire(id, { signal: options.signal });
       const [instance, lightmap, direction] = await Promise.allSettled([
-        options.assets.models.instantiate(node.asset, { signal: options.signal }),
+        library.models.instantiate(node.asset, { signal: options.signal }),
         picture(node.lightmap),
         picture(node.lightmapDirection),
       ]);
@@ -225,7 +229,23 @@ export async function loadZhudaFilmScene(
     throw (failure as PromiseRejectedResult).reason;
   }
   // The stage owns the loaded assets from here, including on a failed mount.
-  return buildFilmStage(rootScene, scene, options, loaded);
+  const stage = buildFilmStage(rootScene, scene, options, loaded);
+  const environment = resolveZhudaFilmLook(scene.look).environment;
+  if (environment) {
+    try {
+      // New meshes are registered on the next native frame; draw two before
+      // looking at the surroundings.
+      ZhudaEngine.flushRenderFrames(2);
+      const probe = new ZhudaEnvironmentProbe(stage.scene3D);
+      stage.adopt(() => probe.dispose());
+      // The reflecting surface of a reflector is an overlay, not scenery.
+      await probe.capture({ ...environment, excludedLayers: [30] }, options.signal);
+    } catch (error) {
+      stage.dispose();
+      throw error;
+    }
+  }
+  return stage;
 }
 
 const bakeKey = (recipe: ZhudaTextureRecipe, size: number) => `${size}:${JSON.stringify(recipe)}`;
@@ -242,6 +262,8 @@ export function mountZhudaFilmScene(
 ): ZhudaFilmStage {
   if (Array.isArray(input?.nodes) && input.nodes.some((node) => node?.type === 'model'))
     throw Error('Film scene places models; mount it with loadZhudaFilmScene');
+  if (input?.look?.environment)
+    throw Error('Film scene captures an environment; mount it with loadZhudaFilmScene');
   return buildFilmStage(rootScene, input, options, new Map());
 }
 
@@ -628,6 +650,7 @@ function buildFilmStageContents(
       setTime,
       setCamera,
       prepare,
+      adopt: (release: () => void) => void cleanups.push(release),
       dispose,
     };
   }

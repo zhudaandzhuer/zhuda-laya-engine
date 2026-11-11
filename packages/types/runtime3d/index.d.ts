@@ -22,6 +22,7 @@ export * from './CameraCollision.js';
 export * from './Filmic.js';
 export * from './Lightmap.js';
 export * from './LightFog.js';
+export * from './EnvironmentProbe.js';
 export { installLaya342LifecycleFix } from './Laya342Adapters.js';
 export * from './CrowdPresentation.js';
 export * from './ModelInspector.js';

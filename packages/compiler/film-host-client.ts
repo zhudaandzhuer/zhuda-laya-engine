@@ -73,19 +73,19 @@ async function mount(request: { scene: unknown; assetsVersion?: string }) {
     recipes: library!.recipes,
     bakeCache: state.bakeCache,
   };
-  if (state.provider) {
+  {
     // Files changed on disk: drop the warm models and lightmaps.
     if (state.assets && state.assetsVersion !== request.assetsVersion) {
       state.assets.dispose();
       state.assets = undefined;
     }
-    state.assets ??= new Z.ZhudaFilmAssets(state.provider);
+    if (state.provider) state.assets ??= new Z.ZhudaFilmAssets(state.provider);
     state.assetsVersion = request.assetsVersion;
     state.stage = await Z.loadZhudaFilmScene(state.context.rootScene, request.scene, {
       ...options,
       assets: state.assets,
     });
-  } else state.stage = Z.mountZhudaFilmScene(state.context.rootScene, request.scene, options);
+  }
   state.renderer = new Z.ZhudaFilmRenderer(state.stage, state.context.runtime);
   return {
     batches: state.stage.batches,

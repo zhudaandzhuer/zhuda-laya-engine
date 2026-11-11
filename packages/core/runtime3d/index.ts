@@ -21,6 +21,7 @@ export * from './CameraCollision.ts';
 export * from './Filmic.ts';
 export * from './Lightmap.ts';
 export * from './LightFog.ts';
+export * from './EnvironmentProbe.ts';
 export { installLaya342LifecycleFix } from './Laya342Adapters.ts';
 export * from './CrowdPresentation.ts';
 export * from './ModelInspector.ts';

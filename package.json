@@ -143,6 +143,7 @@
     "verify:film-reflector": "node scripts/verify-film-reflector.mjs",
     "verify:film-fog": "node scripts/verify-film-fog.mjs",
     "verify:film-animation": "node scripts/verify-film-animation.mjs",
+    "verify:film-environment": "node scripts/verify-film-environment.mjs",
     "types:generate": "node packages/compiler/runtime3d-types.mjs",
     "types:check": "node packages/compiler/runtime3d-types.mjs --check",
     "prepare": "npm run build 1>&2",

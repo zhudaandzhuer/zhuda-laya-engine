@@ -113,6 +113,22 @@ export interface ZhudaFilmLook {
    * down a street. Needs `grade`; off unless given.
    */
   lightFog?: ZhudaFilmLightFog | false;
+  /**
+   * Captures the scene around one point and uses it as the environment:
+   * glossy surfaces reflect it and surfaces without a lightmap get its
+   * ambient light. Off unless given.
+   */
+  environment?: ZhudaFilmEnvironment | false;
+}
+
+/** One environment probe (see `ZhudaEnvironmentProbe`). */
+export interface ZhudaFilmEnvironment {
+  /** Where the surroundings are captured from: near the subject of the shot. */
+  position: ZhudaFilmVec3;
+  /** Scales reflections, 0..8 (default 1). */
+  reflection?: number;
+  /** Scales the ambient light on surfaces without a lightmap, 0..8 (default 1). */
+  ambient?: number;
 }
 
 /** Height fog lit by the scene's `light` nodes (see `ZhudaLightFog`). */
@@ -537,7 +553,18 @@ function validateLook(look: unknown, path: string, issues: string[]) {
   if (!object(look)) return void issues.push(`${path}: look object required`);
   unknownKeys(
     look,
-    ['preset', 'sky', 'ambient', 'sun', 'shadows', 'atmosphere', 'fog', 'grade', 'lightFog'],
+    [
+      'preset',
+      'sky',
+      'ambient',
+      'sun',
+      'shadows',
+      'atmosphere',
+      'fog',
+      'grade',
+      'lightFog',
+      'environment',
+    ],
     path,
     issues,
   );
@@ -636,6 +663,16 @@ function validateLook(look: unknown, path: string, issues: string[]) {
       if (f.color !== undefined) colour(f.color, `${path}.lightFog.color`, issues);
       if (look.grade === undefined || look.grade === false)
         issues.push(`${path}.lightFog: needs grade (the fog is part of the HDR chain)`);
+    }
+  }
+  if (look.environment !== undefined && look.environment !== false) {
+    const e = look.environment;
+    if (!object(e)) issues.push(`${path}.environment: object or false required`);
+    else {
+      unknownKeys(e, ['position', 'reflection', 'ambient'], `${path}.environment`, issues);
+      vec3(e.position, `${path}.environment.position`, issues);
+      range(e.reflection, `${path}.environment.reflection`, 0, 8);
+      range(e.ambient, `${path}.environment.ambient`, 0, 8);
     }
   }
   if (look.sky !== undefined) colour(look.sky, `${path}.sky`, issues);
@@ -1130,7 +1167,15 @@ export function applyZhudaFilmScenePatch(
   if (patch.camera) next.camera = { ...next.camera, ...structuredClone(patch.camera) };
   if (patch.look) {
     const look = { ...(next.look ?? {}), ...structuredClone(patch.look) };
-    for (const key of ['sun', 'shadows', 'atmosphere', 'fog', 'grade', 'lightFog'] as const) {
+    for (const key of [
+      'sun',
+      'shadows',
+      'atmosphere',
+      'fog',
+      'grade',
+      'lightFog',
+      'environment',
+    ] as const) {
       const before = next.look?.[key],
         after = patch.look[key];
       if (after && before) (look as Record<string, unknown>)[key] = { ...before, ...after };
@@ -1185,6 +1230,7 @@ export interface ZhudaResolvedFilmLook {
   fog: Required<ZhudaFilmFog> | false;
   grade: Required<ZhudaFilmGrade> | false;
   lightFog: Required<ZhudaFilmLightFog> | false;
+  environment: Required<ZhudaFilmEnvironment> | false;
 }
 
 /**
@@ -1260,6 +1306,14 @@ export function resolveZhudaFilmLook(look: ZhudaFilmLook = {}): ZhudaResolvedFil
       color: [0.02, 0.03, 0.05],
       scatter: 1,
     }),
+    environment:
+      look.environment && typeof look.environment === 'object'
+        ? {
+            position: [...look.environment.position] as ZhudaFilmVec3,
+            reflection: look.environment.reflection ?? 1,
+            ambient: look.environment.ambient ?? 1,
+          }
+        : false,
   };
 }
 

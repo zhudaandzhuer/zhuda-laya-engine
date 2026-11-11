@@ -166,6 +166,24 @@ into haze. It needs `grade` and is off unless given.
   what the camera's own ray hits ends it. The mirrored view of a `reflector`
   has no fog.
 
+`environment` captures the scene around one point when the scene is loaded
+and uses it as the environment of the whole scene:
+
+```json
+"environment": { "position": [0, 1.5, -40], "reflection": 1, "ambient": 1 }
+```
+
+- Glossy and metallic surfaces reflect what is around the probe: roof tiles
+  catch the lanterns, lacquer and brass get highlights. This also works on
+  lightmapped models, which otherwise have no highlights at all.
+- Surfaces without a lightmap (characters, props, boxes) get ambient light
+  with the colour and direction of the surroundings instead of the flat
+  `ambient` colour.
+- There is one probe. Reflections are right at `position` and approximate
+  elsewhere, so put it near the subject of the shot. It is captured once:
+  things that move during a shot are in it where they were at time 0.
+- A reflector's mirrored view and the fog are not in the capture.
+
 `resolveZhudaFilmLook(look)` returns the values a scene will actually use.
 
 ## Your own props and recipes
@@ -444,7 +462,14 @@ model is where its keys say and that a following light moves and turns with
 it. See the
 [animation verification record](plans/records/film-animation/verification.md).
 
-Not yet: blending between clips, shadows inside the fog (light shafts), fog lit by the sun or moon,
+`npm run verify:film-environment` checks on a real GPU that a mirror-like box
+shows a lamp exactly where a mirror would (behind the camera, to the side,
+above, straight up, from the east) and never one placed at the mirrored-wrong
+side, and that a rough white box is lit by a coloured lamp on the side that
+faces it. See the
+[environment verification record](plans/records/film-environment/verification.md).
+
+Not yet: several probes or box projection, blending between clips, shadows inside the fog (light shafts), fog lit by the sun or moon,
 animated look or light tracks, real-time shadows from point lights
 (bake them into a lightmap), reflections on walls or slopes, reflection probes, real-time
 global illumination, animated models, spline camera paths, shot lists, path

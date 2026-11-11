@@ -54,6 +54,8 @@ export interface ZhudaFilmStage {
      * camera last set. `ZhudaFilmRenderer` calls it before every sample.
      */
     prepare(aspect: number): void;
+    /** Hands the stage something to release when it is disposed (before the scene goes). */
+    adopt(release: () => void): void;
     dispose(): void;
 }
 export interface ZhudaFilmAssetsOptions {
@@ -83,7 +85,7 @@ export declare class ZhudaFilmAssets {
  * `rootScene` in that case.
  */
 export declare function loadZhudaFilmScene(rootScene: any, input: ZhudaFilmScene, options: ZhudaFilmStageOptions & {
-    assets: ZhudaFilmAssets;
+    assets?: ZhudaFilmAssets;
     signal?: AbortSignal;
 }): Promise<ZhudaFilmStage>;
 /**

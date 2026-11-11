@@ -712,3 +712,41 @@ test('animation, motion and follows are validated with paths', () => {
       fragment,
     );
 });
+
+test('look.environment is validated, resolved and merged by patches', () => {
+  const withLook = (look) => ({ ...scene(), look });
+  assert.deepEqual(
+    validateZhudaFilmScene(
+      withLook({ environment: { position: [0, 1.5, -40], reflection: 1.5, ambient: 0.8 } }),
+      context,
+    ),
+    [],
+  );
+  assert.deepEqual(resolveZhudaFilmLook({ environment: { position: [1, 2, 3] } }).environment, {
+    position: [1, 2, 3],
+    reflection: 1,
+    ambient: 1,
+  });
+  assert.equal(resolveZhudaFilmLook({}).environment, false);
+  assert.equal(resolveZhudaFilmLook({ environment: false }).environment, false);
+  const cases = [
+    [{ environment: {} }, 'environment.position'],
+    [{ environment: { position: [0, 0, 0], reflection: 99 } }, 'environment.reflection'],
+    [{ environment: { position: [0, 0, 0], ambient: -1 } }, 'environment.ambient'],
+    [{ environment: { position: [0, 0, 0], probes: 2 } }, 'environment.probes: unknown field'],
+  ];
+  for (const [look, fragment] of cases)
+    assert.ok(
+      validateZhudaFilmScene(withLook(look), context).some((issue) => issue.includes(fragment)),
+      fragment,
+    );
+  const base = parseZhudaFilmScene(
+    withLook({ environment: { position: [0, 1, 0], reflection: 2 } }),
+    context,
+  );
+  assert.deepEqual(
+    applyZhudaFilmScenePatch(base, { look: { environment: { position: [5, 1, 0] } } }, context).look
+      .environment,
+    { position: [5, 1, 0], reflection: 2 },
+  );
+});

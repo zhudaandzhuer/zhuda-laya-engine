@@ -91,6 +91,21 @@ export interface ZhudaFilmLook {
      * down a street. Needs `grade`; off unless given.
      */
     lightFog?: ZhudaFilmLightFog | false;
+    /**
+     * Captures the scene around one point and uses it as the environment:
+     * glossy surfaces reflect it and surfaces without a lightmap get its
+     * ambient light. Off unless given.
+     */
+    environment?: ZhudaFilmEnvironment | false;
+}
+/** One environment probe (see `ZhudaEnvironmentProbe`). */
+export interface ZhudaFilmEnvironment {
+    /** Where the surroundings are captured from: near the subject of the shot. */
+    position: ZhudaFilmVec3;
+    /** Scales reflections, 0..8 (default 1). */
+    reflection?: number;
+    /** Scales the ambient light on surfaces without a lightmap, 0..8 (default 1). */
+    ambient?: number;
 }
 /** Height fog lit by the scene's `light` nodes (see `ZhudaLightFog`). */
 export interface ZhudaFilmLightFog {
@@ -342,6 +357,7 @@ export interface ZhudaResolvedFilmLook {
     fog: Required<ZhudaFilmFog> | false;
     grade: Required<ZhudaFilmGrade> | false;
     lightFog: Required<ZhudaFilmLightFog> | false;
+    environment: Required<ZhudaFilmEnvironment> | false;
 }
 /**
  * Look with every value filled in: the preset (if any) first, then the

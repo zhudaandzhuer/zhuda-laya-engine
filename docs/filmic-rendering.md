@@ -46,6 +46,19 @@ Color/albedo and emission textures must be uploaded with the appropriate sRGB fl
 
 `surface.dispose()` destroys its material after detaching borrowed textures. Destroy meshes/instances first; the caller owns textures. Shader registrations/program caches persist in the native runtime, so use stable shader names rather than generating one per instance.
 
+## Environment captured from the scene
+
+`new ZhudaEnvironmentProbe(scene).capture({ position, reflection, ambient })`
+renders the scene's surroundings from one point (six views with a Laya
+camera into a half-float target), convolves them on the CPU and applies the
+result through `createPrefilteredEnvironment`: glossy surfaces reflect the
+scene and unlit surfaces get its ambient light. Call it after the scene has
+drawn a frame, and again when the surroundings change; `dispose()` restores
+the previous ambient mode. `prefilterZhudaEnvironment(cubePicture)` is the
+pure part (GGX mip chain and nine ambient colours in Laya's convention,
+which mirrors X) for tools that have their own cube picture. One probe:
+reflections are exact at its position only.
+
 ## Offline convolved HDR environments
 
 ```ts
