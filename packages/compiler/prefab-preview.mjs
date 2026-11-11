@@ -50,8 +50,8 @@ preview.style.maxWidth='none';
 preview.style.maxHeight='none';
 preview.dataset.designWidth=String(width);
 preview.dataset.designHeight=String(height);
-const has3D=definitions.some(definition=>definition.kind==='3d');
-const context=scope.own(await ZhudaEngine.boot({container:document.querySelector('#preview'),width,height,dprCap:dpr,features:has3D?['core','3d']:['core','2d','ui'],bgColor:'#152030'}),value=>value.dispose());
+const has3D=definitions.some(definition=>definition.kind==='3d'||definition.kind==='models');const hasModels=definitions.some(definition=>definition.kind==='models');
+const context=scope.own(await ZhudaEngine.boot({container:document.querySelector('#preview'),width,height,dprCap:dpr,features:hasModels?['core','3d','gltf']:has3D?['core','3d']:['core','2d','ui'],bgColor:'#152030'}),value=>value.dispose());
 let scene3D;
 if(has3D){
  const settings=Reflect.get(prefabModule,'preview3D')||{};

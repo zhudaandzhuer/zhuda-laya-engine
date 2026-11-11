@@ -2,6 +2,7 @@
 import type { LayaHierarchyNodeData } from '../zhuda-static-assets.js';
 import type { AssetProvider } from '../runtime3d/AssetProvider.js';
 import type { PrefabTree3D, PrefabNodePatch3D } from './PrefabTree3D.js';
+import { type ZhudaModelPlacement } from '../runtime3d/ModelPlacements.js';
 export type PrefabNodePatch = Partial<Pick<LayaHierarchyNodeData, 'x' | 'y' | 'width' | 'height' | 'anchorX' | 'anchorY' | 'pivotX' | 'pivotY' | 'scaleX' | 'scaleY' | 'rotation' | 'alpha' | 'visible' | 'text' | 'font' | 'fontSize' | 'color' | 'bold' | 'align' | 'valign' | 'sizeGrid'>>;
 export interface PrefabDefinition {
     id: string;
@@ -17,8 +18,42 @@ export interface Prefab3DDefinition {
     tree: PrefabTree3D;
     states: Record<string, Record<string, PrefabNodePatch3D>>;
 }
-export type AnyPrefabDefinition = PrefabDefinition | Prefab3DDefinition;
-type PrefabRoot<T> = T extends Prefab3DDefinition ? Laya.Sprite3D : Laya.Sprite;
+/** One model of a model prefab: a self-contained `.glb` by logical provider ID. */
+export interface PrefabModelNode {
+    /** Unique within the prefab; the path `find` and state patches use. */
+    name: string;
+    /** Logical provider ID of an embedded GLB. */
+    asset: string;
+    position?: [number, number, number];
+    yawDeg?: number;
+    /** Uniform scale, 0.001..1000 (default 1). */
+    scale?: number;
+    /** Copies of the model: `[x, y, z, yawDeg, scale]` each, relative to this node. */
+    placements?: ZhudaModelPlacement[];
+    /** Cut-out (alpha-tested) materials let light through. */
+    translucent?: boolean;
+    /** Scales what the model's materials give off, 0..8 (default 1). */
+    emission?: number;
+}
+export interface PrefabModelPatch {
+    active?: boolean;
+}
+/**
+ * Scenery built from model files: many models, each once or as many copies.
+ * Lighting, sky, fog, water and cameras belong to the Scene that instantiates it.
+ */
+export interface PrefabModelsDefinition {
+    id: string;
+    kind: 'models';
+    nodes: PrefabModelNode[];
+    states: Record<string, Record<string, PrefabModelPatch>>;
+}
+export type AnyPrefabDefinition = PrefabDefinition | Prefab3DDefinition | PrefabModelsDefinition;
+type PrefabRoot<T> = T extends Prefab3DDefinition | PrefabModelsDefinition ? Laya.Sprite3D : Laya.Sprite;
+/** Most copies one model prefab may hold in all. */
+export declare const ZHUDA_PREFAB_MODEL_COPIES = 60000;
+/** Throws on the first problem of a model prefab definition. */
+export declare function validatePrefabModels(entry: PrefabModelsDefinition): void;
 export interface PrefabProvenance {
     kind: '2d' | '3d';
     /** Hash of the complete serialized definition, including states and recipe. */
@@ -51,6 +86,8 @@ export declare class ZhudaPrefabLibrary<T extends AnyPrefabDefinition = PrefabDe
     private readonly instances;
     private disposed;
     private readonly timeoutMs;
+    private readonly provider;
+    private models;
     constructor(options: {
         provider: AssetProvider;
         definitions: readonly T[];

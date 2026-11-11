@@ -20,7 +20,7 @@ import type { ZhudaAssetCache } from '../runtime3d/Assets.ts';
 import { createProviderAssetCache, type AssetProvider } from '../runtime3d/AssetProvider.ts';
 import { ZhudaReflectiveSurface } from '../shaders/ReflectiveSurface.ts';
 import { ZhudaWaterSurface } from '../shaders/WaterSurface.ts';
-import { ZHUDA_TRANSLUCENT_DEFINE } from '../runtime3d/Laya342Adapters.ts';
+import { mountZhudaModel } from '../runtime3d/ModelPlacements.ts';
 import { ZhudaLightFog } from '../runtime3d/LightFog.ts';
 import {
   applyZhudaHemisphereAmbient,
@@ -542,32 +542,13 @@ function buildFilmStageContents(
           holder.transform.rotationEuler = new l.Vector3(0, pose.yawDeg, 0);
         });
       }
-      if (node.placements) {
-        // The loaded instance is the first copy; the rest are clones that
-        // share its meshes and materials.
-        node.placements.forEach(([x, y, z, yawDeg, size], i) => {
-          const place = new l.Sprite3D(`ZhudaFilmModel:${node.id}:${i}`);
-          holder.addChild(place);
-          place.transform.localPosition = new l.Vector3(x, y, z);
-          place.transform.localRotationEuler = new l.Vector3(0, yawDeg, 0);
-          place.transform.localScale = new l.Vector3(size, size, size);
-          if (i === 0) place.addChild(item.instance.node);
-          else {
-            const copy = item.instance.node.clone();
-            place.addChild(copy);
-            // Laya's clone does not keep the material of every sub-mesh (a
-            // tree's leaves came out with its bark): take them from the source.
-            const source = modelRenderers(l, item.instance.node);
-            modelRenderers(l, copy).forEach((renderer, k) => {
-              if (source[k]) renderer.sharedMaterials = source[k].sharedMaterials;
-              renderer.castShadow = true;
-              renderer.receiveShadow = true;
-            });
-            cleanups.push(() => copy.destroy(true));
-          }
-          cleanups.push(() => place.destroy(false));
-        });
-      } else holder.addChild(item.instance.node);
+      const mounted = mountZhudaModel(holder, item.instance, {
+        placements: node.placements,
+        translucent: node.translucent,
+        emission: node.emission,
+        label: `ZhudaFilmModel:${node.id}`,
+      });
+      cleanups.push(() => mounted.dispose());
       const clips = new ZhudaModelInspector(item.instance).inspect().animations;
       if (node.animation) {
         const animation = node.animation;
@@ -592,42 +573,8 @@ function buildFilmStageContents(
           ),
         );
       }
-      // The library destroys the clone; detach it first so the holder does not.
-      cleanups.push(() => item.instance.node.removeSelf());
-      const renderers = modelRenderers(l, item.instance.node);
+      const renderers = mounted.renderers;
       if (!renderers.length) throw Error(`Film scene model ${node.id}: ${node.asset} has no mesh`);
-      if (node.emission !== undefined && node.emission !== 1) {
-        // glTF materials multiply their emissive colour by this strength.
-        const scale = node.emission;
-        const seen = new Set<any>();
-        for (const renderer of renderers)
-          for (const material of renderer.sharedMaterials ?? []) {
-            if (!material || seen.has(material)) continue;
-            seen.add(material);
-            const before = material.getFloat?.('u_EmissionStrength');
-            if (typeof before !== 'number') continue;
-            material.setFloat('u_EmissionStrength', before * scale);
-            cleanups.push(
-              () => !material.destroyed && material.setFloat('u_EmissionStrength', before),
-            );
-          }
-      }
-      if (node.translucent) {
-        // Copies share these materials, so one define covers every placement.
-        const define = l.Shader3D.getDefineByName(ZHUDA_TRANSLUCENT_DEFINE);
-        const leaves = new Set<any>();
-        for (const renderer of renderers)
-          for (const material of renderer.sharedMaterials ?? [])
-            if (material?.alphaTest) leaves.add(material);
-        for (const material of leaves) {
-          material.addDefine(define);
-          cleanups.push(() => !material.destroyed && material.removeDefine(define));
-        }
-      }
-      for (const renderer of renderers) {
-        renderer.castShadow = true;
-        renderer.receiveShadow = true;
-      }
       if (item.lightmap) {
         for (const renderer of renderers)
           if (!hasSecondUv(l, renderer))
@@ -876,18 +823,6 @@ function setLayer(node: any, layer: number) {
   if (!node) return;
   node.layer = layer;
   for (let i = 0; i < (node.numChildren || 0); i++) setLayer(node.getChildAt(i), layer);
-}
-
-function modelRenderers(l: any, root: any): any[] {
-  const found: any[] = [];
-  const visit = (node: any) => {
-    const renderer =
-      node.meshRenderer ?? node.skinnedMeshRenderer ?? node.getComponent?.(l.MeshRenderer);
-    if (renderer) found.push(renderer);
-    for (let i = 0; i < (node.numChildren || 0); i++) visit(node.getChildAt(i));
-  };
-  visit(root);
-  return found;
 }
 
 function hasSecondUv(l: any, renderer: any): boolean {

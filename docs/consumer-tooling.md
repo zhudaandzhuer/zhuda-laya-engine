@@ -62,11 +62,15 @@ import { DirectoryAssetProvider } from 'zhuda-laya-engine';
 import type { AssetProvider, AssetManifest, PrefabDefinition } from 'zhuda-laya-engine';
 import { manifest } from './asset-manifest'; // checked-in expected hashes
 
-export const definitions: PrefabDefinition[] = [/* consumer definitions */];
+export const definitions: PrefabDefinition[] = [
+  /* consumer definitions */
+];
 export function createAssetProvider(): AssetProvider {
   return new DirectoryAssetProvider({
-    baseUrl: './assets/', manifest: manifest satisfies AssetManifest,
-    timeoutMs: 10_000, maxBytes: 10_000_000,
+    baseUrl: './assets/',
+    manifest: manifest satisfies AssetManifest,
+    timeoutMs: 10_000,
+    maxBytes: 10_000_000,
   });
 }
 ```
@@ -126,9 +130,7 @@ Consumers that want a reviewed screenshot wireframe can set
 
 ```json
 {
-  "layoutContracts": [
-    { "layout": "layouts/home.json", "svg": "layouts/home.svg" }
-  ]
+  "layoutContracts": [{ "layout": "layouts/home.json", "svg": "layouts/home.svg" }]
 }
 ```
 
@@ -155,9 +157,17 @@ Declare the checks in `zhuda.config.json`:
 {
   "prefabPreview": "src/prefabs.ts",
   "prefabChecks": [
-    { "id": "hero", "node": "Body", "state": "idle",
-      "width": 640, "height": 480, "dpr": 1, "cycles": 30,
-      "baseline": "references/hero-body.png", "output": "evidence/hero-body.json" }
+    {
+      "id": "hero",
+      "node": "Body",
+      "state": "idle",
+      "width": 640,
+      "height": 480,
+      "dpr": 1,
+      "cycles": 30,
+      "baseline": "references/hero-body.png",
+      "output": "evidence/hero-body.json"
+    }
   ]
 }
 ```
@@ -248,6 +258,62 @@ The shared library and preview also accept typed `Prefab3DDefinition` recipes.
 See [primitive 3D Prefabs](procedural-prefabs.md) for transforms, materials,
 sockets, states, camera/light configuration and ownership. Static `.lh` remains
 supported; Zero-IDE does not mean serialized assets are forbidden.
+
+## Model prefabs
+
+Scenery built from model files is a `PrefabModelsDefinition` (`kind:
+'models'`): a list of named nodes, each a self-contained `.glb` by logical
+provider ID, placed once or as many copies.
+
+```ts
+import type { PrefabModelsDefinition, PrefabPreview3D } from 'zhuda-laya-engine';
+
+export const definitions: PrefabModelsDefinition[] = [
+  {
+    id: 'wild/riverbank',
+    kind: 'models',
+    nodes: [
+      { name: 'land', asset: 'wild/land.glb' },
+      {
+        name: 'ferns',
+        asset: 'nature/fern.glb',
+        translucent: true,
+        placements: [
+          [4.2, 0.31, -7.5, 130, 0.9],
+          [5.0, 0.28, -6.1, 15, 1.2],
+        ],
+      },
+      { name: 'gate', asset: 'city/gate.glb', position: [0, 0, 152], emission: 0 },
+    ],
+    states: { day: {}, 'no-town': { gate: { active: false } } },
+  },
+];
+export const preview3D: PrefabPreview3D = {
+  camera: { position: [0, 4, 7], rotationEuler: [-32, 0, 0] },
+};
+```
+
+- `placements` is `[x, y, z, yawDeg, scale]` per copy, relative to the node;
+  copies share the model's meshes and materials. One prefab holds at most
+  256 nodes and 60 000 copies.
+- `translucent` and `emission` mean what they mean on film model nodes.
+- A state is complete: nodes it does not name are shown; `active: false`
+  hides a node. A node's name is its path for `find` and `node=` in the
+  preview.
+- `ZhudaPrefabLibrary.instantiate` returns a `Sprite3D` root. Models come
+  through the library's provider and a shared model cache, and are released
+  when the instance and the library are disposed.
+- A prefab is scenery. Sun, sky, ambient light, fog, water, reflectors and
+  cameras belong to the Scene. `zhudaPrefabFromFilmScene(scene, id)` turns the
+  model nodes of a film scene into this definition and lists what it left for
+  the Scene to supply (look, water, lights, lightmaps, animation).
+- The preview needs the `gltf` feature in the consumer's configuration.
+  Provenance records the definition hash; the SHA-256 of each model file is
+  enforced by the provider's manifest, not repeated in `provenance.sources`.
+
+`npm run verify:prefab-models` builds an independent consumer with such a
+prefab and checks the isolated preview, 30 load/unload cycles, a state, a
+single node and a moved copy.
 
 ### DPR evidence migration in 1.7.0
 

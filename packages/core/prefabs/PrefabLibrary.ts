@@ -11,7 +11,12 @@ import {
 } from './PrefabTree3D.ts';
 import type { PrefabTree3D, PrefabNodePatch3D, PrefabTreeInstance3D } from './PrefabTree3D.ts';
 import { ZhudaResourceScope } from '../runtime3d/SceneLifecycle.ts';
-import { ZhudaAssetCache } from '../runtime3d/Assets.ts';
+import { ZhudaAssetCache, ZhudaModelLibrary } from '../runtime3d/Assets.ts';
+import {
+  mountZhudaModel,
+  validateZhudaModelPlacements,
+  type ZhudaModelPlacement,
+} from '../runtime3d/ModelPlacements.ts';
 
 export type PrefabNodePatch = Partial<
   Pick<
@@ -53,8 +58,103 @@ export interface Prefab3DDefinition {
   tree: PrefabTree3D;
   states: Record<string, Record<string, PrefabNodePatch3D>>;
 }
-export type AnyPrefabDefinition = PrefabDefinition | Prefab3DDefinition;
-type PrefabRoot<T> = T extends Prefab3DDefinition ? Laya.Sprite3D : Laya.Sprite;
+/** One model of a model prefab: a self-contained `.glb` by logical provider ID. */
+export interface PrefabModelNode {
+  /** Unique within the prefab; the path `find` and state patches use. */
+  name: string;
+  /** Logical provider ID of an embedded GLB. */
+  asset: string;
+  position?: [number, number, number];
+  yawDeg?: number;
+  /** Uniform scale, 0.001..1000 (default 1). */
+  scale?: number;
+  /** Copies of the model: `[x, y, z, yawDeg, scale]` each, relative to this node. */
+  placements?: ZhudaModelPlacement[];
+  /** Cut-out (alpha-tested) materials let light through. */
+  translucent?: boolean;
+  /** Scales what the model's materials give off, 0..8 (default 1). */
+  emission?: number;
+}
+export interface PrefabModelPatch {
+  active?: boolean;
+}
+/**
+ * Scenery built from model files: many models, each once or as many copies.
+ * Lighting, sky, fog, water and cameras belong to the Scene that instantiates it.
+ */
+export interface PrefabModelsDefinition {
+  id: string;
+  kind: 'models';
+  nodes: PrefabModelNode[];
+  states: Record<string, Record<string, PrefabModelPatch>>;
+}
+export type AnyPrefabDefinition = PrefabDefinition | Prefab3DDefinition | PrefabModelsDefinition;
+type PrefabRoot<T> = T extends Prefab3DDefinition | PrefabModelsDefinition
+  ? Laya.Sprite3D
+  : Laya.Sprite;
+/** Most copies one model prefab may hold in all. */
+export const ZHUDA_PREFAB_MODEL_COPIES = 60000;
+
+/** Throws on the first problem of a model prefab definition. */
+export function validatePrefabModels(entry: PrefabModelsDefinition): void {
+  if (!Array.isArray(entry.nodes) || !entry.nodes.length || entry.nodes.length > 256)
+    throw Error('Model prefab needs 1..256 nodes');
+  const names = new Set<string>();
+  let copies = 0;
+  for (const node of entry.nodes) {
+    if (!node || typeof node.name !== 'string' || !node.name || node.name.includes('/'))
+      throw Error('Model prefab nodes need a name without "/"');
+    if (names.has(node.name)) throw Error(`Duplicate model prefab node: ${node.name}`);
+    names.add(node.name);
+    const at = `Model prefab node ${node.name}`;
+    let normalized: string | undefined;
+    try {
+      normalized = typeof node.asset === 'string' ? normalizeAssetId(node.asset) : undefined;
+    } catch {
+      // Reported below with the node's name.
+    }
+    if (normalized !== node.asset) throw Error(`${at}: asset ID must be normalized`);
+    if (!/\.glb$/i.test(node.asset)) throw Error(`${at}: asset must be a .glb`);
+    if (
+      node.position !== undefined &&
+      !(
+        Array.isArray(node.position) &&
+        node.position.length === 3 &&
+        node.position.every(Number.isFinite)
+      )
+    )
+      throw Error(`${at}: position needs three finite numbers`);
+    if (node.yawDeg !== undefined && !Number.isFinite(node.yawDeg))
+      throw Error(`${at}: yawDeg must be finite`);
+    if (node.scale !== undefined && !(node.scale >= 0.001 && node.scale <= 1000))
+      throw Error(`${at}: scale must be 0.001..1000`);
+    if (node.emission !== undefined && !(node.emission >= 0 && node.emission <= 8))
+      throw Error(`${at}: emission must be 0..8`);
+    if (node.translucent !== undefined && typeof node.translucent !== 'boolean')
+      throw Error(`${at}: translucent must be boolean`);
+    if (node.placements !== undefined) {
+      const issues = validateZhudaModelPlacements(node.placements);
+      if (issues.length) throw Error(`${at}: placements ${issues[0]}`);
+      copies += node.placements.length;
+    } else copies++;
+  }
+  if (copies > ZHUDA_PREFAB_MODEL_COPIES)
+    throw Error(`Model prefab holds ${copies} copies; at most ${ZHUDA_PREFAB_MODEL_COPIES}`);
+  for (const patches of Object.values(entry.states)) {
+    if (!patches || typeof patches !== 'object' || Array.isArray(patches))
+      throw Error('Invalid model prefab state');
+    for (const [name, patch] of Object.entries(patches)) {
+      if (!names.has(name)) throw Error(`Model prefab state names an unknown node: ${name}`);
+      if (
+        !patch ||
+        typeof patch !== 'object' ||
+        Object.keys(patch).some((key) => key !== 'active') ||
+        (patch.active !== undefined && typeof patch.active !== 'boolean')
+      )
+        throw Error(`Model prefab state of ${name}: only active (boolean) is supported`);
+    }
+  }
+}
 export interface PrefabProvenance {
   kind: '2d' | '3d';
   /** Hash of the complete serialized definition, including states and recipe. */
@@ -155,6 +255,8 @@ export class ZhudaPrefabLibrary<T extends AnyPrefabDefinition = PrefabDefinition
   private readonly instances = new Set<PrefabInstance<PrefabRoot<T>>>();
   private disposed = false;
   private readonly timeoutMs: number;
+  private readonly provider: AssetProvider;
+  private models: ZhudaModelLibrary | undefined;
   constructor(options: {
     provider: AssetProvider;
     definitions: readonly T[];
@@ -164,6 +266,7 @@ export class ZhudaPrefabLibrary<T extends AnyPrefabDefinition = PrefabDefinition
     const timeoutMs = options.timeoutMs ?? 15_000;
     if (!Number.isSafeInteger(timeoutMs) || timeoutMs <= 0) throw Error('Invalid prefab timeout');
     this.timeoutMs = timeoutMs;
+    this.provider = options.provider;
     if (options.share3DResources !== undefined && typeof options.share3DResources !== 'boolean')
       throw Error('share3DResources must be boolean');
     this.share3DResources = options.share3DResources ?? false;
@@ -187,6 +290,11 @@ export class ZhudaPrefabLibrary<T extends AnyPrefabDefinition = PrefabDefinition
             throw Error('Invalid 3D prefab state');
           for (const patch of Object.values(patches)) validatePrefabPatch3D(patch);
         }
+        this.definitions.set(entry.id, entry);
+        continue;
+      }
+      if (entry.kind === 'models') {
+        validatePrefabModels(entry);
         this.definitions.set(entry.id, entry);
         continue;
       }
@@ -281,7 +389,9 @@ export class ZhudaPrefabLibrary<T extends AnyPrefabDefinition = PrefabDefinition
     try {
       const resources = new Map<string, Resource>();
       // Sequential acquisition makes partial failure ownership explicit.
-      for (const key of entry.kind === '3d' ? [] : [entry.asset, ...new Set(entry.textures)]) {
+      for (const key of entry.kind === '3d' || entry.kind === 'models'
+        ? []
+        : [entry.asset, ...new Set(entry.textures)]) {
         const lease = await this.cache.acquire(key, { signal: controller.signal });
         scope.defer(() => lease.release());
         resources.set(key, lease.value);
@@ -302,6 +412,37 @@ export class ZhudaPrefabLibrary<T extends AnyPrefabDefinition = PrefabDefinition
         } else tree = buildPrefabTree(entry.tree);
         scope.defer(() => tree!.dispose());
         created = tree.root;
+      } else if (entry.kind === 'models') {
+        // One model library per prefab library: every instance and every
+        // prefab that names the same asset shares its meshes and materials.
+        this.models ??= new ZhudaModelLibrary({
+          provider: this.provider,
+          maxIdle: 16,
+          timeoutMs: this.timeoutMs,
+        });
+        const root3D = new Laya.Sprite3D(`ZhudaPrefab:${entry.id}`);
+        scope.defer(() => root3D.destroy(false));
+        for (const node of entry.nodes) {
+          const loaded = await this.models.instantiate(node.asset, { signal: controller.signal });
+          scope.defer(() => loaded.dispose());
+          if (controller.signal.aborted) throw new DOMException('Prefab cancelled', 'AbortError');
+          const holder = new Laya.Sprite3D(node.name);
+          root3D.addChild(holder);
+          scope.defer(() => holder.destroy(false));
+          const [x, y, z] = node.position ?? [0, 0, 0];
+          holder.transform.localPosition = new Laya.Vector3(x, y, z);
+          holder.transform.localRotationEuler = new Laya.Vector3(0, node.yawDeg ?? 0, 0);
+          const size = node.scale ?? 1;
+          holder.transform.localScale = new Laya.Vector3(size, size, size);
+          const mounted = mountZhudaModel(holder, loaded, {
+            placements: node.placements,
+            translucent: node.translucent,
+            emission: node.emission,
+            label: `${entry.id}/${node.name}`,
+          });
+          scope.defer(() => mounted.dispose());
+        }
+        created = root3D;
       } else {
         const data = structuredClone(resources.get(entry.asset)!.data!);
         const bindTextures = (node: LayaHierarchyNodeData) => {
@@ -332,7 +473,7 @@ export class ZhudaPrefabLibrary<T extends AnyPrefabDefinition = PrefabDefinition
       // Snapshot every state-touched 2D property so switching states restores
       // baseline values instead of retaining unrelated properties from the old state.
       const baseline = new Map<Laya.Node, Record<string, unknown>>();
-      if (entry.kind !== '3d')
+      if (entry.kind !== '3d' && entry.kind !== 'models')
         for (const patches of Object.values(entry.states)) {
           for (const [path, patch] of Object.entries(patches)) {
             const target = findPrefabNode(root, path);
@@ -349,7 +490,13 @@ export class ZhudaPrefabLibrary<T extends AnyPrefabDefinition = PrefabDefinition
         if (!Object.prototype.hasOwnProperty.call(entry.states, next))
           throw Error(`Unknown prefab state: ${id}/${next}`);
         if (tree) tree.apply(entry.states[next] as Record<string, PrefabNodePatch3D>);
-        else {
+        else if (entry.kind === 'models') {
+          // A complete state: nodes it does not name are shown.
+          const patches = entry.states[next] as Record<string, PrefabModelPatch>;
+          for (const node of entry.nodes)
+            (findPrefabNode(root, node.name) as Laya.Sprite3D).active =
+              patches[node.name]?.active ?? true;
+        } else {
           for (const [target, values] of baseline) Object.assign(target, values);
           for (const [path, patch] of Object.entries(entry.states[next]))
             Object.assign(findPrefabNode(root, path), patch);
@@ -359,7 +506,7 @@ export class ZhudaPrefabLibrary<T extends AnyPrefabDefinition = PrefabDefinition
       const record: PrefabProvenance = {
         id,
         state,
-        kind: entry.kind ?? '2d',
+        kind: entry.kind === 'models' ? '3d' : (entry.kind ?? '2d'),
         definitionHash,
         sources: Object.fromEntries([...resources].map(([key, value]) => [key, value.hash])),
       };
@@ -424,5 +571,8 @@ export class ZhudaPrefabLibrary<T extends AnyPrefabDefinition = PrefabDefinition
       this.cache.dispose();
       this.shared3DCache.dispose();
     }
+    // Instances are gone; the model library releases what it kept warm.
+    this.models?.dispose();
+    this.models = undefined;
   }
 }
