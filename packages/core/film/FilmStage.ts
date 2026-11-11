@@ -22,7 +22,10 @@ import { ZhudaReflectiveSurface } from '../shaders/ReflectiveSurface.ts';
 import { ZhudaWaterSurface } from '../shaders/WaterSurface.ts';
 import { ZHUDA_TRANSLUCENT_DEFINE } from '../runtime3d/Laya342Adapters.ts';
 import { ZhudaLightFog } from '../runtime3d/LightFog.ts';
-import { ZhudaEnvironmentProbe } from '../runtime3d/EnvironmentProbe.ts';
+import {
+  applyZhudaHemisphereAmbient,
+  ZhudaEnvironmentProbe,
+} from '../runtime3d/EnvironmentProbe.ts';
 import { ZhudaLensFinish } from '../runtime3d/LensFinish.ts';
 import { ZhudaModelInspector } from '../runtime3d/ModelInspector.ts';
 import { ZhudaModelAnimationSampler } from '../runtime3d/ModelAnimationSampler.ts';
@@ -371,6 +374,8 @@ function buildFilmStageContents(
   {
     const scene3D = Zhuda3D.createScene3D(rootScene, { ambientColor: [...look.ambient, 1] });
     cleanups.push(() => scene3D.destroy(true));
+    if (look.ambientGround)
+      cleanups.push(applyZhudaHemisphereAmbient(scene3D, look.ambient, look.ambientGround));
     const camera = Zhuda3D.createCamera(scene3D, {
       position: [0, 0, 0],
       clearColor: [...look.sky, 1],

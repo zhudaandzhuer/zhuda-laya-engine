@@ -315,10 +315,71 @@ const cross = (a: number[], b: number[]) => [
   a[0] * b[1] - a[1] * b[0],
 ];
 
+/**
+ * A sky-and-ground surrounding as a cube picture: `sky` from above, `ground`
+ * from below, blended across the horizon. Light from it gives surfaces that
+ * face up the colour of the sky and surfaces that face down the light the
+ * ground throws back, which is what keeps shadows from going flat and black.
+ */
+export function zhudaHemisphereCube(
+  sky: readonly [number, number, number],
+  ground: readonly [number, number, number],
+  size = 16,
+): ZhudaCubePicture {
+  const colours = [...sky, ...ground];
+  if (colours.length !== 6 || !colours.every((v) => Number.isFinite(v) && v >= 0))
+    throw Error('Hemisphere colours must be non-negative numbers');
+  if (!Number.isInteger(size) || size < 8 || size > 64) throw Error('Invalid hemisphere size');
+  const data = new Float32Array(size * size * 24);
+  for (let face = 0; face < 6; face++)
+    for (let j = 0; j < size; j++)
+      for (let i = 0; i < size; i++) {
+        const d = zhudaCubeDirection(face, (2 * (i + 0.5)) / size - 1, (2 * (j + 0.5)) / size - 1);
+        const up = d[1] / Math.hypot(d[0], d[1], d[2]);
+        // A soft horizon: a hard one would band on smooth surfaces.
+        const t = Math.min(1, Math.max(0, up * 2.5 + 0.5));
+        const blend = t * t * (3 - 2 * t);
+        const o = ((face * size + j) * size + i) * 4;
+        for (let c = 0; c < 3; c++) data[o + c] = ground[c] + (sky[c] - ground[c]) * blend;
+        data[o + 3] = 1;
+      }
+  return { size, data };
+}
+
+/**
+ * Lights a scene with a sky-and-ground ambient (and the matching soft
+ * reflections). Returns the function that restores the scene's previous
+ * ambient setup and releases the texture.
+ */
+export function applyZhudaHemisphereAmbient(
+  scene: any,
+  sky: readonly [number, number, number],
+  ground: readonly [number, number, number],
+): () => void {
+  const { spec, pixels } = prefilterZhudaEnvironment(zhudaHemisphereCube(sky, ground), {
+    size: 16,
+  });
+  const environment = createPrefilteredEnvironment(spec, pixels);
+  const previous = { mode: scene.ambientMode, tex: scene.iblTex };
+  environment.apply(scene);
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    if (!scene.destroyed) {
+      scene.iblTex = previous.tex ?? null;
+      scene.ambientMode = previous.mode;
+    }
+    environment.dispose();
+  };
+}
+
 export class ZhudaEnvironmentProbe {
   private readonly scene: any;
   private environment: ReturnType<typeof createPrefilteredEnvironment> | undefined;
-  private previous: { mode: any; reflection: number; ambient: number } | undefined;
+  private previous:
+    | { mode: any; reflection: number; ambient: number; sh: Float32Array | undefined }
+    | undefined;
   private disposed = false;
   /** The nine ambient colours of the last capture (27 numbers), for inspection. */
   ambientSH: readonly number[] = [];
@@ -432,6 +493,7 @@ export class ZhudaEnvironmentProbe {
       mode: this.scene.ambientMode,
       reflection: this.scene.reflectionIntensity,
       ambient: this.scene.ambientIntensity,
+      sh: this.scene.ambientSH ? new Float32Array(this.scene.ambientSH) : undefined,
     };
     this.environment?.dispose();
     this.environment = next;
@@ -440,6 +502,7 @@ export class ZhudaEnvironmentProbe {
     if (options.reflectionOnly) {
       this.scene.ambientMode = this.previous.mode;
       this.scene.ambientIntensity = this.previous.ambient;
+      if (this.previous.sh) this.scene.ambientSH = new Float32Array(this.previous.sh);
     } else this.scene.ambientIntensity = options.ambient ?? 1;
     this.ambientSH = spec.ambientSH;
   }

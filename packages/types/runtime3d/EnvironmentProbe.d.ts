@@ -53,6 +53,19 @@ export interface ZhudaEnvironmentProbeOptions {
     /** Laya layers the capture does not draw (default: none). */
     excludedLayers?: readonly number[];
 }
+/**
+ * A sky-and-ground surrounding as a cube picture: `sky` from above, `ground`
+ * from below, blended across the horizon. Light from it gives surfaces that
+ * face up the colour of the sky and surfaces that face down the light the
+ * ground throws back, which is what keeps shadows from going flat and black.
+ */
+export declare function zhudaHemisphereCube(sky: readonly [number, number, number], ground: readonly [number, number, number], size?: number): ZhudaCubePicture;
+/**
+ * Lights a scene with a sky-and-ground ambient (and the matching soft
+ * reflections). Returns the function that restores the scene's previous
+ * ambient setup and releases the texture.
+ */
+export declare function applyZhudaHemisphereAmbient(scene: any, sky: readonly [number, number, number], ground: readonly [number, number, number]): () => void;
 export declare class ZhudaEnvironmentProbe {
     private readonly scene;
     private environment;

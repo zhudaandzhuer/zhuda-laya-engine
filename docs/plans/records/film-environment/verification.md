@@ -57,3 +57,28 @@ place, and reads the pixel where the camera looks.
 - Desktop WebGL only; WebGPU and mobile are not covered.
 
 Decision: **Implemented within scope; desktop WebGL verified.**
+
+## Follow-up: sky-and-ground ambient (2026-11-12)
+
+Source: the user's colleagues judged the lighting of the forest and river
+stills wrong: shadows were one flat, nearly black tone.
+
+`look.ambientGround` (and `applyZhudaHemisphereAmbient`,
+`zhudaHemisphereCube`) lights the scene with `ambient` from above and
+`ambientGround` from below, through the same prefilter and spherical
+harmonics as a captured environment. A probe with `reflectionOnly` now also
+restores the previous ambient colours, so it keeps this light.
+
+| Check                                                                    | Result |
+| ------------------------------------------------------------------------ | ------ |
+| `node --test tests/environment-probe.test.mjs tests/film-scene.test.mjs` | PASS   |
+| `npm run verify:film-environment` (WebGL)                                | PASS   |
+| `ZHUDA_FILM_RENDERER=webgpu npm run verify:film-environment`             | PASS   |
+
+Real GPU, chalk box, no sun, blue sky light and red ground light: the top
+face is blue (red under a third of blue), the underside red (blue under a
+third of red); identical after 20 mounts with and without the field.
+
+Limits: this is direction, not occlusion. A surface facing down inside a
+closed room still gets the ground light; nothing is traced. It replaces the
+flat ambient, not global illumination.

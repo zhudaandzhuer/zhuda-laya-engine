@@ -117,3 +117,39 @@ test('bad input is refused', () => {
   bad.data[5] = NaN;
   assert.throws(() => prefilterZhudaEnvironment(bad, { size: 8 }), /negative or non-finite/);
 });
+
+test('a sky-and-ground surrounding is sky above, ground below and soft at the horizon', async () => {
+  const { zhudaHemisphereCube, zhudaCubeDirection, prefilterZhudaEnvironment } = await import(
+    '../packages/core/runtime3d/EnvironmentProbe.ts'
+  );
+  const sky = [0.8, 0.9, 1],
+    ground = [0.3, 0.3, 0.15];
+  const cube = zhudaHemisphereCube(sky, ground, 16);
+  assert.equal(cube.data.length, 16 * 16 * 24);
+  const near = (a, b) => a.every((v, i) => Math.abs(v - b[i]) < 1e-6);
+  let above = 0,
+    below = 0,
+    between = 0;
+  for (let face = 0; face < 6; face++)
+    for (let j = 0; j < 16; j++)
+      for (let i = 0; i < 16; i++) {
+        const d = zhudaCubeDirection(face, (2 * (i + 0.5)) / 16 - 1, (2 * (j + 0.5)) / 16 - 1);
+        const up = d[1] / Math.hypot(...d);
+        const o = ((face * 16 + j) * 16 + i) * 4;
+        const colour = [...cube.data.slice(o, o + 3)];
+        if (up > 0.25) (assert.ok(near(colour, sky), 'sky above'), above++);
+        else if (up < -0.25) (assert.ok(near(colour, ground), 'ground below'), below++);
+        else {
+          between++;
+          for (let c = 0; c < 3; c++)
+            assert.ok(colour[c] >= ground[c] - 1e-6 && colour[c] <= sky[c] + 1e-6);
+        }
+      }
+  assert.ok(above > 300 && below > 300 && between > 100);
+  // The light it gives: surfaces facing up are brighter and bluer than those facing down.
+  const { spec } = prefilterZhudaEnvironment(cube, { size: 16 });
+  assert.equal(spec.ambientSH.length, 27);
+  assert.ok(spec.ambientSH.every(Number.isFinite));
+  assert.throws(() => zhudaHemisphereCube([1, 1, -1], ground), /non-negative/);
+  assert.throws(() => zhudaHemisphereCube(sky, ground, 4), /size/);
+});

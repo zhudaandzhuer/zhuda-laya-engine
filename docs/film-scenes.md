@@ -222,6 +222,11 @@ and uses it as the environment of the whole scene:
   `ambient` colour. `"reflectionOnly": true` keeps the flat `ambient` colour
   and takes only reflections from the capture: under a canopy or between
   walls the captured ambient light is as dark as the surroundings.
+- `ambientGround` (a look field beside `ambient`) gives the ambient light a
+  direction without a capture: `ambient` shines from above as sky light and
+  `ambientGround` from below as the light the ground throws back. Shadows
+  and undersides then take the colour of the ground instead of one flat
+  tone. With `reflectionOnly` the probe keeps this ambient light.
 - There is one probe. Reflections are right at `position` and approximate
   elsewhere, so put it near the subject of the shot. It is captured once:
   things that move during a shot are in it where they were at time 0.

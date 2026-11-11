@@ -156,6 +156,50 @@ try {
     'identical after 30 mounts',
   );
 
+  // Sky-and-ground ambient: with no sun and no lamps, a chalk box under a blue
+  // sky light and a red ground light is blue on top and red underneath.
+  const hemisphere = (eye, target) => ({
+    schemaVersion: 1,
+    id: 'hemisphere-check',
+    camera: { eye, target, focalLengthMm: 35 },
+    look: {
+      sky: [0, 0, 0],
+      ambient: [0, 0, 1],
+      ambientGround: [1, 0, 0],
+      sun: { intensity: 0 },
+      shadows: false,
+    },
+    materials,
+    nodes: [{ id: 'box', type: 'box', size: [2, 2, 2], position: [0, 0, 0], material: 'chalk' }],
+  });
+  const topEye = [0, 7, 5],
+    lowEye = [0, -5, 5];
+  const top = patch(
+    await render('hemisphere-top', hemisphere(topEye, [0, 2, 0])),
+    projectPixel([0, 2, 0.3], topEye, [0, 2, 0], W, H),
+  );
+  const under = patch(
+    await render('hemisphere-under', hemisphere(lowEye, [0, 0, 0])),
+    projectPixel([0, 0, 0.3], lowEye, [0, 0, 0], W, H),
+  );
+  report.hemisphere = { top, under };
+  assert.ok(top[2] > 60 && top[2] > top[0] * 3, `the top takes the sky light: ${top}`);
+  assert.ok(
+    under[0] > 60 && under[0] > under[2] * 3,
+    `the underside takes the ground light: ${under}`,
+  );
+  const flat = hemisphere(topEye, [0, 2, 0]);
+  delete flat.look.ambientGround;
+  for (let i = 0; i < 20; i++) await host.mountReport(i % 2 ? flat : hemisphere(topEye, [0, 2, 0]));
+  assert.deepEqual(
+    patch(
+      await render('hemisphere-again', hemisphere(topEye, [0, 2, 0])),
+      projectPixel([0, 2, 0.3], topEye, [0, 2, 0], W, H),
+    ),
+    top,
+    'the same after 20 mounts with and without it',
+  );
+
   fs.writeFileSync(path.join(out, 'report.json'), JSON.stringify(report, null, 2));
   console.log(JSON.stringify({ ok: true, gpu: host.info.gpu, out, ...report }, null, 2));
 } finally {

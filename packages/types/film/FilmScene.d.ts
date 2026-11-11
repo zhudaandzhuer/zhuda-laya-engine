@@ -90,6 +90,13 @@ export interface ZhudaFilmLook {
     sky?: ZhudaFilmVec3;
     /** Ambient light colour, linear RGB 0..1. */
     ambient?: ZhudaFilmVec3;
+    /**
+     * Light the ground throws back, linear RGB 0..1. With it the ambient light
+     * has a direction: `ambient` comes from above (the sky) and this from
+     * below, so undersides and shadows take the colour of the ground instead
+     * of one flat tone. Off unless given.
+     */
+    ambientGround?: ZhudaFilmVec3;
     sun?: ZhudaFilmSun;
     /** `false` turns sun shadows off. */
     shadows?: ZhudaFilmShadows | false;
@@ -461,6 +468,7 @@ export interface ZhudaResolvedFilmLook {
     preset: ZhudaFilmLookPreset | null;
     sky: ZhudaFilmVec3;
     ambient: ZhudaFilmVec3;
+    ambientGround: ZhudaFilmVec3 | false;
     sun: Required<ZhudaFilmSun>;
     shadows: Required<ZhudaFilmShadows> | false;
     atmosphere: Required<ZhudaFilmAtmosphere> | false;

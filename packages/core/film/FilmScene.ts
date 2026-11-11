@@ -112,6 +112,13 @@ export interface ZhudaFilmLook {
   sky?: ZhudaFilmVec3;
   /** Ambient light colour, linear RGB 0..1. */
   ambient?: ZhudaFilmVec3;
+  /**
+   * Light the ground throws back, linear RGB 0..1. With it the ambient light
+   * has a direction: `ambient` comes from above (the sky) and this from
+   * below, so undersides and shadows take the colour of the ground instead
+   * of one flat tone. Off unless given.
+   */
+  ambientGround?: ZhudaFilmVec3;
   sun?: ZhudaFilmSun;
   /** `false` turns sun shadows off. */
   shadows?: ZhudaFilmShadows | false;
@@ -677,6 +684,7 @@ function validateLook(
       'preset',
       'sky',
       'ambient',
+      'ambientGround',
       'sun',
       'shadows',
       'atmosphere',
@@ -859,6 +867,7 @@ function validateLook(
   }
   if (look.sky !== undefined) colour(look.sky, `${path}.sky`, issues);
   if (look.ambient !== undefined) colour(look.ambient, `${path}.ambient`, issues);
+  if (look.ambientGround !== undefined) colour(look.ambientGround, `${path}.ambientGround`, issues);
   if (look.sun !== undefined) {
     const sun = look.sun;
     if (!object(sun)) return void issues.push(`${path}.sun: object required`);
@@ -1525,6 +1534,7 @@ export interface ZhudaResolvedFilmLook {
   preset: ZhudaFilmLookPreset | null;
   sky: ZhudaFilmVec3;
   ambient: ZhudaFilmVec3;
+  ambientGround: ZhudaFilmVec3 | false;
   sun: Required<ZhudaFilmSun>;
   shadows: Required<ZhudaFilmShadows> | false;
   atmosphere: Required<ZhudaFilmAtmosphere> | false;
@@ -1601,6 +1611,7 @@ export function resolveZhudaFilmLook(look: ZhudaFilmLook = {}): ZhudaResolvedFil
     preset: look.preset ?? null,
     sky,
     ambient: look.ambient ?? ([...base.ambient] as ZhudaFilmVec3),
+    ambientGround: look.ambientGround ? ([...look.ambientGround] as ZhudaFilmVec3) : false,
     sun: {
       azimuthDeg: look.sun?.azimuthDeg ?? base.sun.azimuthDeg,
       elevationDeg: look.sun?.elevationDeg ?? base.sun.elevationDeg,
