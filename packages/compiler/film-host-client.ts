@@ -160,6 +160,8 @@ async function boot(packs: readonly Pack[], options: { assets?: boolean }) {
     dprCap: 1,
     features: [...(globalThis as any).ZhudaBundle.features],
     preserveDrawingBuffer: true,
+    // Room for a street of lamps: film scenes may ask for up to 128 real-time lights.
+    maxLights: 160,
   });
   state.context.runtime.start(() => {});
   Z.ZhudaEngine.flushRenderFrames(2);

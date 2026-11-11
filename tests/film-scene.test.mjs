@@ -349,9 +349,13 @@ test('look, light and emission fields are validated with paths', () => {
       `missing ${fragment} in\n${issues.join('\n')}`,
     );
   const many = scene();
-  for (let i = 0; i < 33; i++)
+  for (let i = 0; i < 129; i++)
     many.nodes.push({ id: `l${i}`, type: 'light', kind: 'point', position: [i, 2, 0] });
-  assert.ok(validateZhudaFilmScene(many, context).some((issue) => /at most 32 lights/.test(issue)));
+  assert.ok(
+    validateZhudaFilmScene(many, context).some((issue) =>
+      /at most 128 real-time lights/.test(issue),
+    ),
+  );
   // Nested look objects merge in patches.
   const base = parseZhudaFilmScene(
     { ...scene(), look: { preset: 'night', fog: { start: 10, end: 80 } } },
@@ -589,7 +593,7 @@ test('lightFog needs grade; fog-only lights are point lights outside the 32 limi
       validateZhudaFilmScene(withLook(look), context).some((issue) => issue.includes(fragment)),
       fragment,
     );
-  // 100 fog-only lights and 32 lit ones are fine; 129 lights or 33 lit ones are not.
+  // 96 fog-only lights and 32 lit ones are fine; 129 lights in all are not.
   const fogOnly = Array.from({ length: 96 }, (_, i) => lamp(i, { fogOnly: true }));
   const lit = Array.from({ length: 32 }, (_, i) => lamp(200 + i));
   assert.deepEqual(
@@ -602,11 +606,9 @@ test('lightFog needs grade; fog-only lights are point lights outside the 32 limi
       context,
     ).some((issue) => /at most 128 lights/.test(issue)),
   );
-  assert.ok(
-    validateZhudaFilmScene(withLook({}, [...lit, lamp(998)]), context).some((issue) =>
-      /at most 32 lights/.test(issue),
-    ),
-  );
+  // More than Laya's default of 32 real-time lights is a valid scene; the
+  // runtime must have been booted for them (checked when the scene is mounted).
+  assert.deepEqual(validateZhudaFilmScene(withLook({}, [...lit, lamp(998)]), context), []);
   assert.ok(
     validateZhudaFilmScene(
       withLook({}, [
@@ -806,4 +808,45 @@ test('look.panorama names a picture asset and replaces the procedural sky', () =
       assets: ['other.png'],
     }).some((issue) => issue.includes('unknown asset sky.png')),
   );
+});
+
+test('shadow cascades and shadow-casting spot lights are validated', () => {
+  const spot = (id, extra = {}) => ({
+    id,
+    type: 'light',
+    kind: 'spot',
+    position: [0, 4, 0],
+    target: [0, 0, 0.5],
+    ...extra,
+  });
+  const of = (look, nodes = []) => ({ ...scene(), look, nodes: [...scene().nodes, ...nodes] });
+  assert.deepEqual(
+    validateZhudaFilmScene(
+      of({ shadows: { cascades: 4 } }, [spot('a', { castsShadow: true }), spot('b')]),
+      context,
+    ),
+    [],
+  );
+  assert.equal(resolveZhudaFilmLook({ preset: 'day' }).shadows.cascades, 2);
+  assert.equal(
+    resolveZhudaFilmLook({ preset: 'day', shadows: { cascades: 4 } }).shadows.cascades,
+    4,
+  );
+  const cases = [
+    [of({ shadows: { cascades: 3 } }), 'shadows.cascades: use 1, 2 or 4'],
+    [
+      of({}, [spot('a', { castsShadow: true }), spot('b', { castsShadow: true })]),
+      'one spot light may cast shadows',
+    ],
+    [
+      of({}, [{ id: 'p', type: 'light', kind: 'point', position: [0, 3, 0], castsShadow: true }]),
+      'castsShadow: spot lights only',
+    ],
+    [of({}, [spot('a', { castsShadow: 'yes' })]), 'castsShadow: spot lights only'],
+  ];
+  for (const [value, fragment] of cases)
+    assert.ok(
+      validateZhudaFilmScene(value, context).some((issue) => issue.includes(fragment)),
+      fragment,
+    );
 });

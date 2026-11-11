@@ -276,6 +276,112 @@ try {
     assert.ok(leftEdge < 8, `no colour wraps around the frame edge: ${leftEdge}`);
     console.log('lens finish', { noise: [a.sd, b.sd], corner, centre, split });
   }
+  // Mixed lighting pieces: more than 32 real-time lights, a spot light that
+  // casts shadows, and four shadow cascades.
+  {
+    const dark = { sky: [0, 0, 0], ambient: [0, 0, 0], sun: { intensity: 0 }, shadows: false };
+    const base = (nodes, look = dark, camera = { eye: [0, 9, 9], target: [0, 0, 0] }) => ({
+      schemaVersion: 1,
+      id: 'mixed-check',
+      camera: { ...camera, focalLengthMm: 35 },
+      look,
+      materials: { stone: { color: [0.7, 0.7, 0.7], roughness: 1 } },
+      nodes: [{ id: 'ground', type: 'ground', size: [200, 200], material: 'stone' }, ...nodes],
+    });
+    const centre = (img) => {
+      let sum = 0;
+      for (let y = H / 2 - 4; y < H / 2 + 4; y++)
+        for (let x = W / 2 - 4; x < W / 2 + 4; x++) sum += lum(img, (y * W + x) * 4);
+      return sum / 64;
+    };
+    // 60 lights: 59 far away, the last one over the spot the camera looks at.
+    const far = Array.from({ length: 59 }, (_, i) => ({
+      id: 'far' + i,
+      type: 'light',
+      kind: 'point',
+      position: [60 + i, 2, 60],
+      intensity: 1,
+      range: 3,
+    }));
+    const last = {
+      id: 'last',
+      type: 'light',
+      kind: 'point',
+      position: [0, 2, 0],
+      color: [1, 1, 1],
+      intensity: 3,
+      range: 8,
+    };
+    const withoutLast = centre(await render('lights-59', base(far)));
+    const withLast = centre(await render('lights-60', base([...far, last])));
+    assert.ok(
+      withoutLast < 3 && withLast > 60,
+      `the 60th real-time light lights the ground: ${withoutLast.toFixed(1)} -> ${withLast.toFixed(1)}`,
+    );
+    // A spot straight down with a box under it: the ground beside the box is
+    // lit, the ground under the box's shadow is dark only when the light casts shadows.
+    const spot = (castsShadow) => ({
+      id: 'spot',
+      type: 'light',
+      kind: 'spot',
+      position: [0, 8, 0],
+      target: [0, 0, 0],
+      color: [1, 1, 1],
+      intensity: 6,
+      range: 20,
+      spotAngleDeg: 70,
+      castsShadow,
+    });
+    const slab = {
+      id: 'slab',
+      type: 'box',
+      size: [3, 0.2, 3],
+      position: [0, 3, 0],
+      material: 'stone',
+    };
+    const view = { eye: [0.01, 2.2, 6], target: [0, 0, 0] };
+    const open = centre(await render('spot-no-shadow', base([spot(false), slab], dark, view)));
+    const shaded = centre(await render('spot-shadow', base([spot(true), slab], dark, view)));
+    assert.ok(
+      open > 40 && shaded < open * 0.35,
+      `a spot light's shadow darkens the ground under a slab: ${open.toFixed(1)} -> ${shaded.toFixed(1)}`,
+    );
+    // Four cascades: the sun's shadow of a pillar still lands, near and far.
+    const pillars = [
+      { id: 'near', type: 'box', size: [1, 6, 1], position: [0, 0, 0], material: 'stone' },
+      { id: 'far', type: 'box', size: [2, 12, 2], position: [0, 0, -70], material: 'stone' },
+    ];
+    const sunny = (shadows) => ({
+      ...dark,
+      ambient: [0.1, 0.1, 0.1],
+      sun: { azimuthDeg: 90, elevationDeg: 40, intensity: 1.5 },
+      shadows,
+    });
+    const lit = await render(
+      'cascades-off',
+      base(pillars, sunny(false), { eye: [10, 5, 14], target: [0, 1, -4] }),
+    );
+    const four = await render(
+      'cascades-4',
+      base(pillars, sunny({ distance: 150, cascades: 4 }), {
+        eye: [10, 5, 14],
+        target: [0, 1, -4],
+      }),
+    );
+    let darker = 0;
+    for (let i = 0; i < lit.data.length; i += 4) if (lum(lit, i) - lum(four, i) > 12) darker++;
+    assert.ok(
+      darker / (W * H) > 0.004,
+      `four cascades draw the pillars' shadows: ${((darker / (W * H)) * 100).toFixed(2)} %`,
+    );
+    console.log('mixed lighting', {
+      withoutLast,
+      withLast,
+      open,
+      shaded,
+      shadowShare: darker / (W * H),
+    });
+  }
 } finally {
   await host.close();
   fs.writeFileSync(path.join(out, 'report.json'), JSON.stringify(report, null, 2) + '\n');

@@ -31,6 +31,11 @@ export interface ZhudaFilmShadows {
     strength?: number;
     /** Shadow map size (default 2048). */
     resolution?: 1024 | 2048 | 4096;
+    /**
+     * Shadow map splits by distance: 1, 2 or 4 (default 2). More splits keep
+     * shadows near the camera sharp when `distance` is long.
+     */
+    cascades?: 1 | 2 | 4;
 }
 /** Procedural sky (native `SkyProceduralMaterial`); the sun disk follows the sun. */
 export interface ZhudaFilmAtmosphere {
@@ -257,6 +262,11 @@ export type ZhudaFilmNode = {
     /** Spot lights: full cone angle, 1..179 degrees (default 60). */
     spotAngleDeg?: number;
     /**
+     * Spot lights: the light casts shadows. One per scene (Laya 3.4.2 draws
+     * one spot shadow map); point lights cannot cast shadows.
+     */
+    castsShadow?: boolean;
+    /**
      * Keeps the light at `offset` (metres, in the model's own frame: +Z is
      * the model's front before `yawDeg`) from a `model` node, following its
      * `motion`. Point lights only; `position` is then ignored.
@@ -332,8 +342,11 @@ export declare const ZHUDA_FILM_LIMITS: Readonly<{
     materials: 64;
     extent: 10000;
     idLength: 64;
-    /** Laya 3.4.2 `Config3D.maxLightCount` default. */
-    lights: 32;
+    /**
+     * Real-time lights a scene may ask for. The runtime must have been booted
+     * with at least as many (`maxLights`; Laya's default is 32).
+     */
+    lights: 128;
     /** Lights one `lightFog` can hold, fog-only lights included. */
     fogLights: 128;
     models: 64;

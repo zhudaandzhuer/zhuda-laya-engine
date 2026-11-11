@@ -51,6 +51,11 @@ export interface ZhudaBootOptions extends Omit<ManagedRuntimeOptions, 'container
   signal?: AbortSignal;
   /** Bounded native initialization, default 30 seconds. */
   bootTimeoutMs?: number;
+  /**
+   * Real-time lights a 3D scene may hold, 1..1024 (Laya's default is 32).
+   * Laya fixes this when it initialises, so it cannot change afterwards.
+   */
+  maxLights?: number;
 }
 
 export interface ZhudaBootContext {
@@ -155,6 +160,16 @@ export class ZhudaEngine {
         if (options.preserveDrawingBuffer !== undefined)
           layaConfig.preserveDrawingBuffer = options.preserveDrawingBuffer;
         if (options.antialias !== undefined) layaConfig.isAntialias = options.antialias;
+      }
+      if (options.maxLights !== undefined) {
+        if (
+          !Number.isInteger(options.maxLights) ||
+          options.maxLights < 1 ||
+          options.maxLights > 1024
+        )
+          throw Error('maxLights must be an integer 1..1024');
+        const config3D = (Laya as any).Config3D;
+        if (config3D) config3D.maxLightCount = options.maxLights;
       }
       options.beforeInit?.();
 

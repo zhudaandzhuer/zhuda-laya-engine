@@ -91,3 +91,16 @@ generates a picture (blue top, green bottom, one red band) and measures:
 looking up shows blue, looking down green, the band appears in exactly one of
 four compass views and in a different one with `rotationDeg: 90`; a missing
 picture is refused by name. The sky does not light the scene by itself.
+
+## Follow-up: mixed lighting pieces (2026-11-11)
+
+For scenes that bake only part of their light: `ZhudaEngine.boot({ maxLights })`
+sets Laya's real-time light capacity (it is fixed at initialisation; default
+32), film scenes accept up to 128 real-time lights and refuse a scene that
+asks for more than the runtime has, `shadows.cascades` picks 1, 2 or 4 shadow
+splits, and one spot light may cast shadows (`castsShadow`). `verify:film-look`
+measures: with 59 distant lights the ground under the camera is black and a
+60th light over it lights it (192); a slab under a downward spot leaves the
+ground at 0 with `castsShadow` and lit without; with four cascades over 150 m
+the shadows of a near and a far pillar darken 0.69 % of the frame. Point
+lights still cast no shadows (Laya 3.4.2 has no point shadow maps).

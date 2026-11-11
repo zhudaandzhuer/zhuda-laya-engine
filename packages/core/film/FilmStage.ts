@@ -625,6 +625,13 @@ function buildFilmStageContents(
     }
 
     // Practical lights: native point and spot light components.
+    const realTime = scene.nodes.filter((node) => node.type === 'light' && !node.fogOnly).length;
+    const capacity = l.Config3D?.maxLightCount ?? 32;
+    // The sun is a light too.
+    if (realTime + 1 > capacity)
+      throw Error(
+        `Film scene has ${realTime} real-time lights but the runtime was booted for ${capacity} (one is the sun); boot with maxLights`,
+      );
     for (const node of scene.nodes) {
       if (node.type !== 'light' || node.fogOnly) continue;
       const holder = new l.Sprite3D(`ZhudaFilmLight:${node.id}`);
@@ -640,7 +647,21 @@ function buildFilmStageContents(
       light.range = node.range ?? 12;
       if (node.kind === 'spot') {
         light.spotAngle = node.spotAngleDeg ?? 60;
-        holder.transform.lookAt(new l.Vector3(...node.target!), new l.Vector3(0, 1, 0));
+        const [tx, ty, tz] = node.target!,
+          [px, py, pz] = node.position;
+        // A light aimed straight down or up needs another up vector.
+        const vertical = Math.hypot(tx - px, tz - pz) < 1e-6 * Math.max(1, Math.abs(ty - py));
+        holder.transform.lookAt(
+          new l.Vector3(tx, ty, tz),
+          vertical ? new l.Vector3(0, 0, 1) : new l.Vector3(0, 1, 0),
+        );
+        if (node.castsShadow) {
+          light.shadowMode = l.ShadowMode.SoftHigh;
+          light.shadowStrength = 1;
+          light.shadowResolution = 2048;
+          light.shadowDistance = node.range ?? 12;
+          cleanups.push(() => (light.shadowMode = l.ShadowMode.None));
+        }
       }
     }
 
@@ -796,7 +817,12 @@ function applyLook(
     sun.shadowDistance = look.shadows.distance;
     sun.shadowResolution = look.shadows.resolution;
     sun.shadowStrength = look.shadows.strength;
-    sun.shadowCascadesMode = l.ShadowCascadesMode.TwoCascades;
+    sun.shadowCascadesMode =
+      look.shadows.cascades === 4
+        ? l.ShadowCascadesMode.FourCascades
+        : look.shadows.cascades === 1
+          ? l.ShadowCascadesMode.NoCascades
+          : l.ShadowCascadesMode.TwoCascades;
     // Switch shadows off before the scene is destroyed (see the stage tests).
     cleanups.push(() => (sun.shadowMode = l.ShadowMode.None));
   } else sun.shadowMode = l.ShadowMode.None;

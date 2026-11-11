@@ -30,6 +30,11 @@ export interface ZhudaBootOptions extends Omit<ManagedRuntimeOptions, 'container
     signal?: AbortSignal;
     /** Bounded native initialization, default 30 seconds. */
     bootTimeoutMs?: number;
+    /**
+     * Real-time lights a 3D scene may hold, 1..1024 (Laya's default is 32).
+     * Laya fixes this when it initialises, so it cannot change afterwards.
+     */
+    maxLights?: number;
 }
 export interface ZhudaBootContext {
     renderer: RendererDiagnostics;

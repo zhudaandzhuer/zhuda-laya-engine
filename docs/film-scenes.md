@@ -166,7 +166,7 @@ into haze. It needs `grade` and is off unless given.
   so many lamps do not add up to a wash over the sky. A light with
   `"fogOnly": true` lights only the fog and no surface: use it for lamps
   whose light is already in a lightmap. Fog-only lights do not count against
-  the 32 real-time lights; a scene holds up to 128 lights in all.
+  the real-time lights; a scene holds up to 128 lights in the fog in all.
 - The glow is not shadowed: a wall beside a lamp does not cut its halo; only
   what the camera's own ray hits ends it. The mirrored view of a `reflector`
   has no fog.
@@ -289,6 +289,18 @@ with Laya's native lightmap path:
   and reflections of the surroundings are not part of it.
 
 Props, boxes and the ground are not lightmapped; they keep the flat ambient.
+
+**Mixed lighting.** A lightmap does not have to hold all the light. Laya adds
+real-time lights on top of a lightmap, so the usual split is: bake what
+bounces and what is far away, and keep as real-time lights what should cast
+sharp shadows and make highlights. The sun (or moon) with `shadows` gives
+crisp shadows and highlights everywhere; `shadows.cascades: 4` keeps them
+sharp near the camera over a long `distance`. One spot light per scene may
+cast shadows (`"castsShadow": true`); point lights cannot. A scene may hold up
+to 128 real-time lights when the runtime was booted with `maxLights` (the MCP
+film host is; Laya's own default is 32, and a scene asking for more than the
+runtime has is refused when it is mounted). A light that is both baked and
+real-time counts twice: lower one of the two.
 
 A lightmap alone lights every pixel as if the surface were flat, so normal
 maps show nothing and stone or brick looks smooth. `lightmapDirection` fixes

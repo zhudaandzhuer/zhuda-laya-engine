@@ -49,6 +49,11 @@ export interface ZhudaFilmShadows {
   strength?: number;
   /** Shadow map size (default 2048). */
   resolution?: 1024 | 2048 | 4096;
+  /**
+   * Shadow map splits by distance: 1, 2 or 4 (default 2). More splits keep
+   * shadows near the camera sharp when `distance` is long.
+   */
+  cascades?: 1 | 2 | 4;
 }
 
 /** Procedural sky (native `SkyProceduralMaterial`); the sun disk follows the sun. */
@@ -292,6 +297,11 @@ export type ZhudaFilmNode =
       /** Spot lights: full cone angle, 1..179 degrees (default 60). */
       spotAngleDeg?: number;
       /**
+       * Spot lights: the light casts shadows. One per scene (Laya 3.4.2 draws
+       * one spot shadow map); point lights cannot cast shadows.
+       */
+      castsShadow?: boolean;
+      /**
        * Keeps the light at `offset` (metres, in the model's own frame: +Z is
        * the model's front before `yawDeg`) from a `model` node, following its
        * `motion`. Point lights only; `position` is then ignored.
@@ -390,8 +400,11 @@ export const ZHUDA_FILM_LIMITS = Object.freeze({
   materials: 64,
   extent: 10_000,
   idLength: 64,
-  /** Laya 3.4.2 `Config3D.maxLightCount` default. */
-  lights: 32,
+  /**
+   * Real-time lights a scene may ask for. The runtime must have been booted
+   * with at least as many (`maxLights`; Laya's default is 32).
+   */
+  lights: 128,
   /** Lights one `lightFog` can hold, fog-only lights included. */
   fogLights: 128,
   models: 64,
@@ -422,6 +435,7 @@ const shadows = (strength: number): Required<ZhudaFilmShadows> => ({
   softness: 'soft',
   strength,
   resolution: 2048,
+  cascades: 2,
 });
 
 /** Starting points for a time of day; any look field overrides them. */
@@ -608,7 +622,7 @@ function validateLook(
     else {
       unknownKeys(
         sh,
-        ['distance', 'softness', 'strength', 'resolution'],
+        ['distance', 'softness', 'strength', 'resolution', 'cascades'],
         `${path}.shadows`,
         issues,
       );
@@ -616,6 +630,8 @@ function validateLook(
       range(sh.strength, `${path}.shadows.strength`, 0, 1);
       if (sh.softness !== undefined && sh.softness !== 'hard' && sh.softness !== 'soft')
         issues.push(`${path}.shadows.softness: use hard or soft`);
+      if (sh.cascades !== undefined && ![1, 2, 4].includes(sh.cascades as number))
+        issues.push(`${path}.shadows.cascades: use 1, 2 or 4`);
       if (sh.resolution !== undefined && ![1024, 2048, 4096].includes(sh.resolution as number))
         issues.push(`${path}.shadows.resolution: use 1024, 2048 or 4096`);
     }
@@ -1049,6 +1065,7 @@ function validateNode(
           'spotAngleDeg',
           'fogOnly',
           'follows',
+          'castsShadow',
         ],
         path,
         issues,
@@ -1101,6 +1118,11 @@ function validateNode(
         !(typeof node.fogOnly === 'boolean' && node.kind === 'point')
       )
         issues.push(`${path}.fogOnly: point lights only, true or false`);
+      if (
+        node.castsShadow !== undefined &&
+        !(typeof node.castsShadow === 'boolean' && (node.kind === 'spot' || !node.castsShadow))
+      )
+        issues.push(`${path}.castsShadow: spot lights only, true or false`);
       break;
     default:
       issues.push(`${path}.type: use prop, box, ground, model, reflector or light`);
@@ -1182,11 +1204,14 @@ export function validateZhudaFilmScene(
       issues.push(
         `scene.nodes: at most ${ZHUDA_FILM_LIMITS.fogLights} lights including fog-only ones`,
       );
+    if (
+      lightNodes.filter((node) => (node as { castsShadow?: unknown }).castsShadow === true).length >
+      1
+    )
+      issues.push('scene.nodes: one spot light may cast shadows');
     const lights = lightNodes.filter((node) => !(node as { fogOnly?: unknown }).fogOnly).length;
     if (lights > ZHUDA_FILM_LIMITS.lights)
-      issues.push(
-        `scene.nodes: at most ${ZHUDA_FILM_LIMITS.lights} lights (Laya Config3D.maxLightCount)`,
-      );
+      issues.push(`scene.nodes: at most ${ZHUDA_FILM_LIMITS.lights} real-time lights`);
   }
   return issues;
 }
@@ -1350,6 +1375,7 @@ export function resolveZhudaFilmLook(look: ZhudaFilmLook = {}): ZhudaResolvedFil
       softness: 'soft',
       strength: 1,
       resolution: 2048,
+      cascades: 2,
     }),
     atmosphere,
     fog,
