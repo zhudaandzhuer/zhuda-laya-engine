@@ -81,3 +81,13 @@ within 1.5, and the same frame renders with identical grain; the vignette
 leaves the centre within 1.5 and takes a corner below 60 % of it; fringing
 separates red and blue by more than 40 at a bright bar's edge near the side
 (under 6 without it). Unit tests cover the vignette curve and validation.
+
+## Follow-up: panorama sky (2026-11-11)
+
+`look.panorama` draws a 2:1 picture from the asset directory as the sky with
+Laya's native `SkyPanoramicMaterial`, replacing the procedural sky. Pictures
+load through the asset provider like models and lightmaps. `verify:film-model`
+generates a picture (blue top, green bottom, one red band) and measures:
+looking up shows blue, looking down green, the band appears in exactly one of
+four compass views and in a different one with `rotationDeg: 90`; a missing
+picture is refused by name. The sky does not light the scene by itself.

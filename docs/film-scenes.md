@@ -171,6 +171,18 @@ into haze. It needs `grade` and is off unless given.
   what the camera's own ray hits ends it. The mirrored view of a `reflector`
   has no fog.
 
+`panorama` draws a photograph as the sky instead of the procedural one:
+
+```json
+"panorama": { "asset": "sky/night.jpg", "exposure": 1, "rotationDeg": 0 }
+```
+
+The picture is a 2:1 panorama (equirectangular: the top row is straight up,
+the bottom row straight down) in the asset directory, `.png` or `.jpg`.
+`rotationDeg` turns it about the vertical axis to put the moon or the sun
+where the shot wants it. It is a backdrop: it does not light the scene by
+itself, but an `environment` probe sees it and reflects it.
+
 `environment` captures the scene around one point when the scene is loaded
 and uses it as the environment of the whole scene:
 
@@ -443,7 +455,8 @@ looks in a row and draws a prop from a pack. See the
 a real GPU and checks that the lit regions follow the second UV set at the
 encoded brightness, that scale and yaw apply, that a missing asset and a model
 without `TEXCOORD_1` are refused, that a direction picture scales the light
-by the stated factor, that 30 mounts leave one instance and that a
+by the stated factor, that a panorama sky shows its top above and turns with
+`rotationDeg`, that 30 mounts leave one instance and that a
 rewritten lightmap is picked up. See the
 [model verification record](plans/records/film-model-gi/verification.md).
 

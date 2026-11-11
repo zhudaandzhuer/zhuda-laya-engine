@@ -92,7 +92,7 @@ export class ZhudaFilmHost {
   }
 
   /**
-   * Models (.glb) and lightmaps (.hdr) below the asset directory, as logical
+   * Models (.glb), lightmaps (.hdr) and pictures (.png, .jpg) below the asset directory, as logical
    * ids, with a version that changes when any of them is rewritten.
    */
   assetList() {
@@ -103,7 +103,7 @@ export class ZhudaFilmHost {
         if (entry.name.startsWith('.')) continue;
         const id = prefix + entry.name;
         if (entry.isDirectory()) walk(path.join(dir, entry.name), id + '/');
-        else if (entry.isFile() && /\.(glb|hdr)$/i.test(entry.name)) {
+        else if (entry.isFile() && /\.(glb|hdr|png|jpe?g)$/i.test(entry.name)) {
           const stat = fs.statSync(path.join(dir, entry.name));
           found.push({ id, stamp: `${id}:${stat.size}:${stat.mtimeMs}` });
         }

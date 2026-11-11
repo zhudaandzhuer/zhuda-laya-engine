@@ -143,6 +143,74 @@ try {
     return got.map((value) => +value.toFixed(1));
   });
 
+  // 4c. A panorama picture as the sky: blue above, green below, and a red
+  // band in one compass direction that turns with `rotationDeg`.
+  {
+    const sky = new PNG({ width: 128, height: 64 });
+    for (let y = 0; y < 64; y++)
+      for (let x = 0; x < 128; x++) {
+        const band = x >= 58 && x < 70;
+        sky.data.set(
+          band ? [255, 0, 0, 255] : y < 32 ? [0, 0, 255, 255] : [0, 255, 0, 255],
+          (y * 128 + x) * 4,
+        );
+      }
+    fs.writeFileSync(path.join(assets, 'sky.png'), PNG.sync.write(sky));
+    const look = (rotationDeg) => ({
+      ambient: [0, 0, 0],
+      sun: { intensity: 0 },
+      shadows: false,
+      panorama: { asset: 'sky.png', rotationDeg },
+    });
+    const view = async (name, target, rotationDeg = 0) => {
+      const img = await render(name, {
+        schemaVersion: 1,
+        id: 'sky-check',
+        camera: { eye: [0, 1, 0], target, focalLengthMm: 35 },
+        look: look(rotationDeg),
+        nodes: [],
+      });
+      return patch(img, 0.5, 0.5).map((value) => Math.round(value));
+    };
+    const up = await view('sky-up', [0.3, 4, -1]),
+      down = await view('sky-down', [0.3, -3, -1]);
+    assert.ok(up[2] > 200 && up[1] < 40, `looking up shows the top of the picture: ${up}`);
+    assert.ok(down[1] > 200 && down[2] < 40, `looking down shows the bottom: ${down}`);
+    const compass = {
+      north: [0, 1.25, -5],
+      east: [5, 1.25, 0],
+      south: [0, 1.25, 5],
+      west: [-5, 1.25, 0],
+    };
+    const red = async (rotationDeg) => {
+      const hits = [];
+      for (const [name, target] of Object.entries(compass)) {
+        const colour = await view(`sky-${name}-${rotationDeg}`, target, rotationDeg);
+        if (colour[0] > 200 && colour[1] < 40 && colour[2] < 40) hits.push(name);
+      }
+      return hits;
+    };
+    const at0 = await red(0),
+      at90 = await red(90);
+    report.panorama = { up, down, bandAt0: at0, bandAt90: at90 };
+    assert.equal(at0.length, 1, `the band is in one direction: ${at0}`);
+    assert.equal(at90.length, 1, `and in one direction after turning: ${at90}`);
+    assert.notEqual(at0[0], at90[0], 'rotationDeg turns the sky');
+    await assert.rejects(
+      host.preview(
+        {
+          schemaVersion: 1,
+          id: 'sky-check',
+          camera: { eye: [0, 1, 0], target: [0, 1, -5] },
+          look: { panorama: { asset: 'missing.png' } },
+          nodes: [],
+        },
+        { width: W, height: H },
+      ),
+      /panorama: cannot load missing\.png/,
+    );
+  }
+
   // 5. Failures are reported, and the host keeps working afterwards.
   await assert.rejects(
     host.preview(scene({ asset: 'set/missing.glb' }), { width: W, height: H }),

@@ -118,6 +118,8 @@ export class ZhudaFilmAssets {
   readonly models: ZhudaModelLibrary;
   /** Decoded lightmap pictures; each stage uploads and owns its own texture. */
   readonly lightmaps: ZhudaAssetCache<ZhudaHdrImage>;
+  /** Decoded sky panoramas (PNG or JPEG); each stage uploads its own texture. */
+  readonly pictures: ZhudaAssetCache<ImageBitmap>;
   private disposed = false;
   constructor(provider: AssetProvider, options: ZhudaFilmAssetsOptions = {}) {
     const maxIdle = options.maxIdle ?? 16;
@@ -132,6 +134,16 @@ export class ZhudaFilmAssets {
       () => {},
       maxIdle,
     );
+    this.pictures = createProviderAssetCache(
+      provider,
+      (asset) =>
+        createImageBitmap(new Blob([new Uint8Array(asset.bytes)]), {
+          premultiplyAlpha: 'none',
+          colorSpaceConversion: 'none',
+        }),
+      (bitmap) => bitmap.close(),
+      2,
+    );
   }
   /** Dispose every stage first. */
   dispose(): void {
@@ -141,6 +153,7 @@ export class ZhudaFilmAssets {
       this.models.dispose();
     } finally {
       this.lightmaps.dispose();
+      this.pictures.dispose();
     }
   }
 }
@@ -230,8 +243,44 @@ export async function loadZhudaFilmScene(
     throw (failure as PromiseRejectedResult).reason;
   }
   // The stage owns the loaded assets from here, including on a failed mount.
-  const stage = buildFilmStage(rootScene, scene, options, loaded);
-  const environment = resolveZhudaFilmLook(scene.look).environment;
+  const resolved = resolveZhudaFilmLook(scene.look);
+  let panorama: AssetLease<ImageBitmap> | undefined;
+  if (resolved.panorama) {
+    if (!options.assets) {
+      releaseLoaded(loaded.values());
+      throw Error('Film scene uses a panorama; give loadZhudaFilmScene an assets library');
+    }
+    try {
+      panorama = await options.assets.pictures.acquire(resolved.panorama.asset, {
+        signal: options.signal,
+      });
+    } catch (error) {
+      releaseLoaded(loaded.values());
+      if (options.signal?.aborted) throw error;
+      throw Error(
+        `Film scene panorama: cannot load ${resolved.panorama.asset}: ${(error as Error)?.message ?? error}`,
+        { cause: error },
+      );
+    }
+  }
+  let stage: ZhudaFilmStage;
+  try {
+    stage = buildFilmStage(rootScene, scene, options, loaded);
+  } catch (error) {
+    panorama?.release();
+    throw error;
+  }
+  if (panorama && resolved.panorama) {
+    const lease = panorama;
+    stage.adopt(() => lease.release());
+    try {
+      applyPanorama(stage, lease.value, resolved.panorama);
+    } catch (error) {
+      stage.dispose();
+      throw error;
+    }
+  }
+  const environment = resolved.environment;
   if (environment) {
     try {
       // New meshes are registered on the next native frame; draw two before
@@ -265,6 +314,8 @@ export function mountZhudaFilmScene(
     throw Error('Film scene places models; mount it with loadZhudaFilmScene');
   if (input?.look?.environment)
     throw Error('Film scene captures an environment; mount it with loadZhudaFilmScene');
+  if (input?.look?.panorama)
+    throw Error('Film scene uses a panorama; mount it with loadZhudaFilmScene');
   return buildFilmStage(rootScene, input, options, new Map());
 }
 
@@ -659,6 +710,43 @@ function buildFilmStageContents(
   }
 }
 
+/** The picture as the sky: Laya's panoramic sky material on a dome the stage owns. */
+function applyPanorama(
+  stage: ZhudaFilmStage,
+  bitmap: ImageBitmap,
+  panorama: { exposure: number; rotationDeg: number },
+) {
+  const l = (globalThis as any).Laya;
+  const texture = new l.Texture2D(
+    bitmap.width,
+    bitmap.height,
+    l.TextureFormat.R8G8B8A8,
+    true,
+    false,
+    true,
+  );
+  texture.setImageData(bitmap, false, false);
+  texture.filterMode = l.FilterMode.Trilinear;
+  texture.wrapModeU = l.WrapMode.Repeat;
+  texture.wrapModeV = l.WrapMode.Clamp;
+  const sky = new l.SkyPanoramicMaterial();
+  sky.panoramicTexture = texture;
+  sky.exposure = panorama.exposure;
+  sky.rotation = panorama.rotationDeg;
+  const dome = new l.SkyDome();
+  const renderer = stage.scene3D.skyRenderer;
+  renderer.mesh = dome;
+  renderer.material = sky;
+  stage.camera.clearFlag = l.CameraClearFlags.Sky;
+  stage.adopt(() => {
+    renderer.material = null;
+    renderer.mesh = null;
+    sky.destroy();
+    dome.destroy();
+    texture.destroy();
+  });
+}
+
 function setLayer(node: any, layer: number) {
   if (!node) return;
   node.layer = layer;
@@ -712,7 +800,8 @@ function applyLook(
     // Switch shadows off before the scene is destroyed (see the stage tests).
     cleanups.push(() => (sun.shadowMode = l.ShadowMode.None));
   } else sun.shadowMode = l.ShadowMode.None;
-  if (look.atmosphere) {
+  // A panorama replaces the procedural sky (it is applied after loading).
+  if (look.atmosphere && !look.panorama) {
     const sky = new l.SkyProceduralMaterial();
     sky.sunDisk = l.SkyProceduralMaterial.SUN_HIGH_QUALITY;
     sky.sunSize = look.atmosphere.sunSize;

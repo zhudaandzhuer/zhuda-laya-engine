@@ -99,11 +99,25 @@ export interface ZhudaFilmLook {
      */
     lightFog?: ZhudaFilmLightFog | false;
     /**
+     * A photograph as the sky: a 2:1 panorama (equirectangular) named by
+     * logical asset id. Replaces `atmosphere`. Off unless given.
+     */
+    panorama?: ZhudaFilmPanorama | false;
+    /**
      * Captures the scene around one point and uses it as the environment:
      * glossy surfaces reflect it and surfaces without a lightmap get its
      * ambient light. Off unless given.
      */
     environment?: ZhudaFilmEnvironment | false;
+}
+/** A panoramic picture drawn as the sky (Laya's native `SkyPanoramicMaterial`). */
+export interface ZhudaFilmPanorama {
+    /** Logical id of a `.png` or `.jpg` picture twice as wide as it is tall. */
+    asset: string;
+    /** Brightness, 0..16 (default 1). */
+    exposure?: number;
+    /** Turns the picture about the vertical axis, degrees (default 0). */
+    rotationDeg?: number;
 }
 /** One environment probe (see `ZhudaEnvironmentProbe`). */
 export interface ZhudaFilmEnvironment {
@@ -365,6 +379,7 @@ export interface ZhudaResolvedFilmLook {
     grade: Required<ZhudaFilmGrade> | false;
     lightFog: Required<ZhudaFilmLightFog> | false;
     environment: Required<ZhudaFilmEnvironment> | false;
+    panorama: Required<ZhudaFilmPanorama> | false;
 }
 /**
  * Look with every value filled in: the preset (if any) first, then the

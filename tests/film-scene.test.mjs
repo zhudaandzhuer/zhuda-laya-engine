@@ -769,3 +769,41 @@ test('grade grain, vignette and fringe are off by default and validated', () => 
       key,
     );
 });
+
+test('look.panorama names a picture asset and replaces the procedural sky', () => {
+  const withLook = (look) => ({ ...scene(), look });
+  assert.deepEqual(
+    validateZhudaFilmScene(
+      withLook({ panorama: { asset: 'sky/night.jpg', exposure: 2, rotationDeg: 90 } }),
+      context,
+    ),
+    [],
+  );
+  assert.deepEqual(resolveZhudaFilmLook({ panorama: { asset: 'sky.png' } }).panorama, {
+    asset: 'sky.png',
+    exposure: 1,
+    rotationDeg: 0,
+  });
+  assert.equal(resolveZhudaFilmLook({ preset: 'night' }).panorama, false);
+  const cases = [
+    [
+      { panorama: { asset: 'sky.hdr' } },
+      'panorama.asset: use a logical asset id ending in .png or .jpg',
+    ],
+    [{ panorama: { asset: '../sky.png' } }, 'panorama.asset'],
+    [{ panorama: { asset: 'sky.png', exposure: 99 } }, 'panorama.exposure'],
+    [{ panorama: { asset: 'sky.png', rotationDeg: 999 } }, 'panorama.rotationDeg'],
+    [{ panorama: { asset: 'sky.png', tint: [1, 1, 1] } }, 'panorama.tint: unknown field'],
+  ];
+  for (const [look, fragment] of cases)
+    assert.ok(
+      validateZhudaFilmScene(withLook(look), context).some((issue) => issue.includes(fragment)),
+      fragment,
+    );
+  assert.ok(
+    validateZhudaFilmScene(withLook({ panorama: { asset: 'sky.png' } }), {
+      ...context,
+      assets: ['other.png'],
+    }).some((issue) => issue.includes('unknown asset sky.png')),
+  );
+});

@@ -77,6 +77,8 @@ export declare class ZhudaFilmAssets {
     readonly models: ZhudaModelLibrary;
     /** Decoded lightmap pictures; each stage uploads and owns its own texture. */
     readonly lightmaps: ZhudaAssetCache<ZhudaHdrImage>;
+    /** Decoded sky panoramas (PNG or JPEG); each stage uploads its own texture. */
+    readonly pictures: ZhudaAssetCache<ImageBitmap>;
     private disposed;
     constructor(provider: AssetProvider, options?: ZhudaFilmAssetsOptions);
     /** Dispose every stage first. */

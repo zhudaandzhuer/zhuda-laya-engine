@@ -121,11 +121,26 @@ export interface ZhudaFilmLook {
    */
   lightFog?: ZhudaFilmLightFog | false;
   /**
+   * A photograph as the sky: a 2:1 panorama (equirectangular) named by
+   * logical asset id. Replaces `atmosphere`. Off unless given.
+   */
+  panorama?: ZhudaFilmPanorama | false;
+  /**
    * Captures the scene around one point and uses it as the environment:
    * glossy surfaces reflect it and surfaces without a lightmap get its
    * ambient light. Off unless given.
    */
   environment?: ZhudaFilmEnvironment | false;
+}
+
+/** A panoramic picture drawn as the sky (Laya's native `SkyPanoramicMaterial`). */
+export interface ZhudaFilmPanorama {
+  /** Logical id of a `.png` or `.jpg` picture twice as wide as it is tall. */
+  asset: string;
+  /** Brightness, 0..16 (default 1). */
+  exposure?: number;
+  /** Turns the picture about the vertical axis, degrees (default 0). */
+  rotationDeg?: number;
 }
 
 /** One environment probe (see `ZhudaEnvironmentProbe`). */
@@ -556,7 +571,12 @@ function validateCamera(camera: unknown, path: string, issues: string[], partial
     issues.push(`${path}.focusDistanceM: use a distance above 0.05 m`);
 }
 
-function validateLook(look: unknown, path: string, issues: string[]) {
+function validateLook(
+  look: unknown,
+  path: string,
+  issues: string[],
+  context: ZhudaFilmValidationContext = {},
+) {
   if (!object(look)) return void issues.push(`${path}: look object required`);
   unknownKeys(
     look,
@@ -571,6 +591,7 @@ function validateLook(look: unknown, path: string, issues: string[]) {
       'grade',
       'lightFog',
       'environment',
+      'panorama',
     ],
     path,
     issues,
@@ -683,6 +704,25 @@ function validateLook(look: unknown, path: string, issues: string[]) {
       if (f.color !== undefined) colour(f.color, `${path}.lightFog.color`, issues);
       if (look.grade === undefined || look.grade === false)
         issues.push(`${path}.lightFog: needs grade (the fog is part of the HDR chain)`);
+    }
+  }
+  if (look.panorama !== undefined && look.panorama !== false) {
+    const p = look.panorama;
+    if (!object(p)) issues.push(`${path}.panorama: object or false required`);
+    else {
+      unknownKeys(p, ['asset', 'exposure', 'rotationDeg'], `${path}.panorama`, issues);
+      let id: string | undefined;
+      try {
+        id = normalizeAssetId(p.asset as string);
+      } catch {
+        // Reported below.
+      }
+      if (id === undefined || id !== p.asset || !/\.(png|jpe?g)$/i.test(id))
+        issues.push(`${path}.panorama.asset: use a logical asset id ending in .png or .jpg`);
+      else if (context.assets && !context.assets.includes(id))
+        issues.push(`${path}.panorama.asset: unknown asset ${id}`);
+      range(p.exposure, `${path}.panorama.exposure`, 0, 16);
+      range(p.rotationDeg, `${path}.panorama.rotationDeg`, -360, 360);
     }
   }
   if (look.environment !== undefined && look.environment !== false) {
@@ -1084,7 +1124,7 @@ export function validateZhudaFilmScene(
   if (!isId(scene.id))
     issues.push('scene.id: use lowercase letters, digits, dot, dash or underscore');
   validateCamera(scene.camera, 'scene.camera', issues);
-  if (scene.look !== undefined) validateLook(scene.look, 'scene.look', issues);
+  if (scene.look !== undefined) validateLook(scene.look, 'scene.look', issues, context);
   const materials = new Set<string>();
   if (scene.materials !== undefined) {
     if (!object(scene.materials)) issues.push('scene.materials: object required');
@@ -1195,6 +1235,7 @@ export function applyZhudaFilmScenePatch(
       'grade',
       'lightFog',
       'environment',
+      'panorama',
     ] as const) {
       const before = next.look?.[key],
         after = patch.look[key];
@@ -1251,6 +1292,7 @@ export interface ZhudaResolvedFilmLook {
   grade: Required<ZhudaFilmGrade> | false;
   lightFog: Required<ZhudaFilmLightFog> | false;
   environment: Required<ZhudaFilmEnvironment> | false;
+  panorama: Required<ZhudaFilmPanorama> | false;
 }
 
 /**
@@ -1329,6 +1371,14 @@ export function resolveZhudaFilmLook(look: ZhudaFilmLook = {}): ZhudaResolvedFil
       color: [0.02, 0.03, 0.05],
       scatter: 1,
     }),
+    panorama:
+      look.panorama && typeof look.panorama === 'object'
+        ? {
+            asset: look.panorama.asset,
+            exposure: look.panorama.exposure ?? 1,
+            rotationDeg: look.panorama.rotationDeg ?? 0,
+          }
+        : false,
     environment:
       look.environment && typeof look.environment === 'object'
         ? {
