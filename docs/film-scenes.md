@@ -174,10 +174,26 @@ into haze. It needs `grade` and is off unless given.
   so many lamps do not add up to a wash over the sky. A light with
   `"fogOnly": true` lights only the fog and no surface: use it for lamps
   whose light is already in a lightmap. Fog-only lights do not count against
-  the real-time lights; a scene holds up to 128 lights in the fog in all.
-- The glow is not shadowed: a wall beside a lamp does not cut its halo; only
-  what the camera's own ray hits ends it. The mirrored view of a `reflector`
-  has no fog.
+  the real-time lights; a scene holds up to 128 point lights (the ones that
+  shine into the fog) in all. Spot lights do not shine into the fog.
+- The glow of lamps is not shadowed: a wall beside a lamp does not cut its
+  halo; only what the camera's own ray hits ends it. The mirrored view of a
+  `reflector` has no fog.
+- `shafts` lets the sun or moon (`look.sun`) shine into the fog, cut by
+  whatever stands in the light: beams between trees, under eaves and through
+  window bars.
+
+  ```json
+  "lightFog": { "density": 0.02, "falloffMeters": 12, "shafts": { "strength": 2, "anisotropy": 0.7, "distance": 80 } }
+  ```
+
+  `strength` scales the beams; `anisotropy` (0..0.95) makes them brightest
+  when the camera looks toward the light; `distance` is how far from the
+  camera they are drawn (the depth picture of the light covers that stretch,
+  so a shorter distance gives sharper edges); `steps` (8..96) trades speed
+  for smoothness. Final stills average the step noise away over their
+  samples; a one-sample preview shows it as fine grain. The beams use their
+  own depth picture, so they work with `shadows: false` as well.
 
 `panorama` draws a photograph as the sky instead of the procedural one:
 
@@ -507,7 +523,7 @@ side, and that a rough white box is lit by a coloured lamp on the side that
 faces it. See the
 [environment verification record](plans/records/film-environment/verification.md).
 
-Not yet: several probes or box projection, blending between clips, shadows inside the fog (light shafts), fog lit by the sun or moon,
+Not yet: several probes or box projection, blending between clips, shadowed halos of point lights in the fog,
 animated look or light tracks, real-time shadows from point lights
 (bake them into a lightmap), reflections on walls or slopes, reflection probes, real-time
 global illumination, animated models, spline camera paths, shot lists, path

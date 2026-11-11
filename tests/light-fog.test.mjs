@@ -81,5 +81,27 @@ test('light fog options are validated and defaulted', () => {
     color: [0.02, 0.03, 0.05],
     scatter: 1,
     maxDistance: 600,
+    shafts: undefined,
   });
+});
+
+test('light shaft options are validated and resolved', () => {
+  assert.deepEqual(validateZhudaLightFog({ shafts: {} }), []);
+  assert.equal(resolveZhudaLightFog({}).shafts, undefined);
+  assert.deepEqual(resolveZhudaLightFog({ shafts: { distance: 120 } }).shafts, {
+    strength: 1,
+    anisotropy: 0.6,
+    distance: 120,
+    resolution: 2048,
+    steps: 40,
+  });
+  const issues = validateZhudaLightFog({
+    shafts: { strength: -1, anisotropy: 0.99, distance: 4, resolution: 1000.5, steps: 200, x: 1 },
+  });
+  for (const key of ['strength', 'anisotropy', 'distance', 'resolution', 'steps', 'x'])
+    assert.ok(
+      issues.some((issue) => issue.startsWith(`shafts.${key}`)),
+      key + ': ' + issues.join(' | '),
+    );
+  assert.deepEqual(validateZhudaLightFog({ shafts: 3 }), ['shafts: object required']);
 });

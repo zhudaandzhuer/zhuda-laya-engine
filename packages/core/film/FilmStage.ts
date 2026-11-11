@@ -696,7 +696,9 @@ function buildFilmStageContents(
     let current = resolveZhudaFilmCamera(scene.camera);
     const prepare = (aspect: number, frame?: { width: number; height: number; index: number }) => {
       if (frame) effects.finish?.setFrame(frame.width, frame.height, frame.index);
+      if (frame) lightFog?.setFrame(frame.index);
       lightFog?.update(current.eye, current.target, camera.fieldOfView, aspect);
+      lightFog?.renderShafts();
       if (!reflector) return;
       reflector.update(current.eye, current.target, camera.fieldOfView, aspect);
       reflector.render();
@@ -850,7 +852,23 @@ function applyLook(
   }
   if (look.grade) {
     if (look.lightFog) {
-      const fog = (lightFog = new ZhudaLightFog({ ...look.lightFog, color: look.lightFog.color }));
+      const { shafts, ...plain } = look.lightFog;
+      const fog = (lightFog = new ZhudaLightFog({
+        ...plain,
+        ...(shafts ? { shafts } : {}),
+      }));
+      if (shafts) {
+        // `getForward` is the direction the light travels (checked against
+        // the real shadows by verify:film-fog).
+        const travel = new l.Vector3();
+        sun.owner.transform.getForward(travel);
+        const length = Math.hypot(travel.x, travel.y, travel.z) || 1;
+        const i = look.sun.intensity;
+        fog.attachSun(scene3D, {
+          toward: [-travel.x / length, -travel.y / length, -travel.z / length],
+          color: [look.sun.color[0] * i, look.sun.color[1] * i, look.sun.color[2] * i],
+        });
+      }
       // Cleanups run in reverse: the pipeline releases its chain first.
       cleanups.push(() => fog.dispose());
     }

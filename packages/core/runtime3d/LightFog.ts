@@ -4,9 +4,14 @@
  * Fog density falls off exponentially with height. Along each view ray the
  * effect computes, in closed form, how much the fog hides the scene and how
  * much light every source scatters toward the camera, so lanterns and candles
- * get halos and distant streets sink into haze. There is no ray marching and
- * no shadowing: geometry between a light and the ray does not cut the glow,
- * only geometry on the ray itself ends it.
+ * get halos and distant streets sink into haze. For point lights there is no
+ * ray marching and no shadowing: geometry between a light and the ray does
+ * not cut the glow, only geometry on the ray itself ends it.
+ *
+ * With `shafts`, the sun or moon also shines into the fog, and what stands in
+ * its way cuts the light: beams between trees, roofs and window bars. That
+ * part marches along the view ray and looks each step up in a depth picture
+ * drawn from the light's direction (`attachSun`, `renderShafts`).
  *
  * `zhudaFogOpticalDepth` and `zhudaFogAirlight` are the shader's formulas in
  * TypeScript. Only the class needs the Laya runtime.
@@ -25,7 +30,35 @@ export interface ZhudaLightFogOptions {
   scatter?: number;
   /** Rays are cut here, which bounds the fog on the sky, 1..100000 metres (default 600). */
   maxDistance?: number;
+  /** Shadowed light from the sun or moon in the fog; needs `attachSun`. */
+  shafts?: ZhudaLightShaftOptions;
 }
+
+export interface ZhudaLightShaftOptions {
+  /** Brightness of the beams, 0..64 (default 1). */
+  strength?: number;
+  /**
+   * How strongly the fog scatters forward, 0..0.95 (default 0.6): high values
+   * make beams bright when looking toward the light and faint from the side.
+   */
+  anisotropy?: number;
+  /** How far from the camera beams are drawn, 5..2000 metres (default 60). */
+  distance?: number;
+  /** Side of the depth picture in pixels, 256..4096 (default 2048). */
+  resolution?: number;
+  /** Steps along each view ray, 8..96 (default 40). */
+  steps?: number;
+}
+
+export interface ZhudaFogSun {
+  /** Unit vector from the scene toward the sun or moon. */
+  toward: readonly [number, number, number];
+  /** Linear RGB, already multiplied by the light's intensity. */
+  color: readonly [number, number, number];
+}
+
+/** Most steps one view ray takes through the beams. */
+export const ZHUDA_SHAFT_MAX_STEPS = 96;
 
 export interface ZhudaFogLight {
   position: readonly [number, number, number];
@@ -73,6 +106,27 @@ export function validateZhudaLightFog(options: ZhudaLightFogOptions): string[] {
     !(Array.isArray(o.color) && o.color.length === 3 && o.color.every((n) => within(n, 0, 64)))
   )
     issues.push('color: use linear RGB with three values between 0 and 64');
+  if (o.shafts !== undefined) {
+    const s = o.shafts as Record<string, unknown>;
+    if (!s || typeof s !== 'object' || Array.isArray(s)) issues.push('shafts: object required');
+    else {
+      const shaftRanges: [string, number, number, boolean][] = [
+        ['strength', 0, 64, false],
+        ['anisotropy', 0, 0.95, false],
+        ['distance', 5, 2000, false],
+        ['resolution', 256, 4096, true],
+        ['steps', 8, ZHUDA_SHAFT_MAX_STEPS, true],
+      ];
+      for (const key of Object.keys(s))
+        if (!shaftRanges.some(([name]) => name === key)) issues.push(`shafts.${key}: unknown`);
+      for (const [key, min, max, whole] of shaftRanges)
+        if (
+          s[key] !== undefined &&
+          !(within(s[key], min, max) && (!whole || Number.isInteger(s[key])))
+        )
+          issues.push(`shafts.${key}: use ${whole ? 'a whole number ' : ''}${min}..${max}`);
+    }
+  }
   return issues;
 }
 
@@ -85,6 +139,15 @@ export function resolveZhudaLightFog(options: ZhudaLightFogOptions = {}) {
     color: [...(options.color ?? DEFAULTS.color)] as [number, number, number],
     scatter: options.scatter ?? DEFAULTS.scatter,
     maxDistance: options.maxDistance ?? DEFAULTS.maxDistance,
+    shafts: options.shafts
+      ? {
+          strength: options.shafts.strength ?? 1,
+          anisotropy: options.shafts.anisotropy ?? 0.6,
+          distance: options.shafts.distance ?? 60,
+          resolution: options.shafts.resolution ?? 2048,
+          steps: options.shafts.steps ?? 40,
+        }
+      : undefined,
   };
 }
 
@@ -164,7 +227,34 @@ float k2=clamp(along,0.0,t);
 float dim=exp(-atEye*(abs(k)<0.0001?k2:(1.0-exp(-k*k2))/k));
 glow+=colour*reach*local*dim;
 }
-gl_FragColor=vec4(source.rgb*through+u_ZhudaFogColor.rgb*(1.0-through)+glow*u_ZhudaFogForward.w,source.a);
+vec3 beams=vec3(0.0);
+#ifdef ZHUDA_SHAFTS
+float reach=min(t,u_ZhudaShaftShape.y);
+float steps=u_ZhudaShaftShape.x;
+float stride=reach/steps;
+// Each pixel starts its steps at another offset, which turns banding into fine noise.
+float jitter=fract(52.9829189*fract(dot(gl_FragCoord.xy+u_ZhudaShaftShape.w*vec2(47.0,17.0),vec2(0.06711056,0.00583715))));
+float lit=0.0;
+for(int i=0;i<${ZHUDA_SHAFT_MAX_STEPS};i++){
+if(float(i)>=steps)break;
+float s=(float(i)+jitter)*stride;
+vec3 p=u_ZhudaFogEye.xyz+dir*s;
+vec4 clip=u_ZhudaShaftC0*p.x+u_ZhudaShaftC1*p.y+u_ZhudaShaftC2*p.z+u_ZhudaShaftC3;
+vec3 q=clip.xyz/clip.w*0.5+0.5;
+float stored=texture2D(u_ZhudaShaftDepth,vec2(q.x,1.0-q.y)).x;
+float open=step(q.z-u_ZhudaShaftShape.z,stored);
+float inside=step(0.0,q.x)*step(q.x,1.0)*step(0.0,q.y)*step(q.y,1.0)*step(q.z,1.0);
+open=mix(1.0,open,inside);
+float local=u_ZhudaFogShape.x*exp(-(p.y-u_ZhudaFogShape.z)/falloff);
+float dim=exp(-atEye*(abs(k)<0.0001?s:(1.0-exp(-k*s))/k));
+lit+=open*local*dim;
+}
+float g=u_ZhudaShaftColor.w;
+float towardSun=dot(dir,u_ZhudaShaftSun);
+float phase=(1.0-g*g)/(12.5663706*pow(max(1.0+g*g-2.0*g*towardSun,0.0001),1.5));
+beams=u_ZhudaShaftColor.rgb*lit*stride*phase;
+#endif
+gl_FragColor=vec4(source.rgb*through+u_ZhudaFogColor.rgb*(1.0-through)+glow*u_ZhudaFogForward.w+beams,source.a);
 }`;
 
 const registered = new WeakSet<object>();
@@ -184,6 +274,14 @@ function register(l: any) {
       u_ZhudaFogUp: l.ShaderDataType.Vector3,
       u_ZhudaFogShape: l.ShaderDataType.Vector4,
       u_ZhudaFogColor: l.ShaderDataType.Vector4,
+      u_ZhudaShaftDepth: l.ShaderDataType.Texture2D,
+      u_ZhudaShaftC0: l.ShaderDataType.Vector4,
+      u_ZhudaShaftC1: l.ShaderDataType.Vector4,
+      u_ZhudaShaftC2: l.ShaderDataType.Vector4,
+      u_ZhudaShaftC3: l.ShaderDataType.Vector4,
+      u_ZhudaShaftShape: l.ShaderDataType.Vector4,
+      u_ZhudaShaftColor: l.ShaderDataType.Vector4,
+      u_ZhudaShaftSun: l.ShaderDataType.Vector3,
     },
   );
   shader.addSubShader(sub);
@@ -202,6 +300,8 @@ export class ZhudaLightFog {
   private readonly fog: ReturnType<typeof resolveZhudaLightFog>;
   private count = 0;
   private disposed = false;
+  private shaft?: { scene: any; camera: any; target: any; sun: ZhudaFogSun };
+  private frame = 0;
 
   constructor(options: ZhudaLightFogOptions = {}) {
     const issues = validateZhudaLightFog(options);
@@ -257,6 +357,83 @@ export class ZhudaLightFog {
     this.lights.setPixelsData(this.data, false, false);
   }
 
+  /**
+   * Lets the sun or moon shine into the fog (`shafts` options required). A
+   * camera in `scene` draws what the light sees into a depth picture; call
+   * `update` and then `renderShafts` before a frame drawn outside the engine's
+   * frame loop. Calling it again replaces the light.
+   */
+  attachSun(scene: any, sun: ZhudaFogSun): void {
+    if (this.disposed) throw Error('Disposed light fog');
+    const options = this.fog.shafts;
+    if (!options) throw Error('Light fog was created without shafts');
+    const values = [...sun.toward, ...sun.color];
+    const length = Math.hypot(sun.toward[0], sun.toward[1], sun.toward[2]);
+    if (values.length !== 6 || !values.every(Number.isFinite) || Math.abs(length - 1) > 1e-3)
+      throw Error('Invalid fog sun: toward must be a unit vector, color three numbers');
+    const l = (globalThis as any).Laya;
+    if (this.shaft) {
+      if (this.shaft.scene !== scene) throw Error('Light fog is attached to another scene');
+      this.shaft.sun = { toward: [...sun.toward] as any, color: [...sun.color] as any };
+      return;
+    }
+    const target = new l.RenderTexture(
+      options.resolution,
+      options.resolution,
+      l.RenderTargetFormat.R8G8B8A8,
+      l.RenderTargetFormat.DEPTH_32 ?? l.RenderTargetFormat.DEPTH_16,
+      false,
+      1,
+      true,
+    );
+    const depth = target.depthStencilTexture;
+    if (!depth) {
+      target.destroy();
+      throw Error('Light shafts need a render target with a readable depth texture');
+    }
+    depth.filterMode = l.FilterMode.Point;
+    depth.wrapModeU = depth.wrapModeV = l.WrapMode.Clamp;
+    const camera = new l.Camera(1, 0.5, 1000);
+    camera.name = 'zhuda-light-shafts';
+    camera.orthographic = true;
+    camera.clearFlag = l.CameraClearFlags.SolidColor;
+    camera.clearColor = new l.Color(0, 0, 0, 1);
+    camera.enableHDR = false;
+    camera.renderTarget = target;
+    camera.renderingOrder = -200;
+    scene.addChild(camera);
+    this.shaft = {
+      scene,
+      camera,
+      target,
+      sun: { toward: [...sun.toward] as any, color: [...sun.color] as any },
+    };
+    this.material.setTexture('u_ZhudaShaftDepth', depth);
+    this.material.addDefine(l.Shader3D.getDefineByName('ZHUDA_SHAFTS'));
+  }
+
+  /** Which frame of a sequence is drawn: moves the step noise so samples average it away. */
+  setFrame(index: number): void {
+    if (!Number.isInteger(index) || index < 0) throw Error('Invalid frame index');
+    this.frame = index % 1024;
+  }
+
+  /**
+   * Draws the depth picture now. The engine's frame loop already draws it;
+   * call this only when a frame is rendered outside that loop (captures).
+   */
+  renderShafts(): void {
+    if (this.disposed) throw Error('Disposed light fog');
+    if (!this.shaft) return;
+    const l = (globalThis as any).Laya;
+    const { camera, scene, target } = this.shaft;
+    try {
+      l.Camera.drawRenderTextureByScene(camera, scene, target);
+    } finally {
+      camera.renderTarget = target;
+    }
+  }
+
   /** Call when the camera moves or its field of view or aspect changes. */
   update(
     eye: readonly number[],
@@ -305,6 +482,74 @@ export class ZhudaLightFog {
       'u_ZhudaFogColor',
       new l.Vector4(this.fog.color[0], this.fog.color[1], this.fog.color[2], this.fog.maxDistance),
     );
+    if (this.shaft && this.fog.shafts) {
+      // The light's camera covers a box around the stretch of view where beams are drawn.
+      const options = this.fog.shafts,
+        { camera, sun } = this.shaft;
+      const half = options.distance * 0.6,
+        back = half + 300;
+      const centre = eye.map((v, i) => v + forward[i] * options.distance * 0.5);
+      camera.orthographicVerticalSize = half * 2;
+      camera.aspectRatio = 1;
+      camera.nearPlane = 0.5;
+      camera.farPlane = back + half + 50;
+      camera.transform.position = new l.Vector3(
+        centre[0] + sun.toward[0] * back,
+        centre[1] + sun.toward[1] * back,
+        centre[2] + sun.toward[2] * back,
+      );
+      const steep = Math.hypot(sun.toward[0], sun.toward[2]) < 1e-4;
+      camera.transform.lookAt(
+        new l.Vector3(centre[0], centre[1], centre[2]),
+        steep ? new l.Vector3(0, 0, 1) : new l.Vector3(0, 1, 0),
+        false,
+      );
+      // The same projection as that camera, computed here: Laya refreshes a
+      // camera's own matrices only when it draws, one frame too late.
+      const z = sun.toward,
+        upHint = steep ? [0, 0, 1] : [0, 1, 0];
+      let x = [
+        upHint[1] * z[2] - upHint[2] * z[1],
+        upHint[2] * z[0] - upHint[0] * z[2],
+        upHint[0] * z[1] - upHint[1] * z[0],
+      ];
+      const xl = Math.hypot(x[0], x[1], x[2]);
+      x = x.map((n) => n / xl);
+      const y = [z[1] * x[2] - z[2] * x[1], z[2] * x[0] - z[0] * x[2], z[0] * x[1] - z[1] * x[0]];
+      const place = [centre[0] + z[0] * back, centre[1] + z[1] * back, centre[2] + z[2] * back];
+      const dot = (a: readonly number[], b: readonly number[]) =>
+        a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+      const depth = 2 / (camera.farPlane - camera.nearPlane);
+      for (let i = 0; i < 3; i++)
+        m.setVector4(
+          'u_ZhudaShaftC' + i,
+          new l.Vector4(x[i] / half, y[i] / half, -z[i] * depth, 0),
+        );
+      m.setVector4(
+        'u_ZhudaShaftC3',
+        new l.Vector4(
+          -dot(place, x) / half,
+          -dot(place, y) / half,
+          (dot(place, z) - camera.nearPlane) * depth - 1,
+          1,
+        ),
+      );
+      m.setVector4(
+        'u_ZhudaShaftShape',
+        // steps, reach, depth bias (0.2 m of the camera's range), frame
+        new l.Vector4(options.steps, options.distance, 0.2 / (camera.farPlane - 0.5), this.frame),
+      );
+      m.setVector4(
+        'u_ZhudaShaftColor',
+        new l.Vector4(
+          sun.color[0] * options.strength,
+          sun.color[1] * options.strength,
+          sun.color[2] * options.strength,
+          options.anisotropy,
+        ),
+      );
+      m.setVector3('u_ZhudaShaftSun', new l.Vector3(sun.toward[0], sun.toward[1], sun.toward[2]));
+    }
   }
 
   /** Call after the effect has been removed from its post-process chain. */
@@ -312,6 +557,13 @@ export class ZhudaLightFog {
     if (this.disposed) return;
     this.disposed = true;
     this.effect.material = null;
+    if (this.shaft) {
+      this.material.setTexture('u_ZhudaShaftDepth', null);
+      this.shaft.camera.renderTarget = null;
+      this.shaft.camera.destroy(true);
+      this.shaft.target.destroy();
+      this.shaft = undefined;
+    }
     this.material.setTexture('u_ZhudaFogLights', null);
     this.material.destroy();
     this.lights.destroy();

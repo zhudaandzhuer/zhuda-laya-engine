@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 // Real WebGL check of `look.lightFog`: a fog-only light must glow at its
 // projected pixel and fade away from it, distant surfaces must take more fog
-// than near ones, and a wall on the ray must cut the glow. Desktop GPU
-// evidence only; not WebGPU, mobile or art approval.
+// than near ones, a wall on the ray must cut the glow, and light shafts must
+// be cut by what stands in the sun. Desktop GPU evidence only (WebGL, or
+// WebGPU through verify:film-webgpu); not mobile or art approval.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -21,7 +22,7 @@ const EYE = [0, 2, 6],
   TARGET = [0, 2, -8];
 const LIGHT = [2, 3, -8];
 const grade = { exposure: 1, contrast: 1, saturation: 1, bloom: 0, ao: 0 };
-const scene = ({ lightFog, nodes = [], light = true } = {}) => ({
+const scene = ({ lightFog, nodes = [], light = true, look = {} } = {}) => ({
   schemaVersion: 1,
   id: 'fog-check',
   camera: { eye: EYE, target: TARGET, focalLengthMm: 35 },
@@ -32,6 +33,7 @@ const scene = ({ lightFog, nodes = [], light = true } = {}) => ({
     shadows: false,
     grade,
     ...(lightFog ? { lightFog } : {}),
+    ...look,
   },
   materials: { dark: { color: [0.02, 0.02, 0.02], roughness: 1 } },
   nodes: [
@@ -171,6 +173,92 @@ try {
   assert.ok(
     (await render('plain-again', scene())).data.equals(plain.data),
     'plain frame unchanged',
+  );
+
+  // 8. Light shafts: the sun is in the east at 30 degrees; a long wall at
+  // x = 5 shades the fog below the line y = 6 - (5 - x) * tan(30). A ray that
+  // stays under it gets no light, a ray that rises above it or runs out from
+  // under it does. A wrong light direction or a mirrored depth picture fails.
+  const wall = {
+    id: 'wall',
+    type: 'box',
+    size: [0.3, 6, 80],
+    position: [5, 0, -20],
+    material: 'dark',
+  };
+  const sunny = {
+    sun: { azimuthDeg: 90, elevationDeg: 30, intensity: 3, color: [1, 0.9, 0.7] },
+  };
+  const shaftFog = { density: 0.03, falloffMeters: 200, color: [0, 0, 0], scatter: 0 };
+  const beams = await render(
+    'shafts',
+    scene({
+      light: false,
+      nodes: [wall],
+      look: sunny,
+      lightFog: { ...shaftFog, shafts: { strength: 4, distance: 30, steps: 64 } },
+    }),
+  );
+  const UNDER = project([0, 1, -8]),
+    ABOVE = project([0, 5, -8]),
+    BEYOND = project([-6, 1, -8]);
+  report.shafts = {
+    under: patch(beams, UNDER),
+    above: patch(beams, ABOVE),
+    beyond: patch(beams, BEYOND),
+  };
+  assert.ok(
+    report.shafts.under[0] < 12,
+    `fog in the wall's shadow stays dark: ${report.shafts.under}`,
+  );
+  assert.ok(
+    report.shafts.above[0] > report.shafts.under[0] * 3 + 20,
+    `fog above the shadow is lit: ${report.shafts.above}`,
+  );
+  assert.ok(
+    report.shafts.beyond[0] > report.shafts.under[0] * 3 + 10,
+    `fog past the end of the shadow is lit: ${report.shafts.beyond}`,
+  );
+  assert.ok(report.shafts.above[0] > report.shafts.above[2], 'beams keep the colour of the sun');
+  const open = await render(
+    'shafts-open',
+    scene({
+      light: false,
+      look: sunny,
+      lightFog: { ...shaftFog, shafts: { strength: 4, distance: 30, steps: 64 } },
+    }),
+  );
+  report.shaftsOpen = patch(open, UNDER);
+  assert.ok(
+    report.shaftsOpen[0] > report.shafts.under[0] * 3 + 20,
+    `without the wall the same fog is lit: ${report.shaftsOpen}`,
+  );
+  const noShafts = await render(
+    'shafts-off',
+    scene({ light: false, nodes: [wall], look: sunny, lightFog: shaftFog }),
+  );
+  assert.ok(Math.max(...patch(noShafts, ABOVE)) < 3, 'no beams without shafts');
+  for (let i = 0; i < 20; i++)
+    await host.mountReport(
+      scene(
+        i % 2
+          ? { light: false, look: sunny, lightFog: { ...shaftFog, shafts: {} } }
+          : { lightFog: fog },
+      ),
+    );
+  assert.ok(
+    (
+      await render(
+        'shafts-again',
+        scene({
+          light: false,
+          nodes: [wall],
+          look: sunny,
+          lightFog: { ...shaftFog, shafts: { strength: 4, distance: 30, steps: 64 } },
+        }),
+      )
+    ).data.equals(beams.data),
+    'shafts identical after 20 mounts',
   );
 
   fs.writeFileSync(path.join(out, 'report.json'), JSON.stringify(report, null, 2));

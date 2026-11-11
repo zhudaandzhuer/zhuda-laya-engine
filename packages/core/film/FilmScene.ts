@@ -170,6 +170,22 @@ export interface ZhudaFilmLightFog {
   color?: ZhudaFilmVec3;
   /** Strength of the glow around lights, 0..16 (default 1). */
   scatter?: number;
+  /**
+   * Beams of the sun or moon in the fog, cut by whatever stands in the light
+   * (`look.sun` gives direction, colour and intensity); off unless given.
+   */
+  shafts?: ZhudaFilmLightShafts | false;
+}
+
+export interface ZhudaFilmLightShafts {
+  /** Brightness of the beams, 0..64 (default 1). */
+  strength?: number;
+  /** Forward scattering, 0..0.95 (default 0.6): beams are brightest looking toward the light. */
+  anisotropy?: number;
+  /** How far from the camera beams are drawn, 5..2000 metres (default 60). */
+  distance?: number;
+  /** Steps along each view ray, 8..96 (default 40). */
+  steps?: number;
 }
 
 /** A baked recipe (a registered recipe name or an inline recipe) or a flat PBR colour. */
@@ -405,7 +421,7 @@ export const ZHUDA_FILM_LIMITS = Object.freeze({
    * with at least as many (`maxLights`; Laya's default is 32).
    */
   lights: 128,
-  /** Lights one `lightFog` can hold, fog-only lights included. */
+  /** Point lights one `lightFog` can hold, fog-only lights included. */
   fogLights: 128,
   models: 64,
 });
@@ -709,10 +725,30 @@ function validateLook(
     else {
       unknownKeys(
         f,
-        ['density', 'falloffMeters', 'baseY', 'color', 'scatter'],
+        ['density', 'falloffMeters', 'baseY', 'color', 'scatter', 'shafts'],
         `${path}.lightFog`,
         issues,
       );
+      if (f.shafts !== undefined && f.shafts !== false) {
+        const s = f.shafts;
+        if (!object(s)) issues.push(`${path}.lightFog.shafts: object or false required`);
+        else {
+          unknownKeys(
+            s,
+            ['strength', 'anisotropy', 'distance', 'steps'],
+            `${path}.lightFog.shafts`,
+            issues,
+          );
+          range(s.strength, `${path}.lightFog.shafts.strength`, 0, 64);
+          range(s.anisotropy, `${path}.lightFog.shafts.anisotropy`, 0, 0.95);
+          range(s.distance, `${path}.lightFog.shafts.distance`, 5, 2000);
+          if (
+            s.steps !== undefined &&
+            !(Number.isInteger(s.steps) && (s.steps as number) >= 8 && (s.steps as number) <= 96)
+          )
+            issues.push(`${path}.lightFog.shafts.steps: use a whole number 8..96`);
+        }
+      }
       range(f.density, `${path}.lightFog.density`, 0, 1);
       range(f.falloffMeters, `${path}.lightFog.falloffMeters`, 0.5, 1000);
       range(f.baseY, `${path}.lightFog.baseY`, -ZHUDA_FILM_LIMITS.extent, ZHUDA_FILM_LIMITS.extent);
@@ -1200,9 +1236,13 @@ export function validateZhudaFilmScene(
             issues.push(`scene.nodes[${i}].hides: ${id} is not a model node in this scene`);
     });
     const lightNodes = scene.nodes.filter((node) => object(node) && node.type === 'light');
-    if (lightNodes.length > ZHUDA_FILM_LIMITS.fogLights)
+    // Only point lights shine into the fog; spot lights do not count here.
+    if (
+      lightNodes.filter((node) => (node as { kind?: unknown }).kind === 'point').length >
+      ZHUDA_FILM_LIMITS.fogLights
+    )
       issues.push(
-        `scene.nodes: at most ${ZHUDA_FILM_LIMITS.fogLights} lights including fog-only ones`,
+        `scene.nodes: at most ${ZHUDA_FILM_LIMITS.fogLights} point lights including fog-only ones`,
       );
     if (
       lightNodes.filter((node) => (node as { castsShadow?: unknown }).castsShadow === true).length >
@@ -1315,7 +1355,11 @@ export interface ZhudaResolvedFilmLook {
   atmosphere: Required<ZhudaFilmAtmosphere> | false;
   fog: Required<ZhudaFilmFog> | false;
   grade: Required<ZhudaFilmGrade> | false;
-  lightFog: Required<ZhudaFilmLightFog> | false;
+  lightFog:
+    | (Required<Omit<ZhudaFilmLightFog, 'shafts'>> & {
+        shafts: Required<ZhudaFilmLightShafts> | false;
+      })
+    | false;
   environment: Required<ZhudaFilmEnvironment> | false;
   panorama: Required<ZhudaFilmPanorama> | false;
 }
@@ -1325,6 +1369,24 @@ export interface ZhudaResolvedFilmLook {
  * scene's own fields. Without a preset, shadows, atmosphere and fog stay off
  * unless the scene turns them on.
  */
+/** Fills in the shaft defaults of a resolved light fog. */
+function lightFogOf(fog: Required<ZhudaFilmLightFog> | false): ZhudaResolvedFilmLook['lightFog'] {
+  if (!fog) return false;
+  const shafts = fog.shafts;
+  return {
+    ...fog,
+    shafts:
+      shafts && typeof shafts === 'object'
+        ? {
+            strength: shafts.strength ?? 1,
+            anisotropy: shafts.anisotropy ?? 0.6,
+            distance: shafts.distance ?? 60,
+            steps: shafts.steps ?? 40,
+          }
+        : false,
+  };
+}
+
 export function resolveZhudaFilmLook(look: ZhudaFilmLook = {}): ZhudaResolvedFilmLook {
   const preset = look.preset ? ZHUDA_FILM_LOOK_PRESETS[look.preset] : null;
   const d = ZHUDA_FILM_DEFAULT_LOOK;
@@ -1390,13 +1452,16 @@ export function resolveZhudaFilmLook(look: ZhudaFilmLook = {}): ZhudaResolvedFil
       vignette: 0,
       fringe: 0,
     }),
-    lightFog: merge<ZhudaFilmLightFog>(look.lightFog, false, {
-      density: 0.012,
-      falloffMeters: 8,
-      baseY: 0,
-      color: [0.02, 0.03, 0.05],
-      scatter: 1,
-    }),
+    lightFog: lightFogOf(
+      merge<ZhudaFilmLightFog>(look.lightFog, false, {
+        density: 0.012,
+        falloffMeters: 8,
+        baseY: 0,
+        color: [0.02, 0.03, 0.05],
+        scatter: 1,
+        shafts: false,
+      }),
+    ),
     panorama:
       look.panorama && typeof look.panorama === 'object'
         ? {

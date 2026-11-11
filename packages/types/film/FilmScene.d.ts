@@ -145,6 +145,21 @@ export interface ZhudaFilmLightFog {
     color?: ZhudaFilmVec3;
     /** Strength of the glow around lights, 0..16 (default 1). */
     scatter?: number;
+    /**
+     * Beams of the sun or moon in the fog, cut by whatever stands in the light
+     * (`look.sun` gives direction, colour and intensity); off unless given.
+     */
+    shafts?: ZhudaFilmLightShafts | false;
+}
+export interface ZhudaFilmLightShafts {
+    /** Brightness of the beams, 0..64 (default 1). */
+    strength?: number;
+    /** Forward scattering, 0..0.95 (default 0.6): beams are brightest looking toward the light. */
+    anisotropy?: number;
+    /** How far from the camera beams are drawn, 5..2000 metres (default 60). */
+    distance?: number;
+    /** Steps along each view ray, 8..96 (default 40). */
+    steps?: number;
 }
 /** A baked recipe (a registered recipe name or an inline recipe) or a flat PBR colour. */
 export type ZhudaFilmMaterial = {
@@ -347,7 +362,7 @@ export declare const ZHUDA_FILM_LIMITS: Readonly<{
      * with at least as many (`maxLights`; Laya's default is 32).
      */
     lights: 128;
-    /** Lights one `lightFog` can hold, fog-only lights included. */
+    /** Point lights one `lightFog` can hold, fog-only lights included. */
     fogLights: 128;
     models: 64;
 }>;
@@ -390,15 +405,12 @@ export interface ZhudaResolvedFilmLook {
     atmosphere: Required<ZhudaFilmAtmosphere> | false;
     fog: Required<ZhudaFilmFog> | false;
     grade: Required<ZhudaFilmGrade> | false;
-    lightFog: Required<ZhudaFilmLightFog> | false;
+    lightFog: (Required<Omit<ZhudaFilmLightFog, 'shafts'>> & {
+        shafts: Required<ZhudaFilmLightShafts> | false;
+    }) | false;
     environment: Required<ZhudaFilmEnvironment> | false;
     panorama: Required<ZhudaFilmPanorama> | false;
 }
-/**
- * Look with every value filled in: the preset (if any) first, then the
- * scene's own fields. Without a preset, shadows, atmosphere and fog stay off
- * unless the scene turns them on.
- */
 export declare function resolveZhudaFilmLook(look?: ZhudaFilmLook): ZhudaResolvedFilmLook;
 /** Checks a keyed camera move: two to 256 keys, strictly increasing times from 0. */
 export declare function validateZhudaFilmCameraPath(keys: unknown): string[];

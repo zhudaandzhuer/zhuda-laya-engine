@@ -580,8 +580,54 @@ test('lightFog needs grade; fog-only lights are point lights outside the 32 limi
     baseY: 0,
     color: [0.02, 0.03, 0.05],
     scatter: 1,
+    shafts: false,
   });
   assert.equal(resolveZhudaFilmLook({ grade: {} }).lightFog, false);
+  // Light shafts: off by default, defaults filled in, values checked with paths.
+  assert.deepEqual(
+    resolveZhudaFilmLook({ grade: {}, lightFog: { shafts: { strength: 3 } } }).lightFog.shafts,
+    { strength: 3, anisotropy: 0.6, distance: 60, steps: 40 },
+  );
+  assert.equal(
+    resolveZhudaFilmLook({ grade: {}, lightFog: { shafts: false } }).lightFog.shafts,
+    false,
+  );
+  assert.deepEqual(
+    validateZhudaFilmScene(
+      withLook({ grade: {}, lightFog: { shafts: { anisotropy: 0.7, distance: 80, steps: 64 } } }),
+      context,
+    ),
+    [],
+  );
+  const shaftIssues = validateZhudaFilmScene(
+    withLook({
+      grade: {},
+      lightFog: { shafts: { strength: 65, anisotropy: 1, distance: 2, steps: 7.5, glow: 1 } },
+    }),
+    context,
+  );
+  for (const key of ['strength', 'anisotropy', 'distance', 'steps', 'glow'])
+    assert.ok(
+      shaftIssues.some((issue) => issue.includes(`look.lightFog.shafts.${key}`)),
+      key + ': ' + shaftIssues.join(' | '),
+    );
+  // Spot lights do not shine into the fog and do not count against its lights.
+  assert.deepEqual(
+    validateZhudaFilmScene(
+      withLook({ grade: {}, lightFog: {} }, [
+        ...Array.from({ length: 100 }, (_, i) => lamp(i, { fogOnly: true })),
+        ...Array.from({ length: 100 }, (_, i) => ({
+          id: 'spot' + i,
+          type: 'light',
+          kind: 'spot',
+          position: [i, 3, 0],
+          target: [i, 0, 0],
+        })),
+      ]),
+      context,
+    ),
+    [],
+  );
   const cases = [
     [{ lightFog: {} }, 'lightFog: needs grade'],
     [{ grade: {}, lightFog: { density: 3 } }, 'lightFog.density'],
@@ -604,7 +650,7 @@ test('lightFog needs grade; fog-only lights are point lights outside the 32 limi
     validateZhudaFilmScene(
       withLook({}, [...fogOnly, ...lit, lamp(999, { fogOnly: true })]),
       context,
-    ).some((issue) => /at most 128 lights/.test(issue)),
+    ).some((issue) => /at most 128 point lights/.test(issue)),
   );
   // More than Laya's default of 32 real-time lights is a valid scene; the
   // runtime must have been booted for them (checked when the scene is mounted).
