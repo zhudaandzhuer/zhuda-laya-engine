@@ -31,6 +31,13 @@ export type ZhudaTextureMask = {
     columns: number;
     rows: number;
     mortar: number;
+    /**
+     * mortar (default): 1 on the joints. id: one random value per brick, for
+     * tone, tilt or wear that differs from slab to slab. edge: 0 on the
+     * joint rising to 1 at the brick's middle, for worn or bevelled edges.
+     */
+    mode?: 'mortar' | 'id' | 'edge';
+    seed?: number;
     range?: Range;
 };
 export interface ZhudaTextureLayer {

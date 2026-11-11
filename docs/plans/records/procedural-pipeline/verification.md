@@ -62,3 +62,15 @@ white under this light.
   `docs/browser-sdk-releases.json`.
 
 Decision: **Implemented within scope; desktop WebGL verified.**
+
+## Follow-up: per-brick masks (2026-11-11)
+
+The `bricks` mask gained `mode: 'id'` (one random value per brick) and
+`mode: 'edge'` (0 at the joint rising to 1 mid-brick). A paving recipe can
+now give every slab its own tone and height and round its edges; before,
+all slabs of a recipe were identical and only the joints differed.
+`node --test tests/procedural-assets.test.mjs` (18 tests) checks that an id
+is constant inside a brick, differs between bricks (at least 20 distinct of
+24), wraps across the tile edge on offset rows and changes with the seed,
+and that the edge value is 0 on the joint, 1 mid-brick and rising between.
+Data contract only: how a baked set looks still needs a real draw.

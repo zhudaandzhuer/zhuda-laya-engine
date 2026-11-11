@@ -10,7 +10,7 @@
  * A baked set proves the data contract only. How it looks on a device still
  * requires a real draw.
  */
-import { cellularNoise, fractalNoise } from './Noise.ts';
+import { cellularNoise, fractalNoise, latticeHash } from './Noise.ts';
 
 export type ZhudaLinearColor = [number, number, number];
 type Range = [number, number];
@@ -36,7 +36,20 @@ export type ZhudaTextureMask =
       duty?: number;
       range?: Range;
     }
-  | { type: 'bricks'; columns: number; rows: number; mortar: number; range?: Range };
+  | {
+      type: 'bricks';
+      columns: number;
+      rows: number;
+      mortar: number;
+      /**
+       * mortar (default): 1 on the joints. id: one random value per brick, for
+       * tone, tilt or wear that differs from slab to slab. edge: 0 on the
+       * joint rising to 1 at the brick's middle, for worn or bevelled edges.
+       */
+      mode?: 'mortar' | 'id' | 'edge';
+      seed?: number;
+      range?: Range;
+    };
 
 export interface ZhudaTextureLayer {
   name?: string;
@@ -144,6 +157,8 @@ function validateMask(mask: unknown, path: string, issues: string[]): void {
         issues.push(`${path}.rows: use an even integer 2..256 so the offset bond tiles`);
       if (!(finite(m.mortar) && m.mortar > 0 && m.mortar < 0.5))
         issues.push(`${path}.mortar: use a cell fraction between 0 and 0.5`);
+      if (m.mode !== undefined && !['mortar', 'id', 'edge'].includes(m.mode as string))
+        issues.push(`${path}.mode: use mortar, id or edge`);
       break;
     default:
       issues.push(`${path}.type: unknown mask type ${String(m.type)}`);
@@ -259,7 +274,18 @@ export function evaluateZhudaTextureMask(
         cu = fract(u * mask.columns + (row % 2) * 0.5),
         cv = fract(v * mask.rows),
         half = mask.mortar / 2;
-      value = Math.min(cu, 1 - cu) < half || Math.min(cv, 1 - cv) < half ? 1 : 0;
+      if (mask.mode === 'id') {
+        // Whole bricks: column index after the row's half-brick offset, wrapped
+        // so the pattern repeats over the tile.
+        const column = Math.floor(fract(u) * mask.columns + (row % 2) * 0.5) % mask.columns;
+        value = latticeHash(column, row, seed + (mask.seed ?? 0) + 7919) / 4294967296;
+      } else if (mask.mode === 'edge') {
+        // Distance to the nearest joint, as a share of the shorter half-brick.
+        const du = (Math.min(cu, 1 - cu) - half) / mask.columns,
+          dv = (Math.min(cv, 1 - cv) - half) / mask.rows,
+          reach = (0.5 - half) / Math.max(mask.columns, mask.rows);
+        value = Math.min(1, Math.max(0, Math.min(du, dv) / reach));
+      } else value = Math.min(cu, 1 - cu) < half || Math.min(cv, 1 - cv) < half ? 1 : 0;
       break;
     }
   }

@@ -206,6 +206,8 @@ test('every mask type stays in 0..1 and repeats with period one', () => {
     { type: 'stripes', axis: 'u', count: 10 },
     { type: 'stripes', axis: 'v', count: 6, profile: 'square', duty: 0.3 },
     { type: 'bricks', columns: 4, rows: 8, mortar: 0.08 },
+    { type: 'bricks', columns: 4, rows: 8, mortar: 0.08, mode: 'id' },
+    { type: 'bricks', columns: 3, rows: 6, mortar: 0.05, mode: 'edge' },
   ];
   for (const mask of masks)
     for (let i = 0; i < 300; i++) {
@@ -939,5 +941,43 @@ test('run parameters use the engine clock and Prefab showcases use the scene lib
   await assert.rejects(
     bootZhudaModules({}, modules, { show: 'audio', prefabs }),
     /Available: props, hud/,
+  );
+});
+
+test('brick ids are constant inside a brick, differ between bricks and wrap; edges rise from the joint', async () => {
+  const { evaluateZhudaTextureMask } = await import('../packages/core/procedural/TextureRecipe.ts');
+  const id = { type: 'bricks', columns: 4, rows: 6, mortar: 0.06, mode: 'id' };
+  const at = (u, v) => evaluateZhudaTextureMask(id, u, v, 3);
+  // Row 0 has no offset: one brick spans u 0..0.25.
+  assert.equal(at(0.02, 0.05), at(0.23, 0.12));
+  // Row 1 is offset by half a brick: its bricks span u -0.125..0.125 and so on.
+  assert.equal(at(0.01, 0.2), at(0.99, 0.3), 'the offset brick wraps across the tile edge');
+  assert.equal(at(0.13, 0.2), at(0.36, 0.3));
+  const values = new Set();
+  for (let row = 0; row < 6; row++)
+    for (let column = 0; column < 4; column++)
+      values.add(
+        at((column + 0.5 + (row % 2) * 0.5) / 4 - (row % 2) * 0.25 + 0.001, (row + 0.5) / 6),
+      );
+  assert.ok(values.size >= 20, `bricks differ from each other: ${values.size} distinct of 24`);
+  assert.notEqual(at(0.1, 0.05), evaluateZhudaTextureMask({ ...id, seed: 9 }, 0.1, 0.05, 3));
+  const edge = { type: 'bricks', columns: 4, rows: 6, mortar: 0.06, mode: 'edge' };
+  const e = (u, v) => evaluateZhudaTextureMask(edge, u, v, 0);
+  assert.equal(e(0.001, 0.08), 0, 'on the joint');
+  assert.equal(e(0.125, 1 / 12), 1, 'middle of a brick');
+  assert.ok(e(0.03, 1 / 12) > 0 && e(0.03, 1 / 12) < e(0.07, 1 / 12), 'rises away from the joint');
+  const { validateZhudaTextureRecipe } = await import(
+    '../packages/core/procedural/TextureRecipe.ts'
+  );
+  assert.ok(
+    validateZhudaTextureRecipe({
+      schemaVersion: 1,
+      id: 'x',
+      tileMeters: [1, 1],
+      base: { color: [0.5, 0.5, 0.5], roughness: 0.5, metallic: 0 },
+      layers: [
+        { mask: { type: 'bricks', columns: 2, rows: 2, mortar: 0.1, mode: 'tone' }, heightMm: 1 },
+      ],
+    }).some((issue) => issue.includes('mode: use mortar, id or edge')),
   );
 });

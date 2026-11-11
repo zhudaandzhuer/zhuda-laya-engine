@@ -34,7 +34,9 @@ const materialFor = (name: string) => {
   if (!materials.has(name))
     materials.set(
       name,
-      createZhudaProceduralMaterial(bakeZhudaTextureSet(ZHUDA_STARTER_TEXTURES[name], { size: 512 })),
+      createZhudaProceduralMaterial(
+        bakeZhudaTextureSet(ZHUDA_STARTER_TEXTURES[name], { size: 512 }),
+      ),
     );
   return materials.get(name)!.material;
 };
@@ -53,13 +55,13 @@ A `ZhudaTextureRecipe` is JSON: a base surface (`color` in linear RGB,
 mask and may change colour, roughness, metallic and relief (`heightMm`).
 `tileMeters` is the real size of one tile, so texel density stays physical.
 
-| Mask | Use |
-| --- | --- |
-| `fbm` | Soft variation, grime, wear. `frequency` 1..512, `octaves` 1..8 |
-| `cells` | Cellular patterns. `mode`: `distance`, `edge` or `id` (one value per cell) |
-| `stripes` | Ribs, corrugation, plank gaps. `profile`: `sine` or `square` |
-| `bricks` | Offset bond; the mask is 1 on the mortar |
-| `constant` | A flat amount |
+| Mask       | Use                                                                                                                                                                                   |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `fbm`      | Soft variation, grime, wear. `frequency` 1..512, `octaves` 1..8                                                                                                                       |
+| `cells`    | Cellular patterns. `mode`: `distance`, `edge` or `id` (one value per cell)                                                                                                            |
+| `stripes`  | Ribs, corrugation, plank gaps. `profile`: `sine` or `square`                                                                                                                          |
+| `bricks`   | Offset bond. `mode`: `mortar` (1 on the joints, default), `id` (one value per brick, for slab-to-slab tone and tilt) or `edge` (0 at the joint rising to 1 mid-brick, for worn edges) |
+| `constant` | A flat amount                                                                                                                                                                         |
 
 Every mask repeats exactly over the tile, so baked maps wrap without a seam.
 Frequencies and counts must be integers for that reason. `range: [lo, hi]`
@@ -136,8 +138,14 @@ Play the result through the existing sample path. Do not open another
 logical ID and pass a `fallback` provider for everything else:
 
 ```ts
-const assets = new ProceduralAssetProvider({ fallback: new DirectoryAssetProvider({ baseUrl: 'assets/' }) });
-assets.register('audio/impact.wav', () => renderZhudaSynthWav(ZHUDA_STARTER_SOUNDS['impact-metal']), 'audio');
+const assets = new ProceduralAssetProvider({
+  fallback: new DirectoryAssetProvider({ baseUrl: 'assets/' }),
+});
+assets.register(
+  'audio/impact.wav',
+  () => renderZhudaSynthWav(ZHUDA_STARTER_SOUNDS['impact-metal']),
+  'audio',
+);
 ```
 
 Scene code keeps loading `audio/impact.wav`. Replacing the generator with a
@@ -153,12 +161,12 @@ proves it alone. `parseZhudaRunParams` reads `seed`, `show`, `dt`, `shot` and
 
 The contract reuses the engine instead of adding a second path:
 
-| Parameter | Engine piece |
-| --- | --- |
-| `?dt=` | `createZhudaRunClock(params)` returns the engine's `ZhudaSimulationClock` with that step. Advance it from the runtime session, the only wall-clock source: `context.runtime.start((dt) => clock.advance(dt, step))`. |
-| `?show=` | A showcase is a function or a Prefab: `showcase: { prefab: 'yard/container', state: 'rusty' }`. Pass the scene's `ZhudaPrefabLibrary` as `prefabs` (and a `parent`), and the Prefab is instantiated alone from the same definition the scene uses. |
-| `?shot=1` | Render the still through `ZhudaCinematicCapture` or `ZhudaFilmRenderer`. |
-| `?seed=` | `createZhudaRandom(seed)`, below. |
+| Parameter | Engine piece                                                                                                                                                                                                                                       |
+| --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `?dt=`    | `createZhudaRunClock(params)` returns the engine's `ZhudaSimulationClock` with that step. Advance it from the runtime session, the only wall-clock source: `context.runtime.start((dt) => clock.advance(dt, step))`.                               |
+| `?show=`  | A showcase is a function or a Prefab: `showcase: { prefab: 'yard/container', state: 'rusty' }`. Pass the scene's `ZhudaPrefabLibrary` as `prefabs` (and a `parent`), and the Prefab is instantiated alone from the same definition the scene uses. |
+| `?shot=1` | Render the still through `ZhudaCinematicCapture` or `ZhudaFilmRenderer`.                                                                                                                                                                           |
+| `?seed=`  | `createZhudaRandom(seed)`, below.                                                                                                                                                                                                                  |
 
 ## Seeds
 
