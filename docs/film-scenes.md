@@ -140,6 +140,11 @@ preset keeps the plain look (flat sky colour, no shadows, sky or fog).
 "grade": { "exposure": 1.7, "contrast": 1.06, "saturation": 0.96, "bloom": 0.3, "ao": 1.1 }
 ```
 
+`grade` also takes what a real camera adds, each 0..1 and off by default:
+`grain` (film grain, the same for a frame however often it is rendered),
+`vignette` (darker corners) and `fringe` (colour fringing toward the
+corners). A rendered frame without them is cleaner than any photograph.
+
 With a grade, lamps and lit windows can be brighter than white and glow
 instead of clipping; without one the render is the plain SDR output. The film
 host uses the `3d-gltf` browser bundle, which carries the post-process module.

@@ -46,6 +46,15 @@ Color/albedo and emission textures must be uploaded with the appropriate sRGB fl
 
 `surface.dispose()` destroys its material after detaching borrowed textures. Destroy meshes/instances first; the caller owns textures. Shader registrations/program caches persist in the native runtime, so use stable shader names rather than generating one per instance.
 
+## Lens finish
+
+`ZhudaLensFinish({ grain, vignette, fringe })` is one post-process effect for
+the end of the chain: pass `[finish.effect]` as `finishEffects` to
+`ZhudaFilmicPipeline` (after tone mapping, in display space) and call
+`setFrame(width, height, frameNumber)` before each frame; the grain is a
+function of the pixel and that frame number, so it does not change between
+renders of the same frame. `dispose()` it after the pipeline.
+
 ## Environment captured from the scene
 
 `new ZhudaEnvironmentProbe(scene).capture({ position, reflection, ambient })`

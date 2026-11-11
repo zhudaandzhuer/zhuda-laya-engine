@@ -82,6 +82,12 @@ export interface FilmicOptions {
    * the pipeline.
    */
   sceneEffects?: readonly any[];
+  /**
+   * Borrowed effects added last, after tone mapping, in display space: for
+   * example `ZhudaLensFinish.effect`. The caller disposes them after the
+   * pipeline.
+   */
+  finishEffects?: readonly any[];
 }
 /** Owns the camera's HDR, AO, restrained bloom and ACES chain. Caller chooses quality. */
 export class ZhudaFilmicPipeline {
@@ -137,6 +143,7 @@ export class ZhudaFilmicPipeline {
     if (options.sceneEffects?.length) camera.depthTextureMode |= l.DepthTextureMode.Depth;
     post.addEffect(this.bloom);
     post.addEffect(this.grade);
+    for (const effect of options.finishEffects ?? []) post.addEffect(effect);
     camera.enableHDR = true;
     camera.postProcess = post;
     if (options.temporalAA) {

@@ -67,6 +67,13 @@ export interface ZhudaFilmGrade {
     ao?: number;
     /** Ambient occlusion radius in metres, 0.05..5 (default 0.5). */
     aoRadius?: number;
+    /**
+     * What a real camera adds, after tone mapping, each 0..1 and off by
+     * default: film grain, darker corners and colour fringing at the corners.
+     */
+    grain?: number;
+    vignette?: number;
+    fringe?: number;
 }
 export interface ZhudaFilmLook {
     /**

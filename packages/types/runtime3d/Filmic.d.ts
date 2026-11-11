@@ -33,6 +33,12 @@ export interface FilmicOptions {
      * the pipeline.
      */
     sceneEffects?: readonly any[];
+    /**
+     * Borrowed effects added last, after tone mapping, in display space: for
+     * example `ZhudaLensFinish.effect`. The caller disposes them after the
+     * pipeline.
+     */
+    finishEffects?: readonly any[];
 }
 /** Owns the camera's HDR, AO, restrained bloom and ACES chain. Caller chooses quality. */
 export declare class ZhudaFilmicPipeline {

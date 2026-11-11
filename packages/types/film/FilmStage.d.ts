@@ -53,7 +53,11 @@ export interface ZhudaFilmStage {
      * Draws what the main camera reads (a reflector's mirrored view) for the
      * camera last set. `ZhudaFilmRenderer` calls it before every sample.
      */
-    prepare(aspect: number): void;
+    prepare(aspect: number, frame?: {
+        width: number;
+        height: number;
+        index: number;
+    }): void;
     /** Hands the stage something to release when it is disposed (before the scene goes). */
     adopt(release: () => void): void;
     dispose(): void;

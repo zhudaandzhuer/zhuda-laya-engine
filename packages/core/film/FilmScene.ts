@@ -88,6 +88,13 @@ export interface ZhudaFilmGrade {
   ao?: number;
   /** Ambient occlusion radius in metres, 0.05..5 (default 0.5). */
   aoRadius?: number;
+  /**
+   * What a real camera adds, after tone mapping, each 0..1 and off by
+   * default: film grain, darker corners and colour fringing at the corners.
+   */
+  grain?: number;
+  vignette?: number;
+  fringe?: number;
 }
 
 export interface ZhudaFilmLook {
@@ -634,7 +641,17 @@ function validateLook(look: unknown, path: string, issues: string[]) {
     else {
       unknownKeys(
         g,
-        ['exposure', 'contrast', 'saturation', 'bloom', 'ao', 'aoRadius'],
+        [
+          'exposure',
+          'contrast',
+          'saturation',
+          'bloom',
+          'ao',
+          'aoRadius',
+          'grain',
+          'vignette',
+          'fringe',
+        ],
         `${path}.grade`,
         issues,
       );
@@ -644,6 +661,9 @@ function validateLook(look: unknown, path: string, issues: string[]) {
       range(g.bloom, `${path}.grade.bloom`, 0, 2);
       range(g.ao, `${path}.grade.ao`, 0, 4);
       range(g.aoRadius, `${path}.grade.aoRadius`, 0.05, 5);
+      range(g.grain, `${path}.grade.grain`, 0, 1);
+      range(g.vignette, `${path}.grade.vignette`, 0, 1);
+      range(g.fringe, `${path}.grade.fringe`, 0, 1);
     }
   }
   if (look.lightFog !== undefined && look.lightFog !== false) {
@@ -1298,6 +1318,9 @@ export function resolveZhudaFilmLook(look: ZhudaFilmLook = {}): ZhudaResolvedFil
       bloom: 0.1,
       ao: 0.5,
       aoRadius: 0.5,
+      grain: 0,
+      vignette: 0,
+      fringe: 0,
     }),
     lightFog: merge<ZhudaFilmLightFog>(look.lightFog, false, {
       density: 0.012,

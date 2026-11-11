@@ -21,6 +21,7 @@ import { createProviderAssetCache, type AssetProvider } from '../runtime3d/Asset
 import { ZhudaReflectiveSurface } from '../shaders/ReflectiveSurface.ts';
 import { ZhudaLightFog } from '../runtime3d/LightFog.ts';
 import { ZhudaEnvironmentProbe } from '../runtime3d/EnvironmentProbe.ts';
+import { ZhudaLensFinish } from '../runtime3d/LensFinish.ts';
 import { ZhudaModelInspector } from '../runtime3d/ModelInspector.ts';
 import { ZhudaModelAnimationSampler } from '../runtime3d/ModelAnimationSampler.ts';
 import {
@@ -95,7 +96,7 @@ export interface ZhudaFilmStage {
    * Draws what the main camera reads (a reflector's mirrored view) for the
    * camera last set. `ZhudaFilmRenderer` calls it before every sample.
    */
-  prepare(aspect: number): void;
+  prepare(aspect: number, frame?: { width: number; height: number; index: number }): void;
   /** Hands the stage something to release when it is disposed (before the scene goes). */
   adopt(release: () => void): void;
   dispose(): void;
@@ -328,7 +329,8 @@ function buildFilmStageContents(
       intensity: look.sun.intensity,
       color: [...look.sun.color, 1] as [number, number, number, number],
     });
-    const lightFog = applyLook(l, scene3D, camera, sun.light, look, cleanups);
+    const effects = applyLook(l, scene3D, camera, sun.light, look, cleanups);
+    const lightFog = effects.lightFog;
     // What moves with shot time; filled in below, applied by `setTime`.
     const timed: ((seconds: number) => void)[] = [];
     const modelPose = new Map<string, { position: number[]; yawDeg: number }>();
@@ -620,7 +622,8 @@ function buildFilmStageContents(
     });
     cleanups.push(() => lens.dispose());
     let current = resolveZhudaFilmCamera(scene.camera);
-    const prepare = (aspect: number) => {
+    const prepare = (aspect: number, frame?: { width: number; height: number; index: number }) => {
+      if (frame) effects.finish?.setFrame(frame.width, frame.height, frame.index);
       lightFog?.update(current.eye, current.target, camera.fieldOfView, aspect);
       if (!reflector) return;
       reflector.update(current.eye, current.target, camera.fieldOfView, aspect);
@@ -697,8 +700,9 @@ function applyLook(
   sun: any,
   look: ZhudaResolvedFilmLook,
   cleanups: (() => void)[],
-): ZhudaLightFog | undefined {
+): { lightFog?: ZhudaLightFog; finish?: ZhudaLensFinish } {
   let lightFog: ZhudaLightFog | undefined;
+  let finish: ZhudaLensFinish | undefined;
   if (look.shadows) {
     sun.shadowMode = look.shadows.softness === 'hard' ? l.ShadowMode.Hard : l.ShadowMode.SoftHigh;
     sun.shadowDistance = look.shadows.distance;
@@ -735,8 +739,17 @@ function applyLook(
       // Cleanups run in reverse: the pipeline releases its chain first.
       cleanups.push(() => fog.dispose());
     }
+    if (look.grade.grain > 0 || look.grade.vignette > 0 || look.grade.fringe > 0) {
+      const lens = (finish = new ZhudaLensFinish({
+        grain: look.grade.grain,
+        vignette: look.grade.vignette,
+        fringe: look.grade.fringe,
+      }));
+      cleanups.push(() => lens.dispose());
+    }
     const film = new ZhudaFilmicPipeline(camera, {
       sceneEffects: lightFog ? [lightFog.effect] : [],
+      finishEffects: finish ? [finish.effect] : [],
       exposure: look.grade.exposure,
       contrast: look.grade.contrast,
       saturation: look.grade.saturation,
@@ -757,7 +770,7 @@ function applyLook(
     scene3D.fogEnd = look.fog.end;
     cleanups.push(() => (scene3D.enableFog = false));
   }
-  return lightFog;
+  return { lightFog, finish };
 }
 
 function materialName(material: unknown, materials: Map<string, any>): string {
@@ -820,7 +833,12 @@ export class ZhudaFilmRenderer {
           this.stage.setTime((options.timeSec ?? 0) + seconds);
           this.stage.setCamera(camera);
         },
-        prepare: () => this.stage.prepare(options.width / options.height),
+        prepare: () =>
+          this.stage.prepare(options.width / options.height, {
+            width: options.width,
+            height: options.height,
+            index: (options.index ?? 0) + Math.round((options.timeSec ?? 0) * (options.fps ?? 24)),
+          }),
       });
     } finally {
       capture.dispose();

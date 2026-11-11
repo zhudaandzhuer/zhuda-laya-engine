@@ -70,3 +70,14 @@ with `--film-pack`; 864 frames re-rendered byte-identical in size.
 - Desktop WebGL only; WebGPU and mobile are not covered.
 
 Decision: **Implemented within scope; desktop WebGL verified.**
+
+## Follow-up: lens finish (2026-11-11)
+
+`grade.grain`, `grade.vignette` and `grade.fringe` add film grain, darker
+corners and colour fringing after tone mapping (`ZhudaLensFinish`), off by
+default. `verify:film-look` measures on a flat grey frame: grain raises the
+standard deviation of a patch from under 0.5 to over 2.5 with the mean
+within 1.5, and the same frame renders with identical grain; the vignette
+leaves the centre within 1.5 and takes a corner below 60 % of it; fringing
+separates red and blue by more than 40 at a bright bar's edge near the side
+(under 6 without it). Unit tests cover the vignette curve and validation.

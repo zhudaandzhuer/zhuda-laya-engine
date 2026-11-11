@@ -376,6 +376,9 @@ test('grade is off unless asked for and validated with paths', async () => {
     bloom: 0.1,
     ao: 0.5,
     aoRadius: 0.5,
+    grain: 0,
+    vignette: 0,
+    fringe: 0,
   });
   assert.equal(resolveZhudaFilmLook({ grade: false }).grade, false);
   const issues = validateZhudaFilmScene(
@@ -749,4 +752,20 @@ test('look.environment is validated, resolved and merged by patches', () => {
       .environment,
     { position: [5, 1, 0], reflection: 2 },
   );
+});
+
+test('grade grain, vignette and fringe are off by default and validated', () => {
+  const resolved = resolveZhudaFilmLook({ grade: { grain: 0.3 } }).grade;
+  assert.equal(resolved.grain, 0.3);
+  assert.equal(resolved.vignette, 0);
+  assert.equal(resolved.fringe, 0);
+  const issues = validateZhudaFilmScene(
+    { ...scene(), look: { grade: { grain: 2, vignette: -0.1, fringe: 5 } } },
+    context,
+  );
+  for (const key of ['grade.grain', 'grade.vignette', 'grade.fringe'])
+    assert.ok(
+      issues.some((issue) => issue.includes(key)),
+      key,
+    );
 });

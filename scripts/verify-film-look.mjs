@@ -193,6 +193,81 @@ try {
   report.packChanged = +changed(frames['remount-day-0'], kiosk, 15).toFixed(4);
   assert.ok(report.packChanged > 0.01, 'the pack prop is drawn');
   report.passed = true;
+  // Lens finish: grain adds noise without changing the mean; the vignette
+  // darkens the corners; fringing separates red and blue near a bright edge.
+  {
+    const flat = (grade) => ({
+      schemaVersion: 1,
+      id: 'finish-check',
+      camera: { eye: [0, 1, 6], target: [0, 1, 0], focalLengthMm: 35 },
+      look: {
+        sky: [0.25, 0.25, 0.25],
+        ambient: [0, 0, 0],
+        sun: { intensity: 0 },
+        shadows: false,
+        grade: { exposure: 1, bloom: 0, ao: 0, ...grade },
+      },
+      materials: { white: { color: [0, 0, 0], emission: [1.5, 1.5, 1.5] } },
+      nodes: [
+        {
+          id: 'bar',
+          type: 'box',
+          size: [0.5, 30, 0.5],
+          position: [3.3, -15, 0],
+          material: 'white',
+        },
+      ],
+    });
+    const stats = (img, x0, y0, x1, y1) => {
+      let sum = 0,
+        sum2 = 0,
+        n = 0;
+      for (let y = y0; y < y1; y++)
+        for (let x = x0; x < x1; x++) {
+          const v = lum(img, (y * W + x) * 4);
+          sum += v;
+          sum2 += v * v;
+          n++;
+        }
+      return { mean: sum / n, sd: Math.sqrt(Math.max(0, sum2 / n - (sum / n) ** 2)) };
+    };
+    const plain = await render('finish-plain', flat({}));
+    const grainy = await render('finish-grain', flat({ grain: 1 }));
+    const a = stats(plain, 60, 60, 160, 140),
+      b = stats(grainy, 60, 60, 160, 140);
+    assert.ok(
+      a.sd < 0.5 && b.sd > 2.5,
+      `grain adds noise: ${a.sd.toFixed(2)} -> ${b.sd.toFixed(2)}`,
+    );
+    assert.ok(Math.abs(a.mean - b.mean) < 1.5, 'grain keeps the mean');
+    assert.ok(
+      (await render('finish-grain-again', flat({ grain: 1 }))).data.equals(grainy.data),
+      'the same frame has the same grain',
+    );
+    const dark = await render('finish-vignette', flat({ vignette: 1 }));
+    const centre = stats(dark, 140, 90, 180, 110).mean,
+      corner = stats(dark, 2, 2, 22, 16).mean;
+    assert.ok(
+      Math.abs(centre - stats(plain, 140, 90, 180, 110).mean) < 1.5 && corner < centre * 0.6,
+      `vignette: ${corner.toFixed(1)} against ${centre.toFixed(1)}`,
+    );
+    const fringed = await render('finish-fringe', flat({ fringe: 1 }));
+    let split = 0;
+    for (let x = W - 90; x < W - 2; x++) {
+      const i = (100 * W + x) * 4;
+      split = Math.max(split, Math.abs(fringed.data[i] - fringed.data[i + 2]));
+    }
+    let plainSplit = 0;
+    for (let x = W - 90; x < W - 2; x++) {
+      const i = (100 * W + x) * 4;
+      plainSplit = Math.max(plainSplit, Math.abs(plain.data[i] - plain.data[i + 2]));
+    }
+    assert.ok(
+      plainSplit < 6 && split > 40,
+      `fringe separates red and blue at the bar's edge: ${plainSplit} -> ${split}`,
+    );
+    console.log('lens finish', { noise: [a.sd, b.sd], corner, centre, split });
+  }
 } finally {
   await host.close();
   fs.writeFileSync(path.join(out, 'report.json'), JSON.stringify(report, null, 2) + '\n');
