@@ -266,6 +266,14 @@ try {
       plainSplit < 6 && split > 40,
       `fringe separates red and blue at the bar's edge: ${plainSplit} -> ${split}`,
     );
+    // Fringing must not pull colour in from outside the frame: a bright bar at
+    // the right edge may not tint the left edge.
+    let leftEdge = 0;
+    for (let y = 20; y < H - 20; y++) {
+      const i = (y * W + 0) * 4;
+      leftEdge = Math.max(leftEdge, Math.abs(fringed.data[i] - fringed.data[i + 2]));
+    }
+    assert.ok(leftEdge < 8, `no colour wraps around the frame edge: ${leftEdge}`);
     console.log('lens finish', { noise: [a.sd, b.sd], corner, centre, split });
   }
 } finally {
