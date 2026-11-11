@@ -19,6 +19,8 @@ import { ZhudaModelLibrary, type AssetLease, type ModelInstance } from '../runti
 import type { ZhudaAssetCache } from '../runtime3d/Assets.ts';
 import { createProviderAssetCache, type AssetProvider } from '../runtime3d/AssetProvider.ts';
 import { ZhudaReflectiveSurface } from '../shaders/ReflectiveSurface.ts';
+import { ZhudaWaterSurface } from '../shaders/WaterSurface.ts';
+import { ZHUDA_TRANSLUCENT_DEFINE } from '../runtime3d/Laya342Adapters.ts';
 import { ZhudaLightFog } from '../runtime3d/LightFog.ts';
 import { ZhudaEnvironmentProbe } from '../runtime3d/EnvironmentProbe.ts';
 import { ZhudaLensFinish } from '../runtime3d/LensFinish.ts';
@@ -289,7 +291,7 @@ export async function loadZhudaFilmScene(
       const probe = new ZhudaEnvironmentProbe(stage.scene3D);
       stage.adopt(() => probe.dispose());
       // The reflecting surface of a reflector is an overlay, not scenery.
-      await probe.capture({ ...environment, excludedLayers: [30] }, options.signal);
+      await probe.capture({ ...environment, excludedLayers: [29, 30] }, options.signal);
     } catch (error) {
       stage.dispose();
       throw error;
@@ -535,7 +537,32 @@ function buildFilmStageContents(
           holder.transform.rotationEuler = new l.Vector3(0, pose.yawDeg, 0);
         });
       }
-      holder.addChild(item.instance.node);
+      if (node.placements) {
+        // The loaded instance is the first copy; the rest are clones that
+        // share its meshes and materials.
+        node.placements.forEach(([x, y, z, yawDeg, size], i) => {
+          const place = new l.Sprite3D(`ZhudaFilmModel:${node.id}:${i}`);
+          holder.addChild(place);
+          place.transform.localPosition = new l.Vector3(x, y, z);
+          place.transform.localRotationEuler = new l.Vector3(0, yawDeg, 0);
+          place.transform.localScale = new l.Vector3(size, size, size);
+          if (i === 0) place.addChild(item.instance.node);
+          else {
+            const copy = item.instance.node.clone();
+            place.addChild(copy);
+            // Laya's clone does not keep the material of every sub-mesh (a
+            // tree's leaves came out with its bark): take them from the source.
+            const source = modelRenderers(l, item.instance.node);
+            modelRenderers(l, copy).forEach((renderer, k) => {
+              if (source[k]) renderer.sharedMaterials = source[k].sharedMaterials;
+              renderer.castShadow = true;
+              renderer.receiveShadow = true;
+            });
+            cleanups.push(() => copy.destroy(true));
+          }
+          cleanups.push(() => place.destroy(false));
+        });
+      } else holder.addChild(item.instance.node);
       const clips = new ZhudaModelInspector(item.instance).inspect().animations;
       if (node.animation) {
         const animation = node.animation;
@@ -564,6 +591,18 @@ function buildFilmStageContents(
       cleanups.push(() => item.instance.node.removeSelf());
       const renderers = modelRenderers(l, item.instance.node);
       if (!renderers.length) throw Error(`Film scene model ${node.id}: ${node.asset} has no mesh`);
+      if (node.translucent) {
+        // Copies share these materials, so one define covers every placement.
+        const define = l.Shader3D.getDefineByName(ZHUDA_TRANSLUCENT_DEFINE);
+        const leaves = new Set<any>();
+        for (const renderer of renderers)
+          for (const material of renderer.sharedMaterials ?? [])
+            if (material?.alphaTest) leaves.add(material);
+        for (const material of leaves) {
+          material.addDefine(define);
+          cleanups.push(() => !material.destroyed && material.removeDefine(define));
+        }
+      }
       for (const renderer of renderers) {
         renderer.castShadow = true;
         renderer.receiveShadow = true;
@@ -622,6 +661,45 @@ function buildFilmStageContents(
       surface.camera.clearColor = camera.clearColor;
       for (const id of node.hides ?? []) setLayer(modelHolders.get(id), surface.layer);
       reflector = surface;
+    }
+    let water: ZhudaWaterSurface | undefined;
+    for (const node of scene.nodes) {
+      if (node.type !== 'water') continue;
+      const travel = new l.Vector3();
+      sun.light.owner.transform.getForward(travel);
+      const length = Math.hypot(travel.x, travel.y, travel.z) || 1;
+      const power = look.sun.intensity;
+      const surface = new ZhudaWaterSurface(scene3D, {
+        position: node.position,
+        size: node.size,
+        flow: node.flow,
+        color: node.color,
+        clarity: node.clarity,
+        waveMeters: node.waveMeters,
+        waves: node.waves,
+        refraction: node.refraction,
+        reflection: node.reflection,
+        foamDepth: node.foamDepth,
+        resolution: node.resolution,
+        sun: {
+          toward: [-travel.x / length, -travel.y / length, -travel.z / length],
+          color: [look.sun.color[0] * power, look.sun.color[1] * power, look.sun.color[2] * power],
+        },
+      });
+      cleanups.push(() => surface.dispose());
+      surface.camera.clearFlag = camera.clearFlag;
+      surface.camera.clearColor = camera.clearColor;
+      for (const id of node.hides ?? []) setLayer(modelHolders.get(id), surface.layer);
+      // The water reads the scene behind it and how far away that is.
+      const before = { depth: camera.depthTextureMode, opaque: camera.opaquePass };
+      camera.depthTextureMode |= l.DepthTextureMode.Depth;
+      camera.opaquePass = true;
+      cleanups.push(() => {
+        camera.depthTextureMode = before.depth;
+        camera.opaquePass = before.opaque;
+      });
+      timed.push((seconds) => surface.setTime(seconds));
+      water = surface;
     }
 
     // Practical lights: native point and spot light components.
@@ -699,9 +777,11 @@ function buildFilmStageContents(
       if (frame) lightFog?.setFrame(frame.index);
       lightFog?.update(current.eye, current.target, camera.fieldOfView, aspect);
       lightFog?.renderShafts();
-      if (!reflector) return;
-      reflector.update(current.eye, current.target, camera.fieldOfView, aspect);
-      reflector.render();
+      for (const surface of [reflector, water]) {
+        if (!surface) continue;
+        surface.update(current.eye, current.target, camera.fieldOfView, aspect);
+        surface.render();
+      }
     };
     const setCamera = (value: ZhudaFilmCamera) => {
       const c = resolveZhudaFilmCamera(value);

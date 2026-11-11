@@ -31,6 +31,36 @@ export function installLaya342WebGPUFix(native: any): void {
     return append.apply(this, args);
   };
   patched.add(prototype);
+  fixMergedIndices(native);
+}
+
+/**
+ * Laya 3.4.2 merges the meshes of a batch into one buffer and reads every
+ * index buffer as 16-bit (`IndexFormat.UInt16 ? ... : ...` tests the enum
+ * constant, not the buffer). A mesh with more than 65 535 vertices drawn more
+ * than once comes out as a fan of shards. The indices of 32-bit buffers are
+ * copied again here, correctly, right after the upstream merge.
+ */
+function fixMergedIndices(native: any): void {
+  const prototype = native.BatchMergeVertexInfo?.prototype;
+  if (!prototype || patched.has(prototype) || typeof prototype.addMesh !== 'function') return;
+  const addMesh = prototype.addMesh;
+  prototype.addMesh = function (vertexBuffer: any, indexBuffer: any, ...rest: unknown[]) {
+    const fresh =
+      indexBuffer?.indexType === native.IndexFormat?.UInt32 &&
+      !this._cacheIndexInfo.has(indexBuffer.globalId);
+    const result = addMesh.call(this, vertexBuffer, indexBuffer, ...rest);
+    if (fresh) {
+      const start = this._cacheIndexInfo.get(indexBuffer.globalId);
+      const base = this._cacheVertexInfo.get(vertexBuffer.globalId);
+      const count = indexBuffer.getNativeBuffer()._byteLength / 4;
+      const source = new Uint32Array(indexBuffer.buffer, indexBuffer.bufferoffset ?? 0, count);
+      for (let i = 0; i < count; i++) this._indexData[start + i] = source[i] + base;
+      this.indexBuffer.setData(this._indexData.buffer, start * 4, start * 4, count * 4);
+    }
+    return result;
+  };
+  patched.add(prototype);
 }
 
 /**

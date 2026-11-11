@@ -211,6 +211,12 @@ export class ZhudaPlanarReflection {
       excludedLayer: number;
       near?: number;
       far?: number;
+      /**
+       * Draw only what lies above the plane (an oblique near plane). Water
+       * needs it: its bed and the sunk part of stones are below the mirror
+       * and would otherwise cover the mirrored view.
+       */
+      clipBelowPlane?: boolean;
     },
   ) {
     const l = (globalThis as any).Laya;
@@ -228,6 +234,7 @@ export class ZhudaPlanarReflection {
       throw Error('Invalid reflection clipping range');
     requireCapabilities(l, ['RenderTextureFormat_R16G16B16A16']);
     this.planeY = options.planeY ?? 0;
+    this.clip = options.clipBelowPlane ? { near, far } : undefined;
     this.texture = new l.RenderTexture(
       options.width,
       options.height,
@@ -245,6 +252,7 @@ export class ZhudaPlanarReflection {
     scene.addChild(this.camera);
   }
   private planeY: number;
+  private clip?: { near: number; far: number };
   private disposed = false;
   update(eye: readonly number[], target: readonly number[], fieldOfView: number, aspect?: number) {
     if (this.disposed) throw Error('Disposed reflection');
@@ -274,6 +282,58 @@ export class ZhudaPlanarReflection {
       vertical ? new l.Vector3(0, 0, 1) : new l.Vector3(0, 1, 0),
       false,
     );
+    if (this.clip) {
+      // Lengyel's oblique near plane: the frustum's near plane becomes the
+      // mirror plane, seen from the mirrored eye below it.
+      const sub = (a: readonly number[], b: readonly number[]) => a.map((v, i) => v - b[i]);
+      const dot = (a: readonly number[], b: readonly number[]) =>
+        a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+      const cross = (a: readonly number[], b: readonly number[]) => [
+        a[1] * b[2] - a[2] * b[1],
+        a[2] * b[0] - a[0] * b[2],
+        a[0] * b[1] - a[1] * b[0],
+      ];
+      const unit = (v: number[]) => v.map((n) => n / Math.hypot(v[0], v[1], v[2]));
+      const from = [eye[0], 2 * this.planeY - eye[1], eye[2]],
+        to = [target[0], 2 * this.planeY - target[1], target[2]];
+      const forward = unit(sub(to, from));
+      const side = unit(cross(forward, vertical ? [0, 0, 1] : [0, 1, 0])),
+        up = cross(side, forward);
+      // The plane in camera space (x right, y up, z toward the viewer), normal away from the camera.
+      const normal = [side[1], up[1], -forward[1]];
+      const offset = this.planeY - from[1] + 0.02;
+      const plane = [
+        ...normal,
+        -dot(normal, [side[1] * offset, up[1] * offset, -forward[1] * offset]),
+      ];
+      const projection = new l.Matrix4x4();
+      l.Matrix4x4.createPerspective(
+        (fieldOfView * Math.PI) / 180,
+        this.camera.aspectRatio,
+        this.clip.near,
+        this.clip.far,
+        projection,
+      );
+      const m = projection.elements;
+      const q = [
+        (Math.sign(plane[0]) + m[8]) / m[0],
+        (Math.sign(plane[1]) + m[9]) / m[5],
+        -1,
+        (1 + m[10]) / m[14],
+      ];
+      // Laya's projection maps depth to 0..1, so the near plane is the third
+      // row itself: it becomes the mirror plane, scaled so that the far
+      // plane still passes through the far corner q of the frustum.
+      const scale = 1 / (plane[0] * q[0] + plane[1] * q[1] + plane[2] * q[2] + plane[3] * q[3]);
+      // Only when the camera really is below the plane; otherwise keep the plain frustum.
+      if (plane[3] < 0 && Number.isFinite(scale)) {
+        m[2] = plane[0] * scale;
+        m[6] = plane[1] * scale;
+        m[10] = plane[2] * scale;
+        m[14] = plane[3] * scale;
+      }
+      this.camera.projectionMatrix = projection;
+    }
     const e = this.camera.projectionViewMatrix.elements;
     return Array.from({ length: 4 }, (_, i) => [
       e[i * 4],

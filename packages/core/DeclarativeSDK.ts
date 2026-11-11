@@ -5,7 +5,10 @@ import type { RendererBackend } from './TopologyGraph.ts';
 import { ZhudaRuntimeSession, installSandboxStorageFallback } from './runtime3d/Runtime.ts';
 import type { ManagedRuntimeOptions } from './runtime3d/Runtime.ts';
 import { createSurfaceMaterial } from './runtime3d/Surfaces.ts';
-import { installLaya342LifecycleFix } from './runtime3d/Laya342Adapters.ts';
+import {
+  installLaya342LifecycleFix,
+  installLaya342Translucency,
+} from './runtime3d/Laya342Adapters.ts';
 import { buildPrefabTree } from './prefabs/PrefabTree3D.ts';
 import type { PrefabTree3D, PrefabTreeInstance3D } from './prefabs/PrefabTree3D.ts';
 import { assertZhudaRealmAvailable, markZhudaLayaRealm } from './RealmGuards.ts';
@@ -172,6 +175,8 @@ export class ZhudaEngine {
         if (config3D) config3D.maxLightCount = options.maxLights;
       }
       options.beforeInit?.();
+      // Before init: the PBR lighting include is registered and compiled there.
+      installLaya342Translucency();
 
       // 3. 初始化 LayaAir 3.4.2 引擎核心與 WebGL/WASM 管線
       await withDeadline(() => Laya.init(width, height), {

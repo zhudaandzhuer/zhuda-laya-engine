@@ -281,3 +281,59 @@ test('float render targets read back whole on WebGPU and natively on WebGL', asy
     [globalThis.GPUBufferUsage, globalThis.GPUMapMode] = previous;
   }
 });
+
+test('WebGPU batches copy 32-bit index buffers as 32-bit', async () => {
+  const { installLaya342WebGPUFix } = await import(
+    '../packages/core/runtime3d/WebGPU342Adapters.ts'
+  );
+  const uploads = [];
+  // The upstream merge, with its bug: every index buffer is read as 16-bit.
+  class BatchMergeVertexInfo {
+    _cacheIndexInfo = new Map();
+    _cacheVertexInfo = new Map();
+    _indexData = new Uint32Array(16);
+    _next = 0;
+    indexBuffer = { setData: (...args) => uploads.push(args.slice(1)) };
+    addMesh(vertexBuffer, indexBuffer) {
+      if (this._cacheIndexInfo.has(indexBuffer.globalId)) return;
+      this._cacheVertexInfo.set(vertexBuffer.globalId, vertexBuffer.base);
+      this._cacheIndexInfo.set(indexBuffer.globalId, this._next);
+      const count =
+        indexBuffer.getNativeBuffer()._byteLength / (indexBuffer.indexType === 1 ? 2 : 4);
+      const wrong = new Uint16Array(indexBuffer.buffer, indexBuffer.bufferoffset);
+      for (let i = 0; i < count; i++)
+        this._indexData[this._next + i] = wrong[i] + vertexBuffer.base;
+      this._next += count;
+    }
+  }
+  class Agent {
+    appendRenderElement() {}
+  }
+  const native = {
+    WebGPUMeshRenderBatchAgent: Agent,
+    BatchMergeVertexInfo,
+    IndexFormat: { UInt8: 0, UInt16: 1, UInt32: 2 },
+    Stat: { loopCount: 1 },
+  };
+  installLaya342WebGPUFix(native);
+  installLaya342WebGPUFix(native);
+  const merge = new BatchMergeVertexInfo();
+  const buffer = (id, type, values) => ({
+    globalId: id,
+    indexType: type,
+    buffer: values.buffer,
+    bufferoffset: 0,
+    getNativeBuffer: () => ({ _byteLength: values.byteLength }),
+  });
+  // A small mesh with 16-bit indices is left to the upstream code.
+  merge.addMesh({ globalId: 1, base: 0 }, buffer(10, 1, new Uint16Array([0, 1, 2])));
+  assert.deepEqual([...merge._indexData.slice(0, 3)], [0, 1, 2]);
+  assert.equal(uploads.length, 0);
+  // A large mesh: indices above 65535 must survive, offset by the vertices before it.
+  merge.addMesh({ globalId: 2, base: 100 }, buffer(11, 2, new Uint32Array([0, 70000, 131072])));
+  assert.deepEqual([...merge._indexData.slice(3, 6)], [100, 70100, 131172]);
+  assert.deepEqual(uploads, [[12, 12, 12]]);
+  // Drawn again: already merged, nothing is copied twice.
+  merge.addMesh({ globalId: 2, base: 100 }, buffer(11, 2, new Uint32Array([0, 70000, 131072])));
+  assert.equal(uploads.length, 1);
+});

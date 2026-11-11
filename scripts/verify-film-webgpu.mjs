@@ -16,6 +16,7 @@ const scripts = [
   'verify-film-fog',
   'verify-film-animation',
   'verify-film-environment',
+  'verify-film-water',
 ];
 const failed = [];
 for (const name of scripts) {

@@ -418,6 +418,63 @@ lanterns, lit windows, buildings and the sky appear in wet paving or a pond.
 This is how a scene lit only by lightmaps gets highlights: a lightmap holds
 diffuse light, and the reflector adds the mirror image of the lights.
 
+## Nature: many copies, leaves and running water
+
+A `model` node can stand in many places at once. `placements` lists one
+`[x, y, z, yawDeg, scale]` per copy, relative to the node's `position`: a
+forest floor of ferns, stones along a bank, trees. The copies share the
+model's meshes and materials. A node holds up to 20 000 copies and a scene
+60 000; a model with placements has no lightmap, animation or motion.
+
+```json
+{
+  "id": "ferns",
+  "type": "model",
+  "asset": "nature/fern.glb",
+  "position": [0, 0, 0],
+  "translucent": true,
+  "placements": [
+    [4.2, 0.31, -7.5, 130, 0.9],
+    [5.0, 0.28, -6.1, 15, 1.2]
+  ]
+}
+```
+
+`"translucent": true` lets light through leaves: the cut-out (alpha-tested)
+materials of the model glow in their own colour when the sun or a lamp is
+behind them, instead of going black. Bark and other opaque materials of the
+same model are unchanged. Leaves in the shadow of other leaves stay dark.
+
+A `water` node is clear running water on a horizontal rectangle:
+
+```json
+{
+  "id": "river",
+  "type": "water",
+  "position": [0, 0, 0],
+  "size": [170, 130],
+  "flow": [0.9, 0.15],
+  "color": [0.03, 0.3, 0.26],
+  "clarity": 1.1,
+  "waveMeters": 0.8,
+  "waves": 0.4,
+  "foamDepth": 0.1
+}
+```
+
+- `position[1]` is the water level. The ground and stones are ordinary
+  models that cross the rectangle; water shows only where it lies above them.
+- The bed is seen through the water, bent by the waves (`refraction`) and
+  fading into `color` with depth: `clarity` is the depth in metres at which
+  about a third of the bed's light is left.
+- The surface mirrors the scene above it (`reflection`), glints in the sun
+  of `look.sun`, carries its waves along `flow` (metres per second, driven by
+  shot time) and foams where it is shallower than `foamDepth`.
+- The mirrored view is cut at the water level, so the bed and the sunk part
+  of stones do not show in it. `hides` takes models out of it if needed.
+- Water needs `grade`. A scene has one mirror: one `water` or one
+  `reflector`. The rectangle is flat and level: no waterfalls or slopes.
+
 ## Camera paths
 
 A video job takes `cameraPath`: two or more keys `{ time, camera }`, the first

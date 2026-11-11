@@ -126,3 +126,36 @@ export function destroyLaya342ModelTree(node: any, runtime: any = (globalThis as
   for (const { component, queue } of pending)
     if (component._status === 4 && queue?.delete(component)) component._destroy(true);
 }
+
+const translucencyPatched = new WeakSet<object>();
+/** The define that switches leaf translucency on for a material. */
+export const ZHUDA_TRANSLUCENT_DEFINE = 'ZHUDA_TRANSLUCENT';
+const LIGHTING_TAIL = 'return shading*light.color*NoL;}';
+/**
+ * Adds light that passes through thin surfaces to Laya 3.4.2's PBR lighting:
+ * a leaf lit from behind glows in its own colour instead of going black.
+ * Materials opt in with the `ZHUDA_TRANSLUCENT` define; everything else
+ * compiles to the upstream code. Must run before `Laya.init`, which registers
+ * the lighting include and compiles the PBR shaders from it.
+ */
+export function installLaya342Translucency(runtime: any = (globalThis as any).Laya): boolean {
+  const shader = runtime?.Shader3D;
+  if (!shader || typeof shader.addInclude !== 'function') return false;
+  if (translucencyPatched.has(shader)) return true;
+  const addInclude = shader.addInclude;
+  shader.addInclude = function (name: string, text: string, ...rest: unknown[]) {
+    if (name === 'PBRLighting.glsl' && typeof text === 'string' && text.includes(LIGHTING_TAIL))
+      text = text.replace(
+        LIGHTING_TAIL,
+        `vec3 zhudaLit=shading*light.color*NoL;
+#ifdef ${ZHUDA_TRANSLUCENT_DEFINE}
+// Light from behind, tinted by the leaf: warmer and greener than its surface colour.
+zhudaLit+=surface.diffuseColor*vec3(1.25,1.3,0.55)*light.color*saturate(dot(pixel.normalWS,normalize(light.dir)))*0.42;
+#endif
+return zhudaLit;}`,
+      );
+    return addInclude.call(this, name, text, ...rest);
+  };
+  translucencyPatched.add(shader);
+  return true;
+}

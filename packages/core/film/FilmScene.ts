@@ -177,6 +177,9 @@ export interface ZhudaFilmLightFog {
   shafts?: ZhudaFilmLightShafts | false;
 }
 
+/** One copy of a model: x, y, z in metres, yaw in degrees, uniform scale. */
+export type ZhudaFilmPlacement = [number, number, number, number, number];
+
 export interface ZhudaFilmLightShafts {
   /** Brightness of the beams, 0..64 (default 1). */
   strength?: number;
@@ -266,6 +269,20 @@ export type ZhudaFilmNode =
        * the model holds the last key afterwards. Not with a lightmap.
        */
       motion?: ZhudaFilmMotionKey[];
+      /**
+       * Copies of the model: one `[x, y, z, yawDeg, scale]` per copy, in
+       * metres relative to `position` (a forest floor of ferns, rocks along a
+       * bank, trees). The copies share the model's meshes and materials. With
+       * `placements` the model is drawn only at those places. Not with a
+       * lightmap, an animation or motion.
+       */
+      placements?: ZhudaFilmPlacement[];
+      /**
+       * Leaves let light through: the cut-out (alpha-tested) materials of the
+       * model glow in their own colour when the sun or a lamp is behind
+       * them. Opaque materials of the same model (bark) are unchanged.
+       */
+      translucent?: boolean;
     }
   | {
       id: string;
@@ -294,6 +311,41 @@ export type ZhudaFilmNode =
        * Ids of model nodes the mirror must not draw: the ground under the
        * reflector, which would otherwise block the view from below.
        */
+      hides?: string[];
+    }
+  | {
+      id: string;
+      type: 'water';
+      /**
+       * Clear running water on a horizontal rectangle (see
+       * `ZhudaWaterSurface`): the bed shows through, bent by the waves and
+       * tinted with depth; the surface mirrors the scene, glints in the sun
+       * (`look.sun`) and foams where it is shallow. `position` is the centre;
+       * `y` is the water level. Banks and stones are models that cross it.
+       * Needs `grade`. One per scene, and not together with a reflector.
+       */
+      position: ZhudaFilmVec3;
+      /** Width (X) and depth (Z) in metres. */
+      size: [number, number];
+      /** Flow in metres per second along X and Z (default [0, 0.6]). */
+      flow?: [number, number];
+      /** Colour of deep water, linear RGB 0..1 (default a green-blue). */
+      color?: ZhudaFilmVec3;
+      /** Metres of water at which the bed has faded to about a third, 0.05..100 (default 1.5). */
+      clarity?: number;
+      /** Length of the waves in metres, 0.05..50 (default 0.9). */
+      waveMeters?: number;
+      /** Steepness of the waves, 0..1 (default 0.35). */
+      waves?: number;
+      /** How much the bed is bent by the waves, 0..1 (default 0.4). */
+      refraction?: number;
+      /** Brightness of the mirrored scene, 0..4 (default 1). */
+      reflection?: number;
+      /** Depth under which the water foams, 0..2 metres (default 0.12); 0 is no foam. */
+      foamDepth?: number;
+      /** Longer side of the mirrored picture (default 1024). */
+      resolution?: 256 | 512 | 1024 | 2048;
+      /** Ids of model nodes the mirror must not draw (the bed, if it shows in the reflection). */
       hides?: string[];
     }
   | {
@@ -424,6 +476,9 @@ export const ZHUDA_FILM_LIMITS = Object.freeze({
   /** Point lights one `lightFog` can hold, fog-only lights included. */
   fogLights: 128,
   models: 64,
+  /** Copies of one model node; a scene holds at most `placementsTotal` in all. */
+  placements: 20000,
+  placementsTotal: 60000,
 });
 
 /** The plain look of scenes without a preset (phase 1 behaviour). */
@@ -945,6 +1000,8 @@ function validateNode(
           'lightmapDirection',
           'animation',
           'motion',
+          'placements',
+          'translucent',
         ],
         path,
         issues,
@@ -982,6 +1039,29 @@ function validateNode(
         !(finite(node.scale) && node.scale >= 0.001 && node.scale <= 1000)
       )
         issues.push(`${path}.scale: use 0.001..1000`);
+      if (node.translucent !== undefined && typeof node.translucent !== 'boolean')
+        issues.push(`${path}.translucent: true or false`);
+      if (node.placements !== undefined) {
+        const list = node.placements;
+        if (!Array.isArray(list) || !list.length || list.length > ZHUDA_FILM_LIMITS.placements)
+          issues.push(`${path}.placements: 1..${ZHUDA_FILM_LIMITS.placements} places required`);
+        else {
+          const bad = list.findIndex(
+            (place) =>
+              !Array.isArray(place) ||
+              place.length !== 5 ||
+              !place.every(finite) ||
+              place.slice(0, 3).some((v) => Math.abs(v as number) > ZHUDA_FILM_LIMITS.extent) ||
+              !((place[4] as number) >= 0.001 && (place[4] as number) <= 1000),
+          );
+          if (bad >= 0)
+            issues.push(
+              `${path}.placements[${bad}]: use [x, y, z, yawDeg, scale] with scale 0.001..1000`,
+            );
+        }
+        for (const key of ['lightmap', 'lightmapDirection', 'animation', 'motion'] as const)
+          if (node[key] !== undefined) issues.push(`${path}.placements: not with ${key}`);
+      }
       if (node.animation !== undefined) {
         const a = node.animation;
         if (!object(a)) issues.push(`${path}.animation: object required`);
@@ -1086,6 +1166,70 @@ function validateNode(
         issues.push(`${path}.hides: list model node ids`);
       break;
     }
+    case 'water': {
+      unknownKeys(
+        node,
+        [
+          'id',
+          'type',
+          'position',
+          'size',
+          'flow',
+          'color',
+          'clarity',
+          'waveMeters',
+          'waves',
+          'refraction',
+          'reflection',
+          'foamDepth',
+          'resolution',
+          'hides',
+        ],
+        path,
+        issues,
+      );
+      vec3(node.position, `${path}.position`, issues);
+      if (
+        !Array.isArray(node.size) ||
+        node.size.length !== 2 ||
+        !node.size.every((n) => finite(n) && n >= 0.1 && n <= 4000)
+      )
+        issues.push(`${path}.size: use [width, depth] between 0.1 and 4000 metres`);
+      if (
+        node.flow !== undefined &&
+        !(
+          Array.isArray(node.flow) &&
+          node.flow.length === 2 &&
+          node.flow.every((n) => finite(n) && Math.abs(n) <= 20)
+        )
+      )
+        issues.push(`${path}.flow: use [x, z] in metres per second, -20..20`);
+      if (node.color !== undefined) colour(node.color, `${path}.color`, issues);
+      const ranges: [string, number, number][] = [
+        ['clarity', 0.05, 100],
+        ['waveMeters', 0.05, 50],
+        ['waves', 0, 1],
+        ['refraction', 0, 1],
+        ['reflection', 0, 4],
+        ['foamDepth', 0, 2],
+      ];
+      for (const [key, min, max] of ranges) {
+        const value = node[key];
+        if (value !== undefined && !(finite(value) && value >= min && value <= max))
+          issues.push(`${path}.${key}: use ${min}..${max}`);
+      }
+      if (
+        node.resolution !== undefined &&
+        ![256, 512, 1024, 2048].includes(node.resolution as number)
+      )
+        issues.push(`${path}.resolution: use 256, 512, 1024 or 2048`);
+      if (
+        node.hides !== undefined &&
+        !(Array.isArray(node.hides) && node.hides.every((id) => typeof id === 'string'))
+      )
+        issues.push(`${path}.hides: list model node ids`);
+      break;
+    }
     case 'light':
       unknownKeys(
         node,
@@ -1161,7 +1305,7 @@ function validateNode(
         issues.push(`${path}.castsShadow: spot lights only, true or false`);
       break;
     default:
-      issues.push(`${path}.type: use prop, box, ground, model, reflector or light`);
+      issues.push(`${path}.type: use prop, box, ground, model, reflector, water or light`);
   }
 }
 
@@ -1227,14 +1371,28 @@ export function validateZhudaFilmScene(
     });
     let reflectors = 0;
     scene.nodes.forEach((node, i) => {
-      if (!object(node) || node.type !== 'reflector') return;
+      if (!object(node) || (node.type !== 'reflector' && node.type !== 'water')) return;
       if (++reflectors === 2)
-        issues.push(`scene.nodes[${i}]: one reflector per scene (each is a second scene render)`);
+        issues.push(
+          `scene.nodes[${i}]: one reflector or water per scene (each is a second scene render)`,
+        );
+      const grade = object(scene.look) ? scene.look.grade : undefined;
+      if (node.type === 'water' && (grade === undefined || grade === false))
+        issues.push(`scene.nodes[${i}]: water needs look.grade (it reads the HDR scene behind it)`);
       if (Array.isArray(node.hides))
         for (const id of node.hides)
           if (typeof id === 'string' && !modelIds.has(id))
             issues.push(`scene.nodes[${i}].hides: ${id} is not a model node in this scene`);
     });
+    const copies = scene.nodes.reduce(
+      (sum: number, node) =>
+        sum + (object(node) && Array.isArray(node.placements) ? node.placements.length : 0),
+      0,
+    );
+    if (copies > ZHUDA_FILM_LIMITS.placementsTotal)
+      issues.push(
+        `scene.nodes: at most ${ZHUDA_FILM_LIMITS.placementsTotal} placements in all, got ${copies}`,
+      );
     const lightNodes = scene.nodes.filter((node) => object(node) && node.type === 'light');
     // Only point lights shine into the fog; spot lights do not count here.
     if (

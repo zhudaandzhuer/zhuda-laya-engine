@@ -31,3 +31,13 @@ export declare function installLaya342LifecycleFix(runtime?: any): void;
  * Never drain the global driver (which could destroy unrelated consumer nodes).
  */
 export declare function destroyLaya342ModelTree(node: any, runtime?: any): void;
+/** The define that switches leaf translucency on for a material. */
+export declare const ZHUDA_TRANSLUCENT_DEFINE = "ZHUDA_TRANSLUCENT";
+/**
+ * Adds light that passes through thin surfaces to Laya 3.4.2's PBR lighting:
+ * a leaf lit from behind glows in its own colour instead of going black.
+ * Materials opt in with the `ZHUDA_TRANSLUCENT` define; everything else
+ * compiles to the upstream code. Must run before `Laya.init`, which registers
+ * the lighting include and compiles the PBR shaders from it.
+ */
+export declare function installLaya342Translucency(runtime?: any): boolean;

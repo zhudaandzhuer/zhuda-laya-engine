@@ -517,7 +517,9 @@ test('reflector nodes are validated with paths, one per scene, hiding only model
   const two = wet();
   two.nodes.push({ id: 'wet2', type: 'reflector', position: [0, 0, 9], size: [2, 2] });
   assert.ok(
-    validateZhudaFilmScene(two, context).some((issue) => /one reflector per scene/.test(issue)),
+    validateZhudaFilmScene(two, context).some((issue) =>
+      /one reflector or water per scene/.test(issue),
+    ),
   );
 });
 
@@ -895,4 +897,150 @@ test('shadow cascades and shadow-casting spot lights are validated', () => {
       validateZhudaFilmScene(value, context).some((issue) => issue.includes(fragment)),
       fragment,
     );
+});
+
+test('model placements and translucency are validated with paths', () => {
+  const assets = { ...context, assets: ['wild/fern.glb', 'wild/fern.hdr'] };
+  const model = (extra = {}) => ({
+    ...scene(),
+    nodes: [{ id: 'ferns', type: 'model', asset: 'wild/fern.glb', position: [0, 0, 0], ...extra }],
+  });
+  const places = [
+    [0, 0, 0, 0, 1],
+    [3, 0.2, -4, 120, 0.7],
+  ];
+  assert.deepEqual(
+    validateZhudaFilmScene(model({ placements: places, translucent: true }), assets),
+    [],
+  );
+  const has = (issues, text) =>
+    assert.ok(
+      issues.some((issue) => issue.includes(text)),
+      text + ': ' + issues.join(' | '),
+    );
+  has(validateZhudaFilmScene(model({ placements: [] }), assets), 'placements: 1..20000');
+  has(
+    validateZhudaFilmScene(
+      model({
+        placements: [
+          [0, 0, 0, 0, 1],
+          [0, 0, 0, 0],
+        ],
+      }),
+      assets,
+    ),
+    'placements[1]: use [x, y, z, yawDeg, scale]',
+  );
+  has(validateZhudaFilmScene(model({ placements: [[0, 0, 0, 0, 0]] }), assets), 'placements[0]');
+  has(
+    validateZhudaFilmScene(model({ placements: places, lightmap: 'wild/fern.hdr' }), assets),
+    'placements: not with lightmap',
+  );
+  has(
+    validateZhudaFilmScene(
+      model({
+        placements: places,
+        motion: [
+          { time: 0, position: [0, 0, 0] },
+          { time: 1, position: [1, 0, 0] },
+        ],
+      }),
+      assets,
+    ),
+    'placements: not with motion',
+  );
+  has(validateZhudaFilmScene(model({ translucent: 1 }), assets), 'translucent: true or false');
+  // 60 000 copies in all is the ceiling of a scene.
+  const many = Array.from({ length: 20000 }, (_, i) => [i % 100, 0, Math.floor(i / 100), 0, 1]);
+  const crowd = (count) => ({
+    ...scene(),
+    nodes: Array.from({ length: count }, (_, i) => ({
+      id: 'crowd' + i,
+      type: 'model',
+      asset: 'wild/fern.glb',
+      position: [0, 0, 0],
+      placements: many,
+    })),
+  });
+  assert.deepEqual(validateZhudaFilmScene(crowd(3), assets), []);
+  has(validateZhudaFilmScene(crowd(4), assets), 'at most 60000 placements');
+});
+
+test('water nodes are validated, need grade and share the one mirror of a scene', () => {
+  const withWater = (water = {}, look = { grade: {} }, more = []) => ({
+    ...scene(),
+    look,
+    nodes: [{ id: 'river', type: 'water', position: [0, 0, 0], size: [40, 80], ...water }, ...more],
+  });
+  assert.deepEqual(validateZhudaFilmScene(withWater(), context), []);
+  assert.deepEqual(
+    validateZhudaFilmScene(
+      withWater({
+        flow: [0.8, 0.1],
+        color: [0.03, 0.3, 0.26],
+        clarity: 1.1,
+        waveMeters: 0.8,
+        waves: 0.4,
+        refraction: 0.5,
+        reflection: 0.8,
+        foamDepth: 0.1,
+        resolution: 2048,
+      }),
+      context,
+    ),
+    [],
+  );
+  const issues = validateZhudaFilmScene(
+    withWater({
+      size: [0, 1],
+      flow: [99, 0],
+      color: [2, 0, 0],
+      clarity: 0,
+      waveMeters: 0,
+      waves: 2,
+      refraction: 2,
+      reflection: 9,
+      foamDepth: 5,
+      resolution: 100,
+      hides: 'bed',
+      depth: 3,
+    }),
+    context,
+  );
+  for (const key of [
+    'size',
+    'flow',
+    'color',
+    'clarity',
+    'waveMeters',
+    'waves',
+    'refraction',
+    'reflection',
+    'foamDepth',
+    'resolution',
+    'hides',
+    'depth',
+  ])
+    assert.ok(
+      issues.some((issue) => issue.includes(`.${key}`)),
+      key + ': ' + issues.join(' | '),
+    );
+  assert.ok(
+    validateZhudaFilmScene(withWater({}, {}), context).some((issue) =>
+      issue.includes('water needs look.grade'),
+    ),
+  );
+  assert.ok(
+    validateZhudaFilmScene(
+      withWater({}, { grade: {} }, [
+        { id: 'wet', type: 'reflector', position: [0, 0.01, 0], size: [5, 5] },
+      ]),
+      context,
+    ).some((issue) => issue.includes('one reflector or water per scene')),
+  );
+  assert.ok(
+    validateZhudaFilmScene(withWater({ hides: ['nowhere'] }), context).some((issue) =>
+      issue.includes('hides: nowhere is not a model node'),
+    ),
+  );
 });

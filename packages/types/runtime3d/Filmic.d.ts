@@ -73,8 +73,15 @@ export declare class ZhudaPlanarReflection {
         excludedLayer: number;
         near?: number;
         far?: number;
+        /**
+         * Draw only what lies above the plane (an oblique near plane). Water
+         * needs it: its bed and the sunk part of stones are below the mirror
+         * and would otherwise cover the mirrored view.
+         */
+        clipBelowPlane?: boolean;
     });
     private planeY;
+    private clip?;
     private disposed;
     update(eye: readonly number[], target: readonly number[], fieldOfView: number, aspect?: number): any[][];
     dispose(): void;

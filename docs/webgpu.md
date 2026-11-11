@@ -104,8 +104,9 @@ unmodified and their source/hash/notices are pinned in
 
 [Film scenes](film-scenes.md) render on WebGPU with `--film-renderer webgpu`:
 models with lightmaps, the reflector, light fog, animation, the environment
-probe, looks, mixed lighting, stills and MP4. Three more upstream seams are
-contained in `WebGPU342Adapters.ts` for it, and apply to every WebGPU scene:
+probe, looks, mixed lighting, water, placements, stills and MP4. More upstream seams are
+contained in `WebGPU342Adapters.ts` for it, and apply to every WebGPU scene
+(the list has four entries):
 
 - A camera or shadow light that moved is culled in the same frame. Upstream
   defers that by up to two frames, which drew the previous view after a cut, a
@@ -115,6 +116,9 @@ contained in `WebGPU342Adapters.ts` for it, and apply to every WebGPU scene:
 - The glTF PBR depth-normal pass no longer takes the fog define. Upstream
   fails to compile it once a fogged scene draws a glTF model with ambient
   occlusion.
+- Batches copy 32-bit index buffers as 32-bit. Upstream reads every index
+  buffer as 16-bit when it merges a batch, so a mesh with more than 65 535
+  vertices drawn more than once came out as a fan of shards.
 
 Custom surface shaders must sample textures in uniform control flow (no
 `return` or `discard` before a sample): WGSL rejects the shader otherwise and

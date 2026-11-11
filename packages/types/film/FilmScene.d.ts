@@ -151,6 +151,8 @@ export interface ZhudaFilmLightFog {
      */
     shafts?: ZhudaFilmLightShafts | false;
 }
+/** One copy of a model: x, y, z in metres, yaw in degrees, uniform scale. */
+export type ZhudaFilmPlacement = [number, number, number, number, number];
 export interface ZhudaFilmLightShafts {
     /** Brightness of the beams, 0..64 (default 1). */
     strength?: number;
@@ -232,6 +234,20 @@ export type ZhudaFilmNode = {
      * the model holds the last key afterwards. Not with a lightmap.
      */
     motion?: ZhudaFilmMotionKey[];
+    /**
+     * Copies of the model: one `[x, y, z, yawDeg, scale]` per copy, in
+     * metres relative to `position` (a forest floor of ferns, rocks along a
+     * bank, trees). The copies share the model's meshes and materials. With
+     * `placements` the model is drawn only at those places. Not with a
+     * lightmap, an animation or motion.
+     */
+    placements?: ZhudaFilmPlacement[];
+    /**
+     * Leaves let light through: the cut-out (alpha-tested) materials of the
+     * model glow in their own colour when the sun or a lamp is behind
+     * them. Opaque materials of the same model (bark) are unchanged.
+     */
+    translucent?: boolean;
 } | {
     id: string;
     type: 'reflector';
@@ -259,6 +275,40 @@ export type ZhudaFilmNode = {
      * Ids of model nodes the mirror must not draw: the ground under the
      * reflector, which would otherwise block the view from below.
      */
+    hides?: string[];
+} | {
+    id: string;
+    type: 'water';
+    /**
+     * Clear running water on a horizontal rectangle (see
+     * `ZhudaWaterSurface`): the bed shows through, bent by the waves and
+     * tinted with depth; the surface mirrors the scene, glints in the sun
+     * (`look.sun`) and foams where it is shallow. `position` is the centre;
+     * `y` is the water level. Banks and stones are models that cross it.
+     * Needs `grade`. One per scene, and not together with a reflector.
+     */
+    position: ZhudaFilmVec3;
+    /** Width (X) and depth (Z) in metres. */
+    size: [number, number];
+    /** Flow in metres per second along X and Z (default [0, 0.6]). */
+    flow?: [number, number];
+    /** Colour of deep water, linear RGB 0..1 (default a green-blue). */
+    color?: ZhudaFilmVec3;
+    /** Metres of water at which the bed has faded to about a third, 0.05..100 (default 1.5). */
+    clarity?: number;
+    /** Length of the waves in metres, 0.05..50 (default 0.9). */
+    waveMeters?: number;
+    /** Steepness of the waves, 0..1 (default 0.35). */
+    waves?: number;
+    /** How much the bed is bent by the waves, 0..1 (default 0.4). */
+    refraction?: number;
+    /** Brightness of the mirrored scene, 0..4 (default 1). */
+    reflection?: number;
+    /** Depth under which the water foams, 0..2 metres (default 0.12); 0 is no foam. */
+    foamDepth?: number;
+    /** Longer side of the mirrored picture (default 1024). */
+    resolution?: 256 | 512 | 1024 | 2048;
+    /** Ids of model nodes the mirror must not draw (the bed, if it shows in the reflection). */
     hides?: string[];
 } | {
     id: string;
@@ -365,6 +415,9 @@ export declare const ZHUDA_FILM_LIMITS: Readonly<{
     /** Point lights one `lightFog` can hold, fog-only lights included. */
     fogLights: 128;
     models: 64;
+    /** Copies of one model node; a scene holds at most `placementsTotal` in all. */
+    placements: 20000;
+    placementsTotal: 60000;
 }>;
 /** The plain look of scenes without a preset (phase 1 behaviour). */
 export declare const ZHUDA_FILM_DEFAULT_LOOK: Readonly<{
