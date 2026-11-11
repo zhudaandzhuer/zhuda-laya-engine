@@ -39,6 +39,14 @@ function size(width, height, { max = 3840, even = false } = {}) {
     if (!Number.isSafeInteger(value) || value < 16 || value > max || (even && value % 2))
       throw Error(`${label} must be ${even ? 'an even ' : 'an '}integer 16..${max}`);
 }
+/** Shot time in seconds for previews and stills: where animations and moving nodes are. */
+function shotTime(value) {
+  if (value === undefined) return undefined;
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > 3600)
+    throw Error('time must be 0..3600 seconds');
+  return value;
+}
+
 function samplesOf(value, fallback) {
   const samples = value ?? fallback;
   if (!Number.isSafeInteger(samples) || samples < 1 || samples > 64)
@@ -314,12 +322,13 @@ export class ZhudaFilmHost {
   }
 
   /** PNG preview at the scene camera or the camera given. */
-  preview(scene, { camera, width = 640, height = 360 } = {}) {
+  preview(scene, { camera, width = 640, height = 360, time } = {}) {
     size(width, height, { max: 1920 });
+    const timeSec = shotTime(time);
     return this.#serial(async () => {
       await this.#start();
       const mounted = await this.#mount(scene);
-      const frame = await this.#call('render', { camera, width, height, samples: 1 });
+      const frame = await this.#call('render', { camera, width, height, samples: 1, timeSec });
       return { png: encodePng(frame), ...mounted, renderMs: frame.renderMs };
     });
   }
@@ -338,6 +347,7 @@ export class ZhudaFilmHost {
         !shot.camera
       )
         throw Error('Each shot needs a label (1..40 characters) and a camera');
+    for (const shot of shots) shotTime(shot.time);
     return this.#serial(async () => {
       await this.#start();
       await this.#mount(scene);
@@ -352,14 +362,19 @@ export class ZhudaFilmHost {
   }
 
   /** Final still with anti-aliasing and depth of field, written as PNG. */
-  still(scene, { name, camera, width = 1920, height = 1080, samples } = {}) {
+  still(scene, { name, camera, width = 1920, height = 1080, samples, time } = {}) {
     size(width, height);
+    const timeSec = shotTime(time);
     const count = samplesOf(samples, 16),
       file = this.#output(name, '.png');
     return this.#serial(async () => {
       await this.#start();
       await this.#mount(scene);
-      const frame = await this.#call('render', { camera, width, height, samples: count }, 600000);
+      const frame = await this.#call(
+        'render',
+        { camera, width, height, samples: count, timeSec },
+        600000,
+      );
       const bytes = encodePng(frame);
       await fsp.writeFile(file, bytes, { flag: 'wx' });
       return {

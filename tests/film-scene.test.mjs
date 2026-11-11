@@ -629,3 +629,86 @@ test('lightFog needs grade; fog-only lights are point lights outside the 32 limi
     { density: 0.05, scatter: 2 },
   );
 });
+
+test('motion sampling is linear, turns the short way and holds its ends', async () => {
+  const { sampleZhudaFilmMotion } = await import('../packages/core/film/FilmScene.ts');
+  const keys = [
+    { time: 0, position: [0, 0, 0], yawDeg: 350 },
+    { time: 2, position: [4, 0, -2], yawDeg: 10 },
+    { time: 3, position: [4, 1, -2] },
+  ];
+  assert.deepEqual(sampleZhudaFilmMotion(keys, 0), { position: [0, 0, 0], yawDeg: 350 });
+  const mid = sampleZhudaFilmMotion(keys, 1);
+  assert.deepEqual(mid.position, [2, 0, -1]);
+  assert.equal(mid.yawDeg, 360, 'from 350 to 10 goes through 360, not back through 180');
+  assert.deepEqual(sampleZhudaFilmMotion(keys, 2.5), { position: [4, 0.5, -2], yawDeg: 10 });
+  assert.deepEqual(sampleZhudaFilmMotion(keys, 99), { position: [4, 1, -2], yawDeg: 10 });
+  // Without yaw on the keys the node's own yaw is kept.
+  const plain = [
+    { time: 0, position: [0, 0, 0] },
+    { time: 1, position: [1, 0, 0] },
+  ];
+  assert.equal(sampleZhudaFilmMotion(plain, 0.5, 90).yawDeg, 90);
+});
+
+test('animation, motion and follows are validated with paths', () => {
+  const model = (extra) => ({
+    id: 'pig',
+    type: 'model',
+    asset: 'pig.glb',
+    position: [0, 0, 0],
+    ...extra,
+  });
+  const lamp = (extra) => ({
+    id: 'lamp',
+    type: 'light',
+    kind: 'point',
+    position: [0, 1, 0],
+    ...extra,
+  });
+  const of = (...nodes) => ({ ...scene(), nodes: [...scene().nodes, ...nodes] });
+  const keys = [
+    { time: 0, position: [0, 0, 0] },
+    { time: 2, position: [3, 0, 0], yawDeg: 90 },
+  ];
+  assert.deepEqual(
+    validateZhudaFilmScene(
+      of(
+        model({
+          animation: { clip: 'Walk', loop: true, speed: 1.2, offsetSec: 0.3 },
+          motion: keys,
+        }),
+        lamp({ follows: { node: 'pig', offset: [0, 0.4, 0.5] } }),
+      ),
+      context,
+    ),
+    [],
+  );
+  const cases = [
+    [of(model({ animation: {} })), 'animation.clip: clip name required'],
+    [of(model({ animation: { clip: 'Walk', speed: 99 } })), 'animation.speed: use 0..8'],
+    [of(model({ animation: { clip: 'Walk', loop: 'yes' } })), 'animation.loop: true or false'],
+    [of(model({ animation: { clip: 'Walk', blend: 1 } })), 'animation.blend: unknown field'],
+    [of(model({ motion: [keys[0]] })), 'motion: use 2..256 keys'],
+    [
+      of(model({ motion: [{ time: 1, position: [0, 0, 0] }, keys[1]] })),
+      'motion[0].time: start at 0',
+    ],
+    [
+      of(model({ motion: [keys[0], { time: 0, position: [1, 0, 0] }] })),
+      'motion[1].time: start at 0 and increase',
+    ],
+    [of(model({ motion: keys, lightmap: 'pig.hdr' })), 'motion: a lightmapped model cannot move'],
+    [of(model({}), lamp({ follows: { node: 'c1' } })), 'follows.node: c1 is not a model node'],
+    [
+      of(model({}), { ...lamp({ follows: { node: 'pig' } }), kind: 'spot', target: [1, 0, 0] }),
+      'follows: point lights only',
+    ],
+    [of(model({}), lamp({ follows: 'pig' })), 'follows: use { node, offset }'],
+  ];
+  for (const [value, fragment] of cases)
+    assert.ok(
+      validateZhudaFilmScene(value, context).some((issue) => issue.includes(fragment)),
+      fragment,
+    );
+});

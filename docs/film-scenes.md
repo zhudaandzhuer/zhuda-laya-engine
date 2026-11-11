@@ -267,6 +267,48 @@ geometric normal. Directions are in world space: a model with a direction
 picture must keep `yawDeg` 0. This is a half-Lambert response, not a
 physically exact one.
 
+## Characters: clips, movement and lights that follow
+
+A `model` node can play one of the clips in its file and move during a shot.
+Both are functions of shot time, so a frame is the same however often it is
+rendered.
+
+```json
+{
+  "id": "watchman",
+  "type": "model",
+  "asset": "characters/watchman.glb",
+  "position": [0, 0, -60],
+  "yawDeg": 180,
+  "animation": { "clip": "Walk", "loop": true, "speed": 1, "offsetSec": 0 },
+  "motion": [
+    { "time": 0, "position": [0, 0, -60] },
+    { "time": 6, "position": [0, 0, -56.4] }
+  ]
+}
+```
+
+- `animation.clip` names an animation in the GLB; `film_scene_create` does
+  not know the clips, so an unknown name is refused when the scene is first
+  drawn, with the names the model has. The clip time is
+  `offsetSec + time * speed`; `loop` (default true) repeats it, otherwise the
+  last frame is held. One clip at a time: no blending and no events.
+- `motion` moves the model in straight lines between keys (the first at
+  time 0) and turns it the short way; it holds the last key afterwards. The
+  clip does not move the model: match the walking speed to the clip yourself.
+  A model with a lightmap cannot move.
+- A point light with `"follows": { "node": "watchman", "offset": [0.3, 0.4, 0.5] }`
+  stays at that offset in the model's own frame (+Z is its front), turning
+  with it: a lantern that lights the character and the ground around it. It
+  also shines into `lightFog`.
+- Previews, review shots and stills take `time` (seconds) to look at a
+  moment of the shot; video jobs run time from 0. Final renders sample
+  several times inside each frame, so moving things blur slightly.
+
+Characters are lit by real-time lights and the flat `ambient`; a lightmap
+lights only the model it was baked for. A character in a baked scene needs a
+light of its own (the lantern it carries, or a `light` node near it).
+
 ## Reflections: wet ground and still water
 
 A `reflector` node is a horizontal rectangle that mirrors the scene above it:
@@ -395,7 +437,14 @@ more fog than a near one, that a wall on the ray cuts the glow and that the
 frame is identical after 30 mounts. See the
 [light fog verification record](plans/records/film-light-fog/verification.md).
 
-Not yet: shadows inside the fog (light shafts), fog lit by the sun or moon,
+`npm run verify:film-animation` generates a skinned GLB with one clip and
+checks on a real GPU that the pose follows shot time (and speed and offset),
+that an unknown clip is refused with the model's clip names, that a moving
+model is where its keys say and that a following light moves and turns with
+it. See the
+[animation verification record](plans/records/film-animation/verification.md).
+
+Not yet: blending between clips, shadows inside the fog (light shafts), fog lit by the sun or moon,
 animated look or light tracks, real-time shadows from point lights
 (bake them into a lightmap), reflections on walls or slopes, reflection probes, real-time
 global illumination, animated models, spline camera paths, shot lists, path

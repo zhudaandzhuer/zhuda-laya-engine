@@ -30,13 +30,23 @@ export interface ZhudaFilmStage {
         material: string;
         meshes: number;
     }[];
-    /** Models placed by the scene, in node order. */
+    /** Models placed by the scene, in node order, with the clips each one has. */
     readonly models: readonly {
         id: string;
         asset: string;
         meshes: number;
         lightmap: boolean;
+        clips: readonly {
+            name: string;
+            durationSeconds: number;
+        }[];
     }[];
+    /**
+     * Poses the scene for a shot time in seconds: animation clips, moving
+     * models and the lights that follow them. `ZhudaFilmRenderer` calls it for
+     * every sample.
+     */
+    setTime(seconds: number): void;
     /** Moves the camera and sets its lens; ignores depth of field until a render asks for it. */
     setCamera(camera: ZhudaFilmCamera): void;
     /**
@@ -89,6 +99,8 @@ export interface ZhudaFilmRenderOptions {
     samples?: number;
     /** Depth of field from the camera's fStop (default: on when samples > 1). */
     aperture?: boolean;
+    /** Shot time of frame 0 in seconds (default 0): where a still or preview looks. */
+    timeSec?: number;
     timeoutMs?: number;
     signal?: AbortSignal;
 }

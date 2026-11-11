@@ -199,6 +199,14 @@ export type ZhudaFilmNode =
        * model must not be turned (`yawDeg` 0).
        */
       lightmapDirection?: string;
+      /** Plays a clip of the model as a function of shot time. */
+      animation?: ZhudaFilmAnimation;
+      /**
+       * Moves the model during the shot: two or more keys, the first at time
+       * 0, times increasing. Replaces `position` and `yawDeg` while it runs;
+       * the model holds the last key afterwards. Not with a lightmap.
+       */
+      motion?: ZhudaFilmMotionKey[];
     }
   | {
       id: string;
@@ -246,12 +254,65 @@ export type ZhudaFilmNode =
       /** Spot lights: full cone angle, 1..179 degrees (default 60). */
       spotAngleDeg?: number;
       /**
+       * Keeps the light at `offset` (metres, in the model's own frame: +Z is
+       * the model's front before `yawDeg`) from a `model` node, following its
+       * `motion`. Point lights only; `position` is then ignored.
+       */
+      follows?: { node: string; offset?: ZhudaFilmVec3 };
+      /**
        * The light only shines into `look.lightFog` and does not light
        * surfaces: for lamps whose light is already in a lightmap. Point
        * lights only; such lights do not count against the 32 real-time lights.
        */
       fogOnly?: boolean;
     };
+
+/** A clip of a model, sampled at `offsetSec + shotTime * speed`. */
+export interface ZhudaFilmAnimation {
+  /** Name of an animation in the model file. */
+  clip: string;
+  /** Repeat the clip (default true); otherwise hold its last frame. */
+  loop?: boolean;
+  /** 0..8 (default 1). */
+  speed?: number;
+  /** Clip time at shot time 0, 0..3600 seconds (default 0). */
+  offsetSec?: number;
+}
+
+export interface ZhudaFilmMotionKey {
+  /** Seconds from the start of the shot. */
+  time: number;
+  position: ZhudaFilmVec3;
+  /** Defaults to the previous key's yaw (the node's `yawDeg` for the first). */
+  yawDeg?: number;
+}
+
+/**
+ * Where a moving node is at `time`: linear between keys, yaw the short way
+ * around, the first and last keys held outside their range.
+ */
+export function sampleZhudaFilmMotion(
+  keys: readonly ZhudaFilmMotionKey[],
+  time: number,
+  baseYawDeg = 0,
+): { position: ZhudaFilmVec3; yawDeg: number } {
+  const yaws: number[] = [];
+  keys.forEach((key, i) => yaws.push(key.yawDeg ?? (i ? yaws[i - 1] : baseYawDeg)));
+  if (!(time > keys[0].time)) return { position: [...keys[0].position], yawDeg: yaws[0] };
+  for (let i = 1; i < keys.length; i++) {
+    if (time > keys[i].time) continue;
+    const a = keys[i - 1],
+      b = keys[i],
+      u = (time - a.time) / (b.time - a.time);
+    const turn = ((((yaws[i] - yaws[i - 1]) % 360) + 540) % 360) - 180;
+    return {
+      position: a.position.map((v, k) => v + (b.position[k] - v) * u) as ZhudaFilmVec3,
+      yawDeg: yaws[i - 1] + turn * u,
+    };
+  }
+  const last = keys.length - 1;
+  return { position: [...keys[last].position], yawDeg: yaws[last] };
+}
 
 export interface ZhudaFilmScene {
   schemaVersion: 1;
@@ -733,6 +794,8 @@ function validateNode(
           'lightmap',
           'lightmapIntensity',
           'lightmapDirection',
+          'animation',
+          'motion',
         ],
         path,
         issues,
@@ -770,6 +833,48 @@ function validateNode(
         !(finite(node.scale) && node.scale >= 0.001 && node.scale <= 1000)
       )
         issues.push(`${path}.scale: use 0.001..1000`);
+      if (node.animation !== undefined) {
+        const a = node.animation;
+        if (!object(a)) issues.push(`${path}.animation: object required`);
+        else {
+          unknownKeys(a, ['clip', 'loop', 'speed', 'offsetSec'], `${path}.animation`, issues);
+          if (typeof a.clip !== 'string' || !a.clip || a.clip.length > 128)
+            issues.push(`${path}.animation.clip: clip name required`);
+          if (a.loop !== undefined && typeof a.loop !== 'boolean')
+            issues.push(`${path}.animation.loop: true or false`);
+          if (a.speed !== undefined && !(finite(a.speed) && a.speed >= 0 && a.speed <= 8))
+            issues.push(`${path}.animation.speed: use 0..8`);
+          if (
+            a.offsetSec !== undefined &&
+            !(finite(a.offsetSec) && a.offsetSec >= 0 && a.offsetSec <= 3600)
+          )
+            issues.push(`${path}.animation.offsetSec: use 0..3600`);
+        }
+      }
+      if (node.motion !== undefined) {
+        const keys = node.motion;
+        if (!Array.isArray(keys) || keys.length < 2 || keys.length > 256)
+          issues.push(`${path}.motion: use 2..256 keys`);
+        else {
+          keys.forEach((key, i) => {
+            const at = `${path}.motion[${i}]`;
+            if (!object(key)) return void issues.push(`${at}: key object required`);
+            unknownKeys(key, ['time', 'position', 'yawDeg'], at, issues);
+            const before = i ? (keys[i - 1] as { time?: unknown })?.time : undefined;
+            if (
+              !finite(key.time) ||
+              (i === 0 ? key.time !== 0 : !(finite(before) && key.time > before)) ||
+              key.time > 3600
+            )
+              issues.push(`${at}.time: start at 0 and increase (seconds, at most 3600)`);
+            vec3(key.position, `${at}.position`, issues);
+            if (key.yawDeg !== undefined && !(finite(key.yawDeg) && Math.abs(key.yawDeg) <= 3600))
+              issues.push(`${at}.yawDeg: use -3600..3600`);
+          });
+          if (node.lightmap !== undefined)
+            issues.push(`${path}.motion: a lightmapped model cannot move`);
+        }
+      }
       if (
         node.lightmapIntensity !== undefined &&
         !(
@@ -846,6 +951,7 @@ function validateNode(
           'target',
           'spotAngleDeg',
           'fogOnly',
+          'follows',
         ],
         path,
         issues,
@@ -853,6 +959,16 @@ function validateNode(
       if (node.kind !== 'point' && node.kind !== 'spot')
         issues.push(`${path}.kind: use point or spot`);
       vec3(node.position, `${path}.position`, issues);
+      if (node.follows !== undefined) {
+        const f = node.follows;
+        if (!object(f) || typeof f.node !== 'string')
+          issues.push(`${path}.follows: use { node, offset }`);
+        else {
+          unknownKeys(f, ['node', 'offset'], `${path}.follows`, issues);
+          if (f.offset !== undefined) vec3(f.offset, `${path}.follows.offset`, issues, 1000);
+          if (node.kind !== 'point') issues.push(`${path}.follows: point lights only`);
+        }
+      }
       if (node.color !== undefined) colour(node.color, `${path}.color`, issues);
       if (
         node.intensity !== undefined &&
@@ -947,6 +1063,13 @@ export function validateZhudaFilmScene(
         object(node) && node.type === 'model' && typeof node.id === 'string' ? [node.id] : [],
       ),
     );
+    scene.nodes.forEach((node, i) => {
+      if (!object(node) || node.type !== 'light' || !object(node.follows)) return;
+      if (typeof node.follows.node === 'string' && !modelIds.has(node.follows.node))
+        issues.push(
+          `scene.nodes[${i}].follows.node: ${node.follows.node} is not a model node in this scene`,
+        );
+    });
     let reflectors = 0;
     scene.nodes.forEach((node, i) => {
       if (!object(node) || node.type !== 'reflector') return;

@@ -20,6 +20,8 @@ import type { ZhudaAssetCache } from '../runtime3d/Assets.ts';
 import { createProviderAssetCache, type AssetProvider } from '../runtime3d/AssetProvider.ts';
 import { ZhudaReflectiveSurface } from '../shaders/ReflectiveSurface.ts';
 import { ZhudaLightFog } from '../runtime3d/LightFog.ts';
+import { ZhudaModelInspector } from '../runtime3d/ModelInspector.ts';
+import { ZhudaModelAnimationSampler } from '../runtime3d/ModelAnimationSampler.ts';
 import {
   createZhudaLightmap,
   decodeRadianceHdr,
@@ -46,6 +48,7 @@ import {
   parseZhudaFilmScene,
   resolveZhudaFilmCamera,
   resolveZhudaFilmLook,
+  sampleZhudaFilmMotion,
   type ZhudaFilmCamera,
   type ZhudaFilmMaterial,
   type ZhudaFilmScene,
@@ -71,8 +74,20 @@ export interface ZhudaFilmStage {
   readonly lens: ZhudaPhysicalCameraRig;
   /** Material names in use and how many meshes each one draws. */
   readonly batches: readonly { material: string; meshes: number }[];
-  /** Models placed by the scene, in node order. */
-  readonly models: readonly { id: string; asset: string; meshes: number; lightmap: boolean }[];
+  /** Models placed by the scene, in node order, with the clips each one has. */
+  readonly models: readonly {
+    id: string;
+    asset: string;
+    meshes: number;
+    lightmap: boolean;
+    clips: readonly { name: string; durationSeconds: number }[];
+  }[];
+  /**
+   * Poses the scene for a shot time in seconds: animation clips, moving
+   * models and the lights that follow them. `ZhudaFilmRenderer` calls it for
+   * every sample.
+   */
+  setTime(seconds: number): void;
   /** Moves the camera and sets its lens; ignores depth of field until a render asks for it. */
   setCamera(camera: ZhudaFilmCamera): void;
   /**
@@ -292,20 +307,25 @@ function buildFilmStageContents(
       color: [...look.sun.color, 1] as [number, number, number, number],
     });
     const lightFog = applyLook(l, scene3D, camera, sun.light, look, cleanups);
-    lightFog?.setLights(
-      scene.nodes.flatMap((node) =>
-        node.type === 'light' && node.kind === 'point'
-          ? [
-              {
-                position: node.position,
-                color: node.color ?? ([1, 0.82, 0.6] as [number, number, number]),
-                intensity: node.intensity ?? 2,
-                range: node.range ?? 12,
-              },
-            ]
-          : [],
-      ),
-    );
+    // What moves with shot time; filled in below, applied by `setTime`.
+    const timed: ((seconds: number) => void)[] = [];
+    const modelPose = new Map<string, { position: number[]; yawDeg: number }>();
+    const followPosition = (node: {
+      position: number[];
+      follows?: { node: string; offset?: number[] };
+    }) => {
+      const pose = node.follows && modelPose.get(node.follows.node);
+      if (!pose) return node.position;
+      const [ox, oy, oz] = node.follows!.offset ?? [0, 0, 0],
+        yaw = (pose.yawDeg * Math.PI) / 180,
+        c = Math.cos(yaw),
+        s = Math.sin(yaw);
+      return [
+        pose.position[0] + ox * c + oz * s,
+        pose.position[1] + oy,
+        pose.position[2] - ox * s + oz * c,
+      ];
+    };
     const resolveMaterial = (name: string): any => {
       const existing = materials.get(name);
       if (existing) return existing;
@@ -415,7 +435,7 @@ function buildFilmStageContents(
 
     // Models: clones from the shared library; baked lightmaps through Laya's
     // native lightmap path (`Scene3D.lightmaps`, renderer `lightmapIndex`).
-    const models: { id: string; asset: string; meshes: number; lightmap: boolean }[] = [];
+    const models: ZhudaFilmStage['models'][number][] = [];
     const modelHolders = new Map<string, any>();
     const lightmaps: any[] = [];
     const lightmapped: { renderer: any; index: number }[] = [];
@@ -430,7 +450,41 @@ function buildFilmStageContents(
       holder.transform.rotationEuler = new l.Vector3(0, node.yawDeg ?? 0, 0);
       const scale = node.scale ?? 1;
       holder.transform.localScale = new l.Vector3(scale, scale, scale);
+      modelPose.set(node.id, { position: [...node.position], yawDeg: node.yawDeg ?? 0 });
+      if (node.motion) {
+        const keys = node.motion;
+        timed.push((seconds) => {
+          const pose = sampleZhudaFilmMotion(keys, seconds, node.yawDeg ?? 0);
+          modelPose.set(node.id, pose);
+          holder.transform.position = new l.Vector3(...pose.position);
+          holder.transform.rotationEuler = new l.Vector3(0, pose.yawDeg, 0);
+        });
+      }
       holder.addChild(item.instance.node);
+      const clips = new ZhudaModelInspector(item.instance).inspect().animations;
+      if (node.animation) {
+        const animation = node.animation;
+        const clip = clips.find((entry) => entry.name === animation.clip);
+        if (!clip)
+          throw Error(
+            `Film scene model ${node.id}: ${node.asset} has no clip ${animation.clip}; it has: ${
+              clips.map((entry) => entry.name).join(', ') || 'none'
+            }`,
+          );
+        const sampler = new ZhudaModelAnimationSampler(
+          item.instance,
+          clip.path,
+          clip.name,
+          clip.layer,
+        );
+        cleanups.push(() => sampler.dispose());
+        timed.push((seconds) =>
+          sampler.sample(
+            Math.max(0, (animation.offsetSec ?? 0) + seconds * (animation.speed ?? 1)),
+            animation.loop ?? true,
+          ),
+        );
+      }
       // The library destroys the clone; detach it first so the holder does not.
       cleanups.push(() => item.instance.node.removeSelf());
       const renderers = modelRenderers(l, item.instance.node);
@@ -460,6 +514,7 @@ function buildFilmStageContents(
         asset: node.asset,
         meshes: renderers.length,
         lightmap: !!item.lightmap,
+        clips: clips.map((entry) => ({ name: entry.name, durationSeconds: entry.durationSeconds })),
       });
     }
     if (lightmaps.length) {
@@ -501,6 +556,8 @@ function buildFilmStageContents(
       scene3D.addChild(holder);
       cleanups.push(() => holder.destroy(true));
       holder.transform.position = new l.Vector3(...node.position);
+      if (node.follows)
+        timed.push(() => (holder.transform.position = new l.Vector3(...followPosition(node))));
       const light = holder.addComponent(node.kind === 'spot' ? l.SpotLightCom : l.PointLightCom);
       const [r, g, b] = node.color ?? [1, 0.82, 0.6];
       light.color = new l.Color(r, g, b, 1);
@@ -511,6 +568,27 @@ function buildFilmStageContents(
         holder.transform.lookAt(new l.Vector3(...node.target!), new l.Vector3(0, 1, 0));
       }
     }
+
+    // Lights in the fog, after the models they may follow.
+    const fogNodes = scene.nodes.flatMap((node) =>
+      node.type === 'light' && node.kind === 'point' ? [node] : [],
+    );
+    const fogLights = () =>
+      lightFog?.setLights(
+        fogNodes.map((node) => ({
+          position: followPosition(node) as [number, number, number],
+          color: node.color ?? ([1, 0.82, 0.6] as [number, number, number]),
+          intensity: node.intensity ?? 2,
+          range: node.range ?? 12,
+        })),
+      );
+    if (fogNodes.some((node) => node.follows)) timed.push(fogLights);
+    const setTime = (seconds: number) => {
+      if (!Number.isFinite(seconds) || seconds < 0) throw Error('Invalid film time');
+      for (const apply of timed) apply(seconds);
+    };
+    fogLights();
+    setTime(0);
 
     const first = resolveZhudaFilmCamera(scene.camera);
     const lens = new ZhudaPhysicalCameraRig(camera, {
@@ -547,6 +625,7 @@ function buildFilmStageContents(
         .map(([material, meshes]) => ({ material, meshes }))
         .sort((a, b) => a.material.localeCompare(b.material)),
       models,
+      setTime,
       setCamera,
       prepare,
       dispose,
@@ -670,6 +749,8 @@ export interface ZhudaFilmRenderOptions {
   samples?: number;
   /** Depth of field from the camera's fStop (default: on when samples > 1). */
   aperture?: boolean;
+  /** Shot time of frame 0 in seconds (default 0): where a still or preview looks. */
+  timeSec?: number;
   timeoutMs?: number;
   signal?: AbortSignal;
 }
@@ -712,7 +793,10 @@ export class ZhudaFilmRenderer {
         signal: options.signal,
         aperture: options.aperture ?? samples > 1,
         jitter: samples > 1,
-        sample: () => this.stage.setCamera(camera),
+        sample: (seconds) => {
+          this.stage.setTime((options.timeSec ?? 0) + seconds);
+          this.stage.setCamera(camera);
+        },
         prepare: () => this.stage.prepare(options.width / options.height),
       });
     } finally {

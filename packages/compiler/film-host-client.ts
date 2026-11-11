@@ -102,6 +102,7 @@ async function render(options: {
   samples?: number;
   index?: number;
   fps?: number;
+  timeSec?: number;
 }) {
   requireStage();
   const started = performance.now();
@@ -115,7 +116,7 @@ async function render(options: {
 }
 
 async function review(options: {
-  shots: { label: string; camera: Camera }[];
+  shots: { label: string; camera: Camera; time?: number }[];
   width: number;
   height: number;
   samples?: number;
@@ -130,6 +131,7 @@ async function review(options: {
         width: options.width,
         height: options.height,
         samples: options.samples ?? 1,
+        timeSec: shot.time,
       }),
     });
   // The sheet is composed with Laya 2D (Sprite, Text, RenderTexture2D).

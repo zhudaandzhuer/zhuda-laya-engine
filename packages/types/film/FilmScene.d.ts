@@ -168,6 +168,14 @@ export type ZhudaFilmNode = {
      * model must not be turned (`yawDeg` 0).
      */
     lightmapDirection?: string;
+    /** Plays a clip of the model as a function of shot time. */
+    animation?: ZhudaFilmAnimation;
+    /**
+     * Moves the model during the shot: two or more keys, the first at time
+     * 0, times increasing. Replaces `position` and `yawDeg` while it runs;
+     * the model holds the last key afterwards. Not with a lightmap.
+     */
+    motion?: ZhudaFilmMotionKey[];
 } | {
     id: string;
     type: 'reflector';
@@ -213,11 +221,46 @@ export type ZhudaFilmNode = {
     /** Spot lights: full cone angle, 1..179 degrees (default 60). */
     spotAngleDeg?: number;
     /**
+     * Keeps the light at `offset` (metres, in the model's own frame: +Z is
+     * the model's front before `yawDeg`) from a `model` node, following its
+     * `motion`. Point lights only; `position` is then ignored.
+     */
+    follows?: {
+        node: string;
+        offset?: ZhudaFilmVec3;
+    };
+    /**
      * The light only shines into `look.lightFog` and does not light
      * surfaces: for lamps whose light is already in a lightmap. Point
      * lights only; such lights do not count against the 32 real-time lights.
      */
     fogOnly?: boolean;
+};
+/** A clip of a model, sampled at `offsetSec + shotTime * speed`. */
+export interface ZhudaFilmAnimation {
+    /** Name of an animation in the model file. */
+    clip: string;
+    /** Repeat the clip (default true); otherwise hold its last frame. */
+    loop?: boolean;
+    /** 0..8 (default 1). */
+    speed?: number;
+    /** Clip time at shot time 0, 0..3600 seconds (default 0). */
+    offsetSec?: number;
+}
+export interface ZhudaFilmMotionKey {
+    /** Seconds from the start of the shot. */
+    time: number;
+    position: ZhudaFilmVec3;
+    /** Defaults to the previous key's yaw (the node's `yawDeg` for the first). */
+    yawDeg?: number;
+}
+/**
+ * Where a moving node is at `time`: linear between keys, yaw the short way
+ * around, the first and last keys held outside their range.
+ */
+export declare function sampleZhudaFilmMotion(keys: readonly ZhudaFilmMotionKey[], time: number, baseYawDeg?: number): {
+    position: ZhudaFilmVec3;
+    yawDeg: number;
 };
 export interface ZhudaFilmScene {
     schemaVersion: 1;
