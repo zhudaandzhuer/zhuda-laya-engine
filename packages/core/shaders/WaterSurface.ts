@@ -36,6 +36,11 @@ export interface ZhudaWaterSurfaceOptions {
   refraction?: number;
   /** Brightness of the mirrored scene, 0..4 (default 1). */
   reflection?: number;
+  /**
+   * How much deep water shines in its own colour from light scattered inside
+   * it, 0..4 (default 0.25). Higher values give luminous jade or turquoise water.
+   */
+  glow?: number;
   /** Depth in metres under which the water foams, 0..2 (default 0.12); 0 switches foam off. */
   foamDepth?: number;
   /** Sun glint: unit vector toward the sun and its linear colour times intensity. */
@@ -65,16 +70,19 @@ float zhudaWaterTrain(vec2 q,vec2 along,float turn,float scale,float speed,float
 float c=cos(turn),sn=sin(turn);
 vec2 d=vec2(along.x*c-along.y*sn,along.x*sn+along.y*c);
 return sin(dot(q,d)*scale-u_ZhudaWaterFlow.z*speed+phase);}
-float zhudaWaterHeight(vec2 q){
+float zhudaWaterHeight(vec2 q0){
 float pace=length(u_ZhudaWaterFlow.xy);
 vec2 along=pace>0.0001?u_ZhudaWaterFlow.xy/pace:vec2(1.0,0.0);
 float rate=max(pace,0.15)/u_ZhudaWaterShape.x;
-float h=0.38*zhudaWaterTrain(q,along,0.0,6.2832,6.2832*rate,0.0);
-h+=0.24*zhudaWaterTrain(q,along,0.5,9.7,9.7*rate*1.15,1.7);
-h+=0.2*zhudaWaterTrain(q,along,-0.42,13.1,13.1*rate*0.9,4.1);
-h+=0.1*zhudaWaterTrain(q,along,1.0,21.0,21.0*rate*1.3,2.6);
 vec2 drift=u_ZhudaWaterFlow.xy*u_ZhudaWaterFlow.z/u_ZhudaWaterShape.x;
-h+=0.16*(zhudaWaterNoise(q*1.7-drift)-0.5);
+// Bend the wave fronts: straight trains cross into a lattice that no river shows.
+vec2 q=q0+0.55*(vec2(zhudaWaterNoise(q0*0.37-drift*0.3),zhudaWaterNoise(q0*0.37+vec2(19.0,43.0)-drift*0.3))-0.5);
+float h=0.34*zhudaWaterTrain(q,along,0.0,6.2832,6.2832*rate,0.0);
+h+=0.2*zhudaWaterTrain(q,along,0.61,8.9,8.9*rate*1.15,1.7);
+h+=0.16*zhudaWaterTrain(q,along,-0.47,14.3,14.3*rate*0.9,4.1);
+h+=0.08*zhudaWaterTrain(q,along,1.13,23.7,23.7*rate*1.3,2.6);
+h+=0.42*(zhudaWaterNoise(q0*1.3-drift)-0.5);
+h+=0.2*(zhudaWaterNoise(q0*3.1-drift*1.6+vec2(7.0,3.0))-0.5);
 return h*0.16;}
 vec4 zhudaSurface(vec2 uv,vec3 p,vec3 n){
 vec3 v=normalize(u_CameraPos-p);
@@ -102,7 +110,9 @@ bed=gammaToLinear(vec4(bed,1.0)).rgb;
 // Depth of the water under this pixel, not the length of the slanted view through it.
 float deep=thick*max(v.y,0.2);
 float through=exp(-deep/u_ZhudaWaterTint.w);
-vec3 body=bed*mix(u_ZhudaWaterTint.rgb*2.0,vec3(1.0),through)*mix(0.35,1.0,through)+u_ZhudaWaterTint.rgb*u_ZhudaWaterLight.rgb*0.25*(1.0-through);
+// Deep water is not dark: light scattered inside it gives it its own colour
+// (glow), which is what makes a clear river look jade rather than black.
+vec3 body=bed*mix(u_ZhudaWaterTint.rgb*2.0,vec3(1.0),through)*mix(0.35,1.0,through)+u_ZhudaWaterTint.rgb*u_ZhudaWaterLight.rgb*u_ZhudaWaterLight.w*(1.0-through);
 // The mirrored scene, shifted by the waves.
 vec4 mc=u_ZhudaWaterC0*p.x+u_ZhudaWaterC1*p.y+u_ZhudaWaterC2*p.z+u_ZhudaWaterC3;
 float front=step(0.00001,mc.w);
@@ -153,8 +163,8 @@ const SPEC: ZhudaShaderSpec = {
     u_ZhudaWaterFlow: { type: 'vec4', value: [0, 0.6, 0, 0] },
     /** deep colour, clarity in metres. */
     u_ZhudaWaterTint: { type: 'vec4', value: [0.05, 0.32, 0.3, 1.5] },
-    /** light that reaches the water (for its own colour and foam). */
-    u_ZhudaWaterLight: { type: 'vec4', value: [1, 1, 1, 0] },
+    /** light that reaches the water (for its own colour and foam), glow. */
+    u_ZhudaWaterLight: { type: 'vec4', value: [1, 1, 1, 0.25] },
     /** flip the screen's V, foam depth, unused, unused. */
     u_ZhudaWaterFlags: { type: 'vec4', value: [0, 0.12, 0, 0] },
     u_ZhudaWaterSun: { type: 'vec3', value: [0, 1, 0] },
@@ -185,6 +195,7 @@ export function validateZhudaWaterSurface(options: ZhudaWaterSurfaceOptions): st
     ['waves', 0, 1],
     ['refraction', 0, 1],
     ['reflection', 0, 4],
+    ['glow', 0, 4],
     ['foamDepth', 0, 2],
   ];
   for (const [key, min, max] of ranges)
@@ -257,7 +268,7 @@ export class ZhudaWaterSurface {
       set('u_ZhudaWaterSun', sun ? [...sun.toward] : [0, 1, 0]);
       set('u_ZhudaWaterSunColor', sun ? [...sun.color, 0] : [0, 0, 0, 0]);
       const light = sun ? Math.max(0.25, Math.min(1.5, Math.max(...sun.color) * 0.35)) : 1;
-      set('u_ZhudaWaterLight', [light, light, light, 0]);
+      set('u_ZhudaWaterLight', [light, light, light, options.glow ?? 0.25]);
       const [x, y, z] = options.position,
         hw = options.size[0] / 2,
         hd = options.size[1] / 2;

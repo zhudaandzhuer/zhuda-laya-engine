@@ -18,6 +18,11 @@ export interface ZhudaWaterSurfaceOptions {
     refraction?: number;
     /** Brightness of the mirrored scene, 0..4 (default 1). */
     reflection?: number;
+    /**
+     * How much deep water shines in its own colour from light scattered inside
+     * it, 0..4 (default 0.25). Higher values give luminous jade or turquoise water.
+     */
+    glow?: number;
     /** Depth in metres under which the water foams, 0..2 (default 0.12); 0 switches foam off. */
     foamDepth?: number;
     /** Sun glint: unit vector toward the sun and its linear colour times intensity. */

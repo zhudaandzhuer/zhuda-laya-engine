@@ -468,7 +468,9 @@ A `water` node is clear running water on a horizontal rectangle:
   models that cross the rectangle; water shows only where it lies above them.
 - The bed is seen through the water, bent by the waves (`refraction`) and
   fading into `color` with depth: `clarity` is the depth in metres at which
-  about a third of the bed's light is left.
+  about a third of the bed's light is left. `glow` (0..4, default 0.25) is how
+  much deep water shines in that colour by itself: raise it for luminous jade
+  water, lower it for a dark pool.
 - The surface mirrors the scene above it (`reflection`, softened as moving
   water does), glints in the sun of `look.sun` and carries trains of waves
   along `flow` (metres per second, driven by shot time). A soft line of foam

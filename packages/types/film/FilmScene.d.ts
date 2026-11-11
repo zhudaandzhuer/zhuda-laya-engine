@@ -310,6 +310,8 @@ export type ZhudaFilmNode = {
     refraction?: number;
     /** Brightness of the mirrored scene, 0..4 (default 1). */
     reflection?: number;
+    /** How much deep water shines in its own colour, 0..4 (default 0.25). */
+    glow?: number;
     /** Depth under which the water foams, 0..2 metres (default 0.12); 0 is no foam. */
     foamDepth?: number;
     /** Longer side of the mirrored picture (default 1024). */

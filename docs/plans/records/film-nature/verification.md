@@ -85,3 +85,19 @@ surface was value noise without a direction and mirrored the scene sharply.
 `npm run verify:film-water` and `npm run verify:film-webgpu` pass unchanged;
 `npm run verify` passes (405 tests). `reflectionOnly` is covered by the schema
 test only; its picture was checked by eye in the river still.
+
+## Follow-up: water glow and bent wave fronts (2026-11-12)
+
+Source: the user found the water colour close but not right (dark green
+with hard blue patches of mirrored sky) and the foreground surface showed a
+regular lattice of dark spots.
+
+- `glow` (water option and film `water` node, 0..4, default 0.25, the former
+  fixed value): how much deep water shines in its own colour from light
+  scattered inside it.
+- The wave trains are bent by low-frequency noise and carry more noise, so
+  they no longer cross into a lattice.
+
+`npm run verify` (405 tests), lint, format and `git diff --check` pass;
+`npm run verify:film-water` passes on WebGL and WebGPU. The look itself was
+judged by eye in the river still; no pixel check covers the lattice.

@@ -679,6 +679,7 @@ function buildFilmStageContents(
         waves: node.waves,
         refraction: node.refraction,
         reflection: node.reflection,
+        glow: node.glow,
         foamDepth: node.foamDepth,
         resolution: node.resolution,
         sun: {
