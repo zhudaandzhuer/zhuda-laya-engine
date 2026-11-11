@@ -74,3 +74,17 @@ is constant inside a brick, differs between bricks (at least 20 distinct of
 24), wraps across the tile edge on offset rows and changes with the seed,
 and that the edge value is 0 on the joint, 1 mid-brick and rising between.
 Data contract only: how a baked set looks still needs a real draw.
+
+## Follow-up: materials from one picture (2026-11-11)
+
+`deriveZhudaPhotoMaterial` builds a full texture set from one colour picture
+(seam blend, lighting flatten, relief from fine brightness detail, normals,
+roughness). `node --test tests/photo-material.test.mjs` (5 tests): a flat
+picture gives flat normals and no relief; dark grooves come out lower by the
+requested depth, rougher, with normals leaning into them and the green
+channel flipped between the two conventions; the seam blend brings opposite
+edges within 2 of 255 and leaves the middle untouched; flatten halves a broad
+gradient and keeps thin lines; bad options and pixel data are refused. First
+use: a generated flagstone picture (1254 px) became a 2048 px set for a town
+street model. The relief is inferred from brightness, so stains read as
+dents; that limit is in the docs.

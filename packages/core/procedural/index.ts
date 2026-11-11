@@ -1,6 +1,7 @@
 export * from './Random.ts';
 export * from './Noise.ts';
 export * from './TextureRecipe.ts';
+export * from './PhotoMaterial.ts';
 export * from './ProceduralMaterial.ts';
 export * from './Geometry.ts';
 export * from './PropFactory.ts';

@@ -89,6 +89,30 @@ and returns a PBR material. With the default `uvUnit: 'meters'` the material
 repeats every `tileMeters`, which matches the UVs from the geometry kit.
 `tint` lets one baked set serve several paint colours.
 
+### A material from one picture
+
+`deriveZhudaPhotoMaterial(rgba, width, height, options)` turns one colour
+picture of a flat surface (a photograph, or a generated picture) into the
+same kind of set a recipe bakes: colour, normal, metallic-gloss and height.
+
+```ts
+const set = deriveZhudaPhotoMaterial(pixels, 1254, 1254, {
+  id: 'flagstone',
+  tileMeters: [3.2, 3.2],
+  size: 1024,
+  reliefMm: 14, // depth between the lowest and the highest point
+  roughness: [0.55, 0.95], // raised and worn, low and dirty
+});
+```
+
+It blends a band at each edge so the picture wraps (`seam`), evens out broad
+lighting differences (`flatten`), takes relief from the fine light-and-dark
+detail (`detail` sets how fine), builds the normal map from that relief and
+makes low places rougher. The relief is a guess from brightness: joints,
+pits and grain come out right; a dark stain or painted mark is read as a
+dent. Use pictures taken or generated with flat light and no shadows, looking
+straight at the surface. It is pure and deterministic, like baking a recipe.
+
 ## Geometry kit
 
 Pure functions that return the engine's `MeshData`:
