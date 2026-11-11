@@ -219,7 +219,9 @@ and uses it as the environment of the whole scene:
   lightmapped models, which otherwise have no highlights at all.
 - Surfaces without a lightmap (characters, props, boxes) get ambient light
   with the colour and direction of the surroundings instead of the flat
-  `ambient` colour.
+  `ambient` colour. `"reflectionOnly": true` keeps the flat `ambient` colour
+  and takes only reflections from the capture: under a canopy or between
+  walls the captured ambient light is as dark as the surroundings.
 - There is one probe. Reflections are right at `position` and approximate
   elsewhere, so put it near the subject of the shot. It is captured once:
   things that move during a shot are in it where they were at time 0.
@@ -467,9 +469,10 @@ A `water` node is clear running water on a horizontal rectangle:
 - The bed is seen through the water, bent by the waves (`refraction`) and
   fading into `color` with depth: `clarity` is the depth in metres at which
   about a third of the bed's light is left.
-- The surface mirrors the scene above it (`reflection`), glints in the sun
-  of `look.sun`, carries its waves along `flow` (metres per second, driven by
-  shot time) and foams where it is shallower than `foamDepth`.
+- The surface mirrors the scene above it (`reflection`, softened as moving
+  water does), glints in the sun of `look.sun` and carries trains of waves
+  along `flow` (metres per second, driven by shot time). A soft line of foam
+  follows banks and stones where the water is shallower than `foamDepth`.
 - The mirrored view is cut at the water level, so the bed and the sunk part
   of stones do not show in it. `hides` takes models out of it if needed.
 - Water needs `grade`. A scene has one mirror: one `water` or one

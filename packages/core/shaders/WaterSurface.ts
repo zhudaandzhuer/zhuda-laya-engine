@@ -59,16 +59,27 @@ export function zhudaWaterAbsorption(metres: number, clarity: number): number {
 
 const SURFACE = `float zhudaWaterHash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
 float zhudaWaterNoise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);return mix(mix(zhudaWaterHash(i),zhudaWaterHash(i+vec2(1.0,0.0)),f.x),mix(zhudaWaterHash(i+vec2(0.0,1.0)),zhudaWaterHash(i+vec2(1.0,1.0)),f.x),f.y);}
+// Waves that travel with the flow: four trains fanned around its direction,
+// each with its own length and speed, and a little noise so they never repeat.
+float zhudaWaterTrain(vec2 q,vec2 along,float turn,float scale,float speed,float phase){
+float c=cos(turn),sn=sin(turn);
+vec2 d=vec2(along.x*c-along.y*sn,along.x*sn+along.y*c);
+return sin(dot(q,d)*scale-u_ZhudaWaterFlow.z*speed+phase);}
 float zhudaWaterHeight(vec2 q){
+float pace=length(u_ZhudaWaterFlow.xy);
+vec2 along=pace>0.0001?u_ZhudaWaterFlow.xy/pace:vec2(1.0,0.0);
+float rate=max(pace,0.15)/u_ZhudaWaterShape.x;
+float h=0.38*zhudaWaterTrain(q,along,0.0,6.2832,6.2832*rate,0.0);
+h+=0.24*zhudaWaterTrain(q,along,0.5,9.7,9.7*rate*1.15,1.7);
+h+=0.2*zhudaWaterTrain(q,along,-0.42,13.1,13.1*rate*0.9,4.1);
+h+=0.1*zhudaWaterTrain(q,along,1.0,21.0,21.0*rate*1.3,2.6);
 vec2 drift=u_ZhudaWaterFlow.xy*u_ZhudaWaterFlow.z/u_ZhudaWaterShape.x;
-float h=zhudaWaterNoise(q-drift)*0.6;
-h+=zhudaWaterNoise(q*2.13-drift*1.7+vec2(11.0,5.0))*0.28;
-h+=zhudaWaterNoise(q*4.7-drift*2.6+vec2(3.0,29.0))*0.12;
-return h;}
+h+=0.16*(zhudaWaterNoise(q*1.7-drift)-0.5);
+return h*0.16;}
 vec4 zhudaSurface(vec2 uv,vec3 p,vec3 n){
 vec3 v=normalize(u_CameraPos-p);
 vec2 q=p.xz/u_ZhudaWaterShape.x;
-float e=0.12;
+float e=0.03;
 float h0=zhudaWaterHeight(q);
 vec3 wn=normalize(vec3((h0-zhudaWaterHeight(q+vec2(e,0.0)))/e*u_ZhudaWaterShape.y,1.0,(h0-zhudaWaterHeight(q+vec2(0.0,e)))/e*u_ZhudaWaterShape.y));
 vec4 clip=u_ViewProjection*vec4(p,1.0);
@@ -97,15 +108,28 @@ vec4 mc=u_ZhudaWaterC0*p.x+u_ZhudaWaterC1*p.y+u_ZhudaWaterC2*p.z+u_ZhudaWaterC3;
 float front=step(0.00001,mc.w);
 vec2 r=mc.xy/max(mc.w,0.00001)*0.5+0.5;
 r.y=1.0-r.y;
-r=clamp(r+wn.xz*0.05,0.001,0.999);
-vec3 mirror=zhudaSample_u_ZhudaWaterReflection(r).rgb*front*u_ZhudaWaterShape.w;
+r=clamp(r+wn.xz*0.035,0.001,0.999);
+// Five taps: moving water never shows a sharp mirror image.
+float soft=0.006+0.02*(1.0-wn.y);
+vec3 mirror=zhudaSample_u_ZhudaWaterReflection(r).rgb*0.36;
+mirror+=zhudaSample_u_ZhudaWaterReflection(r+vec2(soft,soft*0.6)).rgb*0.16;
+mirror+=zhudaSample_u_ZhudaWaterReflection(r+vec2(-soft,soft*0.6)).rgb*0.16;
+mirror+=zhudaSample_u_ZhudaWaterReflection(r+vec2(soft*0.5,-soft)).rgb*0.16;
+mirror+=zhudaSample_u_ZhudaWaterReflection(r+vec2(-soft*0.5,-soft)).rgb*0.16;
+mirror*=front*u_ZhudaWaterShape.w;
 float fresnel=0.02+0.98*pow(1.0-clamp(dot(v,wn),0.0,1.0),5.0);
 vec3 colour=mix(body,mirror,fresnel);
 vec3 between=normalize(v+u_ZhudaWaterSun);
-colour+=u_ZhudaWaterSunColor.rgb*pow(max(dot(wn,between),0.0),420.0)*4.0;
+// Sparkle: fine ripples the wave trains do not carry tilt the surface a little more.
+vec2 fine=vec2(zhudaWaterNoise(q*23.0-u_ZhudaWaterFlow.xy*u_ZhudaWaterFlow.z*5.0),zhudaWaterNoise(q*23.0+vec2(31.0,7.0)-u_ZhudaWaterFlow.xy*u_ZhudaWaterFlow.z*5.0))-0.5;
+vec3 sn=normalize(wn+vec3(fine.x,0.0,fine.y)*0.12*u_ZhudaWaterShape.y);
+colour+=u_ZhudaWaterSunColor.rgb*pow(max(dot(sn,between),0.0),900.0)*5.0;
 // Foam where the water is shallow, broken up and drifting with the flow.
-float churn=zhudaWaterNoise(q*5.0-u_ZhudaWaterFlow.xy*u_ZhudaWaterFlow.z*3.0/u_ZhudaWaterShape.x);
-float foam=(1.0-smoothstep(0.0,max(u_ZhudaWaterFlags.y,0.0001),thick))*smoothstep(0.25,0.7,churn+h0*0.4)*step(0.0001,u_ZhudaWaterFlags.y);
+// A soft line of foam where the water meets a bank or a stone, thicker where the waves lap.
+float churn=zhudaWaterNoise(q*2.2-u_ZhudaWaterFlow.xy*u_ZhudaWaterFlow.z*1.5/u_ZhudaWaterShape.x);
+float reach=max(u_ZhudaWaterFlags.y,0.0001)*(0.55+0.9*churn);
+float foam=(1.0-smoothstep(0.0,reach,thick))*smoothstep(0.004,0.02,thick)*step(0.0001,u_ZhudaWaterFlags.y);
+foam*=0.75;
 colour=mix(colour,u_ZhudaWaterLight.rgb*0.85,foam);
 return vec4(colour,smoothstep(0.0,0.015,thick));}`;
 

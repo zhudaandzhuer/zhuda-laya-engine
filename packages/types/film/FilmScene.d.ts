@@ -132,6 +132,12 @@ export interface ZhudaFilmEnvironment {
     reflection?: number;
     /** Scales the ambient light on surfaces without a lightmap, 0..8 (default 1). */
     ambient?: number;
+    /**
+     * Take only reflections from the capture and keep `look.ambient` as the
+     * ambient light (default false). For shots under trees or between walls,
+     * where the captured ambient light is as dark as the surroundings.
+     */
+    reflectionOnly?: boolean;
 }
 /** Height fog lit by the scene's `light` nodes (see `ZhudaLightFog`). */
 export interface ZhudaFilmLightFog {

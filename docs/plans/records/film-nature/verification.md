@@ -67,3 +67,21 @@ Both backends give the same result.
 - The mirrored view has less depth precision near the water plane (oblique
   near plane); distant mirrored geometry was not checked for depth fighting.
 - Windows, Linux, mobile and other browsers: not run.
+
+## Follow-up: calmer water, reflection-only probe (2026-11-11)
+
+Source: the user found the foreground of the first river still noisy. The
+surface was value noise without a direction and mirrored the scene sharply.
+
+- Waves are four trains fanned around the flow direction, each with its own
+  length and speed, plus a little noise; finer ripples only move the sun
+  glints. The mirrored scene is read with five taps.
+- Foam is a soft line at the waterline, modulated along it, instead of
+  patches over all shallow water.
+- `look.environment.reflectionOnly` (and `ZhudaEnvironmentProbe` capture
+  option `reflectionOnly`) keeps the scene's ambient light and takes only
+  reflections from the capture.
+
+`npm run verify:film-water` and `npm run verify:film-webgpu` pass unchanged;
+`npm run verify` passes (405 tests). `reflectionOnly` is covered by the schema
+test only; its picture was checked by eye in the river still.

@@ -156,6 +156,12 @@ export interface ZhudaFilmEnvironment {
   reflection?: number;
   /** Scales the ambient light on surfaces without a lightmap, 0..8 (default 1). */
   ambient?: number;
+  /**
+   * Take only reflections from the capture and keep `look.ambient` as the
+   * ambient light (default false). For shots under trees or between walls,
+   * where the captured ambient light is as dark as the surroundings.
+   */
+  reflectionOnly?: boolean;
 }
 
 /** Height fog lit by the scene's `light` nodes (see `ZhudaLightFog`). */
@@ -836,7 +842,14 @@ function validateLook(
     const e = look.environment;
     if (!object(e)) issues.push(`${path}.environment: object or false required`);
     else {
-      unknownKeys(e, ['position', 'reflection', 'ambient'], `${path}.environment`, issues);
+      unknownKeys(
+        e,
+        ['position', 'reflection', 'ambient', 'reflectionOnly'],
+        `${path}.environment`,
+        issues,
+      );
+      if (e.reflectionOnly !== undefined && typeof e.reflectionOnly !== 'boolean')
+        issues.push(`${path}.environment.reflectionOnly: true or false`);
       vec3(e.position, `${path}.environment.position`, issues);
       range(e.reflection, `${path}.environment.reflection`, 0, 8);
       range(e.ambient, `${path}.environment.ambient`, 0, 8);
@@ -1634,6 +1647,7 @@ export function resolveZhudaFilmLook(look: ZhudaFilmLook = {}): ZhudaResolvedFil
             position: [...look.environment.position] as ZhudaFilmVec3,
             reflection: look.environment.reflection ?? 1,
             ambient: look.environment.ambient ?? 1,
+            reflectionOnly: look.environment.reflectionOnly ?? false,
           }
         : false,
   };

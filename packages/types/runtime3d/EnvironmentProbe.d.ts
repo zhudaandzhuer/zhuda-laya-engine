@@ -44,6 +44,12 @@ export interface ZhudaEnvironmentProbeOptions {
     reflection?: number;
     /** Scales the ambient light, 0..8 (default 1). */
     ambient?: number;
+    /**
+     * Use the capture for reflections only and leave the scene's ambient light
+     * as it is. Under a canopy or in a courtyard the captured ambient is as
+     * dark as the surroundings; an open sky light may suit the shot better.
+     */
+    reflectionOnly?: boolean;
     /** Laya layers the capture does not draw (default: none). */
     excludedLayers?: readonly number[];
 }

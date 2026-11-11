@@ -779,7 +779,13 @@ test('look.environment is validated, resolved and merged by patches', () => {
     position: [1, 2, 3],
     reflection: 1,
     ambient: 1,
+    reflectionOnly: false,
   });
+  assert.equal(
+    resolveZhudaFilmLook({ environment: { position: [1, 2, 3], reflectionOnly: true } }).environment
+      .reflectionOnly,
+    true,
+  );
   assert.equal(resolveZhudaFilmLook({}).environment, false);
   assert.equal(resolveZhudaFilmLook({ environment: false }).environment, false);
   const cases = [
@@ -787,6 +793,10 @@ test('look.environment is validated, resolved and merged by patches', () => {
     [{ environment: { position: [0, 0, 0], reflection: 99 } }, 'environment.reflection'],
     [{ environment: { position: [0, 0, 0], ambient: -1 } }, 'environment.ambient'],
     [{ environment: { position: [0, 0, 0], probes: 2 } }, 'environment.probes: unknown field'],
+    [
+      { environment: { position: [0, 0, 0], reflectionOnly: 1 } },
+      'environment.reflectionOnly: true or false',
+    ],
   ];
   for (const [look, fragment] of cases)
     assert.ok(
