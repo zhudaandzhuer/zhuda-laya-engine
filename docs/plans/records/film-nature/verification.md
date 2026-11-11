@@ -123,3 +123,19 @@ Limits: the sunlit estimate is a heuristic on scene brightness, not a shadow
 lookup: a dark bed in full sun reads as shade and a pale bed in shade may read
 as lit. In the river still almost no sun glints remain; whether that is the
 estimate being too strict was not measured. Judged by eye only.
+
+## Follow-up: emission scale on model nodes (2026-11-12)
+
+Source: a town built and baked for night stood in a daytime river shot with
+its windows lit. Model nodes take `emission` (0..8, default 1), which scales
+the emissive strength of the model's glTF materials for that stage and
+restores it on disposal (the materials are shared through the library).
+
+`npm run verify:film-water` (WebGL and WebGPU), step 5b: an emissive floor
+reads 149, 89, 39; with `emission: 0` it is 0, 0, 0; with `emission: 2` it
+is 203, 124, 56; mounted again without the option it is 149, 89, 39.
+`npm run verify` passes with the schema test.
+
+Limit: only materials that carry Laya's glTF `u_EmissionStrength` are
+scaled; emissive textures are scaled with them, engine-built film materials
+(`materials` of the scene) are not touched.

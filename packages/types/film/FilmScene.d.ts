@@ -261,6 +261,12 @@ export type ZhudaFilmNode = {
      * them. Opaque materials of the same model (bark) are unchanged.
      */
     translucent?: boolean;
+    /**
+     * Scales the light the model's own materials give off, 0..8 (default
+     * 1): 0 puts out lit windows and lanterns for a daytime shot of a
+     * model built for night, without another copy of the asset.
+     */
+    emission?: number;
 } | {
     id: string;
     type: 'reflector';

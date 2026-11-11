@@ -176,6 +176,45 @@ try {
     assert.ok(Math.max(...colour) > 60, `a copy is drawn at its place: ${colour}`);
   assert.ok(Math.max(...report.placementsBetween) < 5, 'nothing between the copies');
 
+  // 5b. Emission: a model that glows by itself can be dimmed and put out.
+  fs.writeFileSync(
+    path.join(assets, 'set', 'glow.glb'),
+    floorGlb({ uv1: false, emissive: [0.3, 0.1, 0.02] }),
+  );
+  const glowing = (emission) => ({
+    schemaVersion: 1,
+    id: 'emission-check',
+    camera: { eye: EYE, target: TARGET, focalLengthMm: 35 },
+    look: { sky: [0, 0, 0], ambient: [0, 0, 0], sun: { intensity: 0 }, shadows: false },
+    nodes: [
+      {
+        id: 'glow',
+        type: 'model',
+        asset: 'set/glow.glb',
+        position: [0, 0, 0],
+        ...(emission === undefined ? {} : { emission }),
+      },
+    ],
+  });
+  const centre = at([0, 0, 0]);
+  report.emission = {
+    plain: patch(await render('emission-1', glowing(undefined)), centre),
+    off: patch(await render('emission-0', glowing(0)), centre),
+    double: patch(await render('emission-2', glowing(2)), centre),
+  };
+  assert.ok(report.emission.plain[0] > 60, `the model glows: ${report.emission.plain}`);
+  assert.ok(Math.max(...report.emission.off) < 3, `emission 0 puts it out: ${report.emission.off}`);
+  assert.ok(
+    report.emission.double[0] > report.emission.plain[0] + 20,
+    `emission 2 is brighter: ${report.emission.double}`,
+  );
+  // The asset is shared: the next mount without the option glows as before.
+  assert.deepEqual(
+    patch(await render('emission-again', glowing(undefined)), centre),
+    report.emission.plain,
+    'the shared material is restored',
+  );
+
   // 6. Thirty mounts with and without water, then the first frame again.
   for (let i = 0; i < 30; i++)
     await host.mountReport(scene(i % 2 ? [...scenery, water()] : scenery));

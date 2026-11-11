@@ -447,6 +447,10 @@ model's meshes and materials. A node holds up to 20 000 copies and a scene
 }
 ```
 
+`"emission": 0` on a model node puts out what its materials give off by
+themselves (lit windows, lanterns), and other values scale it (0..8): a
+town built for night can stand in a daytime shot without a second copy.
+
 `"translucent": true` lets light through leaves: the cut-out (alpha-tested)
 materials of the model glow in their own colour when the sun or a lamp is
 behind them, instead of going black. Bark and other opaque materials of the

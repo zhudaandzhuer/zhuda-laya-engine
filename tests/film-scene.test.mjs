@@ -1054,3 +1054,20 @@ test('water nodes are validated, need grade and share the one mirror of a scene'
     ),
   );
 });
+
+test('model emission is a scale between 0 and 8', () => {
+  const model = (emission) => ({
+    ...scene(),
+    nodes: [{ id: 'house', type: 'model', asset: 'city/house.glb', position: [0, 0, 0], emission }],
+  });
+  const assets = { ...context, assets: ['city/house.glb'] };
+  for (const value of [0, 1, 2.5, 8])
+    assert.deepEqual(validateZhudaFilmScene(model(value), assets), []);
+  for (const value of [-1, 9, 'off', Number.NaN])
+    assert.ok(
+      validateZhudaFilmScene(model(value), assets).some((issue) =>
+        issue.includes('emission: use 0..8'),
+      ),
+      String(value),
+    );
+});

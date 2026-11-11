@@ -1,7 +1,7 @@
 // Generated fixtures for the film GPU checks: nothing is read from the repository.
 
 /** A 10 m square floor at y = 0, white and rough; optional second UV set. */
-export function floorGlb({ uv1 }) {
+export function floorGlb({ uv1, emissive }) {
   const positions = [-5, 0, -5, -5, 0, 5, 5, 0, 5, 5, 0, -5];
   const normals = [0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0];
   // glTF UVs: (0,0) is the top-left texel. u follows +X, v follows +Z.
@@ -38,6 +38,7 @@ export function floorGlb({ uv1 }) {
     materials: [
       {
         doubleSided: true,
+        ...(emissive ? { emissiveFactor: emissive } : {}),
         pbrMetallicRoughness: {
           baseColorFactor: [1, 1, 1, 1],
           metallicFactor: 0,

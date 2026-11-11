@@ -596,6 +596,22 @@ function buildFilmStageContents(
       cleanups.push(() => item.instance.node.removeSelf());
       const renderers = modelRenderers(l, item.instance.node);
       if (!renderers.length) throw Error(`Film scene model ${node.id}: ${node.asset} has no mesh`);
+      if (node.emission !== undefined && node.emission !== 1) {
+        // glTF materials multiply their emissive colour by this strength.
+        const scale = node.emission;
+        const seen = new Set<any>();
+        for (const renderer of renderers)
+          for (const material of renderer.sharedMaterials ?? []) {
+            if (!material || seen.has(material)) continue;
+            seen.add(material);
+            const before = material.getFloat?.('u_EmissionStrength');
+            if (typeof before !== 'number') continue;
+            material.setFloat('u_EmissionStrength', before * scale);
+            cleanups.push(
+              () => !material.destroyed && material.setFloat('u_EmissionStrength', before),
+            );
+          }
+      }
       if (node.translucent) {
         // Copies share these materials, so one define covers every placement.
         const define = l.Shader3D.getDefineByName(ZHUDA_TRANSLUCENT_DEFINE);
