@@ -300,6 +300,7 @@ function buildFilmStageContents(
                 position: node.position,
                 color: node.color ?? ([1, 0.82, 0.6] as [number, number, number]),
                 intensity: node.intensity ?? 2,
+                range: node.range ?? 12,
               },
             ]
           : [],

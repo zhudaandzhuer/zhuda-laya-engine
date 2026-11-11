@@ -156,7 +156,9 @@ into haze. It needs `grade` and is off unless given.
   `falloffMeters` is the height over which the fog thins to about a third.
 - `color` is what the fog adds by itself (moonlight in the air); `scatter`
   scales the glow from lights.
-- Every point `light` node shines into the fog. A light with
+- Every point `light` node shines into the fog, out to its `range` (default
+  12 m): a view ray that passes farther from the light gets no glow from it,
+  so many lamps do not add up to a wash over the sky. A light with
   `"fogOnly": true` lights only the fog and no surface: use it for lamps
   whose light is already in a lightmap. Fog-only lights do not count against
   the 32 real-time lights; a scene holds up to 128 lights in all.

@@ -51,6 +51,13 @@ test('airlight matches a numeric integral of 1/r² along the ray', () => {
   assert.ok(zhudaFogAirlight(10, 0.5, 100) > zhudaFogAirlight(10, 2, 100));
   assert.ok(zhudaFogAirlight(10, 1, 6) < 0.5 * zhudaFogAirlight(10, 1, 100));
   assert.ok(Number.isFinite(zhudaFogAirlight(10, 0, 100)), 'a light on the ray stays finite');
+  // A range fades the glow to nothing at that distance from the light.
+  assert.equal(zhudaFogAirlight(10, 6, 100, 6), 0);
+  assert.equal(zhudaFogAirlight(10, 9, 100, 6), 0);
+  const full = zhudaFogAirlight(10, 3, 100),
+    ranged = zhudaFogAirlight(10, 3, 100, 6);
+  assert.ok(Math.abs(ranged - full * 0.25) < 1e-12, 'half the range away keeps a quarter');
+  assert.ok(zhudaFogAirlight(10, 0.5, 100, 6) > 0.8 * zhudaFogAirlight(10, 0.5, 100));
 });
 
 test('light fog options are validated and defaulted', () => {

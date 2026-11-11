@@ -32,6 +32,11 @@ export interface ZhudaFogLight {
   /** Linear RGB. */
   color: readonly [number, number, number];
   intensity: number;
+  /**
+   * Metres from the light beyond which a view ray gets no glow from it
+   * (default 12). Keeps many lamps from adding up to a wash over the sky.
+   */
+  range?: number;
 }
 
 /** Most lights one fog can hold. */
@@ -102,12 +107,21 @@ export function zhudaFogOpticalDepth(
 /**
  * The integral of 1/r² along a ray of length `distance`, r being the distance
  * to a light whose closest approach is `offset` metres from the ray, `along`
- * metres from its start. Multiplied by the fog density and the light's
- * colour, this is the light scattered toward the camera.
+ * metres from its start, faded to nothing where the ray passes `range` metres
+ * from the light. Multiplied by the fog density and the light's colour, this
+ * is the light scattered toward the camera.
  */
-export function zhudaFogAirlight(along: number, offset: number, distance: number): number {
+export function zhudaFogAirlight(
+  along: number,
+  offset: number,
+  distance: number,
+  range = Infinity,
+): number {
   const h = Math.max(offset, 0.08);
-  return (Math.atan((distance - along) / h) + Math.atan(along / h)) / h;
+  // Rays that pass farther than `range` from the light get nothing; the
+  // window is smooth so halos have no hard edge.
+  const window = Math.max(0, 1 - h / range);
+  return ((Math.atan((distance - along) / h) + Math.atan(along / h)) / h) * window * window;
 }
 
 const VERTEX =
@@ -143,7 +157,8 @@ vec3 colour=texture2D(u_ZhudaFogLights,vec2(u,0.75)).rgb;
 vec3 d=place.xyz-u_ZhudaFogEye.xyz;
 float along=dot(d,dir);
 float h=max(sqrt(max(dot(d,d)-along*along,0.0)),0.08);
-float reach=(atan((t-along)/h)+atan(along/h))/h;
+float window=clamp(1.0-h/place.w,0.0,1.0);
+float reach=(atan((t-along)/h)+atan(along/h))/h*window*window;
 float local=u_ZhudaFogShape.x*exp(-(place.y-u_ZhudaFogShape.z)/falloff);
 float k2=clamp(along,0.0,t);
 float dim=exp(-atEye*(abs(k)<0.0001?k2:(1.0-exp(-k*k2))/k));
@@ -223,10 +238,16 @@ export class ZhudaLightFog {
       throw Error(`Light fog holds at most ${ZHUDA_FOG_MAX_LIGHTS} lights`);
     this.data.fill(0);
     lights.forEach((light, i) => {
-      const values = [...light.position, ...light.color, light.intensity];
-      if (values.length !== 7 || !values.every(Number.isFinite) || light.intensity < 0)
+      const range = light.range ?? 12;
+      const values = [...light.position, ...light.color, light.intensity, range];
+      if (
+        values.length !== 8 ||
+        !values.every(Number.isFinite) ||
+        light.intensity < 0 ||
+        !(range > 0)
+      )
         throw Error('Invalid fog light ' + i);
-      this.data.set(light.position, i * 4);
+      this.data.set([...light.position, range], i * 4);
       this.data.set(
         light.color.map((c) => c * light.intensity),
         (ZHUDA_FOG_MAX_LIGHTS + i) * 4,

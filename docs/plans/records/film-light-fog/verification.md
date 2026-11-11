@@ -44,6 +44,17 @@ Mean colour of a 5×5 patch at pixels from an independent pinhole projection.
   compile error was read. A fog whose shader fails to compile still fails
   silently at run time: that is Laya's fallback and is not changed here.
 
+## Follow-up: light range (found in the first film use)
+
+With 95 fog-only lamps in the town scene, the unbounded 1/r² tails added up
+to a brown wash over the whole sky while single halos stayed weak. Each fog
+light now has a `range` (the light node's `range`, default 12 m): a view ray
+that passes farther from the light gets no glow, with a smooth window.
+`zhudaFogAirlight` takes the range and is tested (zero at and beyond the
+range, a quarter at half the range); `verify:film-fog` passes unchanged.
+Seen in the town stills: the sky keeps its colour and lanterns get separate
+halos.
+
 ## Limits and decision
 
 - No shadows inside the fog: a wall beside a lamp does not cut its halo and

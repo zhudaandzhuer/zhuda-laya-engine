@@ -31,6 +31,11 @@ export interface ZhudaFogLight {
     /** Linear RGB. */
     color: readonly [number, number, number];
     intensity: number;
+    /**
+     * Metres from the light beyond which a view ray gets no glow from it
+     * (default 12). Keeps many lamps from adding up to a wash over the sky.
+     */
+    range?: number;
 }
 /** Most lights one fog can hold. */
 export declare const ZHUDA_FOG_MAX_LIGHTS = 128;
@@ -58,10 +63,11 @@ export declare function zhudaFogOpticalDepth(fog: {
 /**
  * The integral of 1/r² along a ray of length `distance`, r being the distance
  * to a light whose closest approach is `offset` metres from the ray, `along`
- * metres from its start. Multiplied by the fog density and the light's
- * colour, this is the light scattered toward the camera.
+ * metres from its start, faded to nothing where the ray passes `range` metres
+ * from the light. Multiplied by the fog density and the light's colour, this
+ * is the light scattered toward the camera.
  */
-export declare function zhudaFogAirlight(along: number, offset: number, distance: number): number;
+export declare function zhudaFogAirlight(along: number, offset: number, distance: number, range?: number): number;
 export declare class ZhudaLightFog {
     /** The Laya post-process effect; `ZhudaFilmicPipeline` adds it to its chain. */
     readonly effect: any;
