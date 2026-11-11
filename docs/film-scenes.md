@@ -144,6 +144,26 @@ With a grade, lamps and lit windows can be brighter than white and glow
 instead of clipping; without one the render is the plain SDR output. The film
 host uses the `3d-gltf` browser bundle, which carries the post-process module.
 
+`lightFog` adds fog that sits near the ground and is lit by the scene's
+lights: halos around lanterns, a glow in a candle-lit room, streets that sink
+into haze. It needs `grade` and is off unless given.
+
+```json
+"lightFog": { "density": 0.015, "falloffMeters": 6, "baseY": 0, "color": [0.02, 0.03, 0.05], "scatter": 1.5 }
+```
+
+- `density` is how much light a metre of fog takes away at `baseY`;
+  `falloffMeters` is the height over which the fog thins to about a third.
+- `color` is what the fog adds by itself (moonlight in the air); `scatter`
+  scales the glow from lights.
+- Every point `light` node shines into the fog. A light with
+  `"fogOnly": true` lights only the fog and no surface: use it for lamps
+  whose light is already in a lightmap. Fog-only lights do not count against
+  the 32 real-time lights; a scene holds up to 128 lights in all.
+- The glow is not shadowed: a wall beside a lamp does not cut its halo; only
+  what the camera's own ray hits ends it. The mirrored view of a `reflector`
+  has no fog.
+
 `resolveZhudaFilmLook(look)` returns the values a scene will actually use.
 
 ## Your own props and recipes
@@ -366,7 +386,15 @@ colour and nowhere else, that strength and dampness scale it, that a ground
 model blocks it unless hidden and that the frame is identical after 30 mounts.
 See the [reflector verification record](plans/records/film-reflector/verification.md).
 
-Not yet: animated look or light tracks, real-time shadows from point lights
+`npm run verify:film-fog` puts a fog-only light in a dark scene on a real GPU
+and checks that it glows at its projected pixel in its own colour and fades
+with distance, that nothing changes without `lightFog`, that a far wall takes
+more fog than a near one, that a wall on the ray cuts the glow and that the
+frame is identical after 30 mounts. See the
+[light fog verification record](plans/records/film-light-fog/verification.md).
+
+Not yet: shadows inside the fog (light shafts), fog lit by the sun or moon,
+animated look or light tracks, real-time shadows from point lights
 (bake them into a lightmap), reflections on walls or slopes, reflection probes, real-time
 global illumination, animated models, spline camera paths, shot lists, path
 tracing and audio in render jobs. Previews and renders are desktop WebGL evidence; WebGPU and mobile are

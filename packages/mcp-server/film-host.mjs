@@ -300,6 +300,11 @@ export class ZhudaFilmHost {
     return file;
   }
 
+  /** Console output of the page since it started (warnings and shader errors), for diagnosis. */
+  consoleMessages() {
+    return this.#browser ? [...this.#browser.consoleMessages] : [];
+  }
+
   /** Mounts the scene and reports its batches, models and asset cache (no render). */
   mountReport(scene) {
     return this.#serial(async () => {

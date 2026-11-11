@@ -108,6 +108,25 @@ export interface ZhudaFilmLook {
   fog?: ZhudaFilmFog | false;
   /** HDR tone-mapped rendering with bloom and ambient occlusion; off unless given. */
   grade?: ZhudaFilmGrade | false;
+  /**
+   * Fog near the ground that lights shine into: halos around lamps, haze
+   * down a street. Needs `grade`; off unless given.
+   */
+  lightFog?: ZhudaFilmLightFog | false;
+}
+
+/** Height fog lit by the scene's `light` nodes (see `ZhudaLightFog`). */
+export interface ZhudaFilmLightFog {
+  /** Extinction per metre at `baseY`, 0..1 (default 0.012). */
+  density?: number;
+  /** Height over which the fog thins to 1/e, 0.5..1000 metres (default 8). */
+  falloffMeters?: number;
+  /** Height where the density equals `density` (default 0). */
+  baseY?: number;
+  /** Colour of the fog itself, linear RGB 0..1 (default dark blue). */
+  color?: ZhudaFilmVec3;
+  /** Strength of the glow around lights, 0..16 (default 1). */
+  scatter?: number;
 }
 
 /** A baked recipe (a registered recipe name or an inline recipe) or a flat PBR colour. */
@@ -226,6 +245,12 @@ export type ZhudaFilmNode =
       target?: ZhudaFilmVec3;
       /** Spot lights: full cone angle, 1..179 degrees (default 60). */
       spotAngleDeg?: number;
+      /**
+       * The light only shines into `look.lightFog` and does not light
+       * surfaces: for lamps whose light is already in a lightmap. Point
+       * lights only; such lights do not count against the 32 real-time lights.
+       */
+      fogOnly?: boolean;
     };
 
 export interface ZhudaFilmScene {
@@ -268,6 +293,8 @@ export const ZHUDA_FILM_LIMITS = Object.freeze({
   idLength: 64,
   /** Laya 3.4.2 `Config3D.maxLightCount` default. */
   lights: 32,
+  /** Lights one `lightFog` can hold, fog-only lights included. */
+  fogLights: 128,
   models: 64,
 });
 
@@ -449,7 +476,7 @@ function validateLook(look: unknown, path: string, issues: string[]) {
   if (!object(look)) return void issues.push(`${path}: look object required`);
   unknownKeys(
     look,
-    ['preset', 'sky', 'ambient', 'sun', 'shadows', 'atmosphere', 'fog', 'grade'],
+    ['preset', 'sky', 'ambient', 'sun', 'shadows', 'atmosphere', 'fog', 'grade', 'lightFog'],
     path,
     issues,
   );
@@ -529,6 +556,25 @@ function validateLook(look: unknown, path: string, issues: string[]) {
       range(g.bloom, `${path}.grade.bloom`, 0, 2);
       range(g.ao, `${path}.grade.ao`, 0, 4);
       range(g.aoRadius, `${path}.grade.aoRadius`, 0.05, 5);
+    }
+  }
+  if (look.lightFog !== undefined && look.lightFog !== false) {
+    const f = look.lightFog;
+    if (!object(f)) issues.push(`${path}.lightFog: object or false required`);
+    else {
+      unknownKeys(
+        f,
+        ['density', 'falloffMeters', 'baseY', 'color', 'scatter'],
+        `${path}.lightFog`,
+        issues,
+      );
+      range(f.density, `${path}.lightFog.density`, 0, 1);
+      range(f.falloffMeters, `${path}.lightFog.falloffMeters`, 0.5, 1000);
+      range(f.baseY, `${path}.lightFog.baseY`, -ZHUDA_FILM_LIMITS.extent, ZHUDA_FILM_LIMITS.extent);
+      range(f.scatter, `${path}.lightFog.scatter`, 0, 16);
+      if (f.color !== undefined) colour(f.color, `${path}.lightFog.color`, issues);
+      if (look.grade === undefined || look.grade === false)
+        issues.push(`${path}.lightFog: needs grade (the fog is part of the HDR chain)`);
     }
   }
   if (look.sky !== undefined) colour(look.sky, `${path}.sky`, issues);
@@ -789,7 +835,18 @@ function validateNode(
     case 'light':
       unknownKeys(
         node,
-        ['id', 'type', 'kind', 'position', 'color', 'intensity', 'range', 'target', 'spotAngleDeg'],
+        [
+          'id',
+          'type',
+          'kind',
+          'position',
+          'color',
+          'intensity',
+          'range',
+          'target',
+          'spotAngleDeg',
+          'fogOnly',
+        ],
         path,
         issues,
       );
@@ -826,6 +883,11 @@ function validateNode(
         )
       )
         issues.push(`${path}.spotAngleDeg: spot lights only, 1..179`);
+      if (
+        node.fogOnly !== undefined &&
+        !(typeof node.fogOnly === 'boolean' && node.kind === 'point')
+      )
+        issues.push(`${path}.fogOnly: point lights only, true or false`);
       break;
     default:
       issues.push(`${path}.type: use prop, box, ground, model, reflector or light`);
@@ -895,7 +957,12 @@ export function validateZhudaFilmScene(
           if (typeof id === 'string' && !modelIds.has(id))
             issues.push(`scene.nodes[${i}].hides: ${id} is not a model node in this scene`);
     });
-    const lights = scene.nodes.filter((node) => object(node) && node.type === 'light').length;
+    const lightNodes = scene.nodes.filter((node) => object(node) && node.type === 'light');
+    if (lightNodes.length > ZHUDA_FILM_LIMITS.fogLights)
+      issues.push(
+        `scene.nodes: at most ${ZHUDA_FILM_LIMITS.fogLights} lights including fog-only ones`,
+      );
+    const lights = lightNodes.filter((node) => !(node as { fogOnly?: unknown }).fogOnly).length;
     if (lights > ZHUDA_FILM_LIMITS.lights)
       issues.push(
         `scene.nodes: at most ${ZHUDA_FILM_LIMITS.lights} lights (Laya Config3D.maxLightCount)`,
@@ -940,7 +1007,7 @@ export function applyZhudaFilmScenePatch(
   if (patch.camera) next.camera = { ...next.camera, ...structuredClone(patch.camera) };
   if (patch.look) {
     const look = { ...(next.look ?? {}), ...structuredClone(patch.look) };
-    for (const key of ['sun', 'shadows', 'atmosphere', 'fog', 'grade'] as const) {
+    for (const key of ['sun', 'shadows', 'atmosphere', 'fog', 'grade', 'lightFog'] as const) {
       const before = next.look?.[key],
         after = patch.look[key];
       if (after && before) (look as Record<string, unknown>)[key] = { ...before, ...after };
@@ -994,6 +1061,7 @@ export interface ZhudaResolvedFilmLook {
   atmosphere: Required<ZhudaFilmAtmosphere> | false;
   fog: Required<ZhudaFilmFog> | false;
   grade: Required<ZhudaFilmGrade> | false;
+  lightFog: Required<ZhudaFilmLightFog> | false;
 }
 
 /**
@@ -1061,6 +1129,13 @@ export function resolveZhudaFilmLook(look: ZhudaFilmLook = {}): ZhudaResolvedFil
       bloom: 0.1,
       ao: 0.5,
       aoRadius: 0.5,
+    }),
+    lightFog: merge<ZhudaFilmLightFog>(look.lightFog, false, {
+      density: 0.012,
+      falloffMeters: 8,
+      baseY: 0,
+      color: [0.02, 0.03, 0.05],
+      scatter: 1,
     }),
   };
 }

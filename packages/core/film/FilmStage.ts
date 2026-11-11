@@ -19,6 +19,7 @@ import { ZhudaModelLibrary, type AssetLease, type ModelInstance } from '../runti
 import type { ZhudaAssetCache } from '../runtime3d/Assets.ts';
 import { createProviderAssetCache, type AssetProvider } from '../runtime3d/AssetProvider.ts';
 import { ZhudaReflectiveSurface } from '../shaders/ReflectiveSurface.ts';
+import { ZhudaLightFog } from '../runtime3d/LightFog.ts';
 import {
   createZhudaLightmap,
   decodeRadianceHdr,
@@ -290,7 +291,20 @@ function buildFilmStageContents(
       intensity: look.sun.intensity,
       color: [...look.sun.color, 1] as [number, number, number, number],
     });
-    applyLook(l, scene3D, camera, sun.light, look, cleanups);
+    const lightFog = applyLook(l, scene3D, camera, sun.light, look, cleanups);
+    lightFog?.setLights(
+      scene.nodes.flatMap((node) =>
+        node.type === 'light' && node.kind === 'point'
+          ? [
+              {
+                position: node.position,
+                color: node.color ?? ([1, 0.82, 0.6] as [number, number, number]),
+                intensity: node.intensity ?? 2,
+              },
+            ]
+          : [],
+      ),
+    );
     const resolveMaterial = (name: string): any => {
       const existing = materials.get(name);
       if (existing) return existing;
@@ -481,7 +495,7 @@ function buildFilmStageContents(
 
     // Practical lights: native point and spot light components.
     for (const node of scene.nodes) {
-      if (node.type !== 'light') continue;
+      if (node.type !== 'light' || node.fogOnly) continue;
       const holder = new l.Sprite3D(`ZhudaFilmLight:${node.id}`);
       scene3D.addChild(holder);
       cleanups.push(() => holder.destroy(true));
@@ -506,6 +520,7 @@ function buildFilmStageContents(
     cleanups.push(() => lens.dispose());
     let current = resolveZhudaFilmCamera(scene.camera);
     const prepare = (aspect: number) => {
+      lightFog?.update(current.eye, current.target, camera.fieldOfView, aspect);
       if (!reflector) return;
       reflector.update(current.eye, current.target, camera.fieldOfView, aspect);
       reflector.render();
@@ -579,7 +594,8 @@ function applyLook(
   sun: any,
   look: ZhudaResolvedFilmLook,
   cleanups: (() => void)[],
-) {
+): ZhudaLightFog | undefined {
+  let lightFog: ZhudaLightFog | undefined;
   if (look.shadows) {
     sun.shadowMode = look.shadows.softness === 'hard' ? l.ShadowMode.Hard : l.ShadowMode.SoftHigh;
     sun.shadowDistance = look.shadows.distance;
@@ -611,7 +627,13 @@ function applyLook(
     });
   }
   if (look.grade) {
+    if (look.lightFog) {
+      const fog = (lightFog = new ZhudaLightFog({ ...look.lightFog, color: look.lightFog.color }));
+      // Cleanups run in reverse: the pipeline releases its chain first.
+      cleanups.push(() => fog.dispose());
+    }
     const film = new ZhudaFilmicPipeline(camera, {
+      sceneEffects: lightFog ? [lightFog.effect] : [],
       exposure: look.grade.exposure,
       contrast: look.grade.contrast,
       saturation: look.grade.saturation,
@@ -632,6 +654,7 @@ function applyLook(
     scene3D.fogEnd = look.fog.end;
     cleanups.push(() => (scene3D.enableFog = false));
   }
+  return lightFog;
 }
 
 function materialName(material: unknown, materials: Map<string, any>): string {

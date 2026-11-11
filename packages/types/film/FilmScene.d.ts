@@ -86,6 +86,24 @@ export interface ZhudaFilmLook {
     fog?: ZhudaFilmFog | false;
     /** HDR tone-mapped rendering with bloom and ambient occlusion; off unless given. */
     grade?: ZhudaFilmGrade | false;
+    /**
+     * Fog near the ground that lights shine into: halos around lamps, haze
+     * down a street. Needs `grade`; off unless given.
+     */
+    lightFog?: ZhudaFilmLightFog | false;
+}
+/** Height fog lit by the scene's `light` nodes (see `ZhudaLightFog`). */
+export interface ZhudaFilmLightFog {
+    /** Extinction per metre at `baseY`, 0..1 (default 0.012). */
+    density?: number;
+    /** Height over which the fog thins to 1/e, 0.5..1000 metres (default 8). */
+    falloffMeters?: number;
+    /** Height where the density equals `density` (default 0). */
+    baseY?: number;
+    /** Colour of the fog itself, linear RGB 0..1 (default dark blue). */
+    color?: ZhudaFilmVec3;
+    /** Strength of the glow around lights, 0..16 (default 1). */
+    scatter?: number;
 }
 /** A baked recipe (a registered recipe name or an inline recipe) or a flat PBR colour. */
 export type ZhudaFilmMaterial = {
@@ -194,6 +212,12 @@ export type ZhudaFilmNode = {
     target?: ZhudaFilmVec3;
     /** Spot lights: full cone angle, 1..179 degrees (default 60). */
     spotAngleDeg?: number;
+    /**
+     * The light only shines into `look.lightFog` and does not light
+     * surfaces: for lamps whose light is already in a lightmap. Point
+     * lights only; such lights do not count against the 32 real-time lights.
+     */
+    fogOnly?: boolean;
 };
 export interface ZhudaFilmScene {
     schemaVersion: 1;
@@ -231,6 +255,8 @@ export declare const ZHUDA_FILM_LIMITS: Readonly<{
     idLength: 64;
     /** Laya 3.4.2 `Config3D.maxLightCount` default. */
     lights: 32;
+    /** Lights one `lightFog` can hold, fog-only lights included. */
+    fogLights: 128;
     models: 64;
 }>;
 /** The plain look of scenes without a preset (phase 1 behaviour). */
@@ -272,6 +298,7 @@ export interface ZhudaResolvedFilmLook {
     atmosphere: Required<ZhudaFilmAtmosphere> | false;
     fog: Required<ZhudaFilmFog> | false;
     grade: Required<ZhudaFilmGrade> | false;
+    lightFog: Required<ZhudaFilmLightFog> | false;
 }
 /**
  * Look with every value filled in: the preset (if any) first, then the

@@ -75,6 +75,13 @@ export interface FilmicOptions {
   bloom?: boolean;
   bloomIntensity?: number;
   temporalAA?: boolean;
+  /**
+   * Borrowed effects inserted after ambient occlusion and before bloom, in
+   * linear HDR: for example `ZhudaLightFog.effect`. They read the camera depth
+   * texture, which the pipeline switches on. The caller disposes them after
+   * the pipeline.
+   */
+  sceneEffects?: readonly any[];
 }
 /** Owns the camera's HDR, AO, restrained bloom and ACES chain. Caller chooses quality. */
 export class ZhudaFilmicPipeline {
@@ -126,6 +133,8 @@ export class ZhudaFilmicPipeline {
     this.grade.contrast = options.contrast ?? 1.04;
     this.grade.saturation = options.saturation ?? 0.96;
     post.addEffect(this.ao);
+    for (const effect of options.sceneEffects ?? []) post.addEffect(effect);
+    if (options.sceneEffects?.length) camera.depthTextureMode |= l.DepthTextureMode.Depth;
     post.addEffect(this.bloom);
     post.addEffect(this.grade);
     camera.enableHDR = true;

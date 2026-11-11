@@ -543,3 +543,89 @@ test('a lightmap direction needs a lightmap and an unturned model', () => {
       fragment,
     );
 });
+
+test('lightFog needs grade; fog-only lights are point lights outside the 32 limit', () => {
+  const withLook = (look, nodes = []) => ({
+    ...scene(),
+    look,
+    nodes: [...scene().nodes, ...nodes],
+  });
+  const lamp = (i, extra = {}) => ({
+    id: 'l' + i,
+    type: 'light',
+    kind: 'point',
+    position: [i, 3, 0],
+    ...extra,
+  });
+  assert.deepEqual(
+    validateZhudaFilmScene(
+      withLook({
+        grade: {},
+        lightFog: { density: 0.02, falloffMeters: 6, color: [0.1, 0.1, 0.2], scatter: 2 },
+      }),
+      context,
+    ),
+    [],
+  );
+  assert.deepEqual(resolveZhudaFilmLook({ grade: {}, lightFog: {} }).lightFog, {
+    density: 0.012,
+    falloffMeters: 8,
+    baseY: 0,
+    color: [0.02, 0.03, 0.05],
+    scatter: 1,
+  });
+  assert.equal(resolveZhudaFilmLook({ grade: {} }).lightFog, false);
+  const cases = [
+    [{ lightFog: {} }, 'lightFog: needs grade'],
+    [{ grade: {}, lightFog: { density: 3 } }, 'lightFog.density'],
+    [{ grade: {}, lightFog: { falloffMeters: 0 } }, 'lightFog.falloffMeters'],
+    [{ grade: {}, lightFog: { haze: 1 } }, 'lightFog.haze: unknown field'],
+  ];
+  for (const [look, fragment] of cases)
+    assert.ok(
+      validateZhudaFilmScene(withLook(look), context).some((issue) => issue.includes(fragment)),
+      fragment,
+    );
+  // 100 fog-only lights and 32 lit ones are fine; 129 lights or 33 lit ones are not.
+  const fogOnly = Array.from({ length: 96 }, (_, i) => lamp(i, { fogOnly: true }));
+  const lit = Array.from({ length: 32 }, (_, i) => lamp(200 + i));
+  assert.deepEqual(
+    validateZhudaFilmScene(withLook({ grade: {}, lightFog: {} }, [...fogOnly, ...lit]), context),
+    [],
+  );
+  assert.ok(
+    validateZhudaFilmScene(
+      withLook({}, [...fogOnly, ...lit, lamp(999, { fogOnly: true })]),
+      context,
+    ).some((issue) => /at most 128 lights/.test(issue)),
+  );
+  assert.ok(
+    validateZhudaFilmScene(withLook({}, [...lit, lamp(998)]), context).some((issue) =>
+      /at most 32 lights/.test(issue),
+    ),
+  );
+  assert.ok(
+    validateZhudaFilmScene(
+      withLook({}, [
+        {
+          id: 's',
+          type: 'light',
+          kind: 'spot',
+          position: [0, 3, 0],
+          target: [0, 0, 0],
+          fogOnly: true,
+        },
+      ]),
+      context,
+    ).some((issue) => issue.includes('fogOnly: point lights only')),
+  );
+  const base = parseZhudaFilmScene(
+    withLook({ grade: {}, lightFog: { density: 0.02, scatter: 2 } }),
+    context,
+  );
+  assert.deepEqual(
+    applyZhudaFilmScenePatch(base, { look: { lightFog: { density: 0.05 } } }, context).look
+      .lightFog,
+    { density: 0.05, scatter: 2 },
+  );
+});
