@@ -9,7 +9,11 @@ test('strict consumer can import layout, BitmapFont and Laya video contracts fro
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'zhuda-layout-video-types-'));
   try {
     fs.mkdirSync(path.join(root, 'node_modules'));
-    fs.symlinkSync(path.resolve('.'), path.join(root, 'node_modules/zhuda-laya-engine'), 'dir');
+    fs.symlinkSync(
+      path.resolve('.'),
+      path.join(root, 'node_modules/zhuda-laya-engine'),
+      'junction',
+    );
     const file = path.join(root, 'consumer.ts');
     fs.writeFileSync(
       file,

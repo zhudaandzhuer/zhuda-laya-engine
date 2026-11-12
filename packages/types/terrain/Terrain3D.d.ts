@@ -5,6 +5,14 @@ export type Terrain3DOptions = {
     chunkCells?: number;
     maxResidentChunks?: number;
     uvScale?: [number, number];
+    /**
+     * Gives every vertex a tangent, which a material with a normal map needs:
+     * without it the map has no effect on the ground. Vertices then hold 12
+     * floats instead of 8 (see `chunkSnapshot().stride`). The tangent follows
+     * the ground along the direction u grows, so it is the same on both sides
+     * of a chunk border.
+     */
+    tangents?: boolean;
     /** Optional closed volume, extruded along local -Y. Material is borrowed. */
     solid?: {
         depth: number;
@@ -23,6 +31,8 @@ export declare class ZhudaTerrain3D {
     private unsubscribe;
     private disposed;
     private stride;
+    /** Which way the tangent runs along X and its handedness, taken from the mesh helper's own convention. */
+    private readonly tangentSign;
     constructor(field: ZhudaHeightfield, options: Terrain3DOptions);
     /** Local x/z bounds; uniform stride avoids neighboring chunks with incompatible edge LODs. */
     setRegion(region: HeightRegion, stride?: 1 | 2 | 4): void;
@@ -58,6 +68,8 @@ export declare class ZhudaTerrain3D {
         xs: number[];
         zs: number[];
         vertices: Float32Array<ArrayBuffer>;
+        /** Floats per vertex: position 3, normal 3, UV 2, and a tangent 4 when the terrain has them. */
+        stride: number;
         bounds: any;
         shell: {
             vertices: Float32Array<ArrayBuffer>;

@@ -61,11 +61,29 @@ export interface ZhudaEnvironmentProbeOptions {
  */
 export declare function zhudaHemisphereCube(sky: readonly [number, number, number], ground: readonly [number, number, number], size?: number): ZhudaCubePicture;
 /**
+ * The prefiltered environment of `zhudaHemisphereCube(sky, ground, 16)` at
+ * size 16, without prefiltering again. The cube is linear in the two colours
+ * and so is the prefilter, so one prefilter of a unit sky (red) and a unit
+ * ground (green) is mixed per call: microseconds instead of milliseconds,
+ * equal to a full prefilter up to float rounding.
+ */
+export declare function prefilterZhudaHemisphere(sky: readonly [number, number, number], ground: readonly [number, number, number]): {
+    spec: PrefilteredEnvironmentSpec;
+    pixels: Float32Array;
+};
+/** What `applyZhudaHemisphereAmbient` returns: call it to restore the scene. */
+export interface ZhudaHemisphereAmbientHandle {
+    (): void;
+    /** New colours in the same texture; nothing is allocated on the GPU. */
+    update(sky: readonly [number, number, number], ground: readonly [number, number, number]): void;
+}
+/**
  * Lights a scene with a sky-and-ground ambient (and the matching soft
  * reflections). Returns the function that restores the scene's previous
- * ambient setup and releases the texture.
+ * ambient setup and releases the texture; its `update` changes the colours
+ * in place.
  */
-export declare function applyZhudaHemisphereAmbient(scene: any, sky: readonly [number, number, number], ground: readonly [number, number, number]): () => void;
+export declare function applyZhudaHemisphereAmbient(scene: any, sky: readonly [number, number, number], ground: readonly [number, number, number]): ZhudaHemisphereAmbientHandle;
 export declare class ZhudaEnvironmentProbe {
     private readonly scene;
     private environment;

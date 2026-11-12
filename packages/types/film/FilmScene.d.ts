@@ -494,4 +494,20 @@ export declare function validateZhudaFilmCameraPath(keys: unknown): string[];
  * (smoothstep). Times outside the path hold the first or last key.
  */
 export declare function sampleZhudaFilmCameraPath(keys: readonly ZhudaFilmCameraKey[], t: number): Required<ZhudaFilmCamera>;
+/**
+ * What changing a running look from `from` to `to` has to rebuild, or `null`
+ * when every difference can be set in place: the sun (direction, colour,
+ * intensity), sky and ground light colours, the flat sky colour, the values
+ * of the procedural sky and of distance fog, shadow distance, strength,
+ * softness, resolution and cascades, the strengths of the grade (exposure,
+ * contrast, saturation, bloom, ambient occlusion, grain, vignette, fringe),
+ * the light fog's density, falloff, height, colour, scatter and reach, the
+ * strength and spread of its shafts, and the sun they follow. Anything else
+ * names the first part that differs: switching shadows, sky, fog, grade,
+ * light fog or sky-and-ground light on or off, switching bloom, ambient
+ * occlusion, the lens finish or the shafts on or off, or the shafts'
+ * distance, resolution or step count. `environment` and `panorama`
+ * need assets or a capture; a running look cannot change them at all.
+ */
+export declare function zhudaFilmLookRebuildReason(from: ZhudaResolvedFilmLook, to: ZhudaResolvedFilmLook): 'environment' | 'panorama' | 'shadows' | 'atmosphere' | 'fog' | 'ambientGround' | 'grade' | 'lightFog' | null;
 export {};

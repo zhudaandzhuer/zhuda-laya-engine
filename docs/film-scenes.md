@@ -532,9 +532,72 @@ runtime.start((dt) => {
   Call `ZhudaLightFog.invalidateShafts()` (through your own handle) when
   scenery changes; things that move do not cut the beams until the next redraw.
 - A panorama sky and `environment` need assets or a capture and are refused.
+- `look.setLook(next)` changes the look while it runs, with the same rules as
+  a film stage (below); the level set by `setQuality` still applies to it.
 - With water: `ZhudaWaterSurface` takes `mirrorShadows: false` so the mirror
   uses the shadow maps of the main view, and its `render()` is called once per
   frame by the game (the engine's loop no longer draws the mirror itself).
+
+## Changing the look while it runs
+
+`stage.setLook(look)` (on a mounted film stage) and `ZhudaSceneLook.setLook`
+take a whole new `look` and return what they had to do:
+
+```ts
+const day = scene.look;
+const dusk = {
+  ...day,
+  sun: { elevationDeg: 8, azimuthDeg: 70, intensity: 0.7, color: [1, 0.55, 0.3] },
+  ambient: [0.12, 0.1, 0.14],
+  fog: { ...day.fog, color: [0.35, 0.25, 0.25] },
+  grade: { ...day.grade, exposure: 0.8 },
+};
+stage.setLook(dusk); // 'updated': nothing was rebuilt
+stage.setLook({ ...dusk, lightFog: false }); // 'rebuilt'
+```
+
+- **Updated in place** (cheap enough for every frame of a day passing or of
+  weather turning, about 0.04 ms on a desktop GPU): the sun's direction,
+  colour and intensity; sky and ambient colour; shadow distance, strength,
+  softness, resolution and cascades; the procedural sky's tint, thickness,
+  sun size and exposure; fog colour, start and end; the strengths of the
+  grade (exposure, contrast, saturation, bloom, ambient occlusion, grain,
+  vignette, fringe); the light fog's density, falloff, base height, colour,
+  scatter and reach, and the strength and spread of its beams; the direction
+  and colour of the beams; and the sun that water reflects. The HDR chain and
+  the sky material stay the same objects. With `ambientGround` set, the
+  sky/ground light is recoloured in its existing texture
+  (`prefilterZhudaHemisphere` mixes two prefiltered bases), about 0.2 ms.
+- **Rebuilt**: turning shadows, the procedural sky, fog, `ambientGround`,
+  `grade` or `lightFog` on or off; switching bloom, ambient occlusion, the
+  lens finish (grain, vignette and fringe all zero, or not) or the beams on
+  or off; and the beams' distance, resolution or step count. Only the look
+  is rebuilt; nodes, models and lights stay. Resources do not grow over
+  repeated rebuilds.
+- **Refused**: a different `panorama` or `environment` (mount the scene
+  again), and any look that would not validate with the scene's nodes (for
+  example water without `grade`). A refused look throws and leaves the frame
+  as it was; a rebuild that fails puts the previous look back.
+- `stage.look` and `stage.scene` report the look now on the stage.
+
+### Quality on a stage
+
+`stage.setQuality(level)` draws the authored look at a lower cost, with the
+levels of `zhudaLookForQuality` (3 as authored, down to 0), and returns
+`'updated'`, `'rebuilt'` or `'unchanged'`. `setLook` keeps taking the authored
+look: the level stays on top of it, so a day-night cycle and a quality
+governor do not have to know about each other. A scene with a water surface
+keeps a bare HDR chain at level 0 (tone mapping only; no bloom, ambient
+occlusion or lens finish), because the water draws in HDR. `stage.look` is
+the look in use at the current level; `stage.quality` is the level.
+
+### Lights that change
+
+`stage.setLight(id, { enabled, intensity, color, range })` changes a `light`
+node while the stage runs: a lamp switched on or off, a flame that flickers.
+Values left out stay as they are. The light's glow in the light fog follows.
+A light that is off gives no light but keeps its place, so switching it does
+not rebuild anything.
 
 ## Camera paths
 
@@ -647,3 +710,15 @@ animated look or light tracks, real-time shadows from point lights
 global illumination, animated models, spline camera paths, shot lists, path
 tracing and audio in render jobs. Previews and renders are desktop evidence (WebGL, and WebGPU on
 Apple Metal hardware); mobile is not covered.
+
+## Baking textures ahead of a mount
+
+`mountZhudaFilmScene` takes `bakeCache`, a map of baked texture sets. To bake before mounting (in a worker, or behind a progress bar), store each result under `zhudaBakeKey(recipe, size)`:
+
+```ts
+import { bakeZhudaTextureSet, zhudaBakeKey } from 'zhuda-laya-engine';
+const cache = new Map();
+cache.set(zhudaBakeKey(recipe, 256), bakeZhudaTextureSet(recipe, { size: 256 }));
+```
+
+The key does not depend on the order of a recipe's properties.

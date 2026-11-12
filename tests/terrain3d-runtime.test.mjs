@@ -187,3 +187,99 @@ test('raycasts follow the rendered surface, root transform, solid underside and 
     restore();
   }
 });
+
+test('terrain tangents: unit, on the ground, continuous across chunks, updated by edits, and off by default', async () => {
+  const { computeMeshTangents } = await import('../packages/core/runtime3d/Surfaces.ts');
+  const { restore } = installLaya();
+  try {
+    const field = flat(8);
+    for (const [x, z, h] of [
+      [2, 2, 1.5],
+      [4, 3, 2],
+      [5, 5, -1],
+      [4, 6, 0.7],
+    ])
+      field.setHeight(x, z, h);
+    const plain = new ZhudaTerrain3D(field, { material, chunkCells: 4 });
+    plain.setRegion({ minX: 0, minZ: 0, maxX: 8, maxZ: 8 });
+    assert.equal(
+      plain.chunkSnapshot('0:0').stride,
+      8,
+      'without the option the layout is unchanged',
+    );
+    plain.dispose();
+
+    const terrain = new ZhudaTerrain3D(field, {
+      material,
+      chunkCells: 4,
+      tangents: true,
+      solid: { depth: 2 },
+    });
+    terrain.setRegion({ minX: 0, minZ: 0, maxX: 8, maxZ: 8 });
+    const a = terrain.chunkSnapshot('0:0'),
+      b = terrain.chunkSnapshot('1:0');
+    assert.equal(a.stride, 12);
+    assert.equal(
+      terrain.report().vertices,
+      4 * 25 + 4 * (25 + 16 * 4),
+      "vertex counts use each mesh's own layout",
+    );
+    const at = (snapshot, i, j) => [
+      ...snapshot.vertices.subarray(
+        (j * snapshot.xs.length + i) * 12,
+        (j * snapshot.xs.length + i) * 12 + 12,
+      ),
+    ];
+    for (const snapshot of [a, b])
+      for (let j = 0; j < snapshot.zs.length; j++)
+        for (let i = 0; i < snapshot.xs.length; i++) {
+          const v = at(snapshot, i, j),
+            n = v.slice(3, 6),
+            t = v.slice(8, 11);
+          assert.ok(Math.abs(Math.hypot(...t) - 1) < 1e-5, 'unit length');
+          assert.ok(
+            Math.abs(n[0] * t[0] + n[1] * t[1] + n[2] * t[2]) < 1e-5,
+            'at right angles to the normal',
+          );
+          assert.ok(t[0] > 0, 'runs the way u grows');
+          assert.ok(Math.abs(Math.abs(v[11]) - 1) < 1e-9, 'handedness is +1 or -1');
+        }
+    // The shared border column: the same tangent on both sides, so no seam in the light.
+    for (let j = 0; j < a.zs.length; j++)
+      assert.deepEqual(at(a, a.xs.length - 1, j).slice(8), at(b, 0, j).slice(8));
+    // On flat ground it is what the mesh helper gives for the same cell.
+    const level = new ZhudaTerrain3D(flat(4), { material, chunkCells: 4, tangents: true });
+    level.setRegion({ minX: 0, minZ: 0, maxX: 4, maxZ: 4 });
+    const helper = computeMeshTangents({
+      positions: new Float32Array([0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 0, 1]),
+      normals: new Float32Array([0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0]),
+      uvs: new Float32Array([0, 0, 1, 0, 0, 1, 1, 1]),
+      indices: new Uint16Array([2, 0, 3, 0, 1, 3]),
+    });
+    assert.deepEqual(
+      at(level.chunkSnapshot('0:0'), 1, 1)
+        .slice(8)
+        .map((v) => v + 0),
+      [...helper.subarray(0, 4)].map((v) => v + 0),
+    );
+    level.dispose();
+    // An edit rewrites the tangent with the height.
+    const before = at(a, 2, 1).slice(8);
+    field.setHeight(1, 1, 3);
+    terrain.flush();
+    const after = at(terrain.chunkSnapshot('0:0'), 1, 1);
+    assert.equal(after[1], 3);
+    assert.notDeepEqual(
+      at(terrain.chunkSnapshot('0:0'), 2, 1).slice(8),
+      before,
+      'the slope beside the edit changed, and its tangent with it',
+    );
+    assert.ok(
+      terrain.chunkSnapshot('0:0').shell.vertices.every(Number.isFinite),
+      'the shell reads the wider layout',
+    );
+    terrain.dispose();
+  } finally {
+    restore();
+  }
+});

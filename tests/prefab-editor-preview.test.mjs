@@ -198,7 +198,11 @@ test('strict external controller can use the public preview and audio contracts'
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'zhuda-preview-types-'));
   try {
     await fs.mkdir(path.join(root, 'node_modules'));
-    await fs.symlink(path.resolve('.'), path.join(root, 'node_modules/zhuda-laya-engine'), 'dir');
+    await fs.symlink(
+      path.resolve('.'),
+      path.join(root, 'node_modules/zhuda-laya-engine'),
+      'junction',
+    );
     const file = path.join(root, 'controller.ts');
     await fs.writeFile(
       file,

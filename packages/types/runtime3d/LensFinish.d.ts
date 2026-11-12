@@ -29,6 +29,8 @@ export declare class ZhudaLensFinish {
     private readonly material;
     private disposed;
     constructor(options?: ZhudaLensFinishOptions);
+    /** New strengths in place; the same limits as the options. */
+    setFinish(options: ZhudaLensFinishOptions): void;
     /** Output size in pixels and the frame number that seeds the grain. */
     setFrame(width: number, height: number, frame: number): void;
     /** Call after the effect has been removed from its post-process chain. */

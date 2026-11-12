@@ -8,27 +8,35 @@
  * not applied here; a look that names them is refused.
  */
 import { Zhuda3D } from '../DeclarativeSDK.ts';
-import { applyZhudaHemisphereAmbient } from '../runtime3d/EnvironmentProbe.ts';
 import type { ZhudaLightFog } from '../runtime3d/LightFog.ts';
 import {
+  parseZhudaFilmScene,
   resolveZhudaFilmLook,
+  zhudaFilmLookRebuildReason,
   type ZhudaFilmLook,
   type ZhudaResolvedFilmLook,
 } from './FilmScene.ts';
 import { applyResolvedFilmLook } from './FilmStage.ts';
+import {
+  ZhudaHemisphereAmbientSlot,
+  updateZhudaLookInPlace,
+  zhudaTowardSun,
+  type ZhudaAppliedLookParts,
+} from './LiveLook.ts';
 import { zhudaLookForQuality, type ZhudaLookQuality } from './LookQuality.ts';
 
 export class ZhudaSceneLook {
   /** The directional light of the look (`look.sun`). */
   readonly sun: any;
-  private readonly look: ZhudaResolvedFilmLook;
+  private look: ZhudaResolvedFilmLook;
+  private parts: ZhudaAppliedLookParts = {};
   private readonly sunNode: any;
   private cleanups: (() => void)[] = [];
   private lightFog: ZhudaLightFog | undefined;
   private level: ZhudaLookQuality;
   private frame = 0;
   private disposed = false;
-  private restoreAmbient: (() => void) | undefined;
+  private readonly hemisphere: ZhudaHemisphereAmbientSlot;
 
   private readonly scene3D: any;
   private readonly camera: any;
@@ -54,21 +62,17 @@ export class ZhudaSceneLook {
     });
     this.sun = made.light;
     this.sunNode = made.node;
+    this.hemisphere = new ZhudaHemisphereAmbientSlot(scene3D);
     try {
       // Sky and ground light is the same at every quality level: it is set up
-      // once, so changing the level never destroys a texture a frame still uses.
-      if (this.look.ambientGround) {
-        this.scene3D.ambientColor = new l.Color(...this.look.ambient, 1);
-        this.restoreAmbient = applyZhudaHemisphereAmbient(
-          this.scene3D,
-          this.look.ambient,
-          this.look.ambientGround,
-        );
-      }
+      // apart from the rest, so changing the level never destroys a texture a
+      // frame still uses.
+      if (this.look.ambientGround) this.scene3D.ambientColor = new l.Color(...this.look.ambient, 1);
+      this.hemisphere.set(this.look.ambient, this.look.ambientGround);
       this.apply(l);
     } catch (error) {
       this.release();
-      this.restoreAmbient?.();
+      this.hemisphere.release();
       this.sunNode.destroy(true);
       throw error;
     }
@@ -80,11 +84,51 @@ export class ZhudaSceneLook {
 
   /** Unit vector from the scene toward the sun, for water and other surfaces that glint. */
   get towardSun(): [number, number, number] {
+    return zhudaTowardSun((globalThis as any).Laya, this.sun);
+  }
+
+  /**
+   * Changes the look while the game runs (a day passing, weather turning),
+   * at the current quality level. A rejected look changes nothing. When only
+   * continuous values differ (see `zhudaFilmLookRebuildReason`) they are set
+   * in place, cheap enough for every frame, and `'updated'` is returned;
+   * otherwise the look is rebuilt and `'rebuilt'` is returned. A panorama or
+   * environment probe is refused, as in the constructor.
+   */
+  setLook(look: ZhudaFilmLook): 'updated' | 'rebuilt' {
+    if (this.disposed) throw Error('Disposed scene look');
+    const parsed = parseZhudaFilmScene({
+      schemaVersion: 1,
+      id: 'scene-look',
+      camera: { eye: [0, 0, 1], target: [0, 0, 0] },
+      look,
+      nodes: [],
+    });
+    const next = resolveZhudaFilmLook(parsed.look);
+    if (next.panorama) throw Error('Scene look: a panorama sky is not supported here');
+    if (next.environment) throw Error('Scene look: an environment probe is not supported here');
     const l = (globalThis as any).Laya;
-    const travel = new l.Vector3();
-    this.sunNode.transform.getForward(travel);
-    const length = Math.hypot(travel.x, travel.y, travel.z) || 1;
-    return [-travel.x / length, -travel.y / length, -travel.z / length];
+    const effective = zhudaLookForQuality(next, this.level);
+    const reason = zhudaFilmLookRebuildReason(
+      zhudaLookForQuality(this.look, this.level),
+      effective,
+    );
+    const previous = this.look;
+    this.look = next;
+    if (reason === null) this.updateInPlace(l, effective);
+    else {
+      this.release();
+      try {
+        this.apply(l);
+      } catch (error) {
+        this.release();
+        this.look = previous;
+        this.apply(l);
+        throw error;
+      }
+    }
+    this.hemisphere.set(next.ambient, next.ambientGround);
+    return reason === null ? 'updated' : 'rebuilt';
   }
 
   /** Rebuilds the look at another level; nothing happens when it is the current one. */
@@ -115,8 +159,16 @@ export class ZhudaSceneLook {
     if (this.disposed) return;
     this.disposed = true;
     this.release();
-    this.restoreAmbient?.();
+    this.hemisphere.release();
     this.sunNode.destroy(true);
+  }
+
+  private updateInPlace(l: any, look: ZhudaResolvedFilmLook): void {
+    updateZhudaLookInPlace(
+      l,
+      { scene3D: this.scene3D, camera: this.camera, sun: this.sun, parts: this.parts },
+      look,
+    );
   }
 
   private apply(l: any): void {
@@ -134,20 +186,17 @@ export class ZhudaSceneLook {
       this.camera.clearFlag = before.clearFlag;
       this.camera.clearColor = before.clearColor;
     });
-    this.lightFog = applyResolvedFilmLook(
-      l,
-      this.scene3D,
-      this.camera,
-      this.sun,
-      look,
-      cleanups,
-    ).lightFog;
+    this.parts = applyResolvedFilmLook(l, this.scene3D, this.camera, this.sun, look, cleanups);
+    this.lightFog = this.parts.lightFog;
     // Still scenery: the depth picture of the light is redrawn only when the camera has moved on.
     this.lightFog?.setShaftRefresh('moved');
+    // The sun, its shadows and the shaft sun follow the look (also after `setLook`).
+    this.updateInPlace(l, look);
   }
 
   private release(): void {
     this.lightFog = undefined;
+    this.parts = {};
     for (const cleanup of this.cleanups.splice(0).reverse()) cleanup();
   }
 }

@@ -261,7 +261,7 @@ test('effects and migration public types compose with particle systems in a stri
   const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'zhuda-effects-types-'));
   try {
     fs.mkdirSync(path.join(temporary, 'node_modules'));
-    fs.symlinkSync(projectRoot, path.join(temporary, 'node_modules/zhuda-laya-engine'), 'dir');
+    fs.symlinkSync(projectRoot, path.join(temporary, 'node_modules/zhuda-laya-engine'), 'junction');
     const fixture = path.join(temporary, 'consumer.ts');
     fs.writeFileSync(
       fixture,
@@ -323,7 +323,7 @@ test('particle public types compile in a strict consumer without importing imple
   const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'zhuda-particle-types-'));
   try {
     fs.mkdirSync(path.join(temporary, 'node_modules'));
-    fs.symlinkSync(projectRoot, path.join(temporary, 'node_modules/zhuda-laya-engine'), 'dir');
+    fs.symlinkSync(projectRoot, path.join(temporary, 'node_modules/zhuda-laya-engine'), 'junction');
     const fixture = path.join(temporary, 'consumer.ts');
     fs.writeFileSync(
       fixture,

@@ -15,6 +15,17 @@ import {
 
 export interface ZhudaLitSurfaceSpec {
   name: string;
+  /**
+   * Optional vertex hook, a function body contract:
+   * `void zhudaVertex(inout vec3 positionWS, inout vec3 normalWS, vec2 uv, vec3 originWS)`.
+   * It moves world-space positions (wind in grass and leaves, swell, wobble)
+   * and may bend normals. The forward, `ShadowCaster` and `DepthNormal` passes
+   * all run it, so shadows and ambient occlusion follow the moved surface.
+   * `originWS` is the object's world origin (a per-instance phase). Custom
+   * uniforms (`u_Zhuda…`) are visible here too. The mesh bounds are not
+   * grown: keep displacement small or pad the bounds yourself.
+   */
+  vertex?: string;
   /** void zhudaSurface(inout ZhudaLitSurface s, vec2 uv, vec3 worldPosition, vec3 worldNormal).
    * Fields: baseColor (linear), metallic, roughness, occlusion, emission (linear HDR).
    * Geometry, alpha and normal maps retain the native PBR shadow/depth contract. */
@@ -28,6 +39,73 @@ export interface ZhudaLitSurfaceSpec {
   };
 }
 const registry = new WeakMap<object, Map<string, string>>();
+
+/** Problems with a vertex hook; an empty list means it can be compiled into the lit passes. */
+export function validateZhudaLitVertexHook(vertex: unknown): string[] {
+  if (typeof vertex !== 'string' || vertex.length > 65536 || !/\bzhudaVertex\s*\(/.test(vertex))
+    return ['vertex must define zhudaVertex (at most 65536 characters)'];
+  const code = vertex.replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, '');
+  const e: string[] = [];
+  if (/\b(?:uniform|attribute|varying)\b|#\s*(?:version|include)|\bvoid\s+main\s*\(/.test(code))
+    e.push(
+      'vertex is a function body contract; declarations/includes/main belong to the engine template',
+    );
+  if (/\bgl_(?:Position|PointSize)\b/.test(code))
+    e.push('vertex moves world-space positions; clip-space output belongs to the engine template');
+  return e;
+}
+
+const VERTEX_APPLY = `void zhudaApplyVertex(inout PixelParams p,in Vertex v){vec2 zhudaUV=vec2(0.0);
+#ifdef UV
+zhudaUV=v.texCoord0;
+#endif
+vec3 n0=p.normalWS;zhudaVertex(p.positionWS,p.normalWS,zhudaUV,getWorldMatrix()[3].xyz);p.normalWS=normalize(p.normalWS);
+vec3 t=p.tangentWS-p.normalWS*dot(p.normalWS,p.tangentWS);float tl=length(t);
+if(tl>1e-4){float h=dot(p.biNormalWS,cross(n0,p.tangentWS))<0.0?-1.0:1.0;p.tangentWS=t/tl;p.biNormalWS=normalize(cross(p.normalWS,p.tangentWS))*h;}}
+`;
+const SHADOW_APPLY = `{vec2 zhudaUV=vec2(0.0);
+#ifdef UV
+zhudaUV=vertex.texCoord0;
+#endif
+zhudaVertex(positionWS,normalWS,zhudaUV,worldMat[3].xyz);normalWS=normalize(normalWS);}`;
+const replaceOnce = (source: string, find: string, replacement: string) => {
+  const at = source.indexOf(find);
+  if (at < 0 || source.indexOf(find, at + 1) >= 0)
+    throw Error('Lit template changed; the vertex hook cannot be placed');
+  return source.slice(0, at) + replacement + source.slice(at + find.length);
+};
+/**
+ * The three vertex programs of a lit material. Without a hook they are the
+ * native templates unchanged; with one, each pass runs `zhudaVertex` on the
+ * world-space position and normal before projecting. Pure: no Laya needed.
+ */
+export function buildZhudaLitVertexShaders(vertex?: string): {
+  forward: string;
+  shadow: string;
+  depth: string;
+} {
+  if (vertex === undefined)
+    return { forward: litVertex, shadow: litShadowVertex, depth: litDepthVertex };
+  const errors = validateZhudaLitVertexHook(vertex);
+  if (errors.length) throw Error(errors.join('; '));
+  const hook = vertex + '\n' + VERTEX_APPLY;
+  const forward = replaceOnce(
+    replaceOnce(litVertex, 'void main(){', hook + 'void main(){'),
+    'PixelParams pixel;initPixelParams(pixel,vertex);',
+    'PixelParams pixel;initPixelParams(pixel,vertex);zhudaApplyVertex(pixel,vertex);sharePixelParams(pixel);',
+  );
+  const depth = replaceOnce(
+    replaceOnce(litDepthVertex, 'void main(){', hook + 'void main(){'),
+    'initPixelParams(pixel,vertex);sharePixelParams(pixel);',
+    'initPixelParams(pixel,vertex);zhudaApplyVertex(pixel,vertex);sharePixelParams(pixel);',
+  );
+  const shadow = replaceOnce(
+    replaceOnce(litShadowVertex, 'void main(){', vertex + '\nvoid main(){'),
+    'vec4 positionCS=DepthPositionCS(positionWS,normalWS);',
+    SHADOW_APPLY + 'vec4 positionCS=DepthPositionCS(positionWS,normalWS);',
+  );
+  return { forward, shadow, depth };
+}
 const fields: Record<string, string> = {
   u_AlbedoColor: 'Color',
   u_TilingOffset: 'Vector4',
@@ -66,6 +144,10 @@ export class ZhudaLitSurfaceMaterial {
     if (errors.length) throw Error(errors.join('; '));
     if (spec.normalConvention && !['directx', 'opengl'].includes(spec.normalConvention))
       throw Error('Invalid normal map convention');
+    if (spec.vertex !== undefined) {
+      const vertexErrors = validateZhudaLitVertexHook(spec.vertex);
+      if (vertexErrors.length) throw Error(vertexErrors.join('; '));
+    }
     for (const v of [spec.material?.clearCoat ?? 0, spec.material?.clearCoatRoughness ?? 0.1])
       if (!Number.isFinite(v) || v < 0 || v > 1) throw Error('Invalid clear coat factor');
     for (const [k, u] of Object.entries(uniforms))
@@ -82,6 +164,8 @@ export class ZhudaLitSurfaceMaterial {
       surface: spec.surface,
       uniforms,
       normalConvention: spec.normalConvention || 'directx',
+      // Absent for hook-free materials, so their signatures stay as before.
+      ...(spec.vertex !== undefined ? { vertex: spec.vertex } : {}),
     });
     if (l.Shader3D.find(spec.name)) {
       if (records.get(spec.name) !== signature) throw Error('Shader name has a different contract');
@@ -120,9 +204,10 @@ export class ZhudaLitSurfaceMaterial {
       shader.shaderType = l.ShaderFeatureType.D3;
       const sub = new l.SubShader(l.SubShader.DefaultAttributeMap, map, {});
       shader.addSubShader(sub);
-      sub.addShaderPass(litVertex, fragment);
-      sub.addShaderPass(litShadowVertex, litShadowFragment, 'ShadowCaster');
-      sub.addShaderPass(litDepthVertex, normals(litDepthFragment), 'DepthNormal');
+      const vertexPrograms = buildZhudaLitVertexShaders(spec.vertex);
+      sub.addShaderPass(vertexPrograms.forward, fragment);
+      sub.addShaderPass(vertexPrograms.shadow, litShadowFragment, 'ShadowCaster');
+      sub.addShaderPass(vertexPrograms.depth, normals(litDepthFragment), 'DepthNormal');
       records.set(spec.name, signature);
     }
     const m = createSurfaceMaterial({ type: 'pbr', ...spec.material });
@@ -130,6 +215,8 @@ export class ZhudaLitSurfaceMaterial {
     // Switching shader applies the new shader's defaults. Rebind owned factors and
     // borrowed textures afterwards; otherwise a correct shader can render black.
     const settings = spec.material || {};
+    // The render state is among those defaults: a two-sided material came out one-sided.
+    if (settings.doubleSided) m.cull = l.RenderState.CULL_NONE;
     m.albedoColor = new l.Color(...(settings.color || [1, 1, 1, 1]));
     m.metallic = settings.metallic ?? 0;
     m.smoothness = 1 - (settings.roughness ?? 0.5);

@@ -1,9 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { linkFile, NO_FILE_LINKS } from './helpers/links.mjs';
 import fs from 'node:fs';
 import { injectBrandSplash, brandSplashMarkup } from '../packages/compiler/branding.mjs';
 const svg = fs.readFileSync(
-  new URL('../assets/branding/zhuda-layaair-mark.svg', import.meta.url),
+  new URL('../assets/branding/layaair-tribute-mark.svg', import.meta.url),
   'utf8',
 );
 test('consumer brand is self-contained, responsive and before runtime scripts', () => {
@@ -18,7 +19,7 @@ test('consumer brand is self-contained, responsive and before runtime scripts', 
   assert.match(result, /42svh/);
   assert.match(result, /safe-area-inset-top/);
   assert.match(result, /2180/);
-  assert.match(brandSplashMarkup('assets/branding/zhuda-layaair-mark.svg'), /assets\/branding/);
+  assert.match(brandSplashMarkup('assets/branding/layaair-tribute-mark.svg'), /assets\/branding/);
 });
 test('consumer template cannot silently replace or duplicate reserved branding', () => {
   assert.throws(
@@ -53,7 +54,7 @@ test('white-label is explicit, escaped and none completes without a logo', () =>
     caption: 'Client',
   });
   assert.match(custom, /&lt;script&gt;&quot;&amp;/);
-  assert.doesNotMatch(custom, /AI-FRIENDLY GAME ENGINE|豬大 × LayaAir/);
+  assert.doesNotMatch(custom, /Powered by LayaAir Engine|class="zhuda-splash-tribute"/);
   const none = injectBrandSplash('<body></body>', svg, { mode: 'none' });
   assert.doesNotMatch(none, /id="zhudaLogoSplash"|data:image/);
   assert.match(none, /\("none"\)/);
@@ -67,7 +68,7 @@ test('white-label is explicit, escaped and none completes without a logo', () =>
     assert.throws(() => injectBrandSplash('<body></body>', svg, config), /branding/);
 });
 
-test('custom build embeds local logo, keeps notices and rejects unsafe paths without replacing release', async () => {
+test('custom build embeds local logo, keeps notices and rejects unsafe paths without replacing release', async (t) => {
   const { default: os } = await import('node:os'),
     { default: path } = await import('node:path');
   const { initConsumer } = await import('../packages/compiler/zhuda-init.mjs');
@@ -94,14 +95,15 @@ test('custom build embeds local logo, keeps notices and rejects unsafe paths wit
       );
       assert.deepEqual(fs.readFileSync(dest), before);
     }
-    fs.symlinkSync(path.join(root, 'client.svg'), path.join(root, 'linked.svg'));
-    await assert.rejects(
-      runConsumerBuild({
-        projectRoot: root,
-        config: { branding: { ...branding, logo: 'linked.svg' } },
-      }),
-      /symlink/,
-    );
+    if (linkFile(path.join(root, 'client.svg'), path.join(root, 'linked.svg')))
+      await assert.rejects(
+        runConsumerBuild({
+          projectRoot: root,
+          config: { branding: { ...branding, logo: 'linked.svg' } },
+        }),
+        /symlink/,
+      );
+    else t.diagnostic('linked logo not checked: ' + NO_FILE_LINKS);
     await runConsumerBuild({ projectRoot: root, config: { branding: { mode: 'none' } } });
     assert.doesNotMatch(fs.readFileSync(dest, 'utf8'), /id="zhudaLogoSplash"/);
     assert.ok(fs.existsSync(path.join(root, 'dist/web/zhuda-notices/LICENSE.txt')));

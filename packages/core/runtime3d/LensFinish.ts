@@ -109,6 +109,23 @@ export class ZhudaLensFinish {
     this.setFrame(1280, 720, 0);
   }
 
+  /** New strengths in place; the same limits as the options. */
+  setFinish(options: ZhudaLensFinishOptions): void {
+    const issues = validateZhudaLensFinish(options);
+    if (issues.length) throw Error('Invalid lens finish: ' + issues.join('; '));
+    const l = (globalThis as any).Laya;
+    const now = this.material.getVector4('u_ZhudaFinish');
+    this.material.setVector4(
+      'u_ZhudaFinish',
+      new l.Vector4(
+        options.grain ?? now.x,
+        options.vignette ?? now.y,
+        options.fringe ?? now.z,
+        now.w,
+      ),
+    );
+  }
+
   /** Output size in pixels and the frame number that seeds the grain. */
   setFrame(width: number, height: number, frame: number): void {
     if (this.disposed) throw Error('Disposed lens finish');

@@ -298,7 +298,8 @@ export class ZhudaLightFog {
   private readonly material: any;
   private readonly lights: any;
   private readonly data = new Float32Array(ZHUDA_FOG_MAX_LIGHTS * 2 * 4);
-  private readonly fog: ReturnType<typeof resolveZhudaLightFog>;
+  private fog: ReturnType<typeof resolveZhudaLightFog>;
+  private readonly authored: ZhudaLightFogOptions;
   private count = 0;
   private disposed = false;
   private shaft?: { scene: any; camera: any; target: any; sun: ZhudaFogSun };
@@ -316,6 +317,7 @@ export class ZhudaLightFog {
     if (!l.LayaGL.renderEngine.getCapable(l.RenderCapable.TextureFormat_R32G32B32A32))
       throw Error('Light fog requires TextureFormat_R32G32B32A32');
     this.fog = resolveZhudaLightFog(options);
+    this.authored = structuredClone(options);
     register(l);
     this.lights = new l.Texture2D(
       ZHUDA_FOG_MAX_LIGHTS,
@@ -334,6 +336,39 @@ export class ZhudaLightFog {
     this.effect = new l.MaterialPostProcessEffect();
     this.effect.material = this.material;
     this.update([0, 0, 0], [0, 0, -1], 40, 16 / 9);
+  }
+
+  /**
+   * Changes the fog in place (weather turning): density, falloff, base
+   * height, colour, scatter, reach, and the strength and spread of the light
+   * shafts. The next \`update\` shows it. Whether there are shafts, and their
+   * distance, resolution and step count, are fixed at construction.
+   */
+  setFog(values: {
+    density?: number;
+    falloffMeters?: number;
+    baseY?: number;
+    color?: readonly [number, number, number];
+    scatter?: number;
+    maxDistance?: number;
+    shafts?: { strength?: number; anisotropy?: number };
+  }): void {
+    if (this.disposed) throw Error('Disposed light fog');
+    const { shafts, ...plain } = values;
+    if (shafts && !this.authored.shafts) throw Error('Light fog was built without shafts');
+    const defined = (object: object) =>
+      Object.fromEntries(Object.entries(object).filter(([, value]) => value !== undefined));
+    const next: ZhudaLightFogOptions = {
+      ...this.authored,
+      ...defined(plain),
+      ...(this.authored.shafts
+        ? { shafts: { ...this.authored.shafts, ...defined(shafts ?? {}) } }
+        : {}),
+    } as ZhudaLightFogOptions;
+    const issues = validateZhudaLightFog(next);
+    if (issues.length) throw Error('Invalid light fog: ' + issues.join('; '));
+    Object.assign(this.authored, structuredClone(next));
+    this.fog = resolveZhudaLightFog(next);
   }
 
   /** Replaces the lights that shine into the fog (at most `ZHUDA_FOG_MAX_LIGHTS`). */

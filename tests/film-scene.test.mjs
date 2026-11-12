@@ -1071,3 +1071,19 @@ test('model emission is a scale between 0 and 8', () => {
       String(value),
     );
 });
+
+test('the bake cache key is public and does not depend on property order', async () => {
+  const { zhudaBakeKey } = await import('../packages/core/film/BakeKey.ts');
+  const a = zhudaBakeKey({ kind: 'stone', seed: 3, layers: [{ scale: 2, weight: 0.5 }] }, 256);
+  const b = zhudaBakeKey({ layers: [{ weight: 0.5, scale: 2 }], seed: 3, kind: 'stone' }, 256);
+  assert.equal(a, b);
+  assert.notEqual(
+    a,
+    zhudaBakeKey({ kind: 'stone', seed: 4, layers: [{ scale: 2, weight: 0.5 }] }, 256),
+  );
+  assert.notEqual(
+    a,
+    zhudaBakeKey({ kind: 'stone', seed: 3, layers: [{ scale: 2, weight: 0.5 }] }, 512),
+  );
+  assert.match(a, /^256:/);
+});

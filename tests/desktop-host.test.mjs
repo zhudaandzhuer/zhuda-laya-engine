@@ -1,10 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { linkFile, NO_FILE_LINKS } from './helpers/links.mjs';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { stageBundle, resolveBundleFile } from '../examples/windows-webgpu/bundle.mjs';
-test('desktop stages a standalone consumer and rejects directory-index symlink escapes', () => {
+test('desktop stages a standalone consumer and rejects directory-index symlink escapes', (t) => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'zhuda-desktop-')),
     source = path.join(root, 'source'),
     dest = path.join(root, 'app/web');
@@ -19,10 +20,11 @@ test('desktop stages a standalone consumer and rejects directory-index symlink e
     assert.match(fs.readFileSync(resolveBundleFile(dest, 'app://bundle/'), 'utf8'), /fixture/);
     fs.mkdirSync(path.join(dest, 'escape'));
     fs.writeFileSync(path.join(root, 'secret'), 'outside');
-    fs.symlinkSync(path.join(root, 'secret'), path.join(dest, 'escape/index.html'));
-    assert.throws(() => resolveBundleFile(dest, 'app://bundle/escape/'), /APP_PATH_ESCAPE/);
     assert.throws(() => resolveBundleFile(dest, 'app://evil/index.html'), /APP_PATH_ESCAPE/);
-    assert.throws(() => stageBundle(dest, path.join(root, 'bad')), /symlinks/);
+    if (linkFile(path.join(root, 'secret'), path.join(dest, 'escape/index.html'))) {
+      assert.throws(() => resolveBundleFile(dest, 'app://bundle/escape/'), /APP_PATH_ESCAPE/);
+      assert.throws(() => stageBundle(dest, path.join(root, 'bad')), /symlinks/);
+    } else t.diagnostic('symlink escape not checked: ' + NO_FILE_LINKS);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }

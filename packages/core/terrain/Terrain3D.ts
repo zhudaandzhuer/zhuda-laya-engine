@@ -4,11 +4,19 @@ export type Terrain3DOptions = {
   chunkCells?: number;
   maxResidentChunks?: number;
   uvScale?: [number, number];
+  /**
+   * Gives every vertex a tangent, which a material with a normal map needs:
+   * without it the map has no effect on the ground. Vertices then hold 12
+   * floats instead of 8 (see `chunkSnapshot().stride`). The tangent follows
+   * the ground along the direction u grows, so it is the same on both sides
+   * of a chunk border.
+   */
+  tangents?: boolean;
   /** Optional closed volume, extruded along local -Y. Material is borrowed. */
   solid?: { depth: number; material?: any };
 };
 import { ZhudaHeightfield, type HeightRegion } from './Heightfield.ts';
-import { ZhudaDynamicMesh } from '../runtime3d/Surfaces.ts';
+import { ZhudaDynamicMesh, computeMeshTangents } from '../runtime3d/Surfaces.ts';
 import { inverse4, transformPoint, normalized, type Vec3 } from '../runtime3d/Math3D.ts';
 import type { QueryRay, QueryProvider } from '../runtime3d/SceneQueries.ts';
 import { buildTerrainShell, shellTriangleDistance } from './TerrainShell.ts';
@@ -28,6 +36,8 @@ export class ZhudaTerrain3D {
   private unsubscribe: () => void;
   private disposed = false;
   private stride: 1 | 2 | 4 = 1;
+  /** Which way the tangent runs along X and its handedness, taken from the mesh helper's own convention. */
+  private readonly tangentSign: [number, number] | undefined;
   constructor(field: ZhudaHeightfield, options: Terrain3DOptions) {
     this.field = field;
     this.options = options;
@@ -50,6 +60,18 @@ export class ZhudaTerrain3D {
       (!options.uvScale.every(Number.isFinite) || options.uvScale.length !== 2)
     )
       throw Error('Invalid UV scale');
+    if (options.tangents) {
+      // A flat cell with this terrain's winding and UVs, through the helper every
+      // other mesh uses: the terrain's tangents then agree with theirs.
+      const [su, sv] = [options.uvScale?.[0] ?? 1, options.uvScale?.[1] ?? 1];
+      const flat = computeMeshTangents({
+        positions: new Float32Array([0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 0, 1]),
+        normals: new Float32Array([0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0]),
+        uvs: new Float32Array([0, 0, su, 0, 0, sv, su, sv]),
+        indices: new Uint16Array([2, 0, 3, 0, 1, 3]),
+      });
+      this.tangentSign = [Math.sign(flat[0]) || 1, Math.sign(flat[3]) || 1];
+    }
     const l = (globalThis as any).Laya;
     this.root = new l.Sprite3D('ZhudaTerrain');
     options.parent?.addChild(this.root);
@@ -133,6 +155,7 @@ export class ZhudaTerrain3D {
             positions = new Float32Array(n * 3),
             normals = new Float32Array(n * 3),
             uvs = new Float32Array(n * 2),
+            tangents = this.tangentSign ? new Float32Array(n * 4) : undefined,
             indices = new Uint16Array((xs.length - 1) * (zs.length - 1) * 6);
           for (let j = 0; j < zs.length; j++)
             for (let i = 0; i < xs.length; i++) {
@@ -140,7 +163,8 @@ export class ZhudaTerrain3D {
                 p = this.vertex(xs[i], zs[j]);
               positions.set(p.slice(0, 3), k * 3);
               normals.set(p.slice(3, 6), k * 3);
-              uvs.set(p.slice(6), k * 2);
+              uvs.set(p.slice(6, 8), k * 2);
+              tangents?.set(p.slice(8), k * 4);
             }
           let k = 0;
           for (let j = 0; j < zs.length - 1; j++)
@@ -152,7 +176,12 @@ export class ZhudaTerrain3D {
               indices.set([c, a, d, a, b, d], k);
               k += 6;
             }
-          const mesh = new ZhudaDynamicMesh({ positions, normals, uvs, indices }, this.root);
+          const mesh = new ZhudaDynamicMesh(
+            tangents
+              ? { positions, normals, uvs, tangents, indices }
+              : { positions, normals, uvs, indices },
+            this.root,
+          );
           mesh.node.name = 'terrain:' + key;
           mesh.node.meshRenderer.sharedMaterial = this.options.material;
           mesh.node.meshRenderer.receiveShadow = true;
@@ -171,7 +200,7 @@ export class ZhudaTerrain3D {
       n = f.normalAtVertex(x, z),
       px = f.origin[0] + x * f.cellSize,
       pz = f.origin[1] + z * f.cellSize;
-    return [
+    const vertex = [
       px,
       f.heightAtVertex(x, z),
       pz,
@@ -181,11 +210,26 @@ export class ZhudaTerrain3D {
       px * (this.options.uvScale?.[0] ?? 1),
       pz * (this.options.uvScale?.[1] ?? 1),
     ];
+    if (this.tangentSign) {
+      // +X (or -X) laid onto the ground: at right angles to the normal.
+      const [along, hand] = this.tangentSign;
+      const d = n.x * along;
+      const t = [along - n.x * d, -n.y * d, -n.z * d];
+      const length = Math.hypot(t[0], t[1], t[2]) || 1;
+      vertex.push(t[0] / length, t[1] / length, t[2] / length, hand);
+    }
+    return vertex;
   }
   private rebuildShell(chunk: Chunk) {
     if (!this.options.solid) return;
     const shell = new ZhudaDynamicMesh(
-      buildTerrainShell(chunk.mesh.vertices, chunk.xs, chunk.zs, this.options.solid.depth),
+      buildTerrainShell(
+        chunk.mesh.vertices,
+        chunk.xs,
+        chunk.zs,
+        this.options.solid.depth,
+        chunk.mesh.stride,
+      ),
       this.root,
     );
     shell.node.name = 'terrain-solid';
@@ -210,7 +254,7 @@ export class ZhudaTerrain3D {
             chunk.zs[j] <= r.maxZ
           ) {
             const k = j * chunk.xs.length + i;
-            chunk.mesh.vertices.set(this.vertex(chunk.xs[i], chunk.zs[j]), k * 8);
+            chunk.mesh.vertices.set(this.vertex(chunk.xs[i], chunk.zs[j]), k * chunk.mesh.stride);
             first = Math.min(first, k);
             last = Math.max(last, k);
           }
@@ -360,7 +404,7 @@ export class ZhudaTerrain3D {
       solidDepth: this.options.solid?.depth ?? 0,
       stride: this.stride,
       vertices: [...this.chunks.values()].reduce(
-        (n, c) => n + c.mesh.vertices.length / 8 + (c.shell?.vertices.length ?? 0) / 8,
+        (n, c) => n + c.mesh.vertices.length / c.mesh.stride + (c.shell?.vertices.length ?? 0) / 8,
         0,
       ),
       estimatedBufferBytes: [...this.chunks.values()].reduce(
@@ -381,6 +425,8 @@ export class ZhudaTerrain3D {
           xs: [...c.xs],
           zs: [...c.zs],
           vertices: new Float32Array(c.mesh.vertices),
+          /** Floats per vertex: position 3, normal 3, UV 2, and a tangent 4 when the terrain has them. */
+          stride: c.mesh.stride,
           bounds: c.mesh.mesh.bounds,
           shell: c.shell
             ? {

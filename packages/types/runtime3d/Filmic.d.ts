@@ -14,6 +14,12 @@ export interface PrefilteredEnvironmentSpec {
 export declare function createPrefilteredEnvironment(spec: PrefilteredEnvironmentSpec, pixels: Float32Array): {
     texture: any;
     apply(scene: any): void;
+    /**
+     * Replaces the pixels and ambient colours in the same texture, for an
+     * environment of the same size. Scenes it was applied to see the new
+     * reflections at once; call `apply` again for the new ambient colours.
+     */
+    update(next: Float32Array, nextSH: readonly number[]): void;
     dispose(): void;
 };
 export interface FilmicOptions {
@@ -56,6 +62,19 @@ export declare class ZhudaFilmicPipeline {
     constructor(camera: any, options?: FilmicOptions);
     /** Update the existing ACES grading exposure multiplier. */
     setExposure(value: number): void;
+    /**
+     * Sets the continuous values of the chain in place: exposure, contrast,
+     * saturation, bloom strength, and ambient occlusion strength and radius.
+     * Whether bloom or ambient occlusion run at all is fixed at construction.
+     */
+    setGrade(values: {
+        exposure?: number;
+        contrast?: number;
+        saturation?: number;
+        bloomIntensity?: number;
+        aoIntensity?: number;
+        aoRadius?: number;
+    }): void;
     /** Call on camera cuts, teleports and timeline seeks, not on ordinary movement. */
     resetHistory(): void;
     dispose(): void;

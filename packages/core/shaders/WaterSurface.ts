@@ -341,6 +341,32 @@ export class ZhudaWaterSurface {
     this.material.setUniform('u_ZhudaWaterFlags', [flip ? 1 : 0, this.foamDepth, 0, 0]);
   }
 
+  /**
+   * Moves the sun the water glints in (a day passing). Same rules as the
+   * `sun` option: `toward` is a unit vector toward the sun, `color` its linear
+   * colour times intensity. `null` turns the glint off.
+   */
+  setSun(
+    sun: {
+      toward: readonly [number, number, number];
+      color: readonly [number, number, number];
+    } | null,
+  ): void {
+    if (this.disposed) throw Error('Disposed water surface');
+    if (sun) {
+      const values = [...sun.toward, ...sun.color];
+      if (
+        values.length !== 6 ||
+        !values.every(Number.isFinite) ||
+        Math.abs(Math.hypot(...sun.toward) - 1) > 1e-3 ||
+        sun.color.some((c) => c < 0 || c > 1000)
+      )
+        throw Error('Water sun: toward must be a unit vector, color three numbers 0..1000');
+    }
+    this.material.setUniform('u_ZhudaWaterSun', sun ? [...sun.toward] : [0, 1, 0]);
+    this.material.setUniform('u_ZhudaWaterSunColor', sun ? [...sun.color, 0] : [0, 0, 0, 0]);
+  }
+
   /** Seconds of flow: where the waves and the foam are. */
   setTime(seconds: number): void {
     if (this.disposed) throw Error('Disposed water surface');

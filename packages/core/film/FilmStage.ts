@@ -3,6 +3,8 @@
  * and renders it through `ZhudaCinematicCapture`, so previews, review shots
  * and final frames share one deterministic path. Requires the Laya runtime.
  */
+import { zhudaBakeKey } from './BakeKey.ts';
+export { zhudaBakeKey } from './BakeKey.ts';
 import { ZhudaEngine, Zhuda3D } from '../DeclarativeSDK.ts';
 import {
   ZhudaDynamicMesh,
@@ -22,10 +24,7 @@ import { ZhudaReflectiveSurface } from '../shaders/ReflectiveSurface.ts';
 import { ZhudaWaterSurface } from '../shaders/WaterSurface.ts';
 import { mountZhudaModel } from '../runtime3d/ModelPlacements.ts';
 import { ZhudaLightFog } from '../runtime3d/LightFog.ts';
-import {
-  applyZhudaHemisphereAmbient,
-  ZhudaEnvironmentProbe,
-} from '../runtime3d/EnvironmentProbe.ts';
+import { ZhudaEnvironmentProbe } from '../runtime3d/EnvironmentProbe.ts';
 import { ZhudaLensFinish } from '../runtime3d/LensFinish.ts';
 import { ZhudaModelInspector } from '../runtime3d/ModelInspector.ts';
 import { ZhudaModelAnimationSampler } from '../runtime3d/ModelAnimationSampler.ts';
@@ -58,9 +57,19 @@ import {
   sampleZhudaFilmMotion,
   type ZhudaFilmCamera,
   type ZhudaFilmMaterial,
+  type ZhudaFilmLook,
   type ZhudaFilmScene,
   type ZhudaResolvedFilmLook,
+  zhudaFilmLookRebuildReason,
 } from './FilmScene.ts';
+import { zhudaLookForQuality, type ZhudaLookQuality } from './LookQuality.ts';
+import {
+  ZhudaHemisphereAmbientSlot,
+  updateZhudaLookInPlace,
+  zhudaSunRadiance,
+  zhudaTowardSun,
+  type ZhudaAppliedLookParts,
+} from './LiveLook.ts';
 
 export interface ZhudaFilmStageOptions {
   /** Props a scene may place, by id. */
@@ -104,6 +113,42 @@ export interface ZhudaFilmStage {
   prepare(aspect: number, frame?: { width: number; height: number; index: number }): void;
   /** Hands the stage something to release when it is disposed (before the scene goes). */
   adopt(release: () => void): void;
+  /** The look in use, fully resolved (`scene.look` is the authored one). */
+  readonly look: ZhudaResolvedFilmLook;
+  /**
+   * Changes the look while the stage runs (a day passing, weather turning).
+   * The look is validated first; a rejected one changes nothing. When only
+   * continuous values differ (see `zhudaFilmLookRebuildReason`) they are set
+   * in place, cheap enough for every frame, and `'updated'` is returned.
+   * Otherwise the look alone (sky, fog, shadows setup, HDR chain, light fog)
+   * is rebuilt and `'rebuilt'` is returned. The water glint and light shafts
+   * follow the new sun either way. A panorama or environment cannot be added,
+   * removed or changed: remount for that.
+   */
+  setLook(look: ZhudaFilmLook): 'updated' | 'rebuilt';
+  /** The quality level in use: 3 is the look as authored. */
+  readonly quality: ZhudaLookQuality;
+  /**
+   * Draws the authored look at a lower cost (see `zhudaLookForQuality`), or
+   * back at 3 as authored. `setLook` keeps taking the authored look and the
+   * level stays on top of it. A scene with water keeps a bare HDR chain at
+   * level 0, because the water draws in HDR.
+   */
+  setQuality(level: ZhudaLookQuality): 'updated' | 'rebuilt' | 'unchanged';
+  /**
+   * Changes a light of the scene while it runs: a lamp switched on or off,
+   * a flame that flickers. Its glow in the light fog follows. `id` is a
+   * `light` node's id; values left out stay as they are.
+   */
+  setLight(
+    id: string,
+    values: {
+      enabled?: boolean;
+      intensity?: number;
+      color?: readonly [number, number, number];
+      range?: number;
+    },
+  ): void;
   dispose(): void;
 }
 
@@ -303,8 +348,6 @@ export async function loadZhudaFilmScene(
   return stage;
 }
 
-const bakeKey = (recipe: ZhudaTextureRecipe, size: number) => `${size}:${JSON.stringify(recipe)}`;
-
 /**
  * Builds the scene under `rootScene`. Every Laya object is released by
  * `dispose()`, including on a failure part-way through. Scenes that place
@@ -369,13 +412,15 @@ function buildFilmStageContents(
     recipes: Object.keys(recipes),
   });
   const bakeCache = options.bakeCache ?? new Map<string, ZhudaBakedTextureSet>();
-  const look = resolveZhudaFilmLook(scene.look);
+  let look = resolveZhudaFilmLook(scene.look);
+  let currentScene = scene;
   const materials = new Map<string, any>();
   {
     const scene3D = Zhuda3D.createScene3D(rootScene, { ambientColor: [...look.ambient, 1] });
     cleanups.push(() => scene3D.destroy(true));
-    if (look.ambientGround)
-      cleanups.push(applyZhudaHemisphereAmbient(scene3D, look.ambient, look.ambientGround));
+    const hemisphere = new ZhudaHemisphereAmbientSlot(scene3D);
+    cleanups.push(() => hemisphere.release());
+    hemisphere.set(look.ambient, look.ambientGround);
     const camera = Zhuda3D.createCamera(scene3D, {
       position: [0, 0, 0],
       clearColor: [...look.sky, 1],
@@ -387,8 +432,21 @@ function buildFilmStageContents(
       intensity: look.sun.intensity,
       color: [...look.sun.color, 1] as [number, number, number, number],
     });
-    const effects = applyResolvedFilmLook(l, scene3D, camera, sun.light, look, cleanups);
-    const lightFog = effects.lightFog;
+    // The look's own objects (sky, fog, shadow setup, HDR chain, light fog):
+    // released together, so `setLook` can rebuild them without the scene.
+    const lookCleanups: (() => void)[] = [];
+    const releaseLook = () => {
+      for (const cleanup of lookCleanups.splice(0).reverse()) {
+        try {
+          cleanup();
+        } catch {
+          // Keep releasing the rest.
+        }
+      }
+    };
+    cleanups.push(releaseLook);
+    let effects = applyResolvedFilmLook(l, scene3D, camera, sun.light, look, lookCleanups);
+    let lightFog = effects.lightFog;
     // What moves with shot time; filled in below, applied by `setTime`.
     const timed: ((seconds: number) => void)[] = [];
     const modelPose = new Map<string, { position: number[]; yawDeg: number }>();
@@ -419,7 +477,7 @@ function buildFilmStageContents(
         const recipe = typeof spec.recipe === 'string' ? recipes[spec.recipe] : spec.recipe;
         if (!recipe) throw Error(`Film scene: unknown recipe ${String(spec.recipe)}`);
         const size = spec.size ?? 256,
-          key = bakeKey(recipe, size);
+          key = zhudaBakeKey(recipe, size);
         let set = bakeCache.get(key);
         if (!set) {
           set = bakeZhudaTextureSet(recipe, { size });
@@ -633,10 +691,6 @@ function buildFilmStageContents(
     let water: ZhudaWaterSurface | undefined;
     for (const node of scene.nodes) {
       if (node.type !== 'water') continue;
-      const travel = new l.Vector3();
-      sun.light.owner.transform.getForward(travel);
-      const length = Math.hypot(travel.x, travel.y, travel.z) || 1;
-      const power = look.sun.intensity;
       const surface = new ZhudaWaterSurface(scene3D, {
         position: node.position,
         size: node.size,
@@ -650,10 +704,7 @@ function buildFilmStageContents(
         glow: node.glow,
         foamDepth: node.foamDepth,
         resolution: node.resolution,
-        sun: {
-          toward: [-travel.x / length, -travel.y / length, -travel.z / length],
-          color: [look.sun.color[0] * power, look.sun.color[1] * power, look.sun.color[2] * power],
-        },
+        sun: { toward: zhudaTowardSun(l, sun.light), color: zhudaSunRadiance(look) },
       });
       cleanups.push(() => surface.dispose());
       surface.camera.clearFlag = camera.clearFlag;
@@ -679,6 +730,20 @@ function buildFilmStageContents(
       throw Error(
         `Film scene has ${realTime} real-time lights but the runtime was booted for ${capacity} (one is the sun); boot with maxLights`,
       );
+    // What `setLight` changed, and the native light of each node that has one.
+    const lightValues = new Map<
+      string,
+      { enabled: boolean; intensity: number; color: [number, number, number]; range: number }
+    >();
+    const nativeLights = new Map<string, any>();
+    for (const node of scene.nodes)
+      if (node.type === 'light')
+        lightValues.set(node.id, {
+          enabled: true,
+          intensity: node.intensity ?? 2,
+          color: [...(node.color ?? [1, 0.82, 0.6])] as [number, number, number],
+          range: node.range ?? 12,
+        });
     for (const node of scene.nodes) {
       if (node.type !== 'light' || node.fogOnly) continue;
       const holder = new l.Sprite3D(`ZhudaFilmLight:${node.id}`);
@@ -688,6 +753,7 @@ function buildFilmStageContents(
       if (node.follows)
         timed.push(() => (holder.transform.position = new l.Vector3(...followPosition(node))));
       const light = holder.addComponent(node.kind === 'spot' ? l.SpotLightCom : l.PointLightCom);
+      nativeLights.set(node.id, light);
       const [r, g, b] = node.color ?? [1, 0.82, 0.6];
       light.color = new l.Color(r, g, b, 1);
       light.intensity = node.intensity ?? 2;
@@ -718,12 +784,15 @@ function buildFilmStageContents(
     );
     const fogLights = () =>
       lightFog?.setLights(
-        fogNodes.map((node) => ({
-          position: followPosition(node) as [number, number, number],
-          color: node.color ?? ([1, 0.82, 0.6] as [number, number, number]),
-          intensity: node.intensity ?? 2,
-          range: node.range ?? 12,
-        })),
+        fogNodes.map((node) => {
+          const now = lightValues.get(node.id)!;
+          return {
+            position: followPosition(node) as [number, number, number],
+            color: now.color,
+            intensity: now.enabled ? now.intensity : 0,
+            range: now.range,
+          };
+        }),
       );
     if (fogNodes.some((node) => node.follows)) timed.push(fogLights);
     const setTime = (seconds: number) => {
@@ -764,8 +833,141 @@ function buildFilmStageContents(
       });
     };
     setCamera(scene.camera);
+
+    let live = true;
+    cleanups.push(() => (live = false));
+    const mirrors = [reflector, water].filter((surface) => !!surface) as {
+      camera: any;
+    }[];
+    const afterLook = () => {
+      hemisphere.set(look.ambient, look.ambientGround);
+      for (const surface of mirrors) {
+        surface.camera.clearFlag = camera.clearFlag;
+        surface.camera.clearColor = camera.clearColor;
+      }
+      water?.setSun({ toward: zhudaTowardSun(l, sun.light), color: zhudaSunRadiance(look) });
+    };
+    const buildLook = (resolved: ZhudaResolvedFilmLook) => {
+      effects = applyResolvedFilmLook(l, scene3D, camera, sun.light, resolved, lookCleanups);
+      lightFog = effects.lightFog;
+      // A new HDR chain restored the camera's depth settings: the water still reads depth.
+      if (water) {
+        camera.depthTextureMode |= l.DepthTextureMode.Depth;
+        camera.opaquePass = true;
+      }
+      fogLights();
+      updateZhudaLookInPlace(l, { scene3D, camera, sun: sun.light, parts: effects }, resolved);
+    };
+    // The authored look and the quality level drawn on top of it.
+    let authored = look;
+    let quality: ZhudaLookQuality = 3;
+    const keepGrade = scene.nodes.some((node) => node.type === 'water');
+    const atQuality = (resolved: ZhudaResolvedFilmLook) =>
+      zhudaLookForQuality(resolved, quality, { keepGrade });
+    const setLook = (next: ZhudaFilmLook): 'updated' | 'rebuilt' => {
+      if (!live) throw Error('Disposed film stage');
+      const candidate = parseZhudaFilmScene(
+        { ...currentScene, look: next },
+        { props: registry.ids(), recipes: Object.keys(recipes) },
+      );
+      const mode = drawLook(atQuality(resolveZhudaFilmLook(candidate.look)));
+      authored = resolveZhudaFilmLook(candidate.look);
+      currentScene = candidate;
+      return mode;
+    };
+    const setQuality = (level: ZhudaLookQuality): 'updated' | 'rebuilt' | 'unchanged' => {
+      if (!live) throw Error('Disposed film stage');
+      if (![0, 1, 2, 3].includes(level)) throw Error('Look quality: use 0, 1, 2 or 3');
+      if (level === quality) return 'unchanged';
+      const previous = quality;
+      quality = level;
+      try {
+        return drawLook(atQuality(authored));
+      } catch (error) {
+        quality = previous;
+        throw error;
+      }
+    };
+    const setLight = (
+      id: string,
+      values: {
+        enabled?: boolean;
+        intensity?: number;
+        color?: readonly [number, number, number];
+        range?: number;
+      },
+    ) => {
+      if (!live) throw Error('Disposed film stage');
+      const now = lightValues.get(id);
+      if (!now) throw Error(`Film stage: no light ${id}`);
+      const next = { ...now };
+      if (values.enabled !== undefined) {
+        if (typeof values.enabled !== 'boolean') throw Error('setLight: enabled is true or false');
+        next.enabled = values.enabled;
+      }
+      if (values.intensity !== undefined) {
+        if (!(values.intensity >= 0 && values.intensity <= 100000))
+          throw Error('setLight: intensity 0..100000');
+        next.intensity = values.intensity;
+      }
+      if (values.range !== undefined) {
+        if (!(values.range > 0 && values.range <= 10000)) throw Error('setLight: range above 0');
+        next.range = values.range;
+      }
+      if (values.color !== undefined) {
+        if (
+          !Array.isArray(values.color) ||
+          values.color.length !== 3 ||
+          !values.color.every((c) => Number.isFinite(c) && c >= 0)
+        )
+          throw Error('setLight: color needs three numbers from 0');
+        next.color = [...values.color] as [number, number, number];
+      }
+      lightValues.set(id, next);
+      const native = nativeLights.get(id);
+      if (native) {
+        native.color = new l.Color(...next.color, 1);
+        // Off is zero light, not a removed component: the light keeps its slot.
+        native.intensity = next.enabled ? next.intensity : 0;
+        native.range = next.range;
+      }
+      fogLights();
+    };
+    const drawLook = (resolved: ZhudaResolvedFilmLook): 'updated' | 'rebuilt' => {
+      const reason = zhudaFilmLookRebuildReason(look, resolved);
+      if (reason === 'environment' || reason === 'panorama')
+        throw Error(`Film stage: setLook cannot change the ${reason}; mount the scene again`);
+      if (reason === null)
+        updateZhudaLookInPlace(l, { scene3D, camera, sun: sun.light, parts: effects }, resolved);
+      else {
+        releaseLook();
+        try {
+          buildLook(resolved);
+        } catch (error) {
+          // Put the previous look back so the stage keeps drawing.
+          releaseLook();
+          buildLook(look);
+          afterLook();
+          throw error;
+        }
+      }
+      look = resolved;
+      afterLook();
+      return reason === null ? 'updated' : 'rebuilt';
+    };
     return {
-      scene,
+      get scene() {
+        return currentScene;
+      },
+      get look() {
+        return look;
+      },
+      setLook,
+      get quality() {
+        return quality;
+      },
+      setQuality,
+      setLight,
       scene3D,
       camera,
       lens,
@@ -849,9 +1051,11 @@ export function applyResolvedFilmLook(
   sun: any,
   look: ZhudaResolvedFilmLook,
   cleanups: (() => void)[],
-): { lightFog?: ZhudaLightFog; finish?: ZhudaLensFinish } {
+): ZhudaAppliedLookParts & { finish?: ZhudaLensFinish } {
   let lightFog: ZhudaLightFog | undefined;
   let finish: ZhudaLensFinish | undefined;
+  let skyMaterial: any;
+  let film: ZhudaFilmicPipeline | undefined;
   if (look.shadows) {
     sun.shadowMode = look.shadows.softness === 'hard' ? l.ShadowMode.Hard : l.ShadowMode.SoftHigh;
     sun.shadowDistance = look.shadows.distance;
@@ -868,7 +1072,7 @@ export function applyResolvedFilmLook(
   } else sun.shadowMode = l.ShadowMode.None;
   // A panorama replaces the procedural sky (it is applied after loading).
   if (look.atmosphere && !look.panorama) {
-    const sky = new l.SkyProceduralMaterial();
+    const sky = (skyMaterial = new l.SkyProceduralMaterial());
     sky.sunDisk = l.SkyProceduralMaterial.SUN_HIGH_QUALITY;
     sky.sunSize = look.atmosphere.sunSize;
     sky.atmosphereThickness = look.atmosphere.thickness;
@@ -925,7 +1129,7 @@ export function applyResolvedFilmLook(
       }));
       cleanups.push(() => lens.dispose());
     }
-    const film = new ZhudaFilmicPipeline(camera, {
+    const pipeline = (film = new ZhudaFilmicPipeline(camera, {
       sceneEffects: lightFog ? [lightFog.effect] : [],
       finishEffects: finish ? [finish.effect] : [],
       exposure: look.grade.exposure,
@@ -937,8 +1141,8 @@ export function applyResolvedFilmLook(
       aoIntensity: look.grade.ao,
       aoRadius: look.grade.aoRadius,
       temporalAA: false,
-    });
-    cleanups.push(() => film.dispose());
+    }));
+    cleanups.push(() => pipeline.dispose());
   }
   if (look.fog) {
     scene3D.enableFog = true;
@@ -948,7 +1152,7 @@ export function applyResolvedFilmLook(
     scene3D.fogEnd = look.fog.end;
     cleanups.push(() => (scene3D.enableFog = false));
   }
-  return { lightFog, finish };
+  return { lightFog, finish, sky: skyMaterial, film };
 }
 
 function materialName(material: unknown, materials: Map<string, any>): string {

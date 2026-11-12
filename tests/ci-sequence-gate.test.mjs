@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { linkFile, NO_FILE_LINKS } from './helpers/links.mjs';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -69,7 +70,7 @@ test('keyframe gate rejects tampered evidence and path traversal', () => {
   assert.ok(result.errors.some((error) => /SHA mismatch/.test(error)));
 });
 
-test('gate fails closed on invalid expectations, budgets, diagnostics and symlink escape', () => {
+test('gate fails closed on invalid expectations, budgets, diagnostics and symlink escape', (t) => {
   const valid = { ...base, expectedTimes: [0, 1.5, 3] };
   for (const opts of [
     { times: [0, NaN, 3] },
@@ -91,10 +92,11 @@ test('gate fails closed on invalid expectations, budgets, diagnostics and symlin
   }
   const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'sequence-outside-'));
   fs.writeFileSync(path.join(outside, 'a.png'), 'outside');
-  fs.symlinkSync(path.join(outside, 'a.png'), path.join(root, 'link.png'));
-  const bad = structuredClone(valid);
-  bad.frames[0].imagePath = 'link.png';
-  assert.ok(validateSequenceReport(bad, { root }).errors.some((e) => /symlink escapes/.test(e)));
+  if (linkFile(path.join(outside, 'a.png'), path.join(root, 'link.png'))) {
+    const bad = structuredClone(valid);
+    bad.frames[0].imagePath = 'link.png';
+    assert.ok(validateSequenceReport(bad, { root }).errors.some((e) => /symlink escapes/.test(e)));
+  } else t.diagnostic('symlink escape not checked: ' + NO_FILE_LINKS);
   fs.rmSync(outside, { recursive: true, force: true });
 });
 

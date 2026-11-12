@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { linkFile, NO_FILE_LINKS } from './helpers/links.mjs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
@@ -38,8 +39,16 @@ for (const [kind, create, selection] of [
   ['prefab', createPrefabEditorServer, { prefab: 'assets/a.lh' }],
   ['model', createModelEditorServer, { asset: 'assets/model.gltf' }],
 ]) {
-  test(`${kind} editor rejects rebinding, foreign requests and private assets`, async () => {
+  test(`${kind} editor rejects rebinding, foreign requests and private assets`, async (t) => {
     const project = await fs.mkdtemp(path.join(os.tmpdir(), 'zhuda-editor-security-'));
+    // The private-asset checks need two file links; without the right to make them, say so.
+    await fs.writeFile(path.join(project, 'probe'), '');
+    if (!linkFile(path.join(project, 'probe'), path.join(project, 'probe-link'))) {
+      await fs.rm(project, { recursive: true, force: true });
+      return t.skip(NO_FILE_LINKS);
+    }
+    await fs.rm(path.join(project, 'probe-link'));
+    await fs.rm(path.join(project, 'probe'));
     let editor, second;
     try {
       await fs.mkdir(path.join(project, 'assets'));

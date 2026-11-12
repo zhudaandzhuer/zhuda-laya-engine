@@ -36,6 +36,8 @@ const destination = (file) =>
       : file;
 const changes = [];
 program.emit(undefined, (file, text) => {
+  // TypeScript reports emitted paths with forward slashes on every platform.
+  file = path.normalize(file);
   if (
     !file.endsWith('.d.ts') ||
     (!file.startsWith(core + path.sep) &&

@@ -54,6 +54,13 @@ export declare class ZhudaDynamicMesh {
     constructor(data: MeshData, parent?: any);
     updateRange(first: number, count: number): void;
     setPosition(i: number, x: number, y: number, z: number): void;
+    private padding;
+    /**
+     * Grows the bounds by this many metres on every side, and keeps them grown
+     * when vertices change. For a material whose vertex hook moves the surface
+     * (wind, swell): without it the mesh is culled as if it had not moved.
+     */
+    padBounds(meters: number): void;
     refreshBounds(): void;
     dispose(): void;
 }

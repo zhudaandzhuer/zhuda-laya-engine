@@ -40,25 +40,56 @@ export function createPrefilteredEnvironment(
   const texture = new l.TextureCube(spec.size, l.TextureFormat.R32G32B32A32, true, false);
   texture.filterMode = l.FilterMode.Trilinear;
   // Laya's pixel upload order is +Z,-Z,+X,-X,+Y,-Y, unlike WebGL/DDS.
-  const faces = (level: { size: number; offset: number }) =>
+  const faces = (level: { size: number; offset: number }, pixels: Float32Array) =>
     [4, 5, 0, 1, 2, 3].map((i) =>
       pixels.subarray(
         level.offset + i * level.size * level.size * 4,
         level.offset + (i + 1) * level.size * level.size * 4,
       ),
     );
-  texture.setPixelsData(faces(spec.levels[0]), false, false);
-  for (let i = 1; i < spec.levels.length; i++) {
-    const level = spec.levels[i];
-    texture.updateSubPixelsData(faces(level), 0, 0, level.size, level.size, i, false, false, false);
-  }
+  const upload = (data: Float32Array) => {
+    texture.setPixelsData(faces(spec.levels[0], data), false, false);
+    for (let i = 1; i < spec.levels.length; i++) {
+      const level = spec.levels[i];
+      texture.updateSubPixelsData(
+        faces(level, data),
+        0,
+        0,
+        level.size,
+        level.size,
+        i,
+        false,
+        false,
+        false,
+      );
+    }
+  };
+  upload(pixels);
+  let ambientSH = spec.ambientSH;
   return {
     texture,
     apply(scene: any) {
       scene.iblTex = texture;
       scene.iblTexRGBD = false;
       scene.ambientMode = l.AmbientMode.SphericalHarmonics;
-      scene.ambientSH = new Float32Array(spec.ambientSH);
+      scene.ambientSH = new Float32Array(ambientSH);
+    },
+    /**
+     * Replaces the pixels and ambient colours in the same texture, for an
+     * environment of the same size. Scenes it was applied to see the new
+     * reflections at once; call `apply` again for the new ambient colours.
+     */
+    update(next: Float32Array, nextSH: readonly number[]) {
+      if (texture.destroyed) throw Error('Disposed environment');
+      if (
+        next.length !== pixels.length ||
+        nextSH.length !== 27 ||
+        !nextSH.every(Number.isFinite) ||
+        !next.every((v) => Number.isFinite(v) && v >= 0)
+      )
+        throw Error('Invalid environment update');
+      upload(next);
+      ambientSH = [...nextSH];
     },
     dispose() {
       texture.destroy();
@@ -159,6 +190,30 @@ export class ZhudaFilmicPipeline {
     if (!Number.isFinite(value) || value < 0 || value > 1048576)
       throw Error('Invalid filmic exposure');
     this.grade.postExposure = value;
+  }
+  /**
+   * Sets the continuous values of the chain in place: exposure, contrast,
+   * saturation, bloom strength, and ambient occlusion strength and radius.
+   * Whether bloom or ambient occlusion run at all is fixed at construction.
+   */
+  setGrade(values: {
+    exposure?: number;
+    contrast?: number;
+    saturation?: number;
+    bloomIntensity?: number;
+    aoIntensity?: number;
+    aoRadius?: number;
+  }) {
+    if (this.disposed) throw Error('Disposed filmic pipeline');
+    for (const [key, value] of Object.entries(values))
+      if (value !== undefined && (!Number.isFinite(value) || value < 0 || value > 1048576))
+        throw Error('Invalid filmic value ' + key);
+    if (values.exposure !== undefined) this.grade.postExposure = values.exposure;
+    if (values.contrast !== undefined) this.grade.contrast = values.contrast;
+    if (values.saturation !== undefined) this.grade.saturation = values.saturation;
+    if (values.bloomIntensity !== undefined) this.bloom.intensity = values.bloomIntensity;
+    if (values.aoIntensity !== undefined) this.ao.intensity = values.aoIntensity;
+    if (values.aoRadius !== undefined) this.ao.radius = values.aoRadius;
   }
   /** Call on camera cuts, teleports and timeline seeks, not on ordinary movement. */
   resetHistory() {

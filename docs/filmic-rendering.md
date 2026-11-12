@@ -10,7 +10,7 @@ Use `ZhudaLitSurfaceMaterial` when a procedural surface needs native lights, env
 import { ZhudaLitSurfaceMaterial, ZhudaDynamicMesh, computeMeshTangents } from 'zhuda-laya-engine';
 
 const surface = new ZhudaLitSurfaceMaterial({
-  name: 'WetStone',
+  name: 'ZhudaWetStone',
   normalConvention: 'opengl', // +Y maps; native Laya defaults to DirectX -Y
   material: {
     color: [1, 1, 1, 1],
@@ -40,11 +40,40 @@ mesh.node.meshRenderer.castShadow = true;
 mesh.node.meshRenderer.receiveShadow = true;
 ```
 
-The hook receives **scene-linear** `baseColor` and HDR `emission`, plus `metallic`, `roughness` and `occlusion`. It modifies surface response before native PBR lighting. It does not displace vertices, change alpha, replace normals or inject arbitrary lighting. This bounded contract keeps shadow and depth-normal passes consistent. The normal convention applies to both color and depth-normal passes. Tangent frames derive from UVs, including rotated/mirrored UVs; a degenerate UV has a stable fallback, but cannot describe a meaningful normal-map orientation.
+The hook receives **scene-linear** `baseColor` and HDR `emission`, plus `metallic`, `roughness` and `occlusion`. It modifies surface response before native PBR lighting. It does not change alpha, replace normals or inject arbitrary lighting; vertices move only through the vertex hook below, which every pass runs. The normal convention applies to both color and depth-normal passes. Tangent frames derive from UVs, including rotated/mirrored UVs; a degenerate UV has a stable fallback, but cannot describe a meaningful normal-map orientation.
 
 Color/albedo and emission textures must be uploaded with the appropriate sRGB flag; normal and packed data maps stay linear. Native `metallicGloss` uses metallic in **R** and smoothness in **A**. `packMetallicRoughness` converts glTF G-roughness/B-metallic RGBA bytes. Smoothness is also multiplied by the material smoothness factor. Uniform names use the `u_Zhuda` prefix; typed texture uniforms must have a binding. Shader names are immutable contracts; changing GLSL, normal convention or uniform declarations requires a new name. Validation is structural; actual GPU compilation requires a draw.
 
 `surface.dispose()` destroys its material after detaching borrowed textures. Destroy meshes/instances first; the caller owns textures. Shader registrations/program caches persist in the native runtime, so use stable shader names rather than generating one per instance.
+
+### Vertex hook: wind, sway and waves
+
+`vertex` is an optional second function body that moves vertices in world space. It runs in the forward pass, the shadow caster and the depth-normal pass, so a blade that bends also bends its shadow and its ambient occlusion:
+
+```ts
+const grass = new ZhudaLitSurfaceMaterial({
+  name: 'ZhudaGameGrassWind',
+  uniforms: {
+    u_ZhudaTime: { type: 'float', value: 0 },
+    u_ZhudaWind: { type: 'vec2', value: [0.6, 0.2] },
+  },
+  vertex: `void zhudaVertex(inout vec3 positionWS, inout vec3 normalWS,
+      vec2 uv, vec3 originWS) {
+    float sway = sin(u_ZhudaTime * 1.7 + originWS.x * 0.3 + originWS.z * 0.2);
+    positionWS.xz += u_ZhudaWind * sway * uv.y * uv.y; // tips move, roots stay
+  }`,
+  surface: `void zhudaSurface(inout ZhudaLitSurface s, vec2 uv, vec3 p, vec3 n) {}`,
+  material: { color: [0.3, 0.55, 0.2, 1], roughness: 0.8, doubleSided: true },
+});
+runtime.start(() => grass.set('u_ZhudaTime', performance.now() / 1000));
+```
+
+- `positionWS` and `normalWS` are world space and may both be changed; the normal is renormalised and the tangent frame re-orthogonalised after the hook. `uv` is `vec2(0)` on meshes without UVs. `originWS` is the object's world origin, a cheap per-instance phase.
+- The body may declare helper functions and read the material's `u_Zhuda` uniforms. It may not declare uniforms, attributes or varyings, `#include` or `#version`, define `main`, or write `gl_Position`/`gl_PointSize` (`validateZhudaLitVertexHook` lists the problems; the constructor throws on them).
+- Bounds are the mesh's own. For a hook that moves the surface, grow them with `mesh.padBounds(meters)` on a `ZhudaDynamicMesh` (the padding stays when vertices change), or culling clips the moved geometry.
+- `material.doubleSided: true` draws both faces. (Before 1.18.0 a lit material came out one-sided whatever it declared.) The back face is lit with the flipped normal; there is no option yet to light both faces alike.
+- Without `vertex` the passes are the native programs byte for byte. The hook is part of the shader name's contract like `surface`.
+- Verified by `npm run verify:live-look`: a hooked plate and its shadow move together on a real GPU.
 
 ## Lens finish
 

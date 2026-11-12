@@ -12,5 +12,9 @@ export declare const ZHUDA_LOOK_QUALITY_LEVELS = 4;
  * 3 as authored; 2 without ambient occlusion, shorter beams, 2048 shadows;
  * 1 without beams and lens finish, two shadow cascades;
  * 0 without the HDR chain at all (no bloom, no grade), one small shadow map.
+ * `options.keepGrade`: at level 0 keep a bare HDR chain (tone mapping only)
+ * instead of none. A scene with a water surface needs it: the water draws in HDR.
  */
-export declare function zhudaLookForQuality(look: ZhudaResolvedFilmLook, level: ZhudaLookQuality): ZhudaResolvedFilmLook;
+export declare function zhudaLookForQuality(look: ZhudaResolvedFilmLook, level: ZhudaLookQuality, options?: {
+    keepGrade?: boolean;
+}): ZhudaResolvedFilmLook;

@@ -309,6 +309,19 @@ export class ZhudaDynamicMesh {
       throw Error('Invalid vertex');
     this.vertices.set([x, y, z], i * this.stride);
   }
+  private padding = 0;
+  /**
+   * Grows the bounds by this many metres on every side, and keeps them grown
+   * when vertices change. For a material whose vertex hook moves the surface
+   * (wind, swell): without it the mesh is culled as if it had not moved.
+   */
+  padBounds(meters: number) {
+    if (this.disposed) throw Error('Disposed mesh');
+    if (!Number.isFinite(meters) || meters < 0 || meters > 10000)
+      throw Error('padBounds: use 0..10000 metres');
+    this.padding = meters;
+    this.refreshBounds();
+  }
   refreshBounds() {
     const l = (globalThis as any).Laya,
       min = new l.Vector3(Infinity, Infinity, Infinity),
@@ -320,6 +333,10 @@ export class ZhudaDynamicMesh {
       max.x = Math.max(max.x, this.vertices[i]);
       max.y = Math.max(max.y, this.vertices[i + 1]);
       max.z = Math.max(max.z, this.vertices[i + 2]);
+    }
+    for (const axis of ['x', 'y', 'z'] as const) {
+      min[axis] -= this.padding;
+      max[axis] += this.padding;
     }
     this.mesh.bounds = new l.Bounds(min, max);
     this.node.meshRenderer.boundsChange = true;

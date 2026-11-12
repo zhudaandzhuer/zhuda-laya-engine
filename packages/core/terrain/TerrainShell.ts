@@ -39,11 +39,13 @@ export function shellTriangleDistance(
 }
 
 /** Clockwise Laya faces. Extrudes along local -Y; the underside follows the top. */
+/** `stride` is the floats per vertex of `top`: 8, or 12 when it carries tangents. */
 export function buildTerrainShell(
   top: Float32Array,
   xs: number[],
   zs: number[],
   depth: number,
+  stride = 8,
 ): MeshData {
   if (!Number.isFinite(depth) || depth <= 0) throw Error('Terrain solid depth must be positive');
   const nx = xs.length,
@@ -60,9 +62,9 @@ export function buildTerrainShell(
     uvs = new Float32Array(count * 2),
     indices = new Uint16Array((nx - 1) * (nz - 1) * 6 + edges.length * 6);
   for (let i = 0; i < n; i++) {
-    positions.set([top[i * 8], top[i * 8 + 1] - depth, top[i * 8 + 2]], i * 3);
-    normals.set([-top[i * 8 + 3], -top[i * 8 + 4], -top[i * 8 + 5]], i * 3);
-    uvs.set([top[i * 8 + 6], top[i * 8 + 7]], i * 2);
+    positions.set([top[i * stride], top[i * stride + 1] - depth, top[i * stride + 2]], i * 3);
+    normals.set([-top[i * stride + 3], -top[i * stride + 4], -top[i * stride + 5]], i * 3);
+    uvs.set([top[i * stride + 6], top[i * stride + 7]], i * 2);
   }
   let k = 0;
   for (let z = 0; z < nz - 1; z++)
@@ -76,11 +78,11 @@ export function buildTerrainShell(
     }
   edges.forEach(([a, b], j) => {
     const i = n + j * 4,
-      dx = top[b * 8] - top[a * 8],
-      dz = top[b * 8 + 2] - top[a * 8 + 2],
+      dx = top[b * stride] - top[a * stride],
+      dz = top[b * stride + 2] - top[a * stride + 2],
       len = Math.hypot(dx, dz);
     for (let v = 0; v < 4; v++) {
-      const src = (v % 2 ? b : a) * 8;
+      const src = (v % 2 ? b : a) * stride;
       positions.set([top[src], top[src + 1] - (v >= 2 ? depth : 0), top[src + 2]], (i + v) * 3);
       normals.set([dz / len, 0, -dx / len], (i + v) * 3);
       uvs.set([v % 2 ? len : 0, v >= 2 ? depth : 0], (i + v) * 2);

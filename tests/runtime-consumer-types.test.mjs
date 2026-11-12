@@ -8,7 +8,11 @@ test('strict public consumer composes sample audio and inferred 2D/3D Prefab roo
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'runtime-consumer-types-'));
   try {
     fs.mkdirSync(path.join(root, 'node_modules'));
-    fs.symlinkSync(path.resolve('.'), path.join(root, 'node_modules/zhuda-laya-engine'), 'dir');
+    fs.symlinkSync(
+      path.resolve('.'),
+      path.join(root, 'node_modules/zhuda-laya-engine'),
+      'junction',
+    );
     const file = path.join(root, 'consumer.ts');
     fs.writeFileSync(
       file,

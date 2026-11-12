@@ -72,6 +72,15 @@ export declare class ZhudaWaterSurface {
      * it at the same time.
      */
     setScreenFlip(flip: boolean): void;
+    /**
+     * Moves the sun the water glints in (a day passing). Same rules as the
+     * `sun` option: `toward` is a unit vector toward the sun, `color` its linear
+     * colour times intensity. `null` turns the glint off.
+     */
+    setSun(sun: {
+        toward: readonly [number, number, number];
+        color: readonly [number, number, number];
+    } | null): void;
     /** Seconds of flow: where the waves and the foam are. */
     setTime(seconds: number): void;
     /** Call after the main camera moves or its field of view changes. */

@@ -5,6 +5,7 @@
 //   node scripts/release-browser-sdk.mjs --publish     (needs GAME_UPLOAD_TOKEN)
 //   node scripts/release-browser-sdk.mjs --pin         (rewrite pins from the record)
 //   node scripts/release-browser-sdk.mjs --check       (fail when pins are stale)
+//   node scripts/release-browser-sdk.mjs --drift       (fail when this source differs from the release of its version)
 //
 // docs/browser-sdk-releases.json is the single record of published releases;
 // its first entry is the latest. Templates and docs are generated from it, so a
@@ -12,6 +13,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import os from 'node:os';
 import zlib from 'node:zlib';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -120,6 +122,21 @@ function writePins(record) {
 }
 
 // Store-only ZIP of a flat directory (no ZIP64, no symlinks, no hidden files).
+/**
+ * The bundles of a build that differ from a recorded release of the same
+ * version. A released version is immutable: when the source has moved on, the
+ * same number would name two different SDKs (different exports, different
+ * integrity), so the version has to be raised first. Empty when the version is
+ * not recorded yet, or when every bundle matches.
+ */
+export function releaseDrift(record, version, built) {
+  const release = record.releases.find((entry) => entry.version === version);
+  if (!release) return [];
+  return Object.keys(release.files)
+    .filter((name) => built[name] !== release.files[name].integrity)
+    .sort();
+}
+
 export function zipDirectory(dir) {
   const locals = [],
     central = [];
@@ -260,12 +277,44 @@ if (process.argv[1] && fs.realpathSync(process.argv[1]) === fileURLToPath(import
   try {
     if (args.includes('--help') || !args.length) {
       console.log(
-        'Usage: release-browser-sdk.mjs --publish --summary TEXT [--out DIR] | --pin | --check',
+        'Usage: release-browser-sdk.mjs --publish --summary TEXT [--out DIR] | --pin | --check | --drift',
       );
     } else if (args.includes('--check')) {
       const stale = staleFiles();
       if (stale.length) throw Error('Browser SDK pins are stale; run --pin: ' + stale.join(', '));
       console.log(`Browser SDK pins match ${readRecord().releases[0].version}`);
+    } else if (args.includes('--drift')) {
+      // Builds the SDK from this source and compares it with the release recorded
+      // under the same version.
+      const version = JSON.parse(fs.readFileSync(path.join(root, 'package.json'))).version;
+      const { buildBrowserSdk } = await import('../packages/compiler/browser-sdk.mjs');
+      const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'zhuda-sdk-drift-'));
+      // The builder writes only into a folder that does not exist yet.
+      const outDir = path.join(temporary, 'sdk');
+      try {
+        await buildBrowserSdk({ engineRoot: root, outDir });
+        const built = Object.fromEntries(
+          fs
+            .readdirSync(outDir)
+            .filter((name) => /^zhuda-.*\.js$/.test(name))
+            .map((name) => [
+              name,
+              'sha384-' +
+                crypto
+                  .createHash('sha384')
+                  .update(fs.readFileSync(path.join(outDir, name)))
+                  .digest('base64'),
+            ]),
+        );
+        const drift = releaseDrift(readRecord(), version, built);
+        if (drift.length)
+          throw Error(
+            `This source is not the released ${version}: ${drift.join(', ')} differ. Raise the version (npm version <x.y.z> --no-git-tag-version) before building or releasing an SDK.`,
+          );
+        console.log(`Browser SDK ${version}: no released build of this version differs`);
+      } finally {
+        fs.rmSync(temporary, { recursive: true, force: true });
+      }
     } else if (args.includes('--pin')) {
       writePins(readRecord());
       console.log(`Pinned templates and docs to ${readRecord().releases[0].version}`);

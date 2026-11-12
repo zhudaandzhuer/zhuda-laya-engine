@@ -43,3 +43,36 @@ test('a newly recorded release rewrites every pinned URL and integrity', () => {
   );
   assert.throws(() => readRecord(path.join(repo, 'package.json')), /invalid browser SDK release/);
 });
+
+test('a source that differs from the release of its own version is reported; a new version is not', async () => {
+  const { releaseDrift } = await import('../scripts/release-browser-sdk.mjs');
+  const record = {
+    releases: [
+      {
+        version: '2.0.0',
+        files: {
+          'zhuda-2d.js': { integrity: 'sha384-a' },
+          'zhuda-3d.js': { integrity: 'sha384-b' },
+        },
+      },
+    ],
+  };
+  assert.deepEqual(
+    releaseDrift(record, '2.0.0', { 'zhuda-2d.js': 'sha384-a', 'zhuda-3d.js': 'sha384-b' }),
+    [],
+  );
+  assert.deepEqual(
+    releaseDrift(record, '2.0.0', { 'zhuda-2d.js': 'sha384-a', 'zhuda-3d.js': 'sha384-changed' }),
+    ['zhuda-3d.js'],
+  );
+  assert.deepEqual(
+    releaseDrift(record, '2.0.0', { 'zhuda-2d.js': 'sha384-a' }),
+    ['zhuda-3d.js'],
+    'a missing bundle differs',
+  );
+  assert.deepEqual(
+    releaseDrift(record, '2.1.0', { 'zhuda-2d.js': 'sha384-other' }),
+    [],
+    'an unreleased version has nothing to differ from',
+  );
+});

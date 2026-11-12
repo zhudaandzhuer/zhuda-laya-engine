@@ -1,16 +1,18 @@
 // Generated from TypeScript source; run npm run types:generate.
+export { zhudaBakeKey } from './BakeKey.js';
 import { ZhudaPhysicalCameraRig } from '../runtime3d/PhysicalCamera.js';
 import { type CinematicFramePixels } from '../runtime3d/CinematicCapture.js';
 import type { ZhudaRuntimeSession } from '../runtime3d/Runtime.js';
 import { ZhudaModelLibrary } from '../runtime3d/Assets.js';
 import type { ZhudaAssetCache } from '../runtime3d/Assets.js';
 import { type AssetProvider } from '../runtime3d/AssetProvider.js';
-import { ZhudaLightFog } from '../runtime3d/LightFog.js';
 import { ZhudaLensFinish } from '../runtime3d/LensFinish.js';
 import { type ZhudaHdrImage } from '../runtime3d/Lightmap.js';
 import { type ZhudaBakedTextureSet, type ZhudaTextureRecipe } from '../procedural/TextureRecipe.js';
 import { type ZhudaPropDefinition } from '../procedural/PropFactory.js';
-import { type ZhudaFilmCamera, type ZhudaFilmScene, type ZhudaResolvedFilmLook } from './FilmScene.js';
+import { type ZhudaFilmCamera, type ZhudaFilmLook, type ZhudaFilmScene, type ZhudaResolvedFilmLook } from './FilmScene.js';
+import { type ZhudaLookQuality } from './LookQuality.js';
+import { type ZhudaAppliedLookParts } from './LiveLook.js';
 export interface ZhudaFilmStageOptions {
     /** Props a scene may place, by id. */
     props?: readonly ZhudaPropDefinition<any>[];
@@ -62,6 +64,39 @@ export interface ZhudaFilmStage {
     }): void;
     /** Hands the stage something to release when it is disposed (before the scene goes). */
     adopt(release: () => void): void;
+    /** The look in use, fully resolved (`scene.look` is the authored one). */
+    readonly look: ZhudaResolvedFilmLook;
+    /**
+     * Changes the look while the stage runs (a day passing, weather turning).
+     * The look is validated first; a rejected one changes nothing. When only
+     * continuous values differ (see `zhudaFilmLookRebuildReason`) they are set
+     * in place, cheap enough for every frame, and `'updated'` is returned.
+     * Otherwise the look alone (sky, fog, shadows setup, HDR chain, light fog)
+     * is rebuilt and `'rebuilt'` is returned. The water glint and light shafts
+     * follow the new sun either way. A panorama or environment cannot be added,
+     * removed or changed: remount for that.
+     */
+    setLook(look: ZhudaFilmLook): 'updated' | 'rebuilt';
+    /** The quality level in use: 3 is the look as authored. */
+    readonly quality: ZhudaLookQuality;
+    /**
+     * Draws the authored look at a lower cost (see `zhudaLookForQuality`), or
+     * back at 3 as authored. `setLook` keeps taking the authored look and the
+     * level stays on top of it. A scene with water keeps a bare HDR chain at
+     * level 0, because the water draws in HDR.
+     */
+    setQuality(level: ZhudaLookQuality): 'updated' | 'rebuilt' | 'unchanged';
+    /**
+     * Changes a light of the scene while it runs: a lamp switched on or off,
+     * a flame that flickers. Its glow in the light fog follows. `id` is a
+     * `light` node's id; values left out stay as they are.
+     */
+    setLight(id: string, values: {
+        enabled?: boolean;
+        intensity?: number;
+        color?: readonly [number, number, number];
+        range?: number;
+    }): void;
     dispose(): void;
 }
 export interface ZhudaFilmAssetsOptions {
@@ -104,8 +139,7 @@ export declare function loadZhudaFilmScene(rootScene: any, input: ZhudaFilmScene
 export declare function mountZhudaFilmScene(rootScene: any, input: ZhudaFilmScene, options?: ZhudaFilmStageOptions): ZhudaFilmStage;
 /** Shadows, procedural sky and fog, all native Laya 3.4.2 features. */
 /** Shared with `ZhudaSceneLook`: shadows, sky, fog and the HDR chain of a resolved look. */
-export declare function applyResolvedFilmLook(l: any, scene3D: any, camera: any, sun: any, look: ZhudaResolvedFilmLook, cleanups: (() => void)[]): {
-    lightFog?: ZhudaLightFog;
+export declare function applyResolvedFilmLook(l: any, scene3D: any, camera: any, sun: any, look: ZhudaResolvedFilmLook, cleanups: (() => void)[]): ZhudaAppliedLookParts & {
     finish?: ZhudaLensFinish;
 };
 export interface ZhudaFilmRenderOptions {

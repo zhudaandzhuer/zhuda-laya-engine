@@ -1734,3 +1734,59 @@ export function sampleZhudaFilmCameraPath(
     focusDistanceM: mix(a.focusDistanceM, b.focusDistanceM, k),
   };
 }
+
+/**
+ * What changing a running look from `from` to `to` has to rebuild, or `null`
+ * when every difference can be set in place: the sun (direction, colour,
+ * intensity), sky and ground light colours, the flat sky colour, the values
+ * of the procedural sky and of distance fog, shadow distance, strength,
+ * softness, resolution and cascades, the strengths of the grade (exposure,
+ * contrast, saturation, bloom, ambient occlusion, grain, vignette, fringe),
+ * the light fog's density, falloff, height, colour, scatter and reach, the
+ * strength and spread of its shafts, and the sun they follow. Anything else
+ * names the first part that differs: switching shadows, sky, fog, grade,
+ * light fog or sky-and-ground light on or off, switching bloom, ambient
+ * occlusion, the lens finish or the shafts on or off, or the shafts'
+ * distance, resolution or step count. `environment` and `panorama`
+ * need assets or a capture; a running look cannot change them at all.
+ */
+export function zhudaFilmLookRebuildReason(
+  from: ZhudaResolvedFilmLook,
+  to: ZhudaResolvedFilmLook,
+):
+  | 'environment'
+  | 'panorama'
+  | 'shadows'
+  | 'atmosphere'
+  | 'fog'
+  | 'ambientGround'
+  | 'grade'
+  | 'lightFog'
+  | null {
+  const json = (value: unknown) => JSON.stringify(value);
+  if (json(from.environment) !== json(to.environment)) return 'environment';
+  if (json(from.panorama) !== json(to.panorama)) return 'panorama';
+  if (!from.shadows !== !to.shadows) return 'shadows';
+  if (!from.atmosphere !== !to.atmosphere) return 'atmosphere';
+  if (!from.fog !== !to.fog) return 'fog';
+  if (!from.ambientGround !== !to.ambientGround) return 'ambientGround';
+  // The HDR chain is built with or without each effect; their strengths are set in place.
+  const grade = (look: ZhudaResolvedFilmLook) =>
+    look.grade
+      ? json([
+          look.grade.bloom > 0,
+          look.grade.ao > 0,
+          look.grade.grain > 0 || look.grade.vignette > 0 || look.grade.fringe > 0,
+        ])
+      : 'off';
+  if (grade(from) !== grade(to)) return 'grade';
+  // The fog's values are set in place; the light shafts' picture and loop are built.
+  const fog = (look: ZhudaResolvedFilmLook) =>
+    look.lightFog
+      ? json(
+          look.lightFog.shafts ? { ...look.lightFog.shafts, strength: 0, anisotropy: 0 } : 'plain',
+        )
+      : 'off';
+  if (fog(from) !== fog(to)) return 'lightFog';
+  return null;
+}

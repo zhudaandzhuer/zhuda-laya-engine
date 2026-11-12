@@ -347,24 +347,69 @@ export function zhudaHemisphereCube(
   return { size, data };
 }
 
+let hemisphereBasis: { spec: PrefilteredEnvironmentSpec; pixels: Float32Array } | undefined;
+
+/**
+ * The prefiltered environment of `zhudaHemisphereCube(sky, ground, 16)` at
+ * size 16, without prefiltering again. The cube is linear in the two colours
+ * and so is the prefilter, so one prefilter of a unit sky (red) and a unit
+ * ground (green) is mixed per call: microseconds instead of milliseconds,
+ * equal to a full prefilter up to float rounding.
+ */
+export function prefilterZhudaHemisphere(
+  sky: readonly [number, number, number],
+  ground: readonly [number, number, number],
+): { spec: PrefilteredEnvironmentSpec; pixels: Float32Array } {
+  const colours = [...sky, ...ground];
+  if (colours.length !== 6 || !colours.every((v) => Number.isFinite(v) && v >= 0))
+    throw Error('Hemisphere colours must be non-negative numbers');
+  hemisphereBasis ??= prefilterZhudaEnvironment(zhudaHemisphereCube([1, 0, 0], [0, 1, 0]), {
+    size: 16,
+  });
+  const basis = hemisphereBasis;
+  const pixels = new Float32Array(basis.pixels.length);
+  for (let o = 0; o < pixels.length; o += 4) {
+    const up = basis.pixels[o],
+      down = basis.pixels[o + 1];
+    pixels[o] = sky[0] * up + ground[0] * down;
+    pixels[o + 1] = sky[1] * up + ground[1] * down;
+    pixels[o + 2] = sky[2] * up + ground[2] * down;
+    pixels[o + 3] = 1;
+  }
+  const ambientSH: number[] = [];
+  for (let k = 0; k < 9; k++) {
+    const up = basis.spec.ambientSH[k * 3],
+      down = basis.spec.ambientSH[k * 3 + 1];
+    for (let c = 0; c < 3; c++) ambientSH.push(sky[c] * up + ground[c] * down);
+  }
+  const levels = basis.spec.levels.map((level) => ({ ...level }));
+  return { spec: { size: basis.spec.size, levels, ambientSH }, pixels };
+}
+
+/** What `applyZhudaHemisphereAmbient` returns: call it to restore the scene. */
+export interface ZhudaHemisphereAmbientHandle {
+  (): void;
+  /** New colours in the same texture; nothing is allocated on the GPU. */
+  update(sky: readonly [number, number, number], ground: readonly [number, number, number]): void;
+}
+
 /**
  * Lights a scene with a sky-and-ground ambient (and the matching soft
  * reflections). Returns the function that restores the scene's previous
- * ambient setup and releases the texture.
+ * ambient setup and releases the texture; its `update` changes the colours
+ * in place.
  */
 export function applyZhudaHemisphereAmbient(
   scene: any,
   sky: readonly [number, number, number],
   ground: readonly [number, number, number],
-): () => void {
-  const { spec, pixels } = prefilterZhudaEnvironment(zhudaHemisphereCube(sky, ground), {
-    size: 16,
-  });
+): ZhudaHemisphereAmbientHandle {
+  const { spec, pixels } = prefilterZhudaHemisphere(sky, ground);
   const environment = createPrefilteredEnvironment(spec, pixels);
   const previous = { mode: scene.ambientMode, tex: scene.iblTex };
   environment.apply(scene);
   let released = false;
-  return () => {
+  const restore = (() => {
     if (released) return;
     released = true;
     if (!scene.destroyed) {
@@ -372,7 +417,15 @@ export function applyZhudaHemisphereAmbient(
       scene.ambientMode = previous.mode;
     }
     environment.dispose();
+  }) as ZhudaHemisphereAmbientHandle;
+  restore.update = (nextSky, nextGround) => {
+    if (released) throw Error('Released hemisphere ambient');
+    const next = prefilterZhudaHemisphere(nextSky, nextGround);
+    environment.update(next.pixels, next.spec.ambientSH);
+    // Only while the scene still uses this light; something else may have replaced it.
+    if (!scene.destroyed && scene.iblTex === environment.texture) environment.apply(scene);
   };
+  return restore;
 }
 
 export class ZhudaEnvironmentProbe {

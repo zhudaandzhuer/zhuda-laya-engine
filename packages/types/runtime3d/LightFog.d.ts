@@ -93,7 +93,8 @@ export declare class ZhudaLightFog {
     private readonly material;
     private readonly lights;
     private readonly data;
-    private readonly fog;
+    private fog;
+    private readonly authored;
     private count;
     private disposed;
     private shaft?;
@@ -103,6 +104,24 @@ export declare class ZhudaLightFog {
     private boxCentre;
     private frame;
     constructor(options?: ZhudaLightFogOptions);
+    /**
+     * Changes the fog in place (weather turning): density, falloff, base
+     * height, colour, scatter, reach, and the strength and spread of the light
+     * shafts. The next \`update\` shows it. Whether there are shafts, and their
+     * distance, resolution and step count, are fixed at construction.
+     */
+    setFog(values: {
+        density?: number;
+        falloffMeters?: number;
+        baseY?: number;
+        color?: readonly [number, number, number];
+        scatter?: number;
+        maxDistance?: number;
+        shafts?: {
+            strength?: number;
+            anisotropy?: number;
+        };
+    }): void;
     /** Replaces the lights that shine into the fog (at most `ZHUDA_FOG_MAX_LIGHTS`). */
     setLights(lights: readonly ZhudaFogLight[]): void;
     /**
