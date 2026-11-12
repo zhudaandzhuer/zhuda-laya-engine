@@ -14,25 +14,23 @@ E4ZEhFCYy4b5pYXJUbMC9KjRitkypyqtZvpSRerLWHCb
 
 ---
 
-# Drive the waterfront.
+# zhuda-laya-engine
 
 English · [简体中文](docs/zh-CN/README.md)
 
-<a href="https://zhudaandzhuer.github.io/zhuda-neon-racer/harbor-film.html"><picture><source type="image/webp" srcset="https://raw.githubusercontent.com/zhudaandzhuer/zhuda-neon-racer/main/docs/media/harbor-preview.webp?v=harbor-01" /><img src="https://raw.githubusercontent.com/zhudaandzhuer/zhuda-neon-racer/main/docs/media/harbor-preview.gif?v=harbor-01" alt="HARBOR / 01: actual High-preset WebGL rendering, S800 driving, wet-road reflections and an authored dock warehouse." width="1280" /></picture></a>
+**An agent-friendly game SDK and toolchain built on LayaAir 3.4.2.**
 
-### HARBOR / 01 · built with zhuda-laya-engine
+## Built with this engine
 
-**Light, surface and motion in a world you can enter.** Drive the S800 across the waterfront: photographed PBR surfaces, HDR lighting, soft shadows, wet-road reflections and an authored dock warehouse. Explore with momentum, steering, independently animated wheels and a chase camera.
+[![Zhuda: Murder on a Rainy Night — an isometric neon alley in the rain](https://img.itch.zone/aW1nLzMyMTQ5NjkyLnBuZw==/original/nkisJO.png)](https://zhudaandzhuer.itch.io/zhuda-rainy-night-murder)
 
-**[EXPLORE THE HARBOR →](https://zhudaandzhuer.github.io/zhuda-neon-racer/visual.html?view=dock)** · **[WATCH IN 4K / 60 FPS →](https://zhudaandzhuer.github.io/zhuda-neon-racer/harbor-film.html)**
+**[Zhuda: Murder on a Rainy Night](https://zhudaandzhuer.itch.io/zhuda-rainy-night-murder)** is a ten-minute mystery built with zhuda-laya-engine 1.18.0: an isometric neon alley in the rain, a torch that reveals hidden clues, seven neighbours to question, full Chinese voice acting and three languages. It plays in the browser on desktop and mobile.
 
-Keyboard and touch controls. Auto / Performance / Balanced / High settings. The film uses the actual High preset at **3840 × 2160 / 60 FPS**, captured frame by frame; playback cadence is not a live-performance claim. The page also offers a lighter 1080p / 60 FPS version. [Capture details](https://github.com/zhudaandzhuer/zhuda-neon-racer/blob/main/docs/media/harbor-recording.json).
+**[PLAY ON ITCH.IO →](https://zhudaandzhuer.itch.io/zhuda-rainy-night-murder)**
+
+The game, its art, voices and deployment belong to its own project and are not part of this repository.
 
 ---
-
-# zhuda-laya-engine
-
-**An agent-friendly game SDK and toolchain built on LayaAir 3.4.2.**
 
 **Current stable release: [v1.17.0](https://github.com/zhudaandzhuer/zhuda-laya-engine/releases/tag/v1.17.0)** · The version source of truth is `package.json`; `zhuda.config.json`, the lockfile and generated manifests must match it. Older tags such as v1.1.0 are historical releases, not the current SDK.
 
@@ -241,8 +239,6 @@ Do not use a Three.js renderer, an inline `ZhudaEngine` facade, a copied
 consumer Doctor reports these cases with a file and line. Use the claim levels
 in the [consumer route](docs/consumer-route.md) when writing project reports.
 
-[Play Neon Apex](https://zhudaandzhuer.github.io/zhuda-neon-racer/) · [Explore 100 particle effects](https://zhudaandzhuer.github.io/zhuda-particle-lab/) · [Try the 3D terrain lab](https://zhudaandzhuer.github.io/zhuda-3d-lab/?terrain=1)
-
 ## Consumer runtime additions (1.5.0)
 
 Doctor now selects the current project and rejects empty scans. The existing
@@ -260,37 +256,19 @@ Start with [candidate and evidence configuration](docs/consumer-tooling.md)
 and [shared resource ownership](docs/procedural-prefabs.md). Existing consumers
 keep whole-payload validation and independent resource ownership by default.
 
-## More games
-
-The separate racer and four arcade games offer keyboard/touch input, levels, a win/loss state and saved progress.
-
-| Game                                                  | Play                                                                    |
-| ----------------------------------------------------- | ----------------------------------------------------------------------- |
-| NEON APEX · four racing circuits, garage and upgrades | [Race](https://zhudaandzhuer.github.io/zhuda-neon-racer/)               |
-| STARFALL · space combat                               | [Launch](https://zhudaandzhuer.github.io/zhuda-arcade/?game=starfall)   |
-| EMBERBOUND · arena survival                           | [Enter](https://zhudaandzhuer.github.io/zhuda-arcade/?game=ember)       |
-| COREKEEP · tower defense                              | [Defend](https://zhudaandzhuer.github.io/zhuda-arcade/?game=corekeep)   |
-| TIDEBREAK · arcade rebounds                           | [Dive in](https://zhudaandzhuer.github.io/zhuda-arcade/?game=tidebreak) |
-
-Game rules, art, media and deployment live in separate consumer repositories: [Neon Apex](https://github.com/zhudaandzhuer/zhuda-neon-racer) and [Arcade](https://github.com/zhudaandzhuer/zhuda-arcade). [Racing verification](https://github.com/zhudaandzhuer/zhuda-neon-racer/blob/main/docs/browser-verification.json) covers a complete live race, progress, touch input and bounded scene resources.
-
 ## Explore the engine
 
-### 100 particle effects
+### Particles and effects
 
-[![Racing airflow, magic and explosions, rendered in WebGL](https://raw.githubusercontent.com/zhudaandzhuer/zhuda-particle-lab/main/docs/media/showcase-preview.gif)](https://zhudaandzhuer.github.io/zhuda-particle-lab/showcase.html)
+Seeded 2D and 3D particles with pooling, ribbons, flipbooks, collision events, VFX materials, timelines, anchors and quality budgets. Presets and their art belong to the consuming project.
 
-91 2D and 9 true 3D effects: body-wrapping racing airflow, magic, explosions, weather, water and UI feedback.
-
-[Try the effects](https://zhudaandzhuer.github.io/zhuda-particle-lab/) · [Watch the 60 FPS film](https://zhudaandzhuer.github.io/zhuda-particle-lab/showcase.html) · [Verification](https://github.com/zhudaandzhuer/zhuda-particle-lab/blob/main/VERIFICATION-100.md)
+[Particle API and limits](packages/core/particles/README.md) · [Effects API](packages/core/effects/README.md)
 
 ### Terrain and shaders
 
-[![Terrain above and below: closed sides, underside and camera collision](https://raw.githubusercontent.com/zhudaandzhuer/zhuda-3d-lab/main/docs/terrain-solid.jpg)](https://zhudaandzhuer.github.io/zhuda-3d-lab/?terrain=1)
+Editable 2D tile maps and 3D heightfields, chunk streaming, LOD 1/2/4, closed sides/undersides and camera boom collision probes. PBR, textured, fog, dissolve and 2D tint/atlas variants are checked in real WebGL draws; sky materials can opt out of scene fog.
 
-Editable 2D tile maps and 3D heightfields, chunk streaming, LOD 1/2/4, closed sides/undersides and camera boom collision probes. The inspector includes an explicit underground view. PBR, textured, fog, dissolve and 2D tint/atlas variants are checked in real WebGL draws; sky materials can opt out of scene fog.
-
-[Open the terrain / shader lab](https://zhudaandzhuer.github.io/zhuda-3d-lab/?terrain=1) · [Terrain and shader API](docs/terrain-shader.md) · [Verification scope](docs/3d-acceptance.md)
+[Terrain and shader API](docs/terrain-shader.md) · [Verification scope](docs/3d-acceptance.md)
 
 ## What the fork adds
 
@@ -312,9 +290,9 @@ Editable 2D tile maps and 3D heightfields, chunk streaming, LOD 1/2/4, closed si
 
 The public 3D SDK adds independent consumer builds, resource leases, PBR/custom surfaces, dynamic meshes, camera/input/query contracts, clocks, 2D tile terrain and 3D heightfields with chunk streaming, editing and LOD 1/2/4.
 
-`npm run verify` runs the full automated engine suite and prints the current test count (it is not fixed in this README). The existing integration has 41 real WebGL checks covering atlas UVs, tint, alpha, clipping, textured/fog/dissolve variants and compiler diagnostics. [Documentation](docs/3d-integration.md), [terrain/shader contracts](docs/terrain-shader.md) and [acceptance limits](docs/3d-acceptance.md) describe that scope. The [independent consumer](https://github.com/zhudaandzhuer/zhuda-3d-lab) pins a specific engine commit and stores its device reports. Small-scene results do not establish full-game map or server performance.
+`npm run verify` runs the full automated engine suite and prints the current test count (it is not fixed in this README). The existing integration has 41 real WebGL checks covering atlas UVs, tint, alpha, clipping, textured/fog/dissolve variants and compiler diagnostics. [Documentation](docs/3d-integration.md), [terrain/shader contracts](docs/terrain-shader.md) and [acceptance limits](docs/3d-acceptance.md) describe that scope. Small-scene results do not establish full-game map or server performance.
 
-The [filmic rendering API](docs/filmic-rendering.md) adds native-lit procedural PBR hooks, UV-derived tangents, explicit normal-map conventions, offline GGX/SH HDR lighting, an HDR/AO/bloom/ACES/TAA camera pipeline and horizontal planar reflections. A separate [HARBOR visual study](https://zhudaandzhuer.github.io/zhuda-neon-racer/visual.html) checks the rendered effects and resource teardown. This is an initial quality slice, with further scene and asset work required.
+The [filmic rendering API](docs/filmic-rendering.md) adds native-lit procedural PBR hooks, UV-derived tangents, explicit normal-map conventions, offline GGX/SH HDR lighting, an HDR/AO/bloom/ACES/TAA camera pipeline and horizontal planar reflections. This is an initial quality slice, with further scene and asset work required.
 
 ### Asset source boundary
 

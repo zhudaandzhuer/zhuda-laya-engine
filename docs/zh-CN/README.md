@@ -14,25 +14,23 @@ E4ZEhFCYy4b5pYXJUbMC9KjRitkypyqtZvpSRerLWHCb
 
 ---
 
-# 驾车进入这片滨水港湾。
+# zhuda-laya-engine
 
 [English](../../README.md) · 简体中文
 
-<a href="https://zhudaandzhuer.github.io/zhuda-neon-racer/harbor-film.html"><picture><source type="image/webp" srcset="https://raw.githubusercontent.com/zhudaandzhuer/zhuda-neon-racer/main/docs/media/harbor-preview.webp?v=harbor-01" /><img src="https://raw.githubusercontent.com/zhudaandzhuer/zhuda-neon-racer/main/docs/media/harbor-preview.gif?v=harbor-01" alt="HARBOR / 01：High 画质的实际 WebGL 渲染、S800 驾驶、湿路反射与码头仓库" width="1280" /></picture></a>
+**基于 LayaAir 3.4.2，为 AI 编程代理打造的游戏 SDK 与工具链。**
 
-### HARBOR / 01 · 使用 zhuda-laya-engine 制作
+## 用这个引擎做的游戏
 
-**光照、材质与动态，组成可以进入的港湾。** 驾驶 S800 探索滨水场景：实拍 PBR 表面、HDR 光照、柔和阴影、湿路反射与专门制作的码头仓库。车辆具有惯性、转向、独立车轮动画和跟随相机。
+[![豬大 - 雨夜殺人事件：雨中的等距霓虹小巷](https://img.itch.zone/aW1nLzMyMTQ5NjkyLnBuZw==/original/nkisJO.png)](https://zhudaandzhuer.itch.io/zhuda-rainy-night-murder)
 
-**[进入港湾驾驶 →](https://zhudaandzhuer.github.io/zhuda-neon-racer/visual.html?view=dock)** · **[观看 4K / 60 FPS 影片 →](https://zhudaandzhuer.github.io/zhuda-neon-racer/harbor-film.html)**
+**[豬大 - 雨夜殺人事件（Zhuda: Murder on a Rainy Night）](https://zhudaandzhuer.itch.io/zhuda-rainy-night-murder)** 是一款约十分钟的推理游戏，使用 zhuda-laya-engine 1.18.0 制作：雨中的等距霓虹小巷、能照出隐藏线索的手电筒、七位街坊可以询问，全程中文配音并支持三种语言。可在电脑和手机浏览器直接游玩。
 
-支持键盘和触控，以及自动、效能、平衡、高画质设置。影片使用实际 High 画质，以 **3840 × 2160 / 60 FPS** 逐帧采集；影片播放帧率不代表设备实时运行帧率。播放页另提供较轻的 1080p / 60 FPS 版本。[录制记录](https://github.com/zhudaandzhuer/zhuda-neon-racer/blob/main/docs/media/harbor-recording.json)。
+**[在 itch.io 游玩 →](https://zhudaandzhuer.itch.io/zhuda-rainy-night-murder)**
+
+游戏本身、美术、配音与发布属于独立项目，不在本仓库内。
 
 ---
-
-# zhuda-laya-engine
-
-**基于 LayaAir 3.4.2，为 AI 编程代理打造的游戏 SDK 与工具链。**
 
 **当前稳定版：[v1.17.0](https://github.com/zhudaandzhuer/zhuda-laya-engine/releases/tag/v1.17.0)** · 版本唯一来源是根目录 `package.json`；`zhuda.config.json`、lockfile 与生成的 manifest 必须保持一致。v1.1.0 等旧 tag 仅代表历史发行版，不是当前 SDK。
 
@@ -93,39 +91,19 @@ npm run verify
 `packages/core` 或引擎深层路径后宣称是 Zhuda 项目；消费端 Doctor 会给出
 文件与行号。项目报告请使用[消费项目接入路线](../consumer-route.md)的分级声明。
 
-[进入游戏馆](https://zhudaandzhuer.github.io/zhuda-arcade/) · [体验 100 种粒子效果](https://zhudaandzhuer.github.io/zhuda-particle-lab/) · [操作 3D 地形工坊](https://zhudaandzhuer.github.io/zhuda-3d-lab/?terrain=1)
-
-## 更多游戏
-
-独立赛车游戏和四款小型街机游戏作为辅助案例，均包含操作、关卡、胜负与进度保存。
-
-| 游戏 | 入口 |
-| --- | --- |
-| NEON APEX · 四条赛道、车库与升级 | [开跑](https://zhudaandzhuer.github.io/zhuda-neon-racer/) |
-| 星港突围 STARFALL · 太空弹幕 | [开始](https://zhudaandzhuer.github.io/zhuda-arcade/?game=starfall) |
-| 烬火远征 EMBERBOUND · 竞技场生存 | [开始](https://zhudaandzhuer.github.io/zhuda-arcade/?game=ember) |
-| 晶核守卫 COREKEEP · 塔防 | [开始](https://zhudaandzhuer.github.io/zhuda-arcade/?game=corekeep) |
-| 潮汐碎光 TIDEBREAK · 弹球破礁 | [开始](https://zhudaandzhuer.github.io/zhuda-arcade/?game=tidebreak) |
-
-游戏规则、美术、媒体与发布保存在独立的 [Neon Apex](https://github.com/zhudaandzhuer/zhuda-neon-racer) 和 [Arcade](https://github.com/zhudaandzhuer/zhuda-arcade) 仓库。[赛车验收](https://github.com/zhudaandzhuer/zhuda-neon-racer/blob/main/docs/browser-verification.json) 覆盖实时完赛、存档、触控与场景资源释放。
-
 ## 探索引擎能力
 
-### 100 种粒子效果
+### 粒子与特效
 
-[![赛车包覆气流、魔法与爆破，实际 WebGL 渲染](https://raw.githubusercontent.com/zhudaandzhuer/zhuda-particle-lab/main/docs/media/showcase-preview.gif)](https://zhudaandzhuer.github.io/zhuda-particle-lab/showcase.html)
+定种子的 2D/3D 粒子，支持对象池、拖尾、序列帧、碰撞事件、VFX 材质、时间轴、挂点与质量预算。效果预设及其美术属于消费项目。
 
-91 种 2D 与 9 种真实 3D 效果，覆盖车身包覆气流、魔法、爆破、天气、水体与界面反馈。
-
-[体验全部效果](https://zhudaandzhuer.github.io/zhuda-particle-lab/) · [观看 60 FPS 影片](https://zhudaandzhuer.github.io/zhuda-particle-lab/showcase.html) · [验证记录](https://github.com/zhudaandzhuer/zhuda-particle-lab/blob/main/VERIFICATION-100.md)
+[粒子 API 与限制](../../packages/core/particles/README.md) · [特效 API](../../packages/core/effects/README.md)
 
 ### 地形与 Shader
 
-[![从上到下都有完整表面：地形侧壁、底面与相机防穿透](https://raw.githubusercontent.com/zhudaandzhuer/zhuda-3d-lab/main/docs/terrain-solid.jpg)](https://zhudaandzhuer.github.io/zhuda-3d-lab/?terrain=1)
+可编辑的 2D tile 地图与 3D 高度场，支持分块载卸、LOD 1/2/4、封闭侧壁/底面及相机 boom 避障射线。PBR、贴图、雾、溶解、2D tint/atlas 均通过实际 WebGL draw 检查，天空材质可以单独关闭场景雾。
 
-可编辑的 2D tile 地图与 3D 高度场，支持分块载卸、LOD 1/2/4、封闭侧壁/底面及相机 boom 避障射线。检视器提供明确的地下观察模式。PBR、贴图、雾、溶解、2D tint/atlas 均通过实际 WebGL draw 检查，天空材质可以单独关闭场景雾。
-
-[打开地形 / Shader 工坊](https://zhudaandzhuer.github.io/zhuda-3d-lab/?terrain=1) · [API 用法](../terrain-shader.md) · [验收范围](../3d-acceptance.md)
+[API 用法](../terrain-shader.md) · [验收范围](../3d-acceptance.md)
 
 ## 分支增加了什么
 
@@ -146,7 +124,7 @@ npm run verify
 
 公开 3D SDK 补充独立消费端构建、资源 lease、PBR/自定义材质、动态网格、相机/输入/查询契约、时钟、2D tile 地图与支持分块载卸、编辑、LOD 1/2/4 的 3D 高度场。
 
-`npm run verify` 会执行全部自动化引擎测试并输出当前测试数量（本文不写死数字）；该接入另有 41 项真实 WebGL 检查。Shader 验证包含图集 UV、染色、透明度、裁切、贴图/雾/溶解变体与真实编译诊断。具体用法和范围见[3D 接入文档](../3d-integration.md)、[地形/Shader 契约](../terrain-shader.md)与[验收限制](../3d-acceptance.md)。[独立消费端](https://github.com/zhudaandzhuer/zhuda-3d-lab)固定引擎 commit，并保存实机报告；小场景数据不能推导完整游戏地图与服务器性能。
+`npm run verify` 会执行全部自动化引擎测试并输出当前测试数量（本文不写死数字）；该接入另有 41 项真实 WebGL 检查。Shader 验证包含图集 UV、染色、透明度、裁切、贴图/雾/溶解变体与真实编译诊断。具体用法和范围见[3D 接入文档](../3d-integration.md)、[地形/Shader 契约](../terrain-shader.md)与[验收限制](../3d-acceptance.md)。小场景数据不能推导完整游戏地图与服务器性能。
 
 ### 资产来源边界
 

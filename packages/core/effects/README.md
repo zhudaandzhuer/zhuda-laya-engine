@@ -1,6 +1,6 @@
 # Effects and visual migration SDK
 
-These APIs coordinate application-owned effects. Scenes, texture assets, Spine runtime adapters, editors and gameplay remain in the consuming application. The separate [Particle Lab workbench](https://zhudaandzhuer.github.io/zhuda-particle-lab/capabilities.html) exercises the public SDK in real Laya 3.4.2 WebGL.
+These APIs coordinate application-owned effects. Scenes, texture assets, Spine runtime adapters, editors and gameplay remain in the consuming application.
 
 | API                      | Contract and limits                                                                                                                                                                                                                                                                |
 | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

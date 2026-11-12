@@ -36,7 +36,7 @@
 
 保留既有20個shared模組的移動/傷害/建造/存檔與網路權威，做出包含走路、游泳、上下船、建造、擋鉤、勾物資與扣血的可玩切片，再接收P0。之後才擴完整兩模式並完成P1。引擎沒有改寫這些規則，也沒有把本驗收頁當成完整遊戲。
 
-獨立場景與報告：[zhuda-3d-lab](https://github.com/zhudaandzhuer/zhuda-3d-lab)。API與使用方式：[3D接入契約](3d-integration.md)。
+API與使用方式：[3D接入契約](3d-integration.md)。
 
 ## 地下視角補強
 

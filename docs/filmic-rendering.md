@@ -1,6 +1,6 @@
 # Filmic surfaces and HDR rendering
 
-These APIs expose the bundled LayaAir 3.4.2 PBR, HDR and post-processing renderer to independent TypeScript projects. The reference consumer is [HARBOR / 01](https://github.com/zhudaandzhuer/zhuda-neon-racer/blob/main/src/VisualSlice.ts). Its art, HDRs, vehicle and scenery belong to that game repository.
+These APIs expose the bundled LayaAir 3.4.2 PBR, HDR and post-processing renderer to independent TypeScript projects. Art, HDRs, models and scenery belong to the consuming project.
 
 ## Lit shader hooks
 
@@ -114,7 +114,7 @@ SH0 + SH1*y + SH2*z + SH3*x + SH4*x*y + SH5*y*z
     + SH6*(3*z*z-1) + SH7*z*x + SH8*(x*x-y*y)
 ```
 
-Native IBL mirrors world X before sampling/evaluation; the offline producer must account for this for both the cube and SH. The consumer's [preparation script](https://github.com/zhudaandzhuer/zhuda-neon-racer/blob/main/scripts/prepare-visual.py) supplies a reproducible example. It stores diffuse irradiance divided by pi and the matching shadow-light direction. The sky, IBL orientation and direct sun must agree. `lighting.dispose()` destroys the owned cube; detach it from scenes or destroy those scenes first.
+Native IBL mirrors world X before sampling/evaluation; the offline producer must account for this for both the cube and SH. A producer stores diffuse irradiance divided by pi and the matching shadow-light direction. The sky, IBL orientation and direct sun must agree. `lighting.dispose()` destroys the owned cube; detach it from scenes or destroy those scenes first.
 
 ## HDR camera pipeline
 
