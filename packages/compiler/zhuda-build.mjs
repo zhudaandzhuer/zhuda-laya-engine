@@ -361,7 +361,7 @@ ${brandSplashCss}
     </script>
 </head>
 <body>
-${brandSplashMarkup('assets/branding/zhuda-layaair-mark.svg')}
+${brandSplashMarkup('assets/branding/layaair-tribute-mark.svg')}
 ${scriptTags}
     <!-- Zero-IDE AST Reflected Application Bundle -->
     <script type="text/javascript" src="js/bundle.js"></script>

@@ -63,7 +63,10 @@ try {
             assert.equal(state.splash.completed, true);
             assert.equal(state.img, null);
           } else {
-            assert.equal(state.img.alt, mode === 'engine' ? '豬大 × LayaAir' : 'Customer');
+            assert.equal(
+              state.img.alt,
+              mode === 'engine' ? 'Powered by LayaAir Engine' : 'Customer',
+            );
             assert.ok(state.img.rect.width > 0 && state.img.rect.height > 0);
             assert.ok(state.img.rect.left >= 0 && state.img.rect.right <= width + 1);
             assert.ok(state.img.rect.top >= 0 && state.img.rect.bottom <= height + 1);

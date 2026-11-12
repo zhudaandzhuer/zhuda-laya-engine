@@ -230,7 +230,7 @@ export async function buildMiniGame({
       logo = 'zhuda-notices/boot-logo.png';
       const source =
         branding.mode === 'engine'
-          ? fs.readFileSync(path.join(engineRoot, 'assets/branding/zhuda-layaair-mark.svg'))
+          ? fs.readFileSync(path.join(engineRoot, 'assets/branding/layaair-tribute-mark.svg'))
           : Buffer.from(branding.logo.split(',')[1], 'base64');
       await sharp(source, { limitInputPixels: 16_000_000 })
         .resize({ width: 1024, height: 512, fit: 'inside', withoutEnlargement: true })

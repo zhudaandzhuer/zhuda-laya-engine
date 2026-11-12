@@ -88,7 +88,7 @@ HTML 須先建立具有明確尺寸的 `#game` 容器；完整可畫出內容的
 
 `Zhuda` 的 runtime exports 與公開 ESM 入口相同，並未再寫一套 facade。
 `ZhudaBundle` 回報版本、profile、renderer、模組清單、來源指紋與打包器版本。
-bundle 預設掛載響應式豬大 × LayaAir Logo。1.10.0 可在載入前設定
+bundle 預設掛載 LayaAir 標誌與「Powered by LayaAir Engine」的啟動畫面（向底層引擎致敬）。1.10.0 可在載入前設定
 `window.ZhudaBranding={mode:"custom",brandId:"client",logo:"./logo.svg"}`，
 或 `{mode:"none"}`；詳見[白牌契約](white-label-themes.md)。不要自行放入同名 splash。
 
@@ -110,6 +110,7 @@ bundle 預設掛載響應式豬大 × LayaAir Logo。1.10.0 可在載入前設�
 ```sh
 npm version <x.y.z> --no-git-tag-version   # 同步 zhuda.config.json 的 version
 npm run verify
+npm run browser:drift                      # 原始碼若與同版號的已發行版不同就失敗，要先升版號
 GAME_UPLOAD_TOKEN=... npm run release:browser -- --summary "本版重點"
 npm run browser:check
 ```

@@ -143,18 +143,18 @@ loadSample/playSample ([audio contract](audio.md)). Do not create a second mixer
 
 Use precise labels in README files and reports:
 
-| Level | Evidence | Allowed claim |
-| --- | --- | --- |
-| Prototype | Source exists, no consumer gate | “prototype” |
-| Engine-backed | pinned SDK, public import, build, Doctor and tests | “built with zhuda-laya-engine” |
-| Prefab-qualified | isolated prefab and composed-scene evidence pass | “uses verified consumer prefabs” |
-| Device-accepted | target browser/device reports pass | claim only the measured device/browser scope |
+| Level            | Evidence                                           | Allowed claim                                |
+| ---------------- | -------------------------------------------------- | -------------------------------------------- |
+| Prototype        | Source exists, no consumer gate                    | “prototype”                                  |
+| Engine-backed    | pinned SDK, public import, build, Doctor and tests | “built with zhuda-laya-engine”               |
+| Prefab-qualified | isolated prefab and composed-scene evidence pass   | “uses verified consumer prefabs”             |
+| Device-accepted  | target browser/device reports pass                 | claim only the measured device/browser scope |
 
 Do not call a Three.js mock, a hand-written Zhuda facade or a screenshot-only
 prototype “powered by zhuda-laya-engine”.
 
 Since 1.4.1, the consumer compiler also inserts the official responsive
-豬大 × LayaAir boot animation before the runtime scripts. Its SVG is embedded
+boot splash (the LayaAir mark and "Powered by LayaAir Engine") before the runtime scripts. Its SVG is embedded
 in the generated HTML and cannot be lost through game asset allowlists.
 `#zhudaLogoSplash` is reserved; remove manually copied splash markup from the
 consumer template. Isolated Prefab pages remain free of the intro so their

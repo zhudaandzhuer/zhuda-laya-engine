@@ -6,11 +6,27 @@ workflow for every theme. [Verification and limits](plans/records/slot-factory-f
 
 ## Branding is independent of theme
 
-No configuration keeps the responsive **豬大 × LayaAir** splash. In
+No configuration keeps the engine's splash: the LayaAir mark over **Powered by
+LayaAir Engine** on plain grey, a tribute to the engine this one is built on.
+Its picture and words are one record, `ZHUDA_ENGINE_SPLASH` in
+`packages/compiler/branding.mjs`, pointing at
+`assets/branding/layaair-tribute-mark.svg`: replace the file (or the record) to
+change the default for every build; the earlier 豬大 × LayaAir mark stays in the
+repository as `assets/branding/zhuda-layaair-mark.svg`. The LayaAir mark belongs
+to Layabox; the file is a redrawing, to be replaced by an official one when
+available. In
 `zhuda.config.json`, opt into one of these exact contracts:
 
 ```json
-{"branding":{"mode":"custom","brandId":"client-a","logo":"brand/logo.svg","title":"Client A","caption":"PLAY"}}
+{
+  "branding": {
+    "mode": "custom",
+    "brandId": "client-a",
+    "logo": "brand/logo.svg",
+    "title": "Client A",
+    "caption": "PLAY"
+  }
+}
 ```
 
 `{"branding":{"mode":"none"}}` disables the visual splash. `engine` is the
@@ -26,8 +42,13 @@ For the official **1.10.0+** browser bundle, before its script tag:
 
 ```html
 <script>
-window.ZhudaBranding = {mode: 'custom', brandId: 'client-a',
-  logo: './brand/logo.svg', title: 'Client A', caption: 'PLAY'};
+  window.ZhudaBranding = {
+    mode: 'custom',
+    brandId: 'client-a',
+    logo: './brand/logo.svg',
+    title: 'Client A',
+    caption: 'PLAY',
+  };
 </script>
 ```
 
@@ -52,16 +73,23 @@ estimate budgets. Duplicate IDs, missing requirements, malformed hashes,
 incompatible contracts and budget failures reject before use.
 
 ```ts
-import {ZhudaThemeController, ZhudaPrefabLibrary} from 'zhuda-laya-engine';
+import { ZhudaThemeController, ZhudaPrefabLibrary } from 'zhuda-laya-engine';
 const themes = new ZhudaThemeController(sourceProvider, contract, 32_000_000);
-const changed = await themes.replace(themeManifest, async (provider, signal) => {
-  const library = new ZhudaPrefabLibrary({provider, definitions});
-  try {
-    const instance = await library.instantiate('panel', {signal});
-    // Run consumer-specific decoded validation before returning.
-    return {value: instance, dispose: () => library.dispose()};
-  } catch (error) { library.dispose(); throw error; }
-}, {signal, timeoutMs: 15000});
+const changed = await themes.replace(
+  themeManifest,
+  async (provider, signal) => {
+    const library = new ZhudaPrefabLibrary({ provider, definitions });
+    try {
+      const instance = await library.instantiate('panel', { signal });
+      // Run consumer-specific decoded validation before returning.
+      return { value: instance, dispose: () => library.dispose() };
+    } catch (error) {
+      library.dispose();
+      throw error;
+    }
+  },
+  { signal, timeoutMs: 15000 },
+);
 if (changed) scene.addChild(themes.current!.value.root);
 // On teardown: themes.dispose(); then sourceProvider.dispose?.().
 ```
@@ -107,11 +135,12 @@ Provide an explicitly owned `ZhudaPlaybackStore` and `ZhudaResultRecovery`:
 
 ```ts
 const playback = new ZhudaResultPlayback({
-  scope: {gameId, sessionId, epoch}, store,
+  scope: { gameId, sessionId, epoch },
+  store,
   validate: validateServerResult,
-  validateCursor: validatePresentationCursor
+  validateCursor: validatePresentationCursor,
 });
-await playback.recover({reconcile: (saved, signal) => backend.resume(saved, signal)});
+await playback.recover({ reconcile: (saved, signal) => backend.resume(saved, signal) });
 // Only now enable input / resume the existing RuntimeSession.
 if (playback.accept(serverResult) === 'accepted') {
   // Apply an idempotent visual state driven by RuntimeSession.layers.

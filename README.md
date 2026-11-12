@@ -83,7 +83,8 @@ reproducible Electron entry for the next Windows packaged acceptance step.
 
 ## White-label, themes and presentation recovery (1.10.0)
 
-Keep the default 豬大 × LayaAir splash, use your own brand, or explicitly disable
+Keep the default splash (the LayaAir mark and "Powered by LayaAir Engine", a
+tribute to the engine this one is built on), use your own brand, or explicitly disable
 it through the public compiler and browser bundle. Immutable theme mappings,
 SHA-verified assets, cancellable prepared replacement and authoritative-result
 presentation/checkpoint coordination support a same-core, two-theme workflow.
@@ -263,13 +264,13 @@ keep whole-payload validation and independent resource ownership by default.
 
 The separate racer and four arcade games offer keyboard/touch input, levels, a win/loss state and saved progress.
 
-| Game | Play |
-| --- | --- |
-| NEON APEX · four racing circuits, garage and upgrades | [Race](https://zhudaandzhuer.github.io/zhuda-neon-racer/) |
-| STARFALL · space combat | [Launch](https://zhudaandzhuer.github.io/zhuda-arcade/?game=starfall) |
-| EMBERBOUND · arena survival | [Enter](https://zhudaandzhuer.github.io/zhuda-arcade/?game=ember) |
-| COREKEEP · tower defense | [Defend](https://zhudaandzhuer.github.io/zhuda-arcade/?game=corekeep) |
-| TIDEBREAK · arcade rebounds | [Dive in](https://zhudaandzhuer.github.io/zhuda-arcade/?game=tidebreak) |
+| Game                                                  | Play                                                                    |
+| ----------------------------------------------------- | ----------------------------------------------------------------------- |
+| NEON APEX · four racing circuits, garage and upgrades | [Race](https://zhudaandzhuer.github.io/zhuda-neon-racer/)               |
+| STARFALL · space combat                               | [Launch](https://zhudaandzhuer.github.io/zhuda-arcade/?game=starfall)   |
+| EMBERBOUND · arena survival                           | [Enter](https://zhudaandzhuer.github.io/zhuda-arcade/?game=ember)       |
+| COREKEEP · tower defense                              | [Defend](https://zhudaandzhuer.github.io/zhuda-arcade/?game=corekeep)   |
+| TIDEBREAK · arcade rebounds                           | [Dive in](https://zhudaandzhuer.github.io/zhuda-arcade/?game=tidebreak) |
 
 Game rules, art, media and deployment live in separate consumer repositories: [Neon Apex](https://github.com/zhudaandzhuer/zhuda-neon-racer) and [Arcade](https://github.com/zhudaandzhuer/zhuda-arcade). [Racing verification](https://github.com/zhudaandzhuer/zhuda-neon-racer/blob/main/docs/browser-verification.json) covers a complete live race, progress, touch input and bounded scene resources.
 
@@ -293,19 +294,19 @@ Editable 2D tile maps and 3D heightfields, chunk streaming, LOD 1/2/4, closed si
 
 ## What the fork adds
 
-| Area | Public tools and behavior |
-| --- | --- |
-| Module loading | `TopologyResolver` orders 29 runtime modules and selects the required features. The 2D light profile reduces the included library payload by about 83%. |
-| CLI builds | `zhuda-laya-build` uses esbuild and TypeScript AST scanning; it emits Web builds and ESM/CJS SDK bundles. |
-| Component registration | `@zhudaComponent` and the AST scanner register classes before prefab deserialization. |
-| Runtime guards | `EngineGuard` handles known 3.4.2 integration issues, including the `Graphics.setState` / `Button` failure. |
-| Typed construction | `ZhudaEngine`, `Zhuda3D`, `ZhudaUI` and `ZhudaPrefab` provide code-first construction. Public types omit IDE-only declarations. |
-| Agent integration | The MCP server supplies API guardrails, dependency resolution, examples, diagnostics and asset/particle validators. |
-| Visual migration | Asset audits compare Spine 4.2 presentation data and require explicit mappings for Unity animation/material wrappers. |
-| Visual state contracts | `SpineVisualContract` rejects incomplete fallback presentation; `VisualFocusContract` gives focus, empty selection and reset distinct meanings. |
-| Static assets and UI | `.lh` / `.ls` serialization, explicit `percent:false`, pixel bounds and color comparison, nine-slice checks and safe-area fixtures. |
-| Effects | Seeded 2D/3D particles, pooling, ribbons, flipbooks, collision events, VFX materials, timelines, anchors and quality budgets. |
-| Runtime hardening | Scaled/unscaled and layered clocks/timers, deferred scene mutations, explicit local/world/overlay render passes, defensive Graphics calls, bounded object pools, consumer-owned combat queries, action frame data and buffered input. See [runtime hardening](docs/runtime-hardening.md) and [combat runtime contracts](docs/combat-runtime.md). |
+| Area                   | Public tools and behavior                                                                                                                                                                                                                                                                                                                        |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Module loading         | `TopologyResolver` orders 29 runtime modules and selects the required features. The 2D light profile reduces the included library payload by about 83%.                                                                                                                                                                                          |
+| CLI builds             | `zhuda-laya-build` uses esbuild and TypeScript AST scanning; it emits Web builds and ESM/CJS SDK bundles.                                                                                                                                                                                                                                        |
+| Component registration | `@zhudaComponent` and the AST scanner register classes before prefab deserialization.                                                                                                                                                                                                                                                            |
+| Runtime guards         | `EngineGuard` handles known 3.4.2 integration issues, including the `Graphics.setState` / `Button` failure.                                                                                                                                                                                                                                      |
+| Typed construction     | `ZhudaEngine`, `Zhuda3D`, `ZhudaUI` and `ZhudaPrefab` provide code-first construction. Public types omit IDE-only declarations.                                                                                                                                                                                                                  |
+| Agent integration      | The MCP server supplies API guardrails, dependency resolution, examples, diagnostics and asset/particle validators.                                                                                                                                                                                                                              |
+| Visual migration       | Asset audits compare Spine 4.2 presentation data and require explicit mappings for Unity animation/material wrappers.                                                                                                                                                                                                                            |
+| Visual state contracts | `SpineVisualContract` rejects incomplete fallback presentation; `VisualFocusContract` gives focus, empty selection and reset distinct meanings.                                                                                                                                                                                                  |
+| Static assets and UI   | `.lh` / `.ls` serialization, explicit `percent:false`, pixel bounds and color comparison, nine-slice checks and safe-area fixtures.                                                                                                                                                                                                              |
+| Effects                | Seeded 2D/3D particles, pooling, ribbons, flipbooks, collision events, VFX materials, timelines, anchors and quality budgets.                                                                                                                                                                                                                    |
+| Runtime hardening      | Scaled/unscaled and layered clocks/timers, deferred scene mutations, explicit local/world/overlay render passes, defensive Graphics calls, bounded object pools, consumer-owned combat queries, action frame data and buffered input. See [runtime hardening](docs/runtime-hardening.md) and [combat runtime contracts](docs/combat-runtime.md). |
 
 ### 3D terrain, shaders and integration
 
@@ -381,17 +382,17 @@ or the installed `zhuda-laya-init` binary, then run the consumer's own `npm run 
 
 ### Commands
 
-| Command | Purpose |
-| --- | --- |
-| `node packages/compiler/zhuda-init.mjs /absolute/path/to/consumer` | Create a pinned public-SDK consumer skeleton |
-| `npm run build` | Generate the demo build and SDK bundles |
-| `npm run typecheck` | Check public/runtime types and application sources |
-| `npm run audit:declarations` | Audit all SDK declarations without `skipLibCheck`; required clean vendor and public SDK audit |
-| `npm run doctor` | Check module order, registration, known legacy API usage and the agent/documentation contract |
-| `npm run agent:contract` | Print the machine-readable agent boundary, workflow and evidence contract |
-| `npm test` | Run Node unit and integration tests |
-| `npm run verify` | Run build, typecheck, doctor and tests |
-| `npm run pack:tarball` | Create an installable package in `dist/` |
+| Command                                                            | Purpose                                                                                       |
+| ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------- |
+| `node packages/compiler/zhuda-init.mjs /absolute/path/to/consumer` | Create a pinned public-SDK consumer skeleton                                                  |
+| `npm run build`                                                    | Generate the demo build and SDK bundles                                                       |
+| `npm run typecheck`                                                | Check public/runtime types and application sources                                            |
+| `npm run audit:declarations`                                       | Audit all SDK declarations without `skipLibCheck`; required clean vendor and public SDK audit |
+| `npm run doctor`                                                   | Check module order, registration, known legacy API usage and the agent/documentation contract |
+| `npm run agent:contract`                                           | Print the machine-readable agent boundary, workflow and evidence contract                     |
+| `npm test`                                                         | Run Node unit and integration tests                                                           |
+| `npm run verify`                                                   | Run build, typecheck, doctor and tests                                                        |
+| `npm run pack:tarball`                                             | Create an installable package in `dist/`                                                      |
 
 ## Connect a coding agent
 
@@ -457,11 +458,13 @@ Explicit mappings can be saved in `visual-migration-manifest.json`:
 ```json
 {
   "schemaVersion": 1,
-  "animations": [
-    { "sourcePath": "Art/BigWin_in.anim", "targetAnimation": "BigWin_in" }
-  ],
+  "animations": [{ "sourcePath": "Art/BigWin_in.anim", "targetAnimation": "BigWin_in" }],
   "materials": [
-    { "sourcePath": "Art/BigWin_Additive.mat", "targetMaterial": "SpineStandard", "blendMode": "additive" }
+    {
+      "sourcePath": "Art/BigWin_Additive.mat",
+      "targetMaterial": "SpineStandard",
+      "blendMode": "additive"
+    }
   ]
 }
 ```

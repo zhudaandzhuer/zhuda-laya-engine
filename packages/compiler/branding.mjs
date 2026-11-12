@@ -59,6 +59,27 @@ export const brandSplashCss = `      html.zhuda-splash-active, html.zhuda-splash
         animation: zhuda-splash-progress 1500ms cubic-bezier(.32, .1, .2, 1) 220ms both;
       }
       #zhudaLogoSplash.is-complete { pointer-events: none; }
+      /* The engine's own splash: a tribute to LayaAir, in the plain grey, black and white of its boot screen. */
+      #zhudaLogoSplash.zhuda-splash-tribute { background: #8a8a8a; }
+      #zhudaLogoSplash.zhuda-splash-tribute .zhuda-splash-shell { gap: clamp(22px, 5svh, 56px); }
+      #zhudaLogoSplash.zhuda-splash-tribute img {
+        width: min(60vw, 300px);
+        max-height: min(40svh, 300px);
+        filter: none;
+        animation-name: zhuda-splash-caption-in;
+      }
+      #zhudaLogoSplash.zhuda-splash-tribute .zhuda-splash-caption {
+        color: #fff;
+        font: 400 clamp(15px, 4.4vw, 22px)/1.3 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        letter-spacing: 0;
+        text-shadow: 0 2px 3px rgba(0, 0, 0, .45);
+      }
+      #zhudaLogoSplash.zhuda-splash-tribute .zhuda-splash-progress {
+        width: min(60vw, 300px);
+        height: 6px;
+        background: rgba(255, 255, 255, .28);
+      }
+      #zhudaLogoSplash.zhuda-splash-tribute .zhuda-splash-progress::after { background: #fff; }
       @keyframes zhuda-splash-logo-in {
         0% { opacity: 0; transform: translateY(14px) scale(.88); filter: blur(10px) drop-shadow(0 0 0 transparent); }
         55% { opacity: 1; transform: translateY(0) scale(1.035); filter: blur(0) drop-shadow(0 0 34px rgba(56, 189, 248, .42)); }
@@ -88,6 +109,19 @@ export const brandSplashCss = `      html.zhuda-splash-active, html.zhuda-splash
         }
       }
 `;
+
+/**
+ * The splash every build shows unless its branding says otherwise: the LayaAir
+ * mark and a line of thanks to the engine this one is built on. One place names
+ * the picture and the words, so the default can be replaced by editing this
+ * record and the file it points at; a project replaces it for itself with
+ * \`branding.mode: 'custom'\`, or switches it off with \`'none'\`.
+ */
+export const ZHUDA_ENGINE_SPLASH = Object.freeze({
+  mark: 'assets/branding/layaair-tribute-mark.svg',
+  title: 'Powered by LayaAir Engine',
+  caption: 'Powered by LayaAir Engine',
+});
 
 /** Strict shared policy: visual branding is independent of attribution notices. */
 export function normalizeBranding(value = {}) {
@@ -159,12 +193,13 @@ export function runBrandSplash(mode) {
 export function brandSplashMarkup(source, options) {
   const config = normalizeBranding(options);
   const logo = config.mode === 'custom' ? config.logo : source;
-  const title = config.mode === 'custom' ? config.title : '豬大 × LayaAir';
-  const caption = config.mode === 'custom' ? config.caption : 'AI-FRIENDLY GAME ENGINE';
+  const title = config.mode === 'custom' ? config.title : ZHUDA_ENGINE_SPLASH.title;
+  const caption = config.mode === 'custom' ? config.caption : ZHUDA_ENGINE_SPLASH.caption;
+  const tribute = config.mode === 'custom' ? '' : ' class="zhuda-splash-tribute"';
   const markup =
     config.mode === 'none'
       ? ''
-      : `<div id="zhudaLogoSplash" role="status" aria-live="polite" aria-label="${escapeHtml(title)}">
+      : `<div id="zhudaLogoSplash"${tribute} role="status" aria-live="polite" aria-label="${escapeHtml(title)}">
     <div class="zhuda-splash-shell">
       <img src="${escapeHtml(validateBrandLogo(logo))}" alt="${escapeHtml(title)}" decoding="async" />
       <p class="zhuda-splash-caption">${escapeHtml(caption)}</p>

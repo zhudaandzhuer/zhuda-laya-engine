@@ -73,7 +73,7 @@ export async function buildBrowserSdk({
   if (!sdk.includes(`zhuda-laya-engine v${version}`))
     throw Error('SDK version is stale; run npm run build before browser packaging');
   const svg = fs.readFileSync(
-    path.join(engineRoot, 'assets/branding/zhuda-layaair-mark.svg'),
+    path.join(engineRoot, 'assets/branding/layaair-tribute-mark.svg'),
     'utf8',
   );
   const brandCode = await branding(svg, engineRoot);
@@ -111,7 +111,7 @@ export async function buildBrowserSdk({
         sha256: hash(fs.readFileSync(path.join(engineRoot, 'vendor/meshoptimizer/LICENSE.txt'))),
       },
       { path: 'dist/sdk/zhuda-laya-engine.esm.js', sha256: hash(sdk) },
-      { path: 'assets/branding/zhuda-layaair-mark.svg', sha256: hash(svg) },
+      { path: 'assets/branding/layaair-tribute-mark.svg', sha256: hash(svg) },
     ];
     for (const file of [
       'browser-sdk.mjs',

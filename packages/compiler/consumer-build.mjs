@@ -207,7 +207,7 @@ export async function runConsumerBuild({
   const branding = resolveConsumerBranding(projectRoot, config.branding);
   const html = injectBrandSplash(
     ensureUtf8Charset(fs.readFileSync(template, 'utf8')),
-    fs.readFileSync(path.join(engineRoot, 'assets/branding/zhuda-layaair-mark.svg'), 'utf8'),
+    fs.readFileSync(path.join(engineRoot, 'assets/branding/layaair-tribute-mark.svg'), 'utf8'),
     branding,
   );
   if (!html.includes('<!-- ZHUDA_LIBS -->') || !html.includes('<!-- ZHUDA_ENTRY -->'))
