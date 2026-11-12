@@ -14,6 +14,8 @@ import crypto from 'node:crypto';
 import { runConsumerBuild } from '../packages/compiler/consumer-build.mjs';
 import { checkPrefab } from '../packages/compiler/prefab-check.mjs';
 import { floorGlb } from './lib/film-fixtures.mjs';
+import { PNG } from 'pngjs';
+import { chromeFixture } from '../packages/compiler/chrome-host.mjs';
 
 const engineRoot = path.resolve(import.meta.dirname, '..');
 const root =
@@ -63,6 +65,25 @@ function writeDefinitions(shift = 0) {
       ],
       states: { all: {}, dark: { lamp: { active: false } } },
     },
+    // Levels of detail: the plain tile near the eye, the glowing one from 5 m, nothing beyond 12 m.
+    {
+      id: 'levels',
+      kind: 'models',
+      nodes: [
+        {
+          name: 'tiles',
+          asset: 'set/tile.glb',
+          lod: [{ asset: 'set/glow.glb', fromMeters: 5 }],
+          cullMeters: 12,
+          placements: [
+            [-2.2, 0, 0, 0, 0.15],
+            [0, 0, -1, 45, 0.2],
+            [2.2, 0, 0, 0, 0.15],
+          ],
+        },
+      ],
+      states: { all: {} },
+    },
   ];
   write(
     'src/prefabs.ts',
@@ -87,7 +108,10 @@ Zhuda3D.createDirectionalLight(scene,{rotationEuler:[-35,-30,0],intensity:1});
 const provider=createAssetProvider();
 const library=new ZhudaPrefabLibrary({provider,definitions});
 window.addEventListener('pagehide',()=>{library.dispose();provider.dispose?.();context.dispose()},{once:true});
-await library.instantiate('yard',{parent:scene});
+const levels=new URLSearchParams(location.search).has('levels');
+const instance=await library.instantiate(levels?'levels':'yard',{parent:scene});
+// For the check: the eye that levels are chosen for is given, the camera stays where it is.
+Reflect.set(window,'__LEVELS__',{ready:true,update:(x:number,y:number,z:number)=>instance.updateLod([x,y,z])});
 }
 void main();`,
 );
@@ -162,6 +186,66 @@ try {
   assert.equal((await check('id=yard&node=lamp', 'lamp-against-all')).passed, false);
   await assert.rejects(check('id=yard&node=missing', 'missing-node'), /node path/);
   await assert.rejects(check('id=missing', 'missing'), /Unknown prefab/);
+  // 4b. Levels of detail, drawn: the same three copies seen with the eye among
+  // them (plain tiles), 8 m away (the glowing version) and 12 m away (the
+  // farthest one is no longer drawn).
+  {
+    const browser = await chromeFixture();
+    try {
+      await browser.send('Emulation.setDeviceMetricsOverride', {
+        width: 640,
+        height: 360,
+        deviceScaleFactor: 1,
+        mobile: false,
+      });
+      await browser.send('Page.navigate', { url: base + 'index.html?levels' });
+      for (let i = 0; i < 300; i++) {
+        if (await browser.evaluate('window.__LEVELS__?.ready === true').catch(() => false)) break;
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+      const picture = async (name, eye) => {
+        const counts = JSON.parse(
+          await browser.evaluate(`JSON.stringify(window.__LEVELS__.update(${eye.join(',')}))`),
+        );
+        await new Promise((resolve) => setTimeout(resolve, 600));
+        const file = path.join(root, 'evidence', `levels-${name}.png`);
+        await browser.screenshot(file);
+        const png = PNG.sync.read(fs.readFileSync(file));
+        let warm = 0,
+          drawn = 0;
+        for (let i = 0; i < png.data.length; i += 4) {
+          const [r, g, b] = [png.data[i], png.data[i + 1], png.data[i + 2]];
+          // The page behind the tiles is dark blue: a tile is clearly brighter.
+          if (r + g + b > 200) drawn++;
+          warm += r - b;
+        }
+        return { counts, drawn, warm };
+      };
+      const among = await picture('among', [-2.2, 0, 0]);
+      const away = await picture('away', [-8, 0, 0]);
+      const far = await picture('far', [-12, 0, 0]);
+      report.levels = { among, away, far };
+      assert.deepEqual(among.counts, { levels: [3, 0], culled: 0, switched: 0 });
+      assert.deepEqual(away.counts, { levels: [0, 3], culled: 0, switched: 3 });
+      assert.deepEqual(far.counts, { levels: [0, 2], culled: 1, switched: 1 });
+      assert.ok(among.drawn > 2000, `three tiles are drawn: ${among.drawn}`);
+      assert.ok(
+        away.warm > among.warm + 20000,
+        `the far version glows: ${away.warm} against ${among.warm}`,
+      );
+      assert.ok(
+        far.drawn < away.drawn * 0.85,
+        `a culled copy is not drawn: ${far.drawn} against ${away.drawn}`,
+      );
+      // Coming back restores the first picture exactly.
+      const back = await picture('back', [-2.2, 0, 0]);
+      assert.deepEqual(back.counts.levels, [3, 0]);
+      assert.equal(back.drawn, among.drawn);
+      assert.equal(back.warm, among.warm);
+    } finally {
+      await browser.close();
+    }
+  }
   // 5. A copy moved by 30 cm must fail against the reference.
   writeDefinitions(0.3);
   await runConsumerBuild({ projectRoot: root, engineRoot, config });

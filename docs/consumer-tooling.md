@@ -342,3 +342,15 @@ SHA-verified, cancellable compiler WASM dependencies for both Scene and Prefab
 preview. Omit it for WebGL. The package/ZIP contains the full relative payload.
 A boot option must match the build; changing it alone does not load a backend.
 See [WebGPU contract and measured boundaries](webgpu.md).
+
+## Levels of detail in a model prefab
+
+A node of a `kind: 'models'` prefab may name lighter versions of its model and a distance beyond which its copies are not drawn:
+
+```ts
+{ name: 'trees', asset: 'nature/tree.glb', placements,
+  lod: [{ asset: 'nature/tree-mid.glb', fromMeters: 16 }, { asset: 'nature/tree-far.glb', fromMeters: 40 }],
+  cullMeters: 300 }
+```
+
+The Scene tells the instance where the eye is, usually once a frame: `instance.updateLod([x, y, z])`. It returns how many copies draw each level, how many draw nothing and how many changed. Until it is called every copy draws its full model, so the isolated preview shows the full models. The lighter versions are logical asset IDs like any other; making them (fewer triangles, smaller pictures) is the consumer's asset work.

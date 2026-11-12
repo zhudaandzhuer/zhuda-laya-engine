@@ -184,10 +184,16 @@ export async function checkPrefab({
     const send = (method, params = {}) =>
       new Promise((resolve, reject) => {
         const id = ++serial;
-        const timer = setTimeout(() => {
-          pending.delete(id);
-          reject(Error(`CDP timeout: ${method}`));
-        }, 10000);
+        const timer = setTimeout(
+          () => {
+            pending.delete(id);
+            reject(Error(`CDP timeout: ${method}`));
+            // A prefab of large models can hold the page's thread for longer than
+            // ten seconds while one file is parsed: a command may wait as long as
+            // the whole check is allowed to take.
+          },
+          Math.max(10000, browserTimeoutMs),
+        );
         pending.set(id, { resolve, reject, timer });
         ws.send(JSON.stringify({ id, method, params }));
       });

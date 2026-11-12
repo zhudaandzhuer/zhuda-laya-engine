@@ -10,7 +10,7 @@ import {
   ZhudaModelCompatibilityError,
   type ModelCompatibilityReport,
 } from './ModelCompatibility.ts';
-import { destroyLaya342ModelTree } from './Laya342Adapters.ts';
+import { destroyLaya342ModelTree, enableLaya342VertexColors } from './Laya342Adapters.ts';
 import type { AssetProvider, LoadedAssetBytes } from './AssetProvider.ts';
 import { normalizeAssetId } from './AssetProvider.ts';
 export type AssetPhase = 'downloading' | 'parsing' | 'ready';
@@ -303,6 +303,7 @@ export class ZhudaModelLibrary {
             throw abortError();
           }
           const template = createLaya342ModelTemplate(resource, l);
+          enableLaya342VertexColors(template, l);
           const clips = new Set<Laya.AnimationClip>();
           visit(template, (n) => {
             const animator = l.Animator && n.getComponent?.(l.Animator);

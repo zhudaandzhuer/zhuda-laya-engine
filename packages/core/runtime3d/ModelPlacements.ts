@@ -8,6 +8,7 @@
  */
 import type { ModelInstance } from './Assets.ts';
 import { ZHUDA_TRANSLUCENT_DEFINE } from './Laya342Adapters.ts';
+import { ZhudaModelLod, type ZhudaLodItem } from './ModelLod.ts';
 
 /** One copy of a model: x, y, z in metres, yaw in degrees, uniform scale. */
 export type ZhudaModelPlacement = readonly [number, number, number, number, number];
@@ -21,11 +22,21 @@ export interface ZhudaModelMountOptions {
   emission?: number;
   /** Name prefix of the nodes created for copies. */
   label?: string;
+  /**
+   * Lighter versions of the model for distance, nearest first: beyond
+   * `fromMeters` a copy draws this one instead of the one before. The caller
+   * loaded them and disposes them after this mount.
+   */
+  lod?: readonly { instance: ModelInstance; fromMeters: number }[];
+  /** Beyond this distance a copy draws nothing. */
+  cullMeters?: number;
 }
 
 export interface ZhudaMountedModel {
   /** Renderers of the loaded instance (copies share their materials). */
   renderers: any[];
+  /** Present when the mount has levels or a cull distance: call `update(eye)` as the eye moves. */
+  lod?: ZhudaModelLod;
   dispose(): void;
 }
 
@@ -68,6 +79,12 @@ export function mountZhudaModel(
   };
   try {
     const source = zhudaModelRenderers(l, instance.node);
+    // Every version of the model, the full one first.
+    const versions = [instance, ...(options.lod ?? []).map((level) => level.instance)];
+    const sources = versions.map((version) => zhudaModelRenderers(l, version.node));
+    const from = (options.lod ?? []).map((level) => level.fromMeters);
+    const levelled = versions.length > 1 || options.cullMeters !== undefined;
+    const items: ZhudaLodItem[] = [];
     if (options.placements) {
       // The loaded instance is the first copy; the rest are clones that
       // share its meshes and materials.
@@ -78,30 +95,64 @@ export function mountZhudaModel(
         place.transform.localPosition = new l.Vector3(x, y, z);
         place.transform.localRotationEuler = new l.Vector3(0, yawDeg, 0);
         place.transform.localScale = new l.Vector3(size, size, size);
-        if (i === 0) place.addChild(instance.node);
-        else {
-          const copy = instance.node.clone();
+        const nodes = versions.map((version, v) => {
+          if (i === 0) {
+            place.addChild(version.node);
+            return version.node;
+          }
+          const copy = version.node.clone();
           place.addChild(copy);
           cleanups.push(() => copy.destroy(true));
           // Laya's clone does not keep the material of every sub-mesh: take
           // them from the source.
           zhudaModelRenderers(l, copy).forEach((renderer, k) => {
-            if (source[k]) renderer.sharedMaterials = source[k].sharedMaterials;
+            if (sources[v][k]) renderer.sharedMaterials = sources[v][k].sharedMaterials;
             renderer.castShadow = true;
             renderer.receiveShadow = true;
           });
-        }
+          return copy;
+        });
+        if (levelled) items.push({ anchor: place, nodes, from, cull: options.cullMeters });
       });
-    } else holder.addChild(instance.node);
-    // The library destroys the instance; detach it first so the holder does not.
-    cleanups.push(() => instance.node.removeSelf());
-    for (const renderer of source) {
-      renderer.castShadow = true;
-      renderer.receiveShadow = true;
+    } else {
+      for (const version of versions) holder.addChild(version.node);
+      if (levelled)
+        items.push({
+          anchor: holder,
+          nodes: versions.map((version) => version.node),
+          from,
+          cull: options.cullMeters,
+        });
     }
+    // The library destroys the instances; detach them first so the holder does not.
+    for (const version of versions) cleanups.push(() => version.node.removeSelf());
     const materials = new Set<any>();
-    for (const renderer of source)
-      for (const material of renderer.sharedMaterials ?? []) if (material) materials.add(material);
+    for (const renderers of sources)
+      for (const renderer of renderers) {
+        renderer.castShadow = true;
+        renderer.receiveShadow = true;
+        for (const material of renderer.sharedMaterials ?? [])
+          if (material) materials.add(material);
+      }
+    let lod: ZhudaModelLod | undefined;
+    if (levelled) {
+      // Hidden, not deactivated: a deactivated renderer leaves its scene's
+      // lists, and on WebGPU the renderers that stay are then drawn with
+      // pipelines that no longer match their bindings (LayaAir 3.4.2). The
+      // flag LayaAir's editor hides things with skips a renderer in every
+      // pass and leaves the lists alone.
+      const hidden = l.RenderBitFlag?.RenderBitFlag_Editor;
+      const drawn = new Map<any, any[]>();
+      const show = (node: any, visible: boolean) => {
+        if (hidden === undefined) return void (node.active = visible);
+        let renderers = drawn.get(node);
+        if (!renderers) drawn.set(node, (renderers = zhudaModelRenderers(l, node)));
+        for (const renderer of renderers) renderer.setRenderbitFlag(hidden, !visible);
+      };
+      lod = new ZhudaModelLod(items, undefined, show);
+      const levels = lod;
+      cleanups.push(() => levels.dispose());
+    }
     if (options.emission !== undefined && options.emission !== 1) {
       // glTF materials multiply their emissive colour by this strength.
       const scale = options.emission;
@@ -120,7 +171,7 @@ export function mountZhudaModel(
         cleanups.push(() => !material.destroyed && material.removeDefine(define));
       }
     }
-    return { renderers: source, dispose };
+    return { renderers: source, lod, dispose };
   } catch (error) {
     dispose();
     throw error;

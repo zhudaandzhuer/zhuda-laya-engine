@@ -1,7 +1,7 @@
 // Generated fixtures for the film GPU checks: nothing is read from the repository.
 
 /** A 10 m square floor at y = 0, white and rough; optional second UV set. */
-export function floorGlb({ uv1, emissive }) {
+export function floorGlb({ uv1, emissive, colours }) {
   const positions = [-5, 0, -5, -5, 0, 5, 5, 0, 5, 5, 0, -5];
   const normals = [0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0];
   // glTF UVs: (0,0) is the top-left texel. u follows +X, v follows +Z.
@@ -11,6 +11,7 @@ export function floorGlb({ uv1, emissive }) {
     new Float32Array(normals),
     new Float32Array(uv),
     ...(uv1 ? [new Float32Array(uv)] : []),
+    ...(colours ? [new Float32Array(colours)] : []),
     new Uint16Array([0, 1, 2, 0, 2, 3]),
   ];
   const views = [];
@@ -29,12 +30,15 @@ export function floorGlb({ uv1, emissive }) {
   });
   const attributes = { POSITION: 0, NORMAL: 1, TEXCOORD_0: 2 };
   if (uv1) attributes.TEXCOORD_1 = 3;
+  const extra = uv1 ? 1 : 0;
+  if (colours) attributes.COLOR_0 = 3 + extra;
+  const indices = 3 + extra + (colours ? 1 : 0);
   const json = {
     asset: { version: '2.0' },
     scene: 0,
     scenes: [{ nodes: [0] }],
     nodes: [{ mesh: 0, name: 'floor' }],
-    meshes: [{ primitives: [{ attributes, indices: uv1 ? 4 : 3, material: 0 }] }],
+    meshes: [{ primitives: [{ attributes, indices, material: 0 }] }],
     materials: [
       {
         doubleSided: true,
@@ -53,7 +57,8 @@ export function floorGlb({ uv1, emissive }) {
       accessor(1, 'VEC3'),
       accessor(2, 'VEC2'),
       ...(uv1 ? [accessor(3, 'VEC2')] : []),
-      { bufferView: uv1 ? 4 : 3, componentType: 5123, count: 6, type: 'SCALAR' },
+      ...(colours ? [accessor(3 + extra, 'VEC4')] : []),
+      { bufferView: indices, componentType: 5123, count: 6, type: 'SCALAR' },
     ],
   };
   let text = Buffer.from(JSON.stringify(json));

@@ -17,6 +17,11 @@ import {
   validateZhudaModelPlacements,
   type ZhudaModelPlacement,
 } from '../runtime3d/ModelPlacements.ts';
+import {
+  validateZhudaLodDistances,
+  type ZhudaLodCounts,
+  type ZhudaModelLod,
+} from '../runtime3d/ModelLod.ts';
 
 export type PrefabNodePatch = Partial<
   Pick<
@@ -74,6 +79,14 @@ export interface PrefabModelNode {
   translucent?: boolean;
   /** Scales what the model's materials give off, 0..8 (default 1). */
   emission?: number;
+  /**
+   * Lighter versions for distance, nearest first (at most 4): beyond
+   * `fromMeters` from the eye a copy draws this model instead of the one
+   * before. Nothing changes until the Scene calls the instance's `updateLod`.
+   */
+  lod?: { asset: string; fromMeters: number }[];
+  /** Beyond this distance from the eye a copy draws nothing. */
+  cullMeters?: number;
 }
 export interface PrefabModelPatch {
   active?: boolean;
@@ -132,6 +145,26 @@ export function validatePrefabModels(entry: PrefabModelsDefinition): void {
       throw Error(`${at}: emission must be 0..8`);
     if (node.translucent !== undefined && typeof node.translucent !== 'boolean')
       throw Error(`${at}: translucent must be boolean`);
+    if (node.lod !== undefined || node.cullMeters !== undefined) {
+      const levels = node.lod ?? [];
+      if (!Array.isArray(levels) || levels.length > 4)
+        throw Error(`${at}: lod holds at most 4 levels`);
+      for (const level of levels) {
+        let id: string | undefined;
+        try {
+          id = typeof level?.asset === 'string' ? normalizeAssetId(level.asset) : undefined;
+        } catch {
+          // Reported below with the node's name.
+        }
+        if (id !== level?.asset || !/\.glb$/i.test(level.asset))
+          throw Error(`${at}: lod asset must be a normalized .glb ID`);
+      }
+      const issues = validateZhudaLodDistances(
+        levels.map((level) => level.fromMeters),
+        node.cullMeters,
+      );
+      if (issues.length) throw Error(`${at}: ${issues[0]}`);
+    }
     if (node.placements !== undefined) {
       const issues = validateZhudaModelPlacements(node.placements);
       if (issues.length) throw Error(`${at}: placements ${issues[0]}`);
@@ -172,6 +205,12 @@ export interface PrefabInstance<T extends Laya.Node = Laya.Sprite> {
   socket(id: string): T;
   /** 3D only: copy this instance's material slot before changing material properties. */
   makeMaterialUnique(path?: string): Laya.Material;
+  /**
+   * Model prefabs with `lod` or `cullMeters`: chooses what every copy draws
+   * for an eye at `[x, y, z]` in world metres. Until it is called every copy
+   * draws its full model. Without levels it changes nothing.
+   */
+  updateLod(eye: readonly [number, number, number]): ZhudaLodCounts;
   dispose(): void;
 }
 const provenance = new WeakMap<Laya.Node, PrefabProvenance>();
@@ -400,6 +439,7 @@ export class ZhudaPrefabLibrary<T extends AnyPrefabDefinition = PrefabDefinition
       const definitionHash = await hash(new TextEncoder().encode(JSON.stringify(entry)));
       if (controller.signal.aborted) throw new DOMException('Prefab cancelled', 'AbortError');
       let tree: PrefabTreeInstance3D | undefined;
+      let levels: ZhudaModelLod[] = [];
       let created: Laya.Sprite | Laya.Sprite3D;
       if (entry.kind === '3d') {
         if (this.share3DResources) {
@@ -421,6 +461,7 @@ export class ZhudaPrefabLibrary<T extends AnyPrefabDefinition = PrefabDefinition
           timeoutMs: this.timeoutMs,
         });
         const root3D = new Laya.Sprite3D(`ZhudaPrefab:${entry.id}`);
+        levels = [];
         scope.defer(() => root3D.destroy(false));
         for (const node of entry.nodes) {
           const loaded = await this.models.instantiate(node.asset, { signal: controller.signal });
@@ -434,13 +475,25 @@ export class ZhudaPrefabLibrary<T extends AnyPrefabDefinition = PrefabDefinition
           holder.transform.localRotationEuler = new Laya.Vector3(0, node.yawDeg ?? 0, 0);
           const size = node.scale ?? 1;
           holder.transform.localScale = new Laya.Vector3(size, size, size);
+          const lod: { instance: typeof loaded; fromMeters: number }[] = [];
+          for (const level of node.lod ?? []) {
+            const lighter = await this.models.instantiate(level.asset, {
+              signal: controller.signal,
+            });
+            scope.defer(() => lighter.dispose());
+            if (controller.signal.aborted) throw new DOMException('Prefab cancelled', 'AbortError');
+            lod.push({ instance: lighter, fromMeters: level.fromMeters });
+          }
           const mounted = mountZhudaModel(holder, loaded, {
             placements: node.placements,
             translucent: node.translucent,
             emission: node.emission,
             label: `${entry.id}/${node.name}`,
+            lod,
+            cullMeters: node.cullMeters,
           });
           scope.defer(() => mounted.dispose());
+          if (mounted.lod) levels.push(mounted.lod);
         }
         created = root3D;
       } else {
@@ -529,6 +582,17 @@ export class ZhudaPrefabLibrary<T extends AnyPrefabDefinition = PrefabDefinition
           apply(next);
           record.state = next;
           instance.provenance = structuredClone(record);
+        },
+        updateLod: (eye) => {
+          if (retired) throw Error('Disposed prefab instance');
+          const total: ZhudaLodCounts = { levels: [], culled: 0, switched: 0 };
+          for (const group of levels) {
+            const counts = group.update(eye);
+            counts.levels.forEach((n, k) => (total.levels[k] = (total.levels[k] ?? 0) + n));
+            total.culled += counts.culled;
+            total.switched += counts.switched;
+          }
+          return total;
         },
         dispose: () => {
           retired = true;

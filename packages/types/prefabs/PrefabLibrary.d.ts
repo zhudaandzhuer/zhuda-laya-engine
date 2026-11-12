@@ -3,6 +3,7 @@ import type { LayaHierarchyNodeData } from '../zhuda-static-assets.js';
 import type { AssetProvider } from '../runtime3d/AssetProvider.js';
 import type { PrefabTree3D, PrefabNodePatch3D } from './PrefabTree3D.js';
 import { type ZhudaModelPlacement } from '../runtime3d/ModelPlacements.js';
+import { type ZhudaLodCounts } from '../runtime3d/ModelLod.js';
 export type PrefabNodePatch = Partial<Pick<LayaHierarchyNodeData, 'x' | 'y' | 'width' | 'height' | 'anchorX' | 'anchorY' | 'pivotX' | 'pivotY' | 'scaleX' | 'scaleY' | 'rotation' | 'alpha' | 'visible' | 'text' | 'font' | 'fontSize' | 'color' | 'bold' | 'align' | 'valign' | 'sizeGrid'>>;
 export interface PrefabDefinition {
     id: string;
@@ -34,6 +35,17 @@ export interface PrefabModelNode {
     translucent?: boolean;
     /** Scales what the model's materials give off, 0..8 (default 1). */
     emission?: number;
+    /**
+     * Lighter versions for distance, nearest first (at most 4): beyond
+     * `fromMeters` from the eye a copy draws this model instead of the one
+     * before. Nothing changes until the Scene calls the instance's `updateLod`.
+     */
+    lod?: {
+        asset: string;
+        fromMeters: number;
+    }[];
+    /** Beyond this distance from the eye a copy draws nothing. */
+    cullMeters?: number;
 }
 export interface PrefabModelPatch {
     active?: boolean;
@@ -71,6 +83,12 @@ export interface PrefabInstance<T extends Laya.Node = Laya.Sprite> {
     socket(id: string): T;
     /** 3D only: copy this instance's material slot before changing material properties. */
     makeMaterialUnique(path?: string): Laya.Material;
+    /**
+     * Model prefabs with `lod` or `cullMeters`: chooses what every copy draws
+     * for an eye at `[x, y, z]` in world metres. Until it is called every copy
+     * draws its full model. Without levels it changes nothing.
+     */
+    updateLod(eye: readonly [number, number, number]): ZhudaLodCounts;
     dispose(): void;
 }
 /** Returns null for manually built substitutes. */

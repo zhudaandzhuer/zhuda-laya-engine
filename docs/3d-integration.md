@@ -27,12 +27,14 @@ await runConsumerBuild({
 const context = await ZhudaEngine.boot({
   container: document.querySelector('#game')!,
   features: ['core', '3d', 'gltf'],
-  dprCap: 1.5, targetFPS: 60,
-  antialias: false, preserveDrawingBuffer: false,
+  dprCap: 1.5,
+  targetFPS: 60,
+  antialias: false,
+  preserveDrawingBuffer: false,
   clearInput: () => input?.clear(),
   onContextLost: () => notifyHostWithSnapshot(),
 });
-context.runtime.start(dt => present(dt));
+context.runtime.start((dt) => present(dt));
 ```
 
 選項在 `beforeInit` 之前設定，callback 可覆寫。DPR cap 控制 backing 尺寸，CSS 大小由容器決定；不再重複套用 retinal DPR。30／60 FPS 分別配置引擎與消費端更新節奏。初始化 resize callback 失敗會清掉監聽器和已建根場景。
@@ -75,6 +77,8 @@ download／parse／ready 與 GPU 已顯示分開：report 的 `gpuReady: require
 依序釋放 instance，再 dispose library；共享 mesh／texture 在其他 lease 存活時保持有效。`ZhudaRequestSlot.replace(load,commit,discard)` 適合面板，cancel 或新請求後的舊結果只會 discard。`ZhudaResourceScope` 以反向順序釋放，個別錯誤仍繼續清理；`ZhudaSceneRegions` 在區域離開時取消載入並丟棄過期結果。
 
 3.4.2 原本 `WebRender3DProcess.destroy` 漏掉 `_defaultShadowMap`。隔離的 `installLaya342LifecycleFix` 在 boot 後安裝，僅補釋放該 process 擁有的 fallback texture，具冪等性。
+
+模型的 `COLOR_0` 頂點色會乘上底色（glTF 規格）：可用來放烘焙好的遮蔽陰影、濕痕或色調變化，執行期零成本。LayaAir 3.4.2 原本不會套用，也讀不對 16 位元或三分量的顏色，引擎在載入時補上（`enableLaya342VertexColors`、`prepareLaya342GltfResource`）。模型若帶有非預期的 `COLOR_0` 會因此變色，請在來源檔移除。
 
 ## 查詢、輸入、時鐘與掛點
 

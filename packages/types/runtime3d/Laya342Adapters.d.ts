@@ -31,6 +31,14 @@ export declare function installLaya342LifecycleFix(runtime?: any): void;
  * Never drain the global driver (which could destroy unrelated consumer nodes).
  */
 export declare function destroyLaya342ModelTree(node: any, runtime?: any): void;
+/**
+ * glTF multiplies a mesh's `COLOR_0` into its base colour. Laya 3.4.2's glTF
+ * shader does so only for a material that carries `ENABLEVERTEXCOLOR`, and its
+ * loader never sets it: baked shade, wet bands and tints were silently dropped.
+ * Switches it on for the materials of every mesh in the tree that has a colour
+ * channel. Returns how many materials changed.
+ */
+export declare function enableLaya342VertexColors(node: any, runtime?: any): number;
 /** The define that switches leaf translucency on for a material. */
 export declare const ZHUDA_TRANSLUCENT_DEFINE = "ZHUDA_TRANSLUCENT";
 /**

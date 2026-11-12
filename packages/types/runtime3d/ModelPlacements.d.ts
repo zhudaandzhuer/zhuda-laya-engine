@@ -8,6 +8,7 @@
  * back on disposal.
  */
 import type { ModelInstance } from './Assets.js';
+import { ZhudaModelLod } from './ModelLod.js';
 /** One copy of a model: x, y, z in metres, yaw in degrees, uniform scale. */
 export type ZhudaModelPlacement = readonly [number, number, number, number, number];
 export interface ZhudaModelMountOptions {
@@ -19,10 +20,23 @@ export interface ZhudaModelMountOptions {
     emission?: number;
     /** Name prefix of the nodes created for copies. */
     label?: string;
+    /**
+     * Lighter versions of the model for distance, nearest first: beyond
+     * `fromMeters` a copy draws this one instead of the one before. The caller
+     * loaded them and disposes them after this mount.
+     */
+    lod?: readonly {
+        instance: ModelInstance;
+        fromMeters: number;
+    }[];
+    /** Beyond this distance a copy draws nothing. */
+    cullMeters?: number;
 }
 export interface ZhudaMountedModel {
     /** Renderers of the loaded instance (copies share their materials). */
     renderers: any[];
+    /** Present when the mount has levels or a cull distance: call `update(eye)` as the eye moves. */
+    lod?: ZhudaModelLod;
     dispose(): void;
 }
 /** Every mesh renderer below a node. */

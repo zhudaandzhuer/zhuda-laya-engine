@@ -127,6 +127,43 @@ export function destroyLaya342ModelTree(node: any, runtime: any = (globalThis as
     if (component._status === 4 && queue?.delete(component)) component._destroy(true);
 }
 
+/**
+ * glTF multiplies a mesh's `COLOR_0` into its base colour. Laya 3.4.2's glTF
+ * shader does so only for a material that carries `ENABLEVERTEXCOLOR`, and its
+ * loader never sets it: baked shade, wet bands and tints were silently dropped.
+ * Switches it on for the materials of every mesh in the tree that has a colour
+ * channel. Returns how many materials changed.
+ */
+export function enableLaya342VertexColors(
+  node: any,
+  runtime: any = (globalThis as any).Laya,
+): number {
+  const define = runtime?.Shader3D?.getDefineByName?.('ENABLEVERTEXCOLOR');
+  const usage = runtime?.VertexMesh?.MESH_COLOR0;
+  if (!define || usage === undefined) return 0;
+  const changed = new Set<any>();
+  const visit = (n: any) => {
+    const renderer =
+      n.meshRenderer ??
+      n.skinnedMeshRenderer ??
+      n.getComponent?.(runtime.SkinnedMeshRenderer) ??
+      n.getComponent?.(runtime.MeshRenderer);
+    const mesh =
+      renderer?.sharedMesh ??
+      n.meshFilter?.sharedMesh ??
+      (runtime.MeshFilter && n.getComponent?.(runtime.MeshFilter))?.sharedMesh;
+    if (mesh?.getVertexDeclaration?.()?.getVertexElementByUsage?.(usage))
+      for (const material of renderer.sharedMaterials ?? [])
+        if (material?.addDefine && !changed.has(material)) {
+          material.addDefine(define);
+          changed.add(material);
+        }
+    for (let i = 0; i < (n.numChildren || 0); i++) visit(n.getChildAt(i));
+  };
+  visit(node);
+  return changed.size;
+}
+
 const translucencyPatched = new WeakSet<object>();
 /** The define that switches leaf translucency on for a material. */
 export const ZHUDA_TRANSLUCENT_DEFINE = 'ZHUDA_TRANSLUCENT';

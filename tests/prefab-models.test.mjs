@@ -139,3 +139,107 @@ test('a film scene becomes a model prefab and says what it leaves to the Scene',
   );
   assert.throws(() => zhudaPrefabFromFilmScene(scene, ''), /id required/);
 });
+
+test('levels of detail: borders, hysteresis and culling', async () => {
+  const { zhudaLodLevel, validateZhudaLodDistances, ZhudaModelLod, ZHUDA_LOD_CULLED } =
+    await import('../packages/core/runtime3d/ModelLod.ts');
+  const from = [10, 30];
+  assert.equal(zhudaLodLevel(5, from, 60), 0);
+  assert.equal(zhudaLodLevel(20, from, 60), 1);
+  assert.equal(zhudaLodLevel(40, from, 60), 2);
+  assert.equal(zhudaLodLevel(80, from, 60), ZHUDA_LOD_CULLED);
+  assert.equal(zhudaLodLevel(80, from, undefined), 2);
+  // On a border a copy keeps what it draws: 10.5 m is level 0 coming out, level 1 going in.
+  assert.equal(zhudaLodLevel(10.5, from, 60, 0), 0);
+  assert.equal(zhudaLodLevel(10.5, from, 60, 1), 1);
+  assert.equal(zhudaLodLevel(9.5, from, 60, 1), 1);
+  assert.equal(zhudaLodLevel(9, from, 60, 1), 0);
+  assert.equal(zhudaLodLevel(62, from, 60, 2), 2);
+  assert.equal(zhudaLodLevel(58, from, 60, ZHUDA_LOD_CULLED), ZHUDA_LOD_CULLED);
+  assert.equal(zhudaLodLevel(54, from, 60, ZHUDA_LOD_CULLED), 2);
+  assert.equal(zhudaLodLevel(NaN, from, 60, 1), 1);
+
+  assert.deepEqual(validateZhudaLodDistances([10, 30], 60), []);
+  assert.match(validateZhudaLodDistances([30, 10], 60)[0], /level 2/);
+  assert.match(validateZhudaLodDistances([10], 5)[0], /cullMeters/);
+  assert.match(validateZhudaLodDistances([0], undefined)[0], /level 1/);
+
+  const node = () => ({ active: true });
+  const at = (x) => ({ transform: { position: { x, y: 0, z: 0 } } });
+  const items = [0, 20, 100].map((x) => ({
+    anchor: at(x),
+    nodes: [node(), node()],
+    from: [10],
+    cull: 50,
+  }));
+  const lod = new ZhudaModelLod(items);
+  assert.deepEqual(
+    items.map((item) => item.nodes.map((n) => n.active)),
+    [
+      [true, false],
+      [true, false],
+      [true, false],
+    ],
+  );
+  assert.deepEqual(lod.update([0, 0, 0]), { levels: [1, 1], culled: 1, switched: 2 });
+  assert.deepEqual(
+    items.map((item) => item.nodes.map((n) => n.active)),
+    [
+      [true, false],
+      [false, true],
+      [false, false],
+    ],
+  );
+  assert.deepEqual(lod.update([0, 0, 0]), { levels: [1, 1], culled: 1, switched: 0 });
+  assert.deepEqual(lod.update([100, 0, 0]), { levels: [1, 0], culled: 2, switched: 3 });
+  assert.throws(() => lod.update([0, NaN, 0]), /finite/);
+  lod.dispose();
+  assert.deepEqual(
+    items.map((item) => item.nodes.map((n) => n.active)),
+    [
+      [true, false],
+      [true, false],
+      [true, false],
+    ],
+  );
+  assert.throws(() => lod.update([0, 0, 0]), /Disposed/);
+  assert.throws(
+    () => new ZhudaModelLod([{ anchor: at(0), nodes: [node()], from: [10] }]),
+    /one more node/,
+  );
+});
+
+test('model prefab definitions accept levels and reject bad ones with the node name', () => {
+  const tree = { name: 'trees', asset: 'nature/tree.glb' };
+  validatePrefabModels(
+    definition([
+      { ...tree, lod: [{ asset: 'nature/tree-far.glb', fromMeters: 30 }], cullMeters: 200 },
+    ]),
+  );
+  validatePrefabModels(definition([{ ...tree, cullMeters: 80 }]));
+  const fails = (node, pattern) =>
+    assert.throws(() => validatePrefabModels(definition([node])), pattern);
+  fails({ ...tree, lod: [{ asset: 'nature/tree-far.png', fromMeters: 30 }] }, /trees: lod asset/);
+  fails({ ...tree, lod: [{ asset: '../tree.glb', fromMeters: 30 }] }, /trees: lod asset/);
+  fails(
+    {
+      ...tree,
+      lod: [
+        { asset: 'a.glb', fromMeters: 30 },
+        { asset: 'b.glb', fromMeters: 20 },
+      ],
+    },
+    /trees: level 2/,
+  );
+  fails(
+    { ...tree, lod: [{ asset: 'a.glb', fromMeters: 30 }], cullMeters: 10 },
+    /trees: cullMeters/,
+  );
+  fails(
+    {
+      ...tree,
+      lod: Array.from({ length: 5 }, (_, i) => ({ asset: 'a.glb', fromMeters: 10 * (i + 1) })),
+    },
+    /at most 4/,
+  );
+});

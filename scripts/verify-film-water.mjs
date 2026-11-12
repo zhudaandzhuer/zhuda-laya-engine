@@ -215,6 +215,34 @@ try {
     'the shared material is restored',
   );
 
+  // 5c. Vertex colours: glTF's COLOR_0 multiplies the base colour (baked shade, wet bands).
+  fs.writeFileSync(
+    path.join(assets, 'set', 'shaded.glb'),
+    floorGlb({
+      uv1: false,
+      colours: [0.2, 0.2, 0.2, 1, 0.2, 0.2, 0.2, 1, 0.2, 0.2, 0.2, 1, 0.2, 0.2, 0.2, 1],
+    }),
+  );
+  const lit = (asset) => ({
+    schemaVersion: 1,
+    id: 'vertex-colour-check',
+    camera: { eye: EYE, target: TARGET, focalLengthMm: 35 },
+    look: { sky: [0, 0, 0], ambient: [0.4, 0.4, 0.4], sun: { intensity: 0 }, shadows: false },
+    nodes: [{ id: 'floor', type: 'model', asset, position: [0, 0, 0] }],
+  });
+  report.vertexColour = {
+    plain: patch(await render('colour-plain', lit('set/floor.glb')), centre),
+    shaded: patch(await render('colour-shaded', lit('set/shaded.glb')), centre),
+  };
+  assert.ok(
+    report.vertexColour.plain[0] > 40,
+    `the plain floor is lit: ${report.vertexColour.plain}`,
+  );
+  assert.ok(
+    report.vertexColour.shaded[0] < report.vertexColour.plain[0] * 0.7,
+    `vertex colours darken it: ${report.vertexColour.shaded} against ${report.vertexColour.plain}`,
+  );
+
   // 6. Thirty mounts with and without water, then the first frame again.
   for (let i = 0; i < 30; i++)
     await host.mountReport(scene(i % 2 ? [...scenery, water()] : scenery));

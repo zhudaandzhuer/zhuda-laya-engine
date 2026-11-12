@@ -25,6 +25,19 @@ export function prepareLaya342GltfResource(resource: any, runtime: any): void {
       }
       return material;
     };
+  // glTF stores COLOR_0 as three or four components, as floats or as normalized
+  // bytes or shorts. The native loader hands the raw array to a four-float
+  // vertex element: a 16-bit colour arrives 65535 times too bright and a
+  // three-component one is read out of step. Convert to four floats.
+  const attribute = resource.getArrributeBuffer;
+  if (typeof attribute === 'function')
+    resource.getArrributeBuffer = function (index: number, name: string, map: any, names: any) {
+      const raw = attribute.call(this, index, name, map, names);
+      if (!raw || name !== 'COLOR') return raw;
+      const fixed = zhudaGltfColors(raw, this._data?.accessors?.[index]);
+      map.set(name, fixed);
+      return fixed;
+    };
   for (const method of ['createMeshSprite3D', 'createSkinnedMeshSprite3D']) {
     const original = resource[method];
     if (typeof original !== 'function') continue;
@@ -169,4 +182,20 @@ export function createLaya342ModelTemplate(resource: any, runtime: any): Laya.Sp
     if (resource._nodes) resource._nodes.length = 0;
     throw error;
   }
+}
+
+/** A colour accessor's values as RGBA floats in 0..1 (see glTF 2.0, COLOR_0). */
+export function zhudaGltfColors(
+  raw: ArrayLike<number>,
+  accessor: { type?: string; componentType?: number; count?: number } | undefined,
+): Float32Array {
+  const size = accessor?.type === 'VEC3' ? 3 : 4;
+  const scale = { 5121: 1 / 255, 5123: 1 / 65535 }[accessor?.componentType ?? 5126] ?? 1;
+  const count = Math.floor(raw.length / size);
+  const out = new Float32Array(count * 4);
+  for (let i = 0; i < count; i++) {
+    for (let c = 0; c < 3; c++) out[i * 4 + c] = raw[i * size + c] * scale;
+    out[i * 4 + 3] = size === 4 ? raw[i * size + 3] * scale : 1;
+  }
+  return out;
 }

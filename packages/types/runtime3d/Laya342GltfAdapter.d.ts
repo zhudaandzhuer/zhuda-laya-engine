@@ -8,3 +8,9 @@ export declare function copyLaya342MorphWeights(source: any, target: any, runtim
 /** Native create() retains its partial trees on failure. Retire their components
  * before the caller releases the parsed resource and its shared dependencies. */
 export declare function createLaya342ModelTemplate(resource: any, runtime: any): Laya.Sprite3D;
+/** A colour accessor's values as RGBA floats in 0..1 (see glTF 2.0, COLOR_0). */
+export declare function zhudaGltfColors(raw: ArrayLike<number>, accessor: {
+    type?: string;
+    componentType?: number;
+    count?: number;
+} | undefined): Float32Array;
