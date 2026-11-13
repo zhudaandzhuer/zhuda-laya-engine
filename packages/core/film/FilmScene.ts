@@ -661,6 +661,13 @@ export interface ZhudaFilmBounceLight {
   /** Corners of the box the probes fill; by default the scene's objects and lights, widened by 2 m. */
   min?: ZhudaFilmVec3;
   max?: ZhudaFilmVec3;
+  /**
+   * Each probe also keeps how far it sees, and a surface takes light only
+   * from probes that see it: a wall thinner than `spacing` then no longer
+   * lets the light of one side through to the other. One more depth pass a
+   * probe at mount. Default false.
+   */
+  visibility?: boolean;
 }
 
 export interface ZhudaFilmScene {
@@ -1165,7 +1172,9 @@ function validateLook(
       at = `${path}.bounceLight`;
     if (!object(b)) issues.push(`${at}: object or false required`);
     else {
-      unknownKeys(b, ['spacing', 'strength', 'min', 'max'], at, issues);
+      unknownKeys(b, ['spacing', 'strength', 'min', 'max', 'visibility'], at, issues);
+      if (b.visibility !== undefined && typeof b.visibility !== 'boolean')
+        issues.push(`${at}.visibility: true or false`);
       range(b.spacing, `${at}.spacing`, 1, 20);
       range(b.strength, `${at}.strength`, 0, 4);
       if ((b.min === undefined) !== (b.max === undefined))
@@ -2004,7 +2013,7 @@ export interface ZhudaResolvedFilmLook {
   depthOfField: Required<ZhudaDepthOfFieldOptions> | false;
   motionBlur: Required<ZhudaMotionBlurOptions> | false;
   bounceLight:
-    | (Required<Pick<ZhudaFilmBounceLight, 'spacing' | 'strength'>> &
+    | (Required<Pick<ZhudaFilmBounceLight, 'spacing' | 'strength' | 'visibility'>> &
         Pick<ZhudaFilmBounceLight, 'min' | 'max'>)
     | false;
   environment: Required<ZhudaFilmEnvironment> | false;
@@ -2146,6 +2155,7 @@ export function resolveZhudaFilmLook(
       ? {
           spacing: look.bounceLight.spacing ?? 3,
           strength: look.bounceLight.strength ?? 1,
+          visibility: look.bounceLight.visibility ?? false,
           ...(look.bounceLight.min && look.bounceLight.max
             ? { min: [...look.bounceLight.min], max: [...look.bounceLight.max] }
             : {}),

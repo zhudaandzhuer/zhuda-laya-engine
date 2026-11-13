@@ -9,6 +9,8 @@ import {
   zhudaIrradianceAtlas,
   zhudaOctahedralDirection,
   zhudaProbeCounts,
+  zhudaProbeDistanceAtlas,
+  zhudaProbeDistanceTile,
   ZhudaProbeVolume,
 } from '../packages/core/runtime3d/ProbeVolume.ts';
 import { evaluateZhudaAmbient } from '../packages/core/runtime3d/EnvironmentProbe.ts';
@@ -148,6 +150,7 @@ test('a film look takes bounce light; its box defaults to the objects and lights
   assert.deepEqual(resolveZhudaFilmLook({ bounceLight: {} }).bounceLight, {
     spacing: 3,
     strength: 1,
+    visibility: false,
   });
   const on = resolveZhudaFilmLook({ preset: 'day', bounceLight: {} });
   assert.equal(zhudaLookForQuality(on, 1).bounceLight.spacing, 3);
@@ -174,4 +177,78 @@ test('a film look takes bounce light; its box defaults to the objects and lights
   // The wall's half diagonal around it, the lamp's place, 2 m around, 1.5 m above.
   assert.ok(close(box.min, [-2 - reach - 2, 0, -reach - 2]), `${box.min}`);
   assert.ok(close(box.max, [2.5 + 2, 3.5 + 1.5, reach + 2]), `${box.max}`);
+});
+
+test('a probe keeps how far it sees: a tile of mean and mean squared distances', () => {
+  // A cube picture of distances: 2 m toward +X, 10 m everywhere else.
+  const n = 16,
+    data = new Float32Array(n * n * 24);
+  for (let face = 0; face < 6; face++)
+    for (let i = 0; i < n * n; i++) data[(face * n * n + i) * 4] = face === 0 ? 2 : 10;
+  const tile = zhudaProbeDistanceTile({ size: n, data });
+  assert.equal(tile.length, 16 * 16 * 2);
+  // The texel of a direction: inner texels 1..14 span -1..1 of the octahedron.
+  const at = (x, y) => {
+    const p = Math.round(((x + 1) / 2) * 14 + 0.5),
+      q = Math.round(((y + 1) / 2) * 14 + 0.5);
+    return [tile[(q * 16 + p) * 2], tile[(q * 16 + p) * 2 + 1]];
+  };
+  // +X is (1, 0) on the octahedron's rim; -X is (-1, 0); +Z the middle.
+  const [toward, towardSquare] = at(0.93, 0),
+    [away, awaySquare] = at(-0.93, 0),
+    [up] = at(0, 0);
+  assert.ok(Math.abs(toward - 2) < 0.6, `about 2 m toward the near wall (${toward})`);
+  assert.ok(Math.abs(away - 10) < 0.01 && Math.abs(up - 10) < 0.6, 'and 10 m the other ways');
+  // Where all the lobe sees one distance the two means agree: no spread.
+  assert.ok(Math.abs(awaySquare - away * away) < 0.01);
+  assert.ok(
+    towardSquare >= toward * toward - 1e-6,
+    'the mean square is never under the squared mean',
+  );
+  // The border repeats the texel across the edge, as the irradiance tile does.
+  assert.equal(tile[(0 * 16 + 5) * 2], tile[(1 * 16 + 10) * 2]);
+});
+
+test('the distance picture tests the probes that have a tile and silences the ones that are off', () => {
+  const tile = new Float32Array(16 * 16 * 2).fill(3);
+  const atlas = zhudaProbeDistanceAtlas([2, 1, 1], [false, true], [tile, undefined]);
+  assert.deepEqual([atlas.width, atlas.height], [32, 16]);
+  const texel = (probe, p, q) => [
+    ...atlas.data.subarray((q * 32 + probe * 16 + p) * 4, (q * 32 + probe * 16 + p) * 4 + 4),
+  ];
+  assert.deepEqual(
+    texel(0, 4, 4),
+    [3, 3, 1, 1],
+    'mean, mean square, and the mark that it is tested',
+  );
+  assert.deepEqual(
+    texel(1, 4, 4).map((v) => +v.toFixed(4)),
+    [0.0001, 0, 1, 1],
+    'an off probe sees nothing',
+  );
+  // Without tiles nothing is tested, as before.
+  const plain = zhudaProbeDistanceAtlas([2, 1, 1], [false, false]);
+  assert.ok(plain.data.every((v) => v === 0));
+});
+
+test('visibility is an option of the volume and of the look', () => {
+  assert.deepEqual(
+    validateZhudaProbeVolume({ min: [0, 0, 0], max: [1, 1, 1], visibility: 'yes' }),
+    ['visibility: true or false'],
+  );
+  assert.equal(resolveZhudaFilmLook({ bounceLight: {} }).bounceLight.visibility, false);
+  assert.equal(
+    resolveZhudaFilmLook({ bounceLight: { visibility: true } }).bounceLight.visibility,
+    true,
+  );
+  assert.ok(
+    validateZhudaFilmScene({
+      schemaVersion: 1,
+      id: 's',
+      camera: { eye: [0, 1, 5], target: [0, 1, 0] },
+      look: { bounceLight: { visibility: 1 } },
+      materials: {},
+      nodes: [],
+    }).includes('scene.look.bounceLight.visibility: true or false'),
+  );
 });

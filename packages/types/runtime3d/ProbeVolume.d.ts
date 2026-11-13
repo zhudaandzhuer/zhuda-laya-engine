@@ -1,4 +1,5 @@
 // Generated from TypeScript source; run npm run types:generate.
+import { type ZhudaCubePicture } from './EnvironmentProbe.js';
 /** Probes one volume may hold. */
 export declare const ZHUDA_PROBE_VOLUME_MAX_PROBES = 512;
 export interface ZhudaProbeVolumeOptions {
@@ -23,6 +24,13 @@ export interface ZhudaProbeVolumeOptions {
         readonly min: readonly number[];
         readonly max: readonly number[];
     }[];
+    /**
+     * Each probe also keeps how far it sees in every direction, and a surface
+     * takes light only from probes that see it (LayaAir's own test). With it
+     * a wall thinner than the probes' spacing no longer lets the light of one
+     * side through to the other. One more depth pass a capture. Default false.
+     */
+    visibility?: boolean;
 }
 export declare function validateZhudaProbeVolume(options: ZhudaProbeVolumeOptions): string[];
 /** About one probe every `spacing` metres, at most 16 per axis and 512 in all. */
@@ -45,8 +53,22 @@ export declare function zhudaIrradianceAtlas(counts: readonly number[], ambientO
  * `mirrored`.
  */
 export declare function zhudaAtlasFace(picture: Float32Array, width: number, n: number, column: number, row: number, mirrored?: boolean): Float32Array;
-/** The distance pictures LayaAir's shader reads: 16 by 16 texels per probe, laid out like the irradiance. */
-export declare function zhudaProbeDistanceAtlas(counts: readonly number[], off: readonly boolean[]): {
+/**
+ * How far a probe sees, as LayaAir's shader reads it: for each of the 16 by
+ * 16 texels of its tile the mean distance and the mean squared distance
+ * toward that texel's direction, two numbers a texel, row 0 first. `cube` is
+ * a world cube picture whose red channel is the distance in metres. The
+ * means are taken over a lobe about the direction (`sharpness`), so that the
+ * edge of a wall is a spread of distances and not a step.
+ */
+export declare function zhudaProbeDistanceTile(cube: ZhudaCubePicture, sharpness?: number): Float32Array;
+/**
+ * The distance pictures LayaAir's shader reads: 16 by 16 texels per probe,
+ * laid out like the irradiance. A probe with a tile (`zhudaProbeDistanceTile`)
+ * is tested for what it sees (z = 1); one without is not (z = 0); one that is
+ * off says everything is right at it, so every point counts as hidden from it.
+ */
+export declare function zhudaProbeDistanceAtlas(counts: readonly number[], off: readonly boolean[], tiles?: readonly (Float32Array | undefined)[]): {
     width: number;
     height: number;
     data: Float32Array;
@@ -63,6 +85,12 @@ export declare class ZhudaProbeVolume {
     private distance;
     private restoreAmbient;
     private disposed;
+    /** What each probe saw last: its nine ambient colours, and how far it sees. */
+    private readonly seen;
+    private readonly reach;
+    /** Where `refresh` goes on next time. */
+    private cursor;
+    private capturing;
     /** The nine ambient colours of each probe after `bake`, for inspection. */
     ambient: readonly (readonly number[])[];
     /** Which probes lie inside a solid and are switched off. */
@@ -78,6 +106,18 @@ export declare class ZhudaProbeVolume {
      * what stands in it has changed. `signal` cancels the read-backs.
      */
     bake(signal?: AbortSignal): Promise<void>;
+    /**
+     * Captures the next `count` probes again (default: one read-back's worth)
+     * and lights the volume with them, going round all of them call after
+     * call: what has moved or changed its light since the last time is taken
+     * up a few probes at a time while a game runs. Needs a `bake` first.
+     * Returns how many probes were captured: 0 while another capture is still
+     * under way. Each probe is six small scene draws.
+     */
+    refresh(count?: number, signal?: AbortSignal): Promise<number>;
+    /** Draws and reads back `probes`, and keeps what each one saw. */
+    private capture;
+    /** Writes what the probes saw into the two pictures LayaAir reads, in place once they exist. */
     private apply;
     dispose(): void;
 }

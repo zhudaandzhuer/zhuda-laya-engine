@@ -24,14 +24,14 @@ Renderer: Apple M4)`. WebGPU: `apple metal-3`.
 | 2. Shadows: a carried lamp casts; eight point lights | Built, drawn on WebGL and WebGPU; more than one spot shadow not built | below |
 | 3. Reflections of what is off screen | Sky fallback and box projection built, drawn on both backends; off-screen things themselves not built | below |
 | 4. Decals, parallax, swept shapes | Decals on a plane and swept shapes built, drawn on both backends; parallax and wrapping decals not built | below |
-| 5. Bounce light that updates and leaks less | Not started | |
+| 5. Bounce light that updates and leaks less | Built, drawn on both backends; still captured at intervals, not real time | below |
 | 6. Clouds; skin, hair and cloth | Not started | |
 
 ## Checks
 
 | Check | Exact command or procedure | Result | Artifact |
 | --- | --- | --- | --- |
-| Build, types, declarations, doctor, tests | `npm run verify` | PASS, 498 of 498 (491 after areas 1 and 2) | `EV/gap34/verify.log` |
+| Build, types, declarations, doctor, tests | `npm run verify` | PASS, 501 of 501 (491 after areas 1 and 2, 498 after 3 and 4) | `EV/gap5/verify.log` |
 | Format, lint | `npm run format:check`, `npm run lint` | PASS | `EV/gap12/` |
 | Camera effects, WebGL | `npm run verify:camera-effects` | PASS | `EV/gap12/webgl/logs/verify-camera-effects.log` |
 | Camera effects, WebGPU | `CAMERA_EFFECTS_RENDERER=webgpu npm run verify:camera-effects` | PASS | `EV/gap12/webgpu/logs/verify-camera-effects.log` |
@@ -41,6 +41,8 @@ Renderer: Apple M4)`. WebGPU: `apple metal-3`.
 | Box projection | `npm run verify:film-environment` (room step), both backends | PASS | `EV/gap34/*/logs/verify-film-environment.log` |
 | Swept kerb | `npm run verify:film-shapes` (sweep step), both backends | PASS | `EV/gap34/*/logs/verify-film-shapes.log` |
 | Decals | `npm run verify:film-decals`, both backends | PASS | `EV/gap34/*/logs/verify-film-decals.log` |
+| Leak through a thin wall | `npm run verify:film-bounce` (leak step), both backends | PASS | `EV/gap5/*/logs/verify-film-bounce.log` |
+| Refresh while running | `npm run verify:camera-effects` (bounce step), both backends | PASS | `EV/gap5/*/logs/verify-camera-effects.log` |
 | Everything else that draws | the other GPU scripts on WebGL and with the WebGPU switches (22 in all); `npm run verify:film-webgpu` (18) | PASS | `EV/gap34/` |
 
 ### 1. Camera
@@ -120,6 +122,27 @@ brightness between neighbours along a row. The same numbers on both backends.
 - Decals projected onto whatever lies under them: **not built** (a forward
   renderer has no surface buffer to project into).
 
+### 5. Bounce light
+
+- `visibility` (`ZhudaProbeVolume`, `bounceLight.visibility`): the capture
+  carries the distance along the view in its alpha; a tile of 16 by 16 texels
+  a probe holds the mean and the mean squared distance toward each direction
+  (`zhudaProbeDistanceTile`), which LayaAir's own shader tests against. A red
+  lamp on one side of a wall 0.3 m thick, nothing else lit, probes 1.5 m
+  apart with one column 10 cm in front of the wall on the lamp's side: the
+  floor behind the wall is 223, 0, 0 without it and 10, 0, 0 with it, on both
+  backends. A cube's face toward a sunlit red wall: 164, 32, 42 with it, as
+  without.
+- `refresh(count)`: a red lamp panel over a white floor, 32 probes. Baked,
+  the floor is 54, 0 (red, green); the lamp turned green, it stays 54, 0;
+  after the first 8 probes still 54, 0 (those stand elsewhere); after a round
+  of all, 0, 61. Resources 41 before and after; a refresh during another
+  returns 0; `refresh` before `bake` is refused; disposed, the floor is dark.
+- The bake was restructured for this (one capture routine, textures written
+  in place): the earlier bounce checks pass unchanged.
+- Real-time global illumination: **not built**. A refresh is six scene draws
+  a probe and one read-back a batch: seconds for a level, not a frame.
+
 ## Lifecycle and failure cases
 
 - Repeated create and destroy: ten rebuilds of a look with all three camera
@@ -148,5 +171,5 @@ Not applicable: no consumer prefab is changed.
   (depth precision); not measured.
 - Phones and mini-game hosts: not drawn.
 
-**In progress.** Areas 1 to 4 are built as far as the table above says and
-verified on desktop WebGL and WebGPU; areas 5 and 6 are not started.
+**In progress.** Areas 1 to 5 are built as far as the table above says and
+verified on desktop WebGL and WebGPU; area 6 is not started.

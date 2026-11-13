@@ -384,6 +384,7 @@ export async function loadZhudaFilmScene(
         max: box.max,
         counts: zhudaProbeCounts(box.min, box.max, bounce.spacing),
         strength: bounce.strength,
+        visibility: bounce.visibility,
         excludedLayers: [29, 30],
         solids: stage.solids,
       });

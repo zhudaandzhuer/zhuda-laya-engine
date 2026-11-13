@@ -587,6 +587,13 @@ export interface ZhudaFilmBounceLight {
     /** Corners of the box the probes fill; by default the scene's objects and lights, widened by 2 m. */
     min?: ZhudaFilmVec3;
     max?: ZhudaFilmVec3;
+    /**
+     * Each probe also keeps how far it sees, and a surface takes light only
+     * from probes that see it: a wall thinner than `spacing` then no longer
+     * lets the light of one side through to the other. One more depth pass a
+     * probe at mount. Default false.
+     */
+    visibility?: boolean;
 }
 export interface ZhudaFilmScene {
     schemaVersion: 1;
@@ -699,7 +706,7 @@ export interface ZhudaResolvedFilmLook {
     autoExposure: Required<ZhudaAutoExposureOptions> | false;
     depthOfField: Required<ZhudaDepthOfFieldOptions> | false;
     motionBlur: Required<ZhudaMotionBlurOptions> | false;
-    bounceLight: (Required<Pick<ZhudaFilmBounceLight, 'spacing' | 'strength'>> & Pick<ZhudaFilmBounceLight, 'min' | 'max'>) | false;
+    bounceLight: (Required<Pick<ZhudaFilmBounceLight, 'spacing' | 'strength' | 'visibility'>> & Pick<ZhudaFilmBounceLight, 'min' | 'max'>) | false;
     environment: Required<ZhudaFilmEnvironment> | false;
     panorama: Required<ZhudaFilmPanorama> | false;
 }

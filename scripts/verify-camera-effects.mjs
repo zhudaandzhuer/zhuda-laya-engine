@@ -3,7 +3,8 @@
 // (`ZhudaSceneLook`), through the browser SDK:
 // - depth of field blurs what is off the focus distance and pulls focus in place;
 // - motion blur smears the frame in which the camera turns and no other;
-// - automatic exposure lifts a dim scene, dims a bright one, and takes time.
+// - automatic exposure lifts a dim scene, dims a bright one, and takes time;
+// - a probe volume refreshed a few probes at a time follows a lamp that changes colour.
 // Desktop GPU evidence only (WebGL, or WebGPU with CAMERA_EFFECTS_RENDERER);
 // not mobile, frame times or art approval.
 import fs from 'node:fs';
@@ -149,4 +150,31 @@ assert.ok(
   `ten times on and off leave no resource behind (${c.resourcesBefore} -> ${c.resourcesAfter})`,
 );
 assert.match(c.invalid, /focusDistanceM/, 'a lens without a focus distance is refused');
-console.log(`PASS camera effects on ${report.renderer} (${report.gpu}): ` + JSON.stringify(c));
+// A probe volume refreshed while it runs.
+const b = report.bounce;
+assert.ok(b.dark[0] < 6 && b.dark[1] < 6, `nothing lights the floor at first (${b.dark})`);
+assert.match(b.refreshBeforeBake, /bake before refresh/);
+assert.ok(
+  b.red[0] > 40 && b.red[0] > b.red[1] * 2,
+  `baked, the floor takes the lamp's red (${b.red})`,
+);
+assert.deepEqual(b.stale, b.red, 'the lamp turned green: the floor keeps the light it had');
+assert.equal(b.first, 8);
+assert.ok(
+  b.partial[1] < b.green[1] - 20,
+  `after the first eight of 32 probes the floor is not green yet (${b.partial})`,
+);
+assert.ok(
+  b.green[1] > 40 && b.green[1] > b.green[0] * 2,
+  `after a round of all of them it is green (${b.green})`,
+);
+assert.equal(b.resourcesRefreshed, b.resourcesBaked, 'a refresh allocates nothing that stays');
+assert.deepEqual(b.overlapping, [8, 0], 'a refresh during another is skipped');
+assert.ok(
+  b.afterDispose[0] < 6 && b.afterDispose[1] < 6,
+  `disposed, the floor is dark again (${b.afterDispose})`,
+);
+console.log(
+  `PASS camera effects on ${report.renderer} (${report.gpu}): ` +
+    JSON.stringify({ camera: c, bounce: b }),
+);

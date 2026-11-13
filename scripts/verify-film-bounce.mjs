@@ -10,6 +10,7 @@ import path from 'node:path';
 import assert from 'node:assert/strict';
 import { PNG } from 'pngjs';
 import { ZhudaFilmHost } from '../packages/mcp-server/film-host.mjs';
+import { projectPixel } from './lib/film-fixtures.mjs';
 
 const out = path.resolve(
   process.env.FILM_BOUNCE_EVIDENCE_DIR || path.join(os.tmpdir(), 'zhuda-film-bounce'),
@@ -111,6 +112,67 @@ try {
   assert.ok(again.data.equals(bounced.data), 'identical frame after other scenes were mounted');
   const flatAgain = await render('flat-again', scene());
   assert.ok(flatAgain.data.equals(flat.data), 'and a scene without it is untouched by it');
+
+  // A leak: nothing is lit but a red lamp on one side of a thin wall. No light
+  // reaches the floor on the other side. The probes are placed so that one
+  // column of them stands 10 cm in front of the wall on the lamp's side: it
+  // sees the lamp, and without the visibility test its red reaches the floor
+  // behind the wall.
+  const BEHIND_EYE = [-3.4, 2.6, 3.6],
+    BEHIND_TARGET = [-2.6, 0, 0.4];
+  const box = { min: [-5.5, 0, -4.5], max: [3.5, 3, 4.5] };
+  const behind = (bounceLight) => ({
+    schemaVersion: 1,
+    id: 'bounce-leak',
+    camera: { eye: BEHIND_EYE, target: BEHIND_TARGET, focalLengthMm: 24 },
+    look: {
+      sky: [0, 0, 0],
+      ambient: [0, 0, 0],
+      sun: { intensity: 0 },
+      shadows: false,
+      grade: { exposure: 1, bloom: 0, ao: 0 },
+      bounceLight: { spacing: 1.5, ...box, ...bounceLight },
+    },
+    materials: {
+      white: { color: [0.85, 0.85, 0.85], roughness: 1 },
+      glow: { color: [0, 0, 0], emission: [6, 0.3, 0.2] },
+    },
+    nodes: [
+      { id: 'floor', type: 'box', size: [30, 0.2, 30], position: [0, -0.2, 0], material: 'white' },
+      { id: 'wall', type: 'box', size: [0.3, 3, 9], position: [-2, 0, 0], material: 'white' },
+      { id: 'lamp', type: 'box', size: [0.6, 1.2, 2], position: [-1.2, 0, 0], material: 'glow' },
+    ],
+  });
+  const facePatch = (img) => {
+    const [x, y] = projectPixel(BEHIND_TARGET, BEHIND_EYE, BEHIND_TARGET, W, H, 24);
+    const sum = [0, 0, 0];
+    for (let dy = -2; dy <= 2; dy++)
+      for (let dx = -2; dx <= 2; dx++) {
+        const i = ((y + dy) * W + x + dx) * 4;
+        for (let c = 0; c < 3; c++) sum[c] += img.data[i + c];
+      }
+    return sum.map((v) => Math.round(v / 25));
+  };
+  const leaking = facePatch(await render('leak', behind({})));
+  const tested = facePatch(await render('leak-tested', behind({ visibility: true })));
+  report.leak = { without: leaking, with: tested };
+  const redness = ([r, g]) => r - g;
+  assert.ok(
+    redness(leaking) > 20,
+    `without the test the lamp's light leaks onto the floor behind the wall (${leaking})`,
+  );
+  assert.ok(
+    redness(tested) < redness(leaking) * 0.35,
+    `with visibility it does not, or far less (${leaking} -> ${tested})`,
+  );
+  // And where light should arrive it still does.
+  const lit = await render('bounced-visibility', scene({ spacing: 1.5, visibility: true }));
+  report.visibility = { facingWall: patch(lit, FACING_WALL), top: patch(lit, TOP) };
+  assert.ok(
+    report.visibility.facingWall[0] > report.flat.facingWall[0] + 30 &&
+      report.visibility.facingWall[0] > report.visibility.facingWall[1] * 1.8,
+    `the face toward the sunlit wall is still red with it (${report.visibility.facingWall})`,
+  );
 
   report.glErrors = host.takeGlErrors();
   assert.deepEqual(report.glErrors, [], 'no WebGL error');

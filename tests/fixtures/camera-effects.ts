@@ -197,6 +197,104 @@ function check() {
   return r;
 }
 
+/**
+ * A probe volume that is refreshed while it runs: a lamp panel over a white
+ * floor changes from red to green, and the floor follows a few probes at a
+ * time.
+ */
+async function bounceCheck() {
+  const scene = Z.Zhuda3D.createScene3D(context.rootScene);
+  const camera = Z.Zhuda3D.createCamera(scene, { position: [0, 3, 6], rotationEuler: [0, 0, 0] });
+  camera.fieldOfView = FOV;
+  camera.transform.lookAt(new Laya.Vector3(0, 0, 0), new Laya.Vector3(0, 1, 0));
+  const look = new Z.ZhudaSceneLook(scene, camera, {
+    sky: [0, 0, 0],
+    ambient: [0, 0, 0],
+    sun: { intensity: 0 },
+    shadows: false,
+    fog: false,
+    grade: { exposure: 1, contrast: 1, saturation: 1, bloom: 0, ao: 0, antialias: 'none' },
+  });
+  const owned: any[] = [];
+  const add = (size: number[], at: number[], material: any) => {
+    const mesh = Z.Zhuda3D.createPrimitiveMesh('box', {
+      width: size[0],
+      height: size[1],
+      depth: size[2],
+    });
+    owned.push(mesh, material);
+    const node = new Laya.MeshSprite3D(mesh);
+    node.meshRenderer.sharedMaterial = material;
+    node.transform.position = new Laya.Vector3(at[0], at[1], at[2]);
+    scene.addChild(node);
+    return node;
+  };
+  add(
+    [12, 0.2, 12],
+    [0, -0.1, 0],
+    Z.createSurfaceMaterial({ type: 'pbr', color: [0.9, 0.9, 0.9, 1], roughness: 1 }),
+  );
+  const lamp = Z.createSurfaceMaterial({
+    type: 'pbr',
+    color: [0, 0, 0, 1],
+    emission: [1, 0.04, 0.04],
+  });
+  add([3, 1.5, 0.2], [0, 1.2, -1.5], lamp);
+  const frame = () => {
+    look.update([0, 3, 6], [0, 0, 0], FOV, W / H);
+    Z.ZhudaEngine.flushRenderFrames(2);
+    return read();
+  };
+  // The floor in front of the panel: the middle of the frame's lower half.
+  const floor = (p: Uint8Array) => {
+    let r = 0,
+      g = 0,
+      n = 0;
+    for (let y = 130; y < 170; y++)
+      for (let x = 200; x < 280; x++) {
+        const i = (y * W + x) * 4;
+        r += p[i];
+        g += p[i + 1];
+        n++;
+      }
+    return [+(r / n).toFixed(1), +(g / n).toFixed(1)];
+  };
+  const r: any = {};
+  r.dark = floor(frame());
+  const volume = new Z.ZhudaProbeVolume(scene, {
+    min: [-4, 0, -4],
+    max: [4, 3, 4],
+    counts: [4, 2, 4],
+    batch: 8,
+  });
+  r.refreshBeforeBake = await volume.refresh().then(
+    () => 'accepted',
+    (error: Error) => error.message,
+  );
+  await volume.bake();
+  r.red = floor(frame());
+  r.resourcesBaked = Z.inspectSceneResources().resources;
+  lamp.emissionColor = new Laya.Color(0.04, 1, 0.04, 1);
+  r.stale = floor(frame());
+  // A quarter of the probes: the floor is on its way.
+  r.first = await volume.refresh(8);
+  r.partial = floor(frame());
+  let rounds = 1;
+  for (; rounds < 4; rounds++) await volume.refresh(8);
+  r.rounds = rounds;
+  r.green = floor(frame());
+  r.resourcesRefreshed = Z.inspectSceneResources().resources;
+  // Two at once: the second is told to wait.
+  const [a, b] = await Promise.all([volume.refresh(8), volume.refresh(8)]);
+  r.overlapping = [a, b];
+  volume.dispose();
+  r.afterDispose = floor(frame());
+  look.dispose();
+  scene.destroy(true);
+  for (const item of owned) item.destroy();
+  return r;
+}
+
 async function main() {
   const renderer = (globalThis as any).ZhudaBundle.renderer === 'webgpu' ? 'webgpu' : 'webgl';
   out.renderer = renderer;
@@ -219,6 +317,7 @@ async function main() {
   }
   context.runtime.start(() => {});
   out.camera = check();
+  out.bounce = await bounceCheck();
   out.rendererErrors = context.renderer.errors.slice(0, 6);
   out.ready = true;
 }

@@ -287,7 +287,7 @@ export function getQualityRoute() {
     metricsFlags: ['underexposed', 'burnt-out', 'crushed', 'low-contrast', 'hard-edges'],
     examples: Object.keys(QUALITY_ROUTE_SCENES),
     notYet: [
-      'Real-time global illumination: bounceLight is captured once at mount, and light can leak through a wall thinner than the probe spacing.',
+      'Real-time global illumination: bounceLight is captured at mount; a game can capture it again a few probes at a time (ZhudaProbeVolume.refresh), which follows a change in seconds, not frames. With bounceLight.visibility a thin wall no longer leaks.',
       "Reflections of things that are off screen: screenReflections shows what the frame holds and, with sky, the sky's colour where a ray finds nothing (it cannot tell a roof off screen from open sky). One planar mirror, one environment probe (environment.box looks it up at the room's walls).",
       'Shadows from more than eight point lights and one spot light (LayaAir 3.4.2 draws one spot shadow map).',
       "Motion blur of things that move by themselves: look.motionBlur smears only what the camera's own movement smears. look.depthOfField is one disc radius per pixel, without the shape of an aperture.",

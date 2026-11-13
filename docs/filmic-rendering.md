@@ -324,3 +324,21 @@ await volume.bake(); // after the level has drawn a frame or two
 - No occlusion between probes beyond the switched-off ones: light can leak
   through a wall thinner than the spacing.
 
+Two things a volume can do since the first version:
+
+- `visibility: true` (and `bounceLight.visibility` in a look): each probe
+  also keeps how far it sees. The capture carries the distance along the
+  view in its alpha (one more depth pass, no second read-back); from it a
+  tile of 16 by 16 texels per probe holds the mean distance and the mean
+  squared distance toward each direction, which is what LayaAir's own
+  shader tests a surface against. A lamp on one side of a wall 0.3 m thick,
+  probes 1.5 m apart, the floor behind the wall: 223 of 255 red without it,
+  10 with it; the face of a cube toward a sunlit red wall is as red as
+  before. Off by default: an existing scene bakes as it did.
+- `await volume.refresh(count)` captures the next `count` probes again and
+  goes round all of them call after call: a lamp that changes colour is
+  taken up by the floor under it after one round. The two pictures LayaAir
+  reads are rewritten in place; nothing is allocated that stays. A call
+  made while another is still reading back returns 0. Six scene draws a
+  probe: a few probes a second, not a few a frame. This is still light
+  captured at intervals, not real-time global illumination.

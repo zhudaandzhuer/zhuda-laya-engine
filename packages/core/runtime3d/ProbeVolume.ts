@@ -26,7 +26,9 @@ import {
   applyZhudaHemisphereAmbient,
   evaluateZhudaAmbient,
   zhudaAmbientSH,
+  zhudaCubeDirection,
   zhudaCubeFromFaces,
+  type ZhudaCubePicture,
 } from './EnvironmentProbe.ts';
 
 /** LayaAir's decoding of a colour channel (the scene's ambient colour is a display value). */
@@ -63,6 +65,13 @@ export interface ZhudaProbeVolumeOptions {
   batch?: number;
   /** World axis-aligned boxes of solid things: probes inside them are switched off. */
   solids?: readonly { readonly min: readonly number[]; readonly max: readonly number[] }[];
+  /**
+   * Each probe also keeps how far it sees in every direction, and a surface
+   * takes light only from probes that see it (LayaAir's own test). With it
+   * a wall thinner than the probes' spacing no longer lets the light of one
+   * side through to the other. One more depth pass a capture. Default false.
+   */
+  visibility?: boolean;
 }
 
 const vec3 = (value: unknown) =>
@@ -92,6 +101,8 @@ export function validateZhudaProbeVolume(options: ZhudaProbeVolumeOptions): stri
     issues.push('strength: use 0..4');
   if (o.batch !== undefined && !(Number.isInteger(o.batch) && o.batch >= 1 && o.batch <= 16))
     issues.push('batch: use a whole number 1..16');
+  if (o.visibility !== undefined && typeof o.visibility !== 'boolean')
+    issues.push('visibility: true or false');
   return issues;
 }
 
@@ -216,28 +227,160 @@ export function zhudaAtlasFace(
  */
 const TILE_OF_FACE = [0, 1, 2, 3, 4, 5];
 
-/** The distance pictures LayaAir's shader reads: 16 by 16 texels per probe, laid out like the irradiance. */
+/**
+ * A texel of a probe's tile as the place inside it that it shows: the border
+ * texels repeat the texel across the opposite edge of the octahedron.
+ */
+function insideTexel(p: number, q: number, texels: number): [number, number] {
+  let ip = p,
+    iq = q;
+  const last = texels - 1;
+  if (q === 0 || q === last) {
+    ip = last - p;
+    iq = q === 0 ? 1 : last - 1;
+  }
+  if (p === 0 || p === last) {
+    iq = last - (q === 0 || q === last ? iq : q);
+    ip = p === 0 ? 1 : last - 1;
+    if (q === 0 || q === last) {
+      // A corner takes the diagonally opposite inner corner.
+      ip = p === 0 ? last - 1 : 1;
+      iq = q === 0 ? last - 1 : 1;
+    }
+  }
+  return [ip, iq];
+}
+
+/**
+ * How far a probe sees, as LayaAir's shader reads it: for each of the 16 by
+ * 16 texels of its tile the mean distance and the mean squared distance
+ * toward that texel's direction, two numbers a texel, row 0 first. `cube` is
+ * a world cube picture whose red channel is the distance in metres. The
+ * means are taken over a lobe about the direction (`sharpness`), so that the
+ * edge of a wall is a spread of distances and not a step.
+ */
+export function zhudaProbeDistanceTile(cube: ZhudaCubePicture, sharpness = 24): Float32Array {
+  // The cube at 8 by 8 a face: enough for a lobe this wide.
+  const m = 8,
+    n = cube.size,
+    block = Math.max(1, Math.floor(n / m)),
+    cells = Math.min(m, n);
+  const dirs: number[][] = [],
+    means: number[] = [],
+    squares: number[] = [],
+    solid: number[] = [];
+  for (let face = 0; face < 6; face++)
+    for (let j = 0; j < cells; j++)
+      for (let i = 0; i < cells; i++) {
+        let sum = 0,
+          sum2 = 0;
+        for (let v = 0; v < block; v++)
+          for (let u = 0; u < block; u++) {
+            const d = cube.data[(face * n * n + (j * block + v) * n + i * block + u) * 4];
+            sum += d;
+            sum2 += d * d;
+          }
+        const s = (2 * (i + 0.5)) / cells - 1,
+          t = (2 * (j + 0.5)) / cells - 1,
+          d = zhudaCubeDirection(face, s, t),
+          length = Math.hypot(d[0], d[1], d[2]);
+        dirs.push([d[0] / length, d[1] / length, d[2] / length]);
+        means.push(sum / (block * block));
+        squares.push(sum2 / (block * block));
+        // A texel near a corner of the cube covers less of the sphere.
+        solid.push(1 / (length * length * length));
+      }
+  const tile = new Float32Array(DISTANCE_TEXELS * DISTANCE_TEXELS * 2);
+  const inner = DISTANCE_TEXELS - 2;
+  for (let q = 0; q < DISTANCE_TEXELS; q++)
+    for (let p = 0; p < DISTANCE_TEXELS; p++) {
+      const [ip, iq] = insideTexel(p, q, DISTANCE_TEXELS);
+      const [dx, dy, dz] = zhudaOctahedralDirection(
+        ((ip - 0.5) / inner) * 2 - 1,
+        ((iq - 0.5) / inner) * 2 - 1,
+      );
+      let weight = 0,
+        mean = 0,
+        square = 0;
+      for (let k = 0; k < dirs.length; k++) {
+        const along = dirs[k][0] * dx + dirs[k][1] * dy + dirs[k][2] * dz;
+        if (along <= 0) continue;
+        const w = Math.pow(along, sharpness) * solid[k];
+        weight += w;
+        mean += w * means[k];
+        square += w * squares[k];
+      }
+      const o = (q * DISTANCE_TEXELS + p) * 2;
+      tile[o] = weight > 0 ? mean / weight : 0;
+      tile[o + 1] = weight > 0 ? square / weight : 0;
+    }
+  return tile;
+}
+
+/**
+ * The distance pictures LayaAir's shader reads: 16 by 16 texels per probe,
+ * laid out like the irradiance. A probe with a tile (`zhudaProbeDistanceTile`)
+ * is tested for what it sees (z = 1); one without is not (z = 0); one that is
+ * off says everything is right at it, so every point counts as hidden from it.
+ */
 export function zhudaProbeDistanceAtlas(
   counts: readonly number[],
   off: readonly boolean[],
+  tiles: readonly (Float32Array | undefined)[] = [],
 ): { width: number; height: number; data: Float32Array } {
   const [cx, cy, cz] = counts;
   const width = cx * cy * DISTANCE_TEXELS,
     height = cz * DISTANCE_TEXELS,
     data = new Float32Array(width * height * 4);
   for (let probe = 0; probe < cx * cy * cz; probe++) {
-    if (!off[probe]) continue;
+    const tile = tiles[probe];
+    if (!off[probe] && !tile) continue;
     const column = probe % (cx * cy),
       row = Math.floor(probe / (cx * cy));
     for (let q = 0; q < DISTANCE_TEXELS; q++)
       for (let p = 0; p < DISTANCE_TEXELS; p++) {
         const o = ((row * DISTANCE_TEXELS + q) * width + column * DISTANCE_TEXELS + p) * 4;
-        data[o] = 0.0001;
+        if (off[probe]) data[o] = 0.0001;
+        else {
+          data[o] = tile![(q * DISTANCE_TEXELS + p) * 2];
+          data[o + 1] = tile![(q * DISTANCE_TEXELS + p) * 2 + 1];
+        }
         data[o + 2] = 1;
         data[o + 3] = 1;
       }
   }
   return { width, height, data };
+}
+
+const CAPTURE_VERTEX =
+  '#define SHADER_NAME ZhudaProbeCaptureVS\nvarying vec2 v_Texcoord0;void main(){gl_Position=vec4(a_PositionTexcoord.xy,0.0,1.0);v_Texcoord0=a_PositionTexcoord.zw;}';
+// The picture as it was drawn, with the distance along the view in alpha.
+const CAPTURE_FRAGMENT = `#define SHADER_NAME ZhudaProbeCaptureFS
+#include "Color.glsl";
+#include "Camera.glsl";
+varying vec2 v_Texcoord0;
+void main(){
+vec4 source=texture2D(u_MainTex,v_Texcoord0);
+#ifdef Gamma_u_MainTex
+source=gammaToLinear(source);
+#endif
+float eye=1.0/(u_ZBufferParams.z*texture2D(u_CameraDepthTexture,v_Texcoord0).x+u_ZBufferParams.w);
+gl_FragColor=vec4(source.rgb,eye);
+}`;
+const captureRegistered = new WeakSet<object>();
+function registerCapture(l: any) {
+  if (captureRegistered.has(l.Shader3D)) return;
+  const shader = l.Shader3D.add('ZhudaProbeCapture');
+  shader.shaderType = l.ShaderFeatureType.PostProcess;
+  const sub = new l.SubShader(
+    { a_PositionTexcoord: [l.VertexMesh.MESH_POSITION0, l.ShaderDataType.Vector4] },
+    { u_MainTex: l.ShaderDataType.Texture2D },
+  );
+  shader.addSubShader(sub);
+  const pass = sub.addShaderPass(CAPTURE_VERTEX, CAPTURE_FRAGMENT);
+  pass.statefirst = true;
+  pass.renderState.cull = l.RenderState.CULL_NONE;
+  captureRegistered.add(l.Shader3D);
 }
 
 export class ZhudaProbeVolume {
@@ -252,6 +395,12 @@ export class ZhudaProbeVolume {
   private distance: any;
   private restoreAmbient: (() => void) | undefined;
   private disposed = false;
+  /** What each probe saw last: its nine ambient colours, and how far it sees. */
+  private readonly seen: (number[] | undefined)[] = [];
+  private readonly reach: (Float32Array | undefined)[] = [];
+  /** Where `refresh` goes on next time. */
+  private cursor = 0;
+  private capturing = false;
   /** The nine ambient colours of each probe after `bake`, for inspection. */
   ambient: readonly (readonly number[])[] = [];
   /** Which probes lie inside a solid and are switched off. */
@@ -298,6 +447,38 @@ export class ZhudaProbeVolume {
    */
   async bake(signal?: AbortSignal): Promise<void> {
     if (this.disposed) throw Error('Disposed probe volume');
+    if (this.capturing) throw Error('Probe volume: a capture is already under way');
+    const live = [...Array(this.probes).keys()].filter((probe) => !this.off[probe]);
+    await this.capture(live, signal);
+    this.cursor = 0;
+    this.apply();
+  }
+
+  /**
+   * Captures the next `count` probes again (default: one read-back's worth)
+   * and lights the volume with them, going round all of them call after
+   * call: what has moved or changed its light since the last time is taken
+   * up a few probes at a time while a game runs. Needs a `bake` first.
+   * Returns how many probes were captured: 0 while another capture is still
+   * under way. Each probe is six small scene draws.
+   */
+  async refresh(count?: number, signal?: AbortSignal): Promise<number> {
+    if (this.disposed) throw Error('Disposed probe volume');
+    if (!this.volume) throw Error('Probe volume: bake before refresh');
+    const live = [...Array(this.probes).keys()].filter((probe) => !this.off[probe]);
+    const wanted = count ?? this.options.batch ?? 8;
+    if (!Number.isInteger(wanted) || wanted < 1) throw Error('Probe volume refresh: use 1 or more');
+    if (this.capturing || !live.length) return 0;
+    const take = Math.min(wanted, live.length);
+    const group = Array.from({ length: take }, (_, i) => live[(this.cursor + i) % live.length]);
+    await this.capture(group, signal);
+    this.cursor = (this.cursor + take) % live.length;
+    this.apply();
+    return take;
+  }
+
+  /** Draws and reads back `probes`, and keeps what each one saw. */
+  private async capture(probes: readonly number[], signal?: AbortSignal): Promise<void> {
     const l = (globalThis as any).Laya;
     if (!l?.VolumetricGI) throw Error('Probe volumes need LayaAir’s VolumetricGI');
     for (const capability of ['TextureFormat_R32G32B32A32', 'Texture_FloatLinearFiltering'])
@@ -305,10 +486,12 @@ export class ZhudaProbeVolume {
         throw Error('Probe volumes require ' + capability);
     const n = this.options.captureSize ?? 32;
     const batch = this.options.batch ?? 8;
+    const visibility = this.options.visibility === true;
     // Six faces per probe in three columns and two rows, the probes one above
     // the other: one read-back for `batch` probes.
     const rows = 2 * batch;
     const flipped = !!l.WebGPURenderDeviceFactory;
+    this.capturing = true;
     const target = new l.RenderTexture(
       3 * n,
       rows * n,
@@ -321,6 +504,21 @@ export class ZhudaProbeVolume {
     camera.name = 'zhuda-probe-volume';
     camera.fieldOfView = 90;
     camera.enableHDR = true;
+    let material: any;
+    if (visibility) {
+      // The distance rides in the capture's alpha: one more depth pass, no second read-back.
+      if (!l.MaterialPostProcessEffect)
+        throw Error('Probe volume visibility needs the Laya post-process module');
+      registerCapture(l);
+      material = new l.Material();
+      material.setShaderName('ZhudaProbeCapture');
+      const effect = new l.MaterialPostProcessEffect();
+      effect.material = material;
+      const post = new l.PostProcess();
+      post.addEffect(effect);
+      camera.postProcess = post;
+      camera.depthTextureMode |= l.DepthTextureMode.Depth;
+    }
     let mask = -1;
     for (const layer of this.options.excludedLayers ?? []) mask &= ~(1 << layer);
     camera.cullingMask = mask;
@@ -330,13 +528,9 @@ export class ZhudaProbeVolume {
       camera.clearColor = main.clearColor;
     }
     this.scene.addChild(camera);
-    const ambient: number[][] = new Array(this.probes);
-    const live = [...Array(this.probes).keys()].filter((probe) => !this.off[probe]);
-    for (let probe = 0; probe < this.probes; probe++)
-      if (this.off[probe]) ambient[probe] = new Array(27).fill(0);
     try {
-      for (let first = 0; first < live.length; first += batch) {
-        const group = live.slice(first, first + batch);
+      for (let first = 0; first < probes.length; first += batch) {
+        const group = probes.slice(first, first + batch);
         group.forEach((probe, slot) => {
           const [px, py, pz] = this.probePosition(probe);
           camera.transform.position = new l.Vector3(px, py, pz);
@@ -375,75 +569,76 @@ export class ZhudaProbeVolume {
             const line = Math.floor(tile / 3) + 2 * slot;
             return zhudaAtlasFace(picture, 3 * n, n, tile % 3, flipped ? rows - 1 - line : line);
           });
-          ambient[probe] = zhudaAmbientSH(zhudaCubeFromFaces(faces, n));
+          this.seen[probe] = zhudaAmbientSH(zhudaCubeFromFaces(faces, n));
+          if (visibility) this.reach[probe] = zhudaProbeDistanceTile(distanceCube(faces, n));
         });
       }
     } finally {
+      this.capturing = false;
       camera.renderTarget = null;
+      camera.postProcess = null;
       camera.destroy(true);
       target.destroy();
+      material?.destroy();
     }
-    this.ambient = ambient;
-    this.apply(
-      l,
-      zhudaIrradianceAtlas(this.counts, (i) => ambient[i], this.options.strength ?? 1),
-    );
   }
 
-  private apply(l: any, atlas: { width: number; height: number; data: Float32Array }): void {
-    const texture = new l.Texture2D(
-      atlas.width,
-      atlas.height,
-      l.TextureFormat.R32G32B32A32,
-      false,
-      false,
-      false,
+  /** Writes what the probes saw into the two pictures LayaAir reads, in place once they exist. */
+  private apply(): void {
+    const l = (globalThis as any).Laya;
+    const dark = new Array(27).fill(0);
+    const ambient = Array.from({ length: this.probes }, (_, probe) =>
+      this.off[probe] ? dark : (this.seen[probe] ?? dark),
     );
-    texture.filterMode = l.FilterMode.Bilinear;
-    texture.wrapModeU = texture.wrapModeV = l.WrapMode.Clamp;
-    texture.setPixelsData(atlas.data, false, false);
-    if (!this.node) {
-      if (this.scene.ambientMode !== l.AmbientMode.SphericalHarmonics || !this.scene.iblTex) {
-        const colour = this.scene.ambientColor,
-          light = [decode(colour.r), decode(colour.g), decode(colour.b)] as [
-            number,
-            number,
-            number,
-          ];
-        this.restoreAmbient = applyZhudaHemisphereAmbient(this.scene, light, light);
-      }
-      // Distance pictures: an empty tile (z = 0) makes LayaAir skip its occlusion
-      // test; a probe that is off says everything is right at it (z = 1), so
-      // every point counts as hidden from it and its weight falls to almost 0.
-      const distance = zhudaProbeDistanceAtlas(this.counts, this.off);
-      this.distance = new l.Texture2D(
-        distance.width,
-        distance.height,
+    this.ambient = ambient;
+    const irradiance = zhudaIrradianceAtlas(
+      this.counts,
+      (i) => ambient[i],
+      this.options.strength ?? 1,
+    );
+    const distance = zhudaProbeDistanceAtlas(this.counts, this.off, this.reach);
+    const picture = (atlas: { width: number; height: number; data: Float32Array }) => {
+      const texture = new l.Texture2D(
+        atlas.width,
+        atlas.height,
         l.TextureFormat.R32G32B32A32,
         false,
         false,
         false,
       );
-      this.distance.filterMode = l.FilterMode.Bilinear;
-      this.distance.wrapModeU = this.distance.wrapModeV = l.WrapMode.Clamp;
-      this.distance.setPixelsData(distance.data, false, false);
-      this.node = new l.Sprite3D('zhuda-probe-volume');
-      this.scene.addChild(this.node);
-      const volume = (this.volume = this.node.addComponent(l.VolumetricGI));
-      volume.boundsMin = new l.Vector3(...this.min);
-      volume.boundsMax = new l.Vector3(...this.max);
-      volume.probeCounts = new l.Vector3(...this.counts);
-      volume.probeStep = new l.Vector3(
-        ...[0, 1, 2].map((i) => (this.max[i] - this.min[i]) / this.counts[i]),
-      );
-      volume.normalBias = 0.1;
-      volume.viewBias = 0.1;
-      volume.distance = this.distance;
+      texture.filterMode = l.FilterMode.Bilinear;
+      texture.wrapModeU = texture.wrapModeV = l.WrapMode.Clamp;
+      texture.setPixelsData(atlas.data, false, false);
+      return texture;
+    };
+    // In place: allocating again would be refused (the texture is immutable).
+    const rewrite = (texture: any, atlas: { width: number; height: number; data: Float32Array }) =>
+      texture.setSubPixelsData(0, 0, atlas.width, atlas.height, atlas.data, 0, false, false, false);
+    if (this.node) {
+      rewrite(this.irradiance, irradiance);
+      rewrite(this.distance, distance);
+      return;
     }
-    const before = this.irradiance;
-    this.volume.irradiance = texture;
-    this.irradiance = texture;
-    before?.destroy();
+    if (this.scene.ambientMode !== l.AmbientMode.SphericalHarmonics || !this.scene.iblTex) {
+      const colour = this.scene.ambientColor,
+        light = [decode(colour.r), decode(colour.g), decode(colour.b)] as [number, number, number];
+      this.restoreAmbient = applyZhudaHemisphereAmbient(this.scene, light, light);
+    }
+    this.irradiance = picture(irradiance);
+    this.distance = picture(distance);
+    this.node = new l.Sprite3D('zhuda-probe-volume');
+    this.scene.addChild(this.node);
+    const volume = (this.volume = this.node.addComponent(l.VolumetricGI));
+    volume.boundsMin = new l.Vector3(...this.min);
+    volume.boundsMax = new l.Vector3(...this.max);
+    volume.probeCounts = new l.Vector3(...this.counts);
+    volume.probeStep = new l.Vector3(
+      ...[0, 1, 2].map((i) => (this.max[i] - this.min[i]) / this.counts[i]),
+    );
+    volume.normalBias = 0.1;
+    volume.viewBias = 0.1;
+    volume.distance = this.distance;
+    volume.irradiance = this.irradiance;
   }
 
   dispose(): void {
@@ -454,4 +649,27 @@ export class ZhudaProbeVolume {
     this.irradiance?.destroy();
     this.distance?.destroy();
   }
+}
+
+/**
+ * The six captured faces as a world cube picture of distances from the
+ * probe: each face's alpha is the distance along its view, which a ray
+ * toward a corner of the face covers a longer way.
+ */
+function distanceCube(faces: readonly Float32Array[], n: number): ZhudaCubePicture {
+  return zhudaCubeFromFaces(
+    faces.map((face) => {
+      const out = new Float32Array(n * n * 4);
+      for (let row = 0; row < n; row++)
+        for (let column = 0; column < n; column++) {
+          const x = ((column + 0.5) / n) * 2 - 1,
+            y = 1 - ((row + 0.5) / n) * 2,
+            i = (row * n + column) * 4;
+          out[i] = face[i + 3] * Math.sqrt(1 + x * x + y * y);
+          out[i + 3] = 1;
+        }
+      return out;
+    }),
+    n,
+  );
 }

@@ -252,9 +252,10 @@ nodes.
 
 ## Not built yet
 
-- Real-time global illumination. `bounceLight` is captured once when the
-  scene is mounted: what moves afterwards keeps the light it had, and light
-  can leak through a wall thinner than the probes' spacing.
+- Real-time global illumination. `bounceLight` is captured when the scene is
+  mounted; a game can capture it again a few probes at a time
+  (`ZhudaProbeVolume.refresh`), which follows a change in seconds, not in
+  frames. With `visibility` a thin wall no longer leaks; without it, it can.
 - Reflections of things that are off screen: `screenReflections` shows what
   the frame holds, and with `sky` the sky's colour where a ray finds nothing
   (it cannot tell a roof off screen from open sky). One planar mirror, one
