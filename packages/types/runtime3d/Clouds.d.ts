@@ -10,7 +10,11 @@
  * It is one layer of one kind of cloud: no weather, no rain, no shadows of
  * clouds on the ground, and nothing mirrors them but what mirrors the screen
  * (`screenReflections`). The noise is computed, not stored: each step along
- * a ray costs about seventy arithmetic lookups, each pixel `steps` of them.
+ * a ray costs about seventy arithmetic lookups. The rays are followed at
+ * half size, each from another offset, and the result is blurred before it
+ * is laid over the picture: a few steps then show neither as layers nor as
+ * a hatching. A hill that stands up into the layer has the clouds beyond it
+ * drawn in front of it.
  */
 export declare const ZHUDA_CLOUD_MAX_STEPS = 64;
 export interface ZhudaCloudsOptions {
@@ -43,7 +47,10 @@ export declare class ZhudaClouds {
     /** The Laya post-process effect; give it to `ZhudaFilmicPipeline` in `sceneEffects`, first. */
     readonly effect: any;
     private options;
-    private readonly material;
+    /** The pass that follows the rays, the one that lays the clouds over the picture, and all four. */
+    private readonly trace;
+    private readonly compose;
+    private readonly passes;
     private seconds;
     private disposed;
     constructor(options?: ZhudaCloudsOptions);

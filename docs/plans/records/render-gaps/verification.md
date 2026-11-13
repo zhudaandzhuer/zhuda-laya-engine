@@ -157,6 +157,14 @@ brightness between neighbours along a row. The same numbers on both backends.
   (`EV/gap6/webgl/zhuda-film-clouds/broken.png`): separate clouds, lit from
   the sun's side, the tower in front; the layer ends in a straight band
   above the horizon where its reach ends.
+- Found by putting them into a game (`films/river-town-prefab`, quality level
+  2, so 12 steps): drawn in one pass at full size the clouds were hatched by
+  the per-pixel step offset, and layered without it. The effect now follows
+  the rays at half size, blurs across and down, and composes at full size;
+  detail finer than a step is left out. The script's numbers after that:
+  full cover 229, 228, 226; half cover 154, 163, 197; without the sun 97;
+  the other assertions unchanged. In the game the clouds are smooth and the
+  roofs in front of them clean (`EV/city2/`).
 - `clearCoat`, `clearCoatRoughness`, `anisotropy` on `createSurfaceMaterial`
   and on a flat film material. A matt ball's brightest value 27 of 255;
   under a clear coat 255 on a spot of 14 pixels. A metal ball's highlight 52

@@ -243,9 +243,14 @@ in the list: a slab of air between two heights in which four octaves of a
 computed noise say how much cloud there is. Each view ray is followed
 through the slab in `steps` steps (32); at each one the cloud is lit by the
 sun through what lies between it and the sun (one more lookup) and by the
-sky's own light. Clouds are drawn where the ray reaches the slab before it
+sky's own light. The rays are followed at half size, each from another
+offset, and the result is blurred across and down before it is laid over
+the picture: with one pass at full size, 12 steps low in the sky showed as
+a hatching with the offset and as layers without it. Detail finer than a
+step is left out. Clouds are laid where the view reaches the slab before it
 reaches anything solid; where nothing was drawn the depth is the far plane
-and they reach `distanceMeters`. `setTime(seconds)` moves them with the
+and they reach `distanceMeters`. A hill that stands up into the layer has
+the clouds beyond it drawn in front of it. `setTime(seconds)` moves them with the
 wind; the same time draws the same sky. A look has it as `clouds` and gives
 it the sun's direction and light and the ambient colour; quality level 2
 halves the steps, level 1 takes a third, level 0 drops it. One layer of one
