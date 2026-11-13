@@ -242,7 +242,7 @@ this repository before claiming visual or performance acceptance.
 
 Keep game rules, assets, prefabs and deployment here. Read \`AGENTS.md\` in
 this folder first: it lists what to read in the installed engine, in order,
-and how to connect the engine's MCP server (\`.mcp.json\`).
+and how to connect the engine's MCP server (\`.mcp.json\`, after \`npm install\`).
 `,
     'AGENTS.md': `# AGENTS.md
 
@@ -265,9 +265,19 @@ any coding agent working here:
    the build, the types and the package boundary, and no pixel: a visual or
    performance claim needs a recorded browser run kept in this repository.
 `,
+    // The installed file by its path, not `npx zhuda-laya-mcp`: before
+    // `npm install` npx would look that name up in the public registry, where
+    // it belongs to no one, and run whatever it found.
     '.mcp.json':
       JSON.stringify(
-        { mcpServers: { 'zhuda-laya-engine': { command: 'npx', args: ['zhuda-laya-mcp'] } } },
+        {
+          mcpServers: {
+            'zhuda-laya-engine': {
+              command: 'node',
+              args: ['node_modules/zhuda-laya-engine/packages/mcp-server/index.mjs'],
+            },
+          },
+        },
         null,
         2,
       ) + '\n',

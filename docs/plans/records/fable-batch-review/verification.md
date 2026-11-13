@@ -7,8 +7,8 @@ Commit: `c964c76` on branch `claude/fable-batch8-review-8b8d41` (local only, not
 Date: 2026-11-13
 
 Decision in one line: **merge with listed fixes**. The WebGPU defects found are
-and the `verify:live-look` regression are fixed on this branch (see "Fixes made
-after the review"); the scaffold's `.mcp.json` remains open.
+the `verify:live-look` regression and the scaffold's `.mcp.json` are fixed on
+this branch (see "Fixes made after the review").
 
 ## Environment
 
@@ -244,6 +244,19 @@ WebGL probe). Limit: a second camera in the same page that uses HDR with the
 other sample kind loses its pooled target at that moment and gets a new one on
 its next frame; not exercised by a script.
 
+### The scaffold's `.mcp.json` (third round)
+
+`packages/compiler/zhuda-init.mjs` now writes `command: "node"` with
+`node_modules/zhuda-laya-engine/packages/mcp-server/index.mjs` in place of
+`npx zhuda-laya-mcp`: nothing is looked up in a registry. Checked: a project
+scaffolded into a scratch folder, the engine linked into its `node_modules`,
+`node <that path> --tool get_quality_route` run from the project folder
+returns the route; `npm test` 485 of 485, `lint`, `format:check` PASS. The
+entry is relative to the project folder: a client that starts the server from
+another working directory will not find it. `docs/film-scenes.md` still shows
+`npx zhuda-laya-mcp` in three examples; those lines are in `d61f6db` already
+and were left as they are.
+
 ## Lifecycle and failure cases
 
 - Repeated create and destroy: `verify-film-remount` passes on both backends;
@@ -271,12 +284,14 @@ Defects to fix before merging:
 4. As delivered `format:check` fails on 24 files (fixed in `c964c76`).
 5. (Fixed on this branch.) The new nine film scripts are not in
    `verify:film-webgpu`, so nothing would catch 1 and 2.
-6. `.mcp.json` in the scaffold: use a form that cannot reach the registry.
+6. (Fixed on this branch, see above.) `.mcp.json` in the scaffold: use a form
+   that cannot reach the registry.
 
 Unverified: `git apply --check` (no patch text); Node 24; real-time frame
 times and every per-feature cost beyond the coarse table; phones, Windows,
 mini-game hosts; the river-town scene drawn with the patched engine; the
 rainy-night scene; a picture-by-picture comparison with 1.18.0.
 
-**In progress.** After the fixes both backends pass every script. Item 6
-(the scaffold's `.mcp.json`) remains. Nothing was pushed.
+**In progress.** After the fixes both backends pass every script and the six
+items above are closed on this branch. What stays unverified is listed above.
+Nothing was pushed.
