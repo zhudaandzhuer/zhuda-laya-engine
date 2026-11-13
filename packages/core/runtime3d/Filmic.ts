@@ -76,6 +76,39 @@ export interface PrefilteredEnvironmentSpec {
   levels: { size: number; offset: number; elements: number }[];
   ambientSH: number[];
 }
+/**
+ * Switches a camera's multisampling and frees the HDR target of the other
+ * kind. LayaAir hands a camera its target from a pool every frame and puts it
+ * back afterwards; a target with the other sample count is never asked for
+ * again and would stay in the pool, a full frame of memory, for as long as
+ * the page lives. Between frames that target is in the pool: it is destroyed
+ * here. Only HDR targets with a depth buffer are touched (what a camera with
+ * `enableHDR` draws into); another camera that still wants one gets a new one.
+ */
+function setCameraMultisampling(l: any, camera: any, msaa: boolean) {
+  if (camera.msaa === msaa) return;
+  camera.msaa = msaa;
+  const type = l.RenderTexture;
+  const pool: any[] | undefined = type?._pool;
+  if (!Array.isArray(pool)) return;
+  for (let i = pool.length - 1; i >= 0; i--) {
+    const target = pool[i];
+    if (
+      !target ||
+      target.destroyed ||
+      target.isMRT ||
+      target.colorFormat !== l.RenderTargetFormat.R16G16B16A16 ||
+      target.depthStencilFormat === l.RenderTargetFormat.None ||
+      target.multiSamples > 1 === msaa
+    )
+      continue;
+    pool.splice(i, 1);
+    if (typeof type._poolMemory === 'number')
+      type._poolMemory -= (target._renderTarget?.gpuMemory ?? 0) / 1024 / 1024;
+    target._inPool = false;
+    target.destroy();
+  }
+}
 function requireCapabilities(l: any, names: string[]) {
   for (const name of names)
     if (!l.LayaGL.renderEngine.getCapable(l.RenderCapable[name]))
@@ -281,7 +314,7 @@ export class ZhudaFilmicPipeline {
     for (const effect of this.finishEffects) post.addEffect(effect);
     camera.enableHDR = true;
     camera.postProcess = post;
-    if (options.msaa !== undefined) camera.msaa = options.msaa;
+    if (options.msaa !== undefined) setCameraMultisampling(l, camera, !!options.msaa);
     if (options.temporalAA) {
       this.ownsTAA = true;
       camera.taa = true;
@@ -421,7 +454,7 @@ export class ZhudaFilmicPipeline {
   /** Switches multisampling of the camera's HDR target on or off, in place. */
   setAntialias(msaa: boolean) {
     if (this.disposed) throw Error('Disposed filmic pipeline');
-    if (this.camera.msaa !== !!msaa) this.camera.msaa = !!msaa;
+    setCameraMultisampling((globalThis as any).Laya, this.camera, !!msaa);
   }
   /** Call on camera cuts, teleports and timeline seeks, not on ordinary movement. */
   resetHistory() {
@@ -435,7 +468,7 @@ export class ZhudaFilmicPipeline {
     if (this.camera.postProcess === this.post) {
       this.camera.postProcess = this.previous;
       this.camera.enableHDR = this.previousHDR;
-      this.camera.msaa = this.previousMSAA;
+      setCameraMultisampling((globalThis as any).Laya, this.camera, !!this.previousMSAA);
       this.camera.depthTextureMode = this.previousDepth;
     }
     this.post.clearEffect();

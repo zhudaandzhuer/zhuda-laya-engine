@@ -7,8 +7,8 @@ Commit: `c964c76` on branch `claude/fable-batch8-review-8b8d41` (local only, not
 Date: 2026-11-13
 
 Decision in one line: **merge with listed fixes**. The WebGPU defects found are
-fixed on this branch (see "Fixes made after the review"); the `verify:live-look`
-regression and the scaffold's `.mcp.json` remain open.
+and the `verify:live-look` regression are fixed on this branch (see "Fixes made
+after the review"); the scaffold's `.mcp.json` remains open.
 
 ## Environment
 
@@ -208,7 +208,7 @@ Results after the fixes (logs `EV/after/`):
 | --- | --- |
 | `npm run verify` | PASS, 485 of 485 |
 | `npm run format:check`, `npm run lint` | PASS |
-| The 20 GPU scripts on WebGL | 19 PASS; `verify-live-look` FAIL as before (not a WebGPU defect, not changed) |
+| The 20 GPU scripts on WebGL | 19 PASS; `verify-live-look` FAIL as before (fixed in the second round, below) |
 | The 20 GPU scripts with the WebGPU switches | 19 PASS; `verify-live-look` FAIL as before |
 | `npm run verify:film-webgpu` | PASS: 17 verifications |
 | 1920 by 1080, ten variants, three passes, WebGPU | no validation error in any (`EV/after/perf-webgpu.log`) |
@@ -220,6 +220,29 @@ adapter that allows 16. Point shadows with several lights where only a middle
 one casts are covered by code (the other lights' tiles are written as "casts
 nothing" first) but by no script. A position beyond 16 384 m from the origin
 cannot be matched (half floats).
+
+### `verify:live-look` (second round of fixes)
+
+The two resources left behind were listed in the page: a pooled 1024 by 1024
+shadow target (the one the gate allows) and a pooled 480 by 300 HDR target
+with a depth buffer and one sample. LayaAir hands a camera its target from a
+pool each frame; after multisampling is switched, the target of the other kind
+is never asked for again and stays pooled: a full frame of memory, also at
+the low levels, where the multisampled one stayed behind.
+
+Change: `packages/core/runtime3d/Filmic.ts`, `setCameraMultisampling`: where
+the pipeline switches the camera's multisampling (construction, `setAntialias`,
+`dispose`) the pooled HDR targets with a depth buffer of the other sample kind
+are taken out of the pool and destroyed. The gate and the default are
+unchanged.
+
+Results (logs `EV/after2/`): `npm run verify` PASS (485 of 485);
+`format:check`, `lint` PASS; the 20 GPU scripts **20 of 20 PASS on WebGL and
+20 of 20 with the WebGPU switches**, `verify-live-look` included
+(`report.renderer` is `webgpu` in that run; the adapter line it prints is a
+WebGL probe). Limit: a second camera in the same page that uses HDR with the
+other sample kind loses its pooled target at that moment and gets a new one on
+its next frame; not exercised by a script.
 
 ## Lifecycle and failure cases
 
@@ -242,7 +265,7 @@ Defects to fix before merging:
 2. (Fixed on this branch, see above.) WebGPU bounce light does not tint
    (`verify-film-bounce` fails) and at 1920 by 1080 exceeds 16 sampled
    textures in a stage, leaving an invalid pipeline.
-3. `verify:live-look` fails on both backends because graded looks multisample
+3. (Fixed on this branch, see above.) `verify:live-look` fails on both backends because graded looks multisample
    by default (`FilmScene.ts:1952`): decide between pooling, the default and
    the gate; the gate was not loosened here.
 4. As delivered `format:check` fails on 24 files (fixed in `c964c76`).
@@ -255,5 +278,5 @@ times and every per-feature cost beyond the coarse table; phones, Windows,
 mini-game hosts; the river-town scene drawn with the patched engine; the
 rainy-night scene; a picture-by-picture comparison with 1.18.0.
 
-**In progress.** After the fixes both backends pass everything except
-`verify:live-look` (item 3, open). Items 3 and 6 remain. Nothing was pushed.
+**In progress.** After the fixes both backends pass every script. Item 6
+(the scaffold's `.mcp.json`) remains. Nothing was pushed.
