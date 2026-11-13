@@ -2,6 +2,25 @@ import { prepareLaya342ManualDraw } from './Laya342Adapters.ts';
 import { awaitAbortable } from './AsyncOperation.ts';
 import { ZhudaPhysicalCameraRig } from './PhysicalCamera.ts';
 import type { ZhudaRuntimeSession } from './Runtime.ts';
+import { readLaya342FloatTarget } from './WebGPU342Adapters.ts';
+
+/**
+ * What a capture needs from an HDR chain to average its samples in
+ * scene-linear light: the samples are drawn without the display stage (tone
+ * mapping, lens finish), and their average is then drawn through the display
+ * stage once. `ZhudaFilmicPipeline.linearChain()` is one.
+ */
+export interface CinematicLinearChain {
+  /** Samples follow: the frame comes out scene-linear. */
+  beginSamples(): void;
+  /**
+   * The resolve follows: `average` (RGBA float, scene-linear, rows from the
+   * top of the picture) replaces the scene and only the display stage runs.
+   */
+  beginResolve(average: Float32Array, width: number, height: number): void;
+  /** Puts the chain back as it was. Safe to call again. */
+  end(): void;
+}
 
 export interface CinematicCaptureOptions {
   width: number;
@@ -25,6 +44,14 @@ export interface CinematicFrameRequest {
   prepare?: () => void;
   aperture?: boolean;
   jitter?: boolean;
+  /**
+   * With more than one sample: average them in scene-linear light, before
+   * tone mapping, through this chain. Without it the samples are averaged
+   * after tone mapping, which dims every highlight that depth of field or
+   * motion spreads out (a lamp out of focus turns grey instead of staying
+   * bright).
+   */
+  linear?: CinematicLinearChain;
 }
 export interface CinematicFramePixels {
   width: number;
@@ -33,7 +60,11 @@ export interface CinematicFramePixels {
   time: number;
   samples: number;
   colorSpace: 'srgb';
-  accumulation: 'display-linear';
+  /**
+   * Where the samples were averaged: `scene-linear` before tone mapping (the
+   * request carried a `linear` chain), else `display-linear` after it.
+   */
+  accumulation: 'display-linear' | 'scene-linear';
   alpha: 'opaque';
   /** Top-left origin. Caller owns returned bytes. */
   rgba: Uint8Array;
@@ -66,13 +97,16 @@ const srgb = (x: number) =>
   );
 
 /** Owns one offscreen target and a native scene freeze. The runtime must be paused.
- * Aperture/shutter accumulation occurs after tone mapping, in display-linear RGB.
- * It is not HDR accumulation, path tracing or real-time frame-rate evidence. */
+ * Aperture/shutter samples are averaged in scene-linear light when the request
+ * carries the HDR chain's `linear` handle, else after tone mapping, in
+ * display-linear RGB. It is not path tracing or real-time frame-rate evidence. */
 export class ZhudaCinematicCapture {
   private readonly scene: CaptureScene;
   private readonly lens: ZhudaPhysicalCameraRig;
   private readonly runtime: ZhudaRuntimeSession;
   private readonly target: Laya.RenderTexture;
+  /** Half-float target of the scene-linear samples; made when first needed. */
+  private linearTarget: Laya.RenderTexture | undefined;
   private readonly width: number;
   private readonly height: number;
   private readonly timeoutMs: number;
@@ -169,14 +203,62 @@ export class ZhudaCinematicCapture {
       controller.abort(request.signal?.reason ?? new DOMException('Cancelled', 'AbortError'));
     request.signal?.addEventListener('abort', abort, { once: true });
     const timer = setTimeout(
-      () => controller.abort(new DOMException('Cinematic capture timed out', 'TimeoutError')),
+      () =>
+        controller.abort(
+          new DOMException(
+            `Cinematic capture timed out after ${this.timeoutMs} ms; pass a larger timeoutMs for a slow GPU, a large frame or many samples`,
+            'TimeoutError',
+          ),
+        ),
       this.timeoutMs,
     );
     const l = (globalThis as unknown as { Laya: typeof Laya }).Laya;
     const pixels = new Uint8Array(this.width * this.height * 4),
       sum = new Float32Array(this.width * this.height * 3);
     const time = request.index / request.fps;
+    const chain = count > 1 ? request.linear : undefined;
+    const average = chain ? new Float32Array(this.width * this.height * 4) : undefined;
+    const draw = (target: Laya.RenderTexture, prepare: boolean) => {
+      // Native skin/culling caches key off this render marker, not u_Time.
+      // Advancing it invalidates draw caches without advancing simulation.
+      l.Stat.loopCount++;
+      l.LayaGL.renderEngine.startFrame();
+      const previousTarget = this.lens.camera.renderTarget;
+      try {
+        if (prepare) request.prepare?.();
+        prepareLaya342ManualDraw(this.scene);
+        l.Camera.drawRenderTextureByScene(this.lens.camera, this.scene, target);
+      } finally {
+        this.lens.camera.renderTarget = previousTarget;
+        this.scene.recaculateCullCamera();
+        l.LayaGL.renderEngine.endFrame();
+      }
+    };
+    const read = async <T>(readback: Promise<T>): Promise<T> => {
+      this.reading = true;
+      const drained = () => {
+        this.reading = false;
+        this.releaseTarget();
+      };
+      void readback.then(drained, drained);
+      const result = await awaitAbortable(readback, controller.signal);
+      this.check();
+      return result;
+    };
     try {
+      if (chain) {
+        this.linearTarget ??= new l.RenderTexture(
+          this.width,
+          this.height,
+          l.RenderTargetFormat.R16G16B16A16,
+          l.RenderTargetFormat.DEPTH_16,
+          false,
+          1,
+          false,
+          false,
+        );
+        chain.beginSamples();
+      }
       for (let i = 0; i < count; i++) {
         this.check();
         if (controller.signal.aborted) throw controller.signal.reason;
@@ -205,36 +287,27 @@ export class ZhudaCinematicCapture {
           this.height,
         );
         try {
-          // Native skin/culling caches key off this render marker, not u_Time.
-          // Advancing it invalidates draw caches without advancing simulation.
-          l.Stat.loopCount++;
-          l.LayaGL.renderEngine.startFrame();
-          const previousTarget = this.lens.camera.renderTarget;
-          try {
-            request.prepare?.();
-            prepareLaya342ManualDraw(this.scene);
-            l.Camera.drawRenderTextureByScene(this.lens.camera, this.scene, this.target);
-          } finally {
-            this.lens.camera.renderTarget = previousTarget;
-            this.scene.recaculateCullCamera();
-            l.LayaGL.renderEngine.endFrame();
-          }
+          draw(average ? this.linearTarget! : this.target, true);
         } finally {
           restore();
         }
-        const readback = this.target.getDataAsync(0, 0, this.width, this.height, pixels);
-        this.reading = true;
-        const drained = () => {
-          this.reading = false;
-          this.releaseTarget();
-        };
-        void readback.then(drained, drained);
-        await awaitAbortable(readback, controller.signal);
-        this.check();
-        for (let p = 0, q = 0; p < pixels.length; p += 4, q += 3) {
-          sum[q] += linear[pixels[p]];
-          sum[q + 1] += linear[pixels[p + 1]];
-          sum[q + 2] += linear[pixels[p + 2]];
+        if (average) {
+          const floats = await read(
+            readLaya342FloatTarget(l, this.linearTarget, this.width, this.height),
+          );
+          // A half float holds up to 65504; anything else (NaN, negative) adds no light.
+          for (let p = 0; p < floats.length; p += 4)
+            for (let c = 0; c < 3; c++) {
+              const value = floats[p + c];
+              if (value > 0) average[p + c] += value < 65504 ? value : 65504;
+            }
+        } else {
+          await read(this.target.getDataAsync(0, 0, this.width, this.height, pixels));
+          for (let p = 0, q = 0; p < pixels.length; p += 4, q += 3) {
+            sum[q] += linear[pixels[p]];
+            sum[q + 1] += linear[pixels[p + 1]];
+            sum[q + 2] += linear[pixels[p + 2]];
+          }
         }
         // Let cancellation/deadline events run even with synchronous WebGL reads.
         // This yields IO work only; absolute scene time remains unchanged.
@@ -243,6 +316,37 @@ export class ZhudaCinematicCapture {
         if (controller.signal.aborted) throw controller.signal.reason;
       }
       const output = new Uint8Array(pixels.length);
+      if (chain && average) {
+        for (let p = 0; p < average.length; p += 4) {
+          average[p] /= count;
+          average[p + 1] /= count;
+          average[p + 2] /= count;
+          average[p + 3] = 1;
+        }
+        // One more draw: the average replaces the scene and passes through tone
+        // mapping and lens finish exactly as a single frame does.
+        chain.beginResolve(average, this.width, this.height);
+        const restore = this.lens.sample(0, 0, 0, 0, this.width, this.height);
+        try {
+          draw(this.target, false);
+        } finally {
+          restore();
+        }
+        await read(this.target.getDataAsync(0, 0, this.width, this.height, pixels));
+        output.set(pixels);
+        for (let p = 3; p < output.length; p += 4) output[p] = 255;
+        return {
+          width: this.width,
+          height: this.height,
+          index: request.index,
+          time,
+          samples: count,
+          colorSpace: 'srgb',
+          accumulation: 'scene-linear',
+          alpha: 'opaque',
+          rgba: output,
+        };
+      }
       // Native camera target rendering already compensates target Y orientation.
       for (let y = 0; y < this.height; y++)
         for (let x = 0; x < this.width; x++) {
@@ -265,6 +369,7 @@ export class ZhudaCinematicCapture {
         rgba: output,
       };
     } finally {
+      chain?.end();
       clearTimeout(timer);
       request.signal?.removeEventListener('abort', abort);
       this.busy = false;
@@ -277,6 +382,7 @@ export class ZhudaCinematicCapture {
       this.released = true;
       locked.delete(this.scene);
       this.target.destroy();
+      this.linearTarget?.destroy();
     }
   }
   dispose() {

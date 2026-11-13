@@ -5,18 +5,21 @@
  * nothing here allocates a GPU resource except the small hemisphere ambient,
  * which is replaced only when its colours change.
  */
+import { zhudaDecodeColor } from './ColorValues.ts';
 import {
   applyZhudaHemisphereAmbient,
   type ZhudaHemisphereAmbientHandle,
 } from '../runtime3d/EnvironmentProbe.ts';
 import type { ZhudaFilmicPipeline } from '../runtime3d/Filmic.ts';
 import type { ZhudaLightFog } from '../runtime3d/LightFog.ts';
+import type { ZhudaScreenReflections } from '../runtime3d/ScreenReflections.ts';
 import type { ZhudaLensFinish } from '../runtime3d/LensFinish.ts';
 import type { ZhudaFilmVec3, ZhudaResolvedFilmLook } from './FilmScene.ts';
 
 /** What `applyResolvedFilmLook` built, kept so a later look can adjust it in place. */
 export interface ZhudaAppliedLookParts {
   lightFog?: ZhudaLightFog;
+  reflections?: ZhudaScreenReflections;
   sky?: any;
   film?: ZhudaFilmicPipeline;
   finish?: ZhudaLensFinish;
@@ -31,11 +34,15 @@ export function zhudaTowardSun(l: any, sun: any): [number, number, number] {
 }
 
 /** Linear sun colour times intensity, as water and light shafts take it. */
-export const zhudaSunRadiance = (look: ZhudaResolvedFilmLook): [number, number, number] => [
-  look.sun.color[0] * look.sun.intensity,
-  look.sun.color[1] * look.sun.intensity,
-  look.sun.color[2] * look.sun.intensity,
-];
+/** The sun's light for shaders of this engine (beams in the fog, the glint on water). */
+export const zhudaSunRadiance = (look: ZhudaResolvedFilmLook): [number, number, number] => {
+  const colour = zhudaDecodeColor(look.sun.color);
+  return [
+    colour[0] * look.sun.intensity,
+    colour[1] * look.sun.intensity,
+    colour[2] * look.sun.intensity,
+  ];
+};
 
 const same = (a: readonly number[] | false, b: readonly number[] | false) =>
   a === b || (!!a && !!b && a.length === b.length && a.every((v, i) => v === b[i]));
@@ -51,15 +58,19 @@ export class ZhudaHemisphereAmbientSlot {
   set(ambient: ZhudaFilmVec3, ground: ZhudaFilmVec3 | false): void {
     if (!ground) return this.release();
     if (this.colours && same(this.colours[0], ambient) && same(this.colours[1], ground)) return;
+    // Display values, like the flat ambient they replace: decoded here, since
+    // the hemisphere is made by this engine and not handed to LayaAir as a colour.
+    const sky = zhudaDecodeColor(ambient),
+      below = zhudaDecodeColor(ground);
     if (this.restore) {
-      this.restore.update(ambient, ground);
+      this.restore.update(sky, below);
       this.colours = [[...ambient], [...ground]];
       return;
     }
     // Release first so the new one remembers the scene's own environment, not
     // a texture that is about to be destroyed. Both run before the next draw.
     this.release();
-    this.restore = applyZhudaHemisphereAmbient(this.scene3D, ambient, ground);
+    this.restore = applyZhudaHemisphereAmbient(this.scene3D, sky, below);
     this.colours = [[...ambient], [...ground]];
   }
   release(): void {
@@ -110,7 +121,7 @@ export function updateZhudaLookInPlace(
     scene3D.fogStart = look.fog.start;
     scene3D.fogEnd = look.fog.end;
   }
-  if (parts.film && look.grade)
+  if (parts.film && look.grade) {
     parts.film.setGrade({
       exposure: look.grade.exposure,
       contrast: look.grade.contrast,
@@ -119,16 +130,21 @@ export function updateZhudaLookInPlace(
       aoIntensity: look.grade.ao,
       aoRadius: look.grade.aoRadius,
     });
+    parts.film.setAntialias(look.grade.antialias === 'msaa');
+  }
   if (parts.finish && look.grade)
     parts.finish.setFinish({
       grain: look.grade.grain,
       vignette: look.grade.vignette,
       fringe: look.grade.fringe,
     });
+  if (parts.reflections && look.screenReflections)
+    parts.reflections.setReflections(look.screenReflections);
   if (parts.lightFog && look.lightFog) {
     const { shafts, ...plain } = look.lightFog;
     parts.lightFog.setFog({
       ...plain,
+      color: zhudaDecodeColor(plain.color),
       ...(shafts ? { shafts: { strength: shafts.strength, anisotropy: shafts.anisotropy } } : {}),
     });
   }

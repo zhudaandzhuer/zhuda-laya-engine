@@ -183,11 +183,18 @@ Projection, automatic aspect mode and any active lens offset restore on disposal
 `physicalCameraMetrics` exposes vertical FOV, aperture radius, exposure duration,
 EV100 and multiplier. `referenceEV100` calibrates the authored scene; ISO/f-stop
 are not a measured photometric light meter. Exposure uses the existing Filmic
-pipeline's gain. Aperture/shutter accumulation happens **after tone mapping**:
-sRGB samples are decoded to display-linear values, averaged and encoded back.
-This is SDR supersampling; it is not scene-linear HDR, ACEScg, EXR, path tracing
-or a real-time 4K performance claim. High-intensity highlight energy clipped by
-tone mapping cannot be recovered by adding more samples.
+pipeline's gain. Aperture/shutter samples are averaged in one of two places.
+With `linear: pipeline.linearChain()` in the frame request (film scenes with a
+grade pass it), every sample is drawn scene-linear into a half-float target
+without tone mapping and lens finish, the samples are averaged, and the average
+is drawn through tone mapping and lens finish once: an out-of-focus lamp or a
+moving highlight keeps its light. Without it, the samples are averaged **after
+tone mapping**: sRGB samples are decoded to display-linear values, averaged and
+encoded back, which dims every highlight that depth of field or motion spreads
+out. `accumulation` in the result says which (`scene-linear` or
+`display-linear`). Either way the output is SDR; it is not ACEScg, EXR, path
+tracing or a real-time 4K performance claim. In the display-linear path, highlight
+energy clipped by tone mapping cannot be recovered by adding more samples.
 
 Abort/deadline/dispose rejects the caller promptly. Native GPU readback cannot
 always cancel: its target and scene admission remain retained until the pending

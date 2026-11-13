@@ -25,12 +25,23 @@ export function packMetallicRoughness(rgba: Uint8Array) {
   }
   return out;
 }
+/** Anisotropic filtering mipmapped surface textures get unless told otherwise. */
+export const ZHUDA_DEFAULT_ANISO = 8;
+
 export function createSurfaceTexture(
   width: number,
   height: number,
   pixels: Uint8Array,
   role: 'color' | 'emission' | 'normal' | 'data',
-  options: { mipmap?: boolean } = {},
+  options: {
+    mipmap?: boolean;
+    /**
+     * Anisotropic filtering, 1..16 (1 is off). Default: `ZHUDA_DEFAULT_ANISO`
+     * with mipmaps, 1 without. A floor, a road or a wall seen along its length
+     * loses its detail a few metres away without it.
+     */
+    anisoLevel?: number;
+  } = {},
 ) {
   if (
     !Number.isInteger(width) ||
@@ -40,6 +51,9 @@ export function createSurfaceTexture(
     pixels.length !== width * height * 4
   )
     throw Error('Invalid texture payload');
+  const anisoLevel = options.anisoLevel ?? (options.mipmap === true ? ZHUDA_DEFAULT_ANISO : 1);
+  if (!Number.isInteger(anisoLevel) || anisoLevel < 1 || anisoLevel > 16)
+    throw Error('anisoLevel: use a whole number 1..16');
   const l = (globalThis as any).Laya,
     t = new l.Texture2D(
       width,
@@ -50,7 +64,50 @@ export function createSurfaceTexture(
       role === 'color' || role === 'emission',
     );
   t.setPixelsData(pixels, false, false);
+  if (anisoLevel > 1) t.anisoLevel = anisoLevel;
   return t;
+}
+
+/**
+ * Gives the mipmapped textures of every material below `root` anisotropic
+ * filtering (see `createSurfaceTexture`). Textures that already ask for as
+ * much or more, and render targets, are left alone. Returns how many textures
+ * changed. The model library applies it to each model once, when it is loaded.
+ */
+export function applyZhudaAnisotropy(root: any, level = ZHUDA_DEFAULT_ANISO): number {
+  if (!Number.isInteger(level) || level < 1 || level > 16)
+    throw Error('anisoLevel: use a whole number 1..16');
+  const l = (globalThis as any).Laya;
+  if (!l?.BaseTexture || level === 1) return 0;
+  const seen = new Set<any>();
+  let changed = 0;
+  const visit = (node: any) => {
+    const renderer =
+      node.meshRenderer ??
+      node.skinnedMeshRenderer ??
+      (l.MeshRenderer ? node.getComponent?.(l.MeshRenderer) : undefined);
+    for (const material of renderer?.sharedMaterials ?? []) {
+      const values = material?.shaderData?.getData?.();
+      if (!values || seen.has(material)) continue;
+      seen.add(material);
+      for (const value of Object.values(values) as any[]) {
+        if (
+          !(value instanceof l.BaseTexture) ||
+          (l.RenderTexture && value instanceof l.RenderTexture) ||
+          seen.has(value)
+        )
+          continue;
+        seen.add(value);
+        if (value.mipmapCount > 1 && !(value.anisoLevel >= level)) {
+          value.anisoLevel = level;
+          changed++;
+        }
+      }
+    }
+    for (let i = 0; i < (node.numChildren || 0); i++) visit(node.getChildAt(i));
+  };
+  visit(root);
+  return changed;
 }
 export function createSurfaceMaterial(s: SurfaceMaterialSpec) {
   const l = (globalThis as any).Laya;

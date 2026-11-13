@@ -112,3 +112,11 @@ Use the [model showcase contract](model-showcase.md) for glTF compatibility repo
 Morph repairs, typed inspection and same-instance Raw/Gameplay/Cinematic modes.
 Required unsupported extensions reject; implemented handlers are not a visual
 conformance certificate. Browser HTML needs the `3d-gltf` profile.
+
+## Making a 3D scene look good
+
+Follow the [quality route](quality-route.md): the steps, in order, from an
+empty scene to a frame that reads as lit, grounded and deep, with the check
+for each step and the list of what is not built yet. The MCP tool
+`get_quality_route` returns the same route as data; the `film_*` tools return
+`advice` for a scene and `metrics` for a preview.

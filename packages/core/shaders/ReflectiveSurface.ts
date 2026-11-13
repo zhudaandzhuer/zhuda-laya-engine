@@ -29,6 +29,13 @@ export interface ZhudaReflectiveSurfaceOptions {
   resolution?: number;
   /** Laya layer for the surface; the mirrored camera does not draw this layer (default 30). */
   layer?: number;
+  /**
+   * Draw only what lies above the mirror in the mirrored view (default true).
+   * The ground a wet surface lies on is below the mirror and would otherwise
+   * cover the whole reflection. With `false` the view is not cut: keep such
+   * geometry out of the mirror yourself (its layer, or `hides` in a film scene).
+   */
+  clipBelowPlane?: boolean;
 }
 
 const SURFACE = `float zhudaWetHash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
@@ -105,6 +112,8 @@ export function validateZhudaReflectiveSurface(options: ZhudaReflectiveSurfaceOp
     issues.push('resolution: use 256, 512, 1024 or 2048');
   if (o.layer !== undefined && !(Number.isInteger(o.layer) && inRange(o.layer, 0, 30)))
     issues.push('layer: use a Laya layer 0..30');
+  if (o.clipBelowPlane !== undefined && typeof o.clipBelowPlane !== 'boolean')
+    issues.push('clipBelowPlane: use true or false');
   return issues;
 }
 
@@ -172,6 +181,7 @@ export class ZhudaReflectiveSurface {
       height: Math.max(64, Math.round((resolution * 9) / 16)),
       planeY: this.planeY,
       excludedLayer: this.layer,
+      clipBelowPlane: options.clipBelowPlane ?? true,
     });
     try {
       this.material = new ZhudaShaderMaterial(SPEC, {

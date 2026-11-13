@@ -40,8 +40,10 @@ image request and closes with the server. Render jobs write only into the
 ## The loop
 
 1. `film_scene_create` with a scene. The reply lists the props and recipes the
-   host can build.
-2. `film_scene_preview` returns a PNG of the current revision.
+   host can build, and `advice`: what in this valid scene will not look its
+   best, each with the change that fixes it.
+2. `film_scene_preview` returns a PNG of the current revision and its
+   `metrics`: the frame in numbers, with `flags` for one that lost its detail.
 3. `film_scene_apply` with `expectedRevision` and a patch. Add `preview: true`
    to get the new image in the same call. A stale revision or an invalid change
    is refused and the scene stays as it was.
@@ -50,8 +52,11 @@ image request and closes with the server. Render jobs write only into the
 5. `film_render_job` with `kind: "still"` (anti-aliasing and depth of field,
    16 samples by default) or `kind: "video"` along a camera path.
 
-`film_scene_get` reads the scene and its revision; `film_scene_close` discards
-the session. Sessions hold data only and are dropped least recently used first
+`film_scene_get` reads the scene and its revision; `film_scene_lint` returns
+the advice for a session or for a scene without drawing it; `film_scene_close`
+discards the session. The [quality route](quality-route.md) is the order in
+which to build a scene that looks good, and explains every advice rule and
+metrics flag. Sessions hold data only and are dropped least recently used first
 when more than 16 are open.
 
 ## Scene format
@@ -96,11 +101,18 @@ when more than 16 are open.
 - `camera`: `eye` and `target`; `focalLengthMm` (default 35, full-frame
   equivalent), `fStop` (default 8) and `focusDistanceM` (default: the
   eye-target distance) drive depth of field in final renders.
-- `look`: colours are linear RGB 0..1. The sun turns about +Y by `azimuthDeg`
-  (at 0 it travels toward -Z) and rises by `elevationDeg`.
+- `look`: colours are RGB 0..1 (see [colour values](#colour-values)). The sun
+  turns about +Y by `azimuthDeg` (at 0 it travels toward -Z) and rises by
+  `elevationDeg`.
 - `materials`: a baked [texture recipe](procedural-assets.md) by name or
-  inline, with optional `tint` and bake `size`, or a flat PBR `color`. A node
-  may also name a host recipe directly (`"material": "asphalt"`).
+  inline, with optional `tint` and bake `size` (128 to 2048, default 256; a
+  two-metre tile needs 512 to reach 256 pixels per metre), or a flat PBR
+  `color`. A node may also name a host recipe directly
+  (`"material": "asphalt"`), which bakes at 256. `"variation": 0.5` on a
+  recipe material lays slow changes of brightness over the surface, so that
+  a large floor does not show its tiles as a grid. The changes come from a
+  picture that repeats about every 27 m (13.7 tiles); from high above a very
+  large floor that repeat can itself be made out, more so above 0.5.
 - `nodes`: `prop` places a registered procedural prop (its `params` and `seed`
   as in the prop factory); `box` is a box resting on `position`; `ground` is a
   plane at y = 0. Ids are unique; unknown fields are rejected.
@@ -112,11 +124,52 @@ A patch has `camera` and `look` (merged), `materials` (a `null` value removes
 one), `remove` (node ids, applied first) and `upsert` (nodes replaced by id or
 added). The whole result is validated before it is accepted.
 
+## Colour values
+
+Every colour a look, a material or a node gives is a display value: written
+as a colour picker shows it (sRGB) and decoded to light the way LayaAir
+decodes its own colours. Intensities are linear. Measured on the scene-linear
+picture before tone mapping:
+
+| Field                                                       | 0.5 gives |
+| ----------------------------------------------------------- | --------- |
+| a flat material's `color`, a recipe material's `tint`      | 22 %      |
+| `look.sun.color`, a light's `color`                         | 21 %      |
+| `look.ambient`, alone or beside `ambientGround`; that too   | 21 %      |
+| `lightFog.color`, a water node's `color`                    | 21 %      |
+| `emission`                                                  | 21 %      |
+| `sun.intensity`, a light's `intensity`                      | 50 %      |
+
+Halving a colour does not halve its light; halve the intensity for that. The
+same number is the same light everywhere: a lamp's glow in the fog has the
+colour its light has on the ground, and fog of `[0.5, 0.5, 0.5]` matches a
+sky of `[0.5, 0.5, 0.5]`. The colours inside a texture recipe are the one
+exception, as their type `ZhudaLinearColor` says: the baker writes them into
+an sRGB texture as light.
+
+Until this version `ambient` beside `ambientGround`, `ambientGround`
+itself, `lightFog.color`, a water node's `color` and the glow of lamps in the
+fog were read as light. A scene written for that draws darker now (0.5 gave
+50 %); `zhudaEncodeColor(old)` gives the display value that draws what `old`
+drew. The day, dawn, dusk and overcast presets give sky light from above and
+ground light from below (day: `[0.62, 0.64, 0.7]` and `[0.5, 0.47, 0.42]`,
+about a third of the sun's light on the ground); `"ambientGround": false`
+returns to one flat colour. The night preset keeps its flat, dim ambient.
+
+`emission` is decoded like a colour, and above 1 the decoding is a 2.4th
+power: 1 is white, 2 is 5.3 times white, 3 is 14, 4 is 28, 5.4 is 57 and 8 is
+147. The grade shows up to 56 after exposure; a brighter value is scaled down
+to that limit with its hue kept, which the grade draws near-white. Tone
+mapping takes any bright colour toward white: a red lamp is red on the lamp
+itself up to about 2, pale orange at 3, and cream above; its colour then
+lives in its bloom and its halo in the fog.
+
 ## Look: time of day, shadows, sky, fog and lights
 
 `look.preset` picks a time of day (`day`, `dawn`, `dusk`, `night`,
-`overcast`). Every other look field overrides the preset; a scene without a
-preset keeps the plain look (flat sky colour, no shadows, sky or fog).
+`overcast`). Every other look field overrides the preset. A scene that gives
+no `look` at all is drawn with the day preset; a `look` without a preset is
+the bare look (flat sky colour, no shadows, sky or fog), kept for tests.
 
 ```json
 "look": {
@@ -130,11 +183,11 @@ preset keeps the plain look (flat sky colour, no shadows, sky or fog).
 
 | Field                                   | Native Laya 3.4.2 feature                                                               |
 | --------------------------------------- | --------------------------------------------------------------------------------------- |
-| `shadows` (`false` to turn off)         | `DirectionLightCom` shadow maps, two cascades; every mesh casts and receives            |
+| `shadows` (`false` to turn off)         | `DirectionLightCom` shadow maps, 1, 2 or 4 cascades; every mesh casts and receives      |
 | `atmosphere` (`false` for a flat `sky`) | `SkyProceduralMaterial` on a `SkyDome`; the sun disk follows the sun                    |
 | `fog` (`false` to turn off)             | Linear scene fog                                                                        |
 | `grade` (off unless given)              | The existing `ZhudaFilmicPipeline`: HDR, ACES tone mapping, bloom and ambient occlusion |
-| `light` nodes                           | `PointLightCom` / `SpotLightCom` (at most 32, `Config3D.maxLightCount`)                 |
+| `light` nodes                           | `PointLightCom` / `SpotLightCom` (up to 128; a game passes `maxLights` to `boot`)       |
 | `emission` on a flat material           | PBR emission, for lamp heads and signs                                                  |
 
 ```json
@@ -162,13 +215,23 @@ lights: halos around lanterns, a glow in a candle-lit room, streets that sink
 into haze. It needs `grade` and is off unless given.
 
 ```json
-"lightFog": { "density": 0.015, "falloffMeters": 6, "baseY": 0, "color": [0.02, 0.03, 0.05], "scatter": 1.5 }
+"lightFog": { "density": 0.015, "falloffMeters": 6, "baseY": 0, "color": [0.16, 0.19, 0.25], "scatter": 1.5 }
 ```
 
+- Shapes without a prop: `box`; `lathe`, a body of revolution about the
+  vertical axis from its outline as `[radius, height]` pairs listed from the
+  bottom up (`"profile": [[0.12, 0], [0.12, 0.8], [0.09, 0.95], [0, 1]]` is a
+  bollard; barrels, domes, columns, bowls); `extrude`, a flat outline of
+  `[x, z]` pairs raised to `height` (kerbs, steps, signs, wall pieces; the
+  outline may be concave and must not cross itself). Each takes `position`,
+  `yawDeg` and a `material`, and meshes of one material are merged.
 - `density` is how much light a metre of fog takes away at `baseY`;
   `falloffMeters` is the height over which the fog thins to about a third.
-- `color` is what the fog adds by itself (moonlight in the air); `scatter`
-  scales the glow from lights.
+- `color` is what the fog adds by itself; the value above is moonlight in
+  the air. Left out, it is the colour the look's sky has near the horizon
+  (measured for each preset; `look.sky` for a flat or panoramic sky), so the
+  fog melts into the sky by day and by night. `scatter` scales the glow from
+  lights.
 - Every point `light` node shines into the fog, out to its `range` (default
   12 m): a view ray that passes farther from the light gets no glow from it,
   so many lamps do not add up to a wash over the sky. A light with
@@ -297,8 +360,9 @@ nodes are refused. Ids never contain a path outside the directory, a URL or a
 query. Models load through the engine's model library and asset provider, so
 an edited scene does not download or parse an unchanged model again; a file
 rewritten on disk is picked up by the next mount. Up to 64 models per scene.
-A model keeps the transforms, materials and textures in its file; animations
-are not played in film renders.
+A model keeps the transforms, materials and textures in its file. A clip
+plays only where the node asks for one (see
+[characters](#characters-clips-movement-and-lights-that-follow)).
 
 `lightmap` is how a film scene gets global illumination. It is a Radiance
 `.hdr` picture of the diffuse light that reaches the model's surfaces, both
@@ -326,8 +390,14 @@ real-time lights on top of a lightmap, so the usual split is: bake what
 bounces and what is far away, and keep as real-time lights what should cast
 sharp shadows and make highlights. The sun (or moon) with `shadows` gives
 crisp shadows and highlights everywhere; `shadows.cascades: 4` keeps them
-sharp near the camera over a long `distance`. One spot light per scene may
-cast shadows (`"castsShadow": true`); point lights cannot. A scene may hold up
+sharp near the camera over a long `distance`. One spot light and up to four
+point lights per scene may cast shadows (`"castsShadow": true`). A point
+light's surroundings are drawn once from the lamp, out to its `range`, and
+again when its `range` or something that moves with time changes (six more
+draws of the scene for each lamp); nothing closer to it than 0.5 m casts, so
+the lamp's own head does not shade the scene. The shadow's edge is soft, and
+widens with distance from the lamp. A scene
+may hold up
 to 128 real-time lights when the runtime was booted with `maxLights` (the MCP
 film host is; Laya's own default is 32, and a scene asking for more than the
 runtime has is refused when it is mounted). A light that is both baked and
@@ -344,6 +414,34 @@ that flat surfaces stay as baked, the baker stores
 geometric normal. Directions are in world space: a model with a direction
 picture must keep `yawDeg` 0. This is a half-Lambert response, not a
 physically exact one.
+
+## Bounce light
+
+`look.bounceLight` lights props, boxes, shapes and the ground with light
+bounced once off the scene:
+
+```json
+"bounceLight": { "spacing": 3, "strength": 1 }
+```
+
+- When the scene is mounted, probes on a grid over its objects and lights
+  (`spacing` metres apart; `min` and `max` set the box yourself) each capture
+  their surroundings, lit as the scene is lit. LayaAir's volumetric GI then
+  lights every pixel of a physically based material from the eight probes
+  around it, in place of the ambient light: a sunlit red wall tints what
+  faces it, shaded sides take the sky's blue from above and the ground's
+  colour from below.
+- It costs six small draws per probe at mount (a yard takes about a hundred
+  probes). Nothing is drawn per frame.
+- Captured once: what moves afterwards keeps the light it had, and `setLook`
+  does not update it (mount the scene again).
+- Probes that fall inside a prop, a box or a shape are switched off. Light can
+  still leak through a wall thinner than the spacing when no probe falls
+  inside it.
+- `strength` scales the whole ambient light in the volume, sky included.
+- Blinn-Phong and unlit materials are not lit by it. Quality level 0 drops it.
+- In a game: `new ZhudaProbeVolume(scene3D, { min, max, solids })` and
+  `await volume.bake()` after the level has drawn a frame.
 
 ## Characters: clips, movement and lights that follow
 
@@ -408,22 +506,47 @@ lanterns, lit windows, buildings and the sky appear in wet paving or a pond.
 }
 ```
 
-- `position` is the centre; its `y` is the mirror height. Put it a few
-  millimetres above the surface it covers.
+- `position` is the centre; its `y` is the mirror height. Put it a
+  centimetre above the surface it covers: in the same plane the two flicker.
 - The reflection is added on top of what is under it, so the paving keeps
   its material and lightmap. It is strongest at grazing angles (Fresnel).
 - `wetness` is the share that is standing water and mirrors sharply; the
   rest is damp, dimmer, blurred by `roughness` and broken up by `ripple`.
   `patternMeters` sizes the puddles.
-- `hides` lists `model` nodes the mirror must not draw: the ground under the
-  reflector, which would otherwise block the view from below. Boxes, the
-  `ground` node and props cannot be hidden; keep them out from under a
-  reflector or accept that they block it.
+- What lies below the mirror is cut from the mirrored view, so the ground a
+  reflector covers (a `ground` node, a box, a prop or a model) does not block
+  the reflection. `hides` lists `model` nodes above it that the mirror must
+  not draw.
 - One reflector per scene. It is a second render of the scene for every
   sample of every frame, at `resolution` pixels wide.
 
 This is how a scene lit only by lightmaps gets highlights: a lightmap holds
 diffuse light, and the reflector adds the mirror image of the lights.
+
+## Reflections on everything on screen
+
+`look.screenReflections` adds reflections of what is on screen to every
+surface: wet walls, props, ground beyond a `reflector`. It needs `grade`.
+
+```json
+"screenReflections": { "strength": 1, "wetness": 0.6, "distance": 30, "steps": 32 }
+```
+
+- The whole view reflects alike and by Fresnel: strongly at grazing angles,
+  faintly head-on (`wetness` is how much shows head-on). A forward renderer
+  has no roughness buffer, so this is the look of rain and of polished
+  places, not a property of one material.
+- Only what is on screen is reflected: nothing from behind the camera or
+  from behind another object, and not the sky. A `reflector` stays the tool
+  for a floor that must mirror sky and lamps exactly; the two work together.
+- The rays are followed at half size and the result is blurred, taking
+  depth into account: the reflections are soft, like wet asphalt or a
+  polished but not mirror-flat floor. A small bright thing (a lamp head)
+  reflects as two or three soft spots; for a crisp lamp on wet ground, and
+  for the long streaks that ripples draw under lamps, use a `reflector`.
+- Quality level 2 halves the steps; level 1 switches the reflections off.
+- In a game `ZhudaSceneLook` takes the same field; `look.update(...)` every
+  frame keeps it aligned with the camera.
 
 ## Nature: many copies, leaves and running water
 
@@ -465,7 +588,7 @@ A `water` node is clear running water on a horizontal rectangle:
   "position": [0, 0, 0],
   "size": [170, 130],
   "flow": [0.9, 0.15],
-  "color": [0.03, 0.3, 0.26],
+  "color": [0.19, 0.58, 0.55],
   "clarity": 1.1,
   "waveMeters": 0.8,
   "waves": 0.4,
@@ -496,12 +619,12 @@ sun and its shadows, sky and ground light, the procedural sky, distance fog,
 ground fog with beams, and the HDR grade.
 
 ```ts
-import { ZhudaSceneLook, ZhudaQualityGovernor } from 'zhuda-laya-engine';
+import { ZhudaSceneLook, ZhudaQualityGovernor, type ZhudaLookQuality } from 'zhuda-laya-engine';
 
 const look = new ZhudaSceneLook(scene, camera, {
   preset: 'day',
-  ambient: [0.78, 0.86, 1],
-  ambientGround: [0.3, 0.3, 0.17],
+  ambient: [0.9, 0.94, 1],
+  ambientGround: [0.58, 0.58, 0.45],
   shadows: { distance: 60, resolution: 4096, cascades: 4 },
   grade: { exposure: 1.15, bloom: 0.3, ao: 0.55 },
   lightFog: { density: 0.006, shafts: { strength: 0.8, distance: 60 } },
@@ -512,13 +635,13 @@ runtime.start((dt) => {
   // ... move the camera ...
   look.update(eye, target, fieldOfViewDeg, aspect);
   const level = governor.sample(dt * 1000);
-  if (level !== undefined) look.setQuality(level);
+  if (level !== undefined) look.setQuality(level as ZhudaLookQuality);
 });
 ```
 
 - `setQuality(3)` is the look as authored. Level 2 drops ambient occlusion,
   halves the steps of the beams and caps shadow maps at 2048; level 1 drops
-  the beams and the lens finish and uses two shadow cascades; level 0 drops
+  the beams, the lens finish and multisampling and uses two shadow cascades; level 0 drops
   the HDR chain altogether and draws one small shadow map. Sky, ground light
   and distance fog stay at every level. `zhudaLookForQuality` is that table
   as a pure function.
@@ -655,6 +778,13 @@ Cancelling `signal`, a timeout or a failed asset rejects, releases what was
 already loaded and adds nothing to the scene. `decodeRadianceHdr`,
 `encodeZhudaLightmapRgbm` and `createZhudaLightmap` are public for tools.
 
+## Edge smoothing
+
+`grade.antialias` is `msaa` unless set to `none`: the HDR target is
+multisampled, so edges are smooth in a frame that is drawn once (a preview, a
+running game). Stills and video also average their samples, with either value.
+Quality levels 1 and 0 switch it off.
+
 ## Verification and limits
 
 `npm run verify:film` drives the real MCP stdio server through create,
@@ -705,9 +835,8 @@ faces it. See the
 [environment verification record](plans/records/film-environment/verification.md).
 
 Not yet: several probes or box projection, blending between clips, shadowed halos of point lights in the fog,
-animated look or light tracks, real-time shadows from point lights
-(bake them into a lightmap), reflections on walls or slopes, reflection probes, real-time
-global illumination, animated models, spline camera paths, shot lists, path
+animated look or light tracks, reflection probes, real-time
+global illumination (`bounceLight` is captured once), spline camera paths, shot lists, path
 tracing and audio in render jobs. Previews and renders are desktop evidence (WebGL, and WebGPU on
 Apple Metal hardware); mobile is not covered.
 

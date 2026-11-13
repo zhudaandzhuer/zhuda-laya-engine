@@ -6,7 +6,7 @@ export interface ZhudaWaterSurfaceOptions {
     size: readonly [number, number];
     /** Flow in metres per second along X and Z (default [0, 0.6]). */
     flow?: readonly [number, number];
-    /** Colour of deep water, linear RGB (default a green-blue). */
+    /** Colour of deep water, as light: scene-linear RGB (default a green-blue). A film scene decodes its display value first. */
     color?: readonly [number, number, number];
     /** Metres of water at which the bed has faded to about a third, 0.05..100 (default 1.5). */
     clarity?: number;

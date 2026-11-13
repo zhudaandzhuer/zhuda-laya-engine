@@ -48,7 +48,8 @@ export async function chromeFixture({ zoomFactor = 1 } = {}) {
   const eventWaiters = new Map();
   const pending = new Map(),
     errors = [],
-    consoleMessages = [];
+    consoleMessages = [],
+    glErrors = [];
   const close = async () => {
     ws?.close();
     for (const r of pending.values()) {
@@ -133,6 +134,12 @@ export async function chromeFixture({ zoomFactor = 1 } = {}) {
               .join(' ')
               .slice(0, 2000),
         );
+      // The driver reports WebGL errors through the Log domain, not the console API.
+      if (
+        m.method === 'Log.entryAdded' &&
+        /GL_INVALID_|GL_OUT_OF_MEMORY|WebGL: INVALID_/.test(m.params.entry?.text ?? '')
+      )
+        glErrors.push(String(m.params.entry.text).slice(0, 500));
       if (m.method === 'Runtime.exceptionThrown')
         errors.push(
           m.params.exceptionDetails.exception?.description || m.params.exceptionDetails.text,
@@ -175,6 +182,8 @@ export async function chromeFixture({ zoomFactor = 1 } = {}) {
     };
     await send('Page.enable');
     await send('Runtime.enable');
+    // Optional: a browser without the Log domain still runs every check but the WebGL-error one.
+    await send('Log.enable').catch(() => {});
     return {
       send,
       waitEvent: (method, timeoutMs = 20000) =>
@@ -194,6 +203,12 @@ export async function chromeFixture({ zoomFactor = 1 } = {}) {
       errors,
       /** console.error and console.warn text (WebGL shader logs land here). */
       consoleMessages,
+      /**
+       * WebGL errors the driver reported (`GL_INVALID_OPERATION` and the
+       * like). Chrome stops repeating one message after a few times, so the
+       * count is a lower bound; an empty list is the pass condition.
+       */
+      glErrors,
       close,
       screenshot: async (file) => {
         const r = await send('Page.captureScreenshot', { format: 'png' });

@@ -11,6 +11,7 @@ import {
   type ModelCompatibilityReport,
 } from './ModelCompatibility.ts';
 import { destroyLaya342ModelTree, enableLaya342VertexColors } from './Laya342Adapters.ts';
+import { applyZhudaAnisotropy } from './Surfaces.ts';
 import type { AssetProvider, LoadedAssetBytes } from './AssetProvider.ts';
 import { normalizeAssetId } from './AssetProvider.ts';
 export type AssetPhase = 'downloading' | 'parsing' | 'ready';
@@ -312,6 +313,8 @@ export class ZhudaModelLibrary {
                 for (const state of animator.getControllerLayer(i).states)
                   if (state.clip) clips.add(state.clip);
           });
+          // Once per loaded model: its textures stay sharp at grazing angles.
+          applyZhudaAnisotropy(template);
           this.templates.set(resource, { node: template, clips, compatibility });
           resource._addReference(); // Cache owns the prefab even while no instances are visible.
           return resource;

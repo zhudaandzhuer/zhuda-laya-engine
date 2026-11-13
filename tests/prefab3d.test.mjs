@@ -94,6 +94,9 @@ function install() {
     Vector3,
     Color: class {},
     BlinnPhongMaterial: Resource,
+    // Materials without a type are physically based.
+    PBRStandardMaterial: Resource,
+    UnlitMaterial: Resource,
     PrimitiveMesh: Object.fromEntries(
       ['Box', 'Sphere', 'Plane', 'Cone', 'Cylinder', 'Capsule'].map((n) => [
         'create' + n,

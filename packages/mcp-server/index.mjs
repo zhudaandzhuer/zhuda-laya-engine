@@ -44,6 +44,7 @@ import { auditVisualAssetMigration } from '../compiler/visual-asset-audit.mjs';
 import { auditVisualPresentationContracts } from '../compiler/visual-contract-audit.mjs';
 import { getAgentContract, validateTaskSpec } from '../compiler/agent-contract.mjs';
 import { API_GUARDRAILS, ERROR_DIAGNOSTICS_DB, GOLDEN_EXAMPLES } from './corpus.mjs';
+import { getQualityRoute } from './quality-route.mjs';
 
 const projectRoot = fileURLToPath(new URL('../..', import.meta.url));
 const packageVersion = JSON.parse(
@@ -187,6 +188,15 @@ export const MCP_TOOLS_MANIFEST = [
         error: { type: 'string', description: '錯誤訊息字串' },
       },
       required: ['error'],
+    },
+  },
+  {
+    name: 'get_quality_route',
+    description:
+      'The route from "a 3D scene that looks good" to a verified result, for film scenes and games: the steps in order with the API, the reason and the check for each; the defaults the engine applies; hard limits; what is not built yet; the advice rules and metrics flags. Read it before writing a 3D scene. Data only: drawn frames are still the evidence.',
+    inputSchema: {
+      type: 'object',
+      properties: {},
     },
   },
   {
@@ -372,7 +382,8 @@ export function executeMcpTool(toolName, args = {}) {
           runtime: 'paused',
           samples: '1..256',
           pixels: 'opaque sRGB top-left',
-          accumulation: 'display-linear after tone mapping',
+          accumulation:
+            'scene-linear before tone mapping when the frame request carries linear: pipeline.linearChain() (film scenes with a grade do); otherwise display-linear after tone mapping',
           shutter: 'forward interval; single sample at frame start',
         },
         requirements: [
@@ -480,6 +491,9 @@ export function executeMcpTool(toolName, args = {}) {
         matches: matched.length > 0 ? matched : ERROR_DIAGNOSTICS_DB,
       };
     }
+
+    case 'get_quality_route':
+      return { tool: toolName, ...getQualityRoute() };
 
     case 'get_golden_example': {
       const ex = args.id ? GOLDEN_EXAMPLES[args.id] : GOLDEN_EXAMPLES;

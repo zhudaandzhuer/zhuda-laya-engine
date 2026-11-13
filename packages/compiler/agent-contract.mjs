@@ -10,11 +10,14 @@ export const VALID_PLAN_STATUSES = new Set([
 ]);
 
 const PREFAB_POLICY_FILE = 'docs/prefab-workflow.md';
+/** How a 3D scene is made to look good; `get_quality_route` returns the same route as data. */
+const QUALITY_ROUTE_FILE = 'docs/quality-route.md';
 
 export const REQUIRED_AGENT_FILES = [
   'AGENTS.md',
   'docs/agent-development.md',
   PREFAB_POLICY_FILE,
+  QUALITY_ROUTE_FILE,
   'docs/plans/README.md',
   'docs/plans/TEMPLATE.md',
   'docs/plans/TASK-TEMPLATE.md',
@@ -261,6 +264,7 @@ export function getAgentContract(projectRoot) {
     repository: 'zhuda-laya-engine',
     passed: audit.passed,
     consumerRoute: 'docs/consumer-route.md',
+    qualityRoute: QUALITY_ROUTE_FILE,
     requiredReading: [...REQUIRED_AGENT_FILES],
     commands: [
       'node packages/compiler/zhuda-init.mjs /absolute/path/to/consumer',

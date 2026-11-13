@@ -76,11 +76,15 @@ WebGL and device acceptance still require the consumer's own reports.
    [`docs/terrain-shader.md`](docs/terrain-shader.md),
    [`docs/3d-integration.md`](docs/3d-integration.md),
    [`docs/3d-acceptance.md`](docs/3d-acceptance.md), or the package README.
+   For any 3D scene, film or game: [`docs/quality-route.md`](docs/quality-route.md),
+   the steps in order that make a scene look lit, grounded and deep, and what
+   is not built yet.
 5. The corresponding public declaration in `packages/types/` and an existing
    test before adding a new API.
 
 Use `node packages/mcp-server/index.mjs --tool get_agent_contract` to retrieve
-this workflow as machine-readable data. Use the other MCP guardrails before
+this workflow as machine-readable data, and `--tool get_quality_route` for the
+quality route. Use the other MCP guardrails before
 guessing LayaAir APIs.
 
 ## Development protocol

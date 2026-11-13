@@ -18,9 +18,24 @@ export interface SurfaceMaterialSpec {
 }
 /** glTF/Three.js G=roughness,B=metallic -> Laya R=metallic,A=smoothness. Data stays linear. */
 export declare function packMetallicRoughness(rgba: Uint8Array): Uint8Array<ArrayBuffer>;
+/** Anisotropic filtering mipmapped surface textures get unless told otherwise. */
+export declare const ZHUDA_DEFAULT_ANISO = 8;
 export declare function createSurfaceTexture(width: number, height: number, pixels: Uint8Array, role: 'color' | 'emission' | 'normal' | 'data', options?: {
     mipmap?: boolean;
+    /**
+     * Anisotropic filtering, 1..16 (1 is off). Default: `ZHUDA_DEFAULT_ANISO`
+     * with mipmaps, 1 without. A floor, a road or a wall seen along its length
+     * loses its detail a few metres away without it.
+     */
+    anisoLevel?: number;
 }): any;
+/**
+ * Gives the mipmapped textures of every material below `root` anisotropic
+ * filtering (see `createSurfaceTexture`). Textures that already ask for as
+ * much or more, and render targets, are left alone. Returns how many textures
+ * changed. The model library applies it to each model once, when it is loaded.
+ */
+export declare function applyZhudaAnisotropy(root: any, level?: number): number;
 export declare function createSurfaceMaterial(s: SurfaceMaterialSpec): any;
 /** Detach borrowed texture slots before destroying an owned material. */
 export declare function disposeSurfaceMaterial(m: any): void;

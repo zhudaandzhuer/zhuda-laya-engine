@@ -29,6 +29,12 @@ export declare function prefilterZhudaEnvironment(world: ZhudaCubePicture, optio
     pixels: Float32Array;
 };
 /**
+ * The nine ambient colours (27 numbers, Laya's `u_IblSH`: irradiance / pi as
+ * a quadratic in the normal, X mirrored) of a cube picture of the
+ * surroundings. `evaluateZhudaAmbient` evaluates them.
+ */
+export declare function zhudaAmbientSH(base: ZhudaCubePicture): number[];
+/**
  * Ambient light (irradiance / pi) on a surface with world normal (x, y, z),
  * as Laya's shader evaluates the nine colours. For tests and tools.
  */
@@ -53,6 +59,11 @@ export interface ZhudaEnvironmentProbeOptions {
     /** Laya layers the capture does not draw (default: none). */
     excludedLayers?: readonly number[];
 }
+/** The six views of a capture, in the order the faces are read back. */
+export declare const ZHUDA_CUBE_VIEWS: readonly {
+    readonly forward: number[];
+    readonly up: number[];
+}[];
 /**
  * A sky-and-ground surrounding as a cube picture: `sky` from above, `ground`
  * from below, blended across the horizon. Light from it gives surfaces that
@@ -81,9 +92,15 @@ export interface ZhudaHemisphereAmbientHandle {
  * Lights a scene with a sky-and-ground ambient (and the matching soft
  * reflections). Returns the function that restores the scene's previous
  * ambient setup and releases the texture; its `update` changes the colours
- * in place.
+ * in place. The colours are light (scene-linear); a film look and
+ * `ZhudaSceneLook` decode their display colours before handing them here.
  */
 export declare function applyZhudaHemisphereAmbient(scene: any, sky: readonly [number, number, number], ground: readonly [number, number, number]): ZhudaHemisphereAmbientHandle;
+/**
+ * Six pictures read back from a 90-degree camera turned along `VIEWS`, as one
+ * cube picture of the surroundings in world directions.
+ */
+export declare function zhudaCubeFromFaces(faces: readonly Float32Array[], n: number): ZhudaCubePicture;
 export declare class ZhudaEnvironmentProbe {
     private readonly scene;
     private environment;

@@ -1,3 +1,4 @@
+import { zhudaDecodeColor } from '../packages/core/film/ColorValues.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
@@ -84,7 +85,10 @@ test('structural look changes name what has to be rebuilt', () => {
   assert.equal(reason(base, { ...base, shadows: false }), 'shadows');
   assert.equal(reason(base, { ...base, atmosphere: false }), 'atmosphere');
   assert.equal(reason(base, { ...base, fog: false }), 'fog');
-  assert.equal(reason(base, { ...base, ambientGround: [0.1, 0.08, 0.05] }), 'ambientGround');
+  const flat = { ...base, ambientGround: false };
+  assert.equal(reason(flat, { ...base, ambientGround: [0.1, 0.08, 0.05] }), 'ambientGround');
+  // Another ground colour is set in place.
+  assert.equal(reason(base, { ...base, ambientGround: [0.1, 0.08, 0.05] }), null);
   assert.equal(reason(base, { ...base, grade: false, lightFog: false }), 'grade');
   // Switching an effect of the chain on or off rebuilds it; its strength does not.
   assert.equal(reason(base, { ...base, grade: { ...base.grade, bloom: 0 } }), 'grade');
@@ -202,13 +206,17 @@ test('in-place update moves the sun and sets every continuous value it owns', ()
     camera = {},
     sky = {},
     exposures = [],
+    antialias = [],
     grades = [],
     finishes = [],
     fogs = [],
     suns = [];
   const parts = {
     sky,
-    film: { setGrade: (values) => (exposures.push(values.exposure), grades.push(values)) },
+    film: {
+      setGrade: (values) => (exposures.push(values.exposure), grades.push(values)),
+      setAntialias: (msaa) => antialias.push(msaa),
+    },
     finish: { setFinish: (values) => finishes.push(values) },
     lightFog: {
       attachSun: (scene, s) => suns.push([scene, s]),
@@ -233,12 +241,15 @@ test('in-place update moves the sun and sets every continuous value it owns', ()
   assert.equal(scene3D.fogStart, 10);
   assert.equal(scene3D.fogEnd, 90);
   assert.deepEqual(exposures, [2.5]);
+  assert.deepEqual(antialias, [look.grade.antialias === 'msaa']);
   // The strengths of the grade, the lens finish and the fog go in with it.
   assert.equal(grades[0].contrast, look.grade.contrast);
   assert.equal(grades[0].saturation, look.grade.saturation);
   assert.equal(grades[0].bloomIntensity, look.grade.bloom);
   assert.equal(finishes[0].vignette, look.grade.vignette);
   assert.equal(fogs[0].density, look.lightFog.density);
+  // A display value in the look; the fog's shader is handed the light it stands for.
+  assert.deepEqual(fogs[0].color, zhudaDecodeColor(look.lightFog.color));
   assert.deepEqual(fogs[0].shafts, {
     strength: look.lightFog.shafts.strength,
     anisotropy: look.lightFog.shafts.anisotropy,

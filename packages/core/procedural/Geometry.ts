@@ -348,6 +348,306 @@ export function createZhudaIBeamMesh(options: ZhudaIBeamOptions): MeshData {
     : transformZhudaMesh(beam, axis === 'z' ? { yawDeg: 90 } : { rollDeg: 90 });
 }
 
+export interface ZhudaLatheOptions {
+  /**
+   * The outline as [radius, height] pairs in metres, 2..256 of them, turned
+   * about the vertical axis. List it from the bottom up along the outside; a
+   * hollow form (a bowl, a pipe) goes on down the inside. A radius of 0 is on
+   * the axis.
+   */
+  profile: readonly (readonly [number, number])[];
+  /** Sides around the axis, 3..96 (default 24). */
+  segments?: number;
+  /** Close the first and the last ring with a flat disc where it is off the axis (default true). */
+  caps?: boolean;
+  /** A corner of the outline sharper than this many degrees stays an edge (default 30). */
+  creaseDeg?: number;
+}
+
+export function validateZhudaLathe(options: ZhudaLatheOptions): string[] {
+  const issues: string[] = [];
+  const o = options ?? ({} as ZhudaLatheOptions);
+  const profile = o.profile as unknown;
+  if (!Array.isArray(profile) || profile.length < 2 || profile.length > 256)
+    issues.push('profile: use 2..256 [radius, height] pairs');
+  else
+    profile.forEach((point, i) => {
+      if (
+        !Array.isArray(point) ||
+        point.length !== 2 ||
+        !point.every((n) => typeof n === 'number' && Number.isFinite(n) && Math.abs(n) <= 1000)
+      )
+        issues.push(`profile[${i}]: use [radius, height] in metres`);
+      else if (point[0] < 0) issues.push(`profile[${i}]: the radius cannot be negative`);
+      else if (i > 0) {
+        const before = profile[i - 1];
+        if (Array.isArray(before) && before[0] === point[0] && before[1] === point[1])
+          issues.push(`profile[${i}]: the same point as the one before it`);
+      }
+    });
+  if (
+    o.segments !== undefined &&
+    !(Number.isInteger(o.segments) && o.segments >= 3 && o.segments <= 96)
+  )
+    issues.push('segments: use a whole number 3..96');
+  if (o.caps !== undefined && typeof o.caps !== 'boolean') issues.push('caps: true or false');
+  if (o.creaseDeg !== undefined && !(o.creaseDeg >= 0 && o.creaseDeg <= 180))
+    issues.push('creaseDeg: use 0..180');
+  return issues;
+}
+
+/** A body of revolution about +Y: bollards, barrels, domes, bowls, columns, cones. */
+export function createZhudaLatheMesh(options: ZhudaLatheOptions): MeshData {
+  const issues = validateZhudaLathe(options);
+  if (issues.length) throw Error('Invalid lathe: ' + issues.join('; '));
+  const profile = options.profile,
+    sides = options.segments ?? 24,
+    caps = options.caps ?? true,
+    crease = Math.cos(((options.creaseDeg ?? 30) * Math.PI) / 180),
+    count = profile.length - 1;
+  // Outward in the outline's own plane: to the right of the way it is drawn.
+  const flat: [number, number][] = [];
+  const travelled = [0];
+  for (let i = 0; i < count; i++) {
+    const dr = profile[i + 1][0] - profile[i][0],
+      dh = profile[i + 1][1] - profile[i][1],
+      length = Math.hypot(dr, dh);
+    flat.push([dh / length, -dr / length]);
+    travelled.push(travelled[i] + length);
+  }
+  // The normal a segment uses at one of its ends: shared with its neighbour unless the corner is sharp.
+  const at = (segment: number, neighbour: number): [number, number] => {
+    const own = flat[segment],
+      other = flat[neighbour];
+    if (!other || own[0] * other[0] + own[1] * other[1] < crease) return own;
+    const x = own[0] + other[0],
+      y = own[1] + other[1],
+      length = Math.hypot(x, y);
+    return length > 1e-9 ? [x / length, y / length] : own;
+  };
+  const writer = new MeshWriter();
+  const EPS = 1e-9;
+  // One scale around the axis for the whole form: UVs then run on from ring to
+  // ring, and a normal map keeps one direction across them. Toward the axis
+  // the texture is squeezed, as on any cap.
+  const widest = Math.max(1e-3, ...profile.map((point) => point[0]));
+  for (let i = 0; i < count; i++) {
+    const ends = [at(i, i - 1), at(i, i + 1)];
+    const rings = [0, 1].map((end) => {
+      const [radius, height] = profile[i + end],
+        normal = ends[end],
+        ring: number[] = [];
+      for (let s = 0; s <= sides; s++) {
+        const angle = (s / sides) * Math.PI * 2,
+          cs = Math.cos(angle),
+          sn = Math.sin(angle);
+        ring.push(
+          writer.vertex(
+            [radius * cs, height, radius * sn],
+            [normal[0] * cs, normal[1], normal[0] * sn],
+            angle * widest,
+            travelled[i + end],
+          ),
+        );
+      }
+      return ring;
+    });
+    for (let s = 0; s < sides; s++) {
+      const middle = ((s + 0.5) / sides) * Math.PI * 2;
+      const outward: ZhudaVec3 = [
+        flat[i][0] * Math.cos(middle),
+        flat[i][1],
+        flat[i][0] * Math.sin(middle),
+      ];
+      // A ring on the axis is one point: that side of the quad has no triangle.
+      if (profile[i][0] > EPS)
+        writer.triangle(rings[0][s], rings[0][s + 1], rings[1][s + 1], outward);
+      if (profile[i + 1][0] > EPS)
+        writer.triangle(rings[0][s], rings[1][s + 1], rings[1][s], outward);
+    }
+  }
+  if (caps)
+    for (const [end, up] of [
+      [0, -1],
+      [count, 1],
+    ] as const) {
+      const [radius, height] = profile[end];
+      if (!(radius > EPS)) continue;
+      const outward: ZhudaVec3 = [0, up, 0];
+      const centre = writer.vertex([0, height, 0], outward, 0, 0),
+        rim: number[] = [];
+      for (let s = 0; s <= sides; s++) {
+        const angle = (s / sides) * Math.PI * 2,
+          x = radius * Math.cos(angle),
+          z = radius * Math.sin(angle);
+        rim.push(writer.vertex([x, height, z], outward, x, z));
+      }
+      for (let s = 0; s < sides; s++) writer.triangle(centre, rim[s], rim[s + 1], outward);
+    }
+  return writer.finish();
+}
+
+export interface ZhudaExtrudeOptions {
+  /**
+   * The outline on the ground as [x, z] pairs in metres, 3..256 of them, in
+   * either direction. It may be concave; it must not cross itself.
+   */
+  outline: readonly (readonly [number, number])[];
+  /** How far it is raised along +Y, in metres. */
+  height: number;
+  /** Close the top and the underside (default true). */
+  caps?: boolean;
+}
+
+const area2 = (outline: readonly (readonly [number, number])[]) => {
+  let sum = 0;
+  for (let i = 0; i < outline.length; i++) {
+    const [x0, z0] = outline[i],
+      [x1, z1] = outline[(i + 1) % outline.length];
+    sum += x0 * z1 - x1 * z0;
+  }
+  return sum;
+};
+/** Whether segments ab and cd cross at a point inside both. */
+const crosses = (
+  a: readonly [number, number],
+  b: readonly [number, number],
+  c: readonly [number, number],
+  d: readonly [number, number],
+) => {
+  const side = (
+    p: readonly [number, number],
+    q: readonly [number, number],
+    r: readonly [number, number],
+  ) => (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0]);
+  const d1 = side(a, b, c),
+    d2 = side(a, b, d),
+    d3 = side(c, d, a),
+    d4 = side(c, d, b);
+  return d1 * d2 < 0 && d3 * d4 < 0;
+};
+
+export function validateZhudaExtrude(options: ZhudaExtrudeOptions): string[] {
+  const issues: string[] = [];
+  const o = options ?? ({} as ZhudaExtrudeOptions);
+  const outline = o.outline as unknown;
+  let sound = false;
+  if (!Array.isArray(outline) || outline.length < 3 || outline.length > 256)
+    issues.push('outline: use 3..256 [x, z] pairs');
+  else {
+    sound = true;
+    outline.forEach((point, i) => {
+      if (
+        !Array.isArray(point) ||
+        point.length !== 2 ||
+        !point.every((n) => typeof n === 'number' && Number.isFinite(n) && Math.abs(n) <= 1000)
+      ) {
+        issues.push(`outline[${i}]: use [x, z] in metres`);
+        sound = false;
+      } else {
+        const before = outline[(i + outline.length - 1) % outline.length];
+        if (Array.isArray(before) && before[0] === point[0] && before[1] === point[1]) {
+          issues.push(`outline[${i}]: the same point as the one before it`);
+          sound = false;
+        }
+      }
+    });
+  }
+  if (sound) {
+    const points = outline as [number, number][];
+    let crossing = false;
+    search: for (let i = 0; i < points.length; i++)
+      for (let j = i + 2; j < points.length; j++) {
+        if (i === 0 && j === points.length - 1) continue;
+        if (crosses(points[i], points[i + 1], points[j], points[(j + 1) % points.length])) {
+          issues.push(`outline: edge ${i} crosses edge ${j}`);
+          crossing = true;
+          break search;
+        }
+      }
+    if (!crossing && Math.abs(area2(points)) < 1e-9) issues.push('outline: it encloses no area');
+  }
+  if (!(typeof o.height === 'number' && o.height > 0 && o.height <= 1000))
+    issues.push('height: use a positive number of metres');
+  if (o.caps !== undefined && typeof o.caps !== 'boolean') issues.push('caps: true or false');
+  return issues;
+}
+
+/** A flat outline raised to a height: kerbs, steps, signs, wall pieces, L and U profiles. */
+export function createZhudaExtrudeMesh(options: ZhudaExtrudeOptions): MeshData {
+  const issues = validateZhudaExtrude(options);
+  if (issues.length) throw Error('Invalid extrusion: ' + issues.join('; '));
+  // Counter-clockwise in (x, z): the outside is then to the right of each edge.
+  const points = options.outline.map(([x, z]) => [x, z] as [number, number]);
+  if (area2(points) < 0) points.reverse();
+  const height = options.height,
+    caps = options.caps ?? true,
+    writer = new MeshWriter();
+  let along = 0;
+  for (let i = 0; i < points.length; i++) {
+    const [x0, z0] = points[i],
+      [x1, z1] = points[(i + 1) % points.length],
+      length = Math.hypot(x1 - x0, z1 - z0),
+      normal: ZhudaVec3 = [(z1 - z0) / length, 0, -(x1 - x0) / length];
+    writer.quad(
+      [
+        [x0, 0, z0],
+        [x1, 0, z1],
+        [x1, height, z1],
+        [x0, height, z0],
+      ],
+      normal,
+      [along, 0, along + length, 0, along + length, height, along, height],
+    );
+    along += length;
+  }
+  if (caps) {
+    // Ear clipping: cut off a corner that bulges outward and holds no other point.
+    const left = points.map((_, i) => i),
+      triangles: [number, number, number][] = [];
+    const turn = (a: number, b: number, c: number) =>
+      (points[b][0] - points[a][0]) * (points[c][1] - points[a][1]) -
+      (points[b][1] - points[a][1]) * (points[c][0] - points[a][0]);
+    let guard = points.length * points.length;
+    while (left.length > 3 && guard-- > 0) {
+      let cut = false;
+      for (let i = 0; i < left.length; i++) {
+        const a = left[(i + left.length - 1) % left.length],
+          b = left[i],
+          c = left[(i + 1) % left.length];
+        if (turn(a, b, c) <= 1e-12) continue;
+        if (
+          left.some(
+            (p) =>
+              p !== a &&
+              p !== b &&
+              p !== c &&
+              turn(a, b, p) >= 0 &&
+              turn(b, c, p) >= 0 &&
+              turn(c, a, p) >= 0,
+          )
+        )
+          continue;
+        triangles.push([a, b, c]);
+        left.splice(i, 1);
+        cut = true;
+        break;
+      }
+      if (!cut) throw Error('Invalid extrusion: the outline could not be filled');
+    }
+    triangles.push([left[0], left[1], left[2]]);
+    for (const [y, up] of [
+      [height, 1],
+      [0, -1],
+    ] as const) {
+      const outward: ZhudaVec3 = [0, up, 0];
+      const corner = points.map(([x, z]) => writer.vertex([x, y, z], outward, x, z));
+      for (const [a, b, c] of triangles) writer.triangle(corner[a], corner[b], corner[c], outward);
+    }
+  }
+  return writer.finish();
+}
+
 export interface ZhudaMeshTransform {
   position?: ZhudaVec3;
   /** Rotation about +Y, applied after pitch and roll. */

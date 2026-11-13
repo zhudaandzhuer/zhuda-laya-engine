@@ -6,7 +6,11 @@ export interface ZhudaLightFogOptions {
     falloffMeters?: number;
     /** Height where the density equals `density` (default 0). */
     baseY?: number;
-    /** Colour the fog itself adds (ambient light in the fog), linear RGB (default dark blue). */
+    /**
+     * Colour the fog itself adds (ambient light in the fog), as light: scene-linear
+     * RGB (default dark blue). A film look or `ZhudaSceneLook` decodes its display
+     * colours before handing them here; so do the colours of `setLights`.
+     */
     color?: readonly [number, number, number];
     /** Strength of the glow from lights, 0..16 (default 1). */
     scatter?: number;

@@ -293,6 +293,15 @@ export class ZhudaFilmHost {
     return this.#serial(() => this.#start());
   }
 
+  /**
+   * WebGL errors the page's driver has reported since the last call, which
+   * then forgets them. A film scene must draw without any: each one is a
+   * defect in the engine or in a pack, not in the scene.
+   */
+  takeGlErrors() {
+    return this.#browser?.glErrors ? this.#browser.glErrors.splice(0) : [];
+  }
+
   async #call(method, args, timeoutMs = 120000) {
     const result = await this.#browser.evaluate(
       `window.__ZHUDA_FILM__.${method}(${JSON.stringify(args)})`,
@@ -408,6 +417,7 @@ export class ZhudaFilmHost {
         width,
         height,
         samples: count,
+        accumulation: frame.accumulation,
         renderMs: frame.renderMs,
       };
     });

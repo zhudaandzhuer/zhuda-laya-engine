@@ -129,17 +129,20 @@ try {
   report.damp = patch(damp, MIRRORED);
   assert.ok(report.damp[0] < report.reflector.mirrored[0], 'damp areas reflect less than puddles');
 
-  // A double-sided floor model under the mirror blocks it unless it is hidden.
+  // What lies below the mirror is cut from the mirrored view: neither a
+  // double-sided floor model nor a `ground` node under it covers the
+  // reflection, and `hides` still takes a model out of it.
   const floor = { id: 'floor', type: 'model', asset: 'floor.glb', position: [0, 0, -2] };
-  const blocked = await render('floor-blocking', scene([floor, reflectorNode()]));
-  report.blocked = patch(blocked, MIRRORED);
+  const under = await render('floor-under', scene([floor, reflectorNode()]));
+  report.floorUnder = patch(under, MIRRORED);
+  assert.ok(report.floorUnder[0] > 120, 'a floor below the mirror does not block it');
   const hidden = await render('floor-hidden', scene([floor, reflectorNode({ hides: ['floor'] })]));
   report.hidden = patch(hidden, MIRRORED);
-  assert.ok(
-    report.blocked[0] < report.hidden[0] - 40,
-    'a floor that is not hidden blocks the mirror',
-  );
   assert.ok(report.hidden[0] > 120, 'a hidden floor lets the reflection through');
+  const ground = { id: 'ground', type: 'ground', size: [40, 40], material: 'concrete' };
+  const onGround = await render('ground-under', scene([ground, reflectorNode()]));
+  report.groundUnder = patch(onGround, MIRRORED);
+  assert.ok(report.groundUnder[0] > 120, 'a ground node below the mirror does not block it');
 
   // 30 mounts with and without the reflector, then the first frame again.
   for (let i = 0; i < 30; i++) await host.mountReport(scene(i % 2 ? [reflectorNode()] : []));
