@@ -137,10 +137,10 @@ export declare class ZhudaLightFog {
     attachSun(scene: any, sun: ZhudaFogSun): void;
     /**
      * Tells the fog whether the camera's picture is multisampled. With `true`
-     * the fog of each pixel is averaged with its four neighbours, which keeps
-     * the smoothed edges smooth under the fog; with `false` (the default) each
-     * pixel takes the fog of its own depth. A film look and `ZhudaSceneLook`
-     * set it from `grade.antialias`.
+     * what a pixel on an edge holds of the other side is given that side's
+     * fog, so that a bright background does not show unfogged along the edge;
+     * with `false` (the default) each pixel takes the fog of its own depth. A
+     * film look and `ZhudaSceneLook` set it from `grade.antialias`.
      */
     setEdgeSmoothing(on: boolean): void;
     /** Which frame of a sequence is drawn: moves the step noise so samples average it away. */

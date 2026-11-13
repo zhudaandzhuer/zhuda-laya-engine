@@ -295,11 +295,13 @@ engine drawn the same day. Two causes, separated by switching each off:
    switched on by a film look and `ZhudaSceneLook` only with
    `grade.antialias: 'msaa'` (`packages/core/runtime3d/LightFog.ts`,
    `film/LiveLook.ts`, `film/FilmStage.ts`, `tests/live-look.test.mjs`).
-2. **Open.** With multisampling on, `ZhudaWaterSurface` draws its foam colour
-   on the half-covered pixels just outside the water's edge, and the fog's
-   averaging still marks the edge rows. Not fixed in the engine. The game sets
-   `grade.antialias: 'none'` until it is; with that its eight pictures and the
-   pixels round the canal equal the old engine's (`EV/city/`).
+2. With multisampling on, a pale line stayed along the same edge. This was
+   first put down to `ZhudaWaterSurface` foam: wrong. With the water's shader
+   made to draw black the pixels did not change; that "canal" is a bright
+   area of the town model that only the fog hides (nearly white with the fog
+   pass removed). Under multisampling an edge pixel holds some of it, and the
+   fog of the pixel's one depth left that part unfogged. **Fixed in the fifth
+   round, below.**
 
 After the fog change: `npm run verify` passed 485 of 485 on three of four
 runs; one run reported a single failure that did not repeat and was not
@@ -312,6 +314,50 @@ old engine 44.6, 42.9, 34.7; new with multisampling 37.2, 50.5, 42.5; new
 without 35.0, 39.8, 45.8. No difference that the spread allows to be seen.
 The game's own prefab comparison (`tools/check.mjs`) passes against its
 existing references.
+
+### Fog on multisampled edges (fifth round)
+
+`packages/core/runtime3d/LightFog.ts`, under `ZHUDA_FOG_SMOOTH` only: the
+delivery's average of the fog over four neighbours is replaced. For a pixel
+whose neighbour has another fog, the pixel's own side is the purest of the
+eight neighbours that share its fog (the darkest where the other side is the
+brighter, the brightest where it is the darker); how much of the pixel the
+other side covers is read from where its colour lies between the two; that
+part takes the other side's fog, and the fog's own light is mixed by the same
+share. A pixel that has the colour of the more fogged side is taken to be all
+that side (a sliver thinner than a pixel can own the depth and no colour
+sample).
+
+How it was found, each step a build of the game and a picture
+(`EV/city/`): the water drawn black (no change); the fog pass removed (the
+area is white); every intermediate value of the pass shown as colours with
+the later effects removed.
+
+| Night street of the game, multisampling on, 1280 by 720 | Pixels round the gap brighter than 40 of 255 (lanterns left out) | Brighter than 80 |
+| --- | --- | --- |
+| Old engine, no multisampling | 0 (brightest 29) | 0 |
+| As delivered (average over neighbours) | 603 | 19 |
+| This round | 1 (69) | 0 |
+
+The game's eight day pictures with multisampling on differ from the old
+engine's by at most 0.2 in mean colour.
+
+`hardEdgeShare` of the route's day example (`verify:quality-route`): 0.164
+on both backends. The delivery's record gives 0.18 for multisampling without
+fog, 0.47 with fog before its average and 0.06 to 0.09 with it. The average
+also blurred pixels that were not on an edge; this keeps what multisampling
+gives and no more. Night example 0.128 (0.126 before).
+
+Results (`EV/after5/`): `npm run verify` 485 of 485, `format:check`, `lint`;
+the 20 GPU scripts 20 of 20 on WebGL and 20 of 20 with the WebGPU switches;
+`npm run verify:film-webgpu` 17 of 17.
+
+Limits: the pass makes sixteen more texture reads a pixel under multisampling
+(eight depths, eight colours); its cost was not measured. A real surface
+whose edge pixel has the colour of a more fogged background behind it (a
+white wall before white fog) is fogged as that background along one pixel.
+No engine script draws a bright area behind fog at an edge: the case is
+covered by the game's pictures only.
 
 ## Lifecycle and failure cases
 
@@ -348,9 +394,10 @@ times and every per-feature cost beyond the coarse table; phones, Windows,
 mini-game hosts; the river-town scene drawn with the patched engine; the
 rainy-night scene; a picture-by-picture comparison with 1.18.0.
 
-7. (Open.) Multisampling with `ZhudaWaterSurface`: a one-pixel pale line at
-   the water's edge (fourth round, above).
+7. (Fixed on this branch, fifth round.) Multisampling with light fog: a pale
+   line along dark things in front of a bright, fogged background. Not the
+   water surface, as first recorded.
 
 **In progress.** Merged into `main` locally. Both backends pass every script;
-items 1 to 6 are closed, item 7 is open. What stays unverified is listed
+items 1 to 7 are closed. What stays unverified is listed
 above. Nothing was pushed.

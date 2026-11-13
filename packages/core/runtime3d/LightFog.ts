@@ -219,21 +219,118 @@ float atEye=u_ZhudaFogShape.x*exp(-(u_ZhudaFogEye.y-u_ZhudaFogShape.z)/falloff);
 float k=dir.y/falloff;
 float through=exp(-atEye*zhudaFogPath(k,t));
 // The colour arrives with its edges smoothed (multisampling); the depth has one
-// value per pixel. The fog of that one depth gives an edge pixel the fog of one
-// side only and puts the stair-steps back, most of all against the sky. What
-// the fog lets through is therefore averaged with the four neighbours: only
-// where the colour is multisampled (\`setEdgeSmoothing\`). Without smoothed
-// edges the average is wrong on both sides of every edge and draws a line
-// along it (seen as a pale outline round water at night).
+// value per pixel. An edge pixel holds some of the surface in front and some
+// of what lies behind, and the fog of its one depth is wrong for the other
+// part: a far, bright background showed through unfogged as a pale line along
+// near things (the outline of a bright gap in a town at night). So, where the
+// fog of a neighbour differs, what this pixel holds beyond the colour of its
+// own side is taken to be the other side showing, and is given the other
+// side's fog. Its own side is read from the neighbours that have its fog; the
+// darkest of them, since along an edge a neighbour is often an edge pixel
+// too. Only where the colour is multisampled (\`setEdgeSmoothing\`): without
+// smoothed edges every pixel is one surface and has the fog of its own depth.
+vec3 own=source.rgb;
+vec3 others=vec3(0.0);
+float beyond=through;
+float share=0.0;
 #ifdef ZHUDA_FOG_SMOOTH
 vec2 texel=1.0/max(u_Viewport.zw,vec2(1.0));
 float far=u_ZhudaFogColor.w;
-float around=exp(-atEye*zhudaFogPath(k,min(zhudaFogDepth(uv+vec2(texel.x,0.0))*len,far)));
-around+=exp(-atEye*zhudaFogPath(k,min(zhudaFogDepth(uv-vec2(texel.x,0.0))*len,far)));
-around+=exp(-atEye*zhudaFogPath(k,min(zhudaFogDepth(uv+vec2(0.0,texel.y))*len,far)));
-around+=exp(-atEye*zhudaFogPath(k,min(zhudaFogDepth(uv-vec2(0.0,texel.y))*len,far)));
-through=(through*2.0+around)/6.0;
+float fogA=exp(-atEye*zhudaFogPath(k,min(zhudaFogDepth(uv+vec2(texel.x,0.0))*len,far)));
+float fogB=exp(-atEye*zhudaFogPath(k,min(zhudaFogDepth(uv-vec2(texel.x,0.0))*len,far)));
+float fogC=exp(-atEye*zhudaFogPath(k,min(zhudaFogDepth(uv+vec2(0.0,texel.y))*len,far)));
+float fogD=exp(-atEye*zhudaFogPath(k,min(zhudaFogDepth(uv-vec2(0.0,texel.y))*len,far)));
+// The neighbour whose fog differs most from this pixel's stands for the other side.
+float pick=0.0;
+beyond=fogA;
+if(abs(fogB-through)>abs(beyond-through)){beyond=fogB;pick=1.0;}
+if(abs(fogC-through)>abs(beyond-through)){beyond=fogC;pick=2.0;}
+if(abs(fogD-through)>abs(beyond-through)){beyond=fogD;pick=3.0;}
+float apart=abs(beyond-through);
+vec4 sideA=texture2D(u_MainTex,uv+vec2(texel.x,0.0));
+vec4 sideB=texture2D(u_MainTex,uv-vec2(texel.x,0.0));
+vec4 sideC=texture2D(u_MainTex,uv+vec2(0.0,texel.y));
+vec4 sideD=texture2D(u_MainTex,uv-vec2(0.0,texel.y));
+#ifdef Gamma_u_MainTex
+sideA=gammaToLinear(sideA);
+sideB=gammaToLinear(sideB);
+sideC=gammaToLinear(sideC);
+sideD=gammaToLinear(sideD);
 #endif
+// A neighbour is on this pixel's side when its fog is nearer this pixel's than the other side's.
+vec3 mine=source.rgb;
+vec3 most=source.rgb;
+float ownA;float ownB;float ownC;float ownD;float ownE;float ownF;float ownG;float ownH;
+ownA=step(abs(fogA-through),apart*0.5);
+mine=min(mine,mix(source.rgb,sideA.rgb,ownA));
+most=max(most,mix(source.rgb,sideA.rgb,ownA));
+ownB=step(abs(fogB-through),apart*0.5);
+mine=min(mine,mix(source.rgb,sideB.rgb,ownB));
+most=max(most,mix(source.rgb,sideB.rgb,ownB));
+ownC=step(abs(fogC-through),apart*0.5);
+mine=min(mine,mix(source.rgb,sideC.rgb,ownC));
+most=max(most,mix(source.rgb,sideC.rgb,ownC));
+ownD=step(abs(fogD-through),apart*0.5);
+mine=min(mine,mix(source.rgb,sideD.rgb,ownD));
+most=max(most,mix(source.rgb,sideD.rgb,ownD));
+// The four diagonal neighbours as well: at a corner of the edge no neighbour
+// along the axes is wholly on this pixel's side.
+vec2 diagonal=vec2(texel.x,-texel.y);
+float fogE=exp(-atEye*zhudaFogPath(k,min(zhudaFogDepth(uv+texel)*len,far)));
+float fogF=exp(-atEye*zhudaFogPath(k,min(zhudaFogDepth(uv-texel)*len,far)));
+float fogG=exp(-atEye*zhudaFogPath(k,min(zhudaFogDepth(uv+diagonal)*len,far)));
+float fogH=exp(-atEye*zhudaFogPath(k,min(zhudaFogDepth(uv-diagonal)*len,far)));
+vec4 sideE=texture2D(u_MainTex,uv+texel);
+vec4 sideF=texture2D(u_MainTex,uv-texel);
+vec4 sideG=texture2D(u_MainTex,uv+diagonal);
+vec4 sideH=texture2D(u_MainTex,uv-diagonal);
+#ifdef Gamma_u_MainTex
+sideE=gammaToLinear(sideE);
+sideF=gammaToLinear(sideF);
+sideG=gammaToLinear(sideG);
+sideH=gammaToLinear(sideH);
+#endif
+ownE=step(abs(fogE-through),apart*0.5);
+mine=min(mine,mix(source.rgb,sideE.rgb,ownE));
+most=max(most,mix(source.rgb,sideE.rgb,ownE));
+ownF=step(abs(fogF-through),apart*0.5);
+mine=min(mine,mix(source.rgb,sideF.rgb,ownF));
+most=max(most,mix(source.rgb,sideF.rgb,ownF));
+ownG=step(abs(fogG-through),apart*0.5);
+mine=min(mine,mix(source.rgb,sideG.rgb,ownG));
+most=max(most,mix(source.rgb,sideG.rgb,ownG));
+ownH=step(abs(fogH-through),apart*0.5);
+mine=min(mine,mix(source.rgb,sideH.rgb,ownH));
+most=max(most,mix(source.rgb,sideH.rgb,ownH));
+// The pixel is a mixture of its own side and the other. Its own side is the
+// purest neighbour that has its fog: the darkest where the other side is the
+// brighter, the brightest where it is the darker.
+vec3 theirs=pick<0.5?sideA.rgb:pick<1.5?sideB.rgb:pick<2.5?sideC.rgb:sideD.rgb;
+float light=dot(source.rgb,vec3(1.0));
+vec3 pure=dot(theirs,vec3(1.0))>=light?mine:most;
+// How much of the pixel the other side covers: where its colour lies between the two.
+float span=dot(theirs-pure,vec3(1.0));
+share=abs(span)>0.000001?clamp((light-dot(pure,vec3(1.0)))/span,0.0,1.0):0.0;
+// Nothing to correct where the two fogs are alike.
+share*=smoothstep(0.01,0.06,apart);
+// What is left for this side is never more than its share of its own colour:
+// beside a background many times brighter, a little too little taken off
+// would still show as a pale edge.
+own=min(source.rgb,pure*(1.0-share));
+own=mix(source.rgb,own,smoothstep(0.01,0.06,apart));
+others=source.rgb-own;
+// A sliver thinner than a pixel (a rail, the tip of an eave) can own a pixel's
+// depth and none of its colour samples: the pixel is all background with the
+// fog of the foreground. Where the pixel has the colour of the side that is
+// fogged more, all of it is that side.
+float whole=(1.0-smoothstep(0.15,0.4,distance(source.rgb,theirs)/max(length(theirs),0.000001)))*smoothstep(0.01,0.06,apart)*step(beyond,through);
+own*=1.0-whole;
+others=source.rgb-own;
+share=max(share,whole);
+#endif
+// Each part through its own fog; the fog's own light by how much of the pixel each covers.
+vec3 seen=own*through+others*beyond;
+through=mix(through,beyond,share);
 vec3 glow=vec3(0.0);
 for(int i=0;i<${ZHUDA_FOG_MAX_LIGHTS};i++){
 if(float(i)>=u_ZhudaFogEye.w)break;
@@ -277,7 +374,7 @@ float towardSun=dot(dir,u_ZhudaShaftSun);
 float phase=(1.0-g*g)/(12.5663706*pow(max(1.0+g*g-2.0*g*towardSun,0.0001),1.5));
 beams=u_ZhudaShaftColor.rgb*lit*stride*phase;
 #endif
-gl_FragColor=vec4(source.rgb*through+u_ZhudaFogColor.rgb*(1.0-through)+glow*u_ZhudaFogForward.w+beams,source.a);
+gl_FragColor=vec4(seen+u_ZhudaFogColor.rgb*(1.0-through)+glow*u_ZhudaFogForward.w+beams,source.a);
 }`;
 
 const registered = new WeakSet<object>();
@@ -480,10 +577,10 @@ export class ZhudaLightFog {
 
   /**
    * Tells the fog whether the camera's picture is multisampled. With `true`
-   * the fog of each pixel is averaged with its four neighbours, which keeps
-   * the smoothed edges smooth under the fog; with `false` (the default) each
-   * pixel takes the fog of its own depth. A film look and `ZhudaSceneLook`
-   * set it from `grade.antialias`.
+   * what a pixel on an edge holds of the other side is given that side's
+   * fog, so that a bright background does not show unfogged along the edge;
+   * with `false` (the default) each pixel takes the fog of its own depth. A
+   * film look and `ZhudaSceneLook` set it from `grade.antialias`.
    */
   setEdgeSmoothing(on: boolean): void {
     if (this.disposed) throw Error('Disposed light fog');

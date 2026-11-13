@@ -158,9 +158,15 @@ The current consumer remains a first visual slice. Its screenshot review still i
   HDR target, so geometry edges are smooth in a frame that is drawn once;
   `setAntialias(on)` switches it while the pipeline runs and disposal puts the
   camera's own setting back. A film look does this through `grade.antialias`
-  (`msaa` by default). `ZhudaLightFog` averages what the fog lets through over
-  the neighbouring depths, so that it does not put the stair-steps back along
-  outlines against the sky.
+  (`msaa` by default). The depth has one value per pixel, so under
+  multisampling a pixel on an edge would get the fog of one side only: the
+  stair-steps come back along outlines against the sky, and a bright
+  background shows unfogged as a pale line round dark things in front of it.
+  `ZhudaLightFog` therefore reads from the neighbours how much of such a pixel
+  is the other side and gives that part the other side's fog
+  (`setEdgeSmoothing`, which a look switches on with `msaa` and off without).
+  Sixteen more texture reads a pixel in that pass; measured as a picture, not
+  as a frame time.
 - The pipeline writes the occlusion colour of LayaAir's `ScalableAO` (black).
   LayaAir 3.4.2 leaves it unset and its shader then reads what the last owner
   of that uniform block left behind: creases glowed in a stale colour from the
