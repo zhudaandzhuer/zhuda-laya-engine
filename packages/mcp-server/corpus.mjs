@@ -7,7 +7,20 @@
  * - 內建 5 組 Golden Examples 範例模版（示範 API 用法，不代表畫面驗收）
  */
 
+import { QUALITY_ROUTE_SCENES } from './quality-route.mjs';
+
 export const API_GUARDRAILS = [
+  {
+    id: 'GUARD_SCENE_QUALITY_ROUTE',
+    topic:
+      'high quality 3D scene look lighting shadows HDR tone mapping bloom fog reflection wet ground PBR material 高品質 場景 畫面 光影 陰影 霧 反射 質感',
+    hallucinatedLegacyApi:
+      'Zhuda3D.createMaterial({ albedoColor, shininess }) for scene surfaces (a shininess makes it Blinn-Phong); a bare camera and one directional light; a hand-built Laya PostProcess chain; a look without preset or grade; lightFog with a night colour in a day scene; a reflector lying in the ground plane',
+    zhudaCanonicalApi:
+      "get_quality_route first. Game: new ZhudaSceneLook(scene3D, camera, { preset: 'day', grade: {}, ambientGround, shadows, lightFog }) + Zhuda3D.createMaterial({ type: 'pbr' }) or createSurfaceMaterial / createZhudaProceduralMaterial + ZhudaQualityGovernor. Film: film_scene_create → read advice → film_scene_preview → read metrics.",
+    reason:
+      'The look (sun, shadows, sky, fog, HDR grade, multisampling) is one object shared by film scenes and games. Defaults since the quality-defaults change: ground fog follows the sky colour, mipmapped textures use anisotropic 8, a graded look multisamples, what lies below a reflector is cut from the mirror. lintZhudaFilmScene names scenes that are valid and still wrong; measureZhudaFrame describes a preview in numbers. Desktop WebGL evidence only; not built yet: real-time GI, reflections on walls, point-light shadows. See docs/quality-route.md.',
+  },
   {
     id: 'GUARD_CINEMATIC_CAPTURE',
     topic: 'cinematic movie capture shutter physical camera lens 景深 電影 離線 4K',
@@ -16,7 +29,7 @@ export const API_GUARDRAILS = [
     zhudaCanonicalApi:
       'runtime.setPaused(true); new ZhudaModelAnimationSampler(instance,path,state); new ZhudaPhysicalCameraRig(camera,{focalLengthMm:50}); new ZhudaCinematicCapture(scene,lens,runtime,{width:3840,height:2160}); audio.renderOffline(options); zhuda-film-export report.json --fps 24 --output movie.mp4',
     reason:
-      '1.13.0 固定時間同步取樣、光圈/快門累積、共用 mixer 離線 WAV、原子 MP4 輸出。取樣 callback 必須同步且無遊戲事件；取消仍保留底層作業至排空。累積為 display-linear SDR，非 scene-linear HDR 或即時 4K 效能；見 docs/cinematics.md 與 get_cinematic_contract。',
+      '1.13.0 固定時間同步取樣、光圈/快門累積、共用 mixer 離線 WAV、原子 MP4 輸出。取樣 callback 必須同步且無遊戲事件；取消仍保留底層作業至排空。帶 linear: pipeline.linearChain() 時在 scene-linear（tone mapping 之前）累積，否則為 display-linear；輸出為 SDR，非 EXR 或即時 4K 效能；見 docs/cinematics.md 與 get_cinematic_contract。',
   },
   {
     id: 'GUARD_MESHOPT',
@@ -259,6 +272,95 @@ export const ERROR_DIAGNOSTICS_DB = [
 ];
 
 export const GOLDEN_EXAMPLES = {
+  'scene-look-game': {
+    title: 'A game scene on the quality route: PBR surfaces, ZhudaSceneLook, frame budget',
+    features: ['core', '3d', 'postProcess'],
+    code: `import {
+  Zhuda3D,
+  ZhudaEngine,
+  ZhudaQualityGovernor,
+  ZhudaSceneLook,
+  type ZhudaLookQuality,
+} from 'zhuda-laya-engine';
+
+async function main() {
+  const container = document.querySelector<HTMLElement>('#game');
+  if (!container) throw new Error('Missing #game container');
+
+  // postProcess carries the HDR grade: tone mapping, bloom, ambient occlusion.
+  const context = await ZhudaEngine.boot({
+    container,
+    features: ['core', '3d', 'postProcess'],
+    dprCap: 1.5,
+    targetFPS: 60,
+  });
+  const scene = Zhuda3D.createScene3D(context.rootScene);
+  const eye: [number, number, number] = [5, 3, 7];
+  const target: [number, number, number] = [0, 0.75, 0];
+  const camera = Zhuda3D.createCamera(scene, { position: eye, rotationEuler: [-14.7, 35.5, 0] });
+
+  // The look owns the sun, its shadows, the sky, the fog and the HDR chain:
+  // do not add a directional light of your own. See the engine's
+  // docs/quality-route.md for every step and why it is there.
+  const look = new ZhudaSceneLook(scene, camera, {
+    preset: 'day',
+    sun: { azimuthDeg: 155, elevationDeg: 32 }, // from the side, a little ahead of the camera
+    ambientGround: [0.26, 0.23, 0.2], // what the ground throws back
+    shadows: { distance: 40, resolution: 2048, cascades: 4 },
+    grade: { exposure: 1.1, bloom: 0.2, ao: 0.6 },
+    lightFog: { density: 0.003 }, // its colour follows the sky
+  });
+
+  // Physically based surfaces (the default): lit by the sky and the HDR chain.
+  const surface = (albedoColor: [number, number, number, number], smoothness: number) =>
+    Zhuda3D.createMaterial({ type: 'pbr', albedoColor, smoothness, metallic: 0 });
+  const add = (mesh: Laya.Mesh, material: Laya.Material, y: number) => {
+    const node = new Laya.MeshSprite3D(mesh);
+    node.meshRenderer.sharedMaterial = material;
+    node.meshRenderer.castShadow = true;
+    node.meshRenderer.receiveShadow = true;
+    node.transform.position = new Laya.Vector3(0, y, 0);
+    scene.addChild(node);
+    return node;
+  };
+  add(
+    Zhuda3D.createPrimitiveMesh('box', { width: 30, height: 0.2, depth: 30 }),
+    surface([0.32, 0.33, 0.35, 1], 0.1),
+    -0.1,
+  );
+  add(
+    Zhuda3D.createPrimitiveMesh('box', { width: 1.5, height: 1.5, depth: 1.5 }),
+    surface([0.2, 0.55, 0.9, 1], 0.55),
+    0.75,
+  );
+
+  // Hold the frame budget: the governor decides the level, the look applies it.
+  const governor = new ZhudaQualityGovernor({ budgetMs: 1000 / 60 });
+  context.runtime.start((dt) => {
+    look.update(eye, target, camera.fieldOfView, camera.aspectRatio);
+    const level = governor.sample(dt * 1000);
+    if (level !== undefined) look.setQuality(level as ZhudaLookQuality);
+  });
+}
+
+void main();`,
+  },
+  'film-scene-day': {
+    title:
+      'A film scene on the quality route (day): preset, side light, shadows, fog, sized textures',
+    features: ['core', '2d', '3d', 'ui', 'gltf', 'postProcess'],
+    code:
+      '// film_scene_create { scene } → read advice → film_scene_preview → read metrics\n' +
+      JSON.stringify(QUALITY_ROUTE_SCENES['day-yard'], null, 2),
+  },
+  'film-scene-night-wet': {
+    title:
+      'A film scene on the quality route (night): lamps with halos, one shadow-casting spot, wet ground',
+    features: ['core', '2d', '3d', 'ui', 'gltf', 'postProcess'],
+    code:
+      '// film_scene_create { scene } → read advice → film_scene_preview → read metrics\n' +
+      JSON.stringify(QUALITY_ROUTE_SCENES['night-wet'], null, 2),
+  },
   'terrain-2d': {
     title: '分塊2D地形與局部繪製',
     features: ['core'],
@@ -329,7 +431,9 @@ async function main() {
 
   const cube = new Laya.MeshSprite3D();
   cube.meshFilter.sharedMesh = Zhuda3D.createPrimitiveMesh('box', { width: 1.5, height: 1.5, depth: 1.5 });
-  cube.meshRenderer.sharedMaterial = Zhuda3D.createMaterial({ albedoColor: [0.2, 0.7, 1.0, 1], shininess: 48 });
+  // Physically based, the default. The smallest scene
+  // that draws; for one that looks good see the example 'scene-look-game'.
+  cube.meshRenderer.sharedMaterial = Zhuda3D.createMaterial({ type: 'pbr', albedoColor: [0.2, 0.7, 1.0, 1], smoothness: 0.5 });
   cube.addComponent(SpinCubeScript);
   scene3D.addChild(cube);
 }

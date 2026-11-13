@@ -18,6 +18,13 @@ export interface ZhudaReflectiveSurfaceOptions {
     resolution?: number;
     /** Laya layer for the surface; the mirrored camera does not draw this layer (default 30). */
     layer?: number;
+    /**
+     * Draw only what lies above the mirror in the mirrored view (default true).
+     * The ground a wet surface lies on is below the mirror and would otherwise
+     * cover the whole reflection. With `false` the view is not cut: keep such
+     * geometry out of the mirror yourself (its layer, or `hides` in a film scene).
+     */
+    clipBelowPlane?: boolean;
 }
 /** Lists what is wrong with the options; empty when they are valid. */
 export declare function validateZhudaReflectiveSurface(options: ZhudaReflectiveSurfaceOptions): string[];

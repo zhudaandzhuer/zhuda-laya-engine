@@ -123,3 +123,11 @@ An acceptance report that says “looks good” is incomplete. If a check could 
 run, write `UNAVAILABLE` with the reason and keep the capability unaccepted.
 The next agent should be able to reproduce the result from the report without
 reconstructing conversation context.
+
+## Making a 3D scene look good
+
+Follow the [quality route](quality-route.md): the steps, in order, from an
+empty scene to a frame that reads as lit, grounded and deep, with the check
+for each step and the list of what is not built yet. The MCP tool
+`get_quality_route` returns the same route as data; the `film_*` tools return
+`advice` for a scene and `metrics` for a preview.

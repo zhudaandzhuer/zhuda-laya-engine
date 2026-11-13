@@ -1,7 +1,7 @@
 // Generated from TypeScript source; run npm run types:generate.
 export { zhudaBakeKey } from './BakeKey.js';
 import { ZhudaPhysicalCameraRig } from '../runtime3d/PhysicalCamera.js';
-import { type CinematicFramePixels } from '../runtime3d/CinematicCapture.js';
+import { type CinematicFramePixels, type CinematicLinearChain } from '../runtime3d/CinematicCapture.js';
 import type { ZhudaRuntimeSession } from '../runtime3d/Runtime.js';
 import { ZhudaModelLibrary } from '../runtime3d/Assets.js';
 import type { ZhudaAssetCache } from '../runtime3d/Assets.js';
@@ -64,6 +64,16 @@ export interface ZhudaFilmStage {
     }): void;
     /** Hands the stage something to release when it is disposed (before the scene goes). */
     adopt(release: () => void): void;
+    /**
+     * The HDR chain's handle for averaging the samples of a frame in
+     * scene-linear light; undefined for a look without a grade.
+     */
+    linearChain(): CinematicLinearChain | undefined;
+    /** What stands in the scene (props, boxes, shapes) as world axis-aligned boxes. */
+    readonly solids: readonly {
+        readonly min: number[];
+        readonly max: number[];
+    }[];
     /** The look in use, fully resolved (`scene.look` is the authored one). */
     readonly look: ZhudaResolvedFilmLook;
     /**

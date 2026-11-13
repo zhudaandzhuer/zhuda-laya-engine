@@ -211,6 +211,17 @@ export function prefilterZhudaEnvironment(
   }
   // Ambient: irradiance / pi as a quadratic in the normal (Laya's `u_IblSH`),
   // projected from the base mip, in the same mirrored-X convention.
+  const ambientSH = zhudaAmbientSH(base);
+  return { spec: { size, levels, ambientSH }, pixels };
+}
+
+/**
+ * The nine ambient colours (27 numbers, Laya's `u_IblSH`: irradiance / pi as
+ * a quadratic in the normal, X mirrored) of a cube picture of the
+ * surroundings. `evaluateZhudaAmbient` evaluates them.
+ */
+export function zhudaAmbientSH(base: ZhudaCubePicture): number[] {
+  const size = base.size;
   const sh = new Float64Array(27);
   let solid = 0;
   for (let face = 0; face < 6; face++)
@@ -257,7 +268,7 @@ export function prefilterZhudaEnvironment(
   const ambientSH: number[] = [];
   for (let k = 0; k < 9; k++)
     for (let c = 0; c < 3; c++) ambientSH.push(sh[k * 3 + c] * norm * scale[k]);
-  return { spec: { size, levels, ambientSH }, pixels };
+  return ambientSH;
 }
 
 /**
@@ -310,6 +321,9 @@ const VIEWS: { forward: number[]; up: number[] }[] = [
   { forward: [0, 0, 1], up: [0, 1, 0] },
   { forward: [0, 0, -1], up: [0, 1, 0] },
 ];
+/** The six views of a capture, in the order the faces are read back. */
+export const ZHUDA_CUBE_VIEWS: readonly { readonly forward: number[]; readonly up: number[] }[] =
+  VIEWS;
 const cross = (a: number[], b: number[]) => [
   a[1] * b[2] - a[2] * b[1],
   a[2] * b[0] - a[0] * b[2],
@@ -397,7 +411,8 @@ export interface ZhudaHemisphereAmbientHandle {
  * Lights a scene with a sky-and-ground ambient (and the matching soft
  * reflections). Returns the function that restores the scene's previous
  * ambient setup and releases the texture; its `update` changes the colours
- * in place.
+ * in place. The colours are light (scene-linear); a film look and
+ * `ZhudaSceneLook` decode their display colours before handing them here.
  */
 export function applyZhudaHemisphereAmbient(
   scene: any,
@@ -426,6 +441,47 @@ export function applyZhudaHemisphereAmbient(
     if (!scene.destroyed && scene.iblTex === environment.texture) environment.apply(scene);
   };
   return restore;
+}
+
+/**
+ * Six pictures read back from a 90-degree camera turned along `VIEWS`, as one
+ * cube picture of the surroundings in world directions.
+ */
+export function zhudaCubeFromFaces(faces: readonly Float32Array[], n: number): ZhudaCubePicture {
+  const world: ZhudaCubePicture = { size: n, data: new Float32Array(n * n * 24) };
+  const rights = VIEWS.map((view) => cross(view.forward, view.up));
+  for (let face = 0; face < 6; face++)
+    for (let j = 0; j < n; j++)
+      for (let i = 0; i < n; i++) {
+        const d = zhudaCubeDirection(face, (2 * (i + 0.5)) / n - 1, (2 * (j + 0.5)) / n - 1);
+        // Which capture looks along this direction.
+        let best = 0,
+          depth = -Infinity;
+        for (let k = 0; k < 6; k++) {
+          const f = VIEWS[k].forward,
+            along = d[0] * f[0] + d[1] * f[1] + d[2] * f[2];
+          if (along > depth) {
+            depth = along;
+            best = k;
+          }
+        }
+        const right = rights[best],
+          up = VIEWS[best].up;
+        const x = (d[0] * right[0] + d[1] * right[1] + d[2] * right[2]) / depth,
+          y = (d[0] * up[0] + d[1] * up[1] + d[2] * up[2]) / depth;
+        const column = Math.min(n - 1, Math.max(0, Math.floor(((x + 1) / 2) * n))),
+          // Read-back rows start at the top of the picture (measured on Laya
+          // 3.4.2 render targets: a lamp above the probe lands in the first rows).
+          row = Math.min(n - 1, Math.max(0, Math.floor(((1 - y) / 2) * n)));
+        const from = (row * n + column) * 4,
+          to = (face * n * n + j * n + i) * 4;
+        for (let c = 0; c < 3; c++) {
+          const value = faces[best][from + c];
+          world.data[to + c] = value > 0 && Number.isFinite(value) ? Math.min(value, 4096) : 0;
+        }
+        world.data[to + 3] = 1;
+      }
+  return world;
 }
 
 export class ZhudaEnvironmentProbe {
@@ -509,39 +565,7 @@ export class ZhudaEnvironmentProbe {
       target.destroy();
     }
     // Resample the six views into a world cube picture.
-    const world: ZhudaCubePicture = { size: n, data: new Float32Array(n * n * 24) };
-    const rights = VIEWS.map((view) => cross(view.forward, view.up));
-    for (let face = 0; face < 6; face++)
-      for (let j = 0; j < n; j++)
-        for (let i = 0; i < n; i++) {
-          const d = zhudaCubeDirection(face, (2 * (i + 0.5)) / n - 1, (2 * (j + 0.5)) / n - 1);
-          // Which capture looks along this direction.
-          let best = 0,
-            depth = -Infinity;
-          for (let k = 0; k < 6; k++) {
-            const f = VIEWS[k].forward,
-              along = d[0] * f[0] + d[1] * f[1] + d[2] * f[2];
-            if (along > depth) {
-              depth = along;
-              best = k;
-            }
-          }
-          const right = rights[best],
-            up = VIEWS[best].up;
-          const x = (d[0] * right[0] + d[1] * right[1] + d[2] * right[2]) / depth,
-            y = (d[0] * up[0] + d[1] * up[1] + d[2] * up[2]) / depth;
-          const column = Math.min(n - 1, Math.max(0, Math.floor(((x + 1) / 2) * n))),
-            // Read-back rows start at the top of the picture (measured on Laya
-            // 3.4.2 render targets: a lamp above the probe lands in the first rows).
-            row = Math.min(n - 1, Math.max(0, Math.floor(((1 - y) / 2) * n)));
-          const from = (row * n + column) * 4,
-            to = (face * n * n + j * n + i) * 4;
-          for (let c = 0; c < 3; c++) {
-            const value = faces[best][from + c];
-            world.data[to + c] = value > 0 && Number.isFinite(value) ? Math.min(value, 4096) : 0;
-          }
-          world.data[to + 3] = 1;
-        }
+    const world = zhudaCubeFromFaces(faces, n);
     const { spec, pixels } = prefilterZhudaEnvironment(world, { size: options.size ?? 64 });
     const next = createPrefilteredEnvironment(spec, pixels);
     this.previous ??= {

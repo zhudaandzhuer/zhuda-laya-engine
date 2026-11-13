@@ -112,7 +112,12 @@ function filesFor({ name, engine, template = '3d' }) {
           name,
           entry: 'src/Main.ts',
           outDir: 'dist/web',
-          features: template === '2d' ? ['core', '2d', 'ui'] : ['core', '3d'],
+          features:
+            template === '2d'
+              ? ['core', '2d', 'ui']
+              : template === '3d'
+                ? ['core', '3d', 'postProcess']
+                : ['core', '3d'],
           ...(['2d', 'minigame'].includes(template) ? { prefabPreview: 'src/prefabs.ts' } : {}),
           ...(template === 'minigame'
             ? { minigame: { maxMainPackageBytes: 8388608, targets: {} } }
@@ -154,26 +159,72 @@ function filesFor({ name, engine, template = '3d' }) {
   </body>
 </html>
 `,
-    'src/Main.ts': `import { Zhuda3D, ZhudaEngine } from "zhuda-laya-engine";
+    'src/Main.ts': `import {
+  Zhuda3D,
+  ZhudaEngine,
+  ZhudaQualityGovernor,
+  ZhudaSceneLook,
+  type ZhudaLookQuality,
+} from "zhuda-laya-engine";
 
 async function main() {
   const container = document.querySelector<HTMLElement>("#game");
   if (!container) throw new Error("Missing #game container");
 
+  // postProcess carries the HDR grade: tone mapping, bloom, ambient occlusion.
   const context = await ZhudaEngine.boot({
     container,
-    features: ["core", "3d"],
+    features: ["core", "3d", "postProcess"],
     dprCap: 1.5,
     targetFPS: 60,
   });
   const scene = Zhuda3D.createScene3D(context.rootScene);
-  Zhuda3D.createCamera(scene, { position: [0, 3, 7], rotationEuler: [-18, 0, 0] });
-  Zhuda3D.createDirectionalLight(scene);
+  const eye: [number, number, number] = [5, 3, 7];
+  const target: [number, number, number] = [0, 0.75, 0];
+  const camera = Zhuda3D.createCamera(scene, { position: eye, rotationEuler: [-14.7, 35.5, 0] });
 
-  const cube = new Laya.MeshSprite3D(Zhuda3D.createPrimitiveMesh("box", { width: 1.5, height: 1.5, depth: 1.5 }));
-  cube.meshRenderer.sharedMaterial = Zhuda3D.createMaterial({ albedoColor: [0.2, 0.7, 1, 1], shininess: 48 });
-  scene.addChild(cube);
-  context.runtime.start(() => {});
+  // The look owns the sun, its shadows, the sky, the fog and the HDR chain:
+  // do not add a directional light of your own. See the engine's
+  // docs/quality-route.md for every step and why it is there.
+  const look = new ZhudaSceneLook(scene, camera, {
+    preset: "day",
+    sun: { azimuthDeg: 155, elevationDeg: 32 }, // from the side, a little ahead of the camera
+    ambientGround: [0.26, 0.23, 0.2], // what the ground throws back
+    shadows: { distance: 40, resolution: 2048, cascades: 4 },
+    grade: { exposure: 1.1, bloom: 0.2, ao: 0.6 },
+    lightFog: { density: 0.003 }, // its colour follows the sky
+  });
+
+  // Physically based surfaces (the default): lit by the sky and the HDR chain.
+  const surface = (albedoColor: [number, number, number, number], smoothness: number) =>
+    Zhuda3D.createMaterial({ type: "pbr", albedoColor, smoothness, metallic: 0 });
+  const add = (mesh: Laya.Mesh, material: Laya.Material, y: number) => {
+    const node = new Laya.MeshSprite3D(mesh);
+    node.meshRenderer.sharedMaterial = material;
+    node.meshRenderer.castShadow = true;
+    node.meshRenderer.receiveShadow = true;
+    node.transform.position = new Laya.Vector3(0, y, 0);
+    scene.addChild(node);
+    return node;
+  };
+  add(
+    Zhuda3D.createPrimitiveMesh("box", { width: 30, height: 0.2, depth: 30 }),
+    surface([0.32, 0.33, 0.35, 1], 0.1),
+    -0.1,
+  );
+  add(
+    Zhuda3D.createPrimitiveMesh("box", { width: 1.5, height: 1.5, depth: 1.5 }),
+    surface([0.2, 0.55, 0.9, 1], 0.55),
+    0.75,
+  );
+
+  // Hold the frame budget: the governor decides the level, the look applies it.
+  const governor = new ZhudaQualityGovernor({ budgetMs: 1000 / 60 });
+  context.runtime.start((dt) => {
+    look.update(eye, target, camera.fieldOfView, camera.aspectRatio);
+    const level = governor.sample(dt * 1000);
+    if (level !== undefined) look.setQuality(level as ZhudaLookQuality);
+  });
 }
 
 void main();
@@ -189,10 +240,47 @@ This consumer is pinned to \`${engine}\`. It uses the public
 public boundary only. Record a real browser/WebGL report and device checks in
 this repository before claiming visual or performance acceptance.
 
-Keep game rules, assets, prefabs and deployment here. Read the engine's
-\`AGENTS.md\` and [consumer route](https://github.com/zhudaandzhuer/zhuda-laya-engine/blob/main/docs/consumer-route.md)
-before adding visual content.
+Keep game rules, assets, prefabs and deployment here. Read \`AGENTS.md\` in
+this folder first: it lists what to read in the installed engine, in order,
+and how to connect the engine's MCP server (\`.mcp.json\`, after \`npm install\`).
 `,
+    'AGENTS.md': `# AGENTS.md
+
+This project is a game on \`zhuda-laya-engine\`, pinned to \`${engine}\`. For
+any coding agent working here:
+
+1. Import only from the public entries of the package (\`zhuda-laya-engine\`
+   and the ones its \`package.json\` exports). \`npm run doctor\` checks that
+   boundary.
+2. The rules ship inside the package, at the pinned version. After
+   \`npm install\`, read in this order:
+   - \`node_modules/zhuda-laya-engine/AGENTS.md\`
+   - \`node_modules/zhuda-laya-engine/docs/consumer-route.md\`
+   - \`node_modules/zhuda-laya-engine/docs/quality-route.md\` before any 3D
+     scene: the steps, in order, that make a scene look lit, grounded and deep.
+3. With the MCP server connected (\`.mcp.json\`), call \`get_agent_contract\`
+   and \`get_quality_route\` first. Author and preview 3D scenes with the
+   \`film_*\` tools and act on the \`advice\` and \`metrics\` in their replies.
+4. \`npm run verify\` must pass before anything is reported as done. It proves
+   the build, the types and the package boundary, and no pixel: a visual or
+   performance claim needs a recorded browser run kept in this repository.
+`,
+    // The installed file by its path, not `npx zhuda-laya-mcp`: before
+    // `npm install` npx would look that name up in the public registry, where
+    // it belongs to no one, and run whatever it found.
+    '.mcp.json':
+      JSON.stringify(
+        {
+          mcpServers: {
+            'zhuda-laya-engine': {
+              command: 'node',
+              args: ['node_modules/zhuda-laya-engine/packages/mcp-server/index.mjs'],
+            },
+          },
+        },
+        null,
+        2,
+      ) + '\n',
     ...(template === '2d' ? starter2D() : {}),
     ...(template === 'minigame' ? starterMiniGame() : {}),
   };

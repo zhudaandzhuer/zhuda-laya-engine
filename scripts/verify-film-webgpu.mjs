@@ -17,6 +17,15 @@ const scripts = [
   'verify-film-animation',
   'verify-film-environment',
   'verify-film-water',
+  'verify-film-remount',
+  'verify-quality-route',
+  'verify-film-highlights',
+  'verify-film-reflections',
+  'verify-film-variation',
+  'verify-film-point-shadow',
+  'verify-film-shapes',
+  'verify-film-colours',
+  'verify-film-bounce',
 ];
 const failed = [];
 for (const name of scripts) {

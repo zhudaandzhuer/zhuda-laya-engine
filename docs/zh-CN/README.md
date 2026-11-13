@@ -161,7 +161,7 @@ const cube = new Laya.MeshSprite3D(
   Zhuda3D.createPrimitiveMesh('box', { width: 1.5, height: 1.5, depth: 1.5 }),
 );
 cube.meshRenderer.sharedMaterial = Zhuda3D.createMaterial({
-  albedoColor: [0.2, 0.7, 1, 1], shininess: 48,
+  type: 'pbr', albedoColor: [0.2, 0.7, 1, 1], smoothness: 0.5,
 });
 scene.addChild(cube);
 ```

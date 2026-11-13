@@ -79,14 +79,28 @@ export declare class Zhuda3D {
         node: Laya.Sprite3D;
         light: Laya.DirectionLightCom;
     };
+    /**
+     * A surface material. Without `type` it is physically based (`'pbr'`): lit
+     * by the sky, the environment and the HDR chain. Only a `shininess` without
+     * a `type` still gives Blinn-Phong, the default of earlier versions, since
+     * only Blinn-Phong has a shininess.
+     */
     static createMaterial(options: DeclarativeMaterialOptions & {
         type: 'pbr';
     }): Laya.PBRStandardMaterial;
     static createMaterial(options: DeclarativeMaterialOptions & {
         type: 'unlit';
     }): Laya.UnlitMaterial;
-    static createMaterial(options: Omit<DeclarativeMaterialOptions, 'type'> & {
-        type?: 'blinn-phong';
+    static createMaterial(options: DeclarativeMaterialOptions & {
+        type: 'blinn-phong';
+    }): Laya.BlinnPhongMaterial;
+    static createMaterial(options: Omit<DeclarativeMaterialOptions, 'type' | 'shininess'> & {
+        type?: undefined;
+        shininess?: undefined;
+    }): Laya.PBRStandardMaterial;
+    static createMaterial(options: Omit<DeclarativeMaterialOptions, 'type' | 'shininess'> & {
+        type?: undefined;
+        shininess: number;
     }): Laya.BlinnPhongMaterial;
     static createMaterial(options: DeclarativeMaterialOptions): Laya.BlinnPhongMaterial | Laya.PBRStandardMaterial | Laya.UnlitMaterial;
     static createPrimitiveMesh(type: PrimitiveType3D, dims?: {

@@ -51,8 +51,10 @@ The glTF unlit importer also preserves authored colors on WebGPU.
 [Public movie workflow](docs/cinematics.md) · [Runnable example](examples/cinematic-capture/)
 · [Verification and limits](docs/plans/cinematic-production/verification.md).
 Neutral macOS WebGL/WebGPU fixtures cover actual 4K24 output, exact replay,
-DPR/resize, focus/motion effects, audio timing and repeated disposal. Accumulation
-is display-linear SDR after tone mapping. Scene-linear HDR/EXR, path tracing,
+DPR/resize, focus/motion effects, audio timing and repeated disposal. Samples are
+averaged in scene-linear light when the frame request carries the HDR chain's
+`linear` handle (film scenes with a grade do), else display-linear after tone
+mapping. The output is SDR. EXR output, path tracing,
 Windows hardware and physical mobile/XR remain unverified or unimplemented.
 
 ## Asset delivery and deterministic evidence (1.12.0)
@@ -346,11 +348,16 @@ const cube = new Laya.MeshSprite3D(
   Zhuda3D.createPrimitiveMesh('box', { width: 1.5, height: 1.5, depth: 1.5 }),
 );
 cube.meshRenderer.sharedMaterial = Zhuda3D.createMaterial({
+  type: 'pbr',
   albedoColor: [0.2, 0.7, 1, 1],
-  shininess: 48,
+  smoothness: 0.5,
 });
 scene.addChild(cube);
 ```
+
+This is the smallest scene that draws. For one that looks good (shadows, sky,
+fog, an HDR grade, a frame budget) follow the [quality route](docs/quality-route.md);
+`zhuda-laya-init` scaffolds a game that starts on it.
 
 Consumer projects must load the selected Laya runtime modules before booting the SDK. Use the compiler's dependency ordering rather than mixing engine generations. Clone this repository to work on the SDK; use a packaged build or a pinned Git commit in consumer projects.
 
@@ -374,7 +381,7 @@ or the installed `zhuda-laya-init` binary, then run the consumer's own `npm run 
 
 ## Connect a coding agent
 
-Read [`AGENTS.md`](AGENTS.md) and [`docs/agent-development.md`](docs/agent-development.md) before delegating a complex change. The MCP server exposes `get_agent_contract` and `validate_task_spec` so another agent can retrieve the same boundaries, workflow and evidence rules without relying on this conversation.
+Read [`AGENTS.md`](AGENTS.md) and [`docs/agent-development.md`](docs/agent-development.md) before delegating a complex change. The MCP server exposes `get_agent_contract` and `validate_task_spec` so another agent can retrieve the same boundaries, workflow and evidence rules without relying on this conversation, and `get_quality_route`: the [steps, in order, to a 3D scene that looks good](docs/quality-route.md), with the check for each and what is not built yet.
 
 Add the bundled MCP server to your client configuration:
 

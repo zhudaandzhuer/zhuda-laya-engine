@@ -4,3 +4,6 @@ export * from './FilmReview.ts';
 export * from './FilmPrefab.ts';
 export * from './LookQuality.ts';
 export * from './SceneLook.ts';
+export * from './FilmLint.ts';
+export * from './FrameMetrics.ts';
+export * from './ColorValues.ts';

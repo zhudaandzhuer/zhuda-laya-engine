@@ -4,6 +4,8 @@
  * The browser host starts on the first image request and closes with the server.
  */
 import { ZhudaFilmSessions, ZHUDA_FILM_HOST_CONTEXT } from './film-session.mjs';
+import { lintZhudaFilmScene, measureZhudaFrame } from './runtime.mjs';
+import { STARTER_TILE_METERS } from './quality-route.mjs';
 
 const camera = {
   type: 'object',
@@ -29,7 +31,7 @@ export const FILM_TOOLS_MANIFEST = [
   {
     name: 'film_scene_create',
     description:
-      'Create a film scene session from a ZhudaFilmScene (schemaVersion 1): camera; look (preset day/dawn/dusk/night/overcast, then sky, ambient, ambientGround for light thrown back from below, sun, shadows, atmosphere, fog overrides, panorama {asset} for a photographed 2:1 sky, grade for HDR tone mapping, bloom, ambient occlusion and optional film grain, vignette and fringe, lightFog for ground fog lit by the lights, with shafts {strength, anisotropy, distance} for beams of the sun or moon cut by what stands in the light, and environment {position} to capture the surroundings there for reflections and ambient light, with fogOnly point lights for lamps already baked into lightmaps); materials (recipe, or flat colour with optional emission); nodes (prop, box, ground, light point/spot up to 128 real-time lights, one spot with castsShadow, water: clear running water on a horizontal rectangle at the height of position, with flow, color, clarity, waves and foamDepth, the bed showing through and the scene mirrored; reflector: one horizontal rectangle that mirrors the scene above it for wet ground or still water, with strength, wetness, roughness, ripple and hides listing ground model ids, and model: a .glb asset id with position, yawDeg, scale an optional baked .hdr lightmap that carries global illumination through the second UV set of the model, and an optional lightmapDirection .hdr so normal maps show relief under baked light, animation {clip, loop, speed, offsetSec} to play a clip of the model and motion keys [{time, position, yawDeg}] to move it during a shot, placements [[x, y, z, yawDeg, scale], ...] to draw up to 20000 copies of it (plants, stones, trees) translucent:true for leaves that let light through and emission 0..8 to scale or put out the light its materials give off; a point light can follow a model with follows {node, offset}). Returns the session id, revision 0 and the props, recipes and assets (--film-assets) this host can use, including operator packs. Data only; no code runs.',
+      'Create a film scene session from a ZhudaFilmScene (schemaVersion 1). Every colour is a display value as a colour picker shows it (0.5 gives 21 % of the light; emission above 1 grows as the 2.4th power), every intensity linear. Fields: camera; look (preset day/dawn/dusk/night/overcast, then sky, ambient, ambientGround for light thrown back from below, sun, shadows, atmosphere, fog overrides, panorama {asset} for a photographed 2:1 sky, grade for HDR tone mapping, bloom, ambient occlusion and optional film grain, vignette and fringe, screenReflections {strength, wetness, distance, steps} for reflections of what is on screen on every surface (rain, polished places), bounceLight {spacing, strength} for light bounced once off the scene (captured at mount from probes; six small draws each), lightFog for ground fog lit by the lights, with shafts {strength, anisotropy, distance} for beams of the sun or moon cut by what stands in the light, and environment {position} to capture the surroundings there for reflections and ambient light, with fogOnly point lights for lamps already baked into lightmaps); materials (recipe, or flat colour with optional emission); nodes (prop, box, lathe: a body of revolution from profile [[radius,height],...] listed bottom-up for bollards, barrels, domes and columns, extrude: an outline [[x,z],...] raised to height for kerbs, steps, signs and wall pieces, ground, light point/spot up to 128 real-time lights, one spot light and up to four point lights with castsShadow, water: clear running water on a horizontal rectangle at the height of position, with flow, color, clarity, waves and foamDepth, the bed showing through and the scene mirrored; reflector: one horizontal rectangle that mirrors the scene above it for wet ground or still water, with strength, wetness, roughness, ripple and hides listing model ids the mirror must not draw (what lies below it is cut by itself), and model: a .glb asset id with position, yawDeg, scale an optional baked .hdr lightmap that carries global illumination through the second UV set of the model, and an optional lightmapDirection .hdr so normal maps show relief under baked light, animation {clip, loop, speed, offsetSec} to play a clip of the model and motion keys [{time, position, yawDeg}] to move it during a shot, placements [[x, y, z, yawDeg, scale], ...] to draw up to 20000 copies of it (plants, stones, trees) translucent:true for leaves that let light through and emission 0..8 to scale or put out the light its materials give off; a point light can follow a model with follows {node, offset}). Returns the session id, revision 0, the props, recipes and assets (--film-assets) this host can use, including operator packs, and advice: what in this valid scene will not look its best, each with its fix (see get_quality_route). Data only; no code runs.',
     inputSchema: {
       type: 'object',
       properties: { scene: { type: 'object' } },
@@ -38,7 +40,7 @@ export const FILM_TOOLS_MANIFEST = [
   },
   {
     name: 'film_scene_get',
-    description: 'Read a film scene session: its current revision and scene.',
+    description: 'Read a film scene session: its current revision, scene and advice.',
     inputSchema: {
       type: 'object',
       properties: { sessionId: session.sessionId },
@@ -48,7 +50,7 @@ export const FILM_TOOLS_MANIFEST = [
   {
     name: 'film_scene_apply',
     description:
-      'Change a scene atomically. Give expectedRevision and either a patch ({camera, look, materials, upsert, remove}) or a whole scene. An invalid change or a stale revision leaves the scene unchanged. Set preview:true to get a preview image of the new revision in the same call.',
+      'Change a scene atomically. Give expectedRevision and either a patch ({camera, look, materials, upsert, remove}) or a whole scene. An invalid change or a stale revision leaves the scene unchanged. Returns the new revision and its advice. Set preview:true to get a preview image of the new revision in the same call.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -63,7 +65,7 @@ export const FILM_TOOLS_MANIFEST = [
   {
     name: 'film_scene_preview',
     description:
-      'Render a PNG preview (one sample, real WebGL through the cinematic capture path) at the scene camera or a camera given, at shot time `time` for animated scenes. Returns the image.',
+      'Render a PNG preview (one sample, real WebGL through the cinematic capture path) at the scene camera or a camera given, at shot time `time` for animated scenes. Returns the image and its metrics: luminance percentiles, clipped and crushed shares, strong hues (vivid; newHues lists those the previous preview of this session did not have), the share of hard edges, and flags (underexposed, burnt-out, crushed, low-contrast, hard-edges). glErrors lists WebGL errors raised while drawing; there should be none.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -121,6 +123,15 @@ export const FILM_TOOLS_MANIFEST = [
         samples: { type: 'integer', description: '1..64' },
       },
       required: ['sessionId', 'kind', 'name'],
+    },
+  },
+  {
+    name: 'film_scene_lint',
+    description:
+      'Advice for a film scene without drawing it: give a sessionId or a scene. Each item has a rule id, level (warn: a visible defect; tip: a likely improvement), the path in the scene, what is the matter and the change that fixes it. An empty list means no known trap applies, not that the picture is good.',
+    inputSchema: {
+      type: 'object',
+      properties: { sessionId: session.sessionId, scene: { type: 'object' } },
     },
   },
   {
@@ -199,6 +210,26 @@ export async function closeFilmTools() {
 }
 
 const text = (value) => ({ type: 'text', text: JSON.stringify(value, null, 2) });
+/** Starter recipes have known tile sizes; a pack's recipes are not judged for density. */
+const advise = (scene) => lintZhudaFilmScene(scene, { tileMeters: STARTER_TILE_METERS });
+/** Strong hues of the last preview of each session, to name the ones that appear. */
+const lastHues = new Map();
+
+/** Numbers for a preview, the hues that are new since the last one, and WebGL errors. */
+async function describeFrame(film, sessionId, png) {
+  const { PNG } = await import('pngjs');
+  const frame = PNG.sync.read(png);
+  const metrics = measureZhudaFrame(frame.data, frame.width, frame.height);
+  const hues = metrics.vivid.filter((entry) => entry.share >= 0.005).map((entry) => entry.hue);
+  const before = lastHues.get(sessionId);
+  lastHues.set(sessionId, hues);
+  const glErrors = film.takeGlErrors();
+  return {
+    metrics,
+    ...(before ? { newHues: hues.filter((hue) => !before.includes(hue)) } : {}),
+    ...(glErrors.length ? { glErrors } : {}),
+  };
+}
 const image = (png) => ({ type: 'image', data: png.toString('base64'), mimeType: 'image/png' });
 
 function current(args) {
@@ -224,12 +255,21 @@ export async function executeFilmTool(name, args = {}) {
           props: context.props,
           recipes: context.recipes,
           assets: context.assets,
+          advice: advise(sessions.get(created.sessionId).scene),
         }),
       ];
     }
     case 'film_scene_get': {
       const snapshot = sessions.get(args.sessionId);
-      return [text({ tool: name, ...snapshot })];
+      return [text({ tool: name, ...snapshot, advice: advise(snapshot.scene) })];
+    }
+    case 'film_scene_lint': {
+      if ((args.sessionId === undefined) === (args.scene === undefined))
+        throw Error('Give either sessionId or scene');
+      await filmContext();
+      const scene =
+        args.scene !== undefined ? sessions.check(args.scene) : sessions.get(args.sessionId).scene;
+      return [text({ tool: name, advice: advise(scene) })];
     }
     case 'film_scene_apply': {
       if ((args.patch === undefined) === (args.scene === undefined))
@@ -238,16 +278,24 @@ export async function executeFilmTool(name, args = {}) {
         args.scene !== undefined
           ? sessions.replace(args.sessionId, args.expectedRevision, args.scene)
           : sessions.apply(args.sessionId, args.expectedRevision, args.patch);
-      const result = text({ tool: name, sessionId: next.sessionId, revision: next.revision });
-      if (!args.preview) return [result];
-      const preview = await (await filmHost()).preview(next.scene, {});
-      return [image(preview.png), result];
+      const reply = {
+        tool: name,
+        sessionId: next.sessionId,
+        revision: next.revision,
+        advice: advise(next.scene),
+      };
+      if (!args.preview) return [text(reply)];
+      const film = await filmHost();
+      const preview = await film.preview(next.scene, {});
+      return [
+        image(preview.png),
+        text({ ...reply, ...(await describeFrame(film, next.sessionId, preview.png)) }),
+      ];
     }
     case 'film_scene_preview': {
       const snapshot = current(args);
-      const preview = await (
-        await filmHost()
-      ).preview(snapshot.scene, {
+      const film = await filmHost();
+      const preview = await film.preview(snapshot.scene, {
         camera: args.camera,
         width: args.width,
         height: args.height,
@@ -261,8 +309,9 @@ export async function executeFilmTool(name, args = {}) {
           revision: snapshot.revision,
           batches: preview.batches,
           renderMs: preview.renderMs,
-          gpu: (await filmHost()).info?.gpu,
+          gpu: film.info?.gpu,
           scope: 'one-sample preview through ZhudaCinematicCapture; not a final render',
+          ...(await describeFrame(film, snapshot.sessionId, preview.png)),
         }),
       ];
     }
@@ -311,6 +360,7 @@ export async function executeFilmTool(name, args = {}) {
       return [text({ tool: name, kind: args.kind, revision: snapshot.revision, ...result })];
     }
     case 'film_scene_close':
+      lastHues.delete(args.sessionId);
       return [text({ tool: name, closed: sessions.close(args.sessionId) })];
     default:
       throw Error(`Unknown film tool: ${name}`);

@@ -9,6 +9,7 @@ import {
   installLaya342LifecycleFix,
   installLaya342Translucency,
 } from './runtime3d/Laya342Adapters.ts';
+import { installLaya342PointShadows } from './runtime3d/PointShadow.ts';
 import { buildPrefabTree } from './prefabs/PrefabTree3D.ts';
 import type { PrefabTree3D, PrefabTreeInstance3D } from './prefabs/PrefabTree3D.ts';
 import { assertZhudaRealmAvailable, markZhudaLayaRealm } from './RealmGuards.ts';
@@ -177,6 +178,7 @@ export class ZhudaEngine {
       options.beforeInit?.();
       // Before init: the PBR lighting include is registered and compiled there.
       installLaya342Translucency();
+      installLaya342PointShadows();
 
       // 3. 初始化 LayaAir 3.4.2 引擎核心與 WebGL/WASM 管線
       await withDeadline(() => Laya.init(width, height), {
@@ -349,6 +351,12 @@ export class Zhuda3D {
     return { node, light };
   }
 
+  /**
+   * A surface material. Without `type` it is physically based (`'pbr'`): lit
+   * by the sky, the environment and the HDR chain. Only a `shininess` without
+   * a `type` still gives Blinn-Phong, the default of earlier versions, since
+   * only Blinn-Phong has a shininess.
+   */
   public static createMaterial(
     options: DeclarativeMaterialOptions & { type: 'pbr' },
   ): Laya.PBRStandardMaterial;
@@ -356,8 +364,18 @@ export class Zhuda3D {
     options: DeclarativeMaterialOptions & { type: 'unlit' },
   ): Laya.UnlitMaterial;
   public static createMaterial(
-    options: Omit<DeclarativeMaterialOptions, 'type'> & {
-      type?: 'blinn-phong';
+    options: DeclarativeMaterialOptions & { type: 'blinn-phong' },
+  ): Laya.BlinnPhongMaterial;
+  public static createMaterial(
+    options: Omit<DeclarativeMaterialOptions, 'type' | 'shininess'> & {
+      type?: undefined;
+      shininess?: undefined;
+    },
+  ): Laya.PBRStandardMaterial;
+  public static createMaterial(
+    options: Omit<DeclarativeMaterialOptions, 'type' | 'shininess'> & {
+      type?: undefined;
+      shininess: number;
     },
   ): Laya.BlinnPhongMaterial;
   public static createMaterial(
@@ -366,9 +384,10 @@ export class Zhuda3D {
   public static createMaterial(
     options: DeclarativeMaterialOptions,
   ): Laya.BlinnPhongMaterial | Laya.PBRStandardMaterial | Laya.UnlitMaterial {
-    if (options.type === 'pbr' || options.type === 'unlit')
+    const type = options.type ?? (options.shininess === undefined ? 'pbr' : 'blinn-phong');
+    if (type === 'pbr' || type === 'unlit')
       return createSurfaceMaterial({
-        type: options.type,
+        type,
         color: options.albedoColor,
         metallic: options.metallic,
         roughness: 1 - (options.smoothness ?? 0.5),

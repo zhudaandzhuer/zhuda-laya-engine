@@ -34,7 +34,7 @@ type Camera = {
   fStop?: number;
   focusDistanceM?: number;
 };
-type Frame = { width: number; height: number; rgba: Uint8Array };
+type Frame = { width: number; height: number; rgba: Uint8Array; accumulation?: string };
 
 const Z = (globalThis as any).Zhuda;
 const state: {
@@ -112,6 +112,8 @@ async function render(options: {
     width: frame.width,
     height: frame.height,
     renderMs: Math.round(performance.now() - started),
+    // Where the samples were averaged: `scene-linear` with a grade, else `display-linear`.
+    accumulation: frame.accumulation,
   };
 }
 

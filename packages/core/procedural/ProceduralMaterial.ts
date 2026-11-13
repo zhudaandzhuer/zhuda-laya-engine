@@ -10,6 +10,7 @@ import {
   disposeSurfaceMaterial,
 } from '../runtime3d/Surfaces.ts';
 import type { ZhudaBakedTextureSet } from './TextureRecipe.ts';
+import { bakeZhudaVariation } from './Variation.ts';
 
 export interface ZhudaProceduralMaterialOptions {
   /** Multiplies the baked colour, so one texture set can serve several paint colours. */
@@ -21,12 +22,19 @@ export interface ZhudaProceduralMaterialOptions {
   uvUnit?: 'meters' | 'tile';
   /** Upload with mipmaps (default true); tiled surfaces shimmer without them. */
   mipmap?: boolean;
+  /**
+   * Slow changes of brightness over the surface, so that its tiles do not
+   * read as a grid: how far the brightness strays (`amount`, 0..1) and how
+   * large the changes are (`meters`: several tiles, and not a multiple of
+   * one). Off unless given. It is the material's detail map.
+   */
+  variation?: { amount: number; meters: number; seed?: number };
 }
 
 export interface ZhudaProceduralMaterial {
   readonly material: any;
   readonly textures: readonly any[];
-  /** Destroys the material and the three textures it owns. */
+  /** Destroys the material and the textures it owns. */
   dispose(): void;
 }
 
@@ -57,6 +65,20 @@ export function createZhudaProceduralMaterial(
     });
     if (uvUnit === 'meters')
       material.tilingOffset = new l.Vector4(1 / set.tileMeters[0], 1 / set.tileMeters[1], 0, 0);
+    const variation = options.variation;
+    if (variation && variation.amount > 0) {
+      if (!(Number.isFinite(variation.meters) && variation.meters > 0))
+        throw Error('variation.meters must be positive');
+      const baked = bakeZhudaVariation({ amount: variation.amount, seed: variation.seed });
+      const detail = createSurfaceTexture(baked.size, baked.size, baked.pixels, 'color', {
+        mipmap,
+      });
+      textures.push(detail);
+      material.detailAlbedoTexture = detail;
+      // The detail map reads the mesh UVs, like the base maps.
+      const [u, v] = uvUnit === 'meters' ? [1, 1] : set.tileMeters;
+      material.detailTilingOffset = new l.Vector4(u / variation.meters, v / variation.meters, 0, 0);
+    }
   } catch (error) {
     for (const texture of textures) texture.destroy();
     throw error;

@@ -15,7 +15,11 @@ import {
 } from '../runtime3d/Surfaces.ts';
 import { ZhudaPhysicalCameraRig } from '../runtime3d/PhysicalCamera.ts';
 import { ZhudaFilmicPipeline } from '../runtime3d/Filmic.ts';
-import { ZhudaCinematicCapture, type CinematicFramePixels } from '../runtime3d/CinematicCapture.ts';
+import {
+  ZhudaCinematicCapture,
+  type CinematicFramePixels,
+  type CinematicLinearChain,
+} from '../runtime3d/CinematicCapture.ts';
 import type { ZhudaRuntimeSession } from '../runtime3d/Runtime.ts';
 import { ZhudaModelLibrary, type AssetLease, type ModelInstance } from '../runtime3d/Assets.ts';
 import type { ZhudaAssetCache } from '../runtime3d/Assets.ts';
@@ -24,6 +28,10 @@ import { ZhudaReflectiveSurface } from '../shaders/ReflectiveSurface.ts';
 import { ZhudaWaterSurface } from '../shaders/WaterSurface.ts';
 import { mountZhudaModel } from '../runtime3d/ModelPlacements.ts';
 import { ZhudaLightFog } from '../runtime3d/LightFog.ts';
+import { ZhudaScreenReflections } from '../runtime3d/ScreenReflections.ts';
+import { zhudaDecodeColor } from './ColorValues.ts';
+import { ZhudaPointShadow } from '../runtime3d/PointShadow.ts';
+import { ZhudaProbeVolume, zhudaProbeCounts } from '../runtime3d/ProbeVolume.ts';
 import { ZhudaEnvironmentProbe } from '../runtime3d/EnvironmentProbe.ts';
 import { ZhudaLensFinish } from '../runtime3d/LensFinish.ts';
 import { ZhudaModelInspector } from '../runtime3d/ModelInspector.ts';
@@ -41,6 +49,8 @@ import {
 import { createZhudaProceduralMaterial } from '../procedural/ProceduralMaterial.ts';
 import {
   createZhudaBoxMesh,
+  createZhudaExtrudeMesh,
+  createZhudaLatheMesh,
   mergeZhudaMeshes,
   transformZhudaMesh,
 } from '../procedural/Geometry.ts';
@@ -61,6 +71,7 @@ import {
   type ZhudaFilmScene,
   type ZhudaResolvedFilmLook,
   zhudaFilmLookRebuildReason,
+  zhudaFilmBounceBox,
 } from './FilmScene.ts';
 import { zhudaLookForQuality, type ZhudaLookQuality } from './LookQuality.ts';
 import {
@@ -113,6 +124,13 @@ export interface ZhudaFilmStage {
   prepare(aspect: number, frame?: { width: number; height: number; index: number }): void;
   /** Hands the stage something to release when it is disposed (before the scene goes). */
   adopt(release: () => void): void;
+  /**
+   * The HDR chain's handle for averaging the samples of a frame in
+   * scene-linear light; undefined for a look without a grade.
+   */
+  linearChain(): CinematicLinearChain | undefined;
+  /** What stands in the scene (props, boxes, shapes) as world axis-aligned boxes. */
+  readonly solids: readonly { readonly min: number[]; readonly max: number[] }[];
   /** The look in use, fully resolved (`scene.look` is the authored one). */
   readonly look: ZhudaResolvedFilmLook;
   /**
@@ -345,6 +363,30 @@ export async function loadZhudaFilmScene(
       throw error;
     }
   }
+  const bounce = resolved.bounceLight;
+  const box = bounce
+    ? bounce.min && bounce.max
+      ? { min: bounce.min, max: bounce.max }
+      : zhudaFilmBounceBox(scene)
+    : null;
+  if (bounce && box) {
+    try {
+      ZhudaEngine.flushRenderFrames(2);
+      const volume = new ZhudaProbeVolume(stage.scene3D, {
+        min: box.min,
+        max: box.max,
+        counts: zhudaProbeCounts(box.min, box.max, bounce.spacing),
+        strength: bounce.strength,
+        excludedLayers: [29, 30],
+        solids: stage.solids,
+      });
+      stage.adopt(() => volume.dispose());
+      await volume.bake(options.signal);
+    } catch (error) {
+      stage.dispose();
+      throw error;
+    }
+  }
   return stage;
 }
 
@@ -483,7 +525,19 @@ function buildFilmStageContents(
           set = bakeZhudaTextureSet(recipe, { size });
           bakeCache.set(key, set);
         }
-        const baked = createZhudaProceduralMaterial(set, spec.tint ? { tint: spec.tint } : {});
+        const baked = createZhudaProceduralMaterial(set, {
+          ...(spec.tint ? { tint: spec.tint } : {}),
+          // One repeat of the picture spans many tiles and is not a multiple of one: its own
+          // repeat is rare in a view and never lines up with the tiles.
+          ...(spec.variation
+            ? {
+                variation: {
+                  amount: spec.variation,
+                  meters: Math.max(24, Math.max(...set.tileMeters) * 13.7),
+                },
+              }
+            : {}),
+        });
         cleanups.push(() => baked.dispose());
         material = baked.material;
       } else {
@@ -500,6 +554,7 @@ function buildFilmStageContents(
       return material;
     };
 
+    const solids: { min: number[]; max: number[] }[] = [];
     const placed = scene.nodes.flatMap((node) =>
       node.type === 'prop'
         ? [
@@ -514,6 +569,10 @@ function buildFilmStageContents(
         : [],
     );
     const batches = new Map<string, number>();
+    // What stands in the scene, as world axis-aligned boxes (for probes to keep out of).
+    for (const prop of placed)
+      for (const collider of prop.colliders)
+        solids.push({ min: [...collider.min], max: [...collider.max] });
     if (placed.length) {
       const props = instantiateZhudaPropBatches(
         mergeZhudaPlacedProps(placed),
@@ -543,6 +602,18 @@ function buildFilmStageContents(
           }),
           { position: node.position, yawDeg: node.yawDeg },
         );
+      } else if (node.type === 'lathe') {
+        material = node.material;
+        mesh = transformZhudaMesh(
+          createZhudaLatheMesh({ profile: node.profile, segments: node.segments }),
+          { position: node.position, yawDeg: node.yawDeg },
+        );
+      } else if (node.type === 'extrude') {
+        material = node.material;
+        mesh = transformZhudaMesh(
+          createZhudaExtrudeMesh({ outline: node.outline, height: node.height }),
+          { position: node.position, yawDeg: node.yawDeg },
+        );
       } else if (node.type === 'ground') {
         material = node.material;
         mesh = transformZhudaMesh(
@@ -555,6 +626,16 @@ function buildFilmStageContents(
           { position: [0, -0.1, 0] },
         );
       } else continue;
+      if (node.type !== 'ground') {
+        const min = [Infinity, Infinity, Infinity],
+          max = [-Infinity, -Infinity, -Infinity];
+        for (let i = 0; i < mesh.positions.length; i += 3)
+          for (let k = 0; k < 3; k++) {
+            min[k] = Math.min(min[k], mesh.positions[i + k]);
+            max[k] = Math.max(max[k], mesh.positions[i + k]);
+          }
+        solids.push({ min, max });
+      }
       const list = primitives.get(material);
       if (list) list.push(mesh);
       else primitives.set(material, [mesh]);
@@ -695,7 +776,7 @@ function buildFilmStageContents(
         position: node.position,
         size: node.size,
         flow: node.flow,
-        color: node.color,
+        color: node.color && zhudaDecodeColor(node.color),
         clarity: node.clarity,
         waveMeters: node.waveMeters,
         waves: node.waves,
@@ -744,6 +825,32 @@ function buildFilmStageContents(
           color: [...(node.color ?? [1, 0.82, 0.6])] as [number, number, number],
           range: node.range ?? 12,
         });
+    // Point lights that cast shadows, up to four, in one set of pictures. Each
+    // light's six are drawn in `prepare`, when everything that casts is in
+    // place, and again when its reach or something that moves with time changed.
+    const pointCasters = scene.nodes.filter((node) => {
+      const light = node as {
+        type: string;
+        kind?: string;
+        castsShadow?: boolean;
+        fogOnly?: boolean;
+      };
+      return (
+        light.type === 'light' && light.kind === 'point' && light.castsShadow && !light.fogOnly
+      );
+    }).length;
+    const pointShadow = pointCasters
+      ? new ZhudaPointShadow(scene3D, { lights: pointCasters })
+      : undefined;
+    if (pointShadow) cleanups.push(() => pointShadow.dispose());
+    const pointShadows: {
+      id: string;
+      light: number;
+      position: number[];
+      range: number;
+      dirty: boolean;
+    }[] = [];
+    let shadowTime = 0;
     for (const node of scene.nodes) {
       if (node.type !== 'light' || node.fogOnly) continue;
       const holder = new l.Sprite3D(`ZhudaFilmLight:${node.id}`);
@@ -775,6 +882,14 @@ function buildFilmStageContents(
           light.shadowDistance = node.range ?? 12;
           cleanups.push(() => (light.shadowMode = l.ShadowMode.None));
         }
+      } else if (node.castsShadow) {
+        pointShadows.push({
+          id: node.id,
+          light: pointShadows.length,
+          position: [...node.position],
+          range: node.range ?? 12,
+          dirty: true,
+        });
       }
     }
 
@@ -788,7 +903,8 @@ function buildFilmStageContents(
           const now = lightValues.get(node.id)!;
           return {
             position: followPosition(node) as [number, number, number],
-            color: now.color,
+            // The lamp's glow in the fog in the colour its light has on surfaces.
+            color: zhudaDecodeColor(now.color),
             intensity: now.enabled ? now.intensity : 0,
             range: now.range,
           };
@@ -798,6 +914,13 @@ function buildFilmStageContents(
     const setTime = (seconds: number) => {
       if (!Number.isFinite(seconds) || seconds < 0) throw Error('Invalid film time');
       for (const apply of timed) apply(seconds);
+      // The samples of a still differ in time: each moves the ray noise elsewhere.
+      effects.reflections?.setPhase(seconds);
+      // What moves with time may cast on the lamp's pictures: draw them again.
+      if (pointShadows.length && timed.length && seconds !== shadowTime) {
+        shadowTime = seconds;
+        for (const casting of pointShadows) casting.dirty = true;
+      }
     };
     fogLights();
     setTime(0);
@@ -811,10 +934,16 @@ function buildFilmStageContents(
     cleanups.push(() => lens.dispose());
     let current = resolveZhudaFilmCamera(scene.camera);
     const prepare = (aspect: number, frame?: { width: number; height: number; index: number }) => {
+      for (const casting of pointShadows)
+        if (casting.dirty) {
+          casting.dirty = false;
+          pointShadow!.render(casting.position, casting.range, casting.light);
+        }
       if (frame) effects.finish?.setFrame(frame.width, frame.height, frame.index);
       if (frame) lightFog?.setFrame(frame.index);
       lightFog?.update(current.eye, current.target, camera.fieldOfView, aspect);
       lightFog?.renderShafts();
+      effects.reflections?.update(current.eye, current.target, camera.fieldOfView, aspect);
       for (const surface of [reflector, water]) {
         if (!surface) continue;
         surface.update(current.eye, current.target, camera.fieldOfView, aspect);
@@ -924,6 +1053,11 @@ function buildFilmStageContents(
         next.color = [...values.color] as [number, number, number];
       }
       lightValues.set(id, next);
+      const casting = pointShadows.find((entry) => entry.id === id);
+      if (casting && casting.range !== next.range) {
+        casting.range = next.range;
+        casting.dirty = true;
+      }
       const native = nativeLights.get(id);
       if (native) {
         native.color = new l.Color(...next.color, 1);
@@ -935,7 +1069,7 @@ function buildFilmStageContents(
     };
     const drawLook = (resolved: ZhudaResolvedFilmLook): 'updated' | 'rebuilt' => {
       const reason = zhudaFilmLookRebuildReason(look, resolved);
-      if (reason === 'environment' || reason === 'panorama')
+      if (reason === 'environment' || reason === 'panorama' || reason === 'bounceLight')
         throw Error(`Film stage: setLook cannot change the ${reason}; mount the scene again`);
       if (reason === null)
         updateZhudaLookInPlace(l, { scene3D, camera, sun: sun.light, parts: effects }, resolved);
@@ -979,6 +1113,8 @@ function buildFilmStageContents(
       setCamera,
       prepare,
       adopt: (release: () => void) => void cleanups.push(release),
+      linearChain: () => effects.film?.linearChain(),
+      solids,
       dispose,
     };
   }
@@ -1053,6 +1189,7 @@ export function applyResolvedFilmLook(
   cleanups: (() => void)[],
 ): ZhudaAppliedLookParts & { finish?: ZhudaLensFinish } {
   let lightFog: ZhudaLightFog | undefined;
+  let reflections: ZhudaScreenReflections | undefined;
   let finish: ZhudaLensFinish | undefined;
   let skyMaterial: any;
   let film: ZhudaFilmicPipeline | undefined;
@@ -1100,10 +1237,16 @@ export function applyResolvedFilmLook(
     });
   }
   if (look.grade) {
+    if (look.screenReflections) {
+      const mirror = (reflections = new ZhudaScreenReflections(look.screenReflections));
+      cleanups.push(() => mirror.dispose());
+    }
     if (look.lightFog) {
       const { shafts, ...plain } = look.lightFog;
       const fog = (lightFog = new ZhudaLightFog({
         ...plain,
+        // A display value like every colour of the look; the fog's own shader takes light.
+        color: zhudaDecodeColor(plain.color),
         ...(shafts ? { shafts } : {}),
       }));
       if (shafts) {
@@ -1112,10 +1255,9 @@ export function applyResolvedFilmLook(
         const travel = new l.Vector3();
         sun.owner.transform.getForward(travel);
         const length = Math.hypot(travel.x, travel.y, travel.z) || 1;
-        const i = look.sun.intensity;
         fog.attachSun(scene3D, {
           toward: [-travel.x / length, -travel.y / length, -travel.z / length],
-          color: [look.sun.color[0] * i, look.sun.color[1] * i, look.sun.color[2] * i],
+          color: zhudaSunRadiance(look),
         });
       }
       // Cleanups run in reverse: the pipeline releases its chain first.
@@ -1130,7 +1272,11 @@ export function applyResolvedFilmLook(
       cleanups.push(() => lens.dispose());
     }
     const pipeline = (film = new ZhudaFilmicPipeline(camera, {
-      sceneEffects: lightFog ? [lightFog.effect] : [],
+      // Reflections first: the fog then lies over them as over everything else.
+      sceneEffects: [
+        ...(reflections ? [reflections.effect] : []),
+        ...(lightFog ? [lightFog.effect] : []),
+      ],
       finishEffects: finish ? [finish.effect] : [],
       exposure: look.grade.exposure,
       contrast: look.grade.contrast,
@@ -1141,6 +1287,7 @@ export function applyResolvedFilmLook(
       aoIntensity: look.grade.ao,
       aoRadius: look.grade.aoRadius,
       temporalAA: false,
+      msaa: look.grade.antialias === 'msaa',
     }));
     cleanups.push(() => pipeline.dispose());
   }
@@ -1152,7 +1299,7 @@ export function applyResolvedFilmLook(
     scene3D.fogEnd = look.fog.end;
     cleanups.push(() => (scene3D.enableFog = false));
   }
-  return { lightFog, finish, sky: skyMaterial, film };
+  return { lightFog, reflections, finish, sky: skyMaterial, film };
 }
 
 function materialName(material: unknown, materials: Map<string, any>): string {
@@ -1211,6 +1358,9 @@ export class ZhudaFilmRenderer {
         signal: options.signal,
         aperture: options.aperture ?? samples > 1,
         jitter: samples > 1,
+        // Out-of-focus and moving highlights keep their light only when the
+        // samples are averaged before tone mapping.
+        linear: samples > 1 ? this.stage.linearChain() : undefined,
         sample: (seconds) => {
           this.stage.setTime((options.timeSec ?? 0) + seconds);
           this.stage.setCamera(camera);

@@ -1,8 +1,113 @@
 import { prepareLaya342ManualDraw } from './Laya342Adapters.ts';
+import type { CinematicLinearChain } from './CinematicCapture.ts';
+
+const SOURCE_VERTEX =
+  '#define SHADER_NAME ZhudaLinearSourceVS\nvarying vec2 v_Texcoord0;void main(){gl_Position=vec4(a_PositionTexcoord.xy,0.0,1.0);v_Texcoord0=a_PositionTexcoord.zw;}';
+// u_ZhudaAverageUse.x: 0 passes the scene through, 1 replaces it with the picture.
+const SOURCE_FRAGMENT = `#define SHADER_NAME ZhudaLinearSourceFS
+#include "Color.glsl";
+varying vec2 v_Texcoord0;
+void main(){
+vec4 source=texture2D(u_MainTex,v_Texcoord0);
+#ifdef Gamma_u_MainTex
+source=gammaToLinear(source);
+#endif
+// The picture is stored top row first; a render target is sampled bottom row first.
+vec4 average=texture2D(u_ZhudaAverage,vec2(v_Texcoord0.x,1.0-v_Texcoord0.y));
+gl_FragColor=mix(source,vec4(average.rgb,source.a),u_ZhudaAverageUse.x);
+}`;
+/**
+ * The brightest scene value, after exposure, that the lookup table of
+ * LayaAir's `ColorGradEffect` holds: its log encoding ends at 58.85. A value
+ * above it is looked up outside the table and comes out dark or in the wrong
+ * colour (a red lamp turned grey-green, then lost its red altogether).
+ */
+export const ZHUDA_GRADE_TABLE_MAX = 56;
+// Scales a colour whose brightest channel is above the table's end down to it:
+// the hue is kept, and the table turns that brightness into near-white.
+const RANGE_FRAGMENT = `#define SHADER_NAME ZhudaGradeRangeFS
+#include "Color.glsl";
+varying vec2 v_Texcoord0;
+void main(){
+vec4 source=texture2D(u_MainTex,v_Texcoord0);
+#ifdef Gamma_u_MainTex
+source=gammaToLinear(source);
+#endif
+float peak=max(source.r,max(source.g,source.b));
+gl_FragColor=vec4(source.rgb*min(1.0,u_ZhudaGradeRange.x/max(peak,0.0001)),source.a);
+}`;
+const rangeRegistered = new WeakSet<object>();
+function registerGradeRange(l: any) {
+  if (rangeRegistered.has(l.Shader3D)) return;
+  const shader = l.Shader3D.add('ZhudaGradeRange');
+  shader.shaderType = l.ShaderFeatureType.PostProcess;
+  const sub = new l.SubShader(
+    { a_PositionTexcoord: [l.VertexMesh.MESH_POSITION0, l.ShaderDataType.Vector4] },
+    { u_MainTex: l.ShaderDataType.Texture2D, u_ZhudaGradeRange: l.ShaderDataType.Vector4 },
+  );
+  shader.addSubShader(sub);
+  const pass = sub.addShaderPass(SOURCE_VERTEX, RANGE_FRAGMENT);
+  pass.statefirst = true;
+  pass.renderState.cull = l.RenderState.CULL_NONE;
+  rangeRegistered.add(l.Shader3D);
+}
+const sourceRegistered = new WeakSet<object>();
+function registerLinearSource(l: any) {
+  if (sourceRegistered.has(l.Shader3D)) return;
+  const shader = l.Shader3D.add('ZhudaLinearSource');
+  shader.shaderType = l.ShaderFeatureType.PostProcess;
+  const sub = new l.SubShader(
+    { a_PositionTexcoord: [l.VertexMesh.MESH_POSITION0, l.ShaderDataType.Vector4] },
+    {
+      u_MainTex: l.ShaderDataType.Texture2D,
+      u_ZhudaAverage: l.ShaderDataType.Texture2D,
+      u_ZhudaAverageUse: l.ShaderDataType.Vector4,
+    },
+  );
+  shader.addSubShader(sub);
+  const pass = sub.addShaderPass(SOURCE_VERTEX, SOURCE_FRAGMENT);
+  pass.statefirst = true;
+  pass.renderState.cull = l.RenderState.CULL_NONE;
+  sourceRegistered.add(l.Shader3D);
+}
+
 export interface PrefilteredEnvironmentSpec {
   size: number;
   levels: { size: number; offset: number; elements: number }[];
   ambientSH: number[];
+}
+/**
+ * Switches a camera's multisampling and frees the HDR target of the other
+ * kind. LayaAir hands a camera its target from a pool every frame and puts it
+ * back afterwards; a target with the other sample count is never asked for
+ * again and would stay in the pool, a full frame of memory, for as long as
+ * the page lives. Between frames that target is in the pool: it is destroyed
+ * here. Only HDR targets with a depth buffer are touched (what a camera with
+ * `enableHDR` draws into); another camera that still wants one gets a new one.
+ */
+function setCameraMultisampling(l: any, camera: any, msaa: boolean) {
+  if (camera.msaa === msaa) return;
+  camera.msaa = msaa;
+  const type = l.RenderTexture;
+  const pool: any[] | undefined = type?._pool;
+  if (!Array.isArray(pool)) return;
+  for (let i = pool.length - 1; i >= 0; i--) {
+    const target = pool[i];
+    if (
+      !target ||
+      target.destroyed ||
+      target.isMRT ||
+      target.colorFormat !== l.RenderTargetFormat.R16G16B16A16 ||
+      target.depthStencilFormat === l.RenderTargetFormat.None ||
+      target.multiSamples > 1 === msaa
+    )
+      continue;
+    pool.splice(i, 1);
+    if (typeof type._poolMemory === 'number')
+      type._poolMemory -= (target._renderTarget?.gpuMemory ?? 0) / 1024 / 1024;
+    target._inPool = false;
+    target.destroy();
+  }
 }
 function requireCapabilities(l: any, names: string[]) {
   for (const name of names)
@@ -47,9 +152,12 @@ export function createPrefilteredEnvironment(
         level.offset + (i + 1) * level.size * level.size * 4,
       ),
     );
-  const upload = (data: Float32Array) => {
-    texture.setPixelsData(faces(spec.levels[0], data), false, false);
-    for (let i = 1; i < spec.levels.length; i++) {
+  // The first upload allocates the texture; later ones replace its texels.
+  // A second `setPixelsData` asks WebGL to allocate the immutable texture
+  // again: an INVALID_OPERATION on every update of a look that changes.
+  const upload = (data: Float32Array, allocate: boolean) => {
+    if (allocate) texture.setPixelsData(faces(spec.levels[0], data), false, false);
+    for (let i = allocate ? 1 : 0; i < spec.levels.length; i++) {
       const level = spec.levels[i];
       texture.updateSubPixelsData(
         faces(level, data),
@@ -64,7 +172,7 @@ export function createPrefilteredEnvironment(
       );
     }
   };
-  upload(pixels);
+  upload(pixels, true);
   let ambientSH = spec.ambientSH;
   return {
     texture,
@@ -88,7 +196,7 @@ export function createPrefilteredEnvironment(
         !next.every((v) => Number.isFinite(v) && v >= 0)
       )
         throw Error('Invalid environment update');
-      upload(next);
+      upload(next, false);
       ambientSH = [...nextSH];
     },
     dispose() {
@@ -107,6 +215,12 @@ export interface FilmicOptions {
   bloom?: boolean;
   bloomIntensity?: number;
   temporalAA?: boolean;
+  /**
+   * Multisample the camera's HDR target (4x where the device allows it):
+   * geometry edges come out smooth in a frame drawn once, as a game draws it.
+   * Omitted, the camera keeps its own setting; disposal restores it either way.
+   */
+  msaa?: boolean;
   /**
    * Borrowed effects inserted after ambient occlusion and before bloom, in
    * linear HDR: for example `ZhudaLightFog.effect`. They read the camera depth
@@ -134,6 +248,11 @@ export class ZhudaFilmicPipeline {
   private ownsTAA = false;
   private previousMSAA: boolean;
   private previousDepth: number;
+  private readonly sceneEffects: readonly any[];
+  private readonly finishEffects: readonly any[];
+  /** Keeps what reaches the grade inside its lookup table; absent without the material effect class. */
+  private readonly range: { effect: any; material: any } | undefined;
+  private linear: { chain: CinematicLinearChain; dispose: () => void } | undefined;
   constructor(camera: any, options: FilmicOptions = {}) {
     this.camera = camera;
     const l = (globalThis as any).Laya;
@@ -155,6 +274,11 @@ export class ZhudaFilmicPipeline {
     this.previousDepth = camera.depthTextureMode;
     const post = (this.post = new l.PostProcess());
     this.ao = new l.ScalableAO();
+    // LayaAir 3.4.2 never writes the occlusion colour. Unset, the shader reads
+    // what the last owner of that uniform block left there: after a scene is
+    // mounted again every crease glows in some stale colour. Black is plain
+    // occlusion.
+    this.ao.aoColor = new l.Color(0, 0, 0, 1);
     this.ao.intensity = options.aoIntensity ?? 0.65;
     this.ao.radius = options.aoRadius ?? 0.7;
     this.ao.aoQuality = l.AOQUALITY.High;
@@ -170,19 +294,41 @@ export class ZhudaFilmicPipeline {
     this.grade.postExposure = options.exposure ?? 1;
     this.grade.contrast = options.contrast ?? 1.04;
     this.grade.saturation = options.saturation ?? 0.96;
+    this.sceneEffects = [...(options.sceneEffects ?? [])];
+    this.finishEffects = [...(options.finishEffects ?? [])];
     post.addEffect(this.ao);
-    for (const effect of options.sceneEffects ?? []) post.addEffect(effect);
-    if (options.sceneEffects?.length) camera.depthTextureMode |= l.DepthTextureMode.Depth;
+    for (const effect of this.sceneEffects) post.addEffect(effect);
+    if (this.sceneEffects.length) camera.depthTextureMode |= l.DepthTextureMode.Depth;
     post.addEffect(this.bloom);
+    if (l.MaterialPostProcessEffect && l.Material && l.Shader3D?.add) {
+      registerGradeRange(l);
+      const material = new l.Material();
+      material.setShaderName('ZhudaGradeRange');
+      const effect = new l.MaterialPostProcessEffect();
+      effect.material = material;
+      this.range = { effect, material };
+      this.limit();
+      post.addEffect(effect);
+    }
     post.addEffect(this.grade);
-    for (const effect of options.finishEffects ?? []) post.addEffect(effect);
+    for (const effect of this.finishEffects) post.addEffect(effect);
     camera.enableHDR = true;
     camera.postProcess = post;
+    if (options.msaa !== undefined) setCameraMultisampling(l, camera, !!options.msaa);
     if (options.temporalAA) {
       this.ownsTAA = true;
       camera.taa = true;
       camera.taaSettings.quality = l.TemporalAAQuality.High;
     }
+  }
+  /** The table's end is in values after exposure: the limit before it moves with the exposure. */
+  private limit() {
+    if (!this.range) return;
+    const l = (globalThis as any).Laya;
+    this.range.material.setVector4(
+      'u_ZhudaGradeRange',
+      new l.Vector4(ZHUDA_GRADE_TABLE_MAX / Math.max(this.grade.postExposure, 1e-6), 0, 0, 0),
+    );
   }
   /** Update the existing ACES grading exposure multiplier. */
   setExposure(value: number) {
@@ -190,6 +336,7 @@ export class ZhudaFilmicPipeline {
     if (!Number.isFinite(value) || value < 0 || value > 1048576)
       throw Error('Invalid filmic exposure');
     this.grade.postExposure = value;
+    this.limit();
   }
   /**
    * Sets the continuous values of the chain in place: exposure, contrast,
@@ -208,12 +355,106 @@ export class ZhudaFilmicPipeline {
     for (const [key, value] of Object.entries(values))
       if (value !== undefined && (!Number.isFinite(value) || value < 0 || value > 1048576))
         throw Error('Invalid filmic value ' + key);
-    if (values.exposure !== undefined) this.grade.postExposure = values.exposure;
+    if (values.exposure !== undefined) {
+      this.grade.postExposure = values.exposure;
+      this.limit();
+    }
     if (values.contrast !== undefined) this.grade.contrast = values.contrast;
     if (values.saturation !== undefined) this.grade.saturation = values.saturation;
     if (values.bloomIntensity !== undefined) this.bloom.intensity = values.bloomIntensity;
     if (values.aoIntensity !== undefined) this.ao.intensity = values.aoIntensity;
     if (values.aoRadius !== undefined) this.ao.radius = values.aoRadius;
+  }
+  /**
+   * The chain's handle for a capture that averages its samples in scene-linear
+   * light (see `CinematicLinearChain`): samples are drawn without tone mapping
+   * and lens finish, and their average is then drawn through both once. The
+   * first call puts one pass at the head of the chain; it is idle outside a
+   * capture.
+   */
+  linearChain(): CinematicLinearChain {
+    if (this.disposed) throw Error('Disposed filmic pipeline');
+    if (this.linear) return this.linear.chain;
+    const l = (globalThis as any).Laya;
+    requireCapabilities(l, ['TextureFormat_R32G32B32A32']);
+    registerLinearSource(l);
+    const pictureOf = (width: number, height: number, data: Float32Array) => {
+      const texture = new l.Texture2D(
+        width,
+        height,
+        l.TextureFormat.R32G32B32A32,
+        false,
+        false,
+        false,
+      );
+      texture.filterMode = l.FilterMode.Point;
+      texture.wrapModeU = texture.wrapModeV = l.WrapMode.Clamp;
+      texture.setPixelsData(data, false, false);
+      return texture;
+    };
+    const material = new l.Material();
+    material.setShaderName('ZhudaLinearSource');
+    // Every declared uniform is written: an unset one reads stale bytes.
+    let picture = pictureOf(1, 1, new Float32Array(4));
+    material.setTexture('u_ZhudaAverage', picture);
+    const use = (on: number) =>
+      material.setVector4('u_ZhudaAverageUse', new l.Vector4(on, 0, 0, 0));
+    use(0);
+    const source = new l.MaterialPostProcessEffect();
+    source.material = material;
+    source.active = false;
+    const linearPart = [this.ao, ...this.sceneEffects, this.bloom],
+      displayPart = [...(this.range ? [this.range.effect] : []), this.grade, ...this.finishEffects],
+      all = [...linearPart, ...displayPart];
+    // The source goes first; the rest keeps the order it was built in.
+    this.post.clearEffect();
+    for (const effect of [source, ...all]) this.post.addEffect(effect);
+    let saved: boolean[] | undefined;
+    const chain: CinematicLinearChain = {
+      beginSamples: () => {
+        if (this.disposed) throw Error('Disposed filmic pipeline');
+        saved ??= all.map((effect) => effect.active);
+        linearPart.forEach((effect, i) => (effect.active = saved![i]));
+        for (const effect of displayPart) effect.active = false;
+        use(0);
+        // Passing the scene through keeps one effect active whatever the look switched off.
+        source.active = true;
+      },
+      beginResolve: (average, width, height) => {
+        if (this.disposed) throw Error('Disposed filmic pipeline');
+        if (!saved) throw Error('The resolve follows the samples');
+        if (average.length !== width * height * 4) throw Error('Invalid accumulated picture');
+        if (picture.width !== width || picture.height !== height) {
+          picture.destroy();
+          picture = pictureOf(width, height, average);
+          material.setTexture('u_ZhudaAverage', picture);
+        } else picture.setSubPixelsData(0, 0, width, height, average, 0, false, false, false);
+        for (const effect of linearPart) effect.active = false;
+        displayPart.forEach((effect, i) => (effect.active = saved![linearPart.length + i]));
+        use(1);
+        source.active = true;
+      },
+      end: () => {
+        if (!saved) return;
+        all.forEach((effect, i) => (effect.active = saved![i]));
+        saved = undefined;
+        use(0);
+        source.active = false;
+      },
+    };
+    this.linear = {
+      chain,
+      dispose: () => {
+        material.destroy();
+        picture.destroy();
+      },
+    };
+    return chain;
+  }
+  /** Switches multisampling of the camera's HDR target on or off, in place. */
+  setAntialias(msaa: boolean) {
+    if (this.disposed) throw Error('Disposed filmic pipeline');
+    setCameraMultisampling((globalThis as any).Laya, this.camera, !!msaa);
   }
   /** Call on camera cuts, teleports and timeline seeks, not on ordinary movement. */
   resetHistory() {
@@ -227,10 +468,13 @@ export class ZhudaFilmicPipeline {
     if (this.camera.postProcess === this.post) {
       this.camera.postProcess = this.previous;
       this.camera.enableHDR = this.previousHDR;
-      this.camera.msaa = this.previousMSAA;
+      setCameraMultisampling((globalThis as any).Laya, this.camera, !!this.previousMSAA);
       this.camera.depthTextureMode = this.previousDepth;
     }
     this.post.clearEffect();
+    this.linear?.dispose();
+    this.linear = undefined;
+    this.range?.material.destroy();
     // LayaAir 3.4.2 release() detaches effects but does not free their LUT,
     // materials or shader data. This version-pinned adapter owns those objects.
     this.post._context.command.clear();

@@ -17,7 +17,10 @@ export interface ZhudaFilmSun {
     /** Height above the horizon, degrees (0..90). Defaults to the preset. */
     elevationDeg?: number;
     intensity?: number;
-    /** Linear RGB 0..1. */
+    /**
+     * Display RGB 0..1, as a colour picker shows it (sRGB): LayaAir decodes it,
+     * so 0.5 gives 21 % of the light. `intensity` is linear.
+     */
     color?: ZhudaFilmVec3;
 }
 export type ZhudaFilmLookPreset = 'day' | 'dawn' | 'dusk' | 'night' | 'overcast';
@@ -73,6 +76,12 @@ export interface ZhudaFilmGrade {
     /** Ambient occlusion radius in metres, 0.05..5 (default 0.5). */
     aoRadius?: number;
     /**
+     * Edge smoothing of a frame that is drawn once (a preview, a running game):
+     * `msaa` multisamples the HDR target (default), `none` leaves edges as they
+     * fall. Stills and video average their samples as well, with either value.
+     */
+    antialias?: 'msaa' | 'none';
+    /**
      * What a real camera adds, after tone mapping, each 0..1 and off by
      * default: film grain, darker corners and colour fringing at the corners.
      */
@@ -86,17 +95,22 @@ export interface ZhudaFilmLook {
      * the look is the plain one: flat sky colour, no shadows, sky or fog.
      */
     preset?: ZhudaFilmLookPreset;
-    /** Flat background colour (used when there is no atmosphere), linear RGB 0..1. */
+    /** Flat background colour (used when there is no atmosphere), display RGB 0..1. */
     sky?: ZhudaFilmVec3;
-    /** Ambient light colour, linear RGB 0..1. */
+    /**
+     * Ambient light colour, display RGB 0..1 (sRGB, as a colour picker shows
+     * it): 0.5 gives 21 % of the light. With `ambientGround` it is the light
+     * from above.
+     */
     ambient?: ZhudaFilmVec3;
     /**
-     * Light the ground throws back, linear RGB 0..1. With it the ambient light
-     * has a direction: `ambient` comes from above (the sky) and this from
-     * below, so undersides and shadows take the colour of the ground instead
-     * of one flat tone. Off unless given.
+     * Light the ground throws back, display RGB 0..1 like `ambient`. With it
+     * the ambient light has a direction: `ambient` comes from above (the sky)
+     * and this from below, so undersides and shadows take the colour of the
+     * ground instead of one flat tone. The day, dawn, dusk and overcast presets
+     * give one; `false` makes the ambient light one flat colour again.
      */
-    ambientGround?: ZhudaFilmVec3;
+    ambientGround?: ZhudaFilmVec3 | false;
     sun?: ZhudaFilmSun;
     /** `false` turns sun shadows off. */
     shadows?: ZhudaFilmShadows | false;
@@ -110,6 +124,21 @@ export interface ZhudaFilmLook {
      * down a street. Needs `grade`; off unless given.
      */
     lightFog?: ZhudaFilmLightFog | false;
+    /**
+     * Reflections of what is on screen, on every surface: wet walls, props,
+     * ground beyond a `reflector`. The whole view reflects alike, by Fresnel
+     * (a forward renderer has no roughness buffer): use it for rain and for
+     * polished places. Needs `grade`; off unless given.
+     */
+    screenReflections?: ZhudaFilmScreenReflections | false;
+    /**
+     * Light bounced once off the scene: probes on a grid over its objects
+     * capture their surroundings when the scene is mounted, and light physically
+     * based materials in place of the ambient light (a sunlit red wall tints
+     * what faces it). Captured once: `setLook` does not update it. Off unless
+     * given.
+     */
+    bounceLight?: ZhudaFilmBounceLight | false;
     /**
      * A photograph as the sky: a 2:1 panorama (equirectangular) named by
      * logical asset id. Replaces `atmosphere`. Off unless given.
@@ -154,7 +183,11 @@ export interface ZhudaFilmLightFog {
     falloffMeters?: number;
     /** Height where the density equals `density` (default 0). */
     baseY?: number;
-    /** Colour of the fog itself, linear RGB 0..1 (default dark blue). */
+    /**
+     * Colour of the fog itself, display RGB 0..1. Default: the colour the look's
+     * sky has near the horizon (the preset's measured `horizon`, or `look.sky`
+     * for a flat or panoramic sky), so that the fog melts into the sky.
+     */
     color?: ZhudaFilmVec3;
     /** Strength of the glow around lights, 0..16 (default 1). */
     scatter?: number;
@@ -180,13 +213,29 @@ export interface ZhudaFilmLightShafts {
 export type ZhudaFilmMaterial = {
     recipe: string | ZhudaTextureRecipe;
     tint?: [number, number, number, number];
-    /** Bake size; 128, 256 or 512 (default 256). */
-    size?: 128 | 256 | 512;
+    /**
+     * Bake size: 128, 256, 512, 1024 or 2048 (default 256). Baking runs on
+     * the CPU when the scene is mounted and its cost grows with the square
+     * of the size (about 2 s at 1024 and 6 s and 48 MB at 2048 for a
+     * two-layer recipe): for the large sizes pass a `bakeCache` filled ahead.
+     */
+    size?: 128 | 256 | 512 | 1024 | 2048;
+    /**
+     * Slow changes of brightness across the surface, 0..1 (default 0), so
+     * that a large floor or road does not show its tiles as a grid. The
+     * changes are several tiles wide.
+     */
+    variation?: number;
 } | {
     color: ZhudaFilmVec3;
     roughness?: number;
     metallic?: number;
-    /** Self-lit colour (lamp heads, signs), linear RGB 0..8. */
+    /**
+     * Self-lit colour (lamp heads, signs), display RGB 0..8. It is decoded
+     * like any colour, so above 1 the light grows as the 2.4th power: 2 is
+     * 5.3 times white, 4 is 28, 8 is 147. What exceeds the grade's range
+     * (56 after exposure) is drawn at that limit, near-white.
+     */
     emission?: ZhudaFilmVec3;
 };
 export type ZhudaFilmNode = {
@@ -207,6 +256,37 @@ export type ZhudaFilmNode = {
     yawDeg?: number;
     bevel?: number;
     /** A scene material, or a recipe name the host knows. */
+    material: string;
+} | {
+    id: string;
+    type: 'lathe';
+    /**
+     * A body of revolution about the vertical axis (a bollard, a barrel, a
+     * dome, a bowl, a column): its outline as [radius, height] pairs in
+     * metres, 2..256 of them, from the bottom up along the outside. A
+     * hollow form goes on down the inside.
+     */
+    profile: [number, number][];
+    /** Sides around the axis, 3..96 (default 24). */
+    segments?: number;
+    /** Where the axis meets height 0 of the outline. */
+    position: ZhudaFilmVec3;
+    yawDeg?: number;
+    material: string;
+} | {
+    id: string;
+    type: 'extrude';
+    /**
+     * A flat outline on the ground raised to `height` (a kerb, steps, a
+     * sign, a piece of wall): [x, z] pairs in metres about `position`,
+     * 3..256 of them, in either direction. It may be concave; it must not
+     * cross itself.
+     */
+    outline: [number, number][];
+    /** Metres. */
+    height: number;
+    position: ZhudaFilmVec3;
+    yawDeg?: number;
     material: string;
 } | {
     id: string;
@@ -291,8 +371,10 @@ export type ZhudaFilmNode = {
     /** Longer side of the mirrored picture (default 1024). */
     resolution?: 256 | 512 | 1024 | 2048;
     /**
-     * Ids of model nodes the mirror must not draw: the ground under the
-     * reflector, which would otherwise block the view from below.
+     * Ids of model nodes the mirror must not draw. What lies below the
+     * mirror (the ground it covers, whatever kind of node that is) is cut
+     * from the mirrored view by itself; this is for things above it that
+     * should not show in the reflection.
      */
     hides?: string[];
 } | {
@@ -311,7 +393,7 @@ export type ZhudaFilmNode = {
     size: [number, number];
     /** Flow in metres per second along X and Z (default [0, 0.6]). */
     flow?: [number, number];
-    /** Colour of deep water, linear RGB 0..1 (default a green-blue). */
+    /** Colour of deep water, display RGB 0..1 (default a green-blue). */
     color?: ZhudaFilmVec3;
     /** Metres of water at which the bed has faded to about a third, 0.05..100 (default 1.5). */
     clarity?: number;
@@ -337,7 +419,7 @@ export type ZhudaFilmNode = {
     /** Point lights shine all around; spot lights shine at `target`. */
     kind: 'point' | 'spot';
     position: ZhudaFilmVec3;
-    /** Linear RGB 0..1 (default warm white). */
+    /** Display RGB 0..1 (sRGB, as a colour picker shows it; default warm white). */
     color?: ZhudaFilmVec3;
     /** 0..20 (default 2). */
     intensity?: number;
@@ -348,8 +430,11 @@ export type ZhudaFilmNode = {
     /** Spot lights: full cone angle, 1..179 degrees (default 60). */
     spotAngleDeg?: number;
     /**
-     * Spot lights: the light casts shadows. One per scene (Laya 3.4.2 draws
-     * one spot shadow map); point lights cannot cast shadows.
+     * The light casts shadows: one spot light and up to four point lights
+     * per scene may. A spot uses LayaAir's own shadow map. A point light's
+     * surroundings are drawn once from the lamp (`ZhudaPointShadow`), and
+     * again when its `range` or something that moves with time changes;
+     * nothing closer to it than 0.5 m casts (the lamp's own head).
      */
     castsShadow?: boolean;
     /**
@@ -394,10 +479,36 @@ export declare function sampleZhudaFilmMotion(keys: readonly ZhudaFilmMotionKey[
     position: ZhudaFilmVec3;
     yawDeg: number;
 };
+/** Screen-space reflections (see `ZhudaScreenReflections`). */
+export interface ZhudaFilmScreenReflections {
+    /** Brightness of the reflections, 0..4 (default 1). */
+    strength?: number;
+    /** How wet the surfaces are, 0..1: how much shows when seen head-on (default 0.5). */
+    wetness?: number;
+    /** Metres a reflected ray is followed, 1..200 (default 30). */
+    distance?: number;
+    /** Steps along the ray, 8..64 (default 32). */
+    steps?: number;
+}
+/** Light bounced once off the scene (see `ZhudaProbeVolume`). */
+export interface ZhudaFilmBounceLight {
+    /** Metres between probes, 1..20 (default 3). */
+    spacing?: number;
+    /** Multiplies the bounced light, 0..4 (default 1). */
+    strength?: number;
+    /** Corners of the box the probes fill; by default the scene's objects and lights, widened by 2 m. */
+    min?: ZhudaFilmVec3;
+    max?: ZhudaFilmVec3;
+}
 export interface ZhudaFilmScene {
     schemaVersion: 1;
     id: string;
     camera: ZhudaFilmCamera;
+    /**
+     * Left out, the scene gets `ZHUDA_FILM_ABSENT_LOOK`: the day preset (sun,
+     * shadows, sky, distance fog). An empty object is the bare look, kept for
+     * tests: a flat sky colour and no shadows.
+     */
     look?: ZhudaFilmLook;
     materials?: Record<string, ZhudaFilmMaterial>;
     nodes: ZhudaFilmNode[];
@@ -435,12 +546,16 @@ export declare const ZHUDA_FILM_LIMITS: Readonly<{
     lights: 128;
     /** Point lights one `lightFog` can hold, fog-only lights included. */
     fogLights: 128;
+    /** Point lights that may cast shadows (one spot light may as well). */
+    pointShadows: 4;
     models: 64;
     /** Copies of one model node; a scene holds at most `placementsTotal` in all. */
     placements: 20000;
     placementsTotal: 60000;
 }>;
-/** The plain look of scenes without a preset (phase 1 behaviour). */
+/** What a scene that gives no `look` at all is drawn with. */
+export declare const ZHUDA_FILM_ABSENT_LOOK: Readonly<ZhudaFilmLook>;
+/** The bare look of a `look` without a preset (phase 1 behaviour). */
 export declare const ZHUDA_FILM_DEFAULT_LOOK: Readonly<{
     sky: ZhudaFilmVec3;
     ambient: ZhudaFilmVec3;
@@ -458,6 +573,15 @@ type PresetLook = {
     shadows: Required<ZhudaFilmShadows>;
     atmosphere: Required<ZhudaFilmAtmosphere>;
     fog: Required<ZhudaFilmFog> | false;
+    /**
+     * The preset's sky 5 to 10 degrees above the horizon, averaged around the
+     * compass (measured from a draw of the preset in scene-linear light, kept
+     * here as the display value that decodes to it). Ground fog takes this
+     * colour by default so that it melts into the sky.
+     */
+    /** Light from the ground below (the presets with a sun high enough give one). */
+    ambientGround?: ZhudaFilmVec3;
+    horizon: ZhudaFilmVec3;
 };
 /** Starting points for a time of day; any look field overrides them. */
 export declare const ZHUDA_FILM_LOOK_PRESETS: Readonly<Record<ZhudaFilmLookPreset, PresetLook>>;
@@ -483,6 +607,8 @@ export interface ZhudaResolvedFilmLook {
     lightFog: (Required<Omit<ZhudaFilmLightFog, 'shafts'>> & {
         shafts: Required<ZhudaFilmLightShafts> | false;
     }) | false;
+    screenReflections: Required<ZhudaFilmScreenReflections> | false;
+    bounceLight: (Required<Pick<ZhudaFilmBounceLight, 'spacing' | 'strength'>> & Pick<ZhudaFilmBounceLight, 'min' | 'max'>) | false;
     environment: Required<ZhudaFilmEnvironment> | false;
     panorama: Required<ZhudaFilmPanorama> | false;
 }
@@ -509,5 +635,15 @@ export declare function sampleZhudaFilmCameraPath(keys: readonly ZhudaFilmCamera
  * distance, resolution or step count. `environment` and `panorama`
  * need assets or a capture; a running look cannot change them at all.
  */
-export declare function zhudaFilmLookRebuildReason(from: ZhudaResolvedFilmLook, to: ZhudaResolvedFilmLook): 'environment' | 'panorama' | 'shadows' | 'atmosphere' | 'fog' | 'ambientGround' | 'grade' | 'lightFog' | null;
+export declare function zhudaFilmLookRebuildReason(from: ZhudaResolvedFilmLook, to: ZhudaResolvedFilmLook): 'environment' | 'panorama' | 'shadows' | 'atmosphere' | 'fog' | 'ambientGround' | 'grade' | 'lightFog' | 'screenReflections' | 'bounceLight' | null;
+/**
+ * The box a scene's bounce light fills by default: its objects and lights
+ * (not the ground, a box used as ground, a reflector or water), widened by
+ * 2 m around and 1.5 m above, down to the ground. Null when there is nothing
+ * to light.
+ */
+export declare function zhudaFilmBounceBox(scene: ZhudaFilmScene): {
+    min: ZhudaFilmVec3;
+    max: ZhudaFilmVec3;
+} | null;
 export {};

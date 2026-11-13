@@ -80,6 +80,13 @@ engine's existing texture contract:
 `validateZhudaTextureRecipe(recipe)` lists every problem; the MCP tool
 `validate_texture_recipe` exposes the same check to agents.
 
+A tiled surface many tiles wide shows them as a grid, since every tile is the
+same. `createZhudaProceduralMaterial(set, { variation: { amount: 0.5, meters: 27 } })`
+lays slow changes of brightness over it (`bakeZhudaVariation`, the material's
+detail map): `meters` is the size of one repeat of that picture, many tiles
+and not a multiple of one. The picture repeats too, so keep `meters` large:
+its own pattern shows when a view holds many repeats of it.
+
 Baking runs on the CPU. Cost grows with `size` squared times the number of
 layers; 256 or 512 is a reasonable runtime size, and larger maps are better
 baked ahead of time (see the provider below).
@@ -225,3 +232,17 @@ hardware, and the art quality of the starter recipes (they are samples).
   layer yet.
 - Geometry has no lathe, extrusion or UV unwrapping beyond per-face metres.
 - Props carry box colliders only.
+
+## Round and raised shapes
+
+Two more builders in the geometry kit, pure data like the others:
+
+- `createZhudaLatheMesh({ profile, segments })` turns an outline of
+  `[radius, height]` pairs about the vertical axis. List the outline from the
+  bottom up along the outside; a hollow form goes on down the inside. Corners
+  sharper than `creaseDeg` (30) stay edges, the rest is smooth.
+- `createZhudaExtrudeMesh({ outline, height })` raises a flat outline of
+  `[x, z]` pairs. The outline may be concave; it must not cross itself.
+
+Film scenes use them as `lathe` and `extrude` nodes.
+
