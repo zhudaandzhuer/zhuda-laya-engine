@@ -27,6 +27,8 @@ const scripts = [
   'verify-film-colours',
   'verify-film-bounce',
   'verify-film-decals',
+  'verify-film-clouds',
+  'verify-film-finishes',
 ];
 const failed = [];
 for (const name of scripts) {

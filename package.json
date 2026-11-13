@@ -156,6 +156,8 @@
     "verify:film-colours": "node scripts/verify-film-colours.mjs",
     "verify:film-bounce": "node scripts/verify-film-bounce.mjs",
     "verify:film-decals": "node scripts/verify-film-decals.mjs",
+    "verify:film-clouds": "node scripts/verify-film-clouds.mjs",
+    "verify:film-finishes": "node scripts/verify-film-finishes.mjs",
     "verify:prefab-models": "node scripts/verify-prefab-models.mjs",
     "verify:film-webgpu": "node scripts/verify-film-webgpu.mjs",
     "verify:live-look": "node scripts/verify-live-look.mjs",

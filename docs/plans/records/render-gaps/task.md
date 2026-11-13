@@ -1,6 +1,6 @@
 # Agent task: render-gaps
 
-Status: In progress  
+Status: In progress; built as far as each item could be, desktop WebGL and WebGPU only  
 Owner: Engine/toolchain  
 Last reviewed: 2026-11-13
 

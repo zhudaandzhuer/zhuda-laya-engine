@@ -4,6 +4,7 @@ import type { ZhudaLightFog } from '../runtime3d/LightFog.js';
 import type { ZhudaScreenReflections } from '../runtime3d/ScreenReflections.js';
 import type { ZhudaLensFinish } from '../runtime3d/LensFinish.js';
 import type { ZhudaAutoExposure, ZhudaDepthOfField, ZhudaMotionBlur } from '../runtime3d/CameraEffects.js';
+import type { ZhudaClouds } from '../runtime3d/Clouds.js';
 import type { ZhudaFilmVec3, ZhudaResolvedFilmLook } from './FilmScene.js';
 /** What `applyResolvedFilmLook` built, kept so a later look can adjust it in place. */
 export interface ZhudaAppliedLookParts {
@@ -12,6 +13,7 @@ export interface ZhudaAppliedLookParts {
     exposure?: ZhudaAutoExposure;
     depthOfField?: ZhudaDepthOfField;
     motionBlur?: ZhudaMotionBlur;
+    clouds?: ZhudaClouds;
     sky?: any;
     film?: ZhudaFilmicPipeline;
     finish?: ZhudaLensFinish;

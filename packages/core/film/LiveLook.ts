@@ -19,6 +19,7 @@ import type {
   ZhudaDepthOfField,
   ZhudaMotionBlur,
 } from '../runtime3d/CameraEffects.ts';
+import type { ZhudaClouds } from '../runtime3d/Clouds.ts';
 import type { ZhudaFilmVec3, ZhudaResolvedFilmLook } from './FilmScene.ts';
 
 /** What `applyResolvedFilmLook` built, kept so a later look can adjust it in place. */
@@ -28,6 +29,7 @@ export interface ZhudaAppliedLookParts {
   exposure?: ZhudaAutoExposure;
   depthOfField?: ZhudaDepthOfField;
   motionBlur?: ZhudaMotionBlur;
+  clouds?: ZhudaClouds;
   sky?: any;
   film?: ZhudaFilmicPipeline;
   finish?: ZhudaLensFinish;
@@ -154,6 +156,13 @@ export function updateZhudaLookInPlace(
   if (parts.exposure && look.autoExposure) parts.exposure.setExposure(look.autoExposure);
   if (parts.depthOfField && look.depthOfField) parts.depthOfField.setLens(look.depthOfField);
   if (parts.motionBlur && look.motionBlur) parts.motionBlur.setBlur(look.motionBlur);
+  if (parts.clouds && look.clouds)
+    parts.clouds.setClouds({
+      ...look.clouds,
+      sunToward: zhudaTowardSun(l, sun),
+      sunColor: zhudaSunRadiance(look),
+      skyColor: zhudaDecodeColor(look.ambient),
+    });
   if (parts.lightFog && look.lightFog) {
     const { shafts, ...plain } = look.lightFog;
     parts.lightFog.setEdgeSmoothing(!!look.grade && look.grade.antialias === 'msaa');

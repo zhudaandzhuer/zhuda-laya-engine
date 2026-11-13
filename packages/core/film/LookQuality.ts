@@ -40,6 +40,7 @@ export function zhudaLookForQuality(
     next.depthOfField = false;
     next.motionBlur = false;
     next.autoExposure = false;
+    next.clouds = false;
     next.bounceLight = false;
     if (options.keepGrade && next.grade)
       next.grade.bloom =
@@ -61,6 +62,9 @@ export function zhudaLookForQuality(
   }
   // Depth of field and motion blur each draw the frame again at level 3 and 2 only.
   if (level === 1) next.depthOfField = next.motionBlur = false;
+  // Clouds take half the steps at level 2, a third at level 1.
+  if (next.clouds)
+    next.clouds.steps = Math.max(8, Math.round(next.clouds.steps / (level === 1 ? 3 : 2)));
   if (next.screenReflections) {
     if (level === 1) next.screenReflections = false;
     else next.screenReflections.steps = Math.max(8, Math.round(next.screenReflections.steps / 2));

@@ -25,6 +25,7 @@ export * from './LightFog.js';
 export * from './ScreenReflections.js';
 export * from './CameraEffects.js';
 export * from './Decals.js';
+export * from './Clouds.js';
 export * from './PointShadow.js';
 export * from './ProbeVolume.js';
 export * from './QualityGovernor.js';

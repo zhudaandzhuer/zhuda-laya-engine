@@ -30,6 +30,7 @@ import {
   type ZhudaDepthOfFieldOptions,
   type ZhudaMotionBlurOptions,
 } from '../runtime3d/CameraEffects.ts';
+import { resolveZhudaClouds, validateZhudaClouds } from '../runtime3d/Clouds.ts';
 
 export type ZhudaFilmVec3 = [number, number, number];
 
@@ -192,6 +193,13 @@ export interface ZhudaFilmLook {
    */
   motionBlur?: ZhudaMotionBlurOptions | boolean;
   /**
+   * A layer of clouds with depth, lit by the look's sun and sky (see
+   * `ZhudaClouds`): `true` takes the defaults. They drift with shot time (a
+   * game: with the time its look is updated by). Needs `grade`; off unless
+   * given.
+   */
+  clouds?: ZhudaFilmClouds | boolean;
+  /**
    * Light bounced once off the scene: probes on a grid over its objects
    * capture their surroundings when the scene is mounted, and light physically
    * based materials in place of the ambient light (a sunlit red wall tints
@@ -312,6 +320,15 @@ export type ZhudaFilmMaterial =
        * (56 after exposure) is drawn at that limit, near-white.
        */
       emission?: ZhudaFilmVec3;
+      /** A clear layer over the surface (lacquer, varnish, a wet sheen), 0..1 (default 0). */
+      clearCoat?: number;
+      /** Roughness of that layer, 0..1 (default 0.1). */
+      clearCoatRoughness?: number;
+      /**
+       * How far the highlight is drawn out, 0..1 (default 0): brushed metal,
+       * hair, satin. On a `lathe` it becomes a ring about the axis.
+       */
+      anisotropy?: number;
     };
 
 export type ZhudaFilmNode =
@@ -652,6 +669,26 @@ export interface ZhudaFilmScreenReflections {
   skyColor?: ZhudaFilmVec3;
 }
 
+/** A layer of clouds (see `ZhudaClouds`); their light comes from the look. */
+export interface ZhudaFilmClouds {
+  /** How much of the sky is cloud, 0..1 (default 0.5). */
+  coverage?: number;
+  /** Height of the clouds' underside in metres, 50..20000 (default 1500). */
+  baseMeters?: number;
+  /** How thick the layer is in metres, 50..8000 (default 900). */
+  thicknessMeters?: number;
+  /** Size of a cloud in metres, 100..50000 (default 2600). */
+  sizeMeters?: number;
+  /** How dense the cloud is, 0..4 (default 1). */
+  density?: number;
+  /** The wind: metres a second along X and Z (default [8, 0]). */
+  wind?: [number, number];
+  /** Steps along each view ray, 8..64 (default 32). */
+  steps?: number;
+  /** How far clouds are drawn in metres, 1000..200000 (default 40000). */
+  distanceMeters?: number;
+}
+
 /** Light bounced once off the scene (see `ZhudaProbeVolume`). */
 export interface ZhudaFilmBounceLight {
   /** Metres between probes, 1..20 (default 3). */
@@ -984,6 +1021,7 @@ function validateLook(
       'autoExposure',
       'depthOfField',
       'motionBlur',
+      'clouds',
       'bounceLight',
       'environment',
       'panorama',
@@ -1148,7 +1186,7 @@ function validateLook(
     }
   }
   const lens = (
-    name: 'autoExposure' | 'depthOfField' | 'motionBlur',
+    name: 'autoExposure' | 'depthOfField' | 'motionBlur' | 'clouds',
     validate: (options: any) => string[],
     plain: boolean,
   ) => {
@@ -1167,6 +1205,11 @@ function validateLook(
   lens('autoExposure', validateZhudaAutoExposure, true);
   lens('depthOfField', validateZhudaDepthOfField, false);
   lens('motionBlur', validateZhudaMotionBlur, true);
+  lens('clouds', validateZhudaClouds, true);
+  if (object(look.clouds))
+    for (const key of ['sunToward', 'sunColor', 'skyColor'])
+      if (key in look.clouds)
+        issues.push(`${path}.clouds.${key}: comes from the look's sun and ambient light`);
   if (look.bounceLight !== undefined && look.bounceLight !== false) {
     const b = look.bounceLight,
       at = `${path}.bounceLight`;
@@ -1309,7 +1352,20 @@ function validateMaterial(
     )
       issues.push(`${path}.size: use 128, 256, 512, 1024 or 2048`);
   } else if ('color' in material) {
-    unknownKeys(material, ['color', 'roughness', 'metallic', 'emission'], path, issues);
+    unknownKeys(
+      material,
+      [
+        'color',
+        'roughness',
+        'metallic',
+        'emission',
+        'clearCoat',
+        'clearCoatRoughness',
+        'anisotropy',
+      ],
+      path,
+      issues,
+    );
     colour(material.color, `${path}.color`, issues);
     if (
       material.emission !== undefined &&
@@ -1320,7 +1376,13 @@ function validateMaterial(
       )
     )
       issues.push(`${path}.emission: use RGB with three values between 0 and 8`);
-    for (const key of ['roughness', 'metallic'] as const)
+    for (const key of [
+      'roughness',
+      'metallic',
+      'clearCoat',
+      'clearCoatRoughness',
+      'anisotropy',
+    ] as const)
       if (
         material[key] !== undefined &&
         !(finite(material[key]) && (material[key] as number) >= 0 && (material[key] as number) <= 1)
@@ -1944,6 +2006,7 @@ export function applyZhudaFilmScenePatch(
       'autoExposure',
       'depthOfField',
       'motionBlur',
+      'clouds',
       'bounceLight',
       'environment',
       'panorama',
@@ -2012,6 +2075,7 @@ export interface ZhudaResolvedFilmLook {
   autoExposure: Required<ZhudaAutoExposureOptions> | false;
   depthOfField: Required<ZhudaDepthOfFieldOptions> | false;
   motionBlur: Required<ZhudaMotionBlurOptions> | false;
+  clouds: Required<ZhudaFilmClouds> | false;
   bounceLight:
     | (Required<Pick<ZhudaFilmBounceLight, 'spacing' | 'strength' | 'visibility'>> &
         Pick<ZhudaFilmBounceLight, 'min' | 'max'>)
@@ -2151,6 +2215,11 @@ export function resolveZhudaFilmLook(
     motionBlur: look.motionBlur
       ? resolveZhudaMotionBlur(look.motionBlur === true ? {} : look.motionBlur)
       : false,
+    clouds: look.clouds
+      ? ((({ sunToward: _t, sunColor: _c, skyColor: _s, ...own }) => own)(
+          resolveZhudaClouds(look.clouds === true ? {} : look.clouds),
+        ) as Required<ZhudaFilmClouds>)
+      : false,
     bounceLight: look.bounceLight
       ? {
           spacing: look.bounceLight.spacing ?? 3,
@@ -2273,6 +2342,7 @@ export function zhudaFilmLookRebuildReason(
   | 'autoExposure'
   | 'depthOfField'
   | 'motionBlur'
+  | 'clouds'
   | 'bounceLight'
   | null {
   const json = (value: unknown) => JSON.stringify(value);
@@ -2306,6 +2376,7 @@ export function zhudaFilmLookRebuildReason(
   if (!from.autoExposure !== !to.autoExposure) return 'autoExposure';
   if (!from.depthOfField !== !to.depthOfField) return 'depthOfField';
   if (!from.motionBlur !== !to.motionBlur) return 'motionBlur';
+  if (!from.clouds !== !to.clouds) return 'clouds';
   return null;
 }
 

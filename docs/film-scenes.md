@@ -537,6 +537,23 @@ lanterns, lit windows, buildings and the sky appear in wet paving or a pond.
 This is how a scene lit only by lightmaps gets highlights: a lightmap holds
 diffuse light, and the reflector adds the mirror image of the lights.
 
+## Clouds
+
+`look.clouds` draws a layer of clouds with depth; `true` takes the defaults.
+It needs `grade`.
+
+```json
+"clouds": { "coverage": 0.5, "baseMeters": 1500, "thicknessMeters": 900, "sizeMeters": 2600, "wind": [8, 0] }
+```
+
+- The look's sun lights them and its `ambient` fills their shade: a low red
+  sun gives red clouds. They drift with shot time (`time` of a preview,
+  frames of a video), and the same time draws the same sky.
+- What is solid stands in front of them. They cast no shadow on the ground
+  and are mirrored only by `screenReflections`.
+- `density` is how dark and hard-edged they are; `steps` (8..64) trades
+  smoothness for cost.
+
 ## Reflections on everything on screen
 
 `look.screenReflections` adds reflections of what is on screen to every

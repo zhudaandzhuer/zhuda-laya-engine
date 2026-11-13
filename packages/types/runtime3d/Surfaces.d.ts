@@ -5,6 +5,19 @@ export interface SurfaceMaterialSpec {
     metallic?: number;
     roughness?: number;
     emission?: [number, number, number];
+    /**
+     * A clear layer over the surface (lacquer, varnish, a wet sheen): how much,
+     * 0..1 (default 0, none). Physically based surfaces only.
+     */
+    clearCoat?: number;
+    /** Roughness of that layer, 0..1 (default 0.1). */
+    clearCoatRoughness?: number;
+    /**
+     * How far the highlight is drawn out, 0..1 (default 0): brushed metal,
+     * hair, satin. It becomes a band across the mesh's tangent (its U
+     * direction): round a ball turned on a lathe, a ring about its axis.
+     */
+    anisotropy?: number;
     textures?: {
         albedo?: any;
         normal?: any;

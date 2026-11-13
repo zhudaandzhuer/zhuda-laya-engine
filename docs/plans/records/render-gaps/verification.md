@@ -25,13 +25,13 @@ Renderer: Apple M4)`. WebGPU: `apple metal-3`.
 | 3. Reflections of what is off screen | Sky fallback and box projection built, drawn on both backends; off-screen things themselves not built | below |
 | 4. Decals, parallax, swept shapes | Decals on a plane and swept shapes built, drawn on both backends; parallax and wrapping decals not built | below |
 | 5. Bounce light that updates and leaks less | Built, drawn on both backends; still captured at intervals, not real time | below |
-| 6. Clouds; skin, hair and cloth | Not started | |
+| 6. Clouds; skin, hair and cloth | A cloud layer, clear coat and anisotropy built, drawn on both backends; skin, cloth sheen and hair strands not built | below |
 
 ## Checks
 
 | Check | Exact command or procedure | Result | Artifact |
 | --- | --- | --- | --- |
-| Build, types, declarations, doctor, tests | `npm run verify` | PASS, 501 of 501 (491 after areas 1 and 2, 498 after 3 and 4) | `EV/gap5/verify.log` |
+| Build, types, declarations, doctor, tests | `npm run verify` | PASS, 504 of 504 (491 after areas 1 and 2, 498 after 3 and 4, 501 after 5) | `EV/gap6/verify.log` |
 | Format, lint | `npm run format:check`, `npm run lint` | PASS | `EV/gap12/` |
 | Camera effects, WebGL | `npm run verify:camera-effects` | PASS | `EV/gap12/webgl/logs/verify-camera-effects.log` |
 | Camera effects, WebGPU | `CAMERA_EFFECTS_RENDERER=webgpu npm run verify:camera-effects` | PASS | `EV/gap12/webgpu/logs/verify-camera-effects.log` |
@@ -43,7 +43,9 @@ Renderer: Apple M4)`. WebGPU: `apple metal-3`.
 | Decals | `npm run verify:film-decals`, both backends | PASS | `EV/gap34/*/logs/verify-film-decals.log` |
 | Leak through a thin wall | `npm run verify:film-bounce` (leak step), both backends | PASS | `EV/gap5/*/logs/verify-film-bounce.log` |
 | Refresh while running | `npm run verify:camera-effects` (bounce step), both backends | PASS | `EV/gap5/*/logs/verify-camera-effects.log` |
-| Everything else that draws | the other GPU scripts on WebGL and with the WebGPU switches (22 in all); `npm run verify:film-webgpu` (18) | PASS | `EV/gap34/` |
+| Clouds | `npm run verify:film-clouds`, both backends | PASS | `EV/gap6/*/logs/verify-film-clouds.log` |
+| Clear coat, anisotropy | `npm run verify:film-finishes`, both backends | PASS | `EV/gap6/*/logs/verify-film-finishes.log` |
+| Everything else that draws | the other GPU scripts on WebGL and with the WebGPU switches (24 in all); `npm run verify:film-webgpu` (20) | PASS | `EV/gap6/` |
 
 ### 1. Camera
 
@@ -143,6 +145,28 @@ brightness between neighbours along a row. The same numbers on both backends.
 - Real-time global illumination: **not built**. A refresh is six scene draws
   a probe and one read-back a batch: seconds for a level, not a frame.
 
+### 6. Clouds and finishes
+
+- `look.clouds` and `ZhudaClouds`: a slab of drifting computed noise followed
+  along each view ray. Sky to the right of a tower, mean colour of 0..255:
+  clear 0, 45, 158; full cover 227, 226, 225; half cover 151, 160, 197; no
+  cover the clear sky (difference under 1). The tower in front is untouched.
+  Full cover without the sun: 93 against 227 with it. Five seconds of a wind
+  of 60 m/s change the sky by 84 of 255 on average; the same time draws the
+  same frame; identical after 12 mounts. One picture was looked at
+  (`EV/gap6/webgl/zhuda-film-clouds/broken.png`): separate clouds, lit from
+  the sun's side, the tower in front; the layer ends in a straight band
+  above the horizon where its reach ends.
+- `clearCoat`, `clearCoatRoughness`, `anisotropy` on `createSurfaceMaterial`
+  and on a flat film material. A matt ball's brightest value 27 of 255;
+  under a clear coat 255 on a spot of 14 pixels. A metal ball's highlight 52
+  by 52 pixels; 102 by 39 at anisotropy 0.45, 178 by 85 at 0.9. LayaAir
+  ignores the sign of its anisotropy and its rotation tilted the band
+  instead of turning it a quarter: the option is 0..1 and no angle.
+- Skin (light passing through it), cloth sheen, hair strands: **not built**.
+  LayaAir 3.4.2's PBR material has no subsurface term; its sheen lobe is
+  filled only by the glTF material path, which this task did not touch.
+
 ## Lifecycle and failure cases
 
 - Repeated create and destroy: ten rebuilds of a look with all three camera
@@ -171,5 +195,13 @@ Not applicable: no consumer prefab is changed.
   (depth precision); not measured.
 - Phones and mini-game hosts: not drawn.
 
-**In progress.** Areas 1 to 5 are built as far as the table above says and
-verified on desktop WebGL and WebGPU; area 6 is not started.
+Not built, with the reason, after all six areas: real-time global
+illumination; reflections of things that are off screen; more than one
+shadow-casting spot light; motion blur of things that move by themselves;
+parallax; decals that wrap round geometry; cloud shadows and weather; skin,
+cloth sheen and hair strands. `docs/quality-route.md` lists them.
+
+**In progress.** Every area is built as far as the table above says and
+verified on desktop WebGL and WebGPU on one Apple M4. Not Accepted: no phone
+or mini-game host has drawn any of it, no frame time is measured, and the
+pictures were asserted by numbers, not approved by a person.

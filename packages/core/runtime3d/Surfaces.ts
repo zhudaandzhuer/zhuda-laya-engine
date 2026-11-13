@@ -4,6 +4,19 @@ export interface SurfaceMaterialSpec {
   metallic?: number;
   roughness?: number;
   emission?: [number, number, number];
+  /**
+   * A clear layer over the surface (lacquer, varnish, a wet sheen): how much,
+   * 0..1 (default 0, none). Physically based surfaces only.
+   */
+  clearCoat?: number;
+  /** Roughness of that layer, 0..1 (default 0.1). */
+  clearCoatRoughness?: number;
+  /**
+   * How far the highlight is drawn out, 0..1 (default 0): brushed metal,
+   * hair, satin. It becomes a band across the mesh's tangent (its U
+   * direction): round a ball turned on a lathe, a ring about its axis.
+   */
+  anisotropy?: number;
   textures?: {
     albedo?: any;
     normal?: any;
@@ -118,6 +131,17 @@ export function createSurfaceMaterial(s: SurfaceMaterialSpec) {
     )
   )
     throw Error('Invalid material factors');
+  if (
+    [s.clearCoat ?? 0, s.clearCoatRoughness ?? 0.1].some(
+      (v) => !Number.isFinite(v) || v < 0 || v > 1,
+    ) ||
+    !Number.isFinite(s.anisotropy ?? 0) ||
+    (s.anisotropy ?? 0) < 0 ||
+    (s.anisotropy ?? 0) > 1
+  )
+    throw Error('Invalid material factors: clearCoat 0..1, anisotropy 0..1');
+  if (s.type !== 'pbr' && ((s.clearCoat ?? 0) > 0 || (s.anisotropy ?? 0) !== 0))
+    throw Error('clearCoat and anisotropy belong to physically based surfaces');
   const m = s.type === 'pbr' ? new l.PBRStandardMaterial() : new l.UnlitMaterial();
   m.albedoColor = new l.Color(...(s.color || [1, 1, 1, 1]));
   if (s.type === 'pbr') {
@@ -126,6 +150,15 @@ export function createSurfaceMaterial(s: SurfaceMaterialSpec) {
     if (s.emission) {
       m.enableEmission = true;
       m.emissionColor = new l.Color(...s.emission, 1);
+    }
+    if ((s.clearCoat ?? 0) > 0) {
+      m.clearCoatEnable = true;
+      m.clearCoat = s.clearCoat;
+      m.clearCoatRoughness = s.clearCoatRoughness ?? 0.1;
+    }
+    if ((s.anisotropy ?? 0) !== 0) {
+      m.anisotropyEnable = true;
+      m.anisotropy = s.anisotropy;
     }
   }
   for (const [key, value] of Object.entries(s.textures || {}))

@@ -33,6 +33,8 @@ export class ZhudaSceneLook {
   private readonly sunNode: any;
   private cleanups: (() => void)[] = [];
   private lightFog: ZhudaLightFog | undefined;
+  /** How long the clouds have drifted, in seconds. */
+  private cloudSeconds = 0;
   private level: ZhudaLookQuality;
   private frame = 0;
   private disposed = false;
@@ -160,6 +162,11 @@ export class ZhudaSceneLook {
     this.parts?.reflections?.update(eye, target, fieldOfViewDeg, aspect);
     this.parts?.motionBlur?.update(eye, target, fieldOfViewDeg, aspect);
     this.parts?.exposure?.setFrameSeconds(frameSeconds);
+    if (this.parts?.clouds) {
+      this.cloudSeconds += frameSeconds;
+      this.parts.clouds.setTime(this.cloudSeconds);
+      this.parts.clouds.update(eye, target, fieldOfViewDeg, aspect);
+    }
     if (!this.lightFog) return;
     this.lightFog.setFrame(this.frame++ % 1024);
     this.lightFog.update(eye, target, fieldOfViewDeg, aspect);

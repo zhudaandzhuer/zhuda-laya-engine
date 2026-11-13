@@ -9,6 +9,8 @@ export declare class ZhudaSceneLook {
     private readonly sunNode;
     private cleanups;
     private lightFog;
+    /** How long the clouds have drifted, in seconds. */
+    private cloudSeconds;
     private level;
     private frame;
     private disposed;

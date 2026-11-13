@@ -235,6 +235,37 @@ and before bloom; used alone they go into `ZhudaFilmicPipeline`'s
   (`npm run verify:camera-effects`, and with `CAMERA_EFFECTS_RENDERER=webgpu`);
   what they cost in frame time is not measured, and no phone has drawn them.
 
+## Clouds
+
+`new ZhudaClouds({ coverage, baseMeters, thicknessMeters, sizeMeters,
+density, wind, steps })` is a post-process effect for `sceneEffects`, first
+in the list: a slab of air between two heights in which four octaves of a
+computed noise say how much cloud there is. Each view ray is followed
+through the slab in `steps` steps (32); at each one the cloud is lit by the
+sun through what lies between it and the sun (one more lookup) and by the
+sky's own light. Clouds are drawn where the ray reaches the slab before it
+reaches anything solid; where nothing was drawn the depth is the far plane
+and they reach `distanceMeters`. `setTime(seconds)` moves them with the
+wind; the same time draws the same sky. A look has it as `clouds` and gives
+it the sun's direction and light and the ambient colour; quality level 2
+halves the steps, level 1 takes a third, level 0 drops it. One layer of one
+kind of cloud: no shadow on the ground, no rain. Each step is about seventy
+arithmetic noise lookups a pixel; the cost in frame time is not measured.
+Drawn on desktop WebGL and WebGPU (`npm run verify:film-clouds`).
+
+## Clear coat and drawn-out highlights
+
+`createSurfaceMaterial({ type: 'pbr', clearCoat, clearCoatRoughness,
+anisotropy })`, and the same three fields on a flat film material. They are
+LayaAir's own (`clearCoatEnable`, `anisotropyEnable`). A clear coat puts a
+sharp reflection on a rough surface: a matt ball's brightest value 27 of
+255, 255 under a coat, on a spot of 14 pixels. Anisotropy, 0..1, draws the
+highlight out into a band across the mesh's tangent: on a metal ball turned
+on a lathe 52 by 52 pixels round, 102 by 39 at 0.45, 178 by 85 at 0.9. The
+direction is the mesh's own; LayaAir's rotation of it is not exposed (a
+quarter turn tilted the band and did not stand it upright). Drawn on
+desktop WebGL and WebGPU (`npm run verify:film-finishes`).
+
 ## Marks on surfaces
 
 `new ZhudaDecal(scene3D, { position, size, normal, color, opacity, roughness,

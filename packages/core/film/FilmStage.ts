@@ -34,6 +34,7 @@ import {
   ZhudaDepthOfField,
   ZhudaMotionBlur,
 } from '../runtime3d/CameraEffects.ts';
+import { ZhudaClouds } from '../runtime3d/Clouds.ts';
 import { ZhudaScreenReflections } from '../runtime3d/ScreenReflections.ts';
 import { zhudaDecodeColor } from './ColorValues.ts';
 import { ZhudaPointShadow } from '../runtime3d/PointShadow.ts';
@@ -555,6 +556,9 @@ function buildFilmStageContents(
           metallic: spec.metallic ?? 0,
           roughness: spec.roughness ?? 0.6,
           emission: spec.emission,
+          clearCoat: spec.clearCoat,
+          clearCoatRoughness: spec.clearCoatRoughness,
+          anisotropy: spec.anisotropy,
         });
         cleanups.push(() => disposeSurfaceMaterial(material));
       }
@@ -939,6 +943,7 @@ function buildFilmStageContents(
       for (const apply of timed) apply(seconds);
       // The samples of a still differ in time: each moves the ray noise elsewhere.
       effects.reflections?.setPhase(seconds);
+      effects.clouds?.setTime(seconds);
       // What moves with time may cast on the lamp's pictures: draw them again.
       if (pointShadows.length && timed.length && seconds !== shadowTime) {
         shadowTime = seconds;
@@ -967,6 +972,7 @@ function buildFilmStageContents(
       lightFog?.update(current.eye, current.target, camera.fieldOfView, aspect);
       lightFog?.renderShafts();
       effects.reflections?.update(current.eye, current.target, camera.fieldOfView, aspect);
+      effects.clouds?.update(current.eye, current.target, camera.fieldOfView, aspect);
       // A film frame is not smeared from the camera of the frame drawn before it:
       // a video gets its motion blur from its samples.
       effects.motionBlur?.resetHistory();
@@ -1222,6 +1228,7 @@ export function applyResolvedFilmLook(
   let exposure: ZhudaAutoExposure | undefined;
   let depthOfField: ZhudaDepthOfField | undefined;
   let motionBlur: ZhudaMotionBlur | undefined;
+  let clouds: ZhudaClouds | undefined;
   let finish: ZhudaLensFinish | undefined;
   let skyMaterial: any;
   let film: ZhudaFilmicPipeline | undefined;
@@ -1277,6 +1284,15 @@ export function applyResolvedFilmLook(
       }));
       cleanups.push(() => mirror.dispose());
     }
+    if (look.clouds) {
+      const sky = (clouds = new ZhudaClouds({
+        ...look.clouds,
+        sunToward: zhudaTowardSun(l, sun),
+        sunColor: zhudaSunRadiance(look),
+        skyColor: zhudaDecodeColor(look.ambient),
+      }));
+      cleanups.push(() => sky.dispose());
+    }
     if (look.depthOfField) {
       const lens = (depthOfField = new ZhudaDepthOfField(look.depthOfField));
       cleanups.push(() => lens.dispose());
@@ -1323,6 +1339,8 @@ export function applyResolvedFilmLook(
     const pipeline = (film = new ZhudaFilmicPipeline(camera, {
       // Reflections first: the fog then lies over them as over everything else.
       sceneEffects: [
+        // The sky first: what mirrors the screen then mirrors the clouds too.
+        ...(clouds ? [clouds.effect] : []),
         ...(reflections ? [reflections.effect] : []),
         ...(lightFog ? [lightFog.effect] : []),
         // The lens after the air; the eye last, on what the lens drew.
@@ -1358,6 +1376,7 @@ export function applyResolvedFilmLook(
     exposure,
     depthOfField,
     motionBlur,
+    clouds,
     finish,
     sky: skyMaterial,
     film,
