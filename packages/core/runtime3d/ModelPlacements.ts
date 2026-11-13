@@ -35,6 +35,11 @@ export interface ZhudaModelMountOptions {
 export interface ZhudaMountedModel {
   /** Renderers of the loaded instance (copies share their materials). */
   renderers: any[];
+  /**
+   * Scales what the model's materials give off, 0..8, while it is mounted (1 is
+   * as authored). The materials are shared by every copy of the model.
+   */
+  setEmission(scale: number): void;
   /** Present when the mount has levels or a cull distance: call `update(eye)` as the eye moves. */
   lod?: ZhudaModelLod;
   dispose(): void;
@@ -153,16 +158,21 @@ export function mountZhudaModel(
       const levels = lod;
       cleanups.push(() => levels.dispose());
     }
-    if (options.emission !== undefined && options.emission !== 1) {
-      // glTF materials multiply their emissive colour by this strength.
-      const scale = options.emission;
-      for (const material of materials) {
-        const before = material.getFloat?.('u_EmissionStrength');
-        if (typeof before !== 'number') continue;
-        material.setFloat('u_EmissionStrength', before * scale);
-        cleanups.push(() => !material.destroyed && material.setFloat('u_EmissionStrength', before));
-      }
+    // glTF materials multiply their emissive colour by this strength. What each
+    // had is kept, so the scale can change while the model is mounted (windows
+    // and lanterns that light at dusk) and is put back on disposal.
+    const glowing: { material: any; authored: number }[] = [];
+    for (const material of materials) {
+      const authored = material.getFloat?.('u_EmissionStrength');
+      if (typeof authored === 'number') glowing.push({ material, authored });
     }
+    const setEmission = (scale: number) => {
+      if (!(scale >= 0 && scale <= 8)) throw Error('Model emission: use 0..8');
+      for (const { material, authored } of glowing)
+        if (!material.destroyed) material.setFloat('u_EmissionStrength', authored * scale);
+    };
+    if (glowing.length) cleanups.push(() => setEmission(1));
+    if (options.emission !== undefined && options.emission !== 1) setEmission(options.emission);
     if (options.translucent) {
       const define = l.Shader3D.getDefineByName(ZHUDA_TRANSLUCENT_DEFINE);
       for (const material of materials) {
@@ -171,7 +181,7 @@ export function mountZhudaModel(
         cleanups.push(() => !material.destroyed && material.removeDefine(define));
       }
     }
-    return { renderers: source, lod, dispose };
+    return { renderers: source, lod, setEmission, dispose };
   } catch (error) {
     dispose();
     throw error;

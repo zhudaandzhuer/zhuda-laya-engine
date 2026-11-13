@@ -354,3 +354,7 @@ A node of a `kind: 'models'` prefab may name lighter versions of its model and a
 ```
 
 The Scene tells the instance where the eye is, usually once a frame: `instance.updateLod([x, y, z])`. It returns how many copies draw each level, how many draw nothing and how many changed. Until it is called every copy draws its full model, so the isolated preview shows the full models. The lighter versions are logical asset IDs like any other; making them (fewer triangles, smaller pictures) is the consumer's asset work.
+
+## A model's glow while the game runs
+
+`instance.setEmission('town-lanterns', 1)` scales what a model prefab node's materials give off (0..8; 1 is as authored), for windows and lanterns that light at dusk. The node's `emission` is the starting scale. Every copy of the model shares the scale.

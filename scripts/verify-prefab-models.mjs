@@ -111,7 +111,7 @@ window.addEventListener('pagehide',()=>{library.dispose();provider.dispose?.();c
 const levels=new URLSearchParams(location.search).has('levels');
 const instance=await library.instantiate(levels?'levels':'yard',{parent:scene});
 // For the check: the eye that levels are chosen for is given, the camera stays where it is.
-Reflect.set(window,'__LEVELS__',{ready:true,update:(x:number,y:number,z:number)=>instance.updateLod([x,y,z])});
+Reflect.set(window,'__LEVELS__',{ready:true,update:(x:number,y:number,z:number)=>instance.updateLod([x,y,z]),glow:(name:string,scale:number)=>{try{instance.setEmission(name,scale);return 'set'}catch(error){return String((error as Error).message)}}});
 }
 void main();`,
 );
@@ -242,6 +242,48 @@ try {
       assert.deepEqual(back.counts.levels, [3, 0]);
       assert.equal(back.drawn, among.drawn);
       assert.equal(back.warm, among.warm);
+    } finally {
+      await browser.close();
+    }
+  }
+  // 4c. A model's glow changed while it runs: the lamp put out, tripled, and back.
+  {
+    const browser = await chromeFixture();
+    try {
+      await browser.send('Emulation.setDeviceMetricsOverride', {
+        width: 640,
+        height: 360,
+        deviceScaleFactor: 1,
+        mobile: false,
+      });
+      await browser.send('Page.navigate', { url: base + 'index.html' });
+      for (let i = 0; i < 300; i++) {
+        if (await browser.evaluate('window.__LEVELS__?.ready === true').catch(() => false)) break;
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+      const warmth = async (name, scale) => {
+        const outcome = await browser.evaluate(`window.__LEVELS__.glow('lamp', ${scale})`);
+        assert.equal(outcome, 'set');
+        await new Promise((resolve) => setTimeout(resolve, 600));
+        const file = path.join(root, 'evidence', `glow-${name}.png`);
+        await browser.screenshot(file);
+        const png = PNG.sync.read(fs.readFileSync(file));
+        // Brightness of the whole frame: red saturates first, so warmth alone misleads.
+        let light = 0;
+        for (let i = 0; i < png.data.length; i += 4)
+          light += png.data[i] + png.data[i + 1] + png.data[i + 2];
+        return light;
+      };
+      const authored = await warmth('authored', 1);
+      const out = await warmth('out', 0);
+      const strong = await warmth('strong', 3);
+      const again = await warmth('again', 1);
+      report.glow = { authored, out, strong, again };
+      assert.ok(out < authored - 2000, `emission 0 puts the lamp out (${out} against ${authored})`);
+      assert.ok(strong > authored + 2000, `emission 3 is brighter (${strong} against ${authored})`);
+      assert.equal(again, authored, 'emission 1 is the authored picture again');
+      assert.match(await browser.evaluate(`window.__LEVELS__.glow('missing', 1)`), /no model node/);
+      assert.match(await browser.evaluate(`window.__LEVELS__.glow('lamp', 9)`), /0\.\.8/);
     } finally {
       await browser.close();
     }

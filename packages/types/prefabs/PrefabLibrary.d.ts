@@ -89,6 +89,12 @@ export interface PrefabInstance<T extends Laya.Node = Laya.Sprite> {
      * draws its full model. Without levels it changes nothing.
      */
     updateLod(eye: readonly [number, number, number]): ZhudaLodCounts;
+    /**
+     * Model prefabs: scales what a node's model gives off, 0..8, while it runs
+     * (windows and lanterns that light at dusk). `name` is the node's name; 1
+     * is as authored, whatever `emission` the definition started with.
+     */
+    setEmission(name: string, scale: number): void;
     dispose(): void;
 }
 /** Returns null for manually built substitutes. */

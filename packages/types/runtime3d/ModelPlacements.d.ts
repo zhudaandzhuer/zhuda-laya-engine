@@ -35,6 +35,11 @@ export interface ZhudaModelMountOptions {
 export interface ZhudaMountedModel {
     /** Renderers of the loaded instance (copies share their materials). */
     renderers: any[];
+    /**
+     * Scales what the model's materials give off, 0..8, while it is mounted (1 is
+     * as authored). The materials are shared by every copy of the model.
+     */
+    setEmission(scale: number): void;
     /** Present when the mount has levels or a cull distance: call `update(eye)` as the eye moves. */
     lod?: ZhudaModelLod;
     dispose(): void;

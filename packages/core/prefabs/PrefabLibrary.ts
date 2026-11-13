@@ -211,6 +211,12 @@ export interface PrefabInstance<T extends Laya.Node = Laya.Sprite> {
    * draws its full model. Without levels it changes nothing.
    */
   updateLod(eye: readonly [number, number, number]): ZhudaLodCounts;
+  /**
+   * Model prefabs: scales what a node's model gives off, 0..8, while it runs
+   * (windows and lanterns that light at dusk). `name` is the node's name; 1
+   * is as authored, whatever `emission` the definition started with.
+   */
+  setEmission(name: string, scale: number): void;
   dispose(): void;
 }
 const provenance = new WeakMap<Laya.Node, PrefabProvenance>();
@@ -440,6 +446,7 @@ export class ZhudaPrefabLibrary<T extends AnyPrefabDefinition = PrefabDefinition
       if (controller.signal.aborted) throw new DOMException('Prefab cancelled', 'AbortError');
       let tree: PrefabTreeInstance3D | undefined;
       let levels: ZhudaModelLod[] = [];
+      const glow = new Map<string, (scale: number) => void>();
       let created: Laya.Sprite | Laya.Sprite3D;
       if (entry.kind === '3d') {
         if (this.share3DResources) {
@@ -494,6 +501,7 @@ export class ZhudaPrefabLibrary<T extends AnyPrefabDefinition = PrefabDefinition
           });
           scope.defer(() => mounted.dispose());
           if (mounted.lod) levels.push(mounted.lod);
+          glow.set(node.name, mounted.setEmission);
         }
         created = root3D;
       } else {
@@ -582,6 +590,12 @@ export class ZhudaPrefabLibrary<T extends AnyPrefabDefinition = PrefabDefinition
           apply(next);
           record.state = next;
           instance.provenance = structuredClone(record);
+        },
+        setEmission: (name, scale) => {
+          if (retired) throw Error('Disposed prefab instance');
+          const set = glow.get(name);
+          if (!set) throw Error(`Prefab ${id} has no model node ${name}`);
+          set(scale);
         },
         updateLod: (eye) => {
           if (retired) throw Error('Disposed prefab instance');
