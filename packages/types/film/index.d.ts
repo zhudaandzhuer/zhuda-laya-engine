@@ -5,3 +5,6 @@ export * from './FilmReview.js';
 export * from './FilmPrefab.js';
 export * from './LookQuality.js';
 export * from './SceneLook.js';
+export * from './FilmLint.js';
+export * from './FrameMetrics.js';
+export * from './ColorValues.js';

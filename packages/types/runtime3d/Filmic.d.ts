@@ -1,4 +1,12 @@
 // Generated from TypeScript source; run npm run types:generate.
+import type { CinematicLinearChain } from './CinematicCapture.js';
+/**
+ * The brightest scene value, after exposure, that the lookup table of
+ * LayaAir's `ColorGradEffect` holds: its log encoding ends at 58.85. A value
+ * above it is looked up outside the table and comes out dark or in the wrong
+ * colour (a red lamp turned grey-green, then lost its red altogether).
+ */
+export declare const ZHUDA_GRADE_TABLE_MAX = 56;
 export interface PrefilteredEnvironmentSpec {
     size: number;
     levels: {
@@ -33,6 +41,12 @@ export interface FilmicOptions {
     bloomIntensity?: number;
     temporalAA?: boolean;
     /**
+     * Multisample the camera's HDR target (4x where the device allows it):
+     * geometry edges come out smooth in a frame drawn once, as a game draws it.
+     * Omitted, the camera keeps its own setting; disposal restores it either way.
+     */
+    msaa?: boolean;
+    /**
      * Borrowed effects inserted after ambient occlusion and before bloom, in
      * linear HDR: for example `ZhudaLightFog.effect`. They read the camera depth
      * texture, which the pipeline switches on. The caller disposes them after
@@ -59,7 +73,14 @@ export declare class ZhudaFilmicPipeline {
     private ownsTAA;
     private previousMSAA;
     private previousDepth;
+    private readonly sceneEffects;
+    private readonly finishEffects;
+    /** Keeps what reaches the grade inside its lookup table; absent without the material effect class. */
+    private readonly range;
+    private linear;
     constructor(camera: any, options?: FilmicOptions);
+    /** The table's end is in values after exposure: the limit before it moves with the exposure. */
+    private limit;
     /** Update the existing ACES grading exposure multiplier. */
     setExposure(value: number): void;
     /**
@@ -75,6 +96,16 @@ export declare class ZhudaFilmicPipeline {
         aoIntensity?: number;
         aoRadius?: number;
     }): void;
+    /**
+     * The chain's handle for a capture that averages its samples in scene-linear
+     * light (see `CinematicLinearChain`): samples are drawn without tone mapping
+     * and lens finish, and their average is then drawn through both once. The
+     * first call puts one pass at the head of the chain; it is idle outside a
+     * capture.
+     */
+    linearChain(): CinematicLinearChain;
+    /** Switches multisampling of the camera's HDR target on or off, in place. */
+    setAntialias(msaa: boolean): void;
     /** Call on camera cuts, teleports and timeline seeks, not on ordinary movement. */
     resetHistory(): void;
     dispose(): void;

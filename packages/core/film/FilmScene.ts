@@ -13,6 +13,7 @@ import {
   validateZhudaTextureRecipe,
   type ZhudaTextureRecipe,
 } from '../procedural/TextureRecipe.ts';
+import { validateZhudaExtrude, validateZhudaLathe } from '../procedural/Geometry.ts';
 
 export type ZhudaFilmVec3 = [number, number, number];
 
@@ -33,7 +34,10 @@ export interface ZhudaFilmSun {
   /** Height above the horizon, degrees (0..90). Defaults to the preset. */
   elevationDeg?: number;
   intensity?: number;
-  /** Linear RGB 0..1. */
+  /**
+   * Display RGB 0..1, as a colour picker shows it (sRGB): LayaAir decodes it,
+   * so 0.5 gives 21 % of the light. `intensity` is linear.
+   */
   color?: ZhudaFilmVec3;
 }
 
@@ -94,6 +98,12 @@ export interface ZhudaFilmGrade {
   /** Ambient occlusion radius in metres, 0.05..5 (default 0.5). */
   aoRadius?: number;
   /**
+   * Edge smoothing of a frame that is drawn once (a preview, a running game):
+   * `msaa` multisamples the HDR target (default), `none` leaves edges as they
+   * fall. Stills and video average their samples as well, with either value.
+   */
+  antialias?: 'msaa' | 'none';
+  /**
    * What a real camera adds, after tone mapping, each 0..1 and off by
    * default: film grain, darker corners and colour fringing at the corners.
    */
@@ -108,17 +118,22 @@ export interface ZhudaFilmLook {
    * the look is the plain one: flat sky colour, no shadows, sky or fog.
    */
   preset?: ZhudaFilmLookPreset;
-  /** Flat background colour (used when there is no atmosphere), linear RGB 0..1. */
+  /** Flat background colour (used when there is no atmosphere), display RGB 0..1. */
   sky?: ZhudaFilmVec3;
-  /** Ambient light colour, linear RGB 0..1. */
+  /**
+   * Ambient light colour, display RGB 0..1 (sRGB, as a colour picker shows
+   * it): 0.5 gives 21 % of the light. With `ambientGround` it is the light
+   * from above.
+   */
   ambient?: ZhudaFilmVec3;
   /**
-   * Light the ground throws back, linear RGB 0..1. With it the ambient light
-   * has a direction: `ambient` comes from above (the sky) and this from
-   * below, so undersides and shadows take the colour of the ground instead
-   * of one flat tone. Off unless given.
+   * Light the ground throws back, display RGB 0..1 like `ambient`. With it
+   * the ambient light has a direction: `ambient` comes from above (the sky)
+   * and this from below, so undersides and shadows take the colour of the
+   * ground instead of one flat tone. The day, dawn, dusk and overcast presets
+   * give one; `false` makes the ambient light one flat colour again.
    */
-  ambientGround?: ZhudaFilmVec3;
+  ambientGround?: ZhudaFilmVec3 | false;
   sun?: ZhudaFilmSun;
   /** `false` turns sun shadows off. */
   shadows?: ZhudaFilmShadows | false;
@@ -132,6 +147,21 @@ export interface ZhudaFilmLook {
    * down a street. Needs `grade`; off unless given.
    */
   lightFog?: ZhudaFilmLightFog | false;
+  /**
+   * Reflections of what is on screen, on every surface: wet walls, props,
+   * ground beyond a `reflector`. The whole view reflects alike, by Fresnel
+   * (a forward renderer has no roughness buffer): use it for rain and for
+   * polished places. Needs `grade`; off unless given.
+   */
+  screenReflections?: ZhudaFilmScreenReflections | false;
+  /**
+   * Light bounced once off the scene: probes on a grid over its objects
+   * capture their surroundings when the scene is mounted, and light physically
+   * based materials in place of the ambient light (a sunlit red wall tints
+   * what faces it). Captured once: `setLook` does not update it. Off unless
+   * given.
+   */
+  bounceLight?: ZhudaFilmBounceLight | false;
   /**
    * A photograph as the sky: a 2:1 panorama (equirectangular) named by
    * logical asset id. Replaces `atmosphere`. Off unless given.
@@ -179,7 +209,11 @@ export interface ZhudaFilmLightFog {
   falloffMeters?: number;
   /** Height where the density equals `density` (default 0). */
   baseY?: number;
-  /** Colour of the fog itself, linear RGB 0..1 (default dark blue). */
+  /**
+   * Colour of the fog itself, display RGB 0..1. Default: the colour the look's
+   * sky has near the horizon (the preset's measured `horizon`, or `look.sky`
+   * for a flat or panoramic sky), so that the fog melts into the sky.
+   */
   color?: ZhudaFilmVec3;
   /** Strength of the glow around lights, 0..16 (default 1). */
   scatter?: number;
@@ -209,14 +243,30 @@ export type ZhudaFilmMaterial =
   | {
       recipe: string | ZhudaTextureRecipe;
       tint?: [number, number, number, number];
-      /** Bake size; 128, 256 or 512 (default 256). */
-      size?: 128 | 256 | 512;
+      /**
+       * Bake size: 128, 256, 512, 1024 or 2048 (default 256). Baking runs on
+       * the CPU when the scene is mounted and its cost grows with the square
+       * of the size (about 2 s at 1024 and 6 s and 48 MB at 2048 for a
+       * two-layer recipe): for the large sizes pass a `bakeCache` filled ahead.
+       */
+      size?: 128 | 256 | 512 | 1024 | 2048;
+      /**
+       * Slow changes of brightness across the surface, 0..1 (default 0), so
+       * that a large floor or road does not show its tiles as a grid. The
+       * changes are several tiles wide.
+       */
+      variation?: number;
     }
   | {
       color: ZhudaFilmVec3;
       roughness?: number;
       metallic?: number;
-      /** Self-lit colour (lamp heads, signs), linear RGB 0..8. */
+      /**
+       * Self-lit colour (lamp heads, signs), display RGB 0..8. It is decoded
+       * like any colour, so above 1 the light grows as the 2.4th power: 2 is
+       * 5.3 times white, 4 is 28, 8 is 147. What exceeds the grade's range
+       * (56 after exposure) is drawn at that limit, near-white.
+       */
       emission?: ZhudaFilmVec3;
     };
 
@@ -240,6 +290,39 @@ export type ZhudaFilmNode =
       yawDeg?: number;
       bevel?: number;
       /** A scene material, or a recipe name the host knows. */
+      material: string;
+    }
+  | {
+      id: string;
+      type: 'lathe';
+      /**
+       * A body of revolution about the vertical axis (a bollard, a barrel, a
+       * dome, a bowl, a column): its outline as [radius, height] pairs in
+       * metres, 2..256 of them, from the bottom up along the outside. A
+       * hollow form goes on down the inside.
+       */
+      profile: [number, number][];
+      /** Sides around the axis, 3..96 (default 24). */
+      segments?: number;
+      /** Where the axis meets height 0 of the outline. */
+      position: ZhudaFilmVec3;
+      yawDeg?: number;
+      material: string;
+    }
+  | {
+      id: string;
+      type: 'extrude';
+      /**
+       * A flat outline on the ground raised to `height` (a kerb, steps, a
+       * sign, a piece of wall): [x, z] pairs in metres about `position`,
+       * 3..256 of them, in either direction. It may be concave; it must not
+       * cross itself.
+       */
+      outline: [number, number][];
+      /** Metres. */
+      height: number;
+      position: ZhudaFilmVec3;
+      yawDeg?: number;
       material: string;
     }
   | {
@@ -327,8 +410,10 @@ export type ZhudaFilmNode =
       /** Longer side of the mirrored picture (default 1024). */
       resolution?: 256 | 512 | 1024 | 2048;
       /**
-       * Ids of model nodes the mirror must not draw: the ground under the
-       * reflector, which would otherwise block the view from below.
+       * Ids of model nodes the mirror must not draw. What lies below the
+       * mirror (the ground it covers, whatever kind of node that is) is cut
+       * from the mirrored view by itself; this is for things above it that
+       * should not show in the reflection.
        */
       hides?: string[];
     }
@@ -348,7 +433,7 @@ export type ZhudaFilmNode =
       size: [number, number];
       /** Flow in metres per second along X and Z (default [0, 0.6]). */
       flow?: [number, number];
-      /** Colour of deep water, linear RGB 0..1 (default a green-blue). */
+      /** Colour of deep water, display RGB 0..1 (default a green-blue). */
       color?: ZhudaFilmVec3;
       /** Metres of water at which the bed has faded to about a third, 0.05..100 (default 1.5). */
       clarity?: number;
@@ -375,7 +460,7 @@ export type ZhudaFilmNode =
       /** Point lights shine all around; spot lights shine at `target`. */
       kind: 'point' | 'spot';
       position: ZhudaFilmVec3;
-      /** Linear RGB 0..1 (default warm white). */
+      /** Display RGB 0..1 (sRGB, as a colour picker shows it; default warm white). */
       color?: ZhudaFilmVec3;
       /** 0..20 (default 2). */
       intensity?: number;
@@ -386,8 +471,11 @@ export type ZhudaFilmNode =
       /** Spot lights: full cone angle, 1..179 degrees (default 60). */
       spotAngleDeg?: number;
       /**
-       * Spot lights: the light casts shadows. One per scene (Laya 3.4.2 draws
-       * one spot shadow map); point lights cannot cast shadows.
+       * The light casts shadows: one spot light and up to four point lights
+       * per scene may. A spot uses LayaAir's own shadow map. A point light's
+       * surroundings are drawn once from the lamp (`ZhudaPointShadow`), and
+       * again when its `range` or something that moves with time changes;
+       * nothing closer to it than 0.5 m casts (the lamp's own head).
        */
       castsShadow?: boolean;
       /**
@@ -451,10 +539,38 @@ export function sampleZhudaFilmMotion(
   return { position: [...keys[last].position], yawDeg: yaws[last] };
 }
 
+/** Screen-space reflections (see `ZhudaScreenReflections`). */
+export interface ZhudaFilmScreenReflections {
+  /** Brightness of the reflections, 0..4 (default 1). */
+  strength?: number;
+  /** How wet the surfaces are, 0..1: how much shows when seen head-on (default 0.5). */
+  wetness?: number;
+  /** Metres a reflected ray is followed, 1..200 (default 30). */
+  distance?: number;
+  /** Steps along the ray, 8..64 (default 32). */
+  steps?: number;
+}
+
+/** Light bounced once off the scene (see `ZhudaProbeVolume`). */
+export interface ZhudaFilmBounceLight {
+  /** Metres between probes, 1..20 (default 3). */
+  spacing?: number;
+  /** Multiplies the bounced light, 0..4 (default 1). */
+  strength?: number;
+  /** Corners of the box the probes fill; by default the scene's objects and lights, widened by 2 m. */
+  min?: ZhudaFilmVec3;
+  max?: ZhudaFilmVec3;
+}
+
 export interface ZhudaFilmScene {
   schemaVersion: 1;
   id: string;
   camera: ZhudaFilmCamera;
+  /**
+   * Left out, the scene gets `ZHUDA_FILM_ABSENT_LOOK`: the day preset (sun,
+   * shadows, sky, distance fog). An empty object is the bare look, kept for
+   * tests: a flat sky colour and no shadows.
+   */
   look?: ZhudaFilmLook;
   materials?: Record<string, ZhudaFilmMaterial>;
   nodes: ZhudaFilmNode[];
@@ -496,13 +612,18 @@ export const ZHUDA_FILM_LIMITS = Object.freeze({
   lights: 128,
   /** Point lights one `lightFog` can hold, fog-only lights included. */
   fogLights: 128,
+  /** Point lights that may cast shadows (one spot light may as well). */
+  pointShadows: 4,
   models: 64,
   /** Copies of one model node; a scene holds at most `placementsTotal` in all. */
   placements: 20000,
   placementsTotal: 60000,
 });
 
-/** The plain look of scenes without a preset (phase 1 behaviour). */
+/** What a scene that gives no `look` at all is drawn with. */
+export const ZHUDA_FILM_ABSENT_LOOK: Readonly<ZhudaFilmLook> = Object.freeze({ preset: 'day' });
+
+/** The bare look of a `look` without a preset (phase 1 behaviour). */
 export const ZHUDA_FILM_DEFAULT_LOOK = Object.freeze({
   sky: [0.55, 0.65, 0.78] as ZhudaFilmVec3,
   ambient: [0.3, 0.3, 0.32] as ZhudaFilmVec3,
@@ -521,6 +642,15 @@ type PresetLook = {
   shadows: Required<ZhudaFilmShadows>;
   atmosphere: Required<ZhudaFilmAtmosphere>;
   fog: Required<ZhudaFilmFog> | false;
+  /**
+   * The preset's sky 5 to 10 degrees above the horizon, averaged around the
+   * compass (measured from a draw of the preset in scene-linear light, kept
+   * here as the display value that decodes to it). Ground fog takes this
+   * colour by default so that it melts into the sky.
+   */
+  /** Light from the ground below (the presets with a sun high enough give one). */
+  ambientGround?: ZhudaFilmVec3;
+  horizon: ZhudaFilmVec3;
 };
 const shadows = (strength: number): Required<ZhudaFilmShadows> => ({
   distance: 60,
@@ -535,7 +665,11 @@ export const ZHUDA_FILM_LOOK_PRESETS: Readonly<Record<ZhudaFilmLookPreset, Prese
   Object.freeze({
     day: {
       sky: [0.5, 0.66, 0.9],
-      ambient: [0.34, 0.36, 0.4],
+      horizon: [0.642, 0.761, 0.891],
+      // Sky light from above and the light the ground throws back: about a
+      // third of the sun's on the ground, as under a clear sky.
+      ambient: [0.62, 0.64, 0.7],
+      ambientGround: [0.5, 0.47, 0.42],
       sun: { azimuthDeg: 40, elevationDeg: 55, intensity: 1.3, color: [1, 0.97, 0.92] },
       shadows: shadows(0.85),
       atmosphere: {
@@ -549,7 +683,9 @@ export const ZHUDA_FILM_LOOK_PRESETS: Readonly<Record<ZhudaFilmLookPreset, Prese
     },
     dawn: {
       sky: [0.93, 0.6, 0.42],
-      ambient: [0.36, 0.29, 0.26],
+      horizon: [0.832, 0.735, 0.381],
+      ambient: [0.64, 0.58, 0.55],
+      ambientGround: [0.46, 0.4, 0.36],
       sun: { azimuthDeg: -70, elevationDeg: 9, intensity: 1.35, color: [1, 0.72, 0.46] },
       shadows: shadows(0.8),
       atmosphere: {
@@ -563,7 +699,9 @@ export const ZHUDA_FILM_LOOK_PRESETS: Readonly<Record<ZhudaFilmLookPreset, Prese
     },
     dusk: {
       sky: [0.82, 0.45, 0.35],
-      ambient: [0.3, 0.24, 0.26],
+      horizon: [0.687, 0.517, 0.1],
+      ambient: [0.58, 0.52, 0.55],
+      ambientGround: [0.4, 0.34, 0.32],
       sun: { azimuthDeg: 110, elevationDeg: 6, intensity: 1.2, color: [1, 0.6, 0.38] },
       shadows: shadows(0.75),
       atmosphere: {
@@ -577,6 +715,7 @@ export const ZHUDA_FILM_LOOK_PRESETS: Readonly<Record<ZhudaFilmLookPreset, Prese
     },
     night: {
       sky: [0.025, 0.04, 0.09],
+      horizon: [0.156, 0.203, 0.306],
       ambient: [0.08, 0.1, 0.17],
       // Moonlight: a dim, cool key that still casts soft shadows.
       sun: { azimuthDeg: 125, elevationDeg: 38, intensity: 0.45, color: [0.62, 0.72, 1] },
@@ -592,7 +731,9 @@ export const ZHUDA_FILM_LOOK_PRESETS: Readonly<Record<ZhudaFilmLookPreset, Prese
     },
     overcast: {
       sky: [0.62, 0.66, 0.7],
-      ambient: [0.45, 0.47, 0.5],
+      horizon: [0.742, 0.804, 0.715],
+      ambient: [0.7, 0.71, 0.73],
+      ambientGround: [0.52, 0.51, 0.49],
       sun: { azimuthDeg: 30, elevationDeg: 60, intensity: 0.55, color: [0.92, 0.94, 1] },
       shadows: shadows(0.3),
       atmosphere: {
@@ -632,7 +773,7 @@ function colour(value: unknown, path: string, issues: string[]) {
     value.length !== 3 ||
     !value.every((n) => finite(n) && n >= 0 && n <= 1)
   )
-    issues.push(`${path}: use linear RGB with three values between 0 and 1`);
+    issues.push(`${path}: use RGB with three values between 0 and 1`);
 }
 function unknownKeys(
   value: Record<string, unknown>,
@@ -641,7 +782,41 @@ function unknownKeys(
   issues: string[],
 ) {
   for (const key of Object.keys(value))
-    if (!allowed.includes(key)) issues.push(`${path}.${key}: unknown field`);
+    if (!allowed.includes(key)) {
+      const near = nearestName(key, allowed);
+      issues.push(`${path}.${key}: unknown field` + (near ? ` (did you mean ${near}?)` : ''));
+    }
+}
+/** The allowed name a mistyped one most likely meant, if any is close enough. */
+function nearestName(name: string, allowed: readonly string[]): string | undefined {
+  const a = name.toLowerCase();
+  let best: string | undefined,
+    bestDistance = Infinity;
+  for (const candidate of allowed) {
+    const b = candidate.toLowerCase();
+    if (a === b) return candidate;
+    // One is the other plus an ending: `shadow` for `shadows`, `lightfogs` for `lightFog`.
+    if (a.length >= 3 && b.length >= 3 && (a.startsWith(b) || b.startsWith(a))) {
+      const extra = Math.abs(a.length - b.length);
+      if (extra <= 2 && extra < bestDistance) [best, bestDistance] = [candidate, extra];
+      continue;
+    }
+    if (Math.abs(a.length - b.length) > 2 || Math.min(a.length, b.length) < 4) continue;
+    let row = Array.from({ length: b.length + 1 }, (_, i) => i);
+    for (let i = 1; i <= a.length; i++) {
+      const next = [i];
+      for (let j = 1; j <= b.length; j++)
+        next[j] = Math.min(
+          row[j] + 1,
+          next[j - 1] + 1,
+          row[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1),
+        );
+      row = next;
+    }
+    if (row[b.length] <= 2 && row[b.length] < bestDistance)
+      [best, bestDistance] = [candidate, row[b.length]];
+  }
+  return best;
 }
 
 function validateCamera(camera: unknown, path: string, issues: string[], partial = false) {
@@ -697,6 +872,8 @@ function validateLook(
       'fog',
       'grade',
       'lightFog',
+      'screenReflections',
+      'bounceLight',
       'environment',
       'panorama',
     ],
@@ -781,6 +958,7 @@ function validateLook(
           'grain',
           'vignette',
           'fringe',
+          'antialias',
         ],
         `${path}.grade`,
         issues,
@@ -794,6 +972,8 @@ function validateLook(
       range(g.grain, `${path}.grade.grain`, 0, 1);
       range(g.vignette, `${path}.grade.vignette`, 0, 1);
       range(g.fringe, `${path}.grade.fringe`, 0, 1);
+      if (g.antialias !== undefined && g.antialias !== 'msaa' && g.antialias !== 'none')
+        issues.push(`${path}.grade.antialias: use msaa or none`);
     }
   }
   if (look.lightFog !== undefined && look.lightFog !== false) {
@@ -835,6 +1015,49 @@ function validateLook(
         issues.push(`${path}.lightFog: needs grade (the fog is part of the HDR chain)`);
     }
   }
+  if (look.screenReflections !== undefined && look.screenReflections !== false) {
+    const s = look.screenReflections,
+      at = `${path}.screenReflections`;
+    if (!object(s)) issues.push(`${at}: object or false required`);
+    else {
+      unknownKeys(s, ['strength', 'wetness', 'distance', 'steps'], at, issues);
+      range(s.strength, `${at}.strength`, 0, 4);
+      range(s.wetness, `${at}.wetness`, 0, 1);
+      range(s.distance, `${at}.distance`, 1, 200);
+      const steps: unknown = s.steps;
+      if (
+        steps !== undefined &&
+        !(typeof steps === 'number' && Number.isInteger(steps) && steps >= 8 && steps <= 64)
+      )
+        issues.push(`${at}.steps: use a whole number 8..64`);
+      if (look.grade === undefined || look.grade === false)
+        issues.push(`${at}: needs grade (the reflections are part of the HDR chain)`);
+    }
+  }
+  if (look.bounceLight !== undefined && look.bounceLight !== false) {
+    const b = look.bounceLight,
+      at = `${path}.bounceLight`;
+    if (!object(b)) issues.push(`${at}: object or false required`);
+    else {
+      unknownKeys(b, ['spacing', 'strength', 'min', 'max'], at, issues);
+      range(b.spacing, `${at}.spacing`, 1, 20);
+      range(b.strength, `${at}.strength`, 0, 4);
+      if ((b.min === undefined) !== (b.max === undefined))
+        issues.push(`${at}: give min and max together`);
+      else if (b.min !== undefined) {
+        vec3(b.min, `${at}.min`, issues);
+        vec3(b.max, `${at}.max`, issues);
+        const low = b.min as number[],
+          high = b.max as number[];
+        if (
+          Array.isArray(low) &&
+          Array.isArray(high) &&
+          !low.every((value, i) => typeof value === 'number' && value < high[i])
+        )
+          issues.push(`${at}.min: below max on every axis`);
+      }
+    }
+  }
   if (look.panorama !== undefined && look.panorama !== false) {
     const p = look.panorama;
     if (!object(p)) issues.push(`${path}.panorama: object or false required`);
@@ -873,7 +1096,8 @@ function validateLook(
   }
   if (look.sky !== undefined) colour(look.sky, `${path}.sky`, issues);
   if (look.ambient !== undefined) colour(look.ambient, `${path}.ambient`, issues);
-  if (look.ambientGround !== undefined) colour(look.ambientGround, `${path}.ambientGround`, issues);
+  if (look.ambientGround !== undefined && look.ambientGround !== false)
+    colour(look.ambientGround, `${path}.ambientGround`, issues);
   if (look.sun !== undefined) {
     const sun = look.sun;
     if (!object(sun)) return void issues.push(`${path}.sun: object required`);
@@ -905,7 +1129,13 @@ function validateMaterial(
 ) {
   if (!object(material)) return void issues.push(`${path}: material object required`);
   if ('recipe' in material) {
-    unknownKeys(material, ['recipe', 'tint', 'size'], path, issues);
+    unknownKeys(material, ['recipe', 'tint', 'size', 'variation'], path, issues);
+    const variation: unknown = material.variation;
+    if (
+      variation !== undefined &&
+      !(typeof variation === 'number' && variation >= 0 && variation <= 1)
+    )
+      issues.push(`${path}.variation: use 0..1`);
     if (typeof material.recipe === 'string') {
       if (context.recipes && !context.recipes.includes(material.recipe))
         issues.push(
@@ -923,8 +1153,11 @@ function validateMaterial(
       )
     )
       issues.push(`${path}.tint: use four values between 0 and 4`);
-    if (material.size !== undefined && ![128, 256, 512].includes(material.size as number))
-      issues.push(`${path}.size: use 128, 256 or 512`);
+    if (
+      material.size !== undefined &&
+      ![128, 256, 512, 1024, 2048].includes(material.size as number)
+    )
+      issues.push(`${path}.size: use 128, 256, 512, 1024 or 2048`);
   } else if ('color' in material) {
     unknownKeys(material, ['color', 'roughness', 'metallic', 'emission'], path, issues);
     colour(material.color, `${path}.color`, issues);
@@ -936,7 +1169,7 @@ function validateMaterial(
         material.emission.every((n) => finite(n) && n >= 0 && n <= 8)
       )
     )
-      issues.push(`${path}.emission: use linear RGB with three values between 0 and 8`);
+      issues.push(`${path}.emission: use RGB with three values between 0 and 8`);
     for (const key of ['roughness', 'metallic'] as const)
       if (
         material[key] !== undefined &&
@@ -1003,6 +1236,38 @@ function validateNode(
       yaw();
       if (node.bevel !== undefined && !(finite(node.bevel) && node.bevel >= 0))
         issues.push(`${path}.bevel: use a non-negative number`);
+      usesMaterial();
+      break;
+    case 'lathe':
+      unknownKeys(
+        node,
+        ['id', 'type', 'profile', 'segments', 'position', 'yawDeg', 'material'],
+        path,
+        issues,
+      );
+      for (const issue of validateZhudaLathe({
+        profile: node.profile as [number, number][],
+        segments: node.segments as number | undefined,
+      }))
+        issues.push(`${path}.${issue}`);
+      vec3(node.position, `${path}.position`, issues);
+      yaw();
+      usesMaterial();
+      break;
+    case 'extrude':
+      unknownKeys(
+        node,
+        ['id', 'type', 'outline', 'height', 'position', 'yawDeg', 'material'],
+        path,
+        issues,
+      );
+      for (const issue of validateZhudaExtrude({
+        outline: node.outline as [number, number][],
+        height: node.height as number,
+      }))
+        issues.push(`${path}.${issue}`);
+      vec3(node.position, `${path}.position`, issues);
+      yaw();
       usesMaterial();
       break;
     case 'ground':
@@ -1336,14 +1601,21 @@ function validateNode(
         !(typeof node.fogOnly === 'boolean' && node.kind === 'point')
       )
         issues.push(`${path}.fogOnly: point lights only, true or false`);
-      if (
-        node.castsShadow !== undefined &&
-        !(typeof node.castsShadow === 'boolean' && (node.kind === 'spot' || !node.castsShadow))
+      if (node.castsShadow !== undefined && typeof node.castsShadow !== 'boolean')
+        issues.push(`${path}.castsShadow: true or false`);
+      else if (
+        node.castsShadow &&
+        node.kind === 'point' &&
+        (node.fogOnly === true || node.follows !== undefined)
       )
-        issues.push(`${path}.castsShadow: spot lights only, true or false`);
+        issues.push(
+          `${path}.castsShadow: not on a point light that is fogOnly or follows a model (its shadow is drawn from where it stands)`,
+        );
       break;
     default:
-      issues.push(`${path}.type: use prop, box, ground, model, reflector, water or light`);
+      issues.push(
+        `${path}.type: use prop, box, lathe, extrude, ground, model, reflector, water or light`,
+      );
   }
 }
 
@@ -1440,11 +1712,16 @@ export function validateZhudaFilmScene(
       issues.push(
         `scene.nodes: at most ${ZHUDA_FILM_LIMITS.fogLights} point lights including fog-only ones`,
       );
-    if (
-      lightNodes.filter((node) => (node as { castsShadow?: unknown }).castsShadow === true).length >
-      1
-    )
-      issues.push('scene.nodes: one spot light may cast shadows');
+    const casting = (kind: string) =>
+      lightNodes.filter((node) => {
+        const light = node as { castsShadow?: unknown; kind?: unknown };
+        return light.castsShadow === true && light.kind === kind;
+      }).length;
+    if (casting('spot') > 1) issues.push('scene.nodes: one spot light may cast shadows');
+    if (casting('point') > ZHUDA_FILM_LIMITS.pointShadows)
+      issues.push(
+        `scene.nodes: at most ${ZHUDA_FILM_LIMITS.pointShadows} point lights may cast shadows`,
+      );
     const lights = lightNodes.filter((node) => !(node as { fogOnly?: unknown }).fogOnly).length;
     if (lights > ZHUDA_FILM_LIMITS.lights)
       issues.push(`scene.nodes: at most ${ZHUDA_FILM_LIMITS.lights} real-time lights`);
@@ -1495,6 +1772,8 @@ export function applyZhudaFilmScenePatch(
       'fog',
       'grade',
       'lightFog',
+      'screenReflections',
+      'bounceLight',
       'environment',
       'panorama',
     ] as const) {
@@ -1557,6 +1836,11 @@ export interface ZhudaResolvedFilmLook {
         shafts: Required<ZhudaFilmLightShafts> | false;
       })
     | false;
+  screenReflections: Required<ZhudaFilmScreenReflections> | false;
+  bounceLight:
+    | (Required<Pick<ZhudaFilmBounceLight, 'spacing' | 'strength'>> &
+        Pick<ZhudaFilmBounceLight, 'min' | 'max'>)
+    | false;
   environment: Required<ZhudaFilmEnvironment> | false;
   panorama: Required<ZhudaFilmPanorama> | false;
 }
@@ -1584,7 +1868,9 @@ function lightFogOf(fog: Required<ZhudaFilmLightFog> | false): ZhudaResolvedFilm
   };
 }
 
-export function resolveZhudaFilmLook(look: ZhudaFilmLook = {}): ZhudaResolvedFilmLook {
+export function resolveZhudaFilmLook(
+  look: ZhudaFilmLook = ZHUDA_FILM_ABSENT_LOOK,
+): ZhudaResolvedFilmLook {
   const preset = look.preset ? ZHUDA_FILM_LOOK_PRESETS[look.preset] : null;
   const d = ZHUDA_FILM_DEFAULT_LOOK;
   const base = preset ?? {
@@ -1619,11 +1905,25 @@ export function resolveZhudaFilmLook(look: ZhudaFilmLook = {}): ZhudaResolvedFil
       end: from.end,
     } as Required<ZhudaFilmFog>;
   })();
+  // Fog saturates to its own colour toward the horizon, so by default it takes
+  // the colour the sky has there. One fixed dark blue suited night only: by
+  // day it drew a black band along the horizon.
+  const horizon: ZhudaFilmVec3 =
+    preset && atmosphere && !(look.panorama && typeof look.panorama === 'object')
+      ? ([...preset.horizon] as ZhudaFilmVec3)
+      : ([...sky] as ZhudaFilmVec3);
   return {
     preset: look.preset ?? null,
     sky,
     ambient: look.ambient ?? ([...base.ambient] as ZhudaFilmVec3),
-    ambientGround: look.ambientGround ? ([...look.ambientGround] as ZhudaFilmVec3) : false,
+    ambientGround:
+      look.ambientGround === false
+        ? false
+        : look.ambientGround
+          ? ([...look.ambientGround] as ZhudaFilmVec3)
+          : preset?.ambientGround
+            ? ([...preset.ambientGround] as ZhudaFilmVec3)
+            : false,
     sun: {
       azimuthDeg: look.sun?.azimuthDeg ?? base.sun.azimuthDeg,
       elevationDeg: look.sun?.elevationDeg ?? base.sun.elevationDeg,
@@ -1649,17 +1949,33 @@ export function resolveZhudaFilmLook(look: ZhudaFilmLook = {}): ZhudaResolvedFil
       grain: 0,
       vignette: 0,
       fringe: 0,
+      antialias: 'msaa',
     }),
     lightFog: lightFogOf(
       merge<ZhudaFilmLightFog>(look.lightFog, false, {
         density: 0.012,
         falloffMeters: 8,
         baseY: 0,
-        color: [0.02, 0.03, 0.05],
+        color: horizon,
         scatter: 1,
         shafts: false,
       }),
     ),
+    screenReflections: merge<ZhudaFilmScreenReflections>(look.screenReflections, false, {
+      strength: 1,
+      wetness: 0.5,
+      distance: 30,
+      steps: 32,
+    }),
+    bounceLight: look.bounceLight
+      ? {
+          spacing: look.bounceLight.spacing ?? 3,
+          strength: look.bounceLight.strength ?? 1,
+          ...(look.bounceLight.min && look.bounceLight.max
+            ? { min: [...look.bounceLight.min], max: [...look.bounceLight.max] }
+            : {}),
+        }
+      : false,
     panorama:
       look.panorama && typeof look.panorama === 'object'
         ? {
@@ -1762,10 +2078,13 @@ export function zhudaFilmLookRebuildReason(
   | 'ambientGround'
   | 'grade'
   | 'lightFog'
+  | 'screenReflections'
+  | 'bounceLight'
   | null {
   const json = (value: unknown) => JSON.stringify(value);
   if (json(from.environment) !== json(to.environment)) return 'environment';
   if (json(from.panorama) !== json(to.panorama)) return 'panorama';
+  if (json(from.bounceLight) !== json(to.bounceLight)) return 'bounceLight';
   if (!from.shadows !== !to.shadows) return 'shadows';
   if (!from.atmosphere !== !to.atmosphere) return 'atmosphere';
   if (!from.fog !== !to.fog) return 'fog';
@@ -1788,5 +2107,59 @@ export function zhudaFilmLookRebuildReason(
         )
       : 'off';
   if (fog(from) !== fog(to)) return 'lightFog';
+  // Built or not built; its values are set in place.
+  if (!from.screenReflections !== !to.screenReflections) return 'screenReflections';
   return null;
+}
+
+/**
+ * The box a scene's bounce light fills by default: its objects and lights
+ * (not the ground, a box used as ground, a reflector or water), widened by
+ * 2 m around and 1.5 m above, down to the ground. Null when there is nothing
+ * to light.
+ */
+export function zhudaFilmBounceBox(
+  scene: ZhudaFilmScene,
+): { min: ZhudaFilmVec3; max: ZhudaFilmVec3 } | null {
+  const low = [Infinity, Infinity, Infinity],
+    high = [-Infinity, -Infinity, -Infinity];
+  const take = (x: number, y: number, z: number, reach: number, height: number) => {
+    low[0] = Math.min(low[0], x - reach);
+    low[1] = Math.min(low[1], y);
+    low[2] = Math.min(low[2], z - reach);
+    high[0] = Math.max(high[0], x + reach);
+    high[1] = Math.max(high[1], y + height);
+    high[2] = Math.max(high[2], z + reach);
+  };
+  for (const node of scene.nodes) {
+    const n = node as unknown as Record<string, any>;
+    const [x, y, z] = (n.position ?? [0, 0, 0]) as number[];
+    // A slab wider than 10 m and lower than 0.3 m is ground, not an object.
+    if (n.type === 'box' && !(n.size[1] < 0.3 && Math.hypot(n.size[0], n.size[2]) > 10))
+      take(x, y, z, Math.hypot(n.size[0], n.size[2]) / 2, n.size[1]);
+    else if (n.type === 'lathe')
+      take(
+        x,
+        y,
+        z,
+        Math.max(...n.profile.map((p: number[]) => p[0])),
+        Math.max(...n.profile.map((p: number[]) => p[1])),
+      );
+    else if (n.type === 'extrude')
+      take(x, y, z, Math.max(...n.outline.map((p: number[]) => Math.hypot(p[0], p[1]))), n.height);
+    // Props and models: about the size of a shipping container around their place.
+    else if (n.type === 'prop') take(x, y, z, 3.5, 3);
+    else if (n.type === 'model') {
+      const scale = n.scale ?? 1;
+      for (const place of n.placements ?? [{ position: n.position }])
+        if (place.position)
+          take(place.position[0], place.position[1], place.position[2], 2 * scale, 3 * scale);
+    } else if (n.type === 'light' && !n.fogOnly) take(x, y, z, 0.5, 0.5);
+  }
+  if (!Number.isFinite(low[0])) return null;
+  const base = Math.min(0, low[1]);
+  return {
+    min: [low[0] - 2, base, low[2] - 2],
+    max: [high[0] + 2, Math.max(high[1] + 1.5, base + 2), high[2] + 2],
+  };
 }

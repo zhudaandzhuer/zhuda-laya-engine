@@ -35,6 +35,10 @@ export class ZhudaFilmSessions {
       throw Error(`Film scene exceeds ${MAX_SCENE_BYTES} bytes`);
     return parseZhudaFilmScene(scene, this.#context);
   }
+  /** Validates a scene against this host without opening a session; returns the parsed scene. */
+  check(scene) {
+    return this.#check(scene);
+  }
   #snapshot(id, entry) {
     return { sessionId: id, revision: entry.revision, scene: structuredClone(entry.scene) };
   }

@@ -25,7 +25,11 @@ export interface ZhudaLightFogOptions {
   falloffMeters?: number;
   /** Height where the density equals `density` (default 0). */
   baseY?: number;
-  /** Colour the fog itself adds (ambient light in the fog), linear RGB (default dark blue). */
+  /**
+   * Colour the fog itself adds (ambient light in the fog), as light: scene-linear
+   * RGB (default dark blue). A film look or `ZhudaSceneLook` decodes its display
+   * colours before handing them here; so do the colours of `setLights`.
+   */
   color?: readonly [number, number, number];
   /** Strength of the glow from lights, 0..16 (default 1). */
   scatter?: number;
@@ -194,24 +198,37 @@ const FRAGMENT = `#define SHADER_NAME ZhudaLightFogFS
 #include "Color.glsl";
 #include "Camera.glsl";
 varying vec2 v_Texcoord0;
+float zhudaFogDepth(vec2 at){return 1.0/(u_ZBufferParams.z*texture2D(u_CameraDepthTexture,at).x+u_ZBufferParams.w);}
+// Fog along a ray of length t whose height changes by k per metre, per unit of density at the eye.
+float zhudaFogPath(float k,float t){return abs(k)<0.0001?t:(1.0-exp(-k*t))/k;}
 void main(){
 vec2 uv=v_Texcoord0;
 vec4 source=texture2D(u_MainTex,uv);
 #ifdef Gamma_u_MainTex
 source=gammaToLinear(source);
 #endif
-float raw=texture2D(u_CameraDepthTexture,uv).x;
-float eyeDepth=1.0/(u_ZBufferParams.z*raw+u_ZBufferParams.w);
+float eyeDepth=zhudaFogDepth(uv);
 vec2 ndc=uv*2.0-1.0;
 ndc.y*=u_ZhudaFogShape.w;
 vec3 ray=u_ZhudaFogForward.xyz+ndc.x*u_ZhudaFogRight+ndc.y*u_ZhudaFogUp;
-float t=min(eyeDepth*length(ray),u_ZhudaFogColor.w);
+float len=length(ray);
+float t=min(eyeDepth*len,u_ZhudaFogColor.w);
 vec3 dir=normalize(ray);
 float falloff=u_ZhudaFogShape.y;
 float atEye=u_ZhudaFogShape.x*exp(-(u_ZhudaFogEye.y-u_ZhudaFogShape.z)/falloff);
 float k=dir.y/falloff;
-float tau=atEye*(abs(k)<0.0001?t:(1.0-exp(-k*t))/k);
-float through=exp(-tau);
+float through=exp(-atEye*zhudaFogPath(k,t));
+// The colour arrives with its edges smoothed (multisampling); the depth has one
+// value per pixel. The fog of that one depth gives an edge pixel the fog of one
+// side only and puts the stair-steps back, most of all against the sky. What
+// the fog lets through is therefore averaged with the four neighbours.
+vec2 texel=1.0/max(u_Viewport.zw,vec2(1.0));
+float far=u_ZhudaFogColor.w;
+float around=exp(-atEye*zhudaFogPath(k,min(zhudaFogDepth(uv+vec2(texel.x,0.0))*len,far)));
+around+=exp(-atEye*zhudaFogPath(k,min(zhudaFogDepth(uv-vec2(texel.x,0.0))*len,far)));
+around+=exp(-atEye*zhudaFogPath(k,min(zhudaFogDepth(uv+vec2(0.0,texel.y))*len,far)));
+around+=exp(-atEye*zhudaFogPath(k,min(zhudaFogDepth(uv-vec2(0.0,texel.y))*len,far)));
+through=(through*2.0+around)/6.0;
 vec3 glow=vec3(0.0);
 for(int i=0;i<${ZHUDA_FOG_MAX_LIGHTS};i++){
 if(float(i)>=u_ZhudaFogEye.w)break;
@@ -225,7 +242,7 @@ float window=clamp(1.0-h/place.w,0.0,1.0);
 float reach=(atan((t-along)/h)+atan(along/h))/h*window*window;
 float local=u_ZhudaFogShape.x*exp(-(place.y-u_ZhudaFogShape.z)/falloff);
 float k2=clamp(along,0.0,t);
-float dim=exp(-atEye*(abs(k)<0.0001?k2:(1.0-exp(-k*k2))/k));
+float dim=exp(-atEye*zhudaFogPath(k,k2));
 glow+=colour*reach*local*dim;
 }
 vec3 beams=vec3(0.0);
@@ -247,7 +264,7 @@ float open=step(q.z-u_ZhudaShaftShape.z,stored);
 float inside=step(0.0,q.x)*step(q.x,1.0)*step(0.0,q.y)*step(q.y,1.0)*step(q.z,1.0);
 open=mix(1.0,open,inside);
 float local=u_ZhudaFogShape.x*exp(-(p.y-u_ZhudaFogShape.z)/falloff);
-float dim=exp(-atEye*(abs(k)<0.0001?s:(1.0-exp(-k*s))/k));
+float dim=exp(-atEye*zhudaFogPath(k,s));
 lit+=open*local*dim;
 }
 float g=u_ZhudaShaftColor.w;
@@ -394,7 +411,19 @@ export class ZhudaLightFog {
       );
     });
     this.count = lights.length;
-    this.lights.setPixelsData(this.data, false, false);
+    // Replace the texels in place. `setPixelsData` would ask WebGL to allocate
+    // the immutable texture again: an INVALID_OPERATION on every change.
+    this.lights.setSubPixelsData(
+      0,
+      0,
+      ZHUDA_FOG_MAX_LIGHTS,
+      2,
+      this.data,
+      0,
+      false,
+      false,
+      false,
+    );
   }
 
   /**

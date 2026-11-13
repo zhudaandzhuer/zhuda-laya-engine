@@ -5,6 +5,10 @@
 export type PrimitiveType3D = 'box' | 'sphere' | 'cylinder' | 'capsule' | 'plane' | 'cone';
 
 export interface DeclarativeMaterialOptions {
+  /**
+   * Default `'pbr'`, or `'blinn-phong'` when `shininess` is given (the
+   * default of earlier versions, kept for code written for it).
+   */
   type?: 'blinn-phong' | 'pbr' | 'unlit';
   albedoColor: [number, number, number, number];
   shininess?: number;

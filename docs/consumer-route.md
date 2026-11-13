@@ -159,3 +159,11 @@ in the generated HTML and cannot be lost through game asset allowlists.
 `#zhudaLogoSplash` is reserved; remove manually copied splash markup from the
 consumer template. Isolated Prefab pages remain free of the intro so their
 pixel comparisons measure the selected content.
+
+## Making a 3D scene look good
+
+Follow the [quality route](quality-route.md): the steps, in order, from an
+empty scene to a frame that reads as lit, grounded and deep, with the check
+for each step and the list of what is not built yet. The MCP tool
+`get_quality_route` returns the same route as data; the `film_*` tools return
+`advice` for a scene and `metrics` for a preview.

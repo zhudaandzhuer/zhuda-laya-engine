@@ -125,7 +125,11 @@ test('defaults and camera paths are explicit and eased', () => {
     fStop: 8,
     focusDistanceM: 10,
   });
-  assert.equal(resolveZhudaFilmLook().sun.elevationDeg, 40);
+  // An empty look is the bare one; no look at all is the day preset.
+  assert.equal(resolveZhudaFilmLook({}).sun.elevationDeg, 40);
+  assert.equal(resolveZhudaFilmLook({}).preset, null);
+  assert.equal(resolveZhudaFilmLook().preset, 'day');
+  assert.ok(resolveZhudaFilmLook().shadows);
   const keys = [
     { time: 0, camera: { eye: [0, 0, 10], target: [0, 0, 0] } },
     { time: 2, camera: { eye: [10, 0, 10], target: [0, 0, 0], focalLengthMm: 85 } },
@@ -383,6 +387,7 @@ test('grade is off unless asked for and validated with paths', async () => {
     grain: 0,
     vignette: 0,
     fringe: 0,
+    antialias: 'msaa',
   });
   assert.equal(resolveZhudaFilmLook({ grade: false }).grade, false);
   const issues = validateZhudaFilmScene(
@@ -580,7 +585,8 @@ test('lightFog needs grade; fog-only lights are point lights outside the 32 limi
     density: 0.012,
     falloffMeters: 8,
     baseY: 0,
-    color: [0.02, 0.03, 0.05],
+    // Without a preset the fog takes the flat sky colour (see look-defaults.test.mjs).
+    color: [0.55, 0.65, 0.78],
     scatter: 1,
     shafts: false,
   });
@@ -897,10 +903,25 @@ test('shadow cascades and shadow-casting spot lights are validated', () => {
       'one spot light may cast shadows',
     ],
     [
-      of({}, [{ id: 'p', type: 'light', kind: 'point', position: [0, 3, 0], castsShadow: true }]),
-      'castsShadow: spot lights only',
+      of(
+        {},
+        ['p', 'q', 'r', 's', 't'].map((id, i) => ({
+          id,
+          type: 'light',
+          kind: 'point',
+          position: [i * 4, 3, 0],
+          castsShadow: true,
+        })),
+      ),
+      'at most 4 point lights may cast shadows',
     ],
-    [of({}, [spot('a', { castsShadow: 'yes' })]), 'castsShadow: spot lights only'],
+    [
+      of({}, [
+        { id: 'p', type: 'light', kind: 'point', position: [0, 3, 0], castsShadow: true, fogOnly: true },
+      ]),
+      'castsShadow: not on a point light that is fogOnly',
+    ],
+    [of({}, [spot('a', { castsShadow: 'yes' })]), 'castsShadow: true or false'],
   ];
   for (const [value, fragment] of cases)
     assert.ok(

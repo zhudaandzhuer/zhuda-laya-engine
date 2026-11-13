@@ -51,6 +51,38 @@ export interface ZhudaIBeamOptions {
 }
 /** Structural I-section: two flanges and a web, centred on the origin. */
 export declare function createZhudaIBeamMesh(options: ZhudaIBeamOptions): MeshData;
+export interface ZhudaLatheOptions {
+    /**
+     * The outline as [radius, height] pairs in metres, 2..256 of them, turned
+     * about the vertical axis. List it from the bottom up along the outside; a
+     * hollow form (a bowl, a pipe) goes on down the inside. A radius of 0 is on
+     * the axis.
+     */
+    profile: readonly (readonly [number, number])[];
+    /** Sides around the axis, 3..96 (default 24). */
+    segments?: number;
+    /** Close the first and the last ring with a flat disc where it is off the axis (default true). */
+    caps?: boolean;
+    /** A corner of the outline sharper than this many degrees stays an edge (default 30). */
+    creaseDeg?: number;
+}
+export declare function validateZhudaLathe(options: ZhudaLatheOptions): string[];
+/** A body of revolution about +Y: bollards, barrels, domes, bowls, columns, cones. */
+export declare function createZhudaLatheMesh(options: ZhudaLatheOptions): MeshData;
+export interface ZhudaExtrudeOptions {
+    /**
+     * The outline on the ground as [x, z] pairs in metres, 3..256 of them, in
+     * either direction. It may be concave; it must not cross itself.
+     */
+    outline: readonly (readonly [number, number])[];
+    /** How far it is raised along +Y, in metres. */
+    height: number;
+    /** Close the top and the underside (default true). */
+    caps?: boolean;
+}
+export declare function validateZhudaExtrude(options: ZhudaExtrudeOptions): string[];
+/** A flat outline raised to a height: kerbs, steps, signs, wall pieces, L and U profiles. */
+export declare function createZhudaExtrudeMesh(options: ZhudaExtrudeOptions): MeshData;
 export interface ZhudaMeshTransform {
     position?: ZhudaVec3;
     /** Rotation about +Y, applied after pitch and roll. */

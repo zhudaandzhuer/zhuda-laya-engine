@@ -51,7 +51,8 @@ const water = (extra = {}) => ({
   position: [0, LEVEL, 0],
   size: [40, 40],
   flow: [0, 0],
-  color: [0.02, 0.2, 0.25],
+  // A display value, like every colour of a film scene.
+  color: [0.15, 0.48, 0.54],
   clarity: 0.5,
   waves: 0,
   refraction: 0,

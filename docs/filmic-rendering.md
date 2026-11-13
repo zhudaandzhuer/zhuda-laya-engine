@@ -151,3 +151,103 @@ This is a real second scene render, with its associated rendering cost. It handl
 The first consumer checks actual PBR factor/texture bindings, camera cuts, movement, shadow-only pixel differences, reflected-camera pose, reflection-target pixel differences and lighting A/B outside UI. It replaces and draws 30 post-processing chains and checks that resource counts settle. Unit and strict public-type checks accompany real WebGL rendering; counts and screenshot byte differences alone do not establish visual quality.
 
 The current consumer remains a first visual slice. Its screenshot review still identifies weak architecture/material variation and reconstructed vehicle surfaces. It does not establish Unreal parity, Lumen/Nanite equivalence, a completed AAA game or a mobile performance result.
+
+## Edge smoothing, texture filtering and updates in place
+
+- `new ZhudaFilmicPipeline(camera, { msaa: true })` multisamples the camera's
+  HDR target, so geometry edges are smooth in a frame that is drawn once;
+  `setAntialias(on)` switches it while the pipeline runs and disposal puts the
+  camera's own setting back. A film look does this through `grade.antialias`
+  (`msaa` by default). `ZhudaLightFog` averages what the fog lets through over
+  the neighbouring depths, so that it does not put the stair-steps back along
+  outlines against the sky.
+- The pipeline writes the occlusion colour of LayaAir's `ScalableAO` (black).
+  LayaAir 3.4.2 leaves it unset and its shader then reads what the last owner
+  of that uniform block left behind: creases glowed in a stale colour from the
+  second scene on. Any shader of your own must set every uniform it declares
+  for the same reason.
+- `createSurfaceTexture(..., { mipmap: true })` filters anisotropically at
+  `ZHUDA_DEFAULT_ANISO` (8) unless `anisoLevel` says otherwise, and
+  `ZhudaModelLibrary` gives the mipmapped textures of a loaded model the same
+  (`applyZhudaAnisotropy`). Without it a floor seen along its length loses its
+  detail a few metres from the camera.
+- `createPrefilteredEnvironment(...).update()` and `ZhudaLightFog.setLights()`
+  replace texels in the texture that was allocated once. Allocating it again
+  is a WebGL error on every call, which the film host now reports
+  (`takeGlErrors()`, and `glErrors` in a preview reply).
+- The pipeline keeps what reaches the grade inside its lookup table. The log
+  encoding of LayaAir's `ColorGradEffect` ends at a scene value of 58.85 after
+  exposure; a brighter value was looked up outside the table and came out
+  dark or in the wrong colour (a red lamp of `emission` 6, which is 74 in the
+  scene, turned grey-green; at 8 it lost its red). One pass in front of the
+  grade now scales such a colour down to `ZHUDA_GRADE_TABLE_MAX` (56) with its
+  hue kept; the limit follows `setExposure`.
+- For captures that average samples, `linearChain()` returns the handle a
+  `ZhudaCinematicCapture` frame request takes as `linear`: samples are drawn
+  scene-linear, without tone mapping and lens finish, and their average is
+  drawn through both once.
+
+## Shadows from a point light
+
+LayaAir 3.4.2 draws no shadow for a point light: a lamp lights the far side of
+a wall as brightly as the near side. `ZhudaPointShadow` adds one.
+
+```ts
+import { ZhudaPointShadow } from 'zhuda-laya-engine';
+
+const shadow = new ZhudaPointShadow(scene3D, { resolution: 512 });
+shadow.render([0, 3, 0], lamp.range); // the lamp's position and reach
+// later, after the lamp or something that casts has moved:
+shadow.render([0, 3, 0], lamp.range);
+shadow.dispose();
+```
+
+- `render` draws the lamp's surroundings six times (the faces of a cube) into
+  one texture of 3 by 2 tiles and switches the shadow on for the point light
+  at exactly that position. Nothing is drawn per frame: call it again when
+  the lamp or a caster has moved. Six more scene draws each time.
+- Up to four lamps in one set of pictures: `new ZhudaPointShadow(scene3D,
+  { lights: 2 })`, then `render(position, range, 1)` for the second;
+  `clear(1)` switches its shadow off. 12 MB of pictures per lamp at the
+  default `resolution` of 512. Nothing closer to a lamp than `near` (0.5 m)
+  casts, so the lamp's own head does not shade the scene.
+- The edge is filtered over `softness` texels (2), and the lookup moves out
+  from the surface by a texel and a half so that a floor the light grazes
+  does not shade itself.
+- `ZhudaEngine.boot` installs the shader patch this needs
+  (`installLaya342PointShadows()`); a host that calls `Laya.init` itself must
+  call it first. Without a shadow in a scene the lit shaders compile to the
+  upstream code.
+- Two more textures are bound to lit materials while a shadow is on.
+- In a film scene: `"castsShadow": true` on a point light.
+- Drawn and checked on WebGL with a software GPU (`npm run
+  verify:film-point-shadow`); not tried on WebGPU.
+
+## Light bounced off the scene
+
+`ZhudaProbeVolume` gives a box of the scene light bounced once off what stands
+in it. Probes on a grid capture their surroundings and LayaAir's
+`VolumetricGI` lights each pixel of a physically based material from the
+eight probes around it, in place of the ambient light.
+
+```ts
+import { ZhudaProbeVolume } from 'zhuda-laya-engine';
+
+const volume = new ZhudaProbeVolume(scene3D, {
+  min: [-12, 0, -12],
+  max: [12, 6, 12],
+  // Probes inside these boxes are switched off: they would see out through back faces.
+  solids: buildings.map((b) => ({ min: b.min, max: b.max })),
+});
+await volume.bake(); // after the level has drawn a frame or two
+// ... again after the light or the level has changed; volume.dispose() at the end.
+```
+
+- About one probe every 3 m by default (`counts` sets them), at most 16 a side
+  and 512 in all; six draws of `captureSize` (32) pixels each per probe.
+- LayaAir reads the volume only where the scene's ambient light is a picture
+  (an environment, a sky-and-ground ambient). A flat ambient colour is given
+  an even picture of the same colour while the volume lasts.
+- No occlusion between probes beyond the switched-off ones: light can leak
+  through a wall thinner than the spacing.
+

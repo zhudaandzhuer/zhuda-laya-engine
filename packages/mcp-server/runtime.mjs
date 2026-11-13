@@ -28,6 +28,8 @@ const runtime = installed
           'procedural/TextureRecipe',
           'procedural/SynthAudio',
           'film/FilmScene',
+          'film/FilmLint',
+          'film/FrameMetrics',
           'ProceduralStarter',
         ].map(
           (name) =>
@@ -63,6 +65,11 @@ export const {
   validateZhudaFilmCameraPath,
   sampleZhudaFilmCameraPath,
   resolveZhudaFilmCamera,
+  ZHUDA_FILM_LIMITS,
+  ZHUDA_FILM_LOOK_PRESETS,
+  ZHUDA_FILM_LINT_RULES,
+  lintZhudaFilmScene,
+  measureZhudaFrame,
   ZHUDA_STARTER_PROPS,
   ZHUDA_STARTER_TEXTURES,
 } = runtime;

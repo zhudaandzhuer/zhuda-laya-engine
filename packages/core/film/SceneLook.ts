@@ -53,6 +53,10 @@ export class ZhudaSceneLook {
     if (this.look.panorama) throw Error('Scene look: a panorama sky is not supported here');
     if (this.look.environment)
       throw Error('Scene look: an environment probe is not supported here');
+    if (this.look.bounceLight)
+      throw Error(
+        'Scene look: bounceLight is for film scenes; in a game bake a ZhudaProbeVolume over the level',
+      );
     this.level = options.quality ?? 3;
     const l = (globalThis as any).Laya;
     const made = Zhuda3D.createDirectionalLight(scene3D, {
@@ -149,6 +153,7 @@ export class ZhudaSceneLook {
     aspect: number,
   ): void {
     if (this.disposed) throw Error('Disposed scene look');
+    this.parts?.reflections?.update(eye, target, fieldOfViewDeg, aspect);
     if (!this.lightFog) return;
     this.lightFog.setFrame(this.frame++ % 1024);
     this.lightFog.update(eye, target, fieldOfViewDeg, aspect);
