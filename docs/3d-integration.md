@@ -120,3 +120,6 @@ empty scene to a frame that reads as lit, grounded and deep, with the check
 for each step and the list of what is not built yet. The MCP tool
 `get_quality_route` returns the same route as data; the `film_*` tools return
 `advice` for a scene and `metrics` for a preview.
+
+For ground a player walks on, [`ZhudaGrassField`](grass.md) grows grass round
+the eye: the game says where the ground is and where nothing grows.

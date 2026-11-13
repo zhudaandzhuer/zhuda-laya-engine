@@ -20,6 +20,13 @@ export interface ZhudaLitSurfaceSpec {
     surface: string;
     /** Native Laya textures use -Y (DirectX). Most scanned/glTF maps use +Y (OpenGL). */
     normalConvention?: 'directx' | 'opengl';
+    /**
+     * How the back of a two-sided surface is lit. `mirrored` (default) turns
+     * the normal round, as for a sheet with two sides. `same` lights the back
+     * with the normal the vertex gave: for blades and leaves whose normals
+     * point where the light should come from, whichever side is seen.
+     */
+    backFaces?: 'mirrored' | 'same';
     uniforms?: Record<string, ShaderUniformSpec>;
     material?: Omit<SurfaceMaterialSpec, 'type'> & {
         clearCoat?: number;

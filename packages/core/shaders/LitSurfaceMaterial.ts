@@ -32,6 +32,13 @@ export interface ZhudaLitSurfaceSpec {
   surface: string;
   /** Native Laya textures use -Y (DirectX). Most scanned/glTF maps use +Y (OpenGL). */
   normalConvention?: 'directx' | 'opengl';
+  /**
+   * How the back of a two-sided surface is lit. `mirrored` (default) turns
+   * the normal round, as for a sheet with two sides. `same` lights the back
+   * with the normal the vertex gave: for blades and leaves whose normals
+   * point where the light should come from, whichever side is seen.
+   */
+  backFaces?: 'mirrored' | 'same';
   uniforms?: Record<string, ShaderUniformSpec>;
   material?: Omit<SurfaceMaterialSpec, 'type'> & {
     clearCoat?: number;
@@ -144,6 +151,8 @@ export class ZhudaLitSurfaceMaterial {
     if (errors.length) throw Error(errors.join('; '));
     if (spec.normalConvention && !['directx', 'opengl'].includes(spec.normalConvention))
       throw Error('Invalid normal map convention');
+    if (spec.backFaces && !['mirrored', 'same'].includes(spec.backFaces))
+      throw Error('Invalid backFaces: mirrored or same');
     if (spec.vertex !== undefined) {
       const vertexErrors = validateZhudaLitVertexHook(spec.vertex);
       if (vertexErrors.length) throw Error(vertexErrors.join('; '));
@@ -166,6 +175,7 @@ export class ZhudaLitSurfaceMaterial {
       normalConvention: spec.normalConvention || 'directx',
       // Absent for hook-free materials, so their signatures stay as before.
       ...(spec.vertex !== undefined ? { vertex: spec.vertex } : {}),
+      ...(spec.backFaces === 'same' ? { backFaces: 'same' } : {}),
     });
     if (l.Shader3D.find(spec.name)) {
       if (records.get(spec.name) !== signature) throw Error('Shader name has a different contract');
@@ -197,7 +207,17 @@ export class ZhudaLitSurfaceMaterial {
               '',
             )
           : source;
-      const fragment = normals(litFragment)
+      // LayaAir turns the normal of a back face round as it reads the pixel;
+      // `same` turns it back before anything is lit.
+      const backs = (source: string) =>
+        spec.backFaces === 'same'
+          ? replaceOnce(
+              source,
+              'getPixelParams(pixel);',
+              'getPixelParams(pixel);if(!gl_FrontFacing){pixel.normalWS=-pixel.normalWS;pixel.tangentWS=-pixel.tangentWS;pixel.biNormalWS=-pixel.biNormalWS;pixel.TBN=mat3(pixel.tangentWS,pixel.biNormalWS,pixel.normalWS);}',
+            )
+          : source;
+      const fragment = backs(normals(litFragment))
         .replace('void main(){', hook + 'void main(){')
         .replace('initSurfaceInputs(inputs,pixel);', call);
       const shader = l.Shader3D.add(spec.name, true, true);
@@ -207,7 +227,7 @@ export class ZhudaLitSurfaceMaterial {
       const vertexPrograms = buildZhudaLitVertexShaders(spec.vertex);
       sub.addShaderPass(vertexPrograms.forward, fragment);
       sub.addShaderPass(vertexPrograms.shadow, litShadowFragment, 'ShadowCaster');
-      sub.addShaderPass(vertexPrograms.depth, normals(litDepthFragment), 'DepthNormal');
+      sub.addShaderPass(vertexPrograms.depth, backs(normals(litDepthFragment)), 'DepthNormal');
       records.set(spec.name, signature);
     }
     const m = createSurfaceMaterial({ type: 'pbr', ...spec.material });
