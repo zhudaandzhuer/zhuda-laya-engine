@@ -35,23 +35,33 @@ const FACES: readonly { forward: readonly number[]; up: readonly number[] }[] = 
   { forward: [0, 0, 1], up: [0, 1, 0] },
   { forward: [0, 0, -1], up: [0, 1, 0] },
 ];
-// A tile is stored top row first (measured on WebGL: the lookup flips v).
-// u_ZhudaPointShadowInfo is two texels: the light's position, then the reach
-// of the pictures, the bias as a share of it, the strength and one texel of a
-// tile. They travel in a texture because the scene's other uniforms live in
-// one block whose layout LayaAir fixes from its uniform map: two more vectors
+// A tile is stored top row first (the lookup flips v); on WebGPU the rows of
+// tiles are also counted from the other edge of the texture.
+//
+// The pictures hold a distance in their red channel only. What the lookup
+// must know besides travels in the other three channels of the same texture,
+// written by the pass that writes the distances: every texel's alpha holds
+// how many lights the texture has room for (plus 8 where the rows are counted
+// from the other edge), and the green and blue of the six tiles of a light
+// hold its position (in two parts: half floats cannot hold a far position to
+// the centimetre), whether it casts, the reach, the bias as a share of it,
+// the strength, one texel of a tile and the softness.
+//
+// They do not travel as uniforms: the scene's other uniforms live in one
+// block whose layout LayaAir fixes from its uniform map, and two more vectors
 // in that map moved every member behind them in each shader that did not
-// declare them, and all point and spot lights went dark. Samplers are not in
-// the block. Four taps soften the edge. The lookups name
-// their level: they sit behind a test of which light this is. There is no
-// \`#else\`: LayaAir's own shader preprocessor dropped that branch, and the
-// function then returned nothing where the define was off. The samplers
-// are written out here: LayaAir's lit shaders take their scene uniforms from
-// the text of the includes, and from the scene's uniform map only where to
-// find each value.
+// declare them (all point and spot lights went dark). Nor in a texture of
+// their own: on WebGPU every texture the scene declares takes a sampler in
+// every lit shader, used or not, and a stage has 16.
+//
+// Four taps soften the edge. The lookups name their level: they sit behind a
+// test of which light this is. There is no \`#else\`: LayaAir's own shader
+// preprocessor dropped that branch, and the function then returned nothing
+// where the define was off. The sampler is written out here: LayaAir's lit
+// shaders take their scene uniforms from the text of the includes, and from
+// the scene's uniform map only where to find each value.
 const SHADOW_FUNCTION = `#ifdef ${ZHUDA_POINT_SHADOW_DEFINE}
 uniform sampler2D u_ZhudaPointShadowMap;
-uniform sampler2D u_ZhudaPointShadowInfo;
 // One comparison with the pictures, filtered between the four nearest texels.
 float zhudaPointShadowTap(vec2 at,vec2 atlas,float mine){
 vec2 t=at*atlas-0.5;vec2 f=fract(t);vec2 s=1.0/atlas;vec2 b=(floor(t)+0.5)*s;
@@ -61,18 +71,32 @@ float d=step(mine,texture2DLodEXT(u_ZhudaPointShadowMap,b+vec2(0.0,s.y),0.0).r);
 float e=step(mine,texture2DLodEXT(u_ZhudaPointShadowMap,b+s,0.0).r);
 return mix(mix(a,c,f.x),mix(d,e,f.x),f.y);
 }
+// The two values kept in a tile of a light, read at the tile's centre.
+vec2 zhudaPointShadowNote(float tile,float light,float rows,float turned){
+float v=(floor(tile/3.0)+2.0*light+0.5)/rows;
+return texture2DLodEXT(u_ZhudaPointShadowMap,vec2((mod(tile,3.0)+0.5)/3.0,mix(v,1.0-v,turned)),0.0).gb;
+}
 #endif
 float zhudaPointShadow(vec3 lightPosition,vec3 normalWS,vec3 positionWS){
 float shade=1.0;
 #ifdef ${ZHUDA_POINT_SHADOW_DEFINE}
+float head=texture2DLodEXT(u_ZhudaPointShadowMap,vec2(0.02,0.02),0.0).a;
+float turned=step(7.5,head);
+float count=head-8.0*turned;
+float rows=2.0*count;
 for(int k=0;k<${ZHUDA_POINT_SHADOW_MAX_LIGHTS};k++){
-float row=(float(k)+0.5)/${ZHUDA_POINT_SHADOW_MAX_LIGHTS}.0;
-vec4 where=texture2DLodEXT(u_ZhudaPointShadowInfo,vec2(0.5/3.0,row),0.0);
-vec3 apart=lightPosition-where.xyz;
-if(where.w>0.5&&dot(apart,apart)<=0.0004){
-vec4 params=texture2DLodEXT(u_ZhudaPointShadowInfo,vec2(1.5/3.0,row),0.0);
-vec4 extra=texture2DLodEXT(u_ZhudaPointShadowInfo,vec2(2.5/3.0,row),0.0);
-float texel=params.w;
+if(float(k)+0.5>count){break;}
+vec2 casts=zhudaPointShadowNote(3.0,float(k),rows,turned);
+if(casts.x<0.5){continue;}
+vec2 px=zhudaPointShadowNote(0.0,float(k),rows,turned);
+vec2 py=zhudaPointShadowNote(1.0,float(k),rows,turned);
+vec2 pz=zhudaPointShadowNote(2.0,float(k),rows,turned);
+vec3 apart=lightPosition-vec3(px.x+px.y,py.x+py.y,pz.x+pz.y);
+if(dot(apart,apart)<=0.0004){
+vec2 dark=zhudaPointShadowNote(4.0,float(k),rows,turned);
+vec2 edge=zhudaPointShadowNote(5.0,float(k),rows,turned);
+float reach=casts.y;
+float texel=edge.x;
 vec3 v=positionWS-lightPosition;
 float m=max(abs(v.x),max(abs(v.y),abs(v.z)));
 // A texel of the pictures is this wide here. A surface the light grazes would
@@ -90,19 +114,19 @@ else if(a.y>=a.z){f=vec3(0.0,sign(v.y),0.0);u=vec3(0.0,0.0,1.0);tile=v.y>0.0?2.0
 else{f=vec3(0.0,0.0,sign(v.z));u=vec3(0.0,1.0,0.0);tile=v.z>0.0?4.0:5.0;}
 vec3 r=cross(f,u);
 vec2 uv=vec2(dot(v,r),dot(v,u))/m*0.5+0.5;
-float mine=(m-world*(1.0+0.5*max(extra.x,0.0))*slope)/params.x-params.y;
-float rows=2.0*extra.y;
+float mine=(m-world*(1.0+0.5*max(edge.y,0.0))*slope)/reach-dark.x;
 vec2 atlas=vec2(3.0,rows)/texel;
-float spread=max(extra.x,0.0)*texel;
+float spread=max(edge.y,0.0)*texel;
 float lit=0.0;
 for(int i=0;i<4;i++){
 vec2 o=vec2(float(i/2),mod(float(i),2.0))-0.5;
 vec2 p=clamp(uv+o*spread,vec2(texel*1.5),vec2(1.0-texel*1.5));
 p.y=1.0-p.y;
-vec2 at=(vec2(mod(tile,3.0),floor(tile/3.0)+2.0*float(k))+p)/vec2(3.0,rows);
+float line=floor(tile/3.0)+2.0*float(k);line=mix(line,rows-1.0-line,turned);
+vec2 at=(vec2(mod(tile,3.0),line)+p)/vec2(3.0,rows);
 lit+=zhudaPointShadowTap(at,atlas,mine);
 }
-shade=mix(1.0-params.z,1.0,lit*0.25);
+shade=mix(1.0-dark.y,1.0,lit*0.25);
 break;
 }
 }
@@ -123,9 +147,8 @@ function declare(l: any): boolean {
   if (!map?.addShaderUniform) return false;
   const add = (name: string, type: unknown) =>
     map.addShaderUniform(l.Shader3D.propertyNameToID(name), name, type);
-  // Textures only: see the note on the shader above.
+  // One texture only: see the note on the shader above.
   add('u_ZhudaPointShadowMap', l.ShaderDataType.Texture2D);
-  add('u_ZhudaPointShadowInfo', l.ShaderDataType.Texture2D);
   declared.add(l.Shader3D);
   return true;
 }
@@ -156,7 +179,7 @@ export function installLaya342PointShadows(runtime: any = (globalThis as any).La
         );
       applied.add(shader);
       // As early as the include itself, so that every shader compiled from
-      // here on finds the two textures in the scene's values.
+      // here on finds the texture in the scene's values.
       declare(runtime);
     }
     return addInclude.call(this, name, text, ...rest);
@@ -218,14 +241,15 @@ export function validateZhudaPointShadow(options: ZhudaPointShadowOptions): stri
 
 const DEPTH_VERTEX =
   '#define SHADER_NAME ZhudaPointShadowDepthVS\nvarying vec2 v_Texcoord0;void main(){gl_Position=vec4(a_PositionTexcoord.xy,0.0,1.0);v_Texcoord0=a_PositionTexcoord.zw;}';
-// The distance along the view of what was drawn, as a share of the reach.
+// The distance along the view of what was drawn, as a share of the reach; the
+// other three channels carry what the lookup must know (see the shader above).
 const DEPTH_FRAGMENT = `#define SHADER_NAME ZhudaPointShadowDepthFS
 #include "Color.glsl";
 #include "Camera.glsl";
 varying vec2 v_Texcoord0;
 void main(){
 float eye=1.0/(u_ZBufferParams.z*texture2D(u_CameraDepthTexture,v_Texcoord0).x+u_ZBufferParams.w);
-gl_FragColor=vec4(vec3(eye/u_ZhudaPointShadowReach.x),1.0);
+gl_FragColor=vec4(eye/u_ZhudaPointShadowReach.x,u_ZhudaPointShadowReach.yzw);
 }`;
 const depthRegistered = new WeakSet<object>();
 function registerDepth(l: any) {
@@ -252,9 +276,12 @@ export class ZhudaPointShadow {
   private readonly camera: any;
   private readonly target: any;
   private readonly material: any;
-  private readonly info: any;
-  private readonly values = new Float32Array(3 * 4 * ZHUDA_POINT_SHADOW_MAX_LIGHTS);
+  /** Bound in place of the pictures while they are drawn into. */
+  private readonly blank: any;
   private readonly active: boolean[];
+  /** Every texel's alpha: the lights the texture holds, plus 8 on WebGPU (see the shader). */
+  private readonly head: number;
+  private written = false;
   private disposed = false;
   /** Whether pictures have been drawn for some light and the scene is using them. */
   drawn = false;
@@ -270,9 +297,8 @@ export class ZhudaPointShadow {
         'Point shadows need installLaya342PointShadows() before Laya.init (ZhudaEngine.boot does it)',
       );
     if (!declare(l)) throw Error('Point shadows could not declare their scene uniforms');
-    for (const capability of ['RenderTextureFormat_R16G16B16A16', 'TextureFormat_R32G32B32A32'])
-      if (!l.LayaGL.renderEngine.getCapable(l.RenderCapable[capability]))
-        throw Error('Point shadows require ' + capability);
+    if (!l.LayaGL.renderEngine.getCapable(l.RenderCapable.RenderTextureFormat_R16G16B16A16))
+      throw Error('Point shadows require RenderTextureFormat_R16G16B16A16');
     this.scene = scene;
     this.options = {
       resolution: options.resolution ?? 512,
@@ -282,6 +308,9 @@ export class ZhudaPointShadow {
       softness: options.softness ?? 2,
       lights: options.lights ?? 1,
     };
+    // Measured on both backends (`verify:film-point-shadow`): on WebGPU the
+    // viewport counts the rows of tiles from the other edge of the texture.
+    this.head = this.options.lights + (l.WebGPURenderDeviceFactory ? 8 : 0);
     this.active = new Array(this.options.lights).fill(false);
     const n = this.options.resolution;
     // Three by two tiles per light, the lights one above the other.
@@ -297,18 +326,8 @@ export class ZhudaPointShadow {
     );
     this.target.filterMode = l.FilterMode.Point;
     this.target.wrapModeU = this.target.wrapModeV = l.WrapMode.Clamp;
-    // Three texels per light, a row for each light the shaders look up.
-    this.info = new l.Texture2D(
-      3,
-      ZHUDA_POINT_SHADOW_MAX_LIGHTS,
-      l.TextureFormat.R32G32B32A32,
-      false,
-      false,
-      false,
-    );
-    this.info.filterMode = l.FilterMode.Point;
-    this.info.wrapModeU = this.info.wrapModeV = l.WrapMode.Clamp;
-    this.info.setPixelsData(this.values, false, false);
+    this.blank = new l.Texture2D(1, 1, l.TextureFormat.R8G8B8A8, false, false, false);
+    this.blank.setPixelsData(new Uint8Array([255, 255, 255, 255]), false, false);
     registerDepth(l);
     this.material = new l.Material();
     this.material.setShaderName('ZhudaPointShadowDepth');
@@ -333,34 +352,33 @@ export class ZhudaPointShadow {
   }
 
   /**
-   * Draws the six pictures of `light` (0 up to `lights` - 1) from `position`
-   * out to `range` metres and switches the shadow on for the point light at
-   * that position. Call again after the light or anything that should cast a
-   * shadow has moved.
+   * Draws the six tiles of `light`: the scene seen from `position` out to
+   * `range` with `notes` (two values a tile) beside the distances, or, with
+   * no notes, nothing but the mark that this light casts no shadow.
    */
-  render(position: readonly number[], range: number, light = 0): void {
-    if (this.disposed) throw Error('Disposed point shadow');
-    if (!(Number.isInteger(light) && light >= 0 && light < this.options.lights))
-      throw Error(`Invalid point shadow light: use 0..${this.options.lights - 1}`);
-    if (
-      position.length !== 3 ||
-      !position.every(Number.isFinite) ||
-      !(range > this.options.near) ||
-      !Number.isFinite(range)
-    )
-      throw Error('Invalid point shadow: a position and a range beyond `near` are required');
+  private drawTiles(
+    light: number,
+    position: readonly number[],
+    range: number,
+    notes?: readonly (readonly number[])[],
+  ): void {
     const l = (globalThis as any).Laya;
     const { camera, scene, target } = this;
-    const define = l.Shader3D.getDefineByName(ZHUDA_POINT_SHADOW_DEFINE);
-    // The pictures are drawn without this light's own shadow in them.
-    scene._shaderValues.removeDefine(define);
+    // The pictures are drawn without the shadows in them, and must not be
+    // bound while they are drawn into: WebGPU refuses a texture that is both
+    // sampled and a render target in one pass. `publish` binds them again.
+    scene._shaderValues.removeDefine(l.Shader3D.getDefineByName(ZHUDA_POINT_SHADOW_DEFINE));
+    scene.setGlobalShaderValue('u_ZhudaPointShadowMap', l.ShaderDataType.Texture2D, this.blank);
     camera.nearPlane = this.options.near;
     camera.farPlane = range;
-    this.material.setVector4('u_ZhudaPointShadowReach', new l.Vector4(range, 0, 0, 0));
+    const mask = camera.cullingMask;
+    if (!notes) camera.cullingMask = 0;
     const before = l.Stat.enableShadow;
     l.Stat.enableShadow = false;
     try {
       FACES.forEach((face, tile) => {
+        const [g, b] = notes ? notes[tile] : [0, 0];
+        this.material.setVector4('u_ZhudaPointShadowReach', new l.Vector4(range, g, b, this.head));
         camera.transform.position = new l.Vector3(position[0], position[1], position[2]);
         camera.transform.lookAt(
           new l.Vector3(
@@ -384,25 +402,45 @@ export class ZhudaPointShadow {
       });
     } finally {
       l.Stat.enableShadow = before;
+      camera.cullingMask = mask;
       camera.renderTarget = target;
     }
-    this.values.set(
-      [
-        position[0],
-        position[1],
-        position[2],
-        1,
-        range,
-        this.options.bias / range,
-        this.options.strength,
-        1 / this.options.resolution,
-        this.options.softness,
-        this.options.lights,
-        0,
-        0,
-      ],
-      light * 12,
-    );
+  }
+
+  /**
+   * Draws the six pictures of `light` (0 up to `lights` - 1) from `position`
+   * out to `range` metres and switches the shadow on for the point light at
+   * that position. Call again after the light or anything that should cast a
+   * shadow has moved.
+   */
+  render(position: readonly number[], range: number, light = 0): void {
+    if (this.disposed) throw Error('Disposed point shadow');
+    if (!(Number.isInteger(light) && light >= 0 && light < this.options.lights))
+      throw Error(`Invalid point shadow light: use 0..${this.options.lights - 1}`);
+    if (
+      position.length !== 3 ||
+      !position.every(Number.isFinite) ||
+      !(range > this.options.near) ||
+      !Number.isFinite(range)
+    )
+      throw Error('Invalid point shadow: a position and a range beyond `near` are required');
+    if (!this.written) {
+      // The tiles of the other lights say that they cast nothing yet.
+      for (let other = 0; other < this.options.lights; other++)
+        if (other !== light) this.drawTiles(other, position, range);
+      this.written = true;
+    }
+    // A half float holds a whole multiple of 8 exactly (up to 16 384) and what
+    // is left to a few millimetres: the two parts give the position back.
+    const far = position.map((value) => Math.round(value / 8) * 8);
+    this.drawTiles(light, position, range, [
+      [far[0], position[0] - far[0]],
+      [far[1], position[1] - far[1]],
+      [far[2], position[2] - far[2]],
+      [1, range],
+      [this.options.bias / range, this.options.strength],
+      [1 / this.options.resolution, this.options.softness],
+    ]);
     this.active[light] = true;
     this.publish();
   }
@@ -412,7 +450,10 @@ export class ZhudaPointShadow {
     if (this.disposed) throw Error('Disposed point shadow');
     if (!(Number.isInteger(light) && light >= 0 && light < this.options.lights))
       throw Error(`Invalid point shadow light: use 0..${this.options.lights - 1}`);
-    this.values.fill(0, light * 12, light * 12 + 12);
+    if (this.active[light]) {
+      const at = this.camera.transform.position;
+      this.drawTiles(light, [at.x, at.y, at.z], Math.max(this.options.near * 2, 1));
+    }
     this.active[light] = false;
     this.publish();
   }
@@ -421,20 +462,7 @@ export class ZhudaPointShadow {
     const l = (globalThis as any).Laya;
     const { scene, target } = this;
     const define = l.Shader3D.getDefineByName(ZHUDA_POINT_SHADOW_DEFINE);
-    // In place: allocating again would be refused (the texture is immutable).
-    this.info.setSubPixelsData(
-      0,
-      0,
-      3,
-      ZHUDA_POINT_SHADOW_MAX_LIGHTS,
-      this.values,
-      0,
-      false,
-      false,
-      false,
-    );
     scene.setGlobalShaderValue('u_ZhudaPointShadowMap', l.ShaderDataType.Texture2D, target);
-    scene.setGlobalShaderValue('u_ZhudaPointShadowInfo', l.ShaderDataType.Texture2D, this.info);
     this.drawn = this.active.some(Boolean);
     if (this.drawn) scene._shaderValues.addDefine(define);
     else scene._shaderValues.removeDefine(define);
@@ -450,7 +478,7 @@ export class ZhudaPointShadow {
     this.camera.postProcess = null;
     this.camera.destroy(true);
     this.target.destroy();
-    this.info.destroy();
+    this.blank.destroy();
     this.material.destroy();
   }
 }

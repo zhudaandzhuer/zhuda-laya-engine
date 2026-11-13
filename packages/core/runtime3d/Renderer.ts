@@ -202,6 +202,25 @@ export function prepareRenderer(
         (original) =>
           async function (this: any, descriptor: unknown) {
             check();
+            // LayaAir asks for the adapter's sizes but leaves the count of
+            // textures a shader stage may sample at WebGPU's default of 16. A
+            // lit material with all its maps, the shadow maps, the environment
+            // and a probe volume needs 17: the pipeline is then invalid and
+            // nothing using it is drawn. Ask for what the adapter has.
+            const adapter = this._adapter;
+            const request = adapter?.requestDevice;
+            if (typeof request === 'function')
+              adapter.requestDevice = (wanted: any = {}) => {
+                delete adapter.requestDevice;
+                const limits: Record<string, number> = { ...(wanted.requiredLimits ?? {}) };
+                for (const name of [
+                  'maxSampledTexturesPerShaderStage',
+                  'maxSamplersPerShaderStage',
+                ])
+                  if (adapter.limits?.[name] > (limits[name] ?? 0))
+                    limits[name] = adapter.limits[name];
+                return request.call(adapter, { ...wanted, requiredLimits: limits });
+              };
             const result = await original.call(this, descriptor);
             if (ended) {
               result.destroy();

@@ -36,13 +36,22 @@ export declare class ZhudaPointShadow {
     private readonly camera;
     private readonly target;
     private readonly material;
-    private readonly info;
-    private readonly values;
+    /** Bound in place of the pictures while they are drawn into. */
+    private readonly blank;
     private readonly active;
+    /** Every texel's alpha: the lights the texture holds, plus 8 on WebGPU (see the shader). */
+    private readonly head;
+    private written;
     private disposed;
     /** Whether pictures have been drawn for some light and the scene is using them. */
     drawn: boolean;
     constructor(scene: any, options?: ZhudaPointShadowOptions);
+    /**
+     * Draws the six tiles of `light`: the scene seen from `position` out to
+     * `range` with `notes` (two values a tile) beside the distances, or, with
+     * no notes, nothing but the mark that this light casts no shadow.
+     */
+    private drawTiles;
     /**
      * Draws the six pictures of `light` (0 up to `lights` - 1) from `position`
      * out to `range` metres and switches the shadow on for the point light at

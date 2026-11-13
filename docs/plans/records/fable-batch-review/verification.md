@@ -6,8 +6,9 @@ Task document: none in the repository; the brief is the review request of 2026-1
 Commit: `c964c76` on branch `claude/fable-batch8-review-8b8d41` (local only, not pushed)  
 Date: 2026-11-13
 
-Decision in one line: **merge with listed fixes** for WebGL; the three WebGPU
-defects and the `verify:live-look` regression below must be fixed or gated first.
+Decision in one line: **merge with listed fixes**. The WebGPU defects found are
+fixed on this branch (see "Fixes made after the review"); the `verify:live-look`
+regression and the scaffold's `.mcp.json` remain open.
 
 ## Environment
 
@@ -186,6 +187,40 @@ Of the files that change holds, the delivery touches only `docs/plans/README.md`
 declarations, `scripts/verify-prefab-models.mjs` and `docs/consumer-tooling.md`
 are untouched by the delivery. Merging takes keeping both rows of the table.
 
+## Fixes made after the review (same branch)
+
+Asked for after the report: fix the WebGPU defects. Engine files changed:
+`packages/core/runtime3d/PointShadow.ts`, `ProbeVolume.ts`, `Renderer.ts`
+(and their generated declarations), `scripts/verify-film-webgpu.mjs`,
+`docs/filmic-rendering.md`, `docs/quality-route.md`.
+
+| Defect | Cause found | Change |
+| --- | --- | --- |
+| WebGPU point shadows in the wrong places | On WebGPU the viewport counts the rows of tiles from the other edge of the texture (measured by trying the four orientations) | The lookup counts the rows from that edge on WebGPU. |
+| WebGPU error on the second `render` of a point shadow: the pictures were bound as a texture while drawn into | The scene kept `u_ZhudaPointShadowMap` bound during the six draws | A 1 by 1 texture is bound in its place while the tiles are drawn. |
+| WebGPU bounce light does not tint | Same row order, in the read-back of the probe tiles | `ProbeVolume.bake` cuts its tiles from the other edge on WebGPU. |
+| WebGPU: 17 sampled textures, then 17 samplers, in one stage | LayaAir requests the device with the default limit of 16 sampled textures; and the point-shadow patch declared two scene textures, each taking a sampler in every lit shader on WebGPU, used or not | `Renderer.ts` asks for the adapter's `maxSampledTexturesPerShaderStage` and `maxSamplersPerShaderStage`. The point shadow's settings (position, reach, bias, strength, texel, softness, light count) now travel in the green, blue and alpha channels of the pictures themselves; `u_ZhudaPointShadowInfo` and its RGBA32F texture are gone. The day example with `bounceLight` now has 16 samplers on this adapter, which allows 16: **at the limit**. |
+| Nothing ran the new scripts on WebGPU | | The nine new scripts are in `verify:film-webgpu` (17 in all). |
+
+Results after the fixes (logs `EV/after/`):
+
+| Check | Result |
+| --- | --- |
+| `npm run verify` | PASS, 485 of 485 |
+| `npm run format:check`, `npm run lint` | PASS |
+| The 20 GPU scripts on WebGL | 19 PASS; `verify-live-look` FAIL as before (not a WebGPU defect, not changed) |
+| The 20 GPU scripts with the WebGPU switches | 19 PASS; `verify-live-look` FAIL as before |
+| `npm run verify:film-webgpu` | PASS: 17 verifications |
+| 1920 by 1080, ten variants, three passes, WebGPU | no validation error in any (`EV/after/perf-webgpu.log`) |
+
+Still true: a lit material with one more texture than the day example's ground
+(for instance an emission map beside albedo, normal, metallic and the
+`variation` map) together with `bounceLight` would need 17 samplers on an
+adapter that allows 16. Point shadows with several lights where only a middle
+one casts are covered by code (the other lights' tiles are written as "casts
+nothing" first) but by no script. A position beyond 16 384 m from the origin
+cannot be matched (half floats).
+
 ## Lifecycle and failure cases
 
 - Repeated create and destroy: `verify-film-remount` passes on both backends;
@@ -202,17 +237,17 @@ both backends.
 
 Defects to fix before merging:
 
-1. WebGPU point-light shadows are drawn in the wrong places
-   (`PointShadow.ts:101`); `verify-film-point-shadow` fails on WebGPU.
-2. WebGPU bounce light does not tint (`verify-film-bounce` fails) and at
-   1920 by 1080 exceeds 16 sampled textures in a stage, leaving an invalid
-   pipeline.
+1. (Fixed on this branch, see above.) WebGPU point-light shadows are drawn in
+   the wrong places; `verify-film-point-shadow` fails on WebGPU.
+2. (Fixed on this branch, see above.) WebGPU bounce light does not tint
+   (`verify-film-bounce` fails) and at 1920 by 1080 exceeds 16 sampled
+   textures in a stage, leaving an invalid pipeline.
 3. `verify:live-look` fails on both backends because graded looks multisample
    by default (`FilmScene.ts:1952`): decide between pooling, the default and
    the gate; the gate was not loosened here.
 4. As delivered `format:check` fails on 24 files (fixed in `c964c76`).
-5. The new nine film scripts are not in `verify:film-webgpu`
-   (`scripts/verify-film-webgpu.mjs:11-20`), so nothing would catch 1 and 2.
+5. (Fixed on this branch.) The new nine film scripts are not in
+   `verify:film-webgpu`, so nothing would catch 1 and 2.
 6. `.mcp.json` in the scaffold: use a form that cannot reach the registry.
 
 Unverified: `git apply --check` (no patch text); Node 24; real-time frame
@@ -220,5 +255,5 @@ times and every per-feature cost beyond the coarse table; phones, Windows,
 mini-game hosts; the river-town scene drawn with the patched engine; the
 rainy-night scene; a picture-by-picture comparison with 1.18.0.
 
-**In progress.** WebGL passes everything except `verify:live-look`; WebGPU has
-three failures in the new features. Nothing was pushed.
+**In progress.** After the fixes both backends pass everything except
+`verify:live-look` (item 3, open). Items 3 and 6 remain. Nothing was pushed.

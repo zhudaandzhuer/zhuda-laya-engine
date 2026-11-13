@@ -218,10 +218,14 @@ shadow.dispose();
   (`installLaya342PointShadows()`); a host that calls `Laya.init` itself must
   call it first. Without a shadow in a scene the lit shaders compile to the
   upstream code.
-- Two more textures are bound to lit materials while a shadow is on.
+- One more texture is declared for lit materials: the pictures, which also
+  carry the light's position and settings in their spare channels. On WebGPU
+  every declared texture takes one of a shader stage's 16 samplers whether a
+  scene has a shadow or not.
 - In a film scene: `"castsShadow": true` on a point light.
-- Drawn and checked on WebGL with a software GPU (`npm run
-  verify:film-point-shadow`); not tried on WebGPU.
+- Drawn and checked on desktop WebGL and WebGPU (Apple M4; `npm run
+  verify:film-point-shadow`, and through `npm run verify:film-webgpu`); not
+  on a phone.
 
 ## Light bounced off the scene
 

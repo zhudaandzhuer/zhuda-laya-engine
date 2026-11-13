@@ -308,6 +308,7 @@ export class ZhudaProbeVolume {
     // Six faces per probe in three columns and two rows, the probes one above
     // the other: one read-back for `batch` probes.
     const rows = 2 * batch;
+    const flipped = !!l.WebGPURenderDeviceFactory;
     const target = new l.RenderTexture(
       3 * n,
       rows * n,
@@ -369,7 +370,10 @@ export class ZhudaProbeVolume {
         group.forEach((probe, slot) => {
           const faces = ZHUDA_CUBE_VIEWS.map((_, face) => {
             const tile = TILE_OF_FACE[face];
-            return zhudaAtlasFace(picture, 3 * n, n, tile % 3, Math.floor(tile / 3) + 2 * slot);
+            // WebGPU counts the viewport's rows of tiles from the other edge
+            // of the target (measured: `verify:film-bounce` on both backends).
+            const line = Math.floor(tile / 3) + 2 * slot;
+            return zhudaAtlasFace(picture, 3 * n, n, tile % 3, flipped ? rows - 1 - line : line);
           });
           ambient[probe] = zhudaAmbientSH(zhudaCubeFromFaces(faces, n));
         });

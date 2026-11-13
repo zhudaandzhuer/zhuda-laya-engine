@@ -259,7 +259,8 @@ nodes.
 
 ## Evidence
 
-Everything above was drawn on desktop WebGL. WebGPU, phones and mini-game
+Everything above was drawn on desktop WebGL, and the same checks on desktop
+WebGPU through `npm run verify:film-webgpu` (Apple M4). Phones and mini-game
 hosts need their own records. The checks that draw:
 
 ```sh
