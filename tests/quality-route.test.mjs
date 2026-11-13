@@ -101,10 +101,7 @@ test('film tools hand back advice with every scene they accept', async () => {
   // Advice without a session, for a scene that is only being considered.
   const considered = await reply('film_scene_lint', { scene: QUALITY_ROUTE_SCENES['night-wet'] });
   assert.deepEqual(considered.advice, []);
-  assert.deepEqual(
-    (await reply('film_scene_lint', { sessionId: created.sessionId })).advice,
-    [],
-  );
+  assert.deepEqual((await reply('film_scene_lint', { sessionId: created.sessionId })).advice, []);
   await assert.rejects(executeFilmTool('film_scene_lint', {}), /either sessionId or scene/);
   await assert.rejects(
     executeFilmTool('film_scene_lint', { scene: { ...bare, nodes: 'none' } }),

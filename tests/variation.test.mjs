@@ -2,7 +2,10 @@
 // the draw is verify:film-variation.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { bakeZhudaVariation, validateZhudaVariation } from '../packages/core/procedural/Variation.ts';
+import {
+  bakeZhudaVariation,
+  validateZhudaVariation,
+} from '../packages/core/procedural/Variation.ts';
 import { createZhudaProceduralMaterial } from '../packages/core/procedural/ProceduralMaterial.ts';
 import { validateZhudaFilmScene } from '../packages/core/film/FilmScene.ts';
 
@@ -30,7 +33,10 @@ test('the picture is neutral on average, bounded by its amount and the same ever
   }
   assert.ok(factor(min) >= 0.64 && factor(max) <= 1.36, `${factor(min)}..${factor(max)}`);
   assert.ok(factor(max) - factor(min) > 0.3, 'it does vary');
-  assert.ok(Math.abs(sum / (full.pixels.length / 4) - 1) < 0.06, 'and leaves the surface as bright');
+  assert.ok(
+    Math.abs(sum / (full.pixels.length / 4) - 1) < 0.06,
+    'and leaves the surface as bright',
+  );
   assert.deepEqual(bakeZhudaVariation({ amount: 1, seed: 7 }).pixels, full.pixels);
   assert.notDeepEqual(bakeZhudaVariation({ amount: 1, seed: 8 }).pixels, full.pixels);
   const half = bakeZhudaVariation({ amount: 0.5, seed: 7, size: 64 });
@@ -45,7 +51,11 @@ test('the picture tiles: its edges meet as smoothly as its inside', () => {
   for (let i = 0; i < size; i++) {
     inside = Math.max(inside, Math.abs(at(60, i) - at(61, i)), Math.abs(at(i, 60) - at(i, 61)));
     inside = Math.max(inside, Math.abs(at(130, i) - at(131, i)), Math.abs(at(i, 130) - at(i, 131)));
-    seam = Math.max(seam, Math.abs(at(size - 1, i) - at(0, i)), Math.abs(at(i, size - 1) - at(i, 0)));
+    seam = Math.max(
+      seam,
+      Math.abs(at(size - 1, i) - at(0, i)),
+      Math.abs(at(i, size - 1) - at(i, 0)),
+    );
   }
   assert.ok(seam <= inside + 2, `seam ${seam}, inside ${inside}`);
 });

@@ -829,8 +829,15 @@ function buildFilmStageContents(
     // light's six are drawn in `prepare`, when everything that casts is in
     // place, and again when its reach or something that moves with time changed.
     const pointCasters = scene.nodes.filter((node) => {
-      const light = node as { type: string; kind?: string; castsShadow?: boolean; fogOnly?: boolean };
-      return light.type === 'light' && light.kind === 'point' && light.castsShadow && !light.fogOnly;
+      const light = node as {
+        type: string;
+        kind?: string;
+        castsShadow?: boolean;
+        fogOnly?: boolean;
+      };
+      return (
+        light.type === 'light' && light.kind === 'point' && light.castsShadow && !light.fogOnly
+      );
     }).length;
     const pointShadow = pointCasters
       ? new ZhudaPointShadow(scene3D, { lights: pointCasters })

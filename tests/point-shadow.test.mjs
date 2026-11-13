@@ -59,7 +59,13 @@ test('the patch asks the point-light function for a shadow and is inert without 
 
 test('options are checked, and the class says what it needs', () => {
   assert.deepEqual(
-    validateZhudaPointShadow({ resolution: 1024, near: 0.3, strength: 0.8, lights: 2, softness: 3 }),
+    validateZhudaPointShadow({
+      resolution: 1024,
+      near: 0.3,
+      strength: 0.8,
+      lights: 2,
+      softness: 3,
+    }),
     [],
   );
   assert.deepEqual(validateZhudaPointShadow({ lights: 5, softness: 5 }), [
@@ -78,7 +84,10 @@ test('options are checked, and the class says what it needs', () => {
   const saved = globalThis.Laya;
   globalThis.Laya = { MaterialPostProcessEffect: class {}, Shader3D: { addInclude() {} } };
   try {
-    assert.throws(() => new ZhudaPointShadow({}), /installLaya342PointShadows\(\) before Laya\.init/);
+    assert.throws(
+      () => new ZhudaPointShadow({}),
+      /installLaya342PointShadows\(\) before Laya\.init/,
+    );
     assert.throws(() => new ZhudaPointShadow({}, { resolution: 100 }), /resolution/);
   } finally {
     globalThis.Laya = saved;
@@ -93,7 +102,13 @@ test('up to four point lights and one spot light of a film scene may cast shadow
     nodes: [{ id: 'ground', type: 'ground', size: [20, 20], material: 'asphalt' }, ...lights],
   });
   const context = { props: [], recipes: ['asphalt'] };
-  const point = (id, more = {}) => ({ id, type: 'light', kind: 'point', position: [0, 3, 0], ...more });
+  const point = (id, more = {}) => ({
+    id,
+    type: 'light',
+    kind: 'point',
+    position: [0, 3, 0],
+    ...more,
+  });
   const spot = { id: 's', type: 'light', kind: 'spot', position: [4, 5, 0], target: [4, 0, 0] };
   assert.deepEqual(
     validateZhudaFilmScene(

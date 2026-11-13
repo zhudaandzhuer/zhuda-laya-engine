@@ -250,7 +250,8 @@ export function lintZhudaFilmScene(
       if (node.type !== 'ground' || judged.has(node.material)) return;
       judged.add(node.material);
       const named = scene.materials?.[node.material] as
-        { recipe?: string; size?: number; variation?: number } | undefined;
+        | { recipe?: string; size?: number; variation?: number }
+        | undefined;
       const recipe = named ? named.recipe : node.material;
       const tile = recipe ? context.tileMeters![recipe] : undefined;
       if (!tile) return;

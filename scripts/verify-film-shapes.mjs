@@ -131,7 +131,8 @@ try {
     'its top is lit differently from its sides: they face different ways',
   );
   assert.ok(
-    Math.abs(front - at(empty, [2.1, 0.3, 1])) > 15 && Math.abs(left - at(empty, [1.6, 0.3, 0.5])) > 15,
+    Math.abs(front - at(empty, [2.1, 0.3, 1])) > 15 &&
+      Math.abs(left - at(empty, [1.6, 0.3, 0.5])) > 15,
     'and both sides are drawn',
   );
 

@@ -46,13 +46,10 @@ test('a look takes screen reflections with a grade, and quality levels thin them
   assert.deepEqual(issues({ preset: 'night', screenReflections: {} }), [
     'scene.look.screenReflections: needs grade (the reflections are part of the HDR chain)',
   ]);
-  assert.deepEqual(
-    issues({ grade: {}, screenReflections: { steps: 4, strenght: 1 } }),
-    [
-      'scene.look.screenReflections.strenght: unknown field (did you mean strength?)',
-      'scene.look.screenReflections.steps: use a whole number 8..64',
-    ],
-  );
+  assert.deepEqual(issues({ grade: {}, screenReflections: { steps: 4, strenght: 1 } }), [
+    'scene.look.screenReflections.strenght: unknown field (did you mean strength?)',
+    'scene.look.screenReflections.steps: use a whole number 8..64',
+  ]);
   const off = resolveZhudaFilmLook({ preset: 'night', grade: {} });
   assert.equal(off.screenReflections, false);
   const on = resolveZhudaFilmLook({ preset: 'night', grade: {}, screenReflections: {} });
@@ -174,12 +171,15 @@ test('the effect writes every uniform it declares, and the same time gives the s
     );
     const [traced, blurred] = context.deferredReleaseTextures;
     assert.deepEqual([traced.width, traced.height], [400, 225]);
-    assert.deepEqual(drawn.map(([source, dest]) => [source, dest]), [
-      [context.indirectTarget, traced],
-      [traced, blurred],
-      [blurred, traced],
-      [context.indirectTarget, context.destination],
-    ]);
+    assert.deepEqual(
+      drawn.map(([source, dest]) => [source, dest]),
+      [
+        [context.indirectTarget, traced],
+        [traced, blurred],
+        [blurred, traced],
+        [context.indirectTarget, context.destination],
+      ],
+    );
     assert.deepEqual(textures, [['u_ZhudaSsrReflection', traced]]);
     assert.equal(reflections.effect.getCameraDepthTextureModeFlag(), 1);
 
@@ -192,4 +192,3 @@ test('the effect writes every uniform it declares, and the same time gives the s
     globalThis.Laya = saved;
   }
 });
-

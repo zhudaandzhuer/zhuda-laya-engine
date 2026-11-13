@@ -170,7 +170,8 @@ const STEPS = [
     do: 'Decide what you are making. A still or a film: a film scene, authored as data through the film_* tools. A game: TypeScript on the public SDK, with the same look object.',
     api: 'film: film_scene_create → film_scene_apply → film_scene_preview. game: ZhudaSceneLook(scene3D, camera, look).',
     why: 'Both paths resolve the same `look`, so a look tuned in film previews carries over to the game unchanged.',
-    check: 'film: a session id and revision 0. game: the scaffold of `zhuda-laya-init` builds and passes its Doctor.',
+    check:
+      'film: a session id and revision 0. game: the scaffold of `zhuda-laya-init` builds and passes its Doctor.',
   },
   {
     id: 'start-from-a-preset',
@@ -184,14 +185,16 @@ const STEPS = [
     do: 'Use physically based materials only. Film: recipes, sized for the camera. Game: createSurfaceMaterial, createZhudaProceduralMaterial, or Zhuda3D.createMaterial with type "pbr".',
     api: 'materials: { "road": { "recipe": "asphalt", "size": 1024, "variation": 0.5 } }; nodes: box, lathe { "profile": [[radius, height], ...] }, extrude { "outline": [[x, z], ...], "height" }',
     why: 'Zhuda3D.createMaterial defaults to Blinn-Phong, which ignores the sky, the environment and the HDR chain. A recipe bakes at 256 unless told otherwise: 128 pixels per metre on a two-metre tile.',
-    check: 'Advice holds neither texture.density nor texture.repeats. Aim for 256 pixels per metre or more on what the camera stands on; give a large floor some variation so its tiles do not read as a grid.',
+    check:
+      'Advice holds neither texture.density nor texture.repeats. Aim for 256 pixels per metre or more on what the camera stands on; give a large floor some variation so its tiles do not read as a grid.',
   },
   {
     id: 'light-from-the-side',
     do: 'Turn the sun so that it comes from the side or from ahead of the camera, and say what the ground throws back.',
     api: 'look: { "sun": { "azimuthDeg": …, "elevationDeg": 25..45 }, "ambientGround": [r, g, b] }',
     why: 'With the sun behind the camera shadows fall out of sight and every surface is evenly lit. ambientGround lights shadowed sides from below instead of with one flat colour.',
-    check: 'Advice holds neither sun.behind-camera nor ambient.flat. In the preview shadows are in view.',
+    check:
+      'Advice holds neither sun.behind-camera nor ambient.flat. In the preview shadows are in view.',
   },
   {
     id: 'shadows-that-carry',
@@ -226,7 +229,8 @@ const STEPS = [
     do: 'Set exposure first, then bloom (0.4 at most), then grain and vignette lightly. Keep multisampling on.',
     api: 'look.grade: { "exposure": …, "bloom": 0.2, "ao": 0.7, "grain": 0.15, "vignette": 0.3 }',
     why: 'Exposure decides what bloom and grain have to work with. Multisampling smooths edges in a frame drawn once; without it a preview shows stair-steps.',
-    check: 'The preview metrics have no flag: underexposed, burnt-out, crushed, low-contrast, hard-edges.',
+    check:
+      'The preview metrics have no flag: underexposed, burnt-out, crushed, low-contrast, hard-edges.',
   },
   {
     id: 'look-at-it',
@@ -247,7 +251,8 @@ const STEPS = [
     do: 'Film: render the still or the video as a job. Game: record a real browser report. Write what was not verified.',
     api: 'film_render_job { kind: "still", samples: 16 } · npm run verify in the consumer',
     why: 'A preview is one sample on one GPU. Declarations and unit tests prove no pixel.',
-    check: 'The file exists and is the frame you approved; the verification record lists unverified platforms.',
+    check:
+      'The file exists and is the frame you approved; the verification record lists unverified platforms.',
   },
 ];
 

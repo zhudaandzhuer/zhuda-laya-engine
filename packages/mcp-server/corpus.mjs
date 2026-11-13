@@ -346,7 +346,8 @@ async function main() {
 void main();`,
   },
   'film-scene-day': {
-    title: 'A film scene on the quality route (day): preset, side light, shadows, fog, sized textures',
+    title:
+      'A film scene on the quality route (day): preset, side light, shadows, fog, sized textures',
     features: ['core', '2d', '3d', 'ui', 'gltf', 'postProcess'],
     code:
       '// film_scene_create { scene } → read advice → film_scene_preview → read metrics\n' +

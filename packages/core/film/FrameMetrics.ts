@@ -24,7 +24,11 @@ export const ZHUDA_FRAME_HUES = Object.freeze([
 ] as const);
 
 export type ZhudaFrameFlag =
-  'underexposed' | 'burnt-out' | 'crushed' | 'low-contrast' | 'hard-edges';
+  | 'underexposed'
+  | 'burnt-out'
+  | 'crushed'
+  | 'low-contrast'
+  | 'hard-edges';
 
 export interface ZhudaFrameMetrics {
   width: number;

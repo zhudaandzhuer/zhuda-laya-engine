@@ -917,7 +917,14 @@ test('shadow cascades and shadow-casting spot lights are validated', () => {
     ],
     [
       of({}, [
-        { id: 'p', type: 'light', kind: 'point', position: [0, 3, 0], castsShadow: true, fogOnly: true },
+        {
+          id: 'p',
+          type: 'light',
+          kind: 'point',
+          position: [0, 3, 0],
+          castsShadow: true,
+          fogOnly: true,
+        },
       ]),
       'castsShadow: not on a point light that is fogOnly',
     ],

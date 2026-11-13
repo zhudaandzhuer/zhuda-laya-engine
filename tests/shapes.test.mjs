@@ -67,39 +67,85 @@ test('a lathe turns an outline about the vertical axis with outward, smooth norm
     // UVs are metres: around the wall and up it.
     assert.ok(uv[0] >= 0 && uv[0] <= Math.PI + 1e-5 && (uv[1] === 0 || uv[1] === 2));
   }
-  assert.equal(createZhudaLatheMesh({ profile: cylinder ? [[0.5, 0], [0.5, 2]] : [], caps: false }).indices.length / 3, 24 * 2);
+  assert.equal(
+    createZhudaLatheMesh({
+      profile: cylinder
+        ? [
+            [0.5, 0],
+            [0.5, 2],
+          ]
+        : [],
+      caps: false,
+    }).indices.length / 3,
+    24 * 2,
+  );
 
   // A cone: the ring on the axis is one point, so each side is one triangle.
-  const cone = createZhudaLatheMesh({ profile: [[1, 0], [0, 2]], segments: 12 });
+  const cone = createZhudaLatheMesh({
+    profile: [
+      [1, 0],
+      [0, 2],
+    ],
+    segments: 12,
+  });
   assert.equal(cone.indices.length / 3, 12 + 12);
   assertWinding(cone);
-  assert.ok(vertices(cone).filter((v) => v.n[1] > -0.5).every((v) => v.n[1] > 0.4));
+  assert.ok(
+    vertices(cone)
+      .filter((v) => v.n[1] > -0.5)
+      .every((v) => v.n[1] > 0.4),
+  );
 });
 
 test('sharp corners of the outline stay edges; a hollow form faces inward on the inside', () => {
-  const stepped = [[0.5, 0], [0.5, 1], [0.2, 1]];
+  const stepped = [
+    [0.5, 0],
+    [0.5, 1],
+    [0.2, 1],
+  ];
   const rim = (mesh) =>
     vertices(mesh)
-      .filter((v) => Math.abs(v.p[1] - 1) < 1e-6 && Math.abs(Math.hypot(v.p[0], v.p[2]) - 0.5) < 1e-6)
+      .filter(
+        (v) => Math.abs(v.p[1] - 1) < 1e-6 && Math.abs(Math.hypot(v.p[0], v.p[2]) - 0.5) < 1e-6,
+      )
       .map((v) => +v.n[1].toFixed(3));
   // The wall (normal level) and the top (normal straight up) meet at a hard edge.
-  assert.deepEqual([...new Set(rim(createZhudaLatheMesh({ profile: stepped, caps: false })))], [0, 1]);
+  assert.deepEqual(
+    [...new Set(rim(createZhudaLatheMesh({ profile: stepped, caps: false })))],
+    [0, 1],
+  );
   // Asked to smooth every corner, the two share one normal halfway.
   assert.deepEqual(
     [...new Set(rim(createZhudaLatheMesh({ profile: stepped, caps: false, creaseDeg: 180 })))],
     [0.707],
   );
   const bowl = createZhudaLatheMesh({
-    profile: [[0.4, 0], [0.5, 0.3], [0.45, 0.3], [0.36, 0.05], [0, 0.05]],
+    profile: [
+      [0.4, 0],
+      [0.5, 0.3],
+      [0.45, 0.3],
+      [0.36, 0.05],
+      [0, 0.05],
+    ],
   });
   assertWinding(bowl);
   const inner = vertices(bowl).filter((v) => Math.abs(Math.hypot(v.p[0], v.p[2]) - 0.36) < 1e-6);
   assert.ok(inner.length > 0);
-  assert.ok(inner.some((v) => dot(v.n, [v.p[0], 0, v.p[2]]) < 0), 'the inside wall faces the axis');
+  assert.ok(
+    inner.some((v) => dot(v.n, [v.p[0], 0, v.p[2]]) < 0),
+    'the inside wall faces the axis',
+  );
 });
 
 test('an extrusion raises an outline, concave or not, drawn either way round', () => {
-  const outline = [[0, 0], [2, 0], [2, 1], [1, 1], [1, 2], [0, 2]];
+  const outline = [
+    [0, 0],
+    [2, 0],
+    [2, 1],
+    [1, 1],
+    [1, 2],
+    [0, 2],
+  ];
   const shape = createZhudaExtrudeMesh({ outline, height: 1.5 });
   // Six walls of two triangles, and four triangles on the top and on the underside.
   assert.equal(shape.indices.length / 3, 6 * 2 + 4 * 2);
@@ -115,34 +161,84 @@ test('an extrusion raises an outline, concave or not, drawn either way round', (
   assertWinding(reversed);
   assert.deepEqual(bounds(reversed), bounds(shape));
   // Walls of a square face away from its middle.
-  const square = createZhudaExtrudeMesh({ outline: [[-1, -1], [1, -1], [1, 1], [-1, 1]], height: 1 });
+  const square = createZhudaExtrudeMesh({
+    outline: [
+      [-1, -1],
+      [1, -1],
+      [1, 1],
+      [-1, 1],
+    ],
+    height: 1,
+  });
   for (const { p, n } of vertices(square).filter((v) => Math.abs(v.n[1]) < 0.5))
     assert.ok(dot(n, [p[0], 0, p[2]]) > 0);
   assert.equal(createZhudaExtrudeMesh({ outline, height: 1, caps: false }).indices.length / 3, 12);
 });
 
 test('bad shapes are refused with the place that is wrong', () => {
-  assert.deepEqual(validateZhudaLathe({ profile: [[0.5, 0], [-0.1, 1], [-0.1, 1]], segments: 2 }), [
-    'profile[1]: the radius cannot be negative',
-    'profile[2]: the radius cannot be negative',
-    'segments: use a whole number 3..96',
-  ]);
+  assert.deepEqual(
+    validateZhudaLathe({
+      profile: [
+        [0.5, 0],
+        [-0.1, 1],
+        [-0.1, 1],
+      ],
+      segments: 2,
+    }),
+    [
+      'profile[1]: the radius cannot be negative',
+      'profile[2]: the radius cannot be negative',
+      'segments: use a whole number 3..96',
+    ],
+  );
   assert.deepEqual(validateZhudaLathe({ profile: [[0.5, 0]] }), [
     'profile: use 2..256 [radius, height] pairs',
   ]);
-  assert.deepEqual(validateZhudaLathe({ profile: [[0.5, 0], [0.5, 0]] }), [
-    'profile[1]: the same point as the one before it',
-  ]);
+  assert.deepEqual(
+    validateZhudaLathe({
+      profile: [
+        [0.5, 0],
+        [0.5, 0],
+      ],
+    }),
+    ['profile[1]: the same point as the one before it'],
+  );
   assert.throws(() => createZhudaLatheMesh({ profile: 'round' }), /Invalid lathe/);
   // A bow-tie crosses itself.
-  assert.deepEqual(validateZhudaExtrude({ outline: [[0, 0], [1, 1], [1, 0], [0, 1]], height: 1 }), [
-    'outline: edge 0 crosses edge 2',
-  ]);
-  assert.deepEqual(validateZhudaExtrude({ outline: [[0, 0], [1, 0], [2, 0]], height: 0 }), [
-    'outline: it encloses no area',
-    'height: use a positive number of metres',
-  ]);
-  assert.throws(() => createZhudaExtrudeMesh({ outline: [[0, 0], [1, 0]], height: 1 }), /3\.\.256/);
+  assert.deepEqual(
+    validateZhudaExtrude({
+      outline: [
+        [0, 0],
+        [1, 1],
+        [1, 0],
+        [0, 1],
+      ],
+      height: 1,
+    }),
+    ['outline: edge 0 crosses edge 2'],
+  );
+  assert.deepEqual(
+    validateZhudaExtrude({
+      outline: [
+        [0, 0],
+        [1, 0],
+        [2, 0],
+      ],
+      height: 0,
+    }),
+    ['outline: it encloses no area', 'height: use a positive number of metres'],
+  );
+  assert.throws(
+    () =>
+      createZhudaExtrudeMesh({
+        outline: [
+          [0, 0],
+          [1, 0],
+        ],
+        height: 1,
+      }),
+    /3\.\.256/,
+  );
 });
 
 test('film scenes take lathe and extrude nodes', () => {
@@ -156,14 +252,24 @@ test('film scenes take lathe and extrude nodes', () => {
   const bollard = {
     id: 'bollard',
     type: 'lathe',
-    profile: [[0.12, 0], [0.12, 0.8], [0.09, 0.95], [0, 1]],
+    profile: [
+      [0.12, 0],
+      [0.12, 0.8],
+      [0.09, 0.95],
+      [0, 1],
+    ],
     position: [1, 0, 0],
     material: 'concrete',
   };
   const kerb = {
     id: 'kerb',
     type: 'extrude',
-    outline: [[0, 0], [4, 0], [4, 0.3], [0, 0.3]],
+    outline: [
+      [0, 0],
+      [4, 0],
+      [4, 0.3],
+      [0, 0.3],
+    ],
     height: 0.15,
     position: [-2, 0, 2],
     yawDeg: 30,
@@ -173,7 +279,14 @@ test('film scenes take lathe and extrude nodes', () => {
   assert.deepEqual(
     validateZhudaFilmScene(
       scene([
-        { ...bollard, profile: [[0.12, 0], [-1, 1]], sides: 8 },
+        {
+          ...bollard,
+          profile: [
+            [0.12, 0],
+            [-1, 1],
+          ],
+          sides: 8,
+        },
         { ...kerb, height: -1 },
         { id: 'x', type: 'sphere' },
       ]),

@@ -118,7 +118,8 @@ const declared = new WeakSet<object>();
 function declare(l: any): boolean {
   if (declared.has(l.Shader3D)) return true;
   const map =
-    l.Scene3D?.sceneUniformMap ?? l.LayaGL?.renderDeviceFactory?.createGlobalUniformMap?.('Scene3D');
+    l.Scene3D?.sceneUniformMap ??
+    l.LayaGL?.renderDeviceFactory?.createGlobalUniformMap?.('Scene3D');
   if (!map?.addShaderUniform) return false;
   const add = (name: string, type: unknown) =>
     map.addShaderUniform(l.Shader3D.propertyNameToID(name), name, type);

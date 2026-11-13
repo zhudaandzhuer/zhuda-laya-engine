@@ -371,11 +371,7 @@ export class ZhudaFilmicPipeline {
     source.material = material;
     source.active = false;
     const linearPart = [this.ao, ...this.sceneEffects, this.bloom],
-      displayPart = [
-        ...(this.range ? [this.range.effect] : []),
-        this.grade,
-        ...this.finishEffects,
-      ],
+      displayPart = [...(this.range ? [this.range.effect] : []), this.grade, ...this.finishEffects],
       all = [...linearPart, ...displayPart];
     // The source goes first; the rest keeps the order it was built in.
     this.post.clearEffect();

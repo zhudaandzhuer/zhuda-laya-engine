@@ -413,17 +413,7 @@ export class ZhudaLightFog {
     this.count = lights.length;
     // Replace the texels in place. `setPixelsData` would ask WebGL to allocate
     // the immutable texture again: an INVALID_OPERATION on every change.
-    this.lights.setSubPixelsData(
-      0,
-      0,
-      ZHUDA_FOG_MAX_LIGHTS,
-      2,
-      this.data,
-      0,
-      false,
-      false,
-      false,
-    );
+    this.lights.setSubPixelsData(0, 0, ZHUDA_FOG_MAX_LIGHTS, 2, this.data, 0, false, false, false);
   }
 
   /**

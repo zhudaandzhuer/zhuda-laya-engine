@@ -58,8 +58,7 @@ export function zhudaLookForQuality(
   }
   if (next.screenReflections) {
     if (level === 1) next.screenReflections = false;
-    else
-      next.screenReflections.steps = Math.max(8, Math.round(next.screenReflections.steps / 2));
+    else next.screenReflections.steps = Math.max(8, Math.round(next.screenReflections.steps / 2));
   }
   if (next.lightFog && next.lightFog.shafts) {
     if (level === 1) next.lightFog.shafts = false;

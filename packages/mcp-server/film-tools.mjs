@@ -268,9 +268,7 @@ export async function executeFilmTool(name, args = {}) {
         throw Error('Give either sessionId or scene');
       await filmContext();
       const scene =
-        args.scene !== undefined
-          ? sessions.check(args.scene)
-          : sessions.get(args.sessionId).scene;
+        args.scene !== undefined ? sessions.check(args.scene) : sessions.get(args.sessionId).scene;
       return [text({ tool: name, advice: advise(scene) })];
     }
     case 'film_scene_apply': {

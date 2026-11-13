@@ -16,7 +16,13 @@ test('no type is physically based; a shininess without a type is Blinn-Phong', (
     }
   }
   const saved = globalThis.Laya;
-  globalThis.Laya = { PBRStandardMaterial, UnlitMaterial, BlinnPhongMaterial, Color, RenderState: {} };
+  globalThis.Laya = {
+    PBRStandardMaterial,
+    UnlitMaterial,
+    BlinnPhongMaterial,
+    Color,
+    RenderState: {},
+  };
   try {
     const plain = Zhuda3D.createMaterial({ albedoColor: [0.8, 0.2, 0.2, 1], smoothness: 0.7 });
     assert.ok(plain instanceof PBRStandardMaterial);

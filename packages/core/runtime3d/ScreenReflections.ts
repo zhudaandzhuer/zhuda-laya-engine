@@ -265,9 +265,30 @@ function createReflectionsEffect(
       // One texel of the half-size picture along each axis.
       parts.across.setVector4('u_ZhudaSsrBlur', new l.Vector4(1 / width, 0, 0, 0));
       parts.down.setVector4('u_ZhudaSsrBlur', new l.Vector4(0, 1 / height, 0, 0));
-      command.blitScreenTriangle(source, traced, null, parts.trace.shader, parts.trace.shaderData, 0);
-      command.blitScreenTriangle(traced, blurred, null, parts.across.shader, parts.across.shaderData, 0);
-      command.blitScreenTriangle(blurred, traced, null, parts.down.shader, parts.down.shaderData, 0);
+      command.blitScreenTriangle(
+        source,
+        traced,
+        null,
+        parts.trace.shader,
+        parts.trace.shaderData,
+        0,
+      );
+      command.blitScreenTriangle(
+        traced,
+        blurred,
+        null,
+        parts.across.shader,
+        parts.across.shaderData,
+        0,
+      );
+      command.blitScreenTriangle(
+        blurred,
+        traced,
+        null,
+        parts.down.shader,
+        parts.down.shaderData,
+        0,
+      );
       command.setShaderDataTexture(parts.composite.shaderData, reflection, traced);
       command.blitScreenTriangle(
         source,

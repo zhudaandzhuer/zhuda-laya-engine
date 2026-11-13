@@ -27,9 +27,18 @@ test('the grid has about one probe every spacing metres, within the limits', () 
   assert.deepEqual(zhudaProbeCounts([0, 0, 0], [100, 2, 100], 1), [16, 2, 16]);
   const big = zhudaProbeCounts([0, 0, 0], [100, 100, 100], 1);
   assert.ok(big[0] * big[1] * big[2] <= 512 && big.every((n) => n <= 16));
-  assert.deepEqual(validateZhudaProbeVolume({ min: [0, 0, 0], max: [1, 1, 1], counts: [2, 2, 2] }), []);
   assert.deepEqual(
-    validateZhudaProbeVolume({ min: [0, 2, 0], max: [1, 1, 1], counts: [17, 1, 1], captureSize: 20, strength: 9 }),
+    validateZhudaProbeVolume({ min: [0, 0, 0], max: [1, 1, 1], counts: [2, 2, 2] }),
+    [],
+  );
+  assert.deepEqual(
+    validateZhudaProbeVolume({
+      min: [0, 2, 0],
+      max: [1, 1, 1],
+      counts: [17, 1, 1],
+      captureSize: 20,
+      strength: 9,
+    }),
     [
       'min: below max on every axis',
       'counts: use three whole numbers 1..16',
@@ -71,7 +80,11 @@ test('octahedral directions match LayaAir’s decoding', () => {
   assert.ok(near(zhudaOctahedralDirection(0, -1), [0, -1, 0]));
   // The outer half folds onto the back.
   assert.ok(near(zhudaOctahedralDirection(1, 1), [0, 0, -1]));
-  for (const [x, y] of [[0.3, -0.4], [-0.9, 0.6], [0.2, 0.95]])
+  for (const [x, y] of [
+    [0.3, -0.4],
+    [-0.9, 0.6],
+    [0.2, 0.95],
+  ])
     assert.ok(Math.abs(Math.hypot(...zhudaOctahedralDirection(x, y)) - 1) < 1e-9);
 });
 
@@ -84,7 +97,12 @@ test('the atlas has one 8 by 8 tile per probe, its border copied across the oppo
   assert.equal(atlas.width, 2 * 1 * 8);
   assert.equal(atlas.height, 2 * 8);
   const texel = (column, row, p, q) =>
-    Array.from(atlas.data.subarray(((row * 8 + q) * atlas.width + column * 8 + p) * 4, ((row * 8 + q) * atlas.width + column * 8 + p) * 4 + 3));
+    Array.from(
+      atlas.data.subarray(
+        ((row * 8 + q) * atlas.width + column * 8 + p) * 4,
+        ((row * 8 + q) * atlas.width + column * 8 + p) * 4 + 3,
+      ),
+    );
   // The texel LayaAir reads for a normal along -X (inner column 1, middle rows)
   // holds what the nine colours give that normal, X mirrored as measured, times strength.
   const minusX = evaluateZhudaAmbient(sh, 1, 0, 0).map((v) => v * 2);
@@ -116,7 +134,10 @@ test('a film look takes bounce light; its box defaults to the objects and lights
   const context = { props: [], recipes: ['asphalt'] };
   assert.deepEqual(validateZhudaFilmScene(scene({ bounceLight: { spacing: 2 } }), context), []);
   assert.deepEqual(
-    validateZhudaFilmScene(scene({ bounceLight: { spacing: 0.5, min: [0, 0, 0], strenght: 1 } }), context),
+    validateZhudaFilmScene(
+      scene({ bounceLight: { spacing: 0.5, min: [0, 0, 0], strenght: 1 } }),
+      context,
+    ),
     [
       'scene.look.bounceLight.strenght: unknown field (did you mean strength?)',
       'scene.look.bounceLight.spacing: use 1..20',
@@ -124,13 +145,19 @@ test('a film look takes bounce light; its box defaults to the objects and lights
     ],
   );
   assert.equal(resolveZhudaFilmLook({}).bounceLight, false);
-  assert.deepEqual(resolveZhudaFilmLook({ bounceLight: {} }).bounceLight, { spacing: 3, strength: 1 });
+  assert.deepEqual(resolveZhudaFilmLook({ bounceLight: {} }).bounceLight, {
+    spacing: 3,
+    strength: 1,
+  });
   const on = resolveZhudaFilmLook({ preset: 'day', bounceLight: {} });
   assert.equal(zhudaLookForQuality(on, 1).bounceLight.spacing, 3);
   assert.equal(zhudaLookForQuality(on, 0).bounceLight, false);
   // It is captured when the scene is mounted: changing it needs a mount.
   assert.equal(
-    zhudaFilmLookRebuildReason(on, resolveZhudaFilmLook({ preset: 'day', bounceLight: { strength: 2 } })),
+    zhudaFilmLookRebuildReason(
+      on,
+      resolveZhudaFilmLook({ preset: 'day', bounceLight: { strength: 2 } }),
+    ),
     'bounceLight',
   );
   assert.equal(zhudaFilmBounceBox(scene({})), null);

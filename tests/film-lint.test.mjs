@@ -52,10 +52,9 @@ test('the bare look and its missing parts are named with their fix', () => {
   // No look at all is the day preset: shadows and sky are there, the grade is not.
   const absent = rules(change((s) => delete s.look));
   assert.deepEqual(absent, ['look.no-grade', 'sun.behind-camera']);
-  assert.deepEqual(
-    rules(change((s) => (delete s.look.grade, delete s.look.lightFog))),
-    ['look.no-grade'],
-  );
+  assert.deepEqual(rules(change((s) => (delete s.look.grade, delete s.look.lightFog))), [
+    'look.no-grade',
+  ]);
   // An atmosphere without a preset: not bare any more, but still no shadows.
   assert.deepEqual(
     rules(
@@ -228,10 +227,7 @@ test('frame metrics flag frames that lost their detail', () => {
   assert.equal(mid.meanLuminance, 0.502);
   assert.deepEqual(mid.flags, ['low-contrast']);
   assert.deepEqual(frame(16, 16, () => grey(255)).flags, ['burnt-out', 'low-contrast']);
-  assert.deepEqual(
-    frame(16, 16, () => grey(0)).flags,
-    ['underexposed', 'crushed', 'low-contrast'],
-  );
+  assert.deepEqual(frame(16, 16, () => grey(0)).flags, ['underexposed', 'crushed', 'low-contrast']);
   const ramp = frame(64, 4, (x) => grey(x * 4));
   assert.deepEqual(ramp.flags, []);
   assert.deepEqual(ramp.luminance, { p05: 0.047, p50: 0.486, p95: 0.941 });

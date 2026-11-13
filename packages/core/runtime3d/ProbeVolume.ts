@@ -363,7 +363,8 @@ export class ZhudaProbeVolume {
           });
         });
         const picture = await readLaya342FloatTarget(l, target, 3 * n, rows * n);
-        if (signal?.aborted) throw signal.reason ?? new DOMException('Bake cancelled', 'AbortError');
+        if (signal?.aborted)
+          throw signal.reason ?? new DOMException('Bake cancelled', 'AbortError');
         if (this.disposed) throw Error('Disposed probe volume');
         group.forEach((probe, slot) => {
           const faces = ZHUDA_CUBE_VIEWS.map((_, face) => {
@@ -379,7 +380,10 @@ export class ZhudaProbeVolume {
       target.destroy();
     }
     this.ambient = ambient;
-    this.apply(l, zhudaIrradianceAtlas(this.counts, (i) => ambient[i], this.options.strength ?? 1));
+    this.apply(
+      l,
+      zhudaIrradianceAtlas(this.counts, (i) => ambient[i], this.options.strength ?? 1),
+    );
   }
 
   private apply(l: any, atlas: { width: number; height: number; data: Float32Array }): void {
@@ -397,7 +401,11 @@ export class ZhudaProbeVolume {
     if (!this.node) {
       if (this.scene.ambientMode !== l.AmbientMode.SphericalHarmonics || !this.scene.iblTex) {
         const colour = this.scene.ambientColor,
-          light = [decode(colour.r), decode(colour.g), decode(colour.b)] as [number, number, number];
+          light = [decode(colour.r), decode(colour.g), decode(colour.b)] as [
+            number,
+            number,
+            number,
+          ];
         this.restoreAmbient = applyZhudaHemisphereAmbient(this.scene, light, light);
       }
       // Distance pictures: an empty tile (z = 0) makes LayaAir skip its occlusion

@@ -187,9 +187,15 @@ try {
     bothEast: seen(both, [2.9, 0, 0]),
     westOnlyEast: seen(westOnly, [2.9, 0, 0]),
   };
-  assert.ok(report.pair.bothWest < 25, 'with two lamps the first one shades the floor beyond its box');
+  assert.ok(
+    report.pair.bothWest < 25,
+    'with two lamps the first one shades the floor beyond its box',
+  );
   assert.ok(report.pair.bothEast < 25, 'and so does the second');
-  assert.ok(report.pair.westOnlyEast > 60, 'the second lamp lights through its box when it does not cast');
+  assert.ok(
+    report.pair.westOnlyEast > 60,
+    'the second lamp lights through its box when it does not cast',
+  );
 
   // Other scenes in between, then the first frame again.
   for (let i = 0; i < 4; i++) await host.mountReport(scene(i % 2 === 0));

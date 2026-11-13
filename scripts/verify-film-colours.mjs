@@ -27,7 +27,9 @@ const floor = (look) => ({
   camera: { eye: [0, 6, 0.01], target: [0, 0, 0] },
   look: { sky: [0, 0, 0], sun: { intensity: 0 }, shadows: false, grade, ...look },
   materials: { grey: { color: [0.8, 0.8, 0.8], roughness: 1 } },
-  nodes: [{ id: 'floor', type: 'box', size: [20, 0.2, 20], position: [0, -0.2, 0], material: 'grey' }],
+  nodes: [
+    { id: 'floor', type: 'box', size: [20, 0.2, 20], position: [0, -0.2, 0], material: 'grey' },
+  ],
 });
 const empty = (look) => ({
   schemaVersion: 1,
@@ -50,7 +52,10 @@ try {
   await host.ready();
   const half = [0.5, 0.5, 0.5];
   report.flatAmbient = await centre('flat-ambient', floor({ ambient: half }));
-  report.skyAndGround = await centre('sky-and-ground', floor({ ambient: half, ambientGround: half }));
+  report.skyAndGround = await centre(
+    'sky-and-ground',
+    floor({ ambient: half, ambientGround: half }),
+  );
   report.flatAmbientFull = await centre('flat-ambient-full', floor({ ambient: [1, 1, 1] }));
   assert.ok(report.flatAmbientFull > report.flatAmbient + 30, 'the floor shows the ambient light');
   assert.ok(
