@@ -14,6 +14,17 @@ import {
   type ZhudaTextureRecipe,
 } from '../procedural/TextureRecipe.ts';
 import { validateZhudaExtrude, validateZhudaLathe } from '../procedural/Geometry.ts';
+import {
+  resolveZhudaAutoExposure,
+  resolveZhudaDepthOfField,
+  resolveZhudaMotionBlur,
+  validateZhudaAutoExposure,
+  validateZhudaDepthOfField,
+  validateZhudaMotionBlur,
+  type ZhudaAutoExposureOptions,
+  type ZhudaDepthOfFieldOptions,
+  type ZhudaMotionBlurOptions,
+} from '../runtime3d/CameraEffects.ts';
 
 export type ZhudaFilmVec3 = [number, number, number];
 
@@ -154,6 +165,27 @@ export interface ZhudaFilmLook {
    * polished places. Needs `grade`; off unless given.
    */
   screenReflections?: ZhudaFilmScreenReflections | false;
+  /**
+   * The picture's brightness follows what is in view, as eyes do: a dark
+   * alley is lifted, a noon square dimmed, over a second or so. `true` takes
+   * the defaults. In a film scene the adaptation is immediate (`speed` 0
+   * unless given): a still does not depend on the frames before it. Needs
+   * `grade`; off unless given.
+   */
+  autoExposure?: ZhudaAutoExposureOptions | boolean;
+  /**
+   * Depth of field in a picture drawn once (a game): what is nearer or
+   * farther than `focusDistanceM` is blurred. A film still or video does not
+   * need it: it gets depth of field from the camera's `fStop` by drawing many
+   * samples. Needs `grade`; off unless given.
+   */
+  depthOfField?: ZhudaDepthOfFieldOptions | false;
+  /**
+   * Motion blur from the camera's own movement in a picture drawn once (a
+   * game). `true` takes the defaults. A film video gets motion blur from its
+   * samples. Needs `grade`; off unless given.
+   */
+  motionBlur?: ZhudaMotionBlurOptions | boolean;
   /**
    * Light bounced once off the scene: probes on a grid over its objects
    * capture their surroundings when the scene is mounted, and light physically
@@ -471,11 +503,13 @@ export type ZhudaFilmNode =
       /** Spot lights: full cone angle, 1..179 degrees (default 60). */
       spotAngleDeg?: number;
       /**
-       * The light casts shadows: one spot light and up to four point lights
-       * per scene may. A spot uses LayaAir's own shadow map. A point light's
+       * The light casts shadows: one spot light and up to eight point lights
+       * per scene may (more than four share their texture at half the
+       * sharpness). A spot uses LayaAir's own shadow map. A point light's
        * surroundings are drawn once from the lamp (`ZhudaPointShadow`), and
-       * again when its `range` or something that moves with time changes;
-       * nothing closer to it than 0.5 m casts (the lamp's own head).
+       * again when its `range` or something that moves with time changes: a
+       * lamp that `follows` a model casts from where the model has carried
+       * it. Nothing closer to it than 0.5 m casts (the lamp's own head).
        */
       castsShadow?: boolean;
       /**
@@ -613,7 +647,7 @@ export const ZHUDA_FILM_LIMITS = Object.freeze({
   /** Point lights one `lightFog` can hold, fog-only lights included. */
   fogLights: 128,
   /** Point lights that may cast shadows (one spot light may as well). */
-  pointShadows: 4,
+  pointShadows: 8,
   models: 64,
   /** Copies of one model node; a scene holds at most `placementsTotal` in all. */
   placements: 20000,
@@ -873,6 +907,9 @@ function validateLook(
       'grade',
       'lightFog',
       'screenReflections',
+      'autoExposure',
+      'depthOfField',
+      'motionBlur',
       'bounceLight',
       'environment',
       'panorama',
@@ -1034,6 +1071,26 @@ function validateLook(
         issues.push(`${at}: needs grade (the reflections are part of the HDR chain)`);
     }
   }
+  const lens = (
+    name: 'autoExposure' | 'depthOfField' | 'motionBlur',
+    validate: (options: any) => string[],
+    plain: boolean,
+  ) => {
+    const value: unknown = look[name];
+    if (value === undefined || value === false) return;
+    const at = `${path}.${name}`;
+    if (value === true && plain) {
+      // The defaults.
+    } else if (!object(value)) {
+      issues.push(`${at}: ${plain ? 'object, true or false' : 'object or false'} required`);
+      return;
+    } else for (const issue of validate(value)) issues.push(`${at}.${issue}`);
+    if (look.grade === undefined || look.grade === false)
+      issues.push(`${at}: needs grade (it is part of the HDR chain)`);
+  };
+  lens('autoExposure', validateZhudaAutoExposure, true);
+  lens('depthOfField', validateZhudaDepthOfField, false);
+  lens('motionBlur', validateZhudaMotionBlur, true);
   if (look.bounceLight !== undefined && look.bounceLight !== false) {
     const b = look.bounceLight,
       at = `${path}.bounceLight`;
@@ -1603,13 +1660,9 @@ function validateNode(
         issues.push(`${path}.fogOnly: point lights only, true or false`);
       if (node.castsShadow !== undefined && typeof node.castsShadow !== 'boolean')
         issues.push(`${path}.castsShadow: true or false`);
-      else if (
-        node.castsShadow &&
-        node.kind === 'point' &&
-        (node.fogOnly === true || node.follows !== undefined)
-      )
+      else if (node.castsShadow && node.kind === 'point' && node.fogOnly === true)
         issues.push(
-          `${path}.castsShadow: not on a point light that is fogOnly or follows a model (its shadow is drawn from where it stands)`,
+          `${path}.castsShadow: not on a point light that is fogOnly (it lights no surface)`,
         );
       break;
     default:
@@ -1773,13 +1826,17 @@ export function applyZhudaFilmScenePatch(
       'grade',
       'lightFog',
       'screenReflections',
+      'autoExposure',
+      'depthOfField',
+      'motionBlur',
       'bounceLight',
       'environment',
       'panorama',
     ] as const) {
       const before = next.look?.[key],
         after = patch.look[key];
-      if (after && before) (look as Record<string, unknown>)[key] = { ...before, ...after };
+      if (typeof after === 'object' && typeof before === 'object' && after && before)
+        (look as Record<string, unknown>)[key] = { ...before, ...after };
     }
     next.look = look;
   }
@@ -1837,6 +1894,9 @@ export interface ZhudaResolvedFilmLook {
       })
     | false;
   screenReflections: Required<ZhudaFilmScreenReflections> | false;
+  autoExposure: Required<ZhudaAutoExposureOptions> | false;
+  depthOfField: Required<ZhudaDepthOfFieldOptions> | false;
+  motionBlur: Required<ZhudaMotionBlurOptions> | false;
   bounceLight:
     | (Required<Pick<ZhudaFilmBounceLight, 'spacing' | 'strength'>> &
         Pick<ZhudaFilmBounceLight, 'min' | 'max'>)
@@ -1967,6 +2027,13 @@ export function resolveZhudaFilmLook(
       distance: 30,
       steps: 32,
     }),
+    autoExposure: look.autoExposure
+      ? resolveZhudaAutoExposure(look.autoExposure === true ? {} : look.autoExposure)
+      : false,
+    depthOfField: look.depthOfField ? resolveZhudaDepthOfField(look.depthOfField) : false,
+    motionBlur: look.motionBlur
+      ? resolveZhudaMotionBlur(look.motionBlur === true ? {} : look.motionBlur)
+      : false,
     bounceLight: look.bounceLight
       ? {
           spacing: look.bounceLight.spacing ?? 3,
@@ -2079,6 +2146,9 @@ export function zhudaFilmLookRebuildReason(
   | 'grade'
   | 'lightFog'
   | 'screenReflections'
+  | 'autoExposure'
+  | 'depthOfField'
+  | 'motionBlur'
   | 'bounceLight'
   | null {
   const json = (value: unknown) => JSON.stringify(value);
@@ -2109,6 +2179,9 @@ export function zhudaFilmLookRebuildReason(
   if (fog(from) !== fog(to)) return 'lightFog';
   // Built or not built; its values are set in place.
   if (!from.screenReflections !== !to.screenReflections) return 'screenReflections';
+  if (!from.autoExposure !== !to.autoExposure) return 'autoExposure';
+  if (!from.depthOfField !== !to.depthOfField) return 'depthOfField';
+  if (!from.motionBlur !== !to.motionBlur) return 'motionBlur';
   return null;
 }
 

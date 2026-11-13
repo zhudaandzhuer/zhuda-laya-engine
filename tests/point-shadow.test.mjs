@@ -7,6 +7,7 @@ import {
   ZhudaPointShadow,
   installLaya342PointShadows,
   validateZhudaPointShadow,
+  zhudaPointShadowResolution,
 } from '../packages/core/runtime3d/PointShadow.ts';
 import { validateZhudaFilmScene } from '../packages/core/film/FilmScene.ts';
 
@@ -68,12 +69,12 @@ test('options are checked, and the class says what it needs', () => {
     }),
     [],
   );
-  assert.deepEqual(validateZhudaPointShadow({ lights: 5, softness: 5 }), [
+  assert.deepEqual(validateZhudaPointShadow({ lights: 9, softness: 5 }), [
     'softness: use 0..4',
-    'lights: use a whole number 1..4',
+    'lights: use a whole number 1..8',
   ]);
   assert.deepEqual(validateZhudaPointShadow({ resolution: 1024, lights: 3 }), [
-    'resolution: 1024 holds at most two lights (the pictures are 4096 tall at most)',
+    'resolution: 1024 holds at most two lights and 512 at most four (the pictures are 4096 tall at most)',
   ]);
   assert.deepEqual(validateZhudaPointShadow({ resolution: 300, near: 0, strength: 2, bias: -1 }), [
     'resolution: use 256, 512 or 1024',
@@ -94,7 +95,7 @@ test('options are checked, and the class says what it needs', () => {
   }
 });
 
-test('up to four point lights and one spot light of a film scene may cast shadows', () => {
+test('up to eight point lights and one spot light of a film scene may cast shadows', () => {
   const scene = (lights) => ({
     schemaVersion: 1,
     id: 'lamps',
@@ -121,12 +122,20 @@ test('up to four point lights and one spot light of a film scene may cast shadow
     Array.from({ length: count }, (_, i) =>
       point('p' + i, { position: [i * 4, 3, 0], castsShadow: true }),
     );
-  assert.deepEqual(validateZhudaFilmScene(scene(casting(4)), context), []);
-  assert.deepEqual(validateZhudaFilmScene(scene(casting(5)), context), [
-    'scene.nodes: at most 4 point lights may cast shadows',
+  assert.deepEqual(validateZhudaFilmScene(scene(casting(8)), context), []);
+  assert.deepEqual(validateZhudaFilmScene(scene(casting(9)), context), [
+    'scene.nodes: at most 8 point lights may cast shadows',
   ]);
   assert.match(
     validateZhudaFilmScene(scene([point('a', { castsShadow: true, fogOnly: true })]), context)[0],
-    /castsShadow: not on a point light that is fogOnly or follows a model/,
+    /castsShadow: not on a point light that is fogOnly/,
   );
+  // More than four lights share the texture at a smaller edge.
+  assert.equal(zhudaPointShadowResolution(4), 512);
+  assert.equal(zhudaPointShadowResolution(5), 256);
+  assert.deepEqual(validateZhudaPointShadow({ lights: 8 }), []);
+  assert.deepEqual(validateZhudaPointShadow({ lights: 8, resolution: 512 }), [
+    'resolution: 1024 holds at most two lights and 512 at most four (the pictures are 4096 tall at most)',
+  ]);
+  assert.deepEqual(validateZhudaPointShadow({ lights: 9 }), ['lights: use a whole number 1..8']);
 });

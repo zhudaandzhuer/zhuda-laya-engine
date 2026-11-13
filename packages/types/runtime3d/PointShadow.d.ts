@@ -2,7 +2,7 @@
 /** The scene define that switches the shadow lookup on. */
 export declare const ZHUDA_POINT_SHADOW_DEFINE = "ZHUDA_POINT_SHADOW";
 /** Point lights one `ZhudaPointShadow` can hold, and the lit shaders look up. */
-export declare const ZHUDA_POINT_SHADOW_MAX_LIGHTS = 4;
+export declare const ZHUDA_POINT_SHADOW_MAX_LIGHTS = 8;
 /**
  * Teaches Laya 3.4.2's point lights to ask for a shadow. Must run before
  * `Laya.init`, which registers the lighting include and compiles the lit
@@ -10,7 +10,10 @@ export declare const ZHUDA_POINT_SHADOW_MAX_LIGHTS = 4;
  */
 export declare function installLaya342PointShadows(runtime?: any): boolean;
 export interface ZhudaPointShadowOptions {
-    /** Edge of each of the six pictures in pixels: 256, 512 or 1024 (default 512). */
+    /**
+     * Edge of each of the six pictures in pixels: 256, 512 or 1024 (default 512,
+     * and 256 for more than four lights, which is all the texture has room for).
+     */
     resolution?: 256 | 512 | 1024;
     /**
      * Nothing closer to the light than this casts a shadow, in metres (default
@@ -26,9 +29,11 @@ export interface ZhudaPointShadowOptions {
      * The edge widens with distance from the lamp, as each texel does.
      */
     softness?: number;
-    /** Point lights this one holds pictures for, 1..4 (default 1): `render(..., light)`. */
+    /** Point lights this one holds pictures for, 1..8 (default 1): `render(..., light)`. */
     lights?: number;
 }
+/** The largest default edge of the pictures that `lights` lights have room for. */
+export declare const zhudaPointShadowResolution: (lights: number) => 256 | 512;
 export declare function validateZhudaPointShadow(options: ZhudaPointShadowOptions): string[];
 export declare class ZhudaPointShadow {
     private readonly scene;
@@ -39,7 +44,7 @@ export declare class ZhudaPointShadow {
     /** Bound in place of the pictures while they are drawn into. */
     private readonly blank;
     private readonly active;
-    /** Every texel's alpha: the lights the texture holds, plus 8 on WebGPU (see the shader). */
+    /** Every texel's alpha: the lights the texture holds, plus 16 on WebGPU (see the shader). */
     private readonly head;
     private written;
     private disposed;

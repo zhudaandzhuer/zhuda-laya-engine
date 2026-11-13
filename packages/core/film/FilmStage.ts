@@ -28,6 +28,11 @@ import { ZhudaReflectiveSurface } from '../shaders/ReflectiveSurface.ts';
 import { ZhudaWaterSurface } from '../shaders/WaterSurface.ts';
 import { mountZhudaModel } from '../runtime3d/ModelPlacements.ts';
 import { ZhudaLightFog } from '../runtime3d/LightFog.ts';
+import {
+  ZhudaAutoExposure,
+  ZhudaDepthOfField,
+  ZhudaMotionBlur,
+} from '../runtime3d/CameraEffects.ts';
 import { ZhudaScreenReflections } from '../runtime3d/ScreenReflections.ts';
 import { zhudaDecodeColor } from './ColorValues.ts';
 import { ZhudaPointShadow } from '../runtime3d/PointShadow.ts';
@@ -846,7 +851,8 @@ function buildFilmStageContents(
     const pointShadows: {
       id: string;
       light: number;
-      position: number[];
+      /** The light's node: a lamp that follows a model is where the model has carried it. */
+      node: { position: number[]; follows?: { node: string; offset?: number[] } };
       range: number;
       dirty: boolean;
     }[] = [];
@@ -886,7 +892,7 @@ function buildFilmStageContents(
         pointShadows.push({
           id: node.id,
           light: pointShadows.length,
-          position: [...node.position],
+          node,
           range: node.range ?? 12,
           dirty: true,
         });
@@ -937,13 +943,19 @@ function buildFilmStageContents(
       for (const casting of pointShadows)
         if (casting.dirty) {
           casting.dirty = false;
-          pointShadow!.render(casting.position, casting.range, casting.light);
+          pointShadow!.render(followPosition(casting.node), casting.range, casting.light);
         }
       if (frame) effects.finish?.setFrame(frame.width, frame.height, frame.index);
       if (frame) lightFog?.setFrame(frame.index);
       lightFog?.update(current.eye, current.target, camera.fieldOfView, aspect);
       lightFog?.renderShafts();
       effects.reflections?.update(current.eye, current.target, camera.fieldOfView, aspect);
+      // A film frame is not smeared from the camera of the frame drawn before it:
+      // a video gets its motion blur from its samples.
+      effects.motionBlur?.resetHistory();
+      effects.motionBlur?.update(current.eye, current.target, camera.fieldOfView, aspect);
+      // A film frame does not depend on the frames drawn before it.
+      effects.exposure?.setFrameSeconds(3600);
       for (const surface of [reflector, water]) {
         if (!surface) continue;
         surface.update(current.eye, current.target, camera.fieldOfView, aspect);
@@ -1190,6 +1202,9 @@ export function applyResolvedFilmLook(
 ): ZhudaAppliedLookParts & { finish?: ZhudaLensFinish } {
   let lightFog: ZhudaLightFog | undefined;
   let reflections: ZhudaScreenReflections | undefined;
+  let exposure: ZhudaAutoExposure | undefined;
+  let depthOfField: ZhudaDepthOfField | undefined;
+  let motionBlur: ZhudaMotionBlur | undefined;
   let finish: ZhudaLensFinish | undefined;
   let skyMaterial: any;
   let film: ZhudaFilmicPipeline | undefined;
@@ -1241,6 +1256,18 @@ export function applyResolvedFilmLook(
       const mirror = (reflections = new ZhudaScreenReflections(look.screenReflections));
       cleanups.push(() => mirror.dispose());
     }
+    if (look.depthOfField) {
+      const lens = (depthOfField = new ZhudaDepthOfField(look.depthOfField));
+      cleanups.push(() => lens.dispose());
+    }
+    if (look.motionBlur) {
+      const blur = (motionBlur = new ZhudaMotionBlur(look.motionBlur));
+      cleanups.push(() => blur.dispose());
+    }
+    if (look.autoExposure) {
+      const eye = (exposure = new ZhudaAutoExposure(look.autoExposure));
+      cleanups.push(() => eye.dispose());
+    }
     if (look.lightFog) {
       const { shafts, ...plain } = look.lightFog;
       const fog = (lightFog = new ZhudaLightFog({
@@ -1277,6 +1304,10 @@ export function applyResolvedFilmLook(
       sceneEffects: [
         ...(reflections ? [reflections.effect] : []),
         ...(lightFog ? [lightFog.effect] : []),
+        // The lens after the air; the eye last, on what the lens drew.
+        ...(depthOfField ? [depthOfField.effect] : []),
+        ...(motionBlur ? [motionBlur.effect] : []),
+        ...(exposure ? [exposure.effect] : []),
       ],
       finishEffects: finish ? [finish.effect] : [],
       exposure: look.grade.exposure,
@@ -1300,7 +1331,16 @@ export function applyResolvedFilmLook(
     scene3D.fogEnd = look.fog.end;
     cleanups.push(() => (scene3D.enableFog = false));
   }
-  return { lightFog, reflections, finish, sky: skyMaterial, film };
+  return {
+    lightFog,
+    reflections,
+    exposure,
+    depthOfField,
+    motionBlur,
+    finish,
+    sky: skyMaterial,
+    film,
+  };
 }
 
 function materialName(material: unknown, materials: Map<string, any>): string {

@@ -200,7 +200,7 @@ const STEPS = [
     id: 'shadows-that-carry',
     do: 'Day: four cascades at 4096 for anything wider than a room. Night: let the lamp that carries the scene cast shadows.',
     api: 'look.shadows: { "distance": 70, "resolution": 4096, "cascades": 4 }; light: { "kind": "point", "castsShadow": true }',
-    why: 'Up to four point lights and one spot light per scene can cast shadows. Without a shadow from the key light, light passes through walls.',
+    why: 'Up to eight point lights and one spot light per scene can cast shadows. Without a shadow from the key light, light passes through walls.',
     check: 'Advice holds no lights.unshadowed. Objects touch the ground in the preview.',
   },
   {
@@ -289,8 +289,8 @@ export function getQualityRoute() {
     notYet: [
       'Real-time global illumination: bounceLight is captured once at mount, and light can leak through a wall thinner than the probe spacing.',
       'Reflections of what is off screen: screenReflections shows only what the frame holds and not the sky; one planar mirror, one environment probe, no box projection.',
-      'Shadows from more than four point lights and one spot light. A point light that follows a model cannot cast one.',
-      'Automatic exposure, real-time depth of field and motion blur (stills and video get both by sampling).',
+      'Shadows from more than eight point lights and one spot light (LayaAir 3.4.2 draws one spot shadow map).',
+      "Motion blur of things that move by themselves: look.motionBlur smears only what the camera's own movement smears. look.depthOfField is one disc radius per pixel, without the shape of an aperture.",
       'Decals and parallax; the fine repeat inside one texture tile (variation hides the grid of tiles only); shapes swept along a path.',
       'Volumetric clouds; skin, hair and cloth shading.',
     ],

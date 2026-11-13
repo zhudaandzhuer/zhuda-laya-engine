@@ -197,6 +197,52 @@ try {
     'the second lamp lights through its box when it does not cast',
   );
 
+  // Eight lamps in two rows, each with a box on the camera's side of it and out of the others'
+  // reach: more than four share the texture at half the edge.
+  const places = [-9, -3, 3, 9].flatMap((x) => [
+    [x, -4],
+    [x, 4],
+  ]);
+  const eight = (casting) => ({
+    ...scene(false),
+    id: 'point-shadow-eight',
+    camera: { eye: [0, 16, 8], target: [0, 0, 0], focalLengthMm: 18 },
+    nodes: [
+      { id: 'floor', type: 'box', size: [60, 0.2, 40], position: [0, -0.2, 0], material: 'grey' },
+      ...places.flatMap(([x, z], i) => [
+        {
+          id: 'box' + i,
+          type: 'box',
+          size: [0.6, 1.5, 0.6],
+          position: [x, 0, z + 1],
+          material: 'grey',
+        },
+        {
+          id: 'lamp' + i,
+          type: 'light',
+          kind: 'point',
+          position: [x, 3, z],
+          intensity: 6,
+          range: 4.5,
+          ...(casting ? { castsShadow: true } : {}),
+        },
+      ]),
+    ],
+  });
+  const eightPlain = await render('eight-plain', eight(false));
+  const eightCast = await render('eight-shadowed', eight(true));
+  report.eight = places.map(([x, z]) => ({
+    plain: seen(eightPlain, [x, 0, z + 1.9]),
+    shadowed: seen(eightCast, [x, 0, z + 1.9]),
+  }));
+  report.eight.forEach((lamp, i) => {
+    assert.ok(
+      lamp.plain > 60,
+      `lamp ${i + 1} of eight lights the floor beyond its box (${lamp.plain})`,
+    );
+    assert.ok(lamp.shadowed < 25, `and with castsShadow the box shades it (${lamp.shadowed})`);
+  });
+
   // Other scenes in between, then the first frame again.
   for (let i = 0; i < 4; i++) await host.mountReport(scene(i % 2 === 0));
   const again = await render('shadowed-again', scene(true));

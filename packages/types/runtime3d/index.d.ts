@@ -23,6 +23,7 @@ export * from './Filmic.js';
 export * from './Lightmap.js';
 export * from './LightFog.js';
 export * from './ScreenReflections.js';
+export * from './CameraEffects.js';
 export * from './PointShadow.js';
 export * from './ProbeVolume.js';
 export * from './QualityGovernor.js';

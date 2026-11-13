@@ -193,6 +193,38 @@ The current consumer remains a first visual slice. Its screenshot review still i
   scene-linear, without tone mapping and lens finish, and their average is
   drawn through both once.
 
+## Automatic exposure, depth of field and motion blur while a game runs
+
+Three post-process effects for a picture that is drawn once
+(`packages/core/runtime3d/CameraEffects.ts`). A look builds them from
+`autoExposure`, `depthOfField` and `motionBlur` and puts them after the fog
+and before bloom; used alone they go into `ZhudaFilmicPipeline`'s
+`sceneEffects` in that order.
+
+- `ZhudaAutoExposure`: one pass reads the frame's brightness at 144 places
+  (the mean of the logarithms, the middle counted twice) into one texel; a
+  second moves "what the eye is used to" toward it by `1 - exp(-speed *
+  seconds)`; a third multiplies the picture by `key / brightness`, kept
+  between `min` and `max`. Nothing is read back to the CPU. The time of a
+  frame comes from the caller: `ZhudaSceneLook.update(..., frameSeconds)`,
+  1/60 when not given. `speed: 0` follows the frame at once; a film scene's
+  frames always do, so that a still does not depend on the frames before it.
+- `ZhudaDepthOfField`: the disc of a thin lens, `f² / (N (S − f))` at
+  infinity and that times `(D − S) / D` at depth `D`, as a share of the
+  frame's height and no larger than `maxRadius`. The picture is gathered at
+  half size from 24 places on the largest disc; a place counts when its own
+  disc reaches the pixel, or the pixel's disc reaches it and it lies behind,
+  so a sharp thing in front keeps its edge. `setLens` pulls focus in place.
+- `ZhudaMotionBlur`: from each pixel's depth and the camera of the frame
+  before, where the surface was on screen; twelve places along the way
+  between, over `shutter` of it and no longer than `maxLength` of the frame.
+  The camera's movement only: a thing that moves by itself is not smeared.
+  `update` once a frame with the camera; `resetHistory` after a cut.
+- Each needs the depth texture and one or three more full-screen passes.
+  Drawn through `ZhudaSceneLook` on desktop WebGL and WebGPU
+  (`npm run verify:camera-effects`, and with `CAMERA_EFFECTS_RENDERER=webgpu`);
+  what they cost in frame time is not measured, and no phone has drawn them.
+
 ## Shadows from a point light
 
 LayaAir 3.4.2 draws no shadow for a point light: a lamp lights the far side of
@@ -212,10 +244,13 @@ shadow.dispose();
   one texture of 3 by 2 tiles and switches the shadow on for the point light
   at exactly that position. Nothing is drawn per frame: call it again when
   the lamp or a caster has moved. Six more scene draws each time.
-- Up to four lamps in one set of pictures: `new ZhudaPointShadow(scene3D,
+- Up to eight lamps in one set of pictures: `new ZhudaPointShadow(scene3D,
   { lights: 2 })`, then `render(position, range, 1)` for the second;
   `clear(1)` switches its shadow off. 12 MB of pictures per lamp at the
-  default `resolution` of 512. Nothing closer to a lamp than `near` (0.5 m)
+  default `resolution` of 512; more than four lamps default to 256 (3 MB
+  each), which is what the texture has room for. A lamp that moves is drawn
+  again from where it is: `render` once a frame for a lantern that is
+  carried, six scene draws each time. Nothing closer to a lamp than `near` (0.5 m)
   casts, so the lamp's own head does not shade the scene.
 - The edge is filtered over `softness` texels (2), and the lookup moves out
   from the surface by a texel and a half so that a floor the light grazes

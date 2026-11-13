@@ -88,7 +88,7 @@ By day, four cascades at 4096 for anything wider than a room:
 "shadows": { "distance": 70, "resolution": 4096, "cascades": 4 }
 ```
 
-At night the lamps are the key light. Up to four point lights and one spot
+At night the lamps are the key light. Up to eight point lights and one spot
 light per scene can cast shadows: give the lamps that carry the scene
 `"castsShadow": true`, or their light passes through walls.
 
@@ -145,6 +145,16 @@ white and 4 is 28 (see [colour values](film-scenes.md#colour-values)). A
 coloured lamp keeps its colour on the lamp itself up to about 2; brighter, it
 is drawn near-white and its colour shows in bloom and halo. Keep `antialias` at its default, `msaa`: it smooths edges in a
 frame that is drawn once, as a preview and a game are.
+
+In a game, three more belong to the camera, each off unless the look asks:
+`autoExposure` (the picture's brightness follows what is in view, over a
+second or so: give it where a walk leads from a dark place into a bright
+one, and leave `grade.exposure` as the taste on top), `depthOfField`
+(`focusDistanceM`, `fStop`, `focalLengthMm`: a conversation, a thing picked
+up) and `motionBlur` (a fast turn or a run). Quality level 1 keeps automatic
+exposure and drops the other two; level 0 drops all three. A film still or
+video needs neither depth of field nor motion blur here: it gets them from
+the camera's `fStop` and its samples.
 
 ### 10. `look-at-it`
 
@@ -234,8 +244,8 @@ shows no shadow or the night scene no reflection.
 
 ## Limits
 
-128 real-time lights and 128 fog lights; one shadow-casting spot light and no
-shadow-casting point light; one reflector or water node; one environment
+128 real-time lights and 128 fog lights; one shadow-casting spot light and eight
+shadow-casting point lights; one reflector or water node; one environment
 probe; material bake sizes 128, 256, 512, 1024 and 2048; shadow maps of 1024,
 2048 or 4096 in 1, 2 or 4 cascades; 20 000 copies of a model per node; 512
 nodes.
@@ -248,11 +258,13 @@ nodes.
 - Reflections of what is off screen: `screenReflections` shows only what the
   frame holds, and not the sky; one planar mirror, one environment probe, no
   box projection.
-- Shadows from more than four point lights and one spot light. A point
-  light's shadow is drawn from where the lamp stands: a lamp that follows a
-  model cannot cast one.
-- Automatic exposure; real-time depth of field and motion blur (stills and
-  video get both by sampling).
+- Shadows from more than eight point lights and one spot light (LayaAir
+  3.4.2 draws one spot shadow map). More than four point lights share their
+  texture at half the sharpness.
+- Motion blur of things that move by themselves: `look.motionBlur` smears
+  only what the camera's own movement smears. `look.depthOfField` is one disc
+  radius a pixel, without the shape of an aperture. A still or a video gets
+  both exactly, by sampling.
 - Decals and parallax; a texture's own fine repeat (`variation` hides the
   grid of tiles, not the pattern inside one); shapes swept along a path.
 - Volumetric clouds; skin, hair and cloth shading.

@@ -20,7 +20,7 @@ import { prepareLaya342ManualDraw } from './Laya342Adapters.ts';
 export const ZHUDA_POINT_SHADOW_DEFINE = 'ZHUDA_POINT_SHADOW';
 
 /** Point lights one `ZhudaPointShadow` can hold, and the lit shaders look up. */
-export const ZHUDA_POINT_SHADOW_MAX_LIGHTS = 4;
+export const ZHUDA_POINT_SHADOW_MAX_LIGHTS = 8;
 
 const LIGHT_HEAD = 'Light getLight(in PointLight pointLight,';
 const LIGHT_TAIL =
@@ -41,7 +41,7 @@ const FACES: readonly { forward: readonly number[]; up: readonly number[] }[] = 
 // The pictures hold a distance in their red channel only. What the lookup
 // must know besides travels in the other three channels of the same texture,
 // written by the pass that writes the distances: every texel's alpha holds
-// how many lights the texture has room for (plus 8 where the rows are counted
+// how many lights the texture has room for (plus 16 where the rows are counted
 // from the other edge), and the green and blue of the six tiles of a light
 // hold its position (in two parts: half floats cannot hold a far position to
 // the centimetre), whether it casts, the reach, the bias as a share of it,
@@ -81,8 +81,8 @@ float zhudaPointShadow(vec3 lightPosition,vec3 normalWS,vec3 positionWS){
 float shade=1.0;
 #ifdef ${ZHUDA_POINT_SHADOW_DEFINE}
 float head=texture2DLodEXT(u_ZhudaPointShadowMap,vec2(0.02,0.02),0.0).a;
-float turned=step(7.5,head);
-float count=head-8.0*turned;
+float turned=step(12.0,head);
+float count=head-16.0*turned;
 float rows=2.0*count;
 for(int k=0;k<${ZHUDA_POINT_SHADOW_MAX_LIGHTS};k++){
 if(float(k)+0.5>count){break;}
@@ -189,7 +189,10 @@ export function installLaya342PointShadows(runtime: any = (globalThis as any).La
 }
 
 export interface ZhudaPointShadowOptions {
-  /** Edge of each of the six pictures in pixels: 256, 512 or 1024 (default 512). */
+  /**
+   * Edge of each of the six pictures in pixels: 256, 512 or 1024 (default 512,
+   * and 256 for more than four lights, which is all the texture has room for).
+   */
   resolution?: 256 | 512 | 1024;
   /**
    * Nothing closer to the light than this casts a shadow, in metres (default
@@ -205,9 +208,12 @@ export interface ZhudaPointShadowOptions {
    * The edge widens with distance from the lamp, as each texel does.
    */
   softness?: number;
-  /** Point lights this one holds pictures for, 1..4 (default 1): `render(..., light)`. */
+  /** Point lights this one holds pictures for, 1..8 (default 1): `render(..., light)`. */
   lights?: number;
 }
+
+/** The largest default edge of the pictures that `lights` lights have room for. */
+export const zhudaPointShadowResolution = (lights: number): 256 | 512 => (lights > 4 ? 256 : 512);
 
 export function validateZhudaPointShadow(options: ZhudaPointShadowOptions): string[] {
   const issues: string[] = [];
@@ -234,8 +240,13 @@ export function validateZhudaPointShadow(options: ZhudaPointShadowOptions): stri
     )
   )
     issues.push(`lights: use a whole number 1..${ZHUDA_POINT_SHADOW_MAX_LIGHTS}`);
-  else if ((o.resolution ?? 512) * 2 * ((lights as number | undefined) ?? 1) > 4096)
-    issues.push('resolution: 1024 holds at most two lights (the pictures are 4096 tall at most)');
+  else {
+    const count = (lights as number | undefined) ?? 1;
+    if ((o.resolution ?? zhudaPointShadowResolution(count)) * 2 * count > 4096)
+      issues.push(
+        'resolution: 1024 holds at most two lights and 512 at most four (the pictures are 4096 tall at most)',
+      );
+  }
   return issues;
 }
 
@@ -279,7 +290,7 @@ export class ZhudaPointShadow {
   /** Bound in place of the pictures while they are drawn into. */
   private readonly blank: any;
   private readonly active: boolean[];
-  /** Every texel's alpha: the lights the texture holds, plus 8 on WebGPU (see the shader). */
+  /** Every texel's alpha: the lights the texture holds, plus 16 on WebGPU (see the shader). */
   private readonly head: number;
   private written = false;
   private disposed = false;
@@ -301,7 +312,7 @@ export class ZhudaPointShadow {
       throw Error('Point shadows require RenderTextureFormat_R16G16B16A16');
     this.scene = scene;
     this.options = {
-      resolution: options.resolution ?? 512,
+      resolution: options.resolution ?? zhudaPointShadowResolution(options.lights ?? 1),
       near: options.near ?? 0.5,
       strength: options.strength ?? 1,
       bias: options.bias ?? 0.03,
@@ -310,7 +321,7 @@ export class ZhudaPointShadow {
     };
     // Measured on both backends (`verify:film-point-shadow`): on WebGPU the
     // viewport counts the rows of tiles from the other edge of the texture.
-    this.head = this.options.lights + (l.WebGPURenderDeviceFactory ? 8 : 0);
+    this.head = this.options.lights + (l.WebGPURenderDeviceFactory ? 16 : 0);
     this.active = new Array(this.options.lights).fill(false);
     const n = this.options.resolution;
     // Three by two tiles per light, the lights one above the other.

@@ -37,6 +37,9 @@ export function zhudaLookForQuality(
   if (level === 0) {
     next.lightFog = false;
     next.screenReflections = false;
+    next.depthOfField = false;
+    next.motionBlur = false;
+    next.autoExposure = false;
     next.bounceLight = false;
     if (options.keepGrade && next.grade)
       next.grade.bloom =
@@ -56,6 +59,8 @@ export function zhudaLookForQuality(
       next.grade.antialias = 'none';
     }
   }
+  // Depth of field and motion blur each draw the frame again at level 3 and 2 only.
+  if (level === 1) next.depthOfField = next.motionBlur = false;
   if (next.screenReflections) {
     if (level === 1) next.screenReflections = false;
     else next.screenReflections.steps = Math.max(8, Math.round(next.screenReflections.steps / 2));

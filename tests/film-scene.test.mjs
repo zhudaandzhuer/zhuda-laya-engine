@@ -905,7 +905,7 @@ test('shadow cascades and shadow-casting spot lights are validated', () => {
     [
       of(
         {},
-        ['p', 'q', 'r', 's', 't'].map((id, i) => ({
+        ['p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x'].map((id, i) => ({
           id,
           type: 'light',
           kind: 'point',
@@ -913,7 +913,7 @@ test('shadow cascades and shadow-casting spot lights are validated', () => {
           castsShadow: true,
         })),
       ),
-      'at most 4 point lights may cast shadows',
+      'at most 8 point lights may cast shadows',
     ],
     [
       of({}, [

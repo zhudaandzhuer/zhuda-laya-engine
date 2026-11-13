@@ -390,7 +390,7 @@ real-time lights on top of a lightmap, so the usual split is: bake what
 bounces and what is far away, and keep as real-time lights what should cast
 sharp shadows and make highlights. The sun (or moon) with `shadows` gives
 crisp shadows and highlights everywhere; `shadows.cascades: 4` keeps them
-sharp near the camera over a long `distance`. One spot light and up to four
+sharp near the camera over a long `distance`. One spot light and up to eight
 point lights per scene may cast shadows (`"castsShadow": true`). A point
 light's surroundings are drawn once from the lamp, out to its `range`, and
 again when its `range` or something that moves with time changes (six more

@@ -1,5 +1,6 @@
 // Generated from TypeScript source; run npm run types:generate.
 import { type ZhudaTextureRecipe } from '../procedural/TextureRecipe.js';
+import { type ZhudaAutoExposureOptions, type ZhudaDepthOfFieldOptions, type ZhudaMotionBlurOptions } from '../runtime3d/CameraEffects.js';
 export type ZhudaFilmVec3 = [number, number, number];
 export interface ZhudaFilmCamera {
     eye: ZhudaFilmVec3;
@@ -131,6 +132,27 @@ export interface ZhudaFilmLook {
      * polished places. Needs `grade`; off unless given.
      */
     screenReflections?: ZhudaFilmScreenReflections | false;
+    /**
+     * The picture's brightness follows what is in view, as eyes do: a dark
+     * alley is lifted, a noon square dimmed, over a second or so. `true` takes
+     * the defaults. In a film scene the adaptation is immediate (`speed` 0
+     * unless given): a still does not depend on the frames before it. Needs
+     * `grade`; off unless given.
+     */
+    autoExposure?: ZhudaAutoExposureOptions | boolean;
+    /**
+     * Depth of field in a picture drawn once (a game): what is nearer or
+     * farther than `focusDistanceM` is blurred. A film still or video does not
+     * need it: it gets depth of field from the camera's `fStop` by drawing many
+     * samples. Needs `grade`; off unless given.
+     */
+    depthOfField?: ZhudaDepthOfFieldOptions | false;
+    /**
+     * Motion blur from the camera's own movement in a picture drawn once (a
+     * game). `true` takes the defaults. A film video gets motion blur from its
+     * samples. Needs `grade`; off unless given.
+     */
+    motionBlur?: ZhudaMotionBlurOptions | boolean;
     /**
      * Light bounced once off the scene: probes on a grid over its objects
      * capture their surroundings when the scene is mounted, and light physically
@@ -430,11 +452,13 @@ export type ZhudaFilmNode = {
     /** Spot lights: full cone angle, 1..179 degrees (default 60). */
     spotAngleDeg?: number;
     /**
-     * The light casts shadows: one spot light and up to four point lights
-     * per scene may. A spot uses LayaAir's own shadow map. A point light's
+     * The light casts shadows: one spot light and up to eight point lights
+     * per scene may (more than four share their texture at half the
+     * sharpness). A spot uses LayaAir's own shadow map. A point light's
      * surroundings are drawn once from the lamp (`ZhudaPointShadow`), and
-     * again when its `range` or something that moves with time changes;
-     * nothing closer to it than 0.5 m casts (the lamp's own head).
+     * again when its `range` or something that moves with time changes: a
+     * lamp that `follows` a model casts from where the model has carried
+     * it. Nothing closer to it than 0.5 m casts (the lamp's own head).
      */
     castsShadow?: boolean;
     /**
@@ -547,7 +571,7 @@ export declare const ZHUDA_FILM_LIMITS: Readonly<{
     /** Point lights one `lightFog` can hold, fog-only lights included. */
     fogLights: 128;
     /** Point lights that may cast shadows (one spot light may as well). */
-    pointShadows: 4;
+    pointShadows: 8;
     models: 64;
     /** Copies of one model node; a scene holds at most `placementsTotal` in all. */
     placements: 20000;
@@ -608,6 +632,9 @@ export interface ZhudaResolvedFilmLook {
         shafts: Required<ZhudaFilmLightShafts> | false;
     }) | false;
     screenReflections: Required<ZhudaFilmScreenReflections> | false;
+    autoExposure: Required<ZhudaAutoExposureOptions> | false;
+    depthOfField: Required<ZhudaDepthOfFieldOptions> | false;
+    motionBlur: Required<ZhudaMotionBlurOptions> | false;
     bounceLight: (Required<Pick<ZhudaFilmBounceLight, 'spacing' | 'strength'>> & Pick<ZhudaFilmBounceLight, 'min' | 'max'>) | false;
     environment: Required<ZhudaFilmEnvironment> | false;
     panorama: Required<ZhudaFilmPanorama> | false;
@@ -635,7 +662,7 @@ export declare function sampleZhudaFilmCameraPath(keys: readonly ZhudaFilmCamera
  * distance, resolution or step count. `environment` and `panorama`
  * need assets or a capture; a running look cannot change them at all.
  */
-export declare function zhudaFilmLookRebuildReason(from: ZhudaResolvedFilmLook, to: ZhudaResolvedFilmLook): 'environment' | 'panorama' | 'shadows' | 'atmosphere' | 'fog' | 'ambientGround' | 'grade' | 'lightFog' | 'screenReflections' | 'bounceLight' | null;
+export declare function zhudaFilmLookRebuildReason(from: ZhudaResolvedFilmLook, to: ZhudaResolvedFilmLook): 'environment' | 'panorama' | 'shadows' | 'atmosphere' | 'fog' | 'ambientGround' | 'grade' | 'lightFog' | 'screenReflections' | 'autoExposure' | 'depthOfField' | 'motionBlur' | 'bounceLight' | null;
 /**
  * The box a scene's bounce light fills by default: its objects and lights
  * (not the ground, a box used as ground, a reflector or water), widened by

@@ -143,6 +143,53 @@ try {
     'at 2 s the light has moved and turned with it',
   );
 
+  // 4b. The lamp that follows casts a shadow from where the model has carried
+  // it: a post in front of it at 0 s, another beside it at 2 s.
+  const posts = [
+    {
+      id: 'post-front',
+      type: 'box',
+      size: [0.4, 1.2, 0.4],
+      position: [0, 0, 2.2],
+      material: 'concrete',
+    },
+    {
+      id: 'post-side',
+      type: 'box',
+      size: [0.4, 1.2, 0.4],
+      position: [3.3, 0, 0],
+      material: 'concrete',
+    },
+  ];
+  const carried = (castsShadow, time) =>
+    render(
+      `carried-${castsShadow ? 'shadow' : 'plain'}-${time}`,
+      scene({ motion: turning }, [ground, { ...lamp, castsShadow }, ...posts], dark),
+      time,
+    );
+  const BEHIND_FRONT = at([0, 0, 3.2]),
+    BEHIND_SIDE = at([4.2, 0, 0]);
+  report.carried = {
+    t0: {
+      plain: patch(await carried(false, 0), BEHIND_FRONT)[0],
+      shadow: patch(await carried(true, 0), BEHIND_FRONT)[0],
+    },
+    t2: {
+      plain: patch(await carried(false, 2), BEHIND_SIDE)[0],
+      shadow: patch(await carried(true, 2), BEHIND_SIDE)[0],
+    },
+  };
+  for (const [time, values] of Object.entries(report.carried)) {
+    assert.ok(
+      values.plain > 40,
+      `${time}: the lamp lights the ground behind the post (${values.plain})`,
+    );
+    assert.ok(
+      values.shadow < values.plain * 0.4,
+      `${time}: and with castsShadow the post shades it there (${values.plain} -> ${values.shadow})`,
+    );
+  }
+
   // 5. 30 mounts with and without the animation, then the first frame again.
   for (let i = 0; i < 30; i++) await host.mountReport(scene(i % 2 ? bend : {}));
   assert.ok(

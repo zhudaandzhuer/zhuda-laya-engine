@@ -158,6 +158,7 @@
     "verify:prefab-models": "node scripts/verify-prefab-models.mjs",
     "verify:film-webgpu": "node scripts/verify-film-webgpu.mjs",
     "verify:live-look": "node scripts/verify-live-look.mjs",
+    "verify:camera-effects": "node scripts/verify-camera-effects.mjs",
     "types:generate": "node packages/compiler/runtime3d-types.mjs",
     "types:check": "node packages/compiler/runtime3d-types.mjs --check",
     "prepare": "npm run build 1>&2",

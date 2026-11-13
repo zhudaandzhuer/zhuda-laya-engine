@@ -151,9 +151,13 @@ export class ZhudaSceneLook {
     target: readonly [number, number, number],
     fieldOfViewDeg: number,
     aspect: number,
+    /** Seconds since the frame before (default 1/60): how far automatic exposure adapts. */
+    frameSeconds = 1 / 60,
   ): void {
     if (this.disposed) throw Error('Disposed scene look');
     this.parts?.reflections?.update(eye, target, fieldOfViewDeg, aspect);
+    this.parts?.motionBlur?.update(eye, target, fieldOfViewDeg, aspect);
+    this.parts?.exposure?.setFrameSeconds(frameSeconds);
     if (!this.lightFog) return;
     this.lightFog.setFrame(this.frame++ % 1024);
     this.lightFog.update(eye, target, fieldOfViewDeg, aspect);

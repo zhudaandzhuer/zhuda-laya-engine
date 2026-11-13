@@ -14,12 +14,20 @@ import type { ZhudaFilmicPipeline } from '../runtime3d/Filmic.ts';
 import type { ZhudaLightFog } from '../runtime3d/LightFog.ts';
 import type { ZhudaScreenReflections } from '../runtime3d/ScreenReflections.ts';
 import type { ZhudaLensFinish } from '../runtime3d/LensFinish.ts';
+import type {
+  ZhudaAutoExposure,
+  ZhudaDepthOfField,
+  ZhudaMotionBlur,
+} from '../runtime3d/CameraEffects.ts';
 import type { ZhudaFilmVec3, ZhudaResolvedFilmLook } from './FilmScene.ts';
 
 /** What `applyResolvedFilmLook` built, kept so a later look can adjust it in place. */
 export interface ZhudaAppliedLookParts {
   lightFog?: ZhudaLightFog;
   reflections?: ZhudaScreenReflections;
+  exposure?: ZhudaAutoExposure;
+  depthOfField?: ZhudaDepthOfField;
+  motionBlur?: ZhudaMotionBlur;
   sky?: any;
   film?: ZhudaFilmicPipeline;
   finish?: ZhudaLensFinish;
@@ -140,6 +148,9 @@ export function updateZhudaLookInPlace(
     });
   if (parts.reflections && look.screenReflections)
     parts.reflections.setReflections(look.screenReflections);
+  if (parts.exposure && look.autoExposure) parts.exposure.setExposure(look.autoExposure);
+  if (parts.depthOfField && look.depthOfField) parts.depthOfField.setLens(look.depthOfField);
+  if (parts.motionBlur && look.motionBlur) parts.motionBlur.setBlur(look.motionBlur);
   if (parts.lightFog && look.lightFog) {
     const { shafts, ...plain } = look.lightFog;
     parts.lightFog.setEdgeSmoothing(!!look.grade && look.grade.antialias === 'msaa');
