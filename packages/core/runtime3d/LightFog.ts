@@ -221,7 +221,11 @@ float through=exp(-atEye*zhudaFogPath(k,t));
 // The colour arrives with its edges smoothed (multisampling); the depth has one
 // value per pixel. The fog of that one depth gives an edge pixel the fog of one
 // side only and puts the stair-steps back, most of all against the sky. What
-// the fog lets through is therefore averaged with the four neighbours.
+// the fog lets through is therefore averaged with the four neighbours: only
+// where the colour is multisampled (\`setEdgeSmoothing\`). Without smoothed
+// edges the average is wrong on both sides of every edge and draws a line
+// along it (seen as a pale outline round water at night).
+#ifdef ZHUDA_FOG_SMOOTH
 vec2 texel=1.0/max(u_Viewport.zw,vec2(1.0));
 float far=u_ZhudaFogColor.w;
 float around=exp(-atEye*zhudaFogPath(k,min(zhudaFogDepth(uv+vec2(texel.x,0.0))*len,far)));
@@ -229,6 +233,7 @@ around+=exp(-atEye*zhudaFogPath(k,min(zhudaFogDepth(uv-vec2(texel.x,0.0))*len,fa
 around+=exp(-atEye*zhudaFogPath(k,min(zhudaFogDepth(uv+vec2(0.0,texel.y))*len,far)));
 around+=exp(-atEye*zhudaFogPath(k,min(zhudaFogDepth(uv-vec2(0.0,texel.y))*len,far)));
 through=(through*2.0+around)/6.0;
+#endif
 vec3 glow=vec3(0.0);
 for(int i=0;i<${ZHUDA_FOG_MAX_LIGHTS};i++){
 if(float(i)>=u_ZhudaFogEye.w)break;
@@ -471,6 +476,21 @@ export class ZhudaLightFog {
     };
     this.material.setTexture('u_ZhudaShaftDepth', depth);
     this.material.addDefine(l.Shader3D.getDefineByName('ZHUDA_SHAFTS'));
+  }
+
+  /**
+   * Tells the fog whether the camera's picture is multisampled. With `true`
+   * the fog of each pixel is averaged with its four neighbours, which keeps
+   * the smoothed edges smooth under the fog; with `false` (the default) each
+   * pixel takes the fog of its own depth. A film look and `ZhudaSceneLook`
+   * set it from `grade.antialias`.
+   */
+  setEdgeSmoothing(on: boolean): void {
+    if (this.disposed) throw Error('Disposed light fog');
+    const l = (globalThis as any).Laya;
+    const define = l.Shader3D.getDefineByName('ZHUDA_FOG_SMOOTH');
+    if (on) this.material.addDefine(define);
+    else this.material.removeDefine(define);
   }
 
   /** Which frame of a sequence is drawn: moves the step noise so samples average it away. */

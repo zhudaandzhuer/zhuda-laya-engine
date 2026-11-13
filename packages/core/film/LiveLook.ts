@@ -142,6 +142,7 @@ export function updateZhudaLookInPlace(
     parts.reflections.setReflections(look.screenReflections);
   if (parts.lightFog && look.lightFog) {
     const { shafts, ...plain } = look.lightFog;
+    parts.lightFog.setEdgeSmoothing(!!look.grade && look.grade.antialias === 'msaa');
     parts.lightFog.setFog({
       ...plain,
       color: zhudaDecodeColor(plain.color),

@@ -1249,6 +1249,7 @@ export function applyResolvedFilmLook(
         color: zhudaDecodeColor(plain.color),
         ...(shafts ? { shafts } : {}),
       }));
+      fog.setEdgeSmoothing(!!look.grade && look.grade.antialias === 'msaa');
       if (shafts) {
         // `getForward` is the direction the light travels (checked against
         // the real shadows by verify:film-fog).

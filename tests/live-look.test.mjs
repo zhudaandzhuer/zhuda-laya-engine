@@ -211,6 +211,7 @@ test('in-place update moves the sun and sets every continuous value it owns', ()
     finishes = [],
     fogs = [],
     suns = [];
+  const smoothing = [];
   const parts = {
     sky,
     film: {
@@ -221,6 +222,7 @@ test('in-place update moves the sun and sets every continuous value it owns', ()
     lightFog: {
       attachSun: (scene, s) => suns.push([scene, s]),
       setFog: (values) => fogs.push(values),
+      setEdgeSmoothing: (on) => smoothing.push(on),
     },
   };
   updateZhudaLookInPlace(fakeLaya, { scene3D, camera, sun, parts }, look);
@@ -242,6 +244,8 @@ test('in-place update moves the sun and sets every continuous value it owns', ()
   assert.equal(scene3D.fogEnd, 90);
   assert.deepEqual(exposures, [2.5]);
   assert.deepEqual(antialias, [look.grade.antialias === 'msaa']);
+  // The fog averages over neighbours only where the picture is multisampled.
+  assert.deepEqual(smoothing, [look.grade.antialias === 'msaa']);
   // The strengths of the grade, the lens finish and the fog go in with it.
   assert.equal(grades[0].contrast, look.grade.contrast);
   assert.equal(grades[0].saturation, look.grade.saturation);

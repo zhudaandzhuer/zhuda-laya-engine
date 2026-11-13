@@ -257,6 +257,62 @@ another working directory will not find it. `docs/film-scenes.md` still shows
 `npx zhuda-laya-mcp` in three examples; those lines are in `d61f6db` already
 and were left as they are.
 
+### Merged, and tried on a consumer game (fourth round)
+
+Asked for: merge, then apply the engine to the city-walk game
+(`films/river-town-prefab`, "Zhuda City Explorer", WebGPU build). The pending
+model-emission change of the main checkout was committed first (`159a074`),
+this branch merged into `main` without conflict (`d9c56b4`); on `main`:
+`npm run verify` 485 of 485, `format:check`, `lint`, and the 20 GPU scripts
+20 of 20 on each backend (`EV/main/`). Nothing was pushed.
+
+The game was built with its own `tools/build.mjs` and drawn with its own
+`tools/day.mjs` (eight pictures over a day, 1280 by 720). Mean colour of each
+picture, before (engine `159a074`) and after:
+
+| Picture | Before | New engine, game unchanged | New engine, colours carried over |
+| --- | --- | --- | --- |
+| morning | 67, 65, 57 | 54, 54, 52 | 67, 65, 56 |
+| noon | 86, 82, 67 | 76, 74, 63 | 86, 82, 67 |
+| dusk | 44, 37, 34 | 25, 18, 18 | 44, 37, 34 |
+| night | 21, 21, 25 | 13, 12, 14 | 21, 21, 25 |
+| dawn, mist | 69, 66, 66 | 34, 31, 33 | 69, 66, 65 |
+| overcast | 64, 63, 57 | 52, 50, 48 | 64, 63, 57 |
+| town, night | 58, 45, 46 | 50, 35, 32 | 58, 45, 46 |
+| town, day | 128, 123, 108 | 119, 115, 104 | 128, 123, 108 |
+
+As predicted in section 5 the unchanged game is darker, the mist most of all.
+With `ambient`, `ambientGround` and the mist colour passed through
+`zhudaEncodeColor` in the game's `src/Main.ts` it draws what it drew.
+
+A defect found by looking at those pictures: a pale one-pixel outline round
+the canal at the end of the street, by day and by night, absent with the old
+engine drawn the same day. Two causes, separated by switching each off:
+
+1. The fog's averaging with its four neighbours (new in the delivery) ran
+   whether or not the picture was multisampled, and drew a line along the
+   water's edge. **Fixed**: `ZhudaLightFog.setEdgeSmoothing`, off by default,
+   switched on by a film look and `ZhudaSceneLook` only with
+   `grade.antialias: 'msaa'` (`packages/core/runtime3d/LightFog.ts`,
+   `film/LiveLook.ts`, `film/FilmStage.ts`, `tests/live-look.test.mjs`).
+2. **Open.** With multisampling on, `ZhudaWaterSurface` draws its foam colour
+   on the half-covered pixels just outside the water's edge, and the fog's
+   averaging still marks the edge rows. Not fixed in the engine. The game sets
+   `grade.antialias: 'none'` until it is; with that its eight pictures and the
+   pixels round the canal equal the old engine's (`EV/city/`).
+
+After the fog change: `npm run verify` passed 485 of 485 on three of four
+runs; one run reported a single failure that did not repeat and was not
+identified (the machine was under load). `format:check`, `lint`, and the 20
+GPU scripts 20 of 20 on each backend (`EV/after3/`).
+
+Frame cost of the game, its own `tools/quality.mjs` (60 frames drawn back to
+back, WebGPU, headless), three interleaved rounds, milliseconds at level 3:
+old engine 44.6, 42.9, 34.7; new with multisampling 37.2, 50.5, 42.5; new
+without 35.0, 39.8, 45.8. No difference that the spread allows to be seen.
+The game's own prefab comparison (`tools/check.mjs`) passes against its
+existing references.
+
 ## Lifecycle and failure cases
 
 - Repeated create and destroy: `verify-film-remount` passes on both backends;
@@ -292,6 +348,9 @@ times and every per-feature cost beyond the coarse table; phones, Windows,
 mini-game hosts; the river-town scene drawn with the patched engine; the
 rainy-night scene; a picture-by-picture comparison with 1.18.0.
 
-**In progress.** After the fixes both backends pass every script and the six
-items above are closed on this branch. What stays unverified is listed above.
-Nothing was pushed.
+7. (Open.) Multisampling with `ZhudaWaterSurface`: a one-pixel pale line at
+   the water's edge (fourth round, above).
+
+**In progress.** Merged into `main` locally. Both backends pass every script;
+items 1 to 6 are closed, item 7 is open. What stays unverified is listed
+above. Nothing was pushed.
