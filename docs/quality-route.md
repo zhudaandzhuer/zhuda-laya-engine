@@ -255,9 +255,11 @@ nodes.
 - Real-time global illumination. `bounceLight` is captured once when the
   scene is mounted: what moves afterwards keeps the light it had, and light
   can leak through a wall thinner than the probes' spacing.
-- Reflections of what is off screen: `screenReflections` shows only what the
-  frame holds, and not the sky; one planar mirror, one environment probe, no
-  box projection.
+- Reflections of things that are off screen: `screenReflections` shows what
+  the frame holds, and with `sky` the sky's colour where a ray finds nothing
+  (it cannot tell a roof off screen from open sky). One planar mirror, one
+  environment probe; the probe is looked up at its room's walls with
+  `environment.box`.
 - Shadows from more than eight point lights and one spot light (LayaAir
   3.4.2 draws one spot shadow map). More than four point lights share their
   texture at half the sharpness.
@@ -265,8 +267,10 @@ nodes.
   only what the camera's own movement smears. `look.depthOfField` is one disc
   radius a pixel, without the shape of an aperture. A still or a video gets
   both exactly, by sampling.
-- Decals and parallax; a texture's own fine repeat (`variation` hides the
-  grid of tiles, not the pattern inside one); shapes swept along a path.
+- Decals that wrap round geometry (a `decal` node lies on one plane);
+  parallax: LayaAir's PBR shader takes no height map. A texture's own fine
+  repeat (`variation` hides the grid of tiles, not the pattern inside one).
+  A `sweep` does not round its corners.
 - Volumetric clouds; skin, hair and cloth shading.
 
 ## Evidence

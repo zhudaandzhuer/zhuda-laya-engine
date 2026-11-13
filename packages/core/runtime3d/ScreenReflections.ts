@@ -7,8 +7,10 @@
  * reflects alike and by Fresnel: strongly at grazing angles, faintly head-on.
  * That is the look of rain and of polished places; it is not a substitute for
  * materials that differ. What is off screen, hidden behind something or behind
- * the camera is not reflected, and the sky is not (a ray that leaves the
- * picture finds nothing).
+ * the camera is not reflected. With `sky`, a ray that finds nothing and points
+ * upward shows the sky's colour instead: wet ground under an open sky is as
+ * bright as the sky it mirrors. Nothing tells such a ray that a roof or a wall
+ * off screen is in its way: keep `sky` at 0 indoors and under cover.
  */
 
 export interface ZhudaScreenReflectionsOptions {
@@ -20,6 +22,13 @@ export interface ZhudaScreenReflectionsOptions {
   distance?: number;
   /** Steps along the ray, 8..64 (default 32). Fewer are cheaper and coarser. */
   steps?: number;
+  /**
+   * How much of the sky shows where a reflected ray finds nothing and points
+   * upward, 0..1 (default 0: such a ray reflects nothing).
+   */
+  sky?: number;
+  /** The sky's colour for that, as light: scene-linear RGB (default black). */
+  skyColor?: readonly number[];
 }
 
 export const ZHUDA_SCREEN_REFLECTION_MAX_STEPS = 64;
@@ -34,6 +43,7 @@ export function validateZhudaScreenReflections(options: ZhudaScreenReflectionsOp
     ['strength', 0, 4],
     ['wetness', 0, 1],
     ['distance', 1, 200],
+    ['sky', 0, 1],
   ];
   for (const [key, min, max] of ranges)
     if (o[key] !== undefined && !inRange(o[key], min, max))
@@ -43,6 +53,12 @@ export function validateZhudaScreenReflections(options: ZhudaScreenReflectionsOp
     !(Number.isInteger(o.steps) && inRange(o.steps, 8, ZHUDA_SCREEN_REFLECTION_MAX_STEPS))
   )
     issues.push(`steps: use a whole number 8..${ZHUDA_SCREEN_REFLECTION_MAX_STEPS}`);
+  const colour: unknown = o.skyColor;
+  if (
+    colour !== undefined &&
+    !(Array.isArray(colour) && colour.length === 3 && colour.every((v) => inRange(v, 0, 1024)))
+  )
+    issues.push('skyColor: use [r, g, b] of 0 or more');
   return issues;
 }
 
@@ -54,6 +70,8 @@ export function resolveZhudaScreenReflections(
     wetness: options.wetness ?? 0.5,
     distance: options.distance ?? 30,
     steps: options.steps ?? 32,
+    sky: options.sky ?? 0,
+    skyColor: options.skyColor ? [...options.skyColor] : [0, 0, 0],
   };
 }
 
@@ -163,7 +181,10 @@ vec2 border=smoothstep(vec2(0.0),vec2(0.1),where)*smoothstep(vec2(0.0),vec2(0.1)
 float fade=found*border.x*border.y*(1.0-at)*step(depth,u_ZhudaSsrEye.w);
 // The reflection alone, at half size: a blur across neighbours joins the
 // pixels whose rays found a small bright thing with those whose rays missed it.
-gl_FragColor=vec4(reflected.rgb*(fresnel*fade*u_ZhudaSsrShape.x),fade);
+// Where the ray found nothing and points upward: the sky, not at all at the
+// horizon and fully from a little above it.
+float open=(1.0-found)*smoothstep(0.0,0.15,r.y)*step(depth,u_ZhudaSsrEye.w)*u_ZhudaSsrSky.w;
+gl_FragColor=vec4((reflected.rgb*fade+u_ZhudaSsrSky.rgb*open)*(fresnel*u_ZhudaSsrShape.x),max(fade,open));
 }`;
 
 // Seven taps along u_ZhudaSsrBlur.xy (one texel of the half-size picture), weighted
@@ -222,6 +243,7 @@ function register(l: any) {
     u_ZhudaSsrRight: l.ShaderDataType.Vector4,
     u_ZhudaSsrUp: l.ShaderDataType.Vector4,
     u_ZhudaSsrShape: l.ShaderDataType.Vector4,
+    u_ZhudaSsrSky: l.ShaderDataType.Vector4,
   });
   add('ZhudaScreenReflectionsBlur', BLUR_FRAGMENT, { u_ZhudaSsrBlur: l.ShaderDataType.Vector4 });
   add('ZhudaScreenReflectionsComposite', COMPOSITE_FRAGMENT, {
@@ -361,6 +383,10 @@ export class ZhudaScreenReflections {
       'u_ZhudaSsrShape',
       // strength, reflection seen head-on, reach, steps
       new l.Vector4(o.strength, 0.02 + 0.25 * o.wetness, o.distance, o.steps),
+    );
+    this.material.setVector4(
+      'u_ZhudaSsrSky',
+      new l.Vector4(o.skyColor[0], o.skyColor[1], o.skyColor[2], o.sky),
     );
   }
 

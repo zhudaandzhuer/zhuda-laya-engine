@@ -110,6 +110,57 @@ try {
   report.off = patch(off, MIRRORED);
   assert.ok(report.off[0] < 12, 'strength 0 reflects nothing');
 
+  // The sky: a dark floor under a bright flat sky, seen along its length. The
+  // floor ahead mirrors nothing on screen (its rays go up past the top of the
+  // picture); with `sky` it shows the sky's colour, in the sky's own hue.
+  const open = (screenReflections) => ({
+    ...scene(),
+    id: 'reflections-sky',
+    look: {
+      sky: [0.2, 0.5, 0.9],
+      ambient: [0.02, 0.02, 0.02],
+      sun: { intensity: 0 },
+      shadows: false,
+      fog: false,
+      grade: { exposure: 1, bloom: 0, ao: 0 },
+      screenReflections,
+    },
+    nodes: [
+      { id: 'floor', type: 'box', size: [40, 0.2, 60], position: [0, -0.2, -20], material: 'wall' },
+    ],
+  });
+  const FLOOR = project([0, 0, -12]);
+  const dry = await render('sky-0', open({ strength: 1, wetness: 1 }));
+  const mirrored = await render('sky-1', open({ strength: 1, wetness: 1, sky: 1 }));
+  const half = await render('sky-half', open({ strength: 1, wetness: 1, sky: 0.5 }));
+  const tinted = await render(
+    'sky-red',
+    open({ strength: 1, wetness: 1, sky: 1, skyColor: [0.9, 0.1, 0.1] }),
+  );
+  report.sky = {
+    without: patch(dry, FLOOR),
+    with: patch(mirrored, FLOOR),
+    half: patch(half, FLOOR),
+    red: patch(tinted, FLOOR),
+  };
+  assert.ok(
+    report.sky.without[2] < 20,
+    `without sky the floor ahead is dark (${report.sky.without})`,
+  );
+  assert.ok(
+    report.sky.with[2] > report.sky.without[2] + 40 &&
+      report.sky.with[2] > report.sky.with[0] * 1.5,
+    `with it the floor shows the blue of the sky (${report.sky.with})`,
+  );
+  assert.ok(
+    report.sky.half[2] > report.sky.without[2] + 10 && report.sky.half[2] < report.sky.with[2] - 10,
+    `half of it at 0.5 (${report.sky.half})`,
+  );
+  assert.ok(
+    report.sky.red[0] > report.sky.red[2] * 1.5,
+    `and another colour when one is given (${report.sky.red})`,
+  );
+
   // Other scenes in between, then the first frame again.
   for (let i = 0; i < 6; i++) await host.mountReport(scene(i % 2 ? { strength: 1 } : undefined));
   const again = await render('reflections-again', scene({ strength: 2, wetness: 1, steps: 64 }));

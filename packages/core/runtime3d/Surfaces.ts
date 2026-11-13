@@ -141,7 +141,11 @@ export function createSurfaceMaterial(s: SurfaceMaterialSpec) {
     ] = value?.bitmap || value;
   const blend = s.blend || 'opaque',
     Class = s.type === 'pbr' ? l.PBRStandardMaterial : l.UnlitMaterial;
-  if (blend === 'alpha') m.renderMode = Class.RENDERMODE_TRANSPARENT;
+  // LayaAir 3.4.2 names the modes of its PBR material in an enum of their own
+  // (`PBRRenderMode`); the unlit material keeps them on its class. `Fade` is
+  // the plain alpha blend: the whole surface, highlights included, fades.
+  if (blend === 'alpha')
+    m.renderMode = s.type === 'pbr' ? l.PBRRenderMode.Fade : Class.RENDERMODE_TRANSPARENT;
   else if (blend === 'cutout') {
     m.alphaTest = true;
     m.alphaTestValue = s.alphaCutoff ?? 0.5;

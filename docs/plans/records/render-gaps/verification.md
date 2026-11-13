@@ -22,8 +22,8 @@ Renderer: Apple M4)`. WebGPU: `apple metal-3`.
 | --- | --- | --- |
 | 1. Camera: automatic exposure, depth of field, motion blur | Built, drawn on WebGL and WebGPU | below |
 | 2. Shadows: a carried lamp casts; eight point lights | Built, drawn on WebGL and WebGPU; more than one spot shadow not built | below |
-| 3. Reflections of what is off screen | Not started | |
-| 4. Decals, parallax, swept shapes | Not started | |
+| 3. Reflections of what is off screen | Sky fallback and box projection built, drawn on both backends; off-screen things themselves not built | below |
+| 4. Decals, parallax, swept shapes | Decals on a plane and swept shapes built, drawn on both backends; parallax and wrapping decals not built | below |
 | 5. Bounce light that updates and leaks less | Not started | |
 | 6. Clouds; skin, hair and cloth | Not started | |
 
@@ -31,13 +31,17 @@ Renderer: Apple M4)`. WebGPU: `apple metal-3`.
 
 | Check | Exact command or procedure | Result | Artifact |
 | --- | --- | --- | --- |
-| Build, types, declarations, doctor, tests | `npm run verify` | PASS, 491 of 491 | `EV/gap12/verify.log` |
+| Build, types, declarations, doctor, tests | `npm run verify` | PASS, 498 of 498 (491 after areas 1 and 2) | `EV/gap34/verify.log` |
 | Format, lint | `npm run format:check`, `npm run lint` | PASS | `EV/gap12/` |
 | Camera effects, WebGL | `npm run verify:camera-effects` | PASS | `EV/gap12/webgl/logs/verify-camera-effects.log` |
 | Camera effects, WebGPU | `CAMERA_EFFECTS_RENDERER=webgpu npm run verify:camera-effects` | PASS | `EV/gap12/webgpu/logs/verify-camera-effects.log` |
 | Carried lamp's shadow | `npm run verify:film-animation` (step 4b), both backends | PASS | `EV/gap12/*/logs/verify-film-animation.log` |
 | Eight lamps' shadows | `npm run verify:film-point-shadow` (eight lamps), both backends | PASS | `EV/gap12/*/logs/verify-film-point-shadow.log` |
-| Everything else that draws | the other 18 GPU scripts on WebGL and with the WebGPU switches; `npm run verify:film-webgpu` | PASS | `EV/gap12/` |
+| Sky in reflections | `npm run verify:film-reflections` (sky step), both backends | PASS | `EV/gap34/*/logs/verify-film-reflections.log` |
+| Box projection | `npm run verify:film-environment` (room step), both backends | PASS | `EV/gap34/*/logs/verify-film-environment.log` |
+| Swept kerb | `npm run verify:film-shapes` (sweep step), both backends | PASS | `EV/gap34/*/logs/verify-film-shapes.log` |
+| Decals | `npm run verify:film-decals`, both backends | PASS | `EV/gap34/*/logs/verify-film-decals.log` |
+| Everything else that draws | the other GPU scripts on WebGL and with the WebGPU switches (22 in all); `npm run verify:film-webgpu` (18) | PASS | `EV/gap34/` |
 
 ### 1. Camera
 
@@ -76,6 +80,46 @@ brightness between neighbours along a row. The same numbers on both backends.
   one spot shadow map; a second would need the point-shadow approach for
   spots.
 
+### 3. Reflections
+
+- `screenReflections.sky` (0..1, default 0) and `skyColor`: a reflected ray
+  that finds nothing and points upward shows the sky's colour (the look's
+  horizon colour unless given). A dark floor under a blue sky, seen along its
+  length, blue channel of the floor ahead: 0 without, 138 with `sky: 1`
+  (131 on WebGPU), 88 at 0.5; red 119 with a red `skyColor`. It cannot tell
+  a roof off screen from open sky: off by default.
+- `environment.box` (and `ZhudaEnvironmentProbe.capture({ box })`): LayaAir's
+  box projection. The scene's own probe has no node and its position cannot
+  be set (the setter reads `owner.transform`), so a second `ReflectionProbe`
+  is put on a node at the capture position with the scene probe's settings,
+  the room as its bounds (in the node's frame) and `boxProjection` on. A
+  mirror floor in a room 8 by 3 by 8 m with a lamp panel on the back wall:
+  where the camera's reflected line of sight meets the panel, the floor is
+  0, 0, 0 taken as infinitely far and 255, 0, 0 with the box; a scene without
+  a box after one with it is as before.
+- Things that are off screen are still not reflected: **not built**.
+
+### 4. Surfaces
+
+- `sweep` node and `createZhudaSweepMesh`: a cross-section carried along a
+  path, upright, of one width through a corner, open or closed. Unit checks:
+  winding, bounds of a straight run, a right-angle corner, a ring and a
+  slope, the area of the top. Drawn: a kerb round a corner, its top lit
+  alike on both legs (175 and 175 of 255) and differently from its side
+  (181); the floor there is 34 without it.
+- `decal` node and `ZhudaDecal`: a mark on a plane with a baked outline. On
+  a pale floor (164): 6 at the middle of a black mark, 40 on its soft edge,
+  164 beside it; 114 at opacity 0.5; a mark in a post's shadow 87 against
+  205 out of it; a red line on a wall, the wall above it untouched; the same
+  seed the same frame, another seed another; identical after 20 mounts.
+- `createSurfaceMaterial({ type: 'pbr', blend: 'alpha' })` no longer throws
+  (it set a constant LayaAir 3.4.2 does not have); it is `PBRRenderMode.Fade`.
+- Parallax: **not built**. LayaAir's PBR shader has no height input; it
+  would need every map of a lit material sampled again at a shifted place
+  through the engine's own lit hook.
+- Decals projected onto whatever lies under them: **not built** (a forward
+  renderer has no surface buffer to project into).
+
 ## Lifecycle and failure cases
 
 - Repeated create and destroy: ten rebuilds of a look with all three camera
@@ -98,8 +142,11 @@ Not applicable: no consumer prefab is changed.
 - Motion blur is the camera's only; depth of field has no aperture shape and
   can bleed a bright background a little over a sharp edge in front of it.
 - A carried lamp's shadow costs six scene draws each time it is drawn again.
-- No picture was looked at by a person: the scripts assert numbers.
+- No picture was looked at by a person, except the swept kerb: the scripts
+  assert numbers.
+- A decal 4 mm off a surface can flicker against it far from the camera
+  (depth precision); not measured.
 - Phones and mini-game hosts: not drawn.
 
-**In progress.** Areas 1 and 2 are built and verified on desktop WebGL and
-WebGPU; areas 3 to 6 are not started.
+**In progress.** Areas 1 to 4 are built as far as the table above says and
+verified on desktop WebGL and WebGPU; areas 5 and 6 are not started.

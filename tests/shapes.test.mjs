@@ -5,8 +5,10 @@ import assert from 'node:assert/strict';
 import {
   createZhudaExtrudeMesh,
   createZhudaLatheMesh,
+  createZhudaSweepMesh,
   validateZhudaExtrude,
   validateZhudaLathe,
+  validateZhudaSweep,
 } from '../packages/core/procedural/Geometry.ts';
 import { validateZhudaFilmScene } from '../packages/core/film/FilmScene.ts';
 
@@ -175,6 +177,142 @@ test('an extrusion raises an outline, concave or not, drawn either way round', (
   assert.equal(createZhudaExtrudeMesh({ outline, height: 1, caps: false }).indices.length / 3, 12);
 });
 
+test('a sweep carries a cross-section along a path, upright and of one width', () => {
+  // A kerb 0.3 m wide and 0.2 m high, along 4 m of +Z.
+  const kerb = [
+    [0, 0],
+    [0.3, 0],
+    [0.3, 0.2],
+    [0, 0.2],
+  ];
+  const straight = createZhudaSweepMesh({
+    profile: kerb,
+    path: [
+      [0, 0, 0],
+      [0, 0, 4],
+    ],
+  });
+  // Four bands of two triangles and two ends of two.
+  assert.equal(straight.indices.length / 3, 4 * 2 + 2 * 2);
+  // Across is to the left of the way the path runs: toward +X when it runs along +Z.
+  assert.deepEqual(bounds(straight), { min: [0, 0, 0], max: [0.3, 0.2, 4] });
+  assertWinding(straight);
+  const top = triangles(straight).filter(([a]) => a.n[1] > 0.5);
+  const area = top.reduce(
+    (sum, [a, b, c]) => sum + Math.hypot(...cross(sub(b.p, a.p), sub(c.p, a.p))) / 2,
+    0,
+  );
+  assert.ok(Math.abs(area - 0.3 * 4) < 1e-6, "the top is the section's width times the length");
+  const reversed = createZhudaSweepMesh({
+    profile: [...kerb].reverse(),
+    path: [
+      [0, 0, 0],
+      [0, 0, 4],
+    ],
+  });
+  assertWinding(reversed);
+  assert.deepEqual(bounds(reversed), bounds(straight));
+  assert.equal(
+    createZhudaSweepMesh({
+      profile: kerb,
+      path: [
+        [0, 0, 0],
+        [0, 0, 4],
+      ],
+      caps: false,
+    }).indices.length / 3,
+    8,
+  );
+  // Round a right-angle corner the section keeps its width: the outer corner
+  // is a square's diagonal away, not a section's width.
+  const corner = createZhudaSweepMesh({
+    profile: kerb,
+    path: [
+      [0, 0, 0],
+      [0, 0, 4],
+      [-4, 0, 4],
+    ],
+  });
+  assertWinding(corner);
+  assert.deepEqual(bounds(corner), { min: [-4, 0, 0], max: [0.3, 0.2, 4.3] });
+  // A ring has no ends: a square walk 2 m across, the kerb outside it.
+  const ring = createZhudaSweepMesh({
+    profile: kerb,
+    closed: true,
+    path: [
+      [0, 0, 0],
+      [0, 0, 2],
+      [-2, 0, 2],
+      [-2, 0, 0],
+    ],
+  });
+  assertWinding(ring);
+  assert.equal(ring.indices.length / 3, 4 * 4 * 2);
+  assert.deepEqual(bounds(ring), { min: [-2.3, 0, -0.3], max: [0.3, 0.2, 2.3] });
+  // Up a slope the section stays upright: its sides are still vertical.
+  const ramp = createZhudaSweepMesh({
+    profile: kerb,
+    path: [
+      [0, 0, 0],
+      [0, 1, 4],
+    ],
+    caps: false,
+  });
+  assertWinding(ramp);
+  for (const { n } of vertices(ramp).filter((v) => Math.abs(v.n[0]) > 0.5))
+    assert.ok(Math.abs(n[1]) < 1e-9 && Math.abs(n[2]) < 1e-9, 'a side faces straight across');
+});
+
+test('a sweep that cannot be built is refused with the place that is wrong', () => {
+  const profile = [
+    [0, 0],
+    [1, 0],
+    [1, 1],
+  ];
+  assert.deepEqual(validateZhudaSweep({ profile, path: [[0, 0, 0]] }), [
+    'path: use 2..1024 [x, y, z] points',
+  ]);
+  assert.deepEqual(
+    validateZhudaSweep({
+      profile: [
+        [0, 0],
+        [1, 1],
+      ],
+      path: [
+        [0, 0, 0],
+        [0, 0, 1],
+        [0, 0, 1],
+      ],
+    }),
+    ['profile: use 3..64 [across, up] pairs', 'path[2]: the same point as the one before it'],
+  );
+  assert.deepEqual(
+    validateZhudaSweep({
+      profile,
+      path: [
+        [0, 0, 0],
+        [0, 0, 4],
+        [0, 0, 0.5],
+      ],
+    }),
+    ['path[1]: the path turns back on itself here'],
+  );
+  assert.deepEqual(
+    validateZhudaSweep({
+      profile,
+      closed: true,
+      path: [
+        [0, 0, 0],
+        [0, 0, 4],
+        [4, 0, 4],
+        [0, 0, 0],
+      ],
+    }),
+    ['path: a closed path does not repeat its first point at the end'],
+  );
+  assert.throws(() => createZhudaSweepMesh({ profile, path: [] }), /Invalid sweep: path/);
+});
+
 test('bad shapes are refused with the place that is wrong', () => {
   assert.deepEqual(
     validateZhudaLathe({
@@ -296,7 +434,7 @@ test('film scenes take lathe and extrude nodes', () => {
       'scene.nodes[1].sides: unknown field',
       'scene.nodes[1].profile[1]: the radius cannot be negative',
       'scene.nodes[2].height: use a positive number of metres',
-      'scene.nodes[3].type: use prop, box, lathe, extrude, ground, model, reflector, water or light',
+      'scene.nodes[3].type: use prop, box, lathe, extrude, sweep, decal, ground, model, reflector, water or light',
     ],
   );
 });

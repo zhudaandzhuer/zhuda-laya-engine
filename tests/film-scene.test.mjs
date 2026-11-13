@@ -786,7 +786,15 @@ test('look.environment is validated, resolved and merged by patches', () => {
     reflection: 1,
     ambient: 1,
     reflectionOnly: false,
+    box: false,
   });
+  // The room the capture stands for.
+  assert.deepEqual(
+    resolveZhudaFilmLook({
+      environment: { position: [0, 1.5, 0], box: { min: [-4, 0, -4], max: [4, 3, 4] } },
+    }).environment.box,
+    { min: [-4, 0, -4], max: [4, 3, 4] },
+  );
   assert.equal(
     resolveZhudaFilmLook({ environment: { position: [1, 2, 3], reflectionOnly: true } }).environment
       .reflectionOnly,
@@ -802,6 +810,15 @@ test('look.environment is validated, resolved and merged by patches', () => {
     [
       { environment: { position: [0, 0, 0], reflectionOnly: 1 } },
       'environment.reflectionOnly: true or false',
+    ],
+    [{ environment: { position: [0, 0, 0], box: true } }, 'environment.box: use { min, max }'],
+    [
+      { environment: { position: [0, 0, 0], box: { min: [0, 0, 0], max: [1, 0, 1] } } },
+      'environment.box.min: below max on every axis',
+    ],
+    [
+      { environment: { position: [0, 0, 0], box: { min: [0, 0, 0], max: [1, 1, 1], pad: 1 } } },
+      'environment.box.pad: unknown field',
     ],
   ];
   for (const [look, fragment] of cases)

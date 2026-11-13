@@ -28,6 +28,7 @@ import { ZhudaReflectiveSurface } from '../shaders/ReflectiveSurface.ts';
 import { ZhudaWaterSurface } from '../shaders/WaterSurface.ts';
 import { mountZhudaModel } from '../runtime3d/ModelPlacements.ts';
 import { ZhudaLightFog } from '../runtime3d/LightFog.ts';
+import { ZhudaDecal } from '../runtime3d/Decals.ts';
 import {
   ZhudaAutoExposure,
   ZhudaDepthOfField,
@@ -55,6 +56,7 @@ import { createZhudaProceduralMaterial } from '../procedural/ProceduralMaterial.
 import {
   createZhudaBoxMesh,
   createZhudaExtrudeMesh,
+  createZhudaSweepMesh,
   createZhudaLatheMesh,
   mergeZhudaMeshes,
   transformZhudaMesh,
@@ -619,6 +621,12 @@ function buildFilmStageContents(
           createZhudaExtrudeMesh({ outline: node.outline, height: node.height }),
           { position: node.position, yawDeg: node.yawDeg },
         );
+      } else if (node.type === 'sweep') {
+        material = node.material;
+        mesh = transformZhudaMesh(
+          createZhudaSweepMesh({ profile: node.profile, path: node.path, closed: node.closed }),
+          { position: node.position, yawDeg: node.yawDeg },
+        );
       } else if (node.type === 'ground') {
         material = node.material;
         mesh = transformZhudaMesh(
@@ -657,6 +665,14 @@ function buildFilmStageContents(
         cleanups.push(() => mesh.dispose());
         batches.set(name, (batches.get(name) ?? 0) + 1);
       }
+    }
+
+    // Marks on surfaces, after the surfaces they lie on.
+    for (const node of scene.nodes) {
+      if (node.type !== 'decal') continue;
+      const { id: _id, type: _type, ...options } = node;
+      const decal = new ZhudaDecal(scene3D, options);
+      cleanups.push(() => decal.dispose());
     }
 
     // Models: clones from the shared library; baked lightmaps through Laya's
@@ -1253,7 +1269,11 @@ export function applyResolvedFilmLook(
   }
   if (look.grade) {
     if (look.screenReflections) {
-      const mirror = (reflections = new ZhudaScreenReflections(look.screenReflections));
+      const mirror = (reflections = new ZhudaScreenReflections({
+        ...look.screenReflections,
+        // A display value like every colour of the look; the effect takes light.
+        skyColor: zhudaDecodeColor(look.screenReflections.skyColor),
+      }));
       cleanups.push(() => mirror.dispose());
     }
     if (look.depthOfField) {

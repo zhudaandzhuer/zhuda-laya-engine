@@ -97,6 +97,16 @@ pure part (GGX mip chain and nine ambient colours in Laya's convention,
 which mirrors X) for tools that have their own cube picture. One probe:
 reflections are exact at its position only.
 
+Indoors, give the capture its room: `capture({ position, box: { min, max } })`
+(or `environment.box` in a look). A second LayaAir `ReflectionProbe` is then
+put at the capture position with the scene probe's settings, the room as its
+bounds and box projection on: what is drawn inside the box looks the capture
+up where its reflected ray meets the box, so a lamp on a wall is mirrored at
+its place on the wall and not as if it were infinitely far. The scene's own
+probe has no place and cannot be projected; things outside the box keep it.
+Drawn on desktop WebGL and WebGPU (`npm run verify:film-environment`, the
+room step).
+
 ## Offline convolved HDR environments
 
 ```ts
@@ -224,6 +234,24 @@ and before bloom; used alone they go into `ZhudaFilmicPipeline`'s
   Drawn through `ZhudaSceneLook` on desktop WebGL and WebGPU
   (`npm run verify:camera-effects`, and with `CAMERA_EFFECTS_RENDERER=webgpu`);
   what they cost in frame time is not measured, and no phone has drawn them.
+
+## Marks on surfaces
+
+`new ZhudaDecal(scene3D, { position, size, normal, color, opacity, roughness,
+shape, edge, ragged, seed })` lays a rectangle 4 mm off a flat surface and
+draws it with alpha, as a physically based surface of its own colour and
+roughness: it takes the light and the shadows the surface under it takes,
+and a dark smooth mark on rough ground reads as wet. Its outline is baked
+when it is made into a picture of 64, 128 or 256 texels (`blob`, `patch` or
+`ring`); nothing reaches the picture's border, so the rectangle itself never
+shows. It casts no shadow and writes no depth. It is not projected: it does
+not wrap round a corner or follow a bump. A film scene has it as a `decal`
+node. Drawn on desktop WebGL and WebGPU (`npm run verify:film-decals`).
+
+`createSurfaceMaterial({ type: 'pbr', blend: 'alpha' })` used to throw
+("unknown renderMode: undefined"): LayaAir 3.4.2 names the modes of its PBR
+material in `PBRRenderMode`, not on the class. It is `Fade` now, the plain
+alpha blend.
 
 ## Shadows from a point light
 

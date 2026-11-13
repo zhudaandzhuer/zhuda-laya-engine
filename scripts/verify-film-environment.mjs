@@ -200,6 +200,50 @@ try {
     'the same after 20 mounts with and without it',
   );
 
+  // Box projection: a room 8 by 3 by 8 m with a mirror floor and a lamp panel
+  // on its back wall at 1.5 m. The camera, 0.6 m up, looks at the floor 2 m
+  // ahead: that line of sight, mirrored, meets the back wall at 1.5 m, on the
+  // panel. Taken as infinitely far, the capture is looked up 2.7 m up the wall
+  // instead, above the panel.
+  const room = (box) => ({
+    schemaVersion: 1,
+    id: 'environment-room',
+    camera: { eye: [0, 0.6, 3], target: [0, 0, 1], focalLengthMm: 35 },
+    look: {
+      sky: [0, 0, 0],
+      ambient: [0, 0, 0],
+      sun: { intensity: 0 },
+      shadows: false,
+      environment: {
+        position: [0, 1.5, 0],
+        ...(box ? { box: { min: [-4, 0, -4], max: [4, 3, 4] } } : {}),
+      },
+    },
+    materials,
+    nodes: [
+      { id: 'floor', type: 'box', size: [8, 0.2, 8], position: [0, -0.2, 0], material: 'mirror' },
+      { id: 'panel', type: 'box', size: [1.6, 0.6, 0.1], position: [0, 1.2, -4], material: 'red' },
+    ],
+  });
+  const FLOOR = projectPixel([0, 0, 1], [0, 0.6, 3], [0, 0, 1], W, H);
+  report.room = {
+    infinite: patch(await render('room-infinite', room(false)), FLOOR),
+    box: patch(await render('room-box', room(true)), FLOOR),
+  };
+  assert.ok(
+    report.room.infinite[0] < 40,
+    `taken as infinitely far, the floor does not show the panel there (${report.room.infinite})`,
+  );
+  assert.ok(
+    report.room.box[0] > report.room.infinite[0] + 60,
+    `with the room's box it does (${report.room.box})`,
+  );
+  assert.deepEqual(
+    patch(await render('room-infinite-again', room(false)), FLOOR),
+    report.room.infinite,
+    'and a scene without a box after one with it is as before',
+  );
+
   fs.writeFileSync(path.join(out, 'report.json'), JSON.stringify(report, null, 2));
   console.log(JSON.stringify({ ok: true, gpu: host.info.gpu, out, ...report }, null, 2));
 } finally {

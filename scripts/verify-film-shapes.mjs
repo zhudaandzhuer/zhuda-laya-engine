@@ -136,6 +136,50 @@ try {
     'and both sides are drawn',
   );
 
+  // A kerb swept round a right-angle corner on the far side of the two shapes:
+  // drawn along both legs, its top lit as a top and its sides as sides.
+  const kerb = {
+    id: 'kerb',
+    type: 'sweep',
+    profile: [
+      [0, 0],
+      [0.4, 0],
+      [0.4, 0.3],
+      [0, 0.3],
+    ],
+    path: [
+      [3.2, 0, 2],
+      [3.2, 0, -2],
+      [-1.5, 0, -2],
+    ],
+    position: [0, 0, 0],
+    material: 'grey',
+  };
+  const swept = await render('sweep', scene([...shapes, kerb]));
+  // Across is to the left of the way the path runs: toward -X on the first
+  // leg (which runs toward -Z), toward +Z on the second (toward -X).
+  const places = {
+    firstLegTop: [3.0, 0.3, 0.8],
+    secondLegTop: [1, 0.3, -1.8],
+    secondLegFront: [1, 0.15, -1.6],
+  };
+  report.sweep = Object.fromEntries(
+    Object.entries(places).map(([name, point]) => [
+      name,
+      { with: at(swept, point), without: at(frame, point) },
+    ]),
+  );
+  for (const [name, value] of Object.entries(report.sweep))
+    assert.ok(Math.abs(value.with - value.without) > 10, `the kerb is drawn at its ${name}`);
+  assert.ok(
+    Math.abs(report.sweep.firstLegTop.with - report.sweep.secondLegTop.with) < 12,
+    'its top is lit alike on both legs',
+  );
+  assert.ok(
+    Math.abs(report.sweep.secondLegTop.with - report.sweep.secondLegFront.with) >= 4,
+    'and differently from its side',
+  );
+
   const again = await render('shapes-again', scene(shapes));
   assert.ok(again.data.equals(frame.data), 'the same scene draws the same frame');
   report.glErrors = host.takeGlErrors();

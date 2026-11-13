@@ -1,5 +1,6 @@
 // Generated from TypeScript source; run npm run types:generate.
 import { type ZhudaTextureRecipe } from '../procedural/TextureRecipe.js';
+import { type ZhudaDecalShape } from '../runtime3d/Decals.js';
 import { type ZhudaAutoExposureOptions, type ZhudaDepthOfFieldOptions, type ZhudaMotionBlurOptions } from '../runtime3d/CameraEffects.js';
 export type ZhudaFilmVec3 = [number, number, number];
 export interface ZhudaFilmCamera {
@@ -196,6 +197,16 @@ export interface ZhudaFilmEnvironment {
      * where the captured ambient light is as dark as the surroundings.
      */
     reflectionOnly?: boolean;
+    /**
+     * The room the capture stands for, as the corners of a world box: a
+     * reflection is then looked up where the reflected ray meets the box (what
+     * is on a wall is mirrored at its place on the wall). For interiors and
+     * courtyards. Off unless given: the surroundings are infinitely far.
+     */
+    box?: {
+        min: ZhudaFilmVec3;
+        max: ZhudaFilmVec3;
+    } | false;
 }
 /** Height fog lit by the scene's `light` nodes (see `ZhudaLightFog`). */
 export interface ZhudaFilmLightFog {
@@ -310,6 +321,51 @@ export type ZhudaFilmNode = {
     position: ZhudaFilmVec3;
     yawDeg?: number;
     material: string;
+} | {
+    id: string;
+    type: 'sweep';
+    /**
+     * A cross-section carried along a path (a kerb round a bend, a rail, a
+     * cornice, a wall that follows a street): [across, up] pairs in metres,
+     * 3..64 of them, in either direction; across is to the left of the way
+     * the path runs. It may be concave; it must not cross itself.
+     */
+    profile: [number, number][];
+    /** The line it is carried along, 2..1024 [x, y, z] points in metres about `position`. */
+    path: ZhudaFilmVec3[];
+    /** The path returns to its first point (default false). */
+    closed?: boolean;
+    position: ZhudaFilmVec3;
+    yawDeg?: number;
+    material: string;
+} | {
+    id: string;
+    type: 'decal';
+    /**
+     * A mark laid on a flat surface (a stain, a wet patch, a scorch, a
+     * painted line): its centre on the surface, and its width and length
+     * in metres. It does not wrap round a corner.
+     */
+    position: ZhudaFilmVec3;
+    size: [number, number];
+    /** The way the surface faces (default [0, 1, 0]: a floor). */
+    normal?: ZhudaFilmVec3;
+    /** Turns the mark about that direction, degrees. */
+    angleDeg?: number;
+    /** Display RGB 0..1 (default nearly black). */
+    color?: ZhudaFilmVec3;
+    /** How much of the surface it covers at its middle, 0..1 (default 0.8). */
+    opacity?: number;
+    /** 0..1 (default 0.6); low is wet or glossy. */
+    roughness?: number;
+    /** An oval with a broken edge (`blob`, default), a rectangle (`patch`) or a `ring`. */
+    shape?: ZhudaDecalShape;
+    /** Width of the soft edge as a share of the mark, 0..1 (default 0.35). */
+    edge?: number;
+    /** How ragged a blob's outline is, 0..1 (default 0.5). */
+    ragged?: number;
+    /** Which outline; the same seed gives the same mark (default 1). */
+    seed?: number;
 } | {
     id: string;
     type: 'ground';
@@ -513,6 +569,14 @@ export interface ZhudaFilmScreenReflections {
     distance?: number;
     /** Steps along the ray, 8..64 (default 32). */
     steps?: number;
+    /**
+     * How much of the sky shows where a reflected ray finds nothing and points
+     * upward, 0..1 (default 0). Give it to wet ground under an open sky; leave
+     * it at 0 indoors and under cover, where the sky would shine through.
+     */
+    sky?: number;
+    /** The sky's colour for that, 0..1 (default: the sky's colour near the horizon). */
+    skyColor?: ZhudaFilmVec3;
 }
 /** Light bounced once off the scene (see `ZhudaProbeVolume`). */
 export interface ZhudaFilmBounceLight {

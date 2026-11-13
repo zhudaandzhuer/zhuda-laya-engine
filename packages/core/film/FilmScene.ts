@@ -13,7 +13,12 @@ import {
   validateZhudaTextureRecipe,
   type ZhudaTextureRecipe,
 } from '../procedural/TextureRecipe.ts';
-import { validateZhudaExtrude, validateZhudaLathe } from '../procedural/Geometry.ts';
+import {
+  validateZhudaExtrude,
+  validateZhudaLathe,
+  validateZhudaSweep,
+} from '../procedural/Geometry.ts';
+import { validateZhudaDecal, type ZhudaDecalShape } from '../runtime3d/Decals.ts';
 import {
   resolveZhudaAutoExposure,
   resolveZhudaDepthOfField,
@@ -231,6 +236,13 @@ export interface ZhudaFilmEnvironment {
    * where the captured ambient light is as dark as the surroundings.
    */
   reflectionOnly?: boolean;
+  /**
+   * The room the capture stands for, as the corners of a world box: a
+   * reflection is then looked up where the reflected ray meets the box (what
+   * is on a wall is mirrored at its place on the wall). For interiors and
+   * courtyards. Off unless given: the surroundings are infinitely far.
+   */
+  box?: { min: ZhudaFilmVec3; max: ZhudaFilmVec3 } | false;
 }
 
 /** Height fog lit by the scene's `light` nodes (see `ZhudaLightFog`). */
@@ -356,6 +368,53 @@ export type ZhudaFilmNode =
       position: ZhudaFilmVec3;
       yawDeg?: number;
       material: string;
+    }
+  | {
+      id: string;
+      type: 'sweep';
+      /**
+       * A cross-section carried along a path (a kerb round a bend, a rail, a
+       * cornice, a wall that follows a street): [across, up] pairs in metres,
+       * 3..64 of them, in either direction; across is to the left of the way
+       * the path runs. It may be concave; it must not cross itself.
+       */
+      profile: [number, number][];
+      /** The line it is carried along, 2..1024 [x, y, z] points in metres about `position`. */
+      path: ZhudaFilmVec3[];
+      /** The path returns to its first point (default false). */
+      closed?: boolean;
+      position: ZhudaFilmVec3;
+      yawDeg?: number;
+      material: string;
+    }
+  | {
+      id: string;
+      type: 'decal';
+      /**
+       * A mark laid on a flat surface (a stain, a wet patch, a scorch, a
+       * painted line): its centre on the surface, and its width and length
+       * in metres. It does not wrap round a corner.
+       */
+      position: ZhudaFilmVec3;
+      size: [number, number];
+      /** The way the surface faces (default [0, 1, 0]: a floor). */
+      normal?: ZhudaFilmVec3;
+      /** Turns the mark about that direction, degrees. */
+      angleDeg?: number;
+      /** Display RGB 0..1 (default nearly black). */
+      color?: ZhudaFilmVec3;
+      /** How much of the surface it covers at its middle, 0..1 (default 0.8). */
+      opacity?: number;
+      /** 0..1 (default 0.6); low is wet or glossy. */
+      roughness?: number;
+      /** An oval with a broken edge (`blob`, default), a rectangle (`patch`) or a `ring`. */
+      shape?: ZhudaDecalShape;
+      /** Width of the soft edge as a share of the mark, 0..1 (default 0.35). */
+      edge?: number;
+      /** How ragged a blob's outline is, 0..1 (default 0.5). */
+      ragged?: number;
+      /** Which outline; the same seed gives the same mark (default 1). */
+      seed?: number;
     }
   | {
       id: string;
@@ -583,6 +642,14 @@ export interface ZhudaFilmScreenReflections {
   distance?: number;
   /** Steps along the ray, 8..64 (default 32). */
   steps?: number;
+  /**
+   * How much of the sky shows where a reflected ray finds nothing and points
+   * upward, 0..1 (default 0). Give it to wet ground under an open sky; leave
+   * it at 0 indoors and under cover, where the sky would shine through.
+   */
+  sky?: number;
+  /** The sky's colour for that, 0..1 (default: the sky's colour near the horizon). */
+  skyColor?: ZhudaFilmVec3;
 }
 
 /** Light bounced once off the scene (see `ZhudaProbeVolume`). */
@@ -1057,7 +1124,9 @@ function validateLook(
       at = `${path}.screenReflections`;
     if (!object(s)) issues.push(`${at}: object or false required`);
     else {
-      unknownKeys(s, ['strength', 'wetness', 'distance', 'steps'], at, issues);
+      unknownKeys(s, ['strength', 'wetness', 'distance', 'steps', 'sky', 'skyColor'], at, issues);
+      range(s.sky, `${at}.sky`, 0, 1);
+      if (s.skyColor !== undefined) vec3(s.skyColor, `${at}.skyColor`, issues, 1);
       range(s.strength, `${at}.strength`, 0, 4);
       range(s.wetness, `${at}.wetness`, 0, 1);
       range(s.distance, `${at}.distance`, 1, 200);
@@ -1140,7 +1209,7 @@ function validateLook(
     else {
       unknownKeys(
         e,
-        ['position', 'reflection', 'ambient', 'reflectionOnly'],
+        ['position', 'reflection', 'ambient', 'reflectionOnly', 'box'],
         `${path}.environment`,
         issues,
       );
@@ -1149,6 +1218,21 @@ function validateLook(
       vec3(e.position, `${path}.environment.position`, issues);
       range(e.reflection, `${path}.environment.reflection`, 0, 8);
       range(e.ambient, `${path}.environment.ambient`, 0, 8);
+      if (e.box !== undefined && e.box !== false) {
+        const at = `${path}.environment.box`;
+        if (!object(e.box)) issues.push(`${at}: use { min, max } or false`);
+        else {
+          unknownKeys(e.box, ['min', 'max'], at, issues);
+          const before = issues.length;
+          vec3(e.box.min, `${at}.min`, issues);
+          vec3(e.box.max, `${at}.max`, issues);
+          if (
+            issues.length === before &&
+            !(e.box.min as number[]).every((v, i) => v < (e.box as any).max[i])
+          )
+            issues.push(`${at}.min: below max on every axis`);
+        }
+      }
     }
   }
   if (look.sky !== undefined) colour(look.sky, `${path}.sky`, issues);
@@ -1327,6 +1411,28 @@ function validateNode(
       yaw();
       usesMaterial();
       break;
+    case 'sweep':
+      unknownKeys(
+        node,
+        ['id', 'type', 'profile', 'path', 'closed', 'position', 'yawDeg', 'material'],
+        path,
+        issues,
+      );
+      for (const issue of validateZhudaSweep({
+        profile: node.profile as [number, number][],
+        path: node.path as [number, number, number][],
+        closed: node.closed as boolean | undefined,
+      }))
+        issues.push(`${path}.${issue}`);
+      vec3(node.position, `${path}.position`, issues);
+      yaw();
+      usesMaterial();
+      break;
+    case 'decal': {
+      const { id: _id, type: _type, ...decal } = node;
+      for (const issue of validateZhudaDecal(decal as any)) issues.push(`${path}.${issue}`);
+      break;
+    }
     case 'ground':
       unknownKeys(node, ['id', 'type', 'size', 'material'], path, issues);
       if (
@@ -1667,7 +1773,7 @@ function validateNode(
       break;
     default:
       issues.push(
-        `${path}.type: use prop, box, lathe, extrude, ground, model, reflector, water or light`,
+        `${path}.type: use prop, box, lathe, extrude, sweep, decal, ground, model, reflector, water or light`,
       );
   }
 }
@@ -2026,6 +2132,8 @@ export function resolveZhudaFilmLook(
       wetness: 0.5,
       distance: 30,
       steps: 32,
+      sky: 0,
+      skyColor: horizon,
     }),
     autoExposure: look.autoExposure
       ? resolveZhudaAutoExposure(look.autoExposure === true ? {} : look.autoExposure)
@@ -2058,6 +2166,12 @@ export function resolveZhudaFilmLook(
             reflection: look.environment.reflection ?? 1,
             ambient: look.environment.ambient ?? 1,
             reflectionOnly: look.environment.reflectionOnly ?? false,
+            box: look.environment.box
+              ? {
+                  min: [...look.environment.box.min] as ZhudaFilmVec3,
+                  max: [...look.environment.box.max] as ZhudaFilmVec3,
+                }
+              : false,
           }
         : false,
   };
@@ -2220,6 +2334,10 @@ export function zhudaFilmBounceBox(
       );
     else if (n.type === 'extrude')
       take(x, y, z, Math.max(...n.outline.map((p: number[]) => Math.hypot(p[0], p[1]))), n.height);
+    else if (n.type === 'sweep') {
+      const reach = Math.max(...n.profile.map((p: number[]) => Math.hypot(p[0], p[1])));
+      for (const point of n.path) take(x + point[0], y + point[1], z + point[2], reach, reach);
+    }
     // Props and models: about the size of a shipping container around their place.
     else if (n.type === 'prop') take(x, y, z, 3.5, 3);
     else if (n.type === 'model') {

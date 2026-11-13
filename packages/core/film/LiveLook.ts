@@ -147,7 +147,10 @@ export function updateZhudaLookInPlace(
       fringe: look.grade.fringe,
     });
   if (parts.reflections && look.screenReflections)
-    parts.reflections.setReflections(look.screenReflections);
+    parts.reflections.setReflections({
+      ...look.screenReflections,
+      skyColor: zhudaDecodeColor(look.screenReflections.skyColor),
+    });
   if (parts.exposure && look.autoExposure) parts.exposure.setExposure(look.autoExposure);
   if (parts.depthOfField && look.depthOfField) parts.depthOfField.setLens(look.depthOfField);
   if (parts.motionBlur && look.motionBlur) parts.motionBlur.setBlur(look.motionBlur);

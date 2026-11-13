@@ -602,46 +602,274 @@ export function createZhudaExtrudeMesh(options: ZhudaExtrudeOptions): MeshData {
     along += length;
   }
   if (caps) {
-    // Ear clipping: cut off a corner that bulges outward and holds no other point.
-    const left = points.map((_, i) => i),
-      triangles: [number, number, number][] = [];
-    const turn = (a: number, b: number, c: number) =>
-      (points[b][0] - points[a][0]) * (points[c][1] - points[a][1]) -
-      (points[b][1] - points[a][1]) * (points[c][0] - points[a][0]);
-    let guard = points.length * points.length;
-    while (left.length > 3 && guard-- > 0) {
-      let cut = false;
-      for (let i = 0; i < left.length; i++) {
-        const a = left[(i + left.length - 1) % left.length],
-          b = left[i],
-          c = left[(i + 1) % left.length];
-        if (turn(a, b, c) <= 1e-12) continue;
-        if (
-          left.some(
-            (p) =>
-              p !== a &&
-              p !== b &&
-              p !== c &&
-              turn(a, b, p) >= 0 &&
-              turn(b, c, p) >= 0 &&
-              turn(c, a, p) >= 0,
-          )
-        )
-          continue;
-        triangles.push([a, b, c]);
-        left.splice(i, 1);
-        cut = true;
-        break;
-      }
-      if (!cut) throw Error('Invalid extrusion: the outline could not be filled');
-    }
-    triangles.push([left[0], left[1], left[2]]);
+    const triangles = fillOutline(points, 'Invalid extrusion');
     for (const [y, up] of [
       [height, 1],
       [0, -1],
     ] as const) {
       const outward: ZhudaVec3 = [0, up, 0];
       const corner = points.map(([x, z]) => writer.vertex([x, y, z], outward, x, z));
+      for (const [a, b, c] of triangles) writer.triangle(corner[a], corner[b], corner[c], outward);
+    }
+  }
+  return writer.finish();
+}
+
+/**
+ * Triangles that fill a counter-clockwise outline that does not cross itself,
+ * as indices into it. Ear clipping: cut off a corner that bulges outward and
+ * holds no other point.
+ */
+function fillOutline(
+  points: readonly (readonly [number, number])[],
+  what: string,
+): [number, number, number][] {
+  const left = points.map((_, i) => i),
+    triangles: [number, number, number][] = [];
+  const turn = (a: number, b: number, c: number) =>
+    (points[b][0] - points[a][0]) * (points[c][1] - points[a][1]) -
+    (points[b][1] - points[a][1]) * (points[c][0] - points[a][0]);
+  let guard = points.length * points.length;
+  while (left.length > 3 && guard-- > 0) {
+    let cut = false;
+    for (let i = 0; i < left.length; i++) {
+      const a = left[(i + left.length - 1) % left.length],
+        b = left[i],
+        c = left[(i + 1) % left.length];
+      if (turn(a, b, c) <= 1e-12) continue;
+      if (
+        left.some(
+          (p) =>
+            p !== a &&
+            p !== b &&
+            p !== c &&
+            turn(a, b, p) >= 0 &&
+            turn(b, c, p) >= 0 &&
+            turn(c, a, p) >= 0,
+        )
+      )
+        continue;
+      triangles.push([a, b, c]);
+      left.splice(i, 1);
+      cut = true;
+      break;
+    }
+    if (!cut) throw Error(`${what}: the outline could not be filled`);
+  }
+  triangles.push([left[0], left[1], left[2]]);
+  return triangles;
+}
+
+/** Checks a closed outline of [a, b] pairs: finite, no point twice in a row, no crossing, some area. */
+function outlineIssues(outline: unknown, name: string, pair: string, most: number): string[] {
+  const issues: string[] = [];
+  let sound = false;
+  if (!Array.isArray(outline) || outline.length < 3 || outline.length > most)
+    issues.push(`${name}: use 3..${most} ${pair} pairs`);
+  else {
+    sound = true;
+    outline.forEach((point, i) => {
+      if (
+        !Array.isArray(point) ||
+        point.length !== 2 ||
+        !point.every((n) => typeof n === 'number' && Number.isFinite(n) && Math.abs(n) <= 1000)
+      ) {
+        issues.push(`${name}[${i}]: use ${pair} in metres`);
+        sound = false;
+      } else {
+        const before = outline[(i + outline.length - 1) % outline.length];
+        if (Array.isArray(before) && before[0] === point[0] && before[1] === point[1]) {
+          issues.push(`${name}[${i}]: the same point as the one before it`);
+          sound = false;
+        }
+      }
+    });
+  }
+  if (sound) {
+    const points = outline as [number, number][];
+    let crossing = false;
+    search: for (let i = 0; i < points.length; i++)
+      for (let j = i + 2; j < points.length; j++) {
+        if (i === 0 && j === points.length - 1) continue;
+        if (crosses(points[i], points[i + 1], points[j], points[(j + 1) % points.length])) {
+          issues.push(`${name}: edge ${i} crosses edge ${j}`);
+          crossing = true;
+          break search;
+        }
+      }
+    if (!crossing && Math.abs(area2(points)) < 1e-9) issues.push(`${name}: it encloses no area`);
+  }
+  return issues;
+}
+
+export interface ZhudaSweepOptions {
+  /**
+   * The cross-section as [across, up] pairs in metres, 3..64 of them, in
+   * either direction: across is to the left of the way the path runs, up is
+   * up. It may be concave; it must not cross itself. [0, 0] lies on the path.
+   */
+  profile: readonly (readonly [number, number])[];
+  /** The line the section is carried along, 2..1024 points in metres. */
+  path: readonly (readonly [number, number, number])[];
+  /** The path returns to its first point: a ring with no ends (default false). */
+  closed?: boolean;
+  /** Close the two ends (default true); ignored on a closed path. */
+  caps?: boolean;
+}
+
+export function validateZhudaSweep(options: ZhudaSweepOptions): string[] {
+  const o = options ?? ({} as ZhudaSweepOptions);
+  const issues = outlineIssues(o.profile, 'profile', '[across, up]', 64);
+  const path = o.path as unknown;
+  if (!Array.isArray(path) || path.length < 2 || path.length > 1024)
+    issues.push('path: use 2..1024 [x, y, z] points');
+  else {
+    let sound = true;
+    path.forEach((point, i) => {
+      if (
+        !Array.isArray(point) ||
+        point.length !== 3 ||
+        !point.every((n) => typeof n === 'number' && Number.isFinite(n) && Math.abs(n) <= 100000)
+      ) {
+        issues.push(`path[${i}]: use [x, y, z] in metres`);
+        sound = false;
+      } else if (
+        i > 0 &&
+        Array.isArray(path[i - 1]) &&
+        path[i - 1].every((n: unknown, k: number) => n === point[k])
+      ) {
+        issues.push(`path[${i}]: the same point as the one before it`);
+        sound = false;
+      }
+    });
+    if (sound && o.closed === true) {
+      if (path.length < 3) {
+        issues.push('path: a closed path needs three points or more');
+        sound = false;
+      } else if (path[0].every((n: number, k: number) => n === path[path.length - 1][k])) {
+        issues.push('path: a closed path does not repeat its first point at the end');
+        sound = false;
+      }
+    }
+    // A corner sharper than about 150 degrees would stretch the section without end.
+    if (sound) {
+      const points = path as ZhudaVec3[];
+      const count = points.length;
+      for (let i = 0; i < count; i++) {
+        const closed = o.closed === true;
+        if (!closed && (i === 0 || i === count - 1)) continue;
+        const before = normalize(sub(points[i], points[(i + count - 1) % count])),
+          after = normalize(sub(points[(i + 1) % count], points[i]));
+        if (dot(before, after) < -0.87)
+          issues.push(`path[${i}]: the path turns back on itself here`);
+      }
+    }
+  }
+  if (o.closed !== undefined && typeof o.closed !== 'boolean') issues.push('closed: true or false');
+  if (o.caps !== undefined && typeof o.caps !== 'boolean') issues.push('caps: true or false');
+  return issues;
+}
+
+/**
+ * A cross-section carried along a path: kerbs and gutters round a bend,
+ * rails, cornices, cables, walls that follow a street. The section stays
+ * upright (its up is the world's, as far as the path allows) and keeps its
+ * width through a corner. Each edge of the section is a flat band with its
+ * own normal; the corners of the path are not rounded.
+ */
+export function createZhudaSweepMesh(options: ZhudaSweepOptions): MeshData {
+  const issues = validateZhudaSweep(options);
+  if (issues.length) throw Error('Invalid sweep: ' + issues.join('; '));
+  const profile = options.profile.map(([a, b]) => [a, b] as [number, number]);
+  // Counter-clockwise seen along the path: the outside is then to the right of each edge.
+  if (area2(profile) < 0) profile.reverse();
+  const path = options.path.map((p) => [p[0], p[1], p[2]] as ZhudaVec3),
+    closed = options.closed ?? false,
+    caps = (options.caps ?? true) && !closed,
+    count = path.length;
+  const direction = (i: number) => normalize(sub(path[(i + 1) % count], path[i]));
+  // At each point: the way the path runs there, the section's across and up
+  // axes, and how much wider the section is drawn to keep its width through
+  // the corner.
+  const frames: { tangent: ZhudaVec3; across: ZhudaVec3; up: ZhudaVec3; wide: number }[] = [];
+  let carried: ZhudaVec3 | undefined;
+  for (let i = 0; i < count; i++) {
+    const before = closed || i > 0 ? direction((i + count - 1) % count) : undefined,
+      after = closed || i < count - 1 ? direction(i) : undefined;
+    const tangent = normalize(
+      before && after
+        ? [before[0] + after[0], before[1] + after[1], before[2] + after[2]]
+        : (after ?? before)!,
+    );
+    // Across is level and to the left of the way the path runs; where the
+    // path runs straight up or down, the across of the point before is kept.
+    let across: ZhudaVec3;
+    if (Math.abs(tangent[1]) < 0.999) across = normalize(cross([0, 1, 0], tangent));
+    else {
+      const from: ZhudaVec3 = carried ?? [1, 0, 0],
+        k = dot(from, tangent);
+      across = normalize([
+        from[0] - tangent[0] * k,
+        from[1] - tangent[1] * k,
+        from[2] - tangent[2] * k,
+      ]);
+    }
+    carried = across;
+    const up = cross(tangent, across);
+    const half = before && after ? Math.max(dot(before, tangent), 0.25) : 1;
+    frames.push({ tangent, across, up, wide: 1 / half });
+  }
+  const at = (i: number, [a, b]: readonly [number, number]): ZhudaVec3 => {
+    const f = frames[i],
+      p = path[i];
+    return [
+      p[0] + f.across[0] * a * f.wide + f.up[0] * b,
+      p[1] + f.across[1] * a * f.wide + f.up[1] * b,
+      p[2] + f.across[2] * a * f.wide + f.up[2] * b,
+    ];
+  };
+  const writer = new MeshWriter();
+  const travelled: number[] = [0];
+  for (let i = 1; i <= count; i++)
+    travelled.push(travelled[i - 1] + Math.hypot(...sub(path[i % count], path[i - 1])));
+  let round = 0;
+  for (let e = 0; e < profile.length; e++) {
+    const p0 = profile[e],
+      p1 = profile[(e + 1) % profile.length],
+      length = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]),
+      // Outward in the section's own plane.
+      n2: [number, number] = [(p1[1] - p0[1]) / length, -(p1[0] - p0[0]) / length];
+    const normalAt = (i: number): ZhudaVec3 => {
+      const f = frames[i];
+      return normalize([
+        f.across[0] * n2[0] + f.up[0] * n2[1],
+        f.across[1] * n2[0] + f.up[1] * n2[1],
+        f.across[2] * n2[0] + f.up[2] * n2[1],
+      ]);
+    };
+    const rows: [number, number][] = [];
+    const steps = closed ? count + 1 : count;
+    for (let k = 0; k < steps; k++) {
+      const i = k % count,
+        n = normalAt(i);
+      rows.push([
+        writer.vertex(at(i, p0), n, round, travelled[k]),
+        writer.vertex(at(i, p1), n, round + length, travelled[k]),
+      ]);
+    }
+    for (let k = 0; k < rows.length - 1; k++) {
+      const outward = normalAt(k % count);
+      writer.triangle(rows[k][0], rows[k][1], rows[k + 1][1], outward);
+      writer.triangle(rows[k][0], rows[k + 1][1], rows[k + 1][0], outward);
+    }
+    round += length;
+  }
+  if (caps) {
+    const triangles = fillOutline(profile, 'Invalid sweep');
+    for (const end of [0, count - 1]) {
+      const t = frames[end].tangent,
+        outward: ZhudaVec3 = end === 0 ? [-t[0], -t[1], -t[2]] : t;
+      const corner = profile.map((p) => writer.vertex(at(end, p), outward, p[0], p[1]));
       for (const [a, b, c] of triangles) writer.triangle(corner[a], corner[b], corner[c], outward);
     }
   }

@@ -223,8 +223,22 @@ into haze. It needs `grade` and is off unless given.
   bottom up (`"profile": [[0.12, 0], [0.12, 0.8], [0.09, 0.95], [0, 1]]` is a
   bollard; barrels, domes, columns, bowls); `extrude`, a flat outline of
   `[x, z]` pairs raised to `height` (kerbs, steps, signs, wall pieces; the
-  outline may be concave and must not cross itself). Each takes `position`,
-  `yawDeg` and a `material`, and meshes of one material are merged.
+  outline may be concave and must not cross itself); `sweep`, a
+  cross-section of `[across, up]` pairs carried along a `path` of
+  `[x, y, z]` points (a kerb round a bend, a rail, a cornice, a wall that
+  follows a street; `"closed": true` for a ring). The section stays upright
+  and keeps its width through a corner; corners are not rounded, and a path
+  must not turn back on itself. Each takes `position`, `yawDeg` and a
+  `material`, and meshes of one material are merged.
+- Marks on surfaces: `decal`, a stain, a wet patch, a scorch or a painted
+  line laid on a floor or a wall. `"position"` is its centre on the surface,
+  `"size"` its width and length, `"normal"` the way the surface faces
+  (`[0, 1, 0]`, a floor, when left out). `"shape"` is `blob` (an oval with a
+  broken edge; `ragged` and `seed` choose it), `patch` (a rectangle) or
+  `ring`; `"color"`, `"opacity"`, `"edge"` (how soft) and `"roughness"` (low
+  reads as wet) do the rest. It is lit and shadowed like the surface under
+  it and takes no `material`. It lies on a plane: it does not wrap round a
+  corner or follow a bump.
 - `density` is how much light a metre of fog takes away at `baseY`;
   `falloffMeters` is the height over which the fog thins to about a third.
 - `color` is what the fog adds by itself; the value above is moonlight in
@@ -537,7 +551,11 @@ surface: wet walls, props, ground beyond a `reflector`. It needs `grade`.
   has no roughness buffer, so this is the look of rain and of polished
   places, not a property of one material.
 - Only what is on screen is reflected: nothing from behind the camera or
-  from behind another object, and not the sky. A `reflector` stays the tool
+  from behind another object. The sky is not, unless `"sky": 1` is given:
+  then a ray that finds nothing and points upward shows the sky's colour
+  near the horizon (`skyColor` to choose it). For wet ground under an open
+  sky; indoors and under cover leave it at 0, since nothing tells such a ray
+  that a roof off screen is in its way. A `reflector` stays the tool
   for a floor that must mirror sky and lamps exactly; the two work together.
 - The rays are followed at half size and the result is blurred, taking
   depth into account: the reflections are soft, like wet asphalt or a

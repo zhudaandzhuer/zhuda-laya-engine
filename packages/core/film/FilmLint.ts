@@ -86,7 +86,7 @@ export function lintZhudaFilmScene(
   const look = resolveZhudaFilmLook(authored);
   const nodes = scene.nodes ?? [];
   const objects = nodes.filter((n) =>
-    ['prop', 'box', 'lathe', 'extrude', 'model'].includes(n.type),
+    ['prop', 'box', 'lathe', 'extrude', 'sweep', 'model'].includes(n.type),
   );
   const sunLight = look.sun.intensity * luminance(look.sun.color);
 

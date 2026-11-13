@@ -8,8 +8,10 @@
  * reflects alike and by Fresnel: strongly at grazing angles, faintly head-on.
  * That is the look of rain and of polished places; it is not a substitute for
  * materials that differ. What is off screen, hidden behind something or behind
- * the camera is not reflected, and the sky is not (a ray that leaves the
- * picture finds nothing).
+ * the camera is not reflected. With `sky`, a ray that finds nothing and points
+ * upward shows the sky's colour instead: wet ground under an open sky is as
+ * bright as the sky it mirrors. Nothing tells such a ray that a roof or a wall
+ * off screen is in its way: keep `sky` at 0 indoors and under cover.
  */
 export interface ZhudaScreenReflectionsOptions {
     /** Brightness of the reflections, 0..4 (default 1). */
@@ -20,6 +22,13 @@ export interface ZhudaScreenReflectionsOptions {
     distance?: number;
     /** Steps along the ray, 8..64 (default 32). Fewer are cheaper and coarser. */
     steps?: number;
+    /**
+     * How much of the sky shows where a reflected ray finds nothing and points
+     * upward, 0..1 (default 0: such a ray reflects nothing).
+     */
+    sky?: number;
+    /** The sky's colour for that, as light: scene-linear RGB (default black). */
+    skyColor?: readonly number[];
 }
 export declare const ZHUDA_SCREEN_REFLECTION_MAX_STEPS = 64;
 export declare function validateZhudaScreenReflections(options: ZhudaScreenReflectionsOptions): string[];

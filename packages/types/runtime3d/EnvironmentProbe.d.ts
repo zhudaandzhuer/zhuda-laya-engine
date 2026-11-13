@@ -56,6 +56,17 @@ export interface ZhudaEnvironmentProbeOptions {
      * dark as the surroundings; an open sky light may suit the shot better.
      */
     reflectionOnly?: boolean;
+    /**
+     * The room the capture stands for, as the corners of a world box. With it
+     * a reflection is looked up where the reflected ray meets the box, not at
+     * infinity: what is on a wall is mirrored at its place on the wall. For
+     * interiors and courtyards; without it the surroundings are infinitely far,
+     * which suits an open sky.
+     */
+    box?: {
+        min: readonly number[];
+        max: readonly number[];
+    } | false;
     /** Laya layers the capture does not draw (default: none). */
     excludedLayers?: readonly number[];
 }
@@ -105,6 +116,8 @@ export declare class ZhudaEnvironmentProbe {
     private readonly scene;
     private environment;
     private previous;
+    /** The node of the room's own probe, when a box is given. */
+    private room;
     private disposed;
     /** The nine ambient colours of the last capture (27 numbers), for inspection. */
     ambientSH: readonly number[];
@@ -115,5 +128,12 @@ export declare class ZhudaEnvironmentProbe {
      * change. `signal` cancels the read-back.
      */
     capture(options: ZhudaEnvironmentProbeOptions, signal?: AbortSignal): Promise<void>;
+    /**
+     * Box projection is LayaAir's, on a reflection probe that stands on a node:
+     * the scene's own probe has no place. So a second probe is put at the
+     * capture position with the scene probe's settings and the room as its
+     * bounds; what is drawn inside the box takes it, the rest the scene's.
+     */
+    private project;
     dispose(): void;
 }

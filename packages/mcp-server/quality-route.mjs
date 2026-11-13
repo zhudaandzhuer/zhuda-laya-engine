@@ -288,10 +288,10 @@ export function getQualityRoute() {
     examples: Object.keys(QUALITY_ROUTE_SCENES),
     notYet: [
       'Real-time global illumination: bounceLight is captured once at mount, and light can leak through a wall thinner than the probe spacing.',
-      'Reflections of what is off screen: screenReflections shows only what the frame holds and not the sky; one planar mirror, one environment probe, no box projection.',
+      "Reflections of things that are off screen: screenReflections shows what the frame holds and, with sky, the sky's colour where a ray finds nothing (it cannot tell a roof off screen from open sky). One planar mirror, one environment probe (environment.box looks it up at the room's walls).",
       'Shadows from more than eight point lights and one spot light (LayaAir 3.4.2 draws one spot shadow map).',
       "Motion blur of things that move by themselves: look.motionBlur smears only what the camera's own movement smears. look.depthOfField is one disc radius per pixel, without the shape of an aperture.",
-      'Decals and parallax; the fine repeat inside one texture tile (variation hides the grid of tiles only); shapes swept along a path.',
+      "Decals that wrap round geometry (a decal node lies on one plane); parallax (LayaAir's PBR shader takes no height map); the fine repeat inside one texture tile (variation hides the grid of tiles only). A sweep does not round its corners.",
       'Volumetric clouds; skin, hair and cloth shading.',
     ],
     evidence: {

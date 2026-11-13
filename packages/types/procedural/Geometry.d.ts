@@ -83,6 +83,29 @@ export interface ZhudaExtrudeOptions {
 export declare function validateZhudaExtrude(options: ZhudaExtrudeOptions): string[];
 /** A flat outline raised to a height: kerbs, steps, signs, wall pieces, L and U profiles. */
 export declare function createZhudaExtrudeMesh(options: ZhudaExtrudeOptions): MeshData;
+export interface ZhudaSweepOptions {
+    /**
+     * The cross-section as [across, up] pairs in metres, 3..64 of them, in
+     * either direction: across is to the left of the way the path runs, up is
+     * up. It may be concave; it must not cross itself. [0, 0] lies on the path.
+     */
+    profile: readonly (readonly [number, number])[];
+    /** The line the section is carried along, 2..1024 points in metres. */
+    path: readonly (readonly [number, number, number])[];
+    /** The path returns to its first point: a ring with no ends (default false). */
+    closed?: boolean;
+    /** Close the two ends (default true); ignored on a closed path. */
+    caps?: boolean;
+}
+export declare function validateZhudaSweep(options: ZhudaSweepOptions): string[];
+/**
+ * A cross-section carried along a path: kerbs and gutters round a bend,
+ * rails, cornices, cables, walls that follow a street. The section stays
+ * upright (its up is the world's, as far as the path allows) and keeps its
+ * width through a corner. Each edge of the section is a flat band with its
+ * own normal; the corners of the path are not rounded.
+ */
+export declare function createZhudaSweepMesh(options: ZhudaSweepOptions): MeshData;
 export interface ZhudaMeshTransform {
     position?: ZhudaVec3;
     /** Rotation about +Y, applied after pitch and roll. */

@@ -308,6 +308,14 @@ export interface ZhudaEnvironmentProbeOptions {
    * dark as the surroundings; an open sky light may suit the shot better.
    */
   reflectionOnly?: boolean;
+  /**
+   * The room the capture stands for, as the corners of a world box. With it
+   * a reflection is looked up where the reflected ray meets the box, not at
+   * infinity: what is on a wall is mirrored at its place on the wall. For
+   * interiors and courtyards; without it the surroundings are infinitely far,
+   * which suits an open sky.
+   */
+  box?: { min: readonly number[]; max: readonly number[] } | false;
   /** Laya layers the capture does not draw (default: none). */
   excludedLayers?: readonly number[];
 }
@@ -484,12 +492,18 @@ export function zhudaCubeFromFaces(faces: readonly Float32Array[], n: number): Z
   return world;
 }
 
+/** The reflection probe LayaAir 3.4.2 keeps for a scene as a whole (the one `iblTex` belongs to). */
+const sceneProbe = (scene: any) =>
+  scene._sceneReflectionProb ?? scene._volumeManager?.reflectionProbeManager?.sceneReflectionProbe;
+
 export class ZhudaEnvironmentProbe {
   private readonly scene: any;
   private environment: ReturnType<typeof createPrefilteredEnvironment> | undefined;
   private previous:
     | { mode: any; reflection: number; ambient: number; sh: Float32Array | undefined }
     | undefined;
+  /** The node of the room's own probe, when a box is given. */
+  private room: any;
   private disposed = false;
   /** The nine ambient colours of the last capture (27 numbers), for inspection. */
   ambientSH: readonly number[] = [];
@@ -584,11 +598,50 @@ export class ZhudaEnvironmentProbe {
       if (this.previous.sh) this.scene.ambientSH = new Float32Array(this.previous.sh);
     } else this.scene.ambientIntensity = options.ambient ?? 1;
     this.ambientSH = spec.ambientSH;
+    this.project(l, options);
+  }
+
+  /**
+   * Box projection is LayaAir's, on a reflection probe that stands on a node:
+   * the scene's own probe has no place. So a second probe is put at the
+   * capture position with the scene probe's settings and the room as its
+   * bounds; what is drawn inside the box takes it, the rest the scene's.
+   */
+  private project(l: any, options: ZhudaEnvironmentProbeOptions): void {
+    this.room?.destroy(true);
+    this.room = undefined;
+    if (!options.box) return;
+    const { min, max } = options.box;
+    const valid = (v: readonly number[]) => v.length === 3 && v.every(Number.isFinite);
+    if (!valid(min) || !valid(max) || !min.every((v, i) => v < max[i]))
+      throw Error('Environment probe box: min below max on every axis, in metres');
+    const whole = sceneProbe(this.scene);
+    if (!l.ReflectionProbe || !whole)
+      throw Error('Environment probe box: this LayaAir build has no reflection probe component');
+    const node = (this.room = new l.Sprite3D('zhuda-environment-room'));
+    this.scene.addChild(node);
+    node.transform.position = new l.Vector3(...options.position);
+    const probe = node.addComponent(l.ReflectionProbe);
+    probe.ambientMode = whole.ambientMode;
+    probe.iblTex = whole.iblTex;
+    probe.iblTexRGBD = whole.iblTexRGBD;
+    if (whole.ambientSH) probe.ambientSH = new Float32Array(whole.ambientSH);
+    if (whole.ambientColor) probe.ambientColor = whole.ambientColor;
+    probe.ambientIntensity = whole.ambientIntensity;
+    probe.reflectionIntensity = whole.reflectionIntensity;
+    // LayaAir takes the bounds in the node's own frame.
+    const [px, py, pz] = options.position;
+    probe.boundsMin = new l.Vector3(min[0] - px, min[1] - py, min[2] - pz);
+    probe.boundsMax = new l.Vector3(max[0] - px, max[1] - py, max[2] - pz);
+    probe.boxProjection = true;
+    probe.importance = 1;
   }
 
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
+    if (!this.scene.destroyed) this.room?.destroy(true);
+    this.room = undefined;
     if (this.environment && !this.scene.destroyed) {
       this.scene.iblTex = null;
       if (this.previous) {

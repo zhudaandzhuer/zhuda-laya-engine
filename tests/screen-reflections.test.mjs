@@ -20,7 +20,14 @@ test('options have defaults and refuse values out of range', () => {
     wetness: 0.5,
     distance: 30,
     steps: 32,
+    sky: 0,
+    skyColor: [0, 0, 0],
   });
+  assert.deepEqual(
+    validateZhudaScreenReflections({ sky: 2, skyColor: [1, 1] }),
+    ['sky: use 0..1', 'skyColor: use [r, g, b] of 0 or more'],
+    'the sky that shows where a ray finds nothing',
+  );
   assert.deepEqual(validateZhudaScreenReflections({ strength: 2, wetness: 1, steps: 64 }), []);
   assert.deepEqual(
     validateZhudaScreenReflections({ strength: 5, wetness: -1, distance: 0, steps: 12.5 }),
@@ -53,7 +60,23 @@ test('a look takes screen reflections with a grade, and quality levels thin them
   const off = resolveZhudaFilmLook({ preset: 'night', grade: {} });
   assert.equal(off.screenReflections, false);
   const on = resolveZhudaFilmLook({ preset: 'night', grade: {}, screenReflections: {} });
-  assert.deepEqual(on.screenReflections, { strength: 1, wetness: 0.5, distance: 30, steps: 32 });
+  // Off unless asked for; its colour is the sky's near the horizon unless given.
+  assert.deepEqual(on.screenReflections, {
+    strength: 1,
+    wetness: 0.5,
+    distance: 30,
+    steps: 32,
+    sky: 0,
+    skyColor: [0.156, 0.203, 0.306],
+  });
+  assert.deepEqual(
+    resolveZhudaFilmLook({
+      preset: 'night',
+      grade: {},
+      screenReflections: { sky: 1, skyColor: [1, 0, 0] },
+    }).screenReflections.skyColor,
+    [1, 0, 0],
+  );
   assert.equal(zhudaLookForQuality(on, 3).screenReflections.steps, 32);
   assert.equal(zhudaLookForQuality(on, 2).screenReflections.steps, 16);
   assert.equal(zhudaLookForQuality(on, 1).screenReflections, false);

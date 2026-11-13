@@ -23,6 +23,7 @@ export * from './Lightmap.ts';
 export * from './LightFog.ts';
 export * from './ScreenReflections.ts';
 export * from './CameraEffects.ts';
+export * from './Decals.ts';
 export * from './PointShadow.ts';
 export * from './ProbeVolume.ts';
 export * from './QualityGovernor.ts';
