@@ -32,10 +32,11 @@ export declare class ZhudaSceneLook {
     setLook(look: ZhudaFilmLook): 'updated' | 'rebuilt';
     /** Rebuilds the look at another level; nothing happens when it is the current one. */
     setQuality(level: ZhudaLookQuality): void;
-    /** Call every frame after the camera has moved. */
-    update(eye: readonly [number, number, number], target: readonly [number, number, number], fieldOfViewDeg: number, aspect: number, 
-    /** Seconds since the frame before (default 1/60): how far automatic exposure adapts. */
-    frameSeconds?: number): void;
+    /**
+     * Call every frame after the camera has moved. `frameSeconds` is the time
+     * since the frame before (default 1/60): how far automatic exposure adapts.
+     */
+    update(eye: readonly [number, number, number], target: readonly [number, number, number], fieldOfViewDeg: number, aspect: number, frameSeconds?: number): void;
     dispose(): void;
     private updateInPlace;
     private apply;

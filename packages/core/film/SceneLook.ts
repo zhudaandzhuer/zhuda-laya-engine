@@ -145,13 +145,15 @@ export class ZhudaSceneLook {
     this.apply((globalThis as any).Laya);
   }
 
-  /** Call every frame after the camera has moved. */
+  /**
+   * Call every frame after the camera has moved. `frameSeconds` is the time
+   * since the frame before (default 1/60): how far automatic exposure adapts.
+   */
   update(
     eye: readonly [number, number, number],
     target: readonly [number, number, number],
     fieldOfViewDeg: number,
     aspect: number,
-    /** Seconds since the frame before (default 1/60): how far automatic exposure adapts. */
     frameSeconds = 1 / 60,
   ): void {
     if (this.disposed) throw Error('Disposed scene look');
