@@ -36,6 +36,11 @@ export interface PrefabModelNode {
     /** Scales what the model's materials give off, 0..8 (default 1). */
     emission?: number;
     /**
+     * False: the model casts no shadow (it still takes them). For ground and
+     * paving, which shade nothing, and for what is too small to matter.
+     */
+    castShadow?: boolean;
+    /**
      * Lighter versions for distance, nearest first (at most 4): beyond
      * `fromMeters` from the eye a copy draws this model instead of the one
      * before. Nothing changes until the Scene calls the instance's `updateLod`.

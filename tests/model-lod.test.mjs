@@ -3,7 +3,13 @@
 // geometry kept as it was. Pure: no browser.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readGlb, simplifyGlb, thinCards, writeGlb } from '../packages/compiler/model-lod.mjs';
+import {
+  readGlb,
+  simplifyGlb,
+  splitGlb,
+  thinCards,
+  writeGlb,
+} from '../packages/compiler/model-lod.mjs';
 import { skinnedStripGlb } from '../scripts/lib/film-fixtures.mjs';
 
 /** A .glb of meshes given as { positions, normals?, uvs?, indices?, material }. */
@@ -316,6 +322,113 @@ test('pictures inside the file are made no larger than asked', async () => {
   const plain = await simplifyGlb(source, { ratio: 0.5 });
   assert.deepEqual(plain.pictures, []);
   await assert.rejects(simplifyGlb(source, { ratio: 0.5, textureSize: 4 }), /textureSize/);
+});
+
+test('a mesh is cut into squares of land, each a mesh and a node of its own', () => {
+  // A sheet 4 m by 4 m in two materials: the half with x below 2 and the other.
+  const whole = sheet(16);
+  for (let i = 0; i < whole.positions.length; i += 3) {
+    whole.positions[i] *= 4;
+    whole.positions[i + 2] *= 4;
+  }
+  const left = [],
+    right = [];
+  for (let t = 0; t < whole.indices.length; t += 3) {
+    const tri = whole.indices.slice(t, t + 3);
+    const x = tri.reduce((sum, v) => sum + whole.positions[v * 3], 0) / 3;
+    (x < 2 ? left : right).push(...tri);
+  }
+  const source = glb(
+    [
+      { ...whole, indices: left, material: 0 },
+      { ...cards(10), material: 1 },
+    ],
+    [SOLID, LEAF],
+  );
+  // Give the first mesh its second part by hand: the same vertices, the other triangles.
+  const document = readGlb(source);
+  const first = document.json.meshes[0].primitives[0];
+  const bytes = Buffer.from(new Uint16Array(right).buffer);
+  document.json.bufferViews.push({
+    buffer: 0,
+    byteOffset: document.bin.length,
+    byteLength: bytes.length,
+  });
+  document.json.accessors.push({
+    bufferView: document.json.bufferViews.length - 1,
+    componentType: 5123,
+    count: right.length,
+    type: 'SCALAR',
+  });
+  document.json.meshes[0].primitives.push({
+    ...first,
+    indices: document.json.accessors.length - 1,
+    material: 1,
+  });
+  document.json.buffers[0].byteLength = document.bin.length + bytes.length;
+  document.json.nodes[0].translation = [10, 0, 0];
+  const two = writeGlb(document.json, Buffer.concat([document.bin, bytes]));
+
+  const { glb: made, report } = splitGlb(two, { cellMeters: 2 });
+  const { json } = readGlb(made);
+  // Four squares of the sheet; the ten cards (in a ball six metres across) fall into several.
+  assert.equal(report[0].cells, 4);
+  assert.equal(report[0].triangles, 512);
+  assert.ok(report[1].cells > 1);
+  // The node keeps its place and name, holds no mesh, and has a child a square.
+  const holder = json.nodes[0];
+  assert.deepEqual(holder.translation, [10, 0, 0]);
+  assert.equal(holder.mesh, undefined);
+  assert.equal(holder.children.length, 4);
+  const names = holder.children.map((i) => json.nodes[i].name);
+  assert.deepEqual(names, ['node0@0,0', 'node0@0,1', 'node0@1,0', 'node0@1,1']);
+  // Every triangle is in exactly one square, with the material it had.
+  let triangles = 0;
+  const byMaterial = [0, 0];
+  for (const child of holder.children) {
+    const mesh = json.meshes[json.nodes[child].mesh];
+    const cellX = Number(json.nodes[child].name.split('@')[1].split(',')[0]);
+    // A square left of x = 2 holds the first material only, one right of it the second.
+    assert.deepEqual(
+      mesh.primitives.map((p) => p.material),
+      [cellX],
+    );
+    for (const primitive of mesh.primitives) {
+      const count = json.accessors[primitive.indices].count / 3;
+      triangles += count;
+      byMaterial[primitive.material] += count;
+      // The square's own box, not the sheet's.
+      const { min, max } = json.accessors[primitive.attributes.POSITION];
+      assert.ok(max[0] - min[0] <= 2 + 1e-6 && max[2] - min[2] <= 2 + 1e-6);
+      assert.ok(min[0] >= cellX * 2 - 0.26 && max[0] <= cellX * 2 + 2.26);
+    }
+  }
+  assert.equal(triangles, 512);
+  assert.deepEqual(byMaterial, [left.length / 3, right.length / 3]);
+  // No whole mesh is left, and no accessor is unused.
+  const used = new Set();
+  for (const mesh of json.meshes)
+    for (const primitive of mesh.primitives) {
+      Object.values(primitive.attributes).forEach((i) => used.add(i));
+      used.add(primitive.indices);
+    }
+  assert.equal(used.size, json.accessors.length);
+  assert.ok(json.nodes.every((node) => node.mesh === undefined || node.mesh < json.meshes.length));
+  // The same again gives the same bytes.
+  assert.deepEqual(splitGlb(two, { cellMeters: 2 }).glb, made);
+  // A square larger than the sheet leaves it whole, on its node (the cards
+  // lie on both sides of the origin and so in more than one square).
+  const one = splitGlb(two, { cellMeters: 1000 });
+  assert.equal(one.report[0].cells, 1);
+  assert.equal(readGlb(one.glb).json.nodes[0].mesh, 0);
+  assert.throws(() => splitGlb(two, { cellMeters: 0 }), /cellMeters/);
+});
+
+test('a skinned mesh is not cut', () => {
+  const source = skinnedStripGlb();
+  const { glb: made, report } = splitGlb(source, { cellMeters: 0.1 });
+  assert.ok(report.every((r) => r.cells === 1));
+  assert.deepEqual(readGlb(made).json.nodes, readGlb(source).json.nodes);
 });
 
 test('what cannot be done is refused', async () => {

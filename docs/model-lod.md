@@ -20,7 +20,32 @@ Then name them in the prefab, each from the distance it takes over:
   lod: [['nature/jacaranda_tree.lod1.glb', 18], ['nature/jacaranda_tree.lod2.glb', 40]] }
 ```
 
-## What it does
+## A model that is one mesh a street long
+
+A model is drawn whole whenever any of it is in view, and whole again in
+every split of the shadow map it reaches. A row of houses exported as one
+mesh 80 m long is therefore drawn five times a frame with four splits,
+wherever the camera looks. Measured on the phone: of 24 ms of shadows in a
+town street, 22 were the town's own dozen large meshes.
+
+```sh
+npx zhuda-laya-lod assets/city/main-w.glb --split 16
+# main-w.cells.glb: 6932 KB
+#   main-w: 51213 triangles in 8 squares
+```
+
+Every mesh is cut into squares of land that many metres across (x and z, in
+the mesh's own units); each square becomes a mesh and a node under the node
+that held the whole, so the file is used in place of the original and
+nothing else changes. A triangle goes to the square its middle lies in.
+Skinned meshes are left whole. More squares are more draws: cut to about the
+size of what should be left out together (a house, not a brick).
+
+Ground and paving shade nothing: give their prefab node `castShadow: false`
+(`mountZhudaModel` takes the same option) and they are not drawn into the
+shadow map at all. They still take shadows.
+
+## What simplifying does
 
 - **Solid surfaces** (a trunk, a rock, a wall) are simplified with
   meshoptimizer until they have the share asked for or would stand further

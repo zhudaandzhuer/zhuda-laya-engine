@@ -20,6 +20,12 @@ export interface ZhudaModelMountOptions {
   translucent?: boolean;
   /** Scales the emissive strength of glTF materials (1 leaves them alone). */
   emission?: number;
+  /**
+   * False: the model casts no shadow (it still takes them). For ground,
+   * paving and what is too small to matter: a model is drawn again in every
+   * split of the shadow map it reaches. Default true.
+   */
+  castShadow?: boolean;
   /** Name prefix of the nodes created for copies. */
   label?: string;
   /**
@@ -84,6 +90,7 @@ export function mountZhudaModel(
   };
   try {
     const source = zhudaModelRenderers(l, instance.node);
+    const casts = options.castShadow !== false;
     // Every version of the model, the full one first.
     const versions = [instance, ...(options.lod ?? []).map((level) => level.instance)];
     const sources = versions.map((version) => zhudaModelRenderers(l, version.node));
@@ -112,7 +119,7 @@ export function mountZhudaModel(
           // them from the source.
           zhudaModelRenderers(l, copy).forEach((renderer, k) => {
             if (sources[v][k]) renderer.sharedMaterials = sources[v][k].sharedMaterials;
-            renderer.castShadow = true;
+            renderer.castShadow = casts;
             renderer.receiveShadow = true;
           });
           return copy;
@@ -134,7 +141,7 @@ export function mountZhudaModel(
     const materials = new Set<any>();
     for (const renderers of sources)
       for (const renderer of renderers) {
-        renderer.castShadow = true;
+        renderer.castShadow = casts;
         renderer.receiveShadow = true;
         for (const material of renderer.sharedMaterials ?? [])
           if (material) materials.add(material);

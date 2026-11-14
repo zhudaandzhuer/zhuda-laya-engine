@@ -18,6 +18,12 @@ export interface ZhudaModelMountOptions {
     translucent?: boolean;
     /** Scales the emissive strength of glTF materials (1 leaves them alone). */
     emission?: number;
+    /**
+     * False: the model casts no shadow (it still takes them). For ground,
+     * paving and what is too small to matter: a model is drawn again in every
+     * split of the shadow map it reaches. Default true.
+     */
+    castShadow?: boolean;
     /** Name prefix of the nodes created for copies. */
     label?: string;
     /**

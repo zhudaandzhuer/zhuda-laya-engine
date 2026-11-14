@@ -80,6 +80,11 @@ export interface PrefabModelNode {
   /** Scales what the model's materials give off, 0..8 (default 1). */
   emission?: number;
   /**
+   * False: the model casts no shadow (it still takes them). For ground and
+   * paving, which shade nothing, and for what is too small to matter.
+   */
+  castShadow?: boolean;
+  /**
    * Lighter versions for distance, nearest first (at most 4): beyond
    * `fromMeters` from the eye a copy draws this model instead of the one
    * before. Nothing changes until the Scene calls the instance's `updateLod`.
@@ -145,6 +150,8 @@ export function validatePrefabModels(entry: PrefabModelsDefinition): void {
       throw Error(`${at}: emission must be 0..8`);
     if (node.translucent !== undefined && typeof node.translucent !== 'boolean')
       throw Error(`${at}: translucent must be boolean`);
+    if (node.castShadow !== undefined && typeof node.castShadow !== 'boolean')
+      throw Error(`${at}: castShadow must be boolean`);
     if (node.lod !== undefined || node.cullMeters !== undefined) {
       const levels = node.lod ?? [];
       if (!Array.isArray(levels) || levels.length > 4)
@@ -495,6 +502,7 @@ export class ZhudaPrefabLibrary<T extends AnyPrefabDefinition = PrefabDefinition
             placements: node.placements,
             translucent: node.translucent,
             emission: node.emission,
+            castShadow: node.castShadow,
             label: `${entry.id}/${node.name}`,
             lod,
             cullMeters: node.cullMeters,

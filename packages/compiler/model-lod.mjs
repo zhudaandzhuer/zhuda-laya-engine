@@ -9,6 +9,9 @@
 //
 // usage: zhuda-laya-lod <model.glb> --ratio 0.5,0.2 [--textures 1024,512] [--out <dir>] [--error 0.02]
 // writes <name>.lod1.glb, <name>.lod2.glb ... beside the model (or in --out).
+//    or: zhuda-laya-lod <model.glb> --split 16
+// writes <name>.cells.glb: every mesh cut into squares of land that many
+// metres across, so that a street-long model is not drawn whole each time.
 import fs from 'node:fs';
 import path from 'node:path';
 import { MeshoptSimplifier } from 'meshoptimizer';
@@ -139,6 +142,167 @@ export function thinCards(indices, positions, ratio) {
 }
 
 /**
+ * A model being written again: its document, a copy to change, and the two
+ * things every rewrite needs: a part of a mesh cut down to some of its
+ * triangles (with only the vertices they use), and the finished file with
+ * nothing in it that is no longer pointed at.
+ */
+function rewriter(bytes) {
+  const { json, bin } = readGlb(bytes);
+  const out = structuredClone(json);
+  const added = []; // { bytes, target? } new buffer views, numbered after the old ones
+  const view = (data, target) => {
+    added.push({ bytes: Buffer.from(data.buffer, data.byteOffset, data.byteLength), target });
+    return json.bufferViews.length + added.length - 1;
+  };
+  /**
+   * `source` (a primitive of the original document) with the triangles
+   * `next` (indices into its vertices) and, where given, other positions.
+   */
+  const subset = (source, next, positions) => {
+    const vertices = json.accessors[source.attributes.POSITION].count;
+    // The vertices still used, in their old order.
+    const remap = new Int32Array(vertices).fill(-1);
+    const keep = [];
+    for (const v of [...new Set(next)].sort((a, b) => a - b)) {
+      remap[v] = keep.length;
+      keep.push(v);
+    }
+    const compact = (index, replace) => {
+      const accessor = json.accessors[index];
+      const { bytes: from, element } = replace
+        ? { bytes: Buffer.from(replace.buffer), element: 12 }
+        : elementBytes(json, bin, index);
+      const packed = Buffer.alloc(keep.length * element);
+      keep.forEach((v, i) => from.copy(packed, i * element, v * element, (v + 1) * element));
+      const made = { ...accessor, bufferView: view(packed, 34962), count: keep.length };
+      delete made.byteOffset;
+      if (accessor.min && accessor.type === 'VEC3' && accessor.componentType === 5126) {
+        const values = new Float32Array(packed.buffer, packed.byteOffset, keep.length * 3);
+        made.min = [Infinity, Infinity, Infinity];
+        made.max = [-Infinity, -Infinity, -Infinity];
+        for (let i = 0; i < values.length; i++) {
+          made.min[i % 3] = Math.min(made.min[i % 3], values[i]);
+          made.max[i % 3] = Math.max(made.max[i % 3], values[i]);
+        }
+      }
+      out.accessors.push(made);
+      return out.accessors.length - 1;
+    };
+    const made = { ...structuredClone(source), attributes: {} };
+    for (const [name, index] of Object.entries(source.attributes))
+      made.attributes[name] = compact(index, name === 'POSITION' ? positions : undefined);
+    if (source.targets)
+      made.targets = source.targets.map((morph) =>
+        Object.fromEntries(Object.entries(morph).map(([name, index]) => [name, compact(index)])),
+      );
+    const wide = keep.length > 65535;
+    const packed = wide ? new Uint32Array(next.length) : new Uint16Array(next.length);
+    for (let i = 0; i < next.length; i++) packed[i] = remap[next[i]];
+    out.accessors.push({
+      bufferView: view(packed, 34963),
+      componentType: wide ? 5125 : 5123,
+      count: packed.length,
+      type: 'SCALAR',
+    });
+    made.indices = out.accessors.length - 1;
+    return { primitive: made, vertices: keep.length };
+  };
+  /** A triangle list's positions and indices, or null where the part is something else. */
+  const triangles = (source) => {
+    const position = source.attributes?.POSITION;
+    if ((source.mode ?? 4) !== 4 || position === undefined) return null;
+    if (json.accessors[position].componentType !== 5126) return null;
+    const positions = Float32Array.from(typed(json, bin, position));
+    const indices =
+      source.indices === undefined
+        ? Uint32Array.from({ length: positions.length / 3 }, (_, i) => i)
+        : Uint32Array.from(typed(json, bin, source.indices));
+    return { positions, indices };
+  };
+  const finish = () => {
+    // Keep only the accessors something still points at, and only their data.
+    const usedAccessors = new Set();
+    const visit = (index) => index !== undefined && usedAccessors.add(index);
+    for (const mesh of out.meshes ?? [])
+      for (const primitive of mesh.primitives) {
+        Object.values(primitive.attributes ?? {}).forEach(visit);
+        visit(primitive.indices);
+        for (const morph of primitive.targets ?? []) Object.values(morph).forEach(visit);
+      }
+    for (const skin of out.skins ?? []) visit(skin.inverseBindMatrices);
+    for (const animation of out.animations ?? [])
+      for (const sampler of animation.samplers ?? []) {
+        visit(sampler.input);
+        visit(sampler.output);
+      }
+    const accessorMap = new Map();
+    out.accessors = out.accessors.filter((_, index) => {
+      if (!usedAccessors.has(index)) return false;
+      accessorMap.set(index, accessorMap.size);
+      return true;
+    });
+    const moved = (index) => (index === undefined ? undefined : accessorMap.get(index));
+    for (const mesh of out.meshes ?? [])
+      for (const primitive of mesh.primitives) {
+        for (const name of Object.keys(primitive.attributes ?? {}))
+          primitive.attributes[name] = moved(primitive.attributes[name]);
+        if (primitive.indices !== undefined) primitive.indices = moved(primitive.indices);
+        for (const morph of primitive.targets ?? [])
+          for (const name of Object.keys(morph)) morph[name] = moved(morph[name]);
+      }
+    for (const skin of out.skins ?? [])
+      if (skin.inverseBindMatrices !== undefined)
+        skin.inverseBindMatrices = moved(skin.inverseBindMatrices);
+    for (const animation of out.animations ?? [])
+      for (const sampler of animation.samplers ?? []) {
+        sampler.input = moved(sampler.input);
+        sampler.output = moved(sampler.output);
+      }
+    const usedViews = new Set();
+    for (const accessor of out.accessors)
+      if (accessor.bufferView !== undefined) usedViews.add(accessor.bufferView);
+    for (const image of out.images ?? [])
+      if (image.bufferView !== undefined) usedViews.add(image.bufferView);
+    const parts = [],
+      views = [],
+      viewMap = new Map();
+    let length = 0;
+    const total = json.bufferViews.length + added.length;
+    for (let index = 0; index < total; index++) {
+      if (!usedViews.has(index)) continue;
+      const old = json.bufferViews[index];
+      const data = old
+        ? bin.subarray(old.byteOffset || 0, (old.byteOffset || 0) + old.byteLength)
+        : added[index - json.bufferViews.length].bytes;
+      const pad = (4 - (length % 4)) % 4;
+      if (pad) parts.push(Buffer.alloc(pad));
+      length += pad;
+      const made = old
+        ? { ...old, buffer: 0, byteOffset: length }
+        : {
+            buffer: 0,
+            byteOffset: length,
+            byteLength: data.length,
+            target: added[index - json.bufferViews.length].target,
+          };
+      viewMap.set(index, views.length);
+      views.push(made);
+      parts.push(data);
+      length += data.length;
+    }
+    out.bufferViews = views;
+    for (const accessor of out.accessors)
+      if (accessor.bufferView !== undefined) accessor.bufferView = viewMap.get(accessor.bufferView);
+    for (const image of out.images ?? [])
+      if (image.bufferView !== undefined) image.bufferView = viewMap.get(image.bufferView);
+    out.buffers = [{ byteLength: length }];
+    return writeGlb(out, Buffer.concat(parts));
+  };
+  return { json, bin, out, view, subset, triangles, finish };
+}
+
+/**
  * The model with about `ratio` of its triangles. `error` is how far a
  * simplified surface may stand from the original, as a share of the mesh's
  * size (default 0.02). `textureSize` makes the pictures inside the file no
@@ -162,17 +326,11 @@ export async function simplifyGlb(bytes, options = {}) {
   )
     throw Error('textureSize: a whole number of pixels, 16..8192');
   await MeshoptSimplifier.ready;
-  const { json, bin } = readGlb(bytes);
-  const out = structuredClone(json);
-  const added = []; // { bytes, target? } new buffer views, numbered after the old ones
-  const view = (data, target) => {
-    added.push({ bytes: Buffer.from(data.buffer, data.byteOffset, data.byteLength), target });
-    return json.bufferViews.length + added.length - 1;
-  };
+  const { json, bin, out, view, subset, triangles, finish } = rewriter(bytes);
   const report = [];
-  for (const [m, mesh] of (out.meshes ?? []).entries())
-    for (const [p, primitive] of mesh.primitives.entries()) {
-      const material = out.materials?.[primitive.material] ?? {};
+  for (const [m, mesh] of (json.meshes ?? []).entries())
+    for (const [p, source] of mesh.primitives.entries()) {
+      const material = json.materials?.[source.material] ?? {};
       const entry = {
         mesh: mesh.name ?? String(m),
         part: p,
@@ -180,15 +338,9 @@ export async function simplifyGlb(bytes, options = {}) {
         method: 'kept',
       };
       report.push(entry);
-      const position = primitive.attributes?.POSITION;
-      if ((primitive.mode ?? 4) !== 4 || position === undefined) continue;
-      if (json.accessors[position].componentType !== 5126) continue;
-      const positions = Float32Array.from(typed(json, bin, position));
-      const vertices = positions.length / 3;
-      const indices =
-        primitive.indices === undefined
-          ? Uint32Array.from({ length: vertices }, (_, i) => i)
-          : Uint32Array.from(typed(json, bin, primitive.indices));
+      const geometry = triangles(source);
+      if (!geometry) continue;
+      const { positions, indices } = geometry;
       entry.before = indices.length / 3;
       const target = Math.max(3, Math.floor((indices.length * ratio) / 3) * 3);
       let [next] = MeshoptSimplifier.simplify(indices, positions, 3, target, error, []);
@@ -214,49 +366,9 @@ export async function simplifyGlb(bytes, options = {}) {
       }
       entry.after = next.length / 3;
       if (!next.length) throw Error(`${entry.mesh}: nothing left at ratio ${ratio}`);
-      // The vertices still used, in their old order.
-      const remap = new Int32Array(vertices).fill(-1);
-      const keep = [];
-      for (const v of [...new Set(next)].sort((a, b) => a - b)) {
-        remap[v] = keep.length;
-        keep.push(v);
-      }
-      entry.vertices = keep.length;
-      const compact = (index, replace) => {
-        const accessor = json.accessors[index];
-        const { bytes: source, element } = replace
-          ? { bytes: Buffer.from(replace.buffer), element: 12 }
-          : elementBytes(json, bin, index);
-        const packed = Buffer.alloc(keep.length * element);
-        keep.forEach((v, i) => source.copy(packed, i * element, v * element, (v + 1) * element));
-        const made = { ...accessor, bufferView: view(packed, 34962), count: keep.length };
-        delete made.byteOffset;
-        if (accessor.min && accessor.type === 'VEC3' && accessor.componentType === 5126) {
-          const values = new Float32Array(packed.buffer, packed.byteOffset, keep.length * 3);
-          made.min = [Infinity, Infinity, Infinity];
-          made.max = [-Infinity, -Infinity, -Infinity];
-          for (let i = 0; i < values.length; i++) {
-            made.min[i % 3] = Math.min(made.min[i % 3], values[i]);
-            made.max[i % 3] = Math.max(made.max[i % 3], values[i]);
-          }
-        }
-        out.accessors.push(made);
-        return out.accessors.length - 1;
-      };
-      for (const [name, index] of Object.entries(primitive.attributes))
-        primitive.attributes[name] = compact(index, name === 'POSITION' ? positions : undefined);
-      for (const morph of primitive.targets ?? [])
-        for (const [name, index] of Object.entries(morph)) morph[name] = compact(index);
-      const wide = keep.length > 65535;
-      const packed = wide ? new Uint32Array(next.length) : new Uint16Array(next.length);
-      for (let i = 0; i < next.length; i++) packed[i] = remap[next[i]];
-      out.accessors.push({
-        bufferView: view(packed, 34963),
-        componentType: wide ? 5125 : 5123,
-        count: packed.length,
-        type: 'SCALAR',
-      });
-      primitive.indices = out.accessors.length - 1;
+      const made = subset(source, next, positions);
+      entry.vertices = made.vertices;
+      out.meshes[m].primitives[p] = made.primitive;
     }
 
   // Pictures: a model seen from far off does not need them at full size.
@@ -284,84 +396,83 @@ export async function simplifyGlb(bytes, options = {}) {
       image.bufferView = view(made.data);
     }
   }
+  return { glb: finish(), report, pictures };
+}
 
-  // Keep only the accessors something still points at, and only their data.
-  const usedAccessors = new Set();
-  const visit = (index) => index !== undefined && usedAccessors.add(index);
-  for (const mesh of out.meshes ?? [])
-    for (const primitive of mesh.primitives) {
-      Object.values(primitive.attributes ?? {}).forEach(visit);
-      visit(primitive.indices);
-      for (const morph of primitive.targets ?? []) Object.values(morph).forEach(visit);
+/**
+ * The model with every mesh cut into squares of `cellMeters` on the ground
+ * (x and z, in the mesh's own units): each square becomes a mesh and a node
+ * of its own under the node that held the whole. A model that is one mesh a
+ * street long is drawn whole whenever any of it is in view, and again in
+ * every split of the shadow map it reaches; in squares, only those in view
+ * or in a split are drawn. A triangle goes to the square its middle lies in.
+ * Skinned meshes and meshes that are not triangle lists are left whole.
+ * Returns the new file and, mesh by mesh, how many squares it became.
+ */
+export function splitGlb(bytes, options = {}) {
+  const cell = options.cellMeters;
+  if (!(cell > 0 && Number.isFinite(cell))) throw Error('cellMeters: a size above 0');
+  const { json, out, subset, triangles, finish } = rewriter(bytes);
+  const skinned = new Set(
+    (json.nodes ?? []).filter((n) => n.skin !== undefined).map((n) => n.mesh),
+  );
+  const report = [];
+  // For each mesh: the meshes of its squares (or null where it stays whole).
+  const pieces = (json.meshes ?? []).map((mesh, m) => {
+    const entry = { mesh: mesh.name ?? String(m), cells: 1, triangles: 0 };
+    report.push(entry);
+    if (skinned.has(m) || mesh.weights) return null;
+    const cells = new Map();
+    for (const [p, source] of mesh.primitives.entries()) {
+      const geometry = triangles(source);
+      if (!geometry) return null;
+      const { positions, indices } = geometry;
+      entry.triangles += indices.length / 3;
+      for (let t = 0; t < indices.length; t += 3) {
+        const [a, b, c] = [indices[t], indices[t + 1], indices[t + 2]];
+        const x = (positions[a * 3] + positions[b * 3] + positions[c * 3]) / 3,
+          z = (positions[a * 3 + 2] + positions[b * 3 + 2] + positions[c * 3 + 2]) / 3;
+        const key = Math.floor(x / cell) + ',' + Math.floor(z / cell);
+        const parts = cells.get(key) ?? cells.set(key, new Map()).get(key);
+        (parts.get(p) ?? parts.set(p, []).get(p)).push(a, b, c);
+      }
     }
-  for (const skin of out.skins ?? []) visit(skin.inverseBindMatrices);
-  for (const animation of out.animations ?? [])
-    for (const sampler of animation.samplers ?? []) {
-      visit(sampler.input);
-      visit(sampler.output);
+    if (cells.size < 2) return null;
+    entry.cells = cells.size;
+    // Squares in the same order every run.
+    return [...cells.entries()]
+      .sort(([a], [b]) => (a < b ? -1 : 1))
+      .map(([key, parts]) => {
+        out.meshes.push({
+          ...(mesh.name ? { name: `${mesh.name}@${key}` } : {}),
+          primitives: [...parts.entries()].map(
+            ([p, list]) => subset(mesh.primitives[p], Uint32Array.from(list)).primitive,
+          ),
+        });
+        return { mesh: out.meshes.length - 1, key };
+      });
+  });
+  // A node that held a split mesh holds a child for each square instead.
+  for (const [n, node] of (json.nodes ?? []).entries()) {
+    const made = node.mesh === undefined ? null : pieces[node.mesh];
+    if (!made) continue;
+    const target = out.nodes[n];
+    delete target.mesh;
+    target.children = [...(target.children ?? [])];
+    for (const { mesh, key } of made) {
+      out.nodes.push({ name: `${node.name ?? 'node' + n}@${key}`, mesh });
+      target.children.push(out.nodes.length - 1);
     }
-  const accessorMap = new Map();
-  out.accessors = out.accessors.filter((_, index) => {
-    if (!usedAccessors.has(index)) return false;
-    accessorMap.set(index, accessorMap.size);
+  }
+  // The whole meshes that were split are dropped, and the rest renumbered.
+  const keepMesh = new Map();
+  out.meshes = out.meshes.filter((_, index) => {
+    if (index < pieces.length && pieces[index]) return false;
+    keepMesh.set(index, keepMesh.size);
     return true;
   });
-  const moved = (index) => (index === undefined ? undefined : accessorMap.get(index));
-  for (const mesh of out.meshes ?? [])
-    for (const primitive of mesh.primitives) {
-      for (const name of Object.keys(primitive.attributes ?? {}))
-        primitive.attributes[name] = moved(primitive.attributes[name]);
-      if (primitive.indices !== undefined) primitive.indices = moved(primitive.indices);
-      for (const morph of primitive.targets ?? [])
-        for (const name of Object.keys(morph)) morph[name] = moved(morph[name]);
-    }
-  for (const skin of out.skins ?? [])
-    if (skin.inverseBindMatrices !== undefined)
-      skin.inverseBindMatrices = moved(skin.inverseBindMatrices);
-  for (const animation of out.animations ?? [])
-    for (const sampler of animation.samplers ?? []) {
-      sampler.input = moved(sampler.input);
-      sampler.output = moved(sampler.output);
-    }
-  const usedViews = new Set();
-  for (const accessor of out.accessors)
-    if (accessor.bufferView !== undefined) usedViews.add(accessor.bufferView);
-  for (const image of out.images ?? [])
-    if (image.bufferView !== undefined) usedViews.add(image.bufferView);
-  const parts = [],
-    views = [],
-    viewMap = new Map();
-  let length = 0;
-  const total = json.bufferViews.length + added.length;
-  for (let index = 0; index < total; index++) {
-    if (!usedViews.has(index)) continue;
-    const old = json.bufferViews[index];
-    const data = old
-      ? bin.subarray(old.byteOffset || 0, (old.byteOffset || 0) + old.byteLength)
-      : added[index - json.bufferViews.length].bytes;
-    const pad = (4 - (length % 4)) % 4;
-    if (pad) parts.push(Buffer.alloc(pad));
-    length += pad;
-    const made = old
-      ? { ...old, buffer: 0, byteOffset: length }
-      : {
-          buffer: 0,
-          byteOffset: length,
-          byteLength: data.length,
-          target: added[index - json.bufferViews.length].target,
-        };
-    viewMap.set(index, views.length);
-    views.push(made);
-    parts.push(data);
-    length += data.length;
-  }
-  out.bufferViews = views;
-  for (const accessor of out.accessors)
-    if (accessor.bufferView !== undefined) accessor.bufferView = viewMap.get(accessor.bufferView);
-  for (const image of out.images ?? [])
-    if (image.bufferView !== undefined) image.bufferView = viewMap.get(image.bufferView);
-  out.buffers = [{ byteLength: length }];
-  return { glb: writeGlb(out, Buffer.concat(parts)), report, pictures };
+  for (const node of out.nodes) if (node.mesh !== undefined) node.mesh = keepMesh.get(node.mesh);
+  return { glb: finish(), report };
 }
 
 async function main(argv) {
@@ -371,10 +482,27 @@ async function main(argv) {
     const at = argv.indexOf('--' + name);
     return at >= 0 ? argv[at + 1] : undefined;
   };
+  if (files.length === 1 && flag('split')) {
+    // Cut into squares instead: <name>.cells.glb.
+    const source = path.resolve(files[0]);
+    const dir = path.resolve(flag('out') ?? path.dirname(source));
+    fs.mkdirSync(dir, { recursive: true });
+    const { glb, report } = splitGlb(fs.readFileSync(source), {
+      cellMeters: Number(flag('split')),
+    });
+    const file = path.join(dir, `${path.basename(source, '.glb')}.cells.glb`);
+    fs.writeFileSync(file, glb);
+    console.log(`${path.basename(file)}: ${(glb.length / 1024).toFixed(0)} KB`);
+    for (const r of report)
+      console.log(`  ${r.mesh}: ${r.triangles} triangles in ${r.cells} squares`);
+    return;
+  }
   if (files.length !== 1 || !flag('ratio')) {
     console.error(
       'usage: zhuda-laya-lod <model.glb> --ratio 0.5,0.2 [--textures 1024,512] [--out <dir>] [--error 0.02]\n' +
-        'writes <name>.lod1.glb, <name>.lod2.glb ... with that share of the triangles',
+        'writes <name>.lod1.glb, <name>.lod2.glb ... with that share of the triangles\n' +
+        '   or: zhuda-laya-lod <model.glb> --split 16 [--out <dir>]\n' +
+        'writes <name>.cells.glb, every mesh cut into squares that many metres across',
     );
     process.exitCode = 2;
     return;
@@ -410,7 +538,7 @@ async function main(argv) {
 if (
   cliMain(
     import.meta.url,
-    'Usage: zhuda-laya-lod MODEL.glb --ratio 0.5,0.2 [--textures 1024,512] [--out DIRECTORY] [--error 0.02]',
+    'Usage: zhuda-laya-lod MODEL.glb --ratio 0.5,0.2 [--textures 1024,512] [--out DIRECTORY] [--error 0.02] | MODEL.glb --split 16',
   )
 )
   main(process.argv.slice(2)).catch((error) => {

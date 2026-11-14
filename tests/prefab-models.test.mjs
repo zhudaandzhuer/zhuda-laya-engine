@@ -2,7 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { validatePrefabModels } from '../packages/core/prefabs/PrefabLibrary.ts';
 import { zhudaPrefabFromFilmScene } from '../packages/core/film/FilmPrefab.ts';
-import { validateZhudaModelPlacements } from '../packages/core/runtime3d/ModelPlacements.ts';
+import {
+  mountZhudaModel,
+  validateZhudaModelPlacements,
+} from '../packages/core/runtime3d/ModelPlacements.ts';
 
 const definition = (nodes, states = { default: {} }) => ({
   id: 'wild',
@@ -45,6 +48,7 @@ test('model prefab definitions are validated with the name of the node', () => {
   fails([{ ...fern, scale: 0 }], /ferns: scale/);
   fails([{ ...fern, emission: 9 }], /ferns: emission/);
   fails([{ ...fern, translucent: 1 }], /ferns: translucent/);
+  fails([{ ...fern, castShadow: 'no' }], /ferns: castShadow/);
   fails([{ ...fern, placements: [[0, 0, 0, 0]] }], /ferns: placements \[0\]/);
   fails([fern], /unknown node: trees/, { default: { trees: { active: false } } });
   fails([fern], /only active/, { default: { ferns: { scale: 2 } } });
@@ -242,4 +246,75 @@ test('model prefab definitions accept levels and reject bad ones with the node n
     },
     /at most 4/,
   );
+});
+
+test('a model that is told not to cast shadows does not, in any of its copies', () => {
+  // Enough of LayaAir for a mount: nodes with a renderer, cloned and placed.
+  const made = [];
+  class Node {
+    constructor(name) {
+      this.name = name;
+      this.children = [];
+      this.meshRenderer = { sharedMaterials: [], castShadow: undefined, receiveShadow: undefined };
+      this.transform = {};
+      made.push(this);
+    }
+    get numChildren() {
+      return this.children.length;
+    }
+    getChildAt(i) {
+      return this.children[i];
+    }
+    addChild(child) {
+      this.children.push(child);
+    }
+    removeSelf() {}
+    destroy() {}
+    clone() {
+      return new Node(this.name + ' copy');
+    }
+  }
+  class Holder extends Node {
+    constructor(name) {
+      super(name);
+      delete this.meshRenderer;
+    }
+  }
+  const before = globalThis.Laya;
+  globalThis.Laya = { Sprite3D: Holder, Vector3: class {}, Shader3D: {}, MeshRenderer: class {} };
+  try {
+    const places = [
+      [0, 0, 0, 0, 1],
+      [4, 0, 0, 90, 1],
+      [8, 0, 0, 0, 2],
+    ];
+    const casting = (options) => {
+      made.length = 0;
+      const mounted = mountZhudaModel(new Holder('holder'), { node: new Node('model') }, options);
+      const flags = made.filter((node) => node.meshRenderer).map((node) => node.meshRenderer);
+      mounted.dispose();
+      return flags;
+    };
+    for (const renderer of casting({ placements: places })) {
+      assert.equal(renderer.castShadow, true);
+      assert.equal(renderer.receiveShadow, true);
+    }
+    const quiet = casting({ placements: places, castShadow: false });
+    assert.equal(quiet.length, 3, 'the model and two copies');
+    for (const renderer of quiet) {
+      assert.equal(renderer.castShadow, false);
+      assert.equal(renderer.receiveShadow, true, 'it still takes shadows');
+    }
+    // Placed once, without copies, the same.
+    assert.deepEqual(
+      casting({ castShadow: false }).map((r) => r.castShadow),
+      [false],
+    );
+    assert.deepEqual(
+      casting({}).map((r) => r.castShadow),
+      [true],
+    );
+  } finally {
+    globalThis.Laya = before;
+  }
 });
