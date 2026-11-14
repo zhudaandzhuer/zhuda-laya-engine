@@ -20,6 +20,7 @@ import type {
   ZhudaMotionBlur,
 } from '../runtime3d/CameraEffects.ts';
 import type { ZhudaClouds } from '../runtime3d/Clouds.ts';
+import type { ZhudaShadowUpdates } from '../runtime3d/ShadowUpdates.ts';
 import type { ZhudaFilmVec3, ZhudaResolvedFilmLook } from './FilmScene.ts';
 
 /** What `applyResolvedFilmLook` built, kept so a later look can adjust it in place. */
@@ -33,7 +34,12 @@ export interface ZhudaAppliedLookParts {
   sky?: any;
   film?: ZhudaFilmicPipeline;
   finish?: ZhudaLensFinish;
+  /** The shadow update rule, when the look's shadows are not drawn every frame. */
+  shadowUpdates?: ZhudaShadowUpdates;
 }
+
+/** What the shadow maps were last drawn for, by rule: a change draws them again. */
+const shadowsDrawnFor = new WeakMap<ZhudaShadowUpdates, string>();
 
 /** Unit vector from the scene toward the light (the light travels along its forward axis). */
 export function zhudaTowardSun(l: any, sun: any): [number, number, number] {
@@ -117,6 +123,17 @@ export function updateZhudaLookInPlace(
         : look.shadows.cascades === 1
           ? l.ShadowCascadesMode.NoCascades
           : l.ShadowCascadesMode.TwoCascades;
+    const rule = parts.shadowUpdates;
+    if (rule) {
+      const { update, interval, ...drawn } = look.shadows;
+      if (rule.mode !== update || rule.interval !== interval) rule.set({ mode: update, interval });
+      // A sun that moved or other shadow settings: the kept maps are wrong.
+      const key = JSON.stringify([look.sun.elevationDeg, look.sun.azimuthDeg, drawn]);
+      if (shadowsDrawnFor.get(rule) !== key) {
+        shadowsDrawnFor.set(rule, key);
+        rule.redraw();
+      }
+    }
   }
   if (parts.sky && look.atmosphere) {
     const sky = parts.sky;

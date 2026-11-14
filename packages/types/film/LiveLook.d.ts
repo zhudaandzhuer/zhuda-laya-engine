@@ -5,6 +5,7 @@ import type { ZhudaScreenReflections } from '../runtime3d/ScreenReflections.js';
 import type { ZhudaLensFinish } from '../runtime3d/LensFinish.js';
 import type { ZhudaAutoExposure, ZhudaDepthOfField, ZhudaMotionBlur } from '../runtime3d/CameraEffects.js';
 import type { ZhudaClouds } from '../runtime3d/Clouds.js';
+import type { ZhudaShadowUpdates } from '../runtime3d/ShadowUpdates.js';
 import type { ZhudaFilmVec3, ZhudaResolvedFilmLook } from './FilmScene.js';
 /** What `applyResolvedFilmLook` built, kept so a later look can adjust it in place. */
 export interface ZhudaAppliedLookParts {
@@ -17,6 +18,8 @@ export interface ZhudaAppliedLookParts {
     sky?: any;
     film?: ZhudaFilmicPipeline;
     finish?: ZhudaLensFinish;
+    /** The shadow update rule, when the look's shadows are not drawn every frame. */
+    shadowUpdates?: ZhudaShadowUpdates;
 }
 /** Unit vector from the scene toward the light (the light travels along its forward axis). */
 export declare function zhudaTowardSun(l: any, sun: any): [number, number, number];

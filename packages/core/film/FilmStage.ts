@@ -42,6 +42,7 @@ import { ZhudaProbeVolume, zhudaProbeCounts } from '../runtime3d/ProbeVolume.ts'
 import { ZhudaEnvironmentProbe } from '../runtime3d/EnvironmentProbe.ts';
 import { ZhudaLensFinish } from '../runtime3d/LensFinish.ts';
 import { ZhudaEdgeSmoothing } from '../runtime3d/EdgeSmoothing.ts';
+import { ZhudaShadowUpdates } from '../runtime3d/ShadowUpdates.ts';
 import { ZhudaModelInspector } from '../runtime3d/ModelInspector.ts';
 import { ZhudaModelAnimationSampler } from '../runtime3d/ModelAnimationSampler.ts';
 import {
@@ -963,6 +964,8 @@ function buildFilmStageContents(
     cleanups.push(() => lens.dispose());
     let current = resolveZhudaFilmCamera(scene.camera);
     const prepare = (aspect: number, frame?: { width: number; height: number; index: number }) => {
+      // A still or a sample of a video draws the sun's shadows whatever `shadows.update` says.
+      effects.shadowUpdates?.redraw();
       for (const casting of pointShadows)
         if (casting.dirty) {
           casting.dirty = false;
@@ -1233,6 +1236,7 @@ export function applyResolvedFilmLook(
   let finish: ZhudaLensFinish | undefined;
   let skyMaterial: any;
   let film: ZhudaFilmicPipeline | undefined;
+  let shadowUpdates: ZhudaShadowUpdates | undefined;
   if (look.shadows) {
     sun.shadowMode = look.shadows.softness === 'hard' ? l.ShadowMode.Hard : l.ShadowMode.SoftHigh;
     sun.shadowDistance = look.shadows.distance;
@@ -1246,6 +1250,14 @@ export function applyResolvedFilmLook(
           : l.ShadowCascadesMode.TwoCascades;
     // Switch shadows off before the scene is destroyed (see the stage tests).
     cleanups.push(() => (sun.shadowMode = l.ShadowMode.None));
+    // Every frame is LayaAir's own path; the others need the rule on the scene.
+    if (look.shadows.update !== 'every') {
+      const rule = (shadowUpdates = new ZhudaShadowUpdates(scene3D, {
+        mode: look.shadows.update,
+        interval: look.shadows.interval,
+      }));
+      cleanups.push(() => rule.dispose());
+    }
   } else sun.shadowMode = l.ShadowMode.None;
   // A panorama replaces the procedural sky (it is applied after loading).
   if (look.atmosphere && !look.panorama) {
@@ -1387,6 +1399,7 @@ export function applyResolvedFilmLook(
     finish,
     sky: skyMaterial,
     film,
+    shadowUpdates,
   };
 }
 

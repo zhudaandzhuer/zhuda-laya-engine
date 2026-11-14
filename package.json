@@ -164,6 +164,8 @@
     "verify:live-look": "node scripts/verify-live-look.mjs",
     "verify:camera-effects": "node scripts/verify-camera-effects.mjs",
     "verify:grass": "node scripts/verify-grass.mjs",
+    "verify:shadow-updates": "node scripts/verify-shadow-updates.mjs",
+    "verify:render-scale": "node scripts/verify-render-scale.mjs",
     "types:generate": "node packages/compiler/runtime3d-types.mjs",
     "types:check": "node packages/compiler/runtime3d-types.mjs --check",
     "prepare": "npm run build 1>&2",

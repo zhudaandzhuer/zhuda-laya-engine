@@ -215,6 +215,13 @@ the lens finish and multisampling (edges are then smoothed in one pass, `fxaa`);
 light and distance fog stay at every level. Measure on the device the game is
 for; this repository's numbers are from a desktop.
 
+Two more levers before effects go: a render scale (`look.setRenderScale(0.67)`,
+FSR 1 brings the picture up to the canvas, the interface stays sharp) and sun
+shadows drawn every few frames (`shadows: { update: 'interval', interval: 3 }`).
+`zhudaQualitySteps()` puts the scales on the governor's ladder
+(`look.setStep(steps[level])`). Desktop-drawn, not phone-measured: see
+`docs/plans/records/frame-cost/`.
+
 ### 12. `final-evidence`
 
 Film: `film_render_job` with `kind: "still"` (16 samples) or `"video"`; with a

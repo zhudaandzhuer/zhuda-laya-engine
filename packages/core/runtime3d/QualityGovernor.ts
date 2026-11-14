@@ -112,3 +112,50 @@ export class ZhudaQualityGovernor {
     this.wait.fill(this.calmSeconds);
   }
 }
+
+/**
+ * One rung of a quality ladder: a look quality level (see
+ * `zhudaLookForQuality`, 3 as authored) and the size the 3D picture is
+ * drawn at (see `ZhudaRenderScale`).
+ */
+export interface ZhudaQualityStep {
+  look: 0 | 1 | 2 | 3;
+  renderScale: number;
+}
+
+export interface ZhudaQualityStepsOptions {
+  /**
+   * Render scales tried at the authored look before any effect is dropped,
+   * from the largest, each 0.5..1 (default [1, 0.85, 0.7]). The look levels
+   * below are drawn at the last of them.
+   */
+  scales?: readonly number[];
+  /** A last rung at look level 0 drawn smaller still, 0.5..1 (default 0.5); `false` for none. */
+  lowest?: number | false;
+}
+
+/**
+ * A ladder for `ZhudaQualityGovernor`: index 0 is the cheapest rung and the
+ * last is the authored look at full size, so a governor made with
+ * `levels: steps.length` walks it (`steps[governor.level]`). Each rung down
+ * draws less than the one above it: first the picture gets smaller, then
+ * effects go at the smallest of those sizes, last the picture shrinks again.
+ * The default rungs are a proposal: no phone has measured them yet.
+ */
+export function zhudaQualitySteps(options: ZhudaQualityStepsOptions = {}): ZhudaQualityStep[] {
+  const scales = options.scales ?? [1, 0.85, 0.7],
+    lowest = options.lowest ?? 0.5;
+  const valid = (value: unknown) =>
+    typeof value === 'number' && Number.isFinite(value) && value >= 0.5 && value <= 1;
+  if (!Array.isArray(scales) || !scales.length || scales.length > 8 || !scales.every(valid))
+    throw Error('Quality steps: scales are 1..8 render scales 0.5..1');
+  if (scales.some((value, i) => i > 0 && value >= scales[i - 1]))
+    throw Error('Quality steps: scales go from the largest down');
+  const smallest = scales[scales.length - 1];
+  if (lowest !== false && !(valid(lowest) && lowest < smallest))
+    throw Error('Quality steps: lowest is a render scale 0.5..1 below the last of scales');
+  const best: ZhudaQualityStep[] = scales.map((renderScale) => ({ look: 3, renderScale }));
+  for (const look of [2, 1, 0] as const) best.push({ look, renderScale: smallest });
+  if (lowest !== false) best.push({ look: 0, renderScale: lowest });
+  return best.reverse();
+}
