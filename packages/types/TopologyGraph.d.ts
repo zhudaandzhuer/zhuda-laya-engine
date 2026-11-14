@@ -39,6 +39,11 @@ export interface SequenceAuditIssue {
 }
 /**
  * LayaAir 3.4.2 完整 29 模組拓撲定義表 (含真實檔案大小與隱式全域依賴邊)
+ *
+ * `providesGlobals` are paths from the global object that the module's own
+ * vendored file defines while it loads; `EngineGuard.inspectEngineHealth`
+ * counts a module as loaded when all are present. tests/topology-globals.test.mjs
+ * checks every name and `sizeBytes` against vendor/laya-3.4.2/libs.
  */
 export declare const ZHUDA_ENGINE_MODULES: readonly EngineModuleNode[];
 export type PresetProfileName = '2d-light' | '3d-standard' | 'spine-hybrid' | 'full-all-in-one';
