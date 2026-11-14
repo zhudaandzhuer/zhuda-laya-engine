@@ -42,6 +42,22 @@ export declare function enableLaya342VertexColors(node: any, runtime?: any): num
 /** The define that switches leaf translucency on for a material. */
 export declare const ZHUDA_TRANSLUCENT_DEFINE = "ZHUDA_TRANSLUCENT";
 /**
+ * The shadow caster's vertex code with the normal bias kept off faces that
+ * look away from the light; text that does not hold the upstream line comes
+ * back unchanged. Pure: no Laya needed.
+ */
+export declare function zhudaPatchShadowBias(text: string): string;
+/**
+ * Laya 3.4.2 draws a shadow caster a little smaller than it is: every vertex
+ * is pulled back along its normal, most where the surface lies along the
+ * light. A face that looks away from the light is pulled the full distance,
+ * which moves it toward the light: the underside of a thin slab (a paved
+ * road, a floor, a roof) rises above its top and the top lies in its own
+ * shadow all day. With this the pull fades out as a face turns away from the
+ * light. Must run before `Laya.init`, which registers the include.
+ */
+export declare function installLaya342ShadowBias(runtime?: any): boolean;
+/**
  * Adds light that passes through thin surfaces to Laya 3.4.2's PBR lighting:
  * a leaf lit from behind glows in its own colour instead of going black.
  * Materials opt in with the `ZHUDA_TRANSLUCENT` define; everything else

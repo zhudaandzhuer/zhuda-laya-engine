@@ -168,6 +168,43 @@ const translucencyPatched = new WeakSet<object>();
 /** The define that switches leaf translucency on for a material. */
 export const ZHUDA_TRANSLUCENT_DEFINE = 'ZHUDA_TRANSLUCENT';
 const LIGHTING_TAIL = 'return shading*light.color*NoL;}';
+const shadowBiasPatched = new WeakSet<object>();
+const SHADOW_BIAS_UPSTREAM =
+  'float invNdotL=1.0-clamp(dot(-lightDirection,normalWS),0.0,1.0);float scale=invNdotL*u_ShadowBias.y;';
+const SHADOW_BIAS_FIXED =
+  'float zhudaFacing=dot(-lightDirection,normalWS);float invNdotL=1.0-clamp(zhudaFacing,0.0,1.0);float scale=invNdotL*u_ShadowBias.y*smoothstep(-0.25,0.0,zhudaFacing);';
+/**
+ * The shadow caster's vertex code with the normal bias kept off faces that
+ * look away from the light; text that does not hold the upstream line comes
+ * back unchanged. Pure: no Laya needed.
+ */
+export function zhudaPatchShadowBias(text: string): string {
+  return text.includes(SHADOW_BIAS_UPSTREAM)
+    ? text.replace(SHADOW_BIAS_UPSTREAM, SHADOW_BIAS_FIXED)
+    : text;
+}
+/**
+ * Laya 3.4.2 draws a shadow caster a little smaller than it is: every vertex
+ * is pulled back along its normal, most where the surface lies along the
+ * light. A face that looks away from the light is pulled the full distance,
+ * which moves it toward the light: the underside of a thin slab (a paved
+ * road, a floor, a roof) rises above its top and the top lies in its own
+ * shadow all day. With this the pull fades out as a face turns away from the
+ * light. Must run before `Laya.init`, which registers the include.
+ */
+export function installLaya342ShadowBias(runtime: any = (globalThis as any).Laya): boolean {
+  const shader = runtime?.Shader3D;
+  if (!shader || typeof shader.addInclude !== 'function') return false;
+  if (shadowBiasPatched.has(shader)) return true;
+  const addInclude = shader.addInclude;
+  shader.addInclude = function (name: string, text: string, ...rest: unknown[]) {
+    if (name === 'DepthVertex.glsl' && typeof text === 'string') text = zhudaPatchShadowBias(text);
+    return addInclude.call(this, name, text, ...rest);
+  };
+  shadowBiasPatched.add(shader);
+  return true;
+}
+
 /**
  * Adds light that passes through thin surfaces to Laya 3.4.2's PBR lighting:
  * a leaf lit from behind glows in its own colour instead of going black.
