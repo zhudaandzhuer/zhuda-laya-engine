@@ -393,6 +393,67 @@ one with a directional lightmap and four, likewise. Set by hand past the
 validator, the seventh texture is where the ball stops being drawn on
 WebGPU, the ninth on WebGL.
 
+## Specular anti-aliasing
+
+For every physically based material (LayaAir's `PBR` and `glTFPBR`,
+`ZhudaLitSurfaceMaterial`), off until a scene asks for it:
+`setZhudaSpecularAA(scene, true)`. A dense normal map seen from afar has
+more bumps under a pixel than the pixel can show; its highlight lands on one
+pixel and misses the next, and sparkles as the camera moves. Two things
+widen a highlight:
+
+- **The bumps a mipmap has averaged away.** The filtered normal is shorter
+  the wider the spread of the normals it stands for, and the roughness is
+  raised by that spread. It fades in from two texels of the map to a pixel
+  to four. Left as they were: a map seen nearer than that, where its bumps
+  can be seen one by one; a map without mipmaps (`createSurfaceTexture`
+  makes none unless asked: give normal maps `mipmap: true`); a map at no
+  strength; a map on a mesh without tangents.
+- **The curve of the surface itself** (LayaAir's own `specularAA`, which
+  nothing in LayaAir calls). A highlight narrower than a pixel, on a small
+  or polished ball, becomes about a pixel wide and dimmer, and no longer
+  comes and goes as the ball moves. One several pixels wide stays as it was.
+
+Measured on balls against the same balls drawn with 256 samples to a pixel
+(`npm run verify:specular-aa`, desktop WebGL and WebGPU), under a camera
+moved by less than a pixel a frame and a sun bright enough to clip:
+
+- A bumpy metal at four and eight texels to a pixel: pixels that jump by
+  more than 48 of 255 between frames fall from 733 and 600 a frame to 21
+  and 3, clipped sparkles from 97 and 104 to none, the mean change of a
+  pixel by 21 % and 37 %. Its light is 4 % over the truth's (16 % and 23 %
+  without).
+- Smooth balls from roughness 0.05 to 0.4, 68 and 17 pixels in radius: the
+  peak of the highlight is nearer the truth's than without in every case,
+  its size under a clipping sun within 4 pixels of the truth's, and no line
+  appears along the rim.
+
+What it does not do, and what it costs:
+
+- Pixel for pixel the picture is not nearer the truth, which glitters: a
+  sheen takes the place of the sparkle. A block of sixteen pixels is nearer
+  for metal, and for paint a little further (under one level of 255).
+- The rim of a bumpy metal ball is brighter than the truth's (27 of 255
+  against 6; 5 without).
+- Between two and four texels to a pixel a bumpy metal shows more change
+  from frame to frame than without (14 to 23 of 255, where the truth
+  changes by 26): the light that clipping hid now shows. Where the fade
+  begins can be seen on the surface.
+- A material with a normal map reads it once more a pixel (WebGL 2 and
+  WebGPU). The frame cost is not measured, and nothing is measured on a
+  phone.
+
+It is not the default because of the last three points: a scene turns it
+on where its surfaces are seen from far enough (four texels of the normal
+map to a pixel and more), and leaves it off where they are not.
+`setZhudaSpecularAA(scene, true)` turns it on for a scene and `false` off
+again (its shaders compile again each time);
+`installLaya342SpecularAA(Laya, { defaultOn: true })` makes it the default
+for every scene made afterwards. Without the define what the patch adds is
+compiled out. `zhudaSpecularAAStatus()` says whether the
+patch is in place, and names any physically based shader whose normal map
+it could not reach. [Record](plans/records/specular-aa/verification.md).
+
 ## Marks on surfaces
 
 `new ZhudaDecal(scene3D, { position, size, normal, color, opacity, roughness,
