@@ -234,6 +234,247 @@ return zhudaLit;}`,
   return true;
 }
 
+/** The define that turns specular anti-aliasing on for a scene (or one material). */
+export const ZHUDA_SPECULAR_AA_DEFINE = 'ZHUDA_SPECULAR_AA';
+/** Laya 3.4.2's own function, in `PBRLighting.glsl`; nothing upstream calls it. */
+const SPECULAR_AA_FUNCTION = 'float specularAA(float roughness,in vec3 normalWS){';
+/** `PBRFrag.glsl`: the surface comes in read-only. */
+const PIXEL_INFO_HEAD =
+  'void getPixelInfo(inout PixelInfo info,const in PixelParams pixel,const in Surface surface){';
+const PIXEL_INFO_HEAD_PATCHED =
+  'void getPixelInfo(inout PixelInfo info,const in PixelParams pixel,inout Surface surface){';
+/** `PBRFrag.glsl`: the shading normal (normal map applied) has just been set. */
+const PIXEL_NORMAL_SET = 'info.normalWS=pixel.normalWS;\n#endif\ninfo.tangentWS=pixel.tangentWS;';
+/**
+ * Roughness squared grows by two amounts (Laya's `alpha`; the perceptual
+ * roughness follows as its root):
+ * - Laya's `specularAA` on the shading normal: how fast it turns from one pixel
+ *   to the next (Kaplanyan 2016, Tokuyoshi 2019; Laya's constants, variance
+ *   0.15, at most 0.04);
+ * - the normal map's own filtering: a mipmap averages the bumps under a pixel
+ *   into a shorter normal, and the shorter it is, the wider the spread of
+ *   normals it stands for (Toksvig 2004, as a von Mises-Fisher lobe; Neubelt
+ *   and Pettineo 2013). 0.004 of length is 8-bit rounding, not spread; at most
+ *   0.12 is added, so a surface never goes fully matte.
+ * `max` keeps a mediump underflow of roughness squared from making a surface
+ * smoother than it was. The derivatives run in getPixelInfo, which every
+ * caller reaches outside any branch, as WebGPU's uniformity rule asks.
+ */
+const SPECULAR_AA_HELPER = `
+#ifdef ${ZHUDA_SPECULAR_AA_DEFINE}
+float zhudaSpecularAA(float roughness,vec3 normalWS,vec3 normalTS){float r=specularAA(roughness,normalWS);float l=clamp(length(normalTS)+0.004,0.05,1.0);float spread=(1.0-l*l)/(2.0*l*(3.0-l*l));return max(sqrt(saturate(r*r+min(spread,0.12))),roughness);}
+#endif
+`;
+const PIXEL_NORMAL_SET_PATCHED = `info.normalWS=pixel.normalWS;
+#endif
+#ifdef ${ZHUDA_SPECULAR_AA_DEFINE}
+surface.roughness=zhudaSpecularAA(surface.roughness,info.normalWS,surface.normalTS);surface.perceptualRoughness=sqrt(surface.roughness);
+#endif
+info.tangentWS=pixel.tangentWS;`;
+const occurrences = (text: string, part: string) => text.split(part).length - 1;
+
+/**
+ * `PBRFrag.glsl` with specular anti-aliasing in `getPixelInfo`, behind
+ * `ZHUDA_SPECULAR_AA`; the surface becomes `inout` so the widened roughness
+ * reaches the lights, the environment lookup and the G-buffer. Text that does
+ * not hold each anchor exactly once comes back unchanged with the reason.
+ * Pure: no Laya needed.
+ */
+export function zhudaPatchSpecularAA(text: string): { text: string; reason?: string } {
+  if (text.includes(PIXEL_INFO_HEAD_PATCHED) && text.includes(ZHUDA_SPECULAR_AA_DEFINE))
+    return { text };
+  for (const [anchor, name] of [
+    [PIXEL_INFO_HEAD, 'the getPixelInfo signature'],
+    [PIXEL_NORMAL_SET, 'the line after the shading normal'],
+  ]) {
+    const found = occurrences(text, anchor);
+    if (found !== 1) return { text, reason: `PBRFrag.glsl holds ${name} ${found} times, not once` };
+  }
+  return {
+    text: text
+      .replace(PIXEL_INFO_HEAD, SPECULAR_AA_HELPER + PIXEL_INFO_HEAD_PATCHED)
+      .replace(PIXEL_NORMAL_SET, PIXEL_NORMAL_SET_PATCHED),
+  };
+}
+
+const NORMAL_SAMPLE =
+  /vec3 normalSampler=texture2D\(u_NormalTexture,(\w+)\)\.(rgb|xyz);normalSampler=normalize\(normalSampler\*2\.0-1\.0\);/g;
+const NORMAL_STORE = 'inputs.normalTS=normalScale(normalSampler,u_NormalScale);';
+const PBR_FORWARD = /#include "(?:PBRMetallicFrag|glTFMetallicRoughness)\.glsl"/;
+/**
+ * The forward pass of a physically based shader (Laya's `PBR`, `glTFPBR`, a
+ * `ZhudaLitSurfaceMaterial`) with the length of the filtered normal kept in
+ * `inputs.normalTS`, for `PBRFrag.glsl` to read; `getPixelInfo` normalises it
+ * as before. Only where the map is drawn smaller than it is (one texel to a
+ * pixel or more): magnified, a texel spans pixels, and the shorter normal
+ * halfway between two texels is no sign of bumps lost; it would draw their
+ * grid. WebGL 1 has no `textureSize` and keeps the derivative term alone; so
+ * does a material with a detail normal map, which renormalises the blend.
+ * Any other text comes back unchanged. Pure: no Laya needed.
+ */
+export function zhudaPatchNormalLength(fragment: string): string {
+  const samples = [...fragment.matchAll(NORMAL_SAMPLE)];
+  if (
+    samples.length !== 1 ||
+    occurrences(fragment, NORMAL_STORE) !== 1 ||
+    !PBR_FORWARD.test(fragment) ||
+    fragment.includes('zhudaNormalLength')
+  )
+    return fragment;
+  const [sample, uv, swizzle] = samples[0];
+  return fragment
+    .replace(
+      sample,
+      `vec3 normalSampler=texture2D(u_NormalTexture,${uv}).${swizzle};float zhudaNormalLength=length(normalSampler*2.0-1.0);normalSampler=normalize(normalSampler*2.0-1.0);`,
+    )
+    .replace(
+      NORMAL_STORE,
+      `${NORMAL_STORE}\n#if defined(${ZHUDA_SPECULAR_AA_DEFINE}) && defined(GRAPHICS_API_GLES3) && !defined(DETAILNORMAL)\n{vec2 zhudaSize=vec2(textureSize(u_NormalTexture,0));vec2 zhudaX=dFdx(${uv})*zhudaSize;vec2 zhudaY=dFdy(${uv})*zhudaSize;inputs.normalTS*=mix(1.0,zhudaNormalLength,smoothstep(1.0,4.0,max(dot(zhudaX,zhudaX),dot(zhudaY,zhudaY))));}\n#endif\n`,
+    );
+}
+
+/** Where specular anti-aliasing stands in this runtime. */
+export interface ZhudaSpecularAAStatus {
+  /** `PBRFrag.glsl` carries the call, behind `ZHUDA_SPECULAR_AA`. */
+  patched: boolean;
+  /** Every scene made from now on has the define: on by default. */
+  defaultOn: boolean;
+  /** Why it is off, when it is. */
+  reason?: string;
+  /**
+   * Forward passes registered so far that also read the normal map's own
+   * filtering: Laya's `PBR` and `glTFPBR` and each `ZhudaLitSurfaceMaterial`
+   * shader. Without it they keep the derivative term alone.
+   */
+  normalMapPasses: number;
+}
+interface SpecularAAState extends ZhudaSpecularAAStatus {
+  lighting?: boolean;
+  fragment?: boolean;
+  fragmentReason?: string;
+  warned?: boolean;
+}
+const specularAAStates = new WeakMap<object, SpecularAAState>();
+
+/** Decides once both includes have been seen, in whichever order they come. */
+function settleSpecularAA(shader: any, state: SpecularAAState) {
+  if (state.fragment === undefined || state.lighting === undefined) return;
+  state.patched = state.fragment;
+  let reason: string | undefined;
+  if (!state.fragment) reason = state.fragmentReason;
+  else if (!state.lighting)
+    reason = 'PBRLighting.glsl does not define specularAA(roughness, normalWS) once';
+  else if (typeof shader._configDefineValues?.add !== 'function')
+    reason = 'Shader3D._configDefineValues is missing: the define cannot be made a default';
+  else {
+    shader._configDefineValues.add(shader.getDefineByName(ZHUDA_SPECULAR_AA_DEFINE));
+    state.defaultOn = true;
+  }
+  state.reason = reason;
+  if (reason && !state.warned) {
+    state.warned = true;
+    console.warn(`[zhuda] specular anti-aliasing is off: ${reason}`);
+  }
+}
+
+/**
+ * Specular anti-aliasing for Laya 3.4.2's physically based shaders (`PBR`,
+ * the glTF `glTFPBR`, and `ZhudaLitSurfaceMaterial`, which all set up their
+ * pixel in `PBRFrag.glsl`). A dense normal map seen from afar has more bumps
+ * under a pixel than the pixel can show: one pixel catches the sun on a bump
+ * and its neighbour misses it, and as the camera moves the highlight
+ * sparkles and crawls, worst on a phone's small pixels. The roughness is
+ * raised where the normal turns quickly from pixel to pixel and where the
+ * map's mipmap has averaged bumps away, so the light those bumps would have
+ * scattered is spread over the pixel instead. Flat and gently curved
+ * surfaces, and maps seen close up, keep their roughness.
+ *
+ * On by default: the define is added to Laya's configuration defines, which
+ * every new `Scene3D` copies. `setZhudaSpecularAA(scene, false)` turns it off
+ * for one scene. If the vendored text no longer holds an anchor, nothing is
+ * changed and `zhudaSpecularAAStatus()` (and a console warning) says why.
+ * Must run before `Laya.init`, which registers the includes and the shaders.
+ */
+export function installLaya342SpecularAA(runtime: any = (globalThis as any).Laya): boolean {
+  const shader = runtime?.Shader3D;
+  if (!shader || typeof shader.addInclude !== 'function') return false;
+  if (specularAAStates.has(shader)) return true;
+  const state: SpecularAAState = {
+    patched: false,
+    defaultOn: false,
+    reason: 'the PBR includes have not been registered (install before Laya.init)',
+    normalMapPasses: 0,
+  };
+  specularAAStates.set(shader, state);
+  const addInclude = shader.addInclude;
+  shader.addInclude = function (name: string, text: string, ...rest: unknown[]) {
+    if (typeof text === 'string' && name === 'PBRLighting.glsl') {
+      state.lighting = occurrences(text, SPECULAR_AA_FUNCTION) === 1;
+      settleSpecularAA(shader, state);
+    } else if (typeof text === 'string' && name === 'PBRFrag.glsl') {
+      const result = zhudaPatchSpecularAA(text);
+      text = result.text;
+      state.fragment = !result.reason;
+      state.fragmentReason = result.reason;
+      settleSpecularAA(shader, state);
+    }
+    return addInclude.call(this, name, text, ...rest);
+  };
+  const sub = runtime.SubShader?.prototype;
+  if (sub && typeof sub.addShaderPass === 'function') {
+    const addShaderPass = sub.addShaderPass;
+    sub.addShaderPass = function (vertex: string, fragment: string, ...rest: unknown[]) {
+      if (typeof fragment === 'string') {
+        const patched = zhudaPatchNormalLength(fragment);
+        if (patched !== fragment) state.normalMapPasses++;
+        fragment = patched;
+      }
+      return addShaderPass.call(this, vertex, fragment, ...rest);
+    };
+  }
+  return true;
+}
+
+/** Where specular anti-aliasing stands (see `installLaya342SpecularAA`). */
+export function zhudaSpecularAAStatus(
+  runtime: any = (globalThis as any).Laya,
+): ZhudaSpecularAAStatus {
+  const state = runtime?.Shader3D && specularAAStates.get(runtime.Shader3D);
+  if (!state)
+    return { patched: false, defaultOn: false, reason: 'not installed', normalMapPasses: 0 };
+  return {
+    patched: state.patched,
+    defaultOn: state.defaultOn,
+    ...(state.reason ? { reason: state.reason } : {}),
+    normalMapPasses: state.normalMapPasses,
+  };
+}
+
+/**
+ * Turns specular anti-aliasing on or off for everything a scene draws. New
+ * scenes have it on. Every shader of the scene is compiled again for the new
+ * set of defines, so switch it when the scene is set up, not every frame.
+ * Returns whether it is now on; it cannot be turned on when the patch is not
+ * in place (see `zhudaSpecularAAStatus`).
+ */
+export function setZhudaSpecularAA(
+  scene: any,
+  enabled: boolean,
+  runtime: any = (globalThis as any).Laya,
+): boolean {
+  const values = scene?._shaderValues;
+  if (typeof values?.addDefine !== 'function' || typeof values.removeDefine !== 'function')
+    throw Error('setZhudaSpecularAA: pass a Laya Scene3D');
+  const define = runtime.Shader3D.getDefineByName(ZHUDA_SPECULAR_AA_DEFINE);
+  const state = specularAAStates.get(runtime.Shader3D);
+  if (!enabled || !state?.patched || state.lighting !== true) {
+    values.removeDefine(define);
+    return false;
+  }
+  values.addDefine(define);
+  return true;
+}
+
 /**
  * Call before drawing a scene by hand (`Camera.drawRenderTextureByScene`)
  * from inside an update: a mirror, a depth picture, a capture.

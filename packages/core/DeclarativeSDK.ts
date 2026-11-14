@@ -8,6 +8,7 @@ import { createSurfaceMaterial } from './runtime3d/Surfaces.ts';
 import {
   installLaya342LifecycleFix,
   installLaya342ShadowBias,
+  installLaya342SpecularAA,
   installLaya342Translucency,
 } from './runtime3d/Laya342Adapters.ts';
 import { installLaya342PointShadows } from './runtime3d/PointShadow.ts';
@@ -181,6 +182,7 @@ export class ZhudaEngine {
       installLaya342Translucency();
       installLaya342PointShadows();
       installLaya342ShadowBias();
+      installLaya342SpecularAA();
 
       // 3. 初始化 LayaAir 3.4.2 引擎核心與 WebGL/WASM 管線
       await withDeadline(() => Laya.init(width, height), {

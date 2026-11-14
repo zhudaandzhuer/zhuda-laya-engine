@@ -33,6 +33,12 @@ export * from './ModelLod.ts';
 export * from './EnvironmentProbe.ts';
 export * from './LensFinish.ts';
 export { installLaya342LifecycleFix } from './Laya342Adapters.ts';
+export {
+  ZHUDA_SPECULAR_AA_DEFINE,
+  setZhudaSpecularAA,
+  zhudaSpecularAAStatus,
+  type ZhudaSpecularAAStatus,
+} from './Laya342Adapters.ts';
 export * from './CrowdPresentation.ts';
 export * from './ModelInspector.ts';
 export * from './AssetShowcase.ts';

@@ -271,6 +271,23 @@ direction is the mesh's own; LayaAir's rotation of it is not exposed (a
 quarter turn tilted the band and did not stand it upright). Drawn on
 desktop WebGL and WebGPU (`npm run verify:film-finishes`).
 
+## Specular anti-aliasing
+
+On by default for every physically based material (LayaAir's `PBR` and
+`glTFPBR`, `ZhudaLitSurfaceMaterial`). A dense normal map seen from afar has
+more bumps under a pixel than the pixel can show; its highlight lands on one
+pixel and misses the next, and sparkles as the camera moves. Roughness is
+raised where the shading normal turns quickly from pixel to pixel
+(LayaAir's own `specularAA`) and where the map's mipmap has averaged bumps
+into a shorter normal; a map seen close up, a smooth surface and a gently
+curved one keep their roughness. The light is spread over the pixel, not
+lost. `setZhudaSpecularAA(scene, false)` turns it off for a scene (its
+shaders compile again); `zhudaSpecularAAStatus()` says whether the patch is
+in place. A normal map without mipmaps gets the first part only: give
+normal maps mipmaps. Measured on a ball under sub-pixel jitter on desktop
+WebGL and WebGPU (`npm run verify:specular-aa`); phones and frame cost are
+not. [Record](plans/records/specular-aa/verification.md).
+
 ## Marks on surfaces
 
 `new ZhudaDecal(scene3D, { position, size, normal, color, opacity, roughness,
