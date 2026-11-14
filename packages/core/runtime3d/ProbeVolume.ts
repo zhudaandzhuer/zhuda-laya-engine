@@ -31,6 +31,8 @@ import {
   type ZhudaCubePicture,
 } from './EnvironmentProbe.ts';
 import { zhudaShaderRegistrar } from './ShaderRegistry.ts';
+import { zhudaEnvironmentFormats } from './Filmic.ts';
+import { zhudaToHalfFloats } from './HalfFloat.ts';
 
 /** LayaAir's decoding of a colour channel (the scene's ambient colour is a display value). */
 const decode = (value: number) =>
@@ -483,9 +485,10 @@ export class ZhudaProbeVolume {
   private async capture(probes: readonly number[], signal?: AbortSignal): Promise<void> {
     const l = (globalThis as any).Laya;
     if (!l?.VolumetricGI) throw Error('Probe volumes need LayaAir’s VolumetricGI');
-    for (const capability of ['TextureFormat_R32G32B32A32', 'Texture_FloatLinearFiltering'])
-      if (!l.LayaGL.renderEngine.getCapable(l.RenderCapable[capability]))
-        throw Error('Probe volumes require ' + capability);
+    // 32-bit floats where the device filters them, else 16-bit ones (a phone
+    // without OES_texture_float_linear); the shader reads the values as they are.
+    if (zhudaEnvironmentFormats(l)[0] === 'rgbd')
+      throw Error('Probe volumes require float textures (32 or 16 bits) that filter');
     const n = this.options.captureSize ?? 32;
     const batch = this.options.batch ?? 8;
     const visibility = this.options.visibility === true;
@@ -599,23 +602,35 @@ export class ZhudaProbeVolume {
       this.options.strength ?? 1,
     );
     const distance = zhudaProbeDistanceAtlas(this.counts, this.off, this.reach);
+    const half = zhudaEnvironmentFormats(l)[0] !== 'float';
+    const stored = (data: Float32Array) => (half ? zhudaToHalfFloats(data) : data);
     const picture = (atlas: { width: number; height: number; data: Float32Array }) => {
       const texture = new l.Texture2D(
         atlas.width,
         atlas.height,
-        l.TextureFormat.R32G32B32A32,
+        half ? l.TextureFormat.R16G16B16A16 : l.TextureFormat.R32G32B32A32,
         false,
         false,
         false,
       );
       texture.filterMode = l.FilterMode.Bilinear;
       texture.wrapModeU = texture.wrapModeV = l.WrapMode.Clamp;
-      texture.setPixelsData(atlas.data, false, false);
+      texture.setPixelsData(stored(atlas.data), false, false);
       return texture;
     };
     // In place: allocating again would be refused (the texture is immutable).
     const rewrite = (texture: any, atlas: { width: number; height: number; data: Float32Array }) =>
-      texture.setSubPixelsData(0, 0, atlas.width, atlas.height, atlas.data, 0, false, false, false);
+      texture.setSubPixelsData(
+        0,
+        0,
+        atlas.width,
+        atlas.height,
+        stored(atlas.data),
+        0,
+        false,
+        false,
+        false,
+      );
     if (this.node) {
       rewrite(this.irradiance, irradiance);
       rewrite(this.distance, distance);

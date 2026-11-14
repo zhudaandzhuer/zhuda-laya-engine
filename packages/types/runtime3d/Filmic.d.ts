@@ -16,11 +16,24 @@ export interface PrefilteredEnvironmentSpec {
     }[];
     ambientSH: number[];
 }
+/**
+ * How an environment is stored on the graphics card: 32-bit floats, 16-bit
+ * floats (half the memory, values to 65504, which every WebGL 2 device
+ * filters), or 8 bits a channel with a divisor in alpha (LayaAir's RGBD: a
+ * quarter of the memory of `half`, values to 255, coarse above 1).
+ */
+export type ZhudaEnvironmentFormat = 'float' | 'half' | 'rgbd';
+/** The formats this device can filter, best first. `rgbd` is always there. */
+export declare function zhudaEnvironmentFormats(runtime?: any): ZhudaEnvironmentFormat[];
 /** Upload an offline convolved GGX mip chain. Offsets are float32 elements, not bytes.
  * Data is scene-linear RGBA in WebGL cube face order +X,-X,+Y,-Y,+Z,-Z.
- * Mip roughness follows Laya's r*(2-r) lookup. No LDR fallback is silently substituted. */
-export declare function createPrefilteredEnvironment(spec: PrefilteredEnvironmentSpec, pixels: Float32Array): {
+ * Mip roughness follows Laya's r*(2-r) lookup. Stored in the best format the
+ * device filters (`zhudaEnvironmentFormats`), or in `format` when given: a
+ * format the device does not have is refused, never replaced. */
+export declare function createPrefilteredEnvironment(spec: PrefilteredEnvironmentSpec, pixels: Float32Array, format?: ZhudaEnvironmentFormat): {
     texture: any;
+    /** How the light is stored on this device. */
+    format: ZhudaEnvironmentFormat;
     apply(scene: any): void;
     /**
      * Replaces the pixels and ambient colours in the same texture, for an

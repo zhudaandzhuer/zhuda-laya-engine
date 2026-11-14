@@ -2,6 +2,7 @@ import { prepareLaya342ManualDraw } from './Laya342Adapters.ts';
 import { zhudaShadowBorrower } from './ShadowUpdates.ts';
 import type { CinematicLinearChain } from './CinematicCapture.ts';
 import { zhudaShaderRegistrar } from './ShaderRegistry.ts';
+import { zhudaToHalfFloats, zhudaToRgbd } from './HalfFloat.ts';
 
 const SOURCE_VERTEX =
   '#define SHADER_NAME ZhudaLinearSourceVS\nvarying vec2 v_Texcoord0;void main(){gl_Position=vec4(a_PositionTexcoord.xy,0.0,1.0);v_Texcoord0=a_PositionTexcoord.zw;}';
@@ -118,12 +119,42 @@ function requireCapabilities(l: any, names: string[]) {
     if (!l.LayaGL.renderEngine.getCapable(l.RenderCapable[name]))
       throw Error('Filmic rendering requires ' + name);
 }
+/**
+ * How an environment is stored on the graphics card: 32-bit floats, 16-bit
+ * floats (half the memory, values to 65504, which every WebGL 2 device
+ * filters), or 8 bits a channel with a divisor in alpha (LayaAir's RGBD: a
+ * quarter of the memory of `half`, values to 255, coarse above 1).
+ */
+export type ZhudaEnvironmentFormat = 'float' | 'half' | 'rgbd';
+
+/** The formats this device can filter, best first. `rgbd` is always there. */
+export function zhudaEnvironmentFormats(
+  runtime: any = (globalThis as any).Laya,
+): ZhudaEnvironmentFormat[] {
+  const engine = runtime?.LayaGL?.renderEngine,
+    capable = runtime?.RenderCapable ?? {};
+  const has = (name: string) =>
+    typeof engine?.getCapable === 'function' && engine.getCapable(capable[name]) === true;
+  return [
+    ...(has('TextureFormat_R32G32B32A32') && has('Texture_FloatLinearFiltering')
+      ? (['float'] as const)
+      : []),
+    ...(has('TextureFormat_R16G16B16A16') && has('Texture_HalfFloatLinearFiltering')
+      ? (['half'] as const)
+      : []),
+    'rgbd',
+  ];
+}
+
 /** Upload an offline convolved GGX mip chain. Offsets are float32 elements, not bytes.
  * Data is scene-linear RGBA in WebGL cube face order +X,-X,+Y,-Y,+Z,-Z.
- * Mip roughness follows Laya's r*(2-r) lookup. No LDR fallback is silently substituted. */
+ * Mip roughness follows Laya's r*(2-r) lookup. Stored in the best format the
+ * device filters (`zhudaEnvironmentFormats`), or in `format` when given: a
+ * format the device does not have is refused, never replaced. */
 export function createPrefilteredEnvironment(
   spec: PrefilteredEnvironmentSpec,
   pixels: Float32Array,
+  format?: ZhudaEnvironmentFormat,
 ) {
   if (
     !Number.isInteger(spec.size) ||
@@ -145,11 +176,31 @@ export function createPrefilteredEnvironment(
   if (offset !== pixels.length || !pixels.every((v) => Number.isFinite(v) && v >= 0))
     throw Error('Invalid environment pixels');
   const l = (globalThis as any).Laya;
-  requireCapabilities(l, ['TextureFormat_R32G32B32A32', 'Texture_FloatLinearFiltering']);
-  const texture = new l.TextureCube(spec.size, l.TextureFormat.R32G32B32A32, true, false);
+  const available = zhudaEnvironmentFormats(l);
+  const stored = format ?? available[0];
+  if (!available.includes(stored))
+    throw Error(
+      `Environment format ${String(format)} is not available here (this device filters ${available.join(', ')})`,
+    );
+  const texture = new l.TextureCube(
+    spec.size,
+    stored === 'float'
+      ? l.TextureFormat.R32G32B32A32
+      : stored === 'half'
+        ? l.TextureFormat.R16G16B16A16
+        : l.TextureFormat.R8G8B8A8,
+    true,
+    false,
+  );
   texture.filterMode = l.FilterMode.Trilinear;
+  // The pixels as the format holds them; the layout (elements, four a texel) stays.
+  const encode = (data: Float32Array): Float32Array | Uint16Array | Uint8Array =>
+    stored === 'float' ? data : stored === 'half' ? zhudaToHalfFloats(data) : zhudaToRgbd(data);
   // Laya's pixel upload order is +Z,-Z,+X,-X,+Y,-Y, unlike WebGL/DDS.
-  const faces = (level: { size: number; offset: number }, pixels: Float32Array) =>
+  const faces = (
+    level: { size: number; offset: number },
+    pixels: Float32Array | Uint16Array | Uint8Array,
+  ) =>
     [4, 5, 0, 1, 2, 3].map((i) =>
       pixels.subarray(
         level.offset + i * level.size * level.size * 4,
@@ -159,7 +210,8 @@ export function createPrefilteredEnvironment(
   // The first upload allocates the texture; later ones replace its texels.
   // A second `setPixelsData` asks WebGL to allocate the immutable texture
   // again: an INVALID_OPERATION on every update of a look that changes.
-  const upload = (data: Float32Array, allocate: boolean) => {
+  const upload = (floats: Float32Array, allocate: boolean) => {
+    const data = encode(floats);
     if (allocate) texture.setPixelsData(faces(spec.levels[0], data), false, false);
     for (let i = allocate ? 1 : 0; i < spec.levels.length; i++) {
       const level = spec.levels[i];
@@ -180,9 +232,11 @@ export function createPrefilteredEnvironment(
   let ambientSH = spec.ambientSH;
   return {
     texture,
+    /** How the light is stored on this device. */
+    format: stored,
     apply(scene: any) {
       scene.iblTex = texture;
-      scene.iblTexRGBD = false;
+      scene.iblTexRGBD = stored === 'rgbd';
       scene.ambientMode = l.AmbientMode.SphericalHarmonics;
       scene.ambientSH = new Float32Array(ambientSH);
     },
