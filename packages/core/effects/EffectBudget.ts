@@ -159,7 +159,14 @@ interface GpuQuery {
   query: WebGLQuery;
   sample?: RuntimeFrameSample;
 }
-/** Bounded raw window. Timings are caller-supplied; draw counts are intercepted WebGL calls. */
+/** Render passes timed in one frame on WebGPU; the passes after that are not timed. */
+const TIMED_PASSES = 32;
+/** Frames whose times are still on their way back from the GPU; a frame beyond that is not timed. */
+const TIMING_BUFFERS = 8;
+/**
+ * Bounded raw window. Timings are caller-supplied; draw counts are intercepted
+ * draw calls (WebGL: on a context; WebGPU: on every render pass of the realm).
+ */
 export class ZhudaRuntimeProfiler {
   private calls = 0;
   private triangles = 0;
@@ -178,6 +185,21 @@ export class ZhudaRuntimeProfiler {
     pending: GpuQuery[];
     active?: GpuQuery;
   };
+  /** WebGPU timestamp queries: one pair a render pass, resolved a frame later. */
+  private gpuPasses?: {
+    device: any;
+    querySet: any;
+    resolve: any;
+    free: any[];
+    /** Every read buffer made, the ones on their way back included. */
+    made: any[];
+    /** Passes that took a pair of queries in the open frame. */
+    used: number;
+    /** The frame that ended and is not resolved yet. */
+    ended?: { used: number; sample: RuntimeFrameSample };
+    lost: boolean;
+  };
+  private webgpu = false;
   private gpuReason = 'GPU timer queries not enabled.';
   private frameOpen = false;
   constructor(options: RuntimeProfilerOptions = {}) {
@@ -218,9 +240,111 @@ export class ZhudaRuntimeProfiler {
       if (angle) wrap(angle, ['drawArraysInstancedANGLE', 'drawElementsInstancedANGLE']);
     }
   }
-  /** Optional WebGL2 timer. Never blocks on completion or substitutes CPU elapsed time. */
-  enableGpuTiming(gl: WebGL2RenderingContext): boolean {
-    if (this.gpu) throw Error('GPU timing already enabled.');
+  /**
+   * WebGPU: counts the draws and triangles of every render pass begun in
+   * this realm while attached (a render pass does not say which device it
+   * belongs to). `device` is the `GPUDevice`; `env` is where the browser's
+   * WebGPU classes are, the global object by default.
+   *
+   * Triangles are counted for triangle lists and strips. A pipeline made
+   * before this was attached counts as a triangle list, which is what
+   * WebGPU makes when nothing else is asked for. Indirect draws are counted
+   * as draws; how many triangles they are is on the GPU.
+   */
+  attachWebGPU(device: any, env: any = globalThis): void {
+    const pass = env?.GPURenderPassEncoder?.prototype;
+    if (!device || typeof device.createRenderPipeline !== 'function' || !pass)
+      throw new Error('A WebGPU device is required.');
+    if (this.contexts.has(device)) return;
+    this.contexts.add(device);
+    this.contextCount++;
+    this.webgpu = true;
+    const profiler = this;
+    const topology = new WeakMap<object, string>(),
+      current = new WeakMap<object, string>();
+    const patch = (target: any, name: string, make: (original: Function) => Function) => {
+      const original = target[name];
+      if (typeof original !== 'function') return;
+      const own = Object.hasOwn(target, name);
+      const wrapper = make(original);
+      target[name] = wrapper;
+      this.restore.push(() => {
+        if (target[name] !== wrapper) return;
+        // A method that came from the class goes back to the class.
+        if (own) target[name] = original;
+        else delete target[name];
+      });
+    };
+    const remember = (pipeline: any, descriptor: any) => {
+      if (pipeline && typeof pipeline === 'object')
+        topology.set(pipeline, descriptor?.primitive?.topology ?? 'triangle-list');
+      return pipeline;
+    };
+    patch(
+      device,
+      'createRenderPipeline',
+      (original) =>
+        function (this: any, descriptor: any) {
+          return remember(original.call(this, descriptor), descriptor);
+        },
+    );
+    patch(
+      device,
+      'createRenderPipelineAsync',
+      (original) =>
+        function (this: any, descriptor: any) {
+          return Promise.resolve(original.call(this, descriptor)).then((pipeline) =>
+            remember(pipeline, descriptor),
+          );
+        },
+    );
+    patch(
+      pass,
+      'setPipeline',
+      (original) =>
+        function (this: any, pipeline: any) {
+          current.set(this, topology.get(pipeline) ?? 'triangle-list');
+          return original.call(this, pipeline);
+        },
+    );
+    for (const name of ['draw', 'drawIndexed'])
+      patch(
+        pass,
+        name,
+        (original) =>
+          function (this: any, count: number, instances = 1, ...rest: number[]) {
+            profiler.calls++;
+            const kind = current.get(this) ?? 'triangle-list';
+            if (kind === 'triangle-list') profiler.triangles += Math.floor(count / 3) * instances;
+            else if (kind === 'triangle-strip')
+              profiler.triangles += Math.max(0, count - 2) * instances;
+            return original.call(this, count, instances, ...rest);
+          },
+      );
+    for (const name of ['drawIndirect', 'drawIndexedIndirect'])
+      patch(
+        pass,
+        name,
+        (original) =>
+          function (this: any, ...args: unknown[]) {
+            profiler.calls++;
+            return original.apply(this, args);
+          },
+      );
+  }
+  /**
+   * Optional GPU timer. Never blocks on completion or substitutes CPU elapsed time.
+   *
+   * WebGL 2: one disjoint timer query round the frame. WebGPU (pass the
+   * `GPUDevice`): a pair of timestamps on each render pass begun between
+   * `beginFrame()` and `endFrame()`, summed; a frame's time arrives a frame
+   * or more later. It needs the device's `timestamp-query` feature, times
+   * the first 32 render passes of a frame, and leaves compute passes and
+   * copies out.
+   */
+  enableGpuTiming(gl: WebGL2RenderingContext | any, env: any = globalThis): boolean {
+    if (this.gpu || this.gpuPasses) throw Error('GPU timing already enabled.');
+    if (typeof gl?.createQuerySet === 'function') return this.enableWebGPUTiming(gl, env);
     const ext = gl.getExtension('EXT_disjoint_timer_query_webgl2');
     if (!ext || typeof gl.createQuery !== 'function') {
       this.gpuReason = 'EXT_disjoint_timer_query_webgl2 unavailable.';
@@ -235,7 +359,115 @@ export class ZhudaRuntimeProfiler {
     this.gpuReason = 'No completed valid GPU queries in retained window.';
     return true;
   }
+  private enableWebGPUTiming(device: any, env: any): boolean {
+    const encoder = env?.GPUCommandEncoder?.prototype;
+    if (!device.features?.has?.('timestamp-query') || !encoder) {
+      this.gpuReason = 'WebGPU timestamp-query unavailable.';
+      return false;
+    }
+    const usage = env.GPUBufferUsage ?? { QUERY_RESOLVE: 0x200, COPY_SRC: 4 };
+    const state = (this.gpuPasses = {
+      device,
+      querySet: device.createQuerySet({ type: 'timestamp', count: TIMED_PASSES * 2 }),
+      resolve: device.createBuffer({
+        label: 'ZhudaProfilerResolve',
+        size: TIMED_PASSES * 16,
+        usage: usage.QUERY_RESOLVE | usage.COPY_SRC,
+      }),
+      free: [] as any[],
+      made: [] as any[],
+      used: 0,
+      lost: false as boolean,
+    });
+    device.lost?.then?.(() => {
+      state.lost = true;
+    });
+    const profiler = this;
+    const original = encoder.beginRenderPass;
+    const wrapper = function (this: any, descriptor: any) {
+      // Only a frame that is open, a pass nobody else is timing, and room for it.
+      if (
+        profiler.gpuPasses === state &&
+        profiler.frameOpen &&
+        !state.lost &&
+        descriptor &&
+        !descriptor.timestampWrites &&
+        state.used < TIMED_PASSES
+      ) {
+        const index = state.used++ * 2;
+        descriptor = {
+          ...descriptor,
+          timestampWrites: {
+            querySet: state.querySet,
+            beginningOfPassWriteIndex: index,
+            endOfPassWriteIndex: index + 1,
+          },
+        };
+      }
+      return original.call(this, descriptor);
+    };
+    encoder.beginRenderPass = wrapper;
+    this.restore.push(() => {
+      if (encoder.beginRenderPass === wrapper) encoder.beginRenderPass = original;
+    });
+    this.gpuReason = 'No completed valid GPU queries in retained window.';
+    return true;
+  }
+  /**
+   * The frame that ended: its timestamps are read once its passes have been
+   * handed to the GPU, which is by the time the next frame begins.
+   */
+  private resolvePasses(env: any = globalThis): void {
+    const g = this.gpuPasses;
+    const ended = g?.ended;
+    if (!g || !ended) return;
+    g.ended = undefined;
+    if (g.lost || !ended.used) return;
+    const usage = env.GPUBufferUsage ?? { COPY_DST: 8, MAP_READ: 1 };
+    let target = g.free.pop();
+    if (!target) {
+      if (g.made.length >= TIMING_BUFFERS) return;
+      target = g.device.createBuffer({
+        label: 'ZhudaProfilerRead',
+        size: TIMED_PASSES * 16,
+        usage: usage.COPY_DST | usage.MAP_READ,
+      });
+      g.made.push(target);
+    }
+    const bytes = ended.used * 16;
+    try {
+      const encoder = g.device.createCommandEncoder();
+      encoder.resolveQuerySet(g.querySet, 0, ended.used * 2, g.resolve, 0);
+      encoder.copyBufferToBuffer(g.resolve, 0, target, 0, bytes);
+      g.device.queue.submit([encoder.finish()]);
+    } catch {
+      g.free.push(target);
+      return;
+    }
+    target
+      .mapAsync((env.GPUMapMode ?? { READ: 1 }).READ, 0, bytes)
+      .then(() => {
+        const stamps = new BigUint64Array(target.getMappedRange(0, bytes).slice(0));
+        target.unmap();
+        let total = 0n;
+        for (let i = 0; i < ended.used; i++) {
+          const begin = stamps[i * 2],
+            end = stamps[i * 2 + 1];
+          // A pass that was begun and never handed over leaves zeros.
+          if (end > begin) total += end - begin;
+        }
+        if (this.gpuPasses === g) {
+          ended.sample.gpuMs = Number(total) / 1e6;
+          g.free.push(target);
+        }
+      })
+      .catch(() => {
+        // A lost or destroyed device: the frame stays without a GPU time.
+        if (this.gpuPasses === g) this.gpuReason = 'GPU device lost; affected queries discarded.';
+      });
+  }
   private pollGpu(): void {
+    this.resolvePasses();
     const g = this.gpu;
     if (!g) return;
     const invalid = g.gl.isContextLost() || g.gl.getParameter(g.disjoint);
@@ -257,6 +489,7 @@ export class ZhudaRuntimeProfiler {
     this.frameOpen = true;
     this.calls = this.triangles = 0;
     this.pollGpu();
+    if (this.gpuPasses) this.gpuPasses.used = 0;
     const g = this.gpu;
     if (
       g &&
@@ -289,6 +522,7 @@ export class ZhudaRuntimeProfiler {
       g.pending.push(g.active);
       g.active = undefined;
     }
+    if (this.gpuPasses) this.gpuPasses.ended = { used: this.gpuPasses.used, sample };
     this.frameOpen = false;
     this.samples[this.next] = sample;
     this.next = (this.next + 1) % this.capacity;
@@ -312,9 +546,15 @@ export class ZhudaRuntimeProfiler {
       sources: {
         frame: 'caller elapsed frame interval',
         cpu: 'caller timed work scope',
-        draw: this.contextCount ? 'intercepted WebGL calls' : 'unavailable: no context attached',
+        draw: !this.contextCount
+          ? 'unavailable: no context attached'
+          : this.webgpu
+            ? 'intercepted WebGPU render pass draws'
+            : 'intercepted WebGL calls',
         heap: 'optional caller JS heap bytes',
-        gpu: 'optional disjoint timer query',
+        gpu: this.gpuPasses
+          ? 'optional WebGPU timestamp queries, summed over render passes'
+          : 'optional disjoint timer query',
       },
       totalSamples: this.total,
       retainedSamples: samples.length,
@@ -346,6 +586,18 @@ export class ZhudaRuntimeProfiler {
       for (const q of g.pending) g.gl.deleteQuery(q.query);
       this.gpu = undefined;
     }
+    const passes = this.gpuPasses;
+    if (passes) {
+      this.gpuPasses = undefined;
+      try {
+        passes.querySet.destroy();
+        passes.resolve.destroy();
+        for (const buffer of passes.made) buffer.destroy();
+      } catch {
+        // The device went first.
+      }
+    }
+    this.webgpu = false;
     this.frameOpen = false;
     this.restore.forEach((fn) => fn());
     this.restore = [];

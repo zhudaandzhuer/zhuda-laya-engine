@@ -5,11 +5,17 @@ import {
   ZhudaEngine,
   ZhudaModelInspector,
   ZhudaModelLibrary,
+  ZhudaTransformGizmo,
   Zhuda3D,
   inspectGltfAsset,
   inspectSceneResources,
 } from 'zhuda-laya-engine';
-import type { AssetManifest, AssetManifestEntry, ZhudaBootContext } from 'zhuda-laya-engine';
+import type {
+  AssetManifest,
+  AssetManifestEntry,
+  ZhudaBootContext,
+  ZhudaGizmoMode,
+} from 'zhuda-laya-engine';
 
 declare global {
   interface Window {
@@ -38,6 +44,11 @@ type ModelEditorState = {
   orbitX: number;
   orbitY: number;
   distance: number;
+  /** Handles on the selected node; nothing is written back to the asset. */
+  gizmo?: ZhudaTransformGizmo;
+  gizmoMode: 'off' | ZhudaGizmoMode;
+  /** Where each node was before the gizmo moved it, by path. */
+  authored: Map<string, { position: number[]; rotation: number[]; scale: number[] }>;
   resizeObserver?: ResizeObserver;
   resizeListener?: () => void;
 };
@@ -53,6 +64,8 @@ const state: ModelEditorState = {
   orbitX: 0,
   orbitY: 0,
   distance: 3,
+  gizmoMode: 'off',
+  authored: new Map(),
 };
 
 const $ = <T extends HTMLElement>(id: string): T => {
@@ -325,6 +338,52 @@ function renderInspector(info: ModelInspection): void {
   };
   actions.appendChild(isolate);
   host.appendChild(actions);
+  // Handles to move, turn and scale the selection. The asset is not written:
+  // the numbers are for a prefab's placement.
+  const tools = document.createElement('div');
+  tools.className = 'inspector-actions';
+  for (const [mode, label] of [
+    ['off', 'No handles'],
+    ['translate', 'Move'],
+    ['rotate', 'Turn'],
+    ['scale', 'Scale'],
+  ] as const) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.id = `gizmo-${mode}`;
+    button.textContent = label;
+    button.classList.toggle('active', state.gizmoMode === mode);
+    button.onclick = () => {
+      state.gizmoMode = mode;
+      attachGizmo();
+      renderInspector(info);
+    };
+    tools.appendChild(button);
+  }
+  const reset = document.createElement('button');
+  reset.type = 'button';
+  reset.id = 'gizmo-reset';
+  reset.textContent = 'Reset transform';
+  reset.disabled = !state.authored.has(selected.path);
+  reset.onclick = () => {
+    const authored = state.authored.get(selected.path);
+    const node = selectedNode();
+    if (!authored || !node) return;
+    node.transform.localPosition = new Laya.Vector3(...authored.position);
+    node.transform.localRotation = new Laya.Quaternion(...authored.rotation);
+    node.transform.localScale = new Laya.Vector3(...authored.scale);
+    renderTransform();
+  };
+  tools.appendChild(reset);
+  host.appendChild(tools);
+  const readout = document.createElement('div');
+  readout.className = 'metric-row';
+  readout.id = 'transform-readout';
+  readout.style.display = 'grid';
+  readout.style.gridTemplateColumns = 'auto 1fr';
+  readout.style.gap = '2px 12px';
+  host.appendChild(readout);
+  renderTransform();
   if (compatibility.diagnostics.length) {
     const diagnostics = document.createElement('div');
     diagnostics.className = 'note diagnostics';
@@ -359,13 +418,63 @@ function selectNode(path: string): void {
     renderHierarchy(state.inspection);
     renderInspector(state.inspection);
   }
+  attachGizmo();
 }
 
+/** The camera goes round the middle of the stage, where a loaded model is put. */
 function updateCamera(): void {
   const camera = state.camera;
   if (!camera) return;
-  camera.transform.position = new Laya.Vector3(0, 0, state.distance);
-  camera.transform.rotationEuler = new Laya.Vector3(state.orbitY, state.orbitX, 0);
+  const yaw = (state.orbitX * Math.PI) / 180,
+    pitch = (state.orbitY * Math.PI) / 180;
+  camera.transform.position = new Laya.Vector3(
+    -Math.sin(yaw) * Math.cos(pitch) * state.distance,
+    Math.sin(pitch) * state.distance,
+    Math.cos(yaw) * Math.cos(pitch) * state.distance,
+  );
+  camera.transform.lookAt(new Laya.Vector3(0, 0, 0), new Laya.Vector3(0, 1, 0));
+}
+
+const three = (v: { x: number; y: number; z: number }) => [v.x, v.y, v.z];
+/** The live node of the selection, when a model is loaded. */
+function selectedNode(): Laya.Sprite3D | null {
+  if (!state.inspector || !state.inspection) return null;
+  try {
+    return state.inspector.node(state.selectedPath) as Laya.Sprite3D;
+  } catch {
+    return null;
+  }
+}
+/** Puts the handles on the selection, or takes them off. */
+function attachGizmo(): void {
+  const gizmo = state.gizmo;
+  if (!gizmo) return;
+  const node = state.gizmoMode === 'off' ? null : selectedNode();
+  if (node && state.gizmoMode !== 'off') {
+    gizmo.set({ mode: state.gizmoMode, space: 'local' });
+    if (!state.authored.has(state.selectedPath)) {
+      const t = node.transform;
+      state.authored.set(state.selectedPath, {
+        position: three(t.localPosition),
+        rotation: [t.localRotation.x, t.localRotation.y, t.localRotation.z, t.localRotation.w],
+        scale: three(t.localScale),
+      });
+    }
+  }
+  gizmo.attach(node);
+  renderTransform();
+}
+/** The selection's own transform, as numbers a person can copy into a prefab. */
+function renderTransform(): void {
+  const host = document.getElementById('transform-readout');
+  const node = selectedNode();
+  if (!host || !node) return;
+  const t = node.transform;
+  const line = (values: number[]) => values.map((value) => value.toFixed(3)).join(', ');
+  host.innerHTML =
+    `<span>Position</span><strong>${line(three(t.localPosition))}</strong>` +
+    `<span>Rotation</span><strong>${line(three(t.localRotationEuler))}</strong>` +
+    `<span>Scale</span><strong>${line(three(t.localScale))}</strong>`;
 }
 
 /** Center and frame arbitrary imported models before the first screenshot.
@@ -410,7 +519,8 @@ function frameModel(): void {
       -center[2] * scale,
     );
     root.transform.scale = new Laya.Vector3(scale, scale, scale);
-    state.distance = Math.max(0.45, Math.min(40, radius * 2.8));
+    // From the size the model has on the stage, not the size it was authored at.
+    state.distance = Math.max(0.45, Math.min(40, radius * scale * 2.4));
     state.orbitX = 0;
     state.orbitY = 0;
     updateCamera();
@@ -439,23 +549,39 @@ function fitStage(): void {
 function installPointerControls(): void {
   const canvasHost = $('stage-shell');
   let drag: { x: number; y: number } | null = null;
+  let handle = false;
+  /** The pointer in CSS pixels from the canvas' top left corner, and the canvas' CSS size. */
+  const onCanvas = (event: PointerEvent): [number, number, number, number] => {
+    const box = state.context!.canvas.getBoundingClientRect();
+    return [event.clientX - box.left, event.clientY - box.top, box.width, box.height];
+  };
   canvasHost.addEventListener('pointerdown', (event) => {
-    drag = { x: event.clientX, y: event.clientY };
     canvasHost.setPointerCapture(event.pointerId);
+    // A handle under the pointer takes it; anywhere else it turns the view.
+    if (state.context && state.gizmo?.pointerDown(...onCanvas(event))) {
+      handle = true;
+      return;
+    }
+    drag = { x: event.clientX, y: event.clientY };
   });
   canvasHost.addEventListener('pointermove', (event) => {
+    if (state.context && state.gizmo && (handle || !drag)) {
+      state.gizmo.pointerMove(...onCanvas(event));
+      if (handle) return;
+    }
     if (!drag || !state.showcase?.instance) return;
     state.orbitX += (event.clientX - drag.x) * 0.35;
     state.orbitY = Math.max(-80, Math.min(80, state.orbitY + (event.clientY - drag.y) * 0.35));
     drag = { x: event.clientX, y: event.clientY };
     updateCamera();
   });
-  canvasHost.addEventListener('pointerup', () => {
+  const release = () => {
     drag = null;
-  });
-  canvasHost.addEventListener('pointercancel', () => {
-    drag = null;
-  });
+    handle = false;
+    state.gizmo?.pointerUp();
+  };
+  canvasHost.addEventListener('pointerup', release);
+  canvasHost.addEventListener('pointercancel', release);
   canvasHost.addEventListener(
     'wheel',
     (event) => {
@@ -477,6 +603,9 @@ async function loadModel(path: string): Promise<void> {
   state.assetId = modelAssetId(path);
   state.selectedPath = '$';
   state.isolatedPath = null;
+  // The model the handles were on is about to be released.
+  state.gizmo?.attach(null);
+  state.authored.clear();
   updateUrl(path);
   setError(null);
   setStatus('Loading model…', 'busy');
@@ -493,6 +622,7 @@ async function loadModel(path: string): Promise<void> {
     applyIsolation();
     renderHierarchy(state.inspection);
     renderInspector(state.inspection);
+    attachGizmo();
     setStatus(`${assetLabel(path)} · ${state.inspection.compatibility.status}`, '');
     ZhudaEngine.flushRenderFrames(3);
   } catch (error) {
@@ -528,7 +658,10 @@ async function main(): Promise<void> {
     clearColor: [0.025, 0.045, 0.08, 1],
   });
   Zhuda3D.createDirectionalLight(scene, { rotationEuler: [-35, -30, 0], intensity: 1.15 });
-  state.context.runtime.start(() => {});
+  state.camera = camera;
+  state.gizmo = new ZhudaTransformGizmo(scene, camera, { onChange: renderTransform });
+  // The handles keep their size on the screen and follow the node: drawn again every frame.
+  state.context.runtime.start(() => state.gizmo?.update());
   const resize = () => {
     fitStage();
   };
@@ -622,6 +755,20 @@ function report(): unknown {
     mode: state.mode,
     renderer: state.context?.renderer,
     selectedPath: state.selectedPath,
+    view: { orbitX: state.orbitX, orbitY: state.orbitY, distance: state.distance },
+    gizmo: {
+      mode: state.gizmoMode,
+      axis: state.gizmo?.axis ?? null,
+      dragging: state.gizmo?.dragging ?? false,
+    },
+    selectedTransform: ((node) =>
+      node
+        ? {
+            position: three(node.transform.localPosition),
+            rotationEuler: three(node.transform.localRotationEuler),
+            scale: three(node.transform.localScale),
+          }
+        : null)(selectedNode()),
     compatibility: state.inspection?.compatibility,
     inspection: state.inspection,
     library: state.library?.report(),
@@ -646,6 +793,8 @@ function dispose(): void {
   state.resizeObserver = undefined;
   if (state.resizeListener) window.removeEventListener('resize', state.resizeListener);
   state.resizeListener = undefined;
+  state.gizmo?.dispose();
+  state.gizmo = undefined;
   state.showcase?.dispose();
   state.library?.dispose();
   state.provider?.dispose();

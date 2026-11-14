@@ -161,9 +161,11 @@ Measured on macOS Chrome 156, Apple Metal hardware WebGPU:
 Cross-backend images may differ because of shader conversion and driver precision;
 exact preview/Scene comparisons are **within** a backend. These neutral fixtures
 are not certification of every material, Spine asset, physics plugin, shadow
-configuration, device, performance target or long session. The existing
-`ZhudaRuntimeProfiler` GPU timer uses WebGL queries; its WebGL GPU timing is not
-WebGPU timing. WebGPU resource figures are estimates, not driver memory readings.
+configuration, device, performance target or long session. `ZhudaRuntimeProfiler`
+counts draws and times the GPU on both backends, each in its own way: a WebGL
+timer query round the frame, WebGPU timestamps summed over render passes
+([developer tooling](developer-tooling.md)); the two are not the same
+measurement. WebGPU resource figures are estimates, not driver memory readings.
 
 **Windows Chrome/Edge use this same browser WebGPU path, but actual Windows GPU
 acceptance remains UNAVAILABLE until run on the target machine.** Native EXE,

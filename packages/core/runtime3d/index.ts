@@ -56,6 +56,10 @@ export * from './LensFlare.ts';
 export * from './LightingDepth.ts';
 export * from './PointShadowSchedule.ts';
 export * from './BackendChoice.ts';
+export * from './ShaderErrors.ts';
+export * from './DebugDraw.ts';
+export * from './DebugStats.ts';
+export * from './TransformGizmo.ts';
 export { installLaya342LifecycleFix } from './Laya342Adapters.ts';
 export {
   ZHUDA_NORMAL_NOMIPMAP_DEFINE,

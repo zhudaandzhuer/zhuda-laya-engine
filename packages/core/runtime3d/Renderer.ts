@@ -1,4 +1,5 @@
 import { fixLaya342WebGPUShaders, installLaya342WebGPUFix } from './WebGPU342Adapters.ts';
+import { reportZhudaWebGLShaderErrors, zhudaShaderErrorExcerpt } from './ShaderErrors.ts';
 export type RendererBackend = 'webgl' | 'webgpu';
 import type { ZhudaRuntimeSession } from './Runtime.ts';
 
@@ -180,18 +181,10 @@ export function prepareRenderer(
               glslang.__zhudaReports = true;
               glslang.glsl450_to_spirv = function (source: string, stage: string) {
                 const result = compile.call(this, source, stage);
-                if (result && !result.success && diagnostics.errors.length < 64) {
-                  const log = String(result.info_log ?? '').trim();
-                  const line = Number(/ERROR: :?(\d+):/.exec(log)?.[1]);
-                  const lines = String(source).split('\n');
-                  const context = Number.isFinite(line)
-                    ? lines
-                        .slice(Math.max(0, line - 3), line + 1)
-                        .map((text, i) => `${Math.max(1, line - 2) + i}: ${text.slice(0, 240)}`)
-                        .join('\n')
-                    : '';
-                  diagnostics.errors.push(`Shader compile failed (${stage}): ${log}\n${context}`);
-                }
+                if (result && !result.success && diagnostics.errors.length < 64)
+                  diagnostics.errors.push(
+                    zhudaShaderErrorExcerpt(result.info_log ?? '', source, stage),
+                  );
                 return result;
               };
             }
@@ -301,6 +294,12 @@ export function prepareRenderer(
             'RENDERER_MISMATCH',
             'Native renderer does not match the requested backend',
           );
+        // LayaAir warns about a failed WebGL compile in the console, without
+        // the source, and skips the pass. Keep the log with the source lines
+        // it points at, as on WebGPU.
+        const gl = selected === 'webgl' ? (actual?._context ?? actual?.gl) : undefined;
+        if (gl && typeof gl.compileShader === 'function')
+          cleanups.push(reportZhudaWebGLShaderErrors(gl, diagnostics.errors));
         diagnostics.status = 'ready';
       },
       attach(runtime: ZhudaRuntimeSession) {

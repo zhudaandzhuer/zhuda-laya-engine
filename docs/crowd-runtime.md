@@ -141,6 +141,8 @@ system.update(effectLayerDelta);
 `attach(gl)` 統計真實 WebGL（含 ANGLE instancing）draw calls 和 triangle primitive，
 `enableGpuTiming(webgl2)` 可選非同步 timer query；不支援、disjoint、context lost
 或查詢尚未完成時 GPU 保持缺值，不用 CPU 時間代替。查詢同時有其他擁有者時跳過。
+WebGPU 用 `attachWebGPU(device)` 與 `enableGpuTiming(device)`（各 render pass 的
+timestamp 加總），見 [developer tooling](developer-tooling.md)。
 
 每個有效 draw scope 呼叫 `beginFrame()`／`endFrame(frameMs, cpuMs, {heapBytes})`。
 **不要用跨兩個 RAF 的整段等待當 GPU draw scope**。fixture 包住公開 `Stage.render`，

@@ -194,6 +194,17 @@ export const API_GUARDRAILS = [
       "A realm holds one backend: a second boot in the same page after a failed WebGPU cannot work, and both backends' libraries cannot be loaded together. The choice is made before either is loaded; a WebGPU that loaded and did not start loads the page again on WebGL. See docs/backend-delivery.md.",
   },
   {
+    id: 'GUARD_DEVELOPER_TOOLING',
+    topic:
+      'debug helpers AxesHelper GridHelper BoxHelper CameraHelper light helper SkeletonHelper TransformControls gizmo stats panel draw calls GPU time shader compile error',
+    hallucinatedLegacyApi:
+      'scene.add(new THREE.AxesHelper(1), new THREE.GridHelper(10, 10), new THREE.CameraHelper(camera)); new TransformControls(camera, canvas); new Stats(); renderer.info.render.calls',
+    zhudaCanonicalApi:
+      "const draw = new ZhudaDebugDraw(scene3D); draw.axes(null, 1); draw.grid({ size: 10 }); draw.bounds(node); draw.light(lightNode); draw.camera(camera); draw.skeleton(model.node); draw.shadowCascades(); draw.update() once a frame; draw.dispose(). Over everything: new ZhudaDebugDraw(scene3D, { onTop: true }). Gizmo: const gizmo = new ZhudaTransformGizmo(scene3D, camera, { mode: 'translate' }); gizmo.attach(node); gizmo.pointerDown(x, y, width, height) / pointerMove / pointerUp from your own pointer events; gizmo.update() once a frame. Panel: showZhudaStats({ x, y }).hide(). Numbers: const p = new ZhudaRuntimeProfiler(); p.attach(gl) or p.attachWebGPU(device); p.enableGpuTiming(gl or device); p.beginFrame(); draw; p.endFrame(frameMs, cpuMs); p.report(). A shader that failed: context.renderer.errors.",
+    reason:
+      'The helpers follow their targets only when update() is called; the gizmo listens to no DOM event itself. GPU time is absent until the GPU has answered and is never replaced by CPU time. See docs/developer-tooling.md.',
+  },
+  {
     id: 'GUARD_INIT_BOOT',
     topic: '引擎啟動與 Stage 初始化',
     hallucinatedLegacyApi: 'Laya.init(1280, 720, Laya.WebGL); Laya.MiniAdpter.init();',
