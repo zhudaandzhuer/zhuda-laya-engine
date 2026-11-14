@@ -280,12 +280,12 @@ test('a skinned model keeps its skin, joints and animation', async () => {
 
 test('pictures inside the file are made no larger than asked', async () => {
   const { default: sharp } = await import('sharp');
-  const picture = (size, format) =>
-    sharp({
+  const picture = (size, format) => {
+    const blank = sharp({
       create: { width: size, height: size / 2, channels: 3, background: { r: 200, g: 90, b: 30 } },
-    })
-      [format]()
-      .toBuffer();
+    });
+    return (format === 'png' ? blank.png() : blank.jpeg()).toBuffer();
+  };
   const big = await picture(256, 'png'),
     small = await picture(32, 'png');
   const source = glb([{ ...sheet(8), material: 0 }], [SOLID], [big, small]);
