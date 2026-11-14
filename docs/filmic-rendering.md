@@ -440,8 +440,8 @@ What it does not do, and what it costs:
   changes by 26): the light that clipping hid now shows. Where the fade
   begins can be seen on the surface.
 - A material with a normal map reads it once more a pixel (WebGL 2 and
-  WebGPU). The frame cost is not measured, and nothing is measured on a
-  phone.
+  WebGPU). On a vivo V40 in one game that added 0 to 3 ms a frame (up to
+  9 %); what it does to the picture on a phone was not judged.
 
 It is not the default because of the last three points: a scene turns it
 on where its surfaces are seen from far enough (four texels of the normal

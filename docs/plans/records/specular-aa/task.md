@@ -203,4 +203,13 @@ but the define is no longer added to LayaAir's configuration defines:
 `setZhudaSpecularAA(scene, true)` turns it on for a scene, and
 `installLaya342SpecularAA(Laya, { defaultOn: true })` for every scene made
 afterwards. What would make it the default: the two-to-four texel range no
-worse than without, and a phone measurement.
+worse than without, and a phone cost a game can afford.
+
+Measured after the merge on a vivo V40 (Adreno 720, Chrome 156, WebGL 2) in
+`films/river-town-prefab`, medium setting, camera held, median of three runs
+of 30 frames, milliseconds a frame without and with it (road, gate, town,
+wide): look level 2: 51.0 to 54.0, 49.4 to 51.8, 39.2 to 41.2, 51.1 to 53.4;
+level 1: 37.5 to 38.9, 36.1 to 38.1, 23.7 to 24.8, 37.6 to 38.3; level 0:
+21.4 to 23.3, 19.7 to 21.4, 12.0 to 12.7, 23.3 to 23.3. So 0 to 3 ms a
+frame, up to 9 %, on a phone that already misses its frame budget there.
+Whether the picture is calmer on the phone was not judged.

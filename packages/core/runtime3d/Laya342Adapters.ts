@@ -541,9 +541,10 @@ function hasMipmaps(texture: any): boolean {
  * default because of what was measured (docs/plans/records/specular-aa):
  * between two and four texels to a pixel a bumpy metal changes more from
  * frame to frame with it than without, its rim is brighter than the truth,
- * and what it costs on a phone (one more read of the normal map a pixel) has
- * not been measured. If the vendored text no longer holds an anchor, nothing
- * is changed and `zhudaSpecularAAStatus()` (and a console warning) says why.
+ * and one more read of the normal map a pixel cost a phone up to 3 ms a
+ * frame in the one game measured. If the vendored text no longer holds an
+ * anchor, nothing is changed and `zhudaSpecularAAStatus()` (and a console
+ * warning) says why.
  * Must run before `Laya.init`, which registers the includes and the shaders.
  */
 export function installLaya342SpecularAA(

@@ -140,7 +140,10 @@ export interface ZhudaQualityStepsOptions {
  * `levels: steps.length` walks it (`steps[governor.level]`). Each rung down
  * draws less than the one above it: first the picture gets smaller, then
  * effects go at the smallest of those sizes, last the picture shrinks again.
- * The default rungs are a proposal: no phone has measured them yet.
+ * The default rungs are a proposal. One phone has measured the scale in one
+ * game (docs/plans/records/frame-cost): 0.67 took 25 to 30 % off a frame at
+ * look levels 1 and 2 and under a tenth at level 0, where the frame is no
+ * longer bound by its pixels; the rungs were not tuned from that.
  */
 export function zhudaQualitySteps(options: ZhudaQualityStepsOptions = {}): ZhudaQualityStep[] {
   const scales = options.scales ?? [1, 0.85, 0.7],

@@ -64,7 +64,10 @@ measurable.
 - One phone. No iPhone, no other Android GPU, no WebGPU on a phone.
 - 60 frames a second is reached at look level 0 in two of four views on the
   medium setting and in three of four on the low one. A higher look level on
-  this phone needs the HDR chain itself to be cheaper: not done.
+  this phone needs the HDR chain itself to be cheaper: not done. Drawing the
+  3D picture smaller came later (`records/frame-cost`, measured on this
+  phone): at 0.67 level 2 falls from 39..51 ms to 28..38, level 1 from
+  24..38 to 18..28; the game does not use it yet.
 - Light fog at a lower resolution: not done.
 - The pictures at the phone's settings were looked at only as screenshots of
   the measurement runs; no art judgement.

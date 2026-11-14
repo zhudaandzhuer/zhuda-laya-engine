@@ -341,13 +341,71 @@ ladder through the scales before any effect goes and back up.
 | Minor: "FSR is nearer the full-size picture" read as a property of the upscale | Three more looks are drawn and reported; the claim is scoped to the page's look here, in the task, in `docs/plans/README.md` and in `docs/film-scenes.md`. The first commit's message says it unscoped and stays as it is. |
 | Minor: a scene destroyed without its look disposed kept the stage scaled and the scale claimed | The scene's destruction gives both back; drawn and unit-tested. The alpha the upscale passes write and a sun turned outside `setLook` are listed as limits and in the docs, not changed. |
 
+## On the phone (after the merge, on top of `5f85f26`)
+
+vivo V40 (V2348, Android 16, Adreno 720, Chrome 156, WebGL 2), the game
+`films/river-town-prefab` built for WebGL against this engine, its medium
+setting in portrait (canvas 617 by 1200), ten in the morning, clear. The
+camera is held; 30 frames are drawn back to back and the graphics card made
+to finish (a one-pixel read); the median of three runs, in milliseconds a
+frame. Tool: `films/compare-three/tools/phone-scale.mjs`; reports and the
+phone's screenshots are kept outside the repository
+(`batch1-evidence/phone-v40/` in the session's notes folder).
+
+Look level 2:
+
+| View | As it is | Shadows every 3rd frame | 0.67, FSR | 0.67, bilinear and sharpen | 0.67, plain stretch | 0.67 FSR and shadows every 3rd | 0.5, FSR | 0.5 FSR and shadows every 3rd |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| road | 51.0 | 49.4 | 38.1 | 36.6 | 37.5 | 35.5 | 31.5 | 28.9 |
+| gate | 49.4 | 47.3 | 34.7 | 34.1 | 33.3 | 32.0 | 28.3 | 25.4 |
+| town | 39.2 | 38.0 | 27.6 | 26.7 | 26.8 | 26.5 | 24.0 | 21.6 |
+| wide | 51.1 | 50.8 | 36.5 | 35.8 | 35.8 | 35.2 | 32.2 | 28.2 |
+
+Look level 1:
+
+| View | As it is | Shadows every 3rd frame | 0.67, FSR | 0.67, bilinear and sharpen | 0.67, plain stretch | 0.67 FSR and shadows every 3rd | 0.5, FSR | 0.5 FSR and shadows every 3rd |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| road | 37.5 | 36.5 | 28.3 | 27.1 | 27.5 | 26.3 | 23.9 | 21.6 |
+| gate | 36.1 | 33.2 | 25.3 | 24.0 | 24.2 | 23.7 | 20.8 | 18.7 |
+| town | 23.7 | 22.9 | 17.8 | 17.0 | 17.0 | 16.8 | 15.1 | 14.0 |
+| wide | 37.6 | 35.2 | 28.2 | 28.2 | 27.9 | 25.6 | 24.3 | 21.8 |
+
+Look level 0:
+
+| View | As it is | Shadows every 3rd frame | 0.67, FSR | 0.67, bilinear and sharpen | 0.67, plain stretch | 0.67 FSR and shadows every 3rd | 0.5, FSR | 0.5 FSR and shadows every 3rd |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| road | 21.4 | 20.4 | 19.2 | 18.3 | 18.4 | 17.2 | 17.7 | 16.2 |
+| gate | 19.7 | 18.6 | 18.1 | 15.2 | 15.2 | 15.1 | 16.2 | 15.1 |
+| town | 12.0 | 11.2 | 11.2 | 10.8 | 10.5 | 10.5 | 10.5 | 9.8 |
+| wide | 23.3 | 21.1 | 21.7 | 21.5 | 21.4 | 19.5 | 20.5 | 18.9 |
+
+What the numbers say, for this phone and this game:
+
+- A picture at 0.67 takes 11 to 15 ms off a frame at level 2 (25 to 30 %)
+  and 6 to 11 ms at level 1 (25 to 30 %); at 0.5, 15 to 21 ms and 9 to 15 ms
+  (about 40 %). At level 0 it takes 1 to 4 ms: without the HDR chain the
+  frame is no longer bound by its pixels.
+- FSR costs 0.3 to 2.9 ms more than LayaAir's stretch. In the phone's
+  screenshots the paving at 0.67 with FSR reads nearly as at full size, the
+  plain stretch is plainly softer, and the interface is sharp in all of them.
+- The sun's shadow maps every third frame take 0.3 to 2.9 ms off a frame.
+  The maps were drawn on a third of the frames in every run (for example 43
+  of 129) and none was taken by another camera (the game's water mirrors
+  without shadows of its own). Less than the 3.5 to 6.7 ms the shadows cost
+  in all: drawing the maps is the smaller part, reading them stays.
+- 16.7 ms is reached at level 1 only in the town, at 0.5; nowhere at level
+  2. 33 ms is reached everywhere at level 2 at 0.5, and at 0.67 only in the
+  town. The default rungs of `zhudaQualitySteps` were not changed by this:
+  one phone and one game do not tune a ladder.
+
+Not measured: a moving camera (a caster's shadow follows it in steps under
+`interval`; nobody looked at that on the phone), battery or heat, any other
+phone, WebGPU on a phone.
+
 ## Limits and decision
 
-- No phone. The 3.5 to 6.7 ms of shadows and the 40 to 64 ms frames of look
-  level 2 on the vivo V40 are not measured again; whether interval shadows
-  or 0.67 with FSR save what they should there is the next step, in
-  `films/river-town-prefab`.
-- The ladder's rungs are a proposal until then.
+- One phone, one game, one hour of the day (above).
+- The ladder's default rungs are still a proposal: measured, not tuned.
 - Other cameras under a rule, not drawn: a mirror the engine's frame loop
   draws itself (the wet surface; unit-tested on fakes), a bounce-light
   capture, two cameras on the canvas (unit-tested: right picture, nothing
@@ -367,10 +425,12 @@ ladder through the scales before any effect goes and back up.
 - Stills and videos of a film always draw the maps; a film preview in the
   editor follows the rule.
 - The review round's checks were run in a clone of the repository at
-  `e6badce` with the round's changes, not in the work package's worktree,
-  and not again after its commit was brought onto the branch.
+  `e6badce` with the round's changes. After its commit was merged
+  (`dcde1bb`), `npm run verify` (628 of 628 with the other packages of the
+  batch), lint, format, whitespace, and `verify:shadow-updates` and
+  `verify:render-scale` on WebGL and WebGPU were run again and pass.
 - Art approval: the pictures are for the owner.
 
 Decision: **Implemented within scope**: both levers drawn and checked on
-desktop WebGL and WebGPU, with other cameras of the scene. Not Accepted:
-the phone measurement it is for is missing.
+desktop WebGL and WebGPU, with other cameras of the scene, and measured on
+one phone in one game. Not Accepted: no consumer ships either lever yet.
