@@ -56,6 +56,30 @@ export type {
   GltfExtensionCapability,
   GltfAssetCapability,
 } from './ModelCompatibility.ts';
+export type { GltfInspectOptions } from './ModelCompatibility.ts';
+export {
+  applyZhudaGltfCamera,
+  dequantizeZhudaGltf,
+  probeZhudaImageDecode,
+  quantizedZhudaGltfAccessors,
+  readZhudaGltfCameras,
+  readZhudaGltfLights,
+  readZhudaGltfNodeData,
+  resolveZhudaGltfTextureSource,
+  zhudaGltfLightToLaya,
+} from './GltfIntake.ts';
+export type {
+  ZhudaDequantizeResult,
+  ZhudaGltfCamera,
+  ZhudaGltfImageExtension,
+  ZhudaGltfLight,
+  ZhudaGltfNodeData,
+  ZhudaGltfProblem,
+  ZhudaGltfTextureSource,
+  ZhudaImageDecodeSupport,
+  ZhudaLayaLightSettings,
+  ZhudaProbedImageFormat,
+} from './GltfIntake.ts';
 export * from './Themes.ts';
 export * from './ResultPlayback.ts';
 

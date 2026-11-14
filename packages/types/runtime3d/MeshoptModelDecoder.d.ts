@@ -1,7 +1,8 @@
 // Generated from TypeScript source; run npm run types:generate.
 import type { ModelDecoderAdapter, ModelDecoderInput, ModelDecodedPayload } from './ModelDecoder.js';
 /** Optional pinned CPU decoder: embedded glTF/GLB -> ordinary self-contained GLB.
- * Uses existing ModelLibrary/provider ownership; no second renderer or cache.
+ * Reads `EXT_meshopt_compression` and `KHR_meshopt_compression` (with its COLOR
+ * filter). Uses existing ModelLibrary/provider ownership; no second renderer or cache.
  */
 export declare class ZhudaMeshoptModelDecoder implements ModelDecoderAdapter {
     readonly descriptor: Readonly<{

@@ -3,8 +3,21 @@ import {
   prepareLaya342GltfResource,
   copyLaya342MorphWeights,
   createLaya342ModelTemplate,
+  createLaya342GltfLight,
+  laya342GltfMissingTextures,
+  laya342GltfNodes,
 } from './Laya342GltfAdapter.ts';
 import {
+  dequantizeZhudaGltf,
+  probeZhudaImageDecode,
+  readZhudaGltfNodeData,
+  zhudaGltfLightToLaya,
+  type ZhudaGltfNodeData,
+  type ZhudaImageDecodeSupport,
+} from './GltfIntake.ts';
+import { awaitAbortable } from './AsyncOperation.ts';
+import {
+  addModelDiagnostics,
   inspectGltfAsset,
   readGltfAssetDocument,
   ZhudaModelCompatibilityError,
@@ -212,10 +225,19 @@ function visit(node: any, fn: (n: any) => void) {
   fn(node);
   for (let i = 0; i < (node.numChildren || 0); i++) visit(node.getChildAt(i), fn);
 }
+/** glTF node data LayaAir drops (extras, a camera, a light), found on this instance's Laya node. */
+export interface ZhudaModelGltfNode extends ZhudaGltfNodeData {
+  /** The Laya node made from the glTF node, in this instance. Its name is the glTF name or `node_<n>`. */
+  readonly node: Laya.Sprite3D;
+  /** The light component made from `light` when `instantiate` asked for lights; otherwise null. */
+  readonly lightComponent: Laya.Light | null;
+}
 export interface ModelInstance {
   readonly node: Laya.Sprite3D;
   readonly compatibility: ModelCompatibilityReport;
   readonly materials: readonly Laya.Material[];
+  /** The nodes that carry glTF `extras`, a camera or a `KHR_lights_punctual` light, in node order. */
+  readonly gltfNodes: readonly ZhudaModelGltfNode[];
   setTint(color: [number, number, number, number]): void;
   find(name: string): Laya.Sprite3D | null;
   dispose(): void;
@@ -228,6 +250,12 @@ export interface ModelLibraryOptions {
   provider?: AssetProvider;
   /** Per-caller download + parse deadline. Default 15000ms. */
   timeoutMs?: number;
+  /**
+   * This host's WebP/AVIF decoding, when the consumer already knows it (a
+   * mini-game host's own capability answer). `probeZhudaImageDecode` is then
+   * not run for this library's models.
+   */
+  imageDecode?: ZhudaImageDecodeSupport;
 }
 export class ZhudaModelLibrary {
   readonly cache: ZhudaAssetCache<any>;
@@ -236,7 +264,13 @@ export class ZhudaModelLibrary {
   // Retain one off-scene template per existing cache lease and clone its tree.
   private templates = new WeakMap<
     object,
-    { node: Laya.Sprite3D; clips: Set<Laya.AnimationClip>; compatibility: ModelCompatibilityReport }
+    {
+      node: Laya.Sprite3D;
+      clips: Set<Laya.AnimationClip>;
+      compatibility: ModelCompatibilityReport;
+      /** Node data with the child-index path from the template root to its node. */
+      gltfNodes: { data: ZhudaGltfNodeData; path: number[] }[];
+    }
   >();
   private readonly timeoutMs: number;
   private readonly provider?: AssetProvider;
@@ -248,6 +282,12 @@ export class ZhudaModelLibrary {
     this.timeoutMs = config.timeoutMs ?? 15000;
     if (!Number.isInteger(this.timeoutMs) || this.timeoutMs <= 0)
       throw Error('Invalid model deadline');
+    const knownDecode = config.imageDecode;
+    if (
+      knownDecode !== undefined &&
+      (typeof knownDecode?.webp !== 'boolean' || typeof knownDecode?.avif !== 'boolean')
+    )
+      throw Error('Invalid image decode support');
     this.cache = new ZhudaAssetCache(
       async (url, signal, phase) => {
         const l = (globalThis as any).Laya;
@@ -268,9 +308,12 @@ export class ZhudaModelLibrary {
             bytes = await response.arrayBuffer();
           }
           if (signal.aborted) throw abortError();
+          const declared = inspectGltfAsset(bytes).extensions.map((e) => e.name);
           if (
             config.decoders?.has('meshopt') &&
-            inspectGltfAsset(bytes).extensions.some((e) => e.name === 'EXT_meshopt_compression')
+            declared.some(
+              (name) => name === 'EXT_meshopt_compression' || name === 'KHR_meshopt_compression',
+            )
           ) {
             decoded = await config.decoders.decode('meshopt', url, new Uint8Array(bytes), {
               signal,
@@ -280,10 +323,39 @@ export class ZhudaModelLibrary {
             bytes = new Uint8Array(decoded.data).buffer;
             if (signal.aborted) throw abortError();
           }
-          const compatibility = inspectGltfAsset(bytes);
+          // WebP/AVIF textures: ask this device once, so the report and the
+          // texture choice agree with what it can decode.
+          let imageDecode: ZhudaImageDecodeSupport | undefined;
+          if (declared.some((name) => name === 'EXT_texture_webp' || name === 'EXT_texture_avif'))
+            imageDecode = knownDecode ?? (await awaitAbortable(probeZhudaImageDecode(), signal));
+          // The report describes the file as delivered (after any Meshopt decode).
+          let compatibility = inspectGltfAsset(bytes, { imageDecode });
           if (compatibility.status === 'unsupported')
             throw new ZhudaModelCompatibilityError(compatibility, url);
+          // Integer vertex attributes become floats LayaAir reads correctly.
+          let dequantized: ReturnType<typeof dequantizeZhudaGltf>;
+          try {
+            dequantized = dequantizeZhudaGltf(new Uint8Array(bytes));
+          } catch (error) {
+            // What only the bytes show (an accessor past its view, a missing
+            // buffer): refused with a report, as every other refusal is.
+            throw new ZhudaModelCompatibilityError(
+              addModelDiagnostics(compatibility, [
+                {
+                  code: 'INVALID_DOCUMENT',
+                  severity: 'error',
+                  path: '$.accessors',
+                  message: `Integer vertex attributes could not be turned into floats: ${error instanceof Error ? error.message : String(error)}.`,
+                  hint: 'Repair the export; run Khronos Validator.',
+                },
+              ]),
+              url,
+            );
+          }
+          if (dequantized) bytes = dequantized.bytes.buffer as ArrayBuffer;
           const parsed = readGltfAssetDocument(bytes);
+          // Read before LayaAir's JSON parse, which names unnamed nodes in place.
+          const nodeData = readZhudaGltfNodeData(parsed.document);
           if (this.provider) {
             for (const item of [
               ...((parsed.document.buffers ?? []) as { uri?: string }[]),
@@ -296,13 +368,36 @@ export class ZhudaModelLibrary {
           }
           phase('parsing');
           resource = new l.glTFResource();
-          prepareLaya342GltfResource(resource, l);
+          prepareLaya342GltfResource(resource, l, { imageDecode });
           if (parsed.binary) await resource._parseglb(bytes, url);
           else await resource._parse(parsed.document, url);
           if (signal.aborted) {
             resource.destroy();
             throw abortError();
           }
+          // A picture that did not load: LayaAir leaves its slots empty and only
+          // warns on the console. The model's own report says so. Read from the
+          // document LayaAir parsed: its textures' `source` is the image chosen.
+          const loaded = (resource._data ?? parsed.document) as {
+            images?: { mimeType?: string }[];
+            textures?: { source?: number }[];
+          };
+          const images = loaded.images ?? [],
+            textures = loaded.textures ?? [];
+          compatibility = addModelDiagnostics(
+            compatibility,
+            laya342GltfMissingTextures(resource).map((index) => {
+              const image = textures[index]?.source,
+                kind = images[image ?? -1]?.mimeType;
+              return {
+                code: 'IMAGE_DECODE_FAILED' as const,
+                severity: 'warning' as const,
+                path: `$.textures[${index}]`,
+                message: `Image ${image ?? 'none'}${kind ? ` (${kind})` : ''} of texture ${index} did not load or decode; the material slots that use it are empty.`,
+                hint: 'Open the picture on its own on this device; re-encode it, or keep a PNG/JPEG fallback source.',
+              };
+            }),
+          );
           const template = createLaya342ModelTemplate(resource, l);
           enableLaya342VertexColors(template, l);
           const clips = new Set<Laya.AnimationClip>();
@@ -315,7 +410,20 @@ export class ZhudaModelLibrary {
           });
           // Once per loaded model: its textures stay sharp at grazing angles.
           applyZhudaAnisotropy(template);
-          this.templates.set(resource, { node: template, clips, compatibility });
+          // Where each node with extras, a camera or a light sits under the template.
+          const made = laya342GltfNodes(resource);
+          const gltfNodes: { data: ZhudaGltfNodeData; path: number[] }[] = [];
+          for (const data of nodeData) {
+            const path: number[] = [];
+            let node = made[data.index];
+            while (node && node !== template && node.parent) {
+              path.unshift(node.parent.getChildIndex(node));
+              node = node.parent;
+            }
+            // A node outside the default scene is not in the template.
+            if (node === template) gltfNodes.push({ data, path });
+          }
+          this.templates.set(resource, { node: template, clips, compatibility, gltfNodes });
           resource._addReference(); // Cache owns the prefab even while no instances are visible.
           return resource;
         } catch (e) {
@@ -350,11 +458,25 @@ export class ZhudaModelLibrary {
       independentMaterials?: boolean;
       retries?: number;
       timeoutMs?: number;
+      /**
+       * Make the file's `KHR_lights_punctual` lights on their nodes (off by
+       * default: copies of a model would copy its lights). `scale` multiplies
+       * the glTF intensities (see zhudaGltfLightToLaya); default 1.
+       */
+      lights?: boolean | { scale?: number };
     } = {},
   ): Promise<ModelInstance> {
     const key = this.provider ? normalizeAssetId(url) : url;
     const timeoutMs = options.timeoutMs ?? this.timeoutMs;
     if (!Number.isInteger(timeoutMs) || timeoutMs <= 0) throw Error('Invalid model deadline');
+    const lightScale =
+      options.lights === undefined || options.lights === false
+        ? null
+        : options.lights === true
+          ? 1
+          : (options.lights.scale ?? 1);
+    if (lightScale !== null && (!Number.isFinite(lightScale) || lightScale < 0))
+      throw Error('Invalid glTF light scale');
     const controller = new AbortController();
     const relay = () => controller.abort(options.signal?.reason);
     options.signal?.addEventListener('abort', relay, { once: true });
@@ -376,6 +498,7 @@ export class ZhudaModelLibrary {
     }
     let node: any;
     const materials: any[] = [];
+    const gltfNodes: ZhudaModelGltfNode[] = [];
     try {
       if (options.signal?.aborted) throw abortError();
       const template = this.templates.get(lease.value);
@@ -414,6 +537,21 @@ export class ZhudaModelLibrary {
             });
           }
         });
+      // The clone keeps the template's child order: follow each recorded path.
+      for (const { data, path } of template.gltfNodes) {
+        let target = node;
+        for (const index of path) target = target?.getChildAt(index);
+        if (!target) throw Error(`glTF node ${data.index} is missing from the model copy`);
+        const lightComponent =
+          data.light && lightScale !== null
+            ? createLaya342GltfLight(
+                target,
+                zhudaGltfLightToLaya(data.light, { scale: lightScale }),
+                l,
+              )
+            : null;
+        gltfNodes.push(Object.freeze({ ...data, node: target, lightComponent }));
+      }
     } catch (e) {
       if (node) destroyLaya342ModelTree(node);
       for (const m of materials) if (!m.destroyed) m.destroy();
@@ -426,6 +564,7 @@ export class ZhudaModelLibrary {
       node,
       compatibility: this.templates.get(lease.value)!.compatibility,
       materials,
+      gltfNodes: Object.freeze(gltfNodes),
       setTint: (color: [number, number, number, number]) => {
         if (disposed) throw Error('Disposed model instance');
         if (!options.independentMaterials) throw Error('Tint requires independent materials');

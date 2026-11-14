@@ -166,6 +166,7 @@
     "verify:grass": "node scripts/verify-grass.mjs",
     "verify:geometry": "node scripts/verify-geometry.mjs",
     "verify:spatial-audio": "node scripts/verify-spatial-audio.mjs",
+    "verify:gltf-intake": "node scripts/verify-gltf-intake.mjs",
     "types:generate": "node packages/compiler/runtime3d-types.mjs",
     "types:check": "node packages/compiler/runtime3d-types.mjs --check",
     "prepare": "npm run build 1>&2",

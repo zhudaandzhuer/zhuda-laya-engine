@@ -1,3 +1,11 @@
+import {
+  externalZhudaGltfBuffers,
+  quantizedZhudaGltfAccessors,
+  readZhudaGltfCameras,
+  readZhudaGltfLights,
+  resolveZhudaGltfTextureSource,
+  type ZhudaImageDecodeSupport,
+} from './GltfIntake.ts';
 /** Import diagnostics describe the shipped importer, not complete glTF conformance. */
 export interface ModelDiagnostic {
   code:
@@ -7,7 +15,25 @@ export interface ModelDiagnostic {
     | 'UNSUPPORTED_REQUIRED_EXTENSION'
     | 'UNSUPPORTED_OPTIONAL_EXTENSION'
     | 'REQUIRED_RENDER_INPUT'
-    | 'INVALID_MORPH_WEIGHTS';
+    | 'INVALID_MORPH_WEIGHTS'
+    /** Meshopt data: only a registered decoder (ZhudaMeshoptModelDecoder) reads it. */
+    | 'DECODER_REQUIRED'
+    /** Integer vertex attributes the engine turns into floats before LayaAir parses them. */
+    | 'DEQUANTIZED_ATTRIBUTES'
+    /** Integer vertex attributes in a buffer outside the file: there are no bytes to turn into floats. */
+    | 'EMBEDDED_BUFFER_REQUIRED'
+    /** This device cannot decode a texture's WebP/AVIF image: its fallback loads, or nothing. */
+    | 'IMAGE_DECODE_UNAVAILABLE'
+    /** The device's decoder gave the probe no answer in time: as unavailable for this load; the next asks again. */
+    | 'IMAGE_DECODE_UNANSWERED'
+    /** A WebP/AVIF image without a fallback, inspected without a device answer. */
+    | 'IMAGE_DECODE_UNCHECKED'
+    /** Set by ZhudaModelLibrary after loading: a texture's picture did not load or decode; its slots are empty. */
+    | 'IMAGE_DECODE_FAILED'
+    /** A punctual light LayaAir can only approximate (falloff, spot cone). */
+    | 'LIGHT_APPROXIMATED'
+    | 'INVALID_LIGHT'
+    | 'INVALID_CAMERA';
   severity: 'error' | 'warning';
   path: string;
   extension?: string;
@@ -16,7 +42,8 @@ export interface ModelDiagnostic {
 }
 export interface GltfExtensionCapability {
   name: string;
-  implementation: 'native';
+  /** `native`: LayaAir's importer; `engine`: this engine before or around it. */
+  implementation: 'native' | 'engine';
   requiredRenderInputs: readonly 'opaqueColor'[];
   /** An implemented parser is not a visual conformance certificate. */
   visualConformance: 'not-certified';
@@ -74,6 +101,37 @@ export const gltfAssetCapabilities: readonly GltfAssetCapability[] = Object.free
     hint: 'Register ZhudaMeshoptModelDecoder with ZhudaModelDecoderRegistry and pass decoders plus provider to ZhudaModelLibrary; verify the model on target devices.',
   }),
   Object.freeze({
+    name: 'KHR_meshopt_compression',
+    kind: 'geometry-compression' as const,
+    status: 'adapter-required' as const,
+    message:
+      'The ratified Meshopt name, with its COLOR filter, is decoded by the same optional adapter before native parsing.',
+    hint: 'Register ZhudaMeshoptModelDecoder with ZhudaModelDecoderRegistry and pass decoders plus provider to ZhudaModelLibrary; verify the model on target devices.',
+  }),
+  Object.freeze({
+    name: 'KHR_mesh_quantization',
+    kind: 'geometry-compression' as const,
+    status: 'supported' as const,
+    message:
+      'Integer vertex attributes are turned into floats before native parsing; node transforms are kept.',
+    hint: 'Download size stays small; GPU vertex memory is that of an unquantized export.',
+  }),
+  Object.freeze({
+    name: 'EXT_texture_webp',
+    kind: 'image-compression' as const,
+    status: 'supported' as const,
+    message: 'A texture loads its WebP image when the device decodes it, else its fallback source.',
+    hint: 'ModelLibrary asks the device first; keep a PNG/JPEG fallback for hosts without WebP.',
+  }),
+  Object.freeze({
+    name: 'EXT_texture_avif',
+    kind: 'image-compression' as const,
+    status: 'supported' as const,
+    message:
+      'A texture loads its AVIF image when the device decodes it (preferred over WebP), else its fallback.',
+    hint: 'AVIF decoding varies by device: keep a PNG/JPEG or WebP fallback (optional extension).',
+  }),
+  Object.freeze({
     name: 'KHR_texture_basisu',
     kind: 'image-compression' as const,
     status: 'unsupported' as const,
@@ -93,12 +151,24 @@ const extensionNames = [
   'KHR_materials_unlit',
   'KHR_materials_volume',
   'KHR_texture_transform',
+  'KHR_mesh_quantization',
+  'EXT_texture_webp',
+  'EXT_texture_avif',
+  'KHR_lights_punctual',
 ] as const;
+const engineExtensions: readonly string[] = [
+  'KHR_mesh_quantization',
+  'EXT_texture_webp',
+  'EXT_texture_avif',
+  'KHR_lights_punctual',
+];
+// Read by a registered decoder before the native parser, never by the parser.
+const decoderExtensions: readonly string[] = ['EXT_meshopt_compression', 'KHR_meshopt_compression'];
 export const gltfExtensionCapabilities: readonly GltfExtensionCapability[] = Object.freeze(
   extensionNames.map((name) =>
     Object.freeze({
       name,
-      implementation: 'native' as const,
+      implementation: engineExtensions.includes(name) ? ('engine' as const) : ('native' as const),
       requiredRenderInputs: Object.freeze(
         name === 'KHR_materials_transmission' ? ['opaqueColor' as const] : [],
       ),
@@ -106,6 +176,11 @@ export const gltfExtensionCapabilities: readonly GltfExtensionCapability[] = Obj
     }),
   ),
 );
+/** Options for a compatibility inspection. */
+export interface GltfInspectOptions {
+  /** This device's WebP/AVIF decoding (`probeZhudaImageDecode`). Without it no device answer is assumed. */
+  imageDecode?: ZhudaImageDecodeSupport;
+}
 export interface ModelSourceInventory {
   /** Source complexity only; this does not predict native/GPU upload time. */
   summary: {
@@ -127,6 +202,10 @@ export interface ModelSourceInventory {
     skin: number | null;
     children: readonly number[];
     morphWeights: readonly number[];
+    /** glTF camera index, or null. */
+    camera: number | null;
+    /** `KHR_lights_punctual` light index, or null. */
+    light: number | null;
   }[];
   meshes: readonly {
     index: number;
@@ -157,7 +236,15 @@ export interface ModelSourceInventory {
       colorSpace: 'srgb' | 'linear';
     }[];
   }[];
-  textures: readonly { index: number; image: number | null; sampler: number | null }[];
+  textures: readonly {
+    index: number;
+    /** The core `source` image (the fallback when an extension image is offered). */
+    image: number | null;
+    sampler: number | null;
+    /** `EXT_texture_webp` / `EXT_texture_avif` images, or null. */
+    webp: number | null;
+    avif: number | null;
+  }[];
   images: readonly {
     index: number;
     name: string;
@@ -212,6 +299,8 @@ function inventory(d: RecordValue): ModelSourceInventory {
       skin: indexOf(n.skin),
       children: numbers(n.children),
       morphWeights: numbers(n.weights ?? meshes[indexOf(n.mesh) ?? -1]?.weights),
+      camera: indexOf(n.camera),
+      light: indexOf(record(record(n.extensions).KHR_lights_punctual).light),
     })),
     meshInventory = meshes.map((m, index) => ({
       index,
@@ -285,6 +374,8 @@ function inventory(d: RecordValue): ModelSourceInventory {
       index,
       image: indexOf(t.source),
       sampler: indexOf(t.sampler),
+      webp: indexOf(record(record(t.extensions).EXT_texture_webp).source),
+      avif: indexOf(record(record(t.extensions).EXT_texture_avif).source),
     })),
     images: {
       index: number;
@@ -334,7 +425,10 @@ function inventory(d: RecordValue): ModelSourceInventory {
     animations,
   };
 }
-export function inspectGltfDocument(document: unknown): ModelCompatibilityReport {
+export function inspectGltfDocument(
+  document: unknown,
+  options: GltfInspectOptions = {},
+): ModelCompatibilityReport {
   const d = record(document),
     diagnostics: ModelDiagnostic[] = [];
   const add = (issue: ModelDiagnostic) => diagnostics.push(issue);
@@ -412,7 +506,16 @@ export function inspectGltfDocument(document: unknown): ModelCompatibilityReport
     implemented: extensionNames.includes(name as (typeof extensionNames)[number]),
   }));
   for (const e of extensions)
-    if (!e.implemented)
+    if (decoderExtensions.includes(e.name))
+      add({
+        code: 'DECODER_REQUIRED',
+        severity: e.required ? 'error' : 'warning',
+        extension: e.name,
+        path: `$.${e.required ? 'extensionsRequired' : 'extensionsUsed'}[${(e.required ? required : used).indexOf(e.name)}]`,
+        message: `${e.name} data is read only by a registered Meshopt decoder, before native parsing.`,
+        hint: 'Register ZhudaMeshoptModelDecoder with a ZhudaModelDecoderRegistry and pass it with a provider to ZhudaModelLibrary.',
+      });
+    else if (!e.implemented)
       add({
         code: e.required ? 'UNSUPPORTED_REQUIRED_EXTENSION' : 'UNSUPPORTED_OPTIONAL_EXTENSION',
         severity: e.required ? 'error' : 'warning',
@@ -433,6 +536,157 @@ export function inspectGltfDocument(document: unknown): ModelCompatibilityReport
       message: 'Transmission requires the camera opaque-color pass.',
       hint: 'Use configureSurfacePasses or a showcase mode with opaqueColor enabled, then verify transparent materials.',
     });
+  // Integer vertex attributes: LayaAir copies them into floats unscaled.
+  try {
+    const quantized = quantizedZhudaGltfAccessors(d),
+      external = quantized.length ? externalZhudaGltfBuffers(d) : [];
+    if (external.length)
+      add({
+        code: 'EMBEDDED_BUFFER_REQUIRED',
+        severity: 'error',
+        ...(used.includes('KHR_mesh_quantization') ? { extension: 'KHR_mesh_quantization' } : {}),
+        path: `$.buffers[${external[0]}].uri`,
+        message: `${quantized.length} integer vertex attribute accessor(s) must become floats before native parsing, and buffers[${external.join(', ')}] ${external.length > 1 ? 'are' : 'is'} outside the file: there are no bytes to convert.`,
+        hint: 'Pack the model as a self-contained GLB (or embed its buffers), or export float vertex attributes.',
+      });
+    else if (quantized.length) {
+      const accessors = records(d.accessors);
+      const floats = quantized.reduce(
+        (sum, i) =>
+          sum +
+          numeric(accessors[i].count) *
+            ({ VEC2: 2, VEC3: 3, VEC4: 4 }[label(accessors[i].type)] ?? 0) *
+            4,
+        0,
+      );
+      add({
+        code: 'DEQUANTIZED_ATTRIBUTES',
+        severity: 'warning',
+        ...(used.includes('KHR_mesh_quantization') ? { extension: 'KHR_mesh_quantization' } : {}),
+        path: `$.accessors[${quantized[0]}]`,
+        message: `${quantized.length} integer vertex attribute accessor(s) become ${floats} bytes of 32-bit floats before native parsing.`,
+        hint: 'Download size stays small; GPU vertex memory is that of an unquantized export.',
+      });
+    }
+  } catch (error) {
+    add({
+      code: 'INVALID_DOCUMENT',
+      severity: 'error',
+      path: '$.meshes',
+      message: error instanceof Error ? error.message : 'Invalid vertex attribute.',
+      hint: 'Repair the export; run Khronos Validator.',
+    });
+  }
+  // WebP and AVIF texture sources, against this device when it was asked.
+  records(d.textures).forEach((texture, i) => {
+    const source = resolveZhudaGltfTextureSource(texture, options.imageDecode);
+    const offered = ['EXT_texture_avif', 'EXT_texture_webp'].filter(
+      (name) => indexOf(record(record(record(texture).extensions)[name]).source) !== null,
+    );
+    if (!offered.length) return;
+    if (options.imageDecode && source.extension === null) {
+      // No answer from a decoder is not a no: say which it was.
+      const silent = source.unavailable.filter((name) =>
+        options.imageDecode!.unanswered?.includes(name === 'EXT_texture_avif' ? 'avif' : 'webp'),
+      );
+      const outcome =
+        source.image === null
+          ? 'the texture has no fallback source'
+          : `the fallback image ${source.image} loads`;
+      add(
+        silent.length
+          ? {
+              code: 'IMAGE_DECODE_UNANSWERED',
+              severity: source.image === null ? 'error' : 'warning',
+              extension: silent[0],
+              path: `$.textures[${i}]`,
+              message: `This device's decoder gave no answer for ${silent.join(' or ')} in time; ${outcome}.`,
+              hint: 'Load the model again: probeZhudaImageDecode asks an unanswered decoder again on its next call.',
+            }
+          : {
+              code: 'IMAGE_DECODE_UNAVAILABLE',
+              severity: source.image === null ? 'error' : 'warning',
+              extension: source.unavailable[0],
+              path: `$.textures[${i}]`,
+              message:
+                source.image === null
+                  ? `This device cannot decode ${source.unavailable.join(' or ')} and ${outcome}.`
+                  : `This device cannot decode ${source.unavailable.join(' or ')}; ${outcome}.`,
+              hint: 'Keep a PNG/JPEG fallback source and leave the extension optional for devices without the format.',
+            },
+      );
+    } else if (!options.imageDecode && indexOf(record(texture).source) === null)
+      add({
+        code: 'IMAGE_DECODE_UNCHECKED',
+        severity: 'warning',
+        extension: offered[0],
+        path: `$.textures[${i}]`,
+        message: `The texture has only a ${offered.join('/')} image; whether a device decodes it was not checked.`,
+        hint: 'ZhudaModelLibrary asks the device before parsing; pass imageDecode from probeZhudaImageDecode to check here.',
+      });
+  });
+  const lightProblems = readZhudaGltfLights(d);
+  for (const problem of lightProblems.problems)
+    add({
+      code: 'INVALID_LIGHT',
+      severity: 'warning',
+      extension: 'KHR_lights_punctual',
+      path: `$.extensions.KHR_lights_punctual.lights[${problem.index}]`,
+      message: `Light ${problem.index}: ${problem.message}; it is not created.`,
+      hint: 'Repair the export; the other lights still load.',
+    });
+  lightProblems.lights.forEach((light, i) => {
+    if (!light || light.type === 'directional') return;
+    add({
+      code: 'LIGHT_APPROXIMATED',
+      severity: 'warning',
+      extension: 'KHR_lights_punctual',
+      path: `$.extensions.KHR_lights_punctual.lights[${i}]`,
+      message:
+        `A ${light.type} light falls off along LayaAir's range curve, not the inverse square` +
+        (light.range === null ? '; its range is derived from its intensity' : '') +
+        (light.type === 'spot' ? "; the cone's inner edge is fixed at half its outer angle" : '') +
+        '.',
+      hint: 'See zhudaGltfLightToLaya for the mapping; lights are created only when instantiate asks for them.',
+    });
+  });
+  const cameraProblems = readZhudaGltfCameras(d);
+  for (const problem of cameraProblems.problems)
+    add({
+      code: 'INVALID_CAMERA',
+      severity: 'warning',
+      path: `$.cameras[${problem.index}]`,
+      message: `Camera ${problem.index}: ${problem.message}; it is not attached.`,
+      hint: 'Repair the export; nodes and other cameras still load.',
+    });
+  // A node that names a light or camera the file does not have. (One that names
+  // an invalid light or camera is covered by that entry's own diagnostic.)
+  records(d.nodes).forEach((node, i) => {
+    const punctual = record(node.extensions).KHR_lights_punctual;
+    if (
+      punctual !== undefined &&
+      lightProblems.lights[indexOf(record(punctual).light) ?? -1] === undefined
+    )
+      add({
+        code: 'INVALID_LIGHT',
+        severity: 'warning',
+        extension: 'KHR_lights_punctual',
+        path: `$.nodes[${i}].extensions.KHR_lights_punctual.light`,
+        message: `Node ${i} names light ${JSON.stringify(record(punctual).light) ?? 'none'}, which the file does not have; no light is created on it.`,
+        hint: 'Repair the export; the other lights still load.',
+      });
+    if (
+      node.camera !== undefined &&
+      cameraProblems.cameras[indexOf(node.camera) ?? -1] === undefined
+    )
+      add({
+        code: 'INVALID_CAMERA',
+        severity: 'warning',
+        path: `$.nodes[${i}].camera`,
+        message: `Node ${i} names camera ${JSON.stringify(node.camera)}, which the file does not have; none is attached.`,
+        hint: 'Repair the export; nodes and other cameras still load.',
+      });
+  });
   const meshes = records(d.meshes);
   const checkWeights = (v: unknown, count: number, path: string) => {
     if (
@@ -463,21 +717,49 @@ export function inspectGltfDocument(document: unknown): ModelCompatibilityReport
       `$.nodes[${i}].weights`,
     ),
   );
-  const status = diagnostics.some((x) => x.severity === 'error')
-    ? 'unsupported'
-    : diagnostics.some((x) => x.code === 'UNSUPPORTED_OPTIONAL_EXTENSION')
-      ? 'degraded'
-      : needsOpaque
-        ? 'conditional'
-        : 'supported';
   return freeze({
     schemaVersion: 1,
-    status,
+    status: statusOf(diagnostics, needsOpaque),
     validationScope: 'importer-capabilities',
     extensions,
     requiredRenderInputs: needsOpaque ? ['opaqueColor'] : [],
     diagnostics,
     inventory: inventory(d),
+  });
+}
+// A feature the file offers that will not reach the screen.
+const lost: readonly ModelDiagnostic['code'][] = [
+  'UNSUPPORTED_OPTIONAL_EXTENSION',
+  'DECODER_REQUIRED',
+  'IMAGE_DECODE_UNAVAILABLE',
+  'IMAGE_DECODE_UNANSWERED',
+  'IMAGE_DECODE_FAILED',
+  'INVALID_LIGHT',
+  'INVALID_CAMERA',
+];
+function statusOf(
+  diagnostics: readonly ModelDiagnostic[],
+  needsOpaque: boolean,
+): ModelCompatibilityReport['status'] {
+  return diagnostics.some((x) => x.severity === 'error')
+    ? 'unsupported'
+    : diagnostics.some((x) => lost.includes(x.code))
+      ? 'degraded'
+      : needsOpaque
+        ? 'conditional'
+        : 'supported';
+}
+/** Internal: a report with what loading the file found added to it. */
+export function addModelDiagnostics(
+  report: ModelCompatibilityReport,
+  found: readonly ModelDiagnostic[],
+): ModelCompatibilityReport {
+  if (!found.length) return report;
+  const diagnostics = [...report.diagnostics, ...found];
+  return freeze({
+    ...report,
+    status: statusOf(diagnostics, report.requiredRenderInputs.includes('opaqueColor')),
+    diagnostics,
   });
 }
 export class ZhudaModelCompatibilityError extends Error {
@@ -517,9 +799,12 @@ export function readGltfAssetDocument(input: ArrayBuffer | Uint8Array): {
   }
   return { binary, document: record(JSON.parse(new TextDecoder().decode(json))) };
 }
-export function inspectGltfAsset(bytes: ArrayBuffer | Uint8Array): ModelCompatibilityReport {
+export function inspectGltfAsset(
+  bytes: ArrayBuffer | Uint8Array,
+  options: GltfInspectOptions = {},
+): ModelCompatibilityReport {
   try {
-    return inspectGltfDocument(readGltfAssetDocument(bytes).document);
+    return inspectGltfDocument(readGltfAssetDocument(bytes).document, options);
   } catch (error) {
     const base = inspectGltfDocument({});
     return freeze({
