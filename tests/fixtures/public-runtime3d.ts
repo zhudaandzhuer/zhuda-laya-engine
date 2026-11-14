@@ -240,3 +240,34 @@ prefabLibrary.instantiate('panel').then((instance) => {
   ZhudaPrefab.instantiate({ _$id: 'label', _$type: 'Text' }, child);
   instance.dispose();
 });
+import {
+  createSurfaceMaterial as createPhysicalSurface,
+  configureSurfacePasses as askCameraPasses,
+  surfaceMaterialPasses,
+  validatePhysicalSurfaceSpec,
+  type SurfaceMaterialSpec,
+} from 'zhuda-laya-engine';
+const glassSpec: SurfaceMaterialSpec = {
+  type: 'physical',
+  roughness: 0.05,
+  ior: 1.5,
+  specular: { factor: 1, color: [1, 1, 1] },
+  transmission: {
+    factor: 1,
+    volume: { thickness: 0.3, attenuationColor: [0.3, 0.85, 0.5], attenuationDistance: 0.3 },
+  },
+};
+const clothSpec: SurfaceMaterialSpec = {
+  type: 'physical',
+  sheen: { color: [0.75, 0.78, 1], roughness: 0.4 },
+  iridescence: { factor: 1, ior: 1.8, thicknessRange: [100, 500] },
+  anisotropy: 0.8,
+  anisotropyRotationDeg: 135,
+};
+function physicalSurfaces(camera: Laya.Camera) {
+  const problems: string[] = validatePhysicalSurfaceSpec(glassSpec);
+  const passes = askCameraPasses(camera, [surfaceMaterialPasses(glassSpec)], 1);
+  if (!problems.length && passes.ready) createPhysicalSurface(glassSpec);
+  return createPhysicalSurface(clothSpec);
+}
+console.log(physicalSurfaces);

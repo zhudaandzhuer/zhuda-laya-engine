@@ -1,32 +1,443 @@
 export interface SurfaceMaterialSpec {
-  type: 'pbr' | 'unlit';
+  /**
+   * `pbr`: LayaAir's standard physically based material. `unlit`: colour and
+   * texture only. `physical`: LayaAir's glTF shader (`glTFPBR`), the one a
+   * glTF model's materials use, which adds sheen, iridescence, an index of
+   * refraction and specular tint, light through the surface (`transmission`,
+   * with `volume`), clear-coat maps and a turned highlight. It is registered by
+   * LayaAir's glTF module (`laya.gltf.js`, the `gltf` feature, browser SDK
+   * profiles `3d-gltf` and `3d-gltf-webgpu`) when `Laya.init` runs; without it
+   * a physical surface is refused.
+   *
+   * Every colour here is a display colour (sRGB, as a colour picker gives it
+   * and as LayaAir's `Color` takes it); the shader gets it linear. Alpha and
+   * the other numbers are taken as they are.
+   */
+  type: 'pbr' | 'unlit' | 'physical';
+  /** Base colour and alpha, 0..1 each (default white). */
   color?: [number, number, number, number];
   metallic?: number;
   roughness?: number;
   emission?: [number, number, number];
   /**
    * A clear layer over the surface (lacquer, varnish, a wet sheen): how much,
-   * 0..1 (default 0, none). Physically based surfaces only.
+   * 0..1 (default 0, none). Physically based surfaces only (`pbr`, `physical`).
    */
   clearCoat?: number;
   /** Roughness of that layer, 0..1 (default 0.1). */
   clearCoatRoughness?: number;
+  /** `physical`: how strongly `textures.clearCoatNormal` bends the layer, 0..10 (default 1). */
+  clearCoatNormalScale?: number;
   /**
    * How far the highlight is drawn out, 0..1 (default 0): brushed metal,
    * hair, satin. It becomes a band across the mesh's tangent (its U
    * direction): round a ball turned on a lathe, a ring about its axis.
    */
   anisotropy?: number;
+  /**
+   * Turns the drawn-out highlight in the surface, degrees, any angle
+   * (default 0: along the tangent, 90: along the bitangent). `pbr` and
+   * `physical`. Written to the shader as it is: LayaAir's own setter keeps
+   * the angle between 0 and 1 radian.
+   */
+  anisotropyRotationDeg?: number;
+  /** `physical`: how strongly `textures.normal` bends the surface, 0..10 (default 1). */
+  normalScale?: number;
+  /** `physical`: how much `textures.occlusion` darkens, 0..1 (default 1). */
+  occlusionStrength?: number;
+  /**
+   * `physical`: cloth and velvet, a soft light that rises where the surface
+   * turns away from the eye. `color` 0..1 each; `roughness` 0..1
+   * (default 0.5).
+   */
+  sheen?: { color: [number, number, number]; roughness?: number };
+  /**
+   * `physical`: a thin film on the surface (soap, oil, a beetle's shell):
+   * colours that change with the angle it is seen at. `factor` 0..1 (default
+   * 1); `ior` of the film 1..3 (default 1.3); `thicknessRange` in nanometres,
+   * 0..2000 (default [100, 400]). Without `textures.iridescenceThickness`
+   * the film is `thicknessRange[1]` thick everywhere.
+   */
+  iridescence?: {
+    factor?: number;
+    ior?: number;
+    thicknessRange?: [number, number];
+  };
+  /**
+   * `physical`: index of refraction of a dielectric, 1..3 (default 1.5: a
+   * reflectance of 4 % head on). Water 1.33, glass 1.5, diamond 2.42. It
+   * also bends the light through a `transmission` surface with a `volume`.
+   */
+  ior?: number;
+  /**
+   * `physical`: the strength (`factor` 0..1, default 1) and tint (`color`
+   * 0..1 each, default white) of a dielectric's reflection.
+   */
+  specular?: { factor?: number; color?: [number, number, number] };
+  /**
+   * `physical`: light through the surface (glass, water, gems): `factor`
+   * 0..1 of what is behind it shows through, tinted by `color`. It reads
+   * the camera's picture of the opaque scene: the camera needs that pass
+   * (`configureSurfacePasses(camera, [surfaceMaterialPasses(spec)], …)`),
+   * or what shows through is black. The surface is drawn after the opaque
+   * scene (render queue 3000), so other transparent and transmissive
+   * surfaces do not show through it. `volume` gives it a thickness, in the
+   * mesh's own units (the node's scale applies), that bends what is behind
+   * (by `ior`) and absorbs light: after `attenuationDistance` (default:
+   * none absorbed) the light left is `attenuationColor` (above 0 and at
+   * most 1 each, default white).
+   */
+  transmission?: {
+    factor: number;
+    volume?: {
+      thickness: number;
+      attenuationColor?: [number, number, number];
+      attenuationDistance?: number;
+    };
+  };
+  /**
+   * Textures. `pbr`: `albedo`, `normal`, `metallicGloss` (R metallic, A
+   * smoothness) and `emission`. `physical` reads them the glTF way:
+   * `albedo`, `normal` (read as `pbr` reads it), `metallicRoughness`
+   * (G roughness, B metallic), `occlusion` (R), `emission`, and for its
+   * features: `clearCoat` (R), `clearCoatRoughness` (G), `clearCoatNormal`,
+   * `sheenColor` (RGB), `sheenRoughness` (A), `iridescence` (R),
+   * `iridescenceThickness` (G, across `thicknessRange`), `transmission`
+   * (R), `thickness` (G), `specular` (A), `specularColor` (RGB) and
+   * `anisotropy` (RG direction, B strength). A feature's textures need the
+   * feature switched on; a slot left `undefined` or `null` is empty. Colour
+   * textures are sRGB (`createSurfaceTexture` role `color`), the others
+   * linear.
+   */
   textures?: {
     albedo?: any;
     normal?: any;
     metallicGloss?: any;
     emission?: any;
+    metallicRoughness?: any;
+    occlusion?: any;
+    clearCoat?: any;
+    clearCoatRoughness?: any;
+    clearCoatNormal?: any;
+    sheenColor?: any;
+    sheenRoughness?: any;
+    iridescence?: any;
+    iridescenceThickness?: any;
+    transmission?: any;
+    thickness?: any;
+    specular?: any;
+    specularColor?: any;
+    anisotropy?: any;
   };
   blend?: 'opaque' | 'alpha' | 'additive' | 'cutout';
   alphaCutoff?: number;
   doubleSided?: boolean;
   depthWrite?: boolean;
+}
+
+/** LayaAir's glTF shader, registered by `laya.gltf.js` at `Laya.init`. */
+export const ZHUDA_PHYSICAL_SHADER = 'glTFPBR';
+
+/** Fields only a `physical` surface takes. */
+const PHYSICAL_FIELDS = [
+  'sheen',
+  'iridescence',
+  'ior',
+  'specular',
+  'transmission',
+  'clearCoatNormalScale',
+  'normalScale',
+  'occlusionStrength',
+] as const;
+
+/**
+ * Texture slots of a physical surface: the shader's uniform, its define, and
+ * the feature that must be on for it (none: always usable).
+ */
+const PHYSICAL_TEXTURES: Record<string, { uniform: string; define: string; needs?: string }> = {
+  albedo: { uniform: 'u_BaseColorTexture', define: 'BASECOLORMAP' },
+  normal: { uniform: 'u_NormalTexture', define: 'NORMALMAP' },
+  metallicRoughness: { uniform: 'u_MetallicRoughnessTexture', define: 'METALLICROUGHNESSMAP' },
+  occlusion: { uniform: 'u_OcclusionTexture', define: 'OCCLUSIONMAP' },
+  emission: { uniform: 'u_EmissionTexture', define: 'EMISSIONMAP' },
+  specular: { uniform: 'u_SpecularFactorTexture', define: 'SPECULARFACTORMAP' },
+  specularColor: { uniform: 'u_SpecularColorTexture', define: 'SPECULARCOLORMAP' },
+  clearCoat: { uniform: 'u_ClearCoatTexture', define: 'CLEARCOATMAP', needs: 'clearCoat' },
+  clearCoatRoughness: {
+    uniform: 'u_ClearCoatRoughnessTexture',
+    define: 'CLEARCOAT_ROUGHNESSMAP',
+    needs: 'clearCoat',
+  },
+  clearCoatNormal: {
+    uniform: 'u_ClearCoatNormalTexture',
+    define: 'CLEARCOAT_NORMAL',
+    needs: 'clearCoat',
+  },
+  anisotropy: { uniform: 'u_AnisotropyTexture', define: 'ANISOTROPYMAP', needs: 'anisotropy' },
+  sheenColor: { uniform: 'u_SheenColorTexture', define: 'SHEENCOLORMAP', needs: 'sheen' },
+  sheenRoughness: {
+    uniform: 'u_SheenRoughnessTexture',
+    define: 'SHEEN_ROUGHNESSMAP',
+    needs: 'sheen',
+  },
+  iridescence: {
+    uniform: 'u_IridescenceTexture',
+    define: 'IRIDESCENCEMAP',
+    needs: 'iridescence',
+  },
+  iridescenceThickness: {
+    uniform: 'u_IridescenceThicknessTexture',
+    define: 'IRIDESCENCE_THICKNESSMAP',
+    needs: 'iridescence',
+  },
+  transmission: {
+    uniform: 'u_TransmissionTexture',
+    define: 'TRANSMISSIONMAP',
+    needs: 'transmission',
+  },
+  thickness: {
+    uniform: 'u_VolumeThicknessTexture',
+    define: 'THICKNESSMAP',
+    needs: 'transmission.volume',
+  },
+};
+
+const finiteIn = (v: unknown, min: number, max: number) =>
+  typeof v === 'number' && Number.isFinite(v) && v >= min && v <= max;
+const colourIn = (v: unknown, n: number, min: number, max: number) =>
+  Array.isArray(v) && v.length === n && v.every((c) => finiteIn(c, min, max));
+
+/**
+ * Problems with a `physical` surface spec, one line each; an empty list
+ * means `createSurfaceMaterial` takes it. Pure: it does not need LayaAir.
+ */
+export function validatePhysicalSurfaceSpec(s: SurfaceMaterialSpec): string[] {
+  const e: string[] = [];
+  const check = (ok: boolean, message: string) => {
+    if (!ok) e.push(message);
+  };
+  if (s.color !== undefined) check(colourIn(s.color, 4, 0, 1), 'color: four numbers 0..1');
+  for (const key of ['metallic', 'roughness', 'clearCoat', 'clearCoatRoughness'] as const)
+    if (s[key] !== undefined) check(finiteIn(s[key], 0, 1), `${key}: use 0..1`);
+  if (s.anisotropy !== undefined) check(finiteIn(s.anisotropy, 0, 1), 'anisotropy: use 0..1');
+  if (s.alphaCutoff !== undefined) check(finiteIn(s.alphaCutoff, 0, 1), 'alphaCutoff: use 0..1');
+  if (s.anisotropyRotationDeg !== undefined)
+    check(
+      typeof s.anisotropyRotationDeg === 'number' && Number.isFinite(s.anisotropyRotationDeg),
+      'anisotropyRotationDeg: a finite number of degrees',
+    );
+  if (s.emission !== undefined)
+    check(colourIn(s.emission, 3, 0, 100), 'emission: three numbers 0..100');
+  for (const key of ['normalScale', 'clearCoatNormalScale'] as const)
+    if (s[key] !== undefined) check(finiteIn(s[key], 0, 10), `${key}: use 0..10`);
+  if (s.occlusionStrength !== undefined)
+    check(finiteIn(s.occlusionStrength, 0, 1), 'occlusionStrength: use 0..1');
+  if (s.ior !== undefined) check(finiteIn(s.ior, 1, 3), 'ior: use 1..3');
+  if (s.sheen !== undefined) {
+    check(colourIn(s.sheen?.color, 3, 0, 1), 'sheen.color: three numbers 0..1');
+    if (s.sheen?.roughness !== undefined)
+      check(finiteIn(s.sheen.roughness, 0, 1), 'sheen.roughness: use 0..1');
+  }
+  if (s.iridescence !== undefined) {
+    const i = s.iridescence ?? {};
+    if (i.factor !== undefined) check(finiteIn(i.factor, 0, 1), 'iridescence.factor: use 0..1');
+    if (i.ior !== undefined) check(finiteIn(i.ior, 1, 3), 'iridescence.ior: use 1..3');
+    if (i.thicknessRange !== undefined)
+      check(
+        colourIn(i.thicknessRange, 2, 0, 2000) && i.thicknessRange[0] <= i.thicknessRange[1],
+        'iridescence.thicknessRange: [min, max] nanometres, 0 <= min <= max <= 2000',
+      );
+  }
+  if (s.specular !== undefined) {
+    if (s.specular?.factor !== undefined)
+      check(finiteIn(s.specular.factor, 0, 1), 'specular.factor: use 0..1');
+    if (s.specular?.color !== undefined)
+      check(colourIn(s.specular.color, 3, 0, 1), 'specular.color: three numbers 0..1');
+  }
+  if (s.transmission !== undefined) {
+    const t = s.transmission;
+    check(finiteIn(t?.factor, 0, 1), 'transmission.factor: use 0..1');
+    check(
+      s.blend !== 'additive',
+      'transmission: blend "additive" is refused (what is behind already shows through)',
+    );
+    if (t?.volume !== undefined) {
+      const v = t.volume;
+      check(finiteIn(v?.thickness, 0, 10000), 'transmission.volume.thickness: use 0..10000');
+      if (v?.attenuationColor !== undefined)
+        check(
+          colourIn(v.attenuationColor, 3, 0, 1) && v.attenuationColor.every((c) => c > 0),
+          'transmission.volume.attenuationColor: three numbers above 0 and at most 1',
+        );
+      if (v?.attenuationDistance !== undefined)
+        check(
+          finiteIn(v.attenuationDistance, 1e-6, 65504),
+          'transmission.volume.attenuationDistance: above 0, at most 65504',
+        );
+    }
+  }
+  const on: Record<string, boolean> = {
+    clearCoat: (s.clearCoat ?? 0) > 0,
+    anisotropy: (s.anisotropy ?? 0) > 0,
+    sheen: s.sheen !== undefined,
+    iridescence: s.iridescence !== undefined,
+    transmission: s.transmission !== undefined,
+    'transmission.volume': s.transmission?.volume !== undefined,
+  };
+  for (const [key, value] of Object.entries(s.textures ?? {})) {
+    if (value == null) continue;
+    const slot = PHYSICAL_TEXTURES[key];
+    if (!slot)
+      e.push(
+        key === 'metallicGloss'
+          ? 'textures.metallicGloss: a physical surface takes metallicRoughness (glTF layout: G roughness, B metallic)'
+          : `textures.${key}: unknown slot (use ${Object.keys(PHYSICAL_TEXTURES).join(', ')})`,
+      );
+    else if (typeof value !== 'object')
+      e.push(`textures.${key}: a loaded texture, not ${typeof value}`);
+    else if (slot.needs && !on[slot.needs])
+      e.push(
+        `textures.${key}: needs ${slot.needs}${slot.needs === 'clearCoat' || slot.needs === 'anisotropy' ? ' above 0' : ''}`,
+      );
+  }
+  if (s.blend !== undefined)
+    check(['opaque', 'alpha', 'additive', 'cutout'].includes(s.blend), 'blend: unknown mode');
+  return e;
+}
+
+/**
+ * The camera passes a surface needs, for `configureSurfacePasses`: a
+ * `physical` surface with `transmission` reads the camera's picture of the
+ * opaque scene (`opaqueColor`).
+ */
+export function surfaceMaterialPasses(s: SurfaceMaterialSpec): SurfacePassRequirements {
+  return s.type === 'physical' && s.transmission !== undefined ? { opaqueColor: true } : {};
+}
+
+/** Materials `createSurfaceMaterial` made with the glTF shader: their texture slots to detach. */
+const physicalMaterials = new WeakSet<object>();
+
+function createPhysicalSurfaceMaterial(l: any, s: SurfaceMaterialSpec) {
+  const problems = validatePhysicalSurfaceSpec(s);
+  if (problems.length) throw Error('Physical surface: ' + problems.join('; '));
+  if (!l?.Shader3D?.find?.(ZHUDA_PHYSICAL_SHADER))
+    throw Error(
+      `Physical surface: LayaAir's glTF shader '${ZHUDA_PHYSICAL_SHADER}' is not registered. ` +
+        "Load LayaAir's glTF module (laya.gltf.js: the 'gltf' feature, browser SDK profile " +
+        "3d-gltf or 3d-gltf-webgpu) before Laya.init, or use type 'pbr'.",
+    );
+  const m = new l.Material();
+  // As laya.gltf.js createDefaultMaterial does; this also applies the shader's defaults.
+  m.setShaderName(ZHUDA_PHYSICAL_SHADER);
+  physicalMaterials.add(m);
+  const define = (name: string) => m.setDefine(l.Shader3D.getDefineByName(name), true);
+  // The glTF shader takes its colours linear, as glTF stores them.
+  const colour3 = (name: string, v: readonly number[]) =>
+    m.setVector3(
+      name,
+      new l.Vector3(zhudaSrgbToLinear(v[0]), zhudaSrgbToLinear(v[1]), zhudaSrgbToLinear(v[2])),
+    );
+  const [red, green, blue, alpha] = s.color ?? [1, 1, 1, 1];
+  m.setVector4(
+    'u_BaseColorFactor',
+    new l.Vector4(zhudaSrgbToLinear(red), zhudaSrgbToLinear(green), zhudaSrgbToLinear(blue), alpha),
+  );
+  m.setFloat('u_MetallicFactor', s.metallic ?? 0);
+  m.setFloat('u_RoughnessFactor', s.roughness ?? 0.5);
+  const textures = s.textures ?? {};
+  if (s.emission || textures.emission != null) {
+    define('EMISSION');
+    colour3('u_EmissionFactor', s.emission ?? [1, 1, 1]);
+  }
+  if (s.normalScale !== undefined) m.setFloat('u_NormalScale', s.normalScale);
+  if (s.occlusionStrength !== undefined) m.setFloat('u_OcclusionStrength', s.occlusionStrength);
+  if (s.ior !== undefined) {
+    define('IOR');
+    m.setFloat('u_Ior', s.ior);
+  }
+  if (s.specular) {
+    m.setFloat('u_SpecularFactor', s.specular.factor ?? 1);
+    colour3('u_SpecularColorFactor', s.specular.color ?? [1, 1, 1]);
+  }
+  if ((s.clearCoat ?? 0) > 0) {
+    define('CLEARCOAT');
+    m.setFloat('u_ClearCoatFactor', s.clearCoat);
+    m.setFloat('u_ClearCoatRoughness', s.clearCoatRoughness ?? 0.1);
+    if (s.clearCoatNormalScale !== undefined)
+      m.setFloat('u_ClearCoatNormalScale', s.clearCoatNormalScale);
+  }
+  if ((s.anisotropy ?? 0) > 0) {
+    define('ANISOTROPIC');
+    m.setFloat('u_AnisotropyStrength', s.anisotropy);
+    m.setFloat('u_AnisotropyRotation', zhudaAnisotropyRadians(s.anisotropyRotationDeg ?? 0));
+  }
+  if (s.sheen) {
+    define('SHEEN');
+    colour3('u_SheenColorFactor', s.sheen.color);
+    m.setFloat('u_SheenRoughness', s.sheen.roughness ?? 0.5);
+  }
+  if (s.iridescence) {
+    const [thinnest, thickest] = s.iridescence.thicknessRange ?? [100, 400];
+    define('IRIDESCENCE');
+    m.setFloat('u_IridescenceFactor', s.iridescence.factor ?? 1);
+    m.setFloat('u_IridescenceIor', s.iridescence.ior ?? 1.3);
+    m.setFloat('u_IridescenceThicknessMinimum', thinnest);
+    m.setFloat('u_IridescenceThicknessMaximum', thickest);
+  }
+  if (s.transmission) {
+    define('TRANSMISSION');
+    m.setFloat('u_TransmissionFactor', s.transmission.factor);
+    const volume = s.transmission.volume;
+    if (volume) {
+      define('THICKNESS');
+      m.setFloat('u_VolumeThicknessFactor', volume.thickness);
+      // 65504 is what laya.gltf.js writes for "no absorption" (the largest half float).
+      m.setFloat('u_VolumeAttenuationDistance', volume.attenuationDistance ?? 65504);
+      colour3('u_VolumeAttenuationColor', volume.attenuationColor ?? [1, 1, 1]);
+    }
+  }
+  for (const [key, value] of Object.entries(textures)) {
+    if (value == null) continue;
+    const slot = PHYSICAL_TEXTURES[key];
+    m.setTexture(slot.uniform, value.bitmap || value);
+    define(slot.define);
+  }
+  const blend = s.blend || 'opaque',
+    modes = l.MaterialRenderMode;
+  m.materialRenderMode =
+    blend === 'alpha'
+      ? modes.RENDERMODE_TRANSPARENT
+      : blend === 'cutout'
+        ? modes.RENDERMODE_CUTOUT
+        : blend === 'additive'
+          ? modes.RENDERMODE_ADDTIVE
+          : modes.RENDERMODE_OPAQUE;
+  if (blend === 'cutout') m.alphaTestValue = s.alphaCutoff ?? 0.5;
+  // As laya.gltf.js does for KHR_materials_transmission: drawn after the
+  // opaque scene, so the camera's picture of it is there to be read.
+  if (s.transmission) m.renderQueue = Math.max(m.renderQueue ?? 0, 3000);
+  if (s.doubleSided) m.cull = l.RenderState.CULL_NONE;
+  m.depthWrite = s.depthWrite ?? (blend === 'opaque' || blend === 'cutout');
+  return m;
+}
+
+/**
+ * A display (sRGB) colour channel as light, the way LayaAir's `Color` does it
+ * (`gammaToLinearSpace`, values above 1 raised to 2.4).
+ */
+export function zhudaSrgbToLinear(value: number): number {
+  return value <= 0.04045
+    ? value / 12.92
+    : value < 1
+      ? Math.pow((value + 0.055) / 1.055, 2.4)
+      : Math.pow(value, 2.4);
+}
+
+/** Degrees to the radians LayaAir's anisotropy rotation takes, folded into -180..180 degrees. */
+export function zhudaAnisotropyRadians(degrees: number): number {
+  if (!Number.isFinite(degrees)) throw Error('anisotropyRotationDeg: a finite number of degrees');
+  const folded = ((((degrees + 180) % 360) + 360) % 360) - 180;
+  return (folded * Math.PI) / 180;
 }
 /** glTF/Three.js G=roughness,B=metallic -> Laya R=metallic,A=smoothness. Data stays linear. */
 export function packMetallicRoughness(rgba: Uint8Array) {
@@ -124,7 +535,19 @@ export function applyZhudaAnisotropy(root: any, level = ZHUDA_DEFAULT_ANISO): nu
 }
 export function createSurfaceMaterial(s: SurfaceMaterialSpec) {
   const l = (globalThis as any).Laya;
+  if (s.type === 'physical') return createPhysicalSurfaceMaterial(l, s);
   if (!['pbr', 'unlit'].includes(s.type)) throw Error('Unknown material type');
+  const physicalOnly = [
+    ...PHYSICAL_FIELDS.filter((key) => s[key] !== undefined),
+    ...Object.entries(s.textures ?? {})
+      .filter(
+        ([key, value]) =>
+          value != null && !['albedo', 'normal', 'metallicGloss', 'emission'].includes(key),
+      )
+      .map(([key]) => `textures.${key}`),
+  ];
+  if (physicalOnly.length)
+    throw Error(`${physicalOnly.join(', ')}: physical surfaces only (type 'physical')`);
   if (
     [s.metallic ?? 0, s.roughness ?? 0.5, s.alphaCutoff ?? 0.5].some(
       (v) => !Number.isFinite(v) || v < 0 || v > 1,
@@ -140,7 +563,10 @@ export function createSurfaceMaterial(s: SurfaceMaterialSpec) {
     (s.anisotropy ?? 0) > 1
   )
     throw Error('Invalid material factors: clearCoat 0..1, anisotropy 0..1');
-  if (s.type !== 'pbr' && ((s.clearCoat ?? 0) > 0 || (s.anisotropy ?? 0) !== 0))
+  if (
+    s.type !== 'pbr' &&
+    ((s.clearCoat ?? 0) > 0 || (s.anisotropy ?? 0) !== 0 || s.anisotropyRotationDeg !== undefined)
+  )
     throw Error('clearCoat and anisotropy belong to physically based surfaces');
   const m = s.type === 'pbr' ? new l.PBRStandardMaterial() : new l.UnlitMaterial();
   m.albedoColor = new l.Color(...(s.color || [1, 1, 1, 1]));
@@ -159,6 +585,10 @@ export function createSurfaceMaterial(s: SurfaceMaterialSpec) {
     if ((s.anisotropy ?? 0) !== 0) {
       m.anisotropyEnable = true;
       m.anisotropy = s.anisotropy;
+      // LayaAir's `anisotropyRotation` setter keeps the angle in 0..1 radian;
+      // the shader turns by any angle (cos, sin), so the uniform is written.
+      if (s.anisotropyRotationDeg !== undefined)
+        m.setFloat('u_AnisotropyRotation', zhudaAnisotropyRadians(s.anisotropyRotationDeg));
     }
   }
   for (const [key, value] of Object.entries(s.textures || {}))
@@ -194,8 +624,12 @@ export function createSurfaceMaterial(s: SurfaceMaterialSpec) {
 }
 /** Detach borrowed texture slots before destroying an owned material. */
 export function disposeSurfaceMaterial(m: any) {
-  for (const k of ['albedoTexture', 'normalTexture', 'metallicGlossTexture', 'emissionTexture'])
-    if (k in m) m[k] = null;
+  if (physicalMaterials.has(m)) {
+    physicalMaterials.delete(m);
+    for (const slot of Object.values(PHYSICAL_TEXTURES)) m.setTexture(slot.uniform, null);
+  } else
+    for (const k of ['albedoTexture', 'normalTexture', 'metallicGlossTexture', 'emissionTexture'])
+      if (k in m) m[k] = null;
   m.destroy();
 }
 export interface CustomSurfaceShader {
