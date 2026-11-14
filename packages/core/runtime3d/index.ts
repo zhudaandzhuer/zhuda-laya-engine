@@ -76,6 +76,7 @@ export type {
   ZhudaGltfTextureSource,
   ZhudaImageDecodeSupport,
   ZhudaLayaLightSettings,
+  ZhudaProbedImageFormat,
 } from './GltfIntake.ts';
 export * from './Themes.ts';
 export * from './ResultPlayback.ts';

@@ -7,10 +7,18 @@
 type Json = Record<string, unknown>;
 /** Texture-source extensions the engine resolves, in the order it prefers them. */
 export type ZhudaGltfImageExtension = 'EXT_texture_avif' | 'EXT_texture_webp';
+/** The picture formats the device is asked about. */
+export type ZhudaProbedImageFormat = 'webp' | 'avif';
 /** Whether this device decodes WebP and AVIF pictures (`probeZhudaImageDecode`). */
 export interface ZhudaImageDecodeSupport {
     readonly webp: boolean;
     readonly avif: boolean;
+    /**
+     * Formats whose decoder gave no answer before the probe's deadline. They
+     * count as not decodable in this answer only; the next probe asks again.
+     * Absent when every format answered.
+     */
+    readonly unanswered?: readonly ZhudaProbedImageFormat[];
 }
 export interface ZhudaGltfTextureSource {
     /** The image the texture loads, or null when the file offers nothing loadable. */
@@ -27,8 +35,22 @@ export interface ZhudaGltfTextureSource {
  * when there is no fallback.
  */
 export declare function resolveZhudaGltfTextureSource(texture: unknown, support?: ZhudaImageDecodeSupport): ZhudaGltfTextureSource;
-/** Decodes a one-pixel WebP and AVIF picture once per page and remembers the answer. */
-export declare function probeZhudaImageDecode(): Promise<ZhudaImageDecodeSupport>;
+/** How long a probe waits for a decoder: `turns` timers of `turnMs` each. */
+export interface ZhudaImageProbeDeadline {
+    turns?: number;
+    turnMs?: number;
+}
+/**
+ * A probe with its own memory, on `host`'s Image, Blob and URL (read when it is
+ * called). `probeZhudaImageDecode` is the page's one; tests make their own.
+ */
+export declare function createZhudaImageDecodeProbe(host?: unknown, deadline?: ZhudaImageProbeDeadline): () => Promise<ZhudaImageDecodeSupport>;
+/**
+ * Decodes a one-pixel WebP and AVIF picture and remembers each decoder's answer
+ * for the page. A decoder that gives none in time is listed in `unanswered`,
+ * counted as no for that answer, and asked again by the next call.
+ */
+export declare const probeZhudaImageDecode: () => Promise<ZhudaImageDecodeSupport>;
 /** One `KHR_lights_punctual` light, as the file gives it (glTF units). */
 export interface ZhudaGltfLight {
     readonly index: number;
@@ -137,6 +159,11 @@ export declare function readZhudaGltfNodeData(document: unknown): readonly Zhuda
  * and weights). LayaAir copies them into a float vertex buffer unscaled.
  */
 export declare function quantizedZhudaGltfAccessors(document: unknown): number[];
+/**
+ * The buffers a file's buffer views use but keeps outside itself (a `uri` that
+ * is not an embedded base64 one). `dequantizeZhudaGltf` has no bytes for them.
+ */
+export declare function externalZhudaGltfBuffers(document: unknown): number[];
 export interface ZhudaDequantizeResult {
     /** A GLB: the source data in one buffer, then the float copies. */
     readonly bytes: Uint8Array;

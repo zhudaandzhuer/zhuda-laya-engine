@@ -20,12 +20,27 @@ import {
   resolveZhudaGltfTextureSource,
   zhudaGltfLightToLaya,
 } from '../packages/core/runtime3d/index.ts';
-import { readZhudaGltfBytes, writeZhudaGlb } from '../packages/core/runtime3d/GltfIntake.ts';
+import {
+  createZhudaImageDecodeProbe,
+  externalZhudaGltfBuffers,
+  readZhudaGltfBytes,
+  writeZhudaGlb,
+} from '../packages/core/runtime3d/GltfIntake.ts';
 import {
   prepareLaya342GltfResource,
+  laya342GltfMissingTextures,
   laya342GltfNodes,
 } from '../packages/core/runtime3d/Laya342GltfAdapter.ts';
-import { quantizedTorus, picturePlane, litRoom, ROOM, pack } from './fixtures/gltf-intake.mjs';
+import {
+  quantizedTorus,
+  picturePlane,
+  litRoom,
+  orthoPlane,
+  sharedPictures,
+  ROOM,
+  ORTHO,
+  pack,
+} from './fixtures/gltf-intake.mjs';
 
 const png = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/iZk9HQAAAABJRU5ErkJggg==',
@@ -317,11 +332,31 @@ test('dequantizing refuses what it cannot read correctly, before allocating its 
   const d = documentOf(ring.quantizedRaw);
   d.accessors[2].type = 'VEC3';
   assert.throws(() => quantizedZhudaGltfAccessors(d), /TEXCOORD_0/);
-  // External buffers: no bytes to rewrite.
-  assert.throws(
-    () => dequantizeZhudaGltf(triangle(5123, new Uint16Array(9), { uri: 'mesh.bin' })),
-    /needs embedded buffers/,
+  // External buffers: no bytes to rewrite. The report says so before any load.
+  const outside = triangle(5123, new Uint16Array(9), { uri: 'mesh.bin' });
+  assert.throws(() => dequantizeZhudaGltf(outside), /needs embedded buffers/);
+  assert.deepEqual(externalZhudaGltfBuffers(documentOf(outside)), [0]);
+  const refused = inspectGltfAsset(outside);
+  assert.equal(refused.status, 'unsupported');
+  assert.deepEqual(codes(refused), ['EMBEDDED_BUFFER_REQUIRED:error']);
+  assert.equal(refused.diagnostics[0].path, '$.buffers[0].uri');
+  assert.equal(refused.diagnostics[0].extension, 'KHR_mesh_quantization');
+  assert.match(
+    refused.diagnostics[0].message,
+    /1 integer vertex attribute.*buffers\[0\] is outside/,
   );
+  // The same file with its buffer embedded, and a float file with an outside buffer, are not.
+  assert.deepEqual(codes(inspectGltfAsset(triangle(5123, new Uint16Array(9), { uri: 'embed' }))), [
+    'DEQUANTIZED_ATTRIBUTES:warning',
+  ]);
+  assert.deepEqual(
+    externalZhudaGltfBuffers(documentOf(triangle(5123, new Uint16Array(9), { uri: 'embed' }))),
+    [],
+  );
+  const floats = documentOf(outside);
+  floats.accessors[0].componentType = 5126;
+  delete floats.extensionsUsed;
+  assert.deepEqual(inspectGltfDocument(floats).diagnostics, []);
   // An accessor reading past its view, a sparse index out of order.
   const past = documentOf(triangle(5123, new Uint16Array(9)));
   past.accessors[0].count = 4;
@@ -417,6 +452,43 @@ test('WebP/AVIF report codes: unavailable with and without a fallback, unchecked
   );
   assert.deepEqual(inspectGltfAsset(webpOnly, { imageDecode: all }).diagnostics, []);
   assert.deepEqual(inspectGltfAsset(withFallback, { imageDecode: all }).diagnostics, []);
+  // A decoder that gave the probe no answer is named as that, not as "cannot decode".
+  const silent = { webp: false, avif: false, unanswered: ['webp'] };
+  report = inspectGltfAsset(webpOnly, { imageDecode: silent });
+  assert.equal(report.status, 'unsupported');
+  assert.deepEqual(codes(report), ['IMAGE_DECODE_UNANSWERED:error']);
+  assert.match(report.diagnostics[0].message, /gave no answer for EXT_texture_webp in time/);
+  assert.match(report.diagnostics[0].hint, /asks an unanswered decoder again/);
+  report = inspectGltfAsset(withFallback, { imageDecode: silent });
+  assert.equal(report.status, 'degraded');
+  assert.deepEqual(codes(report), ['IMAGE_DECODE_UNANSWERED:warning']);
+  assert.match(report.diagnostics[0].message, /fallback image 1 loads/);
+  // AVIF unanswered, WebP decodable: the WebP loads and nothing is lost.
+  const both = picturePlane({
+    images: [
+      ['image/avif', png],
+      ['image/webp', png],
+      ['image/png', png],
+    ],
+    texture: {
+      source: 2,
+      extensions: { EXT_texture_avif: { source: 0 }, EXT_texture_webp: { source: 1 } },
+    },
+    extension: ['EXT_texture_avif', 'EXT_texture_webp'],
+  });
+  assert.deepEqual(
+    inspectGltfAsset(both, { imageDecode: { webp: true, avif: false, unanswered: ['avif'] } })
+      .diagnostics,
+    [],
+  );
+  // AVIF said no and WebP gave no answer: the texture's loss is the unanswered one.
+  report = inspectGltfAsset(both, {
+    imageDecode: { webp: false, avif: false, unanswered: ['webp'] },
+  });
+  assert.deepEqual(
+    report.diagnostics.map((d) => [d.code, d.extension]),
+    [['IMAGE_DECODE_UNANSWERED', 'EXT_texture_webp']],
+  );
   // No device answer: a picture without a fallback is named, nothing fails.
   report = inspectGltfAsset(webpOnly);
   assert.equal(report.status, 'supported');
@@ -428,27 +500,76 @@ test('WebP/AVIF report codes: unavailable with and without a fallback, unchecked
   );
 });
 
-test('the resource loads the chosen image, embedded pictures go through a revoked Blob URL', async () => {
+/** A loader standing in for LayaAir's: it records each load and answers as `answer` says. */
+function standInRuntime(answer = () => ({})) {
   const loads = [];
-  let fail = false;
-  const runtime = {
+  return {
+    loads,
     Loader: { TEXTURE2D: 'TEXTURE2D' },
     ILaya: {
       loader: {
-        async load(item, type) {
+        async load(item, type, progress) {
           const blob = resolveObjectURL(item.url);
-          loads.push({
+          const load = {
             item,
             type,
+            progress,
             mime: blob?.type,
             bytes: blob && Buffer.from(await blob.arrayBuffer()),
-          });
-          if (fail) throw Error('decode failed');
-          return { texture: loads.length };
+          };
+          loads.push(load);
+          return answer(load, loads.length);
         },
       },
     },
   };
+}
+/**
+ * A resource that asks for its pictures as LayaAir 3.4.2's does: once per
+ * material slot, each time with a fresh slice of the picture's bytes, keeping
+ * the texture by glTF texture index and as a dependency.
+ */
+function standInResource(document, pictures) {
+  return {
+    _data: document,
+    _textures: [],
+    deps: [],
+    loadTextureFromBuffer() {
+      throw Error('native path used');
+    },
+    loadTextureFromInfo(info, sRGB) {
+      const texture = this._data.textures[info.index],
+        image = this._data.images[texture.source];
+      return this.loadTextureFromBuffer(
+        Uint8Array.from(pictures[image.bufferView]).buffer,
+        image.mimeType,
+        [0, 0, 1, true, false, sRGB],
+        { filterMode: 1 },
+      ).then((loaded) => {
+        this._textures[info.index] = loaded;
+        this.deps.push(loaded);
+        return loaded;
+      });
+    },
+    loadTextures() {
+      const loading = [];
+      for (const material of this._data.materials) {
+        const pbr = material.pbrMetallicRoughness ?? {};
+        if (pbr.baseColorTexture)
+          loading.push(this.loadTextureFromInfo(pbr.baseColorTexture, true));
+        if (pbr.metallicRoughnessTexture)
+          loading.push(this.loadTextureFromInfo(pbr.metallicRoughnessTexture, false));
+        if (material.occlusionTexture)
+          loading.push(this.loadTextureFromInfo(material.occlusionTexture, false));
+      }
+      return Promise.all(loading);
+    },
+  };
+}
+
+test('the resource loads the chosen image; an embedded picture goes through a revoked, uncached Blob URL', async () => {
+  const runtime = standInRuntime((load, n) => ({ texture: n }));
+  const { loads } = runtime;
   const textures = [
     { source: 2, extensions: { EXT_texture_webp: { source: 1 } } },
     { extensions: { EXT_texture_avif: { source: 0 } } },
@@ -477,17 +598,15 @@ test('the resource loads the chosen image, embedded pictures go through a revoke
   );
   assert.deepEqual(texture, { texture: 1 });
   assert.equal(loads[0].type, 'TEXTURE2D');
+  assert.equal(loads[0].progress, 'progress');
   assert.equal(loads[0].mime, 'image/avif');
   assert.deepEqual([...loads[0].bytes], [1, 2, 3]);
   assert.deepEqual(loads[0].item.constructParams, [0, 0, 1]);
+  assert.deepEqual(loads[0].item.propertyParams, { filterMode: 1 });
   assert.match(loads[0].item.url, /^blob:/);
+  // LayaAir keeps a load under its URL unless told not to; this URL is never asked for again.
+  assert.equal(loads[0].item.cache, false);
   assert.equal(resolveObjectURL(loads[0].item.url), undefined, 'revoked once loaded');
-  fail = true;
-  await assert.rejects(
-    resource.loadTextureFromBuffer(new Uint8Array([4]).buffer, 'image/png', [], null),
-    /decode failed/,
-  );
-  assert.equal(resolveObjectURL(loads[1].item.url), undefined, 'revoked when the load fails');
   // A texture with nothing this device decodes is refused before loading.
   const strict = {
     _data: { textures: [{ extensions: { EXT_texture_avif: { source: 0 } } }] },
@@ -495,6 +614,17 @@ test('the resource loads the chosen image, embedded pictures go through a revoke
   };
   prepareLaya342GltfResource(strict, runtime, { imageDecode: { webp: true, avif: false } });
   assert.throws(() => strict.loadTextures(), /textures\[0\] has no image this device can decode/);
+  // A decoder that gave no answer counts as no for this load.
+  const silent = {
+    _data: { textures: [{ source: 1, extensions: { EXT_texture_webp: { source: 0 } } }] },
+    loadTextures() {
+      return this._data.textures[0].source;
+    },
+  };
+  prepareLaya342GltfResource(silent, runtime, {
+    imageDecode: { webp: false, avif: false, unanswered: ['webp'] },
+  });
+  assert.equal(silent.loadTextures(), 1);
   // The nodes the last create() made are remembered per resource.
   resource.loadNodes(['a', 'b']);
   assert.deepEqual(
@@ -504,12 +634,276 @@ test('the resource loads the chosen image, embedded pictures go through a revoke
   assert.deepEqual(laya342GltfNodes({}), []);
 });
 
+test('one embedded picture makes one texture, however many material slots ask for it', async () => {
+  const a = [1, 2, 3, 4, 5, 6, 7, 8, 9],
+    b = [9, 8, 7, 6, 5, 4, 3, 2, 1],
+    lastDiffers = [1, 2, 3, 4, 5, 6, 7, 8, 0];
+  const load = async (document, pictures, runtime = standInRuntime((l, n) => ({ texture: n }))) => {
+    const resource = standInResource(document, pictures);
+    prepareLaya342GltfResource(resource, runtime);
+    await resource.loadTextures();
+    return { resource, loads: runtime.loads };
+  };
+  const image = (bufferView, mimeType = 'image/png') => ({ bufferView, mimeType });
+  // Four materials on one texture: one load, and the one texture in every slot.
+  let { resource, loads } = await load(
+    {
+      materials: [0, 1, 2, 3].map(() => ({
+        pbrMetallicRoughness: { baseColorTexture: { index: 0 } },
+      })),
+      textures: [{ source: 0 }],
+      images: [image(0)],
+    },
+    [a],
+  );
+  assert.equal(loads.length, 1);
+  assert.equal(resource.deps.length, 4, 'each slot still takes its reference');
+  assert.ok(resource.deps.every((texture) => texture === resource.deps[0]));
+  assert.deepEqual(resource._textures, [{ texture: 1 }]);
+  assert.equal(resolveObjectURL(loads[0].item.url), undefined);
+  // Colour, and one packed picture for metallic-roughness and occlusion: two loads.
+  const packed = {
+    materials: [
+      {
+        pbrMetallicRoughness: {
+          baseColorTexture: { index: 0 },
+          metallicRoughnessTexture: { index: 1 },
+        },
+        occlusionTexture: { index: 1 },
+      },
+    ],
+    textures: [{ source: 0 }, { source: 1 }],
+    images: [image(0), image(1)],
+  };
+  ({ resource, loads } = await load(packed, [a, b]));
+  assert.equal(loads.length, 2);
+  assert.deepEqual(resource._textures, [{ texture: 1 }, { texture: 2 }]);
+  assert.equal(resource.deps[1], resource.deps[2]);
+  // LayaAir's URL cache gave the first slot's sampler and colour space to every repeat: so here.
+  assert.deepEqual(loads[1].item.constructParams, [0, 0, 1, true, false, false]);
+  // Two images that hold the same bytes are one picture, as their data URLs were one URL.
+  ({ loads } = await load(packed, [a, a]));
+  assert.equal(loads.length, 1);
+  // The same bytes under another type, and other bytes of the same length, are not.
+  ({ loads } = await load({ ...packed, images: [image(0), image(1, 'image/jpeg')] }, [a, a]));
+  assert.equal(loads.length, 2);
+  ({ loads } = await load(packed, [a, lastDiffers]));
+  assert.equal(loads.length, 2);
+  assert.deepEqual([...loads[1].bytes], lastDiffers);
+  // The bytes kept to recognise a repeat are let go once the textures have loaded.
+  const runtime = standInRuntime((l, n) => ({ texture: n }));
+  ({ resource } = await load(packed, [a, a], runtime));
+  await resource.loadTextures();
+  assert.equal(runtime.loads.length, 2, 'a second round loads again');
+  // Views that do not start on a word are compared byte by byte.
+  const store = new Uint8Array([0, ...a, 0, ...a, 0, ...lastDiffers]).buffer;
+  const views = standInRuntime(() => ({}));
+  const raw = {
+    loadTextureFromBuffer() {},
+    loadTextures() {
+      return Promise.all(
+        [1, 11, 21].map((at) =>
+          this.loadTextureFromBuffer(new Uint8Array(store, at, 9), 'image/png'),
+        ),
+      );
+    },
+  };
+  prepareLaya342GltfResource(raw, views);
+  const [first, second, third] = await raw.loadTextures();
+  assert.equal(first, second);
+  assert.notEqual(first, third);
+  assert.equal(views.loads.length, 2);
+  // A repeat's progress is reported done when the picture is.
+  const reported = [];
+  const progress = { createCallback: () => (value) => reported.push(value) };
+  const again = {
+    loadTextureFromBuffer() {},
+    loadTextures() {
+      return Promise.all(
+        [0, 1].map(() =>
+          this.loadTextureFromBuffer(Uint8Array.from(a).buffer, 'image/png', [], null, progress),
+        ),
+      );
+    },
+  };
+  prepareLaya342GltfResource(
+    again,
+    standInRuntime(() => ({})),
+  );
+  await again.loadTextures();
+  assert.deepEqual(reported, [1]);
+});
+
+test('a picture that does not load: revoked, never cached, one try, and its textures named', async () => {
+  const picture = [1, 2, 3, 4],
+    other = [5, 6, 7, 8];
+  const document = {
+    materials: [
+      {
+        pbrMetallicRoughness: {
+          baseColorTexture: { index: 0 },
+          metallicRoughnessTexture: { index: 1 },
+        },
+        occlusionTexture: { index: 1 },
+      },
+      { pbrMetallicRoughness: { baseColorTexture: { index: 2 } } },
+    ],
+    textures: [{ source: 0 }, { source: 1 }, { source: 1 }],
+    images: [
+      { bufferView: 0, mimeType: 'image/png' },
+      { bufferView: 1, mimeType: 'image/png' },
+    ],
+  };
+  // LayaAir 3.4.2's loader answers a failed load with null; it does not reject.
+  const asLaya = standInRuntime((load) => (load.bytes[0] === 5 ? null : { ok: true }));
+  const resource = standInResource(document, [picture, other]);
+  prepareLaya342GltfResource(resource, asLaya);
+  assert.deepEqual(laya342GltfMissingTextures(resource), []);
+  await resource.loadTextures();
+  assert.equal(asLaya.loads.length, 2, 'the failed picture is tried once for its three slots');
+  assert.deepEqual(resource._textures, [{ ok: true }, null, null]);
+  assert.deepEqual(laya342GltfMissingTextures(resource), [1, 2]);
+  for (const load of asLaya.loads) {
+    assert.equal(load.item.cache, false);
+    assert.equal(resolveObjectURL(load.item.url), undefined, 'revoked, loaded or not');
+  }
+  assert.deepEqual(laya342GltfMissingTextures({}), []);
+  // A loader that rejects (LayaAir's does not): the load fails, the URL is still revoked,
+  // and nothing is kept for a later round.
+  const rejecting = standInRuntime(() => {
+    throw Error('decode failed');
+  });
+  const strict = standInResource(document, [picture, other]);
+  prepareLaya342GltfResource(strict, rejecting);
+  await assert.rejects(strict.loadTextures(), /decode failed/);
+  await new Promise((resolve) => setTimeout(resolve, 5));
+  assert.ok(rejecting.loads.length >= 1);
+  for (const load of rejecting.loads) assert.equal(resolveObjectURL(load.item.url), undefined);
+  await assert.rejects(strict.loadTextures(), /decode failed/);
+  // A loader that throws before it starts: the same.
+  const throwing = standInRuntime();
+  throwing.ILaya.loader.load = () => {
+    throw Error('no loader');
+  };
+  const early = standInResource(document, [picture, other]);
+  prepareLaya342GltfResource(early, throwing);
+  assert.throws(() => early.loadTextures(), /no loader/);
+});
+
+/** A host whose Image answers each picture type as `reply` says. */
+function imageHost(reply) {
+  const asked = [];
+  class Image {
+    set src(url) {
+      const type = resolveObjectURL(url).type;
+      asked.push(type);
+      reply(type, this, asked.length);
+    }
+  }
+  return { asked, host: { Blob, atob, URL, Image } };
+}
+const yes = (image) => {
+  image.naturalWidth = image.naturalHeight = 1;
+  image.onload();
+};
+
 test('the image probe answers once per page, and no in Node (no image decoder)', async () => {
   const first = probeZhudaImageDecode();
   assert.equal(probeZhudaImageDecode(), first);
   const answer = await first;
   assert.deepEqual(answer, { webp: false, avif: false });
   assert.ok(Object.isFrozen(answer));
+});
+
+test('the image probe remembers what a decoder says: yes, an error, a picture of the wrong size', async () => {
+  let { asked, host } = imageHost((type, image) => setTimeout(() => yes(image), 0));
+  let probe = createZhudaImageDecodeProbe(host);
+  const first = probe();
+  assert.equal(probe(), first, 'one probe in flight');
+  assert.deepEqual(await first, { webp: true, avif: true });
+  assert.ok(Object.isFrozen(await first));
+  assert.equal('unanswered' in (await first), false);
+  assert.equal(probe(), first, 'and one answer after');
+  assert.deepEqual(asked, ['image/webp', 'image/avif']);
+  // AVIF fails to decode; WebP decodes to the wrong size.
+  ({ asked, host } = imageHost((type, image) =>
+    setTimeout(() => {
+      if (type === 'image/avif') return image.onerror();
+      image.naturalWidth = 2;
+      image.naturalHeight = 1;
+      image.onload();
+    }, 0),
+  ));
+  probe = createZhudaImageDecodeProbe(host);
+  assert.deepEqual(await probe(), { webp: false, avif: false });
+  await probe();
+  assert.equal(asked.length, 2, 'a no is remembered too');
+  // A host without an image element: createImageBitmap, or no support.
+  probe = createZhudaImageDecodeProbe({
+    Blob,
+    atob,
+    createImageBitmap: async (blob) => {
+      if (blob.type === 'image/avif') throw Error('unsupported');
+      return { width: 1, height: 1, close() {} };
+    },
+  });
+  assert.deepEqual(await probe(), { webp: true, avif: false });
+  assert.deepEqual(await createZhudaImageDecodeProbe({ Blob, atob })(), {
+    webp: false,
+    avif: false,
+  });
+  assert.deepEqual(await createZhudaImageDecodeProbe({})(), { webp: false, avif: false });
+  for (const deadline of [{ turns: 0 }, { turns: 1.5 }, { turnMs: -1 }, { turnMs: NaN }])
+    assert.throws(() => createZhudaImageDecodeProbe({}, deadline), /deadline/);
+});
+
+test('a decoder that gives no answer is not remembered as "cannot decode": it is asked again', async () => {
+  // Nothing answers; then WebP does; then AVIF does.
+  let round = 0;
+  const { asked, host } = imageHost((type, image) => {
+    if (round === 0 || (round === 1 && type === 'image/avif')) return;
+    setTimeout(() => yes(image), 0);
+  });
+  const probe = createZhudaImageDecodeProbe(host, { turns: 3, turnMs: 1 });
+  const first = probe();
+  assert.equal(probe(), first);
+  const silent = await first;
+  assert.deepEqual(silent, { webp: false, avif: false, unanswered: ['webp', 'avif'] });
+  assert.ok(Object.isFrozen(silent) && Object.isFrozen(silent.unanswered));
+  round = 1;
+  const second = probe();
+  assert.notEqual(second, first, 'not remembered');
+  assert.deepEqual(await second, { webp: true, avif: false, unanswered: ['avif'] });
+  round = 2;
+  const third = probe();
+  assert.deepEqual(await third, { webp: true, avif: true });
+  assert.equal(probe(), third, 'a full answer is remembered');
+  // Only the decoder that gave no answer is asked again.
+  assert.deepEqual(asked, ['image/webp', 'image/avif', 'image/webp', 'image/avif', 'image/avif']);
+});
+
+test('a main thread busy past the deadline is not a decoder that gave no answer', async () => {
+  // A decoder that needs the event loop twice after it is asked, as a browser's
+  // does (the fetch of the picture, then its load event).
+  const twoHops = (type, image) => setTimeout(() => setTimeout(() => yes(image), 0), 0);
+  const busy = (ms) => {
+    const from = performance.now();
+    while (performance.now() - from < ms);
+  };
+  // Thirty turns of 5 ms: 150 ms by the clock. The thread is busy for 400.
+  const probe = createZhudaImageDecodeProbe(imageHost(twoHops).host, { turns: 30, turnMs: 5 });
+  const asking = probe();
+  busy(400);
+  assert.deepEqual(await asking, { webp: true, avif: true });
+  // The same 150 ms as one timer, which is what the probe once used: after
+  // the busy stretch the timer runs before the decoder's second hop.
+  const byTheClock = createZhudaImageDecodeProbe(imageHost(twoHops).host, {
+    turns: 1,
+    turnMs: 150,
+  });
+  const late = byTheClock();
+  busy(400);
+  assert.deepEqual((await late).unanswered, ['webp', 'avif']);
 });
 
 test('punctual lights: the file values, invalid lights named, and the LayaAir mapping', () => {
@@ -640,6 +1034,48 @@ test('cameras and extras: read, frozen, invalid ones named, and a LayaAir camera
   assert.equal(report.status, 'degraded');
   assert.equal(report.diagnostics.find((d) => d.code === 'INVALID_CAMERA').path, '$.cameras[0]');
   assert.equal(readZhudaGltfNodeData(bad).find((n) => n.name === 'ShotCamera').camera, undefined);
+  // A node that names a light or a camera the file does not have loses it: said, not silent.
+  const dangling = structuredClone(room);
+  dangling.nodes[4].extensions.KHR_lights_punctual.light = 5;
+  dangling.nodes[5].extensions.KHR_lights_punctual = {};
+  dangling.nodes[7].camera = 3;
+  const lost = inspectGltfDocument(dangling);
+  assert.equal(lost.status, 'degraded');
+  assert.deepEqual(
+    lost.diagnostics
+      .filter((d) => d.code !== 'LIGHT_APPROXIMATED')
+      .map((d) => [d.code, d.severity, d.path]),
+    [
+      ['INVALID_LIGHT', 'warning', '$.nodes[4].extensions.KHR_lights_punctual.light'],
+      ['INVALID_LIGHT', 'warning', '$.nodes[5].extensions.KHR_lights_punctual.light'],
+      ['INVALID_CAMERA', 'warning', '$.nodes[7].camera'],
+    ],
+  );
+  assert.match(lost.diagnostics.find((d) => d.code === 'INVALID_LIGHT').message, /names light 5/);
+  assert.deepEqual(
+    readZhudaGltfNodeData(dangling).map((n) => [n.name, !!n.light, !!n.camera]),
+    [
+      ['Crate', false, false],
+      ['Lamp', false, false],
+      ['Sun', true, false],
+      ['ShotCamera', false, false],
+    ],
+  );
+  // A node that names an invalid light is covered by the light's own diagnostic, once.
+  const twice = structuredClone(room);
+  twice.extensions.KHR_lights_punctual.lights[0].intensity = -1;
+  assert.deepEqual(
+    inspectGltfDocument(twice)
+      .diagnostics.filter((d) => d.code === 'INVALID_LIGHT')
+      .map((d) => d.path),
+    ['$.extensions.KHR_lights_punctual.lights[0]'],
+  );
+  // The orthographic fixture: its lens and where its node stands.
+  const flat = readZhudaGltfNodeData(documentOf(orthoPlane(png)));
+  assert.deepEqual(
+    flat.map((n) => [n.name, n.camera.type, n.camera.xmag, n.camera.ymag]),
+    [['FlatCamera', 'orthographic', ORTHO.orthographic.xmag, ORTHO.orthographic.ymag]],
+  );
 
   // A LayaAir camera takes the lens and the node's world pose.
   const vector = (x, y, z) => ({ x, y, z, clone: () => vector(x, y, z) });
@@ -720,10 +1156,16 @@ function fakeLaya(parsed) {
     async _parseglb(bytes) {
       this._data = readZhudaGltfBytes(new Uint8Array(bytes)).document;
       parsed.push(this._data);
-      this.loadTextures();
+      await this.loadTextures();
+    }
+    // As LayaAir: a picture that does not load is a null texture, not an error.
+    async loadTextureFromInfo(info) {
+      const image = this._data.images[this._data.textures[info.index].source];
+      return image.name === 'broken' ? null : { image };
     }
     loadTextures() {
       this.sources = (this._data.textures ?? []).map((t) => t.source);
+      return Promise.all(this.sources.map((_, index) => this.loadTextureFromInfo({ index })));
     }
     loadNodes(nodes) {
       nodes.forEach((n, i) => (this._nodes[i] = new Sprite3D(n.name ?? `node_${i}`)));
@@ -853,9 +1295,106 @@ test('ModelLibrary: dequantized bytes reach the parser, node data and asked-for 
     assert.equal(library.report().instances, 0);
     // ring, room (both copies share one load), webp, webp-only.
     assert.equal(released, 4, 'every provider lease is released');
+
+    // A library told what the host decodes does not ask: the WebP loads, nothing is lost.
+    const told = new ZhudaModelLibrary({
+      provider,
+      maxIdle: 0,
+      imageDecode: { webp: true, avif: false },
+    });
+    const webp = await told.instantiate('webp.glb');
+    assert.equal(webp.compatibility.status, 'supported');
+    assert.deepEqual(webp.compatibility.diagnostics, []);
+    assert.equal(parsed.at(-1).textures[0].source, 0, 'the WebP image, not the fallback');
+    webp.dispose();
+    const only = await told.instantiate('webp-only.glb');
+    assert.equal(parsed.at(-1).textures[0].source, 0);
+    only.dispose();
+    told.dispose();
+    for (const imageDecode of [{}, { webp: true }, { webp: 1, avif: 0 }, null])
+      assert.throws(
+        () => new ZhudaModelLibrary({ provider, imageDecode }),
+        /Invalid image decode support/,
+      );
+
+    // A picture that does not load leaves its slots empty, as in LayaAir: the model's
+    // report says which texture, and the model is degraded, not silently bare.
+    const broken = documentOf(files['webp.glb']);
+    broken.images[1].name = 'broken';
+    files['broken.glb'] = writeZhudaGlb(
+      broken,
+      readZhudaGltfBytes(new Uint8Array(files['webp.glb'])).bin,
+    );
+    const bare = await library.instantiate('broken.glb');
+    assert.equal(bare.compatibility.status, 'degraded');
+    assert.deepEqual(
+      bare.compatibility.diagnostics.map((d) => [d.code, d.severity, d.path]),
+      [
+        ['IMAGE_DECODE_UNAVAILABLE', 'warning', '$.textures[0]'],
+        ['IMAGE_DECODE_FAILED', 'warning', '$.textures[0]'],
+      ],
+    );
+    assert.match(bare.compatibility.diagnostics[1].message, /Image 1 \(image\/png\) of texture 0/);
+    assert.ok(
+      Object.isFrozen(bare.compatibility) && Object.isFrozen(bare.compatibility.diagnostics),
+    );
+    bare.dispose();
+
+    // Integer vertex attributes the pass cannot read are refused with a report, not a bare
+    // error: a buffer outside the file (seen in the document), an accessor past its view
+    // (seen only in the bytes).
+    files['outside.gltf'] = triangle(5123, new Uint16Array(9), { uri: 'mesh.bin' });
+    const past = documentOf(triangle(5123, new Uint16Array(9)));
+    past.accessors[0].count = 4;
+    files['past.glb'] = writeZhudaGlb(
+      past,
+      readZhudaGltfBytes(triangle(5123, new Uint16Array(9))).bin,
+    );
+    const before = released;
+    await assert.rejects(
+      library.instantiate('outside.gltf'),
+      (e) =>
+        e instanceof ZhudaModelCompatibilityError &&
+        e.assetId === 'outside.gltf' &&
+        codes(e.report).join() === 'EMBEDDED_BUFFER_REQUIRED:error',
+    );
+    assert.equal(
+      codes(inspectGltfAsset(files['past.glb'])).join(),
+      'DEQUANTIZED_ATTRIBUTES:warning',
+    );
+    await assert.rejects(library.instantiate('past.glb'), (e) => {
+      assert.ok(e instanceof ZhudaModelCompatibilityError);
+      assert.equal(e.report.status, 'unsupported');
+      assert.deepEqual(codes(e.report), [
+        'DEQUANTIZED_ATTRIBUTES:warning',
+        'INVALID_DOCUMENT:error',
+      ]);
+      assert.match(e.message, /INVALID_DOCUMENT \$\.accessors: .*reads past its buffer view/);
+      return true;
+    });
+    assert.equal(released, before + 2, "the refused files' leases are released");
+    assert.equal(library.report().entries, 0);
   } finally {
     library.dispose();
     decoders.dispose();
     globalThis.Laya = previous;
   }
+});
+
+test('shared-picture fixtures: four materials on one texture; colour and a packed picture', () => {
+  const four = inspectGltfAsset(sharedPictures({ pngs: [png], materials: 4 })).inventory;
+  assert.deepEqual(
+    four.materials.map((m) => m.textures.map((t) => [t.slot, t.texture])),
+    [0, 1, 2, 3].map(() => [['baseColor', 0]]),
+  );
+  assert.deepEqual([four.summary.textures, four.summary.images], [1, 1]);
+  const packed = inspectGltfAsset(sharedPictures({ pngs: [png, png], orm: true })).inventory;
+  assert.deepEqual(
+    packed.materials[0].textures.map((t) => [t.slot, t.texture]),
+    [
+      ['baseColor', 0],
+      ['metallicRoughness', 1],
+      ['occlusion', 1],
+    ],
+  );
 });

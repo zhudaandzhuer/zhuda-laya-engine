@@ -23,10 +23,18 @@ function freeze<T>(value: T): T {
 
 /** Texture-source extensions the engine resolves, in the order it prefers them. */
 export type ZhudaGltfImageExtension = 'EXT_texture_avif' | 'EXT_texture_webp';
+/** The picture formats the device is asked about. */
+export type ZhudaProbedImageFormat = 'webp' | 'avif';
 /** Whether this device decodes WebP and AVIF pictures (`probeZhudaImageDecode`). */
 export interface ZhudaImageDecodeSupport {
   readonly webp: boolean;
   readonly avif: boolean;
+  /**
+   * Formats whose decoder gave no answer before the probe's deadline. They
+   * count as not decodable in this answer only; the next probe asks again.
+   * Absent when every format answered.
+   */
+  readonly unanswered?: readonly ZhudaProbedImageFormat[];
 }
 export interface ZhudaGltfTextureSource {
   /** The image the texture loads, or null when the file offers nothing loadable. */
@@ -36,7 +44,7 @@ export interface ZhudaGltfTextureSource {
   /** Extensions whose image this device cannot decode. */
   readonly unavailable: readonly ZhudaGltfImageExtension[];
 }
-const imageExtensions: readonly (readonly [ZhudaGltfImageExtension, 'avif' | 'webp'])[] = [
+const imageExtensions: readonly (readonly [ZhudaGltfImageExtension, ZhudaProbedImageFormat])[] = [
   ['EXT_texture_avif', 'avif'],
   ['EXT_texture_webp', 'webp'],
 ];
@@ -63,15 +71,27 @@ export function resolveZhudaGltfTextureSource(
   return { image: fallback, extension: null, unavailable };
 }
 // One-pixel pictures, made with sharp 0.35.5 (libwebp 1.6.0, libheif 1.23.5 / aom 3.15.1).
-const probes: Record<'webp' | 'avif', [string, string]> = {
+const probes: Record<ZhudaProbedImageFormat, [string, string]> = {
   webp: ['image/webp', 'UklGRhwAAABXRUJQVlA4TA8AAAAvAAAAAAcQ/Y/+ByKi/wEA'],
   avif: [
     'image/avif',
     'AAAAHGZ0eXBhdmlmAAAAAG1pZjFhdmlmbWlhZgAAANZtZXRhAAAAAAAAACFoZGxyAAAAAAAAAABwaWN0AAAAAAAAAAAAAAAAAAAAACJpbG9jAAAAAERAAAEAAQAAAAAA+gABAAAAAAAAACYAAAAjaWluZgAAAAAAAQAAABVpbmZlAgAAAAABAABhdjAxAAAAAA5waXRtAAAAAAABAAAAVmlwcnAAAAA4aXBjbwAAAAxhdjFDgSACAAAAABRpc3BlAAAAAAAAAAEAAAABAAAAEHBpeGkAAAAAAwgICAAAABZpcG1hAAAAAAAAAAEAAQOBAgMAAAAubWRhdBIACgc4AAaQENBpMhkXgmMEwAAygAAAAEhUNmGsYoAKNr/ysfdA',
   ],
 };
-async function decodes(type: string, base64: string): Promise<boolean> {
-  const g = globalThis as any;
+const probedFormats: readonly ZhudaProbedImageFormat[] = ['webp', 'avif'];
+/** How long a probe waits for a decoder: `turns` timers of `turnMs` each. */
+export interface ZhudaImageProbeDeadline {
+  turns?: number;
+  turnMs?: number;
+}
+/** True or false: the decoder's answer. Null: it gave none before the deadline. */
+async function decodes(
+  g: any,
+  type: string,
+  base64: string,
+  turns: number,
+  turnMs: number,
+): Promise<boolean | null> {
   if (typeof g.Blob !== 'function' || typeof g.atob !== 'function') return false;
   const blob = new g.Blob([Uint8Array.from(g.atob(base64), (c: string) => c.charCodeAt(0))], {
     type,
@@ -82,10 +102,20 @@ async function decodes(type: string, base64: string): Promise<boolean> {
   if (typeof g.Image === 'function' && typeof g.URL?.createObjectURL === 'function') {
     const url = g.URL.createObjectURL(blob);
     try {
-      return await new Promise<boolean>((resolve) => {
+      return await new Promise<boolean | null>((resolve) => {
         const image = new g.Image();
-        // A decoder that never answers counts as no decoder. IO deadline only.
-        const timer = setTimeout(() => resolve(false), 3000);
+        // A decoder that never answers must not hold a model load for ever.
+        // The deadline counts turns of the event loop, not wall time: a main
+        // thread busy with a long parse or a shader compile holds up the
+        // picture's load event as it holds up a timer, and a timer that fires
+        // late for that reason is not the decoder's answer. IO deadline only.
+        let left = turns,
+          timer: ReturnType<typeof setTimeout>;
+        const turn = () => {
+          if (--left > 0) timer = setTimeout(turn, turnMs);
+          else resolve(null);
+        };
+        timer = setTimeout(turn, turnMs);
         image.onload = () => {
           clearTimeout(timer);
           resolve(image.naturalWidth === 1 && image.naturalHeight === 1);
@@ -111,14 +141,50 @@ async function decodes(type: string, base64: string): Promise<boolean> {
     }
   return false;
 }
-let probing: Promise<ZhudaImageDecodeSupport> | undefined;
-/** Decodes a one-pixel WebP and AVIF picture once per page and remembers the answer. */
-export function probeZhudaImageDecode(): Promise<ZhudaImageDecodeSupport> {
-  probing ??= Promise.all([decodes(...probes.webp), decodes(...probes.avif)]).then(([webp, avif]) =>
-    Object.freeze({ webp, avif }),
-  );
-  return probing;
+/**
+ * A probe with its own memory, on `host`'s Image, Blob and URL (read when it is
+ * called). `probeZhudaImageDecode` is the page's one; tests make their own.
+ */
+export function createZhudaImageDecodeProbe(
+  host: unknown = globalThis,
+  deadline: ZhudaImageProbeDeadline = {},
+): () => Promise<ZhudaImageDecodeSupport> {
+  const turns = deadline.turns ?? 30,
+    turnMs = deadline.turnMs ?? 100;
+  if (!Number.isInteger(turns) || turns < 1 || !finite(turnMs) || turnMs < 0)
+    throw Error('Invalid image probe deadline');
+  // Only a decoder's own answer is remembered.
+  const known: Partial<Record<ZhudaProbedImageFormat, boolean>> = {};
+  let probing: Promise<ZhudaImageDecodeSupport> | undefined;
+  return () => {
+    probing ??= Promise.all(
+      probedFormats.map(
+        async (format) => known[format] ?? decodes(host, ...probes[format], turns, turnMs),
+      ),
+    ).then((answers) => {
+      const unanswered = probedFormats.filter((format, i) => {
+        if (answers[i] === null) return true;
+        known[format] = answers[i] as boolean;
+        return false;
+      });
+      // A format without an answer is asked again by the next call.
+      if (unanswered.length) probing = undefined;
+      return Object.freeze({
+        webp: answers[0] === true,
+        avif: answers[1] === true,
+        ...(unanswered.length ? { unanswered: Object.freeze(unanswered) } : {}),
+      });
+    });
+    return probing;
+  };
 }
+/**
+ * Decodes a one-pixel WebP and AVIF picture and remembers each decoder's answer
+ * for the page. A decoder that gives none in time is listed in `unanswered`,
+ * counted as no for that answer, and asked again by the next call.
+ */
+export const probeZhudaImageDecode: () => Promise<ZhudaImageDecodeSupport> =
+  createZhudaImageDecodeProbe();
 
 // ---------------------------------------------------------------- lights ---
 
@@ -439,6 +505,22 @@ export function quantizedZhudaGltfAccessors(document: unknown): number[] {
   );
   return [...found].sort((a, b) => a - b);
 }
+// A buffer whose bytes are in the file itself, as a base64 data URI.
+const embeddedBuffer = /^data:(application\/(octet-stream|gltf-buffer))?;base64,/;
+/**
+ * The buffers a file's buffer views use but keeps outside itself (a `uri` that
+ * is not an embedded base64 one). `dequantizeZhudaGltf` has no bytes for them.
+ */
+export function externalZhudaGltfBuffers(document: unknown): number[] {
+  const buffers = list(record(document).buffers).map(record),
+    found = new Set<number>();
+  for (const view of list(record(document).bufferViews)) {
+    const index = indexOf(record(view).buffer),
+      uri = index === null ? undefined : buffers[index]?.uri;
+    if (typeof uri === 'string' && !embeddedBuffer.test(uri)) found.add(index!);
+  }
+  return [...found].sort((a, b) => a - b);
+}
 export interface ZhudaDequantizeResult {
   /** A GLB: the source data in one buffer, then the float copies. */
   readonly bytes: Uint8Array;
@@ -481,10 +563,7 @@ export function dequantizeZhudaGltf(
     if (declared === null) throw Error(`buffers[${i}] has no byteLength`);
     let bytesOf: Uint8Array;
     if (source.uri === undefined && i === 0 && bin) bytesOf = bin;
-    else if (
-      typeof source.uri === 'string' &&
-      /^data:(application\/(octet-stream|gltf-buffer))?;base64,/.test(source.uri)
-    ) {
+    else if (typeof source.uri === 'string' && embeddedBuffer.test(source.uri)) {
       const encoded = source.uri.slice(source.uri.indexOf(',') + 1);
       if (Math.floor((encoded.length * 3) / 4) > limit) throw Error('Oversized embedded buffer');
       bytesOf = Uint8Array.from(atob(encoded), (c) => c.charCodeAt(0));

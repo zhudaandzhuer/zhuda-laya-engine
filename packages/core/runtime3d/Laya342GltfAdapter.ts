@@ -7,6 +7,23 @@ import {
 const prepared = new WeakSet<object>();
 // The Laya node made for each glTF node by the resource's last create().
 const createdNodes = new WeakMap<object, readonly any[]>();
+// The glTF textures whose picture did not load, per resource.
+const missingTextures = new WeakMap<object, Set<number>>();
+/** Whether two byte ranges hold the same bytes. */
+function sameBytes(a: Uint8Array, b: Uint8Array): boolean {
+  if (a.byteLength !== b.byteLength) return false;
+  let i = 0;
+  // Whole words first when both ranges start on one (LayaAir's slices do).
+  if (a.byteOffset % 4 === 0 && b.byteOffset % 4 === 0) {
+    const words = a.byteLength >>> 2,
+      wa = new Uint32Array(a.buffer, a.byteOffset, words),
+      wb = new Uint32Array(b.buffer, b.byteOffset, words);
+    for (let w = 0; w < words; w++) if (wa[w] !== wb[w]) return false;
+    i = words * 4;
+  }
+  for (; i < a.byteLength; i++) if (a[i] !== b[i]) return false;
+  return true;
+}
 /** Options for one owned glTFResource. */
 export interface Laya342GltfResourceOptions {
   /** This device's WebP/AVIF decoding; picks each texture's image (see resolveZhudaGltfTextureSource). */
@@ -21,6 +38,8 @@ export function prepareLaya342GltfResource(
 ): void {
   if (prepared.has(resource)) return;
   prepared.add(resource);
+  // The embedded pictures this parse has asked for, each with its one load.
+  const pictures: { mimeType: string; bytes: Uint8Array; texture: Promise<unknown> }[] = [];
   // EXT_texture_webp / EXT_texture_avif: the native loader reads only
   // textures[i].source. Point it at the image this device decodes, in this
   // resource's own parsed document, before any texture (core or extension slot) loads.
@@ -33,7 +52,37 @@ export function prepareLaya342GltfResource(
         else if (source.unavailable.length)
           throw Error(`glTF textures[${i}] has no image this device can decode.`);
       });
-      return loadTextures.apply(this, args);
+      // Every slot asks for its picture inside this call: once they have all
+      // loaded, the bytes kept to recognise a repeat are let go.
+      const forget = () => (pictures.length = 0);
+      let loading: unknown;
+      try {
+        loading = loadTextures.apply(this, args);
+      } catch (error) {
+        forget();
+        throw error;
+      }
+      if (typeof (loading as any)?.then !== 'function') return (forget(), loading);
+      return (loading as Promise<unknown>).then(
+        (textures) => (forget(), textures),
+        (error) => {
+          forget();
+          throw error;
+        },
+      );
+    };
+  // A picture that does not load leaves its slots empty in LayaAir, which only
+  // warns on the console. Remember which textures, for the model's report.
+  const fromInfo = resource.loadTextureFromInfo;
+  if (typeof fromInfo === 'function')
+    resource.loadTextureFromInfo = function (info: any, ...rest: any[]) {
+      return Promise.resolve(fromInfo.call(this, info, ...rest)).then((texture: unknown) => {
+        if (!texture && Number.isInteger(info?.index)) {
+          const missing = missingTextures.get(this) ?? new Set<number>();
+          missingTextures.set(this, missing.add(info.index));
+        }
+        return texture;
+      });
     };
   // Embedded images: the native loader base64-encodes each one into a data URL
   // on the main thread (a string about 1.33 times the picture) for the browser
@@ -50,25 +99,44 @@ export function prepareLaya342GltfResource(
     runtime?.Loader?.TEXTURE2D
   )
     resource.loadTextureFromBuffer = function (
-      buffer: ArrayBuffer,
+      buffer: ArrayBuffer | ArrayBufferView,
       mimeType: string,
       constructParams: unknown,
       propertyParams: unknown,
-      progress?: { createCallback(): unknown },
+      progress?: { createCallback(): (progress: number) => void },
     ) {
+      const bytes = ArrayBuffer.isView(buffer)
+        ? new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength)
+        : new Uint8Array(buffer);
+      // One picture, one texture. LayaAir asks once per material slot, not once
+      // per picture. Its data URL was the same for the same bytes, so its
+      // loader answered a repeat with the texture it already had (and with the
+      // first slot's sampler and colour space, as here). A Blob URL is new each
+      // time: recognise the repeat here, by the bytes themselves.
+      const repeat = pictures.find((p) => p.mimeType === mimeType && sameBytes(p.bytes, bytes));
+      if (repeat) {
+        const done = progress?.createCallback();
+        return done ? repeat.texture.then((texture) => (done(1), texture)) : repeat.texture;
+      }
       const url = urls.createObjectURL(
-        new Blob([buffer], { type: mimeType || 'application/octet-stream' }),
+        new Blob([bytes as Uint8Array<ArrayBuffer>], {
+          type: mimeType || 'application/octet-stream',
+        }),
       );
       const revoke = () => urls.revokeObjectURL(url);
+      let texture: Promise<unknown>;
       try {
-        return Promise.resolve(
+        texture = Promise.resolve(
           loader.load(
-            { url, constructParams, propertyParams },
+            // Not kept in LayaAir's URL cache: this URL is revoked and never
+            // asked for again, and a failed load would stay there as a null.
+            { url, constructParams, propertyParams, cache: false },
             runtime.Loader.TEXTURE2D,
             progress?.createCallback(),
           ),
         ).then(
-          (texture: unknown) => (revoke(), texture),
+          // LayaAir 3.4.2 answers a failed load with null rather than rejecting.
+          (loaded: unknown) => (revoke(), loaded),
           (error: unknown) => {
             revoke();
             throw error;
@@ -78,6 +146,8 @@ export function prepareLaya342GltfResource(
         revoke();
         throw error;
       }
+      pictures.push({ mimeType, bytes, texture });
+      return texture;
     };
   const loadNodes = resource.loadNodes;
   if (typeof loadNodes === 'function')
@@ -263,6 +333,14 @@ export function createLaya342ModelTemplate(resource: any, runtime: any): Laya.Sp
     if (resource._nodes) resource._nodes.length = 0;
     throw error;
   }
+}
+
+/**
+ * The glTF texture indices whose picture did not load or decode while the
+ * resource was parsed: LayaAir left their material slots empty.
+ */
+export function laya342GltfMissingTextures(resource: object): readonly number[] {
+  return [...(missingTextures.get(resource) ?? [])].sort((a, b) => a - b);
 }
 
 /** The Laya node made for each glTF node index by the resource's last create(). */

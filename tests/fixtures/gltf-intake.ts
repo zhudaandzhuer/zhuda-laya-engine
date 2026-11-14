@@ -11,6 +11,23 @@ const out: any = { ready: false, errors: [] as string[] };
 addEventListener('error', (event) => out.errors.push(String(event.message)));
 addEventListener('unhandledrejection', (event) => out.errors.push(String(event.reason)));
 
+// Every Blob URL the page makes and gives back, counted from the first.
+const blobs = { created: 0, revoked: 0, live: new Set<string>() };
+{
+  const create = URL.createObjectURL.bind(URL),
+    revoke = URL.revokeObjectURL.bind(URL);
+  URL.createObjectURL = (object: any) => {
+    const url = create(object);
+    blobs.created++;
+    blobs.live.add(url);
+    return url;
+  };
+  URL.revokeObjectURL = (url: string) => {
+    if (blobs.live.delete(url)) blobs.revoked++;
+    revoke(url);
+  };
+}
+
 const W = 800,
   H = 600;
 let context: any;
@@ -56,6 +73,24 @@ function coverage(p: Uint8Array) {
     if (Math.abs(p[i] - p[0]) + Math.abs(p[i + 1] - p[1]) + Math.abs(p[i + 2] - p[2]) > 12) n++;
   return +(n / (p.length / 4)).toFixed(4);
 }
+/** The box of pixels that are not the clear colour: first and last column and row. */
+function bounds(p: Uint8Array) {
+  let left = W,
+    right = -1,
+    top = H,
+    bottom = -1;
+  for (let y = 0; y < H; y++)
+    for (let x = 0; x < W; x++) {
+      const i = (y * W + x) * 4;
+      if (Math.abs(p[i] - p[0]) + Math.abs(p[i + 1] - p[1]) + Math.abs(p[i + 2] - p[2]) <= 12)
+        continue;
+      left = Math.min(left, x);
+      right = Math.max(right, x);
+      top = Math.min(top, y);
+      bottom = Math.max(bottom, y);
+    }
+  return { left, right, top, bottom };
+}
 const meanLuma = (p: Uint8Array) => {
   let s = 0;
   for (let i = 0; i < p.length; i += 4) s += 0.2126 * p[i] + 0.7152 * p[i + 1] + 0.0722 * p[i + 2];
@@ -68,6 +103,16 @@ const codes = (report: any) =>
 const v3 = (a: number[]) => new Laya.Vector3(a[0], a[1], a[2]);
 
 async function main() {
+  const r: any = {};
+  // 0. The device's answer for WebP and AVIF, asked for the first time on this
+  // page while the main thread is then busy for 3.5 s: longer than the three
+  // seconds the probe once allowed by the clock.
+  const asked = Z.probeZhudaImageDecode();
+  const busyFrom = performance.now();
+  while (performance.now() - busyFrom < 3500);
+  r.imageDecodeAfterBusy = await asked;
+  r.imageDecode = await Z.probeZhudaImageDecode();
+
   const renderer = (globalThis as any).ZhudaBundle.renderer === 'webgpu' ? 'webgpu' : 'webgl';
   out.renderer = renderer;
   context = await Z.ZhudaEngine.boot({
@@ -94,11 +139,22 @@ async function main() {
     clearColor: [0.05, 0.06, 0.08, 1],
     fov: 45,
   });
-  const ROOM = await (await fetch('./assets/room.json')).json();
+  const { room: ROOM, ortho: ORTHO } = await (await fetch('./assets/room.json')).json();
   const provider = new Z.DirectoryAssetProvider({ baseUrl: './assets/' });
   const decoders = new Z.ZhudaModelDecoderRegistry();
   decoders.register(new Z.ZhudaMeshoptModelDecoder());
   const library = new Z.ZhudaModelLibrary({ provider, decoders, maxIdle: 0 });
+  // Libraries told what the device decodes, in place of asking it: the same
+  // loader and adapter, with the answer a device without the decoder would give.
+  const told = new Map<string, any>();
+  const toldLibrary = (support: any) => {
+    const key = JSON.stringify(support);
+    if (!told.has(key))
+      told.set(key, new Z.ZhudaModelLibrary({ provider, maxIdle: 0, imageDecode: support }));
+    return told.get(key);
+  };
+  const NONE = { webp: false, avif: false },
+    WEBP_ONLY = { webp: true, avif: false };
 
   /** Draws until two frames agree (pipelines and pictures may settle late). */
   const settle = async () => {
@@ -134,10 +190,10 @@ async function main() {
     for (const holder of handLights.splice(0)) holder.destroy(true);
   };
   let current: any = null;
-  const mount = async (id: string, options: any = {}) => {
+  const mount = async (id: string, options: any = {}, from: any = library) => {
     current?.dispose();
     current = null;
-    current = await library.instantiate(id, options);
+    current = await from.instantiate(id, options);
     scene.addChild(current.node);
     return current;
   };
@@ -186,6 +242,14 @@ async function main() {
     const shot = instance.gltfNodes.find((n: any) => n.camera);
     Z.applyZhudaGltfCamera(camera, shot.camera, shot.node);
   };
+  const picture =
+    (id: string, options: any = {}, from: any = library) =>
+    async () => {
+      clear();
+      aim([0, 0, 2.2], [0, 0, 0], 60);
+      await mount(id, options, from);
+      return settle();
+    };
   const keyLight = () =>
     addLight(Laya.DirectionLightCom, [0, 0, 0], (light, holder) => {
       light.color = new Laya.Color(1, 0.97, 0.92, 1);
@@ -217,16 +281,52 @@ async function main() {
       return settle();
     },
     ...Object.fromEntries(
-      ['png', 'webp', 'webp-fallback', 'avif'].map((name) => [
-        `picture-${name}`,
-        async () => {
-          clear();
-          aim([0, 0, 2.2], [0, 0, 0], 60);
-          await mount(`picture-${name}.glb`);
-          return settle();
-        },
-      ]),
+      ['png', 'inverted', 'turned', 'webp', 'webp-fallback', 'avif', 'avif-webp', 'broken'].map(
+        (name) => [`picture-${name}`, picture(`picture-${name}.glb`)],
+      ),
     ),
+    // The same files through a library told the device decodes less.
+    'picture-avif-webp-told-webp-only': picture(
+      'picture-avif-webp.glb',
+      {},
+      toldLibrary(WEBP_ONLY),
+    ),
+    'picture-avif-webp-told-none': picture('picture-avif-webp.glb', {}, toldLibrary(NONE)),
+    'picture-webp-fallback-told-none': picture('picture-webp-fallback.glb', {}, toldLibrary(NONE)),
+    // Pictures shared between material slots.
+    'shared-picture': async () => {
+      clear();
+      keyLight();
+      aim([0, 0, 6.4], [0, 0, 0], 45);
+      await mount('shared-picture.glb');
+      return settle();
+    },
+    'orm-picture': async () => {
+      clear();
+      keyLight();
+      aim([0, 0, 2.4], [0, 0, 0], 45);
+      await mount('orm-picture.glb');
+      return settle();
+    },
+    // The orthographic camera of a file, and the same view set by hand.
+    'ortho-from-file': async () => {
+      clear();
+      const instance = await mount('ortho-plane.glb');
+      const flat = instance.gltfNodes.find((n: any) => n.camera?.type === 'orthographic');
+      Z.applyZhudaGltfCamera(camera, flat.camera, flat.node);
+      return settle();
+    },
+    'ortho-by-hand': async () => {
+      clear();
+      await mount('ortho-plane.glb');
+      camera.orthographic = true;
+      camera.orthographicVerticalSize = 2 * ORTHO.orthographic.ymag;
+      camera.nearPlane = ORTHO.orthographic.znear;
+      camera.farPlane = ORTHO.orthographic.zfar;
+      camera.transform.position = v3(ORTHO.position);
+      camera.transform.rotation = new Laya.Quaternion(0, 0, 0, 1);
+      return settle();
+    },
     'room-reference': async () => {
       clear();
       roomCamera();
@@ -260,10 +360,6 @@ async function main() {
       return settle();
     },
   };
-  const r: any = {};
-  // The device's answer for WebP and AVIF.
-  r.imageDecode = await Z.probeZhudaImageDecode();
-
   // 1. Quantized and Meshopt-compressed geometry against the float reference.
   const ringRef = await views['ring-reference']();
   r.ring = {
@@ -287,6 +383,195 @@ async function main() {
       status: current.compatibility.status,
       report: codes(current.compatibility),
     };
+  }
+
+  // 2b. A texture that offers AVIF, WebP and a PNG, each a different picture:
+  // which one loads on this device, and through libraries told the device
+  // decodes less.
+  const inverted = await views['picture-inverted']();
+  const turned = await views['picture-turned']();
+  const choice = async (view: string) => {
+    const frame = await views[view]();
+    return {
+      avif: compare(png, frame),
+      webp: compare(inverted, frame),
+      fallback: compare(turned, frame),
+      status: current.compatibility.status,
+      report: codes(current.compatibility),
+    };
+  };
+  r.choice = {
+    references: { webp: compare(png, inverted), fallback: compare(png, turned) },
+    device: await choice('picture-avif-webp'),
+    toldWebpOnly: await choice('picture-avif-webp-told-webp-only'),
+    toldNone: await choice('picture-avif-webp-told-none'),
+  };
+  {
+    const frame = await views['picture-webp-fallback-told-none']();
+    r.choice.webpFallbackToldNone = {
+      fallback: compare(inverted, frame),
+      status: current.compatibility.status,
+      report: codes(current.compatibility),
+    };
+    clear();
+    const refuse = async (support: any) => {
+      try {
+        await toldLibrary(support).instantiate('picture-webp.glb');
+        return 'accepted';
+      } catch (error: any) {
+        return { name: error.name, codes: error.report ? codes(error.report) : null };
+      }
+    };
+    r.choice.webpOnlyToldNone = await refuse(NONE);
+    // A decoder that gave the probe no answer: named as that, not as "cannot".
+    r.choice.webpOnlyToldUnanswered = await refuse({ ...NONE, unanswered: ['webp'] });
+    await mount('picture-webp-fallback.glb', {}, toldLibrary({ ...NONE, unanswered: ['webp'] }));
+    r.choice.webpFallbackToldUnanswered = {
+      status: current.compatibility.status,
+      report: codes(current.compatibility),
+    };
+    clear();
+  }
+
+  // 2c. Pictures shared between material slots: LayaAir's own parse against the
+  // engine's load, by the textures each keeps while its model lives.
+  const stat = () => {
+    const s = Z.inspectSceneResources();
+    return {
+      textures: s.counts.texture,
+      textureBytes: s.textureBytes,
+      gpu: typeof Laya.Resource.gpuMemory === 'number' ? Laya.Resource.gpuMemory : null,
+    };
+  };
+  const less = (a: any, b: any) => ({
+    textures: a.textures - b.textures,
+    textureBytes: a.textureBytes - b.textureBytes,
+    gpu: a.gpu === null || b.gpu === null ? null : a.gpu - b.gpu,
+  });
+  const cachedUnder = (prefix: string) =>
+    Object.keys(Laya.Loader.loadedMap).filter((key) => key.startsWith(prefix)).length;
+  /** The distinct textures on the materials under a node. */
+  const onMaterials = (root: any) => {
+    const found = new Set<any>();
+    const visit = (node: any) => {
+      const renderer = node.getComponent?.(Laya.MeshRenderer);
+      for (const material of renderer?.sharedMaterials ?? [])
+        for (const name of [
+          'u_BaseColorTexture',
+          'u_AlbedoTexture',
+          'u_MetallicRoughnessTexture',
+          'u_OcclusionTexture',
+        ]) {
+          let texture: any = null;
+          try {
+            texture = material.getTexture?.(name);
+          } catch {
+            /* a material without the property */
+          }
+          if (texture) found.add(texture);
+        }
+      for (let i = 0; i < (node.numChildren || 0); i++) visit(node.getChildAt(i));
+    };
+    visit(root);
+    return found.size;
+  };
+  let native: any = null;
+  const loadNative = async (file: string) => {
+    const bytes = await (await fetch(`./assets/${file}`, { cache: 'no-store' })).arrayBuffer();
+    const resource = new Laya.glTFResource();
+    await resource._parseglb(bytes, new URL(`./assets/${file}`, location.href).href);
+    native = { resource, node: resource.create() };
+  };
+  // LayaAir retires a destroyed node's renderers on its next frame, and a
+  // resource takes its materials and pictures with it only once nothing else
+  // holds them: destroy the tree, draw a frame, then the resource.
+  const dropNative = () => {
+    native.node.destroy(true);
+    Z.ZhudaEngine.flushRenderFrames(1);
+    native.resource.destroy();
+    native = null;
+  };
+  const sharing = async (view: string, file: string) => {
+    clear();
+    Z.ZhudaEngine.flushRenderFrames(2);
+    const base = stat();
+    await views[view]();
+    current.dispose();
+    current = null;
+    // LayaAir's own parse, in the same view.
+    await loadNative(file);
+    scene.addChild(native.node);
+    const nativeFrame = await settle();
+    const nativeKeeps = less(stat(), base),
+      nativeOnMaterials = onMaterials(native.node);
+    dropNative();
+    Z.ZhudaEngine.flushRenderFrames(2);
+    const nativeLeaves = less(stat(), base);
+    // The engine's load.
+    const made = blobs.created;
+    await mount(file);
+    const engineFrame = await settle();
+    const engineKeeps = less(stat(), base),
+      engineOnMaterials = onMaterials(current.node);
+    const blobUrls = blobs.created - made;
+    current.dispose();
+    current = null;
+    Z.ZhudaEngine.flushRenderFrames(2);
+    return {
+      native: { ...nativeKeeps, onMaterials: nativeOnMaterials, left: nativeLeaves.textures },
+      engine: {
+        ...engineKeeps,
+        onMaterials: engineOnMaterials,
+        left: less(stat(), base).textures,
+        blobUrls,
+      },
+      samePicture: compare(nativeFrame, engineFrame),
+      coverage: coverage(engineFrame),
+    };
+  };
+  r.sharing = {
+    fourMaterials: await sharing('shared-picture', 'shared-picture.glb'),
+    packed: await sharing('orm-picture', 'orm-picture.glb'),
+  };
+  clear();
+
+  // 2d. A picture that does not decode: what the model's report says, and what
+  // stays behind in LayaAir's URL cache (its own parse keeps a null there).
+  {
+    const made = blobs.created,
+      gone = blobs.revoked;
+    const frame = await views['picture-broken']();
+    r.broken = {
+      status: current.compatibility.status,
+      report: codes(current.compatibility),
+      message: current.compatibility.diagnostics.find((d: any) => d.code === 'IMAGE_DECODE_FAILED')
+        ?.message,
+      coverage: coverage(frame),
+      blobUrls: blobs.created - made,
+      revoked: blobs.revoked - gone,
+      cachedUnderBlob: cachedUnder('blob:'),
+    };
+    clear();
+    const before = cachedUnder('data:');
+    await loadNative('picture-broken.glb');
+    r.broken.nativeCachedUnderData = cachedUnder('data:') - before;
+    dropNative();
+    r.broken.nativeLeftUnderData = cachedUnder('data:') - before;
+  }
+
+  // 2e. An orthographic camera from a file: where the picture lands in the
+  // frame, and the same view set by hand.
+  {
+    const fromFile = await views['ortho-from-file']();
+    r.ortho = {
+      bounds: bounds(fromFile),
+      orthographic: camera.orthographic,
+      verticalSize: camera.orthographicVerticalSize,
+      near: camera.nearPlane,
+      far: camera.farPlane,
+    };
+    r.ortho.byHand = compare(await views['ortho-by-hand'](), fromFile);
+    clear();
   }
 
   // 3. Punctual lights and the file's camera.
@@ -341,20 +626,46 @@ async function main() {
   }
   plainLibrary.dispose();
 
-  // 5. Thirty load/unload cycles of the compressed model.
+  // 5. Thirty load/unload cycles of four models at once: the compressed one,
+  // the room with its lights made, a WebP picture and the shared pictures.
   clear();
   Z.ZhudaEngine.flushRenderFrames(2);
-  const before = Z.inspectSceneResources().resources;
+  // LayaAir's own lists of the lights a scene draws with.
+  const lightLists = () => ({
+    directional: scene._directionLights?._length ?? null,
+    point: scene._pointLights?._length ?? null,
+    spot: scene._spotLights?._length ?? null,
+  });
+  const state = () => ({
+    resources: Z.inspectSceneResources().resources,
+    textures: Z.inspectSceneResources().counts.texture,
+    lights: lightLists(),
+    liveBlobUrls: blobs.live.size,
+    cachedUnderBlob: cachedUnder('blob:'),
+  });
+  const before = state(),
+    madeBefore = blobs.created,
+    revokedBefore = blobs.revoked;
+  let mounted: any = null;
   for (let i = 0; i < 30; i++) {
-    const instance = await library.instantiate('ring-quantized.glb');
-    scene.addChild(instance.node);
+    const instances = [
+      await library.instantiate('ring-quantized.glb'),
+      await library.instantiate('room-lights.glb', { lights: true }),
+      await library.instantiate('picture-webp.glb'),
+      await library.instantiate('shared-picture.glb'),
+    ];
+    for (const instance of instances) scene.addChild(instance.node);
     Z.ZhudaEngine.flushRenderFrames(1);
-    instance.dispose();
+    if (i === 0) mounted = state();
+    for (const instance of instances) instance.dispose();
   }
   Z.ZhudaEngine.flushRenderFrames(2);
   r.cycles = {
     before,
-    after: Z.inspectSceneResources().resources,
+    mounted,
+    after: state(),
+    blobUrls: blobs.created - madeBefore,
+    revoked: blobs.revoked - revokedBefore,
     library: library.report(),
   };
 
@@ -365,22 +676,9 @@ async function main() {
     await load();
     return { ms: +(performance.now() - t0).toFixed(1) };
   };
-  let native: any = null,
-    engine: any = null;
-  out.loadNative = () =>
-    sampled(async () => {
-      const bytes = await (
-        await fetch('./assets/big-picture.glb', { cache: 'no-store' })
-      ).arrayBuffer();
-      const resource = new Laya.glTFResource();
-      await resource._parseglb(bytes, new URL('./assets/big-picture.glb', location.href).href);
-      native = { resource, node: resource.create() };
-    });
-  out.dropNative = () => {
-    native.node.destroy(true);
-    native.resource.destroy();
-    native = null;
-  };
+  let engine: any = null;
+  out.loadNative = () => sampled(() => loadNative('big-picture.glb'));
+  out.dropNative = dropNative;
   out.loadEngine = () =>
     sampled(async () => {
       engine = await library.instantiate('big-picture.glb');
@@ -406,6 +704,13 @@ async function main() {
   out.show = async (name: string) => {
     await views[name]();
     return name;
+  };
+  // Every library the page made is empty when it is done with.
+  out.finish = () => {
+    clear();
+    const reports = [...told.values()].map((each) => each.report());
+    for (const each of told.values()) each.dispose();
+    return { told: reports, blobs: { created: blobs.created, revoked: blobs.revoked } };
   };
   out.intake = r;
   out.backend = {

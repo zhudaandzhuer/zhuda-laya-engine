@@ -49,10 +49,11 @@ IDs belong behind AssetProvider.
 | Transmission | Requires opaque camera pass; showcase enforces mode policy | Input policy verified; complex refraction / layered transparency unverified |
 | FBX / OBJ / USD | No direct public importer or lossless conversion guarantee | Export supported glTF and validate conversion loss |
 | Meshopt (`EXT_meshopt_compression`, `KHR_meshopt_compression` with its COLOR filter) | Optional `ZhudaMeshoptModelDecoder`, pinned meshoptimizer 1.3.0; without it the report says `DECODER_REQUIRED` | Embedded GLB/glTF preprocessed to ordinary GLB; neutral WebGL/WebGPU fixtures verified |
-| Quantized vertices (`KHR_mesh_quantization`, normalized texture coordinates and weights) | Turned into floats before native parsing (`DEQUANTIZED_ATTRIBUTES`); node transforms kept | Generated torus: same-backend pixels against the float file, WebGL and WebGPU |
-| WebP / AVIF textures (`EXT_texture_webp`, `EXT_texture_avif`) | The device is asked once; AVIF, then WebP, else the fallback source loads (`IMAGE_DECODE_UNAVAILABLE`) | Lossless WebP and AVIF pictures against the PNG one in desktop Chrome; other browsers and phones not run |
+| Quantized vertices (`KHR_mesh_quantization`, normalized texture coordinates and weights) | Turned into floats before native parsing (`DEQUANTIZED_ATTRIBUTES`); node transforms kept; a buffer outside the file is refused (`EMBEDDED_BUFFER_REQUIRED`) | Generated torus: same-backend pixels against the float file, WebGL and WebGPU |
+| WebP / AVIF textures (`EXT_texture_webp`, `EXT_texture_avif`) | The device is asked once; AVIF, then WebP, else the fallback source loads (`IMAGE_DECODE_UNAVAILABLE`; `IMAGE_DECODE_UNANSWERED` when its decoder gave no answer) | Lossless WebP and AVIF pictures against the PNG one in desktop Chrome, and the order by which of three different pictures is drawn; the fallback drawn only by telling a library the device decodes less; other browsers and phones not run |
+| Embedded pictures | One texture a picture through a Blob URL; a picture that does not load is in the model's report (`IMAGE_DECODE_FAILED`) | Texture counts against LayaAir's own parse for pictures shared between slots; a broken PNG; desktop Chrome |
 | Punctual lights (`KHR_lights_punctual`) | Made on their nodes only when `instantiate(id, {lights})` asks; units mapped by `zhudaGltfLightToLaya` (`LIGHT_APPROXIMATED`) | Room against the same lights made by hand from the documented mapping; not a physical-units certification |
-| Node extras and cameras | `instance.gltfNodes`; `applyZhudaGltfCamera` aims a LayaAir camera | Room camera against the hand-aimed one |
+| Node extras and cameras | `instance.gltfNodes`; `applyZhudaGltfCamera` aims a LayaAir camera | Room camera against the hand-aimed one; an orthographic camera by where a picture lands in the frame |
 | Draco / KTX2 / material variants | No registered support in this importer | Required extension rejects; optional fallback explicitly degraded |
 | HDR / GI / reflection / hair / cloth / skin | Existing engine capabilities have their own boundaries | No seller-model / UE parity or new GI certification |
 | Movie / EXR / path tracing | Not delivered by showcase mode | Cinematic means real-time postprocessing only |
@@ -131,22 +132,43 @@ glTF parser; none patches the vendored files. Evidence:
   and offset, are kept. `COLOR_0` stays with the existing parse-time repair;
   `JOINTS_0` stays integer. The report says `DEQUANTIZED_ATTRIBUTES` with the
   float bytes it adds: download size stays small, GPU vertex memory becomes that
-  of an unquantized export. External buffers are refused.
+  of an unquantized export. The pass needs the bytes in the file: a quantized
+  file whose buffer is a separate `.bin` is refused, and the report says so
+  before any load (`EMBEDDED_BUFFER_REQUIRED`, an error). What only the bytes
+  show (an accessor that reads past its view) is refused at load with
+  `INVALID_DOCUMENT` in the error's report.
 - **WebP and AVIF.** `probeZhudaImageDecode()` decodes a one-pixel picture of
-  each once per page. A texture then loads its AVIF, else WebP, image when the
-  device decodes it, else its core `source`. `inspectGltfAsset(bytes,
-  {imageDecode})` reports `IMAGE_DECODE_UNAVAILABLE`: a warning (degraded) when
-  the fallback loads, an error when there is none. Without a device answer, a
-  picture with no fallback is named `IMAGE_DECODE_UNCHECKED`.
+  each and remembers each decoder's answer for the page. A texture then loads
+  its AVIF, else WebP, image when the device decodes it, else its core
+  `source`. `inspectGltfAsset(bytes, {imageDecode})` reports
+  `IMAGE_DECODE_UNAVAILABLE`: a warning (degraded) when the fallback loads, an
+  error when there is none. Without a device answer, a picture with no fallback
+  is named `IMAGE_DECODE_UNCHECKED`. The probe waits thirty turns of the event
+  loop (100 ms apart) for a decoder, not three seconds by the clock: a main
+  thread busy with a parse or a shader compile delays the answer and the timer
+  alike. A decoder that still gives no answer is listed in the answer's
+  `unanswered`, counts as no for that load only (`IMAGE_DECODE_UNANSWERED`, so a
+  timeout is told from a decoder's own no), and is asked again by the next
+  load. A consumer whose host already says what it decodes passes
+  `new ZhudaModelLibrary({imageDecode: {webp, avif}})`; the probe is then not
+  run.
 - **Embedded pictures.** LayaAir base64-encodes every picture stored in a GLB
   into a data URL. The engine hands the same bytes to the same Laya loader as a
-  Blob URL and revokes it once the picture has loaded. Measured on one desktop
-  (Apple M4, Chrome 157) with a 10.4 MB PNG, medians of five loads: 49–95 ms
-  instead of 344–450 ms, and a sampled JavaScript heap peak of 0.12–0.24 MB
-  instead of about 293 MB (LayaAir builds the base64 string one character at a
-  time). Neither path keeps that heap afterwards. Phones are not measured. The
-  texture's LayaAir URL is then a revoked Blob URL: LayaAir cannot fetch that
-  picture again by URL (nothing in these runs needed to).
+  Blob URL and revokes it once the picture has loaded. LayaAir asks for a
+  texture once per material slot; its data URL was the same for the same
+  bytes, so its URL cache gave every slot one texture. A Blob URL is new each
+  time, so the engine recognises the repeat by the bytes: one picture is still
+  one texture and one decode, however many materials and slots use it (and, as
+  in LayaAir, it has the first slot's sampler and colour space). The texture
+  is not kept in LayaAir's URL cache. A picture that does not load leaves its
+  slots empty, as in LayaAir; the model's own report then names the texture
+  `IMAGE_DECODE_FAILED` and the model is `degraded`. Measured on one desktop
+  (Apple M4, Chrome 157) with a 10.4 MB PNG, medians of five loads over three
+  runs: 49–78 ms instead of 303–373 ms, and a sampled JavaScript heap peak of
+  0.13–0.28 MB instead of 334.5 MB (LayaAir builds the base64 string one
+  character at a time). Neither path keeps that heap afterwards. Phones are not
+  measured. The texture's LayaAir URL is then a revoked Blob URL: LayaAir
+  cannot fetch that picture again by URL (nothing in these runs needed to).
 - **Punctual lights.** `instantiate(id, {lights: true})` (or
   `{lights: {scale}}`) adds a LayaAir light component to each node carrying a
   `KHR_lights_punctual` light. They are off by default: copies of a model would
@@ -160,17 +182,20 @@ glTF parser; none patches the vendored files. Evidence:
   A spot's cone is twice glTF's outer angle; LayaAir fixes its inner edge at
   half of it. The colour is encoded for LayaAir, which reads light colours as
   sRGB. No light casts a shadow; set `shadowMode` on the component. The report
-  names each point and spot light `LIGHT_APPROXIMATED`, and an invalid light
-  `INVALID_LIGHT` (it is not made).
+  names each point and spot light `LIGHT_APPROXIMATED`, and an invalid light,
+  or a node that names a light the file does not have, `INVALID_LIGHT` (it is
+  not made).
 - **Extras and cameras.** `instance.gltfNodes` lists every node carrying
   `extras`, a camera or a light, with the Laya node made from it in this copy
   (its name is the glTF name or LayaAir's `node_<n>`), a frozen copy of the
   extras, the camera and light definitions, and the light component when one
   was made. `applyZhudaGltfCamera(camera, data.camera, data.node)` sets a
   LayaAir camera's lens and puts it at the node's world pose; the viewport keeps
-  its own aspect ratio. An invalid camera is reported `INVALID_CAMERA`. The
-  source inventory also lists each node's camera and light index and each
-  texture's WebP/AVIF image.
+  its own aspect ratio: an orthographic camera takes its height from `ymag`
+  and its width from the viewport, not from `xmag`. An invalid camera, or a
+  node that names a camera the file does not have, is reported
+  `INVALID_CAMERA`. The source inventory also lists each node's camera and
+  light index and each texture's WebP/AVIF image.
 
 ```ts
 const room = await models.instantiate('rooms/lobby.glb', { lights: { scale: 0.5 } });

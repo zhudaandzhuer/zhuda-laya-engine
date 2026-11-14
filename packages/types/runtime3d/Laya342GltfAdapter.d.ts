@@ -14,6 +14,11 @@ export declare function copyLaya342MorphWeights(source: any, target: any, runtim
 /** Native create() retains its partial trees on failure. Retire their components
  * before the caller releases the parsed resource and its shared dependencies. */
 export declare function createLaya342ModelTemplate(resource: any, runtime: any): Laya.Sprite3D;
+/**
+ * The glTF texture indices whose picture did not load or decode while the
+ * resource was parsed: LayaAir left their material slots empty.
+ */
+export declare function laya342GltfMissingTextures(resource: object): readonly number[];
 /** The Laya node made for each glTF node index by the resource's last create(). */
 export declare function laya342GltfNodes(resource: object): readonly any[];
 /** Adds a LayaAir light component, set from `zhudaGltfLightToLaya`, to a node.

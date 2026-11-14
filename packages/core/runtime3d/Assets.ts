@@ -4,6 +4,7 @@ import {
   copyLaya342MorphWeights,
   createLaya342ModelTemplate,
   createLaya342GltfLight,
+  laya342GltfMissingTextures,
   laya342GltfNodes,
 } from './Laya342GltfAdapter.ts';
 import {
@@ -16,6 +17,7 @@ import {
 } from './GltfIntake.ts';
 import { awaitAbortable } from './AsyncOperation.ts';
 import {
+  addModelDiagnostics,
   inspectGltfAsset,
   readGltfAssetDocument,
   ZhudaModelCompatibilityError,
@@ -248,6 +250,12 @@ export interface ModelLibraryOptions {
   provider?: AssetProvider;
   /** Per-caller download + parse deadline. Default 15000ms. */
   timeoutMs?: number;
+  /**
+   * This host's WebP/AVIF decoding, when the consumer already knows it (a
+   * mini-game host's own capability answer). `probeZhudaImageDecode` is then
+   * not run for this library's models.
+   */
+  imageDecode?: ZhudaImageDecodeSupport;
 }
 export class ZhudaModelLibrary {
   readonly cache: ZhudaAssetCache<any>;
@@ -274,6 +282,12 @@ export class ZhudaModelLibrary {
     this.timeoutMs = config.timeoutMs ?? 15000;
     if (!Number.isInteger(this.timeoutMs) || this.timeoutMs <= 0)
       throw Error('Invalid model deadline');
+    const knownDecode = config.imageDecode;
+    if (
+      knownDecode !== undefined &&
+      (typeof knownDecode?.webp !== 'boolean' || typeof knownDecode?.avif !== 'boolean')
+    )
+      throw Error('Invalid image decode support');
     this.cache = new ZhudaAssetCache(
       async (url, signal, phase) => {
         const l = (globalThis as any).Laya;
@@ -313,13 +327,31 @@ export class ZhudaModelLibrary {
           // texture choice agree with what it can decode.
           let imageDecode: ZhudaImageDecodeSupport | undefined;
           if (declared.some((name) => name === 'EXT_texture_webp' || name === 'EXT_texture_avif'))
-            imageDecode = await awaitAbortable(probeZhudaImageDecode(), signal);
+            imageDecode = knownDecode ?? (await awaitAbortable(probeZhudaImageDecode(), signal));
           // The report describes the file as delivered (after any Meshopt decode).
-          const compatibility = inspectGltfAsset(bytes, { imageDecode });
+          let compatibility = inspectGltfAsset(bytes, { imageDecode });
           if (compatibility.status === 'unsupported')
             throw new ZhudaModelCompatibilityError(compatibility, url);
           // Integer vertex attributes become floats LayaAir reads correctly.
-          const dequantized = dequantizeZhudaGltf(new Uint8Array(bytes));
+          let dequantized: ReturnType<typeof dequantizeZhudaGltf>;
+          try {
+            dequantized = dequantizeZhudaGltf(new Uint8Array(bytes));
+          } catch (error) {
+            // What only the bytes show (an accessor past its view, a missing
+            // buffer): refused with a report, as every other refusal is.
+            throw new ZhudaModelCompatibilityError(
+              addModelDiagnostics(compatibility, [
+                {
+                  code: 'INVALID_DOCUMENT',
+                  severity: 'error',
+                  path: '$.accessors',
+                  message: `Integer vertex attributes could not be turned into floats: ${error instanceof Error ? error.message : String(error)}.`,
+                  hint: 'Repair the export; run Khronos Validator.',
+                },
+              ]),
+              url,
+            );
+          }
           if (dequantized) bytes = dequantized.bytes.buffer as ArrayBuffer;
           const parsed = readGltfAssetDocument(bytes);
           // Read before LayaAir's JSON parse, which names unnamed nodes in place.
@@ -343,6 +375,29 @@ export class ZhudaModelLibrary {
             resource.destroy();
             throw abortError();
           }
+          // A picture that did not load: LayaAir leaves its slots empty and only
+          // warns on the console. The model's own report says so. Read from the
+          // document LayaAir parsed: its textures' `source` is the image chosen.
+          const loaded = (resource._data ?? parsed.document) as {
+            images?: { mimeType?: string }[];
+            textures?: { source?: number }[];
+          };
+          const images = loaded.images ?? [],
+            textures = loaded.textures ?? [];
+          compatibility = addModelDiagnostics(
+            compatibility,
+            laya342GltfMissingTextures(resource).map((index) => {
+              const image = textures[index]?.source,
+                kind = images[image ?? -1]?.mimeType;
+              return {
+                code: 'IMAGE_DECODE_FAILED' as const,
+                severity: 'warning' as const,
+                path: `$.textures[${index}]`,
+                message: `Image ${image ?? 'none'}${kind ? ` (${kind})` : ''} of texture ${index} did not load or decode; the material slots that use it are empty.`,
+                hint: 'Open the picture on its own on this device; re-encode it, or keep a PNG/JPEG fallback source.',
+              };
+            }),
+          );
           const template = createLaya342ModelTemplate(resource, l);
           enableLaya342VertexColors(template, l);
           const clips = new Set<Laya.AnimationClip>();

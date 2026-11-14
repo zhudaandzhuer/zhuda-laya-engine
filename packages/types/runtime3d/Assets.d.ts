@@ -1,6 +1,6 @@
 // Generated from TypeScript source; run npm run types:generate.
 import type { ZhudaModelDecoderRegistry } from './ModelDecoder.js';
-import { type ZhudaGltfNodeData } from './GltfIntake.js';
+import { type ZhudaGltfNodeData, type ZhudaImageDecodeSupport } from './GltfIntake.js';
 import { type ModelCompatibilityReport } from './ModelCompatibility.js';
 import type { AssetProvider } from './AssetProvider.js';
 export type AssetPhase = 'downloading' | 'parsing' | 'ready';
@@ -68,6 +68,12 @@ export interface ModelLibraryOptions {
     provider?: AssetProvider;
     /** Per-caller download + parse deadline. Default 15000ms. */
     timeoutMs?: number;
+    /**
+     * This host's WebP/AVIF decoding, when the consumer already knows it (a
+     * mini-game host's own capability answer). `probeZhudaImageDecode` is then
+     * not run for this library's models.
+     */
+    imageDecode?: ZhudaImageDecodeSupport;
 }
 export declare class ZhudaModelLibrary {
     readonly cache: ZhudaAssetCache<any>;

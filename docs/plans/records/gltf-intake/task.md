@@ -2,7 +2,8 @@
 
 Status: Implemented within scope; desktop WebGL and WebGPU verified  
 Owner: Engine/toolchain  
-Last reviewed: 2026-11-14
+Last reviewed: 2026-11-14 (after the first review round; its findings and
+fixes are in the verification record)
 
 ## Source requirement
 
@@ -41,7 +42,13 @@ engine did with each.
 - Raw `inspectGltfAsset` still describes what the engine will do with the
   file; a device-dependent answer (WebP/AVIF) is used only when given.
 - A file that requires what the engine cannot do is refused with its code;
-  a lost optional feature is `degraded`, never silent.
+  a lost optional feature is `degraded`, never silent. That holds for what
+  only loading shows too: a picture that does not decode, an accessor that
+  reads past its view.
+- One embedded picture is one texture and one decode, however many material
+  slots use it, as in LayaAir's own parse.
+- Only a decoder's own answer is remembered for the page. A probe that got no
+  answer in time is not a "cannot decode".
 - Lights are not made unless the caller asks: copies of a model would copy them.
 - No claim beyond what was drawn or measured.
 
@@ -61,13 +68,19 @@ engine did with each.
   the glTF-to-LayaAir light mapping, `applyZhudaGltfCamera`.
 - `MeshoptModelDecoder.ts`: both names, the COLOR filter.
 - `ModelCompatibility.ts`: report codes `DECODER_REQUIRED`,
-  `DEQUANTIZED_ATTRIBUTES`, `IMAGE_DECODE_UNAVAILABLE`, `IMAGE_DECODE_UNCHECKED`,
-  `LIGHT_APPROXIMATED`, `INVALID_LIGHT`, `INVALID_CAMERA`; the four extensions in
-  `gltfExtensionCapabilities` (`implementation: 'engine'`); inventory fields.
+  `DEQUANTIZED_ATTRIBUTES`, `EMBEDDED_BUFFER_REQUIRED`, `IMAGE_DECODE_UNAVAILABLE`,
+  `IMAGE_DECODE_UNANSWERED`, `IMAGE_DECODE_UNCHECKED`, `IMAGE_DECODE_FAILED`,
+  `LIGHT_APPROXIMATED`, `INVALID_LIGHT`, `INVALID_CAMERA` (the last two also
+  for a node that names a light or camera the file does not have); the four
+  extensions in `gltfExtensionCapabilities` (`implementation: 'engine'`);
+  inventory fields.
 - `Laya342GltfAdapter.ts`: texture source per device, Blob-URL embedded
-  pictures, the node snapshot, `createLaya342GltfLight`.
+  pictures (one load a picture, not kept in LayaAir's URL cache, the textures
+  that did not load remembered), the node snapshot, `createLaya342GltfLight`.
 - `Assets.ts`: the intake order, `instantiate(id, {lights})`,
-  `ModelInstance.gltfNodes`.
+  `ModelInstance.gltfNodes`, `ModelLibraryOptions.imageDecode` (a host's own
+  answer in place of the probe), refusals from the dequantize pass and
+  pictures that did not load added to the model's report.
 - `index.ts` (shared; lines added), regenerated `packages/types`.
 - `tests/gltf-intake.test.mjs`, `tests/fixtures/gltf-intake.mjs`,
   `tests/fixtures/gltf-intake.ts`, `scripts/verify-gltf-intake.mjs`,
@@ -97,13 +110,31 @@ None. A consumer opts into lights per instantiate and reads `gltfNodes`.
      than 24;
    - lossless WebP (alone; with a different PNG fallback) and AVIF pictures
      against the PNG one;
+   - a texture that offers AVIF, WebP and a PNG, each a different picture: the
+     AVIF is drawn on this device; the WebP and then the PNG through libraries
+     told the device decodes less; a WebP-only file is then refused;
+   - the device asked for the first time while the main thread is busy for
+     3.5 s still answers yes to both;
+   - four materials on one picture, and one material with colour and a packed
+     metallic-roughness and occlusion picture: the same number of textures and
+     the same texture bytes as LayaAir's own parse, one Blob URL a picture, the
+     same pixels;
+   - a PNG that does not decode: the model is `degraded` with
+     `IMAGE_DECODE_FAILED`, its Blob URL revoked, nothing left in LayaAir's URL
+     cache;
    - the room with punctual lights and the file camera against the plain room
      lit and aimed by hand from the documented mapping; no lights unless asked;
+   - an orthographic camera from a file: the picture's edges in the frame at
+     the pixels the lens and the node's position give, and equal to the view
+     set by hand;
    - a library without the decoder refuses the Meshopt file with
-     `DECODER_REQUIRED`; thirty load/unload cycles leave the resource count as
-     it was;
-   - LayaAir's embedded-picture path against the engine's: same picture, time
-     and sampled JavaScript heap.
+     `DECODER_REQUIRED`; thirty load/unload cycles of four models at once (the
+     compressed torus, the room with its lights made, a WebP picture, the
+     shared pictures) leave resources, the scene's light lists and Blob URLs
+     as they were;
+   - LayaAir's embedded-picture path against the engine's: same picture; the
+     engine's median time below LayaAir's and its sampled JavaScript heap peak
+     under a tenth (the measured values are in the record).
 
 ## Evidence to attach
 
@@ -113,11 +144,13 @@ None. A consumer opts into lights per instantiate and reads `gltfNodes`.
 ## Unverified limits
 
 - Phones, mini-game hosts, Safari and Firefox (WebP/AVIF decoders, memory).
+- A device that really lacks a decoder, and a decoder that really gives no
+  answer: both are drawn or tested only with the answer given by hand.
 - Seller or DCC-exported files (all fixtures are generated in code).
 - Physical light units against three.js or a DCC render.
 
 ## Rollback
 
-Last known good commit `9c91a26`. Reverting this task's commit restores the
+Last known good commit `9c91a26`. Reverting this task's commits restores the
 previous behaviour: Meshopt under the EXT name only, quantized and WebP/AVIF
 files rejected or degraded by the report, lights/extras/cameras dropped.

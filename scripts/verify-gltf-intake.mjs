@@ -5,11 +5,16 @@
 //   ratified name with the OCTAHEDRAL and COLOR filters, and the same
 //   quantized data uncompressed, against the float file;
 // - a picture as lossless WebP (alone, and with a different PNG fallback) and
-//   as AVIF, against the PNG one;
+//   as AVIF, against the PNG one; a texture that offers AVIF, WebP and a PNG,
+//   each a different picture, on this device and through libraries told the
+//   device decodes less; the device asked while the main thread is busy;
+// - pictures shared between material slots: the textures LayaAir's own parse
+//   keeps against the engine's; a picture that does not decode;
 // - a room with KHR_lights_punctual lights and a camera on named nodes, against
-//   the plain room lit by hand from the documented mapping;
+//   the plain room lit by hand from the documented mapping; an orthographic
+//   camera, by where the picture lands in the frame;
 // - a compressed file refused, with its report code, by a library without the
-//   decoder; thirty load/unload cycles;
+//   decoder; thirty load/unload cycles of four models at once;
 // - LayaAir's own embedded-picture path against the engine's, timed, with the
 //   JavaScript heap each keeps.
 // Pictures for a person to look at are written beside the report.
@@ -31,7 +36,10 @@ import {
   testPicture,
   litRoom,
   bigPicturePlane,
+  orthoPlane,
+  sharedPictures,
   ROOM,
+  ORTHO,
 } from '../tests/fixtures/gltf-intake.mjs';
 
 const engineRoot = path.resolve(import.meta.dirname, '..');
@@ -66,10 +74,21 @@ const raw = (picture) => ({
   raw: { width: picture.width, height: picture.height, channels: 4 },
 });
 const picture = testPicture(256),
-  inverted = testPicture(256, { invert: true });
+  inverted = testPicture(256, { invert: true }),
+  turned = testPicture(256, { turn: true }),
+  large = testPicture(1024),
+  largeInverted = testPicture(1024, { invert: true });
 const png = await sharp(picture.pixels, raw(picture)).png().toBuffer();
 const invertedPng = await sharp(inverted.pixels, raw(inverted)).png().toBuffer();
+const turnedPng = await sharp(turned.pixels, raw(turned)).png().toBuffer();
+const largePng = await sharp(large.pixels, raw(large)).png().toBuffer();
+const largeInvertedPng = await sharp(largeInverted.pixels, raw(largeInverted)).png().toBuffer();
 const webp = await sharp(picture.pixels, raw(picture)).webp({ lossless: true }).toBuffer();
+const invertedWebp = await sharp(inverted.pixels, raw(inverted))
+  .webp({ lossless: true })
+  .toBuffer();
+// A PNG whose header is whole and whose picture data is not: no decoder takes it.
+const brokenPng = Buffer.concat([png.subarray(0, 40), Buffer.alloc(png.length - 40, 0x5a)]);
 const avif = await sharp(picture.pixels, raw(picture))
   .avif({ lossless: true, chromaSubsampling: '4:4:4' })
   .toBuffer();
@@ -119,13 +138,46 @@ const files = {
     extension: 'EXT_texture_avif',
     required: true,
   }),
+  'picture-inverted.glb': picturePlane({
+    images: [['image/png', invertedPng]],
+    texture: { source: 0 },
+  }),
+  'picture-turned.glb': picturePlane({
+    images: [['image/png', turnedPng]],
+    texture: { source: 0 },
+  }),
+  // Three different pictures on one texture: the picture drawn names the image used.
+  'picture-avif-webp.glb': picturePlane({
+    images: [
+      ['image/avif', avif],
+      ['image/webp', invertedWebp],
+      ['image/png', turnedPng],
+    ],
+    texture: {
+      source: 2,
+      extensions: { EXT_texture_avif: { source: 0 }, EXT_texture_webp: { source: 1 } },
+    },
+    extension: ['EXT_texture_avif', 'EXT_texture_webp'],
+  }),
+  'picture-broken.glb': picturePlane({
+    images: [['image/png', brokenPng]],
+    texture: { source: 0 },
+  }),
+  // Four materials on one picture; one material with colour and a packed
+  // metallic-roughness and occlusion picture.
+  'shared-picture.glb': sharedPictures({ pngs: [largePng], materials: 4 }),
+  'orm-picture.glb': sharedPictures({ pngs: [largePng, largeInvertedPng], orm: true }),
+  'ortho-plane.glb': orthoPlane(png),
   'room-plain.glb': litRoom({ lights: false }),
   'room-lights.glb': litRoom({ lights: true }),
   'big-picture.glb': bigPicturePlane(bigPng),
 };
 for (const [name, bytes] of Object.entries(files))
   fs.writeFileSync(path.join(web, 'assets', name), bytes);
-fs.writeFileSync(path.join(web, 'assets', 'room.json'), JSON.stringify(ROOM));
+fs.writeFileSync(
+  path.join(web, 'assets', 'room.json'),
+  JSON.stringify({ room: ROOM, ortho: ORTHO }),
+);
 const sizes = Object.fromEntries(
   Object.entries(files).map(([name, bytes]) => [name, bytes.length]),
 );
@@ -133,6 +185,7 @@ sizes['picture.png'] = png.length;
 sizes['picture.webp'] = webp.length;
 sizes['picture.avif'] = avif.length;
 sizes['big-picture.png'] = bigPng.length;
+sizes['large-picture.png'] = largePng.length;
 
 const types = { '.html': 'text/html', '.wasm': 'application/wasm', '.json': 'application/json' };
 const server = http.createServer((request, response) => {
@@ -239,6 +292,14 @@ try {
       'picture-webp',
       'picture-webp-fallback',
       'picture-avif',
+      'picture-avif-webp',
+      'picture-avif-webp-told-webp-only',
+      'picture-avif-webp-told-none',
+      'picture-webp-fallback-told-none',
+      'picture-broken',
+      'shared-picture',
+      'orm-picture',
+      'ortho-from-file',
       'room-reference',
       'room-lights',
       'room-unlit',
@@ -248,7 +309,10 @@ try {
       await browser.screenshot(path.join(evidence, `${name}.png`));
       report.pictures.push(`${name}.png`);
     }
+    report.finish = await browser.evaluate('__INTAKE__.finish()');
     report.consoleErrors = browser.errors;
+    // LayaAir warns here when a picture does not load; kept, not judged.
+    report.consoleWarnings = [...new Set(browser.consoleMessages.map((m) => m.slice(0, 160)))];
     report.glErrors = browser.glErrors;
     report.rendererErrorsAfter = await browser.evaluate('__INTAKE__.rendererErrors');
   }
@@ -279,6 +343,7 @@ const diffPicture = (a, b, name) => {
 if (report.ready) {
   diffPicture('ring-reference.png', 'ring-quantized.png', 'diff-ring-quantized-x8.png');
   diffPicture('picture-png.png', 'picture-avif.png', 'diff-picture-avif-x8.png');
+  diffPicture('picture-png.png', 'picture-avif-webp.png', 'diff-picture-avif-webp-x8.png');
   diffPicture('room-reference.png', 'room-lights.png', 'diff-room-lights-x8.png');
 }
 fs.writeFileSync(path.join(evidence, 'report.json'), JSON.stringify(report, null, 2) + '\n');
@@ -322,6 +387,77 @@ assert.ok(
 );
 for (const name of ['webp', 'webp-fallback', 'avif'])
   assert.equal(r.picture[name].status, 'supported', `${name}: ${r.picture[name].report}`);
+// The device was first asked while the main thread was then busy for 3.5 s.
+assert.deepEqual(
+  r.imageDecodeAfterBusy,
+  { webp: true, avif: true },
+  'a busy main thread is not read as a device that cannot decode',
+);
+// AVIF, then WebP, then the fallback, by which of three different pictures is drawn.
+const c = r.choice;
+assert.ok(
+  c.references.webp.mean > 20 && c.references.fallback.mean > 20,
+  `the three pictures differ plainly (${JSON.stringify(c.references)})`,
+);
+assert.ok(
+  c.device.avif.mean < 1 && c.device.avif.over < 0.001,
+  `this device loads the AVIF (${JSON.stringify(c.device)})`,
+);
+assert.equal(c.device.status, 'supported', String(c.device.report));
+assert.equal(c.toldWebpOnly.webp.max, 0, 'told the device has no AVIF, the WebP is drawn');
+assert.equal(c.toldWebpOnly.status, 'supported', String(c.toldWebpOnly.report));
+assert.equal(c.toldNone.fallback.max, 0, 'told the device has neither, the fallback is drawn');
+assert.equal(c.toldNone.status, 'degraded');
+assert.ok(
+  c.toldNone.report.includes('IMAGE_DECODE_UNAVAILABLE:warning:EXT_texture_avif'),
+  String(c.toldNone.report),
+);
+assert.equal(c.webpFallbackToldNone.fallback.max, 0, 'the inverted fallback is drawn');
+assert.equal(c.webpFallbackToldNone.status, 'degraded');
+assert.ok(
+  c.webpFallbackToldNone.report.includes('IMAGE_DECODE_UNAVAILABLE:warning:EXT_texture_webp'),
+);
+assert.equal(c.webpOnlyToldNone.name, 'ZhudaModelCompatibilityError');
+assert.ok(c.webpOnlyToldNone.codes.includes('IMAGE_DECODE_UNAVAILABLE:error:EXT_texture_webp'));
+// A decoder that gave no answer is named as that.
+assert.ok(
+  c.webpOnlyToldUnanswered.codes.includes('IMAGE_DECODE_UNANSWERED:error:EXT_texture_webp'),
+  JSON.stringify(c.webpOnlyToldUnanswered),
+);
+assert.equal(c.webpFallbackToldUnanswered.status, 'degraded');
+assert.ok(
+  c.webpFallbackToldUnanswered.report.includes('IMAGE_DECODE_UNANSWERED:warning:EXT_texture_webp'),
+);
+// One picture, one texture, however many material slots use it: as LayaAir's own parse.
+for (const [name, s, pictures] of [
+  ['four materials on one picture', r.sharing.fourMaterials, 1],
+  ['colour and a packed picture', r.sharing.packed, 2],
+]) {
+  const text = `${name}: ${JSON.stringify(s)}`;
+  assert.equal(s.native.textures, pictures, text);
+  assert.equal(s.engine.textures, s.native.textures, text);
+  assert.equal(s.engine.textureBytes, s.native.textureBytes, text);
+  assert.equal(s.engine.gpu, s.native.gpu, text);
+  assert.equal(s.engine.blobUrls, pictures, text);
+  assert.equal(s.engine.onMaterials, s.native.onMaterials, text);
+  assert.equal(s.engine.left, 0, text);
+  assert.equal(s.native.left, 0, text);
+  assert.equal(s.samePicture.max, 0, text);
+  assert.ok(s.coverage > 0.1, text);
+}
+// A picture that does not decode is in the model's report, and leaves nothing cached.
+assert.equal(r.broken.status, 'degraded', JSON.stringify(r.broken));
+assert.ok(r.broken.report.includes('IMAGE_DECODE_FAILED:warning'), JSON.stringify(r.broken));
+assert.equal(r.broken.blobUrls, 1);
+assert.equal(r.broken.revoked, 1);
+assert.equal(r.broken.cachedUnderBlob, 0);
+// An orthographic camera: 4 by 3 units in 800 by 600 pixels is 200 pixels a
+// unit; the 2 by 2 picture, seen from 0.25 to its right, whatever the distance.
+for (const [edge, pixel] of Object.entries({ left: 150, right: 549, top: 100, bottom: 499 }))
+  assert.ok(Math.abs(r.ortho.bounds[edge] - pixel) <= 1, `${edge}: ${JSON.stringify(r.ortho)}`);
+assert.equal(r.ortho.orthographic, true);
+assert.equal(r.ortho.verticalSize, 2 * ORTHO.orthographic.ymag);
+assert.equal(r.ortho.byHand.max, 0, JSON.stringify(r.ortho));
 // Lights and the file's camera.
 assert.ok(
   r.room.lights.mean < 0.5,
@@ -359,12 +495,33 @@ assert.ok(
 // A library without the decoder refuses the compressed file by its code.
 assert.equal(r.withoutDecoder.name, 'ZhudaModelCompatibilityError');
 assert.ok(r.withoutDecoder.codes.includes('DECODER_REQUIRED:error:KHR_meshopt_compression'));
-// Thirty cycles leave nothing behind.
-assert.equal(r.cycles.after, r.cycles.before, JSON.stringify(r.cycles));
+// Thirty cycles of four models leave nothing behind: resources, lights, Blob URLs.
+assert.deepEqual(r.cycles.after, r.cycles.before, JSON.stringify(r.cycles));
+for (const kind of ['directional', 'point', 'spot'])
+  assert.equal(
+    r.cycles.mounted.lights[kind],
+    r.cycles.before.lights[kind] + 1,
+    `the file's ${kind} light is in the scene while mounted (${JSON.stringify(r.cycles)})`,
+  );
+// One Blob URL a distinct picture: the ring's, the WebP, and the shared one.
+assert.equal(r.cycles.blobUrls, 30 * 3, JSON.stringify(r.cycles));
+assert.equal(r.cycles.revoked, r.cycles.blobUrls);
 assert.equal(r.cycles.library.entries, 0);
 assert.equal(r.cycles.library.instances, 0);
-// The embedded picture: the same picture either way.
+for (const told of report.finish.told) assert.deepEqual([told.entries, told.instances], [0, 0]);
+assert.equal(report.finish.blobs.revoked, report.finish.blobs.created, 'every Blob URL revoked');
+// The embedded picture: the same picture either way, sooner, and without the
+// data URL in the JavaScript heap. Wide margins: the measured ones are in the record.
 assert.equal(report.embeddedPicture.samePicture.max, 0, JSON.stringify(report.embeddedPicture));
+const median = report.embeddedPicture.median;
+assert.ok(
+  median.engineMs < median.nativeMs,
+  `the Blob URL path is no slower (${JSON.stringify(median)})`,
+);
+assert.ok(
+  median.enginePeak < median.nativePeak / 10,
+  `the Blob URL path keeps the sampled heap peak under a tenth (${JSON.stringify(median)})`,
+);
 console.log(
   `PASS glTF intake on ${report.renderer} (${report.gpu}): ` +
     JSON.stringify({ intake: r, embeddedPicture: report.embeddedPicture.median, sizes }),

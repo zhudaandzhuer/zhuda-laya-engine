@@ -7,10 +7,16 @@ export interface ModelDiagnostic {
      | 'DECODER_REQUIRED'
     /** Integer vertex attributes the engine turns into floats before LayaAir parses them. */
      | 'DEQUANTIZED_ATTRIBUTES'
+    /** Integer vertex attributes in a buffer outside the file: there are no bytes to turn into floats. */
+     | 'EMBEDDED_BUFFER_REQUIRED'
     /** This device cannot decode a texture's WebP/AVIF image: its fallback loads, or nothing. */
      | 'IMAGE_DECODE_UNAVAILABLE'
+    /** The device's decoder gave the probe no answer in time: as unavailable for this load; the next asks again. */
+     | 'IMAGE_DECODE_UNANSWERED'
     /** A WebP/AVIF image without a fallback, inspected without a device answer. */
      | 'IMAGE_DECODE_UNCHECKED'
+    /** Set by ZhudaModelLibrary after loading: a texture's picture did not load or decode; its slots are empty. */
+     | 'IMAGE_DECODE_FAILED'
     /** A punctual light LayaAir can only approximate (falloff, spot cone). */
      | 'LIGHT_APPROXIMATED' | 'INVALID_LIGHT' | 'INVALID_CAMERA';
     severity: 'error' | 'warning';
@@ -138,6 +144,8 @@ export interface ModelCompatibilityReport {
 }
 type RecordValue = Record<string, unknown>;
 export declare function inspectGltfDocument(document: unknown, options?: GltfInspectOptions): ModelCompatibilityReport;
+/** Internal: a report with what loading the file found added to it. */
+export declare function addModelDiagnostics(report: ModelCompatibilityReport, found: readonly ModelDiagnostic[]): ModelCompatibilityReport;
 export declare class ZhudaModelCompatibilityError extends Error {
     readonly report: ModelCompatibilityReport;
     readonly assetId?: string;

@@ -283,10 +283,12 @@ export function quad(size = 1) {
 
 /**
  * A picture on an unlit quad. `images` are [mimeType, bytes] pairs; `texture`
- * is the glTF texture object; `extension` is declared used (and required when
- * `required`).
+ * is the glTF texture object; `extension` (a name or several) is declared used
+ * (and required when `required`). `camera` adds a camera node: `{ camera, node }`
+ * are the glTF camera object and the node's own fields.
  */
-export function picturePlane({ images, texture, extension, required = false }) {
+export function picturePlane({ images, texture, extension, required = false, camera }) {
+  const extensions = extension ? [extension].flat() : [];
   const q = quad(2);
   const packed = pack([
     ...images.map(([, bytes]) => ({ data: bytes })),
@@ -298,11 +300,12 @@ export function picturePlane({ images, texture, extension, required = false }) {
   const n = images.length;
   const json = {
     asset: { version: '2.0', generator: 'zhuda gltf-intake fixture' },
-    extensionsUsed: ['KHR_materials_unlit', ...(extension ? [extension] : [])],
-    ...(required && extension ? { extensionsRequired: [extension] } : {}),
+    extensionsUsed: ['KHR_materials_unlit', ...extensions],
+    ...(required && extensions.length ? { extensionsRequired: extensions } : {}),
     scene: 0,
-    scenes: [{ nodes: [0] }],
-    nodes: [{ name: 'Picture', mesh: 0 }],
+    scenes: [{ nodes: camera ? [0, 1] : [0] }],
+    nodes: [{ name: 'Picture', mesh: 0 }, ...(camera ? [{ camera: 0, ...camera.node }] : [])],
+    ...(camera ? { cameras: [camera.camera] } : {}),
     meshes: [
       {
         primitives: [
@@ -340,8 +343,12 @@ export function picturePlane({ images, texture, extension, required = false }) {
   return writeGlb(json, packed.bin);
 }
 
-/** A test picture: soft gradients, a checker and rings, with edges in every direction. */
-export function testPicture(size = 256, { invert = false } = {}) {
+/**
+ * A test picture: soft gradients, a checker and rings, with edges in every
+ * direction. `invert`, and `turn` (each channel shows the one before it), make
+ * two more pictures that differ plainly from the first and from each other.
+ */
+export function testPicture(size = 256, { invert = false, turn = false } = {}) {
   const pixels = Buffer.alloc(size * size * 4);
   for (let y = 0; y < size; y++)
     for (let x = 0; x < size; x++) {
@@ -357,6 +364,7 @@ export function testPicture(size = 256, { invert = false } = {}) {
       ];
       if (y < size / 8) rgb = [230, 40, 30]; // a red band marks the top
       if (invert) rgb = rgb.map((c) => 255 - c);
+      if (turn) rgb = [rgb[2], rgb[0], rgb[1]];
       pixels.set([...rgb, 255], i);
     }
   return { pixels, width: size, height: size };
@@ -632,4 +640,102 @@ export function litRoom({ lights }) {
 /** A plane with one large embedded PNG, for timing the embedded-image path. */
 export function bigPicturePlane(png) {
   return picturePlane({ images: [['image/png', png]], texture: { source: 0 } });
+}
+
+/** Where the camera of the orthographic plane sits, and the lens it carries. */
+export const ORTHO = {
+  position: [0.25, 0, 5],
+  orthographic: { xmag: 2, ymag: 1.5, znear: 0.05, zfar: 20 },
+};
+
+/**
+ * The 2 by 2 picture quad with an orthographic camera on a node beside it. The
+ * view is 4 by 3 units and the camera stands 0.25 to the right, so in a
+ * 4:3 frame the picture is half the width, two thirds of the height, and an
+ * eighth of its width left of centre, whatever the camera's distance.
+ */
+export function orthoPlane(png) {
+  return picturePlane({
+    images: [['image/png', png]],
+    texture: { source: 0 },
+    camera: {
+      camera: { type: 'orthographic', name: 'flat', orthographic: ORTHO.orthographic },
+      node: { name: 'FlatCamera', translation: ORTHO.position },
+    },
+  });
+}
+
+/**
+ * Quads that share pictures between material slots, as exported models do.
+ * `materials` lit materials (each its own tint) all use texture 0; with `orm`,
+ * one material uses texture 0 for colour and texture 1 for both
+ * metallic-roughness and occlusion (the usual packing). `pngs` are the
+ * pictures of textures 0 and 1.
+ */
+export function sharedPictures({ pngs, materials = 4, orm = false }) {
+  const q = quad(1.4),
+    images = orm ? [pngs[0], pngs[1]] : [pngs[0]],
+    n = images.length;
+  const packed = pack([
+    ...images.map((data) => ({ data })),
+    { data: q.positions, target: 34962 },
+    { data: q.normals, target: 34962 },
+    { data: q.uvs, target: 34962 },
+    { data: q.indices, target: 34963 },
+  ]);
+  const count = orm ? 1 : materials;
+  const json = {
+    asset: { version: '2.0', generator: 'zhuda gltf-intake fixture' },
+    scene: 0,
+    scenes: [{ nodes: Array.from({ length: count }, (_, i) => i) }],
+    nodes: Array.from({ length: count }, (_, i) => ({
+      name: `Tile${i}`,
+      mesh: i,
+      translation: [(i - (count - 1) / 2) * 1.6, 0, 0],
+    })),
+    meshes: Array.from({ length: count }, (_, i) => ({
+      primitives: [
+        { attributes: { POSITION: 0, NORMAL: 1, TEXCOORD_0: 2 }, indices: 3, material: i },
+      ],
+    })),
+    materials: Array.from({ length: count }, (_, i) =>
+      orm
+        ? {
+            name: 'Packed',
+            pbrMetallicRoughness: {
+              baseColorTexture: { index: 0 },
+              metallicRoughnessTexture: { index: 1 },
+            },
+            occlusionTexture: { index: 1 },
+          }
+        : {
+            name: `Tint${i}`,
+            pbrMetallicRoughness: {
+              baseColorTexture: { index: 0 },
+              baseColorFactor: [1, 1 - i * 0.2, 0.4 + i * 0.2, 1],
+              metallicFactor: 0,
+              roughnessFactor: 0.8,
+            },
+          },
+    ),
+    textures: images.map((_, i) => ({ source: i, sampler: 0 })),
+    samplers: [{ magFilter: 9729, minFilter: 9729, wrapS: 33071, wrapT: 33071 }],
+    images: images.map((_, i) => ({ bufferView: i, mimeType: 'image/png' })),
+    accessors: [
+      {
+        bufferView: n,
+        componentType: 5126,
+        count: 4,
+        type: 'VEC3',
+        min: [-0.7, -0.7, 0],
+        max: [0.7, 0.7, 0],
+      },
+      { bufferView: n + 1, componentType: 5126, count: 4, type: 'VEC3' },
+      { bufferView: n + 2, componentType: 5126, count: 4, type: 'VEC2' },
+      { bufferView: n + 3, componentType: 5123, count: 6, type: 'SCALAR' },
+    ],
+    bufferViews: packed.views,
+    buffers: [{ byteLength: packed.bin.length }],
+  };
+  return writeGlb(json, packed.bin);
 }
