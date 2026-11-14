@@ -68,18 +68,34 @@ test('a graded look multisamples unless told otherwise, and quality levels drop 
   const look = resolveZhudaFilmLook({ preset: 'day', grade: {} });
   assert.equal(look.grade.antialias, 'msaa');
   assert.equal(resolveZhudaFilmLook({ grade: { antialias: 'none' } }).grade.antialias, 'none');
+  assert.equal(resolveZhudaFilmLook({ grade: { antialias: 'fxaa' } }).grade.antialias, 'fxaa');
   assert.deepEqual(
     validateZhudaFilmScene(scene({ look: { grade: { antialias: 'fxaa' } } }), context),
-    ['scene.look.grade.antialias: use msaa or none'],
+    [],
+  );
+  assert.deepEqual(
+    validateZhudaFilmScene(scene({ look: { grade: { antialias: 'smaa' } } }), context),
+    ['scene.look.grade.antialias: use msaa, fxaa or none'],
   );
   assert.equal(zhudaLookForQuality(look, 3).grade.antialias, 'msaa');
   assert.equal(zhudaLookForQuality(look, 2).grade.antialias, 'msaa');
-  assert.equal(zhudaLookForQuality(look, 1).grade.antialias, 'none');
+  // One level down the one-pass smoothing takes the place of multisampling.
+  assert.equal(zhudaLookForQuality(look, 1).grade.antialias, 'fxaa');
+  assert.equal(
+    zhudaLookForQuality(resolveZhudaFilmLook({ grade: { antialias: 'none' } }), 1).grade.antialias,
+    'none',
+    'a look that asked for none keeps none',
+  );
   assert.equal(zhudaLookForQuality(look, 0).grade, false);
   assert.equal(zhudaLookForQuality(look, 0, { keepGrade: true }).grade.antialias, 'none');
   // Multisampling is switched on the camera in place: no rebuild of the look.
   const plain = resolveZhudaFilmLook({ preset: 'day', grade: { antialias: 'none' } });
   assert.equal(zhudaFilmLookRebuildReason(look, plain), null);
+  // The one-pass smoothing is an effect in the chain: taking it up or dropping it rebuilds the grade.
+  const smoothed = resolveZhudaFilmLook({ preset: 'day', grade: { antialias: 'fxaa' } });
+  assert.equal(zhudaFilmLookRebuildReason(look, smoothed), 'grade');
+  assert.equal(zhudaFilmLookRebuildReason(smoothed, plain), 'grade');
+  assert.equal(zhudaFilmLookRebuildReason(smoothed, smoothed), null);
 });
 
 test('a mistyped field names the one that was meant', () => {

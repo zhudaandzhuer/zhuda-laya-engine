@@ -211,7 +211,7 @@ if (level !== undefined) look.setQuality(level as ZhudaLookQuality);
 ```
 
 Level 2 drops ambient occlusion and halves the beams; level 1 drops the beams,
-the lens finish and multisampling; level 0 drops the HDR chain. Sky, ground
+the lens finish and multisampling (edges are then smoothed in one pass, `fxaa`); level 0 drops the HDR chain. Sky, ground
 light and distance fog stay at every level. Measure on the device the game is
 for; this repository's numbers are from a desktop.
 

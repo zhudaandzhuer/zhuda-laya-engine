@@ -42,6 +42,12 @@ const detail = (p: Uint8Array, x0: number, x1: number) => {
     }
   return +Math.sqrt(s / n).toFixed(3);
 };
+/** How many pixels of the frame differ in brightness by more than a little. */
+const changed = (a: Uint8Array, b: Uint8Array) => {
+  let count = 0;
+  for (let i = 0; i < a.length; i += 4) if (Math.abs(lum(a, i) - lum(b, i)) > 6) count++;
+  return count;
+};
 const NEAR = [20, 150] as const,
   FAR = [330, 460] as const;
 
@@ -87,6 +93,17 @@ function build() {
   for (let i = 0; i < 12; i++)
     box([0.1, 1.4, 0.02], [-1.95 + i * 0.1, 1.6, -3], i % 2 ? light : dark);
   for (let i = 0; i < 17; i++) box([1, 12, 0.2], [11.5 + i, 6, -40], i % 2 ? light : dark);
+  // A dark bar against the sky, off the level: its long edges cross the pixel
+  // rows at a slant, where a hard edge shows as steps. Above the stripes.
+  {
+    const mesh = Z.Zhuda3D.createPrimitiveMesh('box', { width: 3, height: 0.5, depth: 0.02 });
+    owned.push(mesh);
+    const bar = new Laya.MeshSprite3D(mesh);
+    bar.meshRenderer.sharedMaterial = dark;
+    bar.transform.position = new Laya.Vector3(0, 3.2, -6);
+    bar.transform.rotationEuler = new Laya.Vector3(0, 0, 20);
+    scene.addChild(bar);
+  }
   return {
     scene,
     camera,
@@ -122,6 +139,14 @@ function check() {
     return read();
   };
   const sharp = frame();
+  // Edges smoothed in one pass over the finished picture, and taken off again.
+  r.smoothMode = look.setLook({ ...BASE, grade: { ...BASE.grade, antialias: 'fxaa' } });
+  const smoothed = frame();
+  // Upright and level edges are left as they are; the slanted bar's are mixed.
+  r.smoothChanged = changed(sharp, smoothed);
+  r.smoothedDetail = { near: detail(smoothed, ...NEAR), far: detail(smoothed, ...FAR) };
+  look.setLook(BASE);
+  r.smoothOffDiff = meanAbsDiff(sharp, frame());
   r.sharp = { near: detail(sharp, ...NEAR), far: detail(sharp, ...FAR), mean: meanLum(sharp) };
 
   // Depth of field: focus on the near stripes, then pulled to the far ones in place.

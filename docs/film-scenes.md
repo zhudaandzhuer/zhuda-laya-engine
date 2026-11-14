@@ -676,7 +676,7 @@ runtime.start((dt) => {
 
 - `setQuality(3)` is the look as authored. Level 2 drops ambient occlusion,
   halves the steps of the beams and caps shadow maps at 2048; level 1 drops
-  the beams, the lens finish and multisampling and uses two shadow cascades; level 0 drops
+  the beams and the lens finish, smooths edges in one pass instead of multisampling and uses two shadow cascades; level 0 drops
   the HDR chain altogether and draws one small shadow map. Sky, ground light
   and distance fog stay at every level. `zhudaLookForQuality` is that table
   as a pure function.
@@ -815,10 +815,15 @@ already loaded and adds nothing to the scene. `decodeRadianceHdr`,
 
 ## Edge smoothing
 
-`grade.antialias` is `msaa` unless set to `none`: the HDR target is
+`grade.antialias` is `msaa` unless set otherwise: the HDR target is
 multisampled, so edges are smooth in a frame that is drawn once (a preview, a
-running game). Stills and video also average their samples, with either value.
-Quality levels 1 and 0 switch it off.
+running game). `fxaa` smooths edges in one pass over the finished picture
+instead: nine reads a pixel and no extra memory, a little softer on fine
+texture, and it cannot bring back a line thinner than a pixel. On a phone
+(vivo V40) multisampling the HDR target was 7 to 9 ms of a frame. `none`
+leaves edges as they fall. Stills and video also average their samples, with
+any value. Quality level 1 uses `fxaa` where the look asked for `msaa`; level
+0 has no smoothing.
 
 ## Verification and limits
 

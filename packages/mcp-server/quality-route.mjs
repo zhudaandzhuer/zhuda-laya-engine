@@ -243,7 +243,7 @@ const STEPS = [
     id: 'hold-the-frame-budget',
     do: 'In a game, let ZhudaQualityGovernor decide the level and apply it to the look every frame it changes.',
     api: 'const level = governor.sample(dt * 1000); if (level !== undefined) look.setQuality(level as ZhudaLookQuality);',
-    why: 'Level 2 drops ambient occlusion, level 1 the beams, lens finish and multisampling, level 0 the HDR chain. Sky, ground light and distance fog stay.',
+    why: 'Level 2 drops ambient occlusion, level 1 the beams, lens finish and multisampling (edges are then smoothed in one pass), level 0 the HDR chain. Sky, ground light and distance fog stay.',
     check: 'A frame-time recording on the target device, in the consumer repository.',
   },
   {

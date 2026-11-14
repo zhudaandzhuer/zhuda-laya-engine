@@ -11,8 +11,8 @@ export const ZHUDA_LOOK_QUALITY_LEVELS = 4;
 /**
  * The look at a quality level:
  * 3 as authored; 2 without ambient occlusion, shorter beams and reflection
- * rays, 2048 shadows; 1 without beams, screen reflections, lens finish and
- * multisampling, two shadow cascades;
+ * rays, 2048 shadows; 1 without beams, screen reflections and lens finish,
+ * edges smoothed in one pass instead of multisampling, two shadow cascades;
  * 0 without the HDR chain at all (no bloom, no grade), one small shadow map.
  * `options.keepGrade`: at level 0 keep a bare HDR chain (tone mapping only)
  * instead of none. A scene with a water surface needs it: the water draws in HDR.
@@ -57,7 +57,8 @@ export function zhudaLookForQuality(
     next.grade.ao = 0;
     if (level === 1) {
       next.grade.grain = next.grade.vignette = next.grade.fringe = 0;
-      next.grade.antialias = 'none';
+      // Multisampling goes; the one-pass smoothing takes its place.
+      if (next.grade.antialias === 'msaa') next.grade.antialias = 'fxaa';
     }
   }
   // Depth of field and motion blur each draw the frame again at level 3 and 2 only.

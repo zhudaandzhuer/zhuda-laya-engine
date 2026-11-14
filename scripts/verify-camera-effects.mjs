@@ -4,6 +4,7 @@
 // - depth of field blurs what is off the focus distance and pulls focus in place;
 // - motion blur smears the frame in which the camera turns and no other;
 // - automatic exposure lifts a dim scene, dims a bright one, and takes time;
+// - one-pass edge smoothing softens a slanted edge and leaves the rest;
 // - a probe volume refreshed a few probes at a time follows a lamp that changes colour.
 // Desktop GPU evidence only (WebGL, or WebGPU with CAMERA_EFFECTS_RENDERER);
 // not mobile, frame times or art approval.
@@ -95,6 +96,18 @@ assert.ok(
   c.sharp.near > 8 && c.sharp.far > 8,
   `the stripes are drawn sharp (${JSON.stringify(c.sharp)})`,
 );
+
+// One-pass edge smoothing (grade.antialias 'fxaa').
+assert.equal(c.smoothMode, 'rebuilt');
+assert.ok(
+  c.smoothChanged > 150 && c.smoothChanged < 480 * 300 * 0.05,
+  `smoothing changes the pixels along the slanted edges and little else (${c.smoothChanged} of ${480 * 300})`,
+);
+assert.ok(
+  c.smoothedDetail.near > c.sharp.near * 0.6 && c.smoothedDetail.far > c.sharp.far * 0.6,
+  `and the stripes are still stripes (${JSON.stringify(c.smoothedDetail)} of ${JSON.stringify(c.sharp)})`,
+);
+assert.ok(c.smoothOffDiff < 1, `without it the first frame again (${c.smoothOffDiff})`);
 
 assert.equal(c.dofMode, 'rebuilt');
 assert.ok(

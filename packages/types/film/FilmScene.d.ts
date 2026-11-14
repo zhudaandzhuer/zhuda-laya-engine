@@ -79,10 +79,12 @@ export interface ZhudaFilmGrade {
     aoRadius?: number;
     /**
      * Edge smoothing of a frame that is drawn once (a preview, a running game):
-     * `msaa` multisamples the HDR target (default), `none` leaves edges as they
-     * fall. Stills and video average their samples as well, with either value.
+     * `msaa` multisamples the HDR target (default); `fxaa` smooths edges in one
+     * pass over the finished picture, far cheaper on a phone and a little
+     * softer; `none` leaves edges as they fall. Stills and video average their
+     * samples as well, with any value.
      */
-    antialias?: 'msaa' | 'none';
+    antialias?: 'msaa' | 'fxaa' | 'none';
     /**
      * What a real camera adds, after tone mapping, each 0..1 and off by
      * default: film grain, darker corners and colour fringing at the corners.

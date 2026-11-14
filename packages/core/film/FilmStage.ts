@@ -41,6 +41,7 @@ import { ZhudaPointShadow } from '../runtime3d/PointShadow.ts';
 import { ZhudaProbeVolume, zhudaProbeCounts } from '../runtime3d/ProbeVolume.ts';
 import { ZhudaEnvironmentProbe } from '../runtime3d/EnvironmentProbe.ts';
 import { ZhudaLensFinish } from '../runtime3d/LensFinish.ts';
+import { ZhudaEdgeSmoothing } from '../runtime3d/EdgeSmoothing.ts';
 import { ZhudaModelInspector } from '../runtime3d/ModelInspector.ts';
 import { ZhudaModelAnimationSampler } from '../runtime3d/ModelAnimationSampler.ts';
 import {
@@ -1336,6 +1337,12 @@ export function applyResolvedFilmLook(
       }));
       cleanups.push(() => lens.dispose());
     }
+    // Edges are smoothed on the finished picture, before the lens marks it.
+    let smoothing: ZhudaEdgeSmoothing | undefined;
+    if (look.grade.antialias === 'fxaa') {
+      const edges = (smoothing = new ZhudaEdgeSmoothing());
+      cleanups.push(() => edges.dispose());
+    }
     const pipeline = (film = new ZhudaFilmicPipeline(camera, {
       // Reflections first: the fog then lies over them as over everything else.
       sceneEffects: [
@@ -1348,7 +1355,7 @@ export function applyResolvedFilmLook(
         ...(motionBlur ? [motionBlur.effect] : []),
         ...(exposure ? [exposure.effect] : []),
       ],
-      finishEffects: finish ? [finish.effect] : [],
+      finishEffects: [...(smoothing ? [smoothing.effect] : []), ...(finish ? [finish.effect] : [])],
       exposure: look.grade.exposure,
       contrast: look.grade.contrast,
       saturation: look.grade.saturation,

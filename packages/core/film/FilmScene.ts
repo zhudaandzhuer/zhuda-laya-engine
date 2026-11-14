@@ -116,10 +116,12 @@ export interface ZhudaFilmGrade {
   aoRadius?: number;
   /**
    * Edge smoothing of a frame that is drawn once (a preview, a running game):
-   * `msaa` multisamples the HDR target (default), `none` leaves edges as they
-   * fall. Stills and video average their samples as well, with either value.
+   * `msaa` multisamples the HDR target (default); `fxaa` smooths edges in one
+   * pass over the finished picture, far cheaper on a phone and a little
+   * softer; `none` leaves edges as they fall. Stills and video average their
+   * samples as well, with any value.
    */
-  antialias?: 'msaa' | 'none';
+  antialias?: 'msaa' | 'fxaa' | 'none';
   /**
    * What a real camera adds, after tone mapping, each 0..1 and off by
    * default: film grain, darker corners and colour fringing at the corners.
@@ -1121,8 +1123,8 @@ function validateLook(
       range(g.grain, `${path}.grade.grain`, 0, 1);
       range(g.vignette, `${path}.grade.vignette`, 0, 1);
       range(g.fringe, `${path}.grade.fringe`, 0, 1);
-      if (g.antialias !== undefined && g.antialias !== 'msaa' && g.antialias !== 'none')
-        issues.push(`${path}.grade.antialias: use msaa or none`);
+      if (g.antialias !== undefined && !['msaa', 'fxaa', 'none'].includes(g.antialias as string))
+        issues.push(`${path}.grade.antialias: use msaa, fxaa or none`);
     }
   }
   if (look.lightFog !== undefined && look.lightFog !== false) {
@@ -2360,6 +2362,7 @@ export function zhudaFilmLookRebuildReason(
           look.grade.bloom > 0,
           look.grade.ao > 0,
           look.grade.grain > 0 || look.grade.vignette > 0 || look.grade.fringe > 0,
+          look.grade.antialias === 'fxaa',
         ])
       : 'off';
   if (grade(from) !== grade(to)) return 'grade';
