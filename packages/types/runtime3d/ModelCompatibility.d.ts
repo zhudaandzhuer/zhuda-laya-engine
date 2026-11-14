@@ -11,6 +11,8 @@ export interface ModelDiagnostic {
      | 'EMBEDDED_BUFFER_REQUIRED'
     /** This device cannot decode a texture's WebP/AVIF image: its fallback loads, or nothing. */
      | 'IMAGE_DECODE_UNAVAILABLE'
+    /** A texture's KTX 2 image and no Basis transcoder to read it: its fallback loads, or nothing. */
+     | 'BASIS_TRANSCODER_MISSING'
     /** The device's decoder gave the probe no answer in time: as unavailable for this load; the next asks again. */
      | 'IMAGE_DECODE_UNANSWERED'
     /** A WebP/AVIF image without a fallback, inspected without a device answer. */
@@ -108,9 +110,10 @@ export interface ModelSourceInventory {
         /** The core `source` image (the fallback when an extension image is offered). */
         image: number | null;
         sampler: number | null;
-        /** `EXT_texture_webp` / `EXT_texture_avif` images, or null. */
+        /** `EXT_texture_webp` / `EXT_texture_avif` / `KHR_texture_basisu` images, or null. */
         webp: number | null;
         avif: number | null;
+        basisu: number | null;
     }[];
     images: readonly {
         index: number;

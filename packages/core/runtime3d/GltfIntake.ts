@@ -22,7 +22,10 @@ function freeze<T>(value: T): T {
 // ---------------------------------------------------------------- images ---
 
 /** Texture-source extensions the engine resolves, in the order it prefers them. */
-export type ZhudaGltfImageExtension = 'EXT_texture_avif' | 'EXT_texture_webp';
+export type ZhudaGltfImageExtension =
+  | 'KHR_texture_basisu'
+  | 'EXT_texture_avif'
+  | 'EXT_texture_webp';
 /** The picture formats the device is asked about. */
 export type ZhudaProbedImageFormat = 'webp' | 'avif';
 /** Whether this device decodes WebP and AVIF pictures (`probeZhudaImageDecode`). */
@@ -35,6 +38,12 @@ export interface ZhudaImageDecodeSupport {
    * Absent when every format answered.
    */
   readonly unanswered?: readonly ZhudaProbedImageFormat[];
+  /**
+   * Whether a Basis transcoder is at hand for KTX 2 images
+   * (`KHR_texture_basisu`): set by `ZhudaModelLibrary` from its own
+   * `basisTranscoder`, not by a probe of the device.
+   */
+  readonly basis?: boolean;
 }
 export interface ZhudaGltfTextureSource {
   /** The image the texture loads, or null when the file offers nothing loadable. */
@@ -44,15 +53,20 @@ export interface ZhudaGltfTextureSource {
   /** Extensions whose image this device cannot decode. */
   readonly unavailable: readonly ZhudaGltfImageExtension[];
 }
-const imageExtensions: readonly (readonly [ZhudaGltfImageExtension, ZhudaProbedImageFormat])[] = [
+const imageExtensions: readonly (readonly [
+  ZhudaGltfImageExtension,
+  ZhudaProbedImageFormat | 'basis',
+])[] = [
+  ['KHR_texture_basisu', 'basis'],
   ['EXT_texture_avif', 'avif'],
   ['EXT_texture_webp', 'webp'],
 ];
 /**
- * The image a glTF texture should load: its AVIF, then its WebP source when the
- * device decodes it, else the core `source` (the optional fallback). Without
- * `support` the core source is preferred, and an extension image is used only
- * when there is no fallback.
+ * The image a glTF texture should load: its KTX 2 image when a Basis
+ * transcoder is at hand (the only one the graphics card samples as it is),
+ * then its AVIF, then its WebP source when the device decodes it, else the
+ * core `source` (the optional fallback). Without `support` the core source is
+ * preferred, and an extension image is used only when there is no fallback.
  */
 export function resolveZhudaGltfTextureSource(
   texture: unknown,
@@ -65,7 +79,8 @@ export function resolveZhudaGltfTextureSource(
   for (const [name, key] of imageExtensions) {
     const image = indexOf(record(extensions[name]).source);
     if (image === null) continue;
-    if (support ? support[key] : fallback === null) return { image, extension: name, unavailable };
+    if (support ? support[key] === true : fallback === null)
+      return { image, extension: name, unavailable };
     if (support) unavailable.push(name);
   }
   return { image: fallback, extension: null, unavailable };

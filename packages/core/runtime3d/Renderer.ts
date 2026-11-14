@@ -208,6 +208,21 @@ export function prepareRenderer(
             // and a probe volume needs 17: the pipeline is then invalid and
             // nothing using it is drawn. Ask for what the adapter has.
             const adapter = this._adapter;
+            // LayaAir takes its compressed-texture capabilities from the
+            // features it was asked to request, and asks for none. Ask for
+            // the block formats this adapter samples, so that a KTX 2 texture
+            // (`BasisTexture.ts`) is ASTC, ETC2 or S3TC here too.
+            if (descriptor && typeof descriptor === 'object' && adapter?.features?.has) {
+              const wanted = descriptor as { requiredFeatures?: Iterable<string> };
+              const features = new Set(wanted.requiredFeatures ?? []);
+              for (const name of [
+                'texture-compression-astc',
+                'texture-compression-etc2',
+                'texture-compression-bc',
+              ])
+                if (adapter.features.has(name)) features.add(name);
+              wanted.requiredFeatures = [...features];
+            }
             const request = adapter?.requestDevice;
             if (typeof request === 'function')
               adapter.requestDevice = (wanted: any = {}) => {

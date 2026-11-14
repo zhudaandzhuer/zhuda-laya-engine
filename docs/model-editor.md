@@ -56,7 +56,8 @@ bytes.
 
 `status: supported` is only the importer capability gate. It does not certify
 seller-model fidelity, all PBR extensions, reflection probes, movie output,
-Windows hardware WebGPU, mobile WebGPU, long-run memory, Draco/KTX2, meshopt
+Windows hardware WebGPU, mobile WebGPU, long-run memory, Draco, KTX 2 without
+the transcoder the game brings, meshopt
 without its decoder adapter, or external URI dependencies. Follow
 [`model-pipeline.md`](model-pipeline.md) and [`3d-acceptance.md`](3d-acceptance.md)
 for those checks. A model's `gpuReady` report remains

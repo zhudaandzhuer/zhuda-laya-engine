@@ -26,6 +26,17 @@ processes are not covered by an atomic snapshot guarantee. The watcher reloads
 only after successful publication and shows failures in an overlay without
 removing the displayed game.
 
+## KTX 2 textures
+
+```json
+{ "basis": true }
+```
+
+copies the Basis transcoder (`basis_transcoder.js`, `basis_transcoder.wasm`,
+0.6 MB) to `libs/basis/` of the build and its licence to
+`zhuda-notices/BASIS-LICENSE.txt`, where `loadZhudaBasisTranscoder()` looks
+for it. It is never copied unasked. See [KTX 2 / Basis textures](basis-textures.md).
+
 ## Explicit asset selection
 
 ```json

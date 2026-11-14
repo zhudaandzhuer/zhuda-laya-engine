@@ -126,6 +126,10 @@ for each step and the list of what is not built yet. The MCP tool
 For ground a player walks on, [`ZhudaGrassField`](grass.md) grows grass round
 the eye: the game says where the ground is and where nothing grows.
 
+A model's pictures can be [KTX 2 / Basis textures](basis-textures.md), which
+stay compressed on the graphics card: a quarter or an eighth of the memory
+of a PNG, with the file's own mip levels.
+
 The frame that first draws a shader compiles it. [Shader warm-up](shader-warm-up.md)
 lists what a game compiles and compiles it behind the loading screen, so the
 first frame of a scene and a change of look level compile nothing.

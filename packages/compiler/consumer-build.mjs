@@ -305,6 +305,16 @@ export async function runConsumerBuild({
       path.join(engineRoot, 'vendor/laya-3.4.2/libs'),
       path.join(out, 'libs'),
     );
+    // "basis": true: the Basis transcoder for KTX 2 textures, where
+    // loadZhudaBasisTranscoder looks for it. Never copied unasked (0.6 MB).
+    if (config.basis !== undefined && typeof config.basis !== 'boolean')
+      throw Error('zhuda.config.json:1 [BASIS_OPTION] "basis" must be true or false');
+    if (config.basis === true) {
+      const target = path.join(out, 'libs/basis');
+      fs.mkdirSync(target, { recursive: true });
+      for (const file of ['basis_transcoder.js', 'basis_transcoder.wasm'])
+        fs.copyFileSync(path.join(engineRoot, 'vendor/basis', file), path.join(target, file));
+    }
     await esbuild.build({
       entryPoints: [entry],
       bundle: true,
@@ -341,6 +351,11 @@ export async function runConsumerBuild({
       path.join(engineRoot, 'vendor/meshoptimizer/LICENSE.txt'),
       path.join(notices, 'MESHOPT-LICENSE.txt'),
     );
+    if (config.basis === true)
+      fs.copyFileSync(
+        path.join(engineRoot, 'vendor/basis/LICENSE.txt'),
+        path.join(notices, 'BASIS-LICENSE.txt'),
+      );
     if (topology.renderer === 'webgpu')
       for (const file of ['WEBGPU-LICENSES.txt', 'webgpu-provenance.json'])
         fs.copyFileSync(path.join(engineRoot, 'vendor/laya-3.4.2', file), path.join(notices, file));

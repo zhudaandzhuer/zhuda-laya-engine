@@ -85,6 +85,31 @@ test('independent consumer preserves source hashes and its DOM/CSS; archive is a
     assert.ok(r.orderedLibraries.includes('laya.ui.js'));
     assert.ok(!fs.readdirSync(path.join(root, 'dist/web')).includes('preview.html'));
     execFileSync('unzip', ['-t', path.join(root, 'dist/game.zip')]);
+    // The Basis transcoder for KTX 2 textures is carried only when asked for, with its licence.
+    const basisDir = path.join(root, 'dist/web/libs/basis'),
+      basisNotice = path.join(root, 'dist/web/zhuda-notices/BASIS-LICENSE.txt');
+    assert.equal(fs.existsSync(basisDir), false, 'not copied unasked');
+    assert.equal(fs.existsSync(basisNotice), false);
+    await runConsumerBuild({
+      projectRoot: root,
+      engineRoot,
+      config: { assetExclude: ['raw'], profile: '2d-light', basis: true },
+    });
+    for (const file of ['basis_transcoder.js', 'basis_transcoder.wasm'])
+      assert.deepEqual(
+        fs.readFileSync(path.join(basisDir, file)),
+        fs.readFileSync(path.join(engineRoot, 'vendor/basis', file)),
+        `${file} is the vendored one`,
+      );
+    assert.match(fs.readFileSync(basisNotice, 'utf8'), /Apache License/);
+    await assert.rejects(
+      runConsumerBuild({
+        projectRoot: root,
+        engineRoot,
+        config: { profile: '2d-light', basis: 'yes' },
+      }),
+      /zhuda\.config\.json:1 \[BASIS_OPTION\] "basis" must be true or false/,
+    );
     for (const outDir of [
       '.',
       'src',

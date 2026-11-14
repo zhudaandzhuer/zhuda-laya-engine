@@ -54,7 +54,8 @@ IDs belong behind AssetProvider.
 | Embedded pictures | One texture a picture through a Blob URL; a picture that does not load is in the model's report (`IMAGE_DECODE_FAILED`) | Texture counts against LayaAir's own parse for pictures shared between slots; a broken PNG; desktop Chrome |
 | Punctual lights (`KHR_lights_punctual`) | Made on their nodes only when `instantiate(id, {lights})` asks; units mapped by `zhudaGltfLightToLaya` (`LIGHT_APPROXIMATED`) | Room against the same lights made by hand from the documented mapping; not a physical-units certification |
 | Node extras and cameras | `instance.gltfNodes`; `applyZhudaGltfCamera` aims a LayaAir camera | Room camera against the hand-aimed one; an orthographic camera by where a picture lands in the frame |
-| Draco / KTX2 / material variants | No registered support in this importer | Required extension rejects; optional fallback explicitly degraded |
+| KTX 2 / Basis textures (`KHR_texture_basisu`) | Transcoded to ASTC, ETC2 or S3TC when the library has a `basisTranscoder` ([KTX 2 / Basis textures](basis-textures.md)); the fallback image, or a refusal with `BASIS_TRANSCODER_MISSING`, without one | A model's KTX 2 texture against the same model with a PNG, both backends and one phone; files of one-colour blocks made by the check, no encoder's output |
+| Draco / material variants | No registered support in this importer | Required extension rejects; optional fallback explicitly degraded |
 | HDR / GI / reflection / hair / cloth / skin | Existing engine capabilities have their own boundaries | No seller-model / UE parity or new GI certification |
 | Movie / EXR / path tracing | Not delivered by showcase mode | Cinematic means real-time postprocessing only |
 
@@ -68,9 +69,10 @@ IDs belong behind AssetProvider.
 `KHR_lights_punctual` (`implementation: 'engine'`: done before or around the
 native importer, see [glTF intake](#gltf-intake-quantization-webpavif-lights-cameras-extras)).
 
-`gltfAssetCapabilities` reports GLB/embedded data, quantized vertices and
-WebP/AVIF textures as supported, both Meshopt names as `adapter-required`, and
-external resource URLs, Draco and KTX2/Basis as unsupported. Raw
+`gltfAssetCapabilities` reports GLB/embedded data, quantized vertices,
+WebP/AVIF textures and KTX 2 / Basis textures as supported (the last with
+the transcoder the game brings), both Meshopt names as `adapter-required`,
+and external resource URLs and Draco as unsupported. Raw
 `inspectGltfAsset` still describes the native importer; it does not simulate a
 registered decoder (a Meshopt file reports `DECODER_REQUIRED`). Use the optional
 adapter explicitly:
@@ -99,7 +101,8 @@ The pinned decoder's WASM is embedded in the npm module; no CDN fetch or second
 renderer is introduced. Package integrity and the decoder SHA are checked in
 the regression suite. Generic registry descriptor hashes are declared metadata,
 not authentication of third-party adapter code. Registering another adapter
-does not certify its output or enable Draco/KTX2 in the importer.
+does not certify its output or enable Draco in the importer. KTX 2 textures
+do not go through this registry: see [KTX 2 / Basis textures](basis-textures.md).
 
 Input and output byte limits are allocation controls, not measurements of total
 JS/WASM/native/GPU memory. Meshopt runs CPU blocks with cancellation checks

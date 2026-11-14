@@ -66,8 +66,10 @@ provide reproducible presentation evidence. The Electron example now stages the
 consumer bundle inside the package. See [model loading](docs/model-showcase.md),
 [timelines](docs/cinematics.md), [desktop packaging](examples/windows-webgpu/)
 and the [measured scope](docs/plans/desktop-and-agent-gates/hardening-verification.md).
-macOS WebGL/WebGPU neutral-model checks pass; Windows hardware, Draco, KTX2,
+macOS WebGL/WebGPU neutral-model checks pass; Windows hardware, Draco,
 GPU-driven/HLOD and XR remain separate work; the 1.13.0 movie route is above.
+KTX 2 / Basis textures are read with a transcoder the game brings
+([docs](docs/basis-textures.md)).
 
 ## WebGPU backend and delivery (1.11.0)
 

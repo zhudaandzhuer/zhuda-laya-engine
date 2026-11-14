@@ -1,9 +1,12 @@
 // Generated from TypeScript source; run npm run types:generate.
 import { type ZhudaImageDecodeSupport, type ZhudaLayaLightSettings } from './GltfIntake.js';
+import { type ZhudaBasisTranscoder } from './BasisTexture.js';
 /** Options for one owned glTFResource. */
 export interface Laya342GltfResourceOptions {
     /** This device's WebP/AVIF decoding; picks each texture's image (see resolveZhudaGltfTextureSource). */
     imageDecode?: ZhudaImageDecodeSupport;
+    /** Transcodes embedded KTX 2 images (`KHR_texture_basisu`) to a format the graphics card samples. */
+    basis?: ZhudaBasisTranscoder;
 }
 /** Version-pinned importer repairs. Applied to one owned glTFResource, never to
  * global prototypes. The native Animator remains the sole pose evaluator. */

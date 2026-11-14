@@ -171,6 +171,7 @@
     "verify:shadow-updates": "node scripts/verify-shadow-updates.mjs",
     "verify:render-scale": "node scripts/verify-render-scale.mjs",
     "verify:shader-warm-up": "node scripts/verify-shader-warm-up.mjs",
+    "verify:basis-textures": "node scripts/verify-basis-textures.mjs",
     "verify:specular-aa": "node scripts/verify-specular-aa.mjs",
     "types:generate": "node packages/compiler/runtime3d-types.mjs",
     "types:check": "node packages/compiler/runtime3d-types.mjs --check",

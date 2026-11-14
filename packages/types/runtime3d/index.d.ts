@@ -31,6 +31,7 @@ export * from './Grass.js';
 export * from './EdgeSmoothing.js';
 export * from './RenderScale.js';
 export * from './ShadowUpdates.js';
+export * from './BasisTexture.js';
 export * from './ShaderWarmUp.js';
 export { registerZhudaEffectShaders } from './ShaderRegistry.js';
 export * from './PointShadow.js';

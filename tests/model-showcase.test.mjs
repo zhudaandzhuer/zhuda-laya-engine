@@ -15,8 +15,9 @@ const fixture = (name) =>
 test('asset capability catalog makes compression and delivery limits explicit', () => {
   const byName = new Map(gltfAssetCapabilities.map((capability) => [capability.name, capability]));
   assert.equal(byName.get('GLB 2.0').status, 'supported');
-  assert.equal(byName.get('KHR_texture_basisu').status, 'unsupported');
-  assert.match(byName.get('KHR_texture_basisu').hint, /ordinary embedded images/);
+  // Supported with the transcoder the game brings; the hint says how.
+  assert.equal(byName.get('KHR_texture_basisu').status, 'supported');
+  assert.match(byName.get('KHR_texture_basisu').hint, /basisTranscoder/);
   assert.equal(Object.isFrozen(gltfAssetCapabilities), true);
 });
 

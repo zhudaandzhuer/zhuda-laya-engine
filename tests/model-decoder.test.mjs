@@ -234,7 +234,7 @@ test('MCP exposes actual model capabilities and rejects invalid timeline configu
   );
   assert.equal(
     capabilities.assets.find((a) => a.name === 'KHR_texture_basisu').status,
-    'unsupported',
+    'supported',
   );
   const rejected = executeMcpTool('validate_timeline_spec', { timeline: { tracks: {} } });
   assert.equal(rejected.passed, false);

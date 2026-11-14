@@ -24,6 +24,8 @@ export interface ModelDiagnostic {
     | 'EMBEDDED_BUFFER_REQUIRED'
     /** This device cannot decode a texture's WebP/AVIF image: its fallback loads, or nothing. */
     | 'IMAGE_DECODE_UNAVAILABLE'
+    /** A texture's KTX 2 image and no Basis transcoder to read it: its fallback loads, or nothing. */
+    | 'BASIS_TRANSCODER_MISSING'
     /** The device's decoder gave the probe no answer in time: as unavailable for this load; the next asks again. */
     | 'IMAGE_DECODE_UNANSWERED'
     /** A WebP/AVIF image without a fallback, inspected without a device answer. */
@@ -134,9 +136,10 @@ export const gltfAssetCapabilities: readonly GltfAssetCapability[] = Object.free
   Object.freeze({
     name: 'KHR_texture_basisu',
     kind: 'image-compression' as const,
-    status: 'unsupported' as const,
-    message: 'No pinned KTX2/Basis decoder and device upload contract is shipped in this release.',
-    hint: 'Use ordinary embedded images until the format gate passes on target devices.',
+    status: 'supported' as const,
+    message:
+      'A texture loads its KTX 2 image as ASTC, ETC2 or S3TC when the library has a Basis transcoder, else its fallback source.',
+    hint: 'Give ZhudaModelLibrary a basisTranscoder; keep a PNG/JPEG fallback for builds without one. Embedded images only.',
   }),
 ]);
 const extensionNames = [
@@ -154,12 +157,14 @@ const extensionNames = [
   'KHR_mesh_quantization',
   'EXT_texture_webp',
   'EXT_texture_avif',
+  'KHR_texture_basisu',
   'KHR_lights_punctual',
 ] as const;
 const engineExtensions: readonly string[] = [
   'KHR_mesh_quantization',
   'EXT_texture_webp',
   'EXT_texture_avif',
+  'KHR_texture_basisu',
   'KHR_lights_punctual',
 ];
 // Read by a registered decoder before the native parser, never by the parser.
@@ -241,9 +246,10 @@ export interface ModelSourceInventory {
     /** The core `source` image (the fallback when an extension image is offered). */
     image: number | null;
     sampler: number | null;
-    /** `EXT_texture_webp` / `EXT_texture_avif` images, or null. */
+    /** `EXT_texture_webp` / `EXT_texture_avif` / `KHR_texture_basisu` images, or null. */
     webp: number | null;
     avif: number | null;
+    basisu: number | null;
   }[];
   images: readonly {
     index: number;
@@ -376,6 +382,7 @@ function inventory(d: RecordValue): ModelSourceInventory {
       sampler: indexOf(t.sampler),
       webp: indexOf(record(record(t.extensions).EXT_texture_webp).source),
       avif: indexOf(record(record(t.extensions).EXT_texture_avif).source),
+      basisu: indexOf(record(record(t.extensions).KHR_texture_basisu).source),
     })),
     images: {
       index: number;
@@ -580,19 +587,31 @@ export function inspectGltfDocument(
   // WebP and AVIF texture sources, against this device when it was asked.
   records(d.textures).forEach((texture, i) => {
     const source = resolveZhudaGltfTextureSource(texture, options.imageDecode);
-    const offered = ['EXT_texture_avif', 'EXT_texture_webp'].filter(
+    const offered = ['KHR_texture_basisu', 'EXT_texture_avif', 'EXT_texture_webp'].filter(
       (name) => indexOf(record(record(record(texture).extensions)[name]).source) !== null,
     );
     if (!offered.length) return;
     if (options.imageDecode && source.extension === null) {
+      // A KTX 2 image needs a transcoder the game brings, not a decoder of the device.
+      const others = source.unavailable.filter((name) => name !== 'KHR_texture_basisu');
       // No answer from a decoder is not a no: say which it was.
-      const silent = source.unavailable.filter((name) =>
+      const silent = others.filter((name) =>
         options.imageDecode!.unanswered?.includes(name === 'EXT_texture_avif' ? 'avif' : 'webp'),
       );
       const outcome =
         source.image === null
           ? 'the texture has no fallback source'
           : `the fallback image ${source.image} loads`;
+      if (source.unavailable.includes('KHR_texture_basisu'))
+        add({
+          code: 'BASIS_TRANSCODER_MISSING',
+          severity: source.image === null && !others.length ? 'error' : 'warning',
+          extension: 'KHR_texture_basisu',
+          path: `$.textures[${i}]`,
+          message: `No Basis transcoder was given for the KTX 2 image of this texture; ${outcome}.`,
+          hint: 'Give ZhudaModelLibrary a basisTranscoder (ZhudaBasisTranscoder), or keep a PNG/JPEG fallback source.',
+        });
+      if (!others.length) return;
       add(
         silent.length
           ? {
@@ -606,12 +625,12 @@ export function inspectGltfDocument(
           : {
               code: 'IMAGE_DECODE_UNAVAILABLE',
               severity: source.image === null ? 'error' : 'warning',
-              extension: source.unavailable[0],
+              extension: others[0],
               path: `$.textures[${i}]`,
               message:
                 source.image === null
-                  ? `This device cannot decode ${source.unavailable.join(' or ')} and ${outcome}.`
-                  : `This device cannot decode ${source.unavailable.join(' or ')}; ${outcome}.`,
+                  ? `This device cannot decode ${others.join(' or ')} and ${outcome}.`
+                  : `This device cannot decode ${others.join(' or ')}; ${outcome}.`,
               hint: 'Keep a PNG/JPEG fallback source and leave the extension optional for devices without the format.',
             },
       );
@@ -732,6 +751,7 @@ const lost: readonly ModelDiagnostic['code'][] = [
   'UNSUPPORTED_OPTIONAL_EXTENSION',
   'DECODER_REQUIRED',
   'IMAGE_DECODE_UNAVAILABLE',
+  'BASIS_TRANSCODER_MISSING',
   'IMAGE_DECODE_UNANSWERED',
   'IMAGE_DECODE_FAILED',
   'INVALID_LIGHT',

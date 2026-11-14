@@ -6,7 +6,7 @@
  */
 type Json = Record<string, unknown>;
 /** Texture-source extensions the engine resolves, in the order it prefers them. */
-export type ZhudaGltfImageExtension = 'EXT_texture_avif' | 'EXT_texture_webp';
+export type ZhudaGltfImageExtension = 'KHR_texture_basisu' | 'EXT_texture_avif' | 'EXT_texture_webp';
 /** The picture formats the device is asked about. */
 export type ZhudaProbedImageFormat = 'webp' | 'avif';
 /** Whether this device decodes WebP and AVIF pictures (`probeZhudaImageDecode`). */
@@ -19,6 +19,12 @@ export interface ZhudaImageDecodeSupport {
      * Absent when every format answered.
      */
     readonly unanswered?: readonly ZhudaProbedImageFormat[];
+    /**
+     * Whether a Basis transcoder is at hand for KTX 2 images
+     * (`KHR_texture_basisu`): set by `ZhudaModelLibrary` from its own
+     * `basisTranscoder`, not by a probe of the device.
+     */
+    readonly basis?: boolean;
 }
 export interface ZhudaGltfTextureSource {
     /** The image the texture loads, or null when the file offers nothing loadable. */
@@ -29,10 +35,11 @@ export interface ZhudaGltfTextureSource {
     readonly unavailable: readonly ZhudaGltfImageExtension[];
 }
 /**
- * The image a glTF texture should load: its AVIF, then its WebP source when the
- * device decodes it, else the core `source` (the optional fallback). Without
- * `support` the core source is preferred, and an extension image is used only
- * when there is no fallback.
+ * The image a glTF texture should load: its KTX 2 image when a Basis
+ * transcoder is at hand (the only one the graphics card samples as it is),
+ * then its AVIF, then its WebP source when the device decodes it, else the
+ * core `source` (the optional fallback). Without `support` the core source is
+ * preferred, and an extension image is used only when there is no fallback.
  */
 export declare function resolveZhudaGltfTextureSource(texture: unknown, support?: ZhudaImageDecodeSupport): ZhudaGltfTextureSource;
 /** How long a probe waits for a decoder: `turns` timers of `turnMs` each. */

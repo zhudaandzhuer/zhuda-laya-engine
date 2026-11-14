@@ -4,6 +4,7 @@ import {
   type ZhudaImageDecodeSupport,
   type ZhudaLayaLightSettings,
 } from './GltfIntake.ts';
+import { createZhudaBasisTexture, isZhudaKtx2, type ZhudaBasisTranscoder } from './BasisTexture.ts';
 const prepared = new WeakSet<object>();
 // The Laya node made for each glTF node by the resource's last create().
 const createdNodes = new WeakMap<object, readonly any[]>();
@@ -28,6 +29,8 @@ function sameBytes(a: Uint8Array, b: Uint8Array): boolean {
 export interface Laya342GltfResourceOptions {
   /** This device's WebP/AVIF decoding; picks each texture's image (see resolveZhudaGltfTextureSource). */
   imageDecode?: ZhudaImageDecodeSupport;
+  /** Transcodes embedded KTX 2 images (`KHR_texture_basisu`) to a format the graphics card samples. */
+  basis?: ZhudaBasisTranscoder;
 }
 /** Version-pinned importer repairs. Applied to one owned glTFResource, never to
  * global prototypes. The native Animator remains the sole pose evaluator. */
@@ -117,6 +120,35 @@ export function prepareLaya342GltfResource(
       if (repeat) {
         const done = progress?.createCallback();
         return done ? repeat.texture.then((texture) => (done(1), texture)) : repeat.texture;
+      }
+      if (mimeType === 'image/ktx2' || isZhudaKtx2(bytes)) {
+        // A KTX 2 image: no browser decodes it. Transcoded here and uploaded
+        // compressed; a failure leaves the slot empty, as LayaAir's own
+        // failed loads do, and the model's report names the texture.
+        const done = progress?.createCallback();
+        const params = constructParams as unknown[] | null | undefined;
+        const made = Promise.resolve().then(() => {
+          let made: any = null;
+          try {
+            if (!options.basis) throw Error('no Basis transcoder was given to the model library');
+            made = createZhudaBasisTexture(
+              options.basis,
+              bytes,
+              // LayaAir's construct parameters: index 5 says whether the slot reads sRGB.
+              { role: params?.[5] ? 'color' : 'data' },
+              runtime,
+            );
+            if (propertyParams) made.setProperties?.(propertyParams);
+          } catch (error) {
+            console.warn(
+              `[zhuda] KTX 2 image did not load: ${error instanceof Error ? error.message : String(error)}`,
+            );
+          }
+          done?.(1);
+          return made;
+        });
+        pictures.push({ mimeType, bytes, texture: made });
+        return made;
       }
       const url = urls.createObjectURL(
         new Blob([bytes as Uint8Array<ArrayBuffer>], {

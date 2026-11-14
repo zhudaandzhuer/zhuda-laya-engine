@@ -39,7 +39,7 @@ export const API_GUARDRAILS = [
     zhudaCanonicalApi:
       'const decoders=new ZhudaModelDecoderRegistry(); decoders.register(new ZhudaMeshoptModelDecoder()); const models=new ZhudaModelLibrary({provider,decoders,maxIdle:0});',
     reason:
-      '1.12.0 optional Meshopt 1.3.0 converts embedded glTF/GLB before native parse; raw inspection still reports unsupported without conversion. Registry metadata is not artifact authentication. Draco/KTX2 remain unsupported. Release model leases before disposing library/registry/provider. See docs/model-showcase.md.',
+      '1.12.0 optional Meshopt 1.3.0 converts embedded glTF/GLB before native parse; raw inspection still reports unsupported without conversion. Registry metadata is not artifact authentication. Draco remains unsupported. KTX2/Basis textures (KHR_texture_basisu) need new ZhudaModelLibrary({provider, basisTranscoder}) with a ZhudaBasisTranscoder (loadZhudaBasisTranscoder(), build option "basis": true); without one the fallback image loads or the model is refused with BASIS_TRANSCODER_MISSING; see docs/basis-textures.md. Release model leases before disposing library/registry/provider. See docs/model-showcase.md.',
   },
   {
     id: 'GUARD_TIMELINE',

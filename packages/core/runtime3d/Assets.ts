@@ -15,6 +15,7 @@ import {
   type ZhudaGltfNodeData,
   type ZhudaImageDecodeSupport,
 } from './GltfIntake.ts';
+import type { ZhudaBasisTranscoder } from './BasisTexture.ts';
 import { awaitAbortable } from './AsyncOperation.ts';
 import {
   addModelDiagnostics,
@@ -256,6 +257,13 @@ export interface ModelLibraryOptions {
    * not run for this library's models.
    */
   imageDecode?: ZhudaImageDecodeSupport;
+  /**
+   * Borrowed. Transcodes the KTX 2 images of `KHR_texture_basisu` textures to
+   * the block format this device samples (`ZhudaBasisTranscoder`). Without
+   * one such a texture loads its fallback image, and a model whose only image
+   * is KTX 2 is refused with a report.
+   */
+  basisTranscoder?: ZhudaBasisTranscoder;
 }
 export class ZhudaModelLibrary {
   readonly cache: ZhudaAssetCache<any>;
@@ -328,6 +336,12 @@ export class ZhudaModelLibrary {
           let imageDecode: ZhudaImageDecodeSupport | undefined;
           if (declared.some((name) => name === 'EXT_texture_webp' || name === 'EXT_texture_avif'))
             imageDecode = knownDecode ?? (await awaitAbortable(probeZhudaImageDecode(), signal));
+          // KTX 2 images: whether this library was given a transcoder for them.
+          if (declared.includes('KHR_texture_basisu'))
+            imageDecode = {
+              ...(imageDecode ?? { webp: false, avif: false }),
+              basis: config.basisTranscoder !== undefined,
+            };
           // The report describes the file as delivered (after any Meshopt decode).
           let compatibility = inspectGltfAsset(bytes, { imageDecode });
           if (compatibility.status === 'unsupported')
@@ -368,7 +382,7 @@ export class ZhudaModelLibrary {
           }
           phase('parsing');
           resource = new l.glTFResource();
-          prepareLaya342GltfResource(resource, l, { imageDecode });
+          prepareLaya342GltfResource(resource, l, { imageDecode, basis: config.basisTranscoder });
           if (parsed.binary) await resource._parseglb(bytes, url);
           else await resource._parse(parsed.document, url);
           if (signal.aborted) {

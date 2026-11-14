@@ -1,6 +1,7 @@
 // Generated from TypeScript source; run npm run types:generate.
 import type { ZhudaModelDecoderRegistry } from './ModelDecoder.js';
 import { type ZhudaGltfNodeData, type ZhudaImageDecodeSupport } from './GltfIntake.js';
+import type { ZhudaBasisTranscoder } from './BasisTexture.js';
 import { type ModelCompatibilityReport } from './ModelCompatibility.js';
 import type { AssetProvider } from './AssetProvider.js';
 export type AssetPhase = 'downloading' | 'parsing' | 'ready';
@@ -74,6 +75,13 @@ export interface ModelLibraryOptions {
      * not run for this library's models.
      */
     imageDecode?: ZhudaImageDecodeSupport;
+    /**
+     * Borrowed. Transcodes the KTX 2 images of `KHR_texture_basisu` textures to
+     * the block format this device samples (`ZhudaBasisTranscoder`). Without
+     * one such a texture loads its fallback image, and a model whose only image
+     * is KTX 2 is refused with a report.
+     */
+    basisTranscoder?: ZhudaBasisTranscoder;
 }
 export declare class ZhudaModelLibrary {
     readonly cache: ZhudaAssetCache<any>;
