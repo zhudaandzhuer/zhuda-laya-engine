@@ -599,9 +599,12 @@ surface: wet walls, props, ground beyond a `reflector`. It needs `grade`.
 ```
 
 - The whole view reflects alike and by Fresnel: strongly at grazing angles,
-  faintly head-on (`wetness` is how much shows head-on). A forward renderer
-  has no roughness buffer, so this is the look of rain and of polished
-  places, not a property of one material.
+  faintly head-on (`wetness` is how much shows head-on): the look of rain
+  and of polished places, not a property of one material. With
+  `"surfaces": true` each surface reflects by its own normal and roughness
+  where its material says them (PBR and glTF materials do): a rough wall
+  reflects little, a polished floor much, and `wetness` then polishes
+  everything ([GPU depth](gpu-depth.md)).
 - Only what is on screen is reflected: nothing from behind the camera or
   from behind another object. The sky is not, unless `"sky": 1` is given:
   then a ray that finds nothing and points upward shows the sky's colour

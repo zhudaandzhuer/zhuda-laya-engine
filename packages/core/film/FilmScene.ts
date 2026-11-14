@@ -783,6 +783,11 @@ export interface ZhudaFilmScreenReflections {
   sky?: number;
   /** The sky's colour for that, 0..1 (default: the sky's colour near the horizon). */
   skyColor?: ZhudaFilmVec3;
+  /**
+   * Each surface reflects by its own normal and roughness where its material
+   * says them (default false: the whole view reflects alike).
+   */
+  surfaces?: boolean;
 }
 
 /** The sun's flare (see `ZhudaLensFlare`); where it is and its colour come from the look. */
@@ -1392,7 +1397,14 @@ function validateLook(
       at = `${path}.screenReflections`;
     if (!object(s)) issues.push(`${at}: object or false required`);
     else {
-      unknownKeys(s, ['strength', 'wetness', 'distance', 'steps', 'sky', 'skyColor'], at, issues);
+      unknownKeys(
+        s,
+        ['strength', 'wetness', 'distance', 'steps', 'sky', 'skyColor', 'surfaces'],
+        at,
+        issues,
+      );
+      if (s.surfaces !== undefined && typeof s.surfaces !== 'boolean')
+        issues.push(`${at}.surfaces: use true or false`);
       range(s.sky, `${at}.sky`, 0, 1);
       if (s.skyColor !== undefined) vec3(s.skyColor, `${at}.skyColor`, issues, 1);
       range(s.strength, `${at}.strength`, 0, 4);
@@ -2490,6 +2502,7 @@ export function resolveZhudaFilmLook(
       steps: 32,
       sky: 0,
       skyColor: horizon,
+      surfaces: false,
     }),
     autoExposure: look.autoExposure
       ? resolveZhudaAutoExposure(look.autoExposure === true ? {} : look.autoExposure)

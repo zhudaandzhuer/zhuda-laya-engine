@@ -3,10 +3,56 @@ import {
   type SurfacePassRequirements,
 } from '../runtime3d/Surfaces.ts';
 import { graphicsVertex, graphicsFragment } from './Laya342ShaderTemplates.ts';
-export type ShaderUniformType = 'float' | 'vec2' | 'vec3' | 'vec4' | 'texture2D';
+import { ZHUDA_COMMON_INCLUDE, registerZhudaCommon } from './ZhudaCommon.ts';
+export type ShaderUniformType =
+  | 'float'
+  | 'vec2'
+  | 'vec3'
+  | 'vec4'
+  | 'int'
+  | 'mat4'
+  | 'texture2D'
+  | 'textureCube';
 export interface ShaderUniformSpec {
   type: ShaderUniformType;
+  /**
+   * A number for `float` and `int`, that many for a vector, sixteen in
+   * column order for `mat4`; with `length`, that many elements one after
+   * another.
+   */
   value?: number | number[];
+  /**
+   * An array of `float`, `vec2`, `vec3` or `vec4`, 2..64 elements: the
+   * shader reads `u_ZhudaName[i]`.
+   */
+  length?: number;
+}
+/** Numbers one value of a type is; 0 for a texture. */
+const UNIFORM_SIZE: Record<ShaderUniformType, number> = {
+  float: 1,
+  vec2: 2,
+  vec3: 3,
+  vec4: 4,
+  int: 1,
+  mat4: 16,
+  texture2D: 0,
+  textureCube: 0,
+};
+const isTexture = (type: ShaderUniformType) => type === 'texture2D' || type === 'textureCube';
+/** Whether a value is what a uniform of this spec takes. */
+function validUniformValue(u: ShaderUniformSpec, value: unknown): boolean {
+  const n = UNIFORM_SIZE[u.type] * (u.length ?? 1);
+  if (n === 1)
+    return (
+      typeof value === 'number' &&
+      Number.isFinite(value) &&
+      (u.type !== 'int' || (Number.isInteger(value) && Math.abs(value) <= 2147483647))
+    );
+  return (
+    (Array.isArray(value) || value instanceof Float32Array) &&
+    (value as ArrayLike<number>).length === n &&
+    Array.from(value as ArrayLike<number>).every(Number.isFinite)
+  );
 }
 export interface ZhudaShaderSpec {
   schemaVersion: 1;
@@ -20,6 +66,11 @@ export interface ZhudaShaderSpec {
   /** Opt out for sky domes/backgrounds; scene fog remains enabled for other surfaces. */
   fog?: boolean;
   passes?: SurfacePassRequirements;
+  /**
+   * The surface may call the functions of `ZhudaCommon.glsl`: `zhudaHash`,
+   * `zhudaNoise`, `zhudaFbm`, `zhudaTriplanarWeights`, `zhudaTriplanar`.
+   */
+  common?: boolean;
 }
 export function validateShaderSpec(spec: unknown): string[] {
   const s = spec as ZhudaShaderSpec,
@@ -29,6 +80,7 @@ export function validateShaderSpec(spec: unknown): string[] {
   if (typeof s.name !== 'string' || !/^Zhuda[A-Za-z0-9_]{1,100}$/.test(s.name))
     e.push('Shader name must start with Zhuda, then letters/digits/_');
   if (s.fog !== undefined && typeof s.fog !== 'boolean') e.push('fog must be boolean');
+  if (s.common !== undefined && typeof s.common !== 'boolean') e.push('common must be boolean');
   if (
     typeof s.surface !== 'string' ||
     s.surface.length > 65536 ||
@@ -45,18 +97,18 @@ export function validateShaderSpec(spec: unknown): string[] {
   else
     for (const [name, u] of Object.entries(s.uniforms)) {
       if (!/^u_Zhuda[A-Za-z0-9_]+$/.test(name)) e.push('Custom uniforms must use u_Zhuda prefix');
-      if (!u || !['float', 'vec2', 'vec3', 'vec4', 'texture2D'].includes(u.type)) {
+      if (!u || !Object.hasOwn(UNIFORM_SIZE, u.type)) {
         e.push('Invalid uniform type ' + name);
         continue;
       }
-      const n = { float: 1, vec2: 2, vec3: 3, vec4: 4, texture2D: 0 }[u.type];
-      if (
-        n &&
-        u.value !== undefined &&
-        (n === 1
-          ? typeof u.value !== 'number' || !Number.isFinite(u.value)
-          : !Array.isArray(u.value) || u.value.length !== n || !u.value.every(Number.isFinite))
-      )
+      const n = UNIFORM_SIZE[u.type];
+      if (u.length !== undefined) {
+        if (!['float', 'vec2', 'vec3', 'vec4'].includes(u.type))
+          e.push('Only float and vector uniforms can be arrays: ' + name);
+        else if (!(Number.isInteger(u.length) && u.length >= 2 && u.length <= 64))
+          e.push('Uniform array length must be a whole number 2..64: ' + name);
+      }
+      if (n && u.value !== undefined && !validUniformValue(u, u.value))
         e.push('Invalid uniform value ' + name);
       if (!n && u.value !== undefined)
         e.push('Texture uniforms use the external texture bindings, not JSON values');
@@ -92,10 +144,11 @@ gl_Position=remapPositionZ(getPositionCS(p.xyz));
 FogHandle(gl_Position.z);
 #endif
 }`;
-const fragment3D = (surface: string, fog = true) => `#include "Color.glsl";
+const fragment3D = (surface: string, fog = true, common = false) => `#include "Color.glsl";
 #include "Scene.glsl";
 #include "Camera.glsl";
 #include "SceneFog.glsl";
+${common ? `#include "${ZHUDA_COMMON_INCLUDE}";` : ''}
 varying vec2 v_ZhudaUV;varying vec3 v_ZhudaPosition;varying vec3 v_ZhudaNormal;
 ${surface}
 void main(){gl_FragColor=outputTransform(zhudaSurface(v_ZhudaUV,v_ZhudaPosition,normalize(v_ZhudaNormal)));
@@ -118,24 +171,41 @@ export class ZhudaShaderMaterial {
     if (e.length) throw Error(e.join('; '));
     this.spec = JSON.parse(JSON.stringify(spec));
     for (const [name, u] of Object.entries(spec.uniforms))
-      if (u.type === 'texture2D' && !textures[name]) throw Error('Missing texture binding ' + name);
+      if (isTexture(u.type) && !textures[name]) throw Error('Missing texture binding ' + name);
     const l = (globalThis as any).Laya,
-      types = {
+      types: Record<ShaderUniformType, unknown> = {
         float: l.ShaderDataType.Float,
         vec2: l.ShaderDataType.Vector2,
         vec3: l.ShaderDataType.Vector3,
         vec4: l.ShaderDataType.Vector4,
+        int: l.ShaderDataType.Int,
+        mat4: l.ShaderDataType.Matrix4x4,
         texture2D: l.ShaderDataType.Texture2D,
+        textureCube: l.ShaderDataType.TextureCube,
       },
+      // LayaAir reads an array's length off its name: `u_ZhudaStops[4]`.
       uniforms = Object.fromEntries(
         Object.keys(spec.uniforms)
           .sort()
-          .map((name) => [name, types[spec.uniforms[name].type]]),
+          .map((name) => {
+            const u = spec.uniforms[name];
+            return [u.length ? `${name}[${u.length}]` : name, types[u.type]];
+          }),
       );
+    if (spec.common) {
+      if (spec.dimension !== 3) throw Error('common is for 3D surfaces');
+      registerZhudaCommon(l);
+    }
     const textureHelpers = Object.entries(spec.uniforms)
-      .filter(([, u]) => u.type === 'texture2D')
-      .map(
-        ([name]) => `vec4 zhudaSample_${name}(vec2 uv){vec4 c=texture2D(${name},uv);
+      .filter(([, u]) => isTexture(u.type))
+      .map(([name, u]) =>
+        u.type === 'textureCube'
+          ? `vec4 zhudaSample_${name}(vec3 direction){vec4 c=textureCube(${name},direction);
+#ifdef Gamma_${name}
+c=gammaToLinear(c);
+#endif
+return c;}`
+          : `vec4 zhudaSample_${name}(vec2 uv){vec4 c=texture2D(${name},uv);
 #ifdef Gamma_${name}
 c=gammaToLinear(c);
 #endif
@@ -150,7 +220,7 @@ return c;}`,
       fragment:
         spec.dimension === 2
           ? graphicsFragment.replace('__ZHUDA_FUNCTION__', surface)
-          : fragment3D(surface, spec.fog !== false),
+          : fragment3D(surface, spec.fog !== false, !!spec.common),
       uniforms,
       instancing: spec.dimension === 3,
     });
@@ -174,42 +244,44 @@ return c;}`,
           ? l.RenderState.BLENDPARAM_ONE
           : l.RenderState.BLENDPARAM_ONE_MINUS_SRC_ALPHA;
       for (const [name, u] of Object.entries(spec.uniforms)) {
-        if (u.type === 'texture2D') this.setTexture(name, textures[name]);
-        else
-          this.setUniform(
-            name,
-            u.value ?? (u.type === 'float' ? 0 : Array(Number(u.type.slice(-1))).fill(0)),
-          );
+        if (isTexture(u.type)) this.setTexture(name, textures[name]);
+        else {
+          const n = UNIFORM_SIZE[u.type] * (u.length ?? 1);
+          const zero =
+            u.type === 'mat4' ? [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1] : Array(n).fill(0);
+          this.setUniform(name, u.value ?? (n === 1 ? 0 : zero));
+        }
       }
     } catch (error) {
       this.dispose();
       throw error;
     }
   }
-  setUniform(name: string, value: number | readonly number[]) {
+  /**
+   * A uniform's value: a number, a vector's numbers, a matrix's sixteen in
+   * column order, or an array's elements one after another.
+   */
+  setUniform(name: string, value: number | readonly number[] | Float32Array) {
     if (this.disposed) throw Error('Disposed shader');
     const u = this.spec.uniforms[name];
-    if (!u || u.type === 'texture2D') throw Error('Unknown numeric uniform ' + name);
-    const n = u.type === 'float' ? 1 : Number(u.type.slice(-1));
-    if (
-      n === 1
-        ? typeof value !== 'number' || !Number.isFinite(value)
-        : typeof value === 'number' ||
-          value.length !== n ||
-          !Array.from(value).every(Number.isFinite)
-    )
-      throw Error('Invalid uniform ' + name);
+    if (!u || isTexture(u.type)) throw Error('Unknown numeric uniform ' + name);
+    if (!validUniformValue(u, value)) throw Error('Invalid uniform ' + name);
     const l = (globalThis as any).Laya;
-    if (u.type === 'float') this.material.setFloat(name, value);
-    else this.material['setVector' + n](name, new l['Vector' + n](...(value as number[])));
+    const m = this.material;
+    const list = value as ArrayLike<number>;
+    // A new object each time: one changed in place is not uploaded on WebGPU.
+    if (u.length) m.setBuffer(name, Float32Array.from(list));
+    else if (u.type === 'float') m.setFloat(name, value);
+    else if (u.type === 'int') m.setInt(name, value);
+    else if (u.type === 'mat4') m.setMatrix4x4(name, new l.Matrix4x4(...Array.from(list)));
+    else {
+      const n = UNIFORM_SIZE[u.type];
+      m['setVector' + n](name, new l['Vector' + n](...Array.from(list)));
+    }
   }
   setTexture(name: string, texture: any) {
-    if (
-      this.disposed ||
-      this.spec.uniforms[name]?.type !== 'texture2D' ||
-      !texture ||
-      texture.destroyed
-    )
+    const type = this.spec.uniforms[name]?.type;
+    if (this.disposed || !type || !isTexture(type) || !texture || texture.destroyed)
       throw Error('Invalid texture binding ' + name);
     this.material.setTexture(name, texture.bitmap || texture);
   }
@@ -227,7 +299,7 @@ return c;}`,
     if (this.disposed) return;
     this.disposed = true;
     for (const [name, u] of Object.entries(this.spec.uniforms))
-      if (u.type === 'texture2D') this.material.setTexture(name, null);
+      if (isTexture(u.type)) this.material.setTexture(name, null);
     this.material.destroy();
   }
 }

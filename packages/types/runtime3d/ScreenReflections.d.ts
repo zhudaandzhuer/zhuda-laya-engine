@@ -12,6 +12,14 @@
  * upward shows the sky's colour instead: wet ground under an open sky is as
  * bright as the sky it mirrors. Nothing tells such a ray that a roof or a wall
  * off screen is in its way: keep `sky` at 0 indoors and under cover.
+ *
+ * With `surfaces`, the view no longer reflects alike. LayaAir draws the
+ * opaque things' world normal and roughness into pictures of their own
+ * (`SurfaceBuffer.ts`), and where a material wrote them the ray leaves the
+ * surface by its own normal (a normal map bends reflections), a rough
+ * surface reflects little, and a metal reflects strongly head-on. Wetness
+ * then polishes: at 1 every surface is as smooth as water on it. A pixel
+ * whose material wrote nothing is treated as before.
  */
 export interface ZhudaScreenReflectionsOptions {
     /** Brightness of the reflections, 0..4 (default 1). */
@@ -29,6 +37,12 @@ export interface ZhudaScreenReflectionsOptions {
     sky?: number;
     /** The sky's colour for that, as light: scene-linear RGB (default black). */
     skyColor?: readonly number[];
+    /**
+     * Read each surface's own normal and roughness from LayaAir's surface
+     * pictures (default false). One more picture of the scene's opaque things
+     * for each of the two, drawn in the same pass.
+     */
+    surfaces?: boolean;
 }
 export declare const ZHUDA_SCREEN_REFLECTION_MAX_STEPS = 64;
 export declare function validateZhudaScreenReflections(options: ZhudaScreenReflectionsOptions): string[];
@@ -37,12 +51,17 @@ export declare class ZhudaScreenReflections {
     /** The Laya post-process effect; give it to `ZhudaFilmicPipeline` in `sceneEffects`, before fog. */
     readonly effect: any;
     /** The material of the pass that follows the rays (its uniforms are the effect's settings). */
-    private readonly material;
-    private readonly passes;
+    private material;
+    private readonly parts;
+    /** What `update` was last given, to give a new trace material its values. */
+    private view;
     private options;
     private phase;
     private disposed;
     constructor(options?: ZhudaScreenReflectionsOptions);
+    private pass;
+    /** The pass that follows the rays: another shader when it reads the surface pictures. */
+    private traceMaterial;
     /** Changes the values in place. */
     setReflections(options: ZhudaScreenReflectionsOptions): void;
     private shape;

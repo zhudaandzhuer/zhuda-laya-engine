@@ -76,7 +76,7 @@ const hit = terrain.raycast(cameraRay, 200);
 
 ## Shader recipe 與使用規則
 
-`ZhudaShaderSpec` 的 `dimension` 必須明確為 `2` 或 `3`。`surface` 只提供 `zhudaSurface(...)` function body；attribute、uniform 宣告、camera transform、clip、fog 和 output transform 由 LayaAir 3.4.2 template 提供。自訂 uniform 必須使用 `u_Zhuda` 前綴且指定 scalar/vector/texture2D 型別：
+`ZhudaShaderSpec` 的 `dimension` 必須明確為 `2` 或 `3`。`surface` 只提供 `zhudaSurface(...)` function body；attribute、uniform 宣告、camera transform、clip、fog 和 output transform 由 LayaAir 3.4.2 template 提供。自訂 uniform 必須使用 `u_Zhuda` 前綴且指定 scalar/vector/texture2D 型別（另有 `int`、`mat4`、陣列與 `textureCube`，以及 `common: true` 的公用雜訊／三向貼圖函式，見 [GPU depth](gpu-depth.md)）：
 
 ```ts
 const mat = new ZhudaShaderMaterial({

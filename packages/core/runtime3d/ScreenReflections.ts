@@ -11,9 +11,18 @@
  * upward shows the sky's colour instead: wet ground under an open sky is as
  * bright as the sky it mirrors. Nothing tells such a ray that a roof or a wall
  * off screen is in its way: keep `sky` at 0 indoors and under cover.
+ *
+ * With `surfaces`, the view no longer reflects alike. LayaAir draws the
+ * opaque things' world normal and roughness into pictures of their own
+ * (`SurfaceBuffer.ts`), and where a material wrote them the ray leaves the
+ * surface by its own normal (a normal map bends reflections), a rough
+ * surface reflects little, and a metal reflects strongly head-on. Wetness
+ * then polishes: at 1 every surface is as smooth as water on it. A pixel
+ * whose material wrote nothing is treated as before.
  */
 
 import { zhudaShaderRegistrar } from './ShaderRegistry.ts';
+import { zhudaSurfaceBufferSupported } from './SurfaceBuffer.ts';
 
 export interface ZhudaScreenReflectionsOptions {
   /** Brightness of the reflections, 0..4 (default 1). */
@@ -31,6 +40,12 @@ export interface ZhudaScreenReflectionsOptions {
   sky?: number;
   /** The sky's colour for that, as light: scene-linear RGB (default black). */
   skyColor?: readonly number[];
+  /**
+   * Read each surface's own normal and roughness from LayaAir's surface
+   * pictures (default false). One more picture of the scene's opaque things
+   * for each of the two, drawn in the same pass.
+   */
+  surfaces?: boolean;
 }
 
 export const ZHUDA_SCREEN_REFLECTION_MAX_STEPS = 64;
@@ -61,6 +76,8 @@ export function validateZhudaScreenReflections(options: ZhudaScreenReflectionsOp
     !(Array.isArray(colour) && colour.length === 3 && colour.every((v) => inRange(v, 0, 1024)))
   )
     issues.push('skyColor: use [r, g, b] of 0 or more');
+  if (o.surfaces !== undefined && typeof o.surfaces !== 'boolean')
+    issues.push('surfaces: use true or false');
   return issues;
 }
 
@@ -74,6 +91,7 @@ export function resolveZhudaScreenReflections(
     steps: options.steps ?? 32,
     sky: options.sky ?? 0,
     skyColor: options.skyColor ? [...options.skyColor] : [0, 0, 0],
+    surfaces: options.surfaces ?? false,
   };
 }
 
@@ -82,7 +100,9 @@ const VERTEX =
 
 // Every texture is sampled in every step: no branch depends on what was read
 // (WGSL allows sampling in uniform control flow only).
-const FRAGMENT = `#define SHADER_NAME ZhudaScreenReflectionsFS
+// Two shaders from one text: LayaAir decides `#ifdef` itself, from its own
+// defines, before the compiler sees a `#define` in the source.
+const FRAGMENT = (surfaces: boolean) => `#define SHADER_NAME ZhudaScreenReflectionsFS
 #include "Color.glsl";
 // The depth picture is read at high precision: a phone reads textures at low precision unless told.
 precision highp sampler2D;
@@ -119,6 +139,24 @@ vec3 dx=dot(px,px)<dot(nx,nx)?px:nx;
 vec3 dy=dot(py,py)<dot(ny,ny)?py:ny;
 vec3 n=normalize(cross(dx,dy));
 n=dot(n,view)>0.0?-n:n;
+// What the surface is, where its material said: its own normal (a normal map
+// bends the reflection) and how rough and how metallic it is.
+float gloss=1.0;
+float metal=0.0;
+${
+  surfaces
+    ? `vec4 gNormal=texture2D(u_ZhudaSsrNormal,uv);
+vec4 gSurface=texture2D(u_ZhudaSsrSurface,uv);
+float known=step(0.5,gNormal.a)*step(0.5,gSurface.a);
+vec3 own=gNormal.rgb*2.0-1.0;
+n=normalize(mix(n,own,known*step(0.25,dot(own,own))));
+// Water on a surface polishes it: at full wetness everything is smooth.
+float wet=clamp((u_ZhudaSsrShape.y-0.02)/0.25,0.0,1.0);
+float rough=gSurface.g*(1.0-wet);
+gloss=mix(1.0,(1.0-rough)*(1.0-rough),known);
+metal=gSurface.r*known;`
+    : ''
+}
 vec3 r=reflect(view,n);
 float reach=u_ZhudaSsrShape.z;
 float steps=u_ZhudaSsrShape.w;
@@ -180,7 +218,9 @@ vec4 reflected=texture2D(u_MainTex,where);
 reflected=gammaToLinear(reflected);
 #endif
 float facing=1.0-max(dot(-view,n),0.0);
-float fresnel=u_ZhudaSsrShape.y+(1.0-u_ZhudaSsrShape.y)*pow(facing,5.0);
+// Head-on a metal reflects nearly all, whatever the weather.
+float base=max(u_ZhudaSsrShape.y,metal);
+float fresnel=(base+(1.0-base)*pow(facing,5.0))*gloss;
 // Fade toward the borders of the picture, with distance, and leave the sky alone.
 vec2 border=smoothstep(vec2(0.0),vec2(0.1),where)*smoothstep(vec2(0.0),vec2(0.1),1.0-where);
 float fade=found*border.x*border.y*(1.0-at)*step(depth,u_ZhudaSsrEye.w);
@@ -244,13 +284,20 @@ function register(l: any) {
     pass.statefirst = true;
     pass.renderState.cull = l.RenderState.CULL_NONE;
   };
-  add('ZhudaScreenReflections', FRAGMENT, {
+  const trace = {
     u_ZhudaSsrEye: l.ShaderDataType.Vector4,
     u_ZhudaSsrForward: l.ShaderDataType.Vector4,
     u_ZhudaSsrRight: l.ShaderDataType.Vector4,
     u_ZhudaSsrUp: l.ShaderDataType.Vector4,
     u_ZhudaSsrShape: l.ShaderDataType.Vector4,
     u_ZhudaSsrSky: l.ShaderDataType.Vector4,
+  };
+  add('ZhudaScreenReflections', FRAGMENT(false), trace);
+  // A shader of its own: one that names the two pictures has to be given them.
+  add('ZhudaScreenReflectionsSurfaces', FRAGMENT(true), {
+    ...trace,
+    u_ZhudaSsrNormal: l.ShaderDataType.Texture2D,
+    u_ZhudaSsrSurface: l.ShaderDataType.Texture2D,
   });
   add('ZhudaScreenReflectionsBlur', BLUR_FRAGMENT, { u_ZhudaSsrBlur: l.ShaderDataType.Vector4 });
   add('ZhudaScreenReflectionsComposite', COMPOSITE_FRAGMENT, {
@@ -268,17 +315,42 @@ zhudaShaderRegistrar(register);
  */
 function createReflectionsEffect(
   l: any,
-  parts: { trace: any; across: any; down: any; composite: any },
+  parts: {
+    trace: any;
+    across: any;
+    down: any;
+    composite: any;
+    surfaces: boolean;
+    unknown: any;
+  },
 ): any {
   const Base = l.PostProcessEffect as new () => any;
   const reflection = l.Shader3D.propertyNameToID('u_ZhudaSsrReflection');
+  const normal = l.Shader3D.propertyNameToID('u_ZhudaSsrNormal'),
+    surface = l.Shader3D.propertyNameToID('u_ZhudaSsrSurface');
   return new (class extends Base {
     getCameraDepthTextureModeFlag() {
       return l.DepthTextureMode.Depth;
     }
+    /** LayaAir gives the camera the two pictures while this effect is on it. */
+    getCameraOpaqueMRTRequirements() {
+      return parts.surfaces ? [l.GBuffer.Normal, l.GBuffer.Surface] : null;
+    }
     render(context: any) {
       const command = context.command,
         source = context.indirectTarget;
+      if (parts.surfaces) {
+        // Borrowed from the camera for this frame; another frame may have others.
+        const camera = context.camera;
+        const pictures = [
+          camera?.getOpaqueAuxiliaryTexture?.(l.GBuffer.Normal.name),
+          camera?.getOpaqueAuxiliaryTexture?.(l.GBuffer.Surface.name),
+        ];
+        // A camera that could not be given them: a picture with no alpha says
+        // "unknown" for every pixel.
+        command.setShaderDataTexture(parts.trace.shaderData, normal, pictures[0] ?? parts.unknown);
+        command.setShaderDataTexture(parts.trace.shaderData, surface, pictures[1] ?? parts.unknown);
+      }
       const width = Math.max(1, source.width >> 1),
         height = Math.max(1, source.height >> 1);
       const pooled = () =>
@@ -340,8 +412,23 @@ export class ZhudaScreenReflections {
   /** The Laya post-process effect; give it to `ZhudaFilmicPipeline` in `sceneEffects`, before fog. */
   readonly effect: any;
   /** The material of the pass that follows the rays (its uniforms are the effect's settings). */
-  private readonly material: any;
-  private readonly passes: any[];
+  private material: any;
+  private readonly parts: {
+    trace: any;
+    across: any;
+    down: any;
+    composite: any;
+    surfaces: boolean;
+    /** One pixel with no alpha: what the surface pictures say where nothing wrote. */
+    unknown: any;
+  };
+  /** What `update` was last given, to give a new trace material its values. */
+  private view: [readonly number[], readonly number[], number, number] = [
+    [0, 0, 0],
+    [0, 0, -1],
+    40,
+    16 / 9,
+  ];
   private options: Required<ZhudaScreenReflectionsOptions>;
   private phase = 0;
   private disposed = false;
@@ -353,26 +440,50 @@ export class ZhudaScreenReflections {
     if (!l?.PostProcessEffect || !l.RenderTexture?.createFromPool)
       throw Error('Screen reflections need the Laya post-process module');
     this.options = resolveZhudaScreenReflections(options);
+    if (this.options.surfaces && !zhudaSurfaceBufferSupported(l))
+      throw Error('Invalid screen reflections: surfaces needs LayaAir 3.4.2 surface pictures');
     register(l);
-    const material = (name: string) => {
-      const value = new l.Material();
-      value.setShaderName(name);
-      return value;
-    };
-    const parts = {
-      trace: material('ZhudaScreenReflections'),
-      across: material('ZhudaScreenReflectionsBlur'),
-      down: material('ZhudaScreenReflectionsBlur'),
-      composite: material('ZhudaScreenReflectionsComposite'),
-    };
+    const parts = (this.parts = {
+      // Made when the surface pictures are first asked for; without them nothing is.
+      unknown: null,
+      trace: null,
+      across: this.pass('ZhudaScreenReflectionsBlur'),
+      down: this.pass('ZhudaScreenReflectionsBlur'),
+      composite: this.pass('ZhudaScreenReflectionsComposite'),
+      surfaces: this.options.surfaces,
+    });
+    parts.trace = this.traceMaterial(this.options.surfaces);
     this.material = parts.trace;
-    this.passes = Object.values(parts);
     // Every declared uniform is written before the first draw.
     parts.across.setVector4('u_ZhudaSsrBlur', new l.Vector4(0, 0, 0, 0));
     parts.down.setVector4('u_ZhudaSsrBlur', new l.Vector4(0, 0, 0, 0));
     this.effect = createReflectionsEffect(l, parts);
     // Every declared uniform is written before the first draw.
-    this.update([0, 0, 0], [0, 0, -1], 40, 16 / 9);
+    this.update(...this.view);
+  }
+
+  private pass(name: string): any {
+    const value = new (globalThis as any).Laya.Material();
+    value.setShaderName(name);
+    return value;
+  }
+  /** The pass that follows the rays: another shader when it reads the surface pictures. */
+  private traceMaterial(surfaces: boolean): any {
+    const made = this.pass(surfaces ? 'ZhudaScreenReflectionsSurfaces' : 'ZhudaScreenReflections');
+    if (surfaces) {
+      const l = (globalThis as any).Laya;
+      if (!this.parts.unknown) {
+        // One pixel without alpha: "nothing is known of this surface".
+        const unknown = new l.Texture2D(1, 1, l.TextureFormat.R8G8B8A8, false, false, false);
+        unknown.setPixelsData(new Uint8Array([128, 128, 255, 0]), false, false);
+        unknown.lock = true;
+        this.parts.unknown = unknown;
+      }
+      // Given every frame from the camera; something valid until the first.
+      made.setTexture('u_ZhudaSsrNormal', this.parts.unknown);
+      made.setTexture('u_ZhudaSsrSurface', this.parts.unknown);
+    }
+    return made;
   }
 
   /** Changes the values in place. */
@@ -380,8 +491,19 @@ export class ZhudaScreenReflections {
     if (this.disposed) throw Error('Disposed screen reflections');
     const issues = validateZhudaScreenReflections(options);
     if (issues.length) throw Error('Invalid screen reflections: ' + issues.join('; '));
-    this.options = resolveZhudaScreenReflections(options);
-    this.shape();
+    const next = resolveZhudaScreenReflections(options);
+    if (next.surfaces && !zhudaSurfaceBufferSupported((globalThis as any).Laya))
+      throw Error('Invalid screen reflections: surfaces needs LayaAir 3.4.2 surface pictures');
+    const changed = next.surfaces !== this.options.surfaces;
+    this.options = next;
+    if (changed) {
+      // The other shader: a new material for the pass, with the same view.
+      const old = this.parts.trace;
+      this.material = this.parts.trace = this.traceMaterial(next.surfaces);
+      this.parts.surfaces = next.surfaces;
+      old.destroy();
+      this.update(...this.view);
+    } else this.shape();
   }
 
   private shape(): void {
@@ -424,6 +546,7 @@ export class ZhudaScreenReflections {
     const length = Math.hypot(f[0], f[1], f[2]);
     if (!(length > 1e-9) || ![...eye, fieldOfViewDeg, aspect].every(Number.isFinite))
       throw Error('Invalid screen reflections camera');
+    this.view = [[...eye], [...target], fieldOfViewDeg, aspect];
     const forward = f.map((n) => n / length);
     const world = Math.hypot(forward[0], forward[2]) < 1e-6 ? [0, 0, 1] : [0, 1, 0];
     let right = [
@@ -456,6 +579,11 @@ export class ZhudaScreenReflections {
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
-    for (const pass of this.passes) pass.destroy();
+    const { trace, across, down, composite, unknown } = this.parts;
+    for (const pass of [trace, across, down, composite]) pass.destroy();
+    if (unknown) {
+      unknown.lock = false;
+      unknown.destroy();
+    }
   }
 }

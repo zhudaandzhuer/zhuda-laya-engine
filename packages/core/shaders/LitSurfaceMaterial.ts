@@ -187,6 +187,10 @@ export class ZhudaLitSurfaceMaterial {
       uniforms,
     });
     if (errors.length) throw Error(errors.join('; '));
+    // The plain shader material takes more kinds of uniform than this one does.
+    for (const [name, u] of Object.entries(uniforms))
+      if (!['float', 'vec2', 'vec3', 'vec4', 'texture2D'].includes(u.type) || u.length)
+        throw Error(`A lit surface's uniforms are float, vec2, vec3, vec4 or texture2D: ${name}`);
     if (spec.normalConvention && !['directx', 'opengl'].includes(spec.normalConvention))
       throw Error('Invalid normal map convention');
     if (spec.backFaces && !['mirrored', 'same'].includes(spec.backFaces))

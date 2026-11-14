@@ -205,6 +205,17 @@ export const API_GUARDRAILS = [
       'The helpers follow their targets only when update() is called; the gizmo listens to no DOM event itself. GPU time is absent until the GPU has answered and is never replaced by CPU time. See docs/developer-tooling.md.',
   },
   {
+    id: 'GUARD_GPU_DEPTH',
+    topic:
+      'compute shader storage buffer GPU particles instancing from compute uniform int mat4 array cube map noise hash fbm triplanar gbuffer roughness normal screen space reflections velocity motion vectors TAA ghosting',
+    hallucinatedLegacyApi:
+      'const positions = instancedArray(count, "vec3"); renderer.compute(Fn(() => { positions.element(instanceIndex).addAssign(velocity) })().compute(count)); material.uniforms.u_colors = { value: [...] }; import { mx_noise_float } from "three/tsl"; new SSRNode(scenePass, { metalness, roughness }); velocity node for TRAA',
+    zhudaCanonicalApi:
+      "Compute: const pass = new ZhudaComputePass({ name: 'ZhudaSparks', code: 'void zhudaStep(uint index){ zhudaStates[index].y-=u_ZhudaStep.x; }', buffers: { zhudaStates: { type: 'vec4', length: n }, zhudaPlaces: { type: 'vec4', length: n * 5, vertex: true } }, uniforms: { u_ZhudaStep: { type: 'vec4' } }, step: (index, buffers, uniforms) => { /* the same in JavaScript, for WebGL */ } }); pass.write(name, floats); pass.dispatch(n); new ZhudaComputedInstances(scene3D, mesh, material, pass, 'zhudaPlaces', n, { bounds }). Uniforms of a ZhudaShaderSpec: int, mat4, textureCube, and { type: 'vec4', length: 4 } arrays. Noise: common: true, then zhudaHash, zhudaNoise, zhudaFbm, zhudaTriplanarWeights, zhudaTriplanar in the surface. Reflections by surface: new ZhudaScreenReflections({ surfaces: true }) or \"screenReflections\": { \"surfaces\": true } in a look. Moving things under temporalAA: const motion = new ZhudaObjectMotion(); motion.track(node); motion.update() once a frame before drawing.",
+    reason:
+      'Compute exists on WebGPU only: check pass.backend, and give the pass a JavaScript step or it refuses with COMPUTE_UNAVAILABLE on WebGL. One index of a step must read and write its own elements. The surface pictures are written by PBR and glTF materials, not by custom shader materials. See docs/gpu-depth.md.',
+  },
+  {
     id: 'GUARD_INIT_BOOT',
     topic: '引擎啟動與 Stage 初始化',
     hallucinatedLegacyApi: 'Laya.init(1280, 720, Laya.WebGL); Laya.MiniAdpter.init();',

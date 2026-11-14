@@ -22,6 +22,7 @@ test('options have defaults and refuse values out of range', () => {
     steps: 32,
     sky: 0,
     skyColor: [0, 0, 0],
+    surfaces: false,
   });
   assert.deepEqual(
     validateZhudaScreenReflections({ sky: 2, skyColor: [1, 1] }),
@@ -68,6 +69,7 @@ test('a look takes screen reflections with a grade, and quality levels thin them
     steps: 32,
     sky: 0,
     skyColor: [0.156, 0.203, 0.306],
+    surfaces: false,
   });
   assert.deepEqual(
     resolveZhudaFilmLook({
@@ -139,7 +141,12 @@ test('the effect writes every uniform it declares, and the same time gives the s
     const reflections = new ZhudaScreenReflections({ wetness: 1 });
     const trace = reflections.material;
     const { values } = trace;
-    assert.equal(declared.length, 3, 'trace, blur and composite');
+    assert.equal(declared.length, 4, 'trace, trace by each surface, blur and composite');
+    // The second trace reads two pictures more and nothing else.
+    assert.deepEqual(
+      declared[1].filter((name) => !declared[0].includes(name)),
+      ['u_ZhudaSsrNormal', 'u_ZhudaSsrSurface'],
+    );
     // u_MainTex is the picture each pass is drawn from; the rest of the trace's are ours.
     assert.deepEqual(
       Object.keys(values).sort(),

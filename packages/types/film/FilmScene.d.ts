@@ -708,6 +708,11 @@ export interface ZhudaFilmScreenReflections {
     sky?: number;
     /** The sky's colour for that, 0..1 (default: the sky's colour near the horizon). */
     skyColor?: ZhudaFilmVec3;
+    /**
+     * Each surface reflects by its own normal and roughness where its material
+     * says them (default false: the whole view reflects alike).
+     */
+    surfaces?: boolean;
 }
 /** The sun's flare (see `ZhudaLensFlare`); where it is and its colour come from the look. */
 export interface ZhudaFilmLensFlare {

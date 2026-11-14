@@ -167,6 +167,11 @@ timer query round the frame, WebGPU timestamps summed over render passes
 ([developer tooling](developer-tooling.md)); the two are not the same
 measurement. WebGPU resource figures are estimates, not driver memory readings.
 
+Compute is the one thing this backend has and WebGL does not:
+`ZhudaComputePass` steps many things on the GPU here, and runs the same step
+in JavaScript on WebGL ([GPU depth](gpu-depth.md)). Checked on one desktop
+GPU; no phone.
+
 **Windows Chrome/Edge use this same browser WebGPU path, but actual Windows GPU
 acceptance remains UNAVAILABLE until run on the target machine.** Native EXE,
 Electron/WebView2 packaging, signing and Steam are separate, unverified work.

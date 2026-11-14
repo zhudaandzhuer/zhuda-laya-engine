@@ -13,6 +13,8 @@ import {
 } from './runtime3d/Laya342Adapters.ts';
 import { installLaya342PointShadows } from './runtime3d/PointShadow.ts';
 import { installLaya342LightingDepth } from './runtime3d/LightingDepth.ts';
+import { installLaya342SurfaceBuffer } from './runtime3d/SurfaceBuffer.ts';
+import { installLaya342ObjectMotion } from './runtime3d/ObjectMotion.ts';
 import { buildPrefabTree } from './prefabs/PrefabTree3D.ts';
 import type { PrefabTree3D, PrefabTreeInstance3D } from './prefabs/PrefabTree3D.ts';
 import { assertZhudaRealmAvailable, markZhudaLayaRealm } from './RealmGuards.ts';
@@ -183,6 +185,8 @@ export class ZhudaEngine {
       installLaya342Translucency();
       installLaya342PointShadows();
       installLaya342LightingDepth();
+      installLaya342SurfaceBuffer();
+      installLaya342ObjectMotion();
       installLaya342ShadowBias();
       installLaya342SpecularAA();
 
