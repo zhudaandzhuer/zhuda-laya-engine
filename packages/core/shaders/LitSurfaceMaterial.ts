@@ -45,6 +45,26 @@ export interface ZhudaLitSurfaceSpec {
     clearCoatRoughness?: number;
   };
 }
+/**
+ * Lighting that replaces the physically based one of a lit template. The
+ * surface hook, the vertex hook, the shadow and depth passes stay as they
+ * are, so a material lit another way still casts and receives shadows as
+ * the others do. `ZhudaToonMaterial` is built on it.
+ */
+export interface ZhudaLitShading {
+  /** Names the lighting in the shader's contract: two lightings never share a shader name. */
+  key: string;
+  /** GLSL placed before `main`; it defines `vec4 <flow>(const in SurfaceInputs inputs,in PixelParams pixel)`. */
+  functions: string;
+  /** The function that takes the place of `PBR_Metallic_Flow`. */
+  flow: string;
+  /** Forward passes drawn after the lit one (an outline hull), from the material's own vertex programs. */
+  passes?: (programs: { forward: string; shadow: string; depth: string }) => {
+    vertex: string;
+    fragment: string;
+    cull?: 'front' | 'back' | 'none';
+  }[];
+}
 const registry = new WeakMap<object, Map<string, string>>();
 
 /** Problems with a vertex hook; an empty list means it can be compiled into the lit passes. */
@@ -139,7 +159,11 @@ export class ZhudaLitSurfaceMaterial {
   readonly material: any;
   readonly spec: ZhudaLitSurfaceSpec;
   private disposed = false;
-  constructor(spec: ZhudaLitSurfaceSpec, textures: Record<string, any> = {}) {
+  constructor(
+    spec: ZhudaLitSurfaceSpec,
+    textures: Record<string, any> = {},
+    shading?: ZhudaLitShading,
+  ) {
     const uniforms = spec.uniforms || {};
     const errors = validateShaderSpec({
       schemaVersion: 1,
@@ -176,6 +200,7 @@ export class ZhudaLitSurfaceMaterial {
       // Absent for hook-free materials, so their signatures stay as before.
       ...(spec.vertex !== undefined ? { vertex: spec.vertex } : {}),
       ...(spec.backFaces === 'same' ? { backFaces: 'same' } : {}),
+      ...(shading ? { shading: shading.key } : {}),
     });
     if (l.Shader3D.find(spec.name)) {
       if (records.get(spec.name) !== signature) throw Error('Shader name has a different contract');
@@ -217,9 +242,16 @@ export class ZhudaLitSurfaceMaterial {
               'getPixelParams(pixel);if(!gl_FrontFacing){pixel.normalWS=-pixel.normalWS;pixel.tangentWS=-pixel.tangentWS;pixel.biNormalWS=-pixel.biNormalWS;pixel.TBN=mat3(pixel.tangentWS,pixel.biNormalWS,pixel.normalWS);}',
             )
           : source;
-      const fragment = backs(normals(litFragment))
+      const hooked = backs(normals(litFragment))
         .replace('void main(){', hook + 'void main(){')
         .replace('initSurfaceInputs(inputs,pixel);', call);
+      const fragment = shading
+        ? replaceOnce(
+            replaceOnce(hooked, 'void main(){', shading.functions + '\nvoid main(){'),
+            'PBR_Metallic_Flow(inputs,pixel)',
+            shading.flow + '(inputs,pixel)',
+          )
+        : hooked;
       const shader = l.Shader3D.add(spec.name, true, true);
       shader.shaderType = l.ShaderFeatureType.D3;
       const sub = new l.SubShader(l.SubShader.DefaultAttributeMap, map, {});
@@ -228,6 +260,19 @@ export class ZhudaLitSurfaceMaterial {
       sub.addShaderPass(vertexPrograms.forward, fragment);
       sub.addShaderPass(vertexPrograms.shadow, litShadowFragment, 'ShadowCaster');
       sub.addShaderPass(vertexPrograms.depth, backs(normals(litDepthFragment)), 'DepthNormal');
+      const culls: Record<string, unknown> = {
+        front: l.RenderState.CULL_FRONT,
+        back: l.RenderState.CULL_BACK,
+        none: l.RenderState.CULL_NONE,
+      };
+      for (const extra of shading?.passes?.(vertexPrograms) ?? []) {
+        const pass = sub.addShaderPass(extra.vertex, extra.fragment);
+        if (extra.cull) {
+          // The pass's own side wins over the material's; the rest stays the material's.
+          pass.statefirst = true;
+          pass.renderState.cull = culls[extra.cull];
+        }
+      }
       records.set(spec.name, signature);
     }
     const m = createSurfaceMaterial({ type: 'pbr', ...spec.material });

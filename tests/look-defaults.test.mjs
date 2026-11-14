@@ -191,25 +191,32 @@ function filmicLaya() {
       Object.assign(this, { r, g, b, a });
     }
   }
+  class Effect {
+    active = true;
+  }
+  class ColorGradEffect extends Effect {}
+  // As LayaAir 3.4.2 orders a chain: once a colour grade is in it, the grade
+  // stays last and an effect added later is put before it.
   class PostProcess {
     effects = [];
+    _enableColorGrad = false;
     _context = { command: { clear() {} }, camera: null };
     addEffect(effect) {
-      this.effects.push(effect);
+      if (!this._enableColorGrad || effect instanceof ColorGradEffect) this.effects.push(effect);
+      else this.effects.splice(this.effects.length - 1, 0, effect);
+      if (effect instanceof ColorGradEffect) this._enableColorGrad = true;
     }
     clearEffect() {
       this.effects.length = 0;
+      this._enableColorGrad = false;
     }
-  }
-  class Effect {
-    active = true;
   }
   return {
     Color,
     PostProcess,
     ScalableAO: Effect,
     BloomEffect: Effect,
-    ColorGradEffect: Effect,
+    ColorGradEffect,
     AOQUALITY: { High: 0 },
     ToneMappingType: { ACES: 1 },
     DepthTextureMode: { Depth: 1 },
@@ -317,6 +324,10 @@ test('samples are drawn scene-linear and their average passes the display stage 
       bloom: false,
     });
     const built = film.post.effects.slice();
+    // A finishing effect works on the picture the grade has made, a scene effect on what goes into it.
+    assert.equal(built[built.length - 1], finish, 'after the grade');
+    assert.ok(built.indexOf(fog) < built.indexOf(film.grade), 'before the grade');
+    assert.equal(film.post._enableColorGrad, true, "LayaAir still builds the grade's table");
     // In front of the grade: what reaches its lookup table is kept inside it.
     const range = built[built.indexOf(film.grade) - 1];
     assert.equal(range.material.shader, 'ZhudaGradeRange');

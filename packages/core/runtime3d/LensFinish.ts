@@ -46,11 +46,13 @@ const FRAGMENT = `#define SHADER_NAME ZhudaLensFinishFS
 #include "Color.glsl";
 varying vec2 v_Texcoord0;
 float zhudaGrainHash(vec2 p,float seed){vec3 q=fract(vec3(p.xyx)*vec3(0.1031,0.1030,0.0973)+seed*0.071);q+=dot(q,q.yzx+33.33);return fract((q.x+q.y)*q.z);}
+// The chain holds linear colours to its end and the screen's curve comes after it:
+// the finish is worked out in the colours the screen shows, then handed back linear.
 vec3 zhudaFinishSample(vec2 uv){vec4 c=texture2D(u_MainTex,uv);
 #ifdef Gamma_u_MainTex
 c=gammaToLinear(c);
 #endif
-return c.rgb;}
+return pow(max(c.rgb,vec3(0.0)),vec3(1.0/2.2));}
 void main(){
 vec2 uv=v_Texcoord0;
 vec2 centred=uv*2.0-1.0;
@@ -65,7 +67,7 @@ vec2 pixel=floor(uv*u_ZhudaFinishFrame.xy);
 float noise=zhudaGrainHash(pixel,u_ZhudaFinishFrame.z)+zhudaGrainHash(pixel+17.0,u_ZhudaFinishFrame.z+3.0)-1.0;
 float luma=dot(colour,vec3(0.2126,0.7152,0.0722));
 colour+=noise*u_ZhudaFinish.x*0.06*(0.35+0.65*sqrt(clamp(luma*(1.0-luma)*4.0,0.0,1.0)));
-gl_FragColor=vec4(max(colour,0.0),1.0);
+gl_FragColor=vec4(pow(max(colour,0.0),vec3(2.2)),1.0);
 }`;
 
 const registered = new WeakSet<object>();

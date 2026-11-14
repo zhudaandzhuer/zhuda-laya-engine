@@ -130,6 +130,11 @@ A scene without surroundings of its own is lit by an [HDR panorama or the
 studio room](hdr-environment.md): reflections, ambient light and the sky from
 one photograph, turned together.
 
+A surface that is drawn rather than photographed has its own materials: a
+[toon material](stylized-shading.md) banded by LayaAir's lights and shadows,
+with an outline; a matcap and a normal view as shader recipes; and a line
+round what is selected, in another colour where it is behind something.
+
 A model's pictures can be [KTX 2 / Basis textures](basis-textures.md), which
 stay compressed on the graphics card: a quarter or an eighth of the memory
 of a PNG, with the file's own mip levels.

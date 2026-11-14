@@ -33,6 +33,30 @@ export interface ZhudaLitSurfaceSpec {
         clearCoatRoughness?: number;
     };
 }
+/**
+ * Lighting that replaces the physically based one of a lit template. The
+ * surface hook, the vertex hook, the shadow and depth passes stay as they
+ * are, so a material lit another way still casts and receives shadows as
+ * the others do. `ZhudaToonMaterial` is built on it.
+ */
+export interface ZhudaLitShading {
+    /** Names the lighting in the shader's contract: two lightings never share a shader name. */
+    key: string;
+    /** GLSL placed before `main`; it defines `vec4 <flow>(const in SurfaceInputs inputs,in PixelParams pixel)`. */
+    functions: string;
+    /** The function that takes the place of `PBR_Metallic_Flow`. */
+    flow: string;
+    /** Forward passes drawn after the lit one (an outline hull), from the material's own vertex programs. */
+    passes?: (programs: {
+        forward: string;
+        shadow: string;
+        depth: string;
+    }) => {
+        vertex: string;
+        fragment: string;
+        cull?: 'front' | 'back' | 'none';
+    }[];
+}
 /** Problems with a vertex hook; an empty list means it can be compiled into the lit passes. */
 export declare function validateZhudaLitVertexHook(vertex: unknown): string[];
 /**
@@ -50,7 +74,7 @@ export declare class ZhudaLitSurfaceMaterial {
     readonly material: any;
     readonly spec: ZhudaLitSurfaceSpec;
     private disposed;
-    constructor(spec: ZhudaLitSurfaceSpec, textures?: Record<string, any>);
+    constructor(spec: ZhudaLitSurfaceSpec, textures?: Record<string, any>, shading?: ZhudaLitShading);
     set(name: string, value: any): void;
     dispose(): void;
 }

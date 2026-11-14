@@ -232,7 +232,7 @@ return c;}`,
   }
 }
 export const shaderRecipes: Record<
-  'terrain3D' | 'textured3D' | 'dissolve3D' | 'tint2D',
+  'terrain3D' | 'textured3D' | 'dissolve3D' | 'matcap3D' | 'normalView3D' | 'tint2D',
   ZhudaShaderSpec
 > = {
   terrain3D: {
@@ -269,6 +269,40 @@ export const shaderRecipes: Record<
     },
     surface:
       'vec4 zhudaSurface(vec2 uv,vec3 p,vec3 n){float noise=fract(sin(dot(floor(uv*40.0),vec2(12.98,78.23)))*43758.54);if(noise<u_ZhudaAmount)discard;float edge=1.0-smoothstep(u_ZhudaAmount,u_ZhudaAmount+.08,noise);return vec4(mix(u_ZhudaTint.rgb,vec3(1.0,.7,.05),edge),u_ZhudaTint.a);}',
+  },
+  /**
+   * A picture of a lit ball stands in for the lighting (a "matcap"): each
+   * point takes the colour the ball has where it faces the same way, as the
+   * camera sees it. No lights, no shadows, one texture read: clay, chrome or
+   * a painted look on any mesh, and the cheapest shading there is. The top
+   * of the picture is the side facing up. Bind the picture as
+   * `u_ZhudaMatcap`.
+   */
+  matcap3D: {
+    schemaVersion: 1,
+    name: 'ZhudaMatcapSurface',
+    dimension: 3,
+    uniforms: {
+      u_ZhudaMatcap: { type: 'texture2D' },
+      u_ZhudaTint: { type: 'vec4', value: [1, 1, 1, 1] },
+    },
+    surface:
+      'vec4 zhudaSurface(vec2 uv,vec3 p,vec3 n){vec3 toEye=normalize(mat3(u_View)*(u_CameraPos-p));vec3 facing=normalize(mat3(u_View)*n);vec3 across=normalize(vec3(toEye.z,0.0,-toEye.x));vec3 up=cross(toEye,across);vec2 at=vec2(dot(across,facing),-dot(up,facing))*0.495+0.5;return zhudaSample_u_ZhudaMatcap(at)*u_ZhudaTint;}',
+  },
+  /**
+   * Which way each point faces, as a colour: right is red, up is green,
+   * toward the camera is blue (x, y, z of the normal in view space, halved
+   * and lifted to 0..1). For looking at a mesh's normals; without a grade the
+   * screen shows the numbers as they are.
+   */
+  normalView3D: {
+    schemaVersion: 1,
+    name: 'ZhudaNormalViewSurface',
+    dimension: 3,
+    fog: false,
+    uniforms: {},
+    surface:
+      'vec4 zhudaSurface(vec2 uv,vec3 p,vec3 n){vec3 facing=normalize(mat3(u_View)*n);return vec4(pow(facing*0.5+0.5,vec3(2.2)),1.0);}',
   },
   tint2D: {
     schemaVersion: 1,

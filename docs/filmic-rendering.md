@@ -79,10 +79,19 @@ runtime.start(() => grass.set('u_ZhudaTime', performance.now() / 1000));
 
 `ZhudaLensFinish({ grain, vignette, fringe })` is one post-process effect for
 the end of the chain: pass `[finish.effect]` as `finishEffects` to
-`ZhudaFilmicPipeline` (after tone mapping, in display space) and call
+`ZhudaFilmicPipeline` and call
 `setFrame(width, height, frameNumber)` before each frame; the grain is a
 function of the pixel and that frame number, so it does not change between
 renders of the same frame. `dispose()` it after the pipeline.
+
+`finishEffects` run after the grade, on the picture it has made. (LayaAir
+keeps its colour grade last in a chain and puts an effect added later before
+it; until 2026-11-14 the finishing effects therefore ran before the grade,
+on the scene's unbounded light. The pipeline now adds them after it.) The
+chain holds linear colours to its end and the screen's curve comes after
+it, so an effect that means a colour as the screen shows it converts it: the
+lens finish works in the screen's colours and hands the picture back linear;
+the [selection outline](stylized-shading.md) takes display colours.
 
 ## Environment captured from the scene
 

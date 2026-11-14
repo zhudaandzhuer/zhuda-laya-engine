@@ -156,7 +156,7 @@ export const API_GUARDRAILS = [
     hallucinatedLegacyApi:
       'ShaderMaterial.ready means GPU compiled; raw shader globals can be copied from Three.js',
     zhudaCanonicalApi:
-      'new ZhudaShaderMaterial(shaderRecipes.terrain3D); shader.setUniform("u_ZhudaSnowLine",6);',
+      'new ZhudaShaderMaterial(shaderRecipes.terrain3D); shader.setUniform("u_ZhudaSnowLine",6); Recipes: terrain3D, textured3D, dissolve3D, matcap3D (bind u_ZhudaMatcap), normalView3D, tint2D. Cel shading with LayaAir lights, shadows and an outline: new ZhudaToonMaterial({name, ramp, outline}); a line round selected nodes: new ZhudaSelectionOutline() in ZhudaFilmicPipeline finishEffects; see docs/stylized-shading.md.',
     reason:
       '2D保留graphics premultiplied alpha/clipping/gamma；3D模板處理world normal/fog/output。surface不是完整main。JSON驗證不等於GPU編譯。',
   },

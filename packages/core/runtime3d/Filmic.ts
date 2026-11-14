@@ -293,6 +293,20 @@ export interface FilmicOptions {
    */
   finishEffects?: readonly any[];
 }
+/**
+ * LayaAir 3.4.2 keeps its colour grade last in a chain: an effect added
+ * after the grade is put before it. This adds one after it, where the
+ * finishing effects belong: on the picture the grade has made.
+ */
+function addAfterGrade(post: any, effect: any) {
+  const keepsLast = post._enableColorGrad;
+  post._enableColorGrad = false;
+  try {
+    post.addEffect(effect);
+  } finally {
+    post._enableColorGrad = keepsLast;
+  }
+}
 /** Owns the camera's HDR, AO, restrained bloom and ACES chain. Caller chooses quality. */
 export class ZhudaFilmicPipeline {
   readonly post: any;
@@ -369,7 +383,7 @@ export class ZhudaFilmicPipeline {
       post.addEffect(effect);
     }
     post.addEffect(this.grade);
-    for (const effect of this.finishEffects) post.addEffect(effect);
+    for (const effect of this.finishEffects) addAfterGrade(post, effect);
     camera.enableHDR = true;
     camera.postProcess = post;
     if (options.msaa !== undefined) setCameraMultisampling(l, camera, !!options.msaa);
@@ -466,7 +480,9 @@ export class ZhudaFilmicPipeline {
       all = [...linearPart, ...displayPart];
     // The source goes first; the rest keeps the order it was built in.
     this.post.clearEffect();
-    for (const effect of [source, ...all]) this.post.addEffect(effect);
+    for (const effect of [source, ...all])
+      if (this.finishEffects.includes(effect)) addAfterGrade(this.post, effect);
+      else this.post.addEffect(effect);
     let saved: boolean[] | undefined;
     const chain: CinematicLinearChain = {
       beginSamples: () => {

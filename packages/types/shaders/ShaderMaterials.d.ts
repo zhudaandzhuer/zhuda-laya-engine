@@ -38,4 +38,4 @@ export declare class ZhudaShaderMaterial {
     };
     dispose(): void;
 }
-export declare const shaderRecipes: Record<'terrain3D' | 'textured3D' | 'dissolve3D' | 'tint2D', ZhudaShaderSpec>;
+export declare const shaderRecipes: Record<'terrain3D' | 'textured3D' | 'dissolve3D' | 'matcap3D' | 'normalView3D' | 'tint2D', ZhudaShaderSpec>;
