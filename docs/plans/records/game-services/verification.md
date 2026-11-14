@@ -26,6 +26,7 @@ Date: 2026-11-14
 | Spatial audio, real render | `npm run verify:spatial-audio` | PASS | `EV/spatial-audio/evidence/report.json`, `EV/spatial-audio.log` |
 | Geometry and picking, WebGL | `npm run verify:geometry` | PASS | `EV/webgl/evidence/report.json`, `geometry-*.png` |
 | Geometry and picking, WebGPU | `GEOMETRY_RENDERER=webgpu npm run verify:geometry` | PASS | `EV/webgpu/evidence/report.json`, `geometry-*.png` |
+| Existing extrude and lathe film draw (cap filler replaced) | `npm run verify:film-shapes` (WebGL) | PASS | scratch run, not kept |
 | Spatial audio on a device, speakers or headphones | not run | UNAVAILABLE | none |
 
 ### Spatial audio (measured on Chrome's own render)
