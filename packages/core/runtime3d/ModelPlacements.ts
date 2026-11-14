@@ -128,7 +128,35 @@ export function mountZhudaModel(
       });
     } else {
       for (const version of versions) holder.addChild(version.node);
-      if (levelled)
+      if (levelled && versions.length === 1) {
+        // One model, only a distance beyond which it is not drawn: each of
+        // its meshes is measured by itself, to the middle of its own box. A
+        // model cut into squares (zhuda-laya-lod --split) then stops drawing
+        // square by square, not all at once by where its origin lies.
+        const parts: any[] = [];
+        const visit = (node: any) => {
+          if (node.meshRenderer ?? node.getComponent?.(l.MeshRenderer)) parts.push(node);
+          for (let i = 0; i < (node.numChildren || 0); i++) visit(node.getChildAt(i));
+        };
+        visit(instance.node);
+        for (const part of parts) {
+          const renderer = part.meshRenderer ?? part.getComponent(l.MeshRenderer);
+          items.push({
+            anchor: {
+              transform: {
+                get position() {
+                  return renderer.bounds.getCenter();
+                },
+              },
+            },
+            nodes: [part],
+            from,
+            cull: options.cullMeters,
+          });
+        }
+        if (!parts.length)
+          items.push({ anchor: holder, nodes: [instance.node], from, cull: options.cullMeters });
+      } else if (levelled)
         items.push({
           anchor: holder,
           nodes: versions.map((version) => version.node),

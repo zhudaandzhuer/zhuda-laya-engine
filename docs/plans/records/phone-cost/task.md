@@ -34,7 +34,12 @@ Taken one at a time, each with its own commit:
    casts no shadow (record: `docs/plans/records/model-simplify/`).
 2. One-pass edge smoothing (`grade.antialias: 'fxaa'`,
    `ZhudaEdgeSmoothing`), used at quality level 1 in place of multisampling.
-3. Light fog and beams at a lower resolution (not started).
+3. A reach that scales every level-of-detail and cull distance at once
+   (`updateLod(eye, reach)`), and distance culling mesh by mesh for a model
+   without copies.
+4. Light fog and beams at a lower resolution (not started: the fog's edge
+   handling and its own depth picture make it a larger change than the 3 to
+   4 ms it costs at the medium setting).
 
 ### Consumer or adapter
 

@@ -109,11 +109,18 @@ export class ZhudaModelLod {
   invalidate() {
     this.positions = undefined;
   }
-  /** Chooses what every copy draws for an eye at `[x, y, z]` in world metres. */
-  update(eye: readonly [number, number, number]): ZhudaLodCounts {
+  /**
+   * Chooses what every copy draws for an eye at `[x, y, z]` in world metres.
+   * `reach` scales every distance at once (default 1): at 0.5 a copy turns
+   * to its lighter version, and stops being drawn, at half the distance it
+   * was authored for. For a device that cannot draw as much: one number
+   * instead of a second set of distances. 0.05..8.
+   */
+  update(eye: readonly [number, number, number], reach = 1): ZhudaLodCounts {
     if (this.disposed) throw Error('Disposed model levels');
     if (eye.length !== 3 || !eye.every(Number.isFinite))
       throw Error('eye: use three finite numbers');
+    if (!(reach >= 0.05 && reach <= 8)) throw Error('reach: use 0.05..8');
     if (!this.positions) {
       // Scenery stands still: world positions are read once.
       this.positions = new Float32Array(this.items.length * 3);
@@ -127,11 +134,12 @@ export class ZhudaModelLod {
     const positions = this.positions;
     for (let i = 0; i < this.items.length; i++) {
       const item = this.items[i];
-      const distance = Math.hypot(
-        positions[i * 3] - eye[0],
-        positions[i * 3 + 1] - eye[1],
-        positions[i * 3 + 2] - eye[2],
-      );
+      const distance =
+        Math.hypot(
+          positions[i * 3] - eye[0],
+          positions[i * 3 + 1] - eye[1],
+          positions[i * 3 + 2] - eye[2],
+        ) / reach;
       const before = this.current[i];
       const level = zhudaLodLevel(distance, item.from, item.cull, before, this.hysteresis);
       if (level !== before) {

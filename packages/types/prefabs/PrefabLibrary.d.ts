@@ -91,9 +91,12 @@ export interface PrefabInstance<T extends Laya.Node = Laya.Sprite> {
     /**
      * Model prefabs with `lod` or `cullMeters`: chooses what every copy draws
      * for an eye at `[x, y, z]` in world metres. Until it is called every copy
-     * draws its full model. Without levels it changes nothing.
+     * draws its full model. Without levels it changes nothing. `reach`
+     * (0.05..8, default 1) scales every distance at once: below 1 copies turn
+     * lighter and stop being drawn nearer the eye, for a device that cannot
+     * draw as much.
      */
-    updateLod(eye: readonly [number, number, number]): ZhudaLodCounts;
+    updateLod(eye: readonly [number, number, number], reach?: number): ZhudaLodCounts;
     /**
      * Model prefabs: scales what a node's model gives off, 0..8, while it runs
      * (windows and lanterns that light at dusk). `name` is the node's name; 1

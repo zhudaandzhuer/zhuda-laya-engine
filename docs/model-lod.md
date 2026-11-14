@@ -45,6 +45,17 @@ Ground and paving shade nothing: give their prefab node `castShadow: false`
 (`mountZhudaModel` takes the same option) and they are not drawn into the
 shadow map at all. They still take shadows.
 
+## One number for a weaker device
+
+`instance.updateLod(eye, reach)` scales every `lod` and `cullMeters` distance
+at once: at `reach` 0.5 a copy turns to its lighter version, and stops being
+drawn, at half the distance it was authored for. A game keeps one set of
+distances and gives each picture setting a reach.
+
+A model without copies that has only `cullMeters` is measured mesh by mesh,
+each to the middle of its own box: a model cut into squares stops drawing
+square by square with distance, not all at once by where its origin lies.
+
 ## What simplifying does
 
 - **Solid surfaces** (a trunk, a rock, a wall) are simplified with

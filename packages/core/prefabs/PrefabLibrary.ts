@@ -215,9 +215,12 @@ export interface PrefabInstance<T extends Laya.Node = Laya.Sprite> {
   /**
    * Model prefabs with `lod` or `cullMeters`: chooses what every copy draws
    * for an eye at `[x, y, z]` in world metres. Until it is called every copy
-   * draws its full model. Without levels it changes nothing.
+   * draws its full model. Without levels it changes nothing. `reach`
+   * (0.05..8, default 1) scales every distance at once: below 1 copies turn
+   * lighter and stop being drawn nearer the eye, for a device that cannot
+   * draw as much.
    */
-  updateLod(eye: readonly [number, number, number]): ZhudaLodCounts;
+  updateLod(eye: readonly [number, number, number], reach?: number): ZhudaLodCounts;
   /**
    * Model prefabs: scales what a node's model gives off, 0..8, while it runs
    * (windows and lanterns that light at dusk). `name` is the node's name; 1
@@ -605,11 +608,11 @@ export class ZhudaPrefabLibrary<T extends AnyPrefabDefinition = PrefabDefinition
           if (!set) throw Error(`Prefab ${id} has no model node ${name}`);
           set(scale);
         },
-        updateLod: (eye) => {
+        updateLod: (eye, reach) => {
           if (retired) throw Error('Disposed prefab instance');
           const total: ZhudaLodCounts = { levels: [], culled: 0, switched: 0 };
           for (const group of levels) {
-            const counts = group.update(eye);
+            const counts = group.update(eye, reach);
             counts.levels.forEach((n, k) => (total.levels[k] = (total.levels[k] ?? 0) + n));
             total.culled += counts.culled;
             total.switched += counts.switched;

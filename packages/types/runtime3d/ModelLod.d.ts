@@ -48,8 +48,14 @@ export declare class ZhudaModelLod {
     get size(): number;
     /** Call after the copies moved: their positions are read again on the next update. */
     invalidate(): void;
-    /** Chooses what every copy draws for an eye at `[x, y, z]` in world metres. */
-    update(eye: readonly [number, number, number]): ZhudaLodCounts;
+    /**
+     * Chooses what every copy draws for an eye at `[x, y, z]` in world metres.
+     * `reach` scales every distance at once (default 1): at 0.5 a copy turns
+     * to its lighter version, and stops being drawn, at half the distance it
+     * was authored for. For a device that cannot draw as much: one number
+     * instead of a second set of distances. 0.05..8.
+     */
+    update(eye: readonly [number, number, number], reach?: number): ZhudaLodCounts;
     /** Puts every copy back to its full model and stops. The nodes belong to their owner. */
     dispose(): void;
 }

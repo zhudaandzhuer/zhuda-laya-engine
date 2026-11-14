@@ -197,6 +197,15 @@ test('levels of detail: borders, hysteresis and culling', async () => {
   assert.deepEqual(lod.update([0, 0, 0]), { levels: [1, 1], culled: 1, switched: 0 });
   assert.deepEqual(lod.update([100, 0, 0]), { levels: [1, 0], culled: 2, switched: 3 });
   assert.throws(() => lod.update([0, NaN, 0]), /finite/);
+  // A reach scales every distance at once. From the first copy the others
+  // stand 20 m and 100 m off: at reach 3 they count as 6.7 m and 33 m.
+  assert.deepEqual(lod.update([0, 0, 0], 3), { levels: [2, 1], culled: 0, switched: 3 });
+  // At a fifth of the reach the copy 20 m off counts as 100 m: not drawn.
+  assert.deepEqual(lod.update([0, 0, 0], 0.2), { levels: [1, 0], culled: 2, switched: 2 });
+  assert.deepEqual(lod.update([0, 0, 0]), { levels: [1, 1], culled: 1, switched: 1 });
+  assert.throws(() => lod.update([0, 0, 0], 0), /reach/);
+  assert.throws(() => lod.update([0, 0, 0], 9), /reach/);
+  lod.update([100, 0, 0]);
   lod.dispose();
   assert.deepEqual(
     items.map((item) => item.nodes.map((n) => n.active)),
@@ -304,6 +313,32 @@ test('a model that is told not to cast shadows does not, in any of its copies', 
     for (const renderer of quiet) {
       assert.equal(renderer.castShadow, false);
       assert.equal(renderer.receiveShadow, true, 'it still takes shadows');
+    }
+    // A model without copies and with only a distance to stop at: each of its
+    // meshes is measured by itself, to the middle of its own box.
+    {
+      made.length = 0;
+      const root = new Holder('town');
+      const parts = [0, 20, 100].map((x) => {
+        const part = new Node('square at ' + x);
+        part.meshRenderer.bounds = { getCenter: () => ({ x, y: 0, z: 0 }) };
+        root.addChild(part);
+        return part;
+      });
+      const mounted = mountZhudaModel(new Holder('holder'), { node: root }, { cullMeters: 50 });
+      assert.equal(mounted.lod.size, 3);
+      assert.deepEqual(mounted.lod.update([0, 0, 0]), { levels: [2], culled: 1, switched: 1 });
+      assert.deepEqual(
+        parts.map((part) => part.active),
+        [true, true, false],
+      );
+      // With a shorter reach the square 20 m off goes as well.
+      assert.deepEqual(mounted.lod.update([0, 0, 0], 0.3), { levels: [1], culled: 2, switched: 1 });
+      assert.deepEqual(
+        parts.map((part) => part.active),
+        [true, false, false],
+      );
+      mounted.dispose();
     }
     // Placed once, without copies, the same.
     assert.deepEqual(
