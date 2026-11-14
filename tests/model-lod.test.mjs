@@ -278,6 +278,46 @@ test('a skinned model keeps its skin, joints and animation', async () => {
   }
 });
 
+test('pictures inside the file are made no larger than asked', async () => {
+  const { default: sharp } = await import('sharp');
+  const picture = (size, format) =>
+    sharp({
+      create: { width: size, height: size / 2, channels: 3, background: { r: 200, g: 90, b: 30 } },
+    })
+      [format]()
+      .toBuffer();
+  const big = await picture(256, 'png'),
+    small = await picture(32, 'png');
+  const source = glb([{ ...sheet(8), material: 0 }], [SOLID], [big, small]);
+  const { glb: made, pictures } = await simplifyGlb(source, { ratio: 0.5, textureSize: 64 });
+  assert.deepEqual(
+    pictures.map((p) => [p.from, p.to]),
+    [
+      [
+        [256, 128],
+        [64, 32],
+      ],
+      [
+        [32, 16],
+        [32, 16],
+      ],
+    ],
+  );
+  const { json, bin } = readGlb(made);
+  const bytesOf = (i) => {
+    const view = json.bufferViews[json.images[i].bufferView];
+    return bin.subarray(view.byteOffset, view.byteOffset + view.byteLength);
+  };
+  const first = await sharp(bytesOf(0)).metadata();
+  assert.deepEqual([first.width, first.height, first.format], [64, 32, 'png']);
+  assert.deepEqual(bytesOf(1), small, 'a picture already small enough is not touched');
+  assert.ok(made.length < source.length);
+  // Without the option nothing is read as a picture at all.
+  const plain = await simplifyGlb(source, { ratio: 0.5 });
+  assert.deepEqual(plain.pictures, []);
+  await assert.rejects(simplifyGlb(source, { ratio: 0.5, textureSize: 4 }), /textureSize/);
+});
+
 test('what cannot be done is refused', async () => {
   const source = glb([{ ...sheet(4), material: 0 }], [SOLID]);
   await assert.rejects(simplifyGlb(source, { ratio: 1 }), /ratio/);

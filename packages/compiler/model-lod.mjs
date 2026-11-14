@@ -7,7 +7,7 @@
 // any more. Textures, materials, nodes, skins and animations are kept as they
 // are. Build-time only: nothing here runs in a game.
 //
-// usage: zhuda-laya-lod <model.glb> --ratio 0.5,0.2 [--out <dir>] [--error 0.02]
+// usage: zhuda-laya-lod <model.glb> --ratio 0.5,0.2 [--textures 1024,512] [--out <dir>] [--error 0.02]
 // writes <name>.lod1.glb, <name>.lod2.glb ... beside the model (or in --out).
 import fs from 'node:fs';
 import path from 'node:path';
@@ -141,8 +141,10 @@ export function thinCards(indices, positions, ratio) {
 /**
  * The model with about `ratio` of its triangles. `error` is how far a
  * simplified surface may stand from the original, as a share of the mesh's
- * size (default 0.02). Returns the new file and, for each part of each mesh,
- * what was done to it.
+ * size (default 0.02). `textureSize` makes the pictures inside the file no
+ * larger than that many pixels a side (JPEG stays JPEG, PNG stays PNG).
+ * Returns the new file, for each part of each mesh what was done to it, and
+ * for each picture its size before and after.
  */
 export async function simplifyGlb(bytes, options = {}) {
   const ratio = options.ratio,
@@ -150,6 +152,15 @@ export async function simplifyGlb(bytes, options = {}) {
   if (!(ratio > 0 && ratio < 1))
     throw Error('ratio: a share of the triangles, above 0 and below 1');
   if (!(error > 0 && error <= 1)) throw Error('error: above 0, at most 1');
+  if (
+    options.textureSize !== undefined &&
+    !(
+      Number.isInteger(options.textureSize) &&
+      options.textureSize >= 16 &&
+      options.textureSize <= 8192
+    )
+  )
+    throw Error('textureSize: a whole number of pixels, 16..8192');
   await MeshoptSimplifier.ready;
   const { json, bin } = readGlb(bytes);
   const out = structuredClone(json);
@@ -248,6 +259,32 @@ export async function simplifyGlb(bytes, options = {}) {
       primitive.indices = out.accessors.length - 1;
     }
 
+  // Pictures: a model seen from far off does not need them at full size.
+  const pictures = [];
+  if (options.textureSize !== undefined) {
+    const { default: sharp } = await import('sharp');
+    for (const [i, image] of (out.images ?? []).entries()) {
+      if (image.bufferView === undefined) continue;
+      const old = json.bufferViews[image.bufferView];
+      const source = bin.subarray(old.byteOffset || 0, (old.byteOffset || 0) + old.byteLength);
+      const { width, height } = await sharp(source).metadata();
+      const entry = { image: image.name ?? String(i), from: [width, height], to: [width, height] };
+      pictures.push(entry);
+      if (Math.max(width, height) <= options.textureSize) continue;
+      const resized = sharp(source).resize({
+        width: options.textureSize,
+        height: options.textureSize,
+        fit: 'inside',
+      });
+      const made =
+        image.mimeType === 'image/png'
+          ? await resized.png().toBuffer({ resolveWithObject: true })
+          : await resized.jpeg({ quality: 85 }).toBuffer({ resolveWithObject: true });
+      entry.to = [made.info.width, made.info.height];
+      image.bufferView = view(made.data);
+    }
+  }
+
   // Keep only the accessors something still points at, and only their data.
   const usedAccessors = new Set();
   const visit = (index) => index !== undefined && usedAccessors.add(index);
@@ -324,7 +361,7 @@ export async function simplifyGlb(bytes, options = {}) {
   for (const image of out.images ?? [])
     if (image.bufferView !== undefined) image.bufferView = viewMap.get(image.bufferView);
   out.buffers = [{ byteLength: length }];
-  return { glb: writeGlb(out, Buffer.concat(parts)), report };
+  return { glb: writeGlb(out, Buffer.concat(parts)), report, pictures };
 }
 
 async function main(argv) {
@@ -336,7 +373,7 @@ async function main(argv) {
   };
   if (files.length !== 1 || !flag('ratio')) {
     console.error(
-      'usage: zhuda-laya-lod <model.glb> --ratio 0.5,0.2 [--out <dir>] [--error 0.02]\n' +
+      'usage: zhuda-laya-lod <model.glb> --ratio 0.5,0.2 [--textures 1024,512] [--out <dir>] [--error 0.02]\n' +
         'writes <name>.lod1.glb, <name>.lod2.glb ... with that share of the triangles',
     );
     process.exitCode = 2;
@@ -348,8 +385,11 @@ async function main(argv) {
   fs.mkdirSync(dir, { recursive: true });
   const ratios = flag('ratio').split(',').map(Number);
   for (const [i, ratio] of ratios.entries()) {
+    // One picture size for every level, or one for each.
+    const sizes = (flag('textures') ?? '').split(',').filter(Boolean).map(Number);
     const { glb, report } = await simplifyGlb(bytes, {
       ratio,
+      textureSize: sizes.length ? sizes[Math.min(i, sizes.length - 1)] : undefined,
       error: flag('error') ? Number(flag('error')) : undefined,
     });
     const file = path.join(dir, `${path.basename(source, '.glb')}.lod${i + 1}.glb`);
@@ -370,7 +410,7 @@ async function main(argv) {
 if (
   cliMain(
     import.meta.url,
-    'Usage: zhuda-laya-lod MODEL.glb --ratio 0.5,0.2 [--out DIRECTORY] [--error 0.02]',
+    'Usage: zhuda-laya-lod MODEL.glb --ratio 0.5,0.2 [--textures 1024,512] [--out DIRECTORY] [--error 0.02]',
   )
 )
   main(process.argv.slice(2)).catch((error) => {

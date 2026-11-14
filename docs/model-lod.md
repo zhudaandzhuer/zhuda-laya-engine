@@ -33,8 +33,11 @@ Then name them in the prefab, each from the distance it takes over:
   dropped, the same ones every run, and the rest grow about their middles
   (at most 1.8 times) so the crown stays as full.
 - Vertex data is written again without the vertices nothing uses, so the file
-  shrinks as well. Textures are not touched: they are most of a model's
-  bytes, and a lighter version usually wants smaller ones (not done here).
+  shrinks as well.
+- `--textures 1024,512` makes the pictures inside each level no larger than
+  that many pixels a side (one size for every level, or one for each).
+  Pictures are most of a model's bytes; without this a lighter version is
+  barely a smaller file.
 - Materials, nodes, skins, joints, morph targets and animations are kept.
 
 `simplifyGlb(bytes, { ratio, error, cards })` in
