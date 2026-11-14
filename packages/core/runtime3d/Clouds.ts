@@ -1,3 +1,4 @@
+import { zhudaShaderRegistrar } from './ShaderRegistry.ts';
 /**
  * A layer of clouds with depth: a slab of air between two heights in which
  * a drifting noise says how much cloud there is, followed along each view
@@ -182,6 +183,7 @@ function register(l: any) {
   });
   registered.add(l.Shader3D);
 }
+zhudaShaderRegistrar(register);
 
 export interface ZhudaCloudsOptions {
   /** How much of the sky is cloud, 0..1 (default 0.5). */

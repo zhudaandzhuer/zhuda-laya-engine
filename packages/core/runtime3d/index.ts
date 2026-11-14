@@ -30,6 +30,8 @@ export * from './Grass.ts';
 export * from './EdgeSmoothing.ts';
 export * from './RenderScale.ts';
 export * from './ShadowUpdates.ts';
+export * from './ShaderWarmUp.ts';
+export { registerZhudaEffectShaders } from './ShaderRegistry.ts';
 export * from './PointShadow.ts';
 export * from './ProbeVolume.ts';
 export * from './QualityGovernor.ts';

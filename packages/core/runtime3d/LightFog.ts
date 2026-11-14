@@ -17,6 +17,7 @@
  * TypeScript. Only the class needs the Laya runtime.
  */
 import { prepareLaya342ManualDraw } from './Laya342Adapters.ts';
+import { zhudaShaderRegistrar } from './ShaderRegistry.ts';
 
 export interface ZhudaLightFogOptions {
   /** Extinction per metre at `baseY`, 0..1 (default 0.012). */
@@ -410,6 +411,7 @@ function register(l: any) {
   pass.renderState.cull = l.RenderState.CULL_NONE;
   registered.add(l.Shader3D);
 }
+zhudaShaderRegistrar(register);
 
 export class ZhudaLightFog {
   /** The Laya post-process effect; `ZhudaFilmicPipeline` adds it to its chain. */

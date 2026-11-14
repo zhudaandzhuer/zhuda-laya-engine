@@ -1,3 +1,4 @@
+import { zhudaShaderRegistrar } from './ShaderRegistry.ts';
 /**
  * Edge smoothing as one pass over the finished picture (FXAA): where the
  * brightness steps along an edge, the pixel is mixed with its neighbours
@@ -44,6 +45,21 @@ gl_FragColor=vec4(lWide<lowest||lWide>highest?near:wide,1.0);
 }`;
 
 const registered = new WeakSet<object>();
+function register(l: any) {
+  if (registered.has(l.Shader3D)) return;
+  const shader = l.Shader3D.add('ZhudaEdgeSmoothing');
+  shader.shaderType = l.ShaderFeatureType.PostProcess;
+  const sub = new l.SubShader(
+    { a_PositionTexcoord: [l.VertexMesh.MESH_POSITION0, l.ShaderDataType.Vector4] },
+    { u_MainTex: l.ShaderDataType.Texture2D, u_ZhudaEdgeTexel: l.ShaderDataType.Vector4 },
+  );
+  shader.addSubShader(sub);
+  const pass = sub.addShaderPass(VERTEX, FRAGMENT);
+  pass.statefirst = true;
+  pass.renderState.cull = l.RenderState.CULL_NONE;
+  registered.add(l.Shader3D);
+}
+zhudaShaderRegistrar(register);
 
 export class ZhudaEdgeSmoothing {
   /** The Laya post-process effect; `ZhudaFilmicPipeline` takes it in `finishEffects`, before the lens finish. */
@@ -54,19 +70,7 @@ export class ZhudaEdgeSmoothing {
   constructor() {
     const l = (globalThis as any).Laya;
     if (!l?.PostProcessEffect) throw Error('Edge smoothing needs the Laya post-process module');
-    if (!registered.has(l.Shader3D)) {
-      const shader = l.Shader3D.add('ZhudaEdgeSmoothing');
-      shader.shaderType = l.ShaderFeatureType.PostProcess;
-      const sub = new l.SubShader(
-        { a_PositionTexcoord: [l.VertexMesh.MESH_POSITION0, l.ShaderDataType.Vector4] },
-        { u_MainTex: l.ShaderDataType.Texture2D, u_ZhudaEdgeTexel: l.ShaderDataType.Vector4 },
-      );
-      shader.addSubShader(sub);
-      const pass = sub.addShaderPass(VERTEX, FRAGMENT);
-      pass.statefirst = true;
-      pass.renderState.cull = l.RenderState.CULL_NONE;
-      registered.add(l.Shader3D);
-    }
+    register(l);
     const material = (this.material = new l.Material());
     material.setShaderName('ZhudaEdgeSmoothing');
     material.setVector4('u_ZhudaEdgeTexel', new l.Vector4(1 / 1280, 1 / 720, 0, 0));

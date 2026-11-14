@@ -30,6 +30,7 @@ import {
   zhudaCubeFromFaces,
   type ZhudaCubePicture,
 } from './EnvironmentProbe.ts';
+import { zhudaShaderRegistrar } from './ShaderRegistry.ts';
 
 /** LayaAir's decoding of a colour channel (the scene's ambient colour is a display value). */
 const decode = (value: number) =>
@@ -382,6 +383,7 @@ function registerCapture(l: any) {
   pass.renderState.cull = l.RenderState.CULL_NONE;
   captureRegistered.add(l.Shader3D);
 }
+zhudaShaderRegistrar(registerCapture);
 
 export class ZhudaProbeVolume {
   readonly counts: [number, number, number];

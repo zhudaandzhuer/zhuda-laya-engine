@@ -1,3 +1,4 @@
+import { zhudaShaderRegistrar } from './ShaderRegistry.ts';
 /**
  * The marks a real camera leaves on a picture, as one post-process effect at
  * the end of the chain (after tone mapping): film grain, a vignette and a
@@ -68,6 +69,25 @@ gl_FragColor=vec4(max(colour,0.0),1.0);
 }`;
 
 const registered = new WeakSet<object>();
+function register(l: any) {
+  if (registered.has(l.Shader3D)) return;
+  const shader = l.Shader3D.add('ZhudaLensFinish');
+  shader.shaderType = l.ShaderFeatureType.PostProcess;
+  const sub = new l.SubShader(
+    { a_PositionTexcoord: [l.VertexMesh.MESH_POSITION0, l.ShaderDataType.Vector4] },
+    {
+      u_MainTex: l.ShaderDataType.Texture2D,
+      u_ZhudaFinish: l.ShaderDataType.Vector4,
+      u_ZhudaFinishFrame: l.ShaderDataType.Vector4,
+    },
+  );
+  shader.addSubShader(sub);
+  const pass = sub.addShaderPass(VERTEX, FRAGMENT);
+  pass.statefirst = true;
+  pass.renderState.cull = l.RenderState.CULL_NONE;
+  registered.add(l.Shader3D);
+}
+zhudaShaderRegistrar(register);
 
 export class ZhudaLensFinish {
   /** The Laya post-process effect; `ZhudaFilmicPipeline` adds it last (`finishEffects`). */
@@ -81,23 +101,7 @@ export class ZhudaLensFinish {
     const l = (globalThis as any).Laya;
     if (!l?.MaterialPostProcessEffect)
       throw Error('Lens finish needs the Laya post-process module');
-    if (!registered.has(l.Shader3D)) {
-      const shader = l.Shader3D.add('ZhudaLensFinish');
-      shader.shaderType = l.ShaderFeatureType.PostProcess;
-      const sub = new l.SubShader(
-        { a_PositionTexcoord: [l.VertexMesh.MESH_POSITION0, l.ShaderDataType.Vector4] },
-        {
-          u_MainTex: l.ShaderDataType.Texture2D,
-          u_ZhudaFinish: l.ShaderDataType.Vector4,
-          u_ZhudaFinishFrame: l.ShaderDataType.Vector4,
-        },
-      );
-      shader.addSubShader(sub);
-      const pass = sub.addShaderPass(VERTEX, FRAGMENT);
-      pass.statefirst = true;
-      pass.renderState.cull = l.RenderState.CULL_NONE;
-      registered.add(l.Shader3D);
-    }
+    register(l);
     this.material = new l.Material();
     this.material.setShaderName('ZhudaLensFinish');
     this.material.setVector4(

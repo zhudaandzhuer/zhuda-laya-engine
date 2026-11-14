@@ -1,6 +1,7 @@
 import { prepareLaya342ManualDraw } from './Laya342Adapters.ts';
 import { zhudaShadowBorrower } from './ShadowUpdates.ts';
 import type { CinematicLinearChain } from './CinematicCapture.ts';
+import { zhudaShaderRegistrar } from './ShaderRegistry.ts';
 
 const SOURCE_VERTEX =
   '#define SHADER_NAME ZhudaLinearSourceVS\nvarying vec2 v_Texcoord0;void main(){gl_Position=vec4(a_PositionTexcoord.xy,0.0,1.0);v_Texcoord0=a_PositionTexcoord.zw;}';
@@ -52,6 +53,7 @@ function registerGradeRange(l: any) {
   pass.renderState.cull = l.RenderState.CULL_NONE;
   rangeRegistered.add(l.Shader3D);
 }
+zhudaShaderRegistrar(registerGradeRange);
 const sourceRegistered = new WeakSet<object>();
 function registerLinearSource(l: any) {
   if (sourceRegistered.has(l.Shader3D)) return;
@@ -71,6 +73,7 @@ function registerLinearSource(l: any) {
   pass.renderState.cull = l.RenderState.CULL_NONE;
   sourceRegistered.add(l.Shader3D);
 }
+zhudaShaderRegistrar(registerLinearSource);
 
 export interface PrefilteredEnvironmentSpec {
   size: number;

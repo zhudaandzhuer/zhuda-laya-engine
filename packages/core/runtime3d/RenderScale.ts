@@ -1,3 +1,4 @@
+import { zhudaShaderRegistrar } from './ShaderRegistry.ts';
 /**
  * The 3D picture drawn smaller than the canvas and brought up to it, for
  * devices that cannot fill every pixel: at 0.67 a frame has 45 % of the
@@ -176,6 +177,7 @@ function register(l: any) {
   add('ZhudaUpscaleBilinear', rcas(false));
   registered.add(l.Shader3D);
 }
+zhudaShaderRegistrar(register);
 
 /** The stage's render scale is held by one of these at a time. */
 let active: ZhudaRenderScale | null = null;

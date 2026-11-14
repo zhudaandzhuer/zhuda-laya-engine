@@ -15,6 +15,7 @@
  * keeps its old shadow until `render` is called again.
  */
 import { prepareLaya342ManualDraw } from './Laya342Adapters.ts';
+import { zhudaShaderRegistrar } from './ShaderRegistry.ts';
 
 /** The scene define that switches the shadow lookup on. */
 export const ZHUDA_POINT_SHADOW_DEFINE = 'ZHUDA_POINT_SHADOW';
@@ -280,6 +281,7 @@ function registerDepth(l: any) {
   pass.renderState.cull = l.RenderState.CULL_NONE;
   depthRegistered.add(l.Shader3D);
 }
+zhudaShaderRegistrar(registerDepth);
 
 export class ZhudaPointShadow {
   private readonly scene: any;

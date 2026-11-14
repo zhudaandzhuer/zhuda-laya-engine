@@ -1,3 +1,4 @@
+import { zhudaShaderRegistrar } from './ShaderRegistry.ts';
 /**
  * Three effects of a camera that a game needs while it runs, as post-process
  * effects for `ZhudaFilmicPipeline` (`sceneEffects`, after reflections and
@@ -206,6 +207,7 @@ function register(l: any) {
   });
   registered.add(l.Shader3D);
 }
+zhudaShaderRegistrar(register);
 
 function requireRuntime(what: string) {
   const l = (globalThis as any).Laya;

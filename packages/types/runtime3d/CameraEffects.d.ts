@@ -1,21 +1,4 @@
 // Generated from TypeScript source; run npm run types:generate.
-/**
- * Three effects of a camera that a game needs while it runs, as post-process
- * effects for `ZhudaFilmicPipeline` (`sceneEffects`, after reflections and
- * fog, before bloom and the grade):
- *
- * - `ZhudaAutoExposure`: the frame's brightness, read on the GPU and followed
- *   over time, steers how bright the picture is drawn: eyes that get used to
- *   a dark alley and to a noon square.
- * - `ZhudaDepthOfField`: what is nearer or farther than the focus distance is
- *   blurred by as much as a lens of that focal length and aperture would.
- * - `ZhudaMotionBlur`: what the camera's own movement smears during the time
- *   the shutter is open. Things that move by themselves are not blurred.
- *
- * A film still or video gets depth of field and motion blur by drawing many
- * samples (`ZhudaFilmRenderer`), which is exact; these are the one-frame
- * approximations for a picture that is drawn once.
- */
 export interface ZhudaAutoExposureOptions {
     /**
      * The brightness the picture is brought to, as the scene value of a middle

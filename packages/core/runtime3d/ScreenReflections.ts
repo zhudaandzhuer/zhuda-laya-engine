@@ -1,3 +1,4 @@
+import { zhudaShaderRegistrar } from './ShaderRegistry.ts';
 /**
  * Reflections of what is on screen, on every surface: wet walls, props, and
  * ground beyond a planar reflector. A post-process effect in linear HDR, after
@@ -251,6 +252,7 @@ function register(l: any) {
   });
   registered.add(l.Shader3D);
 }
+zhudaShaderRegistrar(register);
 
 /**
  * The effect in the HDR chain: the rays are followed at half size, the result
