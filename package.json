@@ -65,6 +65,7 @@
     "zhuda-laya-watch": "./packages/compiler/prefab-watch.mjs",
     "zhuda-prefab-editor": "./packages/compiler/prefab-editor.mjs",
     "zhuda-model-editor": "./packages/compiler/model-editor.mjs",
+    "zhuda-laya-lod": "./packages/compiler/model-lod.mjs",
     "zhuda-laya-mcp": "./packages/mcp-server/index.mjs",
     "zhuda-laya-browser-sdk": "./packages/compiler/browser-sdk.mjs",
     "zhuda-sequence-check": "./packages/ci-gate/verify-sequence.mjs",

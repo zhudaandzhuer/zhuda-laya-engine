@@ -358,3 +358,9 @@ The Scene tells the instance where the eye is, usually once a frame: `instance.u
 ## A model's glow while the game runs
 
 `instance.setEmission('town-lanterns', 1)` scales what a model prefab node's materials give off (0..8; 1 is as authored), for windows and lanterns that light at dusk. The node's `emission` is the starting scale. Every copy of the model shares the scale.
+
+## Lighter versions of a model
+
+`zhuda-laya-lod <model.glb> --ratio 0.4,0.15` writes the model again with that
+share of its triangles, for the `lod` levels of a model prefab. See
+[model levels of detail](model-lod.md).
