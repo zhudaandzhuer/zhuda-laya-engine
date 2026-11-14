@@ -399,6 +399,7 @@ test('grade is off unless asked for and validated with paths', async () => {
     bloomAnamorphic: 0,
     bloomDiffusion: 4,
     aoMethod: 'sao',
+    dither: false,
     lut: false,
   });
   assert.equal(resolveZhudaFilmLook({ grade: false }).grade, false);

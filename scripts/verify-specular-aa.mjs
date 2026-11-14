@@ -379,6 +379,49 @@ for (const [name, s] of Object.entries(r.smooth)) {
   );
 }
 
+// ---- Two texels to a pixel under a temporal anti-aliasing ----------------------
+// What the patch does there to frames taken one by one (more change from
+// frame to frame, as the truth has) is what a temporal pass smooths. With
+// one, the patched ball is as steady as the unpatched, pops less, and is as
+// bright as the truth, where the unpatched one is less than half as bright.
+{
+  const t = r.temporal;
+  for (const [name, with_] of [
+    ['blended by arithmetic', t.blended],
+    ["through LayaAir's pass", t.pass],
+  ]) {
+    assert.ok(
+      with_.on.shownFlicker < 3 && with_.on.shownFlicker < t.frames.off.shownFlicker / 4,
+      `2tx metal ${name}: steady (${with_.on.shownFlicker} of 255 a frame; ${t.frames.off.shownFlicker} frame by frame without the patch)`,
+    );
+    assert.ok(
+      with_.on.shownFlicker < with_.off.shownFlicker + 1,
+      `2tx metal ${name}: no less steady than without the patch (${with_.off.shownFlicker} -> ${with_.on.shownFlicker})`,
+    );
+    assert.ok(
+      with_.on.pops <= with_.off.pops,
+      `2tx metal ${name}: it pops no more (${with_.off.pops} -> ${with_.on.pops})`,
+    );
+  }
+  assert.ok(t.blended.truth, 'the truth was blended too');
+  // The chain's own curve stands between the pass and the truth's numbers:
+  // the patched ball is compared with the unpatched one drawn the same way.
+  for (const [name, with_, truth] of [
+    ['blended by arithmetic', t.blended, t.blended.truth.meanShown],
+    ["through LayaAir's pass", t.pass, t.blended.truth.meanShown],
+  ])
+    assert.ok(
+      Math.abs(with_.on.meanShown - truth) < Math.abs(with_.off.meanShown - truth),
+      `2tx metal ${name}: nearer the truth's brightness (${with_.off.meanShown} -> ${with_.on.meanShown}, truth ${truth})`,
+    );
+  summary.push(
+    `2tx metal under a temporal blend: shown ${t.frames.off.shownFlicker}->${t.frames.on.shownFlicker} frame by frame, ` +
+      `${t.blended.off.shownFlicker}->${t.blended.on.shownFlicker} blended (truth ${t.blended.truth.shownFlicker}), ` +
+      `${t.pass.off.shownFlicker}->${t.pass.on.shownFlicker} through LayaAir's pass; pops there ${t.pass.off.pops}->${t.pass.on.pops}; ` +
+      `brightness ${t.pass.off.meanShown}->${t.pass.on.meanShown} (truth ${t.blended.truth.meanShown})`,
+  );
+}
+
 // ---- Left alone ----------------------------------------------------------------
 for (const finish of ['metal', 'painted']) {
   const c = r[`close-${finish}`];

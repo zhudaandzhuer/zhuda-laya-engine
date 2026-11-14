@@ -238,6 +238,17 @@ export const API_GUARDRAILS = [
       'LayaAir draws an instanced glTF node once: only a mount (mountZhudaModel, a model prefab, a film scene) draws its copies. Only occlusion and emissive read the second set of texture coordinates; other slots are drawn by the first and reported TEXCOORD_IGNORED. A copy with a mirroring scale is left out (INSTANCES_MIRRORED). See docs/model-showcase.md.',
   },
   {
+    id: 'GUARD_DITHER',
+    topic:
+      'banding colour bands gradient night sky fog dithering material.dithering 8-bit output noise specular aliasing sparkle temporal anti-aliasing TAA',
+    hallucinatedLegacyApi:
+      'material.dithering = true; renderer.outputColorSpace = SRGBColorSpace; adding Math.random() noise in a fragment shader; a full-screen noise pass before tone mapping',
+    zhudaCanonicalApi:
+      "setZhudaDither(scene3D, true) // 'screen' for HDR cameras, 'materials' for plain ones, chosen by the scene's cameras; setZhudaDither(scene3D, false). In a look or film scene: \"grade\": { \"dither\": true }. Sparkle on dense normal maps: setZhudaSpecularAA(scene3D, true), together with temporalAA of ZhudaFilmicPipeline when the map is two to four texels to a pixel.",
+    reason:
+      'Dither belongs where the picture is rounded to eight bits, once: an HDR chain rounds at its last copy, a plain camera as each material is written. The noise is fixed to the pixel (a frame drawn again is the same picture) and fades out at black. Call setZhudaDither again after giving a camera a pipeline. See docs/filmic-rendering.md.',
+  },
+  {
     id: 'GUARD_INIT_BOOT',
     topic: '引擎啟動與 Stage 初始化',
     hallucinatedLegacyApi: 'Laya.init(1280, 720, Laya.WebGL); Laya.MiniAdpter.init();',

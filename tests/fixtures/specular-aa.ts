@@ -483,6 +483,7 @@ async function main() {
     ),
   );
   const OFFSETS = JITTER.slice(0, 8);
+  let truthAtTwo: { refs: Float32Array[]; gain: number } | undefined;
   // Every shader and both kinds of map at four texels to a pixel; the PBR
   // shader alone at eight; and with mipmaps at two, where the map's part
   // fades in, and at one, where the bumps can be seen one by one.
@@ -536,6 +537,8 @@ async function main() {
           },
         };
       };
+      // Kept for what a temporal blend makes of the truth, below.
+      if (density === '2tx' && finish === 'metal') truthAtTwo = { refs, gain };
       result.truth[`${density}-${finish}`] = {
         samples: 256,
         offsets: refs.length,
@@ -631,6 +634,95 @@ async function main() {
       on: measure(run(material, true, 0).frames, BALL).mean,
     };
     scene.ambientColor = new Laya.Color(0, 0, 0, 1);
+  }
+
+  // ---- Two texels to a pixel, and what time does to it ----------------------
+  // Between two and four texels a bumpy metal changes more from frame to
+  // frame with the patch than without: the light that clipping hid now shows,
+  // and moves as the truth's does. A temporal anti-aliasing is what smooths
+  // that. Measured two ways: each jittered frame blended into what came
+  // before by arithmetic (a tenth of the new, what a temporal pass does to a
+  // view that stands still), and through LayaAir's own pass in an HDR chain.
+  {
+    show('2tx');
+    await breathe();
+    const material = sets['metal-mipmapped'].set.pbr;
+    const { game } = FINISHES.metal;
+    const pick = (m: any) => ({
+      shownFlicker: m.shownFlicker,
+      pops: m.pops,
+      meanShown: m.meanShown,
+    });
+    /**
+     * Sixty-four frames round the offsets, each a tenth of the new on nine
+     * tenths of what came before, in light; measured as shown, over the last
+     * thirty-two.
+     */
+    const blended = (count: number, light: (k: number, i: number) => number) => {
+      const kept = new Float32Array(W * H),
+        before = new Float32Array(W * H);
+      let flicker = 0,
+        pops = 0,
+        mean = 0;
+      for (let k = 0; k < 64; k++)
+        for (const i of INNER) {
+          const l = light(k % count, i);
+          kept[i / 4] = k ? kept[i / 4] * 0.9 + l * 0.1 : l;
+          const shown = display(kept[i / 4]);
+          if (k >= 32) {
+            mean += shown;
+            if (k > 32) {
+              const step = Math.abs(shown - before[i / 4]);
+              flicker += step;
+              if (step > POP) pops++;
+            }
+          }
+          before[i / 4] = shown;
+        }
+      return {
+        shownFlicker: round(flicker / (31 * INNER.length)),
+        pops: round(pops / 31, 1),
+        meanShown: round(mean / (32 * INNER.length), 1),
+      };
+    };
+    const off = run(material, false, game),
+      on = run(material, true, game);
+    const temporal: any = (result.temporal = {
+      frames: { off: pick(measure(off.frames, INNER)), on: pick(measure(on.frames, INNER)) },
+      blended: {
+        off: blended(JITTERS, (k, i) => linear(off.frames[k], i)),
+        on: blended(JITTERS, (k, i) => linear(on.frames[k], i)),
+        truth: truthAtTwo
+          ? blended(truthAtTwo.refs.length, (k, i) =>
+              Math.min(1, truthAtTwo!.refs[k][i / 4] * truthAtTwo!.gain),
+            )
+          : null,
+      },
+    });
+    // LayaAir's own pass: the camera stands still and the pass moves it itself.
+    const through = (temporalAA: boolean) => {
+      const chain = new Z.ZhudaFilmicPipeline(camera, {
+        temporalAA,
+        toneMapping: 'none',
+        bloom: false,
+        ao: false,
+      });
+      const settled = (aa: boolean) => {
+        if (!temporalAA) return pick(measure(run(material, aa, game).frames, INNER));
+        use(material, aa, game);
+        for (let k = 0; k < 48; k++) shot(0, 0);
+        const frames: Uint8Array[] = [];
+        for (let k = 0; k < JITTERS; k++) frames.push(shot(0, 0));
+        return pick(measure(frames, INNER));
+      };
+      const made = { off: settled(false), on: settled(true) };
+      chain.dispose();
+      Z.ZhudaEngine.flushRenderFrames(2);
+      return made;
+    };
+    // The same chain without the pass, the camera moved by hand as everywhere above.
+    temporal.chain = through(false);
+    temporal.pass = through(true);
   }
 
   // ---- Smooth balls, polished to dull, large and small ---------------------

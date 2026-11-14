@@ -309,3 +309,125 @@ pixel for pixel, the same picture without the patch installed. What the
 patch adds is behind `#ifdef`; what is left outside it is `getPixelInfo`
 taking its surface as `inout` and one unused local in the forward passes.
 The fifteen draws above pass their own assertions with it installed.
+
+## The rest of WP2: dither, and two texels under a temporal anti-aliasing (2026-11-15)
+
+WP2 also asked for an eight-bit dither, which the first round listed as
+"not built", and left the patch off by default because of what it does
+between two and four texels of a normal map to a pixel. Both are taken up
+here, on top of `cfea760`. Use: `docs/filmic-rendering.md`, "Dither" and
+"Specular anti-aliasing".
+
+| Check | Exact command or procedure | Result |
+| --- | --- | --- |
+| Build, types, declarations, doctor, tests | `npm run verify` | PASS, 759 of 759 (5 in `tests/dither.test.mjs`) |
+| Format, lint, whitespace | `npm run format:check`, `npm run lint`, `git diff --check` | PASS |
+| Dither, WebGL and WebGPU | `npm run verify:dither`, and with `DITHER_RENDERER=webgpu` | PASS, 2 of 2 |
+| Specular anti-aliasing, WebGL and WebGPU | `npm run verify:specular-aa`, and with `SPECULAR_AA_RENDERER=webgpu` | PASS, 2 of 2 |
+| Every draw check, WebGL | the 44 film, look, effect and model draws (the four new ones of today among them) and the thirteen that run on one backend | PASS, 57 of 57 |
+| Every draw check, WebGPU | the same 44 with the WebGPU switch | PASS, 44 of 44 |
+
+Environment as above (Apple M4, Chrome headless; WebGPU adapter apple /
+metal-3). Evidence: `batch2-evidence/tails/dither/` and
+`batch2-evidence/tails/specular-aa/` in the session's notes folder.
+
+### Dither
+
+A ramp of ten steps of eight bits across a view 512 pixels wide (20 to 30
+of 255 as the screen shows them), with a black strip under it, drawn by a
+plain camera and through an HDR chain (`ZhudaFilmicPipeline`, no tone
+curve). Measured against the ramp as it was meant: the dithered picture's
+columns, smoothed over 33 of them. The same on both backends to the third
+decimal unless given.
+
+| | a block of 8 by 8 pixels, steps from the ramp | a pixel | a pixel moved, at most | brightness |
+| --- | --- | --- | --- | --- |
+| plain camera, without | 0.185 | 0.22 | | |
+| plain camera, dithered (`materials`) | 0.048 | 0.37 | 2 steps | +0.002 |
+| plain camera, dithered at the other place (`screen`) | 0.272 | 0.47 | | |
+| HDR chain, without | 0.209 (0.210) | 0.25 | | |
+| HDR chain, dithered (`screen`) | 0.051 (0.048) | 0.40 | 1 step | 0.000 (-0.003) |
+| HDR chain, dithered at the other place (`materials`) | 0.169 | 1.36 | | |
+
+- The black strip is 0 in every pixel with dither as without. A frame drawn
+  again is the same picture. Switched off, the picture is the first one.
+- 99 % of the pixels that moved went the way the same arithmetic in
+  JavaScript says (`zhudaDitherNoise`).
+- `setZhudaDither(scene, true)` chose `materials` for the plain camera and
+  `screen` for the chain.
+- LayaAir's own lit program on a plain camera (a ball under a dim lamp):
+  13 % of its pixels moved, by three steps at most, the picture brighter by
+  0.05 of a step on average.
+- A game's look with `grade.dither`: `screen` when built; switched off in
+  place (`updated`), a third of the pixels differ by one step; on again,
+  the first picture; off when the look is disposed.
+- 29 fragment programs were given the noise as LayaAir registered them.
+  Nothing left behind.
+
+Found on the way:
+
+- **A plain camera is rounded twice, and first where no one would look.**
+  The engine's cameras ask for LayaAir's built-in target, so a camera
+  without an HDR chain draws its materials into an eight-bit picture in the
+  sRGB curve and LayaAir copies that to the canvas through a power of 2.2.
+  Noise added at the copy (the first version of this) left the bands as
+  they were: 0.31 of a step against 0.34. It is added as each material is
+  written now, in light, along the sRGB curve (its straight toe exactly,
+  the square root above it).
+- Because the two curves differ, the first few steps of that target are two
+  to six steps of the screen each: a plain camera's darkest tones are
+  coarse before any dither. An HDR chain does not have this.
+- The include that holds `outputTransform` is read by two of LayaAir's
+  vertex programs (the panoramic sky and particles). A noise function that
+  named the pixel there would not compile; the functions take the pixel as
+  an argument and are called from the fragment programs.
+
+### Two texels to a pixel under a temporal anti-aliasing
+
+The bumpy metal ball at two texels of its normal map to a pixel, under the
+game's sun, inside 0.85 of its disc; WebGL, WebGPU in brackets.
+
+| | change of a pixel a frame, of 255 | pixels a frame that jump by more than 48 | brightness, of 255 |
+| --- | --- | --- | --- |
+| frames one by one, without the patch | 14.3 (13.7) | 785 (754) | 18.3 (18.4) |
+| frames one by one, with it | 22.6 (21.5) | 1255 (1169) | 40.0 (40.8) |
+| blended by arithmetic, without | 1.11 (1.04) | 1.3 (0.8) | 23.4 (23.0) |
+| blended by arithmetic, with | 1.52 (1.43) | 0.2 (0.1) | 45.2 (45.6) |
+| the truth, blended the same way | 1.54 | 0 | 39.4 |
+| an HDR chain, frames one by one, without | 14.1 (13.6) | 796 (764) | 16.6 (16.6) |
+| an HDR chain, frames one by one, with | 22.9 (21.8) | 1291 (1203) | 37.6 (38.4) |
+| LayaAir's temporal pass, without | 1.76 (1.62) | 51 (43) | 15.5 (15.8) |
+| LayaAir's temporal pass, with | 2.04 (1.88) | 20 (19) | 37.2 (38.1) |
+
+"Blended by arithmetic" is the sixteen jittered frames gone round four
+times, each a tenth of the new on nine tenths of what came before, in
+light: what a temporal pass does to a view that stands still. "LayaAir's
+temporal pass" is `temporalAA` of `ZhudaFilmicPipeline` with the camera
+standing still (the pass moves it itself), 48 frames to settle and sixteen
+measured.
+
+What it says: taken one by one the patched frames change more, as the
+truth's do (26 of 255). Under a temporal pass the difference is gone
+(2.0 against 1.8), the patched ball pops less than half as often, and it
+is as bright as the truth where the unpatched one is less than half as
+bright (its light is clipped away before anything can average it). The
+recommendation changes accordingly: the patch with a temporal pass, at
+this distance too.
+
+Not verified, not built:
+
+- No phone, for either. Dither's cost on a phone (two hashes a pixel on
+  every material of a plain camera) was not measured.
+- Dither: one ramp, one lit ball, one look. A post-process chain on a
+  camera that is not HDR would dither at every pass that writes eight bits;
+  not drawn. Textures the engine writes itself (lightmaps, baked probes)
+  are not dithered. A game's shader registered before `ZhudaEngine.boot`
+  is not changed.
+- The noise is fixed to the pixel: under a temporal pass a noise that
+  changed every frame would average away; this one stays as grain.
+- The temporal measurement is one ball, one map, one distance, a view that
+  stands still. A moving camera, where a temporal pass rejects part of its
+  history, was not measured; the still measurements of the first round
+  stand for the frames a pass would be fed.
+- The patch stays off by default: a scene without a temporal pass is still
+  as the first round measured it.

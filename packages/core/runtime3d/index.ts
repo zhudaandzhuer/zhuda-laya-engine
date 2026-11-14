@@ -65,6 +65,7 @@ export * from './ComputePass.ts';
 export * from './SurfaceBuffer.ts';
 export * from './ObjectMotion.ts';
 export * from './GltfSecondUv.ts';
+export * from './Dither.ts';
 export { installLaya342LifecycleFix } from './Laya342Adapters.ts';
 export {
   ZHUDA_NORMAL_NOMIPMAP_DEFINE,

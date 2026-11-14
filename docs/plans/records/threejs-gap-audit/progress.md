@@ -1,7 +1,7 @@
 # three.js gap plan: progress
 
 Plan: `docs/plans/records/threejs-gap-audit/plan.md` (work packages WP0..WP16)\
-Last updated: 2026-11-15, after WP16 (batch 2 is done one package at a time, by one agent, without a review agent)
+Last updated: 2026-11-15, after WP16 and what the merged packages had left open (batch 2 is done one package at a time, by one agent, without a review agent)
 
 ## Where each package stands
 
@@ -10,7 +10,7 @@ Last updated: 2026-11-15, after WP16 (batch 2 is done one package at a time, by 
 | WP0 housekeeping                                                                                                                                                                                                                                  | Merged, reviewed, review points closed                                                                                                                                                                                                                                  | `topology-globals-and-guardrail` |
 | WP14 small game services                                                                                                                                                                                                                          | Merged, reviewed; the five minor review points closed on 2026-11-15 (a `CurvePath` is now sampled evenly by length: LayaAir walks a spline by its control points)                                                                                                       | `game-services`                  |
 | WP1 shadow maps every few frames or on request, render scale, FSR 1                                                                                                                                                                               | Merged, reviewed, one review round applied; measured on a vivo V40; no game uses it yet                                                                                                                                                                                 | `frame-cost`                     |
-| WP2 specular anti-aliasing                                                                                                                                                                                                                        | Merged, reviewed, reworked after review; **off until a scene asks** (decided at the merge: worse than off between two and four texels to a pixel, a lit rim, up to 3 ms a frame on the phone)                                                                           | `specular-aa`                    |
+| WP2 specular anti-aliasing                                                                                                                                                                                                                        | Merged, reviewed, reworked after review; **off until a scene asks**. On 2026-11-15: the eight-bit dither (`setZhudaDither`, `grade.dither`), and the two-to-four texel case measured under a temporal anti-aliasing, where the patch is the nearer picture              | `specular-aa`                    |
 | WP4 glTF intake (quantized, KHR meshopt, WebP/AVIF, lights, cameras)                                                                                                                                                                              | Merged, reviewed, one review round applied; `EXT_mesh_gpu_instancing`, the second set of texture coordinates for occlusion and emission, and Meshopt in workers done on 2026-11-15, which also found that a model mounted as clones left its meshes and textures behind | `gltf-intake`                    |
 | WP7 physical surfaces in code (sheen, thin film, glass, turned highlights)                                                                                                                                                                        | Merged, reviewed, one review round applied (six textures a material at most, said and drawn at the limit); `ZhudaLitSurface` alpha, normal and the cut by chance done on 2026-11-15, which also found that `material.blend` had never taken effect on a lit surface     | `physical-surfaces`              |
 | WP3 shader warm-up                                                                                                                                                                                                                                | Merged; desktop WebGL and WebGPU verified, measured on a vivo V40                                                                                                                                                                                                       | `shader-warm-up`                 |
@@ -65,12 +65,52 @@ not reachable).
 
 ## Next
 
-Every package of the plan has been built. What the merged packages left
-open (WP14, WP7, WP4, WP2) is being closed next, each in its own record.
+Every package of the plan has been built, and what WP14, WP7, WP4 and WP2
+left open at their merge was closed on 2026-11-15, each in its own record
+(`game-services`, `physical-surfaces`, `gltf-intake`, `specular-aa`).
 
-Owed to WP12 when a phone is reachable: the auto page on the vivo V40
-(which backend its Chrome is given, whether WebGPU starts on the Adreno
-720, how long the compilers take inside the bundle and beside it).
+Still open, by choice or for want of a device:
+
+- A phone for WP12 (the auto page on the vivo V40: which backend its
+  Chrome is given, whether WebGPU starts on the Adreno 720, how long the
+  compilers take), for WP16 (compute, the surface pictures) and for today's
+  follow-ups (the lit surface's hook in three passes, dither on a plain
+  camera, Meshopt in workers).
+- `.hdr` panoramas in film scenes and `--ktx2` in `zhuda-laya-lod`: named
+  as options when WP5 and WP6 were merged, not started.
+- What each record lists under "not verified, not built".
+- `inspectEngineHealth` counts loaded modules against the WebGL table only.
+
+## Found while closing what the merged packages left open
+
+- **`material.blend` never took effect on a lit surface**
+  (`ZhudaLitSurfaceMaterial`, `ZhudaToonMaterial`): LayaAir clears a
+  material's defines and render state when it is given another shader. A
+  lit surface asked to be a cut-out, blended or additive was drawn opaque.
+  It is put back after the shader now. Anything that calls
+  `setShaderName` on a material it has already set up has the same trap.
+- **A model mounted as clones (`placements` without `instanced`) left its
+  meshes, materials and textures behind** when mount and model were let go
+  of in one go, as a prefab does: LayaAir destroys a node's components on
+  the next frame, after the library has destroyed the model, and what is
+  still held then is never destroyed. The clones are destroyed at once
+  now. A game that changes scenes often was leaking GPU memory this way.
+- `mountZhudaModel` was named in the documentation and not exported.
+- LayaAir's `CurvePath` walks a spline by its control points, not by
+  length, and its `length` for a spline is the chords between them.
+- A camera without an HDR chain is rounded to eight bits as each material
+  is written (LayaAir's built-in target, in the sRGB curve) and again at
+  the copy to the canvas (a power of 2.2). Its first few steps are two to
+  six steps of the screen each: the darkest tones of a scene without a
+  look are coarse. A look does not have this.
+- LayaAir hands a camera's depth pictures back to its pool at the next
+  frame it draws, not when the camera is destroyed.
+- The include that holds `outputTransform` is read by two of LayaAir's
+  vertex programs: nothing added to it may name the pixel.
+- Two checks went by the clock: `verify-developer-tooling` froze its
+  character wherever the animation had got to, and timed the GPU against
+  a load light enough to overlap the noise. Both failed once in a dozen
+  runs and are fixed in the check.
 
 ## Found while doing WP16, beyond WP16
 

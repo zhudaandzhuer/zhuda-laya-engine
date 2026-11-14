@@ -24,6 +24,7 @@ import type {
 } from '../runtime3d/CameraEffects.ts';
 import type { ZhudaClouds } from '../runtime3d/Clouds.ts';
 import type { ZhudaShadowUpdates } from '../runtime3d/ShadowUpdates.ts';
+import { setZhudaDither, zhudaDitherStatus } from '../runtime3d/Dither.ts';
 import type { ZhudaFilmVec3, ZhudaResolvedFilmLook } from './FilmScene.ts';
 
 /** What `applyResolvedFilmLook` built, kept so a later look can adjust it in place. */
@@ -188,6 +189,8 @@ export function updateZhudaLookInPlace(
       bloomDiffusion: look.grade.bloomDiffusion,
     });
     parts.film.setAntialias(look.grade.antialias === 'msaa');
+    // In place: the shaders in use compile once more the first time it is switched on.
+    if (zhudaDitherStatus(l).ready) setZhudaDither(scene3D, look.grade.dither ? 'screen' : false);
   }
   parts.lighting?.set(zhudaLookLighting(look));
   if (parts.colorTable && look.grade && look.grade.lut)

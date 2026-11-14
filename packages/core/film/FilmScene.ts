@@ -207,6 +207,13 @@ export interface ZhudaFilmGrade {
    */
   lut?: { asset: string; intensity?: number } | false;
   /**
+   * A grain of less than one step of eight bits, added where the finished
+   * picture is written for the screen: slow gradients (a night sky, fog,
+   * the edge of a soft shadow) then show no bands. Black stays black. Off
+   * unless given. See `setZhudaDither`.
+   */
+  dither?: boolean;
+  /**
    * What a real camera adds, after tone mapping, each 0..1 and off by
    * default: film grain, darker corners and colour fringing at the corners.
    */
@@ -1290,6 +1297,7 @@ function validateLook(
           'bloomDiffusion',
           'aoMethod',
           'lut',
+          'dither',
         ],
         `${path}.grade`,
         issues,
@@ -1308,6 +1316,8 @@ function validateLook(
         !['msaa', 'fxaa', 'smaa', 'none'].includes(g.antialias as string)
       )
         issues.push(`${path}.grade.antialias: use msaa, fxaa, smaa or none`);
+      if (g.dither !== undefined && typeof g.dither !== 'boolean')
+        issues.push(`${path}.grade.dither: use true or false`);
       if (
         g.toneMapping !== undefined &&
         !ZHUDA_TONE_MAPPINGS.includes(g.toneMapping as ZhudaToneMapping)
@@ -2423,6 +2433,7 @@ export function resolveZhudaFilmLook(
       bloomAnamorphic: 0,
       bloomDiffusion: 4,
       aoMethod: 'sao',
+      dither: false,
       ...values,
       lut: lut ? { asset: lut.asset, intensity: lut.intensity ?? 1 } : false,
     };

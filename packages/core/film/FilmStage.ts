@@ -96,6 +96,7 @@ import {
   zhudaFilmLookRebuildReason,
   zhudaFilmBounceBox,
 } from './FilmScene.ts';
+import { setZhudaDither, zhudaDitherStatus } from '../runtime3d/Dither.ts';
 import { zhudaLookForQuality, type ZhudaLookQuality } from './LookQuality.ts';
 import {
   ZhudaHemisphereAmbientSlot,
@@ -1483,6 +1484,16 @@ export function applyResolvedFilmLook(
       msaa: look.grade.antialias === 'msaa',
     }));
     cleanups.push(() => pipeline.dispose());
+    // The chain is HDR to its end: the picture is rounded to eight bits once, where it is turned for the screen.
+    if (look.grade.dither) {
+      if (zhudaDitherStatus(l).ready) {
+        setZhudaDither(scene3D, 'screen');
+        cleanups.push(() => {
+          if (!scene3D.destroyed) setZhudaDither(scene3D, false);
+        });
+      } else
+        console.warn(`[zhuda] look.grade.dither is not applied: ${zhudaDitherStatus(l).reason}`);
+    }
   }
   // After the HDR chain, which puts the camera's depth setting back as it
   // found it when it goes: contact shadows ask for the depth picture.

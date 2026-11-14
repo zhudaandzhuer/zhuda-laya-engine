@@ -169,6 +169,13 @@ export interface ZhudaFilmGrade {
         intensity?: number;
     } | false;
     /**
+     * A grain of less than one step of eight bits, added where the finished
+     * picture is written for the screen: slow gradients (a night sky, fog,
+     * the edge of a soft shadow) then show no bands. Black stays black. Off
+     * unless given. See `setZhudaDither`.
+     */
+    dither?: boolean;
+    /**
      * What a real camera adds, after tone mapping, each 0..1 and off by
      * default: film grain, darker corners and colour fringing at the corners.
      */

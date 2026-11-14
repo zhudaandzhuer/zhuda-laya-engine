@@ -473,14 +473,22 @@ What it does not do, and what it costs:
 - Between two and four texels to a pixel a bumpy metal shows more change
   from frame to frame than without (14 to 23 of 255, where the truth
   changes by 26): the light that clipping hid now shows. Where the fade
-  begins can be seen on the surface.
+  begins can be seen on the surface. **That is what a temporal
+  anti-aliasing smooths** (`temporalAA` of `ZhudaFilmicPipeline`). Through
+  LayaAir's pass, at two texels: without the patch a pixel changes by 1.8
+  of 255 a frame, 51 pixels a frame jump by more than 48, and the ball is
+  15.5 of 255 bright; with it 2.0, 20 and 37.2, where the truth is 39.4
+  bright. The same frames blended by arithmetic (a tenth of each new one):
+  1.1 and 1.5, the truth 1.5. With a temporal pass the patch is the nearer
+  picture at two texels too, the one distance where it was not without.
 - A material with a normal map reads it once more a pixel (WebGL 2 and
   WebGPU). On a vivo V40 in one game that added 0 to 3 ms a frame (up to
   9 %); what it does to the picture on a phone was not judged.
 
 It is not the default because of the last three points: a scene turns it
 on where its surfaces are seen from far enough (four texels of the normal
-map to a pixel and more), and leaves it off where they are not.
+map to a pixel and more) or where it has a temporal anti-aliasing, and
+leaves it off where neither holds.
 `setZhudaSpecularAA(scene, true)` turns it on for a scene and `false` off
 again (its shaders compile again each time);
 `installLaya342SpecularAA(Laya, { defaultOn: true })` makes it the default
@@ -488,6 +496,51 @@ for every scene made afterwards. Without the define what the patch adds is
 compiled out. `zhudaSpecularAAStatus()` says whether the
 patch is in place, and names any physically based shader whose normal map
 it could not reach. [Record](plans/records/specular-aa/verification.md).
+
+## Dither
+
+A slow gradient (a night sky, fog, the edge of a soft shadow, a vignette)
+has more shades than the eight bits a screen is given, and rounding each
+pixel to the nearest one shows as bands. Dither adds about one step of
+noise before the rounding: over a few pixels the picture then averages to
+the shade that was meant, at the price of a grain too fine to see. Off
+until a scene asks:
+
+```ts
+import { setZhudaDither } from 'zhuda-laya-engine';
+setZhudaDither(scene3D, true); // 'screen', 'materials' or 'both', by the scene's cameras
+setZhudaDither(scene3D, false);
+```
+
+In a look or a film scene: `"grade": { "dither": true }`, which can change
+while a look runs.
+
+- Where a picture is rounded depends on the camera, and `true` looks at the
+  scene's cameras as they are. An HDR camera (a `ZhudaFilmicPipeline`, a
+  look) keeps floats to the end of its chain and is rounded once, where
+  LayaAir turns the picture for the screen: `'screen'`. A plain camera draws
+  each material into LayaAir's eight-bit target first: `'materials'`. Call it
+  again when a camera is given a pipeline or loses one, or name the mode.
+- The noise is the same for red, green and blue (grey stays grey), fades
+  out below one step (black stays black), and is the same for the same
+  pixel every frame: a frame drawn again is the same picture.
+- Measured (`npm run verify:dither`, WebGL and WebGPU) on a ramp of ten
+  steps of eight bits across the view: a block of eight by eight pixels is
+  0.18 of a step from the ramp that was meant without dither and 0.05 with
+  it on a plain camera, 0.21 and 0.05 through an HDR chain. A pixel moves
+  one step at most through a chain, two on a plain camera. Dithered at the
+  other of the two places the bands stay.
+- A plain camera's darkest tones are coarse before any dither: LayaAir's
+  eight-bit target is in the sRGB curve and its copy to the screen in a
+  power of 2.2, so the first few steps of the target are two to six steps
+  of the screen each. Dither grains those steps; an HDR chain does not
+  have them.
+- It costs two hashes a pixel where the picture is rounded (every material
+  on a plain camera, the last copy of a chain), and the shaders in use
+  compile once more the first time. It is LayaAir's own programs and the
+  engine's that are changed as they are registered (29 on a desktop boot);
+  a shader a game registers through LayaAir afterwards is too, when it
+  ends with `gl_FragColor = outputTransform(...)`.
 
 ## Marks on surfaces
 

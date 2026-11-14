@@ -226,6 +226,9 @@ A grade also names how the picture is finished (see
   sky as they are; `ao` is then a power and 1 unless given.
 - `bloomThreshold`, `bloomSoftKnee`, `bloomAnamorphic`, `bloomDiffusion`.
 - `lut`: a `.cube` colour table by asset id, loaded with the scene.
+- `dither`: `true` adds about one step of eight bits of noise where the
+  finished picture is written for the screen, so that slow gradients show
+  no bands ([dither](filmic-rendering.md#dither)); off unless given.
 - `lensFlare` (beside `grade`, which it needs): the sun's flare, as strong
   as the share of the sun that nothing stands in front of; `true` takes the
   defaults.
