@@ -274,7 +274,7 @@ export function getQualityRoute() {
       realTimeLights: ZHUDA_FILM_LIMITS.lights,
       fogLights: ZHUDA_FILM_LIMITS.fogLights,
       shadowCastingSpots: 1,
-      shadowCastingPointLights: 0,
+      shadowCastingPointLights: ZHUDA_FILM_LIMITS.pointShadows,
       reflectorsOrWaterPerScene: 1,
       environmentProbes: 1,
       materialBakeSizes: [128, 256, 512, 1024, 2048],
@@ -295,7 +295,7 @@ export function getQualityRoute() {
       'Weather: clouds is one layer of one kind of cloud, without shadows on the ground or rain. Skin (subsurface light), cloth sheen and hair strands: a flat material has clearCoat and anisotropy only.',
     ],
     evidence: {
-      rule: 'Desktop WebGL frames only. WebGPU, phones and mini-game hosts need their own records.',
+      rule: 'Desktop WebGL frames, and the same checks on desktop WebGPU through npm run verify:film-webgpu (Apple M4). Phones and mini-game hosts need their own records.',
       commands: [
         'npm run verify:quality-route',
         'npm run verify:film-remount',

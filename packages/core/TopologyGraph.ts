@@ -67,6 +67,11 @@ export interface SequenceAuditIssue {
 
 /**
  * LayaAir 3.4.2 完整 29 模組拓撲定義表 (含真實檔案大小與隱式全域依賴邊)
+ *
+ * `providesGlobals` are paths from the global object that the module's own
+ * vendored file defines while it loads; `EngineGuard.inspectEngineHealth`
+ * counts a module as loaded when all are present. tests/topology-globals.test.mjs
+ * checks every name and `sizeBytes` against vendor/laya-3.4.2/libs.
  */
 export const ZHUDA_ENGINE_MODULES: readonly EngineModuleNode[] = [
   {
@@ -95,7 +100,7 @@ export const ZHUDA_ENGINE_MODULES: readonly EngineModuleNode[] = [
     sizeBytes: 280361,
     feature: '2d',
     dependsOn: ['core'],
-    providesGlobals: ['Laya.WebGLRenderEngineFactory'],
+    providesGlobals: ['Laya.WebGLRenderDeviceFactory'],
     priority: 30,
     painPointNote: '2D WebGL 渲染管線後端，Laya.init 初始化前必須就緒',
   },
@@ -105,7 +110,7 @@ export const ZHUDA_ENGINE_MODULES: readonly EngineModuleNode[] = [
     sizeBytes: 72249,
     feature: '3d',
     dependsOn: ['core', 'd3', 'webgl2d'],
-    providesGlobals: ['Laya.WebGL3DRenderPass'],
+    providesGlobals: ['Laya.WebGL3DRenderPassFactory'],
     priority: 40,
     painPointNote: '依賴 laya.d3 與 webgl_2D，提供 3D WebGL 渲染設備實作',
   },
@@ -136,7 +141,7 @@ export const ZHUDA_ENGINE_MODULES: readonly EngineModuleNode[] = [
     sizeBytes: 1401774,
     feature: 'physics2d',
     dependsOn: ['core', 'physics2d'],
-    providesGlobals: ['window.box2d', 'Laya.Physics2D.I._factory'],
+    providesGlobals: ['window.Box2D', 'Laya.Physics2D.I._factory'],
     priority: 70,
     painPointNote:
       '頂層直接存取 Laya.Physics2D.I._factory，若早於 physics2D 載入會拋出 reading "I" 崩潰',
@@ -147,7 +152,7 @@ export const ZHUDA_ENGINE_MODULES: readonly EngineModuleNode[] = [
     sizeBytes: 1232001,
     feature: 'physics3d',
     dependsOn: ['core', 'd3'],
-    providesGlobals: ['Laya.Physics3D'],
+    providesGlobals: ['window.Physics3D', 'Laya.btPhysicsCreateUtil'],
     priority: 80,
     painPointNote: '裝配 Bullet 3D 物理核心，必須在 laya.physics3D.js 之前完成載入',
   },
@@ -164,7 +169,7 @@ export const ZHUDA_ENGINE_MODULES: readonly EngineModuleNode[] = [
   {
     id: 'spine-core-42',
     file: 'spine-core-4.2.js',
-    sizeBytes: 466015,
+    sizeBytes: 466315,
     feature: 'spine42',
     dependsOn: ['core'],
     conflictsWith: ['spine-core-38'],
@@ -179,7 +184,7 @@ export const ZHUDA_ENGINE_MODULES: readonly EngineModuleNode[] = [
   {
     id: 'spine-core-38',
     file: 'spine-core-3.8.js',
-    sizeBytes: 138800,
+    sizeBytes: 138813,
     feature: 'spine38',
     dependsOn: ['core'],
     conflictsWith: ['spine-core-42'],
@@ -216,7 +221,7 @@ export const ZHUDA_ENGINE_MODULES: readonly EngineModuleNode[] = [
     sizeBytes: 15895,
     feature: 'spine3d',
     dependsOn: ['core', 'd3', 'spine-core-42', 'spine'],
-    providesGlobals: ['Laya.Spine3DRenderNode'],
+    providesGlobals: ['Laya.Spine3DRenderer'],
     priority: 120,
     painPointNote: '將 Spine 骨骼掛載至 3D 場景樹，必須在 laya.d3 與 laya.spine 之後',
   },
@@ -226,7 +231,7 @@ export const ZHUDA_ENGINE_MODULES: readonly EngineModuleNode[] = [
     sizeBytes: 480255,
     feature: 'navmesh2d',
     dependsOn: ['core'],
-    providesGlobals: ['Laya.RecastNavigation'],
+    providesGlobals: ['window.Recast', 'Laya.BaseNavMesh'],
     priority: 130,
     painPointNote: '定義 Recast 尋路共用基底，必須在 navMesh2d 與 navMesh3d 之前',
   },
@@ -245,7 +250,7 @@ export const ZHUDA_ENGINE_MODULES: readonly EngineModuleNode[] = [
     sizeBytes: 12415,
     feature: 'navmesh3d',
     dependsOn: ['core', 'd3', 'navmesh-common'],
-    providesGlobals: ['Laya.NavMesh3D'],
+    providesGlobals: ['Laya.NavMesh', 'Laya.NavAgent'],
     priority: 150,
   },
   {
@@ -264,7 +269,7 @@ export const ZHUDA_ENGINE_MODULES: readonly EngineModuleNode[] = [
     sizeBytes: 56958,
     feature: 'particle2d',
     dependsOn: ['core', 'webgl2d', 'particle-common'],
-    providesGlobals: ['Laya.Particle2D'],
+    providesGlobals: ['Laya.ShurikenParticle2DRenderer'],
     priority: 170,
   },
   {
@@ -282,7 +287,7 @@ export const ZHUDA_ENGINE_MODULES: readonly EngineModuleNode[] = [
     sizeBytes: 11971,
     feature: 'trail2d',
     dependsOn: ['core'],
-    providesGlobals: ['Laya.TrailFilter'],
+    providesGlobals: ['Laya.TrailBaseFilter', 'Laya.TrailShaderCommon'],
     priority: 190,
     painPointNote: '2D/3D 拖尾共用幾何構造基底，必須在 trail2D 與 trail3D 之前',
   },
@@ -301,7 +306,7 @@ export const ZHUDA_ENGINE_MODULES: readonly EngineModuleNode[] = [
     sizeBytes: 8793,
     feature: 'trail3d',
     dependsOn: ['core', 'd3', 'trail-common'],
-    providesGlobals: ['Laya.TrailSprite3D'],
+    providesGlobals: ['Laya.TrailRenderer', 'Laya.TrailFilter'],
     priority: 210,
   },
   {
@@ -310,7 +315,7 @@ export const ZHUDA_ENGINE_MODULES: readonly EngineModuleNode[] = [
     sizeBytes: 76531,
     feature: 'effects2d',
     dependsOn: ['core', 'webgl2d'],
-    providesGlobals: ['Laya.Light2DRender'],
+    providesGlobals: ['Laya.BaseLight2D', 'Laya.LightOccluder2D'],
     priority: 220,
   },
   {
@@ -348,7 +353,7 @@ export const ZHUDA_ENGINE_MODULES: readonly EngineModuleNode[] = [
     sizeBytes: 67581,
     feature: 'gltf',
     dependsOn: ['core', 'd3'],
-    providesGlobals: ['Laya.glTFLoader'],
+    providesGlobals: ['Laya.glTFResource'],
     priority: 260,
   },
   {
@@ -357,7 +362,7 @@ export const ZHUDA_ENGINE_MODULES: readonly EngineModuleNode[] = [
     sizeBytes: 52268,
     feature: 'ik',
     dependsOn: ['core', 'd3'],
-    providesGlobals: ['Laya.IKConstraint'],
+    providesGlobals: ['Laya.IK_Comp'],
     priority: 270,
   },
   {
@@ -366,7 +371,7 @@ export const ZHUDA_ENGINE_MODULES: readonly EngineModuleNode[] = [
     sizeBytes: 92193,
     feature: 'postProcess',
     dependsOn: ['core', 'd3', 'webgl3d'],
-    providesGlobals: ['Laya.PostProcess', 'Laya.BloomEffect'],
+    providesGlobals: ['Laya.BloomEffect', 'Laya.MaterialPostProcessEffect'],
     priority: 280,
     painPointNote: '頂層自執行註冊 SubShader，必須在首幀 Camera 渲染前載入',
   },
