@@ -46,7 +46,18 @@ for bit.
 - What it gives up: a copy cannot be moved, hidden or picked by itself (make
   the instanced mesh again, or keep that prop a node). A mirrored copy
   (negative scale) is refused. A holder that moves afterwards takes the
-  groups' boxes with it but not the copies: make it again.
+  groups' boxes with it but not the copies, unless the mesh is made with
+  `follow: true`.
+- **`follow: true`**: the copies go with the holder. When it, or anything
+  above it, has moved, every copy's matrix is worked out and sent again
+  before the next frame is drawn, once however often it moved
+  (`stones.refresh()` does it at once). For copies under something that is
+  put in its place after they are made, or that moves now and then; a
+  holder that moves every frame pays for every copy every frame. The
+  matrices are kept for it, sixteen numbers a copy.
+- A model whose own file asks for copies of a mesh
+  (`EXT_mesh_gpu_instancing`) is drawn this way when it is mounted with
+  `mountZhudaModel`: see [model showcase](model-showcase.md).
 
 ## A model's placements, instanced
 

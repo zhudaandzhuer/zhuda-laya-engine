@@ -107,10 +107,10 @@ profiler.dispose(); // the browser's own methods are back
 - `report().sources` says where each number came from.
 
 In the check, ten more boxes are ten more draws and 120 more triangles on
-both backends. 500 sheets of glass over the view take a frame's GPU time,
-on an Apple M4 over six and five runs, from 0.3 to 1.6 ms up to 1.9 to
-3.0 ms by WebGL's timer, and from 0.1 to 0.5 ms up to 3.9 to 9.0 ms by
-WebGPU's timestamps.
+both backends. 1,500 sheets of glass over the view take a frame's GPU time,
+on an Apple M4 over five runs of each, from 0.3 to 1.3 ms up to 3.6 to
+4.1 ms by WebGL's timer, and from 0.1 ms up to 6.7 to 8.5 ms by WebGPU's
+timestamps.
 
 ## A shader that does not compile
 

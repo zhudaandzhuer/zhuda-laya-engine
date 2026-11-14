@@ -157,9 +157,46 @@ export interface ZhudaGltfNodeData {
     readonly extras?: unknown;
     readonly camera?: ZhudaGltfCamera;
     readonly light?: ZhudaGltfLight;
+    /** `EXT_mesh_gpu_instancing`: the node's mesh is drawn this many times. */
+    readonly instancing?: ZhudaGltfInstancing;
 }
-/** Every node that carries extras, a valid camera or a valid light. */
+/** Every node that carries extras, a valid camera, a valid light or copies of its mesh. */
 export declare function readZhudaGltfNodeData(document: unknown): readonly ZhudaGltfNodeData[];
+/** A node whose mesh is drawn many times (`EXT_mesh_gpu_instancing`), and the accessors that place its copies. */
+export interface ZhudaGltfInstancing {
+    /** The glTF node. */
+    readonly index: number;
+    /** How many copies. */
+    readonly count: number;
+    /** Accessor indices; null where the file gives none (no move, no turn, no scale). */
+    readonly translation: number | null;
+    readonly rotation: number | null;
+    readonly scale: number | null;
+}
+/** Most copies one node may ask for: what one instanced mesh draws. */
+export declare const ZHUDA_GLTF_MAX_INSTANCES = 200000;
+/**
+ * The nodes that use `EXT_mesh_gpu_instancing`. A node whose attributes
+ * cannot be drawn is left out and named in `problems` (its mesh is then
+ * drawn once, where the node is).
+ */
+export declare function readZhudaGltfInstancing(document: unknown): {
+    instancing: readonly ZhudaGltfInstancing[];
+    problems: readonly ZhudaGltfProblem[];
+};
+/**
+ * The matrix of each copy (sixteen numbers, column by column, in the node's
+ * own space) from the three attributes as they lie in the file: three
+ * numbers a move, four a turn (a quaternion x, y, z, w; integers are read as
+ * -1..1 by `rotationScale`, 1/127 for bytes and 1/32767 for shorts), three a
+ * scale. A turn of no length is no turn. `mirrored` lists the copies whose
+ * scale turns the mesh inside out: one draw has one facing, so an instanced
+ * mesh cannot draw them with the rest.
+ */
+export declare function zhudaGltfInstanceMatrices(count: number, translation?: ArrayLike<number> | null, rotation?: ArrayLike<number> | null, scale?: ArrayLike<number> | null, rotationScale?: number): {
+    matrices: Float32Array;
+    mirrored: number[];
+};
 /**
  * Vertex attribute accessors LayaAir would read wrongly: integers, normalized or
  * not (`KHR_mesh_quantization`, or core glTF's normalized texture coordinates

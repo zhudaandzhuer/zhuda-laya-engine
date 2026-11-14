@@ -50,12 +50,23 @@ export interface ZhudaModelGltfNode extends ZhudaGltfNodeData {
     readonly node: Laya.Sprite3D;
     /** The light component made from `light` when `instantiate` asked for lights; otherwise null. */
     readonly lightComponent: Laya.Light | null;
+    /**
+     * `EXT_mesh_gpu_instancing`: where the node's mesh is to be drawn, sixteen
+     * numbers a copy (column by column, in the node's own space). The node
+     * itself draws its mesh once, where it is; `mountZhudaModel` draws the
+     * copies instead. Absent when the node has none, or none that can be
+     * drawn.
+     */
+    readonly instances?: Float32Array;
 }
 export interface ModelInstance {
     readonly node: Laya.Sprite3D;
     readonly compatibility: ModelCompatibilityReport;
     readonly materials: readonly Laya.Material[];
-    /** The nodes that carry glTF `extras`, a camera or a `KHR_lights_punctual` light, in node order. */
+    /**
+     * The nodes that carry glTF `extras`, a camera, a `KHR_lights_punctual`
+     * light or copies of their mesh (`EXT_mesh_gpu_instancing`), in node order.
+     */
     readonly gltfNodes: readonly ZhudaModelGltfNode[];
     setTint(color: [number, number, number, number]): void;
     find(name: string): Laya.Sprite3D | null;

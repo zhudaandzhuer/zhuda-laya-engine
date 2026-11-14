@@ -5,7 +5,9 @@ import {
   createLaya342ModelTemplate,
   createLaya342GltfLight,
   laya342GltfMissingTextures,
+  laya342GltfInstances,
   laya342GltfNodes,
+  laya342GltfRefusedSecondUv,
 } from './Laya342GltfAdapter.ts';
 import {
   dequantizeZhudaGltf,
@@ -232,12 +234,23 @@ export interface ZhudaModelGltfNode extends ZhudaGltfNodeData {
   readonly node: Laya.Sprite3D;
   /** The light component made from `light` when `instantiate` asked for lights; otherwise null. */
   readonly lightComponent: Laya.Light | null;
+  /**
+   * `EXT_mesh_gpu_instancing`: where the node's mesh is to be drawn, sixteen
+   * numbers a copy (column by column, in the node's own space). The node
+   * itself draws its mesh once, where it is; `mountZhudaModel` draws the
+   * copies instead. Absent when the node has none, or none that can be
+   * drawn.
+   */
+  readonly instances?: Float32Array;
 }
 export interface ModelInstance {
   readonly node: Laya.Sprite3D;
   readonly compatibility: ModelCompatibilityReport;
   readonly materials: readonly Laya.Material[];
-  /** The nodes that carry glTF `extras`, a camera or a `KHR_lights_punctual` light, in node order. */
+  /**
+   * The nodes that carry glTF `extras`, a camera, a `KHR_lights_punctual`
+   * light or copies of their mesh (`EXT_mesh_gpu_instancing`), in node order.
+   */
   readonly gltfNodes: readonly ZhudaModelGltfNode[];
   setTint(color: [number, number, number, number]): void;
   find(name: string): Laya.Sprite3D | null;
@@ -277,7 +290,7 @@ export class ZhudaModelLibrary {
       clips: Set<Laya.AnimationClip>;
       compatibility: ModelCompatibilityReport;
       /** Node data with the child-index path from the template root to its node. */
-      gltfNodes: { data: ZhudaGltfNodeData; path: number[] }[];
+      gltfNodes: { data: ZhudaGltfNodeData; path: number[]; instances?: Float32Array }[];
     }
   >();
   private readonly timeoutMs: number;
@@ -426,7 +439,9 @@ export class ZhudaModelLibrary {
           applyZhudaAnisotropy(template);
           // Where each node with extras, a camera or a light sits under the template.
           const made = laya342GltfNodes(resource);
-          const gltfNodes: { data: ZhudaGltfNodeData; path: number[] }[] = [];
+          const copies = laya342GltfInstances(resource);
+          const gltfNodes: { data: ZhudaGltfNodeData; path: number[]; instances?: Float32Array }[] =
+            [];
           for (const data of nodeData) {
             const path: number[] = [];
             let node = made[data.index];
@@ -435,8 +450,39 @@ export class ZhudaModelLibrary {
               node = node.parent;
             }
             // A node outside the default scene is not in the template.
-            if (node === template) gltfNodes.push({ data, path });
+            const placed = copies.get(data.index);
+            if (node === template)
+              gltfNodes.push({
+                data,
+                path,
+                ...(placed?.matrices.length ? { instances: placed.matrices } : {}),
+              });
           }
+          // A texture that asked for the second set of texture coordinates and did not get it.
+          compatibility = addModelDiagnostics(
+            compatibility,
+            laya342GltfRefusedSecondUv(resource).map((refused) => ({
+              code: 'TEXCOORD_IGNORED' as const,
+              severity: 'warning' as const,
+              path: `$.materials[${refused.material}].${refused.slot}`,
+              message: `Material ${refused.material}: the ${refused.slot} texture asks for texture coordinates 1 and is drawn with the first set (${refused.reason}).`,
+              hint: 'Start the engine with ZhudaEngine.boot, which puts the shader text in place before LayaAir registers its shaders.',
+            })),
+          );
+          // Copies whose scale turns the mesh inside out are not drawn: say so.
+          compatibility = addModelDiagnostics(
+            compatibility,
+            [...copies]
+              .filter(([, placed]) => placed.mirrored > 0)
+              .map(([index, placed]) => ({
+                code: 'INSTANCES_MIRRORED' as const,
+                severity: 'warning' as const,
+                extension: 'EXT_mesh_gpu_instancing',
+                path: `$.nodes[${index}].extensions.EXT_mesh_gpu_instancing`,
+                message: `Node ${index}: ${placed.mirrored} of its copies have a scale that turns the mesh inside out; they are not drawn.`,
+                hint: 'Give every copy a scale whose three numbers multiply to more than zero, or mirror the mesh itself.',
+              })),
+          );
           this.templates.set(resource, { node: template, clips, compatibility, gltfNodes });
           resource._addReference(); // Cache owns the prefab even while no instances are visible.
           return resource;
@@ -552,7 +598,7 @@ export class ZhudaModelLibrary {
           }
         });
       // The clone keeps the template's child order: follow each recorded path.
-      for (const { data, path } of template.gltfNodes) {
+      for (const { data, path, instances } of template.gltfNodes) {
         let target = node;
         for (const index of path) target = target?.getChildAt(index);
         if (!target) throw Error(`glTF node ${data.index} is missing from the model copy`);
@@ -564,7 +610,14 @@ export class ZhudaModelLibrary {
                 l,
               )
             : null;
-        gltfNodes.push(Object.freeze({ ...data, node: target, lightComponent }));
+        gltfNodes.push(
+          Object.freeze({
+            ...data,
+            node: target,
+            lightComponent,
+            ...(instances ? { instances } : {}),
+          }),
+        );
       }
     } catch (e) {
       if (node) destroyLaya342ModelTree(node);

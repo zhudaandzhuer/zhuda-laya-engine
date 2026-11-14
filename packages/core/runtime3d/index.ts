@@ -42,6 +42,7 @@ export * from './EnvironmentProbe.ts';
 export * from './HalfFloat.ts';
 export * from './HdrEnvironment.ts';
 export * from './InstancedMesh.ts';
+export * from './ModelPlacements.ts';
 export * from './AnimationBlendMath.ts';
 export * from './AnimationBlend.ts';
 export * from './Ik.ts';
@@ -63,6 +64,7 @@ export * from './TransformGizmo.ts';
 export * from './ComputePass.ts';
 export * from './SurfaceBuffer.ts';
 export * from './ObjectMotion.ts';
+export * from './GltfSecondUv.ts';
 export { installLaya342LifecycleFix } from './Laya342Adapters.ts';
 export {
   ZHUDA_NORMAL_NOMIPMAP_DEFINE,
@@ -100,15 +102,19 @@ export {
   probeZhudaImageDecode,
   quantizedZhudaGltfAccessors,
   readZhudaGltfCameras,
+  readZhudaGltfInstancing,
   readZhudaGltfLights,
   readZhudaGltfNodeData,
   resolveZhudaGltfTextureSource,
+  zhudaGltfInstanceMatrices,
   zhudaGltfLightToLaya,
+  ZHUDA_GLTF_MAX_INSTANCES,
 } from './GltfIntake.ts';
 export type {
   ZhudaDequantizeResult,
   ZhudaGltfCamera,
   ZhudaGltfImageExtension,
+  ZhudaGltfInstancing,
   ZhudaGltfLight,
   ZhudaGltfNodeData,
   ZhudaGltfProblem,

@@ -47,6 +47,16 @@ export interface ZhudaInstancedMeshOptions {
     layer?: number;
     /** Name prefix of the group nodes. */
     label?: string;
+    /**
+     * The copies go with the parent: when it, or anything above it, has moved,
+     * they are placed again before the next frame is drawn (every copy's
+     * matrix worked out and sent again, once however often it moved). For
+     * copies under something that is put in its place after they are made, or
+     * that moves now and then. The matrices are kept for it, sixteen numbers a
+     * copy. Without it a parent that moves leaves the copies where they were
+     * drawn first.
+     */
+    follow?: boolean;
 }
 /** The define a material's shader reads a copy's tint under. */
 export declare const ZHUDA_INSTANCE_TINT_DEFINE = "ZHUDA_INSTANCE_TINT";
@@ -73,16 +83,27 @@ export declare class ZhudaInstancedMesh {
     private readonly nodes;
     private readonly owned;
     private disposed;
+    /** With `follow`: the parent, the copies' places under it, and each group's buffer of world places. */
+    private readonly following;
+    private stale;
     /**
      * @param parent the node the group nodes are added under. The matrices
      *   are in its space: give them as places under it (`zhudaPlacementMatrices`
      *   without a parent matrix). A parent that moves afterwards takes the
-     *   copies with it for culling but not for drawing: make the mesh again.
+     *   copies with it for culling but not for drawing, unless `follow` is
+     *   asked for: then they are placed again when it has moved.
      * @param mesh a LayaAir mesh; its buffers are shared, never copied.
      * @param materials one material, or one a sub-mesh.
      * @param matrices sixteen numbers a copy.
      */
     constructor(parent: any, mesh: any, materials: any, matrices: ZhudaInstanceMatrices, options?: ZhudaInstancedMeshOptions);
+    private moved;
+    /**
+     * With `follow`: places the copies again from where the parent is now. It
+     * is called by itself after the parent has moved; call it to have them
+     * placed at once (before reading bounds in the same frame, say).
+     */
+    refresh(): void;
     /** Copies, groups, and draws a pass: one a group a sub-mesh. */
     get stats(): {
         copies: number;

@@ -442,17 +442,21 @@ export interface ZhudaGltfNodeData {
   readonly extras?: unknown;
   readonly camera?: ZhudaGltfCamera;
   readonly light?: ZhudaGltfLight;
+  /** `EXT_mesh_gpu_instancing`: the node's mesh is drawn this many times. */
+  readonly instancing?: ZhudaGltfInstancing;
 }
-/** Every node that carries extras, a valid camera or a valid light. */
+/** Every node that carries extras, a valid camera, a valid light or copies of its mesh. */
 export function readZhudaGltfNodeData(document: unknown): readonly ZhudaGltfNodeData[] {
   const { lights } = readZhudaGltfLights(document),
-    { cameras } = readZhudaGltfCameras(document);
+    { cameras } = readZhudaGltfCameras(document),
+    copies = new Map(readZhudaGltfInstancing(document).instancing.map((i) => [i.index, i]));
   const out: ZhudaGltfNodeData[] = [];
   list(record(document).nodes).forEach((raw, index) => {
     const n = record(raw);
     const light = lights[indexOf(record(record(n.extensions).KHR_lights_punctual).light) ?? -1];
     const camera = cameras[indexOf(n.camera) ?? -1];
-    if (n.extras === undefined && !light && !camera) return;
+    const instancing = copies.get(index);
+    if (n.extras === undefined && !light && !camera && !instancing) return;
     out.push(
       freeze({
         index,
@@ -460,10 +464,159 @@ export function readZhudaGltfNodeData(document: unknown): readonly ZhudaGltfNode
         ...(n.extras === undefined ? {} : { extras: JSON.parse(JSON.stringify(n.extras)) }),
         ...(camera ? { camera } : {}),
         ...(light ? { light } : {}),
+        ...(instancing ? { instancing } : {}),
       }),
     );
   });
   return freeze(out);
+}
+
+// ------------------------------------------------------- GPU instancing ---
+
+/** A node whose mesh is drawn many times (`EXT_mesh_gpu_instancing`), and the accessors that place its copies. */
+export interface ZhudaGltfInstancing {
+  /** The glTF node. */
+  readonly index: number;
+  /** How many copies. */
+  readonly count: number;
+  /** Accessor indices; null where the file gives none (no move, no turn, no scale). */
+  readonly translation: number | null;
+  readonly rotation: number | null;
+  readonly scale: number | null;
+}
+/** Most copies one node may ask for: what one instanced mesh draws. */
+export const ZHUDA_GLTF_MAX_INSTANCES = 200000;
+/**
+ * The nodes that use `EXT_mesh_gpu_instancing`. A node whose attributes
+ * cannot be drawn is left out and named in `problems` (its mesh is then
+ * drawn once, where the node is).
+ */
+export function readZhudaGltfInstancing(document: unknown): {
+  instancing: readonly ZhudaGltfInstancing[];
+  problems: readonly ZhudaGltfProblem[];
+} {
+  const accessors = list(record(document).accessors).map(record);
+  const instancing: ZhudaGltfInstancing[] = [],
+    problems: ZhudaGltfProblem[] = [];
+  list(record(document).nodes).forEach((raw, index) => {
+    const node = record(raw);
+    const extension = record(node.extensions).EXT_mesh_gpu_instancing;
+    if (extension === undefined) return;
+    const fail = (message: string) => problems.push({ index, message });
+    if (indexOf(node.mesh) === null) return fail('the node has no mesh to draw');
+    if (node.skin !== undefined) return fail('a skinned mesh cannot be drawn as copies');
+    const attributes = record(record(extension).attributes);
+    const wanted: Record<string, { type: string; components: readonly number[] }> = {
+      TRANSLATION: { type: 'VEC3', components: [5126] },
+      // A turn may be floats, or bytes or shorts read as -1..1.
+      ROTATION: { type: 'VEC4', components: [5126, 5120, 5122] },
+      SCALE: { type: 'VEC3', components: [5126] },
+    };
+    const found: Record<string, number | null> = { TRANSLATION: null, ROTATION: null, SCALE: null };
+    let count: number | null = null;
+    for (const [name, want] of Object.entries(wanted)) {
+      if (attributes[name] === undefined) continue;
+      const at = indexOf(attributes[name]),
+        accessor = at === null ? undefined : accessors[at];
+      if (!accessor || !Object.keys(accessor).length) return fail(`${name} names no accessor`);
+      const component = accessor.componentType as number;
+      if (accessor.type !== want.type || !want.components.includes(component))
+        return fail(
+          `${name} must be ${want.type} of floats${name === 'ROTATION' ? ' (or normalized bytes or shorts)' : ''}`,
+        );
+      if (component !== 5126 && accessor.normalized !== true)
+        return fail(`${name} of integers must be normalized`);
+      const many = indexOf(accessor.count);
+      if (many === null || many < 1) return fail(`${name} has no count`);
+      if (count !== null && many !== count)
+        return fail(`${name} has ${many} values where another attribute has ${count}`);
+      count = many;
+      found[name] = at;
+    }
+    if (count === null) return fail('no TRANSLATION, ROTATION or SCALE to place the copies by');
+    if (count > ZHUDA_GLTF_MAX_INSTANCES)
+      return fail(`${count} copies is more than one node may have (${ZHUDA_GLTF_MAX_INSTANCES})`);
+    instancing.push({
+      index,
+      count,
+      translation: found.TRANSLATION,
+      rotation: found.ROTATION,
+      scale: found.SCALE,
+    });
+  });
+  return freeze({ instancing, problems });
+}
+/**
+ * The matrix of each copy (sixteen numbers, column by column, in the node's
+ * own space) from the three attributes as they lie in the file: three
+ * numbers a move, four a turn (a quaternion x, y, z, w; integers are read as
+ * -1..1 by `rotationScale`, 1/127 for bytes and 1/32767 for shorts), three a
+ * scale. A turn of no length is no turn. `mirrored` lists the copies whose
+ * scale turns the mesh inside out: one draw has one facing, so an instanced
+ * mesh cannot draw them with the rest.
+ */
+export function zhudaGltfInstanceMatrices(
+  count: number,
+  translation?: ArrayLike<number> | null,
+  rotation?: ArrayLike<number> | null,
+  scale?: ArrayLike<number> | null,
+  rotationScale = 1,
+): { matrices: Float32Array; mirrored: number[] } {
+  if (!Number.isInteger(count) || count < 1) throw Error('Invalid instance count');
+  for (const [name, values, size] of [
+    ['translation', translation, 3],
+    ['rotation', rotation, 4],
+    ['scale', scale, 3],
+  ] as const)
+    if (values && values.length < count * size)
+      throw Error(`Instance ${name} holds fewer than ${count} values`);
+  const matrices = new Float32Array(count * 16),
+    mirrored: number[] = [];
+  for (let i = 0; i < count; i++) {
+    let x = 0,
+      y = 0,
+      z = 0,
+      w = 1;
+    if (rotation) {
+      x = Math.max(rotation[i * 4] * rotationScale, -1);
+      y = Math.max(rotation[i * 4 + 1] * rotationScale, -1);
+      z = Math.max(rotation[i * 4 + 2] * rotationScale, -1);
+      w = Math.max(rotation[i * 4 + 3] * rotationScale, -1);
+      const length = Math.hypot(x, y, z, w);
+      if (length > 1e-8) {
+        x /= length;
+        y /= length;
+        z /= length;
+        w /= length;
+      } else {
+        x = y = z = 0;
+        w = 1;
+      }
+    }
+    const sx = scale ? scale[i * 3] : 1,
+      sy = scale ? scale[i * 3 + 1] : 1,
+      sz = scale ? scale[i * 3 + 2] : 1;
+    const m = i * 16;
+    matrices[m] = (1 - 2 * (y * y + z * z)) * sx;
+    matrices[m + 1] = 2 * (x * y + w * z) * sx;
+    matrices[m + 2] = 2 * (x * z - w * y) * sx;
+    matrices[m + 4] = 2 * (x * y - w * z) * sy;
+    matrices[m + 5] = (1 - 2 * (x * x + z * z)) * sy;
+    matrices[m + 6] = 2 * (y * z + w * x) * sy;
+    matrices[m + 8] = 2 * (x * z + w * y) * sz;
+    matrices[m + 9] = 2 * (y * z - w * x) * sz;
+    matrices[m + 10] = (1 - 2 * (x * x + y * y)) * sz;
+    if (translation) {
+      matrices[m + 12] = translation[i * 3];
+      matrices[m + 13] = translation[i * 3 + 1];
+      matrices[m + 14] = translation[i * 3 + 2];
+    }
+    matrices[m + 15] = 1;
+    if (sx * sy * sz < 0) mirrored.push(i);
+  }
+  for (let i = 0; i < matrices.length; i++)
+    if (!Number.isFinite(matrices[i])) throw Error(`Instance ${Math.floor(i / 16)} is not finite`);
+  return { matrices, mirrored };
 }
 
 // ---------------------------------------------------- quantized vertices ---

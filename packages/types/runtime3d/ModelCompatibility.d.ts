@@ -20,7 +20,13 @@ export interface ModelDiagnostic {
     /** Set by ZhudaModelLibrary after loading: a texture's picture did not load or decode; its slots are empty. */
      | 'IMAGE_DECODE_FAILED'
     /** A punctual light LayaAir can only approximate (falloff, spot cone). */
-     | 'LIGHT_APPROXIMATED' | 'INVALID_LIGHT' | 'INVALID_CAMERA';
+     | 'LIGHT_APPROXIMATED' | 'INVALID_LIGHT' | 'INVALID_CAMERA'
+    /** A node's `EXT_mesh_gpu_instancing` cannot be drawn as copies: its mesh is drawn once, where the node is. */
+     | 'INVALID_INSTANCING'
+    /** Set by ZhudaModelLibrary after loading: copies whose scale turns the mesh inside out are not drawn. */
+     | 'INSTANCES_MIRRORED'
+    /** A texture asks for texture coordinates the importer does not read for that slot: it is drawn with the first set. */
+     | 'TEXCOORD_IGNORED';
     severity: 'error' | 'warning';
     path: string;
     extension?: string;

@@ -6,6 +6,10 @@
  * The model's meshes and materials are shared by every copy and by every
  * other user of the same asset, so whatever is changed on a material is put
  * back on disposal.
+ *
+ * A node of the file that asks for copies of its own mesh
+ * (`EXT_mesh_gpu_instancing`) is drawn here as those copies, one draw a
+ * group of them, in place of the mesh LayaAir draws once at the node.
  */
 import type { ModelInstance } from './Assets.js';
 import { ZhudaModelLod } from './ModelLod.js';

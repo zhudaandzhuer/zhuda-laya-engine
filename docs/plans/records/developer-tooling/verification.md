@@ -141,3 +141,22 @@ undeclared identifier`, lines 82 to 85; the pass is skipped and nothing
 - The model editor was driven on one generated model.
 - Helpers under an HDR chain (their colours go through the tone curve) were
   not drawn.
+
+## Two things the check did by the clock (2026-11-15, with the glTF follow-up)
+
+Running the check among others for the glTF follow-up, it failed twice in a
+row and then passed three times alone. Both causes were in the check, not
+in what it checks:
+
+- The character was held still with `animator.speed = 0` after several
+  frames had been drawn. LayaAir moves an animation on by the clock, so the
+  pose it froze in depended on how long the page had taken to get there;
+  on a slower run it bent across the world's z axis and hid the pixel the
+  check reads ("axisZ ... off by 141"). It is held at the first frame of
+  its clip now, before anything is drawn.
+- 500 sheets of glass were not always enough for the GPU-time comparison:
+  one WebGL run gave 1.57 ms without them and 2.04 ms with (the difference
+  has to be over 0.5 ms). The load is 1,500 sheets now. Five runs on each
+  backend afterwards: WebGL 0.28 to 1.30 ms and 3.60 to 4.14 ms; WebGPU
+  0.07 to 0.13 ms and 6.68 to 8.45 ms. The figures for 500 sheets in the
+  results above are as they were measured then.

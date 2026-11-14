@@ -187,13 +187,15 @@ async function main() {
   const model = await library.instantiate('character.glb');
   scene.addChild(model.node);
   model.node.transform.position = v3([2, 0, 3]);
+  // Held at the first frame of its clip, before anything is drawn: LayaAir
+  // moves an animation on by the clock, and a pose that depends on how long
+  // the page took to get here once bent the character across the z axis.
+  const animator = model.node.getComponent(Laya.Animator);
+  if (animator) animator.speed = 0;
   // LayaAir keeps a sun's shadow map once it has made one: made before anything is counted.
   sun.light.shadowMode = Laya.ShadowMode.SoftLow;
   flush();
   sun.light.shadowMode = Laya.ShadowMode.None;
-  // Held still, so that a picture taken later can be compared with one taken now.
-  const animator = model.node.getComponent(Laya.Animator);
-  if (animator) animator.speed = 0;
   flush();
   const resourcesBefore = held();
   saved.plain = read();
@@ -447,7 +449,9 @@ async function main() {
       addedDraws: more.drawCalls - base.drawCalls,
       addedTriangles: more.triangles - base.triangles,
     };
-    // GPU time: the same scene, and the same scene under 500 sheets of glass that fill the view.
+    // GPU time: the same scene, and the same scene under 1,500 sheets of glass
+    // that fill the view. (With 500 the two overlapped once in a dozen runs
+    // on WebGL: its timer gives the plain scene anything from 0.3 to 1.6 ms.)
     const timed = profiler.enableGpuTiming(device ?? gl);
     out.profiler.gpuTiming = timed;
     out.profiler.gpuSource = profiler.report().sources.gpu;
@@ -480,10 +484,10 @@ async function main() {
         fog: false,
         surface: 'vec4 zhudaSurface(vec2 uv,vec3 p,vec3 n){return vec4(0.5,0.6,0.7,0.05);}',
       });
-      const sheets = Array.from({ length: 500 }, (_, i) => {
+      const sheets = Array.from({ length: 1500 }, (_, i) => {
         const node = box(
           [30, 30, 0.01],
-          middle(EYE, LOOK, 0.3 + i * 0.001),
+          middle(EYE, LOOK, 0.3 + i * 0.0003),
           glass.material,
           passing,
         );

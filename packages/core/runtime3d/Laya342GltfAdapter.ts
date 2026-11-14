@@ -1,15 +1,34 @@
 import { destroyLaya342ModelTree } from './Laya342Adapters.ts';
 import {
+  readZhudaGltfInstancing,
   resolveZhudaGltfTextureSource,
+  zhudaGltfInstanceMatrices,
   type ZhudaImageDecodeSupport,
   type ZhudaLayaLightSettings,
 } from './GltfIntake.ts';
 import { createZhudaBasisTexture, isZhudaKtx2, type ZhudaBasisTranscoder } from './BasisTexture.ts';
+import {
+  ZHUDA_EMISSION_UV1_DEFINE,
+  ZHUDA_OCCLUSION_UV1_DEFINE,
+  ZHUDA_UV1_DEFINE,
+  zhudaGltfTexCoord,
+  zhudaSecondUvStatus,
+} from './GltfSecondUv.ts';
 const prepared = new WeakSet<object>();
 // The Laya node made for each glTF node by the resource's last create().
 const createdNodes = new WeakMap<object, readonly any[]>();
 // The glTF textures whose picture did not load, per resource.
 const missingTextures = new WeakMap<object, Set<number>>();
+/** The copies a glTF node asks for (`EXT_mesh_gpu_instancing`), read when the file was parsed. */
+export interface Laya342GltfInstances {
+  /** Sixteen numbers a copy, column by column, in the node's own space. */
+  readonly matrices: Float32Array;
+  /** How many copies the file asked for and are not here: their scale turns the mesh inside out. */
+  readonly mirrored: number;
+}
+const instances = new WeakMap<object, Map<number, Laya342GltfInstances>>();
+// Textures that asked for the second set of texture coordinates and were not given it, per resource.
+const refusedSecondUv = new WeakMap<object, { material: number; slot: string; reason: string }[]>();
 /** Whether two byte ranges hold the same bytes. */
 function sameBytes(a: Uint8Array, b: Uint8Array): boolean {
   if (a.byteLength !== b.byteLength) return false;
@@ -186,12 +205,80 @@ export function prepareLaya342GltfResource(
     resource.loadNodes = function (...args: any[]) {
       const result = loadNodes.apply(this, args);
       createdNodes.set(this, [...(this._nodes ?? [])]);
+      // EXT_mesh_gpu_instancing: LayaAir makes the node and draws its mesh
+      // once. Read where the copies go; whoever mounts the model draws them.
+      const found = new Map<number, Laya342GltfInstances>();
+      for (const item of readZhudaGltfInstancing(this._data).instancing) {
+        const read = (accessor: number | null) =>
+          accessor === null ? null : this.getBufferwithAccessorIndex(accessor);
+        const component =
+          item.rotation === null ? 5126 : this._data.accessors[item.rotation].componentType;
+        let made: ReturnType<typeof zhudaGltfInstanceMatrices>;
+        try {
+          made = zhudaGltfInstanceMatrices(
+            item.count,
+            read(item.translation),
+            read(item.rotation),
+            read(item.scale),
+            component === 5120 ? 1 / 127 : component === 5122 ? 1 / 32767 : 1,
+          );
+        } catch (error) {
+          throw Error(
+            `glTF node ${item.index} (EXT_mesh_gpu_instancing): ${error instanceof Error ? error.message : String(error)}`,
+          );
+        }
+        // One draw has one facing: a copy turned inside out is left out and reported.
+        let matrices = made.matrices;
+        if (made.mirrored.length) {
+          const skip = new Set(made.mirrored);
+          matrices = new Float32Array((item.count - skip.size) * 16);
+          let k = 0;
+          for (let i = 0; i < item.count; i++)
+            if (!skip.has(i)) matrices.set(made.matrices.subarray(i * 16, i * 16 + 16), k++ * 16);
+        }
+        found.set(item.index, { matrices, mirrored: made.mirrored.length });
+      }
+      instances.set(this, found);
       return result;
+    };
+  // The texture references read by the second set of texture coordinates:
+  // LayaAir's loader warns of every one that is not the first.
+  const secondSet = new WeakSet<object>();
+  const withInfo = resource.getTextureWithInfo;
+  if (typeof withInfo === 'function')
+    resource.getTextureWithInfo = function (info: any, ...rest: unknown[]) {
+      if (info && secondSet.has(info)) return this._textures?.[info.index];
+      return withInfo.call(this, info, ...rest);
     };
   const createMaterial = resource.createMaterial;
   if (typeof createMaterial === 'function')
     resource.createMaterial = function (definition: any) {
+      // Occlusion and emission may be laid out on TEXCOORD_1 (a baked map).
+      const slots = [
+        {
+          info: definition?.occlusionTexture,
+          slot: 'occlusion',
+          define: ZHUDA_OCCLUSION_UV1_DEFINE,
+        },
+        { info: definition?.emissiveTexture, slot: 'emissive', define: ZHUDA_EMISSION_UV1_DEFINE },
+      ].filter((item) => item.info && zhudaGltfTexCoord(item.info) === 1);
+      const status = zhudaSecondUvStatus(runtime);
+      if (status.ready) for (const item of slots) secondSet.add(item.info);
       const material = createMaterial.call(this, definition);
+      if (slots.length) {
+        if (status.ready) {
+          const define = (name: string) =>
+            material.addDefine(runtime.Shader3D.getDefineByName(name));
+          define(ZHUDA_UV1_DEFINE);
+          for (const item of slots) define(item.define);
+        } else {
+          const index = (this._data?.materials ?? []).indexOf(definition);
+          const refused = refusedSecondUv.get(this) ?? [];
+          refusedSecondUv.set(this, refused);
+          for (const item of slots)
+            refused.push({ material: index, slot: item.slot, reason: status.reason ?? 'unknown' });
+        }
+      }
       // Native KHR_materials_unlit mutates the color returned by its getter, then
       // assigns that same object. WebGPU's equality fast path skips conversion,
       // leaving the linear GPU uniform white. Repair this owned imported material.
@@ -373,6 +460,22 @@ export function createLaya342ModelTemplate(resource: any, runtime: any): Laya.Sp
  */
 export function laya342GltfMissingTextures(resource: object): readonly number[] {
   return [...(missingTextures.get(resource) ?? [])].sort((a, b) => a - b);
+}
+
+/**
+ * The occlusion and emissive textures that asked for the second set of
+ * texture coordinates and are drawn with the first, because the shader
+ * text that reads it could not be put in place.
+ */
+export function laya342GltfRefusedSecondUv(
+  resource: object,
+): readonly { material: number; slot: string; reason: string }[] {
+  return refusedSecondUv.get(resource) ?? [];
+}
+
+/** The copies each glTF node asks for (`EXT_mesh_gpu_instancing`), by node index. */
+export function laya342GltfInstances(resource: object): ReadonlyMap<number, Laya342GltfInstances> {
+  return instances.get(resource) ?? new Map();
 }
 
 /** The Laya node made for each glTF node index by the resource's last create(). */

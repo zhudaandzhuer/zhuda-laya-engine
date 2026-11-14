@@ -2,6 +2,7 @@ import {
   externalZhudaGltfBuffers,
   quantizedZhudaGltfAccessors,
   readZhudaGltfCameras,
+  readZhudaGltfInstancing,
   readZhudaGltfLights,
   resolveZhudaGltfTextureSource,
   type ZhudaImageDecodeSupport,
@@ -35,7 +36,13 @@ export interface ModelDiagnostic {
     /** A punctual light LayaAir can only approximate (falloff, spot cone). */
     | 'LIGHT_APPROXIMATED'
     | 'INVALID_LIGHT'
-    | 'INVALID_CAMERA';
+    | 'INVALID_CAMERA'
+    /** A node's `EXT_mesh_gpu_instancing` cannot be drawn as copies: its mesh is drawn once, where the node is. */
+    | 'INVALID_INSTANCING'
+    /** Set by ZhudaModelLibrary after loading: copies whose scale turns the mesh inside out are not drawn. */
+    | 'INSTANCES_MIRRORED'
+    /** A texture asks for texture coordinates the importer does not read for that slot: it is drawn with the first set. */
+    | 'TEXCOORD_IGNORED';
   severity: 'error' | 'warning';
   path: string;
   extension?: string;
@@ -159,6 +166,7 @@ const extensionNames = [
   'EXT_texture_avif',
   'KHR_texture_basisu',
   'KHR_lights_punctual',
+  'EXT_mesh_gpu_instancing',
 ] as const;
 const engineExtensions: readonly string[] = [
   'KHR_mesh_quantization',
@@ -166,6 +174,7 @@ const engineExtensions: readonly string[] = [
   'EXT_texture_avif',
   'KHR_texture_basisu',
   'KHR_lights_punctual',
+  'EXT_mesh_gpu_instancing',
 ];
 // Read by a registered decoder before the native parser, never by the parser.
 const decoderExtensions: readonly string[] = ['EXT_meshopt_compression', 'KHR_meshopt_compression'];
@@ -669,6 +678,31 @@ export function inspectGltfDocument(
       hint: 'See zhudaGltfLightToLaya for the mapping; lights are created only when instantiate asks for them.',
     });
   });
+  for (const problem of readZhudaGltfInstancing(d).problems)
+    add({
+      code: 'INVALID_INSTANCING',
+      severity: 'warning',
+      extension: 'EXT_mesh_gpu_instancing',
+      path: `$.nodes[${problem.index}].extensions.EXT_mesh_gpu_instancing`,
+      message: `Node ${problem.index}: ${problem.message}; its mesh is drawn once, where the node is.`,
+      hint: 'Export TRANSLATION and SCALE as VEC3 floats and ROTATION as a VEC4 of floats or normalized bytes or shorts, all of one count, on a node with a mesh and no skin.',
+    });
+  // The second set of texture coordinates is read for occlusion and for what
+  // a surface gives off (a baked map laid out on its own). Anything else is
+  // drawn with the first set, which LayaAir says only on the console.
+  for (const material of inventory(d).materials)
+    for (const texture of material.textures)
+      if (
+        texture.texCoord !== 0 &&
+        !(texture.texCoord === 1 && ['occlusion', 'emissive'].includes(texture.slot))
+      )
+        add({
+          code: 'TEXCOORD_IGNORED',
+          severity: 'warning',
+          path: `$.materials[${material.index}].${texture.slot}`,
+          message: `Material ${material.index}: the ${texture.slot} texture asks for texture coordinates ${texture.texCoord}; it is drawn with the first set.`,
+          hint: 'Only occlusion and emissive textures may use TEXCOORD_1. Lay the texture out on TEXCOORD_0, or bake it into one of those two slots.',
+        });
   const cameraProblems = readZhudaGltfCameras(d);
   for (const problem of cameraProblems.problems)
     add({
@@ -756,6 +790,9 @@ const lost: readonly ModelDiagnostic['code'][] = [
   'IMAGE_DECODE_FAILED',
   'INVALID_LIGHT',
   'INVALID_CAMERA',
+  'INVALID_INSTANCING',
+  'INSTANCES_MIRRORED',
+  'TEXCOORD_IGNORED',
 ];
 function statusOf(
   diagnostics: readonly ModelDiagnostic[],

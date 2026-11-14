@@ -26,6 +26,30 @@ const integer = (value: unknown, min = 0): number => {
 };
 const align = (value: number) => Math.ceil(value / 4) * 4;
 
+export interface ZhudaMeshoptDecoderOptions {
+  /**
+   * Decode in this many web workers, 0..8 (default 0: on the calling
+   * thread, a buffer view at a time). The decoder library starts them from
+   * a script it makes itself (a `blob:` URL), each with its own copy of the
+   * decoder; a page whose content policy forbids that, or a host without
+   * workers, decodes on the calling thread as before and `workers` says 0.
+   * They are stopped when the last decoder that asked for them is disposed.
+   */
+  workers?: number;
+}
+// The library keeps one set of workers for the page: how many each live decoder asked for.
+const asked = new Set<{ count: number }>();
+/** Makes the library's set as large as the largest live request, or says why it could not. */
+function settleWorkers(): string | null {
+  const most = Math.max(0, ...[...asked].map((request) => request.count));
+  try {
+    MeshoptDecoder.useWorkers(most);
+    return null;
+  } catch (error) {
+    return error instanceof Error ? error.message : String(error);
+  }
+}
+
 /** Optional pinned CPU decoder: embedded glTF/GLB -> ordinary self-contained GLB.
  * Reads `EXT_meshopt_compression` and `KHR_meshopt_compression` (with its COLOR
  * filter). Uses existing ModelLibrary/provider ownership; no second renderer or cache.
@@ -38,6 +62,42 @@ export class ZhudaMeshoptModelDecoder implements ModelDecoderAdapter {
     integritySha256: '10b313edaa0e322b0c1b46443f6c8b186b42139fe1eca189d50c09511d0ebedc',
   });
   private disposed = false;
+  private readonly request: { count: number } | null = null;
+  /** Why the workers asked for are not used, when they are not. */
+  readonly workersUnavailable: string | null = null;
+  constructor(options: ZhudaMeshoptDecoderOptions = {}) {
+    const count = options.workers ?? 0;
+    if (!Number.isInteger(count) || count < 0 || count > 8)
+      throw Error('Invalid Meshopt workers: a whole number 0..8');
+    if (!count) return;
+    const scope = globalThis as any;
+    if (
+      typeof scope.Worker !== 'function' ||
+      typeof scope.Blob !== 'function' ||
+      typeof scope.URL?.createObjectURL !== 'function'
+    ) {
+      this.workersUnavailable = 'this host has no web workers';
+      return;
+    }
+    if (!MeshoptDecoder.supported) {
+      this.workersUnavailable = 'Meshopt requires WebAssembly';
+      return;
+    }
+    const request = { count };
+    asked.add(request);
+    const failed = settleWorkers();
+    if (failed) {
+      asked.delete(request);
+      settleWorkers();
+      this.workersUnavailable = failed;
+      return;
+    }
+    this.request = request;
+  }
+  /** How many workers this decoder decodes in; 0 when it decodes on the calling thread. */
+  get workers(): number {
+    return this.disposed ? 0 : (this.request?.count ?? 0);
+  }
   async decode({
     assetId,
     bytes,
@@ -201,12 +261,38 @@ export class ZhudaMeshoptModelDecoder implements ModelDecoderAdapter {
     await MeshoptDecoder.ready;
     check();
     const output = new Uint8Array(total);
+    // In workers every compressed view is sent off at once and the calling
+    // thread only copies what comes back; a view that fails fails the model.
+    const sent = this.workers
+      ? plans.map((p) =>
+          p.e
+            ? MeshoptDecoder.decodeGltfBufferAsync(
+                p.e.count as number,
+                p.e.byteStride as number,
+                p.source.subarray(p.offset, p.offset + p.compressedLength),
+                p.e.mode as string,
+                (p.e.filter ?? 'NONE') as string,
+              )
+            : null,
+        )
+      : null;
+    // Every one is waited for, so that none is left to reject unheard.
+    const decoded = sent ? await Promise.allSettled(sent.map((job) => job ?? null)) : null;
+    check();
     let offset = 0;
-    for (const p of plans) {
+    for (const [index, p] of plans.entries()) {
       check();
       const target = output.subarray(offset, offset + p.length),
         source = p.source.subarray(p.offset, p.offset + p.compressedLength);
-      if (p.e)
+      if (p.e && decoded) {
+        const result = decoded[index];
+        if (result.status === 'rejected')
+          throw result.reason instanceof Error ? result.reason : Error(String(result.reason));
+        const bytes = result.value as Uint8Array;
+        if (!bytes || bytes.byteLength !== p.length)
+          throw Error(`Meshopt worker returned the wrong size for bufferViews[${index}]`);
+        target.set(bytes);
+      } else if (p.e)
         MeshoptDecoder.decodeGltfBuffer(
           target,
           p.e.count as number,
@@ -224,7 +310,7 @@ export class ZhudaMeshoptModelDecoder implements ModelDecoderAdapter {
       }
       offset += align(p.length);
       // Yield between bounded CPU blocks so cancellation/deadline can be observed.
-      await new Promise<void>((resolve) => setTimeout(resolve, 0));
+      if (!decoded) await new Promise<void>((resolve) => setTimeout(resolve, 0));
     }
     check();
     document.buffers = [{ byteLength: output.byteLength }];
@@ -253,10 +339,15 @@ export class ZhudaMeshoptModelDecoder implements ModelDecoderAdapter {
     header.setUint32(20 + jsonLength, output.byteLength, true);
     header.setUint32(24 + jsonLength, 0x004e4942, true);
     glb.set(output, 28 + jsonLength);
-    // This adapter owns only JS bytes; no persistent worker, native handle or GPU resource.
+    // The decoded bytes are plain JS memory; workers, when asked for, live until dispose().
     return { assetId, format: 'meshopt', data: glb, byteLength: glb.byteLength, release() {} };
   }
   dispose(): void {
+    if (this.disposed) return;
     this.disposed = true;
+    if (this.request) {
+      asked.delete(this.request);
+      settleWorkers();
+    }
   }
 }

@@ -96,7 +96,8 @@ None. A consumer opts into lights per instantiate and reads `gltfNodes`.
 - Keeping quantized attributes compact on the GPU (needs LayaAir vertex
   declaration changes).
 - `EXT_mesh_gpu_instancing`, texCoord 1 for AO/lightmap slots, Meshopt in
-  workers (listed in WP4; not done here).
+  workers (listed in WP4; done on 2026-11-15: see the verification record's
+  last section).
 - Shadows from file lights; physically based light units in LayaAir's shader.
 - Files with several scenes (LayaAir builds the default scene only).
 

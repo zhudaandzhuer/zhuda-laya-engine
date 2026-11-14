@@ -295,6 +295,72 @@ test('an instanced mesh makes one node a group, with the copies in an instance b
   }
 });
 
+test('asked to follow, the copies are placed again once after the parent has moved', () => {
+  const laya = fakeLaya();
+  const before = globalThis.Laya;
+  globalThis.Laya = laya;
+  // Group nodes say when anything above them moved, and LayaAir calls later before it draws.
+  const listeners = [],
+    later = [];
+  laya.Event = { TRANSFORM_CHANGED: 'transformchanged' };
+  laya.timer = { callLater: (caller, method) => later.push(() => method.call(caller)) };
+  const Node = laya.MeshSprite3D;
+  laya.MeshSprite3D = class extends Node {
+    transform = {
+      on: (type, caller, method) => listeners.push({ type, caller, method }),
+      off: (type, caller, method) => {
+        const at = listeners.findIndex((l) => l.caller === caller && l.method === method);
+        if (at >= 0) listeners.splice(at, 1);
+      },
+    };
+  };
+  try {
+    const world = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 10, 0, 0, 1];
+    const parent = { addChild() {}, transform: { worldMatrix: { elements: world } } };
+    const matrices = zhudaPlacementMatrices([
+      [1, 0, 1, 0, 1],
+      [2, 0, 2, 0, 1],
+    ]);
+    const places = (mesh) => {
+      const data = mesh.groups[0].renderer._renderElements[0].geometry.bufferState.buffers[1].data;
+      return [data[12], data[13], data[14], data[32], data[33], data[34]];
+    };
+    // Not asked: nothing listens, and a parent that moves leaves them where they were.
+    const still = new ZhudaInstancedMesh(parent, fakeMesh(), {}, matrices);
+    assert.equal(listeners.length, 0);
+    still.refresh();
+    assert.deepEqual(places(still), [11, 0, 1, 12, 0, 2]);
+    still.dispose();
+    const following = new ZhudaInstancedMesh(parent, fakeMesh(), {}, matrices, { follow: true });
+    assert.deepEqual(places(following), [11, 0, 1, 12, 0, 2]);
+    assert.equal(listeners.length, 1, 'one listener, on a group node');
+    // The caller's matrices are kept as they were given: changing them afterwards changes nothing.
+    matrices[12] = 99;
+    // Moved three times before a frame: placed again once.
+    world[12] = 20;
+    world[13] = 5;
+    for (let i = 0; i < 3; i++) listeners[0].method.call(listeners[0].caller);
+    assert.equal(later.length, 1);
+    assert.deepEqual(places(following), [11, 0, 1, 12, 0, 2], 'not before the frame');
+    later.shift()();
+    assert.deepEqual(places(following), [21, 5, 1, 22, 5, 2]);
+    // And again after the next move; at once when asked.
+    world[12] = 0;
+    listeners[0].method.call(listeners[0].caller);
+    assert.equal(later.length, 1);
+    following.refresh();
+    assert.deepEqual(places(following), [1, 5, 1, 2, 5, 2]);
+    // Disposed: it listens no more, and a call that was still to come does nothing.
+    listeners[0].method.call(listeners[0].caller);
+    following.dispose();
+    assert.equal(listeners.length, 0);
+    for (const call of later.splice(0)) call();
+    assert.deepEqual(laya.live, { nodes: 0, buffers: 0, states: 0, geometries: 0 });
+  } finally {
+    globalThis.Laya = before;
+  }
+});
+
 test('tints go with a material of the lit template and are refused otherwise', () => {
   const laya = fakeLaya();
   const before = globalThis.Laya;

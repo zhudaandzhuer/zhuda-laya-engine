@@ -169,6 +169,16 @@ export interface ZhudaInstancedMeshOptions {
   layer?: number;
   /** Name prefix of the group nodes. */
   label?: string;
+  /**
+   * The copies go with the parent: when it, or anything above it, has moved,
+   * they are placed again before the next frame is drawn (every copy's
+   * matrix worked out and sent again, once however often it moved). For
+   * copies under something that is put in its place after they are made, or
+   * that moves now and then. The matrices are kept for it, sixteen numbers a
+   * copy. Without it a parent that moves leaves the copies where they were
+   * drawn first.
+   */
+  follow?: boolean;
 }
 
 /** The define a material's shader reads a copy's tint under. */
@@ -207,12 +217,20 @@ export class ZhudaInstancedMesh {
   private readonly nodes: any[] = [];
   private readonly owned: { destroy(): void }[] = [];
   private disposed = false;
+  /** With `follow`: the parent, the copies' places under it, and each group's buffer of world places. */
+  private readonly following: {
+    parent: any;
+    matrices: Float32Array;
+    groups: { indices: number[]; data: Float32Array; buffer: any }[];
+  } | null = null;
+  private stale = false;
 
   /**
    * @param parent the node the group nodes are added under. The matrices
    *   are in its space: give them as places under it (`zhudaPlacementMatrices`
    *   without a parent matrix). A parent that moves afterwards takes the
-   *   copies with it for culling but not for drawing: make the mesh again.
+   *   copies with it for culling but not for drawing, unless `follow` is
+   *   asked for: then they are placed again when it has moved.
    * @param mesh a LayaAir mesh; its buffers are shared, never copied.
    * @param materials one material, or one a sub-mesh.
    * @param matrices sixteen numbers a copy.
@@ -276,6 +294,14 @@ export class ZhudaInstancedMesh {
       l.Laya3DRender.renderOBJCreate.createVertexBuffer3D(bytes, l.BufferUsage.Static, false);
     const meshBuffers = mesh._bufferState._vertexBuffers;
     const groups: ZhudaInstancedGroup[] = [];
+    const following = options.follow
+      ? {
+          parent,
+          matrices: matrices.slice(),
+          groups: [] as { indices: number[]; data: Float32Array; buffer: any }[],
+        }
+      : null;
+    this.following = following;
     const tintDefine = tints ? l.Shader3D.getDefineByName(ZHUDA_INSTANCE_TINT_DEFINE) : null;
     const tintDeclaration = tints
       ? new l.VertexDeclaration(16, [
@@ -320,9 +346,11 @@ export class ZhudaInstancedMesh {
           made.setData(values.buffer, 0, 0, values.byteLength);
           return made;
         };
+        const places = buffer(data, l.VertexMesh.instanceWorldMatrixDeclaration);
+        following?.groups.push({ indices: cell.indices, data, buffer: places });
         const buffers = [
           ...meshBuffers,
-          buffer(data, l.VertexMesh.instanceWorldMatrixDeclaration),
+          places,
           // WebGPU's instanced shaders name this attribute whether or not a lightmap is used.
           buffer(lightmap, l.VertexMesh.instanceLightMapScaleOffsetDeclaration),
           ...(tint ? [buffer(tint, tintDeclaration)] : []),
@@ -374,6 +402,36 @@ export class ZhudaInstancedMesh {
     }
     this.count = count;
     this.groups = groups;
+    // A group node stands under the parent: its transform says when anything above it has moved.
+    if (following && groups.length && l.Event?.TRANSFORM_CHANGED)
+      groups[0].node.transform?.on?.(l.Event.TRANSFORM_CHANGED, this, this.moved);
+  }
+
+  private moved() {
+    if (this.stale || this.disposed) return;
+    this.stale = true;
+    const timer = (globalThis as any).Laya?.timer;
+    // Once, before the next frame is drawn, however many times the parent was moved.
+    if (typeof timer?.callLater === 'function') timer.callLater(this, this.refresh);
+    else this.refresh();
+  }
+
+  /**
+   * With `follow`: places the copies again from where the parent is now. It
+   * is called by itself after the parent has moved; call it to have them
+   * placed at once (before reading bounds in the same frame, say).
+   */
+  refresh(): void {
+    this.stale = false;
+    if (this.disposed || !this.following) return;
+    const { parent, matrices, groups } = this.following;
+    const world = parent.transform?.worldMatrix?.elements ?? IDENTITY;
+    for (const group of groups) {
+      group.indices.forEach((index, k) =>
+        multiply(world, matrices.subarray(index * 16, index * 16 + 16), group.data, k * 20),
+      );
+      group.buffer.setData(group.data.buffer, 0, 0, group.data.byteLength);
+    }
   }
 
   /** Copies, groups, and draws a pass: one a group a sub-mesh. */
@@ -386,6 +444,9 @@ export class ZhudaInstancedMesh {
     };
   }
   private release() {
+    const l = (globalThis as any).Laya;
+    if (this.following && this.groups?.length && l?.Event?.TRANSFORM_CHANGED)
+      this.groups[0].node.transform?.off?.(l.Event.TRANSFORM_CHANGED, this, this.moved);
     // At once, not on the next frame: the mesh and the materials are another owner's, who may let go of them now.
     for (const node of this.nodes.splice(0)) if (!node.destroyed) destroyLaya342ModelTree(node);
     for (const item of this.owned.splice(0).reverse()) item.destroy();

@@ -227,6 +227,17 @@ export const API_GUARDRAILS = [
       'The shadow and depth passes run the same hook, so no second material is needed for a cut-out shadow. normalTS is in the frame of LayaAir normal maps (x along u, y along v, z out) and works on meshes without tangents. alphaHash is a cut-out: do not combine it with blend alpha. A shader name is a contract: common and alphaHash are part of it. See docs/filmic-rendering.md.',
   },
   {
+    id: 'GUARD_GLTF_COPIES',
+    topic:
+      'glTF EXT_mesh_gpu_instancing instanced mesh from file forest scatter InstancedMesh aoMap uv2 second uv set texCoord 1 baked occlusion emissive lightmap meshopt decoder workers',
+    hallucinatedLegacyApi:
+      'gltf.scene.traverse((o) => { if (o.isInstancedMesh) ... }); geometry.setAttribute("uv2", geometry.attributes.uv); material.aoMap = texture; material.aoMap.channel = 1; MeshoptDecoder.useWorkers(4); scene.addChild(instance.node) and expecting the instances to draw',
+    zhudaCanonicalApi:
+      "const yard = await models.instantiate('sets/yard.glb'); const mounted = mountZhudaModel(holder, yard); // draws the file's EXT_mesh_gpu_instancing copies, one draw a group; they follow the holder. yard.gltfNodes.find((n) => n.instances) has the matrices. Occlusion and emissive textures with texCoord 1 read TEXCOORD_1 after ZhudaEngine.boot (zhudaSecondUvStatus()). Workers: new ZhudaMeshoptModelDecoder({ workers: 2 }). An instanced mesh that goes with its parent: new ZhudaInstancedMesh(parent, mesh, material, matrices, { follow: true }).",
+    reason:
+      'LayaAir draws an instanced glTF node once: only a mount (mountZhudaModel, a model prefab, a film scene) draws its copies. Only occlusion and emissive read the second set of texture coordinates; other slots are drawn by the first and reported TEXCOORD_IGNORED. A copy with a mirroring scale is left out (INSTANCES_MIRRORED). See docs/model-showcase.md.',
+  },
+  {
     id: 'GUARD_INIT_BOOT',
     topic: '引擎啟動與 Stage 初始化',
     hallucinatedLegacyApi: 'Laya.init(1280, 720, Laya.WebGL); Laya.MiniAdpter.init();',

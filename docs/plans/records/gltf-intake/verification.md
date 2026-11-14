@@ -334,3 +334,106 @@ Unit tests (`tests/gltf-intake.test.mjs`) cover:
 
 Decision: **Implemented within scope**. Desktop WebGL and WebGPU verified; the
 missing device and browser checks keep it from Accepted.
+
+## The rest of WP4: copies of a mesh, second texture coordinates, workers (2026-11-15)
+
+The three items WP4 listed and the first round left out, on top of
+`befc96b`. Use: `docs/model-showcase.md`, "glTF intake".
+
+| Check | Exact command or procedure | Result |
+| --- | --- | --- |
+| Build, types, declarations, doctor, tests | `npm run verify` | PASS, 754 of 754 (9 in `tests/gltf-instancing.test.mjs`, one more in `tests/instanced-mesh.test.mjs`) |
+| Format, lint, whitespace | `npm run format:check`, `npm run lint`, `git diff --check` | PASS |
+| Copies, second set, workers; WebGL | `npm run verify:gltf-instancing` | PASS |
+| The same, WebGPU | `GLTF_INSTANCING_RENDERER=webgpu npm run verify:gltf-instancing` | PASS |
+| The draws that load or mount models | gltf-intake, prefab-models, film-model, instanced-mesh, physical-surfaces, film-variation, animation-control, developer-tooling, gpu-depth, and model-showcase on WebGL, on each backend | PASS, 19 of 21, then 21 of 21: developer-tooling failed on both backends for two reasons of its own (its record says which), and passed five times on each after they were mended |
+
+Environment as above (Apple M4, Chrome headless; WebGPU adapter apple /
+metal-3), 480 by 320. Evidence: `batch2-evidence/tails/gltf-instancing/` in
+the session's notes folder. The same numbers on both backends unless given.
+Every file is made in code (`tests/fixtures/gltf-instancing.mjs`).
+
+- **Copies of a mesh.** A yard: a root, under it a turned node whose crate
+  the file draws twelve times (`EXT_mesh_gpu_instancing`, required), each
+  copy moved, turned (every fourth about a leaning axis) and scaled unevenly,
+  and a marker crate drawn once; a sun with a shadow map. The pictures to
+  match are the same yard with the twelve crates put under that node one
+  node at a time and the node's own draw switched off.
+  - LayaAir alone (the model's node added to the scene): one orange crate,
+    0.16 % of the picture where the twelve are 2.76 %.
+  - `mountZhudaModel(holder, instance)`: the same picture as by hand, pixel
+    for pixel (mean difference 0, no pixel more than 12 of 255 apart), shadows
+    included, in four draws a pass (the copies stand on four squares of the
+    grouping). The model's report is `supported`, the node is in
+    `gltfNodes` with twelve matrices.
+  - The holder moved and turned afterwards: the same as by hand under the
+    same holder; 6.6 % of the picture changed from before the move.
+  - Unmounted: the model draws as LayaAir made it again, and nothing made
+    for the copies is under its node.
+  - With a cull distance it is the same picture while within it (the node's
+    own draw stays off when the model is shown), and no crate is drawn
+    beyond it.
+  - Two copies of the model (`placements`), as clones and `instanced`: both
+    the same picture as two yards by hand. Instanced: 2 copies, 2 groups, 4
+    draws a pass. With `cullMeters` as well the mount refuses, saying levels
+    are not offered for such a model drawn this way.
+  - The turns stored as normalized shorts: the same picture.
+  - A file whose fourth copy has a mirroring scale: eleven copies are drawn,
+    the report is `degraded` with `INSTANCES_MIRRORED`.
+  - A `ZhudaInstancedMesh` by itself, its parent moved: without `follow`
+    the picture is the same as before the move; with it 6 % of it changed.
+- **Second texture coordinates.** A sheet whose first set of texture
+  coordinates runs along x and whose second runs along z, lit by the room
+  alone; an occlusion texture whose left half takes all the light away and an
+  emissive one whose left half glows red and right half green. Read by the
+  first set, the two quarters at -x are red (255, 0, 0) and the two at +x
+  lit and green (229, 255, 229); read by the second (`texCoord: 1`), the two
+  far quarters are red and the two near ones lit and green. Both reports
+  are `supported` with nothing to say; LayaAir's console warning is not
+  raised.
+- **Workers.** A Meshopt and quantized ring (38,948 bytes) decoded by
+  `ZhudaMeshoptModelDecoder` on the calling thread and with `workers: 2`:
+  two workers were made, the 78,784 decoded bytes are the same byte for
+  byte, the model library draws the ring from the workers' output, and both
+  workers were told to stop when the decoder was disposed. The best of five
+  decodes took about 1 ms on the calling thread and 0.2 to 0.3 ms through
+  the workers; on a file this small that says nothing about a large one.
+- Nothing left behind by any part.
+
+Found on the way:
+
+- **A model mounted as clones left its meshes, materials and textures
+  behind** when the mount and the model were let go of in one go, which is
+  how a prefab is disposed. LayaAir destroys a destroyed node's components
+  on the next frame; the clones' renderers still held the model's meshes and
+  materials when the library destroyed the model, and what is still held is
+  skipped and never destroyed. A plain plate mounted at two places left four
+  resources (a mesh, a material, two textures). The clones are destroyed at
+  once now; the check holds the case. Models with `placements` that were not
+  `instanced` have leaked this way since placements existed.
+- `mountZhudaModel` was documented and not exported. It is public now
+  (with `ZhudaModelMountOptions` and `ZhudaMountedModel`): it is what draws
+  a file's own copies for a game that uses the model library directly.
+- LayaAir's loader does read `TEXCOORD_1` into the mesh and does handle a
+  buffer view's stride; only the shader and one warning stood between a
+  second set and the picture.
+
+Not verified, not built:
+
+- No phone. No file from Blender or another exporter: every fixture is made
+  in code.
+- Copies: twelve of them, of one plain mesh with one material. A mesh with
+  several materials, thousands of copies, the cost of following a holder
+  that moves every frame, and levels (`lod`) on a model with copies were not
+  drawn. A cull distance is measured to the node, not to its copies.
+- A copy with a mirroring scale is left out, not drawn mirrored.
+- Custom per-copy attributes of the extension (`_ID` and the like) are not
+  read.
+- Second set: occlusion and emission only, on the glTF shader. The colour,
+  normal and metallic-roughness textures and those of material extensions
+  are drawn by the first set (reported). `KHR_texture_transform` with the
+  second set is honoured in which set is read and was not drawn.
+- Workers: the real ones were run in desktop Chrome only. A page whose
+  content policy forbids `blob:` workers is handled by the decoder library
+  throwing or not; that path is unit-tested with stand-ins, as are the
+  failure of a view in a worker and a cancelled load.

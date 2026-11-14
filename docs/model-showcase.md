@@ -55,6 +55,8 @@ IDs belong behind AssetProvider.
 | Punctual lights (`KHR_lights_punctual`) | Made on their nodes only when `instantiate(id, {lights})` asks; units mapped by `zhudaGltfLightToLaya` (`LIGHT_APPROXIMATED`) | Room against the same lights made by hand from the documented mapping; not a physical-units certification |
 | Node extras and cameras | `instance.gltfNodes`; `applyZhudaGltfCamera` aims a LayaAir camera | Room camera against the hand-aimed one; an orthographic camera by where a picture lands in the frame |
 | KTX 2 / Basis textures (`KHR_texture_basisu`) | Transcoded to ASTC, ETC2 or S3TC when the library has a `basisTranscoder` ([KTX 2 / Basis textures](basis-textures.md)); the fallback image, or a refusal with `BASIS_TRANSCODER_MISSING`, without one | A model's KTX 2 texture against the same model with a PNG, both backends and one phone; files of one-colour blocks made by the check, no encoder's output |
+| Copies of a mesh (`EXT_mesh_gpu_instancing`) | Read at load; `mountZhudaModel` draws them, one draw a group, in place of the node's own mesh; a node that cannot be drawn so is `INVALID_INSTANCING`, copies with a mirroring scale `INSTANCES_MIRRORED` | Twelve crates against the same crates as twelve nodes, pixel for pixel, mounted once, moved, as clones and instanced, on WebGL and WebGPU |
+| Second texture coordinates (`texCoord: 1`) | Occlusion and emissive textures read `TEXCOORD_1`; any other slot, or a third set, is drawn by the first and reported `TEXCOORD_IGNORED` | A plate whose two sets run across each other, on WebGL and WebGPU |
 | Draco / material variants | No registered support in this importer | Required extension rejects; optional fallback explicitly degraded |
 | HDR / GI / reflection / hair / cloth / skin | Existing engine capabilities have their own boundaries | No seller-model / UE parity or new GI certification |
 | Movie / EXR / path tracing | Not delivered by showcase mode | Cinematic means real-time postprocessing only |
@@ -118,7 +120,7 @@ and hardware WebGPU. This does not certify seller models, every filter/animation
 combination, Windows GPU or physical mobile. See the
 [hardening verification](plans/desktop-and-agent-gates/hardening-verification.md).
 
-## glTF intake: quantization, WebP/AVIF, lights, cameras, extras
+## glTF intake: quantization, WebP/AVIF, lights, cameras, extras, copies, second texture coordinates
 
 `ZhudaModelLibrary` runs these steps before and around LayaAir 3.4.2's own
 glTF parser; none patches the vendored files. Evidence:
@@ -189,7 +191,7 @@ glTF parser; none patches the vendored files. Evidence:
   or a node that names a light the file does not have, `INVALID_LIGHT` (it is
   not made).
 - **Extras and cameras.** `instance.gltfNodes` lists every node carrying
-  `extras`, a camera or a light, with the Laya node made from it in this copy
+  `extras`, a camera, a light or copies of its mesh, with the Laya node made from it in this copy
   (its name is the glTF name or LayaAir's `node_<n>`), a frozen copy of the
   extras, the camera and light definitions, and the light component when one
   was made. `applyZhudaGltfCamera(camera, data.camera, data.node)` sets a
@@ -199,6 +201,59 @@ glTF parser; none patches the vendored files. Evidence:
   node that names a camera the file does not have, is reported
   `INVALID_CAMERA`. The source inventory also lists each node's camera and
   light index and each texture's WebP/AVIF image.
+
+- **Copies of a mesh.** A node with `EXT_mesh_gpu_instancing` asks for its
+  mesh to be drawn many times, each copy with a move, a turn and a scale of
+  its own (a forest, a scatter of stones, a fence). LayaAir makes the node
+  and draws the mesh once; the extension used to be refused when the file
+  required it. The copies' matrices are now read when the file is parsed
+  (`TRANSLATION` and `SCALE` as floats, `ROTATION` as floats or normalized
+  bytes or shorts, up to 200,000 a node) and handed on with the node:
+  `instance.gltfNodes[n].instances`, sixteen numbers a copy in the node's own
+  space. `mountZhudaModel(holder, instance, options)` draws them with
+  `ZhudaInstancedMesh` in place of the node's own mesh, in every way a model
+  is mounted: once, as `placements` (each clone has its copies), and
+  `instanced` (every copy of the model draws every copy the file asks
+  for). They go with the holder when it moves and are gone when the mount is
+  disposed. Model prefabs and film scenes mount models this way; a game that
+  adds `instance.node` to a scene by itself gets what LayaAir draws, the
+  mesh once. A node without a mesh, with a skin, or with attributes of the
+  wrong kind or count is reported `INVALID_INSTANCING` and drawn once. A copy
+  whose scale turns the mesh inside out is left out and reported
+  `INSTANCES_MIRRORED` (one draw has one facing). With `instanced`
+  placements, levels (`lod`) and `cullMeters` are not offered for such a
+  model; with the other two a cull distance is measured to the node, not to
+  its copies.
+- **Second texture coordinates.** An occlusion or emissive texture with
+  `texCoord: 1` is read by the mesh's `TEXCOORD_1`: a baked map laid out on
+  its own, apart from the tiling one the colour uses. LayaAir loads the
+  second set but carries it to the pixel only for a lightmap, and its
+  loader says "non 0 uv channel unsupported" on the console and draws by the
+  first. `ZhudaEngine.boot` adds the lines that carry and read it to two
+  includes and to the glTF shader as LayaAir registers them
+  (`installLaya342SecondUv`; `zhudaSecondUvStatus()` says whether the text
+  was found). `KHR_texture_transform`'s own `texCoord` is honoured. The
+  colour, normal and metallic-roughness textures, the textures of material
+  extensions, and any set beyond the second are drawn by the first set and
+  reported `TEXCOORD_IGNORED` (degraded).
+- **Meshopt in workers.** `new ZhudaMeshoptModelDecoder({ workers: 2 })`
+  (0..8) sends every compressed buffer view to web workers at once and
+  copies back what they return; the bytes are the same. The decoder library
+  starts its workers from a script it makes itself (a `blob:` URL): where a
+  content policy forbids that, or a host has no workers, the decoder works
+  on the calling thread as before and `decoder.workersUnavailable` says why.
+  The workers are stopped when the last decoder that asked for them is
+  disposed. A cancelled load still lets the workers finish what they were
+  sent; its bytes are dropped. Worth it for large models: on the 39 KB
+  check model both ways take about a millisecond.
+
+```ts
+const yard = await models.instantiate('sets/yard.glb');
+const mounted = mountZhudaModel(holder, yard); // its copies are drawn
+holder.transform.position = new Laya.Vector3(4, 0, 0); // and go with the holder
+mounted.dispose();
+yard.dispose();
+```
 
 ```ts
 const room = await models.instantiate('rooms/lobby.glb', { lights: { scale: 0.5 } });

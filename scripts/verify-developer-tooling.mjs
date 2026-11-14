@@ -318,7 +318,7 @@ if (profiler.gpuTiming) {
   assert.ok(profiler.gpu.light.ms > 0 && profiler.gpu.light.ms < 20, `${profiler.gpu.light.ms} ms`);
   assert.ok(
     profiler.gpu.heavy.ms > profiler.gpu.light.ms + 0.5,
-    `500 sheets of glass cost more (${profiler.gpu.light.ms} -> ${profiler.gpu.heavy.ms} ms)`,
+    `1,500 sheets of glass cost more (${profiler.gpu.light.ms} -> ${profiler.gpu.heavy.ms} ms)`,
   );
 } else assert.match(profiler.gpuReason, /unavailable/);
 
