@@ -24,6 +24,24 @@ import {
   type ZhudaAppliedLookParts,
 } from './LiveLook.ts';
 import { zhudaLookForQuality, type ZhudaLookQuality } from './LookQuality.ts';
+import {
+  ZhudaRenderScale,
+  zhudaRenderScaleOptions,
+  type ZhudaRenderScaleOptions,
+  type ZhudaUpscale,
+} from '../runtime3d/RenderScale.ts';
+import type { ZhudaQualityStep } from '../runtime3d/QualityGovernor.ts';
+
+export interface ZhudaSceneLookOptions extends ZhudaRenderScaleOptions {
+  /** Quality level to start at (default 3, the look as authored). */
+  quality?: ZhudaLookQuality;
+  /**
+   * Size the 3D picture is drawn at against the canvas, 0.5..1 (default 1),
+   * brought up to it by `upscale` with `sharpness` (see `ZhudaRenderScale`).
+   * Below 1 the look holds the stage's one render scale.
+   */
+  scale?: number;
+}
 
 export class ZhudaSceneLook {
   /** The directional light of the look (`look.sun`). */
@@ -39,18 +57,19 @@ export class ZhudaSceneLook {
   private frame = 0;
   private disposed = false;
   private readonly hemisphere: ZhudaHemisphereAmbientSlot;
+  /** The render scale, made when the picture is first drawn below full size. */
+  private renderScale: ZhudaRenderScale | undefined;
+  private scaling: Required<ZhudaRenderScaleOptions>;
 
   private readonly scene3D: any;
   private readonly camera: any;
 
-  constructor(
-    scene3D: any,
-    camera: any,
-    look: ZhudaFilmLook,
-    options: { quality?: ZhudaLookQuality } = {},
-  ) {
+  constructor(scene3D: any, camera: any, look: ZhudaFilmLook, options: ZhudaSceneLookOptions = {}) {
     this.scene3D = scene3D;
     this.camera = camera;
+    this.scaling = zhudaRenderScaleOptions(options);
+    if (options.quality !== undefined && ![0, 1, 2, 3].includes(options.quality))
+      throw Error('Look quality: use 0, 1, 2 or 3');
     this.look = resolveZhudaFilmLook(look);
     if (this.look.panorama) throw Error('Scene look: a panorama sky is not supported here');
     if (this.look.environment)
@@ -76,8 +95,10 @@ export class ZhudaSceneLook {
       if (this.look.ambientGround) this.scene3D.ambientColor = new l.Color(...this.look.ambient, 1);
       this.hemisphere.set(this.look.ambient, this.look.ambientGround);
       this.apply(l);
+      this.scaleTo(this.scaling);
     } catch (error) {
       this.release();
+      this.renderScale?.dispose();
       this.hemisphere.release();
       this.sunNode.destroy(true);
       throw error;
@@ -86,6 +107,64 @@ export class ZhudaSceneLook {
 
   get quality(): ZhudaLookQuality {
     return this.level;
+  }
+
+  /** Size of the 3D picture against the canvas (1 is full size). */
+  get scale(): number {
+    return this.scaling.scale;
+  }
+
+  /** How a picture drawn smaller reaches the canvas. */
+  get upscale(): ZhudaUpscale {
+    return this.scaling.upscale;
+  }
+
+  /**
+   * Draws the 3D picture at `scale` of the canvas from the next frame,
+   * 0.5..1, cheap enough to change at any time (nothing is rebuilt); the
+   * upscale and sharpness can change with it. Below 1 the look holds the
+   * stage's one render scale (`ZhudaRenderScale`): a second look that does
+   * so is refused.
+   */
+  setRenderScale(scale: number, options: Omit<ZhudaRenderScaleOptions, 'scale'> = {}): void {
+    if (this.disposed) throw Error('Disposed scene look');
+    this.scaleTo(zhudaRenderScaleOptions({ ...this.scaling, ...options, scale }));
+  }
+
+  /**
+   * Moves to a rung of a quality ladder (`zhudaQualitySteps`): its look
+   * level and its render scale.
+   */
+  setStep(step: ZhudaQualityStep): void {
+    if (this.disposed) throw Error('Disposed scene look');
+    if (!step || typeof step !== 'object')
+      throw Error('Quality step: { look, renderScale } required');
+    const scaling = zhudaRenderScaleOptions({ ...this.scaling, scale: step.renderScale });
+    this.setQuality(step.look);
+    this.scaleTo(scaling);
+  }
+
+  /**
+   * Draws the sun's shadow maps on the next frame, for a look whose
+   * `shadows.update` is 'interval' or 'manual' (a caster moved, the camera
+   * went elsewhere, the game turned `sun` itself instead of through
+   * `setLook`). Nothing to do when they are drawn every frame.
+   */
+  redrawShadows(): void {
+    if (this.disposed) throw Error('Disposed scene look');
+    this.parts.shadowUpdates?.redraw();
+  }
+
+  /**
+   * While `shadows.update` keeps the shadow maps: the frames drawn with
+   * shadows on since the look's shadows were last rebuilt, how many of them
+   * drew the maps, and how many of those only because another camera had
+   * drawn maps of its own since (see `ZhudaShadowUpdates.stats`). `taken`
+   * rising with `frames` means nothing is saved. Undefined while the maps
+   * are drawn every frame.
+   */
+  get shadowStats(): { frames: number; drawn: number; taken: number } | undefined {
+    return this.parts.shadowUpdates?.stats;
   }
 
   /** Unit vector from the scene toward the sun, for water and other surfaces that glint. */
@@ -177,8 +256,20 @@ export class ZhudaSceneLook {
     if (this.disposed) return;
     this.disposed = true;
     this.release();
+    this.renderScale?.dispose();
+    this.renderScale = undefined;
     this.hemisphere.release();
     this.sunNode.destroy(true);
+  }
+
+  /** At full size the stage's render scale is given back; below it is taken (once). */
+  private scaleTo(scaling: Required<ZhudaRenderScaleOptions>): void {
+    if (scaling.scale === 1) {
+      this.renderScale?.dispose();
+      this.renderScale = undefined;
+    } else if (this.renderScale) this.renderScale.set(scaling);
+    else this.renderScale = new ZhudaRenderScale(this.scene3D, scaling);
+    this.scaling = scaling;
   }
 
   private updateInPlace(l: any, look: ZhudaResolvedFilmLook): void {

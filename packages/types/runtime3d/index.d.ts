@@ -29,6 +29,8 @@ export * from './Decals.js';
 export * from './Clouds.js';
 export * from './Grass.js';
 export * from './EdgeSmoothing.js';
+export * from './RenderScale.js';
+export * from './ShadowUpdates.js';
 export * from './PointShadow.js';
 export * from './ProbeVolume.js';
 export * from './QualityGovernor.js';

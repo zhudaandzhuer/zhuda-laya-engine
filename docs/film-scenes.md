@@ -184,6 +184,7 @@ the bare look (flat sky colour, no shadows, sky or fog), kept for tests.
 | Field                                   | Native Laya 3.4.2 feature                                                               |
 | --------------------------------------- | --------------------------------------------------------------------------------------- |
 | `shadows` (`false` to turn off)         | `DirectionLightCom` shadow maps, 1, 2 or 4 cascades; every mesh casts and receives      |
+| `shadows.update`, `shadows.interval`    | How often the maps are drawn: `every` frame, every `interval` frames, or `manual`       |
 | `atmosphere` (`false` for a flat `sky`) | `SkyProceduralMaterial` on a `SkyDome`; the sun disk follows the sun                    |
 | `fog` (`false` to turn off)             | Linear scene fog                                                                        |
 | `grade` (off unless given)              | The existing `ZhudaFilmicPipeline`: HDR, ACES tone mapping, bloom and ambient occlusion |
@@ -693,8 +694,69 @@ runtime.start((dt) => {
 - `look.setLook(next)` changes the look while it runs, with the same rules as
   a film stage (below); the level set by `setQuality` still applies to it.
 - With water: `ZhudaWaterSurface` takes `mirrorShadows: false` so the mirror
-  uses the shadow maps of the main view, and its `render()` is called once per
-  frame by the game (the engine's loop no longer draws the mirror itself).
+  draws no shadow maps of its own (its picture is then drawn without the
+  sun's shadows), and its `render()` is called once per frame by the game
+  (the engine's loop no longer draws the mirror itself). With
+  `shadows.update` (below) a water left at its defaults does better: its
+  mirror reads the maps kept for the main view.
+
+### Shadows drawn less often, a smaller picture
+
+Two levers for a device that cannot afford every pixel and every shadow map
+each frame (record `docs/plans/records/frame-cost/`; drawn on desktop WebGL
+and WebGPU, not yet measured on a phone):
+
+- `shadows.update`: `'every'` frame (default); `'interval'` with
+  `shadows.interval` (2..30 frames, default 3): the maps are drawn on one
+  frame in that many and the receivers keep them in between, so a moving
+  caster's shadow follows it in steps; `'manual'`: drawn when the game calls
+  `look.redrawShadows()` and when `setLook` changes the sun or the shadow
+  settings, for a still camera over still casters (a game that turns
+  `look.sun` itself calls `redrawShadows()` after it). Stills and videos of
+  a film draw them for every sample whatever this says. LayaAir's own
+  `Scene3D.shadowMapFrequency` loses frames on WebGPU and breaks shaders
+  compiled on a skipped frame on WebGL; `ZhudaShadowUpdates` (which the look
+  uses) repairs both and should be used instead.
+- The maps are kept for the look's camera only. LayaAir has one set of maps
+  for the sun, fitted to the camera that drew them last, so any other camera
+  that draws the scene with shadows on takes them:
+  - A water or wet surface left at its defaults reads the kept maps instead
+    of drawing its own (its mirror then shows the main view's shadows):
+    nothing more is drawn and nothing is taken.
+  - `mirrorShadows: true` (and `shadows: true` on a `ZhudaPlanarReflection`)
+    draws the mirror's own maps, after which the main view has to draw its
+    maps again on its next frame: the picture is right, and with a mirror
+    drawn every frame nothing is saved. `mirrorShadows: false` draws none.
+  - A probe or bounce-light capture, and a camera of your own drawn into a
+    target, draw maps of their own as always; the look's camera draws its
+    maps again on the frame after.
+  - `look.shadowStats` says what happens: `frames` drawn, how many of them
+    `drawn` the maps, and how many of those were `taken`, drawn only
+    because another camera had drawn maps since. `taken` rising with
+    `frames` means the rule saves nothing in that scene.
+- A render scale: `new ZhudaSceneLook(scene, camera, look, { scale: 0.67 })`
+  or `look.setRenderScale(0.67)` draws the 3D picture (and every effect of
+  the chain) at 0.67 of the canvas, 45 % of the pixels; the 2D interface
+  over it keeps the canvas's size. `upscale: 'fsr'` (default) brings it up
+  with AMD FSR 1 (EASU, then RCAS sharpening, `sharpness` 0..1, default
+  0.8); `'bilinear'` filters and sharpens in one pass; `'plain'` is LayaAir's
+  own stretch. FSR is sharper than the plain stretch (26 to 34 % in the four
+  looks drawn); how near the full-size picture it comes depends on the look
+  (nearer in two of the four, slightly further in the others). The scale is
+  LayaAir's `Config3D.pixelRatio`, one for the stage: one look at a time may
+  hold it; a look disposed, or its scene destroyed, gives it back.
+- `zhudaQualitySteps()` is a ladder of look levels and render scales for the
+  governor, cheapest first: the picture shrinks to 0.85 and 0.7 before any
+  effect goes, then the levels drop at 0.7, then 0.5 at level 0. The rungs
+  are a proposal until a phone measures them.
+
+```ts
+const steps = zhudaQualitySteps();
+const governor = new ZhudaQualityGovernor({ levels: steps.length, budgetMs: 1000 / 60 });
+// each frame:
+const level = governor.sample(dt * 1000);
+if (level !== undefined) look.setStep(steps[level]);
+```
 
 ## Changing the look while it runs
 

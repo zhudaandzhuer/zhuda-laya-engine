@@ -1,4 +1,5 @@
 import { prepareLaya342ManualDraw } from './Laya342Adapters.ts';
+import { zhudaShadowBorrower } from './ShadowUpdates.ts';
 import type { CinematicLinearChain } from './CinematicCapture.ts';
 
 const SOURCE_VERTEX =
@@ -523,9 +524,14 @@ export class ZhudaPlanarReflection {
        */
       manual?: boolean;
       /**
-       * Whether `draw()` also redraws the shadow maps for the mirrored view
-       * (default true). Without it the mirror uses the shadow maps of the
-       * main view, which saves a full shadow pass per frame.
+       * Whether the mirrored view draws shadow maps of its own. Left out, it
+       * does, except while the scene's shadows are not drawn every frame
+       * (`ZhudaShadowUpdates`, a look's `shadows.update`): there it reads
+       * the maps kept for the main view, since maps of its own would replace
+       * those and the main view would have to draw them again every frame.
+       * `true`: always, also under such a rule, which then saves nothing.
+       * `false`: never, in `draw()`, which saves a full shadow pass per
+       * frame; the mirrored view is then drawn without the sun's shadows.
        */
       shadows?: boolean;
     },
@@ -561,12 +567,13 @@ export class ZhudaPlanarReflection {
     this.camera.renderingOrder = -100;
     this.camera.cullingMask = ~(1 << options.excludedLayer);
     if (options.manual) this.camera.enableRender = false;
-    this.shadows = options.shadows ?? true;
+    this.shadows = options.shadows;
+    if (this.shadows === undefined) zhudaShadowBorrower(this.camera);
     this.scene = scene;
     scene.addChild(this.camera);
   }
   private planeY: number;
-  private readonly shadows: boolean;
+  private readonly shadows: boolean | undefined;
   private readonly scene: any;
   private clip?: { near: number; far: number };
   private disposed = false;
@@ -663,7 +670,7 @@ export class ZhudaPlanarReflection {
     if (this.disposed) throw Error('Disposed reflection');
     const l = (globalThis as any).Laya;
     const before = l.Stat.enableShadow;
-    if (!this.shadows) l.Stat.enableShadow = false;
+    if (this.shadows === false) l.Stat.enableShadow = false;
     try {
       prepareLaya342ManualDraw(this.scene);
       l.Camera.drawRenderTextureByScene(this.camera, this.scene, this.texture);

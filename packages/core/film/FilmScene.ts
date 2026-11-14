@@ -75,6 +75,21 @@ export interface ZhudaFilmShadows {
    * shadows near the camera sharp when `distance` is long.
    */
   cascades?: 1 | 2 | 4;
+  /**
+   * When the shadow maps are drawn again (default 'every'): 'every' frame;
+   * 'interval': every `interval` frames, receivers keep the last maps in
+   * between, so a moving caster's shadow follows it in steps; 'manual': when
+   * the game asks (`ZhudaSceneLook.redrawShadows`) and when a new look
+   * changes the sun or the shadow settings, for a still camera over still
+   * casters. Stills and videos of a film draw them for every sample
+   * whatever this says. The maps are kept for the look's camera: a water's
+   * mirror left at its defaults reads them, and any other camera that draws
+   * the scene with shadows of its own makes the look's camera draw its maps
+   * again. See `ZhudaShadowUpdates`.
+   */
+  update?: 'every' | 'interval' | 'manual';
+  /** Frames from one drawing to the next with `update: 'interval'`, 2..30 (default 3). */
+  interval?: number;
 }
 
 /** Procedural sky (native `SkyProceduralMaterial`); the sun disk follows the sun. */
@@ -805,6 +820,8 @@ const shadows = (strength: number): Required<ZhudaFilmShadows> => ({
   strength,
   resolution: 2048,
   cascades: 2,
+  update: 'every',
+  interval: 3,
 });
 
 /** Starting points for a time of day; any look field overrides them. */
@@ -1043,7 +1060,7 @@ function validateLook(
     else {
       unknownKeys(
         sh,
-        ['distance', 'softness', 'strength', 'resolution', 'cascades'],
+        ['distance', 'softness', 'strength', 'resolution', 'cascades', 'update', 'interval'],
         `${path}.shadows`,
         issues,
       );
@@ -1055,6 +1072,17 @@ function validateLook(
         issues.push(`${path}.shadows.cascades: use 1, 2 or 4`);
       if (sh.resolution !== undefined && ![1024, 2048, 4096].includes(sh.resolution as number))
         issues.push(`${path}.shadows.resolution: use 1024, 2048 or 4096`);
+      if (sh.update !== undefined && !['every', 'interval', 'manual'].includes(sh.update as string))
+        issues.push(`${path}.shadows.update: use every, interval or manual`);
+      if (
+        sh.interval !== undefined &&
+        !(
+          Number.isInteger(sh.interval) &&
+          (sh.interval as number) >= 2 &&
+          (sh.interval as number) <= 30
+        )
+      )
+        issues.push(`${path}.shadows.interval: use a whole number of frames 2..30`);
     }
   }
   if (look.atmosphere !== undefined && look.atmosphere !== false) {
@@ -2177,6 +2205,8 @@ export function resolveZhudaFilmLook(
       strength: 1,
       resolution: 2048,
       cascades: 2,
+      update: 'every',
+      interval: 3,
     }),
     atmosphere,
     fog,
@@ -2318,8 +2348,9 @@ export function sampleZhudaFilmCameraPath(
  * when every difference can be set in place: the sun (direction, colour,
  * intensity), sky and ground light colours, the flat sky colour, the values
  * of the procedural sky and of distance fog, shadow distance, strength,
- * softness, resolution and cascades, the strengths of the grade (exposure,
- * contrast, saturation, bloom, ambient occlusion, grain, vignette, fringe),
+ * softness, resolution, cascades and how often they are drawn, the
+ * strengths of the grade (exposure, contrast, saturation, bloom, ambient
+ * occlusion, grain, vignette, fringe),
  * the light fog's density, falloff, height, colour, scatter and reach, the
  * strength and spread of its shafts, and the sun they follow. Anything else
  * names the first part that differs: switching shadows, sky, fog, grade,
@@ -2352,6 +2383,13 @@ export function zhudaFilmLookRebuildReason(
   if (json(from.panorama) !== json(to.panorama)) return 'panorama';
   if (json(from.bounceLight) !== json(to.bounceLight)) return 'bounceLight';
   if (!from.shadows !== !to.shadows) return 'shadows';
+  // Drawn every frame is LayaAir's own path; skipping frames puts a rule on the scene.
+  if (
+    from.shadows &&
+    to.shadows &&
+    (from.shadows.update === 'every') !== (to.shadows.update === 'every')
+  )
+    return 'shadows';
   if (!from.atmosphere !== !to.atmosphere) return 'atmosphere';
   if (!from.fog !== !to.fog) return 'fog';
   if (!from.ambientGround !== !to.ambientGround) return 'ambientGround';

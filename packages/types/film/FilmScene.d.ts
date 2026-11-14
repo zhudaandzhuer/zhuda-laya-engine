@@ -41,6 +41,21 @@ export interface ZhudaFilmShadows {
      * shadows near the camera sharp when `distance` is long.
      */
     cascades?: 1 | 2 | 4;
+    /**
+     * When the shadow maps are drawn again (default 'every'): 'every' frame;
+     * 'interval': every `interval` frames, receivers keep the last maps in
+     * between, so a moving caster's shadow follows it in steps; 'manual': when
+     * the game asks (`ZhudaSceneLook.redrawShadows`) and when a new look
+     * changes the sun or the shadow settings, for a still camera over still
+     * casters. Stills and videos of a film draw them for every sample
+     * whatever this says. The maps are kept for the look's camera: a water's
+     * mirror left at its defaults reads them, and any other camera that draws
+     * the scene with shadows of its own makes the look's camera draw its maps
+     * again. See `ZhudaShadowUpdates`.
+     */
+    update?: 'every' | 'interval' | 'manual';
+    /** Frames from one drawing to the next with `update: 'interval'`, 2..30 (default 3). */
+    interval?: number;
 }
 /** Procedural sky (native `SkyProceduralMaterial`); the sun disk follows the sun. */
 export interface ZhudaFilmAtmosphere {
@@ -761,8 +776,9 @@ export declare function sampleZhudaFilmCameraPath(keys: readonly ZhudaFilmCamera
  * when every difference can be set in place: the sun (direction, colour,
  * intensity), sky and ground light colours, the flat sky colour, the values
  * of the procedural sky and of distance fog, shadow distance, strength,
- * softness, resolution and cascades, the strengths of the grade (exposure,
- * contrast, saturation, bloom, ambient occlusion, grain, vignette, fringe),
+ * softness, resolution, cascades and how often they are drawn, the
+ * strengths of the grade (exposure, contrast, saturation, bloom, ambient
+ * occlusion, grain, vignette, fringe),
  * the light fog's density, falloff, height, colour, scatter and reach, the
  * strength and spread of its shafts, and the sun they follow. Anything else
  * names the first part that differs: switching shadows, sky, fog, grade,
