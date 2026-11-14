@@ -16,6 +16,7 @@ export * from './Surfaces.js';
 export * from './Runtime.js';
 export * from './RuntimeDriver.js';
 export * from './SceneQueries.js';
+export * from './MeshQuery.js';
 export * from './SceneLifecycle.js';
 export * from './CameraRig.js';
 export * from './CameraCollision.js';

@@ -119,6 +119,12 @@ export interface IframeSampleOptions extends IframeVoiceOptions {
     /** Start the new voice before stopping matching IDs; requires a free voice slot. */
     replace?: boolean;
     crossFadeSec?: number;
+    /**
+     * Place the voice in the world: a PannerNode between the voice gain and
+     * the channel gain, or a distance gain and stereo pan where the host has
+     * no PannerNode. Move it with `setVoicePosition`; the listener is `setListener`.
+     */
+    spatial?: import('./zhuda-audio.js').IframeSpatialOptions;
 }
 export interface AudioVoiceHandle {
     readonly id: string;
@@ -156,6 +162,10 @@ export interface IframeSoundDiagnostics {
     backend: 'webaudio' | 'unavailable';
     contextAvailable: boolean;
     lastError: string | null;
+    /** Active voices placed in the world. */
+    spatialVoices: number;
+    /** How spatial voices are placed: a PannerNode, the gain fallback, or not yet known (no context). */
+    spatialBackend: 'panner' | 'gain' | 'unavailable';
 }
 export type ViewportDeviceId = 'desktop-fhd-16-9' | 'iphone-15-pro-portrait' | 'iphone-15-pro-landscape' | 'ipad-air-4-3' | 'ultrawide-21-9';
 export interface SafeAreaInsets {

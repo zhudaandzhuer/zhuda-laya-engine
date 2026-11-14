@@ -79,9 +79,31 @@ export interface ZhudaExtrudeOptions {
     height: number;
     /** Close the top and the underside (default true). */
     caps?: boolean;
+    /**
+     * Openings right through the shape (a window in a wall piece, the inside of
+     * a letter O), up to 32 of them. Each is an outline of 3..256 [x, z] pairs
+     * in either direction, inside the outline and clear of its edges and of
+     * the other holes.
+     */
+    holes?: readonly (readonly (readonly [number, number])[])[];
+    /**
+     * Cut off or round the top edges by this many metres (default 0, sharp).
+     * The wall stops this far below the top and the top is drawn in by it;
+     * holes are widened by it at the top. The footprint stays the outline.
+     * Needs caps.
+     */
+    bevel?: number;
+    /** 1 (default) cuts the edges off flat; 2..8 rounds them in that many steps. */
+    bevelSegments?: number;
+    /** Bevel the underside's edges too (default false: a shape standing on the ground). */
+    bevelBottom?: boolean;
 }
 export declare function validateZhudaExtrude(options: ZhudaExtrudeOptions): string[];
-/** A flat outline raised to a height: kerbs, steps, signs, wall pieces, L and U profiles. */
+/**
+ * A flat outline raised to a height: kerbs, steps, signs, wall pieces, L and
+ * U profiles; with `holes`, windows and doorways; with `bevel`, worn or
+ * rounded top edges.
+ */
 export declare function createZhudaExtrudeMesh(options: ZhudaExtrudeOptions): MeshData;
 export interface ZhudaSweepOptions {
     /**
@@ -106,6 +128,91 @@ export declare function validateZhudaSweep(options: ZhudaSweepOptions): string[]
  * own normal; the corners of the path are not rounded.
  */
 export declare function createZhudaSweepMesh(options: ZhudaSweepOptions): MeshData;
+export type ZhudaCurveKind = 'centripetal' | 'chordal' | 'uniform';
+export interface ZhudaCurveOptions {
+    /** Points the curve passes through: 2..256 [x, y, z] in metres (3 or more when closed). */
+    points: readonly (readonly [number, number, number])[];
+    /** The curve runs on from the last point back round to the first (default false). */
+    closed?: boolean;
+    /**
+     * How a Catmull-Rom curve spaces its points (default 'centripetal': no
+     * loops or cusps where points bunch up; 'chordal' bends wider; 'uniform' is
+     * the classic curve).
+     */
+    kind?: ZhudaCurveKind;
+}
+export declare function validateZhudaCurve(options: ZhudaCurveOptions): string[];
+/**
+ * `count` points (2..4096) along a Catmull-Rom curve, the same distance
+ * apart. An open curve starts and ends on its first and last points; a
+ * closed one does not repeat its start. Feed them to `createZhudaSweepMesh`
+ * (with `closed` for a closed curve) or `createZhudaTubeMesh`.
+ */
+export declare function sampleZhudaCurve(options: ZhudaCurveOptions, count: number): ZhudaVec3[];
+/** What `sampleZhudaCurvePath` reads of a LayaAir `CurvePath`: a point a share 0..1 of the way along. */
+export interface ZhudaCurvePathLike {
+    getPointAt(t: number): {
+        readonly x: number;
+        readonly y: number;
+        readonly z: number;
+    };
+}
+/**
+ * `count` points (2..4096) along a LayaAir `CurvePath` (Catmull-Rom or
+ * Bezier; it measures by length), for `createZhudaTubeMesh` or
+ * `createZhudaSweepMesh`. With `closed`, the last point is not repeated, as
+ * a closed sweep wants. A point the same as the one before is left out.
+ */
+export declare function sampleZhudaCurvePath(path: ZhudaCurvePathLike, count: number, options?: {
+    closed?: boolean;
+}): ZhudaVec3[];
+export interface ZhudaCurveTubeOptions extends ZhudaCurveOptions {
+    radius: number;
+    /** Rings along the curve, 2..2048 (default 64), the same distance apart. */
+    tubularSegments?: number;
+    /** Sides around the tube, 3..64 (default 12). */
+    radialSegments?: number;
+    /** Close the two ends of an open curve with flat caps (default true). */
+    caps?: boolean;
+}
+export declare function validateZhudaCurveTube(options: ZhudaCurveTubeOptions): string[];
+/**
+ * A round tube along a Catmull-Rom curve through the given points: pipes,
+ * cables, handles, a loop of hose. Its rings are spaced evenly along the
+ * curve and turn with it as little as possible (rotation-minimising frames);
+ * a closed tube's seam is twisted into place over its whole length. A radius
+ * wider than the tightest bend folds the tube into itself; that is not
+ * checked.
+ */
+export declare function createZhudaCurveTubeMesh(options: ZhudaCurveTubeOptions): MeshData;
+export interface ZhudaTorusOptions {
+    /** From the middle of the hole to the middle of the tube, in metres. */
+    radius: number;
+    /** The tube's own radius: less than `radius`. */
+    tube: number;
+    /** Sides around the tube, 3..64 (default 16). */
+    radialSegments?: number;
+    /** Steps around the hole, 3..256 (default 48). */
+    tubularSegments?: number;
+}
+export declare function validateZhudaTorus(options: ZhudaTorusOptions): string[];
+/** A ring-shaped tube lying flat about +Y, centred on the origin: rings, tyres, handles, haloes. */
+export declare function createZhudaTorusMesh(options: ZhudaTorusOptions): MeshData;
+export interface ZhudaRingOptions {
+    outerRadius: number;
+    /** The hole's radius; 0 (default) gives a disc. */
+    innerRadius?: number;
+    /** Steps around, 3..256 (default 48). */
+    segments?: number;
+    /**
+     * Omitted: a flat ring at y = 0 facing +Y, seen from above only (a marker
+     * on the ground). Given: a solid washer this many metres thick, from y = 0 up.
+     */
+    thickness?: number;
+}
+export declare function validateZhudaRing(options: ZhudaRingOptions): string[];
+/** A flat ring or disc, or with `thickness` a washer or coin, about +Y on the origin. */
+export declare function createZhudaRingMesh(options: ZhudaRingOptions): MeshData;
 export interface ZhudaMeshTransform {
     position?: ZhudaVec3;
     /** Rotation about +Y, applied after pitch and roll. */

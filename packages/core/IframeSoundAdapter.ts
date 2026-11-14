@@ -32,6 +32,20 @@ import { StreamVoice } from './audio/StreamVoice.ts';
 import { renderOfflineMix } from './audio/OfflineMix.ts';
 import { awaitAbortable } from './runtime3d/AsyncOperation.ts';
 import type { IframeOfflineMixOptions, IframeOfflineMix } from '../types/zhuda-audio.ts';
+import type { IframeListenerPose } from '../types/zhuda-audio.ts';
+import {
+  DEFAULT_LISTENER,
+  fallbackPlacement,
+  placeListener,
+  placePanner,
+  resolveListener,
+  resolvePosition,
+  resolveRamp,
+  resolveSpatial,
+  setParam,
+  type ResolvedListener,
+  type ResolvedSpatial,
+} from './audio/Spatial.ts';
 
 export interface QueuedAudioTask {
   sampleId?: string;
@@ -43,11 +57,22 @@ export interface QueuedAudioTask {
 }
 
 type Cleanup = () => void;
+/** A voice's place in the world: a PannerNode, or the gain (and stereo pan) fallback. */
+interface SpatialState {
+  options: ResolvedSpatial;
+  input: AudioNode;
+  output: AudioNode;
+  nodes: AudioNode[];
+  panner?: PannerNode;
+  gain?: GainNode;
+  stereo?: StereoPannerNode;
+}
 type VoiceState = IframeVoiceOptions & {
   logicalId: string;
   channel: IframeAudioChannel;
   source: AudioScheduledSourceNode | IframeBackendVoice;
   gain?: GainNode;
+  spatial?: SpatialState;
   sampleId?: string;
   streamId?: string;
   stopping?: boolean;
@@ -128,6 +153,7 @@ export class IframeSoundAdapter {
   private backendPreparing?: AbortController;
   private backendContextLost = false;
   private offlineMix: AbortController | null = null;
+  private listener: ResolvedListener = DEFAULT_LISTENER;
 
   public static getShared(): IframeSoundAdapter {
     if (!this.instance || this.instance.disposed) {
@@ -370,6 +396,7 @@ export class IframeSoundAdapter {
         gain.connect(this.masterGain);
         this.channelGains[channel] = gain;
       }
+      this.applyListener(context, 0);
       return context;
     } catch (error) {
       this.recordError(error);
@@ -1247,6 +1274,8 @@ export class IframeSoundAdapter {
     const channel = options.channel ?? 'sfx';
     if (!lease || !isAudioChannel(channel)) return false;
     const buffer = lease.value;
+    const spatial = options.spatial === undefined ? undefined : resolveSpatial(options.spatial);
+    if (spatial === null) return false;
     const offset = options.offsetSec ?? 0,
       loopStart = options.loopStartSec ?? 0,
       loopEnd = options.loopEndSec ?? buffer.duration;
@@ -1307,7 +1336,8 @@ export class IframeSoundAdapter {
         if (admission !== 'ready') return admission === 'queued';
         const key = `${snapshot.id}:${++this.voiceSerial}`;
         let source: AudioBufferSourceNode | IframeBackendVoice | undefined,
-          gain: GainNode | undefined;
+          gain: GainNode | undefined,
+          placed: SpatialState | undefined;
         try {
           if (this.sampleBackend) source = this.sampleBackend.createVoice(buffer, snapshot);
           else {
@@ -1327,13 +1357,20 @@ export class IframeSoundAdapter {
             gain.gain.linearRampToValueAtTime(0, now + duration);
           }
           ('output' in source ? source.output : source).connect(gain);
-          gain.connect(channelGain);
+          // Voice gain, then its place in the world, then the channel: the
+          // channel and master gains still apply once.
+          if (spatial) {
+            placed = this.createSpatial(context, spatial);
+            gain.connect(placed.input);
+            placed.output.connect(channelGain);
+          } else gain.connect(channelGain);
           source.onended = () => this.finishVoice(key);
           this.activeVoices.set(key, {
             logicalId: snapshot.id,
             channel,
             source,
             gain,
+            spatial: placed,
             sampleId: snapshot.sampleId,
             stopped: false,
             priority: snapshot.priority,
@@ -1354,6 +1391,12 @@ export class IframeSoundAdapter {
           }
           source?.disconnect();
           gain?.disconnect();
+          for (const node of placed?.nodes ?? [])
+            try {
+              node.disconnect();
+            } catch {
+              /* never connected */
+            }
           this.activeVoices.delete(key);
           this.recordError(error);
           this.syncDomTelemetry();
@@ -1405,6 +1448,127 @@ export class IframeSoundAdapter {
     }
   }
 
+  private applyListener(context: AudioContext, ramp: number): void {
+    try {
+      placeListener(context.listener, this.listener, context.currentTime, ramp);
+    } catch (error) {
+      this.recordError(error);
+    }
+  }
+
+  /** A PannerNode where the host has one; otherwise a distance gain and, if it can, a stereo pan. */
+  private createSpatial(context: AudioContext, spatial: ResolvedSpatial): SpatialState {
+    const now = context.currentTime;
+    if (typeof context.createPanner === 'function') {
+      const panner = context.createPanner();
+      try {
+        panner.panningModel = spatial.panningModel;
+      } catch {
+        // HRTF where available: a host without it keeps equal power.
+        panner.panningModel = 'equalpower';
+      }
+      panner.distanceModel = spatial.distanceModel;
+      panner.refDistance = spatial.refDistance;
+      panner.maxDistance = spatial.maxDistance;
+      panner.rolloffFactor = spatial.rolloffFactor;
+      panner.coneInnerAngle = spatial.coneInnerAngle;
+      panner.coneOuterAngle = spatial.coneOuterAngle;
+      panner.coneOuterGain = spatial.coneOuterGain;
+      placePanner(panner, spatial.position, spatial.orientation, now, 0);
+      return { options: spatial, input: panner, output: panner, nodes: [panner], panner };
+    }
+    const gain = context.createGain(),
+      stereo =
+        typeof context.createStereoPanner === 'function' ? context.createStereoPanner() : undefined;
+    if (stereo) gain.connect(stereo);
+    const state: SpatialState = {
+      options: spatial,
+      input: gain,
+      output: stereo ?? gain,
+      nodes: stereo ? [gain, stereo] : [gain],
+      gain,
+      stereo,
+    };
+    this.placeFallback(state, now, 0);
+    return state;
+  }
+
+  private placeFallback(state: SpatialState, now: number, ramp: number): void {
+    const placement = fallbackPlacement(state.options, this.listener);
+    const set = (param: AudioParam, value: number) => {
+      try {
+        setParam(param, value, now, ramp);
+      } catch {
+        param.value = value;
+      }
+    };
+    if (state.gain) set(state.gain.gain, placement.gain);
+    if (state.stereo) set(state.stereo.pan, placement.pan);
+  }
+
+  /**
+   * Where the listener is and which way it faces, usually the camera's pose
+   * each frame. Spatial voices are heard from here. Returns false for a pose
+   * that is not finite, or whose forward and up are along one line.
+   */
+  public setListener(pose: IframeListenerPose): boolean {
+    if (this.disposed) return false;
+    const resolved = resolveListener(pose),
+      ramp = resolveRamp(pose?.rampSec);
+    if (!resolved || ramp === null) return false;
+    this.listener = resolved;
+    if (this.ctx && this.ctx.state !== 'closed') {
+      this.applyListener(this.ctx, ramp);
+      const now = this.ctx.currentTime;
+      for (const voice of this.activeVoices.values())
+        if (voice.spatial?.gain) this.placeFallback(voice.spatial, now, ramp);
+    }
+    return true;
+  }
+
+  /**
+   * Moves the active spatial voices of a logical ID (and turns them, with
+   * `orientation`). A voice still queued before unlock starts where it was
+   * asked to. Returns whether a voice was moved.
+   */
+  public setVoicePosition(
+    id: string,
+    position: readonly [number, number, number],
+    options: { orientation?: readonly [number, number, number]; rampSec?: number } = {},
+  ): boolean {
+    if (this.disposed || !this.ctx) return false;
+    const where = resolvePosition(position),
+      facing = options.orientation === undefined ? undefined : resolvePosition(options.orientation),
+      ramp = resolveRamp(options.rampSec);
+    if (!where || facing === null || ramp === null) return false;
+    const now = this.ctx.currentTime;
+    let moved = false;
+    for (const voice of this.activeVoices.values()) {
+      if (voice.logicalId !== id || !voice.spatial || voice.stopped) continue;
+      const spatial = voice.spatial;
+      spatial.options = {
+        ...spatial.options,
+        position: where,
+        orientation: facing ?? spatial.options.orientation,
+      };
+      try {
+        if (spatial.panner)
+          placePanner(
+            spatial.panner,
+            spatial.options.position,
+            spatial.options.orientation,
+            now,
+            ramp,
+          );
+        else this.placeFallback(spatial, now, ramp);
+        moved = true;
+      } catch (error) {
+        this.recordError(error);
+      }
+    }
+    return moved;
+  }
+
   public stop(id: string, fadeOutSec = 0): boolean {
     if (!Number.isFinite(fadeOutSec) || fadeOutSec < 0 || fadeOutSec > 60) return false;
     let stopped = false;
@@ -1439,6 +1603,12 @@ export class IframeSoundAdapter {
     } catch {
       /* already disconnected */
     }
+    for (const node of voice.spatial?.nodes ?? [])
+      try {
+        node.disconnect?.();
+      } catch {
+        /* already disconnected */
+      }
     const next = this.admissions.get(voiceKey);
     this.admissions.delete(voiceKey);
     this.voiceEvent({
@@ -1530,6 +1700,12 @@ export class IframeSoundAdapter {
       backend: this.ctx ? 'webaudio' : 'unavailable',
       contextAvailable: this.ctx !== null,
       lastError: this.lastError,
+      spatialVoices: [...this.activeVoices.values()].filter((voice) => voice.spatial).length,
+      spatialBackend: !this.ctx
+        ? 'unavailable'
+        : typeof this.ctx.createPanner === 'function'
+          ? 'panner'
+          : 'gain',
     };
   }
 
