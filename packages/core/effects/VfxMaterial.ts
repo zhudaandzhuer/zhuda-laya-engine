@@ -45,7 +45,10 @@ void main(){
 }`;
 export const ZHUDA_VFX_FRAGMENT = `
 #define SHADER_NAME ZhudaVfxFS
+// The depth picture is read at high precision: a phone reads textures at low precision unless told.
+precision highp sampler2D;
 #include "Camera.glsl";
+precision lowp sampler2D;
 varying vec2 v_UV; varying vec4 v_Color; varying vec4 v_Clip; varying float v_EyeDepth;
 uniform sampler2D u_BaseTexture; uniform sampler2D u_MaskTexture; uniform sampler2D u_NoiseTexture;
 uniform vec4 u_VfxParams; uniform vec4 u_UVParams; uniform vec4 u_EdgeColor; uniform vec4 u_VfxFlags; uniform float u_VfxTime;

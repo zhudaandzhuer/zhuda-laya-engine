@@ -2,6 +2,8 @@
 import { type ZhudaTextureRecipe } from '../procedural/TextureRecipe.js';
 import { type ZhudaDecalShape } from '../runtime3d/Decals.js';
 import { type ZhudaAutoExposureOptions, type ZhudaDepthOfFieldOptions, type ZhudaMotionBlurOptions } from '../runtime3d/CameraEffects.js';
+import { type ZhudaToneMapping } from '../runtime3d/ToneCurves.js';
+import { type ZhudaLensFlareElement } from '../runtime3d/LensFlare.js';
 export type ZhudaFilmVec3 = [number, number, number];
 export interface ZhudaFilmCamera {
     eye: ZhudaFilmVec3;
@@ -96,10 +98,58 @@ export interface ZhudaFilmGrade {
      * Edge smoothing of a frame that is drawn once (a preview, a running game):
      * `msaa` multisamples the HDR target (default); `fxaa` smooths edges in one
      * pass over the finished picture, far cheaper on a phone and a little
-     * softer; `none` leaves edges as they fall. Stills and video average their
-     * samples as well, with any value.
+     * softer; `smaa` finds the shape of each edge in three passes and leaves
+     * everything that is not an edge exactly as it was (`ZhudaSmaa`); `none`
+     * leaves edges as they fall. Stills and video average their samples as
+     * well, with any value.
      */
-    antialias?: 'msaa' | 'fxaa' | 'none';
+    antialias?: 'msaa' | 'fxaa' | 'smaa' | 'none';
+    /**
+     * The curve from the scene's light to the screen's colours (default
+     * `aces`): `agx` keeps hues as colours brighten and is softer, `neutral`
+     * leaves colours below 0.76 as they are, `none` cuts off at white. See
+     * `ZhudaToneMapping`.
+     */
+    toneMapping?: ZhudaToneMapping;
+    /**
+     * White balance, each -100..100 (default 0): `temperature` above 0 is
+     * warmer, `tint` above 0 toward magenta and below 0 toward green.
+     */
+    temperature?: number;
+    tint?: number;
+    /**
+     * For red, green and blue, on the scene's light before the curve, as
+     * `(colour * gain + lift) ^ gamma`: `lift` -1..1 (default 0), `gamma`
+     * 0.1..10 (default 1; above 1 darkens the middle), `gain` 0..16 (default 1).
+     */
+    lift?: ZhudaFilmVec3;
+    gamma?: ZhudaFilmVec3;
+    gain?: ZhudaFilmVec3;
+    /** Where bloom begins, as a display value, 0..16 (default 1.2: light above 1.55 of white). */
+    bloomThreshold?: number;
+    /** How gradually bloom sets in below the threshold, 0..1 (default 0.5). */
+    bloomSoftKnee?: number;
+    /** -1..1 (default 0): above 0 the bloom is stretched sideways, below 0 upright. */
+    bloomAnamorphic?: number;
+    /** How far the bloom spreads, 1..10 (default 4): each step more doubles its reach. */
+    bloomDiffusion?: number;
+    /**
+     * How ambient occlusion is worked out (default `sao`, LayaAir's own).
+     * `gtao`: by horizons in the depth picture: open ground and the sky are
+     * left as they are, and `ao` is then a power where 1 is what the geometry
+     * hides, and its default (see `ZhudaGroundTruthAO`).
+     */
+    aoMethod?: 'sao' | 'gtao';
+    /**
+     * A colour table from a grading tool (a `.cube` file, named by asset id),
+     * applied to the finished picture; `intensity` 0..1 (default 1) is how
+     * much of it is taken. Loaded with the scene: mount with
+     * `loadZhudaFilmScene`. Off unless given.
+     */
+    lut?: {
+        asset: string;
+        intensity?: number;
+    } | false;
     /**
      * What a real camera adds, after tone mapping, each 0..1 and off by
      * default: film grain, darker corners and colour fringing at the corners.
@@ -178,6 +228,14 @@ export interface ZhudaFilmLook {
      * given.
      */
     clouds?: ZhudaFilmClouds | boolean;
+    /**
+     * What the sun does inside the lens: a glow, a streak and ghosts along
+     * the line through the middle of the picture, as strong as the share of
+     * the sun that nothing stands in front of (see `ZhudaLensFlare`). `true`
+     * takes the flare made for a low sun. Its place and colour come from the
+     * look's sun. Needs `grade`; off unless given.
+     */
+    lensFlare?: ZhudaFilmLensFlare | boolean;
     /**
      * Light bounced once off the scene: probes on a grid over its objects
      * capture their surroundings when the scene is mounted, and light physically
@@ -617,6 +675,15 @@ export interface ZhudaFilmScreenReflections {
     /** The sky's colour for that, 0..1 (default: the sky's colour near the horizon). */
     skyColor?: ZhudaFilmVec3;
 }
+/** The sun's flare (see `ZhudaLensFlare`); where it is and its colour come from the look. */
+export interface ZhudaFilmLensFlare {
+    /** Scales every element, 0..16 (default 1). */
+    strength?: number;
+    /** The radius round the sun that is looked up in the depth picture, a share of the picture's height (default 0.012). */
+    occlusionRadius?: number;
+    /** One to twelve elements (default `ZHUDA_LENS_FLARE_SUN`). */
+    elements?: readonly ZhudaLensFlareElement[];
+}
 /** A layer of clouds (see `ZhudaClouds`); their light comes from the look. */
 export interface ZhudaFilmClouds {
     /** How much of the sky is cloud, 0..1 (default 0.5). */
@@ -756,7 +823,12 @@ export interface ZhudaResolvedFilmLook {
     shadows: Required<ZhudaFilmShadows> | false;
     atmosphere: Required<ZhudaFilmAtmosphere> | false;
     fog: Required<ZhudaFilmFog> | false;
-    grade: Required<ZhudaFilmGrade> | false;
+    grade: (Required<Omit<ZhudaFilmGrade, 'lut'>> & {
+        lut: {
+            asset: string;
+            intensity: number;
+        } | false;
+    }) | false;
     lightFog: (Required<Omit<ZhudaFilmLightFog, 'shafts'>> & {
         shafts: Required<ZhudaFilmLightShafts> | false;
     }) | false;
@@ -765,6 +837,11 @@ export interface ZhudaResolvedFilmLook {
     depthOfField: Required<ZhudaDepthOfFieldOptions> | false;
     motionBlur: Required<ZhudaMotionBlurOptions> | false;
     clouds: Required<ZhudaFilmClouds> | false;
+    lensFlare: {
+        strength: number;
+        occlusionRadius: number;
+        elements: readonly ZhudaLensFlareElement[];
+    } | false;
     bounceLight: (Required<Pick<ZhudaFilmBounceLight, 'spacing' | 'strength' | 'visibility'>> & Pick<ZhudaFilmBounceLight, 'min' | 'max'>) | false;
     environment: Required<ZhudaFilmEnvironment> | false;
     panorama: Required<ZhudaFilmPanorama> | false;
@@ -783,17 +860,21 @@ export declare function sampleZhudaFilmCameraPath(keys: readonly ZhudaFilmCamera
  * intensity), sky and ground light colours, the flat sky colour, the values
  * of the procedural sky and of distance fog, shadow distance, strength,
  * softness, resolution, cascades and how often they are drawn, the
- * strengths of the grade (exposure, contrast, saturation, bloom, ambient
- * occlusion, grain, vignette, fringe),
+ * values of the grade (exposure, contrast, saturation, the tone curve, white
+ * balance, lift, gamma and gain, bloom and its threshold, knee, shape and
+ * spread, ambient occlusion, grain, vignette, fringe, how much of a colour
+ * table is taken), the lens flare's strength and elements,
  * the light fog's density, falloff, height, colour, scatter and reach, the
  * strength and spread of its shafts, and the sun they follow. Anything else
  * names the first part that differs: switching shadows, sky, fog, grade,
  * light fog or sky-and-ground light on or off, switching bloom, ambient
- * occlusion, the lens finish or the shafts on or off, or the shafts'
- * distance, resolution or step count. `environment` and `panorama`
- * need assets or a capture; a running look cannot change them at all.
+ * occlusion, the lens finish, the lens flare or the shafts on or off,
+ * another way of smoothing edges or of working out ambient occlusion, or
+ * the shafts' distance, resolution or step count. `environment`, `panorama`
+ * and the colour table (`colorTable`) need assets or a capture; a running
+ * look cannot change them at all.
  */
-export declare function zhudaFilmLookRebuildReason(from: ZhudaResolvedFilmLook, to: ZhudaResolvedFilmLook): 'environment' | 'panorama' | 'shadows' | 'atmosphere' | 'fog' | 'ambientGround' | 'grade' | 'lightFog' | 'screenReflections' | 'autoExposure' | 'depthOfField' | 'motionBlur' | 'clouds' | 'bounceLight' | null;
+export declare function zhudaFilmLookRebuildReason(from: ZhudaResolvedFilmLook, to: ZhudaResolvedFilmLook): 'environment' | 'panorama' | 'shadows' | 'atmosphere' | 'fog' | 'ambientGround' | 'grade' | 'lightFog' | 'screenReflections' | 'autoExposure' | 'depthOfField' | 'motionBlur' | 'clouds' | 'lensFlare' | 'colorTable' | 'bounceLight' | null;
 /**
  * The box a scene's bounce light fills by default: its objects and lights
  * (not the ground, a box used as ground, a reflector or water), widened by

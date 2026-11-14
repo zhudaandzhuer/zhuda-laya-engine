@@ -14,6 +14,8 @@ import type { ZhudaFilmicPipeline } from '../runtime3d/Filmic.ts';
 import type { ZhudaLightFog } from '../runtime3d/LightFog.ts';
 import type { ZhudaScreenReflections } from '../runtime3d/ScreenReflections.ts';
 import type { ZhudaLensFinish } from '../runtime3d/LensFinish.ts';
+import type { ZhudaColorLut } from '../runtime3d/ColorLut.ts';
+import type { ZhudaLensFlare } from '../runtime3d/LensFlare.ts';
 import type {
   ZhudaAutoExposure,
   ZhudaDepthOfField,
@@ -34,6 +36,9 @@ export interface ZhudaAppliedLookParts {
   sky?: any;
   film?: ZhudaFilmicPipeline;
   finish?: ZhudaLensFinish;
+  /** The colour table of the look's grade: an unchanged picture until a table is handed over. */
+  colorTable?: ZhudaColorLut;
+  flare?: ZhudaLensFlare;
   /** The shadow update rule, when the look's shadows are not drawn every frame. */
   shadowUpdates?: ZhudaShadowUpdates;
 }
@@ -156,8 +161,24 @@ export function updateZhudaLookInPlace(
       bloomIntensity: look.grade.bloom,
       aoIntensity: look.grade.ao,
       aoRadius: look.grade.aoRadius,
+      toneMapping: look.grade.toneMapping,
+      temperature: look.grade.temperature,
+      tint: look.grade.tint,
+      lift: look.grade.lift,
+      gamma: look.grade.gamma,
+      gain: look.grade.gain,
+      bloomThreshold: look.grade.bloomThreshold,
+      bloomSoftKnee: look.grade.bloomSoftKnee,
+      bloomAnamorphic: look.grade.bloomAnamorphic,
+      bloomDiffusion: look.grade.bloomDiffusion,
     });
     parts.film.setAntialias(look.grade.antialias === 'msaa');
+  }
+  if (parts.colorTable && look.grade && look.grade.lut)
+    parts.colorTable.setIntensity(look.grade.lut.intensity);
+  if (parts.flare && look.lensFlare) {
+    parts.flare.set(look.lensFlare);
+    parts.flare.setLight({ toward: zhudaTowardSun(l, sun), color: zhudaSunRadiance(look) });
   }
   if (parts.finish && look.grade)
     parts.finish.setFinish({

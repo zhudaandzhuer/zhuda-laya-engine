@@ -75,12 +75,20 @@ test('a graded look multisamples unless told otherwise, and quality levels drop 
   );
   assert.deepEqual(
     validateZhudaFilmScene(scene({ look: { grade: { antialias: 'smaa' } } }), context),
-    ['scene.look.grade.antialias: use msaa, fxaa or none'],
+    [],
+  );
+  assert.deepEqual(
+    validateZhudaFilmScene(scene({ look: { grade: { antialias: 'taa' } } }), context),
+    ['scene.look.grade.antialias: use msaa, fxaa, smaa or none'],
   );
   assert.equal(zhudaLookForQuality(look, 3).grade.antialias, 'msaa');
   assert.equal(zhudaLookForQuality(look, 2).grade.antialias, 'msaa');
   // One level down the one-pass smoothing takes the place of multisampling.
   assert.equal(zhudaLookForQuality(look, 1).grade.antialias, 'fxaa');
+  // So it does for the three-pass smoothing, which stays at the levels above.
+  const shaped = resolveZhudaFilmLook({ grade: { antialias: 'smaa' } });
+  assert.equal(zhudaLookForQuality(shaped, 2).grade.antialias, 'smaa');
+  assert.equal(zhudaLookForQuality(shaped, 1).grade.antialias, 'fxaa');
   assert.equal(
     zhudaLookForQuality(resolveZhudaFilmLook({ grade: { antialias: 'none' } }), 1).grade.antialias,
     'none',

@@ -3,6 +3,13 @@ import { zhudaShadowBorrower } from './ShadowUpdates.ts';
 import type { CinematicLinearChain } from './CinematicCapture.ts';
 import { zhudaShaderRegistrar } from './ShaderRegistry.ts';
 import { zhudaToHalfFloats, zhudaToRgbd } from './HalfFloat.ts';
+import { ZhudaGroundTruthAO, validateZhudaGroundTruthAO } from './GroundTruthAO.ts';
+import {
+  applyZhudaToneCurve,
+  releaseZhudaToneCurve,
+  ZHUDA_TONE_MAPPINGS,
+  type ZhudaToneMapping,
+} from './ToneCurves.ts';
 
 const SOURCE_VERTEX =
   '#define SHADER_NAME ZhudaLinearSourceVS\nvarying vec2 v_Texcoord0;void main(){gl_Position=vec4(a_PositionTexcoord.xy,0.0,1.0);v_Texcoord0=a_PositionTexcoord.zw;}';
@@ -263,15 +270,118 @@ export function createPrefilteredEnvironment(
   };
 }
 
-export interface FilmicOptions {
+/** The values of the chain that can be set while it runs (`setGrade`). */
+export interface ZhudaFilmicGrade {
   exposure?: number;
   contrast?: number;
   saturation?: number;
-  ao?: boolean;
+  bloomIntensity?: number;
   aoIntensity?: number;
   aoRadius?: number;
+  /** The curve from scene light to screen colour (default `aces`): see `ZhudaToneMapping`. */
+  toneMapping?: ZhudaToneMapping;
+  /**
+   * White balance, each -100..100 (default 0). `temperature`: above 0 warmer
+   * (toward orange), below 0 cooler (toward blue). `tint`: above 0 toward
+   * magenta, below 0 toward green.
+   */
+  temperature?: number;
+  tint?: number;
+  /**
+   * Three numbers each, for red, green and blue, applied to the scene's
+   * light before the curve as `(colour * gain + lift) ^ gamma`: `lift`
+   * (-1..1, default 0) moves the shadows, `gain` (0..16, default 1) the
+   * highlights, and `gamma` (0.1..10, default 1) bends the middle: above 1
+   * it darkens.
+   */
+  lift?: readonly number[];
+  gamma?: readonly number[];
+  gain?: readonly number[];
+  /**
+   * Where bloom begins, as a display value (default 1.2: a little above
+   * white; LayaAir turns it into light with the screen's curve).
+   */
+  bloomThreshold?: number;
+  /** How gradually bloom sets in below the threshold, 0..1 (default 0.5); 0 is a hard start. */
+  bloomSoftKnee?: number;
+  /** -1..1 (default 0): above 0 the bloom is stretched sideways, below 0 upright, as a lens with an oval opening does. */
+  bloomAnamorphic?: number;
+  /**
+   * How far the bloom spreads, 1..10 (default 4): each step more doubles
+   * its reach. The reach is a share of the picture, whatever its size.
+   */
+  bloomDiffusion?: number;
+  /** How strongly the bloom lights up the dirt picture (default 1 with a picture, else 0). */
+  bloomDirt?: number;
+}
+
+const GRADE_RANGES: Record<string, readonly [number, number]> = {
+  exposure: [0, 1048576],
+  contrast: [0, 1048576],
+  saturation: [0, 1048576],
+  bloomIntensity: [0, 1048576],
+  aoIntensity: [0, 1048576],
+  aoRadius: [0, 1048576],
+  temperature: [-100, 100],
+  tint: [-100, 100],
+  bloomThreshold: [0, 1048576],
+  bloomSoftKnee: [0, 1],
+  bloomAnamorphic: [-1, 1],
+  bloomDiffusion: [1, 10],
+  bloomDirt: [0, 1048576],
+};
+const GRADE_TRIPLES: Record<string, readonly [number, number]> = {
+  lift: [-1, 1],
+  gamma: [0.1, 10],
+  gain: [0, 16],
+};
+
+/** Lists what is wrong with the values of a grade, each as `name: rule`; empty when they are valid. */
+export function validateZhudaFilmicGrade(values: ZhudaFilmicGrade): string[] {
+  const issues: string[] = [];
+  const v = (values ?? {}) as Record<string, unknown>;
+  for (const [key, [low, high]] of Object.entries(GRADE_RANGES)) {
+    const value = v[key];
+    if (value === undefined) continue;
+    if (typeof value !== 'number' || !Number.isFinite(value) || value < low || value > high)
+      issues.push(`${key}: use ${low}..${high}`);
+  }
+  for (const [key, [low, high]] of Object.entries(GRADE_TRIPLES)) {
+    const value = v[key];
+    if (value === undefined) continue;
+    if (
+      !Array.isArray(value) ||
+      value.length !== 3 ||
+      !value.every((n) => typeof n === 'number' && Number.isFinite(n) && n >= low && n <= high)
+    )
+      issues.push(`${key}: three numbers ${low}..${high}`);
+  }
+  if (
+    v.toneMapping !== undefined &&
+    !ZHUDA_TONE_MAPPINGS.includes(v.toneMapping as ZhudaToneMapping)
+  )
+    issues.push(`toneMapping: use ${ZHUDA_TONE_MAPPINGS.join(', ')}`);
+  return issues;
+}
+
+export interface FilmicOptions extends ZhudaFilmicGrade {
+  ao?: boolean;
+  /**
+   * How ambient occlusion is worked out (default `sao`, LayaAir's own).
+   * `gtao`: by horizons in the depth picture (`ZhudaGroundTruthAO`): open
+   * ground is left as it is, and the scene is not drawn once more for
+   * normals. Its strength is a power, 0..4, where 1 is what the geometry
+   * hides; `aoIntensity` defaults to 1 with it.
+   */
+  aoMethod?: 'sao' | 'gtao';
+  /** With `gtao`: work the occlusion out at half size (default false). */
+  aoHalfSize?: boolean;
   bloom?: boolean;
-  bloomIntensity?: number;
+  /**
+   * A picture of the marks on a lens (dust, smears): where the bloom falls
+   * on it, it lights up. Borrowed: the caller destroys it after the pipeline.
+   */
+  bloomDirtTexture?: any;
   temporalAA?: boolean;
   /**
    * Multisample the camera's HDR target (4x where the device allows it):
@@ -312,7 +422,11 @@ export class ZhudaFilmicPipeline {
   readonly post: any;
   readonly grade: any;
   readonly ao: any;
+  /** The occlusion by horizons, with `aoMethod: 'gtao'`; `ao` is then idle. */
+  readonly groundAO: ZhudaGroundTruthAO | undefined;
   readonly bloom: any;
+  /** The effect that darkens creases: LayaAir's, or the one by horizons. */
+  private readonly occlusion: any;
   private previous: any;
   private previousHDR: boolean;
   private disposed = false;
@@ -328,16 +442,17 @@ export class ZhudaFilmicPipeline {
   constructor(camera: any, options: FilmicOptions = {}) {
     this.camera = camera;
     const l = (globalThis as any).Laya;
-    for (const k of [
-      'exposure',
-      'contrast',
-      'saturation',
-      'aoIntensity',
-      'aoRadius',
-      'bloomIntensity',
-    ] as const)
-      if (options[k] !== undefined && (!Number.isFinite(options[k]) || (options[k] as number) < 0))
-        throw Error('Invalid filmic option ' + k);
+    const issues = validateZhudaFilmicGrade(options);
+    if (options.aoMethod !== undefined && options.aoMethod !== 'sao' && options.aoMethod !== 'gtao')
+      issues.push('aoMethod: use sao or gtao');
+    // Refused before anything is made: by horizons the strength is a power, 0..4.
+    if (options.aoMethod === 'gtao' && options.ao !== false)
+      for (const issue of validateZhudaGroundTruthAO({
+        ...(options.aoIntensity !== undefined ? { intensity: options.aoIntensity } : {}),
+        ...(options.aoRadius !== undefined ? { radius: options.aoRadius } : {}),
+      }))
+        issues.push('ao' + issue[0].toUpperCase() + issue.slice(1));
+    if (issues.length) throw Error('Invalid filmic option ' + issues.join('; '));
     if (camera.postProcess) throw Error('Camera already owns a postprocess chain');
     requireCapabilities(l, ['RenderTextureFormat_R16G16B16A16']);
     this.previous = camera.postProcess;
@@ -355,11 +470,35 @@ export class ZhudaFilmicPipeline {
     this.ao.radius = options.aoRadius ?? 0.7;
     this.ao.aoQuality = l.AOQUALITY.High;
     this.ao.active = options.ao !== false;
+    if (options.aoMethod === 'gtao' && options.ao !== false) {
+      this.groundAO = new ZhudaGroundTruthAO({
+        intensity: options.aoIntensity ?? 1,
+        radius: options.aoRadius ?? 0.5,
+        halfSize: options.aoHalfSize ?? false,
+      });
+      this.ao.active = false;
+    }
+    this.occlusion = this.groundAO ? this.groundAO.effect : this.ao;
     this.bloom = new l.BloomEffect();
     this.bloom.intensity = options.bloomIntensity ?? 0.12;
     this.bloom.threshold = 1.2;
     this.bloom.diffusion = 4;
     this.bloom.active = options.bloom !== false;
+    // LayaAir 3.4.2 works out how the dirt picture covers the frame only when
+    // their shapes differ; a picture shaped like the frame keeps the cover
+    // of whatever was there before (at first, of no picture at all). This
+    // is the cover for equal shapes, set before each frame's bloom.
+    const bloom = this.bloom;
+    if (bloom._dirtTileOffset && typeof bloom.render === 'function') {
+      const render = bloom.render;
+      bloom.render = function (context: any) {
+        const dirt = bloom._dirtTexture,
+          viewport = context?.camera?.viewport;
+        if (dirt && viewport && dirt.width * viewport.height === dirt.height * viewport.width)
+          bloom._dirtTileOffset.setValue(1, 1, 0, 0);
+        return render.call(bloom, context);
+      };
+    }
     this.grade = new l.ColorGradEffect();
     this.grade.toneMapping = l.ToneMappingType.ACES;
     this.grade.enableColorAdjust = true;
@@ -368,7 +507,7 @@ export class ZhudaFilmicPipeline {
     this.grade.saturation = options.saturation ?? 0.96;
     this.sceneEffects = [...(options.sceneEffects ?? [])];
     this.finishEffects = [...(options.finishEffects ?? [])];
-    post.addEffect(this.ao);
+    post.addEffect(this.occlusion);
     for (const effect of this.sceneEffects) post.addEffect(effect);
     if (this.sceneEffects.length) camera.depthTextureMode |= l.DepthTextureMode.Depth;
     post.addEffect(this.bloom);
@@ -384,6 +523,9 @@ export class ZhudaFilmicPipeline {
     }
     post.addEffect(this.grade);
     for (const effect of this.finishEffects) addAfterGrade(post, effect);
+    const { bloomDirtTexture, ...grade } = options;
+    if (bloomDirtTexture) this.setBloomDirt(bloomDirtTexture, options.bloomDirt ?? 1);
+    this.applyGrade(grade, true);
     camera.enableHDR = true;
     camera.postProcess = post;
     if (options.msaa !== undefined) setCameraMultisampling(l, camera, !!options.msaa);
@@ -411,31 +553,77 @@ export class ZhudaFilmicPipeline {
     this.limit();
   }
   /**
-   * Sets the continuous values of the chain in place: exposure, contrast,
-   * saturation, bloom strength, and ambient occlusion strength and radius.
-   * Whether bloom or ambient occlusion run at all is fixed at construction.
+   * Sets values of the chain in place: exposure, contrast, saturation, the
+   * curve, white balance, lift, gamma and gain, bloom strength, threshold,
+   * knee, shape and spread, and ambient occlusion strength and radius. Whether bloom
+   * or ambient occlusion run at all is fixed at construction.
    */
-  setGrade(values: {
-    exposure?: number;
-    contrast?: number;
-    saturation?: number;
-    bloomIntensity?: number;
-    aoIntensity?: number;
-    aoRadius?: number;
-  }) {
+  setGrade(values: ZhudaFilmicGrade) {
     if (this.disposed) throw Error('Disposed filmic pipeline');
-    for (const [key, value] of Object.entries(values))
-      if (value !== undefined && (!Number.isFinite(value) || value < 0 || value > 1048576))
-        throw Error('Invalid filmic value ' + key);
-    if (values.exposure !== undefined) {
+    const issues = validateZhudaFilmicGrade(values);
+    if (issues.length) throw Error('Invalid filmic value ' + issues.join('; '));
+    this.applyGrade(values, false);
+  }
+  private tone: ZhudaToneMapping = 'aces';
+  /** The curve in use. */
+  get toneMapping(): ZhudaToneMapping {
+    return this.tone;
+  }
+  private applyGrade(values: ZhudaFilmicGrade, first: boolean) {
+    const l = (globalThis as any).Laya;
+    if (!first && values.exposure !== undefined) {
       this.grade.postExposure = values.exposure;
       this.limit();
     }
-    if (values.contrast !== undefined) this.grade.contrast = values.contrast;
-    if (values.saturation !== undefined) this.grade.saturation = values.saturation;
-    if (values.bloomIntensity !== undefined) this.bloom.intensity = values.bloomIntensity;
-    if (values.aoIntensity !== undefined) this.ao.intensity = values.aoIntensity;
-    if (values.aoRadius !== undefined) this.ao.radius = values.aoRadius;
+    if (!first && values.contrast !== undefined) this.grade.contrast = values.contrast;
+    if (!first && values.saturation !== undefined) this.grade.saturation = values.saturation;
+    if (!first && values.bloomIntensity !== undefined) this.bloom.intensity = values.bloomIntensity;
+    if (!first && this.groundAO)
+      this.groundAO.set({
+        ...(values.aoIntensity !== undefined ? { intensity: values.aoIntensity } : {}),
+        ...(values.aoRadius !== undefined ? { radius: values.aoRadius } : {}),
+      });
+    else {
+      if (!first && values.aoIntensity !== undefined) this.ao.intensity = values.aoIntensity;
+      if (!first && values.aoRadius !== undefined) this.ao.radius = values.aoRadius;
+    }
+    if (values.temperature !== undefined) this.grade.temperature = values.temperature;
+    if (values.tint !== undefined) this.grade.tint = values.tint;
+    if (values.temperature !== undefined || values.tint !== undefined)
+      this.grade.enableBalance = this.grade.temperature !== 0 || this.grade.tint !== 0;
+    for (const key of ['lift', 'gamma', 'gain'] as const) {
+      const value = values[key];
+      if (value !== undefined) this.grade[key] = new l.Vector3(value[0], value[1], value[2]);
+    }
+    if (values.lift !== undefined || values.gamma !== undefined || values.gain !== undefined) {
+      const is = (v: any, n: number) => v.x === n && v.y === n && v.z === n;
+      this.grade.enableLiftGammaGain = !(
+        is(this.grade.lift, 0) &&
+        is(this.grade.gamma, 1) &&
+        is(this.grade.gain, 1)
+      );
+    }
+    if (values.bloomThreshold !== undefined) this.bloom.threshold = values.bloomThreshold;
+    if (values.bloomSoftKnee !== undefined) this.bloom.softKnee = values.bloomSoftKnee;
+    if (values.bloomAnamorphic !== undefined) this.bloom.anamorphicRatio = values.bloomAnamorphic;
+    if (values.bloomDiffusion !== undefined) this.bloom.diffusion = values.bloomDiffusion;
+    if (values.bloomDirt !== undefined) this.bloom.dirtIntensity = values.bloomDirt;
+    if (values.toneMapping !== undefined && values.toneMapping !== this.tone) {
+      applyZhudaToneCurve(l, this.grade, values.toneMapping);
+      this.tone = values.toneMapping;
+    }
+  }
+  /**
+   * The picture of the marks on the lens that bloom lights up, and how
+   * strongly; `null` takes it away. Borrowed: the caller destroys the
+   * picture after the pipeline, or after handing over another.
+   */
+  setBloomDirt(texture: any | null, intensity = 1) {
+    if (this.disposed) throw Error('Disposed filmic pipeline');
+    if (!Number.isFinite(intensity) || intensity < 0 || intensity > 1048576)
+      throw Error('Invalid filmic value bloomDirt: use 0..1048576');
+    this.bloom.dirtTexture = texture;
+    this.bloom.dirtIntensity = texture ? intensity : 0;
   }
   /**
    * The chain's handle for a capture that averages its samples in scene-linear
@@ -475,14 +663,17 @@ export class ZhudaFilmicPipeline {
     const source = new l.MaterialPostProcessEffect();
     source.material = material;
     source.active = false;
-    const linearPart = [this.ao, ...this.sceneEffects, this.bloom],
+    const linearPart = [this.occlusion, ...this.sceneEffects, this.bloom],
       displayPart = [...(this.range ? [this.range.effect] : []), this.grade, ...this.finishEffects],
       all = [...linearPart, ...displayPart];
+    // LayaAir sets its own passes up when the grade joins a chain: it leaves and joins as LayaAir made it.
+    if (this.tone !== 'aces') applyZhudaToneCurve(l, this.grade, 'aces');
     // The source goes first; the rest keeps the order it was built in.
     this.post.clearEffect();
     for (const effect of [source, ...all])
       if (this.finishEffects.includes(effect)) addAfterGrade(this.post, effect);
       else this.post.addEffect(effect);
+    if (this.tone !== 'aces') applyZhudaToneCurve(l, this.grade, this.tone);
     let saved: boolean[] | undefined;
     const chain: CinematicLinearChain = {
       beginSamples: () => {
@@ -545,9 +736,13 @@ export class ZhudaFilmicPipeline {
       setCameraMultisampling((globalThis as any).Laya, this.camera, !!this.previousMSAA);
       this.camera.depthTextureMode = this.previousDepth;
     }
+    releaseZhudaToneCurve((globalThis as any).Laya, this.grade);
     this.post.clearEffect();
+    // The dirt picture is the caller's: the bloom only lets go of it.
+    if (this.bloom.dirtTexture) this.bloom.dirtTexture = null;
     this.linear?.dispose();
     this.linear = undefined;
+    this.groundAO?.dispose();
     this.range?.material.destroy();
     // LayaAir 3.4.2 release() detaches effects but does not free their LUT,
     // materials or shader data. This version-pinned adapter owns those objects.

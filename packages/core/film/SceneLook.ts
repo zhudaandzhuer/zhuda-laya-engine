@@ -17,6 +17,7 @@ import {
   type ZhudaResolvedFilmLook,
 } from './FilmScene.ts';
 import { applyResolvedFilmLook } from './FilmStage.ts';
+import { zhudaIdentityCubeLut, type ZhudaCubeLut } from '../runtime3d/ColorLut.ts';
 import {
   ZhudaHemisphereAmbientSlot,
   updateZhudaLookInPlace,
@@ -107,6 +108,19 @@ export class ZhudaSceneLook {
 
   get quality(): ZhudaLookQuality {
     return this.level;
+  }
+
+  private colorTable: ZhudaCubeLut | undefined;
+  /**
+   * The table for the look's `grade.lut`, parsed from the game's own
+   * `.cube` file (`parseZhudaCubeLut`): a scene look loads no assets, so the
+   * game hands it over. Until then, and after `null`, the picture is as it
+   * is without a table. It stays through later looks and quality levels.
+   */
+  setColorTable(table: ZhudaCubeLut | null): void {
+    if (this.disposed) throw Error('Disposed scene look');
+    this.colorTable = table ?? undefined;
+    this.parts.colorTable?.setLut(table ?? zhudaIdentityCubeLut(2));
   }
 
   /** Size of the 3D picture against the canvas (1 is full size). */
@@ -295,7 +309,9 @@ export class ZhudaSceneLook {
       this.camera.clearFlag = before.clearFlag;
       this.camera.clearColor = before.clearColor;
     });
-    this.parts = applyResolvedFilmLook(l, this.scene3D, this.camera, this.sun, look, cleanups);
+    this.parts = applyResolvedFilmLook(l, this.scene3D, this.camera, this.sun, look, cleanups, {
+      colorTable: this.colorTable,
+    });
     this.lightFog = this.parts.lightFog;
     // Still scenery: the depth picture of the light is redrawn only when the camera has moved on.
     this.lightFog?.setShaftRefresh('moved');

@@ -351,6 +351,11 @@ export async function runConsumerBuild({
       path.join(engineRoot, 'vendor/meshoptimizer/LICENSE.txt'),
       path.join(notices, 'MESHOPT-LICENSE.txt'),
     );
+    // The edge-smoothing tables and the tone curve constants in the engine bundle.
+    fs.copyFileSync(
+      path.join(engineRoot, 'vendor/threejs-post/LICENSE.txt'),
+      path.join(notices, 'POST-LICENSE.txt'),
+    );
     if (config.basis === true)
       fs.copyFileSync(
         path.join(engineRoot, 'vendor/basis/LICENSE.txt'),

@@ -7,6 +7,7 @@ import { ZhudaModelLibrary } from '../runtime3d/Assets.js';
 import type { ZhudaAssetCache } from '../runtime3d/Assets.js';
 import { type AssetProvider } from '../runtime3d/AssetProvider.js';
 import { ZhudaLensFinish } from '../runtime3d/LensFinish.js';
+import { type ZhudaCubeLut } from '../runtime3d/ColorLut.js';
 import { type ZhudaHdrImage } from '../runtime3d/Lightmap.js';
 import { type ZhudaBakedTextureSet, type ZhudaTextureRecipe } from '../procedural/TextureRecipe.js';
 import { type ZhudaPropDefinition } from '../procedural/PropFactory.js';
@@ -126,6 +127,8 @@ export declare class ZhudaFilmAssets {
     readonly lightmaps: ZhudaAssetCache<ZhudaHdrImage>;
     /** Decoded sky panoramas (PNG or JPEG); each stage uploads its own texture. */
     readonly pictures: ZhudaAssetCache<ImageBitmap>;
+    /** Parsed colour tables (`.cube` files); each stage uploads its own texture. */
+    readonly colorTables: ZhudaAssetCache<ZhudaCubeLut>;
     private disposed;
     constructor(provider: AssetProvider, options?: ZhudaFilmAssetsOptions);
     /** Dispose every stage first. */
@@ -148,8 +151,14 @@ export declare function loadZhudaFilmScene(rootScene: any, input: ZhudaFilmScene
  */
 export declare function mountZhudaFilmScene(rootScene: any, input: ZhudaFilmScene, options?: ZhudaFilmStageOptions): ZhudaFilmStage;
 /** Shadows, procedural sky and fog, all native Laya 3.4.2 features. */
-/** Shared with `ZhudaSceneLook`: shadows, sky, fog and the HDR chain of a resolved look. */
-export declare function applyResolvedFilmLook(l: any, scene3D: any, camera: any, sun: any, look: ZhudaResolvedFilmLook, cleanups: (() => void)[]): ZhudaAppliedLookParts & {
+/**
+ * Shared with `ZhudaSceneLook`: shadows, sky, fog and the HDR chain of a
+ * resolved look. `given.colorTable` is the parsed table of `grade.lut`;
+ * without it the picture is as without a table.
+ */
+export declare function applyResolvedFilmLook(l: any, scene3D: any, camera: any, sun: any, look: ZhudaResolvedFilmLook, cleanups: (() => void)[], given?: {
+    colorTable?: ZhudaCubeLut;
+}): ZhudaAppliedLookParts & {
     finish?: ZhudaLensFinish;
 };
 export interface ZhudaFilmRenderOptions {

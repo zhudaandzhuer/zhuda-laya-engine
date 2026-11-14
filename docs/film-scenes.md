@@ -207,6 +207,32 @@ the bare look (flat sky colour, no shadows, sky or fog), kept for tests.
 `vignette` (darker corners) and `fringe` (colour fringing toward the
 corners). A rendered frame without them is cleaner than any photograph.
 
+A grade also names how the picture is finished (see
+[post quality](post-quality.md)):
+
+```json
+"grade": { "toneMapping": "agx", "temperature": 15, "gain": [1.05, 1, 0.95],
+           "antialias": "smaa", "aoMethod": "gtao",
+           "bloomThreshold": 1.1, "bloomAnamorphic": 0.6,
+           "lut": { "asset": "looks/dusk.cube", "intensity": 0.8 } },
+"lensFlare": { "strength": 0.8 }
+```
+
+- `toneMapping`: `aces` (default), `agx`, `neutral` or `none`.
+- `temperature`, `tint` (-100..100) and `lift`, `gamma`, `gain` (three
+  numbers each).
+- `antialias`: `msaa` (default), `fxaa`, `smaa` or `none`.
+- `aoMethod`: `sao` (default) or `gtao`, which leaves open ground and the
+  sky as they are; `ao` is then a power and 1 unless given.
+- `bloomThreshold`, `bloomSoftKnee`, `bloomAnamorphic`, `bloomDiffusion`.
+- `lut`: a `.cube` colour table by asset id, loaded with the scene.
+- `lensFlare` (beside `grade`, which it needs): the sun's flare, as strong
+  as the share of the sun that nothing stands in front of; `true` takes the
+  defaults.
+
+All but `antialias`, `aoMethod`, the table's asset and whether there is a
+flare can change while a look runs.
+
 With a grade, lamps and lit windows can be brighter than white and glow
 instead of clipping; without one the render is the plain SDR output. The film
 host uses the `3d-gltf` browser bundle, which carries the post-process module.

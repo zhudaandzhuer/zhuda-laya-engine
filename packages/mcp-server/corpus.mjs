@@ -161,6 +161,17 @@ export const API_GUARDRAILS = [
       '2D保留graphics premultiplied alpha/clipping/gamma；3D模板處理world normal/fog/output。surface不是完整main。JSON驗證不等於GPU編譯。',
   },
   {
+    id: 'GUARD_POST_QUALITY',
+    topic:
+      'tone mapping AgX neutral LUT cube SMAA GTAO ambient occlusion lens flare bloom post-process',
+    hallucinatedLegacyApi:
+      'renderer.toneMapping = THREE.AgXToneMapping; new SMAAPass(); new GTAOPass(); new LUTPass(); new Laya.LensFlareEffect()',
+    zhudaCanonicalApi:
+      "A look's grade: { toneMapping: 'aces'|'agx'|'neutral'|'none', temperature, tint, lift, gamma, gain, antialias: 'msaa'|'fxaa'|'smaa'|'none', aoMethod: 'sao'|'gtao', bloomThreshold, bloomSoftKnee, bloomAnamorphic, bloomDiffusion, lut: { asset, intensity } }, and lensFlare beside it. By hand: new ZhudaFilmicPipeline(camera, { toneMapping: 'agx', aoMethod: 'gtao', sceneEffects: [flare.effect], finishEffects: [table.effect, smaa.effect] }) with new ZhudaColorLut(parseZhudaCubeLut(text)), new ZhudaSmaa(), new ZhudaLensFlare() then flare.setLight({ toward }). A game's ZhudaSceneLook is handed its table: look.setColorTable(parseZhudaCubeLut(text)).",
+    reason:
+      'A curve adds no pass (it is worked out in the grade lookup); gtao reads depth only and leaves open ground and the sky alone; the flare is hidden by what hides the light. LayaAir LensFlareEffect draws through walls and its CUSTOMLUT path does not compile. See docs/post-quality.md.',
+  },
+  {
     id: 'GUARD_INIT_BOOT',
     topic: '引擎啟動與 Stage 初始化',
     hallucinatedLegacyApi: 'Laya.init(1280, 720, Laya.WebGL); Laya.MiniAdpter.init();',

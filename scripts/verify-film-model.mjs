@@ -211,6 +211,69 @@ try {
     );
   }
 
+  // 4d. A colour table from a .cube file, loaded with the scene: red, green
+  // and blue changed round, so that what it does to a flat sky is plain.
+  {
+    const size = 5;
+    const lines = ['TITLE "Round"', `LUT_3D_SIZE ${size}`];
+    for (let b = 0; b < size; b++)
+      for (let g = 0; g < size; g++)
+        for (let r = 0; r < size; r++)
+          lines.push([g, b, r].map((v) => (v / (size - 1)).toFixed(4)).join(' '));
+    fs.writeFileSync(path.join(assets, 'round.cube'), lines.join('\n') + '\n');
+    const graded = async (name, lut) => {
+      const img = await render(name, {
+        schemaVersion: 1,
+        id: 'table-check',
+        camera: { eye: [0, 1, 0], target: [0, 1, -5] },
+        look: {
+          sky: [0.8, 0.4, 0.2],
+          ambient: [0, 0, 0],
+          sun: { intensity: 0 },
+          shadows: false,
+          grade: {
+            toneMapping: 'none',
+            bloom: 0,
+            ao: 0,
+            antialias: 'none',
+            ...(lut ? { lut } : {}),
+          },
+        },
+        nodes: [],
+      });
+      return patch(img, 0.5, 0.5).map((value) => Math.round(value));
+    };
+    const plain = await graded('table-none'),
+      round = await graded('table-round', { asset: 'round.cube' }),
+      half = await graded('table-half', { asset: 'round.cube', intensity: 0.5 });
+    report.colorTable = { plain, round, half };
+    const near = (got, want, what) =>
+      assert.ok(
+        got.every((value, i) => Math.abs(value - want[i]) <= 3),
+        `${what}: ${got} for ${want}`,
+      );
+    near(plain, [204, 102, 51], 'the sky as the look gives it');
+    near(round, [plain[1], plain[2], plain[0]], 'the table changes the colours round');
+    near(
+      half,
+      plain.map((value, i) => (value + round[i]) / 2),
+      'half of the table is half way',
+    );
+    await assert.rejects(
+      host.preview(
+        {
+          schemaVersion: 1,
+          id: 'table-check',
+          camera: { eye: [0, 1, 0], target: [0, 1, -5] },
+          look: { grade: { lut: { asset: 'missing.cube' } } },
+          nodes: [],
+        },
+        { width: W, height: H },
+      ),
+      /colour table: cannot load missing\.cube/,
+    );
+  }
+
   // 5. Failures are reported, and the host keeps working afterwards.
   await assert.rejects(
     host.preview(scene({ asset: 'set/missing.glb' }), { width: W, height: H }),

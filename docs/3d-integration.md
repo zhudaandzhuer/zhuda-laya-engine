@@ -143,6 +143,11 @@ A character's clips are [mixed by weight and its bones bent to reach a
 point](animation-control.md): a walk into a run, a wave over a walk, a foot
 on sloping ground.
 
+The HDR chain takes [other tone curves, a colour table from a grading tool,
+edge smoothing by the shape of an edge, ambient occlusion by horizons and a
+lens flare that a wall hides](post-quality.md): `toneMapping`, `grade.lut`,
+`antialias: 'smaa'`, `aoMethod: 'gtao'`, `lensFlare`.
+
 A model's pictures can be [KTX 2 / Basis textures](basis-textures.md), which
 stay compressed on the graphics card: a quarter or an eighth of the memory
 of a PNG, with the file's own mip levels.

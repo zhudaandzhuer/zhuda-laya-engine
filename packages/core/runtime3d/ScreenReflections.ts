@@ -84,7 +84,10 @@ const VERTEX =
 // (WGSL allows sampling in uniform control flow only).
 const FRAGMENT = `#define SHADER_NAME ZhudaScreenReflectionsFS
 #include "Color.glsl";
+// The depth picture is read at high precision: a phone reads textures at low precision unless told.
+precision highp sampler2D;
 #include "Camera.glsl";
+precision lowp sampler2D;
 varying vec2 v_Texcoord0;
 float zhudaSsrDepth(vec2 at){return 1.0/(u_ZBufferParams.z*texture2D(u_CameraDepthTexture,at).x+u_ZBufferParams.w);}
 vec3 zhudaSsrRay(vec2 uv){vec2 ndc=uv*2.0-1.0;return u_ZhudaSsrForward.xyz+ndc.x*u_ZhudaSsrRight.xyz+ndc.y*u_ZhudaSsrUp.xyz;}
@@ -193,7 +196,9 @@ gl_FragColor=vec4((reflected.rgb*fade+u_ZhudaSsrSky.rgb*open)*(fresnel*u_ZhudaSs
 // down across a step in depth so that a reflection does not spread onto the sky
 // or onto a thing in front.
 const BLUR_FRAGMENT = `#define SHADER_NAME ZhudaScreenReflectionsBlurFS
+precision highp sampler2D;
 #include "Camera.glsl";
+precision lowp sampler2D;
 varying vec2 v_Texcoord0;
 float zhudaSsrBlurDepth(vec2 at){return 1.0/(u_ZBufferParams.z*texture2D(u_CameraDepthTexture,at).x+u_ZBufferParams.w);}
 void main(){

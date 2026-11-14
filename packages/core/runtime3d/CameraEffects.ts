@@ -81,7 +81,10 @@ float zhudaDofCoc(float depth){return clamp(u_ZhudaDofLens.y*(depth-u_ZhudaDofLe
 // Half size: the picture with its disc radius in alpha.
 const DOF_PREPARE_FRAGMENT = `#define SHADER_NAME ZhudaDofPrepareFS
 #include "Color.glsl";
+// The depth picture is read at high precision: a phone reads textures at low precision unless told.
+precision highp sampler2D;
 #include "Camera.glsl";
+precision lowp sampler2D;
 varying vec2 v_Texcoord0;
 ${DOF_COC}
 void main(){
@@ -122,7 +125,9 @@ gl_FragColor=vec4(sum/weight,centre.a);
 // one where it is two pixels or more.
 const DOF_COMPOSE_FRAGMENT = `#define SHADER_NAME ZhudaDofComposeFS
 #include "Color.glsl";
+precision highp sampler2D;
 #include "Camera.glsl";
+precision lowp sampler2D;
 varying vec2 v_Texcoord0;
 ${DOF_COC}
 void main(){
@@ -139,7 +144,9 @@ gl_FragColor=vec4(mix(source.rgb,soft.rgb,smoothstep(u_ZhudaDofPixel.x,u_ZhudaDo
 // the two cameras; the picture is averaged along the way between.
 const MOTION_FRAGMENT = `#define SHADER_NAME ZhudaMotionBlurFS
 #include "Color.glsl";
+precision highp sampler2D;
 #include "Camera.glsl";
+precision lowp sampler2D;
 varying vec2 v_Texcoord0;
 void main(){
 vec2 uv=v_Texcoord0;

@@ -388,6 +388,18 @@ test('grade is off unless asked for and validated with paths', async () => {
     vignette: 0,
     fringe: 0,
     antialias: 'msaa',
+    toneMapping: 'aces',
+    temperature: 0,
+    tint: 0,
+    lift: [0, 0, 0],
+    gamma: [1, 1, 1],
+    gain: [1, 1, 1],
+    bloomThreshold: 1.2,
+    bloomSoftKnee: 0.5,
+    bloomAnamorphic: 0,
+    bloomDiffusion: 4,
+    aoMethod: 'sao',
+    lut: false,
   });
   assert.equal(resolveZhudaFilmLook({ grade: false }).grade, false);
   const issues = validateZhudaFilmScene(

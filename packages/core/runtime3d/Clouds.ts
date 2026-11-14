@@ -127,7 +127,10 @@ gl_FragColor=sum/weights;
 // is the far plane, whatever the camera's is.
 const COMPOSE_FRAGMENT = `#define SHADER_NAME ZhudaCloudsComposeFS
 #include "Color.glsl";
+// The depth picture is read at high precision: a phone reads textures at low precision unless told.
+precision highp sampler2D;
 #include "Camera.glsl";
+precision lowp sampler2D;
 varying vec2 v_Texcoord0;
 ${SPAN}
 void main(){

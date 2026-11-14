@@ -197,7 +197,10 @@ const VERTEX =
   '#define SHADER_NAME ZhudaLightFogVS\nvarying vec2 v_Texcoord0;void main(){gl_Position=vec4(a_PositionTexcoord.xy,0.0,1.0);v_Texcoord0=a_PositionTexcoord.zw;}';
 const FRAGMENT = `#define SHADER_NAME ZhudaLightFogFS
 #include "Color.glsl";
+// The depth picture is read at high precision: a phone reads textures at low precision unless told.
+precision highp sampler2D;
 #include "Camera.glsl";
+precision lowp sampler2D;
 varying vec2 v_Texcoord0;
 float zhudaFogDepth(vec2 at){return 1.0/(u_ZBufferParams.z*texture2D(u_CameraDepthTexture,at).x+u_ZBufferParams.w);}
 // Fog along a ray of length t whose height changes by k per metre, per unit of density at the eye.

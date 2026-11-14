@@ -31,6 +31,12 @@ import {
   type ZhudaMotionBlurOptions,
 } from '../runtime3d/CameraEffects.ts';
 import { resolveZhudaClouds, validateZhudaClouds } from '../runtime3d/Clouds.ts';
+import { ZHUDA_TONE_MAPPINGS, type ZhudaToneMapping } from '../runtime3d/ToneCurves.ts';
+import {
+  ZHUDA_LENS_FLARE_SUN,
+  validateZhudaLensFlare,
+  type ZhudaLensFlareElement,
+} from '../runtime3d/LensFlare.ts';
 
 export type ZhudaFilmVec3 = [number, number, number];
 
@@ -133,10 +139,55 @@ export interface ZhudaFilmGrade {
    * Edge smoothing of a frame that is drawn once (a preview, a running game):
    * `msaa` multisamples the HDR target (default); `fxaa` smooths edges in one
    * pass over the finished picture, far cheaper on a phone and a little
-   * softer; `none` leaves edges as they fall. Stills and video average their
-   * samples as well, with any value.
+   * softer; `smaa` finds the shape of each edge in three passes and leaves
+   * everything that is not an edge exactly as it was (`ZhudaSmaa`); `none`
+   * leaves edges as they fall. Stills and video average their samples as
+   * well, with any value.
    */
-  antialias?: 'msaa' | 'fxaa' | 'none';
+  antialias?: 'msaa' | 'fxaa' | 'smaa' | 'none';
+  /**
+   * The curve from the scene's light to the screen's colours (default
+   * `aces`): `agx` keeps hues as colours brighten and is softer, `neutral`
+   * leaves colours below 0.76 as they are, `none` cuts off at white. See
+   * `ZhudaToneMapping`.
+   */
+  toneMapping?: ZhudaToneMapping;
+  /**
+   * White balance, each -100..100 (default 0): `temperature` above 0 is
+   * warmer, `tint` above 0 toward magenta and below 0 toward green.
+   */
+  temperature?: number;
+  tint?: number;
+  /**
+   * For red, green and blue, on the scene's light before the curve, as
+   * `(colour * gain + lift) ^ gamma`: `lift` -1..1 (default 0), `gamma`
+   * 0.1..10 (default 1; above 1 darkens the middle), `gain` 0..16 (default 1).
+   */
+  lift?: ZhudaFilmVec3;
+  gamma?: ZhudaFilmVec3;
+  gain?: ZhudaFilmVec3;
+  /** Where bloom begins, as a display value, 0..16 (default 1.2: light above 1.55 of white). */
+  bloomThreshold?: number;
+  /** How gradually bloom sets in below the threshold, 0..1 (default 0.5). */
+  bloomSoftKnee?: number;
+  /** -1..1 (default 0): above 0 the bloom is stretched sideways, below 0 upright. */
+  bloomAnamorphic?: number;
+  /** How far the bloom spreads, 1..10 (default 4): each step more doubles its reach. */
+  bloomDiffusion?: number;
+  /**
+   * How ambient occlusion is worked out (default `sao`, LayaAir's own).
+   * `gtao`: by horizons in the depth picture: open ground and the sky are
+   * left as they are, and `ao` is then a power where 1 is what the geometry
+   * hides, and its default (see `ZhudaGroundTruthAO`).
+   */
+  aoMethod?: 'sao' | 'gtao';
+  /**
+   * A colour table from a grading tool (a `.cube` file, named by asset id),
+   * applied to the finished picture; `intensity` 0..1 (default 1) is how
+   * much of it is taken. Loaded with the scene: mount with
+   * `loadZhudaFilmScene`. Off unless given.
+   */
+  lut?: { asset: string; intensity?: number } | false;
   /**
    * What a real camera adds, after tone mapping, each 0..1 and off by
    * default: film grain, darker corners and colour fringing at the corners.
@@ -216,6 +267,14 @@ export interface ZhudaFilmLook {
    * given.
    */
   clouds?: ZhudaFilmClouds | boolean;
+  /**
+   * What the sun does inside the lens: a glow, a streak and ghosts along
+   * the line through the middle of the picture, as strong as the share of
+   * the sun that nothing stands in front of (see `ZhudaLensFlare`). `true`
+   * takes the flare made for a low sun. Its place and colour come from the
+   * look's sun. Needs `grade`; off unless given.
+   */
+  lensFlare?: ZhudaFilmLensFlare | boolean;
   /**
    * Light bounced once off the scene: probes on a grid over its objects
    * capture their surroundings when the scene is mounted, and light physically
@@ -692,6 +751,16 @@ export interface ZhudaFilmScreenReflections {
   skyColor?: ZhudaFilmVec3;
 }
 
+/** The sun's flare (see `ZhudaLensFlare`); where it is and its colour come from the look. */
+export interface ZhudaFilmLensFlare {
+  /** Scales every element, 0..16 (default 1). */
+  strength?: number;
+  /** The radius round the sun that is looked up in the depth picture, a share of the picture's height (default 0.012). */
+  occlusionRadius?: number;
+  /** One to twelve elements (default `ZHUDA_LENS_FLARE_SUN`). */
+  elements?: readonly ZhudaLensFlareElement[];
+}
+
 /** A layer of clouds (see `ZhudaClouds`); their light comes from the look. */
 export interface ZhudaFilmClouds {
   /** How much of the sky is cloud, 0..1 (default 0.5). */
@@ -1047,6 +1116,7 @@ function validateLook(
       'depthOfField',
       'motionBlur',
       'clouds',
+      'lensFlare',
       'bounceLight',
       'environment',
       'panorama',
@@ -1144,6 +1214,18 @@ function validateLook(
           'vignette',
           'fringe',
           'antialias',
+          'toneMapping',
+          'temperature',
+          'tint',
+          'lift',
+          'gamma',
+          'gain',
+          'bloomThreshold',
+          'bloomSoftKnee',
+          'bloomAnamorphic',
+          'bloomDiffusion',
+          'aoMethod',
+          'lut',
         ],
         `${path}.grade`,
         issues,
@@ -1157,8 +1239,54 @@ function validateLook(
       range(g.grain, `${path}.grade.grain`, 0, 1);
       range(g.vignette, `${path}.grade.vignette`, 0, 1);
       range(g.fringe, `${path}.grade.fringe`, 0, 1);
-      if (g.antialias !== undefined && !['msaa', 'fxaa', 'none'].includes(g.antialias as string))
-        issues.push(`${path}.grade.antialias: use msaa, fxaa or none`);
+      if (
+        g.antialias !== undefined &&
+        !['msaa', 'fxaa', 'smaa', 'none'].includes(g.antialias as string)
+      )
+        issues.push(`${path}.grade.antialias: use msaa, fxaa, smaa or none`);
+      if (
+        g.toneMapping !== undefined &&
+        !ZHUDA_TONE_MAPPINGS.includes(g.toneMapping as ZhudaToneMapping)
+      )
+        issues.push(`${path}.grade.toneMapping: use ${ZHUDA_TONE_MAPPINGS.join(', ')}`);
+      range(g.temperature, `${path}.grade.temperature`, -100, 100);
+      range(g.tint, `${path}.grade.tint`, -100, 100);
+      for (const [key, lo, hi] of [
+        ['lift', -1, 1],
+        ['gamma', 0.1, 10],
+        ['gain', 0, 16],
+      ] as const) {
+        const value: unknown = g[key];
+        if (
+          value !== undefined &&
+          !(
+            Array.isArray(value) &&
+            value.length === 3 &&
+            value.every((n) => finite(n) && n >= lo && n <= hi)
+          )
+        )
+          issues.push(`${path}.grade.${key}: three numbers ${lo}..${hi}`);
+      }
+      range(g.bloomThreshold, `${path}.grade.bloomThreshold`, 0, 16);
+      range(g.bloomSoftKnee, `${path}.grade.bloomSoftKnee`, 0, 1);
+      range(g.bloomAnamorphic, `${path}.grade.bloomAnamorphic`, -1, 1);
+      range(g.bloomDiffusion, `${path}.grade.bloomDiffusion`, 1, 10);
+      if (g.aoMethod !== undefined && !['sao', 'gtao'].includes(g.aoMethod as string))
+        issues.push(`${path}.grade.aoMethod: use sao or gtao`);
+      if (g.lut !== undefined && g.lut !== false) {
+        const lut: unknown = g.lut;
+        if (!object(lut)) issues.push(`${path}.grade.lut: object or false required`);
+        else {
+          unknownKeys(lut, ['asset', 'intensity'], `${path}.grade.lut`, issues);
+          try {
+            if (typeof lut.asset !== 'string') throw Error('a string');
+            normalizeAssetId(lut.asset);
+          } catch {
+            issues.push(`${path}.grade.lut.asset: an asset id required`);
+          }
+          range(lut.intensity, `${path}.grade.lut.intensity`, 0, 1);
+        }
+      }
     }
   }
   if (look.lightFog !== undefined && look.lightFog !== false) {
@@ -1222,7 +1350,7 @@ function validateLook(
     }
   }
   const lens = (
-    name: 'autoExposure' | 'depthOfField' | 'motionBlur' | 'clouds',
+    name: 'autoExposure' | 'depthOfField' | 'motionBlur' | 'clouds' | 'lensFlare',
     validate: (options: any) => string[],
     plain: boolean,
   ) => {
@@ -1242,6 +1370,7 @@ function validateLook(
   lens('depthOfField', validateZhudaDepthOfField, false);
   lens('motionBlur', validateZhudaMotionBlur, true);
   lens('clouds', validateZhudaClouds, true);
+  lens('lensFlare', validateZhudaLensFlare, true);
   if (object(look.clouds))
     for (const key of ['sunToward', 'sunColor', 'skyColor'])
       if (key in look.clouds)
@@ -2049,6 +2178,7 @@ export function applyZhudaFilmScenePatch(
       'depthOfField',
       'motionBlur',
       'clouds',
+      'lensFlare',
       'bounceLight',
       'environment',
       'panorama',
@@ -2107,7 +2237,11 @@ export interface ZhudaResolvedFilmLook {
   shadows: Required<ZhudaFilmShadows> | false;
   atmosphere: Required<ZhudaFilmAtmosphere> | false;
   fog: Required<ZhudaFilmFog> | false;
-  grade: Required<ZhudaFilmGrade> | false;
+  grade:
+    | (Required<Omit<ZhudaFilmGrade, 'lut'>> & {
+        lut: { asset: string; intensity: number } | false;
+      })
+    | false;
   lightFog:
     | (Required<Omit<ZhudaFilmLightFog, 'shafts'>> & {
         shafts: Required<ZhudaFilmLightShafts> | false;
@@ -2118,6 +2252,9 @@ export interface ZhudaResolvedFilmLook {
   depthOfField: Required<ZhudaDepthOfFieldOptions> | false;
   motionBlur: Required<ZhudaMotionBlurOptions> | false;
   clouds: Required<ZhudaFilmClouds> | false;
+  lensFlare:
+    | { strength: number; occlusionRadius: number; elements: readonly ZhudaLensFlareElement[] }
+    | false;
   bounceLight:
     | (Required<Pick<ZhudaFilmBounceLight, 'spacing' | 'strength' | 'visibility'>> &
         Pick<ZhudaFilmBounceLight, 'min' | 'max'>)
@@ -2168,6 +2305,36 @@ export function resolveZhudaFilmLook(
     if (value === false) return false;
     if (value === undefined) return fallback ? { ...fallback } : false;
     return { ...(fallback || blank), ...value } as Required<T>;
+  };
+  const gradeOf = (grade: ZhudaFilmGrade | false | undefined): ZhudaResolvedFilmLook['grade'] => {
+    if (!grade) return false;
+    const { lut, ...values } = grade;
+    return {
+      exposure: 1,
+      contrast: 1,
+      saturation: 1,
+      bloom: 0.1,
+      // By horizons the number is a power, and 1 is what the geometry hides.
+      ao: values.aoMethod === 'gtao' ? 1 : 0.5,
+      aoRadius: 0.5,
+      grain: 0,
+      vignette: 0,
+      fringe: 0,
+      antialias: 'msaa',
+      toneMapping: 'aces',
+      temperature: 0,
+      tint: 0,
+      lift: [0, 0, 0],
+      gamma: [1, 1, 1],
+      gain: [1, 1, 1],
+      bloomThreshold: 1.2,
+      bloomSoftKnee: 0.5,
+      bloomAnamorphic: 0,
+      bloomDiffusion: 4,
+      aoMethod: 'sao',
+      ...values,
+      lut: lut ? { asset: lut.asset, intensity: lut.intensity ?? 1 } : false,
+    };
   };
   const atmosphere = merge<ZhudaFilmAtmosphere>(look.atmosphere, preset?.atmosphere ?? false, {
     thickness: 1,
@@ -2222,18 +2389,7 @@ export function resolveZhudaFilmLook(
     }),
     atmosphere,
     fog,
-    grade: merge<ZhudaFilmGrade>(look.grade, false, {
-      exposure: 1,
-      contrast: 1,
-      saturation: 1,
-      bloom: 0.1,
-      ao: 0.5,
-      aoRadius: 0.5,
-      grain: 0,
-      vignette: 0,
-      fringe: 0,
-      antialias: 'msaa',
-    }),
+    grade: gradeOf(look.grade),
     lightFog: lightFogOf(
       merge<ZhudaFilmLightFog>(look.lightFog, false, {
         density: 0.012,
@@ -2263,6 +2419,14 @@ export function resolveZhudaFilmLook(
       ? ((({ sunToward: _t, sunColor: _c, skyColor: _s, ...own }) => own)(
           resolveZhudaClouds(look.clouds === true ? {} : look.clouds),
         ) as Required<ZhudaFilmClouds>)
+      : false,
+    lensFlare: look.lensFlare
+      ? {
+          strength: 1,
+          occlusionRadius: 0.012,
+          elements: ZHUDA_LENS_FLARE_SUN,
+          ...(look.lensFlare === true ? {} : look.lensFlare),
+        }
       : false,
     bounceLight: look.bounceLight
       ? {
@@ -2361,15 +2525,19 @@ export function sampleZhudaFilmCameraPath(
  * intensity), sky and ground light colours, the flat sky colour, the values
  * of the procedural sky and of distance fog, shadow distance, strength,
  * softness, resolution, cascades and how often they are drawn, the
- * strengths of the grade (exposure, contrast, saturation, bloom, ambient
- * occlusion, grain, vignette, fringe),
+ * values of the grade (exposure, contrast, saturation, the tone curve, white
+ * balance, lift, gamma and gain, bloom and its threshold, knee, shape and
+ * spread, ambient occlusion, grain, vignette, fringe, how much of a colour
+ * table is taken), the lens flare's strength and elements,
  * the light fog's density, falloff, height, colour, scatter and reach, the
  * strength and spread of its shafts, and the sun they follow. Anything else
  * names the first part that differs: switching shadows, sky, fog, grade,
  * light fog or sky-and-ground light on or off, switching bloom, ambient
- * occlusion, the lens finish or the shafts on or off, or the shafts'
- * distance, resolution or step count. `environment` and `panorama`
- * need assets or a capture; a running look cannot change them at all.
+ * occlusion, the lens finish, the lens flare or the shafts on or off,
+ * another way of smoothing edges or of working out ambient occlusion, or
+ * the shafts' distance, resolution or step count. `environment`, `panorama`
+ * and the colour table (`colorTable`) need assets or a capture; a running
+ * look cannot change them at all.
  */
 export function zhudaFilmLookRebuildReason(
   from: ZhudaResolvedFilmLook,
@@ -2388,11 +2556,17 @@ export function zhudaFilmLookRebuildReason(
   | 'depthOfField'
   | 'motionBlur'
   | 'clouds'
+  | 'lensFlare'
+  | 'colorTable'
   | 'bounceLight'
   | null {
   const json = (value: unknown) => JSON.stringify(value);
   if (json(from.environment) !== json(to.environment)) return 'environment';
   if (json(from.panorama) !== json(to.panorama)) return 'panorama';
+  // The table is loaded with the scene; how much of it is taken is set in place.
+  const table = (look: ZhudaResolvedFilmLook) =>
+    look.grade && look.grade.lut ? look.grade.lut.asset : null;
+  if (table(from) !== table(to)) return 'colorTable';
   if (json(from.bounceLight) !== json(to.bounceLight)) return 'bounceLight';
   if (!from.shadows !== !to.shadows) return 'shadows';
   // Drawn every frame is LayaAir's own path; skipping frames puts a rule on the scene.
@@ -2412,7 +2586,10 @@ export function zhudaFilmLookRebuildReason(
           look.grade.bloom > 0,
           look.grade.ao > 0,
           look.grade.grain > 0 || look.grade.vignette > 0 || look.grade.fringe > 0,
-          look.grade.antialias === 'fxaa',
+          look.grade.antialias === 'fxaa' || look.grade.antialias === 'smaa'
+            ? look.grade.antialias
+            : 'plain',
+          look.grade.aoMethod,
         ])
       : 'off';
   if (grade(from) !== grade(to)) return 'grade';
@@ -2430,6 +2607,7 @@ export function zhudaFilmLookRebuildReason(
   if (!from.depthOfField !== !to.depthOfField) return 'depthOfField';
   if (!from.motionBlur !== !to.motionBlur) return 'motionBlur';
   if (!from.clouds !== !to.clouds) return 'clouds';
+  if (!from.lensFlare !== !to.lensFlare) return 'lensFlare';
   return null;
 }
 

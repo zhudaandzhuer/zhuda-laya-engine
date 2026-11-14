@@ -1,5 +1,6 @@
 // Generated from TypeScript source; run npm run types:generate.
 import { type ZhudaFilmLook } from './FilmScene.js';
+import { type ZhudaCubeLut } from '../runtime3d/ColorLut.js';
 import { type ZhudaLookQuality } from './LookQuality.js';
 import { type ZhudaRenderScaleOptions, type ZhudaUpscale } from '../runtime3d/RenderScale.js';
 import type { ZhudaQualityStep } from '../runtime3d/QualityGovernor.js';
@@ -34,6 +35,14 @@ export declare class ZhudaSceneLook {
     private readonly camera;
     constructor(scene3D: any, camera: any, look: ZhudaFilmLook, options?: ZhudaSceneLookOptions);
     get quality(): ZhudaLookQuality;
+    private colorTable;
+    /**
+     * The table for the look's `grade.lut`, parsed from the game's own
+     * `.cube` file (`parseZhudaCubeLut`): a scene look loads no assets, so the
+     * game hands it over. Until then, and after `null`, the picture is as it
+     * is without a table. It stays through later looks and quality levels.
+     */
+    setColorTable(table: ZhudaCubeLut | null): void;
     /** Size of the 3D picture against the canvas (1 is full size). */
     get scale(): number;
     /** How a picture drawn smaller reaches the canvas. */

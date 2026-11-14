@@ -47,6 +47,12 @@ export * from './AnimationBlend.ts';
 export * from './Ik.ts';
 export * from './BakedCrowd.ts';
 export * from './LensFinish.ts';
+export * from './ToneCurves.ts';
+export * from './ColorLut.ts';
+export * from './SmaaTables.ts';
+export * from './Smaa.ts';
+export * from './GroundTruthAO.ts';
+export * from './LensFlare.ts';
 export { installLaya342LifecycleFix } from './Laya342Adapters.ts';
 export {
   ZHUDA_NORMAL_NOMIPMAP_DEFINE,

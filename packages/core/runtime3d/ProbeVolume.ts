@@ -360,7 +360,10 @@ const CAPTURE_VERTEX =
 // The picture as it was drawn, with the distance along the view in alpha.
 const CAPTURE_FRAGMENT = `#define SHADER_NAME ZhudaProbeCaptureFS
 #include "Color.glsl";
+// The depth picture is read at high precision: a phone reads textures at low precision unless told.
+precision highp sampler2D;
 #include "Camera.glsl";
+precision lowp sampler2D;
 varying vec2 v_Texcoord0;
 void main(){
 vec4 source=texture2D(u_MainTex,v_Texcoord0);

@@ -257,7 +257,10 @@ const DEPTH_VERTEX =
 // other three channels carry what the lookup must know (see the shader above).
 const DEPTH_FRAGMENT = `#define SHADER_NAME ZhudaPointShadowDepthFS
 #include "Color.glsl";
+// The depth picture is read at high precision: a phone reads textures at low precision unless told.
+precision highp sampler2D;
 #include "Camera.glsl";
+precision lowp sampler2D;
 varying vec2 v_Texcoord0;
 void main(){
 float eye=1.0/(u_ZBufferParams.z*texture2D(u_CameraDepthTexture,v_Texcoord0).x+u_ZBufferParams.w);

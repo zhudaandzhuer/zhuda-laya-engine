@@ -3,6 +3,8 @@ import type { ZhudaFilmicPipeline } from '../runtime3d/Filmic.js';
 import type { ZhudaLightFog } from '../runtime3d/LightFog.js';
 import type { ZhudaScreenReflections } from '../runtime3d/ScreenReflections.js';
 import type { ZhudaLensFinish } from '../runtime3d/LensFinish.js';
+import type { ZhudaColorLut } from '../runtime3d/ColorLut.js';
+import type { ZhudaLensFlare } from '../runtime3d/LensFlare.js';
 import type { ZhudaAutoExposure, ZhudaDepthOfField, ZhudaMotionBlur } from '../runtime3d/CameraEffects.js';
 import type { ZhudaClouds } from '../runtime3d/Clouds.js';
 import type { ZhudaShadowUpdates } from '../runtime3d/ShadowUpdates.js';
@@ -18,6 +20,9 @@ export interface ZhudaAppliedLookParts {
     sky?: any;
     film?: ZhudaFilmicPipeline;
     finish?: ZhudaLensFinish;
+    /** The colour table of the look's grade: an unchanged picture until a table is handed over. */
+    colorTable?: ZhudaColorLut;
+    flare?: ZhudaLensFlare;
     /** The shadow update rule, when the look's shadows are not drawn every frame. */
     shadowUpdates?: ZhudaShadowUpdates;
 }

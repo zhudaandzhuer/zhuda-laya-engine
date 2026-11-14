@@ -42,6 +42,14 @@ import { ZhudaProbeVolume, zhudaProbeCounts } from '../runtime3d/ProbeVolume.ts'
 import { ZhudaEnvironmentProbe } from '../runtime3d/EnvironmentProbe.ts';
 import { ZhudaLensFinish } from '../runtime3d/LensFinish.ts';
 import { ZhudaEdgeSmoothing } from '../runtime3d/EdgeSmoothing.ts';
+import { ZhudaSmaa } from '../runtime3d/Smaa.ts';
+import {
+  ZhudaColorLut,
+  parseZhudaCubeLut,
+  zhudaIdentityCubeLut,
+  type ZhudaCubeLut,
+} from '../runtime3d/ColorLut.ts';
+import { ZhudaLensFlare } from '../runtime3d/LensFlare.ts';
 import { ZhudaShadowUpdates } from '../runtime3d/ShadowUpdates.ts';
 import { ZhudaModelInspector } from '../runtime3d/ModelInspector.ts';
 import { ZhudaModelAnimationSampler } from '../runtime3d/ModelAnimationSampler.ts';
@@ -198,6 +206,8 @@ export class ZhudaFilmAssets {
   readonly lightmaps: ZhudaAssetCache<ZhudaHdrImage>;
   /** Decoded sky panoramas (PNG or JPEG); each stage uploads its own texture. */
   readonly pictures: ZhudaAssetCache<ImageBitmap>;
+  /** Parsed colour tables (`.cube` files); each stage uploads its own texture. */
+  readonly colorTables: ZhudaAssetCache<ZhudaCubeLut>;
   private disposed = false;
   constructor(provider: AssetProvider, options: ZhudaFilmAssetsOptions = {}) {
     const maxIdle = options.maxIdle ?? 16;
@@ -222,6 +232,12 @@ export class ZhudaFilmAssets {
       (bitmap) => bitmap.close(),
       2,
     );
+    this.colorTables = createProviderAssetCache(
+      provider,
+      (asset) => parseZhudaCubeLut(new TextDecoder().decode(asset.bytes)),
+      () => {},
+      2,
+    );
   }
   /** Dispose every stage first. */
   dispose(): void {
@@ -232,6 +248,7 @@ export class ZhudaFilmAssets {
     } finally {
       this.lightmaps.dispose();
       this.pictures.dispose();
+      this.colorTables.dispose();
     }
   }
 }
@@ -341,12 +358,34 @@ export async function loadZhudaFilmScene(
       );
     }
   }
+  let colorTable: AssetLease<ZhudaCubeLut> | undefined;
+  if (resolved.grade && resolved.grade.lut) {
+    const asset = resolved.grade.lut.asset;
+    try {
+      if (!options.assets)
+        throw Error('Film scene uses a colour table; give loadZhudaFilmScene an assets library');
+      colorTable = await options.assets.colorTables.acquire(asset, { signal: options.signal });
+    } catch (error) {
+      releaseLoaded(loaded.values());
+      panorama?.release();
+      if (options.signal?.aborted || !options.assets) throw error;
+      throw Error(
+        `Film scene colour table: cannot load ${asset}: ${(error as Error)?.message ?? error}`,
+        { cause: error },
+      );
+    }
+  }
   let stage: ZhudaFilmStage;
   try {
-    stage = buildFilmStage(rootScene, scene, options, loaded);
+    stage = buildFilmStage(rootScene, scene, options, loaded, colorTable?.value);
   } catch (error) {
     panorama?.release();
+    colorTable?.release();
     throw error;
+  }
+  if (colorTable) {
+    const lease = colorTable;
+    stage.adopt(() => lease.release());
   }
   if (panorama && resolved.panorama) {
     const lease = panorama;
@@ -417,6 +456,8 @@ export function mountZhudaFilmScene(
     throw Error('Film scene captures an environment; mount it with loadZhudaFilmScene');
   if (input?.look?.panorama)
     throw Error('Film scene uses a panorama; mount it with loadZhudaFilmScene');
+  if (input?.look?.grade && input.look.grade.lut)
+    throw Error('Film scene uses a colour table; mount it with loadZhudaFilmScene');
   return buildFilmStage(rootScene, input, options, new Map());
 }
 
@@ -425,6 +466,7 @@ function buildFilmStage(
   input: ZhudaFilmScene,
   options: ZhudaFilmStageOptions,
   loaded: Map<string, LoadedFilmModel>,
+  colorTable?: ZhudaCubeLut,
 ): ZhudaFilmStage {
   const cleanups: (() => void)[] = [() => releaseLoaded(loaded.values())];
   let disposed = false;
@@ -440,7 +482,7 @@ function buildFilmStage(
     }
   };
   try {
-    return buildFilmStageContents(rootScene, input, options, loaded, cleanups, dispose);
+    return buildFilmStageContents(rootScene, input, options, loaded, cleanups, dispose, colorTable);
   } catch (error) {
     dispose();
     throw error;
@@ -454,6 +496,7 @@ function buildFilmStageContents(
   loaded: Map<string, LoadedFilmModel>,
   cleanups: (() => void)[],
   dispose: () => void,
+  colorTable?: ZhudaCubeLut,
 ): ZhudaFilmStage {
   const l = (globalThis as any).Laya;
   if (!l?.Scene3D) throw Error('Film scenes need the Laya 3D runtime');
@@ -498,7 +541,9 @@ function buildFilmStageContents(
       }
     };
     cleanups.push(releaseLook);
-    let effects = applyResolvedFilmLook(l, scene3D, camera, sun.light, look, lookCleanups);
+    let effects = applyResolvedFilmLook(l, scene3D, camera, sun.light, look, lookCleanups, {
+      colorTable,
+    });
     let lightFog = effects.lightFog;
     // What moves with shot time; filled in below, applied by `setTime`.
     const timed: ((seconds: number) => void)[] = [];
@@ -1017,7 +1062,9 @@ function buildFilmStageContents(
       water?.setSun({ toward: zhudaTowardSun(l, sun.light), color: zhudaSunRadiance(look) });
     };
     const buildLook = (resolved: ZhudaResolvedFilmLook) => {
-      effects = applyResolvedFilmLook(l, scene3D, camera, sun.light, resolved, lookCleanups);
+      effects = applyResolvedFilmLook(l, scene3D, camera, sun.light, resolved, lookCleanups, {
+        colorTable,
+      });
       lightFog = effects.lightFog;
       // A new HDR chain restored the camera's depth settings: the water still reads depth.
       if (water) {
@@ -1109,7 +1156,12 @@ function buildFilmStageContents(
     };
     const drawLook = (resolved: ZhudaResolvedFilmLook): 'updated' | 'rebuilt' => {
       const reason = zhudaFilmLookRebuildReason(look, resolved);
-      if (reason === 'environment' || reason === 'panorama' || reason === 'bounceLight')
+      if (
+        reason === 'environment' ||
+        reason === 'panorama' ||
+        reason === 'bounceLight' ||
+        reason === 'colorTable'
+      )
         throw Error(`Film stage: setLook cannot change the ${reason}; mount the scene again`);
       if (reason === null)
         updateZhudaLookInPlace(l, { scene3D, camera, sun: sun.light, parts: effects }, resolved);
@@ -1219,7 +1271,11 @@ function castsShadow(node: any) {
 }
 
 /** Shadows, procedural sky and fog, all native Laya 3.4.2 features. */
-/** Shared with `ZhudaSceneLook`: shadows, sky, fog and the HDR chain of a resolved look. */
+/**
+ * Shared with `ZhudaSceneLook`: shadows, sky, fog and the HDR chain of a
+ * resolved look. `given.colorTable` is the parsed table of `grade.lut`;
+ * without it the picture is as without a table.
+ */
 export function applyResolvedFilmLook(
   l: any,
   scene3D: any,
@@ -1227,7 +1283,10 @@ export function applyResolvedFilmLook(
   sun: any,
   look: ZhudaResolvedFilmLook,
   cleanups: (() => void)[],
+  given: { colorTable?: ZhudaCubeLut } = {},
 ): ZhudaAppliedLookParts & { finish?: ZhudaLensFinish } {
+  let colorTable: ZhudaColorLut | undefined;
+  let flare: ZhudaLensFlare | undefined;
   let lightFog: ZhudaLightFog | undefined;
   let reflections: ZhudaScreenReflections | undefined;
   let exposure: ZhudaAutoExposure | undefined;
@@ -1353,10 +1412,24 @@ export function applyResolvedFilmLook(
       cleanups.push(() => lens.dispose());
     }
     // Edges are smoothed on the finished picture, before the lens marks it.
-    let smoothing: ZhudaEdgeSmoothing | undefined;
-    if (look.grade.antialias === 'fxaa') {
-      const edges = (smoothing = new ZhudaEdgeSmoothing());
+    let smoothing: ZhudaEdgeSmoothing | ZhudaSmaa | undefined;
+    if (look.grade.antialias === 'fxaa' || look.grade.antialias === 'smaa') {
+      const edges = (smoothing =
+        look.grade.antialias === 'smaa' ? new ZhudaSmaa() : new ZhudaEdgeSmoothing());
       cleanups.push(() => edges.dispose());
+    }
+    // The colour table first of what follows the curve: edges and the lens
+    // work on the colours it gives.
+    if (look.grade.lut) {
+      const table = (colorTable = new ZhudaColorLut(given.colorTable ?? zhudaIdentityCubeLut(2), {
+        intensity: look.grade.lut.intensity,
+      }));
+      cleanups.push(() => table.dispose());
+    }
+    if (look.lensFlare) {
+      const lens = (flare = new ZhudaLensFlare(look.lensFlare));
+      lens.setLight({ toward: zhudaTowardSun(l, sun), color: zhudaSunRadiance(look) });
+      cleanups.push(() => lens.dispose());
     }
     const pipeline = (film = new ZhudaFilmicPipeline(camera, {
       // Reflections first: the fog then lies over them as over everything else.
@@ -1368,9 +1441,26 @@ export function applyResolvedFilmLook(
         // The lens after the air; the eye last, on what the lens drew.
         ...(depthOfField ? [depthOfField.effect] : []),
         ...(motionBlur ? [motionBlur.effect] : []),
+        // The flare is light inside the lens: it is not blurred by the lens's focus or motion.
+        ...(flare ? [flare.effect] : []),
         ...(exposure ? [exposure.effect] : []),
       ],
-      finishEffects: [...(smoothing ? [smoothing.effect] : []), ...(finish ? [finish.effect] : [])],
+      finishEffects: [
+        ...(colorTable ? [colorTable.effect] : []),
+        ...(smoothing ? [smoothing.effect] : []),
+        ...(finish ? [finish.effect] : []),
+      ],
+      toneMapping: look.grade.toneMapping,
+      temperature: look.grade.temperature,
+      tint: look.grade.tint,
+      lift: look.grade.lift,
+      gamma: look.grade.gamma,
+      gain: look.grade.gain,
+      bloomThreshold: look.grade.bloomThreshold,
+      bloomSoftKnee: look.grade.bloomSoftKnee,
+      bloomAnamorphic: look.grade.bloomAnamorphic,
+      bloomDiffusion: look.grade.bloomDiffusion,
+      aoMethod: look.grade.aoMethod,
       exposure: look.grade.exposure,
       contrast: look.grade.contrast,
       saturation: look.grade.saturation,
@@ -1400,6 +1490,8 @@ export function applyResolvedFilmLook(
     motionBlur,
     clouds,
     finish,
+    colorTable,
+    flare,
     sky: skyMaterial,
     film,
     shadowUpdates,

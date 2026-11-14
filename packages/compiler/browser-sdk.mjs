@@ -110,6 +110,10 @@ export async function buildBrowserSdk({
         path: 'vendor/meshoptimizer/LICENSE.txt',
         sha256: hash(fs.readFileSync(path.join(engineRoot, 'vendor/meshoptimizer/LICENSE.txt'))),
       },
+      {
+        path: 'vendor/threejs-post/LICENSE.txt',
+        sha256: hash(fs.readFileSync(path.join(engineRoot, 'vendor/threejs-post/LICENSE.txt'))),
+      },
       { path: 'dist/sdk/zhuda-laya-engine.esm.js', sha256: hash(sdk) },
       { path: 'assets/branding/layaair-tribute-mark.svg', sha256: hash(svg) },
     ];
@@ -197,6 +201,9 @@ export async function buildBrowserSdk({
     Buffer.concat([
       fs.readFileSync(path.join(engineRoot, 'LICENSE')),
       fs.readFileSync(path.join(engineRoot, 'vendor/meshoptimizer/LICENSE.txt')),
+      // The edge-smoothing tables and the tone curve constants in the bundle.
+      Buffer.from('\n'),
+      fs.readFileSync(path.join(engineRoot, 'vendor/threejs-post/LICENSE.txt')),
       ...(profiles.some((p) => p.endsWith('-webgpu'))
         ? [fs.readFileSync(path.join(engineRoot, 'vendor/laya-3.4.2/WEBGPU-LICENSES.txt'))]
         : []),

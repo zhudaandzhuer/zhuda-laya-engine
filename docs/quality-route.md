@@ -146,6 +146,13 @@ coloured lamp keeps its colour on the lamp itself up to about 2; brighter, it
 is drawn near-white and its colour shows in bloom and halo. Keep `antialias` at its default, `msaa`: it smooths edges in a
 frame that is drawn once, as a preview and a game are.
 
+The grade also names the tone curve (`toneMapping`), white balance, a colour
+table from a grading tool (`lut`), another way of smoothing edges
+(`antialias: 'smaa'`, where multisampling is too dear) and of darkening
+creases (`aoMethod: 'gtao'`, which leaves open ground and the sky as they
+are), and a look can let its sun flare (`lensFlare`): see
+[post quality](post-quality.md). None of them is on unless asked for.
+
 In a game, three more belong to the camera, each off unless the look asks:
 `autoExposure` (the picture's brightness follows what is in view, over a
 second or so: give it where a walk leads from a dark place into a bright

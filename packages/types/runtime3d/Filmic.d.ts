@@ -1,5 +1,7 @@
 // Generated from TypeScript source; run npm run types:generate.
 import type { CinematicLinearChain } from './CinematicCapture.js';
+import { ZhudaGroundTruthAO } from './GroundTruthAO.js';
+import { type ZhudaToneMapping } from './ToneCurves.js';
 /**
  * The brightest scene value, after exposure, that the lookup table of
  * LayaAir's `ColorGradEffect` holds: its log encoding ends at 58.85. A value
@@ -43,15 +45,70 @@ export declare function createPrefilteredEnvironment(spec: PrefilteredEnvironmen
     update(next: Float32Array, nextSH: readonly number[]): void;
     dispose(): void;
 };
-export interface FilmicOptions {
+/** The values of the chain that can be set while it runs (`setGrade`). */
+export interface ZhudaFilmicGrade {
     exposure?: number;
     contrast?: number;
     saturation?: number;
-    ao?: boolean;
+    bloomIntensity?: number;
     aoIntensity?: number;
     aoRadius?: number;
+    /** The curve from scene light to screen colour (default `aces`): see `ZhudaToneMapping`. */
+    toneMapping?: ZhudaToneMapping;
+    /**
+     * White balance, each -100..100 (default 0). `temperature`: above 0 warmer
+     * (toward orange), below 0 cooler (toward blue). `tint`: above 0 toward
+     * magenta, below 0 toward green.
+     */
+    temperature?: number;
+    tint?: number;
+    /**
+     * Three numbers each, for red, green and blue, applied to the scene's
+     * light before the curve as `(colour * gain + lift) ^ gamma`: `lift`
+     * (-1..1, default 0) moves the shadows, `gain` (0..16, default 1) the
+     * highlights, and `gamma` (0.1..10, default 1) bends the middle: above 1
+     * it darkens.
+     */
+    lift?: readonly number[];
+    gamma?: readonly number[];
+    gain?: readonly number[];
+    /**
+     * Where bloom begins, as a display value (default 1.2: a little above
+     * white; LayaAir turns it into light with the screen's curve).
+     */
+    bloomThreshold?: number;
+    /** How gradually bloom sets in below the threshold, 0..1 (default 0.5); 0 is a hard start. */
+    bloomSoftKnee?: number;
+    /** -1..1 (default 0): above 0 the bloom is stretched sideways, below 0 upright, as a lens with an oval opening does. */
+    bloomAnamorphic?: number;
+    /**
+     * How far the bloom spreads, 1..10 (default 4): each step more doubles
+     * its reach. The reach is a share of the picture, whatever its size.
+     */
+    bloomDiffusion?: number;
+    /** How strongly the bloom lights up the dirt picture (default 1 with a picture, else 0). */
+    bloomDirt?: number;
+}
+/** Lists what is wrong with the values of a grade, each as `name: rule`; empty when they are valid. */
+export declare function validateZhudaFilmicGrade(values: ZhudaFilmicGrade): string[];
+export interface FilmicOptions extends ZhudaFilmicGrade {
+    ao?: boolean;
+    /**
+     * How ambient occlusion is worked out (default `sao`, LayaAir's own).
+     * `gtao`: by horizons in the depth picture (`ZhudaGroundTruthAO`): open
+     * ground is left as it is, and the scene is not drawn once more for
+     * normals. Its strength is a power, 0..4, where 1 is what the geometry
+     * hides; `aoIntensity` defaults to 1 with it.
+     */
+    aoMethod?: 'sao' | 'gtao';
+    /** With `gtao`: work the occlusion out at half size (default false). */
+    aoHalfSize?: boolean;
     bloom?: boolean;
-    bloomIntensity?: number;
+    /**
+     * A picture of the marks on a lens (dust, smears): where the bloom falls
+     * on it, it lights up. Borrowed: the caller destroys it after the pipeline.
+     */
+    bloomDirtTexture?: any;
     temporalAA?: boolean;
     /**
      * Multisample the camera's HDR target (4x where the device allows it):
@@ -78,7 +135,11 @@ export declare class ZhudaFilmicPipeline {
     readonly post: any;
     readonly grade: any;
     readonly ao: any;
+    /** The occlusion by horizons, with `aoMethod: 'gtao'`; `ao` is then idle. */
+    readonly groundAO: ZhudaGroundTruthAO | undefined;
     readonly bloom: any;
+    /** The effect that darkens creases: LayaAir's, or the one by horizons. */
+    private readonly occlusion;
     private previous;
     private previousHDR;
     private disposed;
@@ -97,18 +158,22 @@ export declare class ZhudaFilmicPipeline {
     /** Update the existing ACES grading exposure multiplier. */
     setExposure(value: number): void;
     /**
-     * Sets the continuous values of the chain in place: exposure, contrast,
-     * saturation, bloom strength, and ambient occlusion strength and radius.
-     * Whether bloom or ambient occlusion run at all is fixed at construction.
+     * Sets values of the chain in place: exposure, contrast, saturation, the
+     * curve, white balance, lift, gamma and gain, bloom strength, threshold,
+     * knee, shape and spread, and ambient occlusion strength and radius. Whether bloom
+     * or ambient occlusion run at all is fixed at construction.
      */
-    setGrade(values: {
-        exposure?: number;
-        contrast?: number;
-        saturation?: number;
-        bloomIntensity?: number;
-        aoIntensity?: number;
-        aoRadius?: number;
-    }): void;
+    setGrade(values: ZhudaFilmicGrade): void;
+    private tone;
+    /** The curve in use. */
+    get toneMapping(): ZhudaToneMapping;
+    private applyGrade;
+    /**
+     * The picture of the marks on the lens that bloom lights up, and how
+     * strongly; `null` takes it away. Borrowed: the caller destroys the
+     * picture after the pipeline, or after handing over another.
+     */
+    setBloomDirt(texture: any | null, intensity?: number): void;
     /**
      * The chain's handle for a capture that averages its samples in scene-linear
      * light (see `CinematicLinearChain`): samples are drawn without tone mapping
