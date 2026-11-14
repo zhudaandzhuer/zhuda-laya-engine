@@ -216,6 +216,12 @@ export declare function createSurfaceTexture(width: number, height: number, pixe
  */
 export declare function applyZhudaAnisotropy(root: any, level?: number): number;
 export declare function createSurfaceMaterial(s: SurfaceMaterialSpec): any;
+/**
+ * How a surface is blended, cut and culled, put on its material. Also for a
+ * material whose shader was changed afterwards: LayaAir clears a material's
+ * defines and render state when it is given another shader.
+ */
+export declare function applySurfaceBlend(m: any, s: Pick<SurfaceMaterialSpec, 'type' | 'blend' | 'alphaCutoff' | 'doubleSided' | 'depthWrite'>): void;
 /** Detach borrowed texture slots before destroying an owned material. */
 export declare function disposeSurfaceMaterial(m: any): void;
 export interface CustomSurfaceShader {

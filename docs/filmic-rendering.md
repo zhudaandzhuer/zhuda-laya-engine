@@ -40,9 +40,35 @@ mesh.node.meshRenderer.castShadow = true;
 mesh.node.meshRenderer.receiveShadow = true;
 ```
 
-The hook receives **scene-linear** `baseColor` and HDR `emission`, plus `metallic`, `roughness` and `occlusion`. It modifies surface response before native PBR lighting. It does not change alpha, replace normals or inject arbitrary lighting; vertices move only through the vertex hook below, which every pass runs. The normal convention applies to both color and depth-normal passes. Tangent frames derive from UVs, including rotated/mirrored UVs; a degenerate UV has a stable fallback, but cannot describe a meaningful normal-map orientation.
+The hook receives **scene-linear** `baseColor` and HDR `emission`, plus `metallic`, `roughness`, `occlusion`, `alpha` and `normalTS`. It modifies surface response before native PBR lighting. It does not inject arbitrary lighting; vertices move only through the vertex hook below, which every pass runs. The normal convention applies to both color and depth-normal passes. Tangent frames derive from UVs, including rotated/mirrored UVs; a degenerate UV has a stable fallback, but cannot describe a meaningful normal-map orientation.
 
-Color/albedo and emission textures must be uploaded with the appropriate sRGB flag; normal and packed data maps stay linear. Native `metallicGloss` uses metallic in **R** and smoothness in **A**. `packMetallicRoughness` converts glTF G-roughness/B-metallic RGBA bytes. Smoothness is also multiplied by the material smoothness factor. Uniform names use the `u_Zhuda` prefix; typed texture uniforms must have a binding. Shader names are immutable contracts; changing GLSL, normal convention or uniform declarations requires a new name. Validation is structural; actual GPU compilation requires a draw.
+### Alpha, the normal and a cut by chance
+
+```ts
+const dissolve = new ZhudaLitSurfaceMaterial({
+  name: 'ZhudaDissolve',
+  common: true, // zhudaHash, zhudaNoise, zhudaFbm, zhudaTriplanar
+  material: { blend: 'cutout', doubleSided: true },
+  uniforms: { u_ZhudaGone: { type: 'float', value: 0 } },
+  surface: `void zhudaSurface(inout ZhudaLitSurface s, vec2 uv, vec3 p, vec3 n) {
+    float grain = zhudaFbm(p * 3.0);
+    s.alpha = step(u_ZhudaGone, grain);              // eaten away as u_ZhudaGone rises
+    s.emission += vec3(4.0, 1.2, 0.2) * smoothstep(0.08, 0.0, grain - u_ZhudaGone);
+    s.normalTS = normalize(vec3(zhudaNoise(p.xz * 40.0) - 0.5, zhudaNoise(p.zx * 40.0) - 0.5, 4.0));
+  }`,
+});
+```
+
+- **`s.alpha`** (0..1) starts as the material's own (colour, vertex colour, albedo map). Where the material is a cut-out (`material.blend: 'cutout'`, or `alphaHash`) the surface is cut by it, **and so are its shadow and the depth the camera keeps**: those passes run the hook too. They hand it the material's plain values (colour, metallic, roughness, the albedo map's alpha, the normal map) and keep only its alpha and normal; a hook that reads `u_CameraPos` reads the light's there. With `blend: 'alpha'` it is how clear the surface is.
+- **`s.normalTS`** is the normal in the surface's own frame, the one LayaAir's normal maps are in: x along the texture's u, y along its v, z out of the surface. It starts as the normal map's value, or `(0, 0, 1)`. A mesh without tangents is lit by it too: the frame is then worked out in the pixel from how the place and the texture coordinates change (WebGL 2 and WebGPU). The depth-normal pass (ambient occlusion) follows it.
+- **`alphaHash: true`** cuts by chance instead of at one threshold: a pixel is kept with the chance its alpha gives, by a pattern that stays on the object (it follows a moving or skinned mesh and keeps its grain size as the camera comes nearer). Half-clear things then need no sorting, write depth and cast a shadow as dark as they are solid, at the price of grain; temporal anti-aliasing smooths it. The material is drawn as a cut-out (`material.blend` is left out or `'cutout'`).
+- **`common: true`** lets the surface call `ZhudaCommon.glsl` ([GPU depth](gpu-depth.md)).
+- A surface that writes neither `alpha` nor `normalTS` is drawn by the same programs as before. Which it writes is read off its text (`.alpha`, `.normalTS`), comments aside.
+- `material.blend` (`'cutout'`, `'alpha'`, `'additive'`) now takes effect on a lit surface. LayaAir clears a material's defines and render state when the material is given another shader, so until 2026-11-15 every lit surface was drawn opaque whatever it asked for.
+
+Measured on WebGL and WebGPU (`npm run verify:lit-surface`): a plate cut in strips shows the floor through its gaps and casts no shadow there; cut by chance at fourteen alphas it keeps within 0.04 of its alpha and its shadow is within 0.05 of that dark; a normal tilted by 31 degrees is lit within 0.01 of the cosine to the sun, the same on a mesh with tangents and on one without.
+
+Color/albedo and emission textures must be uploaded with the appropriate sRGB flag; normal and packed data maps stay linear. Native `metallicGloss` uses metallic in **R** and smoothness in **A**. `packMetallicRoughness` converts glTF G-roughness/B-metallic RGBA bytes. Smoothness is also multiplied by the material smoothness factor. Uniform names use the `u_Zhuda` prefix; typed texture uniforms must have a binding. Shader names are immutable contracts; changing GLSL, normal convention, uniform declarations, `common` or `alphaHash` requires a new name. Validation is structural; actual GPU compilation requires a draw.
 
 `surface.dispose()` destroys its material after detaching borrowed textures. Destroy meshes/instances first; the caller owns textures. Shader registrations/program caches persist in the native runtime, so use stable shader names rather than generating one per instance.
 

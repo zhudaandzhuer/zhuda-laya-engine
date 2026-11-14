@@ -15,9 +15,30 @@ export interface ZhudaLitSurfaceSpec {
      */
     vertex?: string;
     /** void zhudaSurface(inout ZhudaLitSurface s, vec2 uv, vec3 worldPosition, vec3 worldNormal).
-     * Fields: baseColor (linear), metallic, roughness, occlusion, emission (linear HDR).
-     * Geometry, alpha and normal maps retain the native PBR shadow/depth contract. */
+     * Fields: baseColor (linear), metallic, roughness, occlusion, emission
+     * (linear HDR), alpha (0..1) and normalTS (the normal in the surface's own
+     * frame: x along the texture's u, y along its v, z out of the surface;
+     * (0, 0, 1) leaves it as it is).
+     *
+     * A surface that writes `alpha` is cut by it where the material is a
+     * cut-out (`material.blend: 'cutout'`, or `alphaHash`), and its shadow and
+     * its depth are cut the same way: those passes run the hook too, with the
+     * material's plain colour and maps, and keep only its alpha and normal. A
+     * surface that writes `normalTS` is lit by that normal, on a mesh with
+     * tangents or without (the frame then comes from the texture coordinates).
+     * A surface that writes neither is drawn as before. */
     surface: string;
+    /** The surface may call `ZhudaCommon.glsl`: hash, noise, fractal noise, triplanar. */
+    common?: boolean;
+    /**
+     * Cut by chance instead of at one threshold: a pixel is kept with the
+     * chance its alpha gives, by a pattern that stays on the object (it does
+     * not swim as the camera or the object moves, and it follows a skinned
+     * mesh). Half-clear things then sort themselves, cast half a shadow and
+     * write depth, at the price of grain; temporal anti-aliasing smooths it.
+     * The material is drawn as a cut-out.
+     */
+    alphaHash?: boolean;
     /** Native Laya textures use -Y (DirectX). Most scanned/glTF maps use +Y (OpenGL). */
     normalConvention?: 'directx' | 'opengl';
     /**
@@ -59,15 +80,47 @@ export interface ZhudaLitShading {
 }
 /** Problems with a vertex hook; an empty list means it can be compiled into the lit passes. */
 export declare function validateZhudaLitVertexHook(vertex: unknown): string[];
+/** What the fragment programs of a lit material need from its vertex programs. */
+export interface ZhudaLitVertexNeeds {
+    /** Each vertex's place in its own mesh, for the pattern of `alphaHash`. */
+    objectPosition?: boolean;
+    /** The shadow pass runs the surface hook: it needs the place, the normal, the texture coordinates. */
+    shadowSurface?: boolean;
+}
 /**
  * The three vertex programs of a lit material. Without a hook they are the
  * native templates unchanged; with one, each pass runs `zhudaVertex` on the
- * world-space position and normal before projecting. Pure: no Laya needed.
+ * world-space position and normal before projecting. `needs` adds what a
+ * surface that is cut hands to its fragment programs. Pure: no Laya needed.
  */
-export declare function buildZhudaLitVertexShaders(vertex?: string): {
+export declare function buildZhudaLitVertexShaders(vertex?: string, needs?: ZhudaLitVertexNeeds): {
     forward: string;
     shadow: string;
     depth: string;
+};
+/** Which of the fields added after the first five a surface's text touches. */
+export declare function zhudaLitSurfaceWrites(surface: string): {
+    alpha: boolean;
+    normal: boolean;
+};
+export interface ZhudaLitFragmentOptions {
+    surface: string;
+    uniforms?: Record<string, ShaderUniformSpec>;
+    normalConvention?: 'directx' | 'opengl';
+    backFaces?: 'mirrored' | 'same';
+    common?: boolean;
+    alphaHash?: boolean;
+}
+/**
+ * The three fragment programs of a lit material, and which of the passes
+ * that draw no colour run the surface hook. Pure: no Laya needed.
+ */
+export declare function buildZhudaLitFragmentShaders(spec: ZhudaLitFragmentOptions, shading?: ZhudaLitShading): {
+    forward: string;
+    shadow: string;
+    depth: string;
+    shadowHook: boolean;
+    depthHook: boolean;
 };
 /** Native Laya PBR lighting, IBL, shadows, depth normals and instancing with a bounded surface hook. */
 export declare class ZhudaLitSurfaceMaterial {

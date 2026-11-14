@@ -216,6 +216,17 @@ export const API_GUARDRAILS = [
       'Compute exists on WebGPU only: check pass.backend, and give the pass a JavaScript step or it refuses with COMPUTE_UNAVAILABLE on WebGL. One index of a step must read and write its own elements. The surface pictures are written by PBR and glTF materials, not by custom shader materials. See docs/gpu-depth.md.',
   },
   {
+    id: 'GUARD_LIT_SURFACE_ALPHA',
+    topic:
+      'lit surface hook alpha cutout dissolve alphaTest alphaHash hashed alpha stochastic transparency normalTS procedural normal bump onBeforeCompile shadow of cut-out material',
+    hallucinatedLegacyApi:
+      'material.alphaHash = true; material.onBeforeCompile = (shader) => { shader.fragmentShader = shader.fragmentShader.replace("#include <alphatest_fragment>", "if (noise < threshold) discard;") }; mesh.customDepthMaterial = depthMaterial; material.normalNode = bumpMap(...)',
+    zhudaCanonicalApi:
+      "new ZhudaLitSurfaceMaterial({ name: 'ZhudaDissolve', common: true, material: { blend: 'cutout', doubleSided: true }, uniforms: { u_ZhudaGone: { type: 'float', value: 0 } }, surface: 'void zhudaSurface(inout ZhudaLitSurface s, vec2 uv, vec3 p, vec3 n){ s.alpha = step(u_ZhudaGone, zhudaFbm(p * 3.0)); s.normalTS = normalize(vec3(0.2, 0.0, 1.0)); }' }). Cut by chance (half-clear without sorting, a shadow as dark as it is solid): alphaHash: true.",
+    reason:
+      'The shadow and depth passes run the same hook, so no second material is needed for a cut-out shadow. normalTS is in the frame of LayaAir normal maps (x along u, y along v, z out) and works on meshes without tangents. alphaHash is a cut-out: do not combine it with blend alpha. A shader name is a contract: common and alphaHash are part of it. See docs/filmic-rendering.md.',
+  },
+  {
     id: 'GUARD_INIT_BOOT',
     topic: '引擎啟動與 Stage 初始化',
     hallucinatedLegacyApi: 'Laya.init(1280, 720, Laya.WebGL); Laya.MiniAdpter.init();',

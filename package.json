@@ -179,6 +179,7 @@
     "verify:backend-delivery": "node scripts/verify-backend-delivery.mjs",
     "verify:developer-tooling": "node scripts/verify-developer-tooling.mjs",
     "verify:gpu-depth": "node scripts/verify-gpu-depth.mjs",
+    "verify:lit-surface": "node scripts/verify-lit-surface.mjs",
     "verify:instanced-mesh": "node scripts/verify-instanced-mesh.mjs",
     "verify:animation-control": "node scripts/verify-animation-control.mjs",
     "verify:specular-aa": "node scripts/verify-specular-aa.mjs",

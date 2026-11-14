@@ -165,3 +165,100 @@ Decision: **Implemented within scope**, the status `docs/plans/README.md`
 defines for an implementation whose stated checks passed with device work
 still listed, and the one its row and the task document carry. Not
 **Accepted**: no phone was run.
+
+## The rest of WP7: a lit surface's alpha, normal and cut by chance (2026-11-15)
+
+The plan's WP7 also asked `ZhudaLitSurfaceMaterial` to let its hook write
+`alpha` and `normalTS`, and to have an alpha-hash cut-out. It was left out
+of the first round (see the task document's non-goals) and is done here,
+on top of `8251c99`. Use: `docs/filmic-rendering.md`, "Alpha, the normal
+and a cut by chance".
+
+| Check | Exact command or procedure | Result |
+| --- | --- | --- |
+| Build, types, declarations, doctor, tests | `npm run verify` | PASS, 744 of 744 (6 in `tests/lit-surface.test.mjs`) |
+| Format, lint, whitespace | `npm run format:check`, `npm run lint`, `git diff --check` | PASS |
+| Lit surface, WebGL | `npm run verify:lit-surface` | PASS |
+| Lit surface, WebGPU | `LIT_SURFACE_RENDERER=webgpu npm run verify:lit-surface` | PASS |
+| The draws that use lit surfaces | grass, stylized-shading, instanced-mesh, live-look, developer-tooling, specular-aa, gpu-depth, physical-surfaces, film-finishes, and lit-surface again, on each backend | PASS, 20 of 20 |
+
+Environment as above (Apple M4, Chrome headless; WebGPU adapter apple /
+metal-3), 320 by 240. Evidence: `batch2-evidence/tails/lit-surface/` in the
+session's notes folder. The same numbers on both backends.
+
+- **Cut by the hook's alpha.** A red plate over a floor under a sun
+  straight above, its hook cutting strips two metres apart
+  (`material.blend: 'cutout'`). At a strip the plate is drawn (250, 94, 94);
+  at a gap the floor behind shows (157, 157, 157, the floor's own colour).
+  The floor under a strip is in shadow (40), the floor under a gap is as
+  light as the floor beside the plate (157). The same plate with a hook
+  that writes no alpha is red in the middle and shadows the floor there
+  (40): the shadow pass does ask the hook.
+- **The depth the camera keeps** (drawn to the screen by a view in the
+  fixture, 20 metres to white): 99.7 at a strip (7.8 m, the plate), 143 at
+  a gap (11.1 m, the floor behind); the whole plate 99.7 at both. The depth
+  kept with the normals for ambient occlusion: 77 at a strip, 112 at a gap,
+  77 at both on the whole plate.
+- **Cut by chance** (`alphaHash`), the share of the plate's 4,480 pixels
+  kept, and how much of the sun the plate keeps off the floor under it:
+
+  | alpha | 0 | 0.1 | 0.2 | 0.25 | 0.3 | 0.4 | 0.5 | 0.6 | 0.7 | 0.75 | 0.8 | 0.9 | 0.95 | 1 |
+  | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+  | kept | 0 | 0.091 | 0.19 | 0.24 | 0.285 | 0.38 | 0.488 | 0.568 | 0.661 | 0.712 | 0.763 | 0.881 | 0.952 | 1 |
+  | shadow | 0 | 0.095 | 0.187 | 0.234 | 0.298 | 0.385 | 0.471 | 0.567 | 0.655 | 0.707 | 0.768 | 0.881 | 0.941 | 1 |
+
+  Within 0.04 of the alpha (0.05 for the shadow); the two go together
+  because the shadow is cut by the same pattern. A frame drawn again is the
+  same picture, pixel for pixel. The plate moved sideways by six pixels of
+  its middle row: that row shows the pattern it showed, six pixels on (128
+  of 128 pixels); compared in place, half of them (0.5), as two unrelated
+  patterns would.
+- **A normal written by the hook**, 31 degrees off the surface's own, along
+  and against the texture's u and v, under a sun 30 degrees from straight
+  above and with no other light. The light the matt surface takes, against
+  the cosine to the sun: along u 1.053 for 1.048, against u 0.673 for
+  0.667, along v 1.085 for 1.085, against v 0.640 for 0.630. On a mesh
+  without tangents every one of them is the same number as on the mesh with
+  them (to four decimals), and `(0, 0, 1)` is the same as a hook that
+  writes no normal. The normal kept for ambient occlusion moves with the
+  tilt on both meshes ((128, 168) flat, (153, 164) along u, (128, 145)
+  along v).
+- **The example in the documentation** (noise from `ZhudaCommon.glsl` eats
+  a plate away, the edge glows, the normal is roughened) compiles in all
+  three passes: nothing gone, the whole plate and a full shadow; half gone,
+  0.23 of it left and 0.17 glowing, the shadow 0.43 of full; all gone, no
+  plate and no shadow.
+- Nothing left behind by any of the four.
+
+Found on the way:
+
+- **`material.blend` never took effect on a lit surface.** LayaAir clears
+  a material's defines and render state when the material is given another
+  shader (`setShaderName`), and the lit surface puts its own shader on a
+  PBR material after the blend was set. A lit surface asked to be a
+  cut-out, alpha-blended or additive was drawn opaque (the first run of
+  this check: the "cut" plate was whole). The blend is put back after the
+  shader now (`applySurfaceBlend`). `ZhudaToonMaterial` is built on the
+  same class and gets the same.
+- LayaAir's camera hands its depth pictures back to the pool at the next
+  frame it draws, not when it is destroyed: a camera destroyed in the frame
+  its depth mode was switched off keeps two render textures out of the
+  pool.
+- The engine's hash of three numbers is even on a flat sheet (one of the
+  three constant) to within 0.01 at a thousand cells, emulated in 32-bit
+  floats; the 0.04 above is what a thousand cells give.
+
+Not verified, not built:
+
+- No phone. Derivatives in a cut-out's shadow pass on a phone's GPU, and
+  the cost of running the hook three times, were not measured.
+- WebGL 1 (no derivatives): the hash has cells of one size and a normal on
+  a mesh without tangents is left as the mesh's; neither was drawn.
+- `blend: 'alpha'` and `'additive'` on a lit surface are put on the
+  material (unit-tested); neither was drawn here.
+- A cut-out toon material (`ZhudaToonMaterial` with a hook that writes
+  alpha) was not drawn. Its outline hull has its own fragment program,
+  which cuts by the material's own alpha and does not run the hook.
+- Alpha to coverage with multisampling is not used: the cut is per pixel.
+- The hook in the shadow and depth passes starts from the material's plain
+  values; detail maps, clear coat and vertex-colour tint are not there.

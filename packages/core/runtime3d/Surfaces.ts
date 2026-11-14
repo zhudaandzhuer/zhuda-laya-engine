@@ -683,6 +683,19 @@ export function createSurfaceMaterial(s: SurfaceMaterialSpec) {
         } as any
       )[key]
     ] = value?.bitmap || value;
+  applySurfaceBlend(m, s);
+  return m;
+}
+/**
+ * How a surface is blended, cut and culled, put on its material. Also for a
+ * material whose shader was changed afterwards: LayaAir clears a material's
+ * defines and render state when it is given another shader.
+ */
+export function applySurfaceBlend(
+  m: any,
+  s: Pick<SurfaceMaterialSpec, 'type' | 'blend' | 'alphaCutoff' | 'doubleSided' | 'depthWrite'>,
+): void {
+  const l = (globalThis as any).Laya;
   const blend = s.blend || 'opaque',
     Class = s.type === 'pbr' ? l.PBRStandardMaterial : l.UnlitMaterial;
   // LayaAir 3.4.2 names the modes of its PBR material in an enum of their own
@@ -701,7 +714,6 @@ export function createSurfaceMaterial(s: SurfaceMaterialSpec) {
   }
   if (s.doubleSided) m.cull = l.RenderState.CULL_NONE;
   m.depthWrite = s.depthWrite ?? (blend === 'opaque' || blend === 'cutout');
-  return m;
 }
 /** Detach borrowed texture slots before destroying an owned material. */
 export function disposeSurfaceMaterial(m: any) {

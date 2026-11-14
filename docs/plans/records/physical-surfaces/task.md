@@ -92,7 +92,8 @@ spec the validator passes is one that is drawn.
 ## Non-goals
 
 - Film scene materials; `Zhuda3D.createMaterial`; `ZhudaLitSurfaceMaterial`
-  (its `alpha`, `normalTS` and alpha-hash widening in WP7 is not done here).
+  (its `alpha`, `normalTS` and alpha-hash widening in WP7 was done on
+  2026-11-15: see the verification record's last section).
 - Texture transforms (`KHR_texture_transform` uniforms), dispersion, a
   back-face pass so glass shows glass behind it, bicubic refraction.
 - Phones, mini-game hosts, frame cost.

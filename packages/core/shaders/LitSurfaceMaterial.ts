@@ -1,4 +1,5 @@
 import {
+  applySurfaceBlend,
   createSurfaceMaterial,
   disposeSurfaceMaterial,
   type SurfaceMaterialSpec,
@@ -10,6 +11,7 @@ import {
   registerZhudaInstanceTintShader,
 } from '../runtime3d/InstancedMesh.ts';
 import { validateShaderSpec, type ShaderUniformSpec } from './ShaderMaterials.ts';
+import { ZHUDA_COMMON_INCLUDE, registerZhudaCommon } from './ZhudaCommon.ts';
 import {
   litVertex,
   litFragment,
@@ -33,9 +35,30 @@ export interface ZhudaLitSurfaceSpec {
    */
   vertex?: string;
   /** void zhudaSurface(inout ZhudaLitSurface s, vec2 uv, vec3 worldPosition, vec3 worldNormal).
-   * Fields: baseColor (linear), metallic, roughness, occlusion, emission (linear HDR).
-   * Geometry, alpha and normal maps retain the native PBR shadow/depth contract. */
+   * Fields: baseColor (linear), metallic, roughness, occlusion, emission
+   * (linear HDR), alpha (0..1) and normalTS (the normal in the surface's own
+   * frame: x along the texture's u, y along its v, z out of the surface;
+   * (0, 0, 1) leaves it as it is).
+   *
+   * A surface that writes `alpha` is cut by it where the material is a
+   * cut-out (`material.blend: 'cutout'`, or `alphaHash`), and its shadow and
+   * its depth are cut the same way: those passes run the hook too, with the
+   * material's plain colour and maps, and keep only its alpha and normal. A
+   * surface that writes `normalTS` is lit by that normal, on a mesh with
+   * tangents or without (the frame then comes from the texture coordinates).
+   * A surface that writes neither is drawn as before. */
   surface: string;
+  /** The surface may call `ZhudaCommon.glsl`: hash, noise, fractal noise, triplanar. */
+  common?: boolean;
+  /**
+   * Cut by chance instead of at one threshold: a pixel is kept with the
+   * chance its alpha gives, by a pattern that stays on the object (it does
+   * not swim as the camera or the object moves, and it follows a skinned
+   * mesh). Half-clear things then sort themselves, cast half a shadow and
+   * write depth, at the price of grain; temporal anti-aliasing smooths it.
+   * The material is drawn as a cut-out.
+   */
+  alphaHash?: boolean;
   /** Native Laya textures use -Y (DirectX). Most scanned/glTF maps use +Y (OpenGL). */
   normalConvention?: 'directx' | 'opengl';
   /**
@@ -115,37 +138,253 @@ const replaceOnce = (source: string, find: string, replacement: string) => {
     throw Error('Lit template changed; the vertex hook cannot be placed');
   return source.slice(0, at) + replacement + source.slice(at + find.length);
 };
+/** What the fragment programs of a lit material need from its vertex programs. */
+export interface ZhudaLitVertexNeeds {
+  /** Each vertex's place in its own mesh, for the pattern of `alphaHash`. */
+  objectPosition?: boolean;
+  /** The shadow pass runs the surface hook: it needs the place, the normal, the texture coordinates. */
+  shadowSurface?: boolean;
+}
+const SHADOW_SURFACE_VARYINGS =
+  '\nvarying vec3 v_ZhudaShadowPositionWS;varying vec3 v_ZhudaShadowNormalWS;varying vec2 v_ZhudaShadowUV;varying float v_ZhudaShadowVertexAlpha;\n';
+const SHADOW_SURFACE_PASS = `v_ZhudaShadowPositionWS=positionWS;v_ZhudaShadowNormalWS=normalWS;
+#ifdef UV
+v_ZhudaShadowUV=vertex.texCoord0;
+#else
+v_ZhudaShadowUV=vec2(0.0);
+#endif
+#if defined(COLOR) && defined(ENABLEVERTEXCOLOR)
+v_ZhudaShadowVertexAlpha=vertex.vertexColor.a;
+#else
+v_ZhudaShadowVertexAlpha=1.0;
+#endif
+`;
 /**
  * The three vertex programs of a lit material. Without a hook they are the
  * native templates unchanged; with one, each pass runs `zhudaVertex` on the
- * world-space position and normal before projecting. Pure: no Laya needed.
+ * world-space position and normal before projecting. `needs` adds what a
+ * surface that is cut hands to its fragment programs. Pure: no Laya needed.
  */
-export function buildZhudaLitVertexShaders(vertex?: string): {
+export function buildZhudaLitVertexShaders(
+  vertex?: string,
+  needs: ZhudaLitVertexNeeds = {},
+): {
   forward: string;
   shadow: string;
   depth: string;
 } {
-  if (vertex === undefined)
-    return { forward: litVertex, shadow: litShadowVertex, depth: litDepthVertex };
-  const errors = validateZhudaLitVertexHook(vertex);
-  if (errors.length) throw Error(errors.join('; '));
-  const hook = vertex + '\n' + VERTEX_APPLY;
-  const forward = replaceOnce(
-    replaceOnce(litVertex, 'void main(){', hook + 'void main(){'),
-    'PixelParams pixel;initPixelParams(pixel,vertex);',
-    'PixelParams pixel;initPixelParams(pixel,vertex);zhudaApplyVertex(pixel,vertex);sharePixelParams(pixel);',
-  );
-  const depth = replaceOnce(
-    replaceOnce(litDepthVertex, 'void main(){', hook + 'void main(){'),
-    'initPixelParams(pixel,vertex);sharePixelParams(pixel);',
-    'initPixelParams(pixel,vertex);zhudaApplyVertex(pixel,vertex);sharePixelParams(pixel);',
-  );
-  const shadow = replaceOnce(
-    replaceOnce(litShadowVertex, 'void main(){', vertex + '\nvoid main(){'),
-    'vec4 positionCS=DepthPositionCS(positionWS,normalWS);',
-    SHADOW_APPLY + 'vec4 positionCS=DepthPositionCS(positionWS,normalWS);',
-  );
+  let forward = litVertex,
+    shadow = litShadowVertex,
+    depth = litDepthVertex;
+  if (vertex !== undefined) {
+    const errors = validateZhudaLitVertexHook(vertex);
+    if (errors.length) throw Error(errors.join('; '));
+    const hook = vertex + '\n' + VERTEX_APPLY;
+    forward = replaceOnce(
+      replaceOnce(forward, 'void main(){', hook + 'void main(){'),
+      'PixelParams pixel;initPixelParams(pixel,vertex);',
+      'PixelParams pixel;initPixelParams(pixel,vertex);zhudaApplyVertex(pixel,vertex);sharePixelParams(pixel);',
+    );
+    depth = replaceOnce(
+      replaceOnce(depth, 'void main(){', hook + 'void main(){'),
+      'initPixelParams(pixel,vertex);sharePixelParams(pixel);',
+      'initPixelParams(pixel,vertex);zhudaApplyVertex(pixel,vertex);sharePixelParams(pixel);',
+    );
+    shadow = replaceOnce(
+      replaceOnce(shadow, 'void main(){', vertex + '\nvoid main(){'),
+      'vec4 positionCS=DepthPositionCS(positionWS,normalWS);',
+      SHADOW_APPLY + 'vec4 positionCS=DepthPositionCS(positionWS,normalWS);',
+    );
+  }
+  if (needs.shadowSurface)
+    // After the vertex hook: the surface is asked about the place the vertex moved to.
+    shadow = replaceOnce(
+      replaceOnce(shadow, 'void main(){', SHADOW_SURFACE_VARYINGS + 'void main(){'),
+      'vec4 positionCS=DepthPositionCS(positionWS,normalWS);',
+      SHADOW_SURFACE_PASS + 'vec4 positionCS=DepthPositionCS(positionWS,normalWS);',
+    );
+  if (needs.objectPosition) {
+    const place = (source: string) =>
+      replaceOnce(
+        replaceOnce(source, 'void main(){', OBJECT_VARYING + 'void main(){'),
+        'Vertex vertex;getVertexParams(vertex);',
+        'Vertex vertex;getVertexParams(vertex);v_ZhudaObjectPosition=vertex.positionOS;',
+      );
+    forward = place(forward);
+    shadow = place(shadow);
+    depth = place(depth);
+  }
   return { forward, shadow, depth };
+}
+const stripComments = (code: string) => code.replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, '');
+/** Which of the fields added after the first five a surface's text touches. */
+export function zhudaLitSurfaceWrites(surface: string): { alpha: boolean; normal: boolean } {
+  const code = stripComments(surface);
+  return { alpha: /\.\s*alpha\b/.test(code), normal: /\.\s*normalTS\b/.test(code) };
+}
+const SURFACE_STRUCT =
+  'struct ZhudaLitSurface {vec3 baseColor;float metallic;float roughness;float occlusion;vec3 emission;float alpha;vec3 normalTS;};';
+/** The varying a copy's own place in its mesh arrives in, for the pattern of `alphaHash`. */
+const OBJECT_VARYING = '\nvarying vec3 v_ZhudaObjectPosition;\n';
+/**
+ * Hashed alpha testing (Wyman and McGuire 2017): the threshold is a hash of
+ * the place on the object, in cells about a pixel wide, blended between the
+ * two nearest sizes of cell so that it does not jump as the object comes
+ * nearer. Without derivatives (WebGL 1) the cells have one size.
+ */
+const ALPHA_HASH = `${OBJECT_VARYING}#ifdef GRAPHICS_API_GLES3
+float zhudaAlphaHash(vec3 p){float span=max(length(dFdx(p)),length(dFdy(p)));float cells=1.0/max(span*1.5,1.0e-6);float size=log2(cells);float low=exp2(floor(size)),high=exp2(ceil(size));float f=fract(size);float x=mix(zhudaHash(floor(low*p)),zhudaHash(floor(high*p)),f);float w=max(min(f,1.0-f),1.0e-4);float t=x<1.0-w?(x<w?x*x/(2.0*w*(1.0-w)):(x-0.5*w)/(1.0-w)):1.0-(1.0-x)*(1.0-x)/(2.0*w*(1.0-w));return clamp(t,1.0e-4,1.0);}
+#endif
+#ifndef GRAPHICS_API_GLES3
+float zhudaAlphaHash(vec3 p){return clamp(zhudaHash(floor(p*64.0)),1.0e-4,1.0);}
+#endif
+`;
+/**
+ * The normal a surface wrote, in the world. With tangents it goes through
+ * LayaAir's own frame; without, through one worked out from how the place
+ * and the texture coordinates change across the pixel.
+ */
+// Which way LayaAir's own second axis runs along the texture's v.
+const FRAME_V = '1.0';
+const NORMAL_FRAME = `
+vec3 zhudaSurfaceNormal(in PixelParams p,vec3 n,vec2 uv){
+#ifdef TANGENT
+return normalize(p.TBN*n);
+#endif
+#ifndef TANGENT
+#ifdef GRAPHICS_API_GLES3
+vec3 dx=dFdx(p.positionWS),dy=dFdy(p.positionWS);vec2 ux=dFdx(uv),uy=dFdy(uv);vec3 a=cross(dy,p.normalWS),b=cross(p.normalWS,dx);vec3 t=a*ux.x+b*uy.x,c=a*ux.y+b*uy.y;float longest=max(dot(t,t),dot(c,c));if(longest<1.0e-20)return p.normalWS;float k=inversesqrt(longest);return normalize(t*k*n.x+c*k*n.y*(${FRAME_V})+p.normalWS*n.z);
+#endif
+#ifndef GRAPHICS_API_GLES3
+return p.normalWS;
+#endif
+#endif
+}
+`;
+const cleanNormal =
+  'vec3 zhudaN=s.normalTS;zhudaN=dot(zhudaN,zhudaN)>1.0e-8?normalize(zhudaN):vec3(0.0,0.0,1.0);';
+/** The material's plain values, for the passes that draw no colour. */
+const PLAIN_SURFACE = (
+  uv: string,
+  vertexAlpha: string,
+) => `ZhudaLitSurface s;s.baseColor=u_AlbedoColor.rgb;s.metallic=u_Metallic;s.roughness=1.0-u_Smoothness;s.occlusion=1.0;s.emission=vec3(0.0);s.alpha=u_AlbedoColor.a*${vertexAlpha};s.normalTS=vec3(0.0,0.0,1.0);
+#ifdef ALBEDOTEXTURE
+s.alpha*=texture2D(u_AlbedoTexture,transformUV(${uv},u_TilingOffset)).a;
+#endif
+`;
+export interface ZhudaLitFragmentOptions {
+  surface: string;
+  uniforms?: Record<string, ShaderUniformSpec>;
+  normalConvention?: 'directx' | 'opengl';
+  backFaces?: 'mirrored' | 'same';
+  common?: boolean;
+  alphaHash?: boolean;
+}
+/**
+ * The three fragment programs of a lit material, and which of the passes
+ * that draw no colour run the surface hook. Pure: no Laya needed.
+ */
+export function buildZhudaLitFragmentShaders(
+  spec: ZhudaLitFragmentOptions,
+  shading?: ZhudaLitShading,
+): { forward: string; shadow: string; depth: string; shadowHook: boolean; depthHook: boolean } {
+  const uniforms = spec.uniforms || {};
+  const writes = zhudaLitSurfaceWrites(spec.surface);
+  const hash = spec.alphaHash === true;
+  const library = spec.common || hash ? `#include "${ZHUDA_COMMON_INCLUDE}";\n` : '';
+  const helper = Object.entries(uniforms)
+    .filter(([, u]) => u.type === 'texture2D')
+    .map(
+      ([k]) =>
+        `vec4 zhudaSample_${k}(vec2 uv){vec4 c=texture2D(${k},uv);\n#ifdef Gamma_${k}\nc=gammaToLinear(c);\n#endif\nreturn c;}`,
+    )
+    .join('\n');
+  const frame = writes.normal ? NORMAL_FRAME : '';
+  // The shadow pass has no frame to turn a normal with, and no use for one.
+  const declare = (withFrame: boolean) =>
+    `${SURFACE_STRUCT}\n${helper}\n${hash ? ALPHA_HASH : ''}${withFrame ? frame : ''}${spec.surface}\n`;
+  const declarations = declare(true);
+  const hook = `${TINT_VARYING}${declarations}`;
+  const threshold = hash ? 'float zhudaThreshold=zhudaAlphaHash(v_ZhudaObjectPosition);' : '';
+  const call = `initSurfaceInputs(inputs,pixel);${threshold}ZhudaLitSurface s;s.baseColor=inputs.diffuseColor;s.metallic=inputs.metallic;s.roughness=1.0-inputs.smoothness;s.occlusion=inputs.occlusion;s.emission=inputs.emissionColor;s.alpha=inputs.alpha;s.normalTS=inputs.normalTS;${TINT_APPLY}#ifdef UV\nvec2 zhudaUV=pixel.uv0;\n#else\nvec2 zhudaUV=vec2(0.0);\n#endif\nzhudaSurface(s,zhudaUV,pixel.positionWS,pixel.normalWS);inputs.diffuseColor=max(s.baseColor,vec3(0.0));inputs.metallic=clamp(s.metallic,0.0,1.0);inputs.smoothness=1.0-clamp(s.roughness,0.04,1.0);inputs.occlusion=clamp(s.occlusion,0.0,1.0);inputs.emissionColor=max(s.emission,vec3(0.0));${
+    writes.alpha ? 'inputs.alpha=clamp(s.alpha,0.0,1.0);' : ''
+  }${
+    writes.normal
+      ? `${cleanNormal}inputs.normalTS=zhudaN;\n#ifndef TANGENT\npixel.normalWS=zhudaSurfaceNormal(pixel,zhudaN,zhudaUV);\n#endif\n`
+      : ''
+  }${hash ? 'inputs.alphaTest=zhudaThreshold;' : ''}`;
+  const normals = (source: string) =>
+    spec.normalConvention === 'opengl'
+      ? source.replace(
+          /\b(?:normalSampler|detailnormalSampler|clearCoatNormalSampler)\.y\*=-1\.0;/g,
+          '',
+        )
+      : source;
+  // LayaAir turns the normal of a back face round as it reads the pixel;
+  // `same` turns it back before anything is lit.
+  const backs = (source: string) =>
+    spec.backFaces === 'same'
+      ? replaceOnce(
+          source,
+          'getPixelParams(pixel);',
+          'getPixelParams(pixel);if(!gl_FrontFacing){pixel.normalWS=-pixel.normalWS;pixel.tangentWS=-pixel.tangentWS;pixel.biNormalWS=-pixel.biNormalWS;pixel.TBN=mat3(pixel.tangentWS,pixel.biNormalWS,pixel.normalWS);}',
+        )
+      : source;
+  const included = (source: string, after: string) =>
+    library ? replaceOnce(source, after, after + library) : source;
+  const hooked = included(backs(normals(litFragment)), '#include "PBRMetallicFrag.glsl";\n')
+    .replace('void main(){', hook + 'void main(){')
+    .replace('initSurfaceInputs(inputs,pixel);', call);
+  const forward = shading
+    ? replaceOnce(
+        replaceOnce(hooked, 'void main(){', shading.functions + '\nvoid main(){'),
+        'PBR_Metallic_Flow(inputs,pixel)',
+        shading.flow + '(inputs,pixel)',
+      )
+    : hooked;
+  // The shadow and the depth of a cut surface are cut by the same hook.
+  const shadowHook = writes.alpha || hash;
+  const depthHook = shadowHook || writes.normal;
+  const limit = hash ? 'zhudaThreshold' : 'u_AlphaTestValue';
+  const shadow = shadowHook
+    ? `#define SHADER_NAME PBRDepthFS
+#include "Color.glsl";
+#include "Scene.glsl";
+#include "Camera.glsl";
+#include "DepthFrag.glsl";
+#include "Sprite3DFrag.glsl";
+${library}varying vec3 v_ZhudaShadowPositionWS;varying vec3 v_ZhudaShadowNormalWS;varying vec2 v_ZhudaShadowUV;varying float v_ZhudaShadowVertexAlpha;
+${declare(false)}void main(){${threshold}
+#ifdef ALPHATEST
+${PLAIN_SURFACE('v_ZhudaShadowUV', 'v_ZhudaShadowVertexAlpha')}zhudaSurface(s,v_ZhudaShadowUV,v_ZhudaShadowPositionWS,normalize(v_ZhudaShadowNormalWS));if(clamp(s.alpha,0.0,1.0)<${limit})discard;
+#endif
+gl_FragColor=getDepthColor();}`
+    : litShadowFragment;
+  const plainDepth = backs(normals(litDepthFragment));
+  let depth = plainDepth;
+  if (depthHook) {
+    const cutAt = plainDepth.indexOf('\n#ifdef ALPHATEST\nfloat alpha=u_AlbedoColor.a;'),
+      normalAt = plainDepth.indexOf('vec3 normalWS=pixel.normalWS;'),
+      endAt = plainDepth.indexOf('vec4 positionCS=v_PositionCS;');
+    if (cutAt < 0 || normalAt < cutAt || endAt < normalAt)
+      throw Error('Lit template changed; the surface hook cannot be placed');
+    const before = `${plainDepth.slice(0, cutAt)}${threshold}\n#ifdef UV\nvec2 zhudaUV=pixel.uv0;\n#else\nvec2 zhudaUV=vec2(0.0);\n#endif\n`;
+    const plain = `${PLAIN_SURFACE('zhudaUV', '1.0')}#if defined(COLOR) && defined(ENABLEVERTEXCOLOR)\ns.alpha*=pixel.vertexColor.a;\n#endif\n`;
+    const cut = `if(clamp(s.alpha,0.0,1.0)<${limit})discard;`;
+    const body = writes.normal
+      ? // The surface is asked everywhere: its normal is what the pass writes.
+        `${plain}${normals(
+          '#ifdef NORMALTEXTURE\n#ifdef UV\nvec3 normalSampler=texture2D(u_NormalTexture,transformUV(pixel.uv0,u_TilingOffset)).rgb;normalSampler=normalize(normalSampler*2.0-1.0);normalSampler.y*=-1.0;s.normalTS=normalScale(normalSampler,u_NormalScale);\n#endif\n#endif\n',
+        )}zhudaSurface(s,zhudaUV,pixel.positionWS,pixel.normalWS);\n#ifdef ALPHATEST\n${cut}\n#endif\n${cleanNormal}vec3 normalWS=zhudaSurfaceNormal(pixel,zhudaN,zhudaUV);`
+      : // Asked only where it may be cut; the normal is the template's own.
+        `#ifdef ALPHATEST\n${plain}zhudaSurface(s,zhudaUV,pixel.positionWS,pixel.normalWS);${cut}\n#endif\n${plainDepth.slice(normalAt, endAt)}`;
+    depth = replaceOnce(
+      included(`${before}${body}${plainDepth.slice(endAt)}`, '#include "DepthNormalFrag.glsl";\n'),
+      'varying vec4 v_PositionCS;void main(){',
+      `varying vec4 v_PositionCS;${declarations}void main(){`,
+    );
+  }
+  return { forward, shadow, depth, shadowHook, depthHook };
 }
 const fields: Record<string, string> = {
   u_AlbedoColor: 'Color',
@@ -201,6 +440,11 @@ export class ZhudaLitSurfaceMaterial {
     }
     for (const v of [spec.material?.clearCoat ?? 0, spec.material?.clearCoatRoughness ?? 0.1])
       if (!Number.isFinite(v) || v < 0 || v > 1) throw Error('Invalid clear coat factor');
+    for (const key of ['common', 'alphaHash'] as const)
+      if (spec[key] !== undefined && typeof spec[key] !== 'boolean')
+        throw Error(`Invalid ${key}: true or false`);
+    if (spec.alphaHash && ![undefined, 'cutout'].includes(spec.material?.blend))
+      throw Error('alphaHash is a cut-out: leave material.blend out, or set it to cutout');
     for (const [k, u] of Object.entries(uniforms))
       if (u.type === 'texture2D' && !textures[k]) throw Error('Missing texture binding ' + k);
     this.spec = {
@@ -218,6 +462,8 @@ export class ZhudaLitSurfaceMaterial {
       // Absent for hook-free materials, so their signatures stay as before.
       ...(spec.vertex !== undefined ? { vertex: spec.vertex } : {}),
       ...(spec.backFaces === 'same' ? { backFaces: 'same' } : {}),
+      ...(spec.common ? { common: true } : {}),
+      ...(spec.alphaHash ? { alphaHash: true } : {}),
       ...(shading ? { shading: shading.key } : {}),
     });
     if (l.Shader3D.find(spec.name)) {
@@ -234,42 +480,9 @@ export class ZhudaLitSurfaceMaterial {
         Object.entries(fields).map(([k, v]) => [k, l.ShaderDataType[v]]),
       );
       for (const [k, u] of Object.entries(uniforms)) map[k] = l.ShaderDataType[types[u.type]];
-      const helper = Object.entries(uniforms)
-        .filter(([, u]) => u.type === 'texture2D')
-        .map(
-          ([k]) =>
-            `vec4 zhudaSample_${k}(vec2 uv){vec4 c=texture2D(${k},uv);\n#ifdef Gamma_${k}\nc=gammaToLinear(c);\n#endif\nreturn c;}`,
-        )
-        .join('\n');
-      const hook = `${TINT_VARYING}struct ZhudaLitSurface {vec3 baseColor;float metallic;float roughness;float occlusion;vec3 emission;};\n${helper}\n${spec.surface}\n`;
-      const call = `initSurfaceInputs(inputs,pixel);ZhudaLitSurface s;s.baseColor=inputs.diffuseColor;s.metallic=inputs.metallic;s.roughness=1.0-inputs.smoothness;s.occlusion=inputs.occlusion;s.emission=inputs.emissionColor;${TINT_APPLY}#ifdef UV\nvec2 zhudaUV=pixel.uv0;\n#else\nvec2 zhudaUV=vec2(0.0);\n#endif\nzhudaSurface(s,zhudaUV,pixel.positionWS,pixel.normalWS);inputs.diffuseColor=max(s.baseColor,vec3(0.0));inputs.metallic=clamp(s.metallic,0.0,1.0);inputs.smoothness=1.0-clamp(s.roughness,0.04,1.0);inputs.occlusion=clamp(s.occlusion,0.0,1.0);inputs.emissionColor=max(s.emission,vec3(0.0));`;
-      const normals = (source: string) =>
-        spec.normalConvention === 'opengl'
-          ? source.replace(
-              /\b(?:normalSampler|detailnormalSampler|clearCoatNormalSampler)\.y\*=-1\.0;/g,
-              '',
-            )
-          : source;
-      // LayaAir turns the normal of a back face round as it reads the pixel;
-      // `same` turns it back before anything is lit.
-      const backs = (source: string) =>
-        spec.backFaces === 'same'
-          ? replaceOnce(
-              source,
-              'getPixelParams(pixel);',
-              'getPixelParams(pixel);if(!gl_FrontFacing){pixel.normalWS=-pixel.normalWS;pixel.tangentWS=-pixel.tangentWS;pixel.biNormalWS=-pixel.biNormalWS;pixel.TBN=mat3(pixel.tangentWS,pixel.biNormalWS,pixel.normalWS);}',
-            )
-          : source;
-      const hooked = backs(normals(litFragment))
-        .replace('void main(){', hook + 'void main(){')
-        .replace('initSurfaceInputs(inputs,pixel);', call);
-      const fragment = shading
-        ? replaceOnce(
-            replaceOnce(hooked, 'void main(){', shading.functions + '\nvoid main(){'),
-            'PBR_Metallic_Flow(inputs,pixel)',
-            shading.flow + '(inputs,pixel)',
-          )
-        : hooked;
+      if (spec.common || spec.alphaHash) registerZhudaCommon(l);
+      const programs = buildZhudaLitFragmentShaders({ ...spec, uniforms }, shading);
+      const fragment = programs.forward;
       const shader = l.Shader3D.add(spec.name, true, true);
       shader.shaderType = l.ShaderFeatureType.D3;
       const sub = new l.SubShader(
@@ -281,7 +494,10 @@ export class ZhudaLitSurfaceMaterial {
         {},
       );
       shader.addSubShader(sub);
-      const vertexPrograms = buildZhudaLitVertexShaders(spec.vertex);
+      const vertexPrograms = buildZhudaLitVertexShaders(spec.vertex, {
+        objectPosition: spec.alphaHash === true,
+        shadowSurface: programs.shadowHook,
+      });
       sub.addShaderPass(
         replaceOnce(
           vertexPrograms.forward,
@@ -291,8 +507,8 @@ export class ZhudaLitSurfaceMaterial {
         fragment,
       );
       registerZhudaInstanceTintShader(l, spec.name);
-      sub.addShaderPass(vertexPrograms.shadow, litShadowFragment, 'ShadowCaster');
-      sub.addShaderPass(vertexPrograms.depth, backs(normals(litDepthFragment)), 'DepthNormal');
+      sub.addShaderPass(vertexPrograms.shadow, programs.shadow, 'ShadowCaster');
+      sub.addShaderPass(vertexPrograms.depth, programs.depth, 'DepthNormal');
       const culls: Record<string, unknown> = {
         front: l.RenderState.CULL_FRONT,
         back: l.RenderState.CULL_BACK,
@@ -308,13 +524,22 @@ export class ZhudaLitSurfaceMaterial {
       }
       records.set(spec.name, signature);
     }
-    const m = createSurfaceMaterial({ type: 'pbr', ...spec.material });
+    const m = createSurfaceMaterial({
+      type: 'pbr',
+      ...spec.material,
+      ...(spec.alphaHash ? { blend: 'cutout' as const } : {}),
+    });
     m.setShaderName(spec.name);
     // Switching shader applies the new shader's defaults. Rebind owned factors and
     // borrowed textures afterwards; otherwise a correct shader can render black.
     const settings = spec.material || {};
-    // The render state is among those defaults: a two-sided material came out one-sided.
-    if (settings.doubleSided) m.cull = l.RenderState.CULL_NONE;
+    // The render state and the defines are among those defaults: a two-sided
+    // material came out one-sided, and one that was to be cut or blended was
+    // drawn whole. An opaque one is left with what the shader change gave it.
+    const blend = spec.alphaHash ? ('cutout' as const) : settings.blend;
+    if ((blend && blend !== 'opaque') || settings.depthWrite !== undefined)
+      applySurfaceBlend(m, { ...settings, type: 'pbr', blend });
+    else if (settings.doubleSided) m.cull = l.RenderState.CULL_NONE;
     m.albedoColor = new l.Color(...(settings.color || [1, 1, 1, 1]));
     m.metallic = settings.metallic ?? 0;
     m.smoothness = 1 - (settings.roughness ?? 0.5);
