@@ -5,8 +5,13 @@ import type { ZhudaRuntimeSession } from './Runtime.ts';
 export interface RendererDiagnostics {
   requested: RendererBackend;
   selected: RendererBackend;
-  /** This release never silently falls back. A fallback requires a fresh realm. */
-  fallbackReason: null;
+  /**
+   * Nothing falls back inside a realm. On a page whose backend was chosen
+   * before either was loaded (`ZhudaLoader`, `BackendChoice.ts`), this is
+   * why that page is on WebGL although WebGPU was preferred; `null` on
+   * WebGPU, and on a page that was built for one backend.
+   */
+  fallbackReason: string | null;
   nativeEngine: string;
   status: 'initializing' | 'ready' | 'lost' | 'disposed' | 'failed';
   adapter?: {
@@ -19,6 +24,12 @@ export interface RendererDiagnostics {
   features: string[];
   errors: string[];
   loss?: { reason: string; message: string };
+  /**
+   * WebGPU: where the two shader compilers' bytes came from (carried in the
+   * script, the origin's cache, or the network) and how long it took until
+   * both were ready, in milliseconds.
+   */
+  compilers?: { from: 'inline' | 'cache' | 'network'; ms: number };
 }
 export class ZhudaRendererError extends Error {
   readonly code: string;
@@ -57,10 +68,17 @@ export function prepareRenderer(
       'WEBGPU_UNAVAILABLE',
       'WebGPU requires HTTPS/localhost and a supported browser/GPU; use a separately built WebGL page if unavailable',
     );
+  // What the page's loader recorded, if this realm is the one it chose WebGL for.
+  const chosen = (globalThis as any).ZhudaBackend;
   const diagnostics: RendererDiagnostics = {
     requested,
     selected,
-    fallbackReason: null,
+    fallbackReason:
+      selected === 'webgl' &&
+      chosen?.backend === 'webgl' &&
+      typeof chosen.fallbackReason === 'string'
+        ? chosen.fallbackReason
+        : null,
     nativeEngine: '',
     status: 'initializing',
     features: [],
@@ -129,10 +147,17 @@ export function prepareRenderer(
             const prepare = (globalThis as any).__ZHUDA_WEBGPU_PREPARE__;
             if (prepare) {
               try {
+                const clock = (globalThis as any).performance;
+                const start = clock?.now?.() ?? 0;
                 const compiled = await prepare(cancellation.signal);
                 check();
                 this.glslang = compiled.glslang;
                 this.naga = compiled.naga;
+                if (compiled.from)
+                  diagnostics.compilers = {
+                    from: compiled.from,
+                    ms: Math.round(((clock?.now?.() ?? 0) - start) * 10) / 10,
+                  };
               } catch (error) {
                 throw new ZhudaRendererError('WEBGPU_SHADER_COMPILER', String(error));
               }

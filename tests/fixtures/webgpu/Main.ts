@@ -3,6 +3,7 @@ import {
   Zhuda3D,
   ZhudaPrefabLibrary,
   inspectSceneResources,
+  retryZhudaBackend,
   type PrefabInstance,
 } from 'zhuda-laya-engine';
 import { definitions, createAssetProvider, preview3D } from './prefabs';
@@ -116,6 +117,9 @@ async function main() {
     },
   });
 }
-void main().catch((error) =>
-  Object.assign(window, { backendTest: { ready: false, error: String(error) } }),
-);
+void main().catch((error) => {
+  // A page built for both backends whose WebGPU loaded and did not start is
+  // loaded again on WebGL; any other page says what went wrong.
+  if (retryZhudaBackend(String(error))) return;
+  Object.assign(window, { backendTest: { ready: false, error: String(error) } });
+});

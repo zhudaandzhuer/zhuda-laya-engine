@@ -1,7 +1,7 @@
 # three.js gap plan: progress
 
 Plan: `docs/plans/records/threejs-gap-audit/plan.md` (work packages WP0..WP16)\
-Last updated: 2026-11-14, after WP13 (batch 2 is done one package at a time, by one agent, without a review agent)
+Last updated: 2026-11-15, after WP12 (batch 2 is done one package at a time, by one agent, without a review agent)
 
 ## Where each package stands
 
@@ -21,7 +21,8 @@ Last updated: 2026-11-14, after WP13 (batch 2 is done one package at a time, by 
 | WP10 animation control (blend, overlay, cross-fade, IK)                                                                                            | Merged; desktop WebGL and WebGPU verified; the engine's own IK solvers, not LayaAir's module                                                                                                  | `animation-control`              |
 | WP11 post quality (AgX and neutral curves, `.cube` table, SMAA, occlusion by horizons, lens flare, grade and bloom values)                         | Merged; desktop WebGL and WebGPU verified; the same page on the phone; the flare is the engine's own, not a wrapper                                                                           | `post-quality/`                  |
 | WP13 lighting depth (falloff by the square, a spot's penumbra, wider and blended sun shadows, contact shadows, a schedule for point-light shadows) | Merged; desktop WebGL and WebGPU verified; the same page and a timing page on the phone; off until a scene asks; no game's lamps were renumbered for the square                               | `lighting-depth/`                |
-| WP12, WP15, WP16                                                                                                                                   | Not started                                                                                                                                                                                   |                                  |
+| WP12 backend delivery (a loader that asks the browser and loads one backend, `"renderer": "auto"`, compilers fetched once for an origin, sizes)    | Merged; desktop WebGL and WebGPU verified; **no phone** (not reachable); no SDK release holds the loader yet; `ui` can leave the 3D bundles for 25 KB gzipped and was left in                 | `backend-delivery/`              |
+| WP15, WP16                                                                                                                                         | Not started                                                                                                                                                                                   |                                  |
 
 Each merged package's own record lists what it did not do; those lists are
 the open work, not this table.
@@ -52,7 +53,7 @@ frames a second above look level 0. Whether a phone should aim at 30 with
 the level 2 look or at 60 with the level 0 look is the game owner's choice;
 the engine has both levers and a ladder (`zhudaQualitySteps`) for either.
 
-## How WP3, WP5, WP6, WP8, WP9, WP10, WP11 and WP13 were checked
+## How WP3, WP5, WP6, WP8 to WP13 were checked
 
 One agent wrote, drew and recorded each; there was no second agent to
 review them. Each has unit tests, a real-draw check on WebGL and WebGPU with
@@ -62,9 +63,30 @@ check is in its own record.
 
 ## Next
 
-In the plan's order: WP12 (backend delivery), WP15 (tooling), WP16
-(WebGPU-only); then what the merged packages left open (WP2, WP4, WP7,
-WP14).
+In the plan's order: WP15 (tooling), WP16 (WebGPU-only); then what the
+merged packages left open (WP2, WP4, WP7, WP14).
+
+Owed to WP12 when a phone is reachable: the auto page on the vivo V40
+(which backend its Chrome is given, whether WebGPU starts on the Adreno
+720, how long the compilers take inside the bundle and beside it).
+
+## Found while doing WP12, beyond WP12
+
+- The Doctor's check of a built page's library order looked at script tags
+  only. A page that loads its libraries another way passed with nothing
+  looked at; it now reads both orders out of an auto page's loader call.
+- `verify-webgpu`, `verify-browser-sdk` and `verify-branding-browser` read
+  `dist/browser/<version>` as it lies, and the builder refuses to overwrite
+  a folder that differs. After a change to the bundles that folder has to
+  be removed and built again before they mean anything.
+- LayaAir swallows the error its adapter request throws and rejects with
+  "Could not get WebGPU device"; the engine's `WEBGPU_ADAPTER` code never
+  reaches a page. On WebGL `nativeEngine` is a minified class name (`Le`).
+  Neither was changed.
+- Carrying the WebGPU compilers as text in the bundle costs about 0.2 s of
+  decoding at every start on the desktop; the same compilers as files are
+  22 % fewer gzipped bytes. The browser SDK's default was left as it is
+  (one file, one integrity value); `--wasm external` is the other way.
 
 ## Found while doing WP13, beyond WP13
 

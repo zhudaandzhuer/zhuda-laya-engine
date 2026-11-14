@@ -52,6 +52,13 @@ SDK 無法自行繞過政策，需用允許的附件資源或一般 HTTP 預覽�
 WebGPU 用 [3D GPU 範本](../examples/browser-sdk/3d-webgpu.html)、[2D GPU 範本](../examples/browser-sdk/2d-webgpu.html) 或 [GPU 模型檢視器](../examples/browser-sdk/3d-gltf-webgpu.html)。
 `ZhudaEngine.boot({renderer:"webgpu"})` 必須對應 GPU bundle；詳見 [後端／失敗／Windows 驗收契約](webgpu.md)。
 
+同一個網址要同時服務有 WebGPU 與沒有 WebGPU 的瀏覽器時，用建置產出的 `zhuda-loader.js`
+（gzip 後 2.2 KB）：它先問瀏覽器有沒有硬體 adapter，再只載入 WebGPU 或 WebGL 其中一份 bundle，
+為什麼落在 WebGL 記在 `context.renderer.fallbackReason`。建置同時產出每一對 bundle 的
+`example-<profile>-auto.html`。寫法、判斷表，以及讓 GPU bundle 不內嵌編譯器 WASM、
+改為啟動時抓取並依雜湊快取的 `--wasm external`，見[後端交付](backend-delivery.md)。
+載入器要等下一次 SDK 發行才會出現在託管目錄；在那之前用 `zhuda-laya-browser-sdk --out` 自行建置。
+
 電影 API 請用含 glTF／postProcess 的 `3d-gltf` 或 `3d-gltf-webgpu`，依
 [電影工作流](cinematics.md)擷取畫格與音軌。MP4 編碼是 Node CLI，不能在站內
 沙箱直接呼叫 FFmpeg；下載／檔案 IO 也受宿主政策限制。
@@ -145,6 +152,7 @@ npm run build:browser
 # installed public package
 zhuda-laya-browser-sdk --out ./sdk-release
 # optional: --profile 2d, 3d, 3d-gltf, 2d-webgpu, 3d-webgpu, 3d-gltf-webgpu
+# optional: --wasm external（GPU bundle 不內嵌編譯器 WASM，檔案放在 bundle 旁）
 ```
 
 預設輸出 `dist/browser/<version>`。相同內容可以重用；若同目錄已有不同產物，

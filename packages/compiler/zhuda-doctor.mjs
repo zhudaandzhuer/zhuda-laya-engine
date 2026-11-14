@@ -86,11 +86,27 @@ export function runDoctorAudit(options = {}) {
 
   let htmlScriptFiles = [];
   let topologyIssues = [];
+  // A page built with "renderer": "auto" names the libraries of each backend
+  // in its loader call instead of in script tags: both orders are audited.
+  let htmlBackends;
   if (fs.existsSync(htmlPath)) {
     const html = fs.readFileSync(htmlPath, 'utf8');
-    const matches = [...html.matchAll(/src="libs\/([^"]+)"/g)];
-    htmlScriptFiles = matches.map((m) => m[1]);
-    topologyIssues = TopologyResolver.auditFileSequence(htmlScriptFiles);
+    const call = /ZhudaLoader\.load\(\{[^<]*?webgpu:(\[[^\]]*\]),webgl:(\[[^\]]*\])/.exec(html);
+    if (call) {
+      const [webgpu, webgl] = [call[1], call[2]].map((list) =>
+        JSON.parse(list).map((file) => String(file).replace(/^libs\//, '')),
+      );
+      htmlBackends = { webgl, webgpu };
+      htmlScriptFiles = webgl;
+      topologyIssues = [
+        ...TopologyResolver.auditFileSequence(webgl),
+        ...TopologyResolver.auditFileSequence(webgpu),
+      ];
+    } else {
+      const matches = [...html.matchAll(/src="libs\/([^"]+)"/g)];
+      htmlScriptFiles = matches.map((m) => m[1]);
+      topologyIssues = TopologyResolver.auditFileSequence(htmlScriptFiles);
+    }
   }
 
   const passed = apiViolations.length === 0 && topologyIssues.length === 0;
@@ -107,6 +123,14 @@ export function runDoctorAudit(options = {}) {
     discoveredComponentsCount: discoveredComponents.length,
     discoveredComponents: discoveredComponents.map((c) => c.className),
     htmlScriptCount: htmlScriptFiles.length,
+    ...(htmlBackends
+      ? {
+          htmlBackends: {
+            webgl: htmlBackends.webgl.length,
+            webgpu: htmlBackends.webgpu.length,
+          },
+        }
+      : {}),
     topologyIssues,
     apiViolations,
     consumer,
@@ -135,7 +159,9 @@ if (launchedAsCli) {
     `  • 反射組件數量:   ${report.discoveredComponentsCount} (${report.discoveredComponents.join(', ')})`,
   );
   console.log(
-    `  • HTML 拓撲模組:  ${report.htmlScriptCount} 個庫 (順序衝突: ${report.topologyIssues.length})`,
+    report.htmlBackends
+      ? `  • HTML 拓撲模組:  WebGL ${report.htmlBackends.webgl} 個庫、WebGPU ${report.htmlBackends.webgpu} 個庫，由後端載入器擇一載入 (順序衝突: ${report.topologyIssues.length})`
+      : `  • HTML 拓撲模組:  ${report.htmlScriptCount} 個庫 (順序衝突: ${report.topologyIssues.length})`,
   );
   console.log(`  • 廢棄 API 違規:  ${report.apiViolations.length} 處`);
   if (report.consumer.checks) {

@@ -78,7 +78,10 @@ Choose `renderer: "webgpu"` in the consumer compiler, or a `2d-webgpu`,
 GPU backend, reports the actual adapter, bounds initialization and retires lost
 devices through the existing runtime lifecycle. Default WebGL is preserved.
 [Setup, fallback and platform limits](docs/webgpu.md) include reproducible Windows
-browser checks. macOS hardware rendering is measured; Windows hardware, native
+browser checks. `renderer: "auto"` (or `zhuda-loader.js` in a single HTML page)
+serves both from one address: WebGPU where the browser has a hardware adapter,
+WebGL elsewhere, with the reason in `context.renderer.fallbackReason`
+([backend delivery](docs/backend-delivery.md)). macOS hardware rendering is measured; Windows hardware, native
 EXE/Steam and physical mobile acceptance remain unverified.
 The [`examples/windows-webgpu`](examples/windows-webgpu/) host provides a
 reproducible Electron entry for the next Windows packaged acceptance step.

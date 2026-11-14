@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
 import { readRecord, staleFiles, pinnedFiles } from '../scripts/release-browser-sdk.mjs';
 
 const repo = path.resolve(import.meta.dirname, '..');
@@ -42,6 +43,45 @@ test('a newly recorded release rewrites every pinned URL and integrity', () => {
     /本次固定發行：\*\*99\.0\.0\*\*/,
   );
   assert.throws(() => readRecord(path.join(repo, 'package.json')), /invalid browser SDK release/);
+});
+
+test('a release may carry the backend loader; one without every bundle is refused', () => {
+  const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'zhuda-sdk-record-'));
+  try {
+    const file = path.join(temp, 'record.json');
+    const write = (change) => {
+      const record = structuredClone(readRecord());
+      change(record.releases[0]);
+      fs.writeFileSync(file, JSON.stringify(record));
+      return file;
+    };
+    // The releases recorded so far have no loader, and are read as they are.
+    assert.equal(readRecord().releases[0].files['zhuda-loader.js'], undefined);
+    const withLoader = readRecord(
+      write((latest) => {
+        latest.files['zhuda-loader.js'] = { bytes: 5297, integrity: 'sha384-' + 'B'.repeat(64) };
+      }),
+    );
+    assert.equal(Object.keys(withLoader.releases[0].files).length, 7);
+    // Pinned like a bundle wherever a page names it.
+    const pinned = pinnedFiles(withLoader).get(path.join(repo, 'docs/browser-sdk.md'));
+    assert.match(pinned, /\| `zhuda-loader\.js` \| [^|]+ \| 5,297 \|/);
+    assert.throws(
+      () => readRecord(write((latest) => delete latest.files['zhuda-3d.js'])),
+      /must list every bundle profile/,
+    );
+    assert.throws(
+      () =>
+        readRecord(
+          write((latest) => {
+            latest.files['zhuda-extra.js'] = { bytes: 1, integrity: 'sha384-AAAA' };
+          }),
+        ),
+      /invalid entry for zhuda-extra\.js/,
+    );
+  } finally {
+    fs.rmSync(temp, { recursive: true, force: true });
+  }
 });
 
 test('a source that differs from the release of its own version is reported; a new version is not', async () => {

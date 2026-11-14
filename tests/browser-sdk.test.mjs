@@ -67,12 +67,50 @@ test('browser distribution is deterministic, integrity-pinned, rejects overwrite
       assert.equal(sandbox.Laya, previous);
       assert.equal(sandbox.Zhuda, undefined);
     }
+    // The backend loader: one small script with its own integrity, and a page
+    // for each pair of bundles that names both with theirs.
+    const loader = first.manifest.loader,
+      loaderBytes = fs.readFileSync(path.join(out, loader.file));
+    assert.equal(loader.file, 'zhuda-loader.js');
+    assert.equal(
+      loader.integrity,
+      'sha384-' + crypto.createHash('sha384').update(loaderBytes).digest('base64'),
+    );
+    assert.ok(loader.bytes === loaderBytes.length && loader.bytes < 8000, `${loader.bytes} bytes`);
+    assert.deepEqual(Object.keys(loader.pages), ['2d', '3d', '3d-gltf']);
+    for (const [profile, pair] of Object.entries(loader.pages)) {
+      const page = fs.readFileSync(path.join(out, pair.page), 'utf8');
+      for (const entry of [
+        loader,
+        first.manifest.profiles[profile],
+        first.manifest.profiles[profile + '-webgpu'],
+      ])
+        assert.ok(page.includes(entry.integrity), `${pair.page} pins ${entry.file}`);
+      // Neither bundle is a script tag of the page: the loader loads one of them.
+      assert.equal(page.match(/<script src="/g).length, 1);
+      assert.match(page, /<script src="zhuda-loader\.js"/);
+    }
+    // The loader defines one global and refuses a second copy of itself.
+    const realm = {};
+    new vm.Script(loaderBytes.toString()).runInNewContext(realm);
+    assert.deepEqual(Object.keys(realm), []);
+    assert.deepEqual(Object.keys(realm.ZhudaLoader).sort(), ['choose', 'load', 'probe', 'retry']);
+    assert.ok(Object.isFrozen(realm.ZhudaLoader));
+    assert.throws(
+      () => new vm.Script(loaderBytes.toString()).runInNewContext(realm),
+      /ZHUDA_DUPLICATE_LOADER/,
+    );
+    // WebGPU bundles carry their compilers by default.
+    for (const entry of Object.values(first.manifest.profiles))
+      assert.equal(entry.compilers, entry.renderer === 'webgpu' ? 'inline' : undefined);
+    assert.equal(fs.existsSync(path.join(out, 'nagabind_bg.wasm')), false);
     // An installed package at another absolute path must generate identical bytes/SRI.
     const relocated = path.join(temp, 'installed-package');
     const sources = new Set([
       'package.json',
       'LICENSE',
       ...Object.values(first.manifest.profiles).flatMap((p) => p.inputs.map((i) => i.path)),
+      ...first.manifest.loader.inputs.map((i) => i.path),
     ]);
     for (const file of sources) {
       const target = path.join(relocated, file);

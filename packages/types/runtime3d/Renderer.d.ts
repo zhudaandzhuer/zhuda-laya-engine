@@ -4,8 +4,13 @@ import type { ZhudaRuntimeSession } from './Runtime.js';
 export interface RendererDiagnostics {
     requested: RendererBackend;
     selected: RendererBackend;
-    /** This release never silently falls back. A fallback requires a fresh realm. */
-    fallbackReason: null;
+    /**
+     * Nothing falls back inside a realm. On a page whose backend was chosen
+     * before either was loaded (`ZhudaLoader`, `BackendChoice.ts`), this is
+     * why that page is on WebGL although WebGPU was preferred; `null` on
+     * WebGPU, and on a page that was built for one backend.
+     */
+    fallbackReason: string | null;
     nativeEngine: string;
     status: 'initializing' | 'ready' | 'lost' | 'disposed' | 'failed';
     adapter?: {
@@ -20,6 +25,15 @@ export interface RendererDiagnostics {
     loss?: {
         reason: string;
         message: string;
+    };
+    /**
+     * WebGPU: where the two shader compilers' bytes came from (carried in the
+     * script, the origin's cache, or the network) and how long it took until
+     * both were ready, in milliseconds.
+     */
+    compilers?: {
+        from: 'inline' | 'cache' | 'network';
+        ms: number;
     };
 }
 export declare class ZhudaRendererError extends Error {

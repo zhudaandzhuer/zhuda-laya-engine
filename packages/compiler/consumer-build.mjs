@@ -1,4 +1,5 @@
 import { copyEngineLibraries } from './webgpu-loader.mjs';
+import { backendLoaderCall, backendLoaderCode } from './backend-loader.mjs';
 import { resolveConsumerBranding } from './branding-assets.mjs';
 import { injectBrandSplash } from './branding.mjs';
 import fs from 'node:fs';
@@ -226,9 +227,16 @@ export async function runConsumerBuild({
     throw Error(guard.issues.map((i) => `${i.file}:${i.line} [${i.code}] ${i.message}`).join('\n'));
   const features = config.features ||
     (config.profile && ENGINE_PRESET_PROFILES[config.profile]) || ['core', '3d', 'gltf'];
-  let topology;
+  // "renderer": "auto": the libraries of both backends travel and the page
+  // loads those of one, chosen in the browser before either runs
+  // (`BackendChoice.ts`). The WebGL set stays the build's own topology: the
+  // prefab preview and its evidence are built on it.
+  const auto = config.renderer === 'auto';
+  let topology,
+    gpuTopology = null;
   try {
-    topology = TopologyResolver.resolveByFeatures(features, config.renderer);
+    topology = TopologyResolver.resolveByFeatures(features, auto ? 'webgl' : config.renderer);
+    if (auto) gpuTopology = TopologyResolver.resolveByFeatures(features, 'webgpu');
   } catch (error) {
     throw Error('zhuda.config.json:1 [RENDERER_TOPOLOGY] ' + error.message);
   }
@@ -300,11 +308,12 @@ export async function runConsumerBuild({
           return relative === '' || assetAllowed(relative, fs.lstatSync(p).isDirectory());
         },
       });
-    copyEngineLibraries(
-      topology,
-      path.join(engineRoot, 'vendor/laya-3.4.2/libs'),
-      path.join(out, 'libs'),
-    );
+    for (const libraries of gpuTopology ? [topology, gpuTopology] : [topology])
+      copyEngineLibraries(
+        libraries,
+        path.join(engineRoot, 'vendor/laya-3.4.2/libs'),
+        path.join(out, 'libs'),
+      );
     // "basis": true: the Basis transcoder for KTX 2 textures, where
     // loadZhudaBasisTranscoder looks for it. Never copied unasked (0.6 MB).
     if (config.basis !== undefined && typeof config.basis !== 'boolean')
@@ -324,20 +333,43 @@ export async function runConsumerBuild({
       minify: true,
       plugins: [zhudaConsumerPlugin({ projectRoot, entry, engineRoot })],
     });
-    const tags = topology.orderedFiles.map((f) => `<script src="libs/${f}"></script>`).join('\n');
     const spineVersion = topology.orderedFiles.includes('spine-core-3.8.js')
       ? { version: '3.8', first: 3, second: 8, needsSlot: false }
       : topology.orderedFiles.includes('spine-core-4.2.js')
         ? { version: '4.2', first: 4, second: 2, needsSlot: true }
         : null;
     const spineAlignment = spineVersion
-      ? `<script>if(window.Laya&&window.Laya.SpineConst){window.Laya.SpineConst.VERSION=${JSON.stringify(spineVersion.version)};window.Laya.SpineConst.VersionFirst=${spineVersion.first};window.Laya.SpineConst.VersionSecond=${spineVersion.second};window.Laya.SpineConst.NEED_SLOT=${spineVersion.needsSlot};}</script>`
+      ? `if(window.Laya&&window.Laya.SpineConst){window.Laya.SpineConst.VERSION=${JSON.stringify(spineVersion.version)};window.Laya.SpineConst.VersionFirst=${spineVersion.first};window.Laya.SpineConst.VersionSecond=${spineVersion.second};window.Laya.SpineConst.NEED_SLOT=${spineVersion.needsSlot};}`
       : '';
+    let libraryTags, entryTag;
+    if (gpuTopology) {
+      // One script that asks the browser, then loads the libraries of one
+      // backend in their order, and the game after them.
+      fs.writeFileSync(
+        path.join(out, 'libs/zhuda-loader.js'),
+        await backendLoaderCode(
+          engineRoot,
+          JSON.parse(fs.readFileSync(path.join(engineRoot, 'package.json'))).version,
+        ),
+      );
+      libraryTags = `<script src="libs/zhuda-loader.js"></script>\n<script>${backendLoaderCall({
+        webgpu: gpuTopology.orderedFiles,
+        webgl: topology.orderedFiles,
+        between: spineAlignment,
+        after: ['app.js'],
+      })}</script>`;
+      entryTag =
+        '<!-- app.js: loaded by the backend loader, after the libraries of one backend -->';
+    } else {
+      libraryTags =
+        topology.orderedFiles.map((f) => `<script src="libs/${f}"></script>`).join('\n') +
+        '\n' +
+        (spineAlignment ? `<script>${spineAlignment}</script>` : '');
+      entryTag = '<script src="app.js"></script>';
+    }
     fs.writeFileSync(
       path.join(out, 'index.html'),
-      html
-        .replace('<!-- ZHUDA_LIBS -->', `${tags}\n${spineAlignment}`)
-        .replace('<!-- ZHUDA_ENTRY -->', '<script src="app.js"></script>'),
+      html.replace('<!-- ZHUDA_LIBS -->', libraryTags).replace('<!-- ZHUDA_ENTRY -->', entryTag),
     );
     fs.writeFileSync(path.join(out, '.nojekyll'), '');
     const componentBundles = config.prefabPreview
@@ -361,7 +393,7 @@ export async function runConsumerBuild({
         path.join(engineRoot, 'vendor/basis/LICENSE.txt'),
         path.join(notices, 'BASIS-LICENSE.txt'),
       );
-    if (topology.renderer === 'webgpu')
+    if (topology.renderer === 'webgpu' || gpuTopology)
       for (const file of ['WEBGPU-LICENSES.txt', 'webgpu-provenance.json'])
         fs.copyFileSync(path.join(engineRoot, 'vendor/laya-3.4.2', file), path.join(notices, file));
     fs.writeFileSync(
@@ -455,13 +487,27 @@ export async function runConsumerBuild({
         }
       }
     }
+    // With "auto": what each backend loads. `libraries` above stays the WebGL
+    // list, which is also what the prefab preview runs on.
+    const backends = gpuTopology
+      ? {
+          backends: {
+            webgl: { libraries: topology.orderedFiles },
+            webgpu: {
+              libraries: gpuTopology.orderedFiles,
+              supportFiles: gpuTopology.supportFiles,
+            },
+          },
+        }
+      : {};
     fs.writeFileSync(
       path.join(out, 'payload-manifest.json'),
       JSON.stringify(
         {
-          renderer: topology.renderer,
-          supportFiles: topology.supportFiles,
+          renderer: auto ? 'auto' : topology.renderer,
+          supportFiles: (gpuTopology ?? topology).supportFiles,
           libraries: topology.orderedFiles,
+          ...backends,
           fingerprint,
           prefabDependencies,
           files: payload,
@@ -484,9 +530,10 @@ export async function runConsumerBuild({
       releaseOutput,
       sourceWrites: 0,
       output,
-      renderer: topology.renderer,
-      supportFiles: topology.supportFiles,
+      renderer: auto ? 'auto' : topology.renderer,
+      supportFiles: (gpuTopology ?? topology).supportFiles,
       orderedLibraries: topology.orderedFiles,
+      ...backends,
       assets: { include: includes ?? null, exclude: excludes },
       layoutContracts: layoutContracts.contracts,
       route: {

@@ -354,6 +354,13 @@ preview. Omit it for WebGL. The package/ZIP contains the full relative payload.
 A boot option must match the build; changing it alone does not load a backend.
 See [WebGPU contract and measured boundaries](webgpu.md).
 
+`renderer: "auto"` ships the libraries of both backends and one loader call
+in their place: the page asks the browser, loads WebGPU where there is a
+hardware adapter and WebGL elsewhere, and the game boots without a
+`renderer`. `context.renderer.fallbackReason` says why a page is on WebGL.
+The prefab preview and its evidence stay on WebGL. See
+[backend delivery](backend-delivery.md).
+
 ## Levels of detail in a model prefab
 
 A node of a `kind: 'models'` prefab may name lighter versions of its model and a distance beyond which its copies are not drawn:

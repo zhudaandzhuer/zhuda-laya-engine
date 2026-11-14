@@ -70,15 +70,24 @@ const context = await Zhuda.ZhudaEngine.boot({
 
 See [fixed URLs and HTML templates](browser-sdk.md). One page loads exactly one
 bundle. Do not mix WebGL and WebGPU libraries or load a second renderer after
-partial initialization. For fallback, offer a separately built WebGL URL in a
-fresh page/iframe. No automatic downgrade is performed: `fallbackReason` remains
-`null`, and a failed WebGPU request rejects instead of returning WebGL success.
+partial initialization. A failed WebGPU request rejects instead of returning
+WebGL success, and nothing is downgraded inside a realm.
+
+For one address that serves both, the choice is made before either backend
+is loaded: `zhuda-loader.js` in a single HTML page, `"renderer": "auto"` in a
+consumer build. The page asks the browser for an adapter, loads the bundle or
+libraries of one backend, and records why it is on WebGL in
+`context.renderer.fallbackReason` (`null` on WebGPU and on a page built for
+one backend). A WebGPU that loaded and did not start loads the page again on
+WebGL. See [backend delivery](backend-delivery.md).
 
 ## Diagnostics and lifecycle
 
 `context.renderer` records `requested`, `selected`, `nativeEngine`, `status`,
 actual adapter identity, enabled device features, up to 64 GPU validation errors,
-and loss reason/message. Adapter strings may be redacted by the browser. This
+loss reason/message, and where the two shader compilers came from and how long
+they took (`compilers`). Compilers that are fetched are kept in the origin's
+Cache Storage by their hash ([backend delivery](backend-delivery.md)). Adapter strings may be redacted by the browser. This
 release's verifier rejects fallback/software adapters for hardware acceptance.
 
 WebGPU requires a secure context and an available compatible GPU adapter. Missing

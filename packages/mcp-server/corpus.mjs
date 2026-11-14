@@ -183,6 +183,17 @@ export const API_GUARDRAILS = [
       "With falloff 'physical' a light's intensity is its brightness at one unit (a quarter at two): a lamp tuned for LayaAir's falloff needs a much larger number. One ZhudaLightingDepth a scene; a look makes it. Contact shadows shade the sun's light only and need its shadows on. See docs/lighting-depth.md.",
   },
   {
+    id: 'GUARD_BACKEND_DELIVERY',
+    topic:
+      'webgpu fallback webgl automatic renderer choice navigator.gpu requestAdapter one page both backends shader compiler wasm cache',
+    hallucinatedLegacyApi:
+      "new WebGPURenderer({ forceWebGL: !navigator.gpu }); try { await ZhudaEngine.boot({ renderer: 'webgpu' }) } catch { await ZhudaEngine.boot({ renderer: 'webgl' }) }",
+    zhudaCanonicalApi:
+      'Consumer build: "renderer": "auto" in zhuda.config.json, and ZhudaEngine.boot without a renderer; context.renderer.selected and context.renderer.fallbackReason say what the page is on and why. Single HTML: <script src="zhuda-loader.js" integrity="..." crossorigin="anonymous"></script> then ZhudaLoader.load({ webgpu: [{ src: "zhuda-3d-webgpu.js", integrity }], webgl: [{ src: "zhuda-3d.js", integrity }] }).then(() => main()). When boot rejects on WebGPU: if (!ZhudaLoader.retry(String(error))) showTheError(). A game setting that turns WebGPU off: window.ZhudaBackendPrefer = "webgl" before the loader runs (or prefer: "webgl").',
+    reason:
+      "A realm holds one backend: a second boot in the same page after a failed WebGPU cannot work, and both backends' libraries cannot be loaded together. The choice is made before either is loaded; a WebGPU that loaded and did not start loads the page again on WebGL. See docs/backend-delivery.md.",
+  },
+  {
     id: 'GUARD_INIT_BOOT',
     topic: '引擎啟動與 Stage 初始化',
     hallucinatedLegacyApi: 'Laya.init(1280, 720, Laya.WebGL); Laya.MiniAdpter.init();',

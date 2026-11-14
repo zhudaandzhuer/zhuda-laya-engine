@@ -10,10 +10,12 @@ const TSCONFIG_RAW = {
   compilerOptions: { experimentalDecorators: true, useDefineForClassFields: false },
 };
 import { webgpuPreparation, webgpuResources } from './webgpu-loader.mjs';
+import { BACKEND_LOADER_SOURCES, backendLoaderCode } from './backend-loader.mjs';
 import { TopologyResolver } from './compiler-runtime.mjs';
 
 import { modelBrowserExample } from './browser-model-example.mjs';
 import { browserExample } from './browser-sdk-example.mjs';
+import { autoBrowserExample } from './browser-auto-example.mjs';
 
 export const BROWSER_PROFILES = Object.freeze({
   '2d-webgpu': Object.freeze(['core', '2d', 'ui']),
@@ -46,13 +48,24 @@ async function branding(svg, engineRoot) {
   return result.outputFiles[0].text;
 }
 
-/** Create/reuse a deterministic distribution; never overwrite a different release. */
+/**
+ * Create/reuse a deterministic distribution; never overwrite a different release.
+ *
+ * `wasm: 'external'` builds WebGPU bundles that fetch their two shader
+ * compilers from beside themselves when the renderer starts, and keep them
+ * in the origin's cache, instead of carrying them (5.9 MB, 7.9 MB as text).
+ * The default, `'inline'`, keeps a WebGPU bundle one file under one
+ * integrity value.
+ */
 export async function buildBrowserSdk({
   engineRoot = defaultRoot,
   outDir,
   profiles = ['2d', '3d', '3d-gltf', '2d-webgpu', '3d-webgpu', '3d-gltf-webgpu'],
+  wasm = 'inline',
 } = {}) {
   engineRoot = path.resolve(engineRoot);
+  if (wasm !== 'inline' && wasm !== 'external')
+    throw Error('Browser SDK --wasm must be inline or external');
   if (
     !Array.isArray(profiles) ||
     !profiles.length ||
@@ -154,9 +167,16 @@ export async function buildBrowserSdk({
       compilerSetup = webgpuPreparation({
         shader: 'ShaderCompiler',
         naga: 'wasm_bindgen',
-        resources: webgpuResources(path.join(engineRoot, 'vendor/laya-3.4.2/libs'), true),
-        base: 'null',
+        resources: webgpuResources(
+          path.join(engineRoot, 'vendor/laya-3.4.2/libs'),
+          wasm === 'inline',
+        ),
+        // Fetched compilers are beside the bundle, wherever a page loads it from.
+        base: wasm === 'inline' ? 'null' : 'new URL(".",document.currentScript.src).href',
       });
+      if (wasm === 'external')
+        for (const file of topology.supportFiles.filter((name) => name.endsWith('.wasm')))
+          files.set(file, fs.readFileSync(path.join(engineRoot, 'vendor/laya-3.4.2/libs', file)));
     }
 
     const modelDocument = profile.startsWith('3d-gltf')
@@ -170,7 +190,15 @@ export async function buildBrowserSdk({
       renderer,
       features,
       libraries: topology.orderedFiles,
-      sourceFingerprint: hash(JSON.stringify({ inputs, esbuild: esbuild.version })),
+      // Where a WebGPU bundle's shader compilers are: in it, or beside it.
+      ...(renderer === 'webgpu' ? { compilers: wasm } : {}),
+      sourceFingerprint: hash(
+        JSON.stringify({
+          inputs,
+          esbuild: esbuild.version,
+          ...(renderer === 'webgpu' && wasm === 'external' ? { compilers: wasm } : {}),
+        }),
+      ),
       bundler: { name: 'esbuild', version: esbuild.version },
     };
     const code = `/* Zhuda LayaAir ${version} browser ${profile}; MIT; see LICENSE.txt (including upstream attribution). */\n(function(){\nif(globalThis.Zhuda||globalThis.Laya||globalThis.ZhudaBundle)throw Error('ZHUDA_DUPLICATE_RUNTIME: load exactly one official browser bundle per page');\n${brandCode}\n${libs.join('\n;\n')}\n;${compilerSetup}\n;${bundled.outputFiles[0].text}\nObject.defineProperty(globalThis,'Zhuda',{value:Object.freeze(__zhudaSdk),configurable:false,writable:false});\nconst meta=${JSON.stringify(metadata)};Object.freeze(meta.features);Object.freeze(meta.libraries);Object.defineProperty(globalThis,'ZhudaBundle',{value:Object.freeze(meta),configurable:false,writable:false});\n})();\n`;
@@ -195,6 +223,47 @@ export async function buildBrowserSdk({
       ),
     );
   }
+  // The backend loader, and a page for each pair of bundles that differ in
+  // their backend only: it asks the browser and loads one of the two.
+  const pairs = profiles.filter(
+    (profile) => !profile.endsWith('-webgpu') && profiles.includes(profile + '-webgpu'),
+  );
+  if (pairs.length) {
+    const bytes = Buffer.from(await backendLoaderCode(engineRoot, version));
+    manifest.loader = {
+      file: 'zhuda-loader.js',
+      bytes: bytes.length,
+      sha256: hash(bytes),
+      integrity: 'sha384-' + hash(bytes, 'sha384', 'base64'),
+      inputs: [...BACKEND_LOADER_SOURCES, 'packages/compiler/browser-auto-example.mjs'].map(
+        (file) => ({
+          path: file,
+          sha256: hash(fs.readFileSync(path.join(engineRoot, file))),
+        }),
+      ),
+      pages: {},
+    };
+    files.set(manifest.loader.file, bytes);
+    for (const profile of pairs) {
+      const page = `example-${profile}-auto.html`;
+      manifest.loader.pages[profile] = {
+        page,
+        webgl: profile,
+        webgpu: profile + '-webgpu',
+      };
+      files.set(
+        page,
+        Buffer.from(
+          autoBrowserExample(
+            files.get(`example-${profile}.html`).toString(),
+            manifest.loader,
+            manifest.profiles[profile + '-webgpu'],
+            manifest.profiles[profile],
+          ),
+        ),
+      );
+    }
+  }
   files.set('sdk-manifest.json', Buffer.from(JSON.stringify(manifest, null, 2) + '\n'));
   files.set(
     'LICENSE.txt',
@@ -212,7 +281,7 @@ export async function buildBrowserSdk({
   files.set(
     'index.html',
     Buffer.from(
-      `<!doctype html><html lang="zh-Hant"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Zhuda Browser SDK ${version}</title><style>body{max-width:850px;margin:60px auto;padding:24px;background:#0d1724;color:#e5f1ff;font:18px/1.7 system-ui}a{color:#72d6eb}code{overflow-wrap:anywhere}</style><h1>豬大 Browser SDK ${version}</h1><p>單一 HTML，使用真正的 Zhuda × LayaAir 引擎。</p><ul>${profiles.map((p) => `<li><a href="example-${p}.html">${p.toUpperCase()} 可執行範例</a> · <a href="zhuda-${p}.js">完整 browser bundle</a></li>`).join('')}</ul><p>將範例中的相對 script src 換成此版本的完整網址，保留 integrity 與 crossorigin，即可從允許外部腳本的 HTML 引用。</p><p>使用固定 release 網址，不使用 latest。站內遊戲沙箱只允許自身版本資源：部署包內放入同一份 bundle，保留相對路徑。</p><p><a href="sdk-manifest.json">版本、依賴與完整性清單</a> · <a href="https://github.com/zhudaandzhuer/zhuda-laya-engine">公開 API 與開發路線</a></p><p>這是瀏覽器交付入口；Prefab 比對、遊戲驗收與裝置測試仍須完成。範例非完整遊戲。</p></html>`,
+      `<!doctype html><html lang="zh-Hant"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Zhuda Browser SDK ${version}</title><style>body{max-width:850px;margin:60px auto;padding:24px;background:#0d1724;color:#e5f1ff;font:18px/1.7 system-ui}a{color:#72d6eb}code{overflow-wrap:anywhere}</style><h1>豬大 Browser SDK ${version}</h1><p>單一 HTML，使用真正的 Zhuda × LayaAir 引擎。</p><ul>${profiles.map((p) => `<li><a href="example-${p}.html">${p.toUpperCase()} 可執行範例</a> · <a href="zhuda-${p}.js">完整 browser bundle</a></li>`).join('')}${pairs.map((p) => `<li><a href="example-${p}-auto.html">${p.toUpperCase()} 自動選擇後端（有 WebGPU 用 WebGPU，否則 WebGL）</a> · <a href="zhuda-loader.js">後端載入器</a></li>`).join('')}</ul><p>將範例中的相對 script src 換成此版本的完整網址，保留 integrity 與 crossorigin，即可從允許外部腳本的 HTML 引用。</p><p>使用固定 release 網址，不使用 latest。站內遊戲沙箱只允許自身版本資源：部署包內放入同一份 bundle，保留相對路徑。</p><p><a href="sdk-manifest.json">版本、依賴與完整性清單</a> · <a href="https://github.com/zhudaandzhuer/zhuda-laya-engine">公開 API 與開發路線</a></p><p>這是瀏覽器交付入口；Prefab 比對、遊戲驗收與裝置測試仍須完成。範例非完整遊戲。</p></html>`,
     ),
   );
   const payload = [...files]
@@ -247,19 +316,25 @@ export async function buildBrowserSdk({
   return { output, manifest, reused: false };
 }
 
-if (cliMain(import.meta.url, 'Usage: zhuda-laya-browser-sdk [--out DIRECTORY] [--profile NAME]')) {
+if (
+  cliMain(
+    import.meta.url,
+    'Usage: zhuda-laya-browser-sdk [--out DIRECTORY] [--profile NAME] [--wasm inline|external]',
+  )
+) {
   const args = process.argv.slice(2);
-  let outDir, profiles;
+  let outDir, profiles, wasm;
   try {
     for (let i = 0; i < args.length; i++) {
       if (args[i] === '--out' && args[i + 1]) outDir = args[++i];
       else if (args[i] === '--profile' && args[i + 1]) profiles = [args[++i]];
+      else if (args[i] === '--wasm' && args[i + 1]) wasm = args[++i];
       else
         throw Error(
-          'Usage: zhuda-laya-browser-sdk [--out DIRECTORY] [--profile 2d|3d|3d-gltf|2d-webgpu|3d-webgpu|3d-gltf-webgpu]',
+          'Usage: zhuda-laya-browser-sdk [--out DIRECTORY] [--profile 2d|3d|3d-gltf|2d-webgpu|3d-webgpu|3d-gltf-webgpu] [--wasm inline|external]',
         );
     }
-    console.log(JSON.stringify(await buildBrowserSdk({ outDir, profiles }), null, 2));
+    console.log(JSON.stringify(await buildBrowserSdk({ outDir, profiles, wasm }), null, 2));
   } catch (error) {
     console.error(error.message);
     process.exitCode = 1;
