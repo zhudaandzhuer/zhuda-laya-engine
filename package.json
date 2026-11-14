@@ -175,6 +175,7 @@
     "verify:hdr-environment": "node scripts/verify-hdr-environment.mjs",
     "verify:stylized-shading": "node scripts/verify-stylized-shading.mjs",
     "verify:post-quality": "node scripts/verify-post-quality.mjs",
+    "verify:lighting-depth": "node scripts/verify-lighting-depth.mjs",
     "verify:instanced-mesh": "node scripts/verify-instanced-mesh.mjs",
     "verify:animation-control": "node scripts/verify-animation-control.mjs",
     "verify:specular-aa": "node scripts/verify-specular-aa.mjs",

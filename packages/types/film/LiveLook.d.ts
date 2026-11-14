@@ -5,6 +5,7 @@ import type { ZhudaScreenReflections } from '../runtime3d/ScreenReflections.js';
 import type { ZhudaLensFinish } from '../runtime3d/LensFinish.js';
 import type { ZhudaColorLut } from '../runtime3d/ColorLut.js';
 import type { ZhudaLensFlare } from '../runtime3d/LensFlare.js';
+import type { ZhudaLightingDepth, ZhudaLightingDepthOptions } from '../runtime3d/LightingDepth.js';
 import type { ZhudaAutoExposure, ZhudaDepthOfField, ZhudaMotionBlur } from '../runtime3d/CameraEffects.js';
 import type { ZhudaClouds } from '../runtime3d/Clouds.js';
 import type { ZhudaShadowUpdates } from '../runtime3d/ShadowUpdates.js';
@@ -23,9 +24,13 @@ export interface ZhudaAppliedLookParts {
     /** The colour table of the look's grade: an unchanged picture until a table is handed over. */
     colorTable?: ZhudaColorLut;
     flare?: ZhudaLensFlare;
+    /** The scene's falloff, shadow spread, cascade blend and contact shadows. */
+    lighting?: ZhudaLightingDepth;
     /** The shadow update rule, when the look's shadows are not drawn every frame. */
     shadowUpdates?: ZhudaShadowUpdates;
 }
+/** What a look asks of the scene's lights and sun shadows beyond LayaAir's own. */
+export declare function zhudaLookLighting(look: ZhudaResolvedFilmLook): Required<ZhudaLightingDepthOptions>;
 /** Unit vector from the scene toward the light (the light travels along its forward axis). */
 export declare function zhudaTowardSun(l: any, sun: any): [number, number, number];
 /** Linear sun colour times intensity, as water and light shafts take it. */

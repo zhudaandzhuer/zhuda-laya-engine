@@ -233,6 +233,14 @@ A grade also names how the picture is finished (see
 All but `antialias`, `aoMethod`, the table's asset and whether there is a
 flare can change while a look runs.
 
+Lamps and the sun's shadow take more than LayaAir's own (see
+[lighting depth](lighting-depth.md)): `"lightFalloff": "physical"` makes a
+light's `intensity` its brightness at one metre, a quarter of it at two (up
+to 2000); a spot light takes `"penumbra"` 0..1; and
+`"shadows": { "spread": 2, "blend": true, "contact": 0.3 }` widens the soft
+edge, blends the cascades and fades the shadow out at its end, and shades
+the last centimetres under thin things from the depth picture.
+
 With a grade, lamps and lit windows can be brighter than white and glow
 instead of clipping; without one the render is the plain SDR output. The film
 host uses the `3d-gltf` browser bundle, which carries the post-process module.

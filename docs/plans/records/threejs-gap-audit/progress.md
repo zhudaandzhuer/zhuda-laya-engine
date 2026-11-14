@@ -1,26 +1,27 @@
 # three.js gap plan: progress
 
 Plan: `docs/plans/records/threejs-gap-audit/plan.md` (work packages WP0..WP16)\
-Last updated: 2026-11-14, after WP11 (batch 2 is done one package at a time, by one agent, without a review agent)
+Last updated: 2026-11-14, after WP13 (batch 2 is done one package at a time, by one agent, without a review agent)
 
 ## Where each package stands
 
-| Package                                                                                                                    | State                                                                                                                                                                                         | Record                           |
-| -------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------- |
-| WP0 housekeeping                                                                                                           | Merged, reviewed, review points closed                                                                                                                                                        | `topology-globals-and-guardrail` |
-| WP14 small game services                                                                                                   | Merged, reviewed; five minor review points open, listed in its record                                                                                                                         | `game-services`                  |
-| WP1 shadow maps every few frames or on request, render scale, FSR 1                                                        | Merged, reviewed, one review round applied; measured on a vivo V40; no game uses it yet                                                                                                       | `frame-cost`                     |
-| WP2 specular anti-aliasing                                                                                                 | Merged, reviewed, reworked after review; **off until a scene asks** (decided at the merge: worse than off between two and four texels to a pixel, a lit rim, up to 3 ms a frame on the phone) | `specular-aa`                    |
-| WP4 glTF intake (quantized, KHR meshopt, WebP/AVIF, lights, cameras)                                                       | Merged, reviewed, one review round applied; `EXT_mesh_gpu_instancing`, texCoord 1 and Meshopt workers not done                                                                                | `gltf-intake`                    |
-| WP7 physical surfaces in code (sheen, thin film, glass, turned highlights)                                                 | Merged, reviewed, one review round applied (six textures a material at most, said and drawn at the limit); `ZhudaLitSurface` alpha, normal map and alpha hash not done                        | `physical-surfaces`              |
-| WP3 shader warm-up                                                                                                         | Merged; desktop WebGL and WebGPU verified, measured on a vivo V40                                                                                                                             | `shader-warm-up`                 |
-| WP5 KTX 2 / Basis textures                                                                                                 | Merged; desktop WebGL and WebGPU verified, measured on a vivo V40; no encoder shipped and no encoder's output drawn (the check makes its own one-colour UASTC files)                          | `basis-textures`                 |
-| WP6 HDR panoramas and the studio room                                                                                      | Merged; desktop WebGL and WebGPU verified, measured on a vivo V40; not wired into film scenes, no GPU prefilter                                                                               | `hdr-environment`                |
-| WP8 toon material, matcap, normal view, selection outline                                                                  | Merged; desktop WebGL and WebGPU verified, measured on a vivo V40; no outline normals for hard-edged meshes, the outline is not in the depth texture                                          | `stylized-shading`               |
-| WP9 instanced meshes and baked crowds                                                                                      | Merged; desktop WebGL and WebGPU verified, measured on a vivo V40; the bake runs at load (no build-time baker), no blending in a crowd                                                        | `instanced-meshes`               |
-| WP10 animation control (blend, overlay, cross-fade, IK)                                                                    | Merged; desktop WebGL and WebGPU verified; the engine's own IK solvers, not LayaAir's module                                                                                                  | `animation-control`              |
-| WP11 post quality (AgX and neutral curves, `.cube` table, SMAA, occlusion by horizons, lens flare, grade and bloom values) | Merged; desktop WebGL and WebGPU verified; the same page on the phone; the flare is the engine's own, not a wrapper                                                                           | `post-quality/`                  |
-| WP12, WP13, WP15, WP16                                                                                                     | Not started                                                                                                                                                                                   |                                  |
+| Package                                                                                                                                            | State                                                                                                                                                                                         | Record                           |
+| -------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------- |
+| WP0 housekeeping                                                                                                                                   | Merged, reviewed, review points closed                                                                                                                                                        | `topology-globals-and-guardrail` |
+| WP14 small game services                                                                                                                           | Merged, reviewed; five minor review points open, listed in its record                                                                                                                         | `game-services`                  |
+| WP1 shadow maps every few frames or on request, render scale, FSR 1                                                                                | Merged, reviewed, one review round applied; measured on a vivo V40; no game uses it yet                                                                                                       | `frame-cost`                     |
+| WP2 specular anti-aliasing                                                                                                                         | Merged, reviewed, reworked after review; **off until a scene asks** (decided at the merge: worse than off between two and four texels to a pixel, a lit rim, up to 3 ms a frame on the phone) | `specular-aa`                    |
+| WP4 glTF intake (quantized, KHR meshopt, WebP/AVIF, lights, cameras)                                                                               | Merged, reviewed, one review round applied; `EXT_mesh_gpu_instancing`, texCoord 1 and Meshopt workers not done                                                                                | `gltf-intake`                    |
+| WP7 physical surfaces in code (sheen, thin film, glass, turned highlights)                                                                         | Merged, reviewed, one review round applied (six textures a material at most, said and drawn at the limit); `ZhudaLitSurface` alpha, normal map and alpha hash not done                        | `physical-surfaces`              |
+| WP3 shader warm-up                                                                                                                                 | Merged; desktop WebGL and WebGPU verified, measured on a vivo V40                                                                                                                             | `shader-warm-up`                 |
+| WP5 KTX 2 / Basis textures                                                                                                                         | Merged; desktop WebGL and WebGPU verified, measured on a vivo V40; no encoder shipped and no encoder's output drawn (the check makes its own one-colour UASTC files)                          | `basis-textures`                 |
+| WP6 HDR panoramas and the studio room                                                                                                              | Merged; desktop WebGL and WebGPU verified, measured on a vivo V40; not wired into film scenes, no GPU prefilter                                                                               | `hdr-environment`                |
+| WP8 toon material, matcap, normal view, selection outline                                                                                          | Merged; desktop WebGL and WebGPU verified, measured on a vivo V40; no outline normals for hard-edged meshes, the outline is not in the depth texture                                          | `stylized-shading`               |
+| WP9 instanced meshes and baked crowds                                                                                                              | Merged; desktop WebGL and WebGPU verified, measured on a vivo V40; the bake runs at load (no build-time baker), no blending in a crowd                                                        | `instanced-meshes`               |
+| WP10 animation control (blend, overlay, cross-fade, IK)                                                                                            | Merged; desktop WebGL and WebGPU verified; the engine's own IK solvers, not LayaAir's module                                                                                                  | `animation-control`              |
+| WP11 post quality (AgX and neutral curves, `.cube` table, SMAA, occlusion by horizons, lens flare, grade and bloom values)                         | Merged; desktop WebGL and WebGPU verified; the same page on the phone; the flare is the engine's own, not a wrapper                                                                           | `post-quality/`                  |
+| WP13 lighting depth (falloff by the square, a spot's penumbra, wider and blended sun shadows, contact shadows, a schedule for point-light shadows) | Merged; desktop WebGL and WebGPU verified; the same page and a timing page on the phone; off until a scene asks; no game's lamps were renumbered for the square                               | `lighting-depth/`                |
+| WP12, WP15, WP16                                                                                                                                   | Not started                                                                                                                                                                                   |                                  |
 
 Each merged package's own record lists what it did not do; those lists are
 the open work, not this table.
@@ -51,7 +52,7 @@ frames a second above look level 0. Whether a phone should aim at 30 with
 the level 2 look or at 60 with the level 0 look is the game owner's choice;
 the engine has both levers and a ladder (`zhudaQualitySteps`) for either.
 
-## How WP3, WP5, WP6, WP8, WP9, WP10 and WP11 were checked
+## How WP3, WP5, WP6, WP8, WP9, WP10, WP11 and WP13 were checked
 
 One agent wrote, drew and recorded each; there was no second agent to
 review them. Each has unit tests, a real-draw check on WebGL and WebGPU with
@@ -61,8 +62,35 @@ check is in its own record.
 
 ## Next
 
-In the plan's order: WP13 (lighting depth), WP12 (backend delivery), WP15
-(tooling), WP16 (WebGPU-only).
+In the plan's order: WP12 (backend delivery), WP15 (tooling), WP16
+(WebGPU-only); then what the merged packages left open (WP2, WP4, WP7,
+WP14).
+
+## Found while doing WP13, beyond WP13
+
+- LayaAir changes the vector of its shadow strengths in place and puts the
+  same object back. On WebGPU a vector put back as the same object uploads
+  nothing. LayaAir gets away with it only because the first write happens
+  to come before the first draw; anything that makes that vector earlier
+  leaves the sun's shadows without strength on WebGPU. A scene with a
+  `ZhudaLightingDepth` hands LayaAir a copy. The same holds for any vector
+  of LayaAir's the engine reads, changes and sets: set a new one.
+- A soft shadow edge made wider by stretching LayaAir's nine-read filter
+  over more texels shows steps. Sixteen reads on a disc turned in every
+  pixel do not; that is what `shadowSpread` above 1 is.
+- `flat` is a word GLSL keeps for itself. A shader that names a variable so
+  fails to compile and LayaAir skips the pass without a word in the log.
+- The helper most draw checks read a patch of pixels with takes the nearest
+  pixel number to a point, which is half a pixel off on average. The
+  lighting check reads the pixel the point falls in; the older checks were
+  left as they are (their limits were set with it).
+- The sweep of the older draws found what the package's own check did not:
+  a look disposed after its scene was destroyed threw, because LayaAir had
+  taken the scene's values away. An owner that puts something on a scene
+  has to go quietly when the scene went first; `verify-render-scale` holds
+  that case for every part of a look.
+- On the phone all four switches together cost about 10 ms where the parts
+  add up to about 4. Not looked into.
 
 ## Found while doing WP11, beyond WP11
 

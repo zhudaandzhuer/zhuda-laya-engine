@@ -13,7 +13,8 @@ export const ZHUDA_LOOK_QUALITY_LEVELS = 4;
  * 3 as authored; 2 without ambient occlusion, shorter beams and reflection
  * rays, 2048 shadows; 1 without beams, screen reflections and lens finish,
  * edges smoothed in one pass instead of multisampling or three passes, two
- * shadow cascades; 0 without the HDR chain at all (no bloom, no grade, no
+ * shadow cascades, no contact shadows or wide shadow edge; 0 without the HDR
+ * chain at all (no bloom, no grade, no
  * lens flare), one small shadow map. A colour table stays at every level
  * that has a grade: it is the look's colours, and two texture reads.
  * `options.keepGrade`: at level 0 keep a bare HDR chain (tone mapping only)
@@ -31,7 +32,14 @@ export function zhudaLookForQuality(
     const cap = level === 0 ? 1024 : 2048;
     if (next.shadows.resolution > cap) next.shadows.resolution = cap;
     if (level === 1) next.shadows.cascades = Math.min(next.shadows.cascades, 2) as 1 | 2 | 4;
+    // Contact shadows read the depth picture eight times a lit pixel, a wide
+    // edge sixteen times the map: both stay at level 2 and go below it.
+    if (level <= 1) {
+      next.shadows.contact = 0;
+      next.shadows.spread = 1;
+    }
     if (level === 0) {
+      next.shadows.blend = false;
       next.shadows.cascades = 1;
       next.shadows.distance = Math.min(next.shadows.distance, 40);
     }

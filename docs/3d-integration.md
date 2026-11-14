@@ -143,6 +143,12 @@ A character's clips are [mixed by weight and its bones bent to reach a
 point](animation-control.md): a walk into a run, a wave over a walk, a foot
 on sloping ground.
 
+A scene's lamps can [fall off with the square of the distance, a spot have
+its own penumbra, and the sun's shadow be wider, blended from cascade to
+cascade and carried into the last centimetres by contact
+shadows](lighting-depth.md); point-light shadows are kept up to date by a
+schedule.
+
 The HDR chain takes [other tone curves, a colour table from a grading tool,
 edge smoothing by the shape of an edge, ambient occlusion by horizons and a
 lens flare that a wall hides](post-quality.md): `toneMapping`, `grade.lut`,

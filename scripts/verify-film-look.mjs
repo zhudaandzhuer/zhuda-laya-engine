@@ -192,6 +192,102 @@ try {
   );
   report.packChanged = +changed(frames['remount-day-0'], kiosk, 15).toFixed(4);
   assert.ok(report.packChanged > 0.01, 'the pack prop is drawn');
+  // Lamps in a film scene: a spot's penumbra, and falloff by the square of the distance.
+  {
+    const dark = { sky: [0, 0, 0], ambient: [0, 0, 0], sun: { intensity: 0 }, shadows: false };
+    const lamps = (name, look, light) =>
+      render(name, {
+        schemaVersion: 1,
+        id: 'lamp-check',
+        camera: { eye: [0, 16, 0.01], target: [0, 0, 0] },
+        look: { ...dark, ...look },
+        materials: { floor: { color: [0.8, 0.8, 0.8], roughness: 1 } },
+        nodes: [
+          {
+            id: 'floor',
+            type: 'box',
+            size: [60, 0.2, 60],
+            position: [0, -0.2, 0],
+            material: 'floor',
+          },
+          { id: 'lamp', type: 'light', color: [1, 1, 1], range: 30, ...light },
+        ],
+      });
+    const middle = (img) => lum(img, ((H >> 1) * W + (W >> 1)) * 4);
+    // How much of the picture is at least half as bright as its middle (as the screen shows it).
+    const lit = (img) => {
+      const half = middle(img) * 0.5;
+      let count = 0;
+      for (let i = 0; i < img.data.length; i += 4) if (lum(img, i) >= half) count++;
+      return count / (W * H);
+    };
+    const cone = {
+      kind: 'spot',
+      position: [0, 4, 0],
+      target: [0, 0, 0],
+      spotAngleDeg: 60,
+      intensity: 1,
+    };
+    const rims = {};
+    for (const [name, penumbra] of [
+      ['own', undefined],
+      ['hard', 0.02],
+      ['half', 0.5],
+      ['soft', 1],
+    ])
+      rims[name] = +lit(
+        await lamps(
+          'spot-' + name,
+          {},
+          { ...cone, ...(penumbra === undefined ? {} : { penumbra }) },
+        ),
+      ).toFixed(4);
+    report.spotLitShare = rims;
+    assert.equal(rims.half, rims.own, "a penumbra of a half is LayaAir's own");
+    assert.ok(
+      rims.hard > rims.own * 1.15,
+      `a hard rim lights more of the cone: ${JSON.stringify(rims)}`,
+    );
+    assert.ok(rims.soft < rims.own * 0.92, `a soft one less: ${JSON.stringify(rims)}`);
+    // The light under a lamp at two metres against one, as light (the screen's curve taken off).
+    const light = (value) => (value / 255) ** 2.2;
+    const ratios = {};
+    for (const [name, look, intensity] of [
+      ['laya', {}, 0.6],
+      ['physical', { lightFalloff: 'physical' }, 0.6],
+    ]) {
+      const at = async (height) =>
+        light(
+          middle(
+            await lamps(`lamp-${name}-${height}`, look, {
+              kind: 'point',
+              position: [0, height, 0],
+              intensity,
+              range: 10,
+            }),
+          ),
+        );
+      ratios[name] = +((await at(2)) / (await at(1))).toFixed(3);
+    }
+    report.lampTwoToOne = ratios;
+    assert.ok(Math.abs(ratios.laya - 0.625) < 0.04, `LayaAir's falloff: ${ratios.laya}`);
+    assert.ok(Math.abs(ratios.physical - 0.25) < 0.03, `by the square: ${ratios.physical}`);
+    // By the square a lamp's number is its brightness at a metre: larger numbers are allowed.
+    await lamps(
+      'lamp-bright',
+      { lightFalloff: 'physical' },
+      {
+        kind: 'point',
+        position: [0, 8, 0],
+        intensity: 60,
+        range: 20,
+      },
+    );
+    await assert.rejects(
+      lamps('lamp-too-bright', {}, { kind: 'point', position: [0, 8, 0], intensity: 60 }),
+      /intensity: use 0\.\.20/,
+    );
+  }
   report.passed = true;
   // Lens finish: grain adds noise without changing the mean; the vignette
   // darkens the corners; fringing separates red and blue near a bright edge.

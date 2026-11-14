@@ -53,6 +53,8 @@ export * from './SmaaTables.ts';
 export * from './Smaa.ts';
 export * from './GroundTruthAO.ts';
 export * from './LensFlare.ts';
+export * from './LightingDepth.ts';
+export * from './PointShadowSchedule.ts';
 export { installLaya342LifecycleFix } from './Laya342Adapters.ts';
 export {
   ZHUDA_NORMAL_NOMIPMAP_DEFINE,

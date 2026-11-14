@@ -96,6 +96,24 @@ export interface ZhudaFilmShadows {
   update?: 'every' | 'interval' | 'manual';
   /** Frames from one drawing to the next with `update: 'interval'`, 2..30 (default 3). */
   interval?: number;
+  /**
+   * How wide the soft edge is, 1..4 times LayaAir's own (default 1). Above
+   * 1 the edge is sixteen reads on a disc turned differently in every pixel:
+   * wider, and a fine grain. With `softness: 'soft'`.
+   */
+  spread?: number;
+  /**
+   * Blend from one cascade into the next, and fade the shadow out over the
+   * last metres instead of stopping (default false).
+   */
+  blend?: boolean;
+  /**
+   * Contact shadows: how far toward the sun a point looks for something in
+   * its way, in metres, 0.02..2; 0 is none (default). They shade what the
+   * shadow map is too coarse to hold (the foot of a post, a kerb) and reach
+   * beyond `distance`. Eight reads of the depth picture for every lit pixel.
+   */
+  contact?: number;
 }
 
 /** Procedural sky (native `SkyProceduralMaterial`); the sun disk follows the sun. */
@@ -220,6 +238,14 @@ export interface ZhudaFilmLook {
    */
   ambientGround?: ZhudaFilmVec3 | false;
   sun?: ZhudaFilmSun;
+  /**
+   * How the scene's lamps fall off with distance. `laya` (default):
+   * LayaAir's own, as bright at the lamp whatever its range. `physical`: by
+   * the square of the distance; a light's `intensity` is then its brightness
+   * at one metre (a quarter at two), up to 2000, and `range` is where it is
+   * brought to nothing.
+   */
+  lightFalloff?: 'laya' | 'physical';
   /** `false` turns sun shadows off. */
   shadows?: ZhudaFilmShadows | false;
   /** `false` uses the flat `sky` colour instead of a procedural sky. */
@@ -652,7 +678,10 @@ export type ZhudaFilmNode =
       position: ZhudaFilmVec3;
       /** Display RGB 0..1 (sRGB, as a colour picker shows it; default warm white). */
       color?: ZhudaFilmVec3;
-      /** 0..20 (default 2). */
+      /**
+       * 0..20 (default 2). With the look's `lightFalloff: 'physical'` it is
+       * the brightness at one metre, 0..2000.
+       */
       intensity?: number;
       /** Metres the light reaches, 0.1..200 (default 12). */
       range?: number;
@@ -660,6 +689,11 @@ export type ZhudaFilmNode =
       target?: ZhudaFilmVec3;
       /** Spot lights: full cone angle, 1..179 degrees (default 60). */
       spotAngleDeg?: number;
+      /**
+       * Spot lights: how much of the cone is soft, 0..1 (default 0.5,
+       * LayaAir's own): 0 a hard rim, 1 soft from the middle out.
+       */
+      penumbra?: number;
       /**
        * The light casts shadows: one spot light and up to eight point lights
        * per scene may (more than four share their texture at half the
@@ -897,6 +931,9 @@ const shadows = (strength: number): Required<ZhudaFilmShadows> => ({
   cascades: 2,
   update: 'every',
   interval: 3,
+  spread: 1,
+  blend: false,
+  contact: 0,
 });
 
 /** Starting points for a time of day; any look field overrides them. */
@@ -1105,6 +1142,7 @@ function validateLook(
       'sky',
       'ambient',
       'ambientGround',
+      'lightFalloff',
       'sun',
       'shadows',
       'atmosphere',
@@ -1136,7 +1174,18 @@ function validateLook(
     else {
       unknownKeys(
         sh,
-        ['distance', 'softness', 'strength', 'resolution', 'cascades', 'update', 'interval'],
+        [
+          'distance',
+          'softness',
+          'strength',
+          'resolution',
+          'cascades',
+          'update',
+          'interval',
+          'spread',
+          'blend',
+          'contact',
+        ],
         `${path}.shadows`,
         issues,
       );
@@ -1159,8 +1208,18 @@ function validateLook(
         )
       )
         issues.push(`${path}.shadows.interval: use a whole number of frames 2..30`);
+      range(sh.spread, `${path}.shadows.spread`, 1, 4);
+      if (sh.blend !== undefined && typeof sh.blend !== 'boolean')
+        issues.push(`${path}.shadows.blend: use true or false`);
+      if (sh.contact !== undefined && sh.contact !== 0)
+        range(sh.contact, `${path}.shadows.contact`, 0.02, 2);
     }
   }
+  if (
+    look.lightFalloff !== undefined &&
+    !['laya', 'physical'].includes(look.lightFalloff as string)
+  )
+    issues.push(`${path}.lightFalloff: use laya or physical`);
   if (look.atmosphere !== undefined && look.atmosphere !== false) {
     const at = look.atmosphere;
     if (!object(at)) issues.push(`${path}.atmosphere: object or false required`);
@@ -1562,6 +1621,8 @@ function validateNode(
   issues: string[],
   context: ZhudaFilmValidationContext,
   materials: ReadonlySet<string>,
+  /** The look's `lightFalloff` is `physical`: a light's intensity is its brightness at one metre. */
+  lampsByTheSquare = false,
 ) {
   if (!object(node)) return void issues.push(`${path}: node object required`);
   if (!isId(node.id))
@@ -1951,6 +2012,7 @@ function validateNode(
           'range',
           'target',
           'spotAngleDeg',
+          'penumbra',
           'fogOnly',
           'follows',
           'castsShadow',
@@ -1972,11 +2034,20 @@ function validateNode(
         }
       }
       if (node.color !== undefined) colour(node.color, `${path}.color`, issues);
+      {
+        // By the square of the distance a lamp's number is its brightness at one metre.
+        const most = lampsByTheSquare ? 2000 : 20;
+        if (
+          node.intensity !== undefined &&
+          !(finite(node.intensity) && node.intensity >= 0 && node.intensity <= most)
+        )
+          issues.push(`${path}.intensity: use 0..${most}`);
+      }
       if (
-        node.intensity !== undefined &&
-        !(finite(node.intensity) && node.intensity >= 0 && node.intensity <= 20)
+        node.penumbra !== undefined &&
+        !(node.kind === 'spot' && finite(node.penumbra) && node.penumbra >= 0 && node.penumbra <= 1)
       )
-        issues.push(`${path}.intensity: use 0..20`);
+        issues.push(`${path}.penumbra: spot lights only, 0..1`);
       if (
         node.range !== undefined &&
         !(finite(node.range) && node.range >= 0.1 && node.range <= 200)
@@ -2058,7 +2129,14 @@ export function validateZhudaFilmScene(
       issues.push(`scene.nodes: at most ${ZHUDA_FILM_LIMITS.nodes}`);
     const ids = new Set<string>();
     scene.nodes.forEach((node, i) => {
-      validateNode(node, `scene.nodes[${i}]`, issues, context, materials);
+      validateNode(
+        node,
+        `scene.nodes[${i}]`,
+        issues,
+        context,
+        materials,
+        object(scene.look) && scene.look.lightFalloff === 'physical',
+      );
       const id = object(node) ? node.id : undefined;
       if (typeof id === 'string') {
         if (ids.has(id)) issues.push(`scene.nodes[${i}].id: duplicate ${id}`);
@@ -2234,6 +2312,7 @@ export interface ZhudaResolvedFilmLook {
   ambient: ZhudaFilmVec3;
   ambientGround: ZhudaFilmVec3 | false;
   sun: Required<ZhudaFilmSun>;
+  lightFalloff: 'laya' | 'physical';
   shadows: Required<ZhudaFilmShadows> | false;
   atmosphere: Required<ZhudaFilmAtmosphere> | false;
   fog: Required<ZhudaFilmFog> | false;
@@ -2378,6 +2457,7 @@ export function resolveZhudaFilmLook(
       intensity: look.sun?.intensity ?? base.sun.intensity,
       color: look.sun?.color ?? ([...base.sun.color] as ZhudaFilmVec3),
     },
+    lightFalloff: look.lightFalloff ?? 'laya',
     shadows: merge<ZhudaFilmShadows>(look.shadows, preset?.shadows ?? false, {
       distance: 60,
       softness: 'soft',
@@ -2386,6 +2466,9 @@ export function resolveZhudaFilmLook(
       cascades: 2,
       update: 'every',
       interval: 3,
+      spread: 1,
+      blend: false,
+      contact: 0,
     }),
     atmosphere,
     fog,
@@ -2524,7 +2607,8 @@ export function sampleZhudaFilmCameraPath(
  * when every difference can be set in place: the sun (direction, colour,
  * intensity), sky and ground light colours, the flat sky colour, the values
  * of the procedural sky and of distance fog, shadow distance, strength,
- * softness, resolution, cascades and how often they are drawn, the
+ * softness, resolution, cascades, spread, blend, contact shadows and how
+ * often they are drawn, how lamps fall off, the
  * values of the grade (exposure, contrast, saturation, the tone curve, white
  * balance, lift, gamma and gain, bloom and its threshold, knee, shape and
  * spread, ambient occlusion, grain, vignette, fringe, how much of a colour

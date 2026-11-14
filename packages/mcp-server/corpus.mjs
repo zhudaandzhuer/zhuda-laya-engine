@@ -172,6 +172,17 @@ export const API_GUARDRAILS = [
       'A curve adds no pass (it is worked out in the grade lookup); gtao reads depth only and leaves open ground and the sky alone; the flare is hidden by what hides the light. LayaAir LensFlareEffect draws through walls and its CUSTOMLUT path does not compile. See docs/post-quality.md.',
   },
   {
+    id: 'GUARD_LIGHTING_DEPTH',
+    topic:
+      'light falloff inverse square decay penumbra spot shadow radius softness cascade blend contact shadows point light shadow update',
+    hallucinatedLegacyApi:
+      'light.decay = 2; spotLight.penumbra = 0.3; light.shadow.radius = 4; new CSM({ fade: true }); pointLight.shadow.needsUpdate = true',
+    zhudaCanonicalApi:
+      "A look: { lightFalloff: 'physical', shadows: { spread: 2, blend: true, contact: 0.3 } } and penumbra on a film scene's spot light. By hand: new ZhudaLightingDepth(scene3D, { falloff: 'physical', shadowSpread: 2, cascadeBlend: true, contactShadows: 0.3 }, camera); setZhudaSpotPenumbra(spotLightComponent, 0.2). Point-light shadows: new ZhudaPointShadowSchedule((position, range, light) => shadow.render(position, range, light), { perFrame: 1 }); schedule.set(i, { position, range, moving }); schedule.touch(i); schedule.update() once a frame.",
+    reason:
+      "With falloff 'physical' a light's intensity is its brightness at one unit (a quarter at two): a lamp tuned for LayaAir's falloff needs a much larger number. One ZhudaLightingDepth a scene; a look makes it. Contact shadows shade the sun's light only and need its shadows on. See docs/lighting-depth.md.",
+  },
+  {
     id: 'GUARD_INIT_BOOT',
     topic: '引擎啟動與 Stage 初始化',
     hallucinatedLegacyApi: 'Laya.init(1280, 720, Laya.WebGL); Laya.MiniAdpter.init();',

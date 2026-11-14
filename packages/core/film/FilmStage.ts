@@ -50,6 +50,11 @@ import {
   type ZhudaCubeLut,
 } from '../runtime3d/ColorLut.ts';
 import { ZhudaLensFlare } from '../runtime3d/LensFlare.ts';
+import {
+  ZhudaLightingDepth,
+  setZhudaSpotPenumbra,
+  zhudaLightingDepthInstalled,
+} from '../runtime3d/LightingDepth.ts';
 import { ZhudaShadowUpdates } from '../runtime3d/ShadowUpdates.ts';
 import { ZhudaModelInspector } from '../runtime3d/ModelInspector.ts';
 import { ZhudaModelAnimationSampler } from '../runtime3d/ModelAnimationSampler.ts';
@@ -95,6 +100,7 @@ import { zhudaLookForQuality, type ZhudaLookQuality } from './LookQuality.ts';
 import {
   ZhudaHemisphereAmbientSlot,
   updateZhudaLookInPlace,
+  zhudaLookLighting,
   zhudaSunRadiance,
   zhudaTowardSun,
   type ZhudaAppliedLookParts,
@@ -942,6 +948,10 @@ function buildFilmStageContents(
       light.range = node.range ?? 12;
       if (node.kind === 'spot') {
         light.spotAngle = node.spotAngleDeg ?? 60;
+        if (node.penumbra !== undefined) {
+          setZhudaSpotPenumbra(light, node.penumbra);
+          cleanups.push(() => setZhudaSpotPenumbra(light, null));
+        }
         const [tx, ty, tz] = node.target!,
           [px, py, pz] = node.position;
         // A light aimed straight down or up needs another up vector.
@@ -1474,6 +1484,24 @@ export function applyResolvedFilmLook(
     }));
     cleanups.push(() => pipeline.dispose());
   }
+  // After the HDR chain, which puts the camera's depth setting back as it
+  // found it when it goes: contact shadows ask for the depth picture.
+  let lighting: ZhudaLightingDepth | undefined;
+  {
+    const asked = zhudaLookLighting(look);
+    if (zhudaLightingDepthInstalled(l)) {
+      const depth = (lighting = new ZhudaLightingDepth(scene3D, asked, camera));
+      cleanups.push(() => depth.dispose());
+    } else if (
+      asked.falloff !== 'laya' ||
+      asked.shadowSpread > 1 ||
+      asked.cascadeBlend ||
+      asked.contactShadows > 0
+    )
+      throw Error(
+        'The look asks for lightFalloff, shadows.spread, shadows.blend or shadows.contact: these need installLaya342LightingDepth() before Laya.init (ZhudaEngine.boot does it)',
+      );
+  }
   if (look.fog) {
     scene3D.enableFog = true;
     scene3D.fogMode = l.FogMode.Linear;
@@ -1492,6 +1520,7 @@ export function applyResolvedFilmLook(
     finish,
     colorTable,
     flare,
+    lighting,
     sky: skyMaterial,
     film,
     shadowUpdates,

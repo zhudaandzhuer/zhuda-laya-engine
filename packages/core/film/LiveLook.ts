@@ -16,6 +16,7 @@ import type { ZhudaScreenReflections } from '../runtime3d/ScreenReflections.ts';
 import type { ZhudaLensFinish } from '../runtime3d/LensFinish.ts';
 import type { ZhudaColorLut } from '../runtime3d/ColorLut.ts';
 import type { ZhudaLensFlare } from '../runtime3d/LensFlare.ts';
+import type { ZhudaLightingDepth, ZhudaLightingDepthOptions } from '../runtime3d/LightingDepth.ts';
 import type {
   ZhudaAutoExposure,
   ZhudaDepthOfField,
@@ -39,12 +40,26 @@ export interface ZhudaAppliedLookParts {
   /** The colour table of the look's grade: an unchanged picture until a table is handed over. */
   colorTable?: ZhudaColorLut;
   flare?: ZhudaLensFlare;
+  /** The scene's falloff, shadow spread, cascade blend and contact shadows. */
+  lighting?: ZhudaLightingDepth;
   /** The shadow update rule, when the look's shadows are not drawn every frame. */
   shadowUpdates?: ZhudaShadowUpdates;
 }
 
 /** What the shadow maps were last drawn for, by rule: a change draws them again. */
 const shadowsDrawnFor = new WeakMap<ZhudaShadowUpdates, string>();
+
+/** What a look asks of the scene's lights and sun shadows beyond LayaAir's own. */
+export function zhudaLookLighting(
+  look: ZhudaResolvedFilmLook,
+): Required<ZhudaLightingDepthOptions> {
+  return {
+    falloff: look.lightFalloff,
+    shadowSpread: look.shadows && look.shadows.softness === 'soft' ? look.shadows.spread : 1,
+    cascadeBlend: look.shadows ? look.shadows.blend : false,
+    contactShadows: look.shadows ? look.shadows.contact : 0,
+  };
+}
 
 /** Unit vector from the scene toward the light (the light travels along its forward axis). */
 export function zhudaTowardSun(l: any, sun: any): [number, number, number] {
@@ -174,6 +189,7 @@ export function updateZhudaLookInPlace(
     });
     parts.film.setAntialias(look.grade.antialias === 'msaa');
   }
+  parts.lighting?.set(zhudaLookLighting(look));
   if (parts.colorTable && look.grade && look.grade.lut)
     parts.colorTable.setIntensity(look.grade.lut.intensity);
   if (parts.flare && look.lensFlare) {
