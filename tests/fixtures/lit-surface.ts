@@ -109,6 +109,7 @@ function stage(options: { ambient: number; sun: V; shadows: boolean }) {
   camera.transform.position = v3(EYE);
   camera.transform.lookAt(v3(LOOK), v3([0, 1, 0]));
   const made: any[] = [];
+  const meshes = new Map<any, any>();
   const own = <T>(thing: T): T => {
     made.push(thing);
     return thing;
@@ -133,13 +134,59 @@ function stage(options: { ambient: number; sun: V; shadows: boolean }) {
   floor.transform.position = v3([0, -0.05, 0]);
   scene.addChild(floor);
   /** A sheet at a height, drawn with a lit surface material. */
-  const plate = (material: any, at: V, size: V = [4, 2], tangents = true) => {
-    const mesh = own(new Z.ZhudaDynamicMesh(sheet(size[0], size[1], tangents), scene));
+  const plate = (material: any, at: V, size: V = [4, 2], tangents = true, colors?: number[]) => {
+    const data = sheet(size[0], size[1], tangents);
+    if (colors) data.colors = new Float32Array(colors);
+    const mesh = own(new Z.ZhudaDynamicMesh(data, scene));
+    meshes.set(mesh.node, mesh);
     mesh.node.meshRenderer.sharedMaterial = material.material;
     mesh.node.meshRenderer.castShadow = true;
     mesh.node.meshRenderer.receiveShadow = false;
     mesh.node.transform.position = v3(at);
     return mesh.node;
+  };
+  /** A ball, for what depends on how steeply a surface is seen. */
+  const ball = (material: any, at: V, radius = 1) => {
+    const mesh = own(Z.Zhuda3D.createPrimitiveMesh('sphere', { radius }));
+    const node = new Laya.MeshSprite3D(mesh);
+    node.meshRenderer.sharedMaterial = material.material;
+    node.meshRenderer.castShadow = false;
+    node.transform.position = v3(at);
+    scene.addChild(node);
+    return node;
+  };
+  /** Looks at a ball from far off through a long lens: every part of it is seen from nearly one side. */
+  const farView = (centre: V, radius: number) => {
+    const distance = 40,
+      fov = 4;
+    camera.fieldOfView = fov;
+    camera.transform.position = v3([centre[0], centre[1], centre[2] + distance]);
+    camera.transform.lookAt(v3(centre), v3([0, 1, 0]));
+    const h = Math.tan(((fov / 2) * Math.PI) / 180);
+    /** The pixel of the ball's front at a share of its radius to the right of its middle. */
+    return (share: number): [number, number] => {
+      const x = share * radius,
+        z = Math.sqrt(Math.max(0, radius * radius - x * x));
+      return [Math.floor(((x / ((distance - z) * h * (W / H)) + 1) / 2) * W), Math.floor(H / 2)];
+    };
+  };
+  /** Puts the camera somewhere else; returns where a point of the world is on the screen from there. */
+  const view = (eye: V, look: V, fov: number, upward: V = [0, 1, 0]) => {
+    camera.fieldOfView = fov;
+    camera.transform.position = v3(eye);
+    camera.transform.lookAt(v3(look), v3(upward));
+    const f = unit(sub(look, eye)),
+      r = unit(cross(f, upward)),
+      u = cross(r, f),
+      h = Math.tan(((fov / 2) * Math.PI) / 180);
+    return (p: V): [number, number] => {
+      const d = sub(p, eye),
+        depth = dot(d, f);
+      return [
+        Math.floor(((dot(d, r) / (depth * h * (W / H)) + 1) / 2) * W),
+        Math.floor(((1 - dot(d, u) / (depth * h)) / 2) * H),
+      ];
+    };
   };
   return {
     scene,
@@ -147,6 +194,10 @@ function stage(options: { ambient: number; sun: V; shadows: boolean }) {
     sun,
     own,
     plate,
+    ball,
+    farView,
+    view,
+    mesh: (node: any) => meshes.get(node),
     lit: (spec: any) => {
       const material = new Z.ZhudaLitSurfaceMaterial(spec);
       made.push({ destroy: () => material.dispose() });
@@ -488,6 +539,398 @@ function dissolve() {
   return result;
 }
 
+/** Light at a pixel as the screen's curve gives it back (LayaAir writes a power of 1/2.2). */
+const lightAt = (p: Uint8ClampedArray, at: [number, number]) => {
+  let sum = 0;
+  for (let y = at[1] - 1; y <= at[1] + 1; y++)
+    for (let x = at[0] - 1; x <= at[0] + 1; x++) {
+      const i = (y * W + x) * 4;
+      sum +=
+        (0.2126 * (p[i] / 255) ** 2.2 +
+          0.7152 * (p[i + 1] / 255) ** 2.2 +
+          0.0722 * (p[i + 2] / 255) ** 2.2) /
+        9;
+    }
+  return sum;
+};
+const channels = (p: Uint8ClampedArray, at: [number, number]) =>
+  [0, 1, 2].map((k) => round((p[(at[1] * W + at[0]) * 4 + k] / 255) ** 2.2));
+
+// --- 5. Sheer cloth: how clear it is goes with how steeply it is seen ----------------
+function sheer() {
+  const s = stage({ ambient: 0, sun: [-90, 0, 0], shadows: false });
+  s.sun.light.intensity = 0;
+  s.camera.clearColor = new Laya.Color(0.6, 0.6, 0.6, 1);
+  // A dark yarn that takes no light: what is seen through it is the ground behind.
+  const cover = 0.35;
+  const material = s.lit({
+    name: 'ZhudaFixtureSheer',
+    surface: `${head}s.baseColor=vec3(0.0);float steep=max(0.23,dot(normalize(n),s.viewDirection));s.alpha=1.0-exp(-${cover}/pow(steep,0.52));}`,
+    material: { blend: 'alpha', roughness: 1 },
+  });
+  s.ball(material, [0, 3, 0]);
+  const at = s.farView([0, 3, 0], 1);
+  flush(3);
+  const p = read();
+  keep('sheer');
+  const ground = lightAt(p, [8, 8]);
+  const result: any = { ground: round(ground), shares: {} };
+  for (const share of [0, 0.5, 0.8, 0.97]) {
+    // Seen from far off, the cosine to the eye at a share of the radius is what is left of 1.
+    const steep = Math.max(0.23, Math.sqrt(1 - share * share));
+    result.shares[share] = {
+      alpha: round(1 - lightAt(p, at(share)) / ground),
+      expected: round(1 - Math.exp(-cover / steep ** 0.52)),
+    };
+  }
+  s.end();
+  return result;
+}
+
+// --- 6. Blended, added and opaque, as the material says and nothing more -------------
+function blends() {
+  const s = stage({ ambient: 0, sun: [-90, 0, 0], shadows: false });
+  s.sun.light.intensity = 0;
+  s.camera.clearColor = new Laya.Color(0.3, 0.3, 0.3, 1);
+  // A surface that only gives off light, so that what is drawn is known.
+  const glow = [0.5, 0.1, 0.05];
+  const surface = `${head}s.baseColor=vec3(0.0);s.emission=vec3(${glow.join(',')});}`;
+  const result: any = { glow };
+  const places: Record<string, V> = { opaque: [-3, 3, 0], alpha: [0, 3, 0], additive: [3, 3, 0] };
+  const materials: Record<string, any> = {};
+  for (const blend of Object.keys(places)) {
+    const material = (materials[blend] = s.lit({
+      name: 'ZhudaFixtureGlow',
+      surface,
+      material: { blend, color: [1, 1, 1, 0.5], doubleSided: true, roughness: 1 },
+    }));
+    const node = s.plate(material, places[blend], [2, 2]);
+    // Upright, facing the eye.
+    node.transform.rotationEuler = v3([90, 0, 0]);
+  }
+  s.camera.fieldOfView = 30;
+  s.camera.transform.position = v3([0, 3, 14]);
+  s.camera.transform.lookAt(v3([0, 3, 0]), v3([0, 1, 0]));
+  flush(3);
+  const p = read();
+  keep('blends');
+  const h = Math.tan((15 * Math.PI) / 180);
+  const at = (x: number): [number, number] => [
+    Math.floor(((x / (14 * h * (W / H)) + 1) / 2) * W),
+    Math.floor(H / 2),
+  ];
+  result.ground = channels(p, [8, 8]);
+  for (const [blend, place] of Object.entries(places)) result[blend] = channels(p, at(place[0]));
+  result.state = Object.fromEntries(
+    Object.entries(materials).map(([blend, material]) => [
+      blend,
+      { depthWrite: material.material.depthWrite, alphaTest: material.material.alphaTest },
+    ]),
+  );
+  s.end();
+  return result;
+}
+
+// --- 7. A normal written by the hook moves the highlight ------------------------------
+function highlight() {
+  // The sun is where a mirror lying on the ground would show it to the eye, at the plate's middle.
+  const s = stage({ ambient: 0, sun: [-144.5, 0, 0], shadows: false });
+  const material = s.lit({
+    name: 'ZhudaFixtureGloss',
+    surface: `${head}s.baseColor=vec3(0.02);s.metallic=1.0;s.roughness=0.25;s.normalTS=vec3(u_ZhudaTilt.x,u_ZhudaTilt.y,1.0);}`,
+    uniforms: { u_ZhudaTilt: { type: 'vec2', value: [0, 0] } },
+    material: { roughness: 0.25, metallic: 1 },
+  });
+  /** The middle of the brightest pixels of the picture. */
+  const middle = (p: Uint8ClampedArray) => {
+    let most = 0;
+    for (let i = 0; i < p.length; i += 4) most = Math.max(most, p[i + 1]);
+    let sx = 0,
+      sy = 0,
+      count = 0;
+    for (let y = 0; y < H; y++)
+      for (let x = 0; x < W; x++)
+        if (p[(y * W + x) * 4 + 1] >= most * 0.8) {
+          sx += x;
+          sy += y;
+          count++;
+        }
+    return { x: round(sx / count, 1), y: round(sy / count, 1), most, pixels: count };
+  };
+  const tilts = { flat: [0, 0], alongU: [0.12, 0], alongV: [0, 0.12] };
+  const result: any = {};
+  // The same plate twice: with tangents of its own, and with none (the
+  // frame then comes from the texture coordinates on the screen).
+  for (const [mesh, tangents] of [
+    ['tangents', true],
+    ['bare', false],
+  ] as const) {
+    const node = s.plate(material, [0, 0.02, 0], [10, 10], tangents);
+    result[mesh] = {};
+    for (const [name, tilt] of Object.entries(tilts)) {
+      material.set('u_ZhudaTilt', tilt);
+      flush(3);
+      result[mesh][name] = middle(read());
+      if (mesh === 'tangents' && name !== 'alongV') keep(`highlight-${name}`);
+    }
+    node.active = false;
+  }
+  s.end();
+  return result;
+}
+
+// --- 8. A number a vertex, read in the hook; a part of the mesh changed ----------------
+function vertexValue() {
+  const s = stage({ ambient: 0, sun: [-90, 0, 0], shadows: false });
+  s.sun.light.intensity = 0;
+  // Alpha carries a plain number (none at the left edge, one at the right);
+  // red, green and blue carry a display colour, which arrives as light.
+  const material = s.lit({
+    name: 'ZhudaFixtureVertexValue',
+    surface: `${head}s.baseColor=vec3(0.0);s.emission=vec3(s.vertexColor.a,s.vertexColor.g,1.0-s.vertexColor.a);}`,
+    material: { roughness: 1 },
+  });
+  const grey = [0.5, 0.5, 0.5];
+  const node = s.plate(material, [0, 1.5, 0], [4, 2], true, [
+    ...grey,
+    0,
+    ...grey,
+    1,
+    ...grey,
+    1,
+    ...grey,
+    0,
+  ]);
+  const mesh = s.mesh(node);
+  const places = { left: [-1, 1.5, 0], right: [1, 1.5, 0] };
+  const sample = () => {
+    flush(3);
+    const p = read();
+    return Object.fromEntries(
+      Object.entries(places).map(([name, at]) => [name, channels(p, pixel(at))]),
+    );
+  };
+  const result: any = {
+    layout: { stride: mesh.stride, offsets: mesh.offsets },
+    made: sample(),
+  };
+  keep('vertex-value');
+  // The two vertices at the right edge are told there is none there either.
+  mesh.setColor(1, ...grey, 0);
+  mesh.setColor(2, ...grey, 0);
+  result.beforeUpload = sample();
+  mesh.updateRange(1, 2);
+  result.changed = sample();
+  // A plain plate beside it: a mesh without colours reads white.
+  const bare = s.plate(material, [0, 1.5, 2.2], [4, 0.6], true);
+  result.withoutColours = (() => {
+    flush(3);
+    return channels(read(), pixel([0, 1.5, 2.2]));
+  })();
+  void bare;
+  s.end();
+  return result;
+}
+
+// --- 9. Sheen on a lit surface with a hook --------------------------------------------
+function cloth() {
+  // Lit from where the eye is: a matt black ball is dark all over, cloth glows at its edge.
+  const s = stage({ ambient: 0, sun: [0, 0, 0], shadows: false });
+  const at = s.farView([0, 3, 0], 1);
+  const result: any = {};
+  const balls: Record<string, any> = {
+    matt: { name: 'ZhudaFixtureMatt', surface: `${head}s.baseColor=vec3(0.0);s.roughness=1.0;}` },
+    sheen: {
+      name: 'ZhudaFixtureSheen',
+      surface: `${head}s.baseColor=vec3(0.0);s.roughness=1.0;}`,
+      sheen: { color: [1, 1, 1], roughness: 0.4 },
+    },
+    // The hook has the last word: red, whatever the material said.
+    red: {
+      name: 'ZhudaFixtureSheenRed',
+      surface: `${head}s.baseColor=vec3(0.0);s.roughness=1.0;s.sheenColor=vec3(1.0,0.0,0.0);}`,
+      sheen: true,
+    },
+  };
+  for (const [name, spec] of Object.entries(balls)) {
+    const material = s.lit({ ...spec, material: { roughness: 1 } });
+    const node = s.ball(material, [0, 3, 0]);
+    flush(3);
+    const p = read();
+    if (name === 'sheen') keep('cloth');
+    result[name] = { middle: channels(p, at(0)), edge: channels(p, at(0.92)) };
+    if (name === 'sheen') {
+      // Changed in place: half the glow.
+      material.setSheen({ color: [0.5, 0.5, 0.5] });
+      flush(3);
+      result.halved = { edge: channels(read(), at(0.92)) };
+    }
+    node.destroy();
+  }
+  s.end();
+  return result;
+}
+
+// --- 10. Two sheets through each other: cut by chance, the nearer one is seen ----------
+function cards() {
+  const result: any = {};
+  // Two sheets tilted opposite ways about the line they share, seen from
+  // straight above: on one side of the line the one is on top, on the
+  // other side the other.
+  const lean = 20,
+    red = [0.8, 0.02, 0.02],
+    green = [0.02, 0.6, 0.02];
+  /** The shares of red (sheet A) and green (sheet B) pixels round a place, and the mean light there. */
+  const shares = (p: Uint8ClampedArray, at: [number, number]) => {
+    let a = 0,
+      b = 0,
+      all = 0;
+    const light = [0, 0, 0];
+    for (let y = at[1] - 6; y <= at[1] + 6; y++)
+      for (let x = at[0] - 40; x <= at[0] + 40; x++) {
+        const i = (y * W + x) * 4;
+        all++;
+        if (p[i] - p[i + 1] > 60) a++;
+        else if (p[i + 1] - p[i] > 60) b++;
+        for (let k = 0; k < 3; k++) light[k] += (p[i + k] / 255) ** 2.2;
+      }
+    return { A: round(a / all), B: round(b / all), light: light.map((v) => round(v / all)) };
+  };
+  const draw = (hash: boolean, first: 'A' | 'B') => {
+    const s = stage({ ambient: 0, sun: [-90, 0, 0], shadows: false });
+    s.sun.light.intensity = 0;
+    const at = s.view([0, 12, 0], [0, 1.5, 0], 30, [0, 0, -1]);
+    const nodes: Record<string, any> = {};
+    const sheet = (key: 'A' | 'B') => {
+      const material = s.lit({
+        name: `ZhudaFixtureCard${key}${hash ? 'Hash' : 'Blend'}`,
+        surface: `${head}s.baseColor=vec3(0.0);s.emission=vec3(${(key === 'A' ? red : green).join(',')});s.alpha=0.5;}`,
+        ...(hash ? { alphaHash: true } : {}),
+        material: { doubleSided: true, roughness: 1, ...(hash ? {} : { blend: 'alpha' }) },
+      });
+      // Sheet B a little to the side: the chance is drawn from where a point
+      // is on its own sheet, and two sheets laid out alike would draw alike.
+      const node = (nodes[key] = s.plate(material, [key === 'A' ? 0 : 0.37, 1.5, 0], [4, 2]));
+      node.transform.rotationEuler = v3([key === 'A' ? lean : -lean, 0, 0]);
+    };
+    sheet(first);
+    sheet(first === 'A' ? 'B' : 'A');
+    flush(3);
+    const p = read();
+    if (first === 'A') keep(hash ? 'cards-hash' : 'cards-blend');
+    // Which sheet is on top on each side, from where the nodes put their own points.
+    const height = (key: string, z: number) => {
+      const out = new Laya.Vector3();
+      Laya.Vector3.transformCoordinate(v3([0, 0, z]), nodes[key].transform.worldMatrix, out);
+      return out.y;
+    };
+    const sides: any = {};
+    for (const [name, z] of [
+      ['plusZ', 0.5],
+      ['minusZ', -0.5],
+    ] as const) {
+      const top = height('A', z) > height('B', z) ? 'A' : 'B';
+      const seen = shares(p, at([0, 1.5, z]));
+      sides[name] = {
+        top,
+        topShare: seen[top],
+        underShare: seen[top === 'A' ? 'B' : 'A'],
+        light: seen.light,
+      };
+    }
+    s.end();
+    return { sides, picture: p };
+  };
+  for (const [name, hash] of [
+    ['hash', true],
+    ['blend', false],
+  ] as const) {
+    const one = draw(hash, 'A'),
+      other = draw(hash, 'B');
+    let differ = 0;
+    for (let i = 0; i < one.picture.length; i += 4)
+      if (
+        Math.abs(one.picture[i] - other.picture[i]) +
+          Math.abs(one.picture[i + 1] - other.picture[i + 1]) >
+        24
+      )
+        differ++;
+    result[name] = {
+      madeAFirst: one.sides,
+      madeBFirst: other.sides,
+      pixelsThatDiffer: round(differ / (W * H), 4),
+    };
+  }
+  // What half-clear sheets over a dark floor come to where they are drawn in the right order.
+  result.rightLight = {
+    topA: red.map((v, k) => round(0.5 * v + 0.25 * green[k])),
+    topB: green.map((v, k) => round(0.5 * v + 0.25 * red[k])),
+  };
+  return result;
+}
+
+// --- 11. What the hook reads, in the shadow and in the depth too -----------------------
+function passes() {
+  const s = stage({ ambient: 0.25, sun: [-90, 0, 0], shadows: true });
+  // Kept where the vertex's number is over a half (the right half of the
+  // plate) and where the surface is seen steeply enough. The plate faces up:
+  // the eye sees it at a cosine of 0.447, the sun overhead at 1.
+  const surface = (limit: number) =>
+    `${head}s.baseColor=${RED};s.alpha=step(0.5,s.vertexColor.a)*step(${limit.toFixed(2)},dot(normalize(n),s.viewDirection));}`;
+  const seen = s.lit({
+    name: 'ZhudaFixturePassesSeen',
+    surface: surface(0.3),
+    material: { blend: 'cutout', doubleSided: true, roughness: 0.9 },
+  });
+  // Too flat to the eye to be drawn; the sun, overhead, still meets it squarely.
+  const unseen = s.lit({
+    name: 'ZhudaFixturePassesUnseen',
+    surface: surface(0.7),
+    material: { blend: 'cutout', doubleSided: true, roughness: 0.9 },
+  });
+  const white = [1, 1, 1];
+  const node = s.plate(seen, [0, 1.5, 0], [4, 2], true, [
+    ...white,
+    0,
+    ...white,
+    1,
+    ...white,
+    1,
+    ...white,
+    0,
+  ]);
+  const points = {
+    kept: [1, 1.5, 0],
+    cut: [-1, 1.5, 0],
+    underKept: [1, 0, 0],
+    underCut: [-1, 0, 0],
+    aside: [3.5, 0, 0],
+  };
+  const sample = () => {
+    flush(3);
+    const p = read();
+    return Object.fromEntries(
+      Object.entries(points).map(([name, point]) => [name, colourAt(p, point)]),
+    );
+  };
+  const result: any = { seen: sample() };
+  keep('passes');
+  for (const what of ['depth', 'normals'] as const) {
+    const off = depthView(s.camera, what);
+    result[what] = { seen: sample() };
+    node.meshRenderer.sharedMaterial = unseen.material;
+    result[what].unseen = sample();
+    node.meshRenderer.sharedMaterial = seen.material;
+    off();
+  }
+  node.meshRenderer.sharedMaterial = unseen.material;
+  result.unseen = sample();
+  keep('passes-unseen');
+  result.eyeDepth = { kept: round(depthOf(points.kept)), cut: round(depthOf(points.cut)) };
+  s.end();
+  return result;
+}
+
 async function main() {
   const renderer = (globalThis as any).ZhudaBundle.renderer === 'webgpu' ? 'webgpu' : 'webgl';
   out.renderer = renderer;
@@ -502,7 +945,19 @@ async function main() {
   });
   flush(2);
   const only = new URLSearchParams(location.search).get('only');
-  const parts: Record<string, () => any> = { strips, chance, tilted, dissolve };
+  const parts: Record<string, () => any> = {
+    strips,
+    chance,
+    tilted,
+    dissolve,
+    sheer,
+    blends,
+    highlight,
+    vertexValue,
+    cloth,
+    cards,
+    passes,
+  };
   out.left = {};
   // LayaAir keeps a sun's shadow map once it has made one: made before anything is counted.
   const warm = stage({ ambient: 0.2, sun: [-90, 0, 0], shadows: true });

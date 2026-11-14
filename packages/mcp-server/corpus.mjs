@@ -227,6 +227,17 @@ export const API_GUARDRAILS = [
       'The shadow and depth passes run the same hook, so no second material is needed for a cut-out shadow. normalTS is in the frame of LayaAir normal maps (x along u, y along v, z out) and works on meshes without tangents. alphaHash is a cut-out: do not combine it with blend alpha. A shader name is a contract: common and alphaHash are part of it. See docs/filmic-rendering.md.',
   },
   {
+    id: 'GUARD_LIT_SURFACE_INPUTS',
+    topic:
+      'lit surface hook view direction fresnel rim alpha sheer cloth stocking knit nylon tulle veil vertex color vertexColors per-vertex attribute mask stretch sheen velvet cloth lobe transparent blend additive dynamic mesh setColor',
+    hallucinatedLegacyApi:
+      'material.onBeforeCompile = (shader) => { shader.fragmentShader = shader.fragmentShader.replace("#include <dithering_fragment>", "float f = dot(normalize(vNormal), normalize(vViewPosition)); gl_FragColor.a = 1.0 - exp(-c / pow(f, 0.52));") }; material.transparent = true; material.vertexColors = true; geometry.setAttribute("color", new THREE.BufferAttribute(colors, 4)); new THREE.MeshPhysicalMaterial({ sheen: 1, sheenColor, sheenRoughness }); uniform vec3 cameraPosition;',
+    zhudaCanonicalApi:
+      "new ZhudaLitSurfaceMaterial({ name: 'ZhudaSheerKnit', material: { blend: 'alpha', color: [0.05, 0.04, 0.04, 1] }, sheen: { color: [0.9, 0.85, 0.8], roughness: 0.45 }, uniforms: { u_ZhudaCover: { type: 'float', value: 0.35 } }, surface: 'void zhudaSurface(inout ZhudaLitSurface s, vec2 uv, vec3 p, vec3 n){ float steep = max(0.23, dot(normalize(n), s.viewDirection)); s.alpha = 1.0 - exp(-u_ZhudaCover / (pow(steep, 0.52) * (1.0 + 0.5 * s.vertexColor.a))); }' }); new ZhudaDynamicMesh({ positions, normals, uvs, indices, colors }) then mesh.setColor(i, r, g, b, a); mesh.updateRange(first, count).",
+    reason:
+      'The hook is given s.viewDirection (toward the eye; toward the light where a shadow is written, because LayaAir sets no u_CameraPos in that pass) and the mesh normal as its fourth argument, so no camera uniform is needed. s.vertexColor is white on a mesh without colours; rgb arrive as light (power 2.2), alpha as given, so a plain number for the hook goes in alpha. material.blend alpha, additive and cutout take effect with nothing set by hand. sheen is on the lit surface (s.sheenColor, s.sheenRoughness, setSheen); the other physical lobes (thin film, glass, coat) have no hook. sheen is part of the shader name contract. See docs/filmic-rendering.md.',
+  },
+  {
     id: 'GUARD_GLTF_COPIES',
     topic:
       'glTF EXT_mesh_gpu_instancing instanced mesh from file forest scatter InstancedMesh aoMap uv2 second uv set texCoord 1 baked occlusion emissive lightmap meshopt decoder workers',

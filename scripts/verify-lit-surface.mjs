@@ -235,9 +235,188 @@ near(dissolve[0].floor, chance.shadow[1], 0.005, 'nothing gone: the floor is in 
 const dark = (dissolve[1].floor - half.floor) / (dissolve[1].floor - dissolve[0].floor);
 near(dark, half.kept + half.glowing, 0.08, 'half gone: the shadow is as much as is left');
 
+// 5. Sheer cloth. A dark yarn on a ball, blended, its alpha from how steeply
+// each place is seen (the view direction the hook is given, against the
+// mesh's own normal): 1 - exp(-0.35 / max(0.23, cosine)^0.52). What is seen
+// of the ground behind says how clear each place is: clearest in the middle.
+const { sheer } = report;
+const radii = Object.keys(sheer.shares)
+  .map(Number)
+  .sort((a, b) => a - b);
+let worstSheer = 0;
+radii.forEach((share, i) => {
+  const { alpha, expected } = sheer.shares[share];
+  near(alpha, expected, 0.02, `sheer cloth at ${share} of the radius`);
+  worstSheer = Math.max(worstSheer, Math.abs(alpha - expected));
+  if (i) assert.ok(alpha > sheer.shares[radii[i - 1]].alpha, 'seen more steeply, less clear');
+});
+const sheerMiddle = sheer.shares[0].alpha,
+  sheerEdge = sheer.shares[0.97].alpha;
+assert.ok(sheerEdge - sheerMiddle > 0.15, `the middle is clearer than the edge`);
+
+// 6. `material.blend` as the material says and nothing set by hand. A plate
+// that only gives off light, at alpha one half, over a plain ground: drawn
+// whole, mixed half and half, and added at half.
+const { blends } = report;
+const channels = (got, want, tolerance, what) =>
+  want.forEach((value, k) => near(got[k], value, tolerance, `${what}, channel ${k}`));
+channels(blends.opaque, blends.glow, 0.012, 'opaque');
+channels(
+  blends.alpha,
+  blends.glow.map((v, k) => 0.5 * v + 0.5 * blends.ground[k]),
+  0.012,
+  'blended',
+);
+channels(
+  blends.additive,
+  blends.glow.map((v, k) => 0.5 * v + blends.ground[k]),
+  0.012,
+  'added',
+);
+assert.equal(blends.state.alpha.depthWrite, false, 'a blended surface writes no depth');
+assert.equal(blends.state.additive.depthWrite, false, 'nor one that is added');
+
+// 7. A normal written by the hook moves the highlight: a glossy plate under
+// a sun the eye sees mirrored in its middle. Tilted along u the highlight
+// goes sideways, along v it goes up the picture; with tangents or without.
+const { highlight } = report;
+const moved = {};
+for (const mesh of ['tangents', 'bare']) {
+  const { flat, alongU, alongV } = highlight[mesh];
+  moved[mesh] = { u: alongU.x - flat.x, v: alongV.y - flat.y };
+  assert.ok(
+    Math.abs(moved[mesh].u) > 25,
+    `${mesh}: tilted along u it moves sideways (${moved[mesh].u})`,
+  );
+  assert.ok(Math.abs(alongU.y - flat.y) < 10, `${mesh}: and not much up or down`);
+  assert.ok(
+    Math.abs(moved[mesh].v) > 25,
+    `${mesh}: tilted along v it moves up or down (${moved[mesh].v})`,
+  );
+  assert.ok(Math.abs(alongV.x - flat.x) < 3, `${mesh}: and not sideways`);
+}
+for (const name of ['flat', 'alongU', 'alongV'])
+  for (const axis of ['x', 'y'])
+    near(
+      highlight.bare[name][axis],
+      highlight.tangents[name][axis],
+      1.5,
+      `${name} ${axis}: without tangents as with`,
+    );
+
+// 8. A number a vertex, read in the hook. Alpha carries a plain number
+// (none at the left edge, one at the right): a quarter of the way in it is
+// a quarter. Red, green and blue carry a display colour, which arrives as
+// light: a half comes to 0.5^2.2. Two vertices changed and that range
+// uploaded: the picture follows, and not before the upload.
+const { vertexValue } = report;
+const asLight = 0.5 ** 2.2;
+assert.equal(vertexValue.layout.stride, 16, 'sixteen numbers a vertex');
+assert.deepEqual(
+  [
+    vertexValue.layout.offsets.color,
+    vertexValue.layout.offsets.uv,
+    vertexValue.layout.offsets.tangent,
+  ],
+  [6, 10, 12],
+);
+channels(vertexValue.made.left, [0.25, asLight, 0.75], 0.012, 'a quarter in');
+channels(vertexValue.made.right, [0.75, asLight, 0.25], 0.012, 'three quarters in');
+assert.deepEqual(vertexValue.beforeUpload, vertexValue.made, 'nothing changes before the upload');
+channels(vertexValue.changed.left, [0, asLight, 1], 0.012, 'changed, left');
+channels(vertexValue.changed.right, [0, asLight, 1], 0.012, 'changed, right');
+channels(vertexValue.withoutColours, [1, 1, 0], 0.012, 'a mesh without colours reads white');
+
+// 9. Sheen on a lit surface with a hook. A matt black ball lit from where
+// the eye is stays dark; with sheen its edge glows and its middle does not;
+// half the colour is half the glow; the hook's colour has the last word.
+const { cloth } = report;
+assert.ok(cloth.matt.edge[1] < 0.01, `without sheen the edge is dark (${cloth.matt.edge})`);
+assert.ok(cloth.sheen.edge[1] > 0.08, `with sheen it glows (${cloth.sheen.edge})`);
+assert.ok(cloth.sheen.middle[1] < 0.01, `and the middle does not (${cloth.sheen.middle})`);
+near(cloth.halved.edge[1], cloth.sheen.edge[1] / 2, 0.01, 'half the colour, half the glow');
+assert.ok(
+  cloth.red.edge[0] > 0.08 && cloth.red.edge[1] < 0.01,
+  `the hook's colour is the one drawn (${cloth.red.edge})`,
+);
+
+// 10. Two sheets through each other, seen from above, each half clear. Cut
+// by chance, each pixel keeps the nearer sheet it kept: on either side of
+// the line they share, the upper sheet shows on about half the pixels and
+// the lower on about a quarter, whichever was made first, and the two
+// pictures are one picture. Blended, a whole sheet is drawn over the other:
+// one side is wrong, whichever is made first.
+const { cards } = report;
+for (const order of ['madeAFirst', 'madeBFirst']) {
+  const sides = cards.hash[order];
+  assert.notEqual(sides.plusZ.top, sides.minusZ.top, 'the sheets change places at the line');
+  for (const side of ['plusZ', 'minusZ']) {
+    near(sides[side].topShare, 0.5, 0.08, `${order}, ${side}: the upper sheet`);
+    near(sides[side].underShare, 0.25, 0.08, `${order}, ${side}: the lower sheet`);
+  }
+}
+assert.equal(
+  cards.hash.pixelsThatDiffer,
+  0,
+  'cut by chance: the order they are made in changes nothing',
+);
+const wrongSides = (sides) =>
+  ['plusZ', 'minusZ'].filter((side) => {
+    const right = cards.rightLight[`top${sides[side].top}`];
+    return right.some((value, k) => Math.abs(sides[side].light[k] - value) > 0.05);
+  });
+const blendWrong = {
+  madeAFirst: wrongSides(cards.blend.madeAFirst),
+  madeBFirst: wrongSides(cards.blend.madeBFirst),
+};
+// (Which side depends on which sheet LayaAir sorts as the nearer; the
+// sheets cross, so neither order is right everywhere.)
+assert.equal(blendWrong.madeAFirst.length, 1, 'blended: one side is wrong');
+assert.equal(blendWrong.madeBFirst.length, 1, 'and one, made the other way round');
+
+// 11. What the hook reads, in the shadow and the depth too. A plate kept
+// where its vertices' number is over a half and where it is seen steeply
+// enough. The eye sees it at a cosine of 0.447, the sun overhead at 1.
+const { passes } = report;
+assert.ok(red(passes.seen.kept), `the half with the number is drawn (${passes.seen.kept})`);
+assert.ok(grey(passes.seen.cut), `the other half is not (${passes.seen.cut})`);
+assert.ok(lum(passes.seen.underKept) < lum(passes.seen.aside) * 0.5, 'the kept half casts');
+near(lum(passes.seen.underCut), lum(passes.seen.aside), 4, 'the cut half casts none');
+near(passes.depth.seen.kept[0], shade(passes.eyeDepth.kept), 3, 'depth at the kept half');
+assert.ok(
+  passes.depth.seen.cut[0] - passes.depth.seen.kept[0] > 20,
+  'depth at the cut half is the floor',
+);
+assert.ok(
+  Math.abs(passes.normals.seen.kept[2] - passes.normals.seen.cut[2]) > 20,
+  'the depth-normal pass is cut by the number too',
+);
+// Asked for a cosine of 0.7: too flat to the eye, so not in the picture,
+// the depth or the depth-normal; square to the sun, so its shadow stays.
+assert.ok(grey(passes.unseen.kept), `too flat to the eye: not drawn (${passes.unseen.kept})`);
+near(passes.depth.unseen.kept[0], passes.depth.seen.cut[0], 2, 'nor in the depth');
+near(passes.normals.unseen.kept[2], passes.normals.seen.cut[2], 2, 'nor in the depth-normal');
+assert.ok(
+  lum(passes.unseen.underKept) < lum(passes.unseen.aside) * 0.5,
+  `the sun meets it squarely: its shadow stays (${passes.unseen.underKept})`,
+);
+near(lum(passes.unseen.underCut), lum(passes.unseen.aside), 4, 'and only where the number is');
+
 assert.deepEqual(
   report.left,
-  { strips: 0, chance: 0, tilted: 0, dissolve: 0 },
+  {
+    strips: 0,
+    chance: 0,
+    tilted: 0,
+    dissolve: 0,
+    sheer: 0,
+    blends: 0,
+    highlight: 0,
+    vertexValue: 0,
+    cloth: 0,
+    cards: 0,
+    passes: 0,
+  },
   'nothing left behind',
 );
 console.log(
@@ -246,5 +425,15 @@ console.log(
     `the pattern ${chance.moved.sameWithThePlate} with the plate; a tilted normal within ` +
     `${worstTilt.tangents.toFixed(3)} of the cosine with tangents, ${worstTilt.bare.toFixed(3)} without; ` +
     `a dissolving plate ${half.kept} kept and ${half.glowing} glowing, its shadow ${dark.toFixed(3)}; ` +
+    `sheer cloth alpha ${sheerMiddle} in the middle and ${sheerEdge} at the edge (within ${worstSheer.toFixed(3)} of the formula); ` +
+    `blended ${blends.alpha.join('/')} and added ${blends.additive.join('/')} over ${blends.ground[0]}; ` +
+    `the highlight moved ${moved.tangents.u.toFixed(1)} px by a tilt along u and ${moved.tangents.v.toFixed(1)} px along v ` +
+    `(${moved.bare.u.toFixed(1)} and ${moved.bare.v.toFixed(1)} without tangents); ` +
+    `a vertex's number read as ${vertexValue.made.left[0]} a quarter in, ${vertexValue.changed.right[0]} after two vertices were changed; ` +
+    `sheen ${cloth.sheen.edge[1]} at the edge against ${cloth.matt.edge[1]} without; ` +
+    `crossing sheets cut by chance ${cards.hash.madeAFirst.plusZ.topShare}/${cards.hash.madeAFirst.plusZ.underShare} and ` +
+    `${cards.hash.madeAFirst.minusZ.topShare}/${cards.hash.madeAFirst.minusZ.underShare} upper/lower, the same made either way ` +
+    `(blended, the ${blendWrong.madeAFirst[0]} side is drawn in the wrong order); ` +
+    `the shadow of a surface too flat to be seen stays; ` +
     `evidence in ${path.join(out, 'evidence')}`,
 );

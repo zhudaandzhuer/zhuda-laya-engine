@@ -779,6 +779,14 @@ export interface MeshData {
   normals?: Float32Array;
   uvs?: Float32Array;
   tangents?: Float32Array;
+  /**
+   * A colour a vertex, four numbers each. A material that reads vertex
+   * colours tints by it; a lit surface's hook reads it as `s.vertexColor`.
+   * LayaAir takes red, green and blue as a display colour and hands them on
+   * as light (to the power 2.2); alpha is handed on as given, so a plain
+   * number for a shader (how far a cloth is stretched, say) goes in alpha.
+   */
+  colors?: Float32Array;
   indices: Uint16Array | Uint32Array;
 }
 /** UV-derived tangent frames for normal-mapped procedural geometry. Degenerate UVs use a stable orthogonal frame. */
@@ -855,12 +863,29 @@ export function computeMeshTangents(data: MeshData): Float32Array {
   }
   return out;
 }
-/** Laya 3.4.2 buffer adapter; POSITION/NORMAL/UV, local range uploads and refreshed bounds. */
+/**
+ * Laya 3.4.2 buffer adapter; POSITION/NORMAL/UV, with a colour and a tangent
+ * a vertex when the data has them, local range uploads and refreshed bounds.
+ */
 export class ZhudaDynamicMesh {
   readonly data: MeshData;
   readonly mesh: any;
+  /** Every vertex's numbers one after another, `stride` to a vertex, laid out as `offsets` says. */
   readonly vertices: Float32Array;
   readonly stride: number;
+  /**
+   * Where each part of a vertex starts among its `stride` numbers: the
+   * position (three), the normal (three), the colour (four, when the data
+   * has colours), the texture coordinates (two), the tangent (four, when
+   * the data has tangents).
+   */
+  readonly offsets: {
+    readonly position: 0;
+    readonly normal: 3;
+    readonly color: number | null;
+    readonly uv: number;
+    readonly tangent: number | null;
+  };
   readonly node: any;
   private disposed = false;
   constructor(data: MeshData, parent?: any) {
@@ -873,24 +898,32 @@ export class ZhudaDynamicMesh {
       (data.normals && data.normals.length !== n * 3) ||
       (data.uvs && data.uvs.length !== n * 2) ||
       (data.tangents && data.tangents.length !== n * 4) ||
+      (data.colors && data.colors.length !== n * 4) ||
       !data.indices.length ||
       data.indices.length % 3 ||
       [...data.indices].some((i) => i >= n)
     )
       throw Error('Invalid mesh attributes or indices');
-    this.stride = data.tangents ? 12 : 8;
+    // In the order LayaAir lays a vertex out: a mesh without colours is as it always was.
+    const color = data.colors ? 6 : null,
+      uv = data.colors ? 10 : 6,
+      tangent = data.tangents ? uv + 2 : null;
+    this.offsets = { position: 0, normal: 3, color, uv, tangent };
+    this.stride = uv + 2 + (data.tangents ? 4 : 0);
     this.vertices = new Float32Array(n * this.stride);
     for (let i = 0; i < n; i++) {
       this.vertices.set(data.positions.subarray(i * 3, i * 3 + 3), i * this.stride);
       this.vertices.set(data.normals?.subarray(i * 3, i * 3 + 3) || [0, 1, 0], i * this.stride + 3);
-      this.vertices.set(data.uvs?.subarray(i * 2, i * 2 + 2) || [0, 0], i * this.stride + 6);
-      if (data.tangents)
-        this.vertices.set(data.tangents.subarray(i * 4, i * 4 + 4), i * this.stride + 8);
+      if (data.colors && color !== null)
+        this.vertices.set(data.colors.subarray(i * 4, i * 4 + 4), i * this.stride + color);
+      this.vertices.set(data.uvs?.subarray(i * 2, i * 2 + 2) || [0, 0], i * this.stride + uv);
+      if (data.tangents && tangent !== null)
+        this.vertices.set(data.tangents.subarray(i * 4, i * 4 + 4), i * this.stride + tangent);
     }
     if (!this.vertices.every(Number.isFinite)) throw Error('Non-finite mesh data');
     this.mesh = l.PrimitiveMesh._createMesh(
       l.VertexMesh.getVertexDeclaration(
-        data.tangents ? 'POSITION,NORMAL,UV,TANGENT' : 'POSITION,NORMAL,UV',
+        `POSITION,NORMAL,${data.colors ? 'COLOR,' : ''}UV${data.tangents ? ',TANGENT' : ''}`,
       ),
       this.vertices,
       new Uint16Array(data.indices),
@@ -929,6 +962,21 @@ export class ZhudaDynamicMesh {
     )
       throw Error('Invalid vertex');
     this.vertices.set([x, y, z], i * this.stride);
+  }
+  /**
+   * A vertex's colour, for a mesh made with colours; sent with the next
+   * `updateRange` that covers the vertex.
+   */
+  setColor(i: number, r: number, g: number, b: number, a: number) {
+    if (this.offsets.color === null) throw Error('The mesh was made without colours');
+    if (
+      !Number.isInteger(i) ||
+      i < 0 ||
+      i * this.stride >= this.vertices.length ||
+      ![r, g, b, a].every(Number.isFinite)
+    )
+      throw Error('Invalid vertex');
+    this.vertices.set([r, g, b, a], i * this.stride + this.offsets.color);
   }
   private padding = 0;
   /**

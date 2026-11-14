@@ -68,7 +68,7 @@ opaque-origin 無法讀取 storage 時，boot 安裝 realm 內記憶體替代。
 
 `configureSurfacePasses(camera,[{depth:true,opaqueColor:true}],budget)` 統一該 camera 的深度 prepass／不透明色 copy 請求，回報請求數、啟用數及 budget／depth-unsupported。budget 不足會關閉兩者，消費端必須切換不依賴這些輸入的材質。成本為額外 prepass／copy 的名目計數，實際 draws 仍受陰影／後處理與場景影響。此 API 擁有該 camera 的這兩項設定，避免同時另設 competing owner。shader 使用 vendor 的 camera uniforms 讀取結果。
 
-`ZhudaDynamicMesh` 接收 position／normal／UV／index。每 chunk 限 3..65,535 頂點，使用 UInt16 indices；大型水面自行切塊。`setPosition` 修改 CPU staging，`updateRange` 局部上傳並重算 bounds。`ZhudaInstanceGroup` 使用共享 mesh／material 交給 Laya instancing；`set(id,worldMatrix)` 的穩定 ID 由應用提供，不能使用合批順序當 entity ID。`dispose()` 清除本組節點，mesh／material 的 owner 仍須釋放。
+`ZhudaDynamicMesh` 接收 position／normal／UV／index，另可帶 `tangents` 與每頂點四個數的 `colors`（`setColor(i,r,g,b,a)` 修改、`updateRange` 上傳；`offsets`／`stride` 說明每個頂點在 `vertices` 中的排列；lit surface 的 hook 以 `s.vertexColor` 讀取：rgb 以光量到達，alpha 原值到達）。每 chunk 限 3..65,535 頂點，使用 UInt16 indices；大型水面自行切塊。`setPosition` 修改 CPU staging，`updateRange` 局部上傳並重算 bounds。`ZhudaInstanceGroup` 使用共享 mesh／material 交給 Laya instancing；`set(id,worldMatrix)` 的穩定 ID 由應用提供，不能使用合批順序當 entity ID。`dispose()` 清除本組節點，mesh／material 的 owner 仍須釋放。
 
 ## 模型與非同步生命週期
 

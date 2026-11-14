@@ -46,8 +46,26 @@ export interface ZhudaLitSurfaceSpec {
    * material's plain colour and maps, and keep only its alpha and normal. A
    * surface that writes `normalTS` is lit by that normal, on a mesh with
    * tangents or without (the frame then comes from the texture coordinates).
-   * A surface that writes neither is drawn as before. */
+   * A surface that writes neither is drawn as before.
+   *
+   * It is also given, to read: `viewDirection` (from the surface toward the
+   * eye, a unit; with the fourth argument, the mesh's own normal before any
+   * normal map, it says how steeply the surface is seen; where a light's
+   * shadow is written it is toward that light, so a cloth cut by how steeply
+   * it is seen shades the floor by how steeply the light meets it) and `vertexColor`
+   * (the mesh's colour at this place, white where it has none: red, green
+   * and blue arrive as light, a display colour to the power 2.2; alpha
+   * arrives as it was given, so a plain number for the hook goes there).
+   * With `sheen`: `sheenColor` and `sheenRoughness`. */
   surface: string;
+  /**
+   * The soft glow cloth has at its edges (velvet, knit, a stocking), from
+   * LayaAir's own sheen lobe: its colour as light and its roughness 0..1
+   * (default white and 0.5). The hook may change both a pixel
+   * (`s.sheenColor`, `s.sheenRoughness`). Not with a `ZhudaLitShading`
+   * (a toon material is lit its own way).
+   */
+  sheen?: { color?: readonly [number, number, number]; roughness?: number } | boolean;
   /** The surface may call `ZhudaCommon.glsl`: hash, noise, fractal noise, triplanar. */
   common?: boolean;
   /**
@@ -146,17 +164,17 @@ export interface ZhudaLitVertexNeeds {
   shadowSurface?: boolean;
 }
 const SHADOW_SURFACE_VARYINGS =
-  '\nvarying vec3 v_ZhudaShadowPositionWS;varying vec3 v_ZhudaShadowNormalWS;varying vec2 v_ZhudaShadowUV;varying float v_ZhudaShadowVertexAlpha;\n';
+  '\nvarying vec3 v_ZhudaShadowPositionWS;varying vec3 v_ZhudaShadowNormalWS;varying vec2 v_ZhudaShadowUV;varying vec4 v_ZhudaShadowVertexColor;\n';
 const SHADOW_SURFACE_PASS = `v_ZhudaShadowPositionWS=positionWS;v_ZhudaShadowNormalWS=normalWS;
 #ifdef UV
 v_ZhudaShadowUV=vertex.texCoord0;
 #else
 v_ZhudaShadowUV=vec2(0.0);
 #endif
-#if defined(COLOR) && defined(ENABLEVERTEXCOLOR)
-v_ZhudaShadowVertexAlpha=vertex.vertexColor.a;
+#ifdef COLOR
+v_ZhudaShadowVertexColor=vertex.vertexColor;
 #else
-v_ZhudaShadowVertexAlpha=1.0;
+v_ZhudaShadowVertexColor=vec4(1.0);
 #endif
 `;
 /**
@@ -222,8 +240,31 @@ export function zhudaLitSurfaceWrites(surface: string): { alpha: boolean; normal
   const code = stripComments(surface);
   return { alpha: /\.\s*alpha\b/.test(code), normal: /\.\s*normalTS\b/.test(code) };
 }
-const SURFACE_STRUCT =
-  'struct ZhudaLitSurface {vec3 baseColor;float metallic;float roughness;float occlusion;vec3 emission;float alpha;vec3 normalTS;};';
+const surfaceStruct = (sheen: boolean) =>
+  `struct ZhudaLitSurface {vec3 baseColor;float metallic;float roughness;float occlusion;vec3 emission;float alpha;vec3 normalTS;vec3 viewDirection;vec4 vertexColor;${
+    sheen ? 'vec3 sheenColor;float sheenRoughness;' : ''
+  }};`;
+/** The uniform a lit surface's sheen is kept in: its colour, and its roughness in the fourth place. */
+export const ZHUDA_LIT_SHEEN_UNIFORM = 'u_ZhudaLitSheen';
+/**
+ * LayaAir's physically based flow with the sheen of the surface put on it:
+ * its own `PBR_Metallic_Flow`, which leaves a surface's sheen unset (only its
+ * glTF shader sets it).
+ */
+const SHEEN_FLOW = `vec4 zhudaLitSheenFlow(const in SurfaceInputs inputs,in PixelParams pixel,vec3 zhudaSheen,float zhudaSheenRoughness){
+#ifdef ALPHATEST
+if(inputs.alpha<inputs.alphaTest){discard;}
+#endif
+Surface surface;initSurface(surface,inputs,pixel);
+#ifdef SHEEN
+surface.sheenColor=zhudaSheen;surface.sheenPerceptualRoughness=max(zhudaSheenRoughness,MIN_PERCEPTUAL_ROUGHNESS);surface.sheenRoughness=surface.sheenPerceptualRoughness*surface.sheenPerceptualRoughness;
+#endif
+PixelInfo info;getPixelInfo(info,pixel,surface);
+#ifdef LAYA_MRT
+writeGBuffer(info.normalWS,inputs.diffuseColor,inputs.metallic,surface.perceptualRoughness,surface.occlusion);
+#endif
+vec3 surfaceColor=vec3(0.0);surfaceColor+=PBRLighting(surface,info);return vec4(surfaceColor,surface.alpha);}
+`;
 /** The varying a copy's own place in its mesh arrives in, for the pattern of `alphaHash`. */
 const OBJECT_VARYING = '\nvarying vec3 v_ZhudaObjectPosition;\n';
 /**
@@ -263,11 +304,35 @@ return p.normalWS;
 `;
 const cleanNormal =
   'vec3 zhudaN=s.normalTS;zhudaN=dot(zhudaN,zhudaN)>1.0e-8?normalize(zhudaN):vec3(0.0,0.0,1.0);';
+/**
+ * Whom a surface is seen by, in the pass that writes a light's shadow (and
+ * the camera's own depth): LayaAir gives that pass a view and a projection
+ * and no eye. A sun looks along one direction everywhere; a spot light or
+ * a camera looks from a point, read back out of the view.
+ */
+const PASS_VIEW = `vec3 zhudaPassViewDirection(vec3 positionWS){
+if(u_Projection[3][3]>0.5){return normalize(vec3(u_View[0][2],u_View[1][2],u_View[2][2]));}
+vec3 t=u_View[3].xyz;vec3 eye=-vec3(dot(u_View[0].xyz,t),dot(u_View[1].xyz,t),dot(u_View[2].xyz,t));return normalize(eye-positionWS);}
+`;
 /** The material's plain values, for the passes that draw no colour. */
 const PLAIN_SURFACE = (
   uv: string,
-  vertexAlpha: string,
-) => `ZhudaLitSurface s;s.baseColor=u_AlbedoColor.rgb;s.metallic=u_Metallic;s.roughness=1.0-u_Smoothness;s.occlusion=1.0;s.emission=vec3(0.0);s.alpha=u_AlbedoColor.a*${vertexAlpha};s.normalTS=vec3(0.0,0.0,1.0);
+  view: string,
+  vertexColor: string,
+  sheen: boolean,
+) => `ZhudaLitSurface s;s.baseColor=u_AlbedoColor.rgb;s.metallic=u_Metallic;s.roughness=1.0-u_Smoothness;s.occlusion=1.0;s.emission=vec3(0.0);s.alpha=u_AlbedoColor.a;s.normalTS=vec3(0.0,0.0,1.0);s.viewDirection=${view};${
+  sheen
+    ? `s.sheenColor=${ZHUDA_LIT_SHEEN_UNIFORM}.rgb;s.sheenRoughness=${ZHUDA_LIT_SHEEN_UNIFORM}.a;`
+    : ''
+}
+#ifdef COLOR
+s.vertexColor=${vertexColor};
+#else
+s.vertexColor=vec4(1.0);
+#endif
+#if defined(COLOR) && defined(ENABLEVERTEXCOLOR)
+s.alpha*=s.vertexColor.a;
+#endif
 #ifdef ALBEDOTEXTURE
 s.alpha*=texture2D(u_AlbedoTexture,transformUV(${uv},u_TilingOffset)).a;
 #endif
@@ -279,6 +344,8 @@ export interface ZhudaLitFragmentOptions {
   backFaces?: 'mirrored' | 'same';
   common?: boolean;
   alphaHash?: boolean;
+  /** The surface has a sheen (see `ZhudaLitSurfaceSpec.sheen`). */
+  sheen?: unknown;
 }
 /**
  * The three fragment programs of a lit material, and which of the passes
@@ -291,6 +358,9 @@ export function buildZhudaLitFragmentShaders(
   const uniforms = spec.uniforms || {};
   const writes = zhudaLitSurfaceWrites(spec.surface);
   const hash = spec.alphaHash === true;
+  const sheen = !!spec.sheen;
+  if (sheen && shading)
+    throw Error('sheen belongs to the physically based lighting: not with a ZhudaLitShading');
   const library = spec.common || hash ? `#include "${ZHUDA_COMMON_INCLUDE}";\n` : '';
   const helper = Object.entries(uniforms)
     .filter(([, u]) => u.type === 'texture2D')
@@ -302,11 +372,15 @@ export function buildZhudaLitFragmentShaders(
   const frame = writes.normal ? NORMAL_FRAME : '';
   // The shadow pass has no frame to turn a normal with, and no use for one.
   const declare = (withFrame: boolean) =>
-    `${SURFACE_STRUCT}\n${helper}\n${hash ? ALPHA_HASH : ''}${withFrame ? frame : ''}${spec.surface}\n`;
+    `${surfaceStruct(sheen)}\n${helper}\n${hash ? ALPHA_HASH : ''}${withFrame ? frame : ''}${spec.surface}\n`;
   const declarations = declare(true);
   const hook = `${TINT_VARYING}${declarations}`;
   const threshold = hash ? 'float zhudaThreshold=zhudaAlphaHash(v_ZhudaObjectPosition);' : '';
-  const call = `initSurfaceInputs(inputs,pixel);${threshold}ZhudaLitSurface s;s.baseColor=inputs.diffuseColor;s.metallic=inputs.metallic;s.roughness=1.0-inputs.smoothness;s.occlusion=inputs.occlusion;s.emission=inputs.emissionColor;s.alpha=inputs.alpha;s.normalTS=inputs.normalTS;${TINT_APPLY}#ifdef UV\nvec2 zhudaUV=pixel.uv0;\n#else\nvec2 zhudaUV=vec2(0.0);\n#endif\nzhudaSurface(s,zhudaUV,pixel.positionWS,pixel.normalWS);inputs.diffuseColor=max(s.baseColor,vec3(0.0));inputs.metallic=clamp(s.metallic,0.0,1.0);inputs.smoothness=1.0-clamp(s.roughness,0.04,1.0);inputs.occlusion=clamp(s.occlusion,0.0,1.0);inputs.emissionColor=max(s.emission,vec3(0.0));${
+  const call = `initSurfaceInputs(inputs,pixel);${threshold}ZhudaLitSurface s;s.baseColor=inputs.diffuseColor;s.metallic=inputs.metallic;s.roughness=1.0-inputs.smoothness;s.occlusion=inputs.occlusion;s.emission=inputs.emissionColor;s.alpha=inputs.alpha;s.normalTS=inputs.normalTS;s.viewDirection=normalize(u_CameraPos-pixel.positionWS);${
+    sheen
+      ? `s.sheenColor=${ZHUDA_LIT_SHEEN_UNIFORM}.rgb;s.sheenRoughness=${ZHUDA_LIT_SHEEN_UNIFORM}.a;`
+      : ''
+  }\n#ifdef COLOR\ns.vertexColor=pixel.vertexColor;\n#else\ns.vertexColor=vec4(1.0);\n#endif\n${TINT_APPLY}#ifdef UV\nvec2 zhudaUV=pixel.uv0;\n#else\nvec2 zhudaUV=vec2(0.0);\n#endif\nzhudaSurface(s,zhudaUV,pixel.positionWS,pixel.normalWS);inputs.diffuseColor=max(s.baseColor,vec3(0.0));inputs.metallic=clamp(s.metallic,0.0,1.0);inputs.smoothness=1.0-clamp(s.roughness,0.04,1.0);inputs.occlusion=clamp(s.occlusion,0.0,1.0);inputs.emissionColor=max(s.emission,vec3(0.0));${
     writes.alpha ? 'inputs.alpha=clamp(s.alpha,0.0,1.0);' : ''
   }${
     writes.normal
@@ -341,7 +415,13 @@ export function buildZhudaLitFragmentShaders(
         'PBR_Metallic_Flow(inputs,pixel)',
         shading.flow + '(inputs,pixel)',
       )
-    : hooked;
+    : sheen
+      ? replaceOnce(
+          replaceOnce(hooked, 'void main(){', SHEEN_FLOW + 'void main(){'),
+          'PBR_Metallic_Flow(inputs,pixel)',
+          'zhudaLitSheenFlow(inputs,pixel,max(s.sheenColor,vec3(0.0)),clamp(s.sheenRoughness,0.0,1.0))',
+        )
+      : hooked;
   // The shadow and the depth of a cut surface are cut by the same hook.
   const shadowHook = writes.alpha || hash;
   const depthHook = shadowHook || writes.normal;
@@ -353,10 +433,10 @@ export function buildZhudaLitFragmentShaders(
 #include "Camera.glsl";
 #include "DepthFrag.glsl";
 #include "Sprite3DFrag.glsl";
-${library}varying vec3 v_ZhudaShadowPositionWS;varying vec3 v_ZhudaShadowNormalWS;varying vec2 v_ZhudaShadowUV;varying float v_ZhudaShadowVertexAlpha;
-${declare(false)}void main(){${threshold}
+${library}varying vec3 v_ZhudaShadowPositionWS;varying vec3 v_ZhudaShadowNormalWS;varying vec2 v_ZhudaShadowUV;varying vec4 v_ZhudaShadowVertexColor;
+${PASS_VIEW}${declare(false)}void main(){${threshold}
 #ifdef ALPHATEST
-${PLAIN_SURFACE('v_ZhudaShadowUV', 'v_ZhudaShadowVertexAlpha')}zhudaSurface(s,v_ZhudaShadowUV,v_ZhudaShadowPositionWS,normalize(v_ZhudaShadowNormalWS));if(clamp(s.alpha,0.0,1.0)<${limit})discard;
+${PLAIN_SURFACE('v_ZhudaShadowUV', 'zhudaPassViewDirection(v_ZhudaShadowPositionWS)', 'v_ZhudaShadowVertexColor', sheen)}zhudaSurface(s,v_ZhudaShadowUV,v_ZhudaShadowPositionWS,normalize(v_ZhudaShadowNormalWS));if(clamp(s.alpha,0.0,1.0)<${limit})discard;
 #endif
 gl_FragColor=getDepthColor();}`
     : litShadowFragment;
@@ -369,7 +449,12 @@ gl_FragColor=getDepthColor();}`
     if (cutAt < 0 || normalAt < cutAt || endAt < normalAt)
       throw Error('Lit template changed; the surface hook cannot be placed');
     const before = `${plainDepth.slice(0, cutAt)}${threshold}\n#ifdef UV\nvec2 zhudaUV=pixel.uv0;\n#else\nvec2 zhudaUV=vec2(0.0);\n#endif\n`;
-    const plain = `${PLAIN_SURFACE('zhudaUV', '1.0')}#if defined(COLOR) && defined(ENABLEVERTEXCOLOR)\ns.alpha*=pixel.vertexColor.a;\n#endif\n`;
+    const plain = PLAIN_SURFACE(
+      'zhudaUV',
+      'normalize(u_CameraPos-pixel.positionWS)',
+      'pixel.vertexColor',
+      sheen,
+    );
     const cut = `if(clamp(s.alpha,0.0,1.0)<${limit})discard;`;
     const body = writes.normal
       ? // The surface is asked everywhere: its normal is what the pass writes.
@@ -385,6 +470,26 @@ gl_FragColor=getDepthColor();}`
     );
   }
   return { forward, shadow, depth, shadowHook, depthHook };
+}
+/** A lit surface's sheen with its defaults; null when it has none. Throws on values out of range. */
+export function resolveZhudaLitSheen(
+  sheen: ZhudaLitSurfaceSpec['sheen'],
+): { color: [number, number, number]; roughness: number } | null {
+  if (sheen === undefined || sheen === false) return null;
+  const given = sheen === true ? {} : sheen;
+  if (!given || typeof given !== 'object')
+    throw Error('Invalid sheen: true, or { color, roughness }');
+  const color = given.color ?? [1, 1, 1],
+    roughness = given.roughness ?? 0.5;
+  if (
+    !Array.isArray(color) ||
+    color.length !== 3 ||
+    !color.every((v) => Number.isFinite(v) && v >= 0 && v <= 16)
+  )
+    throw Error('Invalid sheen.color: three numbers 0..16');
+  if (!(Number.isFinite(roughness) && roughness >= 0 && roughness <= 1))
+    throw Error('Invalid sheen.roughness: 0..1');
+  return { color: [color[0], color[1], color[2]], roughness };
 }
 const fields: Record<string, string> = {
   u_AlbedoColor: 'Color',
@@ -445,6 +550,11 @@ export class ZhudaLitSurfaceMaterial {
         throw Error(`Invalid ${key}: true or false`);
     if (spec.alphaHash && ![undefined, 'cutout'].includes(spec.material?.blend))
       throw Error('alphaHash is a cut-out: leave material.blend out, or set it to cutout');
+    const sheen = resolveZhudaLitSheen(spec.sheen);
+    if (sheen && shading)
+      throw Error('sheen belongs to the physically based lighting: not with a ZhudaLitShading');
+    if (ZHUDA_LIT_SHEEN_UNIFORM in uniforms)
+      throw Error(`${ZHUDA_LIT_SHEEN_UNIFORM} is the material's own`);
     for (const [k, u] of Object.entries(uniforms))
       if (u.type === 'texture2D' && !textures[k]) throw Error('Missing texture binding ' + k);
     this.spec = {
@@ -464,6 +574,7 @@ export class ZhudaLitSurfaceMaterial {
       ...(spec.backFaces === 'same' ? { backFaces: 'same' } : {}),
       ...(spec.common ? { common: true } : {}),
       ...(spec.alphaHash ? { alphaHash: true } : {}),
+      ...(sheen ? { sheen: true } : {}),
       ...(shading ? { shading: shading.key } : {}),
     });
     if (l.Shader3D.find(spec.name)) {
@@ -480,6 +591,7 @@ export class ZhudaLitSurfaceMaterial {
         Object.entries(fields).map(([k, v]) => [k, l.ShaderDataType[v]]),
       );
       for (const [k, u] of Object.entries(uniforms)) map[k] = l.ShaderDataType[types[u.type]];
+      if (sheen) map[ZHUDA_LIT_SHEEN_UNIFORM] = l.ShaderDataType.Vector4;
       if (spec.common || spec.alphaHash) registerZhudaCommon(l);
       const programs = buildZhudaLitFragmentShaders({ ...spec, uniforms }, shading);
       const fragment = programs.forward;
@@ -556,6 +668,14 @@ export class ZhudaLitSurfaceMaterial {
     m.normalTextureScale = 1;
     m.occlusionTextureStrength = 1;
     m.emissionIntensity = 1;
+    if (sheen) {
+      // LayaAir's define for its sheen lobe: the surface, the light and the room's light all read it.
+      m.addDefine(l.Shader3D.getDefineByName('SHEEN'));
+      m.setVector4(
+        ZHUDA_LIT_SHEEN_UNIFORM,
+        new l.Vector4(sheen.color[0], sheen.color[1], sheen.color[2], sheen.roughness),
+      );
+    }
     m.clearCoatEnable = (spec.material?.clearCoat ?? 0) > 0;
     m.clearCoat = spec.material?.clearCoat ?? 0;
     m.clearCoatRoughness = spec.material?.clearCoatRoughness ?? 0.1;
@@ -580,13 +700,33 @@ export class ZhudaLitSurfaceMaterial {
       this.material.setFloat(name, value);
     } else {
       const n = Number(u.type.slice(-1));
+      // A LayaAir vector or colour is taken as well as an array.
+      if (value && !Array.isArray(value) && typeof value === 'object')
+        value = (value.x !== undefined ? ['x', 'y', 'z', 'w'] : ['r', 'g', 'b', 'a'])
+          .slice(0, n)
+          .map((key) => value[key]);
       if (!Array.isArray(value) || value.length !== n || !value.every(Number.isFinite))
-        throw Error('Invalid vector');
+        throw Error(
+          `Invalid value for ${name}: ${n} finite numbers (an array, or a LayaAir vector)`,
+        );
       this.material[{ 2: 'setVector2', 3: 'setVector3', 4: 'setVector4' }[n] as string](
         name,
         new l['Vector' + n](...value),
       );
     }
+  }
+  /** The sheen's colour and roughness in place; only for a material made with `sheen`. */
+  setSheen(sheen: { color?: readonly [number, number, number]; roughness?: number }) {
+    if (this.disposed) throw Error('Disposed material');
+    const now = resolveZhudaLitSheen(this.spec.sheen);
+    if (!now) throw Error('The material was made without sheen');
+    const next = resolveZhudaLitSheen({ ...now, ...sheen })!;
+    this.spec.sheen = next;
+    const l = (globalThis as any).Laya;
+    this.material.setVector4(
+      ZHUDA_LIT_SHEEN_UNIFORM,
+      new l.Vector4(next.color[0], next.color[1], next.color[2], next.roughness),
+    );
   }
   dispose() {
     if (this.disposed) return;

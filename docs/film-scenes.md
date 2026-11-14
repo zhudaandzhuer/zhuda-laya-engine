@@ -100,7 +100,11 @@ when more than 16 are open.
 - Units are metres and degrees; Y is up and the ground top is at y = 0.
 - `camera`: `eye` and `target`; `focalLengthMm` (default 35, full-frame
   equivalent), `fStop` (default 8) and `focusDistanceM` (default: the
-  eye-target distance) drive depth of field in final renders.
+  eye-target distance) drive depth of field in final renders. As with a
+  real lens, a long focal length close to its subject keeps only a thin
+  slice sharp: 85 mm at f/2 focused at 1.4 m holds about three centimetres
+  (by the usual 0.03 mm circle on a full frame), so a whole figure comes
+  out soft. Stop down or step back for more.
 - `look`: colours are RGB 0..1 (see [colour values](#colour-values)). The sun
   turns about +Y by `azimuthDeg` (at 0 it travels toward -Z) and rises by
   `elevationDeg`.

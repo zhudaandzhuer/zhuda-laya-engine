@@ -59,12 +59,37 @@ const dissolve = new ZhudaLitSurfaceMaterial({
 });
 ```
 
-- **`s.alpha`** (0..1) starts as the material's own (colour, vertex colour, albedo map). Where the material is a cut-out (`material.blend: 'cutout'`, or `alphaHash`) the surface is cut by it, **and so are its shadow and the depth the camera keeps**: those passes run the hook too. They hand it the material's plain values (colour, metallic, roughness, the albedo map's alpha, the normal map) and keep only its alpha and normal; a hook that reads `u_CameraPos` reads the light's there. With `blend: 'alpha'` it is how clear the surface is.
+- **`s.alpha`** (0..1) starts as the material's own (colour, vertex colour, albedo map). Where the material is a cut-out (`material.blend: 'cutout'`, or `alphaHash`) the surface is cut by it, **and so are its shadow and the depth the camera keeps**: those passes run the hook too. They hand it the material's plain values (colour, metallic, roughness, the albedo map's alpha, the normal map) and keep only its alpha and normal. LayaAir gives the pass that writes a shadow no eye (`u_CameraPos` is not set there): read `s.viewDirection` instead. With `blend: 'alpha'` it is how clear the surface is; the shadow of a blended surface is not thinned by it (those passes run the hook only for a cut-out), so a cloth whose shadow should thin is cut by chance.
 - **`s.normalTS`** is the normal in the surface's own frame, the one LayaAir's normal maps are in: x along the texture's u, y along its v, z out of the surface. It starts as the normal map's value, or `(0, 0, 1)`. A mesh without tangents is lit by it too: the frame is then worked out in the pixel from how the place and the texture coordinates change (WebGL 2 and WebGPU). The depth-normal pass (ambient occlusion) follows it.
 - **`alphaHash: true`** cuts by chance instead of at one threshold: a pixel is kept with the chance its alpha gives, by a pattern that stays on the object (it follows a moving or skinned mesh and keeps its grain size as the camera comes nearer). Half-clear things then need no sorting, write depth and cast a shadow as dark as they are solid, at the price of grain; temporal anti-aliasing smooths it. The material is drawn as a cut-out (`material.blend` is left out or `'cutout'`).
 - **`common: true`** lets the surface call `ZhudaCommon.glsl` ([GPU depth](gpu-depth.md)).
 - A surface that writes neither `alpha` nor `normalTS` is drawn by the same programs as before. Which it writes is read off its text (`.alpha`, `.normalTS`), comments aside.
 - `material.blend` (`'cutout'`, `'alpha'`, `'additive'`) now takes effect on a lit surface. LayaAir clears a material's defines and render state when the material is given another shader, so until 2026-11-15 every lit surface was drawn opaque whatever it asked for.
+
+### What the hook is given to read: the eye, the mesh's normal, a number a vertex, sheen
+
+```ts
+const stocking = new ZhudaLitSurfaceMaterial({
+  name: 'ZhudaSheerKnit',
+  material: { blend: 'alpha', color: [0.05, 0.04, 0.04, 1], roughness: 0.8 },
+  sheen: { color: [0.9, 0.85, 0.8], roughness: 0.45 },
+  uniforms: { u_ZhudaCover: { type: 'float', value: 0.35 } },
+  surface: `void zhudaSurface(inout ZhudaLitSurface s, vec2 uv, vec3 p, vec3 n) {
+    float steep = max(0.23, dot(normalize(n), s.viewDirection)); // 1 seen straight on
+    float stretch = s.vertexColor.a;                             // a number the mesh carries
+    s.alpha = 1.0 - exp(-u_ZhudaCover / (pow(steep, 0.52) * (1.0 + 0.5 * stretch)));
+    s.sheenColor *= 1.0 - 0.5 * stretch;                         // a stretched knit glows less
+  }`,
+});
+```
+
+- **`s.viewDirection`** is a unit vector from the surface toward the eye. With **`n`**, the hook's fourth argument (the mesh's own normal in world space, before any normal map and before the hook's `normalTS`), it says how steeply a place is seen: a thin cloth is clearest where it is seen straight on and closes toward its edge. In the pass that writes a light's shadow it is toward that light, so a surface cut by how steeply it is seen shades the floor by how steeply the light meets it; in the camera's depth passes it is toward the eye.
+- **`s.vertexColor`** is the mesh's colour at the place, white on a mesh that has none. Red, green and blue arrive **as light** (LayaAir raises a display colour to the power 2.2); **alpha arrives as it was given**, so a plain number for the hook (stretch, wetness, a mask) goes in alpha. A `ZhudaDynamicMesh` takes `colors` (four numbers a vertex), `setColor(i, r, g, b, a)` changes one and `updateRange(first, count)` uploads it; `mesh.offsets` and `mesh.stride` say where each part of a vertex is in `mesh.vertices`. The colour does not tint the surface unless the hook says so.
+- **`sheen`** (`true`, or `{ color, roughness }`; the colour as light, default white and 0.5) puts LayaAir's cloth lobe on the surface: the soft glow velvet, knit and a stocking have at their edges. The hook then has `s.sheenColor` and `s.sheenRoughness` to change a pixel at a time, and `material.setSheen({ color, roughness })` changes the material's own in place. It belongs to the physically based lighting: a surface with a `ZhudaLitShading` of its own cannot have it, and `sheen` is part of the shader name's contract.
+- The other lobes of a [physical surface](#physical-surfaces) (thin film, glass, coat, turned highlights) have no hook: they are LayaAir's glTF shader, which this template is not. A cloth that needs a hook is a lit surface with `sheen`; a surface that needs glass or a thin film is a `physical` one without a hook.
+- `surface.set(name, value)` takes an array or a LayaAir vector or colour, and says what the uniform wanted when it is given something else.
+
+Measured on WebGL and WebGPU (`npm run verify:lit-surface`): on a ball drawn with the alpha line above (cover 0.35, no stretch) over a plain ground, the ground shows through 0.697 of the way in the middle and 0.481 at 0.97 of the radius (alpha 0.303 and 0.519; the line gives 0.295 and 0.518); a plate at alpha one half comes out mixed half and half with `blend: 'alpha'` and added at half with `'additive'`, to the third decimal; a tilt of 0.12 written to `normalTS` moves the highlight of a glossy plate 45 pixels sideways (along u) or 57 up the picture (along v), the same to a tenth of a pixel on a mesh without tangents; a vertex's alpha of 0 at one edge and 1 at the other reads 0.247 a quarter of the way in, and after two vertices are changed and uploaded it reads 0; a black ball lit from the eye is 0.003 at its edge and 0.128 with sheen; two sheets through each other, each at alpha one half and cut by chance, show the upper one on 0.43 to 0.49 of the pixels and the lower on 0.26 on both sides of the line they share, the same picture whichever is made first, where blended sheets are wrong on one side; a plate too flat to the eye to be drawn still casts its shadow under a sun that meets it squarely.
 
 Measured on WebGL and WebGPU (`npm run verify:lit-surface`): a plate cut in strips shows the floor through its gaps and casts no shadow there; cut by chance at fourteen alphas it keeps within 0.04 of its alpha and its shadow is within 0.05 of that dark; a normal tilted by 31 degrees is lit within 0.01 of the cosine to the sun, the same on a mesh with tangents and on one without.
 

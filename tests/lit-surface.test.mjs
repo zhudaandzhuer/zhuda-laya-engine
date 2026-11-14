@@ -4,11 +4,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  ZHUDA_LIT_SHEEN_UNIFORM,
   ZhudaLitSurfaceMaterial,
   buildZhudaLitFragmentShaders,
   buildZhudaLitVertexShaders,
+  resolveZhudaLitSheen,
   zhudaLitSurfaceWrites,
 } from '../packages/core/shaders/LitSurfaceMaterial.ts';
+import { ZhudaDynamicMesh } from '../packages/core/runtime3d/Surfaces.ts';
 import { buildZhudaToonOutlinePass } from '../packages/core/shaders/ToonMaterial.ts';
 import {
   litVertex,
@@ -55,8 +58,11 @@ test('a surface that writes neither is drawn by the templates as before', () => 
   assert.equal(made.depthHook, false);
   assert.equal(made.shadow, litShadowFragment);
   assert.equal(made.depth, litDepthFragment);
-  // The two new fields are there to read, and nothing is written back from them.
-  assert.ok(made.forward.includes('float alpha;vec3 normalTS;};'));
+  // The fields are there to read, and nothing is written back from them.
+  assert.ok(
+    made.forward.includes('float alpha;vec3 normalTS;vec3 viewDirection;vec4 vertexColor;};'),
+  );
+  assert.ok(!made.forward.includes('sheenColor'), 'no sheen unless it is asked for');
   assert.ok(made.forward.includes('s.alpha=inputs.alpha;s.normalTS=inputs.normalTS;'));
   assert.ok(!made.forward.includes('inputs.alpha=clamp'));
   assert.ok(!made.forward.includes('inputs.normalTS=zhudaN'));
@@ -188,6 +194,76 @@ test('a surface cut by chance takes its threshold from its place on the object, 
   assert.equal(noisy.shadow, litShadowFragment);
 });
 
+test('the hook is given the view direction and the vertex colour, in every pass', () => {
+  const colour = '#ifdef COLOR\ns.vertexColor=PLACE;\n#else\ns.vertexColor=vec4(1.0);\n#endif\n';
+  const made = buildZhudaLitFragmentShaders({ surface: cut });
+  // Where the colours are drawn: toward the eye, and the colour LayaAir carried to the pixel.
+  const forward = main(made.forward);
+  assert.ok(forward.includes('s.viewDirection=normalize(u_CameraPos-pixel.positionWS);'));
+  assert.ok(forward.includes(colour.replace('PLACE', 'pixel.vertexColor')));
+  assert.ok(before(forward, 's.vertexColor=vec4(1.0);', 'zhudaSurface(s,'), 'before the hook runs');
+  // Where a shadow is written LayaAir gives a view and no eye: read from the view.
+  assert.ok(made.shadow.includes('vec3 zhudaPassViewDirection(vec3 positionWS){'));
+  assert.ok(
+    before(made.shadow, 'vec3 zhudaPassViewDirection(', 'void zhudaSurface('),
+    'declared before the hook',
+  );
+  const shadow = main(made.shadow);
+  assert.ok(shadow.includes('s.viewDirection=zhudaPassViewDirection(v_ZhudaShadowPositionWS);'));
+  assert.ok(!shadow.includes('u_CameraPos'), 'that pass is given no eye');
+  assert.ok(shadow.includes(colour.replace('PLACE', 'v_ZhudaShadowVertexColor')));
+  assert.ok(made.shadow.includes('varying vec4 v_ZhudaShadowVertexColor;'));
+  // Where the camera keeps depth and normal: the eye again.
+  const depth = main(made.depth);
+  assert.ok(depth.includes('s.viewDirection=normalize(u_CameraPos-pixel.positionWS);'));
+  assert.ok(depth.includes(colour.replace('PLACE', 'pixel.vertexColor')));
+  // The shadow's vertex program hands the colour over, white where the mesh has none.
+  const vertex = buildZhudaLitVertexShaders(undefined, { shadowSurface: true });
+  assert.ok(vertex.shadow.includes('varying vec4 v_ZhudaShadowVertexColor;'));
+  assert.ok(
+    vertex.shadow.includes(
+      '#ifdef COLOR\nv_ZhudaShadowVertexColor=vertex.vertexColor;\n#else\nv_ZhudaShadowVertexColor=vec4(1.0);\n#endif',
+    ),
+  );
+});
+
+test("sheen is LayaAir's own lobe, fed by the material and then by the hook", () => {
+  assert.equal(resolveZhudaLitSheen(undefined), null);
+  assert.equal(resolveZhudaLitSheen(false), null);
+  assert.deepEqual(resolveZhudaLitSheen(true), { color: [1, 1, 1], roughness: 0.5 });
+  assert.deepEqual(resolveZhudaLitSheen({ color: [0.2, 0.3, 0.4] }), {
+    color: [0.2, 0.3, 0.4],
+    roughness: 0.5,
+  });
+  assert.throws(() => resolveZhudaLitSheen('yes'), /Invalid sheen: true, or/);
+  assert.throws(() => resolveZhudaLitSheen({ color: [1, 2] }), /Invalid sheen.color/);
+  assert.throws(() => resolveZhudaLitSheen({ color: [-1, 0, 0] }), /Invalid sheen.color/);
+  assert.throws(() => resolveZhudaLitSheen({ roughness: 2 }), /Invalid sheen.roughness/);
+
+  const made = buildZhudaLitFragmentShaders({ surface: cut, sheen: true });
+  assert.ok(made.forward.includes('vec4 vertexColor;vec3 sheenColor;float sheenRoughness;};'));
+  assert.ok(before(made.forward, 'vec4 zhudaLitSheenFlow(', 'void main(){'));
+  const forward = main(made.forward);
+  const fed = `s.sheenColor=${ZHUDA_LIT_SHEEN_UNIFORM}.rgb;s.sheenRoughness=${ZHUDA_LIT_SHEEN_UNIFORM}.a;`;
+  assert.ok(before(forward, fed, 'zhudaSurface(s,'), 'the material first, then the hook');
+  assert.ok(
+    forward.includes(
+      'zhudaLitSheenFlow(inputs,pixel,max(s.sheenColor,vec3(0.0)),clamp(s.sheenRoughness,0.0,1.0))',
+    ),
+  );
+  assert.ok(!forward.includes('PBR_Metallic_Flow(inputs,pixel)'), "in place of LayaAir's flow");
+  // The fields are in the other passes too: a hook that reads them compiles there.
+  for (const pass of [made.shadow, made.depth]) {
+    assert.ok(pass.includes('vec3 sheenColor;float sheenRoughness;};'));
+    assert.ok(main(pass).includes(fed));
+  }
+  // The lobe is LayaAir's lighting: a shading of one's own has none.
+  assert.throws(
+    () => buildZhudaLitFragmentShaders({ surface: plain, sheen: true }, {}),
+    /not with a ZhudaLitShading/,
+  );
+});
+
 /** Enough of LayaAir to make a lit surface material and see what it was told. */
 function fakeLaya() {
   const shaders = new Map(),
@@ -199,6 +275,8 @@ function fakeLaya() {
   }
   class Material {
     told = [];
+    defines = [];
+    vectors = {};
     setShaderName(name) {
       // As LayaAir: another shader clears the defines and the render state.
       this.shader = name;
@@ -206,11 +284,21 @@ function fakeLaya() {
       this.renderMode = 0;
       this.cull = 'back';
       this.depthWrite = true;
+      this.defines = [];
       this.told.push('shader');
     }
-    setVector2() {}
-    setVector3() {}
-    setVector4() {}
+    addDefine(define) {
+      this.defines.push(define);
+    }
+    setVector2(name, value) {
+      this.vectors[name] = value.values;
+    }
+    setVector3(name, value) {
+      this.vectors[name] = value.values;
+    }
+    setVector4(name, value) {
+      this.vectors[name] = value.values;
+    }
     setFloat() {}
     setTexture() {}
     destroy() {}
@@ -228,6 +316,9 @@ function fakeLaya() {
     SubShader: class {
       static DefaultAttributeMap = {};
       passes = [];
+      constructor(attributes, uniforms) {
+        this.uniforms = uniforms;
+      }
       addShaderPass(vertex, fragment, mode) {
         this.passes.push({ vertex, fragment, mode });
       }
@@ -245,6 +336,7 @@ function fakeLaya() {
         return shader;
       },
       addInclude: (name) => includes.push(name),
+      getDefineByName: (name) => name,
     },
     PBRStandardMaterial: Material,
     UnlitMaterial: Material,
@@ -324,6 +416,205 @@ test('the material is cut or blended as it asked after its shader is put on', ()
       /different contract/,
     );
     for (const made of [opaque, sided, cutout, faded, chance]) made.dispose();
+  } finally {
+    globalThis.Laya = saved;
+  }
+});
+
+test('a material with sheen switches on the lobe, keeps its values and changes them in place', () => {
+  const laya = fakeLaya();
+  const saved = globalThis.Laya;
+  globalThis.Laya = laya;
+  try {
+    const cloth = new ZhudaLitSurfaceMaterial({
+      name: 'ZhudaTestSheen',
+      surface: plain,
+      sheen: { color: [0.75, 0.78, 1], roughness: 0.4 },
+    });
+    assert.deepEqual(cloth.material.defines, ['SHEEN'], 'after the shader was put on');
+    assert.deepEqual(cloth.material.vectors[ZHUDA_LIT_SHEEN_UNIFORM], [0.75, 0.78, 1, 0.4]);
+    const sub = laya.shaders.get('ZhudaTestSheen').subs[0];
+    assert.equal(sub.uniforms[ZHUDA_LIT_SHEEN_UNIFORM], 'Vector4');
+    assert.ok(sub.passes[0].fragment.includes('vec4 zhudaLitSheenFlow('));
+    cloth.setSheen({ roughness: 0.2 });
+    assert.deepEqual(cloth.material.vectors[ZHUDA_LIT_SHEEN_UNIFORM], [0.75, 0.78, 1, 0.2]);
+    cloth.setSheen({ color: [1, 0, 0] });
+    assert.deepEqual(cloth.material.vectors[ZHUDA_LIT_SHEEN_UNIFORM], [1, 0, 0, 0.2]);
+    assert.throws(() => cloth.setSheen({ roughness: -1 }), /Invalid sheen.roughness/);
+    assert.deepEqual(
+      cloth.material.vectors[ZHUDA_LIT_SHEEN_UNIFORM],
+      [1, 0, 0, 0.2],
+      'left as it was',
+    );
+    // `true` is the defaults.
+    const plainCloth = new ZhudaLitSurfaceMaterial({
+      name: 'ZhudaTestSheen',
+      surface: plain,
+      sheen: true,
+    });
+    assert.deepEqual(plainCloth.material.vectors[ZHUDA_LIT_SHEEN_UNIFORM], [1, 1, 1, 0.5]);
+    // Without it nothing is switched on and there is nothing to change.
+    const matt = new ZhudaLitSurfaceMaterial({ name: 'ZhudaTestMatt', surface: plain });
+    assert.deepEqual(matt.material.defines, []);
+    assert.equal(matt.material.vectors[ZHUDA_LIT_SHEEN_UNIFORM], undefined);
+    assert.throws(() => matt.setSheen({ roughness: 0.2 }), /made without sheen/);
+    // One shader name cannot mean both; the uniform's name is the material's own.
+    assert.throws(
+      () => new ZhudaLitSurfaceMaterial({ name: 'ZhudaTestMatt', surface: plain, sheen: true }),
+      /different contract/,
+    );
+    assert.throws(
+      () =>
+        new ZhudaLitSurfaceMaterial({
+          name: 'ZhudaTestTaken',
+          surface: plain,
+          uniforms: { [ZHUDA_LIT_SHEEN_UNIFORM]: { type: 'vec4', value: [0, 0, 0, 0] } },
+        }),
+      /the material's own/,
+    );
+    for (const made of [cloth, plainCloth, matt]) made.dispose();
+    assert.throws(() => cloth.setSheen({ roughness: 0.2 }), /Disposed material/);
+  } finally {
+    globalThis.Laya = saved;
+  }
+});
+
+test('a uniform takes an array or a LayaAir vector, and says what it wanted', () => {
+  const laya = fakeLaya();
+  const saved = globalThis.Laya;
+  globalThis.Laya = laya;
+  try {
+    const made = new ZhudaLitSurfaceMaterial({
+      name: 'ZhudaTestSet',
+      surface: `${head}s.baseColor*=u_ZhudaTint;s.emission=u_ZhudaGlow.rgb;}`,
+      uniforms: {
+        u_ZhudaTint: { type: 'vec3', value: [1, 1, 1] },
+        u_ZhudaGlow: { type: 'vec4', value: [0, 0, 0, 1] },
+      },
+    });
+    made.set('u_ZhudaTint', [0.1, 0.2, 0.3]);
+    assert.deepEqual(made.material.vectors.u_ZhudaTint, [0.1, 0.2, 0.3]);
+    made.set('u_ZhudaTint', { x: 0.4, y: 0.5, z: 0.6, w: 9 });
+    assert.deepEqual(
+      made.material.vectors.u_ZhudaTint,
+      [0.4, 0.5, 0.6],
+      'as many as the uniform has',
+    );
+    made.set('u_ZhudaGlow', { r: 1, g: 0.5, b: 0.25, a: 1 });
+    assert.deepEqual(made.material.vectors.u_ZhudaGlow, [1, 0.5, 0.25, 1]);
+    for (const bad of [[1, 2], [1, 2, Number.NaN], { x: 1, y: 2 }, 'red', null, 3])
+      assert.throws(
+        () => made.set('u_ZhudaTint', bad),
+        /Invalid value for u_ZhudaTint: 3 finite numbers \(an array, or a LayaAir vector\)/,
+      );
+    assert.deepEqual(made.material.vectors.u_ZhudaTint, [0.4, 0.5, 0.6], 'left as it was');
+    made.dispose();
+  } finally {
+    globalThis.Laya = saved;
+  }
+});
+
+/** Enough of LayaAir to make a dynamic mesh and see what it uploaded. */
+function fakeMeshLaya() {
+  const uploads = [];
+  class Node {
+    transform = {};
+    meshRenderer = {};
+    constructor(mesh) {
+      this.mesh = mesh;
+    }
+    destroy() {}
+  }
+  return {
+    uploads,
+    MeshSprite3D: Node,
+    Vector3: class {
+      constructor(x, y, z) {
+        Object.assign(this, { x, y, z });
+      }
+    },
+    Bounds: class {
+      constructor(min, max) {
+        Object.assign(this, { min, max });
+      }
+    },
+    VertexMesh: { getVertexDeclaration: (text) => text },
+    PrimitiveMesh: {
+      _createMesh: (declaration, vertices, indices) => ({
+        declaration,
+        vertices,
+        indices,
+        _vertexBuffer: {
+          setData: (buffer, at, from, length) => uploads.push({ at, from, length }),
+        },
+        destroy() {},
+      }),
+    },
+  };
+}
+
+test('a dynamic mesh carries a colour a vertex, laid out as LayaAir reads it', () => {
+  const laya = fakeMeshLaya();
+  const saved = globalThis.Laya;
+  globalThis.Laya = laya;
+  try {
+    const square = {
+      positions: new Float32Array([-1, 0, -1, 1, 0, -1, 1, 0, 1, -1, 0, 1]),
+      normals: new Float32Array([0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0]),
+      uvs: new Float32Array([0, 0, 1, 0, 1, 1, 0, 1]),
+      indices: new Uint16Array([0, 1, 2, 0, 2, 3]),
+    };
+    const colors = new Float32Array([1, 0, 0, 0.1, 0, 1, 0, 0.2, 0, 0, 1, 0.3, 1, 1, 1, 0.4]);
+    const tangents = new Float32Array([1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1]);
+    // Without colours a mesh is as it always was.
+    const bare = new ZhudaDynamicMesh(square);
+    assert.equal(bare.mesh.declaration, 'POSITION,NORMAL,UV');
+    assert.equal(bare.stride, 8);
+    assert.deepEqual(bare.offsets, { position: 0, normal: 3, color: null, uv: 6, tangent: null });
+    assert.throws(() => bare.setColor(0, 1, 1, 1, 1), /made without colours/);
+    const old = new ZhudaDynamicMesh({ ...square, tangents });
+    assert.equal(old.mesh.declaration, 'POSITION,NORMAL,UV,TANGENT');
+    assert.deepEqual(old.offsets, { position: 0, normal: 3, color: null, uv: 6, tangent: 8 });
+    // With them: after the normal, before the texture coordinates.
+    const mesh = new ZhudaDynamicMesh({ ...square, colors, tangents });
+    assert.equal(mesh.mesh.declaration, 'POSITION,NORMAL,COLOR,UV,TANGENT');
+    assert.equal(mesh.stride, 16);
+    assert.deepEqual(mesh.offsets, { position: 0, normal: 3, color: 6, uv: 10, tangent: 12 });
+    const vertex = (i) => Array.from(mesh.vertices.subarray(i * 16, i * 16 + 16));
+    const close = (got, want) =>
+      got.forEach((value, k) => assert.ok(Math.abs(value - want[k]) < 1e-6, `${k}: ${value}`));
+    close(vertex(2), [1, 0, 1, 0, 1, 0, 0, 0, 1, 0.3, 1, 1, 1, 0, 0, 1]);
+    const plain = new ZhudaDynamicMesh({ ...square, colors });
+    assert.equal(plain.mesh.declaration, 'POSITION,NORMAL,COLOR,UV');
+    assert.equal(plain.stride, 12);
+    assert.deepEqual(plain.offsets, { position: 0, normal: 3, color: 6, uv: 10, tangent: null });
+    // One vertex's colour changed, and only its range uploaded.
+    mesh.setColor(2, 0.5, 0.25, 0.125, 0.9);
+    close(vertex(2).slice(6, 10), [0.5, 0.25, 0.125, 0.9]);
+    close(vertex(1).slice(6, 10), [0, 1, 0, 0.2]);
+    assert.equal(laya.uploads.length, 0, 'nothing is uploaded until a range is');
+    mesh.updateRange(2, 1);
+    assert.deepEqual(laya.uploads, [{ at: 2 * 16 * 4, from: 2 * 16 * 4, length: 16 * 4 }]);
+    for (const bad of [
+      [-1, 0, 0, 0, 1],
+      [4, 0, 0, 0, 1],
+      [0.5, 0, 0, 0, 1],
+      [0, Number.NaN, 0, 0, 1],
+    ])
+      assert.throws(() => mesh.setColor(...bad), /Invalid vertex/);
+    // As many colours as vertices.
+    assert.throws(
+      () => new ZhudaDynamicMesh({ ...square, colors: colors.subarray(0, 12) }),
+      /Invalid mesh attributes or indices/,
+    );
+    assert.throws(
+      () =>
+        new ZhudaDynamicMesh({
+          ...square,
+          colors: new Float32Array([...colors.subarray(0, 15), Number.NaN]),
+        }),
+      /Non-finite mesh data/,
+    );
   } finally {
     globalThis.Laya = saved;
   }

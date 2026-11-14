@@ -26,8 +26,29 @@ export interface ZhudaLitSurfaceSpec {
      * material's plain colour and maps, and keep only its alpha and normal. A
      * surface that writes `normalTS` is lit by that normal, on a mesh with
      * tangents or without (the frame then comes from the texture coordinates).
-     * A surface that writes neither is drawn as before. */
+     * A surface that writes neither is drawn as before.
+     *
+     * It is also given, to read: `viewDirection` (from the surface toward the
+     * eye, a unit; with the fourth argument, the mesh's own normal before any
+     * normal map, it says how steeply the surface is seen; where a light's
+     * shadow is written it is toward that light, so a cloth cut by how steeply
+     * it is seen shades the floor by how steeply the light meets it) and `vertexColor`
+     * (the mesh's colour at this place, white where it has none: red, green
+     * and blue arrive as light, a display colour to the power 2.2; alpha
+     * arrives as it was given, so a plain number for the hook goes there).
+     * With `sheen`: `sheenColor` and `sheenRoughness`. */
     surface: string;
+    /**
+     * The soft glow cloth has at its edges (velvet, knit, a stocking), from
+     * LayaAir's own sheen lobe: its colour as light and its roughness 0..1
+     * (default white and 0.5). The hook may change both a pixel
+     * (`s.sheenColor`, `s.sheenRoughness`). Not with a `ZhudaLitShading`
+     * (a toon material is lit its own way).
+     */
+    sheen?: {
+        color?: readonly [number, number, number];
+        roughness?: number;
+    } | boolean;
     /** The surface may call `ZhudaCommon.glsl`: hash, noise, fractal noise, triplanar. */
     common?: boolean;
     /**
@@ -103,6 +124,8 @@ export declare function zhudaLitSurfaceWrites(surface: string): {
     alpha: boolean;
     normal: boolean;
 };
+/** The uniform a lit surface's sheen is kept in: its colour, and its roughness in the fourth place. */
+export declare const ZHUDA_LIT_SHEEN_UNIFORM = "u_ZhudaLitSheen";
 export interface ZhudaLitFragmentOptions {
     surface: string;
     uniforms?: Record<string, ShaderUniformSpec>;
@@ -110,6 +133,8 @@ export interface ZhudaLitFragmentOptions {
     backFaces?: 'mirrored' | 'same';
     common?: boolean;
     alphaHash?: boolean;
+    /** The surface has a sheen (see `ZhudaLitSurfaceSpec.sheen`). */
+    sheen?: unknown;
 }
 /**
  * The three fragment programs of a lit material, and which of the passes
@@ -122,6 +147,11 @@ export declare function buildZhudaLitFragmentShaders(spec: ZhudaLitFragmentOptio
     shadowHook: boolean;
     depthHook: boolean;
 };
+/** A lit surface's sheen with its defaults; null when it has none. Throws on values out of range. */
+export declare function resolveZhudaLitSheen(sheen: ZhudaLitSurfaceSpec['sheen']): {
+    color: [number, number, number];
+    roughness: number;
+} | null;
 /** Native Laya PBR lighting, IBL, shadows, depth normals and instancing with a bounded surface hook. */
 export declare class ZhudaLitSurfaceMaterial {
     readonly material: any;
@@ -129,5 +159,10 @@ export declare class ZhudaLitSurfaceMaterial {
     private disposed;
     constructor(spec: ZhudaLitSurfaceSpec, textures?: Record<string, any>, shading?: ZhudaLitShading);
     set(name: string, value: any): void;
+    /** The sheen's colour and roughness in place; only for a material made with `sheen`. */
+    setSheen(sheen: {
+        color?: readonly [number, number, number];
+        roughness?: number;
+    }): void;
     dispose(): void;
 }

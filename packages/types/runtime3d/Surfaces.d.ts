@@ -239,21 +239,51 @@ export interface MeshData {
     normals?: Float32Array;
     uvs?: Float32Array;
     tangents?: Float32Array;
+    /**
+     * A colour a vertex, four numbers each. A material that reads vertex
+     * colours tints by it; a lit surface's hook reads it as `s.vertexColor`.
+     * LayaAir takes red, green and blue as a display colour and hands them on
+     * as light (to the power 2.2); alpha is handed on as given, so a plain
+     * number for a shader (how far a cloth is stretched, say) goes in alpha.
+     */
+    colors?: Float32Array;
     indices: Uint16Array | Uint32Array;
 }
 /** UV-derived tangent frames for normal-mapped procedural geometry. Degenerate UVs use a stable orthogonal frame. */
 export declare function computeMeshTangents(data: MeshData): Float32Array;
-/** Laya 3.4.2 buffer adapter; POSITION/NORMAL/UV, local range uploads and refreshed bounds. */
+/**
+ * Laya 3.4.2 buffer adapter; POSITION/NORMAL/UV, with a colour and a tangent
+ * a vertex when the data has them, local range uploads and refreshed bounds.
+ */
 export declare class ZhudaDynamicMesh {
     readonly data: MeshData;
     readonly mesh: any;
+    /** Every vertex's numbers one after another, `stride` to a vertex, laid out as `offsets` says. */
     readonly vertices: Float32Array;
     readonly stride: number;
+    /**
+     * Where each part of a vertex starts among its `stride` numbers: the
+     * position (three), the normal (three), the colour (four, when the data
+     * has colours), the texture coordinates (two), the tangent (four, when
+     * the data has tangents).
+     */
+    readonly offsets: {
+        readonly position: 0;
+        readonly normal: 3;
+        readonly color: number | null;
+        readonly uv: number;
+        readonly tangent: number | null;
+    };
     readonly node: any;
     private disposed;
     constructor(data: MeshData, parent?: any);
     updateRange(first: number, count: number): void;
     setPosition(i: number, x: number, y: number, z: number): void;
+    /**
+     * A vertex's colour, for a mesh made with colours; sent with the next
+     * `updateRange` that covers the vertex.
+     */
+    setColor(i: number, r: number, g: number, b: number, a: number): void;
     private padding;
     /**
      * Grows the bounds by this many metres on every side, and keeps them grown

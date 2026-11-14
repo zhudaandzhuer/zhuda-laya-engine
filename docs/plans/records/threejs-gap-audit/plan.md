@@ -453,3 +453,47 @@ WebGPU hardware evidence exists only for Apple M4. Every other device stays UNAV
 - The cost of the `UI3D` billboard, the Shuriken `particle3d` path and `SimpleSkinnedMeshRenderer`: undocumented here, never drawn.
 - Whether the `'2d'` module can leave 3D profiles. Probably not (render device), so only `'ui'` is a candidate.
 - AVIF and KTX2 target formats on each mini-game host; WebGPU on Windows, Android and iOS. All UNAVAILABLE.
+
+## 6. Added after the audit, on request (2026-11-15): cloth and characters
+
+Not from the audit's findings: asked for on 2026-11-15 by a consumer study
+that redoes a three.js page (a sheer knitted cloth on a body) with the
+engine's public API and listed what it had to work around. The numbers go on
+from the planner's, so later records can refer to them. The gates are the
+request's own (G1 to G5); G4, redoing the study without workarounds, is the
+consumer's and is not tracked here.
+
+### WP17. What a lit surface's hook is given (done 2026-11-15)
+
+- A1. `ZhudaLitSurface` has `alpha` and `normalTS`. Built with WP7's follow-up (`records/physical-surfaces/`, commit `befc96b`).
+- A2. The hook reads the view direction (`s.viewDirection`) and has the mesh's own normal, before any normal map, as its fourth argument. Where a light's shadow is written the direction is toward that light: LayaAir gives that pass no eye.
+- A3. `material.blend` (`'alpha'`, `'cutout'`, `'additive'`, depth write) takes effect on a lit surface. Fixed in `befc96b`: LayaAir clears a material's state when it is given another shader.
+- A4. `alphaHash`: a cut by chance. Built in `befc96b`.
+- A5. Sheen on a lit surface (`sheen`, `s.sheenColor`, `s.sheenRoughness`, `setSheen`), by LayaAir's own lobe. The other way round, a hook on a `physical` surface, is not built: that surface is LayaAir's glTF shader, which the lit template does not produce. Thin film, glass, coat and turned highlights therefore stay without a hook.
+- B1. A `ZhudaDynamicMesh` takes a colour a vertex (`colors`, `setColor`, `offsets`); the hook reads it as `s.vertexColor`, alpha as it was given.
+- Gates:
+  - G1 (A1 to A3): unit tests of the hook's validation and the uniform map; on WebGL and on WebGPU, a ball with `blend: 'alpha'` and `alpha = 1 - exp(-c / pow(max(0.23, dot(N, V)), 0.52))` measured clearer in the middle than at the edge, with both numbers; a highlight moved by a `normalTS` the hook writes; `'alpha'`, `'cutout'` and `'additive'` with nothing set by hand; the shadow and depth-normal passes unbroken (the film draws again).
+  - G2 (A4): crossing sheets cut by chance, drawn on both backends, without an error of order.
+  - G3 (B1): a dynamic mesh with colours whose value the hook draws; after a range is changed and uploaded the picture follows.
+- Record: `records/lit-hook-inputs/`.
+
+### WP18. Cloth (next)
+
+- C1. Particles and distance constraints (structural, shear, bend), Verlet integration, a fixed step fed by a layer of `ZhudaLayeredClock`, pinned points, collision against spheres, capsules and a table of radius by height and angle, a particle that can be grabbed, dragged and let go; drawn through a `ZhudaDynamicMesh`.
+- Gate G5: the same input gives the same result; thirty times made and destroyed with nothing left; no burst after a lost focus or a pause; on both backends a hanging cloth grabbed and let go, with no vertex inside the collider.
+- Risk: the cost of a step on a phone is not known; a body that bends needs more than one table.
+- Task: `records/cloth-and-spring-bones/task.md`.
+
+### WP19. Spring bones (after WP18)
+
+- C2. Chains of bones under a skeleton (hair, a skirt's hem, accessories) that lag, swing and settle, with colliders that follow bones, written after the animator; on WP18's core.
+- Gate G5, as for WP18, with a chain hung from a moving bone for its draw.
+- Task: the same document.
+
+### WP20. Skin, eyes and hair (placed, not started; nothing is built until a character close-up asks)
+
+- C3, each judged on its own:
+  - Skin. Worth doing in its cheap form: a wrapped or pre-integrated diffuse and light through thin parts by a thickness map, written as a `ZhudaLitShading` on the lit hook. Small. A screen-space blur of the skin's light is not worth it now: it needs the diffuse light in a picture of its own and costs a phone several full-screen passes.
+  - Eyes. Worth doing when a film or a game shows a face close: an iris seen through a cornea (parallax), a wet highlight, a darker rim. It needs the tangent frame in the hook, which the hook does not have (it has the view direction and the mesh's normal). Medium: the frame first, then the material.
+  - Hair highlights. Worth doing with the same frame: a highlight along the strand (Kajiya-Kay), as a `ZhudaLitShading`. Small once the frame is there. `physical` surfaces already turn a highlight (`anisotropy`), without a hook.
+  - Hair cards and their order. Mostly answered: a cut by chance (WP17) needs no order, writes depth and casts a shadow, at the price of grain that temporal anti-aliasing smooths. What is left is a soft fringe: a cut-out core drawn first and a blended fringe after it, as one material mode. Medium, later. Sorting a mesh's triangles by the camera every frame is not worth it; order-independent transparency stays in section 3.
