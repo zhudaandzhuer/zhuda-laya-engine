@@ -274,11 +274,13 @@ nodes.
   A `sweep` does not round its corners.
 - Weather: `clouds` is one layer of one kind of cloud; it casts no shadow on
   the ground and nothing rains from it.
-- Skin (light that passes through it), cloth sheen and hair strands. A flat
-  material has `clearCoat` (lacquer, a wet sheen) and `anisotropy` (brushed
-  metal, satin, a band of light on hair); LayaAir's PBR material has no
-  subsurface term, and its sheen is reached only by a glTF model that
-  carries it.
+- Skin (light that passes through it), hair strands, and cloth sheen in a
+  film scene. A flat material has `clearCoat` (lacquer, a wet sheen) and
+  `anisotropy` (brushed metal, satin, a band of light on hair); LayaAir's PBR
+  material has no subsurface term. Game code reaches sheen, thin films and
+  glass through `createSurfaceMaterial({ type: 'physical' })` (LayaAir's
+  glTF shader, [physical surfaces](filmic-rendering.md#physical-surfaces));
+  a film material does not have them.
 
 ## Evidence
 

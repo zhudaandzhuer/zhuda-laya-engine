@@ -56,6 +56,8 @@ opaque-origin 無法讀取 storage 時，boot 安裝 realm 內記憶體替代。
 
 `createSurfaceMaterial` 支援 PBR／Unlit、金屬度／粗糙度／發光、opaque／alpha／additive／cutout、深度寫入與雙面。`Zhuda3D.createMaterial` 也會依 `type` 建立正確類別；未指定時維持 BlinnPhong。
 
+`createSurfaceMaterial({type:'physical'})` 使用 LayaAir glTF 模組的 `glTFPBR` shader（需 `gltf` feature），提供 sheen、iridescence、ior／specular、transmission＋volume、clear-coat 貼圖與任意角度的 `anisotropyRotationDeg`；貼圖依 glTF 配置，顏色與 `pbr` 一樣為顯示色。transmission 需 camera opaque pass：`configureSurfacePasses(camera,[surfaceMaterialPasses(spec)],budget)`。一個 physical 表面最多填 6 個貼圖槽（`physicalSurfaceTextureLimit()`；有 lightmap 時 5、方向性 lightmap 時 4）：每個 shader stage 只有 16 個 sampler，場景的光影與環境在 WebGPU 上固定佔 10 個，超過時表面完全不會被畫出來，所以第 7 張貼圖會被拒絕。細節與量測見 [filmic-rendering.md](filmic-rendering.md#physical-surfaces)。
+
 `createSurfaceTexture` 的 color／emission 使用 sRGB，normal／data 使用線性。輸入像素方向保持來源約定；法線使用 Laya／glTF 的切線空間，不自動猜測 DirectX 綠色通道。glTF MR 貼圖的 G=roughness、B=metallic；`packMetallicRoughness` 轉為 Laya 的 R=metallic、A=smoothness。GLB loader 自行處理 glTF 材質，不能再轉一次。
 
 材質借用貼圖；`disposeSurfaceMaterial` 先脫離貼圖再銷毀材質，貼圖由其 owner 釋放。不要對共享材質做受擊變色。

@@ -167,6 +167,7 @@
     "verify:geometry": "node scripts/verify-geometry.mjs",
     "verify:spatial-audio": "node scripts/verify-spatial-audio.mjs",
     "verify:gltf-intake": "node scripts/verify-gltf-intake.mjs",
+    "verify:physical-surfaces": "node scripts/verify-physical-surfaces.mjs",
     "types:generate": "node packages/compiler/runtime3d-types.mjs",
     "types:check": "node packages/compiler/runtime3d-types.mjs --check",
     "prepare": "npm run build 1>&2",

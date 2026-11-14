@@ -292,7 +292,7 @@ export function getQualityRoute() {
       'Shadows from more than eight point lights and one spot light (LayaAir 3.4.2 draws one spot shadow map).',
       "Motion blur of things that move by themselves: look.motionBlur smears only what the camera's own movement smears. look.depthOfField is one disc radius per pixel, without the shape of an aperture.",
       "Decals that wrap round geometry (a decal node lies on one plane); parallax (LayaAir's PBR shader takes no height map); the fine repeat inside one texture tile (variation hides the grid of tiles only). A sweep does not round its corners.",
-      'Weather: clouds is one layer of one kind of cloud, without shadows on the ground or rain. Skin (subsurface light), cloth sheen and hair strands: a flat material has clearCoat and anisotropy only.',
+      'Weather: clouds is one layer of one kind of cloud, without shadows on the ground or rain. Skin (subsurface light), hair strands, and cloth sheen in a film scene: a flat material has clearCoat and anisotropy only (game code has sheen, thin films and glass on createSurfaceMaterial type physical).',
     ],
     evidence: {
       rule: 'Desktop WebGL frames, and the same checks on desktop WebGPU through npm run verify:film-webgpu (Apple M4). Phones and mini-game hosts need their own records.',
