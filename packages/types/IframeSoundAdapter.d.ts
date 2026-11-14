@@ -10,6 +10,7 @@
 import type { IframeAudioChannel, IframeSoundAdapterOptions, IframeSoundDiagnostics, IframeToneOptions, IframeSampleOptions, IframeSampleInfo } from './index.js';
 import type { IframeStreamOptions, IframeStreamInfo, IframeSampleBackend } from './zhuda-audio.js';
 import type { IframeOfflineMixOptions, IframeOfflineMix } from './zhuda-audio.js';
+import type { IframeListenerPose } from './zhuda-audio.js';
 export interface QueuedAudioTask {
     sampleId?: string;
     streamId?: string;
@@ -64,6 +65,7 @@ export declare class IframeSoundAdapter {
     private backendPreparing?;
     private backendContextLost;
     private offlineMix;
+    private listener;
     static getShared(): IframeSoundAdapter;
     constructor(options?: IframeSoundAdapterOptions);
     private recordError;
@@ -126,6 +128,25 @@ export declare class IframeSoundAdapter {
     /** Explicit offline soundtrack using loaded samples and this mixer's gain snapshot.
      * Does not play live voices, use a second live AudioContext or dispatch events. */
     renderOffline(options: IframeOfflineMixOptions): Promise<IframeOfflineMix>;
+    private applyListener;
+    /** A PannerNode where the host has one; otherwise a distance gain and, if it can, a stereo pan. */
+    private createSpatial;
+    private placeFallback;
+    /**
+     * Where the listener is and which way it faces, usually the camera's pose
+     * each frame. Spatial voices are heard from here. Returns false for a pose
+     * that is not finite, or whose forward and up are along one line.
+     */
+    setListener(pose: IframeListenerPose): boolean;
+    /**
+     * Moves the active spatial voices of a logical ID (and turns them, with
+     * `orientation`). A voice still queued before unlock starts where it was
+     * asked to. Returns whether a voice was moved.
+     */
+    setVoicePosition(id: string, position: readonly [number, number, number], options?: {
+        orientation?: readonly [number, number, number];
+        rampSec?: number;
+    }): boolean;
     stop(id: string, fadeOutSec?: number): boolean;
     private finishVoice;
     private stopVoice;

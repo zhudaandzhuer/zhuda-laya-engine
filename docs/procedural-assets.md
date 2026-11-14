@@ -230,7 +230,7 @@ hardware, and the art quality of the starter recipes (they are samples).
 - Baking is CPU only; there is no GPU baking path.
 - Masks are the five types above; there is no node graph, scratch or decal
   layer yet.
-- Geometry has no lathe, extrusion or UV unwrapping beyond per-face metres.
+- Geometry has no UV unwrapping beyond per-face metres.
 - Props carry box colliders only.
 
 ## Round and raised shapes
@@ -245,4 +245,31 @@ Two more builders in the geometry kit, pure data like the others:
   `[x, z]` pairs. The outline may be concave; it must not cross itself.
 
 Film scenes use them as `lathe` and `extrude` nodes.
+
+## Holes, bevels, curves, tori and rings
+
+- `createZhudaExtrudeMesh` takes `holes` (up to 32 outlines inside the
+  outline, clear of its edges and of each other: windows, doorways, the inside
+  of a letter) and `bevel` in metres with `bevelSegments` (1 cuts the edge
+  off flat, 2..8 round it) and `bevelBottom`. The footprint stays the outline;
+  the top is drawn in by the bevel and the holes widened by it.
+  `validateZhudaExtrude` refuses a hole outside the outline or touching it or
+  another hole (naming the hole), and a bevel so wide that the top would
+  turn inside out or cross itself.
+- `sampleZhudaCurve({ points, closed, kind }, count)` gives points evenly
+  spaced along a Catmull-Rom curve through `points` (`'centripetal'` by
+  default, `'chordal'` or `'uniform'`), for `createZhudaSweepMesh` or
+  `createZhudaTubeMesh`. `sampleZhudaCurvePath(path, count)` does the same
+  for a LayaAir `CurvePath` (Catmull-Rom or Bezier) built in a game.
+- `createZhudaCurveTubeMesh({ points, radius, closed })` is a round tube
+  along such a curve, rings evenly spaced, turned as little as possible from
+  one ring to the next; a closed tube's twist is spread over its length so
+  its seam meets. A radius wider than the tightest bend is not checked.
+- `createZhudaTorusMesh({ radius, tube })` lies flat about +Y.
+- `createZhudaRingMesh({ outerRadius, innerRadius })` is a flat ring (or a
+  disc) facing +Y; with `thickness` it is a closed washer or coin.
+
+Closed shapes are watertight with outward normals (`tests/geometry-shapes.test.mjs`);
+`npm run verify:geometry` draws them on WebGL and WebGPU. Arcs (a part of a
+torus or ring) are not built.
 

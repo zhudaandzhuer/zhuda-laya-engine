@@ -84,7 +84,7 @@ download／parse／ready 與 GPU 已顯示分開：report 的 `gpuReady: require
 
 `ZhudaCameraCoordinates` 採 column-major projection×view 與 inverse，screen input／output 都是 CSS pixels，支援 camera normalizedViewport。供給真實 canvas rect 與 backing 尺寸，不自行再乘 DPR。`worldToScreen` 的 visible 供 DOM 血條／名字判斷。
 
-`ZhudaSceneQueries` 從註冊 provider 取得最近命中的 entity／instance ID、法線、位置、距離及 layer。`rayBox` 是 AABB fixture；精確碰撞與 sweep 由遊戲幾何或物理 adapter 注入，不產生新的傷害規則。`ZhudaSurfaceQuery` 接入既有高度／法線採樣器，水面 CPU／GPU 共享座標和外部 time。
+`ZhudaSceneQueries` 從註冊 provider 取得最近命中的 entity／instance ID、法線、位置、距離及 layer。`rayBox` 是 AABB fixture；精確碰撞與 sweep 由遊戲幾何或物理 adapter 注入，不產生新的傷害規則。`ZhudaTriangleBvh` 以三角形 BVH 在網格自身空間做精確射線拾取（不需物理引擎），回傳距離、世界座標點、三角形索引、重心座標與正反面；`setMatrix` 移動網格不必重建。`createZhudaMeshQueryProvider` 把它註冊為 `ZhudaSceneQueries` provider，`readZhudaLayaMeshTriangles` 讀出可讀（readable）LayaAir Mesh 的頂點與索引。蒙皮與變形網格不在範圍內。`ZhudaSurfaceQuery` 接入既有高度／法線採樣器，水面 CPU／GPU 共享座標和外部 time。
 
 `ZhudaPointerInput` 以 pointer ID 分配互斥 role，支援 capture、取消、blur／hidden 清理。DOM overlay 由遊戲排除並攔截，canvas 應 `touch-action:none`。`ZhudaCameraRig` 提供 orbit／follow 及 firstPerson 呈現；pointer lock 不可用時可直接使用拖曳 dx/dy。safe-area CSS 與橫豎版型由消費端管理，沒有固定棋盤版型依賴。
 

@@ -103,13 +103,61 @@ same source position if permitted. It does not reconstruct a stream or guarantee
 mobile autoplay. `peakGain` remains voice-local; channel/master gains apply once.
 Sources and voice gains disconnect on end, stop, failure and disposal.
 
-Streaming desktop evidence and the backend extension are documented below.
-Spatial playback, physical-device codec/speaker/autoplay acceptance and the
+Streaming desktop evidence, spatial samples and the backend extension are
+documented below. Physical-device codec/speaker/autoplay acceptance and the
 complete sample migration matrix remain unverified. The
 [verification record](plans/records/consumer-runtime-hardening/verification.md)
 labels the measured candidate scope. The broader
 [follow-up plan](plans/consumer-delivery-followups.md) still tracks dependency
 graphs, vendor declarations and remaining device work.
+
+## Spatial samples
+
+`playSample({ spatial })` places a sample in the game's world. The voice then
+runs source → voice gain → `PannerNode` → channel gain → master: the panner
+sits between the voice's envelope and the mixer, so channel and master gains
+still apply once, and it is made on the adapter's one context. The listener is
+`setListener(pose)`, usually the camera each frame; `setVoicePosition(id,
+position)` moves the active voices of a logical ID.
+
+```ts
+audio.setListener({ position: [x, 1.6, z], forward: cameraForward, up: [0, 1, 0] });
+audio.playSample({
+  id: 'enemy-steps', sampleId: 'audio/steps.wav', channel: 'sfx', loop: true,
+  spatial: { position: enemyPosition, refDistance: 2, rolloffFactor: 1 },
+});
+// Each frame, from the game's own state:
+audio.setVoicePosition('enemy-steps', enemyPosition);
+audio.setListener({ position: eye, forward, up: [0, 1, 0] });
+```
+
+Positions are metres in one world frame for the listener and every source;
+the default listener is at the origin facing -Z with +Y up. Options and
+defaults are the Web Audio ones: `panningModel` `'HRTF'` (binaural where the
+browser has it, otherwise the host keeps equal power), `distanceModel`
+`'inverse'`, `refDistance` 1, `maxDistance` 10000, `rolloffFactor` 1 (at most
+1 for `'linear'`), and a cone (`orientation`, `coneInnerAngle`,
+`coneOuterAngle`, `coneOuterGain`) that is off at 360°. A value out of range
+makes `playSample` return false; nothing is made. `rampSec` (0..1 s of audio
+time) on a pose or a move glides there instead of jumping. The adapter keeps
+no clock of its own: the game calls these from its frame.
+
+Where a host has no `PannerNode` (some mini-game hosts), the adapter computes
+the same distance, cone and equal-power azimuth formulas itself and applies
+them through one `GainNode` and, when the host has one, a `StereoPannerNode`.
+The fallback has no HRTF and no elevation. `getDiagnostics()` reports
+`spatialBackend` (`panner`, `gain` or `unavailable` before a context exists)
+and `spatialVoices`. Old WebKit `setPosition`/`setOrientation` listeners and
+panners are placed through those methods.
+
+A voice queued before unlock starts where it was asked to; moves apply to
+active voices only. Ending, stopping, replacing, unloading and disposal
+disconnect the panner (or fallback nodes) with the voice. Tones, streams and
+`renderOffline` are not placed. `npm run verify:spatial-audio` renders the
+placement through Chrome's `OfflineAudioContext` (HRTF, equal power and the
+fallback) and measures left and right; speakers, headphones, phones and how
+HRTF sounds to a listener are not verified. See the
+[verification record](plans/records/game-services/verification.md).
 
 ## Streaming BGM (1.7.0)
 

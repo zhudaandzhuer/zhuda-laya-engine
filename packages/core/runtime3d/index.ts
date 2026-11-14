@@ -15,6 +15,7 @@ export * from './Surfaces.ts';
 export * from './Runtime.ts';
 export * from './RuntimeDriver.ts';
 export * from './SceneQueries.ts';
+export * from './MeshQuery.ts';
 export * from './SceneLifecycle.ts';
 export * from './CameraRig.ts';
 export * from './CameraCollision.ts';

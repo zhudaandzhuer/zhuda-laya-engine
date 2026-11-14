@@ -7,6 +7,44 @@ export interface IframeVoiceOptions {
   /** Explicit voice protection in addition to protected channels. */
   protected?: boolean;
 }
+/**
+ * Where a sample sounds from, for `playSample({ spatial })`. Positions are in
+ * the game's world, in the same coordinates as `setListener`. Defaults are the
+ * Web Audio ones: inverse distance from 1 m, no cone.
+ */
+export interface IframeSpatialOptions {
+  /** Where the sound is, [x, y, z] in metres. */
+  position: readonly [number, number, number];
+  /** The way a directional source faces; only matters with a cone (default [1, 0, 0]). */
+  orientation?: readonly [number, number, number];
+  /** 'HRTF' (default; binaural where the browser has it) or 'equalpower' (cheaper, for speakers). */
+  panningModel?: "HRTF" | "equalpower";
+  /** How the volume falls with distance (default 'inverse'). */
+  distanceModel?: "linear" | "inverse" | "exponential";
+  /** Closer than this the volume does not grow (default 1 m). */
+  refDistance?: number;
+  /** Beyond this the volume falls no further; 'linear' is silent there (default 10000 m). */
+  maxDistance?: number;
+  /** How fast the volume falls (default 1; at most 1 for 'linear'). */
+  rolloffFactor?: number;
+  /** Full volume inside this cone, in degrees (default 360: no cone). */
+  coneInnerAngle?: number;
+  /** Outer edge of the cone, in degrees, not less than the inner (default 360). */
+  coneOuterAngle?: number;
+  /** Gain outside the outer cone, 0..1 (default 0). */
+  coneOuterGain?: number;
+}
+/** The listener for spatial samples, usually the camera, from `setListener`. */
+export interface IframeListenerPose {
+  /** [x, y, z] in metres. */
+  position: readonly [number, number, number];
+  /** The way the listener faces (default [0, 0, -1]). */
+  forward?: readonly [number, number, number];
+  /** The listener's up, not along forward (default [0, 1, 0]). */
+  up?: readonly [number, number, number];
+  /** Glide to the pose over this many seconds of audio time, 0..1 (default 0: at once). */
+  rampSec?: number;
+}
 export interface IframeOfflineCue {
   id: string;
   sampleId: string;

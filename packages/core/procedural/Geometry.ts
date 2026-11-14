@@ -497,7 +497,27 @@ export interface ZhudaExtrudeOptions {
   height: number;
   /** Close the top and the underside (default true). */
   caps?: boolean;
+  /**
+   * Openings right through the shape (a window in a wall piece, the inside of
+   * a letter O), up to 32 of them. Each is an outline of 3..256 [x, z] pairs
+   * in either direction, inside the outline and clear of its edges and of
+   * the other holes.
+   */
+  holes?: readonly (readonly (readonly [number, number])[])[];
+  /**
+   * Cut off or round the top edges by this many metres (default 0, sharp).
+   * The wall stops this far below the top and the top is drawn in by it;
+   * holes are widened by it at the top. The footprint stays the outline.
+   * Needs caps.
+   */
+  bevel?: number;
+  /** 1 (default) cuts the edges off flat; 2..8 rounds them in that many steps. */
+  bevelSegments?: number;
+  /** Bevel the underside's edges too (default false: a shape standing on the ground). */
+  bevelBottom?: boolean;
 }
+
+type Point2 = readonly [number, number];
 
 const area2 = (outline: readonly (readonly [number, number])[]) => {
   let sum = 0;
@@ -527,134 +547,441 @@ const crosses = (
   return d1 * d2 < 0 && d3 * d4 < 0;
 };
 
-export function validateZhudaExtrude(options: ZhudaExtrudeOptions): string[] {
-  const issues: string[] = [];
-  const o = options ?? ({} as ZhudaExtrudeOptions);
-  const outline = o.outline as unknown;
-  let sound = false;
-  if (!Array.isArray(outline) || outline.length < 3 || outline.length > 256)
-    issues.push('outline: use 3..256 [x, z] pairs');
-  else {
-    sound = true;
-    outline.forEach((point, i) => {
-      if (
-        !Array.isArray(point) ||
-        point.length !== 2 ||
-        !point.every((n) => typeof n === 'number' && Number.isFinite(n) && Math.abs(n) <= 1000)
-      ) {
-        issues.push(`outline[${i}]: use [x, z] in metres`);
-        sound = false;
-      } else {
-        const before = outline[(i + outline.length - 1) % outline.length];
-        if (Array.isArray(before) && before[0] === point[0] && before[1] === point[1]) {
-          issues.push(`outline[${i}]: the same point as the one before it`);
-          sound = false;
-        }
-      }
-    });
+const turn2 = (p: Point2, q: Point2, r: Point2) =>
+  (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0]);
+/** Distance from p to the segment ab. */
+const toSegment = (p: Point2, a: Point2, b: Point2) => {
+  const dx = b[0] - a[0],
+    dz = b[1] - a[1],
+    length2 = dx * dx + dz * dz,
+    t =
+      length2 > 0
+        ? Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dz) / length2))
+        : 0;
+  return Math.hypot(p[0] - a[0] - dx * t, p[1] - a[1] - dz * t);
+};
+/** Whether p lies inside the closed ring (crossing count; a point on an edge may go either way). */
+const insideRing = (p: Point2, ring: readonly Point2[]) => {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const a = ring[i],
+      b = ring[j];
+    if (
+      a[1] > p[1] !== b[1] > p[1] &&
+      p[0] < a[0] + ((p[1] - a[1]) * (b[0] - a[0])) / (b[1] - a[1])
+    )
+      inside = !inside;
   }
-  if (sound) {
-    const points = outline as [number, number][];
-    let crossing = false;
-    search: for (let i = 0; i < points.length; i++)
-      for (let j = i + 2; j < points.length; j++) {
-        if (i === 0 && j === points.length - 1) continue;
-        if (crosses(points[i], points[i + 1], points[j], points[(j + 1) % points.length])) {
-          issues.push(`outline: edge ${i} crosses edge ${j}`);
-          crossing = true;
-          break search;
-        }
-      }
-    if (!crossing && Math.abs(area2(points)) < 1e-9) issues.push('outline: it encloses no area');
+  return inside;
+};
+/** Closest approach of two closed rings, or 0 where their edges cross. */
+const ringGap = (a: readonly Point2[], b: readonly Point2[]) => {
+  let gap = Infinity;
+  for (let i = 0; i < a.length; i++) {
+    const a0 = a[i],
+      a1 = a[(i + 1) % a.length];
+    for (let j = 0; j < b.length; j++) {
+      const b0 = b[j],
+        b1 = b[(j + 1) % b.length];
+      if (crosses(a0, a1, b0, b1)) return 0;
+      gap = Math.min(gap, toSegment(a0, b0, b1), toSegment(b0, a0, a1));
+    }
+  }
+  return gap;
+};
+/** Whether a closed ring crosses itself. */
+const selfCrossing = (ring: readonly Point2[]) => {
+  for (let i = 0; i < ring.length; i++)
+    for (let j = i + 2; j < ring.length; j++) {
+      if (i === 0 && j === ring.length - 1) continue;
+      if (crosses(ring[i], ring[i + 1], ring[j], ring[(j + 1) % ring.length])) return true;
+    }
+  return false;
+};
+/** Smallest gap allowed between a hole and the outline or another hole, in metres. */
+const CLEARANCE = 1e-4;
+
+/** The outline counter-clockwise and the holes clockwise: the material is then to the left of every edge. */
+function extrudeRings(options: ZhudaExtrudeOptions): [number, number][][] {
+  const outline = options.outline.map(([x, z]) => [x, z] as [number, number]);
+  if (area2(outline) < 0) outline.reverse();
+  const holes = (options.holes ?? []).map((hole) => {
+    const ring = hole.map(([x, z]) => [x, z] as [number, number]);
+    if (area2(ring) > 0) ring.reverse();
+    return ring;
+  });
+  return [outline, ...holes];
+}
+
+/**
+ * A ring moved `amount` metres into the material, every edge kept parallel:
+ * the outline is drawn in, a hole is widened. Null where a corner turns
+ * straight back on itself.
+ */
+function offsetRing(ring: readonly Point2[], amount: number): [number, number][] | null {
+  if (amount === 0) return ring.map(([x, z]) => [x, z]);
+  const count = ring.length;
+  // Each edge's normal away from the material: to its right.
+  const away = ring.map((p, i) => {
+    const q = ring[(i + 1) % count],
+      length = Math.hypot(q[0] - p[0], q[1] - p[1]);
+    return [(q[1] - p[1]) / length, -(q[0] - p[0]) / length];
+  });
+  const out: [number, number][] = [];
+  for (let i = 0; i < count; i++) {
+    const a = away[(i + count - 1) % count],
+      b = away[i],
+      k = 1 + a[0] * b[0] + a[1] * b[1];
+    if (!(k > 1e-6)) return null;
+    out.push([
+      ring[i][0] - (amount * (a[0] + b[0])) / k,
+      ring[i][1] - (amount * (a[1] + b[1])) / k,
+    ]);
+  }
+  return out;
+}
+
+/** Issues where a hole is not inside the outline, clear of it and of the other holes. */
+function ringLayoutIssues(rings: readonly (readonly Point2[])[]): string[] {
+  const issues: string[] = [];
+  const [outline, ...holes] = rings;
+  holes.forEach((hole, h) => {
+    if (!hole.every((p) => insideRing(p, outline)) || ringGap(hole, outline) < CLEARANCE)
+      issues.push(`holes[${h}]: it must lie inside the outline, clear of its edges`);
+    for (let g = h + 1; g < holes.length; g++)
+      if (
+        ringGap(hole, holes[g]) < CLEARANCE ||
+        hole.some((p) => insideRing(p, holes[g])) ||
+        holes[g].some((p) => insideRing(p, hole))
+      )
+        issues.push(`holes[${h}]: it overlaps or touches holes[${g}]`);
+  });
+  return issues;
+}
+
+export function validateZhudaExtrude(options: ZhudaExtrudeOptions): string[] {
+  const o = options ?? ({} as ZhudaExtrudeOptions);
+  const issues = outlineIssues(o.outline, 'outline', '[x, z]', 256);
+  let sound = issues.length === 0;
+  const holes = o.holes as unknown;
+  if (holes !== undefined) {
+    if (!Array.isArray(holes) || holes.length > 32) {
+      issues.push('holes: use a list of up to 32 outlines');
+      sound = false;
+    } else
+      holes.forEach((hole, h) => {
+        const own = outlineIssues(hole, `holes[${h}]`, '[x, z]', 256);
+        issues.push(...own);
+        if (own.length) sound = false;
+      });
   }
   if (!(typeof o.height === 'number' && o.height > 0 && o.height <= 1000))
     issues.push('height: use a positive number of metres');
   if (o.caps !== undefined && typeof o.caps !== 'boolean') issues.push('caps: true or false');
+  const bevel = o.bevel ?? 0,
+    steps = o.bevelSegments ?? 1;
+  let bevelSound = true;
+  if (!(typeof bevel === 'number' && bevel >= 0 && bevel <= 100)) {
+    issues.push('bevel: use 0..100 metres');
+    bevelSound = false;
+  }
+  if (!(Number.isInteger(steps) && steps >= 1 && steps <= 8)) {
+    issues.push('bevelSegments: use a whole number 1..8');
+    bevelSound = false;
+  }
+  if (o.bevelBottom !== undefined && typeof o.bevelBottom !== 'boolean') {
+    issues.push('bevelBottom: true or false');
+    bevelSound = false;
+  }
+  if (bevelSound && bevel > 0) {
+    if (o.caps === false) issues.push('bevel: a bevel needs caps');
+    if (typeof o.height === 'number' && bevel * (o.bevelBottom ? 2 : 1) >= o.height)
+      issues.push(
+        o.bevelBottom
+          ? 'bevel: twice the bevel must be less than the height'
+          : 'bevel: it must be less than the height',
+      );
+  }
+  if (sound) {
+    const rings = extrudeRings(o);
+    const layout = ringLayoutIssues(rings);
+    issues.push(...layout);
+    if (!layout.length && bevelSound && bevel > 0) {
+      // The top, drawn in by the bevel, must still be the same shape: no edge
+      // turned round, nothing crossing, every hole still inside.
+      const top = rings.map((ring) => offsetRing(ring, bevel));
+      const kept = top.every(
+        (ring, r) =>
+          ring !== null &&
+          ring.every((p) => Number.isFinite(p[0]) && Number.isFinite(p[1])) &&
+          ring.every((p, i) => {
+            const q = ring[(i + 1) % ring.length],
+              a = rings[r][i],
+              b = rings[r][(i + 1) % ring.length];
+            return (q[0] - p[0]) * (b[0] - a[0]) + (q[1] - p[1]) * (b[1] - a[1]) > 1e-12;
+          }) &&
+          !selfCrossing(ring),
+      );
+      if (!kept || ringLayoutIssues(top as [number, number][][]).length)
+        issues.push('bevel: too wide for this outline; the top would cross itself');
+    }
+    const edges = rings.reduce((sum, ring) => sum + ring.length, 0),
+      sides = bevel > 0 && bevelSound ? (o.bevelBottom ? 2 : 1) : 0,
+      vertices = 4 * edges + sides * 2 * edges * (steps + 1) + (o.caps === false ? 0 : 2 * edges);
+    if (vertices > 65535)
+      issues.push(
+        `outline: ${vertices} vertices is more than one mesh holds (65535); use fewer points`,
+      );
+  }
   return issues;
 }
 
-/** A flat outline raised to a height: kerbs, steps, signs, wall pieces, L and U profiles. */
+/**
+ * A flat outline raised to a height: kerbs, steps, signs, wall pieces, L and
+ * U profiles; with `holes`, windows and doorways; with `bevel`, worn or
+ * rounded top edges.
+ */
 export function createZhudaExtrudeMesh(options: ZhudaExtrudeOptions): MeshData {
   const issues = validateZhudaExtrude(options);
   if (issues.length) throw Error('Invalid extrusion: ' + issues.join('; '));
-  // Counter-clockwise in (x, z): the outside is then to the right of each edge.
-  const points = options.outline.map(([x, z]) => [x, z] as [number, number]);
-  if (area2(points) < 0) points.reverse();
+  const rings = extrudeRings(options);
   const height = options.height,
     caps = options.caps ?? true,
+    bevel = options.bevel ?? 0,
+    steps = options.bevelSegments ?? 1,
+    bevelBottom = bevel > 0 && options.bevelBottom === true,
+    low = bevelBottom ? bevel : 0,
+    high = bevel > 0 ? height - bevel : height,
     writer = new MeshWriter();
-  let along = 0;
-  for (let i = 0; i < points.length; i++) {
-    const [x0, z0] = points[i],
-      [x1, z1] = points[(i + 1) % points.length],
-      length = Math.hypot(x1 - x0, z1 - z0),
-      normal: ZhudaVec3 = [(z1 - z0) / length, 0, -(x1 - x0) / length];
-    writer.quad(
-      [
-        [x0, 0, z0],
-        [x1, 0, z1],
-        [x1, height, z1],
-        [x0, height, z0],
-      ],
-      normal,
-      [along, 0, along + length, 0, along + length, height, along, height],
-    );
-    along += length;
-  }
-  if (caps) {
-    const triangles = fillOutline(points, 'Invalid extrusion');
-    for (const [y, up] of [
-      [height, 1],
-      [0, -1],
-    ] as const) {
-      const outward: ZhudaVec3 = [0, up, 0];
-      const corner = points.map(([x, z]) => writer.vertex([x, y, z], outward, x, z));
-      for (const [a, b, c] of triangles) writer.triangle(corner[a], corner[b], corner[c], outward);
+  // Across a bevel, step k is drawn in by `inset` and raised by `rise` from
+  // where the wall stops; its normal is tilted from level toward up by `tilt`.
+  // A flat cut has one tilt; a rounded one follows a quarter circle.
+  const profile = Array.from({ length: steps + 1 }, (_, k) => {
+    const angle = (k / steps) * (Math.PI / 2);
+    // The ends are exact, so that the band meets the wall and the cap.
+    return {
+      inset: k === 0 ? 0 : k === steps ? bevel : bevel * (1 - Math.cos(angle)),
+      rise: k === 0 ? 0 : k === steps ? bevel : bevel * Math.sin(angle),
+      arc: steps === 1 ? k * bevel * Math.SQRT2 : bevel * angle,
+      tilt: steps === 1 ? Math.PI / 4 : angle,
+    };
+  });
+  for (const ring of rings) {
+    const count = ring.length,
+      rows = bevel > 0 ? profile.map((step) => offsetRing(ring, step.inset)!) : [];
+    let along = 0;
+    for (let i = 0; i < count; i++) {
+      const [x0, z0] = ring[i],
+        [x1, z1] = ring[(i + 1) % count],
+        length = Math.hypot(x1 - x0, z1 - z0),
+        away: [number, number] = [(z1 - z0) / length, -(x1 - x0) / length];
+      writer.quad(
+        [
+          [x0, low, z0],
+          [x1, low, z1],
+          [x1, high, z1],
+          [x0, high, z0],
+        ],
+        [away[0], 0, away[1]],
+        [along, low, along + length, low, along + length, high, along, high],
+      );
+      const bands: [number, 1 | -1][] = bevel > 0 ? [[high, 1]] : [];
+      if (bevelBottom) bands.push([low, -1]);
+      for (const [base, up] of bands) {
+        const tilted = (tilt: number): ZhudaVec3 => [
+          away[0] * Math.cos(tilt),
+          up * Math.sin(tilt),
+          away[1] * Math.cos(tilt),
+        ];
+        const band = profile.map((step, k) => {
+          const a = rows[k][i],
+            b = rows[k][(i + 1) % count],
+            y = k === steps ? (up > 0 ? height : 0) : base + up * step.rise,
+            v = base + up * step.arc,
+            n = tilted(step.tilt);
+          return [
+            writer.vertex([a[0], y, a[1]], n, along, v),
+            writer.vertex([b[0], y, b[1]], n, along + length, v),
+          ];
+        });
+        for (let k = 0; k < steps; k++) {
+          const outward = tilted((profile[k].tilt + profile[k + 1].tilt) / 2);
+          writer.triangle(band[k][0], band[k][1], band[k + 1][1], outward);
+          writer.triangle(band[k][0], band[k + 1][1], band[k + 1][0], outward);
+        }
+      }
+      along += length;
     }
   }
+  if (caps)
+    for (const [y, up, inset] of [
+      [height, 1, bevel],
+      [0, -1, bevelBottom ? bevel : 0],
+    ] as const) {
+      const capRings = rings.map((ring) => offsetRing(ring, inset)!),
+        points = capRings.flat(),
+        spans: [number, number][] = [];
+      for (let r = 0, first = 0; r < capRings.length; first += capRings[r].length, r++)
+        spans.push([first, capRings[r].length]);
+      const outward: ZhudaVec3 = [0, up, 0];
+      const corner = points.map(([x, z]) => writer.vertex([x, y, z], outward, x, z));
+      for (const [a, b, c] of fillRegion(points, spans, 'Invalid extrusion'))
+        writer.triangle(corner[a], corner[b], corner[c], outward);
+    }
   return writer.finish();
 }
 
 /**
- * Triangles that fill a counter-clockwise outline that does not cross itself,
- * as indices into it. Ear clipping: cut off a corner that bulges outward and
- * holds no other point.
+ * Triangles that fill an outline with holes, as indices into `points`.
+ * `rings` gives each ring as [first, count]: the first is the outline,
+ * counter-clockwise; the rest are holes, clockwise, inside it and clear of it
+ * and of each other. Each hole is joined to the outline by a cut, rightmost
+ * hole first, which leaves one outline to fill by ear clipping.
  */
-function fillOutline(
-  points: readonly (readonly [number, number])[],
+function fillRegion(
+  points: readonly Point2[],
+  rings: readonly (readonly [number, number])[],
   what: string,
 ): [number, number, number][] {
-  const left = points.map((_, i) => i),
-    triangles: [number, number, number][] = [];
-  const turn = (a: number, b: number, c: number) =>
-    (points[b][0] - points[a][0]) * (points[c][1] - points[a][1]) -
-    (points[b][1] - points[a][1]) * (points[c][0] - points[a][0]);
-  let guard = points.length * points.length;
-  while (left.length > 3 && guard-- > 0) {
-    let cut = false;
-    for (let i = 0; i < left.length; i++) {
-      const a = left[(i + left.length - 1) % left.length],
-        b = left[i],
-        c = left[(i + 1) % left.length];
-      if (turn(a, b, c) <= 1e-12) continue;
-      if (
-        left.some(
-          (p) =>
-            p !== a &&
-            p !== b &&
-            p !== c &&
-            turn(a, b, p) >= 0 &&
-            turn(b, c, p) >= 0 &&
-            turn(c, a, p) >= 0,
-        )
-      )
-        continue;
-      triangles.push([a, b, c]);
-      left.splice(i, 1);
-      cut = true;
-      break;
+  const ring = ([first, count]: readonly [number, number]) =>
+    Array.from({ length: count }, (_, i) => first + i);
+  const right = (indices: number[]) => Math.max(...indices.map((i) => points[i][0]));
+  let polygon = ring(rings[0]);
+  const holes = rings
+    .slice(1)
+    .map(ring)
+    .sort((a, b) => right(b) - right(a));
+  for (const hole of holes) polygon = joinHole(points, polygon, hole, what);
+  return clipEars(points, polygon, what);
+}
+
+/**
+ * Joins a hole to the polygon: from the hole's rightmost point M along +x to
+ * the first edge met, then to a corner of the polygon that M can see.
+ */
+function joinHole(points: readonly Point2[], polygon: number[], hole: number[], what: string) {
+  let m = 0;
+  for (let i = 1; i < hole.length; i++) {
+    const p = points[hole[i]],
+      q = points[hole[m]];
+    if (p[0] > q[0] || (p[0] === q[0] && p[1] < q[1])) m = i;
+  }
+  const M = points[hole[m]];
+  let nearest = Infinity,
+    edge = -1;
+  for (let i = 0; i < polygon.length; i++) {
+    const a = points[polygon[i]],
+      b = points[polygon[(i + 1) % polygon.length]];
+    if (a[1] === b[1] || (a[1] - M[1]) * (b[1] - M[1]) > 0) continue;
+    const x = a[0] + ((M[1] - a[1]) * (b[0] - a[0])) / (b[1] - a[1]);
+    if (x >= M[0] && x < nearest) {
+      nearest = x;
+      edge = i;
     }
-    if (!cut) throw Error(`${what}: the outline could not be filled`);
+  }
+  if (edge < 0) throw Error(`${what}: a hole could not be joined to the outline`);
+  const I: Point2 = [nearest, M[1]],
+    a = polygon[edge],
+    b = polygon[(edge + 1) % polygon.length];
+  let target = points[a][0] > points[b][0] ? a : b;
+  if (points[a][0] === I[0] && points[a][1] === I[1]) target = a;
+  else if (points[b][0] === I[0] && points[b][1] === I[1]) target = b;
+  else {
+    // A corner inside the triangle M, I, P may hide P from M: then the one
+    // closest in angle to the line from M is seen.
+    const P = points[target];
+    let best = Infinity,
+      bestDistance = Infinity,
+      seen = -1;
+    for (const index of polygon) {
+      if (index === target) continue;
+      const R = points[index],
+        d1 = turn2(M, I, R),
+        d2 = turn2(I, P, R),
+        d3 = turn2(P, M, R);
+      if ((d1 < 0 || d2 < 0 || d3 < 0) && (d1 > 0 || d2 > 0 || d3 > 0)) continue;
+      const dx = R[0] - M[0],
+        dz = Math.abs(R[1] - M[1]);
+      if (!(dx > 0)) continue;
+      const tan = dz / dx,
+        distance = Math.hypot(dx, dz);
+      if (tan < best - 1e-12 || (Math.abs(tan - best) <= 1e-12 && distance < bestDistance)) {
+        best = tan;
+        bestDistance = distance;
+        seen = index;
+      }
+    }
+    if (seen >= 0) target = seen;
+  }
+  // A corner already used by a cut appears twice: join at the copy whose
+  // angle opens toward M.
+  let at = -1;
+  for (let k = 0; k < polygon.length && at < 0; k++) {
+    if (polygon[k] !== target) continue;
+    const before = points[polygon[(k + polygon.length - 1) % polygon.length]],
+      here = points[target],
+      after = points[polygon[(k + 1) % polygon.length]],
+      inLeft = turn2(before, here, M) >= 0,
+      outLeft = turn2(here, after, M) >= 0;
+    if (turn2(before, here, after) >= 0 ? inLeft && outLeft : inLeft || outLeft) at = k;
+  }
+  if (at < 0) at = polygon.indexOf(target);
+  return [
+    ...polygon.slice(0, at + 1),
+    ...hole.slice(m),
+    ...hole.slice(0, m),
+    hole[m],
+    target,
+    ...polygon.slice(at + 1),
+  ];
+}
+
+/**
+ * Ear clipping of a counter-clockwise polygon given as indices into `points`
+ * (a corner may appear twice where a cut joins a hole): cut off a corner that
+ * bulges outward and holds no other point. A corner on a straight line is cut
+ * only when nothing else is left.
+ */
+function clipEars(points: readonly Point2[], polygon: number[], what: string) {
+  const left = polygon.slice(),
+    triangles: [number, number, number][] = [];
+  const corner = (i: number): [number, number, number] => [
+    left[(i + left.length - 1) % left.length],
+    left[i],
+    left[(i + 1) % left.length],
+  ];
+  const ear = (i: number, flat: boolean) => {
+    const [a, b, c] = corner(i),
+      A = points[a],
+      B = points[b],
+      C = points[c],
+      t = turn2(A, B, C);
+    if (flat ? t < -1e-12 : t <= 1e-12) return false;
+    for (const p of left) {
+      if (p === a || p === b || p === c) continue;
+      const P = points[p];
+      if (turn2(A, B, P) >= 0 && turn2(B, C, P) >= 0 && turn2(C, A, P) >= 0) return false;
+    }
+    return true;
+  };
+  let i = 0,
+    misses = 0,
+    flat = false;
+  while (left.length > 3) {
+    if (ear(i, flat)) {
+      triangles.push(corner(i));
+      left.splice(i, 1);
+      // The corner before may have become an ear.
+      i = (i + left.length - 1) % left.length;
+      misses = 0;
+      flat = false;
+    } else {
+      i = (i + 1) % left.length;
+      if (++misses < left.length) continue;
+      if (flat) throw Error(`${what}: the outline could not be filled`);
+      flat = true;
+      misses = 0;
+    }
   }
   triangles.push([left[0], left[1], left[2]]);
   return triangles;
@@ -865,13 +1192,527 @@ export function createZhudaSweepMesh(options: ZhudaSweepOptions): MeshData {
     round += length;
   }
   if (caps) {
-    const triangles = fillOutline(profile, 'Invalid sweep');
+    const triangles = fillRegion(profile, [[0, profile.length]], 'Invalid sweep');
     for (const end of [0, count - 1]) {
       const t = frames[end].tangent,
         outward: ZhudaVec3 = end === 0 ? [-t[0], -t[1], -t[2]] : t;
       const corner = profile.map((p) => writer.vertex(at(end, p), outward, p[0], p[1]));
       for (const [a, b, c] of triangles) writer.triangle(corner[a], corner[b], corner[c], outward);
     }
+  }
+  return writer.finish();
+}
+
+export type ZhudaCurveKind = 'centripetal' | 'chordal' | 'uniform';
+
+export interface ZhudaCurveOptions {
+  /** Points the curve passes through: 2..256 [x, y, z] in metres (3 or more when closed). */
+  points: readonly (readonly [number, number, number])[];
+  /** The curve runs on from the last point back round to the first (default false). */
+  closed?: boolean;
+  /**
+   * How a Catmull-Rom curve spaces its points (default 'centripetal': no
+   * loops or cusps where points bunch up; 'chordal' bends wider; 'uniform' is
+   * the classic curve).
+   */
+  kind?: ZhudaCurveKind;
+}
+
+export function validateZhudaCurve(options: ZhudaCurveOptions): string[] {
+  const o = options ?? ({} as ZhudaCurveOptions);
+  const issues: string[] = [];
+  const closed = o.closed === true,
+    points = o.points as unknown,
+    least = closed ? 3 : 2;
+  if (o.closed !== undefined && typeof o.closed !== 'boolean') issues.push('closed: true or false');
+  if (o.kind !== undefined && !['centripetal', 'chordal', 'uniform'].includes(o.kind))
+    issues.push('kind: use centripetal, chordal or uniform');
+  if (!Array.isArray(points) || points.length < least || points.length > 256)
+    issues.push(`points: use ${least}..256 [x, y, z] points`);
+  else
+    points.forEach((point, i) => {
+      if (
+        !Array.isArray(point) ||
+        point.length !== 3 ||
+        !point.every((n) => typeof n === 'number' && Number.isFinite(n) && Math.abs(n) <= 100000)
+      )
+        issues.push(`points[${i}]: use [x, y, z] in metres`);
+      else {
+        const before = i > 0 ? points[i - 1] : closed ? points[points.length - 1] : undefined;
+        if (
+          Array.isArray(before) &&
+          before.length === 3 &&
+          before.every((n: unknown, k: number) => n === point[k])
+        )
+          issues.push(
+            i > 0
+              ? `points[${i}]: the same point as the one before it`
+              : 'points: a closed curve does not repeat its first point at the end',
+          );
+      }
+    });
+  return issues;
+}
+
+/** Steps per curve segment in the table that measures length along it. */
+const CURVE_TABLE_STEPS = 64;
+
+/**
+ * A Catmull-Rom curve measured by length: `at(s)` is the point `s` metres
+ * along it and the way it runs there.
+ */
+function curveByLength(options: ZhudaCurveOptions) {
+  const points = options.points.map((p) => [p[0], p[1], p[2]] as ZhudaVec3),
+    closed = options.closed ?? false,
+    kind = options.kind ?? 'centripetal',
+    count = points.length,
+    segments = closed ? count : count - 1,
+    power = kind === 'centripetal' ? 0.25 : kind === 'chordal' ? 0.5 : 0;
+  // Before the first point and after the last of an open curve, the line
+  // carries straight on.
+  const point = (i: number): ZhudaVec3 => {
+    if (closed) return points[((i % count) + count) % count];
+    if (i < 0) return points[0].map((v, k) => 2 * v - points[1][k]) as ZhudaVec3;
+    if (i >= count)
+      return points[count - 1].map((v, k) => 2 * v - points[count - 2][k]) as ZhudaVec3;
+    return points[i];
+  };
+  // Each segment as a cubic c0 + c1 t + c2 t² + c3 t³, from the
+  // non-uniform Catmull-Rom tangents at its two ends.
+  const cubic = Array.from({ length: segments }, (_, s) => {
+    const p0 = point(s - 1),
+      p1 = point(s),
+      p2 = point(s + 1),
+      p3 = point(s + 2);
+    let d0 = Math.pow(Math.hypot(...sub(p1, p0)) ** 2, power),
+      d1 = Math.pow(Math.hypot(...sub(p2, p1)) ** 2, power),
+      d2 = Math.pow(Math.hypot(...sub(p3, p2)) ** 2, power);
+    if (d1 < 1e-4) d1 = 1;
+    if (d0 < 1e-4) d0 = d1;
+    if (d2 < 1e-4) d2 = d1;
+    return [0, 1, 2].map((k) => {
+      const t1 =
+          power === 0
+            ? (p2[k] - p0[k]) / 2
+            : ((p1[k] - p0[k]) / d0 - (p2[k] - p0[k]) / (d0 + d1) + (p2[k] - p1[k]) / d1) * d1,
+        t2 =
+          power === 0
+            ? (p3[k] - p1[k]) / 2
+            : ((p2[k] - p1[k]) / d1 - (p3[k] - p1[k]) / (d1 + d2) + (p3[k] - p2[k]) / d2) * d1;
+      return [p1[k], t1, -3 * p1[k] + 3 * p2[k] - 2 * t1 - t2, 2 * p1[k] - 2 * p2[k] + t1 + t2];
+    });
+  });
+  const evaluate = (u: number) => {
+    const s = Math.min(Math.floor(u), segments - 1),
+      t = u - s,
+      c = cubic[s];
+    return {
+      point: c.map((q) => q[0] + t * (q[1] + t * (q[2] + t * q[3]))) as ZhudaVec3,
+      slope: c.map((q) => q[1] + t * (2 * q[2] + 3 * t * q[3])) as ZhudaVec3,
+    };
+  };
+  const steps = segments * CURVE_TABLE_STEPS,
+    lengths = new Float64Array(steps + 1);
+  let previous = evaluate(0).point;
+  for (let i = 1; i <= steps; i++) {
+    const next = evaluate(i / CURVE_TABLE_STEPS).point;
+    lengths[i] = lengths[i - 1] + Math.hypot(...sub(next, previous));
+    previous = next;
+  }
+  const length = lengths[steps];
+  if (!(length > 1e-9)) throw Error('Degenerate curve: it has no length');
+  const at = (s: number) => {
+    const target = Math.max(0, Math.min(length, s));
+    let lo = 0,
+      hi = steps;
+    while (hi - lo > 1) {
+      const mid = (lo + hi) >> 1;
+      if (lengths[mid] <= target) lo = mid;
+      else hi = mid;
+    }
+    const span = lengths[hi] - lengths[lo],
+      u = (lo + (span > 0 ? (target - lengths[lo]) / span : 0)) / CURVE_TABLE_STEPS,
+      here = evaluate(u);
+    let tangent = here.slope;
+    // A cusp has no slope: take the way the curve runs either side of it.
+    if (!(Math.hypot(...tangent) > 1e-9))
+      tangent = sub(
+        evaluate(Math.min(segments, u + 1e-4)).point,
+        evaluate(Math.max(0, u - 1e-4)).point,
+      );
+    return { point: here.point, tangent: normalize(tangent) };
+  };
+  return { length, at };
+}
+
+/**
+ * `count` points (2..4096) along a Catmull-Rom curve, the same distance
+ * apart. An open curve starts and ends on its first and last points; a
+ * closed one does not repeat its start. Feed them to `createZhudaSweepMesh`
+ * (with `closed` for a closed curve) or `createZhudaTubeMesh`.
+ */
+export function sampleZhudaCurve(options: ZhudaCurveOptions, count: number): ZhudaVec3[] {
+  const issues = validateZhudaCurve(options);
+  if (!(Number.isInteger(count) && count >= 2 && count <= 4096))
+    issues.push('count: use a whole number 2..4096');
+  if (issues.length) throw Error('Invalid curve: ' + issues.join('; '));
+  const curve = curveByLength(options),
+    closed = options.closed ?? false;
+  return Array.from(
+    { length: count },
+    (_, i) => curve.at((curve.length * i) / (closed ? count : count - 1)).point,
+  );
+}
+
+/** What `sampleZhudaCurvePath` reads of a LayaAir `CurvePath`: a point a share 0..1 of the way along. */
+export interface ZhudaCurvePathLike {
+  getPointAt(t: number): { readonly x: number; readonly y: number; readonly z: number };
+}
+
+/**
+ * `count` points (2..4096) along a LayaAir `CurvePath` (Catmull-Rom or
+ * Bezier; it measures by length), for `createZhudaTubeMesh` or
+ * `createZhudaSweepMesh`. With `closed`, the last point is not repeated, as
+ * a closed sweep wants. A point the same as the one before is left out.
+ */
+export function sampleZhudaCurvePath(
+  path: ZhudaCurvePathLike,
+  count: number,
+  options: { closed?: boolean } = {},
+): ZhudaVec3[] {
+  if (!path || typeof path.getPointAt !== 'function')
+    throw Error('Invalid curve path: it needs getPointAt(t)');
+  if (!(Number.isInteger(count) && count >= 2 && count <= 4096))
+    throw Error('Invalid curve path: count must be a whole number 2..4096');
+  const closed = options.closed === true,
+    out: ZhudaVec3[] = [];
+  for (let i = 0; i < count; i++) {
+    // LayaAir hands back one shared vector: copy it at once.
+    const p = path.getPointAt(i / (closed ? count : count - 1)),
+      point: ZhudaVec3 = [p?.x, p?.y, p?.z];
+    if (!point.every(Number.isFinite)) throw Error(`Invalid curve path: point ${i} is not finite`);
+    const last = out[out.length - 1];
+    if (!last || last.some((v, k) => v !== point[k])) out.push(point);
+  }
+  if (closed && out.length > 1 && out[0].every((v, k) => v === out[out.length - 1][k])) out.pop();
+  if (out.length < 2) throw Error('Invalid curve path: it has no length');
+  return out;
+}
+
+export interface ZhudaCurveTubeOptions extends ZhudaCurveOptions {
+  radius: number;
+  /** Rings along the curve, 2..2048 (default 64), the same distance apart. */
+  tubularSegments?: number;
+  /** Sides around the tube, 3..64 (default 12). */
+  radialSegments?: number;
+  /** Close the two ends of an open curve with flat caps (default true). */
+  caps?: boolean;
+}
+
+export function validateZhudaCurveTube(options: ZhudaCurveTubeOptions): string[] {
+  const o = options ?? ({} as ZhudaCurveTubeOptions);
+  const issues = validateZhudaCurve(o);
+  if (!(typeof o.radius === 'number' && o.radius > 0 && o.radius <= 100))
+    issues.push('radius: use a positive number of metres, up to 100');
+  const along = o.tubularSegments ?? 64,
+    around = o.radialSegments ?? 12;
+  if (!(Number.isInteger(along) && along >= 2 && along <= 2048))
+    issues.push('tubularSegments: use a whole number 2..2048');
+  if (!(Number.isInteger(around) && around >= 3 && around <= 64))
+    issues.push('radialSegments: use a whole number 3..64');
+  if (o.caps !== undefined && typeof o.caps !== 'boolean') issues.push('caps: true or false');
+  const vertices = (along + 1) * (around + 1) + (o.closed ? 0 : 2 * (around + 2));
+  if (Number.isFinite(vertices) && vertices > 65535)
+    issues.push(`tubularSegments: ${vertices} vertices is more than one mesh holds (65535)`);
+  return issues;
+}
+
+/**
+ * A round tube along a Catmull-Rom curve through the given points: pipes,
+ * cables, handles, a loop of hose. Its rings are spaced evenly along the
+ * curve and turn with it as little as possible (rotation-minimising frames);
+ * a closed tube's seam is twisted into place over its whole length. A radius
+ * wider than the tightest bend folds the tube into itself; that is not
+ * checked.
+ */
+export function createZhudaCurveTubeMesh(options: ZhudaCurveTubeOptions): MeshData {
+  const issues = validateZhudaCurveTube(options);
+  if (issues.length) throw Error('Invalid curve tube: ' + issues.join('; '));
+  const radius = options.radius,
+    along = options.tubularSegments ?? 64,
+    around = options.radialSegments ?? 12,
+    closed = options.closed ?? false,
+    caps = (options.caps ?? true) && !closed,
+    curve = curveByLength(options);
+  const stations = Array.from({ length: along + 1 }, (_, i) => {
+    const s = (curve.length * i) / along;
+    return { s, ...curve.at(s) };
+  });
+  // Rotation-minimising frames by double reflection (Wang et al. 2008).
+  const first = stations[0].tangent;
+  let side = normalize(cross(Math.abs(first[1]) < 0.9 ? [0, 1, 0] : [1, 0, 0], first));
+  const sides: ZhudaVec3[] = [side];
+  for (let i = 1; i <= along; i++) {
+    const before = stations[i - 1],
+      here = stations[i],
+      v1 = sub(here.point, before.point),
+      c1 = dot(v1, v1);
+    if (c1 > 1e-18) {
+      const reflect = (a: ZhudaVec3, v: ZhudaVec3, c: number): ZhudaVec3 => {
+        const k = (2 / c) * dot(v, a);
+        return [a[0] - k * v[0], a[1] - k * v[1], a[2] - k * v[2]];
+      };
+      const sideL = reflect(side, v1, c1),
+        tangentL = reflect(before.tangent, v1, c1),
+        v2 = sub(here.tangent, tangentL),
+        c2 = dot(v2, v2);
+      side = c2 > 1e-18 ? reflect(sideL, v2, c2) : sideL;
+    }
+    const k = dot(side, here.tangent);
+    side = normalize([
+      side[0] - here.tangent[0] * k,
+      side[1] - here.tangent[1] * k,
+      side[2] - here.tangent[2] * k,
+    ]);
+    sides.push(side);
+  }
+  if (closed) {
+    // Turn every ring a share of the twist left at the seam.
+    const t = stations[0].tangent,
+      last = sides[along],
+      twist = Math.atan2(dot(cross(last, sides[0]), t), dot(last, sides[0]));
+    for (let i = 1; i <= along; i++) {
+      const angle = (twist * stations[i].s) / curve.length,
+        ti = stations[i].tangent,
+        other = cross(ti, sides[i]);
+      sides[i] = normalize([
+        sides[i][0] * Math.cos(angle) + other[0] * Math.sin(angle),
+        sides[i][1] * Math.cos(angle) + other[1] * Math.sin(angle),
+        sides[i][2] * Math.cos(angle) + other[2] * Math.sin(angle),
+      ]);
+    }
+  }
+  const writer = new MeshWriter();
+  const rings: number[][] = [];
+  for (let i = 0; i <= along; i++) {
+    const ring: number[] = [];
+    // A closed tube's last ring lies exactly on its first (a seam for the UVs only).
+    const station = closed && i === along ? stations[0] : stations[i],
+      r = closed && i === along ? sides[0] : sides[i],
+      b = cross(station.tangent, r);
+    for (let j = 0; j <= around; j++) {
+      const angle = (j / around) * Math.PI * 2,
+        n: ZhudaVec3 = [
+          r[0] * Math.cos(angle) + b[0] * Math.sin(angle),
+          r[1] * Math.cos(angle) + b[1] * Math.sin(angle),
+          r[2] * Math.cos(angle) + b[2] * Math.sin(angle),
+        ];
+      ring.push(
+        writer.vertex(
+          [
+            station.point[0] + n[0] * radius,
+            station.point[1] + n[1] * radius,
+            station.point[2] + n[2] * radius,
+          ],
+          n,
+          angle * radius,
+          stations[i].s,
+        ),
+      );
+    }
+    rings.push(ring);
+  }
+  for (let i = 0; i < along; i++)
+    for (let j = 0; j < around; j++) {
+      const angle = ((j + 0.5) / around) * Math.PI * 2,
+        r = sides[i],
+        b = cross(stations[i].tangent, r),
+        outward: ZhudaVec3 = [
+          r[0] * Math.cos(angle) + b[0] * Math.sin(angle),
+          r[1] * Math.cos(angle) + b[1] * Math.sin(angle),
+          r[2] * Math.cos(angle) + b[2] * Math.sin(angle),
+        ];
+      writer.triangle(rings[i][j], rings[i][j + 1], rings[i + 1][j + 1], outward);
+      writer.triangle(rings[i][j], rings[i + 1][j + 1], rings[i + 1][j], outward);
+    }
+  if (caps)
+    for (const end of [0, along]) {
+      const t = stations[end].tangent,
+        outward: ZhudaVec3 = end === 0 ? [-t[0], -t[1], -t[2]] : t,
+        centre = writer.vertex(stations[end].point, outward, 0, 0),
+        rim: number[] = [];
+      for (let j = 0; j <= around; j++) {
+        const angle = (j / around) * Math.PI * 2;
+        rim.push(
+          writer.vertex(
+            writer.point(rings[end][j]),
+            outward,
+            Math.cos(angle) * radius,
+            Math.sin(angle) * radius,
+          ),
+        );
+      }
+      for (let j = 0; j < around; j++) writer.triangle(centre, rim[j], rim[j + 1], outward);
+    }
+  return writer.finish();
+}
+
+export interface ZhudaTorusOptions {
+  /** From the middle of the hole to the middle of the tube, in metres. */
+  radius: number;
+  /** The tube's own radius: less than `radius`. */
+  tube: number;
+  /** Sides around the tube, 3..64 (default 16). */
+  radialSegments?: number;
+  /** Steps around the hole, 3..256 (default 48). */
+  tubularSegments?: number;
+}
+
+export function validateZhudaTorus(options: ZhudaTorusOptions): string[] {
+  const o = options ?? ({} as ZhudaTorusOptions);
+  const issues: string[] = [];
+  const radiusOk = typeof o.radius === 'number' && o.radius > 0 && o.radius <= 1000;
+  if (!radiusOk) issues.push('radius: use a positive number of metres');
+  if (!(typeof o.tube === 'number' && o.tube > 0))
+    issues.push('tube: use a positive number of metres');
+  else if (radiusOk && o.tube >= o.radius)
+    issues.push('tube: it must be less than radius, or the ring closes up its hole');
+  const around = o.radialSegments ?? 16,
+    along = o.tubularSegments ?? 48;
+  if (!(Number.isInteger(around) && around >= 3 && around <= 64))
+    issues.push('radialSegments: use a whole number 3..64');
+  if (!(Number.isInteger(along) && along >= 3 && along <= 256))
+    issues.push('tubularSegments: use a whole number 3..256');
+  return issues;
+}
+
+/** A ring-shaped tube lying flat about +Y, centred on the origin: rings, tyres, handles, haloes. */
+export function createZhudaTorusMesh(options: ZhudaTorusOptions): MeshData {
+  const issues = validateZhudaTorus(options);
+  if (issues.length) throw Error('Invalid torus: ' + issues.join('; '));
+  const { radius, tube } = options,
+    around = options.radialSegments ?? 16,
+    along = options.tubularSegments ?? 48,
+    writer = new MeshWriter(),
+    grid: number[][] = [];
+  const normal = (theta: number, phi: number): ZhudaVec3 => [
+    Math.cos(phi) * Math.cos(theta),
+    Math.sin(phi),
+    Math.cos(phi) * Math.sin(theta),
+  ];
+  for (let i = 0; i <= along; i++) {
+    const theta = (i / along) * Math.PI * 2,
+      row: number[] = [];
+    for (let j = 0; j <= around; j++) {
+      const phi = (j / around) * Math.PI * 2,
+        n = normal(theta, phi);
+      row.push(
+        writer.vertex(
+          [
+            radius * Math.cos(theta) + tube * n[0],
+            tube * n[1],
+            radius * Math.sin(theta) + tube * n[2],
+          ],
+          n,
+          theta * radius,
+          phi * tube,
+        ),
+      );
+    }
+    grid.push(row);
+  }
+  for (let i = 0; i < along; i++)
+    for (let j = 0; j < around; j++) {
+      const outward = normal(((i + 0.5) / along) * Math.PI * 2, ((j + 0.5) / around) * Math.PI * 2);
+      writer.triangle(grid[i][j], grid[i][j + 1], grid[i + 1][j + 1], outward);
+      writer.triangle(grid[i][j], grid[i + 1][j + 1], grid[i + 1][j], outward);
+    }
+  return writer.finish();
+}
+
+export interface ZhudaRingOptions {
+  outerRadius: number;
+  /** The hole's radius; 0 (default) gives a disc. */
+  innerRadius?: number;
+  /** Steps around, 3..256 (default 48). */
+  segments?: number;
+  /**
+   * Omitted: a flat ring at y = 0 facing +Y, seen from above only (a marker
+   * on the ground). Given: a solid washer this many metres thick, from y = 0 up.
+   */
+  thickness?: number;
+}
+
+export function validateZhudaRing(options: ZhudaRingOptions): string[] {
+  const o = options ?? ({} as ZhudaRingOptions);
+  const issues: string[] = [];
+  const outerOk = typeof o.outerRadius === 'number' && o.outerRadius > 0 && o.outerRadius <= 1000;
+  if (!outerOk) issues.push('outerRadius: use a positive number of metres');
+  const inner = o.innerRadius ?? 0;
+  if (!(typeof inner === 'number' && inner >= 0)) issues.push('innerRadius: use 0 or more metres');
+  else if (outerOk && inner >= o.outerRadius)
+    issues.push('innerRadius: it must be less than outerRadius');
+  const segments = o.segments ?? 48;
+  if (!(Number.isInteger(segments) && segments >= 3 && segments <= 256))
+    issues.push('segments: use a whole number 3..256');
+  if (
+    o.thickness !== undefined &&
+    !(typeof o.thickness === 'number' && o.thickness > 0 && o.thickness <= 1000)
+  )
+    issues.push('thickness: use a positive number of metres');
+  return issues;
+}
+
+/** A flat ring or disc, or with `thickness` a washer or coin, about +Y on the origin. */
+export function createZhudaRingMesh(options: ZhudaRingOptions): MeshData {
+  const issues = validateZhudaRing(options);
+  if (issues.length) throw Error('Invalid ring: ' + issues.join('; '));
+  const outer = options.outerRadius,
+    inner = options.innerRadius ?? 0,
+    segments = options.segments ?? 48,
+    writer = new MeshWriter();
+  const angleOf = (j: number) => (j / segments) * Math.PI * 2;
+  const face = (y: number, up: 1 | -1) => {
+    const outward: ZhudaVec3 = [0, up, 0];
+    const circle = (r: number) =>
+      Array.from({ length: segments + 1 }, (_, j) => {
+        const x = r * Math.cos(angleOf(j)),
+          z = r * Math.sin(angleOf(j));
+        return writer.vertex([x, y, z], outward, x, z);
+      });
+    const rim = circle(outer);
+    if (inner > 0) {
+      const hole = circle(inner);
+      for (let j = 0; j < segments; j++) {
+        writer.triangle(hole[j], rim[j], rim[j + 1], outward);
+        writer.triangle(hole[j], rim[j + 1], hole[j + 1], outward);
+      }
+    } else {
+      const centre = writer.vertex([0, y, 0], outward, 0, 0);
+      for (let j = 0; j < segments; j++) writer.triangle(centre, rim[j], rim[j + 1], outward);
+    }
+  };
+  const wall = (r: number, height: number, facing: 1 | -1) => {
+    const column = (j: number, y: number) => {
+      const a = angleOf(j),
+        n: ZhudaVec3 = [facing * Math.cos(a), 0, facing * Math.sin(a)];
+      return writer.vertex([r * Math.cos(a), y, r * Math.sin(a)], n, a * r, y);
+    };
+    const bottom = Array.from({ length: segments + 1 }, (_, j) => column(j, 0)),
+      top = Array.from({ length: segments + 1 }, (_, j) => column(j, height));
+    for (let j = 0; j < segments; j++) {
+      const a = angleOf(j + 0.5),
+        outward: ZhudaVec3 = [facing * Math.cos(a), 0, facing * Math.sin(a)];
+      writer.triangle(bottom[j], bottom[j + 1], top[j + 1], outward);
+      writer.triangle(bottom[j], top[j + 1], top[j], outward);
+    }
+  };
+  if (options.thickness === undefined) face(0, 1);
+  else {
+    face(options.thickness, 1);
+    face(0, -1);
+    wall(outer, options.thickness, 1);
+    if (inner > 0) wall(inner, options.thickness, -1);
   }
   return writer.finish();
 }
