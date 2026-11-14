@@ -39,6 +39,8 @@ const packed = JSON.parse(
   ),
 )[0];
 const sdk = path.join(consumer, 'node_modules/zhuda-laya-engine');
+// What an earlier run unpacked must not stay: a file the package no longer ships would shadow one it does.
+fs.rmSync(sdk, { recursive: true, force: true });
 fs.mkdirSync(sdk, { recursive: true });
 execFileSync('tar', ['-xzf', path.join(root, packed.filename), '-C', sdk, '--strip-components=1']);
 for (const name of Object.keys(

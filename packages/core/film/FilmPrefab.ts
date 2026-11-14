@@ -65,6 +65,7 @@ export function zhudaPrefabFromFilmScene(
       ...(node.placements
         ? { placements: node.placements.map((place) => [...place] as typeof place) }
         : {}),
+      ...(node.instanced ? { instanced: true } : {}),
       ...(node.translucent ? { translucent: true } : {}),
       ...(node.emission !== undefined && node.emission !== 1 ? { emission: node.emission } : {}),
     });

@@ -499,6 +499,12 @@ export type ZhudaFilmNode =
        */
       placements?: ZhudaFilmPlacement[];
       /**
+       * With `placements`: the copies are drawn in groups, one draw a group
+       * instead of one a copy (thousands of ferns or stones). Only for a
+       * model of plain meshes (no bones, no morph targets).
+       */
+      instanced?: boolean;
+      /**
        * Leaves let light through: the cut-out (alpha-tested) materials of the
        * model glow in their own colour when the sun or a lamp is behind
        * them. Opaque materials of the same model (bark) are unchanged.
@@ -1560,6 +1566,7 @@ function validateNode(
           'animation',
           'motion',
           'placements',
+          'instanced',
           'translucent',
           'emission',
         ],
@@ -1626,6 +1633,11 @@ function validateNode(
         }
         for (const key of ['lightmap', 'lightmapDirection', 'animation', 'motion'] as const)
           if (node[key] !== undefined) issues.push(`${path}.placements: not with ${key}`);
+      }
+      if (node.instanced !== undefined) {
+        if (typeof node.instanced !== 'boolean') issues.push(`${path}.instanced: true or false`);
+        else if (node.instanced && node.placements === undefined)
+          issues.push(`${path}.instanced: needs placements`);
       }
       if (node.animation !== undefined) {
         const a = node.animation;

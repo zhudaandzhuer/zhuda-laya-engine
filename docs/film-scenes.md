@@ -606,6 +606,11 @@ model's meshes and materials. A node holds up to 20 000 copies and a scene
 }
 ```
 
+`"instanced": true` beside `placements` draws the copies in groups, one draw
+a group instead of a node tree a copy ([instanced meshes](instanced-meshes.md)):
+for thousands of ferns or stones. The picture is the same. Only for a model
+of plain meshes (no bones, no morph targets).
+
 `"emission": 0` on a model node puts out what its materials give off by
 themselves (lit windows, lanterns), and other values scale it (0..8): a
 town built for night can stand in a daytime shot without a second copy.

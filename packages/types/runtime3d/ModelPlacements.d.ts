@@ -37,6 +37,16 @@ export interface ZhudaModelMountOptions {
     }[];
     /** Beyond this distance a copy draws nothing. */
     cullMeters?: number;
+    /**
+     * With `placements`: no node for a copy. The copies of each mesh are drawn
+     * together, a group for each square of ground (`ZhudaInstancedMesh`): one
+     * draw a group instead of one a copy, lit and shadowed as before. Levels
+     * and the cull distance are then chosen for a group, by the middle of its
+     * box. Only for models of plain meshes (no bones, no morph targets).
+     */
+    instanced?: boolean;
+    /** With `instanced`: side of the squares the copies are grouped by, in metres (default 32). */
+    cellMeters?: number;
 }
 export interface ZhudaMountedModel {
     /** Renderers of the loaded instance (copies share their materials). */
@@ -48,6 +58,12 @@ export interface ZhudaMountedModel {
     setEmission(scale: number): void;
     /** Present when the mount has levels or a cull distance: call `update(eye)` as the eye moves. */
     lod?: ZhudaModelLod;
+    /** With `instanced`: how many copies, groups and draws a pass (of the full model). */
+    instanced?: {
+        copies: number;
+        groups: number;
+        drawsPerPass: number;
+    };
     dispose(): void;
 }
 /** Every mesh renderer below a node. */

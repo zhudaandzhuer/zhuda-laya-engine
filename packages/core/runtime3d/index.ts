@@ -41,6 +41,8 @@ export * from './ModelLod.ts';
 export * from './EnvironmentProbe.ts';
 export * from './HalfFloat.ts';
 export * from './HdrEnvironment.ts';
+export * from './InstancedMesh.ts';
+export * from './BakedCrowd.ts';
 export * from './LensFinish.ts';
 export { installLaya342LifecycleFix } from './Laya342Adapters.ts';
 export {

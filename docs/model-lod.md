@@ -56,6 +56,15 @@ A model without copies that has only `cullMeters` is measured mesh by mesh,
 each to the middle of its own box: a model cut into squares stops drawing
 square by square with distance, not all at once by where its origin lies.
 
+## Copies in groups
+
+A prefab node with `placements` and `instanced: true` draws its copies in
+groups, a group for each square of ground (`cellMeters`, default 32), with
+no node for a copy ([instanced meshes](instanced-meshes.md)). Levels and the
+cull distance are then chosen for a group, by the middle of its box: every
+copy of a square turns lighter, or stops being drawn, together. A smaller
+`cellMeters` follows the distances more closely and makes more draws.
+
 ## What simplifying does
 
 - **Solid surfaces** (a trunk, a rock, a wall) are simplified with

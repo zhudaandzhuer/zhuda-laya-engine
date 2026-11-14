@@ -32,6 +32,24 @@ export function installLaya342WebGPUFix(native: any): void {
   };
   patched.add(prototype);
   fixMergedIndices(native);
+  keepShadowCastersApart(prototype);
+}
+
+/**
+ * LayaAir 3.4.2 on WebGPU gathers renderers of one mesh and one material
+ * into a batch it culls and draws on the graphics card, and never draws a
+ * batch into a shadow map: two trees of one model cast no shadow where one
+ * tree alone does (WebGL casts both). A renderer that casts a shadow is kept
+ * out of the batches here: it is drawn by itself, and casts. Renderers that
+ * cast none are batched as before. Many copies that cast are better drawn
+ * with `ZhudaInstancedMesh`, which is one draw a group and casts.
+ */
+function keepShadowCastersApart(prototype: any): void {
+  const can = prototype._canBatch;
+  if (typeof can !== 'function') return;
+  prototype._canBatch = function (element: any) {
+    return can.call(this, element) && !element?.owner?.castShadow;
+  };
 }
 
 /**

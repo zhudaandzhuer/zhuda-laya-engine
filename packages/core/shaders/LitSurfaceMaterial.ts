@@ -3,6 +3,12 @@ import {
   disposeSurfaceMaterial,
   type SurfaceMaterialSpec,
 } from '../runtime3d/Surfaces.ts';
+import {
+  ZHUDA_INSTANCE_TINT_ATTRIBUTE,
+  ZHUDA_INSTANCE_TINT_DEFINE,
+  ZHUDA_INSTANCE_TINT_LOCATION,
+  registerZhudaInstanceTintShader,
+} from '../runtime3d/InstancedMesh.ts';
 import { validateShaderSpec, type ShaderUniformSpec } from './ShaderMaterials.ts';
 import {
   litVertex,
@@ -66,6 +72,14 @@ export interface ZhudaLitShading {
   }[];
 }
 const registry = new WeakMap<object, Map<string, string>>();
+/**
+ * A copy's own colour, when the mesh is drawn by `ZhudaInstancedMesh` with
+ * tints: the define is on that renderer only, so nothing else pays for it.
+ */
+// Each begins on a line of its own: a directive after a brace on the same line is not one.
+const TINT_VARYING = `\n#ifdef ${ZHUDA_INSTANCE_TINT_DEFINE}\nvarying vec4 v_ZhudaInstanceTint;\n#endif\n`;
+const TINT_PASS = `\n#ifdef ${ZHUDA_INSTANCE_TINT_DEFINE}\nv_ZhudaInstanceTint=${ZHUDA_INSTANCE_TINT_ATTRIBUTE};\n#endif\n`;
+const TINT_APPLY = `\n#ifdef ${ZHUDA_INSTANCE_TINT_DEFINE}\ns.baseColor*=v_ZhudaInstanceTint.rgb;\n#endif\n`;
 
 /** Problems with a vertex hook; an empty list means it can be compiled into the lit passes. */
 export function validateZhudaLitVertexHook(vertex: unknown): string[] {
@@ -223,8 +237,8 @@ export class ZhudaLitSurfaceMaterial {
             `vec4 zhudaSample_${k}(vec2 uv){vec4 c=texture2D(${k},uv);\n#ifdef Gamma_${k}\nc=gammaToLinear(c);\n#endif\nreturn c;}`,
         )
         .join('\n');
-      const hook = `struct ZhudaLitSurface {vec3 baseColor;float metallic;float roughness;float occlusion;vec3 emission;};\n${helper}\n${spec.surface}\n`;
-      const call = `initSurfaceInputs(inputs,pixel);ZhudaLitSurface s;s.baseColor=inputs.diffuseColor;s.metallic=inputs.metallic;s.roughness=1.0-inputs.smoothness;s.occlusion=inputs.occlusion;s.emission=inputs.emissionColor;\n#ifdef UV\nvec2 zhudaUV=pixel.uv0;\n#else\nvec2 zhudaUV=vec2(0.0);\n#endif\nzhudaSurface(s,zhudaUV,pixel.positionWS,pixel.normalWS);inputs.diffuseColor=max(s.baseColor,vec3(0.0));inputs.metallic=clamp(s.metallic,0.0,1.0);inputs.smoothness=1.0-clamp(s.roughness,0.04,1.0);inputs.occlusion=clamp(s.occlusion,0.0,1.0);inputs.emissionColor=max(s.emission,vec3(0.0));`;
+      const hook = `${TINT_VARYING}struct ZhudaLitSurface {vec3 baseColor;float metallic;float roughness;float occlusion;vec3 emission;};\n${helper}\n${spec.surface}\n`;
+      const call = `initSurfaceInputs(inputs,pixel);ZhudaLitSurface s;s.baseColor=inputs.diffuseColor;s.metallic=inputs.metallic;s.roughness=1.0-inputs.smoothness;s.occlusion=inputs.occlusion;s.emission=inputs.emissionColor;${TINT_APPLY}#ifdef UV\nvec2 zhudaUV=pixel.uv0;\n#else\nvec2 zhudaUV=vec2(0.0);\n#endif\nzhudaSurface(s,zhudaUV,pixel.positionWS,pixel.normalWS);inputs.diffuseColor=max(s.baseColor,vec3(0.0));inputs.metallic=clamp(s.metallic,0.0,1.0);inputs.smoothness=1.0-clamp(s.roughness,0.04,1.0);inputs.occlusion=clamp(s.occlusion,0.0,1.0);inputs.emissionColor=max(s.emission,vec3(0.0));`;
       const normals = (source: string) =>
         spec.normalConvention === 'opengl'
           ? source.replace(
@@ -254,10 +268,25 @@ export class ZhudaLitSurfaceMaterial {
         : hooked;
       const shader = l.Shader3D.add(spec.name, true, true);
       shader.shaderType = l.ShaderFeatureType.D3;
-      const sub = new l.SubShader(l.SubShader.DefaultAttributeMap, map, {});
+      const sub = new l.SubShader(
+        {
+          ...l.SubShader.DefaultAttributeMap,
+          [ZHUDA_INSTANCE_TINT_ATTRIBUTE]: [ZHUDA_INSTANCE_TINT_LOCATION, l.ShaderDataType.Vector4],
+        },
+        map,
+        {},
+      );
       shader.addSubShader(sub);
       const vertexPrograms = buildZhudaLitVertexShaders(spec.vertex);
-      sub.addShaderPass(vertexPrograms.forward, fragment);
+      sub.addShaderPass(
+        replaceOnce(
+          vertexPrograms.forward,
+          'void main(){',
+          TINT_VARYING + 'void main(){' + TINT_PASS,
+        ),
+        fragment,
+      );
+      registerZhudaInstanceTintShader(l, spec.name);
       sub.addShaderPass(vertexPrograms.shadow, litShadowFragment, 'ShadowCaster');
       sub.addShaderPass(vertexPrograms.depth, backs(normals(litDepthFragment)), 'DepthNormal');
       const culls: Record<string, unknown> = {

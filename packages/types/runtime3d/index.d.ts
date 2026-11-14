@@ -42,6 +42,8 @@ export * from './ModelLod.js';
 export * from './EnvironmentProbe.js';
 export * from './HalfFloat.js';
 export * from './HdrEnvironment.js';
+export * from './InstancedMesh.js';
+export * from './BakedCrowd.js';
 export * from './LensFinish.js';
 export { installLaya342LifecycleFix } from './Laya342Adapters.js';
 export { ZHUDA_NORMAL_NOMIPMAP_DEFINE, ZHUDA_SPECULAR_AA_DEFINE, setZhudaSpecularAA, zhudaSpecularAAStatus, type ZhudaSpecularAAInstallOptions, type ZhudaSpecularAAStatus, } from './Laya342Adapters.js';

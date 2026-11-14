@@ -92,6 +92,15 @@ export interface PrefabModelNode {
   lod?: { asset: string; fromMeters: number }[];
   /** Beyond this distance from the eye a copy draws nothing. */
   cullMeters?: number;
+  /**
+   * With `placements`: the copies are drawn in groups, one draw a group
+   * instead of one a copy, with no node for a copy (`ZhudaInstancedMesh`).
+   * Levels and the cull distance are then chosen for a group. Only for
+   * models of plain meshes.
+   */
+  instanced?: boolean;
+  /** With `instanced`: side of the squares the copies are grouped by, in metres, 0.5..100000 (default 32). */
+  cellMeters?: number;
 }
 export interface PrefabModelPatch {
   active?: boolean;
@@ -152,6 +161,15 @@ export function validatePrefabModels(entry: PrefabModelsDefinition): void {
       throw Error(`${at}: translucent must be boolean`);
     if (node.castShadow !== undefined && typeof node.castShadow !== 'boolean')
       throw Error(`${at}: castShadow must be boolean`);
+    if (node.instanced !== undefined && typeof node.instanced !== 'boolean')
+      throw Error(`${at}: instanced must be boolean`);
+    if (node.instanced && node.placements === undefined)
+      throw Error(`${at}: instanced needs placements`);
+    if (node.cellMeters !== undefined) {
+      if (!(node.cellMeters >= 0.5 && node.cellMeters <= 100000))
+        throw Error(`${at}: cellMeters must be 0.5..100000`);
+      if (!node.instanced) throw Error(`${at}: cellMeters needs instanced`);
+    }
     if (node.lod !== undefined || node.cullMeters !== undefined) {
       const levels = node.lod ?? [];
       if (!Array.isArray(levels) || levels.length > 4)
@@ -509,6 +527,8 @@ export class ZhudaPrefabLibrary<T extends AnyPrefabDefinition = PrefabDefinition
             label: `${entry.id}/${node.name}`,
             lod,
             cullMeters: node.cullMeters,
+            instanced: node.instanced,
+            cellMeters: node.cellMeters,
           });
           scope.defer(() => mounted.dispose());
           if (mounted.lod) levels.push(mounted.lod);

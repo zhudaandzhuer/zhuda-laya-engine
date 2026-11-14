@@ -7,6 +7,7 @@
  * back on disposal.
  */
 import type { ModelInstance } from './Assets.ts';
+import { ZhudaInstancedMesh, zhudaPlacementMatrices } from './InstancedMesh.ts';
 import { ZHUDA_TRANSLUCENT_DEFINE } from './Laya342Adapters.ts';
 import { ZhudaModelLod, type ZhudaLodItem } from './ModelLod.ts';
 
@@ -36,6 +37,16 @@ export interface ZhudaModelMountOptions {
   lod?: readonly { instance: ModelInstance; fromMeters: number }[];
   /** Beyond this distance a copy draws nothing. */
   cullMeters?: number;
+  /**
+   * With `placements`: no node for a copy. The copies of each mesh are drawn
+   * together, a group for each square of ground (`ZhudaInstancedMesh`): one
+   * draw a group instead of one a copy, lit and shadowed as before. Levels
+   * and the cull distance are then chosen for a group, by the middle of its
+   * box. Only for models of plain meshes (no bones, no morph targets).
+   */
+  instanced?: boolean;
+  /** With `instanced`: side of the squares the copies are grouped by, in metres (default 32). */
+  cellMeters?: number;
 }
 
 export interface ZhudaMountedModel {
@@ -48,6 +59,8 @@ export interface ZhudaMountedModel {
   setEmission(scale: number): void;
   /** Present when the mount has levels or a cull distance: call `update(eye)` as the eye moves. */
   lod?: ZhudaModelLod;
+  /** With `instanced`: how many copies, groups and draws a pass (of the full model). */
+  instanced?: { copies: number; groups: number; drawsPerPass: number };
   dispose(): void;
 }
 
@@ -97,7 +110,73 @@ export function mountZhudaModel(
     const from = (options.lod ?? []).map((level) => level.fromMeters);
     const levelled = versions.length > 1 || options.cullMeters !== undefined;
     const items: ZhudaLodItem[] = [];
-    if (options.placements) {
+    let instanced: ZhudaMountedModel['instanced'];
+    if (options.instanced) {
+      const placements = options.placements;
+      if (!placements) throw Error('Model mount: instanced copies need placements');
+      // Every mesh of the model falls into the groups of where the model stands.
+      const anchors = new Float32Array(placements.length * 3);
+      placements.forEach((place, i) => anchors.set([place[0], place[1], place[2]], i * 3));
+      const meshes = versions.map((version, v) => {
+        if (version.node.parent)
+          throw Error('Model mount: an instanced model must not be in a scene already');
+        return sources[v].map((renderer) => {
+          const owner = renderer.owner;
+          const mesh =
+            owner?.meshFilter?.sharedMesh ?? owner?.getComponent?.(l.MeshFilter)?.sharedMesh;
+          if (
+            !mesh ||
+            (l.SkinnedMeshRenderer && renderer instanceof l.SkinnedMeshRenderer) ||
+            mesh.morphTargetData
+          )
+            throw Error(
+              'Model mount: instanced copies need plain meshes (no bones, no morph targets)',
+            );
+          // The model is not in a scene: a mesh's world matrix is its place inside the model.
+          const made = new ZhudaInstancedMesh(
+            holder,
+            mesh,
+            renderer.sharedMaterials,
+            zhudaPlacementMatrices(placements, undefined, owner.transform.worldMatrix.elements),
+            {
+              castShadow: casts,
+              anchors,
+              cellMeters: options.cellMeters,
+              label: `${options.label ?? 'ZhudaModel'}:${v}`,
+            },
+          );
+          cleanups.push(() => made.dispose());
+          return made;
+        });
+      });
+      const full = meshes[0];
+      instanced = full.reduce(
+        (sum, mesh) => ({
+          copies: mesh.stats.copies,
+          groups: mesh.stats.groups,
+          drawsPerPass: sum.drawsPerPass + mesh.stats.drawsPerPass,
+        }),
+        { copies: 0, groups: 0, drawsPerPass: 0 },
+      );
+      if (levelled && full.length)
+        full[0].groups.forEach((group, g) =>
+          items.push({
+            anchor: {
+              transform: {
+                get position() {
+                  return group.renderer.bounds.getCenter();
+                },
+              },
+            },
+            // A level is every mesh of that version, for this group.
+            nodes: meshes.map((version) => ({
+              zhudaRenderers: version.map((mesh) => mesh.groups[g].renderer),
+            })),
+            from,
+            cull: options.cullMeters,
+          }),
+        );
+    } else if (options.placements) {
       // The loaded instance is the first copy; the rest are clones that
       // share its meshes and materials.
       options.placements.forEach(([x, y, z, yawDeg, size], i) => {
@@ -184,8 +263,14 @@ export function mountZhudaModel(
       const hidden = l.RenderBitFlag?.RenderBitFlag_Editor;
       const drawn = new Map<any, any[]>();
       const show = (node: any, visible: boolean) => {
-        if (hidden === undefined) return void (node.active = visible);
-        let renderers = drawn.get(node);
+        // An instanced level is a list of group renderers, not a node.
+        const listed: any[] | undefined = node.zhudaRenderers;
+        if (hidden === undefined) {
+          if (listed) for (const renderer of listed) renderer.owner.active = visible;
+          else node.active = visible;
+          return;
+        }
+        let renderers = listed ?? drawn.get(node);
         if (!renderers) drawn.set(node, (renderers = zhudaModelRenderers(l, node)));
         for (const renderer of renderers) renderer.setRenderbitFlag(hidden, !visible);
       };
@@ -216,7 +301,7 @@ export function mountZhudaModel(
         cleanups.push(() => !material.destroyed && material.removeDefine(define));
       }
     }
-    return { renderers: source, lod, setEmission, dispose };
+    return { renderers: source, lod, instanced, setEmission, dispose };
   } catch (error) {
     dispose();
     throw error;

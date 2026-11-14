@@ -1,7 +1,7 @@
 # three.js gap plan: progress
 
 Plan: `docs/plans/records/threejs-gap-audit/plan.md` (work packages WP0..WP16)\
-Last updated: 2026-11-14, after WP8 (batch 2 is done one package at a time, by one agent, without a review agent)
+Last updated: 2026-11-14, after WP9 (batch 2 is done one package at a time, by one agent, without a review agent)
 
 ## Where each package stands
 
@@ -17,7 +17,8 @@ Last updated: 2026-11-14, after WP8 (batch 2 is done one package at a time, by o
 | WP5 KTX 2 / Basis textures | Merged; desktop WebGL and WebGPU verified, measured on a vivo V40; no encoder shipped and no encoder's output drawn (the check makes its own one-colour UASTC files) | `basis-textures` |
 | WP6 HDR panoramas and the studio room | Merged; desktop WebGL and WebGPU verified, measured on a vivo V40; not wired into film scenes, no GPU prefilter | `hdr-environment` |
 | WP8 toon material, matcap, normal view, selection outline | Merged; desktop WebGL and WebGPU verified, measured on a vivo V40; no outline normals for hard-edged meshes, the outline is not in the depth texture | `stylized-shading` |
-| WP9..WP13, WP15, WP16 | Not started | |
+| WP9 instanced meshes and baked crowds | Merged; desktop WebGL and WebGPU verified, measured on a vivo V40; the bake runs at load (no build-time baker), no blending in a crowd | `instanced-meshes` |
+| WP10..WP13, WP15, WP16 | Not started | |
 
 Each merged package's own record lists what it did not do; those lists are
 the open work, not this table.
@@ -48,7 +49,7 @@ frames a second above look level 0. Whether a phone should aim at 30 with
 the level 2 look or at 60 with the level 0 look is the game owner's choice;
 the engine has both levers and a ladder (`zhudaQualitySteps`) for either.
 
-## How WP3, WP5, WP6 and WP8 were checked
+## How WP3, WP5, WP6, WP8 and WP9 were checked
 
 One agent wrote, drew and recorded each; there was no second agent to
 review them. Each has unit tests, a real-draw check on WebGL and WebGPU with
@@ -58,9 +59,16 @@ check is in its own record.
 
 ## Next
 
-In the plan's order: WP9 (instancing), WP10 (animation), WP11 (post
-quality), WP13 (lighting depth), WP12 (backend delivery), WP15 (tooling),
-WP16 (WebGPU-only).
+In the plan's order: WP10 (animation), WP11 (post quality), WP13 (lighting
+depth), WP12 (backend delivery), WP15 (tooling), WP16 (WebGPU-only).
+
+## Found while doing WP9, beyond WP9
+
+- On WebGPU LayaAir never draws its batches of identical renderers into a
+  shadow map: repeated props cast no shadow there, in every scene so far.
+  Shadow casters are kept out of the batches now and are a draw each. A
+  game with many placements that cast should mark them `instanced: true`;
+  none was run to see what the change costs it.
 
 ## Found while doing WP8, beyond WP8
 

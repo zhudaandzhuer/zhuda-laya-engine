@@ -711,6 +711,7 @@ function buildFilmStageContents(
       }
       const mounted = mountZhudaModel(holder, item.instance, {
         placements: node.placements,
+        instanced: node.instanced,
         translucent: node.translucent,
         emission: node.emission,
         label: `ZhudaFilmModel:${node.id}`,

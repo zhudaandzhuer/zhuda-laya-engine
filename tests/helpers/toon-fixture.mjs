@@ -6,6 +6,22 @@
 export const LIMB = { radius: 0.3, height: 2, around: 24, capRings: 6, bodyRings: 12 };
 
 export function skinnedLimbGlb() {
+  return limb(2, false);
+}
+
+/**
+ * The same capsule on a chain of `joints` bones (2..32), with two clips of
+ * one second: "Bend" (every joint but the first turns about +Z, a quarter
+ * turn in all) and "Sway" (the same joints turn about +X one way, back
+ * through straight, and the other way). For crowds: more bones than a mesh
+ * piece holds when `joints` is above 24.
+ */
+export function skinnedCharacterGlb(joints = 12) {
+  if (!Number.isInteger(joints) || joints < 2 || joints > 32) throw Error('joints: 2..32');
+  return limb(joints, true);
+}
+
+function limb(count, sway) {
   const { radius, height, around, capRings, bodyRings } = LIMB;
   const positions = [];
   const normals = [];
@@ -21,8 +37,9 @@ export function skinnedLimbGlb() {
       ny: Math.sin(angle),
     });
   }
-  for (let i = 1; i < bodyRings; i++)
-    rings.push({ y: radius + ((height - 2 * radius) * i) / bodyRings, r: radius, ny: 0 });
+  const body = Math.max(bodyRings, count * 2);
+  for (let i = 1; i < body; i++)
+    rings.push({ y: radius + ((height - 2 * radius) * i) / body, r: radius, ny: 0 });
   for (let i = 0; i <= capRings; i++) {
     const angle = (Math.PI / 2) * (i / capRings);
     rings.push({
@@ -31,15 +48,22 @@ export function skinnedLimbGlb() {
       ny: Math.sin(angle),
     });
   }
+  // The joints stand evenly up the limb; a ring is shared by the two nearest across 0.4 m.
+  const span = height / count;
   for (const ring of rings)
     for (let j = 0; j <= around; j++) {
       const turn = (j / around) * Math.PI * 2;
       const flat = Math.sqrt(Math.max(0, 1 - ring.ny * ring.ny));
       positions.push(Math.cos(turn) * ring.r, ring.y, Math.sin(turn) * ring.r);
       normals.push(Math.cos(turn) * flat, ring.ny, Math.sin(turn) * flat);
-      // The lower joint below 0.8 m, the upper above 1.2 m, shared between.
-      const upper = Math.min(1, Math.max(0, (ring.y - 0.8) / 0.4));
-      joints.push(0, 1, 0, 0);
+      // The joint below this height, and how far the ring has gone over to the next.
+      let lower = Math.min(count - 2, Math.max(0, Math.floor((ring.y + 0.2) / span) - 1));
+      let upper = Math.min(1, Math.max(0, (ring.y - ((lower + 1) * span - 0.2)) / 0.4));
+      if (upper >= 1 && lower < count - 2) {
+        lower++;
+        upper = Math.min(1, Math.max(0, (ring.y - ((lower + 1) * span - 0.2)) / 0.4));
+      }
+      joints.push(lower, lower + 1, 0, 0);
       weights.push(1 - upper, upper, 0, 0);
     }
   const indices = [];
@@ -53,10 +77,16 @@ export function skinnedLimbGlb() {
       // Counter-clockwise seen from outside.
       indices.push(a, c, b, b, c, d);
     }
-  const count = positions.length / 3;
-  const identity = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
-  const inverseBind = [...identity, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, -1, 0, 1];
-  const half = Math.SQRT1_2;
+  const vertices = positions.length / 3;
+  const inverseBind = [];
+  for (let k = 0; k < count; k++)
+    inverseBind.push(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, k ? -k * span : 0, 0, 1);
+  const quarter = Math.PI / 2 / (count - 1);
+  const about = (axis, angle) => {
+    const q = [0, 0, 0, Math.cos(angle / 2)];
+    q[axis] = Math.sin(angle / 2);
+    return q;
+  };
   const parts = [
     new Float32Array(positions),
     new Float32Array(normals),
@@ -65,7 +95,13 @@ export function skinnedLimbGlb() {
     new Uint16Array(indices),
     new Float32Array(inverseBind),
     new Float32Array([0, 1]),
-    new Float32Array([0, 0, 0, 1, 0, 0, half, half]),
+    new Float32Array([0, 0, 0, 1, ...about(2, quarter)]),
+    ...(sway
+      ? [
+          new Float32Array([0, 0.5, 1]),
+          new Float32Array([...about(0, quarter), 0, 0, 0, 1, ...about(0, -quarter)]),
+        ]
+      : []),
   ];
   const views = [];
   const chunks = [];
@@ -78,16 +114,21 @@ export function skinnedLimbGlb() {
     offset += padded.length;
   }
   const bin = Buffer.concat(chunks);
+  // Node 0 is the mesh; nodes 1.. are the joints, each the child of the one below.
+  const names =
+    count === 2 ? ['lower', 'upper'] : Array.from({ length: count }, (_, k) => 'joint' + k);
+  const chain = names.map((name, k) => ({
+    name,
+    ...(k > 0 ? { translation: [0, span, 0] } : {}),
+    ...(k < count - 1 ? { children: [k + 2] } : {}),
+  }));
+  const turning = Array.from({ length: count - 1 }, (_, k) => k + 2);
   const json = {
     asset: { version: '2.0' },
     scene: 0,
     scenes: [{ nodes: [0, 1] }],
-    nodes: [
-      { name: 'limb', mesh: 0, skin: 0 },
-      { name: 'lower', children: [2] },
-      { name: 'upper', translation: [0, 1, 0] },
-    ],
-    skins: [{ joints: [1, 2], inverseBindMatrices: 5, skeleton: 1 }],
+    nodes: [{ name: 'limb', mesh: 0, skin: 0 }, ...chain],
+    skins: [{ joints: names.map((_, k) => k + 1), inverseBindMatrices: 5, skeleton: 1 }],
     meshes: [
       {
         primitives: [
@@ -112,8 +153,17 @@ export function skinnedLimbGlb() {
       {
         name: 'Bend',
         samplers: [{ input: 6, output: 7, interpolation: 'LINEAR' }],
-        channels: [{ sampler: 0, target: { node: 2, path: 'rotation' } }],
+        channels: turning.map((node) => ({ sampler: 0, target: { node, path: 'rotation' } })),
       },
+      ...(sway
+        ? [
+            {
+              name: 'Sway',
+              samplers: [{ input: 8, output: 9, interpolation: 'LINEAR' }],
+              channels: turning.map((node) => ({ sampler: 0, target: { node, path: 'rotation' } })),
+            },
+          ]
+        : []),
     ],
     buffers: [{ byteLength: bin.length }],
     bufferViews: views,
@@ -121,18 +171,24 @@ export function skinnedLimbGlb() {
       {
         bufferView: 0,
         componentType: 5126,
-        count,
+        count: vertices,
         type: 'VEC3',
         min: [-radius, 0, -radius],
         max: [radius, height, radius],
       },
-      { bufferView: 1, componentType: 5126, count, type: 'VEC3' },
-      { bufferView: 2, componentType: 5121, count, type: 'VEC4' },
-      { bufferView: 3, componentType: 5126, count, type: 'VEC4' },
+      { bufferView: 1, componentType: 5126, count: vertices, type: 'VEC3' },
+      { bufferView: 2, componentType: 5121, count: vertices, type: 'VEC4' },
+      { bufferView: 3, componentType: 5126, count: vertices, type: 'VEC4' },
       { bufferView: 4, componentType: 5123, count: indices.length, type: 'SCALAR' },
-      { bufferView: 5, componentType: 5126, count: 2, type: 'MAT4' },
+      { bufferView: 5, componentType: 5126, count, type: 'MAT4' },
       { bufferView: 6, componentType: 5126, count: 2, type: 'SCALAR', min: [0], max: [1] },
       { bufferView: 7, componentType: 5126, count: 2, type: 'VEC4' },
+      ...(sway
+        ? [
+            { bufferView: 8, componentType: 5126, count: 3, type: 'SCALAR', min: [0], max: [1] },
+            { bufferView: 9, componentType: 5126, count: 3, type: 'VEC4' },
+          ]
+        : []),
     ],
   };
   let text = Buffer.from(JSON.stringify(json));

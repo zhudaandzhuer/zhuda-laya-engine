@@ -51,6 +51,15 @@ export interface PrefabModelNode {
     }[];
     /** Beyond this distance from the eye a copy draws nothing. */
     cullMeters?: number;
+    /**
+     * With `placements`: the copies are drawn in groups, one draw a group
+     * instead of one a copy, with no node for a copy (`ZhudaInstancedMesh`).
+     * Levels and the cull distance are then chosen for a group. Only for
+     * models of plain meshes.
+     */
+    instanced?: boolean;
+    /** With `instanced`: side of the squares the copies are grouped by, in metres, 0.5..100000 (default 32). */
+    cellMeters?: number;
 }
 export interface PrefabModelPatch {
     active?: boolean;
