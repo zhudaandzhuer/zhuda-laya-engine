@@ -7,7 +7,7 @@
  * logical events through scheduleTone; they must not create another
  * AudioContext for the same event.
  */
-import type { IframeAudioChannel, IframeSoundAdapterOptions, IframeSoundDiagnostics, IframeToneOptions, IframeSampleOptions, IframeSampleInfo } from './index.js';
+import type { IframeAudioChannel, IframeSoundAdapterOptions, IframeSoundAdapterDiagnostics, IframeToneOptions, IframeSampleOptions, IframeSampleInfo } from './index.js';
 import type { IframeStreamOptions, IframeStreamInfo, IframeSampleBackend } from './zhuda-audio.js';
 import type { IframeOfflineMixOptions, IframeOfflineMix } from './zhuda-audio.js';
 import type { IframeListenerPose } from './zhuda-audio.js';
@@ -97,7 +97,7 @@ export declare class IframeSoundAdapter {
         type: string;
         channel?: IframeAudioChannel;
         volume?: number;
-    }): IframeSoundDiagnostics;
+    }): IframeSoundAdapterDiagnostics;
     setMuted(muted: boolean): void;
     isMuted(): boolean;
     setChannelVolume(channel: IframeAudioChannel, volume: number): boolean;
@@ -151,7 +151,7 @@ export declare class IframeSoundAdapter {
     private finishVoice;
     private stopVoice;
     stopAll(channel?: IframeAudioChannel): number;
-    getDiagnostics(): IframeSoundDiagnostics;
+    getDiagnostics(): IframeSoundAdapterDiagnostics;
     private syncDomTelemetry;
     /** Stops voices, removes every event listener and closes the owned context. */
     dispose(): void;

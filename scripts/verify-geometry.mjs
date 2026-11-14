@@ -20,6 +20,7 @@ import assert from 'node:assert/strict';
 import esbuild from 'esbuild';
 import { buildBrowserSdk } from '../packages/compiler/browser-sdk.mjs';
 import { chromeFixture } from './lib/chrome-fixture.mjs';
+import { gpuLabelExpression } from './lib/gpu-label.mjs';
 
 const engineRoot = path.resolve(import.meta.dirname, '..');
 const out = path.resolve(
@@ -67,9 +68,6 @@ await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
 let report;
 const browser = await chromeFixture();
 try {
-  const gpu = await browser.evaluate(
-    `(()=>{const c=document.createElement('canvas').getContext('webgl2');const d=c.getExtension('WEBGL_debug_renderer_info');return d?c.getParameter(d.UNMASKED_RENDERER_WEBGL):c.getParameter(c.RENDERER)})()`,
-  );
   await browser.send('Emulation.setDeviceMetricsOverride', {
     width: 960,
     height: 540,
@@ -82,6 +80,8 @@ try {
   await browser.waitFor(
     'window.__GEOMETRY__ && (window.__GEOMETRY__.ready || window.__GEOMETRY__.error)',
   );
+  // Named by the backend the page ran on.
+  const gpu = await browser.evaluate(gpuLabelExpression(gpuBuild));
   report = {
     gpu,
     ...(await browser.evaluate('window.__GEOMETRY__')),
@@ -160,6 +160,35 @@ assert.ok(
   g.layaReadBack.hits > 200 && g.layaReadBack.same === g.layaReadBack.hits,
   `read back picks the same (${JSON.stringify(g.layaReadBack)})`,
 );
+// A real LayaAir CurvePath: its one shared vector is copied, the points are
+// evenly spaced along it although LayaAir walks a spline by its control
+// points, they pass through the points it was made of, and a tube is built.
+const curve = g.curvePath;
+assert.ok(!curve.error, `LayaAir CurvePath: ${curve.error}`);
+assert.equal(curve.shared, true, 'LayaAir answers with one shared vector');
+assert.equal(curve.count, 64);
+assert.deepEqual(
+  [curve.first, curve.last],
+  [
+    [0, 0, 0],
+    [-2, 1, 1],
+  ],
+);
+assert.ok(
+  curve.layaMaxStep / curve.layaMinStep > 3,
+  `LayaAir's own steps are uneven (${curve.layaMinStep} to ${curve.layaMaxStep})`,
+);
+assert.ok(
+  curve.maxStep / curve.minStep < 1.02,
+  `the sampled steps are even (${curve.minStep} to ${curve.maxStep})`,
+);
+assert.ok(curve.through < curve.maxStep * 0.6, `through its points (${curve.through})`);
+assert.ok(Math.abs(curve.polyline / curve.length - 1) < 0.1, 'about as long as LayaAir says');
+// Five metres in five steps, round one corner: a step is a metre, less what
+// reading the path finely takes off the corner.
+for (const step of curve.straight.steps)
+  assert.ok(Math.abs(step - 1) < 0.002, `straight runs by length (${curve.straight.steps})`);
+assert.ok(curve.tubeVertices > 100, 'a tube along it');
 console.log(
   `PASS geometry on ${report.renderer} (${report.backend.nativeEngine}, ${report.gpu}): ` +
     JSON.stringify({

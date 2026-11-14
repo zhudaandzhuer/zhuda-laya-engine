@@ -393,6 +393,75 @@ async function main() {
       { vertices: s.data.positions.length / 3, triangles: s.data.indices.length / 3 },
     ]),
   );
+  // A real LayaAir CurvePath (the unit tests stand in for one): what
+  // sampleZhudaCurvePath gets from it, and that a tube can be built on that.
+  try {
+    const corners = [
+      [0, 0, 0],
+      [1, 0, 0],
+      [1, 0, 3],
+      [0, 0.5, 3.5],
+      [-2, 1, 1],
+    ];
+    const steps = (points: number[][]) =>
+      points.slice(1).map((q, i) => Math.hypot(...q.map((v, k) => v - points[i][k])));
+    const spline = new Laya.CurvePath();
+    spline.create(
+      ...corners.map((c) => ({
+        pos: new Laya.Vector3(c[0], c[1], c[2]),
+        curve: Laya.CurveType.CRSpline,
+      })),
+    );
+    const shared = spline.getPointAt(0.2) === spline.getPointAt(0.7);
+    // How LayaAir itself walks the spline: 64 shares of it, one after another.
+    const own = steps(
+      Array.from({ length: 64 }, (_, i) => {
+        const q = spline.getPointAt(i / 63);
+        return [q.x, q.y, q.z];
+      }),
+    );
+    const samples: number[][] = Z.sampleZhudaCurvePath(spline, 64);
+    const splineSteps = steps(samples);
+    const straight = new Laya.CurvePath();
+    straight.create(
+      ...[
+        [0, 0, 0],
+        [1, 0, 0],
+        [1, 0, 4],
+      ].map((c) => ({
+        pos: new Laya.Vector3(c[0], c[1], c[2]),
+        curve: Laya.CurveType.Straight,
+      })),
+    );
+    const lines: number[][] = Z.sampleZhudaCurvePath(straight, 6);
+    const tube = Z.createZhudaTubeMesh({ path: samples, radius: 0.05, radialSegments: 6 });
+    r.curvePath = {
+      shared,
+      count: samples.length,
+      length: spline.length,
+      polyline: splineSteps.reduce((sum, step) => sum + step, 0),
+      first: samples[0],
+      last: samples[samples.length - 1],
+      // How near the samples pass each point the curve was made through.
+      through: Math.max(
+        ...corners.map((c) =>
+          Math.min(...samples.map((q) => Math.hypot(...q.map((v, k) => v - c[k])))),
+        ),
+      ),
+      minStep: Math.min(...splineSteps),
+      maxStep: Math.max(...splineSteps),
+      layaMinStep: Math.min(...own),
+      layaMaxStep: Math.max(...own),
+      straight: {
+        length: straight.length,
+        points: lines,
+        steps: steps(lines),
+      },
+      tubeVertices: tube.positions.length / 3,
+    };
+  } catch (error: any) {
+    r.curvePath = { error: String(error?.message || error) };
+  }
   // For pictures: the script asks for a view and takes a screenshot.
   out.show = (name: string) => {
     look(name);

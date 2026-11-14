@@ -86,6 +86,14 @@ for (const model of ['HRTF', 'equalpower']) {
   const wide = model === 'HRTF' ? 0.3 : 0.95;
   assert.ok(m.right.whole.balance > wide, `${model}: right is right (${m.right.whole.balance})`);
   assert.ok(m.left.whole.balance < -wide, `${model}: left is left (${m.left.whole.balance})`);
+  // That it is HRTF: a head between the ears leaves some of a sound for the
+  // far ear. An equal-power panner puts all of it on one side (a balance of
+  // 1) and passes the two checks above.
+  if (model === 'HRTF')
+    assert.ok(
+      m.right.whole.balance < 0.9 && m.left.whole.balance > -0.9,
+      `HRTF leaves the far ear something (${m.right.whole.balance}, ${m.left.whole.balance})`,
+    );
   assert.ok(
     Math.abs(m.ahead.whole.balance) < 0.05,
     `${model}: ahead is even (${m.ahead.whole.balance})`,

@@ -11,6 +11,7 @@ import type {
   AudioVoiceHandle,
   IframeAudioChannel,
   IframeSoundAdapterOptions,
+  IframeSoundAdapterDiagnostics,
   IframeSoundDiagnostics,
   IframeToneOptions,
   IframeSampleOptions,
@@ -696,7 +697,7 @@ export class IframeSoundAdapter {
     type: string;
     channel?: IframeAudioChannel;
     volume?: number;
-  }): IframeSoundDiagnostics {
+  }): IframeSoundAdapterDiagnostics {
     if (this.disposed) return this.getDiagnostics();
     this.lastBridgeCommand = typeof msg?.type === 'string' ? msg.type : 'invalid';
     switch (msg?.type) {
@@ -1461,10 +1462,12 @@ export class IframeSoundAdapter {
     const now = context.currentTime;
     if (typeof context.createPanner === 'function') {
       const panner = context.createPanner();
+      // HRTF where the host has it. A browser's setter ignores a word it does
+      // not know and the panner stays at equal power; a host's own stand-in
+      // for Web Audio may throw instead.
       try {
         panner.panningModel = spatial.panningModel;
       } catch {
-        // HRTF where available: a host without it keeps equal power.
         panner.panningModel = 'equalpower';
       }
       panner.distanceModel = spatial.distanceModel;
@@ -1659,7 +1662,7 @@ export class IframeSoundAdapter {
     return count;
   }
 
-  public getDiagnostics(): IframeSoundDiagnostics {
+  public getDiagnostics(): IframeSoundAdapterDiagnostics {
     const state =
       this.ctx && CONTEXT_STATES.has(this.ctx.state)
         ? (this.ctx.state as IframeSoundDiagnostics['contextState'])

@@ -137,3 +137,59 @@ Pictures looked at: `EV/webgl/evidence/geometry-{front,panel,above}.png`,
 
 Decision: **Accepted within scope** for desktop Chrome; device checks stay
 unavailable.
+
+## After review (closed 2026-11-15)
+
+The reviewer accepted the package at the merge and listed five minor
+points. They were left open then and are closed here, on top of `f858ba3`.
+
+1. **Nothing checked a closed tube's seam for a twist** (the last ring is a
+   copy of the first whatever the frames did, so watertightness and volume
+   pass either way). `tests/geometry-shapes.test.mjs` now measures how far
+   each band turns its ring about the tube's own direction, on two loops
+   whose frames come round 7.6 and 15.9 degrees turned. The seam turns
+   0.07 and 0.13 degrees, the other bands at most 0.27 and 0.40. With the
+   correction taken out of a copy of `Geometry.ts` the seam turns 7.55
+   and 15.45 degrees and the test fails.
+2. **The real render did not show that HRTF was in use**, and the fallback
+   for a host without it was described as a caught error, which a
+   browser never throws (its setter ignores a word it does not know).
+   `verify:spatial-audio` now requires an HRTF balance under 0.9 as well
+   as over 0.3: measured 0.596 and -0.599, where equal power gives 1 and
+   -1. A unit test runs a panner whose setter ignores `HRTF` and one whose
+   setter throws: both keep equal power and the voice plays. The comment
+   in `IframeSoundAdapter.createSpatial` says which is which.
+3. **`sampleZhudaCurvePath` had only met stand-ins.** `verify:geometry`
+   now makes a real `Laya.CurvePath` on both backends. It does hand back
+   one shared vector, which the sampler copies. It does **not** measure a
+   spline by length, as the documentation said: it walks it by its control
+   points (64 steps of its own on a spline through five uneven points were
+   0.038 to 0.254 apart), and its `length` for a spline is the chords
+   between those points (8.47 for a curve 8.89 long). The sampler now reads
+   the path finely and spaces its points along what it read: 0.1394 to
+   0.1412 apart, within 0.07 of each point the spline was made through,
+   first and last exact. Straight runs round a corner come out 0.9996 to
+   0.9998 of a metre apart for a metre (the corner is rounded by the fine
+   reading). A tube is built on the result. The sampler no longer drops a
+   point equal to the one before: evenly spaced points cannot be equal.
+4. **A WebGPU run was labelled with the WebGL renderer string** of the same
+   machine. `scripts/lib/gpu-label.mjs` names a run by its own backend;
+   the geometry and GPU depth checks print `WebGPU adapter apple / metal-3` for the
+   WebGPU build. The other draw checks still print the WebGL string for
+   both (each also asserts `renderer.selected`, which is what decides).
+5. **`spatialVoices` and `spatialBackend` were required fields added to a
+   public record**, so a hand-written `IframeSoundDiagnostics` stopped
+   typechecking. They are optional there now, and `getDiagnostics()` and
+   `handleBridgeMessage()` return `IframeSoundAdapterDiagnostics`, where
+   both are always present. `tests/runtime-consumer-types.test.mjs` holds
+   both directions under `strict`.
+
+| Check | Exact command or procedure | Result |
+| --- | --- | --- |
+| Build, types, declarations, doctor, tests | `npm run verify` | PASS, 738 of 738 |
+| Format, lint, whitespace | `npm run format:check`, `npm run lint`, `git diff --check` | PASS |
+| Geometry, WebGL and WebGPU | `npm run verify:geometry`, and with `GEOMETRY_RENDERER=webgpu` | PASS, 2 of 2 |
+| Spatial audio | `npm run verify:spatial-audio` | PASS |
+
+Still as it was: no speakers, headphones, phone or mini-game host; Safari
+and Firefox not run.

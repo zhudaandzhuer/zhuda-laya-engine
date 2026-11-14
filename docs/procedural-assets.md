@@ -260,7 +260,10 @@ Film scenes use them as `lathe` and `extrude` nodes.
   spaced along a Catmull-Rom curve through `points` (`'centripetal'` by
   default, `'chordal'` or `'uniform'`), for `createZhudaSweepMesh` or
   `createZhudaTubeMesh`. `sampleZhudaCurvePath(path, count)` does the same
-  for a LayaAir `CurvePath` (Catmull-Rom or Bezier) built in a game.
+  for a LayaAir `CurvePath` (Catmull-Rom, Bezier or straight runs) built in
+  a game. LayaAir itself walks a spline by its control points, not by
+  length; the path is read finely and the points spaced along what was
+  read.
 - `createZhudaCurveTubeMesh({ points, radius, closed })` is a round tube
   along such a curve, rings evenly spaced, turned as little as possible from
   one ring to the next; a closed tube's twist is spread over its length so

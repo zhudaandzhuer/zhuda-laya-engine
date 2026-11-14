@@ -147,8 +147,12 @@ the same distance, cone and equal-power azimuth formulas itself and applies
 them through one `GainNode` and, when the host has one, a `StereoPannerNode`.
 The fallback has no HRTF and no elevation. `getDiagnostics()` reports
 `spatialBackend` (`panner`, `gain` or `unavailable` before a context exists)
-and `spatialVoices`. Old WebKit `setPosition`/`setOrientation` listeners and
-panners are placed through those methods.
+and `spatialVoices`. Its type is `IframeSoundAdapterDiagnostics`, where the
+two are always present; in the plain record `IframeSoundDiagnostics` they
+are optional, so a record written by hand before spatial voices existed (a
+mock, the other side of a bridge) still typechecks. Old WebKit
+`setPosition`/`setOrientation` listeners and panners are placed through
+those methods.
 
 A voice queued before unlock starts where it was asked to; moves apply to
 active voices only. Ending, stopping, replacing, unloading and disposal

@@ -158,10 +158,17 @@ export interface ZhudaCurvePathLike {
     };
 }
 /**
- * `count` points (2..4096) along a LayaAir `CurvePath` (Catmull-Rom or
- * Bezier; it measures by length), for `createZhudaTubeMesh` or
+ * `count` points (2..4096) evenly spaced along a LayaAir `CurvePath`
+ * (Catmull-Rom, Bezier or straight runs), for `createZhudaTubeMesh` or
  * `createZhudaSweepMesh`. With `closed`, the last point is not repeated, as
- * a closed sweep wants. A point the same as the one before is left out.
+ * a closed sweep wants.
+ *
+ * LayaAir walks a spline by its control points, not by length: on a spline
+ * through five uneven points its own steps were 0.04 to 0.25 apart. The
+ * path is read finely here (sixteen times as often as asked, a thousand
+ * times at least) and the points are spaced along what was read: a sharp
+ * corner between two straight runs is rounded by up to a thousandth of the
+ * path's length.
  */
 export declare function sampleZhudaCurvePath(path: ZhudaCurvePathLike, count: number, options?: {
     closed?: boolean;

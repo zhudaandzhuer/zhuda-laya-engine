@@ -162,9 +162,19 @@ export interface IframeSoundDiagnostics {
     backend: 'webaudio' | 'unavailable';
     contextAvailable: boolean;
     lastError: string | null;
-    /** Active voices placed in the world. */
-    spatialVoices: number;
+    /**
+     * Active voices placed in the world. Optional in this record, so that one
+     * written by hand (a mock, the other side of a bridge) before spatial
+     * voices existed still typechecks; what the adapter itself returns always
+     * has both (`IframeSoundAdapterDiagnostics`).
+     */
+    spatialVoices?: number;
     /** How spatial voices are placed: a PannerNode, the gain fallback, or not yet known (no context). */
+    spatialBackend?: 'panner' | 'gain' | 'unavailable';
+}
+/** What `IframeSoundAdapter.getDiagnostics()` returns: every field is there. */
+export interface IframeSoundAdapterDiagnostics extends IframeSoundDiagnostics {
+    spatialVoices: number;
     spatialBackend: 'panner' | 'gain' | 'unavailable';
 }
 export type ViewportDeviceId = 'desktop-fhd-16-9' | 'iphone-15-pro-portrait' | 'iphone-15-pro-landscape' | 'ipad-air-4-3' | 'ultrawide-21-9';

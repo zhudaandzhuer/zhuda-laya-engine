@@ -1370,10 +1370,17 @@ export interface ZhudaCurvePathLike {
 }
 
 /**
- * `count` points (2..4096) along a LayaAir `CurvePath` (Catmull-Rom or
- * Bezier; it measures by length), for `createZhudaTubeMesh` or
+ * `count` points (2..4096) evenly spaced along a LayaAir `CurvePath`
+ * (Catmull-Rom, Bezier or straight runs), for `createZhudaTubeMesh` or
  * `createZhudaSweepMesh`. With `closed`, the last point is not repeated, as
- * a closed sweep wants. A point the same as the one before is left out.
+ * a closed sweep wants.
+ *
+ * LayaAir walks a spline by its control points, not by length: on a spline
+ * through five uneven points its own steps were 0.04 to 0.25 apart. The
+ * path is read finely here (sixteen times as often as asked, a thousand
+ * times at least) and the points are spaced along what was read: a sharp
+ * corner between two straight runs is rounded by up to a thousandth of the
+ * path's length.
  */
 export function sampleZhudaCurvePath(
   path: ZhudaCurvePathLike,
@@ -1385,17 +1392,32 @@ export function sampleZhudaCurvePath(
   if (!(Number.isInteger(count) && count >= 2 && count <= 4096))
     throw Error('Invalid curve path: count must be a whole number 2..4096');
   const closed = options.closed === true,
-    out: ZhudaVec3[] = [];
-  for (let i = 0; i < count; i++) {
+    fine = Math.max(count * 16, 1024);
+  const read: ZhudaVec3[] = [],
+    along = [0];
+  for (let i = 0; i <= fine; i++) {
     // LayaAir hands back one shared vector: copy it at once.
-    const p = path.getPointAt(i / (closed ? count : count - 1)),
+    const p = path.getPointAt(i / fine),
       point: ZhudaVec3 = [p?.x, p?.y, p?.z];
-    if (!point.every(Number.isFinite)) throw Error(`Invalid curve path: point ${i} is not finite`);
-    const last = out[out.length - 1];
-    if (!last || last.some((v, k) => v !== point[k])) out.push(point);
+    if (!point.every(Number.isFinite))
+      throw Error(`Invalid curve path: the point at ${i / fine} is not finite`);
+    const last = read[read.length - 1];
+    if (last) along.push(along[along.length - 1] + Math.hypot(...sub(point, last)));
+    read.push(point);
   }
-  if (closed && out.length > 1 && out[0].every((v, k) => v === out[out.length - 1][k])) out.pop();
-  if (out.length < 2) throw Error('Invalid curve path: it has no length');
+  const length = along[fine];
+  if (!(length > 0)) throw Error('Invalid curve path: it has no length');
+  const out: ZhudaVec3[] = [];
+  let k = 0;
+  for (let i = 0; i < count; i++) {
+    const s = (length * i) / (closed ? count : count - 1);
+    while (k < fine - 1 && along[k + 1] < s) k++;
+    const span = along[k + 1] - along[k],
+      t = span > 0 ? Math.min(1, (s - along[k]) / span) : 0;
+    const a = read[k],
+      b = read[k + 1];
+    out.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t]);
+  }
   return out;
 }
 

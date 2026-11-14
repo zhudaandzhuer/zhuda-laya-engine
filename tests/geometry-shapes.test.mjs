@@ -33,6 +33,35 @@ const triangles = (mesh) => {
   }
   return list;
 };
+/**
+ * How far each band of a tube turns its ring about the tube's own direction,
+ * in degrees: the first vertex of a ring, seen from the ring's middle and
+ * flattened across the line to the next ring's middle, against the next
+ * ring's. A tube bending does not count; a ring turned in place does.
+ */
+function bandTwists(mesh, along, around) {
+  const point = (i, j) => at(mesh.positions, i * (around + 1) + j, 3);
+  const middle = (i) => {
+    const c = [0, 0, 0];
+    for (let j = 0; j < around; j++) point(i, j).forEach((v, k) => (c[k] += v / around));
+    return c;
+  };
+  const unit = (v) => v.map((x) => x / Math.hypot(...v));
+  const turns = [];
+  for (let i = 0; i < along; i++) {
+    const a = middle(i),
+      b = middle(i + 1),
+      d = unit(sub(b, a));
+    const flat = (v) => {
+      const k = dot(v, d);
+      return unit(v.map((x, n) => x - d[n] * k));
+    };
+    const here = flat(sub(point(i, 0), a)),
+      next = flat(sub(point(i + 1, 0), b));
+    turns.push((Math.atan2(dot(cross(here, next), d), dot(here, next)) * 180) / Math.PI);
+  }
+  return turns;
+}
 /** The engine's winding: cross(v1 - v0, v2 - v0) points away from the surface. */
 const facing = ([a, b, c]) => cross(sub(b.p, a.p), sub(c.p, a.p)).map((v) => -v);
 
@@ -481,7 +510,7 @@ test('a Catmull-Rom curve passes through its points, evenly sampled', () => {
 });
 
 test('a LayaAir CurvePath feeds the tube and sweep builders', () => {
-  // The LayaAir shape: one shared vector, a share 0..1 along by length.
+  // The LayaAir shape: one shared vector for every answer.
   const shared = { x: 0, y: 0, z: 0 };
   const path = {
     getPointAt(t) {
@@ -512,6 +541,16 @@ test('a LayaAir CurvePath feeds the tube and sweep builders', () => {
       closed: true,
     }),
     'swept along a CurvePath',
+  );
+  // A path walked unevenly, as LayaAir walks a spline (by its control
+  // points): the points come out evenly spaced along it all the same.
+  const uneven = sampleZhudaCurvePath(
+    { getPointAt: (t) => ({ x: 10 * t * t * t, y: 0, z: 0 }) },
+    41,
+  );
+  assert.equal(uneven.length, 41);
+  uneven.forEach((q, i) =>
+    assert.ok(Math.abs(q[0] - i * 0.25) < 1e-3, `point ${i} at ${q[0]}, a quarter apart`),
   );
   assert.throws(() => sampleZhudaCurvePath({}, 10), /getPointAt/);
   assert.throws(() => sampleZhudaCurvePath(path, 1), /count must be/);
@@ -557,14 +596,15 @@ test('a tube along a curve is closed, faces out and holds its radius', () => {
     assert.ok(Math.abs(d - 0.2) < 0.005, `radius held (${d})`);
   }
   // A closed loop: no caps, the seam meets itself without a twist.
+  const loop5 = [
+    [0, 0, 0],
+    [3, 1, 0],
+    [3, 2, 3],
+    [0, 0.5, 3],
+    [-1, 2, 1],
+  ];
   const loop = createZhudaCurveTubeMesh({
-    points: [
-      [0, 0, 0],
-      [3, 1, 0],
-      [3, 2, 3],
-      [0, 0.5, 3],
-      [-1, 2, 1],
-    ],
+    points: loop5,
     closed: true,
     radius: 0.15,
     tubularSegments: 120,
@@ -574,6 +614,45 @@ test('a tube along a curve is closed, faces out and holds its radius', () => {
   assertWatertight(loop, 'closed tube');
   assertNormalsOut(loop, 'closed tube');
   assert.ok(volume(loop) > 0);
+  // The seam itself. The last ring lies on the first whatever the frames
+  // did, so the checks above cannot see a twist: it would all be in the last
+  // band. Each band's turn about the tube's own direction says where it is.
+  // Without the correction these two loops turn 7.5 and 15.4 degrees in that
+  // one band and under 0.3 in every other.
+  for (const [name, points] of [
+    ['a loop of five', loop5],
+    [
+      'a loop that winds',
+      [
+        [2, 0, 0],
+        [1, 2, 1.5],
+        [-1, 2, -1.5],
+        [-2, 0, 0],
+        [-1, -2, 1.5],
+        [1, -2, -1.5],
+      ],
+    ],
+  ]) {
+    const turns = bandTwists(
+      createZhudaCurveTubeMesh({
+        points,
+        closed: true,
+        radius: 0.15,
+        tubularSegments: 120,
+        radialSegments: 8,
+      }),
+      120,
+      8,
+    );
+    const seam = Math.abs(turns[119]),
+      others = Math.max(...turns.slice(0, 119).map(Math.abs)),
+      whole = Math.abs(turns.reduce((sum, turn) => sum + turn, 0));
+    assert.ok(whole > 5, `${name}: the frames do turn round the loop (${whole})`);
+    assert.ok(
+      seam <= others && seam < 0.5,
+      `${name}: the seam turns ${seam} degrees, the other bands at most ${others}`,
+    );
+  }
   // Straight up: the first frame does not fall over.
   assertWatertight(
     createZhudaCurveTubeMesh({

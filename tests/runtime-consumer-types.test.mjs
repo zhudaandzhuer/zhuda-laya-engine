@@ -17,7 +17,7 @@ test('strict public consumer composes sample audio and inferred 2D/3D Prefab roo
     fs.writeFileSync(
       file,
       `import { ZhudaPrefabLibrary, Zhuda3D, IframeSoundAdapter, DirectoryAssetProvider } from 'zhuda-laya-engine';
-import type { Prefab3DDefinition, PrefabDefinition, PrefabPreview3D } from 'zhuda-laya-engine';
+import type { Prefab3DDefinition, PrefabDefinition, PrefabPreview3D, IframeSoundDiagnostics, IframeSoundAdapterDiagnostics } from 'zhuda-laya-engine';
 const provider=new DirectoryAssetProvider({baseUrl:'./assets/'});
 const definitions:Prefab3DDefinition[]=[{id:'tree',kind:'3d',tree:{root:{name:'Root'},materials:{}},states:{idle:{}}}];
 const library=new ZhudaPrefabLibrary({provider,definitions,share3DResources:true});
@@ -41,6 +41,13 @@ async function use(){
  audio.unloadStream('theme.mp3');
  // @ts-expect-error streams require a logical stream ID
  audio.playStream({id:'missing'});
+ const placed:number=audio.getDiagnostics().spatialVoices;
+ const how:'panner'|'gain'|'unavailable'=audio.getDiagnostics().spatialBackend;
+ // A record written by hand before spatial voices existed still typechecks.
+ const {spatialVoices:_voices,spatialBackend:_backend,...before}=audio.getDiagnostics();
+ const record:IframeSoundDiagnostics=before;
+ // @ts-expect-error what the adapter returns always has both
+ const whole:IframeSoundAdapterDiagnostics=before;
  audio.stop('bgm',.2);audio.unloadSample('tone.wav');audio.dispose();
  // @ts-expect-error logical sample ID is required
  audio.playSample({id:'missing'});

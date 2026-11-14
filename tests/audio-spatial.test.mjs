@@ -302,6 +302,42 @@ test('the gain fallback matches what the panner formula gives', () => {
   }
 });
 
+test('a host without HRTF keeps equal power, whether its setter ignores the word or throws', async () => {
+  for (const kind of ['ignores', 'throws']) {
+    const context = new SpatialContext();
+    context.createPanner = () => {
+      const p = new Panner();
+      let model = 'equalpower';
+      Object.defineProperty(p, 'panningModel', {
+        get: () => model,
+        set: (value) => {
+          if (value === 'equalpower') model = value;
+          // A browser's setter ignores a word it does not know; a host's own
+          // stand-in for Web Audio may throw.
+          else if (kind === 'throws') throw new TypeError('HRTF is not here');
+        },
+      });
+      context.panners.push(p);
+      return p;
+    };
+    const { audio } = await loaded(context);
+    assert.equal(
+      audio.playSample({ id: 's', sampleId: 'step.wav', spatial: { position: [1, 0, 0] } }),
+      true,
+      kind,
+    );
+    assert.equal(context.panners.length, 1);
+    assert.equal(context.panners[0].panningModel, 'equalpower', kind);
+    assert.deepEqual(
+      vec(context.panners[0].positionX, context.panners[0].positionY, context.panners[0].positionZ),
+      [1, 0, 0],
+    );
+    const d = audio.getDiagnostics();
+    assert.equal(d.spatialBackend, 'panner');
+    assert.equal(d.spatialVoices, 1);
+  }
+});
+
 test('an old host without position AudioParams is placed through setPosition', async () => {
   const context = new Context();
   const calls = [];
