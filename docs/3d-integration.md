@@ -139,6 +139,10 @@ Thousands of one prop, or hundreds of one animated character, are drawn
 [in groups without a node for each](instanced-meshes.md): `instanced: true`
 on a model's placements, `ZhudaInstancedMesh`, and `ZhudaBakedCrowd`.
 
+A character's clips are [mixed by weight and its bones bent to reach a
+point](animation-control.md): a walk into a run, a wave over a walk, a foot
+on sloping ground.
+
 A model's pictures can be [KTX 2 / Basis textures](basis-textures.md), which
 stay compressed on the graphics card: a quarter or an eighth of the memory
 of a PNG, with the file's own mip levels.

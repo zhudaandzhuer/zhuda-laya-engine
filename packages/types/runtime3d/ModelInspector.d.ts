@@ -49,5 +49,15 @@ export declare class ZhudaModelInspector {
         normalizedTime?: number;
         speed?: number;
     }): void;
+    /**
+     * Fades from the clip that is playing to another over `seconds` (default
+     * 0.25), with LayaAir's own playback. With nothing playing it starts the
+     * clip. `normalizedTime` (0..1) is where the new clip begins.
+     */
+    crossFade(path: string, name: string, options?: {
+        seconds?: number;
+        layer?: number;
+        normalizedTime?: number;
+    }): void;
     setAnimationSpeed(path: string, speed: number): void;
 }

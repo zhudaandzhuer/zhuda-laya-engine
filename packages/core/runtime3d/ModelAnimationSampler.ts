@@ -11,6 +11,17 @@ type NativePlay = Laya.AnimatorPlayState & {
   _lastElapsedTime: number;
 };
 const owners = new WeakSet<Laya.Animator>();
+/**
+ * One thing poses a model at a time: a sampler or a blend takes its
+ * animator here and gives it back when it is disposed.
+ */
+export function claimZhudaAnimator(animator: Laya.Animator): void {
+  if (owners.has(animator)) throw Error('The animator is already driven by a sampler or a blend');
+  owners.add(animator);
+}
+export function releaseZhudaAnimator(animator: Laya.Animator): void {
+  owners.delete(animator);
+}
 export class ZhudaModelAnimationSampler {
   readonly durationSeconds: number;
   private readonly animator: Laya.Animator;

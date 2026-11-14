@@ -1,5 +1,11 @@
 // Generated from TypeScript source; run npm run types:generate.
 import type { ModelInstance } from './Assets.js';
+/**
+ * One thing poses a model at a time: a sampler or a blend takes its
+ * animator here and gives it back when it is disposed.
+ */
+export declare function claimZhudaAnimator(animator: Laya.Animator): void;
+export declare function releaseZhudaAnimator(animator: Laya.Animator): void;
 export declare class ZhudaModelAnimationSampler {
     readonly durationSeconds: number;
     private readonly animator;

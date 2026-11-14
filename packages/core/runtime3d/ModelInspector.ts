@@ -153,6 +153,36 @@ export class ZhudaModelInspector {
     animator.speed = speed;
     animator.play(name, layer, time);
   }
+  /**
+   * Fades from the clip that is playing to another over `seconds` (default
+   * 0.25), with LayaAir's own playback. With nothing playing it starts the
+   * clip. `normalizedTime` (0..1) is where the new clip begins.
+   */
+  crossFade(
+    path: string,
+    name: string,
+    options: { seconds?: number; layer?: number; normalizedTime?: number } = {},
+  ): void {
+    const animator = this.node(path).getComponent(runtime().Animator),
+      layer = options.layer ?? 0;
+    const seconds = options.seconds ?? 0.25,
+      time = options.normalizedTime ?? 0;
+    if (
+      !animator ||
+      !Number.isInteger(layer) ||
+      layer < 0 ||
+      layer >= animator.controllerLayerCount ||
+      !animator.getControllerLayer(layer).getAnimatorState(name)
+    )
+      throw Error('Unknown animation state');
+    if (!(seconds >= 0 && seconds <= 60) || !Number.isFinite(time) || time < 0 || time > 1)
+      throw Error('Invalid animation cross-fade options');
+    // LayaAir takes the fade as a share of the clip that is playing.
+    const playing = animator.getCurrentAnimatorPlayState(layer)?.animatorState?.clip;
+    const length = playing ? playing.duration() : 0;
+    if (!(length > 0) || seconds === 0) animator.play(name, layer, time);
+    else animator.crossFade(name, seconds / length, layer, time);
+  }
   setAnimationSpeed(path: string, speed: number): void {
     const animator = this.node(path).getComponent(runtime().Animator);
     if (!animator || !Number.isFinite(speed) || speed < 0) throw Error('Invalid animator or speed');
