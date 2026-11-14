@@ -54,9 +54,23 @@ export declare class ZhudaSceneLook {
     /**
      * Draws the sun's shadow maps on the next frame, for a look whose
      * `shadows.update` is 'interval' or 'manual' (a caster moved, the camera
-     * went elsewhere). Nothing to do when they are drawn every frame.
+     * went elsewhere, the game turned `sun` itself instead of through
+     * `setLook`). Nothing to do when they are drawn every frame.
      */
     redrawShadows(): void;
+    /**
+     * While `shadows.update` keeps the shadow maps: the frames drawn with
+     * shadows on since the look's shadows were last rebuilt, how many of them
+     * drew the maps, and how many of those only because another camera had
+     * drawn maps of its own since (see `ZhudaShadowUpdates.stats`). `taken`
+     * rising with `frames` means nothing is saved. Undefined while the maps
+     * are drawn every frame.
+     */
+    get shadowStats(): {
+        frames: number;
+        drawn: number;
+        taken: number;
+    } | undefined;
     /** Unit vector from the scene toward the sun, for water and other surfaces that glint. */
     get towardSun(): [number, number, number];
     /**

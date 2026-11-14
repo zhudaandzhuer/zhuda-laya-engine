@@ -6,9 +6,11 @@ import assert from 'node:assert/strict';
 import {
   ZhudaShadowUpdates,
   installLaya342SkippedShadowFrames,
+  zhudaShadowBorrower,
   zhudaShadowFrameDraws,
   zhudaShadowUpdateOptions,
 } from '../packages/core/runtime3d/ShadowUpdates.ts';
+import { ZhudaPlanarReflection } from '../packages/core/runtime3d/Filmic.ts';
 import {
   ZhudaRenderScale,
   zhudaRenderScaleOptions,
@@ -27,24 +29,46 @@ import { updateZhudaLookInPlace } from '../packages/core/film/LiveLook.ts';
 
 /** A LayaAir 3.4.2 stand-in with what the shadow rule touches. */
 function fakeShadowLaya() {
+  const l = { Stat: { loopCount: 0, enableShadow: true }, mark: 7 };
   class Process {
+    constructor() {
+      this._renderPass = {};
+    }
     _initRenderPass(camera, context) {
-      // LayaAir's own: the uniform set loses Shadow on a frame that keeps the maps.
-      if (this._renderPass.shadowCastPass) context.preDrawUniformMaps.add('Shadow');
-      else context.preDrawUniformMaps.delete('Shadow');
+      // LayaAir's own: the frame test, once per camera drawn; the uniform set
+      // loses Shadow on a frame that keeps the maps.
+      const cast = l.mark % camera.scene._ShadowMapupdateFrequency === 0 && l.Stat.enableShadow;
+      this._renderPass.shadowCastPass = cast;
+      if (cast) {
+        this._renderPass.enableDirectLightShadow = true;
+        context.preDrawUniformMaps.add('Shadow');
+      } else context.preDrawUniformMaps.delete('Shadow');
       return 'drawn';
     }
   }
-  return { Stat: { loopCount: 0, enableShadow: true }, WebRender3DProcess: Process };
+  l.WebRender3DProcess = Process;
+  return l;
 }
 const fakeScene = () => ({
   _ShadowMapupdateFrequency: 1,
   get shadowMapFrequency() {
     return this._ShadowMapupdateFrequency;
   },
+  set shadowMapFrequency(value) {
+    this._ShadowMapupdateFrequency = value;
+  },
 });
-/** LayaAir's frame test for one camera drawn: does this frame draw the maps? */
-const draws = (scene, mark = 7) => mark % scene._ShadowMapupdateFrequency === 0;
+/** A camera of the scene; one with a `renderTarget` does not draw to the canvas. */
+const fakeCamera = (scene, renderTarget) => ({ scene, renderTarget });
+/** One camera drawn, as LayaAir draws it: does it draw the shadow maps first? */
+function drawing(l) {
+  const process = new l.WebRender3DProcess();
+  const context = { preDrawUniformMaps: new Set() };
+  return (camera) => {
+    process._initRenderPass(camera, context);
+    return process._renderPass.shadowCastPass;
+  };
+}
 
 test('shadow update options are checked and filled in', () => {
   assert.deepEqual(zhudaShadowUpdateOptions(), { mode: 'every', interval: 3 });
@@ -75,63 +99,241 @@ test('which frames draw the maps: every one, every third, or when asked', () => 
   assert.equal(run({ mode: 'manual', interval: 3 }, 6, [0, 3]), '100100');
 });
 
-test('the rule answers LayaAir once a frame, the same for every view in it', () => {
+test('the rule answers LayaAir once a frame for the view it keeps the maps for', () => {
   const l = fakeShadowLaya();
   globalThis.Laya = l;
   const scene = fakeScene();
-  const rule = new ZhudaShadowUpdates(scene, { mode: 'interval', interval: 3 });
+  const view = fakeCamera(scene);
+  const rule = new ZhudaShadowUpdates(scene, { mode: 'interval', interval: 3 }, view);
+  const draws = drawing(l);
   const seen = [];
   for (let frame = 1; frame <= 6; frame++) {
     l.Stat.loopCount = frame;
-    // Two views of one frame (a mirror, then the camera) get one answer.
-    const first = draws(scene, 10 + frame),
-      second = draws(scene, 11 + frame);
-    assert.equal(first, second);
-    seen.push(first ? 1 : 0);
+    // LayaAir's own mark runs on with every camera drawn: it does not matter.
+    l.mark += 5;
+    seen.push(draws(view) ? 1 : 0);
   }
   assert.equal(seen.join(''), '100100');
-  assert.deepEqual(rule.stats, { frames: 6, drawn: 2 });
+  assert.deepEqual(rule.stats, { frames: 6, drawn: 2, taken: 0 });
   // A view drawn with shadows off neither draws nor counts.
   l.Stat.enableShadow = false;
   l.Stat.loopCount = 7;
-  draws(scene);
+  assert.equal(draws(view), false);
   l.Stat.enableShadow = true;
-  assert.deepEqual(rule.stats, { frames: 6, drawn: 2 });
+  assert.deepEqual(rule.stats, { frames: 6, drawn: 2, taken: 0 });
   l.Stat.loopCount = 8;
-  assert.equal(draws(scene), true, 'the third frame drawn with shadows on');
+  assert.equal(draws(view), true, 'the third frame drawn with shadows on');
   // Asked within a frame that keeps the maps (a capture's next sample): drawn from there on.
   l.Stat.loopCount = 9;
-  assert.equal(draws(scene), false);
+  assert.equal(draws(view), false);
   rule.redraw();
-  assert.equal(draws(scene), true);
-  assert.equal(draws(scene), true);
-  assert.deepEqual(rule.stats, { frames: 8, drawn: 4 });
+  assert.equal(draws(view), true);
+  assert.equal(draws(view), true);
+  assert.deepEqual(rule.stats, { frames: 8, drawn: 4, taken: 0 });
   // Manual: nothing until asked.
   rule.set({ mode: 'manual' });
   l.Stat.loopCount = 10;
-  assert.equal(draws(scene), true, 'a changed rule draws once');
+  assert.equal(draws(view), true, 'a changed rule draws once');
   for (const frame of [11, 12, 13]) {
     l.Stat.loopCount = frame;
-    assert.equal(draws(scene), false);
+    assert.equal(draws(view), false);
   }
   rule.redraw();
   rule.redraw();
   l.Stat.loopCount = 14;
-  assert.equal(draws(scene), true);
+  assert.equal(draws(view), true);
   l.Stat.loopCount = 15;
-  assert.equal(draws(scene), false, 'two requests before a frame draw once');
+  assert.equal(draws(view), false, 'two requests before a frame draw once');
+  // Read by the game, the frequency is what the game set; it uses up no frame.
+  const before = rule.stats;
+  assert.equal(scene.shadowMapFrequency, 1);
+  scene.shadowMapFrequency = 4;
+  assert.equal(scene.shadowMapFrequency, 4);
+  assert.deepEqual(rule.stats, before);
   // Every frame is LayaAir's own path: no accessor on the scene.
   rule.set({ mode: 'every' });
   assert.equal(Object.getOwnPropertyDescriptor(scene, '_ShadowMapupdateFrequency').get, undefined);
-  assert.equal(scene.shadowMapFrequency, 1);
+  assert.equal(scene.shadowMapFrequency, 4);
   rule.set({ mode: 'interval', interval: 2 });
   // A frequency the game sets itself is kept for when the rule goes.
-  scene._ShadowMapupdateFrequency = 4;
+  scene.shadowMapFrequency = 5;
   rule.dispose();
   rule.dispose();
-  assert.equal(Object.getOwnPropertyDescriptor(scene, '_ShadowMapupdateFrequency').value, 4);
+  assert.equal(Object.getOwnPropertyDescriptor(scene, '_ShadowMapupdateFrequency').value, 5);
   assert.throws(() => rule.redraw(), /Disposed/);
   assert.throws(() => rule.set({ mode: 'manual' }), /Disposed/);
+  delete globalThis.Laya;
+});
+
+test('another camera draws maps of its own and the view draws its maps again', () => {
+  const l = fakeShadowLaya();
+  globalThis.Laya = l;
+  const scene = fakeScene();
+  const view = fakeCamera(scene),
+    mirror = fakeCamera(scene, {}),
+    probe = fakeCamera(scene, {});
+  const rule = new ZhudaShadowUpdates(scene, { mode: 'interval', interval: 3 }, view);
+  const draws = drawing(l);
+  assert.equal(rule.lends, false, 'nothing drawn yet');
+  // A game: the view is drawn, then the tick draws a mirror, in the same LayaAir frame.
+  const frames = (count, other) => {
+    const seen = [];
+    for (let i = 0; i < count; i++) {
+      l.Stat.loopCount++;
+      seen.push([draws(view), draws(other)].map(Number).join(''));
+    }
+    return seen.join(' ');
+  };
+  // The mirror draws its own maps every frame, so the view has to as well.
+  assert.equal(frames(4, mirror), '11 11 11 11');
+  assert.deepEqual(rule.stats, { frames: 4, drawn: 4, taken: 3 });
+  // A mirror that borrows reads the view's maps: only the rule's frames draw.
+  zhudaShadowBorrower(mirror);
+  assert.equal(frames(6, mirror), '10 00 00 10 00 00');
+  assert.deepEqual(rule.stats, { frames: 10, drawn: 6, taken: 4 });
+  assert.equal(rule.lends, true);
+  // While a drawing is pending it draws its own (a film still asks before its mirror).
+  rule.redraw();
+  assert.equal(rule.lends, false);
+  l.Stat.loopCount++;
+  assert.equal(draws(mirror), true);
+  assert.equal(draws(view), true);
+  assert.equal(draws(mirror), false, 'the maps are those of the view again');
+  // A probe: six views by another camera, each a LayaAir frame of its own.
+  for (let face = 0; face < 6; face++) {
+    l.Stat.loopCount++;
+    assert.equal(draws(probe), true, 'every view of a capture has its own maps');
+  }
+  assert.equal(rule.lends, false, 'the maps in place are those of the probe');
+  l.Stat.loopCount++;
+  assert.equal(draws(mirror), true, 'no maps of the view to borrow');
+  assert.equal(draws(view), true, 'the view draws its maps again');
+  l.Stat.loopCount++;
+  assert.equal(draws(view), false);
+  assert.equal(draws(mirror), false);
+  // Taken within a frame that kept them: drawn when the view is drawn again in it.
+  assert.equal(draws(probe), true);
+  assert.equal(draws(view), true);
+  // On request only: the same, and a probe does not wait to be asked.
+  rule.set({ mode: 'manual' });
+  l.Stat.loopCount++;
+  assert.equal(draws(view), true);
+  l.Stat.loopCount++;
+  assert.equal([draws(view), draws(mirror), draws(probe)].join(), 'false,false,true');
+  l.Stat.loopCount++;
+  assert.equal(draws(view), true);
+  l.Stat.loopCount++;
+  assert.equal(draws(view), false);
+  // The name can be taken away again.
+  zhudaShadowBorrower(mirror, false);
+  assert.equal(draws(mirror), true);
+  assert.throws(() => zhudaShadowBorrower(null), /a camera is required/);
+  rule.dispose();
+  assert.equal(rule.lends, false);
+  delete globalThis.Laya;
+});
+
+test('without a view of its own the rule keeps the maps for a camera on the canvas', () => {
+  const l = fakeShadowLaya();
+  globalThis.Laya = l;
+  const scene = fakeScene();
+  const left = fakeCamera(scene),
+    right = fakeCamera(scene),
+    capture = fakeCamera(scene, {});
+  const rule = new ZhudaShadowUpdates(scene, { mode: 'interval', interval: 2 });
+  const draws = drawing(l);
+  const seen = [];
+  for (let frame = 1; frame <= 4; frame++) {
+    l.Stat.loopCount = frame;
+    seen.push(draws(left) ? 1 : 0);
+  }
+  assert.equal(seen.join(''), '1010');
+  // A camera drawing to a target is not a view: it draws its own.
+  assert.equal(draws(capture), true);
+  l.Stat.loopCount = 5;
+  assert.equal(draws(left), true);
+  // Two cameras on the canvas take the maps from each other: once the second
+  // is drawn, every frame draws for both.
+  l.Stat.loopCount = 6;
+  assert.equal([draws(left), draws(right)].join(), 'false,true');
+  for (let frame = 7; frame <= 9; frame++) {
+    l.Stat.loopCount = frame;
+    assert.equal([draws(left), draws(right)].join(), 'true,true');
+  }
+  assert.equal(rule.stats.taken, 4);
+  rule.dispose();
+  delete globalThis.Laya;
+});
+
+test('a mirror borrows the kept maps unless it is told about its shadows', () => {
+  const l = fakeShadowLaya();
+  const shadowsOn = [];
+  class Camera {
+    constructor() {
+      this.transform = {};
+    }
+    destroy() {}
+    static drawRenderTextureByScene(camera) {
+      shadowsOn.push(l.Stat.enableShadow);
+      camera.cast = draws(camera);
+    }
+  }
+  Object.assign(l, {
+    Camera,
+    RenderTexture: class {
+      destroy() {}
+    },
+    RenderTargetFormat: { R16G16B16A16: 1, DEPTH_16: 2 },
+    RenderCapable: { RenderTextureFormat_R16G16B16A16: 1 },
+    LayaGL: { renderEngine: { getCapable: () => true } },
+  });
+  globalThis.Laya = l;
+  const scene = { ...fakeScene(), addChild() {} };
+  const view = fakeCamera(scene);
+  const rule = new ZhudaShadowUpdates(scene, { mode: 'manual' }, view);
+  const draws = drawing(l);
+  const mirror = (shadows) => {
+    const made = new ZhudaPlanarReflection(scene, {
+      width: 64,
+      height: 36,
+      excludedLayer: 29,
+      manual: true,
+      ...(shadows === undefined ? {} : { shadows }),
+    });
+    made.camera.scene = scene;
+    return made;
+  };
+  const left = mirror(),
+    own = mirror(true),
+    none = mirror(false);
+  l.Stat.loopCount = 1;
+  assert.equal(draws(view), true);
+  // Left out: it reads the view's kept maps, with shadows on.
+  left.draw();
+  assert.equal(left.camera.cast, false);
+  assert.equal(rule.lends, true);
+  // False: drawn with shadows switched off, as before; nothing is taken.
+  none.draw();
+  assert.equal(none.camera.cast, false);
+  assert.equal(rule.lends, true);
+  assert.deepEqual(shadowsOn, [true, false]);
+  assert.equal(l.Stat.enableShadow, true, 'switched back on after the draw');
+  // True: maps of its own, and the view's are gone.
+  own.draw();
+  assert.equal(own.camera.cast, true);
+  assert.equal(rule.lends, false);
+  left.draw();
+  assert.equal(left.camera.cast, true, 'nothing of the view to borrow: its own');
+  l.Stat.loopCount = 2;
+  assert.equal(draws(view), true, 'the view draws its maps again');
+  assert.deepEqual(rule.stats, { frames: 2, drawn: 2, taken: 1 });
+  // Without a rule every mirror but the one told not to draws its own, as before.
+  rule.dispose();
+  left.draw();
+  own.draw();
+  none.draw();
+  assert.deepEqual([left.camera.cast, own.camera.cast, none.camera.cast], [true, true, false]);
+  for (const made of [left, own, none]) made.dispose();
   delete globalThis.Laya;
 });
 
@@ -144,6 +346,7 @@ test('one rule a scene, and only on a LayaAir 3.4.2 scene and render process', (
   new ZhudaShadowUpdates(scene).dispose();
   assert.throws(() => new ZhudaShadowUpdates({}), /3\.4\.2 Scene3D/);
   assert.throws(() => new ZhudaShadowUpdates(fakeScene(), { mode: 'x' }), /mode is every/);
+  assert.throws(() => new ZhudaShadowUpdates(fakeScene(), {}, 'camera'), /the view is a camera/);
   globalThis.Laya = { Stat: { loopCount: 0, enableShadow: true } };
   assert.throws(() => new ZhudaShadowUpdates(fakeScene()), /no 3\.4\.2 render process/);
   delete globalThis.Laya;
@@ -155,20 +358,26 @@ test('a frame that keeps the maps keeps the shadow uniforms', () => {
   assert.equal(installLaya342SkippedShadowFrames(l), true, 'installed once');
   assert.equal(installLaya342SkippedShadowFrames({}), false);
   const process = new l.WebRender3DProcess();
-  const context = { preDrawUniformMaps: new Set(['Scene3D', 'Shadow']) };
-  const frame = (pass) => {
-    process._renderPass = pass;
-    assert.equal(process._initRenderPass({}, context), 'drawn');
+  const context = { preDrawUniformMaps: new Set(['Scene3D']) };
+  const scene = fakeScene();
+  const frame = (frequency, flags = {}) => {
+    scene._ShadowMapupdateFrequency = frequency;
+    Object.assign(process._renderPass, {
+      enableDirectLightShadow: false,
+      enableSpotLightShadowPass: false,
+      ...flags,
+    });
+    assert.equal(process._initRenderPass(fakeCamera(scene), context), 'drawn');
     return context.preDrawUniformMaps.has('Shadow');
   };
-  assert.equal(frame({ shadowCastPass: true, enableDirectLightShadow: true }), true);
+  assert.equal(frame(1), true, 'a frame that draws the maps');
   // The maps of an earlier frame are in use: the uniforms stay.
-  assert.equal(frame({ shadowCastPass: false, enableDirectLightShadow: true }), true);
-  assert.equal(frame({ shadowCastPass: false, enableSpotLightShadowPass: true }), true);
+  assert.equal(frame(Infinity, { enableDirectLightShadow: true }), true);
+  assert.equal(frame(Infinity, { enableSpotLightShadowPass: true }), true);
   // No shadow pass in use, or a view drawn with shadows off: LayaAir's own.
-  assert.equal(frame({ shadowCastPass: false }), false);
+  assert.equal(frame(Infinity), false);
   l.Stat.enableShadow = false;
-  assert.equal(frame({ shadowCastPass: false, enableDirectLightShadow: true }), false);
+  assert.equal(frame(Infinity, { enableDirectLightShadow: true }), false);
 });
 
 test('the look takes shadows.update and interval, checked, set in place between rules', () => {
@@ -353,6 +562,10 @@ function fakeScaleScene(log) {
     blitMainCanvas(source) {
       log.push(['native', source.name]);
     }
+    destroy(children) {
+      this.destroyed = true;
+      log.push(['scene destroyed', children]);
+    }
   }
   return new Scene();
 }
@@ -421,6 +634,46 @@ test('the render scale draws FSR in two passes at canvas size, and gives everyth
   // Free again for another.
   new ZhudaRenderScale(scene, { scale: 0.5 }).dispose();
   assert.throws(() => new ZhudaRenderScale({}), /3\.4\.2 Scene3D/);
+  delete globalThis.Laya;
+});
+
+test('a scene destroyed while it holds the render scale gives it back', () => {
+  const { l, log } = fakeScaleLaya();
+  globalThis.Laya = l;
+  const scene = fakeScaleScene(log);
+  const scaled = new ZhudaRenderScale(scene, { scale: 0.67 });
+  scene.blitMainCanvas({ name: 'camera' }, full, {});
+  log.length = 0;
+  // The look is never disposed: the scene's own destruction gives the scale back.
+  scene.destroy(true);
+  assert.deepEqual(log, [
+    ['destroy', 600, 360],
+    ...Array(3).fill(['data destroyed']),
+    ['scene destroyed', true],
+  ]);
+  assert.equal(l.Config3D.pixelRatio, 1);
+  assert.equal(Object.hasOwn(scene, 'destroy'), false);
+  assert.equal(Object.hasOwn(scene, 'blitMainCanvas'), false);
+  scaled.dispose();
+  assert.throws(() => scaled.set({ scale: 0.7 }), /Disposed/);
+  // The stage's scale is free for another scene, and a late dispose leaves that one alone.
+  const next = fakeScaleScene(log);
+  const other = new ZhudaRenderScale(next, { scale: 0.8 });
+  scaled.dispose();
+  assert.equal(l.Config3D.pixelRatio, 0.8);
+  // Destroyed without `destroy()` being called on it (its flag only): the next one takes over.
+  next.destroyed = true;
+  const third = new ZhudaRenderScale(fakeScaleScene(log), { scale: 0.6 });
+  assert.equal(l.Config3D.pixelRatio, 0.6);
+  assert.throws(() => other.set({ scale: 0.7 }), /Disposed/);
+  // A scene with a `destroy` of its own gets that one back.
+  const own = fakeScaleScene(log);
+  third.dispose();
+  const mine = () => 'mine';
+  own.destroy = mine;
+  new ZhudaRenderScale(own, { scale: 0.9 }).dispose();
+  assert.equal(own.destroy, mine);
+  assert.equal(l.Config3D.pixelRatio, 1);
   delete globalThis.Laya;
 });
 

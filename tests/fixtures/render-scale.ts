@@ -61,10 +61,22 @@ const meanDiff = (a: Uint8Array, b: Uint8Array, r = SCENE) => {
     }
   return +(s / n).toFixed(3);
 };
-/** Pixels of the stage's own background colour (magenta): what the 3D picture left uncovered. */
+/**
+ * What canvas no 3D camera covers reads like on this backend, measured from
+ * a frame whose view covers a quarter of it: the stage's magenta on WebGL,
+ * opaque black on WebGPU.
+ */
+let bare = [255, 0, 255];
+/** Pixels the 3D picture left uncovered: those of the bare canvas's colour. */
 const uncovered = (p: Uint8Array) => {
   let n = 0;
-  for (let i = 0; i < p.length; i += 4) if (p[i] > 200 && p[i + 1] < 70 && p[i + 2] > 200) n++;
+  for (let i = 0; i < p.length; i += 4)
+    if (
+      Math.abs(p[i] - bare[0]) <= 8 &&
+      Math.abs(p[i + 1] - bare[1]) <= 8 &&
+      Math.abs(p[i + 2] - bare[2]) <= 8
+    )
+      n++;
   return n;
 };
 /** Mean colour of the outermost row or column of the frame. */
@@ -209,8 +221,29 @@ async function main() {
     return read();
   };
   const r: any = {};
+  // A view over the middle right quarter of the canvas: the rest is bare, and
+  // shows what an uncovered pixel reads like here.
+  const whole = new Laya.Viewport(0, 0, 1, 1),
+    quarter = new Laya.Viewport(0.5, 0.25, 0.5, 0.5);
+  world.camera.normalizedViewport = quarter;
+  const split = (saved.split = frame(3));
+  bare = [split[(20 * W + 20) * 4], split[(20 * W + 20) * 4 + 1], split[(20 * W + 20) * 4 + 2]];
+  r.bare = bare;
+  // Each upscale fills that view and nothing beyond it.
+  r.split = { full: uncovered(split) };
+  for (const upscale of ['plain', 'bilinear', 'fsr'] as const) {
+    look.setRenderScale(0.67, { upscale, sharpness: 0.8 });
+    const p = (saved['split-' + upscale] = frame());
+    r.split[upscale] = { uncovered: uncovered(p), meanDiff: meanDiff(p, split) };
+  }
+  look.setRenderScale(1);
+  world.camera.normalizedViewport = whole;
   const reference = (saved.reference = frame(3));
-  r.reference = { sharpness: sharpness(reference), ui: sharpness(reference, UI) };
+  r.reference = {
+    sharpness: sharpness(reference),
+    ui: sharpness(reference, UI),
+    uncovered: uncovered(reference),
+  };
   r.ratioAtFull = Laya.Config3D.pixelRatio;
   // Each way of bringing a 0.67 picture up to the canvas, against full size.
   r.at067 = {};
@@ -301,6 +334,27 @@ async function main() {
     sharpness: sharpness(rich),
     meanDiff: meanDiff(rich, reference),
   };
+  // Other looks at 0.67: what each upscale does to them, against their own full size.
+  r.looks = {};
+  for (const [name, spec] of Object.entries({
+    none: { ...LOOK, grade: { ...LOOK.grade, antialias: 'none' } },
+    fxaaBloomAo: { ...LOOK, grade: { exposure: 1, bloom: 0.4, ao: 0.5, antialias: 'fxaa' } },
+    day: { preset: 'day' },
+  })) {
+    look.setLook(spec);
+    look.setRenderScale(1);
+    const full = frame(4);
+    const row: any = (r.looks[name] = { full: { sharpness: sharpness(full) } });
+    for (const upscale of ['plain', 'fsr'] as const) {
+      look.setRenderScale(0.67, { upscale, sharpness: 0.8 });
+      const p = frame(4);
+      row[upscale] = {
+        sharpness: sharpness(p),
+        meanDiff: meanDiff(p, full),
+        uncovered: uncovered(p),
+      };
+    }
+  }
   look.setLook(LOOK);
   look.setRenderScale(1);
   r.backAtFull = { ratio: Laya.Config3D.pixelRatio, meanDiff: meanDiff(frame(), reference) };
@@ -316,7 +370,34 @@ async function main() {
       return String((error as Error).message);
     }
   })();
+  // A scene destroyed with its look left undisposed gives the stage's scale back.
+  look.setRenderScale(1);
+  const stray = new Z.ZhudaSceneLook(other, otherCamera, { fog: false }, { scale: 0.8 });
+  frame(1);
+  r.stray = { held: Laya.Config3D.pixelRatio };
   other.destroy(true);
+  r.stray.afterDestroy = Laya.Config3D.pixelRatio;
+  r.stray.next = (() => {
+    try {
+      look.setRenderScale(0.75);
+      return 'accepted';
+    } catch (error) {
+      return String((error as Error).message);
+    }
+  })();
+  const after = frame();
+  r.stray.uncovered = uncovered(after);
+  r.stray.meanDiff = meanDiff(after, reference);
+  // The forgotten look disposed late leaves the scale to whoever holds it now.
+  r.stray.lateDispose = (() => {
+    try {
+      stray.dispose();
+      return 'disposed';
+    } catch (error) {
+      return String((error as Error).message);
+    }
+  })();
+  r.stray.afterLateDispose = Laya.Config3D.pixelRatio;
   r.invalid = ['scale 0.4', 'upscale', 'sharpness'].map((what) => {
     try {
       if (what === 'scale 0.4') look.setRenderScale(0.4);

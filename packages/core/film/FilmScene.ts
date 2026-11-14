@@ -79,10 +79,13 @@ export interface ZhudaFilmShadows {
    * When the shadow maps are drawn again (default 'every'): 'every' frame;
    * 'interval': every `interval` frames, receivers keep the last maps in
    * between, so a moving caster's shadow follows it in steps; 'manual': when
-   * the game asks (`ZhudaSceneLook.redrawShadows`) and when the sun or the
-   * shadow settings change, for a still camera over still casters. Stills
-   * and videos of a film draw them for every sample whatever this says.
-   * See `ZhudaShadowUpdates`.
+   * the game asks (`ZhudaSceneLook.redrawShadows`) and when a new look
+   * changes the sun or the shadow settings, for a still camera over still
+   * casters. Stills and videos of a film draw them for every sample
+   * whatever this says. The maps are kept for the look's camera: a water's
+   * mirror left at its defaults reads them, and any other camera that draws
+   * the scene with shadows of its own makes the look's camera draw its maps
+   * again. See `ZhudaShadowUpdates`.
    */
   update?: 'every' | 'interval' | 'manual';
   /** Frames from one drawing to the next with `update: 'interval'`, 2..30 (default 3). */

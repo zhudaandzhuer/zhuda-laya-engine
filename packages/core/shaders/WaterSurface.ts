@@ -54,9 +54,13 @@ export interface ZhudaWaterSurfaceOptions {
    */
   flipScreen?: boolean;
   /**
-   * The mirrored view redraws the shadow maps (default true). A game turns it
-   * off to save a shadow pass per frame; the mirror then uses the shadows of
-   * the main view.
+   * Whether the mirrored view draws shadow maps of its own. Left out, it
+   * does, except while the look's shadows are not drawn every frame
+   * (`shadows.update`), where it reads the maps kept for the main view.
+   * `true` draws them also under `shadows.update`, which then saves
+   * nothing: the main view has to draw its maps again after the mirror's.
+   * A game sets `false` to save that shadow pass per frame at any rate; the
+   * mirrored view is then drawn without the sun's shadows.
    */
   mirrorShadows?: boolean;
   /** Laya layer for the surface; the mirrored camera does not draw this layer (default 29). */
@@ -260,7 +264,7 @@ export class ZhudaWaterSurface {
       clipBelowPlane: true,
       // The owner draws the mirror with `render()`: once per frame, not twice.
       manual: true,
-      shadows: options.mirrorShadows ?? true,
+      shadows: options.mirrorShadows,
     });
     try {
       this.material = new ZhudaShaderMaterial(SPEC, {

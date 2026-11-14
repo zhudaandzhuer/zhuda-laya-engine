@@ -17,7 +17,8 @@
  * every picture of the chain to the camera's (smaller) target.
  *
  * `Config3D.pixelRatio` is one value for the whole stage: one render scale
- * at a time. Only the class needs the Laya runtime.
+ * at a time. A scene destroyed while it holds the scale gives it back.
+ * Only the class needs the Laya runtime.
  */
 export type ZhudaUpscale = 'fsr' | 'bilinear' | 'plain';
 
@@ -184,8 +185,9 @@ export class ZhudaRenderScale {
   private readonly l: any;
   private readonly scene3D: any;
   private readonly previousRatio: number;
-  /** The scene's own `blitMainCanvas`, when it had one of its own before this. */
+  /** The scene's own `blitMainCanvas` and `destroy`, when it had its own before this. */
   private readonly ownBlit: PropertyDescriptor | undefined;
+  private readonly ownDestroy: PropertyDescriptor | undefined;
   private readonly passes: { easu: any; rcas: any; bilinear: any };
   private readonly data: { easu: any; rcas: any; bilinear: any };
   /** EASU's picture at canvas size, kept from frame to frame. */
@@ -201,6 +203,8 @@ export class ZhudaRenderScale {
       throw Error('Render scale needs the LayaAir 3D module');
     if (typeof scene3D?.blitMainCanvas !== 'function')
       throw Error('Render scale: needs a LayaAir 3.4.2 Scene3D');
+    // A scene that was destroyed some other way than by `destroy()` holds nothing any more.
+    if (active?.scene3D.destroyed) active.dispose();
     if (active) throw Error('Render scale: the stage has one already; dispose it first');
     register(l);
     const shader = (name: string) => l.Shader3D.find(name);
@@ -227,6 +231,14 @@ export class ZhudaRenderScale {
     const native = scene3D.blitMainCanvas;
     scene3D.blitMainCanvas = (source: any, viewport: any, camera: any) =>
       this.blit(native, source, viewport, camera);
+    // A scene destroyed without its look disposed must not leave the stage scaled.
+    this.ownDestroy = Object.getOwnPropertyDescriptor(scene3D, 'destroy');
+    const destroy = scene3D.destroy;
+    if (typeof destroy === 'function')
+      scene3D.destroy = (...args: unknown[]) => {
+        this.dispose();
+        return destroy.apply(scene3D, args);
+      };
     active = this;
     this.apply();
   }
@@ -256,6 +268,8 @@ export class ZhudaRenderScale {
     this.l.Config3D.pixelRatio = this.previousRatio;
     Reflect.deleteProperty(this.scene3D, 'blitMainCanvas');
     if (this.ownBlit) Object.defineProperty(this.scene3D, 'blitMainCanvas', this.ownBlit);
+    Reflect.deleteProperty(this.scene3D, 'destroy');
+    if (this.ownDestroy) Object.defineProperty(this.scene3D, 'destroy', this.ownDestroy);
     this.target?.destroy();
     this.target = null;
     for (const data of Object.values(this.data)) data.destroy?.();

@@ -135,9 +135,14 @@ export declare class ZhudaPlanarReflection {
          */
         manual?: boolean;
         /**
-         * Whether `draw()` also redraws the shadow maps for the mirrored view
-         * (default true). Without it the mirror uses the shadow maps of the
-         * main view, which saves a full shadow pass per frame.
+         * Whether the mirrored view draws shadow maps of its own. Left out, it
+         * does, except while the scene's shadows are not drawn every frame
+         * (`ZhudaShadowUpdates`, a look's `shadows.update`): there it reads
+         * the maps kept for the main view, since maps of its own would replace
+         * those and the main view would have to draw them again every frame.
+         * `true`: always, also under such a rule, which then saves nothing.
+         * `false`: never, in `draw()`, which saves a full shadow pass per
+         * frame; the mirrored view is then drawn without the sun's shadows.
          */
         shadows?: boolean;
     });

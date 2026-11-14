@@ -15,6 +15,17 @@
  * Its count also runs off by every hand-drawn view (a mirror, a capture), so
  * this class decides each frame itself instead of using the native count.
  *
+ * The maps belong to the light, not to a camera: LayaAir has one set, fitted
+ * to the camera that drew them last, and every camera reads that set. So the
+ * rule keeps them for one camera, the view. Any other camera that draws the
+ * scene with shadows on (a probe or a capture camera, a mirror told to draw
+ * shadows of its own) draws maps of its own as it does without the rule, and
+ * the view draws its maps again the next time it is drawn: it never reads
+ * maps fitted to another camera. A camera named with `zhudaShadowBorrower`
+ * (the engine's mirrors, unless told otherwise) reads the view's kept maps
+ * instead, so a water surface costs no shadow drawing and takes nothing
+ * from the view.
+ *
  * Point lights draw their shadows on demand already (`ZhudaPointShadow`).
  */
 export type ZhudaShadowUpdateMode = 'every' | 'interval' | 'manual';
@@ -36,9 +47,21 @@ export declare function zhudaShadowFrameDraws(options: Required<ZhudaShadowUpdat
  * the shadow maps while shadows are on (`Stat.enableShadow`) and the maps
  * of an earlier frame are in use; see the class comment. A frame that draws
  * the maps, and a view drawn with shadows switched off, are left as LayaAir
- * has them. Returns false where the render process is not LayaAir 3.4.2's.
+ * has them. It also tells the rule which camera LayaAir's frame test is
+ * for. Returns false where the render process is not LayaAir 3.4.2's.
  */
 export declare function installLaya342SkippedShadowFrames(runtime?: any): boolean;
+/**
+ * Names a camera that reads the maps a rule keeps for its view instead of
+ * drawing maps of its own: a mirror of that view, whose picture shows the
+ * same part of the world. It borrows only while the kept maps are the
+ * view's and no drawing is pending (`ZhudaShadowUpdates.lends`); otherwise,
+ * and in a scene without a rule, it draws its own like any camera. The
+ * engine's mirrors (`ZhudaPlanarReflection`, the water and wet surfaces) are
+ * named unless their `shadows` / `mirrorShadows` option says otherwise.
+ * `borrows: false` takes the name away.
+ */
+export declare function zhudaShadowBorrower(camera: any, borrows?: boolean): void;
 /**
  * The shadow update rule of one `Scene3D`. One at a time per scene; dispose
  * gives the scene back LayaAir's own every-frame drawing.
@@ -46,6 +69,7 @@ export declare function installLaya342SkippedShadowFrames(runtime?: any): boolea
 export declare class ZhudaShadowUpdates {
     private options;
     private readonly scene3D;
+    private readonly view;
     private readonly l;
     private native;
     private installed;
@@ -54,16 +78,35 @@ export declare class ZhudaShadowUpdates {
     private since;
     private frame;
     private drawsNow;
-    /** Frames this scene was drawn with shadows on, and how many of them drew the maps. */
+    /** The camera the maps in place were drawn for. */
+    private mapsFor;
     private counts;
-    constructor(scene3D: any, options?: ZhudaShadowUpdateOptions);
+    /**
+     * `camera` is the view the maps are kept for (a look gives its own).
+     * Without one, every camera that draws to the canvas is a view; two of
+     * them take the maps from each other and nothing is saved.
+     */
+    constructor(scene3D: any, options?: ZhudaShadowUpdateOptions, camera?: any);
     get mode(): ZhudaShadowUpdateMode;
     get interval(): number;
-    /** Frames drawn with shadows on since the rule was made, and how many drew the maps. */
+    /**
+     * Since the rule was made: `frames` the view was drawn in with shadows on,
+     * `drawn` how many of them drew the maps, and `taken` how many of those
+     * only because another camera had drawn maps of its own since (a mirror
+     * with shadows of its own, a probe, a capture). `taken` rising with
+     * `frames` means the rule saves nothing in this scene.
+     */
     get stats(): {
         frames: number;
         drawn: number;
+        taken: number;
     };
+    /**
+     * Whether a borrowing camera (`zhudaShadowBorrower`) drawn now reads the
+     * kept maps: the rule keeps maps, those in place are the view's, and no
+     * drawing is pending.
+     */
+    get lends(): boolean;
     /** Changes the rule in place; the next frame draws the maps. */
     set(options: ZhudaShadowUpdateOptions): void;
     /**
@@ -75,6 +118,8 @@ export declare class ZhudaShadowUpdates {
     /** 'every' is LayaAir's own path; the others answer LayaAir's frame test themselves. */
     private apply;
     private uninstall;
-    /** One answer a frame: every view drawn in it (a mirror, the camera) sees the same maps. */
+    /** The camera the maps are kept for; without one, any camera drawing to the canvas. */
+    private isView;
+    /** Whether the camera LayaAir is about to draw draws the maps first. */
     private decide;
 }

@@ -18,7 +18,8 @@
  * every picture of the chain to the camera's (smaller) target.
  *
  * `Config3D.pixelRatio` is one value for the whole stage: one render scale
- * at a time. Only the class needs the Laya runtime.
+ * at a time. A scene destroyed while it holds the scale gives it back.
+ * Only the class needs the Laya runtime.
  */
 export type ZhudaUpscale = 'fsr' | 'bilinear' | 'plain';
 export interface ZhudaRenderScaleOptions {
@@ -45,8 +46,9 @@ export declare class ZhudaRenderScale {
     private readonly l;
     private readonly scene3D;
     private readonly previousRatio;
-    /** The scene's own `blitMainCanvas`, when it had one of its own before this. */
+    /** The scene's own `blitMainCanvas` and `destroy`, when it had its own before this. */
     private readonly ownBlit;
+    private readonly ownDestroy;
     private readonly passes;
     private readonly data;
     /** EASU's picture at canvas size, kept from frame to frame. */

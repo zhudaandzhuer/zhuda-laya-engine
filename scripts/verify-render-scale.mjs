@@ -3,13 +3,18 @@
 // with `ZhudaRenderScale`), through the browser SDK:
 // - at every scale from 0.5 to 1 and every upscale the 3D picture covers the
 //   whole canvas, edge to edge, and the 2D interface over it stays as sharp
-//   as at full size;
+//   as at full size. What an uncovered pixel reads like is measured first,
+//   from a view over a quarter of the canvas (the stage's colour on WebGL,
+//   black on WebGPU), and each upscale fills that view and nothing more;
 // - at 0.67, FSR 1 (EASU then RCAS) and the filtered upscale with RCAS are
-//   sharper than LayaAir's plain stretch and no further from the full-size
-//   picture; the sharpening is what makes them sharper;
+//   sharper than LayaAir's plain stretch; the sharpening is what makes them
+//   sharper. In the page's own look (multisampled, no bloom) FSR is also
+//   nearer the full-size picture; in three other looks it is sharper and
+//   about as near, a little to either side, which is reported;
 // - a quality ladder (`zhudaQualitySteps`) walks look levels and scales in
 //   place; one render scale for the stage; full size gives LayaAir's own
-//   picture back; disposal leaves nothing behind.
+//   picture back; disposal leaves nothing behind, and a scene destroyed
+//   with its look left undisposed gives the stage's scale back.
 // Pictures for a person to look at are written beside the report.
 // Desktop GPU evidence only (WebGL, or WebGPU with RENDER_SCALE_RENDERER);
 // the frame times it reports are desktop times, not phone evidence.
@@ -107,6 +112,11 @@ try {
       png(`scale-${name}.png`, await browser.evaluate(`window.__SCALE__.picture('${name}')`));
       report.pictures.push(`scale-${name}.png`);
     }
+    // A view over a quarter of the canvas, at full size and at 0.67 with FSR: bare canvas around it.
+    for (const name of ['split', 'split-fsr']) {
+      png(`${name}.png`, await browser.evaluate(`window.__SCALE__.picture('${name}')`));
+      report.pictures.push(`${name}.png`);
+    }
     // The finest stripes and the slanted bars, three times enlarged without smoothing.
     for (const name of ['reference', 'plain', 'fsr', 'bilinear']) {
       png(
@@ -136,6 +146,23 @@ if (gpuBuild)
   );
 const r = report.r;
 assert.equal(r.ratioAtFull, 1);
+// The test for uncovered canvas can fail here: around a view over a quarter
+// of the canvas it counts the rest (less the interface strip).
+assert.ok(
+  r.split.full > W * H * 0.5,
+  `bare canvas is told from the picture on this backend (${r.split.full} pixels of ${r.bare} around a quarter view)`,
+);
+assert.equal(r.reference.uncovered, 0, 'and nothing in the full-size picture reads like it');
+for (const upscale of ['plain', 'bilinear', 'fsr']) {
+  assert.ok(
+    Math.abs(r.split[upscale].uncovered - r.split.full) <= r.split.full * 0.005,
+    `${upscale}: a quarter view at 0.67 fills its quarter and no more (${r.split[upscale].uncovered} bare pixels against ${r.split.full})`,
+  );
+  assert.ok(
+    r.split[upscale].meanDiff < 6,
+    `${upscale}: with the same picture in it (${r.split[upscale].meanDiff})`,
+  );
+}
 const { plain, bilinear, fsr, easu } = r.at067;
 for (const [name, m] of Object.entries({ plain, bilinear, fsr }))
   assert.deepEqual(
@@ -173,8 +200,21 @@ assert.ok(
 );
 assert.ok(
   fsr.meanDiff < plain.meanDiff,
-  `FSR is nearer the full-size picture than the plain stretch (${fsr.meanDiff} against ${plain.meanDiff})`,
+  `in this look (multisampled, no bloom) FSR is nearer the full-size picture than the plain stretch (${fsr.meanDiff} against ${plain.meanDiff})`,
 );
+// Other looks: sharper there too, and about as near, to either side.
+for (const [name, look] of Object.entries(r.looks)) {
+  assert.ok(
+    look.fsr.sharpness > look.plain.sharpness * 1.1 &&
+      look.fsr.sharpness < look.full.sharpness * 1.05,
+    `look ${name}: FSR is sharper than the plain stretch and not sharper than full size (${look.fsr.sharpness}, ${look.plain.sharpness}, ${look.full.sharpness})`,
+  );
+  assert.ok(
+    Math.abs(look.fsr.meanDiff - look.plain.meanDiff) < 0.5,
+    `look ${name}: and about as near the full-size picture (${look.fsr.meanDiff} against ${look.plain.meanDiff})`,
+  );
+  assert.equal(look.fsr.uncovered + look.plain.uncovered, 0, `look ${name}: the canvas is covered`);
+}
 assert.ok(
   bilinear.meanDiff < plain.meanDiff * 1.1,
   `RCAS on a filtered upscale is about as near as the plain stretch (${bilinear.meanDiff} against ${plain.meanDiff})`,
@@ -210,6 +250,18 @@ assert.ok(
   `back at full size, the first picture (${r.backAtFull.meanDiff})`,
 );
 assert.match(r.second, /stage has one already/, 'one render scale for the stage');
+// A scene destroyed with its look left undisposed.
+assert.equal(r.stray.held, 0.8);
+assert.equal(r.stray.afterDestroy, 1, 'its destruction gives the stage its full size back');
+assert.equal(r.stray.next, 'accepted', 'and the scale to the next look that asks');
+assert.equal(r.stray.uncovered, 0);
+assert.ok(r.stray.meanDiff < 12, `which draws the scene (${r.stray.meanDiff})`);
+assert.equal(r.stray.lateDispose, 'disposed');
+assert.equal(
+  r.stray.afterLateDispose,
+  0.75,
+  'a late dispose of the forgotten look changes nothing',
+);
 assert.match(r.invalid[0], /use 0\.5\.\.1/);
 assert.match(r.invalid[1], /fsr, bilinear or plain/);
 assert.match(r.invalid[2], /sharpness 0\.\.1/);
@@ -224,6 +276,13 @@ assert.deepEqual(
 );
 console.log(
   `PASS render scale on ${report.renderer} (${report.backend.adapter ? JSON.stringify(report.backend.adapter) : report.gpu}): ` +
-    JSON.stringify({ at067: r.at067, reference: r.reference, desktopMs: r.desktopMs }) +
+    JSON.stringify({
+      at067: r.at067,
+      reference: r.reference,
+      looks: r.looks,
+      bare: r.bare,
+      split: r.split,
+      desktopMs: r.desktopMs,
+    }) +
     `\nPictures: ${path.join(out, 'evidence')}`,
 );

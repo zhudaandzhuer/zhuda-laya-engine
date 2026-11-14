@@ -1252,10 +1252,12 @@ export function applyResolvedFilmLook(
     cleanups.push(() => (sun.shadowMode = l.ShadowMode.None));
     // Every frame is LayaAir's own path; the others need the rule on the scene.
     if (look.shadows.update !== 'every') {
-      const rule = (shadowUpdates = new ZhudaShadowUpdates(scene3D, {
-        mode: look.shadows.update,
-        interval: look.shadows.interval,
-      }));
+      // The maps are kept for the look's camera; see `ZhudaShadowUpdates`.
+      const rule = (shadowUpdates = new ZhudaShadowUpdates(
+        scene3D,
+        { mode: look.shadows.update, interval: look.shadows.interval },
+        camera,
+      ));
       cleanups.push(() => rule.dispose());
     }
   } else sun.shadowMode = l.ShadowMode.None;
