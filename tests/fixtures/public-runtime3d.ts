@@ -243,8 +243,10 @@ prefabLibrary.instantiate('panel').then((instance) => {
 import {
   createSurfaceMaterial as createPhysicalSurface,
   configureSurfacePasses as askCameraPasses,
+  physicalSurfaceTextureLimit,
   surfaceMaterialPasses,
   validatePhysicalSurfaceSpec,
+  type PhysicalSurfaceUse,
   type SurfaceMaterialSpec,
 } from 'zhuda-laya-engine';
 const glassSpec: SurfaceMaterialSpec = {
@@ -264,10 +266,27 @@ const clothSpec: SurfaceMaterialSpec = {
   anisotropy: 0.8,
   anisotropyRotationDeg: 135,
 };
+// The spec as docs/filmic-rendering.md writes it: a literal `as const`, whose
+// colours are readonly tuples.
+const literalGlassSpec = {
+  type: 'physical',
+  roughness: 0.05,
+  ior: 1.5,
+  transmission: {
+    factor: 1,
+    volume: { thickness: 0.3, attenuationColor: [0.3, 0.85, 0.5], attenuationDistance: 0.3 },
+  },
+} as const;
 function physicalSurfaces(camera: Laya.Camera) {
   const problems: string[] = validatePhysicalSurfaceSpec(glassSpec);
   const passes = askCameraPasses(camera, [surfaceMaterialPasses(glassSpec)], 1);
   if (!problems.length && passes.ready) createPhysicalSurface(glassSpec);
+  askCameraPasses(camera, [surfaceMaterialPasses(literalGlassSpec)], 1);
+  createPhysicalSurface(literalGlassSpec);
+  // On a lightmapped renderer a surface carries fewer textures.
+  const use: PhysicalSurfaceUse = { lightmap: 'directional' };
+  const most: number = physicalSurfaceTextureLimit(use);
+  if (validatePhysicalSurfaceSpec(clothSpec, use).length || most < 1) return null;
   return createPhysicalSurface(clothSpec);
 }
 console.log(physicalSurfaces);

@@ -320,9 +320,36 @@ configureSurfacePasses(camera, [surfaceMaterialPasses(glassSpec)], 1);
   `anisotropyRotationDeg` and a direction texture, `normalScale`,
   `occlusionStrength`, and the usual colour, metallic, roughness, emission,
   blend modes and textures. Textures are read the glTF way
-  (`metallicRoughness`: G roughness, B metallic); a feature's textures need
-  the feature switched on. `validatePhysicalSurfaceSpec` lists what is wrong
-  with a spec without LayaAir.
+  (`metallicRoughness`: G roughness, B metallic). A feature's textures need
+  the feature switched on, and so do the fields that only shape it
+  (`clearCoatRoughness` and `clearCoatNormalScale` need `clearCoat` above 0,
+  `anisotropyRotationDeg` needs `anisotropy` above 0, on `pbr` too).
+  `validatePhysicalSurfaceSpec` lists what is wrong with a spec without
+  LayaAir.
+- A physical surface carries **six textures at most**
+  (`physicalSurfaceTextureLimit()`), five on a renderer with a baked
+  lightmap and four with a directional one
+  (`validatePhysicalSurfaceSpec(spec, { lightmap: 'directional' })`;
+  `createSurfaceMaterial` checks without a lightmap). A seventh is refused.
+  A shader stage holds 16 samplers and each filled slot takes one, the same
+  picture in two slots twice. LayaAir's WebGPU layout binds the samplers of
+  a lit scene whether the scene uses them or not: the sun's and the spot
+  lights' shadow maps, the point-shadow picture, two light lists, the
+  camera's depth, depth-normal and opaque pictures, the environment and the
+  shader's reflectance lookup, ten in all, which leaves six. WebGL binds
+  only what the scene uses (eight of those with every light, shadow and
+  transmission on) and so has two to spare; the limit is the same on both so
+  that a surface which draws on one draws on the other. Past it the surface
+  is not drawn at all and LayaAir only logs it: WebGPU refuses the pipeline
+  ("The number of samplers (17) in the Vertex stage exceeds the maximum
+  per-stage limit (16)"), WebGL the shader ("texture image units count
+  exceeds MAX_TEXTURE_IMAGE_UNITS(16)", which does not reach
+  `renderer.errors`). A model file's own materials are LayaAir's and are not
+  checked by this.
+- A `normal` texture is read only on a mesh with tangents
+  (`computeMeshTangents`); on one without, it changes nothing. A physical
+  surface is not lit by a probe volume: LayaAir marks only its `PBR` shader
+  as taking Volumetric GI (read in LayaAir's code, not drawn here).
 - Colours are display colours, as on `pbr` (LayaAir's `Color` turns those to
   light; the glTF shader takes light, so the engine converts them). With the
   same settings and no extra feature, a physical ball draws what a `pbr` ball
@@ -333,7 +360,9 @@ configureSurfacePasses(camera, [surfaceMaterialPasses(glassSpec)], 1);
   refused with a message that says what to load (LayaAir itself would warn
   and fall back to Blinn-Phong).
 - `transmission` reads the camera's opaque picture (`camera.opaquePass`):
-  without that pass what shows through is black. The surface is drawn in the
+  without that pass nothing shows through, and the surface is drawn as the
+  same surface in black is: its reflections of the sky and the lights and
+  nothing behind it. The surface is drawn in the
   transparent queue (3000), after that picture is taken, so a transmissive
   surface does not show another transmissive or transparent one behind it
   (LayaAir has no back-face pre-pass). `blend: 'additive'` with transmission
@@ -344,13 +373,25 @@ Measured on desktop WebGL and WebGPU (Apple M4), the same numbers on both
 to 98 of 255 with sheen, its centre from 57 to 62; a brushed disc lit from
 the camera has a round highlight without anisotropy and a band 2.2 times
 longer than wide with it, whose axis lies at 0, 135 and 90 degrees on the
-screen (y down) at rotations 0, 45 and 90 (405 the same as 45, the `pbr`
+screen (y down) at rotations 0, 45 and 90, and at 45 for -45 (the `pbr`
 material at 90 the same as the physical one); through a glass slab the
 checkerboard under it keeps 92 % of its contrast when clear and 65 % when
 tinted, green against red and blue going from 1.0 to 1.6, and without the
-opaque pass the slab is dark (mean 55 against 113); a dark ball with a thin
-film is green-blue at its centre and pink at its edge, a hue 159 degrees
-round, where without the film it is grey.
+opaque pass the slab is, pixel for pixel, the same slab in black (a dark
+grey-blue from the sky it reflects, mean 55 against 113), tinted or clear; a
+dark ball with a thin film is green-blue at its centre and pink at its edge,
+a hue 159 degrees round, where without the film it is grey. Each of the
+seventeen texture slots, filled alone on a ball with every feature on,
+changes the picture (by 0.6 of 255 on average for the specular strength up
+to 40 for the base colour; two draws of one material differ by 0), except
+`normal` on that ball, which has no tangents. In a scene with a sun, a spot
+light and a point light casting shadows, six more point lights and light
+from the sky, a ball with every feature and six textures is drawn with 16
+samplers on WebGPU (5 for the scene, 3 for the camera, 1 for the renderer,
+7 for the material) and 14 on WebGL; a lightmapped square with five, and
+one with a directional lightmap and four, likewise. Set by hand past the
+validator, the seventh texture is where the ball stops being drawn on
+WebGPU, the ninth on WebGL.
 
 ## Marks on surfaces
 

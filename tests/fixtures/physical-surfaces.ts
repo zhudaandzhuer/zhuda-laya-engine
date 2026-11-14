@@ -355,8 +355,13 @@ async function main() {
     'rot-0': make({ type: 'physical', ...metal, anisotropy: 0.8, anisotropyRotationDeg: 0 }),
     'rot-45': make({ type: 'physical', ...metal, anisotropy: 0.8, anisotropyRotationDeg: 45 }),
     'rot-90': make({ type: 'physical', ...metal, anisotropy: 0.8, anisotropyRotationDeg: 90 }),
-    // A full turn more is the same as 45 degrees.
-    'rot-405': make({ type: 'physical', ...metal, anisotropy: 0.8, anisotropyRotationDeg: 405 }),
+    // The other way: LayaAir's setter would stop a negative angle at 0.
+    'rot-minus-45': make({
+      type: 'physical',
+      ...metal,
+      anisotropy: 0.8,
+      anisotropyRotationDeg: -45,
+    }),
     // LayaAir's standard material: its setter would stop at 1 radian (57 degrees).
     'standard-90': make({ type: 'pbr', ...metal, anisotropy: 0.8, anisotropyRotationDeg: 90 }),
   };
@@ -441,6 +446,8 @@ async function main() {
     clear: make(glassSpec([1, 1, 1])),
     // The same white, smooth surface without transmission.
     opaque: make({ type: 'physical', color: [1, 1, 1, 1], roughness: 0.05, ior: 1.5 }),
+    // The same smooth surface in black: its reflections and nothing else.
+    black: make({ type: 'physical', color: [0, 0, 0, 1], roughness: 0.05, ior: 1.5 }),
     // A flat colour that marks where the slab is on the screen.
     mark: make({ type: 'unlit', color: [1, 0, 1, 1] }),
   };
@@ -497,11 +504,30 @@ async function main() {
     slab.meshRenderer.sharedMaterial = glass[name];
     r.glass[name] = region(frame());
   }
-  // Without the camera's opaque pass there is nothing to see through.
+  // Without the camera's opaque pass there is nothing to see through: the
+  // slab is black glass, its reflections only, whatever its tint.
   glassStage(false);
-  slab.meshRenderer.sharedMaterial = glass.tinted;
-  r.glass.noPass = region(frame());
+  const slabFrame = (name: string) => {
+    slab.meshRenderer.sharedMaterial = glass[name];
+    return frame();
+  };
+  /** Mean difference of the slab's pixels between two frames, of 255, over the three colours. */
+  const slabDiff = (a: Uint8Array, b: Uint8Array) => {
+    let sum = 0;
+    for (const i of inside) for (let c = 0; c < 3; c++) sum += Math.abs(a[i + c] - b[i + c]);
+    return round(sum / inside.length / 3);
+  };
+  const noPassTinted = slabFrame('tinted'),
+    noPassClear = slabFrame('clear'),
+    blackSlab = slabFrame('black');
+  r.glass.noPass = region(noPassTinted);
+  r.glass.black = region(blackSlab);
+  r.glass.noPassAgainstBlack = slabDiff(noPassTinted, blackSlab);
+  r.glass.noPassTintedAgainstClear = slabDiff(noPassTinted, noPassClear);
   glassStage(true);
+  // With the pass the same two differ: the measure can tell them apart.
+  r.glass.tintedAgainstBlack = slabDiff(slabFrame('tinted'), blackSlab);
+  r.glass.tintedAgainstClear = slabDiff(slabFrame('tinted'), slabFrame('clear'));
   glassGroup.active = false;
   passes(false);
 
@@ -547,6 +573,104 @@ async function main() {
   r.film.iridescent = measureFilm(frame());
   filmGroup.active = false;
 
+  // --- Every texture slot on its own: does the shader read it? ---
+  // A ball with every feature on, in front of an orange wall for the light
+  // through it, drawn without textures and then with a chequered picture in
+  // one slot at a time. Two draws of one material are the same to the last
+  // value, so any difference is the slot being read.
+  const slotGroup = group();
+  const wallMesh = Laya.PrimitiveMesh.createPlane(8, 8, 1, 1);
+  owned.push(wallMesh);
+  const wall = place(
+    slotGroup,
+    wallMesh,
+    make({ type: 'unlit', color: [1, 0.6, 0.2, 1] }),
+    [0, 0, -2],
+  );
+  wall.transform.rotationEuler = new Laya.Vector3(90, 0, 0);
+  const everyFeature = {
+    type: 'physical',
+    color: [0.8, 0.8, 0.8, 1],
+    roughness: 0.4,
+    metallic: 0.5,
+    emission: [0.3, 0.15, 0],
+    clearCoat: 0.8,
+    clearCoatRoughness: 0.3,
+    anisotropy: 0.7,
+    sheen: { color: [1, 1, 1], roughness: 0.5 },
+    iridescence: { thicknessRange: [100, 600] },
+    specular: { factor: 1, color: [1, 1, 1] },
+    transmission: {
+      factor: 0.6,
+      volume: { thickness: 0.3, attenuationColor: [0.3, 0.85, 0.5], attenuationDistance: 0.3 },
+    },
+  };
+  // Light and dark squares in every channel, alpha included (some slots read it).
+  const patch = new Uint8Array(64 * 64 * 4);
+  for (let y = 0; y < 64; y++)
+    for (let x = 0; x < 64; x++)
+      patch.set(
+        (Math.floor(x / 8) + Math.floor(y / 8)) % 2 ? [230, 230, 230, 255] : [25, 25, 25, 40],
+        (y * 64 + x) * 4,
+      );
+  const patchColour = Z.createSurfaceTexture(64, 64, patch, 'color'),
+    patchData = Z.createSurfaceTexture(64, 64, patch, 'data');
+  owned.push(patchColour, patchData);
+  const slotBall = place(slotGroup, sphere, make(everyFeature), [0, 0, 0]);
+  slotGroup.active = true;
+  surroundings([0.55, 0.6, 0.7], [0.25, 0.22, 0.2]);
+  stage([0, 0, 4], [0, 0, 0], 40, [-35, -30]);
+  passes(true);
+  const slotFrame = (textures: any) => {
+    slotBall.meshRenderer.sharedMaterial = make({ ...everyFeature, textures });
+    return frame();
+  };
+  const untextured = slotFrame({});
+  const ballDisc = { cx: W / 2, cy: H / 2, r: 110 };
+  /** Mean difference between two frames over the middle of the ball, of 255, over the three colours. */
+  const ballDiff = (a: Uint8Array, b: Uint8Array) => {
+    let sum = 0,
+      n = 0;
+    for (let y = ballDisc.cy - ballDisc.r; y < ballDisc.cy + ballDisc.r; y++)
+      for (let x = ballDisc.cx - ballDisc.r; x < ballDisc.cx + ballDisc.r; x++) {
+        if (Math.hypot(x - ballDisc.cx, y - ballDisc.cy) > ballDisc.r) continue;
+        const i = (y * W + x) * 4;
+        for (let c = 0; c < 3; c++) sum += Math.abs(a[i + c] - b[i + c]);
+        n++;
+      }
+    return round(sum / n / 3);
+  };
+  r.slots = {
+    again: ballDiff(untextured, slotFrame({})),
+    changed: {} as Record<string, number>,
+  };
+  const colourSlots = ['albedo', 'emission', 'sheenColor', 'specularColor'];
+  for (const slot of [
+    'albedo',
+    'normal',
+    'metallicRoughness',
+    'occlusion',
+    'emission',
+    'specular',
+    'specularColor',
+    'clearCoat',
+    'clearCoatRoughness',
+    'clearCoatNormal',
+    'anisotropy',
+    'sheenColor',
+    'sheenRoughness',
+    'iridescence',
+    'iridescenceThickness',
+    'transmission',
+    'thickness',
+  ])
+    r.slots.changed[slot] = ballDiff(
+      untextured,
+      slotFrame({ [slot]: colourSlots.includes(slot) ? patchColour : patchData }),
+    );
+  slotGroup.active = false;
+  passes(false);
+
   // --- Refusals. ---
   const refusal = (spec: any) => {
     try {
@@ -568,9 +692,29 @@ async function main() {
       transmission: { factor: 1, volume: { thickness: 1, attenuationColor: [0, 1, 1] } },
     }),
     additiveGlass: refusal({ type: 'physical', blend: 'additive', transmission: { factor: 1 } }),
+    rotationWithoutAnisotropy: refusal({ type: 'physical', anisotropyRotationDeg: 45 }),
+    rotationWithoutAnisotropyStandard: refusal({ type: 'pbr', anisotropyRotationDeg: 45 }),
+    coatNormalWithoutCoat: refusal({ type: 'physical', clearCoatNormalScale: 2 }),
+    sevenTextures: refusal({
+      ...everyFeature,
+      textures: {
+        albedo: patchColour,
+        metallicRoughness: patchData,
+        occlusion: patchData,
+        clearCoat: patchData,
+        sheenColor: patchColour,
+        iridescence: patchData,
+        transmission: patchData,
+      },
+    }),
   };
 
   // --- Made and disposed thirty times, textures borrowed: nothing left behind. ---
+  // The borrowed picture is held by nothing but these materials: when the
+  // last of them goes, it is the only thing between the picture and LayaAir.
+  const picture = () =>
+    Z.createSurfaceTexture(4, 4, new Uint8Array(64).fill(200), 'color', { mipmap: false });
+  const borrowed = picture();
   frame();
   const before = Z.inspectSceneResources().resources;
   for (let i = 0; i < 30; i++) {
@@ -578,16 +722,24 @@ async function main() {
       type: 'physical',
       sheen: { color: [1, 1, 1] },
       transmission: { factor: 0.5, volume: { thickness: 0.2 } },
-      textures: { albedo: checkerTexture, sheenColor: checkerTexture, thickness: checkerTexture },
+      textures: { albedo: borrowed, sheenColor: borrowed, thickness: borrowed },
     });
     Z.disposeSurfaceMaterial(material);
   }
   frame();
   r.resources = { before, after: Z.inspectSceneResources().resources };
-  r.checkerAlive = !checkerTexture.destroyed;
+  r.borrowedAlive = !borrowed.destroyed;
+  r.borrowedReferences = borrowed.referenceCount;
+  // What disposal is there for: destroyed as it stands, a material takes a
+  // picture nobody else holds with it.
+  const taken = picture();
+  Z.createSurfaceMaterial({ type: 'physical', textures: { albedo: taken } }).destroy();
+  r.bareDestroyTakesTexture = !!taken.destroyed;
+  if (!taken.destroyed) taken.destroy();
+  borrowed.destroy();
 
   // For pictures: the script asks for a view and takes a screenshot.
-  const groups = [base, clothGroup, discGroup, glassGroup, filmGroup];
+  const groups = [base, clothGroup, discGroup, glassGroup, filmGroup, slotGroup];
   const only = (shown: any) => {
     for (const g of groups) g.active = g === shown;
   };

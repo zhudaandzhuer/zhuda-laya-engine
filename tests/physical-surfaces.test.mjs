@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   createSurfaceMaterial,
   disposeSurfaceMaterial,
+  physicalSurfaceTextureLimit,
   surfaceMaterialPasses,
   validatePhysicalSurfaceSpec,
   zhudaAnisotropyRadians,
@@ -91,6 +92,34 @@ function withLaya(laya, run) {
 const close = (actual, expected, message) =>
   assert.ok(Math.abs(actual - expected) < 1e-9, `${message}: ${actual} against ${expected}`);
 const tex = (name) => ({ name });
+/** Every feature on: any texture slot may then be filled. */
+const EVERY_FEATURE = {
+  clearCoat: 1,
+  anisotropy: 1,
+  sheen: { color: [1, 1, 1] },
+  iridescence: {},
+  transmission: { factor: 1, volume: { thickness: 1 } },
+};
+/** Each slot with its uniform and define in LayaAir's glTF shader. */
+const SLOTS = {
+  albedo: ['u_BaseColorTexture', 'BASECOLORMAP'],
+  normal: ['u_NormalTexture', 'NORMALMAP'],
+  metallicRoughness: ['u_MetallicRoughnessTexture', 'METALLICROUGHNESSMAP'],
+  occlusion: ['u_OcclusionTexture', 'OCCLUSIONMAP'],
+  emission: ['u_EmissionTexture', 'EMISSIONMAP'],
+  clearCoat: ['u_ClearCoatTexture', 'CLEARCOATMAP'],
+  clearCoatRoughness: ['u_ClearCoatRoughnessTexture', 'CLEARCOAT_ROUGHNESSMAP'],
+  clearCoatNormal: ['u_ClearCoatNormalTexture', 'CLEARCOAT_NORMAL'],
+  sheenColor: ['u_SheenColorTexture', 'SHEENCOLORMAP'],
+  sheenRoughness: ['u_SheenRoughnessTexture', 'SHEEN_ROUGHNESSMAP'],
+  iridescence: ['u_IridescenceTexture', 'IRIDESCENCEMAP'],
+  iridescenceThickness: ['u_IridescenceThicknessTexture', 'IRIDESCENCE_THICKNESSMAP'],
+  transmission: ['u_TransmissionTexture', 'TRANSMISSIONMAP'],
+  thickness: ['u_VolumeThicknessTexture', 'THICKNESSMAP'],
+  specular: ['u_SpecularFactorTexture', 'SPECULARFACTORMAP'],
+  specularColor: ['u_SpecularColorTexture', 'SPECULARCOLORMAP'],
+  anisotropy: ['u_AnisotropyTexture', 'ANISOTROPYMAP'],
+};
 
 test('a display colour becomes light as LayaAir Color does it', () => {
   assert.equal(zhudaSrgbToLinear(0), 0);
@@ -136,20 +165,9 @@ test('a physical spec is checked field by field', () => {
         albedo: tex('a'),
         normal: tex('n'),
         metallicRoughness: tex('mr'),
-        occlusion: tex('o'),
-        emission: tex('e'),
-        clearCoat: tex('c'),
-        clearCoatRoughness: tex('cr'),
         clearCoatNormal: tex('cn'),
         sheenColor: tex('sc'),
-        sheenRoughness: tex('sr'),
-        iridescence: tex('i'),
-        iridescenceThickness: tex('it'),
-        transmission: tex('t'),
         thickness: tex('th'),
-        specular: tex('s'),
-        specularColor: tex('spc'),
-        anisotropy: tex('an'),
       },
       blend: 'alpha',
       doubleSided: true,
@@ -157,11 +175,23 @@ test('a physical spec is checked field by field', () => {
     [],
   );
   assert.deepEqual(validatePhysicalSurfaceSpec({ type: 'physical' }), []);
+  // Every slot is taken on its own when its feature is on.
+  for (const slot of Object.keys(SLOTS))
+    assert.deepEqual(
+      validatePhysicalSurfaceSpec({
+        type: 'physical',
+        ...EVERY_FEATURE,
+        textures: { [slot]: tex(slot) },
+      }),
+      [],
+      slot,
+    );
   assert.deepEqual(
     validatePhysicalSurfaceSpec({
       type: 'physical',
       color: [1, 1, 1],
       roughness: 1.5,
+      anisotropy: 0.5,
       anisotropyRotationDeg: Infinity,
       emission: [-1, 0, 0],
       normalScale: 11,
@@ -242,6 +272,132 @@ test('a physical spec is checked field by field', () => {
     }),
     ['transmission: blend "additive" is refused (what is behind already shows through)'],
   );
+});
+
+test('a field that only shapes a feature needs the feature', () => {
+  assert.deepEqual(
+    validatePhysicalSurfaceSpec({
+      type: 'physical',
+      clearCoatRoughness: 0.2,
+      clearCoatNormalScale: 2,
+      anisotropyRotationDeg: 45,
+    }),
+    [
+      'clearCoatRoughness: needs clearCoat above 0',
+      'clearCoatNormalScale: needs clearCoat above 0',
+      'anisotropyRotationDeg: needs anisotropy above 0',
+    ],
+  );
+  // Switched off by a 0 is off.
+  assert.deepEqual(
+    validatePhysicalSurfaceSpec({
+      type: 'physical',
+      clearCoat: 0,
+      clearCoatNormalScale: 2,
+      anisotropy: 0,
+      anisotropyRotationDeg: 45,
+    }),
+    [
+      'clearCoatNormalScale: needs clearCoat above 0',
+      'anisotropyRotationDeg: needs anisotropy above 0',
+    ],
+  );
+  assert.deepEqual(
+    validatePhysicalSurfaceSpec({
+      type: 'physical',
+      clearCoat: 0.5,
+      clearCoatRoughness: 0.2,
+      clearCoatNormalScale: 2,
+      anisotropy: 0.5,
+      anisotropyRotationDeg: 45,
+    }),
+    [],
+  );
+  withLaya(fakeLaya(), () => {
+    assert.throws(
+      () => createSurfaceMaterial({ type: 'physical', anisotropyRotationDeg: 45 }),
+      /^Error: Physical surface: anisotropyRotationDeg: needs anisotropy above 0$/,
+    );
+    // The standard material too: before, the angle was dropped without a word.
+    assert.throws(
+      () => createSurfaceMaterial({ type: 'pbr', anisotropyRotationDeg: 45 }),
+      /^Error: anisotropyRotationDeg: needs anisotropy above 0$/,
+    );
+    assert.throws(
+      () => createSurfaceMaterial({ type: 'pbr', anisotropy: 0, anisotropyRotationDeg: 45 }),
+      /anisotropyRotationDeg: needs anisotropy above 0/,
+    );
+  });
+});
+
+test('a physical surface carries six textures at most, fewer under a lightmap', () => {
+  assert.equal(physicalSurfaceTextureLimit(), 6);
+  assert.equal(physicalSurfaceTextureLimit({}), 6);
+  assert.equal(physicalSurfaceTextureLimit({ lightmap: false }), 6);
+  assert.equal(physicalSurfaceTextureLimit({ lightmap: true }), 5);
+  assert.equal(physicalSurfaceTextureLimit({ lightmap: 'directional' }), 4);
+  const withTextures = (count) => ({
+    type: 'physical',
+    ...EVERY_FEATURE,
+    textures: Object.fromEntries(
+      Object.keys(SLOTS)
+        .slice(0, count)
+        .map((slot) => [slot, tex(slot)]),
+    ),
+  });
+  assert.deepEqual(validatePhysicalSurfaceSpec(withTextures(6)), []);
+  assert.deepEqual(validatePhysicalSurfaceSpec(withTextures(7)), [
+    "textures: 7 filled, at most 6 (a shader stage holds 16 samplers and the scene's lights, shadows and surroundings take 10; past that the surface is not drawn)",
+  ]);
+  // All seventeen at once, the spec that used to pass and did not draw.
+  assert.match(
+    validatePhysicalSurfaceSpec(withTextures(17))[0],
+    /^textures: 17 filled, at most 6 /,
+  );
+  // Empty slots are not counted; the same picture in two slots is counted twice.
+  const shared = tex('shared');
+  assert.deepEqual(
+    validatePhysicalSurfaceSpec({
+      ...withTextures(6),
+      textures: { ...withTextures(6).textures, sheenColor: null, sheenRoughness: undefined },
+    }),
+    [],
+  );
+  assert.match(
+    validatePhysicalSurfaceSpec({
+      type: 'physical',
+      ...EVERY_FEATURE,
+      textures: {
+        albedo: shared,
+        normal: shared,
+        metallicRoughness: shared,
+        occlusion: shared,
+        emission: shared,
+        clearCoat: shared,
+        clearCoatRoughness: shared,
+      },
+    })[0],
+    /^textures: 7 filled, at most 6 /,
+  );
+  // On a lightmapped renderer the lightmap's pictures take samplers too.
+  assert.deepEqual(validatePhysicalSurfaceSpec(withTextures(5), { lightmap: true }), []);
+  assert.deepEqual(validatePhysicalSurfaceSpec(withTextures(6), { lightmap: true }), [
+    "textures: 6 filled, at most 5 on a renderer with a lightmap (a shader stage holds 16 samplers and the scene's lights, shadows and surroundings take 11; past that the surface is not drawn)",
+  ]);
+  assert.deepEqual(validatePhysicalSurfaceSpec(withTextures(4), { lightmap: 'directional' }), []);
+  assert.deepEqual(validatePhysicalSurfaceSpec(withTextures(5), { lightmap: 'directional' }), [
+    "textures: 5 filled, at most 4 on a renderer with a directional lightmap (a shader stage holds 16 samplers and the scene's lights, shadows and surroundings take 12; past that the surface is not drawn)",
+  ]);
+  assert.deepEqual(validatePhysicalSurfaceSpec(withTextures(1), { lightmap: 'baked' }), [
+    'use.lightmap: true, false or "directional"',
+  ]);
+  // createSurfaceMaterial refuses it before LayaAir is touched.
+  withLaya(undefined, () => {
+    assert.throws(
+      () => createSurfaceMaterial(withTextures(7)),
+      /^Error: Physical surface: textures: 7 filled, at most 6 /,
+    );
+  });
 });
 
 test('a physical surface is the glTF shader with its features switched on', () => {
@@ -334,83 +490,38 @@ test('a physical surface is the glTF shader with its features switched on', () =
 
 test('physical textures go to their slots and switch their defines on', () => {
   withLaya(fakeLaya(), () => {
-    const textures = {
-      albedo: tex('a'),
-      normal: { bitmap: tex('n') },
-      metallicRoughness: tex('mr'),
-      occlusion: tex('o'),
-      emission: tex('e'),
-      clearCoat: tex('c'),
-      clearCoatRoughness: tex('cr'),
-      clearCoatNormal: tex('cn'),
-      sheenColor: tex('sc'),
-      sheenRoughness: tex('sr'),
-      iridescence: tex('i'),
-      iridescenceThickness: tex('it'),
-      transmission: tex('t'),
-      thickness: tex('th'),
-      specular: tex('s'),
-      specularColor: tex('spc'),
-      anisotropy: tex('an'),
-    };
-    const m = createSurfaceMaterial({
-      type: 'physical',
-      clearCoat: 1,
-      anisotropy: 1,
-      sheen: { color: [1, 1, 1] },
-      iridescence: {},
-      transmission: { factor: 1, volume: { thickness: 1 } },
-      textures,
-    });
-    const slots = {
-      u_BaseColorTexture: 'a',
-      u_NormalTexture: 'n',
-      u_MetallicRoughnessTexture: 'mr',
-      u_OcclusionTexture: 'o',
-      u_EmissionTexture: 'e',
-      u_ClearCoatTexture: 'c',
-      u_ClearCoatRoughnessTexture: 'cr',
-      u_ClearCoatNormalTexture: 'cn',
-      u_SheenColorTexture: 'sc',
-      u_SheenRoughnessTexture: 'sr',
-      u_IridescenceTexture: 'i',
-      u_IridescenceThicknessTexture: 'it',
-      u_TransmissionTexture: 't',
-      u_VolumeThicknessTexture: 'th',
-      u_SpecularFactorTexture: 's',
-      u_SpecularColorTexture: 'spc',
-      u_AnisotropyTexture: 'an',
-    };
-    for (const [uniform, name] of Object.entries(slots))
-      assert.equal(m.values[uniform]?.name, name, uniform);
-    for (const define of [
-      'BASECOLORMAP',
-      'NORMALMAP',
-      'METALLICROUGHNESSMAP',
-      'OCCLUSIONMAP',
-      'EMISSIONMAP',
-      'CLEARCOATMAP',
-      'CLEARCOAT_ROUGHNESSMAP',
-      'CLEARCOAT_NORMAL',
-      'SHEENCOLORMAP',
-      'SHEEN_ROUGHNESSMAP',
-      'IRIDESCENCEMAP',
-      'IRIDESCENCE_THICKNESSMAP',
-      'TRANSMISSIONMAP',
-      'THICKNESSMAP',
-      'SPECULARFACTORMAP',
-      'SPECULARCOLORMAP',
-      'ANISOTROPYMAP',
-    ])
-      assert.ok(m.defines.has(define), define);
-    // An emission texture alone is not multiplied by black.
-    assert.deepEqual(m.values.u_EmissionFactor, [1, 1, 1]);
-    assert.ok(m.defines.has('EMISSION'));
-
-    // Disposal lets go of every borrowed texture before the material is destroyed.
-    disposeSurfaceMaterial(m);
-    assert.equal(m.destroyed, true);
-    for (const uniform of Object.keys(slots)) assert.equal(m.values[uniform], null, uniform);
+    const names = Object.keys(SLOTS);
+    // Six at a time: a surface carries no more.
+    for (let first = 0; first < names.length; first += 6) {
+      const group = names.slice(first, first + 6);
+      const m = createSurfaceMaterial({
+        type: 'physical',
+        ...EVERY_FEATURE,
+        // One of them as a Laya.Texture, whose picture is in `bitmap`.
+        textures: Object.fromEntries(
+          group.map((slot, i) => [slot, i === 1 ? { bitmap: tex(slot) } : tex(slot)]),
+        ),
+      });
+      for (const slot of names) {
+        const [uniform, define] = SLOTS[slot];
+        if (group.includes(slot)) {
+          assert.equal(m.values[uniform]?.name, slot, uniform);
+          assert.ok(m.defines.has(define), define);
+        } else {
+          assert.equal(m.values[uniform], undefined, `${uniform} left alone`);
+          assert.ok(!m.defines.has(define), `${define} left off`);
+        }
+      }
+      if (group.includes('emission')) {
+        // An emission texture alone is not multiplied by black.
+        assert.deepEqual(m.values.u_EmissionFactor, [1, 1, 1]);
+        assert.ok(m.defines.has('EMISSION'));
+      }
+      // Disposal lets go of every slot before the material is destroyed.
+      disposeSurfaceMaterial(m);
+      assert.equal(m.destroyed, true);
+      for (const [uniform] of Object.values(SLOTS)) assert.equal(m.values[uniform], null, uniform);
+    }
   });
 });
 

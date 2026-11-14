@@ -15,18 +15,24 @@ export interface SurfaceMaterialSpec {
    */
   type: 'pbr' | 'unlit' | 'physical';
   /** Base colour and alpha, 0..1 each (default white). */
-  color?: [number, number, number, number];
+  color?: readonly [number, number, number, number];
   metallic?: number;
   roughness?: number;
-  emission?: [number, number, number];
+  emission?: readonly [number, number, number];
   /**
    * A clear layer over the surface (lacquer, varnish, a wet sheen): how much,
    * 0..1 (default 0, none). Physically based surfaces only (`pbr`, `physical`).
    */
   clearCoat?: number;
-  /** Roughness of that layer, 0..1 (default 0.1). */
+  /**
+   * Roughness of that layer, 0..1 (default 0.1). On a `physical` surface it
+   * needs `clearCoat` above 0.
+   */
   clearCoatRoughness?: number;
-  /** `physical`: how strongly `textures.clearCoatNormal` bends the layer, 0..10 (default 1). */
+  /**
+   * `physical`: how strongly `textures.clearCoatNormal` bends the layer, 0..10
+   * (default 1). Needs `clearCoat` above 0.
+   */
   clearCoatNormalScale?: number;
   /**
    * How far the highlight is drawn out, 0..1 (default 0): brushed metal,
@@ -37,8 +43,8 @@ export interface SurfaceMaterialSpec {
   /**
    * Turns the drawn-out highlight in the surface, degrees, any angle
    * (default 0: along the tangent, 90: along the bitangent). `pbr` and
-   * `physical`. Written to the shader as it is: LayaAir's own setter keeps
-   * the angle between 0 and 1 radian.
+   * `physical`. Needs `anisotropy` above 0. Written to the shader as it is:
+   * LayaAir's own setter keeps the angle between 0 and 1 radian.
    */
   anisotropyRotationDeg?: number;
   /** `physical`: how strongly `textures.normal` bends the surface, 0..10 (default 1). */
@@ -50,7 +56,7 @@ export interface SurfaceMaterialSpec {
    * turns away from the eye. `color` 0..1 each; `roughness` 0..1
    * (default 0.5).
    */
-  sheen?: { color: [number, number, number]; roughness?: number };
+  sheen?: { color: readonly [number, number, number]; roughness?: number };
   /**
    * `physical`: a thin film on the surface (soap, oil, a beetle's shell):
    * colours that change with the angle it is seen at. `factor` 0..1 (default
@@ -61,7 +67,7 @@ export interface SurfaceMaterialSpec {
   iridescence?: {
     factor?: number;
     ior?: number;
-    thicknessRange?: [number, number];
+    thicknessRange?: readonly [number, number];
   };
   /**
    * `physical`: index of refraction of a dielectric, 1..3 (default 1.5: a
@@ -73,13 +79,14 @@ export interface SurfaceMaterialSpec {
    * `physical`: the strength (`factor` 0..1, default 1) and tint (`color`
    * 0..1 each, default white) of a dielectric's reflection.
    */
-  specular?: { factor?: number; color?: [number, number, number] };
+  specular?: { factor?: number; color?: readonly [number, number, number] };
   /**
    * `physical`: light through the surface (glass, water, gems): `factor`
    * 0..1 of what is behind it shows through, tinted by `color`. It reads
    * the camera's picture of the opaque scene: the camera needs that pass
-   * (`configureSurfacePasses(camera, [surfaceMaterialPasses(spec)], …)`),
-   * or what shows through is black. The surface is drawn after the opaque
+   * (`configureSurfacePasses(camera, [surfaceMaterialPasses(spec)], …)`):
+   * without it nothing shows through and the surface is drawn as black
+   * glass, with its reflections only. The surface is drawn after the opaque
    * scene (render queue 3000), so other transparent and transmissive
    * surfaces do not show through it. `volume` gives it a thickness, in the
    * mesh's own units (the node's scale applies), that bends what is behind
@@ -91,7 +98,7 @@ export interface SurfaceMaterialSpec {
     factor: number;
     volume?: {
       thickness: number;
-      attenuationColor?: [number, number, number];
+      attenuationColor?: readonly [number, number, number];
       attenuationDistance?: number;
     };
   };
@@ -107,7 +114,9 @@ export interface SurfaceMaterialSpec {
    * `anisotropy` (RG direction, B strength). A feature's textures need the
    * feature switched on; a slot left `undefined` or `null` is empty. Colour
    * textures are sRGB (`createSurfaceTexture` role `color`), the others
-   * linear.
+   * linear. A `physical` surface may fill six slots at most
+   * (`physicalSurfaceTextureLimit`), and its `normal` texture needs a mesh
+   * with tangents.
    */
   textures?: {
     albedo?: any;
@@ -202,6 +211,49 @@ const PHYSICAL_TEXTURES: Record<string, { uniform: string; define: string; needs
   },
 };
 
+/**
+ * Samplers one shader stage may hold: WebGPU's `maxSamplersPerShaderStage`
+ * (LayaAir asks for no more) and WebGL's `MAX_TEXTURE_IMAGE_UNITS` on the
+ * desktop GPU measured.
+ */
+const SAMPLERS_PER_STAGE = 16;
+/**
+ * Samplers of a lit scene that a physical surface's pipeline holds beside its
+ * own textures, counted on WebGPU where LayaAir binds all of them whether the
+ * scene uses them or not: the sun's and the spot lights' shadow maps, the
+ * point-shadow picture, the two light lists, the camera's depth, depth-normal
+ * and opaque pictures, the environment, and the shader's reflectance lookup.
+ * WebGL binds only the ones in use: seven of these, eight with transmission.
+ */
+const SCENE_SAMPLERS = 10;
+
+/** Where a physical surface is drawn, as far as it changes how many textures it may carry. */
+export interface PhysicalSurfaceUse {
+  /**
+   * The renderer carries a baked lightmap (`true`: one sampler more), with a
+   * direction picture (`'directional'`: two more). Default none.
+   */
+  lightmap?: boolean | 'directional';
+}
+
+/**
+ * How many texture slots a `physical` surface may fill and still be drawn:
+ * 6, or 5 on a lightmapped renderer, 4 with a directional lightmap.
+ *
+ * A shader stage holds 16 samplers and every filled slot takes one, the
+ * same picture in two slots twice. A lit scene takes 10 of them on WebGPU
+ * (shadow maps, the point-shadow picture, light lists, the camera's
+ * pictures, the environment); WebGL binds only what the scene uses, so the
+ * WebGPU count is the limit for both. Past it the surface is not drawn at
+ * all: WebGPU refuses its pipeline and WebGL its shader, and LayaAir only
+ * logs it. Counted with every light and shadow the engine has. Not counted:
+ * the animation texture of LayaAir's simple skinned mesh, one sampler more.
+ */
+export function physicalSurfaceTextureLimit(use: PhysicalSurfaceUse = {}): number {
+  const lightmap = use.lightmap === 'directional' ? 2 : use.lightmap ? 1 : 0;
+  return SAMPLERS_PER_STAGE - SCENE_SAMPLERS - lightmap;
+}
+
 const finiteIn = (v: unknown, min: number, max: number) =>
   typeof v === 'number' && Number.isFinite(v) && v >= min && v <= max;
 const colourIn = (v: unknown, n: number, min: number, max: number) =>
@@ -210,8 +262,14 @@ const colourIn = (v: unknown, n: number, min: number, max: number) =>
 /**
  * Problems with a `physical` surface spec, one line each; an empty list
  * means `createSurfaceMaterial` takes it. Pure: it does not need LayaAir.
+ * It counts the filled texture slots against `physicalSurfaceTextureLimit`;
+ * `createSurfaceMaterial` checks without `use`, so a surface for a
+ * lightmapped renderer is checked here with `use` first.
  */
-export function validatePhysicalSurfaceSpec(s: SurfaceMaterialSpec): string[] {
+export function validatePhysicalSurfaceSpec(
+  s: SurfaceMaterialSpec,
+  use: PhysicalSurfaceUse = {},
+): string[] {
   const e: string[] = [];
   const check = (ok: boolean, message: string) => {
     if (!ok) e.push(message);
@@ -284,9 +342,18 @@ export function validatePhysicalSurfaceSpec(s: SurfaceMaterialSpec): string[] {
     transmission: s.transmission !== undefined,
     'transmission.volume': s.transmission?.volume !== undefined,
   };
+  // A field that only shapes a feature does nothing without it, as a texture does.
+  for (const [key, needs] of [
+    ['clearCoatRoughness', 'clearCoat'],
+    ['clearCoatNormalScale', 'clearCoat'],
+    ['anisotropyRotationDeg', 'anisotropy'],
+  ] as const)
+    if (s[key] !== undefined) check(on[needs], `${key}: needs ${needs} above 0`);
+  let filled = 0;
   for (const [key, value] of Object.entries(s.textures ?? {})) {
     if (value == null) continue;
     const slot = PHYSICAL_TEXTURES[key];
+    if (slot) filled++;
     if (!slot)
       e.push(
         key === 'metallicGloss'
@@ -299,6 +366,18 @@ export function validatePhysicalSurfaceSpec(s: SurfaceMaterialSpec): string[] {
       e.push(
         `textures.${key}: needs ${slot.needs}${slot.needs === 'clearCoat' || slot.needs === 'anisotropy' ? ' above 0' : ''}`,
       );
+  }
+  if (![undefined, false, true, 'directional'].includes(use?.lightmap))
+    e.push('use.lightmap: true, false or "directional"');
+  const limit = physicalSurfaceTextureLimit(use ?? {});
+  if (filled > limit) {
+    const lightmap = SAMPLERS_PER_STAGE - SCENE_SAMPLERS - limit;
+    e.push(
+      `textures: ${filled} filled, at most ${limit}` +
+        (lightmap ? ` on a renderer with a ${lightmap === 2 ? 'directional ' : ''}lightmap` : '') +
+        ` (a shader stage holds ${SAMPLERS_PER_STAGE} samplers and the scene's lights, shadows` +
+        ` and surroundings take ${SCENE_SAMPLERS + lightmap}; past that the surface is not drawn)`,
+    );
   }
   if (s.blend !== undefined)
     check(['opaque', 'alpha', 'additive', 'cutout'].includes(s.blend), 'blend: unknown mode');
@@ -568,6 +647,8 @@ export function createSurfaceMaterial(s: SurfaceMaterialSpec) {
     ((s.clearCoat ?? 0) > 0 || (s.anisotropy ?? 0) !== 0 || s.anisotropyRotationDeg !== undefined)
   )
     throw Error('clearCoat and anisotropy belong to physically based surfaces');
+  if (s.anisotropyRotationDeg !== undefined && !((s.anisotropy ?? 0) > 0))
+    throw Error('anisotropyRotationDeg: needs anisotropy above 0');
   const m = s.type === 'pbr' ? new l.PBRStandardMaterial() : new l.UnlitMaterial();
   m.albedoColor = new l.Color(...(s.color || [1, 1, 1, 1]));
   if (s.type === 'pbr') {
