@@ -1,7 +1,7 @@
 # Agent task: frame-cost
 
-Status: Implemented within scope; desktop WebGL and WebGPU verified, no phone measured  
-Owner: Engine/toolchain  
+Status: Implemented within scope; desktop WebGL and WebGPU verified, no phone measured\
+Owner: Engine/toolchain\
 Last reviewed: 2026-11-14
 
 ## Source requirement

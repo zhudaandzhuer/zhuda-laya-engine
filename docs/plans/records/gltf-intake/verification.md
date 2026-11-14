@@ -1,7 +1,7 @@
 # Verification record: gltf-intake
 
-Task document: `docs/plans/records/gltf-intake/task.md`  
-Commit: the commit that adds this file, on top of `9c91a26`  
+Task document: `docs/plans/records/gltf-intake/task.md`\
+Commit: the commit that adds this file, on top of `9c91a26`\
 Date: 2026-11-14
 
 Review round: the commit that last changed this file, on top of `ec1add9` (the

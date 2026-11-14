@@ -1,7 +1,7 @@
 # Verification record: frame-cost
 
-Task document: `docs/plans/records/frame-cost/task.md`  
-Commit: the commit that adds this file, on top of `09a840c`  
+Task document: `docs/plans/records/frame-cost/task.md`\
+Commit: the commit that adds this file, on top of `09a840c`\
 Date: 2026-11-14
 
 ## Environment

@@ -1,7 +1,7 @@
 # Agent task: gltf-intake
 
-Status: Implemented within scope; desktop WebGL and WebGPU verified  
-Owner: Engine/toolchain  
+Status: Implemented within scope; desktop WebGL and WebGPU verified\
+Owner: Engine/toolchain\
 Last reviewed: 2026-11-14 (after the first review round; its findings and
 fixes are in the verification record)
 
