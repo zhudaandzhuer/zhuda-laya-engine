@@ -309,4 +309,3 @@ pixel for pixel, the same picture without the patch installed. What the
 patch adds is behind `#ifdef`; what is left outside it is `getPixelInfo`
 taking its surface as `inout` and one unused local in the forward passes.
 The fifteen draws above pass their own assertions with it installed.
-
