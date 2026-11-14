@@ -1,4 +1,3 @@
-import { zhudaShaderRegistrar } from './ShaderRegistry.ts';
 /**
  * A layer of clouds with depth: a slab of air between two heights in which
  * a drifting noise says how much cloud there is, followed along each view
@@ -16,6 +15,8 @@ import { zhudaShaderRegistrar } from './ShaderRegistry.ts';
  * a hatching. A hill that stands up into the layer has the clouds beyond it
  * drawn in front of it.
  */
+
+import { zhudaShaderRegistrar } from './ShaderRegistry.ts';
 
 const VERTEX =
   '#define SHADER_NAME ZhudaCloudsVS\nvarying vec2 v_Texcoord0;void main(){gl_Position=vec4(a_PositionTexcoord.xy,0.0,1.0);v_Texcoord0=a_PositionTexcoord.zw;}';

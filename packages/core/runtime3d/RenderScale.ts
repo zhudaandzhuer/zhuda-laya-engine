@@ -1,4 +1,3 @@
-import { zhudaShaderRegistrar } from './ShaderRegistry.ts';
 /**
  * The 3D picture drawn smaller than the canvas and brought up to it, for
  * devices that cannot fill every pixel: at 0.67 a frame has 45 % of the
@@ -21,6 +20,8 @@ import { zhudaShaderRegistrar } from './ShaderRegistry.ts';
  * at a time. A scene destroyed while it holds the scale gives it back.
  * Only the class needs the Laya runtime.
  */
+
+import { zhudaShaderRegistrar } from './ShaderRegistry.ts';
 export type ZhudaUpscale = 'fsr' | 'bilinear' | 'plain';
 
 export interface ZhudaRenderScaleOptions {

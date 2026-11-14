@@ -1,4 +1,21 @@
 // Generated from TypeScript source; run npm run types:generate.
+/**
+ * A layer of clouds with depth: a slab of air between two heights in which
+ * a drifting noise says how much cloud there is, followed along each view
+ * ray by a post-process effect in linear HDR. The sun lights the side of a
+ * cloud that faces it and the cloud shades itself; the sky's own light fills
+ * the rest. Clouds are drawn where the view reaches the slab before it
+ * reaches anything solid, so hills and towers stand in front of them.
+ *
+ * It is one layer of one kind of cloud: no weather, no rain, no shadows of
+ * clouds on the ground, and nothing mirrors them but what mirrors the screen
+ * (`screenReflections`). The noise is computed, not stored: each step along
+ * a ray costs about seventy arithmetic lookups. The rays are followed at
+ * half size, each from another offset, and the result is blurred before it
+ * is laid over the picture: a few steps then show neither as layers nor as
+ * a hatching. A hill that stands up into the layer has the clouds beyond it
+ * drawn in front of it.
+ */
 export declare const ZHUDA_CLOUD_MAX_STEPS = 64;
 export interface ZhudaCloudsOptions {
     /** How much of the sky is cloud, 0..1 (default 0.5). */

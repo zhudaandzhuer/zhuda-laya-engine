@@ -1,4 +1,3 @@
-import { zhudaShaderRegistrar } from './ShaderRegistry.ts';
 /**
  * Reflections of what is on screen, on every surface: wet walls, props, and
  * ground beyond a planar reflector. A post-process effect in linear HDR, after
@@ -13,6 +12,8 @@ import { zhudaShaderRegistrar } from './ShaderRegistry.ts';
  * bright as the sky it mirrors. Nothing tells such a ray that a roof or a wall
  * off screen is in its way: keep `sky` at 0 indoors and under cover.
  */
+
+import { zhudaShaderRegistrar } from './ShaderRegistry.ts';
 
 export interface ZhudaScreenReflectionsOptions {
   /** Brightness of the reflections, 0..4 (default 1). */
