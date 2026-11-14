@@ -1,6 +1,6 @@
 # Agent task: phone-cost
 
-Status: In progress; measured on one phone (vivo V40)  
+Status: In progress; four engine changes made and measured on one phone (vivo V40)  
 Owner: Engine/toolchain  
 Last reviewed: 2026-11-14
 
