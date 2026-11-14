@@ -34,7 +34,7 @@ export * from './ModelLod.js';
 export * from './EnvironmentProbe.js';
 export * from './LensFinish.js';
 export { installLaya342LifecycleFix } from './Laya342Adapters.js';
-export { ZHUDA_SPECULAR_AA_DEFINE, setZhudaSpecularAA, zhudaSpecularAAStatus, type ZhudaSpecularAAStatus, } from './Laya342Adapters.js';
+export { ZHUDA_NORMAL_NOMIPMAP_DEFINE, ZHUDA_SPECULAR_AA_DEFINE, setZhudaSpecularAA, zhudaSpecularAAStatus, type ZhudaSpecularAAStatus, } from './Laya342Adapters.js';
 export * from './CrowdPresentation.js';
 export * from './ModelInspector.js';
 export * from './AssetShowcase.js';
