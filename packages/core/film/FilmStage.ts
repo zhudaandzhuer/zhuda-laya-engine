@@ -852,7 +852,7 @@ function buildFilmStageContents(
           color: [...(node.color ?? [1, 0.82, 0.6])] as [number, number, number],
           range: node.range ?? 12,
         });
-    // Point lights that cast shadows, up to four, in one set of pictures. Each
+    // Point lights that cast shadows, up to eight, in one set of pictures. Each
     // light's six are drawn in `prepare`, when everything that casts is in
     // place, and again when its reach or something that moves with time changed.
     const pointCasters = scene.nodes.filter((node) => {

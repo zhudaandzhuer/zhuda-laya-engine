@@ -191,8 +191,8 @@ export function lintZhudaFilmScene(
       `scene.nodes[${(spot ?? lamps[0]).index}]`,
       'The lamps are the key light here and none of them casts a shadow: their light passes through walls and objects.',
       spot
-        ? 'set "castsShadow": true on the spot light that carries the scene (one spot light and up to four point lights may cast)'
-        : 'set "castsShadow": true on the lamp that carries the scene (up to four point lights and one spot light may cast)',
+        ? 'set "castsShadow": true on the spot light that carries the scene (one spot light and up to eight point lights may cast)'
+        : 'set "castsShadow": true on the lamp that carries the scene (up to eight point lights and one spot light may cast)',
     );
   }
 

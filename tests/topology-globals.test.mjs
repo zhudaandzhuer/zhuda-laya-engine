@@ -291,3 +291,24 @@ test('only what runs while a script loads counts as defined', () => {
     'spine.Bone',
   ]);
 });
+
+test('3D Spine is ready only when the lib that draws it is loaded', async () => {
+  const { EngineGuard } = await import('../packages/core/RuntimeGuards.ts');
+  const before = globalThis.Laya;
+  try {
+    // The 2D adapter alone (laya.spine.js) used to count as 3D Spine being ready.
+    globalThis.Laya = { SpineTemplet: class {}, Spine2DRenderNode: class {} };
+    let seen = EngineGuard.checkSpine42();
+    assert.equal(seen.layaSpineAdapterReady, true);
+    assert.equal(seen.layaSpine3DReady, false);
+    // laya.spine3D.js defines Laya.Spine3DRenderer (checked against the lib above).
+    globalThis.Laya = { SpineTemplet: class {}, Spine3DRenderer: class {} };
+    seen = EngineGuard.checkSpine42();
+    assert.equal(seen.layaSpine3DReady, true);
+    // The name the guard read before exists in no lib.
+    globalThis.Laya = { Spine3DRenderNode: class {} };
+    assert.equal(EngineGuard.checkSpine42().layaSpine3DReady, false);
+  } finally {
+    globalThis.Laya = before;
+  }
+});

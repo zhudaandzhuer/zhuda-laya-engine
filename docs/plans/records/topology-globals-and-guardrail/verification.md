@@ -125,3 +125,26 @@ The facts repeated here were not drawn again. They come from
 
 Decision: **Implemented within scope.** Unit tests and every gate pass; no
 GPU or device check applies.
+
+## After review (2026-11-14, on merging)
+
+The reviewer accepted the package and listed four minor points. Three were
+closed when the branch was merged:
+
+- `packages/core/film/FilmLint.ts`: the advice for a lamp-lit scene without a
+  shadow said "up to four point lights may cast"; it says eight now (a
+  comment in `FilmStage.ts` likewise).
+- `packages/core/RuntimeGuards.ts` `checkSpine42`: `layaSpine3DReady` read
+  `Laya.Spine3DRenderNode`, which no lib defines, and fell back to the 2D
+  adapter. It reads `Laya.Spine3DRenderer` and has no fallback; a test in
+  `tests/topology-globals.test.mjs` covers the three cases.
+- `TopologyGraph.ts`: the comment said 29 modules; the tables hold 31 (WebGL)
+  and 33 (WebGPU).
+
+Still open: `inspectEngineHealth` counts loaded modules against the WebGL
+table only, so on a WebGPU page the two render modules and the two shader
+compilers are not counted. Nothing at run time reads the WebGPU table's
+`providesGlobals`.
+
+`npm run verify` 566 of 566 on the merged branch (with the game-services
+package); lint, format and whitespace checks pass.

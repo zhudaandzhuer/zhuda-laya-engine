@@ -4,7 +4,7 @@ export type RendererBackend = 'webgl' | 'webgpu';
  * @zhuda-laya/core — Topological Dependency Graph & Tree-Pruning Resolver
  *
  * 解決痛點一：隱性拓撲相依與加載順序死鎖 (Global Mutation Deadlock)
- * - 以有向無環圖 (DAG) + Kahn's 拓撲排序演算法，強制確保 29 個核心與擴展庫的載入順序 100% 正確
+ * - 以有向無環圖 (DAG) + Kahn's 拓撲排序演算法，強制確保 31 個核心與擴展庫（WebGPU 為 33 個）的載入順序 100% 正確
  * - 支援按需特徵剪枝 (On-Demand Feature Pruning)，脫離 IDE 也能精確控制打包體積
  */
 export type EngineFeatureTag = 'core' | '2d' | '3d' | 'ui' | 'ui2' | 'physics2d' | 'physics3d' | 'spine38' | 'spine42' | 'spine3d' | 'navmesh2d' | 'navmesh3d' | 'particle2d' | 'particle3d' | 'trail2d' | 'trail3d' | 'effects2d' | 'tilemap' | 'gltf' | 'ik' | 'postProcess' | 'device' | 'ani';
@@ -38,7 +38,7 @@ export interface SequenceAuditIssue {
     message: string;
 }
 /**
- * LayaAir 3.4.2 完整 29 模組拓撲定義表 (含真實檔案大小與隱式全域依賴邊)
+ * LayaAir 3.4.2 完整 31 模組拓撲定義表（WebGPU 表為 33 個） (含真實檔案大小與隱式全域依賴邊)
  *
  * `providesGlobals` are paths from the global object that the module's own
  * vendored file defines while it loads; `EngineGuard.inspectEngineHealth`

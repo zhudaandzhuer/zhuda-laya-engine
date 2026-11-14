@@ -185,7 +185,7 @@ export class EngineGuard {
       Laya?: {
         SpineTemplet?: unknown;
         Spine2DRenderNode?: unknown;
-        Spine3DRenderNode?: unknown;
+        Spine3DRenderer?: unknown;
       };
     };
 
@@ -194,7 +194,8 @@ export class EngineGuard {
     const hasAnimationState = Boolean(sp && typeof sp.AnimationState === 'function');
     const hasSkeleton = Boolean(sp && typeof sp.Skeleton === 'function');
     const layaSpineAdapterReady = Boolean(g.Laya?.SpineTemplet || g.Laya?.Spine2DRenderNode);
-    const layaSpine3DReady = Boolean(g.Laya?.Spine3DRenderNode || g.Laya?.SpineTemplet);
+    // laya.spine3D.js defines Laya.Spine3DRenderer; the 2D adapter alone does not make 3D Spine ready.
+    const layaSpine3DReady = Boolean(g.Laya?.Spine3DRenderer);
 
     return {
       runtimeVersion: hasPhysicsConstraint
