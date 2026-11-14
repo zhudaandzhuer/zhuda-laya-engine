@@ -7,7 +7,12 @@ import type {
 import { ModelDecoderError } from './ModelDecoder.ts';
 import { readGltfAssetDocument, inspectGltfDocument } from './ModelCompatibility.ts';
 
-const EXT = 'EXT_meshopt_compression';
+// The ratified KHR name adds the COLOR filter; the layout is otherwise the EXT one.
+const NAMES = ['EXT_meshopt_compression', 'KHR_meshopt_compression'] as const;
+const FILTERS: Record<(typeof NAMES)[number], readonly string[]> = {
+  EXT_meshopt_compression: ['NONE', 'OCTAHEDRAL', 'QUATERNION', 'EXPONENTIAL'],
+  KHR_meshopt_compression: ['NONE', 'OCTAHEDRAL', 'QUATERNION', 'EXPONENTIAL', 'COLOR'],
+};
 type Json = Record<string, unknown>;
 const object = (value: unknown): Json => {
   if (!value || typeof value !== 'object' || Array.isArray(value))
@@ -22,7 +27,8 @@ const integer = (value: unknown, min = 0): number => {
 const align = (value: number) => Math.ceil(value / 4) * 4;
 
 /** Optional pinned CPU decoder: embedded glTF/GLB -> ordinary self-contained GLB.
- * Uses existing ModelLibrary/provider ownership; no second renderer or cache.
+ * Reads `EXT_meshopt_compression` and `KHR_meshopt_compression` (with its COLOR
+ * filter). Uses existing ModelLibrary/provider ownership; no second renderer or cache.
  */
 export class ZhudaMeshoptModelDecoder implements ModelDecoderAdapter {
   readonly descriptor = Object.freeze({
@@ -52,11 +58,10 @@ export class ZhudaMeshoptModelDecoder implements ModelDecoderAdapter {
       throw Error('Invalid Meshopt output limit');
     const { document, binary } = readGltfAssetDocument(bytes);
     const report = inspectGltfDocument(document);
+    const isMeshopt = (name: unknown) => NAMES.includes(name as (typeof NAMES)[number]);
     if (
       report.diagnostics.some(
-        (d) =>
-          d.severity === 'error' &&
-          !(d.code === 'UNSUPPORTED_REQUIRED_EXTENSION' && d.extension === EXT),
+        (d) => d.severity === 'error' && !(d.code === 'DECODER_REQUIRED' && isMeshopt(d.extension)),
       )
     )
       throw Error(
@@ -66,7 +71,7 @@ export class ZhudaMeshoptModelDecoder implements ModelDecoderAdapter {
             .map((d) => d.message)
             .join('; '),
       );
-    if (!Array.isArray(document.extensionsUsed) || !document.extensionsUsed.includes(EXT))
+    if (!Array.isArray(document.extensionsUsed) || !document.extensionsUsed.some(isMeshopt))
       throw Error('Meshopt extension is not declared');
     const sourceBuffers = document.buffers;
     const views = document.bufferViews;
@@ -136,13 +141,18 @@ export class ZhudaMeshoptModelDecoder implements ModelDecoderAdapter {
     const plans = views.map((raw, index) => {
       const view = object(raw),
         extensions = view.extensions === undefined ? {} : object(view.extensions);
-      const e = extensions[EXT] === undefined ? undefined : object(extensions[EXT]);
+      const names = NAMES.filter((name) => extensions[name] !== undefined);
+      if (names.length > 1) throw Error(`bufferViews[${index}] carries both Meshopt names`);
+      const name = names[0],
+        e = name === undefined ? undefined : object(extensions[name]);
+      if (name && !(document.extensionsUsed as unknown[]).includes(name))
+        throw Error(`${name} is used but not declared`);
       const length = integer(view.byteLength, 1),
         fallbackIndex = integer(view.buffer);
       const fallback = object(sourceBuffers[fallbackIndex]);
       if (integer(view.byteOffset ?? 0) + length > integer(fallback.byteLength))
         throw Error(`bufferViews[${index}] exceeds declared fallback buffer`);
-      if (!e)
+      if (!e || !name)
         return {
           view,
           length,
@@ -150,6 +160,7 @@ export class ZhudaMeshoptModelDecoder implements ModelDecoderAdapter {
           offset: integer(view.byteOffset ?? 0),
           compressedLength: length,
           e,
+          name,
         };
       const stride = integer(e.byteStride, 1),
         count = integer(e.count, 1),
@@ -159,13 +170,14 @@ export class ZhudaMeshoptModelDecoder implements ModelDecoderAdapter {
         stride * count !== length ||
         (view.byteStride !== undefined && view.byteStride !== stride) ||
         !['ATTRIBUTES', 'TRIANGLES', 'INDICES'].includes(String(mode)) ||
-        !['NONE', 'OCTAHEDRAL', 'QUATERNION', 'EXPONENTIAL'].includes(String(filter)) ||
+        !FILTERS[name].includes(String(filter)) ||
         (mode === 'ATTRIBUTES' && (stride % 4 !== 0 || stride > 256)) ||
         (mode !== 'ATTRIBUTES' && (![2, 4].includes(stride) || filter !== 'NONE')) ||
         (mode === 'TRIANGLES' && count % 3 !== 0) ||
         (filter === 'OCTAHEDRAL' && ![4, 8].includes(stride)) ||
         (filter === 'QUATERNION' && stride !== 8) ||
-        (filter === 'EXPONENTIAL' && stride % 4 !== 0)
+        (filter === 'EXPONENTIAL' && stride % 4 !== 0) ||
+        (filter === 'COLOR' && ![4, 8].includes(stride))
       )
         throw Error(`Invalid Meshopt layout at bufferViews[${index}]`);
       return {
@@ -175,6 +187,7 @@ export class ZhudaMeshoptModelDecoder implements ModelDecoderAdapter {
         offset: integer(e.byteOffset ?? 0),
         compressedLength: integer(e.byteLength, 1),
         e,
+        name,
       };
     });
     let total = 0;
@@ -206,7 +219,7 @@ export class ZhudaMeshoptModelDecoder implements ModelDecoderAdapter {
       p.view.buffer = 0;
       p.view.byteOffset = offset;
       if (p.view.extensions) {
-        delete object(p.view.extensions)[EXT];
+        if (p.name) delete object(p.view.extensions)[p.name];
         if (!Object.keys(object(p.view.extensions)).length) delete p.view.extensions;
       }
       offset += align(p.length);
@@ -217,7 +230,7 @@ export class ZhudaMeshoptModelDecoder implements ModelDecoderAdapter {
     document.buffers = [{ byteLength: output.byteLength }];
     for (const name of ['extensionsUsed', 'extensionsRequired'])
       if (Array.isArray(document[name])) {
-        document[name] = (document[name] as unknown[]).filter((x) => x !== EXT);
+        document[name] = (document[name] as unknown[]).filter((x) => !isMeshopt(x));
         if (!(document[name] as unknown[]).length) delete document[name];
       }
     // Reject any unhandled extension location rather than stripping its declaration.

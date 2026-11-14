@@ -1,7 +1,18 @@
 // Generated from TypeScript source; run npm run types:generate.
+import { type ZhudaImageDecodeSupport } from './GltfIntake.js';
 /** Import diagnostics describe the shipped importer, not complete glTF conformance. */
 export interface ModelDiagnostic {
-    code: 'INVALID_DOCUMENT' | 'INVALID_EXTENSION_DECLARATION' | 'UNDECLARED_EXTENSION' | 'UNSUPPORTED_REQUIRED_EXTENSION' | 'UNSUPPORTED_OPTIONAL_EXTENSION' | 'REQUIRED_RENDER_INPUT' | 'INVALID_MORPH_WEIGHTS';
+    code: 'INVALID_DOCUMENT' | 'INVALID_EXTENSION_DECLARATION' | 'UNDECLARED_EXTENSION' | 'UNSUPPORTED_REQUIRED_EXTENSION' | 'UNSUPPORTED_OPTIONAL_EXTENSION' | 'REQUIRED_RENDER_INPUT' | 'INVALID_MORPH_WEIGHTS'
+    /** Meshopt data: only a registered decoder (ZhudaMeshoptModelDecoder) reads it. */
+     | 'DECODER_REQUIRED'
+    /** Integer vertex attributes the engine turns into floats before LayaAir parses them. */
+     | 'DEQUANTIZED_ATTRIBUTES'
+    /** This device cannot decode a texture's WebP/AVIF image: its fallback loads, or nothing. */
+     | 'IMAGE_DECODE_UNAVAILABLE'
+    /** A WebP/AVIF image without a fallback, inspected without a device answer. */
+     | 'IMAGE_DECODE_UNCHECKED'
+    /** A punctual light LayaAir can only approximate (falloff, spot cone). */
+     | 'LIGHT_APPROXIMATED' | 'INVALID_LIGHT' | 'INVALID_CAMERA';
     severity: 'error' | 'warning';
     path: string;
     extension?: string;
@@ -10,7 +21,8 @@ export interface ModelDiagnostic {
 }
 export interface GltfExtensionCapability {
     name: string;
-    implementation: 'native';
+    /** `native`: LayaAir's importer; `engine`: this engine before or around it. */
+    implementation: 'native' | 'engine';
     requiredRenderInputs: readonly 'opaqueColor'[];
     /** An implemented parser is not a visual conformance certificate. */
     visualConformance: 'not-certified';
@@ -25,6 +37,11 @@ export interface GltfAssetCapability {
 /** Machine-readable import/delivery boundary for agents and model tooling. */
 export declare const gltfAssetCapabilities: readonly GltfAssetCapability[];
 export declare const gltfExtensionCapabilities: readonly GltfExtensionCapability[];
+/** Options for a compatibility inspection. */
+export interface GltfInspectOptions {
+    /** This device's WebP/AVIF decoding (`probeZhudaImageDecode`). Without it no device answer is assumed. */
+    imageDecode?: ZhudaImageDecodeSupport;
+}
 export interface ModelSourceInventory {
     /** Source complexity only; this does not predict native/GPU upload time. */
     summary: {
@@ -46,6 +63,10 @@ export interface ModelSourceInventory {
         skin: number | null;
         children: readonly number[];
         morphWeights: readonly number[];
+        /** glTF camera index, or null. */
+        camera: number | null;
+        /** `KHR_lights_punctual` light index, or null. */
+        light: number | null;
     }[];
     meshes: readonly {
         index: number;
@@ -78,8 +99,12 @@ export interface ModelSourceInventory {
     }[];
     textures: readonly {
         index: number;
+        /** The core `source` image (the fallback when an extension image is offered). */
         image: number | null;
         sampler: number | null;
+        /** `EXT_texture_webp` / `EXT_texture_avif` images, or null. */
+        webp: number | null;
+        avif: number | null;
     }[];
     images: readonly {
         index: number;
@@ -112,7 +137,7 @@ export interface ModelCompatibilityReport {
     inventory: ModelSourceInventory;
 }
 type RecordValue = Record<string, unknown>;
-export declare function inspectGltfDocument(document: unknown): ModelCompatibilityReport;
+export declare function inspectGltfDocument(document: unknown, options?: GltfInspectOptions): ModelCompatibilityReport;
 export declare class ZhudaModelCompatibilityError extends Error {
     readonly report: ModelCompatibilityReport;
     readonly assetId?: string;
@@ -123,5 +148,5 @@ export declare function readGltfAssetDocument(input: ArrayBuffer | Uint8Array): 
     binary: boolean;
     document: RecordValue;
 };
-export declare function inspectGltfAsset(bytes: ArrayBuffer | Uint8Array): ModelCompatibilityReport;
+export declare function inspectGltfAsset(bytes: ArrayBuffer | Uint8Array, options?: GltfInspectOptions): ModelCompatibilityReport;
 export {};

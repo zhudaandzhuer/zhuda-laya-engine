@@ -48,7 +48,11 @@ IDs belong behind AssetProvider.
 | 11 glTF handlers below | Native implementations exist | `visualConformance: 'not-certified'`; presence is not full fidelity |
 | Transmission | Requires opaque camera pass; showcase enforces mode policy | Input policy verified; complex refraction / layered transparency unverified |
 | FBX / OBJ / USD | No direct public importer or lossless conversion guarantee | Export supported glTF and validate conversion loss |
-| Meshopt (`EXT_meshopt_compression`) | Optional `ZhudaMeshoptModelDecoder`, pinned meshoptimizer 1.3.0 | Embedded GLB/glTF preprocessed to ordinary GLB; neutral WebGL/WebGPU fixture verified |
+| Meshopt (`EXT_meshopt_compression`, `KHR_meshopt_compression` with its COLOR filter) | Optional `ZhudaMeshoptModelDecoder`, pinned meshoptimizer 1.3.0; without it the report says `DECODER_REQUIRED` | Embedded GLB/glTF preprocessed to ordinary GLB; neutral WebGL/WebGPU fixtures verified |
+| Quantized vertices (`KHR_mesh_quantization`, normalized texture coordinates and weights) | Turned into floats before native parsing (`DEQUANTIZED_ATTRIBUTES`); node transforms kept | Generated torus: same-backend pixels against the float file, WebGL and WebGPU |
+| WebP / AVIF textures (`EXT_texture_webp`, `EXT_texture_avif`) | The device is asked once; AVIF, then WebP, else the fallback source loads (`IMAGE_DECODE_UNAVAILABLE`) | Lossless WebP and AVIF pictures against the PNG one in desktop Chrome; other browsers and phones not run |
+| Punctual lights (`KHR_lights_punctual`) | Made on their nodes only when `instantiate(id, {lights})` asks; units mapped by `zhudaGltfLightToLaya` (`LIGHT_APPROXIMATED`) | Room against the same lights made by hand from the documented mapping; not a physical-units certification |
+| Node extras and cameras | `instance.gltfNodes`; `applyZhudaGltfCamera` aims a LayaAir camera | Room camera against the hand-aimed one |
 | Draco / KTX2 / material variants | No registered support in this importer | Required extension rejects; optional fallback explicitly degraded |
 | HDR / GI / reflection / hair / cloth / skin | Existing engine capabilities have their own boundaries | No seller-model / UE parity or new GI certification |
 | Movie / EXR / path tracing | Not delivered by showcase mode | Cinematic means real-time postprocessing only |
@@ -58,12 +62,17 @@ IDs belong behind AssetProvider.
 `KHR_materials_emissive_strength`, `KHR_materials_ior`,
 `KHR_materials_iridescence`, `KHR_materials_sheen`, `KHR_materials_specular`,
 `KHR_materials_transmission`, `KHR_materials_unlit`, `KHR_materials_volume`,
-`KHR_texture_transform`.
+`KHR_texture_transform` (`implementation: 'native'`), and
+`KHR_mesh_quantization`, `EXT_texture_webp`, `EXT_texture_avif`,
+`KHR_lights_punctual` (`implementation: 'engine'`: done before or around the
+native importer, see [glTF intake](#gltf-intake-quantization-webpavif-lights-cameras-extras)).
 
-`gltfAssetCapabilities` reports GLB/embedded data as supported, Meshopt as
-`adapter-required`, and external resource URLs, Draco and KTX2/Basis as
-unsupported. Raw `inspectGltfAsset` still describes the native importer; it does
-not simulate a registered decoder. Use the optional adapter explicitly:
+`gltfAssetCapabilities` reports GLB/embedded data, quantized vertices and
+WebP/AVIF textures as supported, both Meshopt names as `adapter-required`, and
+external resource URLs, Draco and KTX2/Basis as unsupported. Raw
+`inspectGltfAsset` still describes the native importer; it does not simulate a
+registered decoder (a Meshopt file reports `DECODER_REQUIRED`). Use the optional
+adapter explicitly:
 
 ```ts
 import { ZhudaModelDecoderRegistry, ZhudaMeshoptModelDecoder,
@@ -104,6 +113,71 @@ compressed/uncompressed pixels and 30 load/unload cycles on macOS Chrome WebGL
 and hardware WebGPU. This does not certify seller models, every filter/animation
 combination, Windows GPU or physical mobile. See the
 [hardening verification](plans/desktop-and-agent-gates/hardening-verification.md).
+
+## glTF intake: quantization, WebP/AVIF, lights, cameras, extras
+
+`ZhudaModelLibrary` runs these steps before and around LayaAir 3.4.2's own
+glTF parser; none patches the vendored files. Evidence:
+[gltf-intake verification](plans/records/gltf-intake/verification.md).
+
+- **Meshopt names.** `ZhudaMeshoptModelDecoder` reads `EXT_meshopt_compression`
+  and the ratified `KHR_meshopt_compression`. The `COLOR` filter (stride 4 or 8)
+  is accepted only under the KHR name, as the extensions specify.
+- **Quantized vertices.** LayaAir copies vertex attributes into a float buffer
+  unscaled. `POSITION`, `NORMAL`, `TANGENT`, `TEXCOORD_0/1`, `WEIGHTS_0` and
+  morph-target deltas stored as bytes or shorts (normalized or not, sparse or
+  not) are turned into floats in one pass (`dequantizeZhudaGltf`) after any
+  Meshopt decode; node transforms, which carry `KHR_mesh_quantization`'s scale
+  and offset, are kept. `COLOR_0` stays with the existing parse-time repair;
+  `JOINTS_0` stays integer. The report says `DEQUANTIZED_ATTRIBUTES` with the
+  float bytes it adds: download size stays small, GPU vertex memory becomes that
+  of an unquantized export. External buffers are refused.
+- **WebP and AVIF.** `probeZhudaImageDecode()` decodes a one-pixel picture of
+  each once per page. A texture then loads its AVIF, else WebP, image when the
+  device decodes it, else its core `source`. `inspectGltfAsset(bytes,
+  {imageDecode})` reports `IMAGE_DECODE_UNAVAILABLE`: a warning (degraded) when
+  the fallback loads, an error when there is none. Without a device answer, a
+  picture with no fallback is named `IMAGE_DECODE_UNCHECKED`.
+- **Embedded pictures.** LayaAir base64-encodes every picture stored in a GLB
+  into a data URL. The engine hands the same bytes to the same Laya loader as a
+  Blob URL and revokes it once the picture has loaded. Measured on one desktop
+  (Apple M4, Chrome 157) with a 10.4 MB PNG, medians of five loads: 49–95 ms
+  instead of 344–450 ms, and a sampled JavaScript heap peak of 0.12–0.24 MB
+  instead of about 293 MB (LayaAir builds the base64 string one character at a
+  time). Neither path keeps that heap afterwards. Phones are not measured. The
+  texture's LayaAir URL is then a revoked Blob URL: LayaAir cannot fetch that
+  picture again by URL (nothing in these runs needed to).
+- **Punctual lights.** `instantiate(id, {lights: true})` (or
+  `{lights: {scale}}`) adds a LayaAir light component to each node carrying a
+  `KHR_lights_punctual` light. They are off by default: copies of a model would
+  copy its lights. `zhudaGltfLightToLaya` holds the units: a directional
+  light's lux become `scale × lux / π` (LayaAir's diffuse term has no 1/π); a
+  point or spot light keeps the file's range, or `4·√(scale·cd/π)` without one,
+  and an intensity that meets glTF's recommended falloff at half the range.
+  LayaAir's falloff is not the inverse square: without a file range the two
+  stay within about 30 % from a quarter to nine tenths of it; with one, glTF's
+  window closes faster (about 0.63 at a quarter, about 2 at three quarters).
+  A spot's cone is twice glTF's outer angle; LayaAir fixes its inner edge at
+  half of it. The colour is encoded for LayaAir, which reads light colours as
+  sRGB. No light casts a shadow; set `shadowMode` on the component. The report
+  names each point and spot light `LIGHT_APPROXIMATED`, and an invalid light
+  `INVALID_LIGHT` (it is not made).
+- **Extras and cameras.** `instance.gltfNodes` lists every node carrying
+  `extras`, a camera or a light, with the Laya node made from it in this copy
+  (its name is the glTF name or LayaAir's `node_<n>`), a frozen copy of the
+  extras, the camera and light definitions, and the light component when one
+  was made. `applyZhudaGltfCamera(camera, data.camera, data.node)` sets a
+  LayaAir camera's lens and puts it at the node's world pose; the viewport keeps
+  its own aspect ratio. An invalid camera is reported `INVALID_CAMERA`. The
+  source inventory also lists each node's camera and light index and each
+  texture's WebP/AVIF image.
+
+```ts
+const room = await models.instantiate('rooms/lobby.glb', { lights: { scale: 0.5 } });
+const shot = room.gltfNodes.find((n) => n.camera);
+if (shot) applyZhudaGltfCamera(camera, shot.camera, shot.node);
+const spawns = room.gltfNodes.filter((n) => (n.extras as any)?.spawn);
+```
 
 ## Inspect and control a live model
 

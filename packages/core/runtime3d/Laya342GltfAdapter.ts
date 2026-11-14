@@ -1,10 +1,91 @@
 import { destroyLaya342ModelTree } from './Laya342Adapters.ts';
+import {
+  resolveZhudaGltfTextureSource,
+  type ZhudaImageDecodeSupport,
+  type ZhudaLayaLightSettings,
+} from './GltfIntake.ts';
 const prepared = new WeakSet<object>();
+// The Laya node made for each glTF node by the resource's last create().
+const createdNodes = new WeakMap<object, readonly any[]>();
+/** Options for one owned glTFResource. */
+export interface Laya342GltfResourceOptions {
+  /** This device's WebP/AVIF decoding; picks each texture's image (see resolveZhudaGltfTextureSource). */
+  imageDecode?: ZhudaImageDecodeSupport;
+}
 /** Version-pinned importer repairs. Applied to one owned glTFResource, never to
  * global prototypes. The native Animator remains the sole pose evaluator. */
-export function prepareLaya342GltfResource(resource: any, runtime: any): void {
+export function prepareLaya342GltfResource(
+  resource: any,
+  runtime: any,
+  options: Laya342GltfResourceOptions = {},
+): void {
   if (prepared.has(resource)) return;
   prepared.add(resource);
+  // EXT_texture_webp / EXT_texture_avif: the native loader reads only
+  // textures[i].source. Point it at the image this device decodes, in this
+  // resource's own parsed document, before any texture (core or extension slot) loads.
+  const loadTextures = resource.loadTextures;
+  if (typeof loadTextures === 'function')
+    resource.loadTextures = function (...args: any[]) {
+      (this._data?.textures ?? []).forEach((texture: any, i: number) => {
+        const source = resolveZhudaGltfTextureSource(texture, options.imageDecode);
+        if (source.image !== null) texture.source = source.image;
+        else if (source.unavailable.length)
+          throw Error(`glTF textures[${i}] has no image this device can decode.`);
+      });
+      return loadTextures.apply(this, args);
+    };
+  // Embedded images: the native loader base64-encodes each one into a data URL
+  // on the main thread (a string about 1.33 times the picture) for the browser
+  // to decode again. Hand the same bytes to the same loader as a Blob URL
+  // instead, and revoke it once the picture has loaded.
+  const fromBuffer = resource.loadTextureFromBuffer;
+  const urls = (globalThis as any).URL;
+  const loader = runtime?.ILaya?.loader ?? runtime?.loader;
+  if (
+    typeof fromBuffer === 'function' &&
+    typeof (globalThis as any).Blob === 'function' &&
+    typeof urls?.createObjectURL === 'function' &&
+    typeof loader?.load === 'function' &&
+    runtime?.Loader?.TEXTURE2D
+  )
+    resource.loadTextureFromBuffer = function (
+      buffer: ArrayBuffer,
+      mimeType: string,
+      constructParams: unknown,
+      propertyParams: unknown,
+      progress?: { createCallback(): unknown },
+    ) {
+      const url = urls.createObjectURL(
+        new Blob([buffer], { type: mimeType || 'application/octet-stream' }),
+      );
+      const revoke = () => urls.revokeObjectURL(url);
+      try {
+        return Promise.resolve(
+          loader.load(
+            { url, constructParams, propertyParams },
+            runtime.Loader.TEXTURE2D,
+            progress?.createCallback(),
+          ),
+        ).then(
+          (texture: unknown) => (revoke(), texture),
+          (error: unknown) => {
+            revoke();
+            throw error;
+          },
+        );
+      } catch (error) {
+        revoke();
+        throw error;
+      }
+    };
+  const loadNodes = resource.loadNodes;
+  if (typeof loadNodes === 'function')
+    resource.loadNodes = function (...args: any[]) {
+      const result = loadNodes.apply(this, args);
+      createdNodes.set(this, [...(this._nodes ?? [])]);
+      return result;
+    };
   const createMaterial = resource.createMaterial;
   if (typeof createMaterial === 'function')
     resource.createMaterial = function (definition: any) {
@@ -182,6 +263,33 @@ export function createLaya342ModelTemplate(resource: any, runtime: any): Laya.Sp
     if (resource._nodes) resource._nodes.length = 0;
     throw error;
   }
+}
+
+/** The Laya node made for each glTF node index by the resource's last create(). */
+export function laya342GltfNodes(resource: object): readonly any[] {
+  return createdNodes.get(resource) ?? [];
+}
+
+/** Adds a LayaAir light component, set from `zhudaGltfLightToLaya`, to a node.
+ * It points down the node's -Z, as glTF's does, and casts no shadow. */
+export function createLaya342GltfLight(
+  node: any,
+  settings: ZhudaLayaLightSettings,
+  runtime: any,
+): any {
+  const type =
+    settings.kind === 'directional'
+      ? runtime.DirectionLightCom
+      : settings.kind === 'spot'
+        ? runtime.SpotLightCom
+        : runtime.PointLightCom;
+  if (!type) throw Error(`LayaAir has no ${settings.kind} light component here`);
+  const light = node.addComponent(type);
+  light.color = new runtime.Color(...settings.color, 1);
+  light.intensity = settings.intensity;
+  if (settings.range !== null) light.range = settings.range;
+  if (settings.spotAngleDeg !== null) light.spotAngle = settings.spotAngleDeg;
+  return light;
 }
 
 /** A colour accessor's values as RGBA floats in 0..1 (see glTF 2.0, COLOR_0). */
