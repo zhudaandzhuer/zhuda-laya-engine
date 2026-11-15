@@ -3,6 +3,43 @@
 Plan: `docs/plans/records/threejs-gap-audit/plan.md` (work packages WP0..WP16 from the audit; WP17..WP20 added on request on 2026-11-15, section 6; WP21..WP24 scheduled the same day from a consumer's rebuild, section 7)\
 Last updated: 2026-11-15, after WP20 (WP16 to WP19, the phone checks and what the merged packages had left open came before it the same day; batch 2 is done one package at a time, by one agent, without a review agent)
 
+## Handoff update (2026-11-15, evening: the hand, routes and Spine)
+
+Read this first; the handoff below it still holds for WP0 to WP24.
+
+**State**
+
+- GitHub `main` and the main checkout are equal (`git rev-list --count origin/main..main` and
+  `main..origin/main` both 0 when this was written); the only branch is `main`; no worktree is
+  left (the review session's `claude/fable-batch8-review-8b8d41` and `docs/implementation-routes`
+  were merged and removed). The main checkout's `dist/sdk` was rebuilt by `npm run verify` with
+  everything below in it.
+- Last full gates, on the main checkout with the hand's rounds two to nine: `npm run verify` 830 of
+  830 (Doctor HEALTHY), `npm run lint`, `npm run format:check`, `git diff --check`;
+  `npm run verify:hand` clean on WebGPU and WebGL. GitHub's CI passed on `4410174`.
+- Added since the handoff below, all after it on `main`:
+  - the procedural hand (`procedural-hand/`): `da15e03`, `c076610`, then rounds two to nine in
+    `4410174` (committed from the main checkout by another session on the owner's word; the hand's
+    own session had left them uncommitted);
+  - implementation routes (`docs/routes/`, `implementation-routes/`): `f3d23c9`;
+  - `ZhudaSpineCharacter` and the Spine character route (`spine-character/`): `552736a`.
+
+**Open**
+
+1. The hand's record says **In progress**: how it looks is the owner's to judge from its pictures
+   (`npm run verify:hand`). No rig or skinning weights, no pores, not on a phone; the task's own
+   status line says implemented within scope.
+2. Neither the hand nor the Spine character was run on a phone. The Spine route names its other
+   limits (physics compared with spine-webgl only by eye).
+3. Seen by a consumer (films/body-lab, 2026-11-15) and not looked into here: `strands` on hair
+   cards and ribbon strands (alpha-cut sheets lit by the volume's normal) turned them white at
+   every strength the consumer tried; the consumer left `strands` off. Not scheduled; a case for
+   WP20's limits if it is confirmed.
+4. Everything under **Open** in the handoff below (phone checks for WP19/WP20, the three V40
+   failures, WP21 to WP24 not started).
+
+**The exact next step** is unchanged: the phone checks named at the end of the handoff below.
+
 ## Handoff (2026-11-15, at the end of the session that did WP16 to WP20)
 
 Read this first when taking the work over.
@@ -20,8 +57,8 @@ Read this first when taking the work over.
   no rebuild. After any later change to `packages/`, run `npm run build`
   there first.
 - No SDK release was cut (the package is still 1.18.0), no pull request, no
-  tag. The session's work tree is the branch
-  `claude/fable-batch8-review-8b8d41`, equal to `main`; it can be removed.
+  tag. The session's work tree (the branch `claude/fable-batch8-review-8b8d41`,
+  equal to `main`) was removed on 2026-11-15 evening.
 - Last full gates, at `49586e0` (one refusal and its test were added after, `npm run verify` 796 of 796): `npm run verify` 795 of 795, `npm run lint`,
   `npm run format:check`, `git diff --check`; every draw check once on each
   backend, WebGL 59 of 59 and WebGPU 46 of 46
