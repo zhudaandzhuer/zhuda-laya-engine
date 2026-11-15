@@ -14,13 +14,13 @@ Apple M4)`. WebGPU: adapter apple / metal-3. Node 26.12.0, npm 11.20.0.
 
 ## Checks
 
-| Check                                     | Exact command or procedure                                 | Result                                                |
-| ----------------------------------------- | ---------------------------------------------------------- | ----------------------------------------------------- |
-| Build, types, declarations, doctor, tests | `npm run verify`                                           | PASS, 795 of 795 (15 in `tests/lit-surface.test.mjs`) |
-| Format, lint, whitespace                  | `npm run format:check`, `npm run lint`, `git diff --check` | PASS                                                  |
-| Lit surface, WebGL                        | `npm run verify:lit-surface`                               | PASS                                                  |
-| Lit surface, WebGPU                       | `LIT_SURFACE_RENDERER=webgpu npm run verify:lit-surface`   | PASS                                                  |
-| The other draw checks, both backends      | each `scripts/verify-*.mjs` once, WebGL then WebGPU        | Not run at this commit                                |
+| Check                                     | Exact command or procedure                                 | Result                                                                                                    |
+| ----------------------------------------- | ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| Build, types, declarations, doctor, tests | `npm run verify`                                           | PASS, 795 of 795 (15 in `tests/lit-surface.test.mjs`)                                                     |
+| Format, lint, whitespace                  | `npm run format:check`, `npm run lint`, `git diff --check` | PASS                                                                                                      |
+| Lit surface, WebGL                        | `npm run verify:lit-surface`                               | PASS                                                                                                      |
+| Lit surface, WebGPU                       | `LIT_SURFACE_RENDERER=webgpu npm run verify:lit-surface`   | PASS                                                                                                      |
+| The other draw checks, both backends      | each `scripts/verify-*.mjs` once, WebGL then WebGPU        | PASS at `a83ed1a`: WebGL 59 of 59, WebGPU 46 of 46 (with `verify-spring-bones`, which WP19 had not swept) |
 
 ## What is drawn
 
