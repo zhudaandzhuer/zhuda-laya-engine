@@ -12,12 +12,26 @@ export const VALID_PLAN_STATUSES = new Set([
 const PREFAB_POLICY_FILE = 'docs/prefab-workflow.md';
 /** How a 3D scene is made to look good; `get_quality_route` returns the same route as data. */
 const QUALITY_ROUTE_FILE = 'docs/quality-route.md';
+const ROUTES_INDEX_FILE = 'docs/routes/README.md';
+const ROUTES_TEMPLATE_FILE = 'docs/routes/TEMPLATE.md';
+/** What every implementation route must say, so an agent can act on it and knows its limits. */
+export const ROUTE_REQUIRED_SECTIONS = [
+  '**Status:**',
+  '## When to take this route',
+  '## Steps',
+  '## Pitfalls',
+  '## Checks',
+  '## Not checked',
+  '## Boundaries',
+];
 
 export const REQUIRED_AGENT_FILES = [
   'AGENTS.md',
   'docs/agent-development.md',
   PREFAB_POLICY_FILE,
   QUALITY_ROUTE_FILE,
+  ROUTES_INDEX_FILE,
+  ROUTES_TEMPLATE_FILE,
   'docs/plans/README.md',
   'docs/plans/TEMPLATE.md',
   'docs/plans/TASK-TEMPLATE.md',
@@ -149,13 +163,76 @@ export function auditAgentContract(projectRoot) {
     }
   }
 
+  const routes = auditImplementationRoutes(projectRoot);
+  issues.push(...routes.issues);
+
   return {
     passed: issues.length === 0,
     requiredFiles: REQUIRED_AGENT_FILES,
     missingFiles,
     planStatuses,
+    routes: routes.routes,
     issues,
   };
+}
+
+/**
+ * Implementation routes (docs/routes): every route the index links to exists and
+ * says when to take it, its steps, pitfalls, checks, what was not checked and its
+ * boundaries. Links from a route to other engine guides are not followed here.
+ */
+export function auditImplementationRoutes(projectRoot) {
+  const routesRoot = path.join(projectRoot, 'docs/routes');
+  const index = readText(projectRoot, ROUTES_INDEX_FILE);
+  const issues = [];
+  const routes = [];
+  if (!index) return { routes, issues };
+  const linked = new Set();
+  for (const match of index.matchAll(/\]\(([^)#\s]+\.md)(?:#[^)]*)?\)/g)) {
+    const link = match[1];
+    if (link.startsWith('http://') || link.startsWith('https://')) continue;
+    const resolved = path.resolve(routesRoot, link);
+    if (path.dirname(resolved) !== routesRoot) continue;
+    linked.add(path.basename(resolved));
+    if (!fs.existsSync(resolved))
+      issues.push(
+        issue(
+          'ROUTE_LINK_BROKEN',
+          ROUTES_INDEX_FILE,
+          `Route index links to a missing route: ${link}`,
+          'Fix the link or write the route from docs/routes/TEMPLATE.md.',
+        ),
+      );
+  }
+  const files = fs.existsSync(routesRoot)
+    ? fs.readdirSync(routesRoot).filter((file) => file.endsWith('.md'))
+    : [];
+  for (const file of files) {
+    if (file === 'README.md' || file === 'TEMPLATE.md') continue;
+    const relative = path.join('docs/routes', file);
+    const text = readText(projectRoot, relative);
+    routes.push(relative);
+    if (!linked.has(file))
+      issues.push(
+        issue(
+          'ROUTE_UNLISTED',
+          relative,
+          `Route is not listed in ${ROUTES_INDEX_FILE}: ${file}`,
+          `Add a row for it to the table in ${ROUTES_INDEX_FILE}.`,
+        ),
+      );
+    for (const section of ROUTE_REQUIRED_SECTIONS)
+      if (!text.includes(section))
+        issues.push(
+          issue(
+            'ROUTE_SECTION_MISSING',
+            relative,
+            `Route is missing: ${section}`,
+            `Add ${section} as in ${ROUTES_TEMPLATE_FILE}; a route says what it does not claim.`,
+          ),
+        );
+  }
+  return { routes, issues };
 }
 
 const TASK_ARRAY_FIELDS = [
@@ -265,6 +342,7 @@ export function getAgentContract(projectRoot) {
     passed: audit.passed,
     consumerRoute: 'docs/consumer-route.md',
     qualityRoute: QUALITY_ROUTE_FILE,
+    implementationRoutes: ROUTES_INDEX_FILE,
     requiredReading: [...REQUIRED_AGENT_FILES],
     commands: [
       'node packages/compiler/zhuda-init.mjs /absolute/path/to/consumer',

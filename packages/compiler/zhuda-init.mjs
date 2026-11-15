@@ -258,6 +258,8 @@ any coding agent working here:
    - \`node_modules/zhuda-laya-engine/docs/consumer-route.md\`
    - \`node_modules/zhuda-laya-engine/docs/quality-route.md\` before any 3D
      scene: the steps, in order, that make a scene look lit, grounded and deep.
+   - \`node_modules/zhuda-laya-engine/docs/routes/README.md\`: scenes already
+     built end to end on the engine and checked on devices; take one that fits.
 3. With the MCP server connected (\`.mcp.json\`), call \`get_agent_contract\`
    and \`get_quality_route\` first. Author and preview 3D scenes with the
    \`film_*\` tools and act on the \`advice\` and \`metrics\` in their replies.

@@ -386,7 +386,7 @@ or the installed `zhuda-laya-init` binary, then run the consumer's own `npm run 
 
 ## Connect a coding agent
 
-Read [`AGENTS.md`](AGENTS.md) and [`docs/agent-development.md`](docs/agent-development.md) before delegating a complex change. The MCP server exposes `get_agent_contract` and `validate_task_spec` so another agent can retrieve the same boundaries, workflow and evidence rules without relying on this conversation, and `get_quality_route`: the [steps, in order, to a 3D scene that looks good](docs/quality-route.md), with the check for each and what is not built yet.
+Read [`AGENTS.md`](AGENTS.md) and [`docs/agent-development.md`](docs/agent-development.md) before delegating a complex change. The MCP server exposes `get_agent_contract` and `validate_task_spec` so another agent can retrieve the same boundaries, workflow and evidence rules without relying on this conversation, and `get_quality_route`: the [steps, in order, to a 3D scene that looks good](docs/quality-route.md), with the check for each and what is not built yet. [Implementation routes](docs/routes/README.md) (docs/routes) collect scenes already built end to end and checked on devices, so an agent starts from a working path instead of researching one.
 
 Add the bundled MCP server to your client configuration:
 

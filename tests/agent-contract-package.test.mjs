@@ -20,6 +20,8 @@ function copyContract(withRecords) {
     fs.cpSync(path.join(repo, 'docs/plans', dir), path.join(root, 'docs/plans', dir), {
       recursive: true,
     });
+  // The package ships all of docs/, so the routes the index lists come with it.
+  fs.cpSync(path.join(repo, 'docs/routes'), path.join(root, 'docs/routes'), { recursive: true });
   if (withRecords) fs.mkdirSync(path.join(root, 'docs/plans/records'));
   return root;
 }

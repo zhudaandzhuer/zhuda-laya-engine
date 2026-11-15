@@ -81,6 +81,10 @@ WebGL and device acceptance still require the consumer's own reports.
    is not built yet.
 5. The corresponding public declaration in `packages/types/` and an existing
    test before adding a new API.
+6. [`docs/routes/README.md`](docs/routes/README.md): implementation routes,
+   scenes already built end to end on this engine and checked on devices, with
+   their steps, pitfalls and limits. Take a route that fits before researching
+   one; after building a new kind of scene, add a route from its template.
 
 Use `node packages/mcp-server/index.mjs --tool get_agent_contract` to retrieve
 this workflow as machine-readable data, and `--tool get_quality_route` for the
