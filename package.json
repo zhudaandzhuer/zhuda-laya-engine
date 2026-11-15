@@ -184,6 +184,7 @@
     "verify:gpu-depth": "node scripts/verify-gpu-depth.mjs",
     "verify:gltf-instancing": "node scripts/verify-gltf-instancing.mjs",
     "verify:lit-surface": "node scripts/verify-lit-surface.mjs",
+    "verify:hand": "node scripts/verify-hand.mjs",
     "verify:instanced-mesh": "node scripts/verify-instanced-mesh.mjs",
     "verify:animation-control": "node scripts/verify-animation-control.mjs",
     "verify:specular-aa": "node scripts/verify-specular-aa.mjs",

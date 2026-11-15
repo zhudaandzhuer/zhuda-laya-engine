@@ -9,3 +9,5 @@ export * from './PropFactory.ts';
 export * from './SynthAudio.ts';
 export * from './ProceduralAssetProvider.ts';
 export * from './ModuleHarness.ts';
+export * from './Isosurface.ts';
+export * from './Hand.ts';

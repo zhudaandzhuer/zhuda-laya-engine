@@ -10,3 +10,5 @@ export * from './PropFactory.js';
 export * from './SynthAudio.js';
 export * from './ProceduralAssetProvider.js';
 export * from './ModuleHarness.js';
+export * from './Isosurface.js';
+export * from './Hand.js';
