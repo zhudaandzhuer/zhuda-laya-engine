@@ -126,6 +126,7 @@ export type {
 } from './GltfIntake.ts';
 export * from './Themes.ts';
 export * from './ResultPlayback.ts';
+export * from './Cloth.ts';
 
 export { ZhudaRendererError } from './Renderer.ts';
 export type { RendererDiagnostics } from './Renderer.ts';

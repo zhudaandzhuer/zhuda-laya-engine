@@ -1,6 +1,6 @@
 # Agent task: cloth-and-spring-bones
 
-Status: Proposed (scheduled as WP18 and WP19 of the three.js gap plan; not started)\
+Status: WP18 (cloth) implemented within scope, desktop WebGL and WebGPU verified, measured on a vivo V40; WP19 (spring bones) proposed, not started\
 Owner: Engine/toolchain\
 Last reviewed: 2026-11-15
 
@@ -63,23 +63,30 @@ does no harm.
 
 ### Engine
 
-- `simulation/ParticleCore.ts` (new, WP18): positions, previous positions,
-  inverse masses; the fixed-step accumulator; gravity, damping, wind as a
-  function the consumer gives; distance constraints solved in a fixed
-  order for a fixed number of rounds; colliders: sphere, capsule, and a
-  body given as a table of radius by height and angle about an axis, read
-  with interpolation; friction against a collider.
-- `simulation/Cloth.ts` (new, WP18): `createZhudaClothGrid` (a sheet of
-  particles with structural, shear and bend constraints), a cloth from a
-  mesh's own edges, `pin`, `unpin`, `grab`, `dragTo`, `release`, tearing
-  left out; `ZhudaCloth` binds a solver to a `ZhudaDynamicMesh` (positions,
-  normals worked out again, a range upload, how far each place is stretched
-  written to the vertex colour's alpha when the mesh has colours).
+- `simulation/ParticleCore.ts` (WP18, built): the fixed step
+  (`ZhudaFixedStep`: a delta spent in whole steps, a cap, the rest
+  dropped); the bodies (`sphere`, `capsule`, `plane`, and `table`, a body
+  given as radii by height and angle about an axis, grown square to its
+  surface) and how deep a point is in one and the way out
+  (`zhudaColliderDepth`, `prepareZhudaTable`, `zhudaTableRadius`).
+- `simulation/Cloth.ts` (WP18, built): `createZhudaClothGrid`,
+  `createZhudaClothTube`, `createZhudaClothFromMesh` (structural, shear and
+  bend constraints, and spans along each thread of a sheet or a tube);
+  `ZhudaClothSolver` (gravity, drag, the air on each triangle, constraints
+  solved in a fixed order one way and then the other, a limit on a
+  particle's distance from its pin, bodies with friction, `pin`, `movePin`,
+  `unpin`, `shift`, `grab`, `dragTo`, `release`, `nearestToRay`,
+  `countInside`, `measureStrain`, `inspect`). Tearing is left out.
+- `runtime3d/Cloth.ts` (WP18, built): `ZhudaCloth` binds a solver to a
+  `ZhudaDynamicMesh` (positions, normals worked out again, the whole mesh
+  uploaded when a step ran, how far each place is stretched written to the
+  vertex colour's alpha with `strain`), `update(seconds)`,
+  `updateFrom(layers, layer)`, `dispose`.
 - `simulation/SpringBones.ts` (new, WP19): chains under a skeleton's bones
   (stiffness toward the animated pose, drag, gravity, a radius), colliders
   that follow bones, written after the animator each frame; the same core.
-- Public declarations, `docs/cloth.md`, MCP guard, `verify:cloth`,
-  `verify:spring-bones`.
+- Public declarations, `docs/cloth.md`, the MCP guard `GUARD_CLOTH`,
+  `verify:cloth` (built); `verify:spring-bones` (WP19).
 
 ### Consumer or adapter
 
@@ -101,8 +108,9 @@ does no harm.
      same as the delta whole when both hold the same whole steps;
    - a hanging sheet comes to rest: its energy falls and its constraints
      end within a stated share of their rest length;
-   - a pinned point does not move; a grabbed point is where it is dragged
-     to; released, it falls;
+   - a pinned point does not move; a grabbed point is within its hand's
+     slack of where it is dragged to, and out of reach the hand waits at the
+     cloth; released, it falls;
    - a pause (deltas of zero) changes nothing; a gap of five seconds in one
      delta spends no more than the cap and leaves every position finite
      and within the cloth's reach of its pins;
@@ -127,19 +135,22 @@ does no harm.
 
 ## Evidence to attach
 
-- Test/build output:
-- Browser/WebGL or device report:
-- Resource/lifecycle report:
-- Screenshots/video/logs (external consumer only):
+- WP18: `records/cloth-and-spring-bones/verification-cloth.md`.
+- WP19: not started.
 
 ## Unverified limits
 
-- Nothing is built. The cost of a step on a phone (particles times rounds)
-  is not known; the first measurement decides the default rounds.
-- Whether the table collider is enough for a body that bends (a knee): a
-  table is one rigid shape about one axis, so a leg would be two.
+- WP18: one phone (a vivo V40, WebGL), one run: 7.1 ms a frame for 1,681
+  particles and 3.0 ms for a skirt of 576 (desktop: 2.4 ms and 1.1 ms).
+  WebGPU on a phone is not run.
+- WP18: a table is one rigid shape about one axis, so a leg that bends is
+  two; its ends are flat, and a cloth over a sharp rim shows the rim.
+- WP18: no self-collision; a body thinner than `maxSpeed * step` may be
+  crossed; a free cloth over small supports stretches about a tenth.
+- WP19: nothing is built.
 
 ## Rollback
 
-Nothing to roll back: no code. When built, each of WP18 and WP19 is its own
-commit on top of the one before.
+WP18 is one commit on top of `6668933` and adds files only (two exports in
+`packages/core/index.ts` and `runtime3d/index.ts`): reverting it removes the
+cloth and changes nothing else. WP19 will be its own commit.

@@ -477,14 +477,14 @@ consumer's and is not tracked here.
   - G3 (B1): a dynamic mesh with colours whose value the hook draws; after a range is changed and uploaded the picture follows.
 - Record: `records/lit-hook-inputs/`.
 
-### WP18. Cloth (next)
+### WP18. Cloth (done 2026-11-15)
 
 - C1. Particles and distance constraints (structural, shear, bend), Verlet integration, a fixed step fed by a layer of `ZhudaLayeredClock`, pinned points, collision against spheres, capsules and a table of radius by height and angle, a particle that can be grabbed, dragged and let go; drawn through a `ZhudaDynamicMesh`.
 - Gate G5: the same input gives the same result; thirty times made and destroyed with nothing left; no burst after a lost focus or a pause; on both backends a hanging cloth grabbed and let go, with no vertex inside the collider.
 - Risk: the cost of a step on a phone is not known; a body that bends needs more than one table.
-- Task: `records/cloth-and-spring-bones/task.md`.
+- Task: `records/cloth-and-spring-bones/task.md`. Built as `ZhudaCloth` and `ZhudaClothSolver` (`docs/cloth.md`), with a floor among the bodies, a limit on each particle's distance from its pin and spans along each thread; record: `records/cloth-and-spring-bones/verification-cloth.md`.
 
-### WP19. Spring bones (after WP18)
+### WP19. Spring bones (next)
 
 - C2. Chains of bones under a skeleton (hair, a skirt's hem, accessories) that lag, swing and settle, with colliders that follow bones, written after the animator; on WP18's core.
 - Gate G5, as for WP18, with a chain hung from a moving bone for its draw.

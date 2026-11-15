@@ -178,6 +178,7 @@
     "verify:lighting-depth": "node scripts/verify-lighting-depth.mjs",
     "verify:backend-delivery": "node scripts/verify-backend-delivery.mjs",
     "verify:developer-tooling": "node scripts/verify-developer-tooling.mjs",
+    "verify:cloth": "node scripts/verify-cloth.mjs",
     "verify:dither": "node scripts/verify-dither.mjs",
     "verify:gpu-depth": "node scripts/verify-gpu-depth.mjs",
     "verify:gltf-instancing": "node scripts/verify-gltf-instancing.mjs",

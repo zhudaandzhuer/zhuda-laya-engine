@@ -83,5 +83,6 @@ export { applyZhudaGltfCamera, dequantizeZhudaGltf, probeZhudaImageDecode, quant
 export type { ZhudaDequantizeResult, ZhudaGltfCamera, ZhudaGltfImageExtension, ZhudaGltfInstancing, ZhudaGltfLight, ZhudaGltfNodeData, ZhudaGltfProblem, ZhudaGltfTextureSource, ZhudaImageDecodeSupport, ZhudaLayaLightSettings, ZhudaProbedImageFormat, } from './GltfIntake.js';
 export * from './Themes.js';
 export * from './ResultPlayback.js';
+export * from './Cloth.js';
 export { ZhudaRendererError } from './Renderer.js';
 export type { RendererDiagnostics } from './Renderer.js';

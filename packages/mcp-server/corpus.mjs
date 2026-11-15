@@ -238,6 +238,17 @@ export const API_GUARDRAILS = [
       'The hook is given s.viewDirection (toward the eye; toward the light where a shadow is written, because LayaAir sets no u_CameraPos in that pass) and the mesh normal as its fourth argument, so no camera uniform is needed. s.vertexColor is white on a mesh without colours; rgb arrive as light (power 2.2), alpha as given, so a plain number for the hook goes in alpha. material.blend alpha, additive and cutout take effect with nothing set by hand. sheen is on the lit surface (s.sheenColor, s.sheenRoughness, setSheen); the other physical lobes (thin film, glass, coat) have no hook. sheen is part of the shader name contract. See docs/filmic-rendering.md.',
   },
   {
+    id: 'GUARD_CLOTH',
+    topic:
+      'cloth simulation skirt cape curtain flag towel verlet particles distance constraints pin grab drag collider capsule sphere body fixed timestep ammo soft body cannon physics hanging fabric wind',
+    hallucinatedLegacyApi:
+      'const softBody = new Ammo.btSoftBodyHelpers().CreatePatch(...); physicsWorld.addSoftBody(softBody); setInterval(() => simulate(1 / 60), 16); const clothGeometry = new THREE.ParametricGeometry(clothFunction, w, h); particles[i].addForce(gravity); requestAnimationFrame(() => simulate(Date.now()));',
+    zhudaCanonicalApi:
+      "const cloth = new ZhudaCloth(createZhudaClothGrid({ columns: 25, rows: 25, width: 1.2, height: 1.2, origin: [-0.6, 1.9, 0] }), scene, { strain: { scale: 10 } }); cloth.node.meshRenderer.sharedMaterial = material.material; cloth.solver.pin(0); cloth.solver.pin(24); cloth.solver.addCollider({ type: 'capsule', a: [0, 0.1, 0], b: [0, 0.5, 0], radius: 0.08 }); each frame: cloth.updateFrom(runtime.layers). A skirt: createZhudaClothTube({ columns, rows, center, topRadius, bottomRadius, length }) with its first ring pinned and movePin each frame. A hand: const i = cloth.solver.nearestToRay(origin, direction); cloth.solver.grab(i); cloth.solver.dragTo(i, x, y, z); cloth.solver.release(i).",
+    reason:
+      'The cloth has no timer: it is given the delta of a layer of the engine clock (updateFrom(layers) or update(seconds)), runs in fixed steps of 1/240 s, stands still on a paused layer and drops time over maxSteps instead of catching up, so the same deltas give the same cloth. Bodies are sphere, capsule, plane and table (radius by height and angle); move them with setCollider each frame and pins with movePin; carry the whole cloth with shift() after a teleport. There is no self-collision and no tearing; a body thinner than maxSpeed * step may be crossed. dispose() the cloth; the material is its owner’s. See docs/cloth.md.',
+  },
+  {
     id: 'GUARD_GLTF_COPIES',
     topic:
       'glTF EXT_mesh_gpu_instancing instanced mesh from file forest scatter InstancedMesh aoMap uv2 second uv set texCoord 1 baked occlusion emissive lightmap meshopt decoder workers',

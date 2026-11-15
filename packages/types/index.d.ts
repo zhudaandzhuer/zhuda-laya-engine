@@ -31,6 +31,7 @@ export * from './effects/VfxMaterial.js';
 export * from './effects/ParticleEventLink.js';
 export * from './VisualMigrationPipeline.js';
 export * from './prefabs/index.js';
+export * from './simulation/index.js';
 export * from './runtime3d/index.js';
 export * from './procedural/index.js';
 export * from './film/index.js';
