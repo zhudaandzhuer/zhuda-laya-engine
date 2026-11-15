@@ -24,6 +24,15 @@ interface ZhudaSdfShapeBase {
     /** Cut this shape out of what came before it (with the same fillet) instead of adding it. */
     subtract?: boolean;
     flatten?: ZhudaSdfFlatten;
+    /**
+     * Keep only the part of the shape on one side of a plane: where `dot(p, normal)` is at most
+     * `offset`. For a large shape whose far side would stand out of the body (a pad set deep
+     * so its face curves gently); the cut face should lie inside the body.
+     */
+    keep?: {
+        normal: ZhudaVec3;
+        offset: number;
+    };
 }
 /** A cone between two balls: radius `ra` at `a`, `rb` at `b`. Equal radii make a capsule. */
 export interface ZhudaSdfRoundCone extends ZhudaSdfShapeBase {

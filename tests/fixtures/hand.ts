@@ -42,20 +42,6 @@ function covered(): number {
   return n;
 }
 
-const SKIN = `void zhudaSurface(inout ZhudaLitSurface s, vec2 uv, vec3 p, vec3 n) {
-  s.baseColor *= s.vertexColor.rgb;
-  s.thickness = s.vertexColor.a;
-  vec3 q = u_ZhudaHandSpace.xyz + p;
-  // Fine grain of the skin: a little roughness and a faint tilt, never a pattern.
-  float grain = zhudaFbm(q * 2200.0);
-  s.roughness = clamp(0.5 + (grain - 0.5) * 0.25, 0.3, 0.75);
-  s.normalTS = normalize(vec3(zhudaNoise(q * 1800.0) - 0.5, zhudaNoise(q.yzx * 1800.0) - 0.5, 3.2));
-}`;
-const NAIL = `void zhudaSurface(inout ZhudaLitSurface s, vec2 uv, vec3 p, vec3 n) {
-  s.baseColor *= s.vertexColor.rgb;
-  s.roughness = 0.18;
-}`;
-
 async function main() {
   const renderer = (globalThis as any).ZhudaBundle.renderer === 'webgpu' ? 'webgpu' : 'webgl';
   out.renderer = renderer;
@@ -69,15 +55,13 @@ async function main() {
     preserveDrawingBuffer: true,
   });
   flush(2);
-  const scene = Z.Zhuda3D.createScene3D(context.rootScene, { ambientColor: [0.16, 0.16, 0.18] });
+  const scene = Z.Zhuda3D.createScene3D(context.rootScene, { ambientColor: [0.2, 0.2, 0.21] });
   const camera = Z.Zhuda3D.createCamera(scene, { position: [0, 0.07, 0.62] });
   camera.clearFlag = Laya.CameraClearFlags.SolidColor;
-  camera.clearColor = new Laya.Color(0.11, 0.115, 0.125, 1);
-  camera.fieldOfView = 24;
+  // A light grey ground, as hands are photographed.
+  camera.clearColor = new Laya.Color(0.62, 0.62, 0.64, 1);
   camera.nearPlane = 0.05;
   camera.farPlane = 5;
-  camera.transform.position = v3([0, 0.07, 0.62]);
-  camera.transform.lookAt(v3([0, 0.07, 0]), v3([0, 1, 0]));
   const film = new Z.ZhudaFilmicPipeline(camera, { bloom: false });
   const light = (color: V, intensity: number, from: V) => {
     const l = Z.Zhuda3D.createDirectionalLight(scene, { color: [...color, 1], intensity });
@@ -85,28 +69,23 @@ async function main() {
     l.node.transform.lookAt(v3([0, 0, 0]), v3([0, 1, 0]));
     return l;
   };
-  const key = light([1, 0.96, 0.9], 2.2, [-0.6, 0.8, 1]);
-  const fill = light([0.75, 0.82, 1], 0.45, [1, 0.1, 0.6]);
-  const rim = light([1, 0.95, 0.9], 1.2, [0.5, 0.6, -1]);
+  // A soft key with its shadow (the fingers shade each other), a cool fill, a warm rim.
+  const key = light([1, 0.96, 0.9], 1.7, [-0.6, 0.9, 1]);
+  key.light.shadowMode = Laya.ShadowMode.SoftHigh;
+  key.light.shadowDistance = 1.2;
+  key.light.shadowResolution = 4096;
+  key.light.shadowStrength = 0.75;
+  const fill = light([0.78, 0.84, 1], 0.55, [1, 0.1, 0.6]);
+  const rim = light([1, 0.95, 0.9], 1.1, [0.5, 0.6, -1]);
 
-  const skin = new Z.ZhudaLitSurfaceMaterial({
-    name: 'ZhudaFixtureHandSkin',
-    common: true,
-    material: { roughness: 0.5, metallic: 0 },
-    subsurface: { color: [1, 0.3, 0.2], wrap: 0.45, back: 1.6, power: 3, distortion: 0.25 },
-    uniforms: { u_ZhudaHandSpace: { type: 'vec4', value: [0, 0, 0, 0] } },
-    surface: SKIN,
-  });
-  const nail = new Z.ZhudaLitSurfaceMaterial({
-    name: 'ZhudaFixtureHandNail',
-    material: { roughness: 0.18, metallic: 0 },
-    subsurface: { color: [1, 0.45, 0.4], wrap: 0.3 },
-    surface: NAIL,
-  });
+  // The engine's own skin and nail surfaces for a made hand.
+  const surfaces = Z.createZhudaHandSurfaces({ name: 'ZhudaFixtureHand' });
+  const skin = new Z.ZhudaLitSurfaceMaterial(surfaces.skin);
+  const nail = new Z.ZhudaLitSurfaceMaterial(surfaces.nail);
   const made: any[] = [];
-  const build = (pose: any) => {
+  const build = (options: any) => {
     const t = performance.now();
-    const hand = Z.createZhudaHandMesh({ pose, forearm: 0.1 });
+    const hand = Z.createZhudaHandMesh({ ...options, forearm: 0.1 });
     const ms = Math.round(performance.now() - t);
     const root = new Laya.Sprite3D('hand');
     scene.addChild(root);
@@ -118,6 +97,8 @@ async function main() {
         const mesh = new Z.ZhudaDynamicMesh(data, scene);
         made.push(mesh);
         mesh.node.meshRenderer.sharedMaterial = material.material;
+        mesh.node.meshRenderer.castShadow = true;
+        mesh.node.meshRenderer.receiveShadow = true;
         root.addChild(mesh.node);
       }
     }
@@ -132,60 +113,63 @@ async function main() {
       tips: hand.tips,
     };
   };
-  type View = { pose: any; turn: V; lights?: V; eye?: V; look?: V; fov?: number };
-  const views: Record<string, View> = {
-    'back-relaxed': { pose: undefined, turn: [0, 0, 0] },
-    'palm-relaxed': { pose: undefined, turn: [0, 180, 0] },
-    'thumb-side': { pose: undefined, turn: [0, 90, 0] },
-    'three-quarter': { pose: undefined, turn: [-15, 35, 0] },
-    'back-flat': { pose: Z.ZHUDA_HAND_FLAT, turn: [0, 0, 0] },
-    'palm-flat': { pose: Z.ZHUDA_HAND_FLAT, turn: [0, 180, 0] },
-    'against-light': { pose: Z.ZHUDA_HAND_FLAT, turn: [0, 180, 0], lights: [0.15, 0.25, 3] },
-    'nails-close': {
-      pose: Z.ZHUDA_HAND_FLAT,
-      turn: [-20, 0, 0],
-      eye: [0, 0.2, 0.22],
-      look: [0, 0.15, 0],
-      fov: 24,
-    },
+  type View = { turn: V; lights?: V; eye?: V; look?: V; fov?: number };
+  const relaxed: Record<string, View> = {
+    'three-quarter': { turn: [-15, 35, 0] },
+    'thumb-side': { turn: [0, 90, 0] },
+    'back-relaxed': { turn: [0, 0, 0] },
   };
+  const flat: Record<string, View> = {
+    'back-flat': { turn: [0, 0, 0] },
+    'palm-flat': { turn: [0, 180, 0] },
+    'nails-close': { turn: [-20, 0, 0], eye: [0, 0.19, 0.22], look: [0, 0.14, 0], fov: 26 },
+  };
+  const hands: Record<string, any> = { male: Z.ZHUDA_HAND_MALE, female: Z.ZHUDA_HAND_FEMALE };
   out.views = {};
-  let current: any = null;
-  let currentPose: any = 'none';
-  for (const [name, view] of Object.entries(views)) {
-    if (currentPose !== view.pose) {
-      if (current) {
-        current.root.destroy(true);
-        for (const m of made.splice(0)) m.destroy?.();
+  out.tips = {};
+  const order: string[] = [];
+  for (const [who, preset] of Object.entries(hands))
+    for (const [pose, views] of [
+      [who === 'female' ? Z.ZHUDA_HAND_GRACEFUL : Z.ZHUDA_HAND_RELAXED, relaxed],
+      [Z.ZHUDA_HAND_FLAT, flat],
+    ] as const) {
+      // Let the page answer between hands: making one holds the thread for several seconds.
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      const current = build({ ...preset, pose });
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      out.tips[`${who}-${pose === Z.ZHUDA_HAND_FLAT ? 'flat' : 'relaxed'}`] = current.tips;
+      for (const [name, view] of Object.entries(views)) {
+        current.root.transform.rotationEuler = v3(view.turn);
+        // The skin's fine pattern in the hand's own space, wherever the hand is turned.
+        Z.setZhudaHandSkinSpace(skin, current.root.transform.worldMatrix.elements);
+        const eye = view.eye ?? [0, 0.07, 0.62],
+          look = view.look ?? [0, 0.07, 0];
+        camera.fieldOfView = view.fov ?? 24;
+        camera.transform.position = v3(eye);
+        camera.transform.lookAt(v3(look), v3([0, 1, 0]));
+        const [k, f, r] = view.lights ?? [1.7, 0.5, 1.0];
+        key.light.intensity = k;
+        fill.light.intensity = f;
+        rim.light.intensity = r;
+        flush(4);
+        const id = `${who}-${name}`;
+        keep(id);
+        order.push(id);
+        out.views[id] = { ms: current.ms, vertices: current.vertices, covered: covered() };
       }
-      current = build(view.pose);
-      currentPose = view.pose;
+      current.root.destroy(true);
+      for (const m of made.splice(0)) m.destroy?.();
     }
-    current.root.transform.rotationEuler = v3(view.turn);
-    const eye = view.eye ?? [0, 0.07, 0.62],
-      look = view.look ?? [0, 0.07, 0];
-    camera.fieldOfView = view.fov ?? 24;
-    camera.transform.position = v3(eye);
-    camera.transform.lookAt(v3(look), v3([0, 1, 0]));
-    const [k, f, r] = view.lights ?? [2.2, 0.45, 1.2];
-    key.light.intensity = k;
-    fill.light.intensity = f;
-    rim.light.intensity = r;
-    flush(4);
-    keep(name);
-    out.views[name] = { ms: current.ms, vertices: current.vertices, covered: covered() };
-  }
-  // Every view on one sheet, at half size: the picture to look at first.
+  // Every view on one sheet, at half size, a row a hand: the picture to look at first.
   {
-    const names = Object.keys(views);
-    const cols = 4,
-      rows = Math.ceil(names.length / cols);
+    const cols = 6,
+      rows = Math.ceil(order.length / cols);
     const sheet = document.createElement('canvas');
     sheet.width = (W / 2) * cols;
     sheet.height = (H / 2) * rows;
     const c = sheet.getContext('2d')!;
     await Promise.all(
-      names.map(
+      order.map(
         (name, i) =>
           new Promise<void>((resolve) => {
             const image = new Image();
@@ -205,9 +189,6 @@ async function main() {
     );
     saved.sheet = sheet.toDataURL('image/png');
   }
-  out.tips = current?.tips;
-  current?.root.destroy(true);
-  for (const m of made.splice(0)) m.destroy?.();
   film.dispose();
   skin.dispose();
   nail.dispose();

@@ -375,3 +375,107 @@ test('a shape is never nearer than its box: skipping by the box leaves no step i
     assert.ok(Math.abs(both.distance(...p) - asked) < 1e-12);
   }
 });
+
+test('two round cones in a line, joined without a fillet, leave no bulge where they meet', () => {
+  const a = [0, 0, 0],
+    m = [0, 0.02, 0],
+    b = [0, 0.04, 0];
+  const width = (blend) => {
+    const f = createZhudaSdfField([
+      { kind: 'roundCone', a, b: m, ra: 0.01, rb: 0.009 },
+      { kind: 'roundCone', a: m, b, ra: 0.009, rb: 0.008, blend },
+    ]);
+    let lo = 0,
+      hi = 0.03;
+    for (let i = 0; i < 50; i++) {
+      const mid = (lo + hi) / 2;
+      if (f.distance(mid, 0.02, 0) < 0) lo = mid;
+      else hi = mid;
+    }
+    return lo;
+  };
+  // A round cone meets its end balls on a tangent, so it is a hair wider than the ball there.
+  assert.ok(Math.abs(width(0) - 0.009) < 5e-5, String(width(0)));
+  // A fillet of 4 mm there makes the body wider by most of a millimetre: why a hand's fingers join their pieces with none.
+  assert.ok(width(0.004) > 0.0095, String(width(0.004)));
+});
+
+test('a shape that overlaps the body is never skipped, inside it or on its surface', () => {
+  // Two cones in a line, no fillet, the second deeper where they overlap: inside both, the
+  // field is the least of the two. (The broad phase once skipped the second there, since its
+  // box distance, 0, was above the negative distance already found, and left a pit in a finger.)
+  const shapes = [
+    {
+      kind: 'roundCone',
+      a: [0, 0, 0],
+      b: [0, 0.02, 0],
+      ra: 0.01,
+      rb: 0.009,
+      blend: 0.001,
+      flatten: { axis: [0, 0, 1], factor: 0.85 },
+    },
+    {
+      kind: 'roundCone',
+      a: [0, 0.02, 0],
+      b: [0, 0.04, 0],
+      ra: 0.009,
+      rb: 0.008,
+      flatten: { axis: [0, 0, 1], factor: 0.85 },
+    },
+  ];
+  const both = createZhudaSdfField(shapes);
+  const each = shapes.map((s) => createZhudaSdfField([s]));
+  for (let k = 0; k < 400; k++) {
+    const p = [
+      ((k * 37) % 40) / 2000 - 0.01,
+      ((k * 53) % 90) / 2000,
+      ((k * 71) % 30) / 2000 - 0.0075,
+    ];
+    const asked = Math.min(
+      zhudaSmoothMin(each[0].distance(...p), Infinity, 0),
+      each[1].distance(...p),
+    );
+    assert.ok(Math.abs(both.distance(...p) - asked) < 1e-12, `at ${p}`);
+  }
+  // Squeezed about each cone's own axis: the two meet without a step.
+  let last = null;
+  for (let y = 0.015; y <= 0.025; y += 0.0005) {
+    let lo = 0,
+      hi = 0.02;
+    for (let i = 0; i < 50; i++) {
+      const mid = (lo + hi) / 2;
+      if (both.distance(0, y, mid) < 0) lo = mid;
+      else hi = mid;
+    }
+    if (last !== null) assert.ok(Math.abs(lo - last) < 0.0001, `no step at ${y}`);
+    last = lo;
+  }
+});
+
+test('a shape kept on one side of a plane is cut there and unchanged on its side', () => {
+  const whole = createZhudaSdfField([
+    { kind: 'ellipsoid', center: [0, 0, 0], radii: [0.03, 0.03, 0.03] },
+  ]);
+  const half = createZhudaSdfField([
+    {
+      kind: 'ellipsoid',
+      center: [0, 0, 0],
+      radii: [0.03, 0.03, 0.03],
+      keep: { normal: [0, 0, 1], offset: 0.01 },
+    },
+  ]);
+  // Below the plane it is the whole ball; above it, nothing is left.
+  assert.ok(Math.abs(half.distance(0, 0, -0.03) - whole.distance(0, 0, -0.03)) < 1e-12);
+  assert.ok(half.distance(0, 0, 0.02) > 0);
+  assert.ok(Math.abs(half.distance(0, 0, 0.01)) < 1e-12);
+  assert.ok(
+    validateZhudaSdfShapes([
+      {
+        kind: 'ellipsoid',
+        center: [0, 0, 0],
+        radii: [1, 1, 1],
+        keep: { normal: [0, 0, 0], offset: 'x' },
+      },
+    ]).some((e) => e.includes('keep.normal')),
+  );
+});

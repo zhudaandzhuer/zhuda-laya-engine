@@ -303,6 +303,15 @@ rest of the kit:
   small shapes (creases, rivets) found through a grid: exact within `reach`
   of a shape, `reach` farther away (never more than the true distance). Use
   it for details cut into, or joined onto, a surface that is already there.
+- `keep: { normal, offset }` keeps only the part of a shape where
+  `dot(p, normal) <= offset`: a pad set deep in a body, so its face curves
+  gently, without its far side standing out of the other side.
+- The broad phase skips a shape only for a point outside its box. (Until
+  2026-11-15 it also skipped a shape for a point inside its box whenever the
+  body there was already inside, so overlapping pieces joined without a
+  fillet lost the deeper one near the surface and left a pit.) A squeezed
+  shape is squeezed about its own middle: a round cone's axis, an
+  ellipsoid's centre.
 - Each shape's distance is held at least at the distance to its box, so the
   broad phase that skips by the box never changes the field (an ellipsoid's
   distance is an estimate, and without this a surface got a step where the
@@ -320,7 +329,21 @@ skin, and creases cut into it: across the palm side of each finger joint
 the three long lines of the palm, the wrist's two, and faint wrinkles over
 the backs of the middle joints. Each crease is a shallow groove (0.14 to
 0.5 mm deep) that fades out at its ends and darkens the skin in its bottom.
-`side: 'left'` is the mirror. It returns `skin` (chunks), `nails`, where
+`side: 'left'` is the mirror. `build` sets what makes one adult's hand
+differ beyond its size: `fingerWidth`, `taper` (how much the fingers narrow
+to the tip), `fingerLength` (the fingers' share of `length`, which is kept),
+`bone` (the knuckles and the joints' waist), `tendons`, `flesh`, `flush`
+(pink knuckles, tips and pads), `veins` (a blue tint along the veins of the
+back), and the nails: `nailFree` (how far past the tip), `nailRound` (0
+square, 0.5 round, 1 almond) and `nailTone`. Each nail sits a little into
+the skin, with low folds of skin along its sides and over its root, and is
+white only where there is no skin under it. Two presets: `ZHUDA_HAND_MALE`
+(0.192 by 0.087, broad clean fingers, short square-round nails) and
+`ZHUDA_HAND_FEMALE` (0.172 by 0.071, fair skin, long straight tapering
+fingers, almond nails 5.8 mm past the tips, soft tendons, pink knuckles and
+tips), and a pose `ZHUDA_HAND_GRACEFUL`. The fingers' pieces are joined
+without a fillet where they run in a line: a smooth union bulges where two
+cones meet, and the fingers looked beaded. It returns `skin` (chunks), `nails`, where
 each joint and tip ended up, and a colour a vertex: the skin's tint (paler
 palm, warmer joints and tips) as a display colour, and in alpha how thin the
 hand is there, for a lit surface's `subsurface`:
@@ -338,6 +361,20 @@ const skin = new ZhudaLitSurfaceMaterial({
 });
 for (const chunk of hand.skin) new ZhudaDynamicMesh(chunk, scene).node.meshRenderer.sharedMaterial = skin.material;
 ```
+
+`createZhudaHandSurfaces({ name })` gives the two lit-surface specs to draw
+it with: the skin reads the tint and the thinness the mesh carries, takes
+light round and through it, has faint blotches of colour and a soft network
+of fine creases that fades out where it would be smaller than a pixel, in
+the hand's own space: `setZhudaHandSkinSpace(skin, node.transform.worldMatrix.elements)`
+whenever the hand moves, turns or scales keeps it on the hand and a faint sheen where it turns from the
+eye; the nail is glossy, light wraps round it and comes through it, so a
+long nail seen edge on is pale rather than a dark blade. The skin is also darker in a fine line round each nail's
+root and sides.
+
+The female preset was set against photographs the owner gave on
+2026-11-15 (fair hands with long fingers and long almond nails); it is
+judged by eye against them, not measured.
 
 Measured (`tests/hand.test.mjs`): a flat hand is 186 mm long and within
 3 mm of 82 across the knuckles' level (the thumb left out); the fingers keep

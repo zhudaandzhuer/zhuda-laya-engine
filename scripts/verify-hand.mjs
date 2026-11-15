@@ -118,8 +118,10 @@ assert.equal(report.renderer, gpuBuild ? 'webgpu' : 'webgl');
 for (const [name, view] of Object.entries(report.views)) {
   // The hand fills a good part of the picture and is not the whole of it.
   const share = view.covered / (W * H);
+  // A close view of the nails is mostly hand; the rest show it whole against the ground.
+  const most = name.endsWith('close') ? 0.95 : 0.6;
   assert.ok(
-    share > 0.08 && share < 0.6,
+    share > 0.08 && share < most,
     `${name}: the hand covers ${share.toFixed(3)} of the picture`,
   );
 }

@@ -9,6 +9,11 @@ import {
   ZHUDA_HAND_FLAT,
   ZHUDA_HAND_RELAXED,
   ZHUDA_HAND_DIGITS,
+  ZHUDA_HAND_MALE,
+  ZHUDA_HAND_FEMALE,
+  ZHUDA_HAND_GRACEFUL,
+  createZhudaHandSurfaces,
+  setZhudaHandSkinSpace,
 } from '../packages/core/procedural/Hand.ts';
 
 const each = (chunks, fn) => {
@@ -186,6 +191,84 @@ test('bending the fingers brings their tips toward the palm, the little one most
   assert.deepEqual(again.skin[0].positions, relaxed.skin[0].positions);
 });
 
+test("a man's and a woman's hand: sizes, finger length against the palm, nails past the tips", () => {
+  const male = createZhudaHandMesh({ ...ZHUDA_HAND_MALE, pose: ZHUDA_HAND_FLAT, cellSize: 0.0016 });
+  const female = createZhudaHandMesh({
+    ...ZHUDA_HAND_FEMALE,
+    pose: ZHUDA_HAND_FLAT,
+    cellSize: 0.0016,
+  });
+  const mm = measure(male, ZHUDA_HAND_MALE.length),
+    fm = measure(female, ZHUDA_HAND_FEMALE.length);
+  // The length asked for holds whatever the fingers' share of it.
+  assert.ok(Math.abs(mm.length - ZHUDA_HAND_MALE.length) < 0.003, `male length ${mm.length}`);
+  assert.ok(Math.abs(fm.length - ZHUDA_HAND_FEMALE.length) < 0.003, `female length ${fm.length}`);
+  assert.ok(mm.breadth > fm.breadth + 0.008, "the man's hand is broader");
+  // The woman's fingers are the longer share of her hand.
+  const share = (hand) => {
+    const knuckle = hand.joints.find((j) => j.digit === 'middle' && j.index === 0).position;
+    return (hand.tips.middle[1] - knuckle[1]) / hand.tips.middle[1];
+  };
+  assert.ok(share(female) > share(male) + 0.03, `${share(female)} against ${share(male)}`);
+  // The nails: a woman's run several millimetres past the tip, a man's hardly.
+  const past = (hand) => {
+    let most = -1;
+    const tip = hand.tips.middle,
+      end = hand.joints.find((j) => j.digit === 'middle' && j.index === 2).position;
+    const dir = tip.map((v, k) => v - end[k]);
+    const l = Math.hypot(...dir);
+    for (let i = 0; i < hand.nails.positions.length; i += 3) {
+      const p = [0, 1, 2].map((k) => hand.nails.positions[i + k] - tip[k]);
+      most = Math.max(most, (p[0] * dir[0] + p[1] * dir[1] + p[2] * dir[2]) / l);
+    }
+    return most;
+  };
+  assert.ok(past(female) > 0.003, `female nail past the tip by ${past(female)}`);
+  assert.ok(past(male) < 0.0015, `male nail past the tip by ${past(male)}`);
+  // A graceful pose bends the little finger most.
+  const graceful = createZhudaHandMesh({
+    ...ZHUDA_HAND_FEMALE,
+    pose: ZHUDA_HAND_GRACEFUL,
+    cellSize: 0.002,
+  });
+  assert.ok(graceful.tips.little[2] < graceful.tips.index[2]);
+});
+
+test('build refusals name the option', () => {
+  const errors = validateZhudaHand({
+    build: {
+      fingerWidth: 2,
+      taper: 0.1,
+      fingerLength: 2,
+      bone: -1,
+      flesh: 3,
+      nailFree: 1,
+      nailRound: 2,
+      veins: 5,
+      tendons: 9,
+      flush: 9,
+      nailTone: [1, 2],
+    },
+  });
+  for (const part of [
+    'fingerWidth',
+    'taper',
+    'fingerLength',
+    'bone',
+    'flesh',
+    'nailFree',
+    'nailRound',
+    'veins',
+    'tendons',
+    'flush',
+    'nailTone',
+  ])
+    assert.ok(
+      errors.some((e) => e.startsWith(`build.${part}`)),
+      part,
+    );
+});
+
 test('refusals name the option', () => {
   assert.deepEqual(validateZhudaHand({}), []);
   const errors = validateZhudaHand({
@@ -214,4 +297,58 @@ test('refusals name the option', () => {
       part,
     );
   assert.throws(() => createZhudaHandMesh({ length: 1 }), /Invalid hand: length/);
+});
+
+test('the hand surfaces: a skin and a nail spec, refusals named', () => {
+  const { skin, nail } = createZhudaHandSurfaces({ name: 'TestHand', detail: 0.5 });
+  assert.equal(skin.name, 'TestHandSkin');
+  assert.equal(nail.name, 'TestHandNail');
+  assert.ok(skin.surface.includes('s.vertexColor.a') && skin.surface.includes('dFdx'));
+  assert.ok(skin.subsurface && skin.common);
+  assert.deepEqual(skin.uniforms.u_ZhudaSkinX.value, [1, 0, 0, 0]);
+  assert.throws(
+    () => createZhudaHandSurfaces({ name: '1bad', detail: 5, roughness: 0 }),
+    /name must be.*detail must be.*roughness must be/,
+  );
+});
+
+test("the skin space: a point of the hand goes back to where it was, whatever the hand's place", () => {
+  // A hand turned 40 degrees about y, scaled 1.5 and moved, in LayaAir's order.
+  const c = Math.cos(0.7),
+    sn = Math.sin(0.7),
+    k = 1.5;
+  const world = [c * k, 0, -sn * k, 0, 0, k, 0, 0, sn * k, 0, c * k, 0, 0.3, -0.2, 1.1, 1];
+  const got = {};
+  setZhudaHandSkinSpace({ set: (name, value) => (got[name] = value) }, world);
+  const local = [0.01, 0.12, -0.004];
+  const w = [0, 1, 2].map(
+    (i) => world[i] * local[0] + world[4 + i] * local[1] + world[8 + i] * local[2] + world[12 + i],
+  );
+  const back = ['u_ZhudaSkinX', 'u_ZhudaSkinY', 'u_ZhudaSkinZ'].map(
+    (n) => got[n][0] * w[0] + got[n][1] * w[1] + got[n][2] * w[2] + got[n][3],
+  );
+  back.forEach((v, i) => assert.ok(Math.abs(v - local[i]) < 1e-12));
+  assert.throws(() => setZhudaHandSkinSpace({ set() {} }, [1, 2]), /16 numbers/);
+  assert.throws(() => setZhudaHandSkinSpace({ set() {} }, Array(16).fill(0)), /cannot be inverted/);
+});
+
+test("the little finger's edge of the hand widens steadily from the wrist to the knuckle", () => {
+  // The wrist's bones were once wider than the hand above them: a bulge, then a waist.
+  for (const preset of [ZHUDA_HAND_MALE, ZHUDA_HAND_FEMALE]) {
+    const hand = createZhudaHandMesh({ ...preset, pose: ZHUDA_HAND_FLAT, cellSize: 0.0016 });
+    const knuckle = hand.joints.find((j) => j.digit === 'little' && j.index === 0).position[1];
+    const edge = [];
+    for (let y = 0.012; y < knuckle - 0.012; y += 0.004) {
+      let most = -1;
+      each(hand.skin, (p) => {
+        if (Math.abs(p[1] - y) < 0.0012) most = Math.max(most, p[0]);
+      });
+      edge.push(most);
+    }
+    for (let i = 1; i < edge.length; i++)
+      assert.ok(
+        edge[i] > Math.max(...edge.slice(0, i)) - 0.0005,
+        `${preset.length}: ${edge.map((v) => (v * 1000).toFixed(1))}`,
+      );
+  }
 });

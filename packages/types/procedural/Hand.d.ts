@@ -16,6 +16,7 @@
  * tables give; `length` and `breadth` scale them.
  */
 import type { MeshData } from '../runtime3d/Surfaces.js';
+import type { ZhudaLitSurfaceSpec } from '../shaders/LitSurfaceMaterial.js';
 import type { ZhudaVec3 } from './Geometry.js';
 export type ZhudaHandFinger = 'index' | 'middle' | 'ring' | 'little';
 export type ZhudaHandDigit = 'thumb' | ZhudaHandFinger;
@@ -37,6 +38,8 @@ export interface ZhudaHandPose {
 }
 /** A hand at rest: the fingers bend more toward the little one, as a hand left alone does. */
 export declare const ZHUDA_HAND_RELAXED: Readonly<Required<ZhudaHandPose>>;
+/** A hand held up gracefully: the fingers a little bent and apart, more toward the little one. */
+export declare const ZHUDA_HAND_GRACEFUL: Readonly<Required<ZhudaHandPose>>;
 /** A hand laid flat with the fingers a little apart. */
 export declare const ZHUDA_HAND_FLAT: Readonly<Required<ZhudaHandPose>>;
 export interface ZhudaHandOptions {
@@ -53,7 +56,38 @@ export interface ZhudaHandOptions {
     cellSize?: number;
     /** How far the forearm runs below the wrist's crease, metres (default 0.05; 0.01 to 0.2). */
     forearm?: number;
+    /** The build of the hand beyond its size: slender or strong, nails, veins. */
+    build?: ZhudaHandBuild;
 }
+/** What makes one adult's hand differ from another's beyond its length and breadth. Every value has a neutral default. */
+export interface ZhudaHandBuild {
+    /** The fingers' thickness, a share of the default (0.8 to 1.2; default 1). */
+    fingerWidth?: number;
+    /** The tip's radius as a share of the default; the joints between follow (0.75 to 1.1; default 1). */
+    taper?: number;
+    /** The fingers' length against the palm's; `length` is kept (0.9 to 1.2; default 1). */
+    fingerLength?: number;
+    /** How much bone shows: the joints' waist and knuckles, the knuckles and tendons on the back (0 to 1.5; default 1). */
+    bone?: number;
+    /** The flesh of the palm: the ball of the thumb, the heel and the pads (0.85 to 1.15; default 1). */
+    flesh?: number;
+    /** How far the nails run past the end of the finger, metres (0 to 0.006; default 0.0008). */
+    nailFree?: number;
+    /** The nails' free edge: 0 square, 0.5 round, 1 almond (narrowing to a soft point) (default 0.5). */
+    nailRound?: number;
+    /** The nails' colour over the bed, a display colour (default 0.9, 0.66, 0.64). */
+    nailTone?: [number, number, number];
+    /** How much the veins on the back of the hand show through, as a tint (0 to 1; default 0.3). */
+    veins?: number;
+    /** How much the tendons on the back of the hand stand out (0 to 1.5; default `bone`). */
+    tendons?: number;
+    /** How pink the knuckles, the fingertips and the palm's pads are (0 to 1.5; default 0.6). */
+    flush?: number;
+}
+/** A man's hand, fine rather than rough: long, broad, with clean joints, short square-round nails. */
+export declare const ZHUDA_HAND_MALE: Readonly<ZhudaHandOptions>;
+/** A woman's hand with fair skin: slender, long straight fingers that taper, long almond nails, pink at the knuckles and tips. */
+export declare const ZHUDA_HAND_FEMALE: Readonly<ZhudaHandOptions>;
 export interface ZhudaHandJoint {
     digit: ZhudaHandDigit;
     /** 0 the bone's base (the finger's knuckle, the thumb's base), up to 3 the end of the last bone. */
@@ -79,3 +113,38 @@ export interface ZhudaHandMesh {
 export declare function validateZhudaHand(options?: ZhudaHandOptions): string[];
 /** Makes the hand. Throws with every problem `validateZhudaHand` finds. */
 export declare function createZhudaHandMesh(options?: ZhudaHandOptions): ZhudaHandMesh;
+export interface ZhudaHandSurfaceOptions {
+    /** A prefix for the two shader names (each name is a shader contract: one per look, not per hand). */
+    name: string;
+    /** How much fine creasing shows close up (0 to 2; default 1). */
+    detail?: number;
+    /** Faint blotches of colour across the skin (0 to 2; default 1). */
+    mottle?: number;
+    /** The skin's roughness between its creases (0.25 to 0.8; default 0.48). */
+    roughness?: number;
+    /** The colour light takes through skin, as light (default 1, 0.3, 0.2). */
+    subsurfaceColor?: [number, number, number];
+}
+/**
+ * The lit surfaces a `createZhudaHandMesh` hand is drawn with: skin that reads
+ * the mesh's tint and thinness, light round and through it, a soft network of
+ * fine creases that fades out where it would be smaller than a pixel,
+ * faint blotches of colour; and glossy nails. Pass each to
+ * `new ZhudaLitSurfaceMaterial(spec)`, and give the skin the hand's place
+ * with `setZhudaHandSkinSpace` whenever the hand moves, turns or scales: the
+ * fine pattern is in the hand's own space and stays on it.
+ */
+export declare function createZhudaHandSurfaces(options: ZhudaHandSurfaceOptions): {
+    skin: ZhudaLitSurfaceSpec;
+    nail: ZhudaLitSurfaceSpec;
+};
+/**
+ * Gives a hand's skin (a material made from `createZhudaHandSurfaces().skin`)
+ * the hand's place, so its fine pattern stays on the hand: `worldMatrix` is
+ * the hand node's world matrix as 16 numbers in LayaAir's order (the axes in
+ * 0..2, 4..6, 8..10, the position in 12..14), e.g.
+ * `node.transform.worldMatrix.elements`. Call it when the hand moves.
+ */
+export declare function setZhudaHandSkinSpace(skin: {
+    set(name: string, value: readonly number[]): void;
+}, worldMatrix: ArrayLike<number>): void;

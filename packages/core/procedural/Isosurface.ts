@@ -25,6 +25,12 @@ interface ZhudaSdfShapeBase {
   /** Cut this shape out of what came before it (with the same fillet) instead of adding it. */
   subtract?: boolean;
   flatten?: ZhudaSdfFlatten;
+  /**
+   * Keep only the part of the shape on one side of a plane: where `dot(p, normal)` is at most
+   * `offset`. For a large shape whose far side would stand out of the body (a pad set deep
+   * so its face curves gently); the cut face should lie inside the body.
+   */
+  keep?: { normal: ZhudaVec3; offset: number };
 }
 /** A cone between two balls: radius `ra` at `a`, `rb` at `b`. Equal radii make a capsule. */
 export interface ZhudaSdfRoundCone extends ZhudaSdfShapeBase {
@@ -76,6 +82,12 @@ export function validateZhudaSdfShapes(shapes: readonly ZhudaSdfShape[]): string
         errors.push(`${at}.flatten.axis must be three numbers, not all 0`);
       if (!f || !(finite(f.factor) && f.factor > 0 && f.factor <= 1))
         errors.push(`${at}.flatten.factor must be more than 0 and at most 1`);
+    }
+    if (shape.keep !== undefined) {
+      const k = shape.keep;
+      if (!k || !isVec(k.normal) || !(vlen(k.normal) > 1e-9))
+        errors.push(`${at}.keep.normal must be three numbers, not all 0`);
+      if (!k || !finite(k.offset)) errors.push(`${at}.keep.offset must be a number of metres`);
     }
     if (shape.kind === 'roundCone') {
       if (!isVec(shape.a) || !isVec(shape.b)) errors.push(`${at}.a and .b must be three numbers`);
@@ -218,12 +230,29 @@ function compile(shape: ZhudaSdfShape): Compiled {
       az = n[2] / nl;
     const f = shape.flatten.factor;
     const stretch = 1 / f - 1;
-    const o = [0, 1, 2].map((k) => (lo[k] + hi[k]) / 2);
+    // About the shape's own middle: a round cone's axis, an ellipsoid's centre. (The middle of
+    // its box is off the axis of a cone whose two radii differ, and two such cones in a line
+    // were squeezed about different planes and left a pit where they met.)
+    const o =
+      shape.kind === 'roundCone'
+        ? [0, 1, 2].map((k) => (shape.a[k] + shape.b[k]) / 2)
+        : [...shape.center];
     distance = (x, y, z) => {
       const along = (x - o[0]) * ax + (y - o[1]) * ay + (z - o[2]) * az;
       return base(x + stretch * along * ax, y + stretch * along * ay, z + stretch * along * az) * f;
     };
     shrink = f;
+  }
+  if (shape.keep) {
+    // Cut by the plane: the larger of the two distances (an intersection).
+    const n = shape.keep.normal;
+    const nl = vlen(n);
+    const kx = n[0] / nl,
+      ky = n[1] / nl,
+      kz = n[2] / nl,
+      off = shape.keep.offset;
+    const whole = distance;
+    distance = (x, y, z) => Math.max(whole(x, y, z), x * kx + y * ky + z * kz - off);
   }
   // Never less than the distance to the shape's box: the ellipsoid's distance is an estimate
   // that can fall below it far from the shape, and a broad phase that skips by the box would
@@ -256,12 +285,18 @@ export function createZhudaSdfField(shapes: readonly ZhudaSdfShape[]): ZhudaSdfF
     for (const p of parts) {
       if (p.subtract) {
         // A cut only matters where it is near: outside its box and fillet it changes nothing.
-        if (boxDistance(p, x, y, z) >= p.blend + Math.abs(d)) continue;
+        const box = boxDistance(p, x, y, z);
+        if (box > 0 && box >= p.blend + Math.abs(d)) continue;
         d = -zhudaSmoothMin(-d, p.distance(x, y, z), p.blend);
         continue;
       }
-      // Broad phase: a shape whose box is farther than what is already here plus its fillet changes nothing.
-      if (d !== Infinity && boxDistance(p, x, y, z) >= d + p.blend) continue;
+      // Broad phase: a shape whose box is farther than what is already here plus its fillet
+      // changes nothing. Only outside the box: inside it the shape's distance can be below 0,
+      // the box's is 0, and a shape that overlaps the body would be skipped.
+      if (d !== Infinity) {
+        const box = boxDistance(p, x, y, z);
+        if (box > 0 && box >= d + p.blend) continue;
+      }
       const e = p.distance(x, y, z);
       d = d === Infinity ? e : zhudaSmoothMin(d, e, p.blend);
     }
@@ -411,13 +446,15 @@ export function createZhudaIsosurfaceMesh(options: ZhudaIsosurfaceOptions): Mesh
         if (values[x + y * sy + k * sz] <= 0)
           throw Error('The surface reaches the side of the box; give a larger min and max');
 
+  // The field's slope from four samples at the corners of a tetrahedron (Inigo Quilez's,
+  // MIT): the same direction as six samples along the axes, two fewer.
+  const ge = h * 0.25;
   const gradient = (x: number, y: number, z: number): ZhudaVec3 => {
-    const e = h * 0.25;
-    return [
-      distance(x + e, y, z) - distance(x - e, y, z),
-      distance(x, y + e, z) - distance(x, y - e, z),
-      distance(x, y, z + e) - distance(x, y, z - e),
-    ];
+    const a = distance(x + ge, y - ge, z - ge),
+      b = distance(x - ge, y - ge, z + ge),
+      c = distance(x - ge, y + ge, z - ge),
+      d = distance(x + ge, y + ge, z + ge);
+    return [a - b - c + d, -a - b + c + d, -a + b - c + d];
   };
   // One vertex in each cell the surface crosses (the cell's corner with the lowest index names it).
   const cellVertex = new Int32Array((nx - 1) * (ny - 1) * nz).fill(-1);
@@ -482,19 +519,31 @@ export function createZhudaIsosurfaceMesh(options: ZhudaIsosurfaceOptions): Mesh
           o[2] + (z + pz / count) * h,
         ];
         const start = p;
+        // The last slope taken, and where: it serves as the normal when the vertex has not
+        // moved since by more than a fiftieth of a cell (its direction is then off by about a
+        // tenth of a degree on a body ten cells round).
+        let last: ZhudaVec3 | null = null;
+        let lastAt = p;
         for (let i = 0; i < project; i++) {
           const d = distance(...p);
+          // On the surface already: no step needed.
+          if (Math.abs(d) < h * 1e-5) break;
           const g = gradient(...p);
+          last = g;
+          lastAt = p;
           const gl2 = g[0] * g[0] + g[1] * g[1] + g[2] * g[2];
           if (!(gl2 > 1e-20)) break;
-          // The slope was taken over half a cell: g / (h / 2) is the field's gradient.
-          const scale = (d * (h * 0.5)) / gl2;
+          // The four samples sum to 4 ge times the field's gradient.
+          const scale = (d * 4 * ge) / gl2;
           const next: ZhudaVec3 = [p[0] - g[0] * scale, p[1] - g[1] * scale, p[2] - g[2] * scale];
           // Never more than a cell from where the cell put it: keeps sharp places from folding.
           if (len(next[0] - start[0], next[1] - start[1], next[2] - start[2]) > h) break;
           p = next;
         }
-        const g = gradient(...p);
+        const g =
+          last && len(p[0] - lastAt[0], p[1] - lastAt[1], p[2] - lastAt[2]) < h * 0.02
+            ? last
+            : gradient(...p);
         const gl = len(...g);
         const n: ZhudaVec3 = gl > 1e-20 ? [g[0] / gl, g[1] / gl, g[2] / gl] : [0, 1, 0];
         const index = positions.length / 3;
@@ -598,7 +647,8 @@ export function joinZhudaSdfFields(
     for (const limb of limbs) {
       // A field's box already holds its own fillets; past it by more than the trunk's distance
       // and this fillet, the limb leaves the trunk as it is.
-      if (boxOf(limb.field, x, y, z) >= t + limb.blend) continue;
+      const box = boxOf(limb.field, x, y, z);
+      if (box > 0 && box >= t + limb.blend) continue;
       d = Math.min(d, zhudaSmoothMin(t, limb.field.distance(x, y, z), limb.blend));
     }
     return d;
