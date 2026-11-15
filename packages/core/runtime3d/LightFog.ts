@@ -11,7 +11,9 @@
  * With `shafts`, the sun or moon also shines into the fog, and what stands in
  * its way cuts the light: beams between trees, roofs and window bars. That
  * part marches along the view ray and looks each step up in a depth picture
- * drawn from the light's direction (`attachSun`, `renderShafts`).
+ * drawn from the light's direction (`attachSun`, `renderShafts`). By
+ * default the beams are marched in a picture half as wide and high, smoothed
+ * and brought up by depth (`shafts.scale`).
  *
  * `zhudaFogOpticalDepth` and `zhudaFogAirlight` are the shader's formulas in
  * TypeScript. Only the class needs the Laya runtime.
@@ -54,6 +56,13 @@ export interface ZhudaLightShaftOptions {
   resolution?: number;
   /** Steps along each view ray, 8..96 (default 40). */
   steps?: number;
+  /**
+   * Size the beams are marched at against the picture, 0.25..1 (default 0.5:
+   * a quarter of the pixels). Below 1 they are smoothed and brought up to the
+   * picture by depth, so they do not spill over the edges of what stands in
+   * front; 1 marches every pixel, as before.
+   */
+  scale?: number;
 }
 
 export interface ZhudaFogSun {
@@ -122,6 +131,7 @@ export function validateZhudaLightFog(options: ZhudaLightFogOptions): string[] {
         ['distance', 5, 2000, false],
         ['resolution', 256, 4096, true],
         ['steps', 8, ZHUDA_SHAFT_MAX_STEPS, true],
+        ['scale', 0.25, 1, false],
       ];
       for (const key of Object.keys(s))
         if (!shaftRanges.some(([name]) => name === key)) issues.push(`shafts.${key}: unknown`);
@@ -152,6 +162,7 @@ export function resolveZhudaLightFog(options: ZhudaLightFogOptions = {}) {
           distance: options.shafts.distance ?? 60,
           resolution: options.shafts.resolution ?? 2048,
           steps: options.shafts.steps ?? 40,
+          scale: options.shafts.scale ?? 0.5,
         }
       : undefined,
   };
@@ -193,6 +204,60 @@ export function zhudaFogAirlight(
   return ((Math.atan((distance - along) / h) + Math.atan(along / h)) / h) * window * window;
 }
 
+const SHAFT_MARCH = `#ifdef ZHUDA_SHAFTS
+vec3 zhudaShaftBeams(vec3 dir,float t,float atEye,float k,float falloff){
+float reach=min(t,u_ZhudaShaftShape.y);
+float steps=u_ZhudaShaftShape.x;
+float stride=reach/steps;
+// Each pixel starts its steps at another offset, which turns banding into fine noise.
+float jitter=fract(52.9829189*fract(dot(gl_FragCoord.xy+u_ZhudaShaftShape.w*vec2(47.0,17.0),vec2(0.06711056,0.00583715))));
+float lit=0.0;
+for(int i=0;i<${ZHUDA_SHAFT_MAX_STEPS};i++){
+if(float(i)>=steps)break;
+float s=(float(i)+jitter)*stride;
+vec3 p=u_ZhudaFogEye.xyz+dir*s;
+vec4 clip=u_ZhudaShaftC0*p.x+u_ZhudaShaftC1*p.y+u_ZhudaShaftC2*p.z+u_ZhudaShaftC3;
+vec3 q=clip.xyz/clip.w*0.5+0.5;
+float stored=texture2D(u_ZhudaShaftDepth,vec2(q.x,1.0-q.y)).x;
+float open=step(q.z-u_ZhudaShaftShape.z,stored);
+float inside=step(0.0,q.x)*step(q.x,1.0)*step(0.0,q.y)*step(q.y,1.0)*step(q.z,1.0);
+open=mix(1.0,open,inside);
+float local=u_ZhudaFogShape.x*exp(-(p.y-u_ZhudaFogShape.z)/falloff);
+float dim=exp(-atEye*zhudaFogPath(k,s));
+lit+=open*local*dim;
+}
+float g=u_ZhudaShaftColor.w;
+float towardSun=dot(dir,u_ZhudaShaftSun);
+float phase=(1.0-g*g)/(12.5663706*pow(max(1.0+g*g-2.0*g*towardSun,0.0001),1.5));
+return u_ZhudaShaftColor.rgb*lit*stride*phase;
+}
+#endif
+`;
+// The beams brought up from the smaller picture: the four nearest of its
+// pixels, each by how near it lies and how alike its depth is to this pixel's,
+// so beams do not spill over the edge of what stands in front.
+const SHAFT_UP = `#ifdef ZHUDA_SHAFTS_LOW
+vec3 zhudaShaftsUp(vec2 uv,float depth){
+vec2 at=uv*u_ZhudaShaftLow.zw-0.5;
+vec2 base=floor(at);
+vec2 f=at-base;
+vec3 sum=vec3(0.0);
+float weights=0.0;
+for(int j=0;j<2;j++){
+for(int i=0;i<2;i++){
+vec2 corner=vec2(float(i),float(j));
+vec4 s=texture2D(u_ZhudaShaftBeams,(base+corner+0.5)*u_ZhudaShaftLow.xy);
+vec2 near=mix(1.0-f,f,corner);
+float w=near.x*near.y;
+float alike=exp(-abs(s.a-depth)/(0.04*depth+0.05));
+sum+=s.rgb*w*(alike+0.001);
+weights+=w*(alike+0.001);
+}
+}
+return sum/max(weights,0.000001);
+}
+#endif
+`;
 const VERTEX =
   '#define SHADER_NAME ZhudaLightFogVS\nvarying vec2 v_Texcoord0;void main(){gl_Position=vec4(a_PositionTexcoord.xy,0.0,1.0);v_Texcoord0=a_PositionTexcoord.zw;}';
 const FRAGMENT = `#define SHADER_NAME ZhudaLightFogFS
@@ -205,7 +270,7 @@ varying vec2 v_Texcoord0;
 float zhudaFogDepth(vec2 at){return 1.0/(u_ZBufferParams.z*texture2D(u_CameraDepthTexture,at).x+u_ZBufferParams.w);}
 // Fog along a ray of length t whose height changes by k per metre, per unit of density at the eye.
 float zhudaFogPath(float k,float t){return abs(k)<0.0001?t:(1.0-exp(-k*t))/k;}
-void main(){
+${SHAFT_MARCH}${SHAFT_UP}void main(){
 vec2 uv=v_Texcoord0;
 vec4 source=texture2D(u_MainTex,uv);
 #ifdef Gamma_u_MainTex
@@ -353,65 +418,112 @@ glow+=colour*reach*local*dim;
 }
 vec3 beams=vec3(0.0);
 #ifdef ZHUDA_SHAFTS
-float reach=min(t,u_ZhudaShaftShape.y);
-float steps=u_ZhudaShaftShape.x;
-float stride=reach/steps;
-// Each pixel starts its steps at another offset, which turns banding into fine noise.
-float jitter=fract(52.9829189*fract(dot(gl_FragCoord.xy+u_ZhudaShaftShape.w*vec2(47.0,17.0),vec2(0.06711056,0.00583715))));
-float lit=0.0;
-for(int i=0;i<${ZHUDA_SHAFT_MAX_STEPS};i++){
-if(float(i)>=steps)break;
-float s=(float(i)+jitter)*stride;
-vec3 p=u_ZhudaFogEye.xyz+dir*s;
-vec4 clip=u_ZhudaShaftC0*p.x+u_ZhudaShaftC1*p.y+u_ZhudaShaftC2*p.z+u_ZhudaShaftC3;
-vec3 q=clip.xyz/clip.w*0.5+0.5;
-float stored=texture2D(u_ZhudaShaftDepth,vec2(q.x,1.0-q.y)).x;
-float open=step(q.z-u_ZhudaShaftShape.z,stored);
-float inside=step(0.0,q.x)*step(q.x,1.0)*step(0.0,q.y)*step(q.y,1.0)*step(q.z,1.0);
-open=mix(1.0,open,inside);
-float local=u_ZhudaFogShape.x*exp(-(p.y-u_ZhudaFogShape.z)/falloff);
-float dim=exp(-atEye*zhudaFogPath(k,s));
-lit+=open*local*dim;
-}
-float g=u_ZhudaShaftColor.w;
-float towardSun=dot(dir,u_ZhudaShaftSun);
-float phase=(1.0-g*g)/(12.5663706*pow(max(1.0+g*g-2.0*g*towardSun,0.0001),1.5));
-beams=u_ZhudaShaftColor.rgb*lit*stride*phase;
+#ifdef ZHUDA_SHAFTS_LOW
+beams=zhudaShaftsUp(uv,eyeDepth);
+#else
+beams=zhudaShaftBeams(dir,t,atEye,k,falloff);
+#endif
 #endif
 gl_FragColor=vec4(seen+u_ZhudaFogColor.rgb*(1.0-through)+glow*u_ZhudaFogForward.w+beams,source.a);
+}`;
+
+// The beams alone, in the smaller picture: their light, and in alpha the
+// depth of the pixel they were marched for (what smoothing and bringing them
+// up compare). Each pixel starts its steps at another offset; the two passes
+// after this one smooth that noise away.
+const MARCH_FRAGMENT = `#define SHADER_NAME ZhudaLightShaftsMarchFS
+precision highp sampler2D;
+#include "Camera.glsl";
+precision lowp sampler2D;
+varying vec2 v_Texcoord0;
+float zhudaFogDepth(vec2 at){return 1.0/(u_ZBufferParams.z*texture2D(u_CameraDepthTexture,at).x+u_ZBufferParams.w);}
+float zhudaFogPath(float k,float t){return abs(k)<0.0001?t:(1.0-exp(-k*t))/k;}
+${SHAFT_MARCH}void main(){
+vec2 uv=v_Texcoord0;
+float eyeDepth=zhudaFogDepth(uv);
+vec2 ndc=uv*2.0-1.0;
+ndc.y*=u_ZhudaFogShape.w;
+vec3 ray=u_ZhudaFogForward.xyz+ndc.x*u_ZhudaFogRight+ndc.y*u_ZhudaFogUp;
+float len=length(ray);
+float t=min(eyeDepth*len,u_ZhudaFogColor.w);
+vec3 dir=normalize(ray);
+float falloff=u_ZhudaFogShape.y;
+float atEye=u_ZhudaFogShape.x*exp(-(u_ZhudaFogEye.y-u_ZhudaFogShape.z)/falloff);
+float k=dir.y/falloff;
+vec3 beams=vec3(0.0);
+#ifdef ZHUDA_SHAFTS
+beams=zhudaShaftBeams(dir,t,atEye,k,falloff);
+#endif
+gl_FragColor=vec4(beams,eyeDepth);
+}`;
+
+// Seven places along u_ZhudaShaftBlur.xy (one texel of the smaller picture),
+// each by its distance and by how alike its depth is: the noise goes, the
+// edges of what stands in front stay.
+const SHAFT_BLUR_FRAGMENT = `#define SHADER_NAME ZhudaLightShaftsBlurFS
+varying vec2 v_Texcoord0;
+void main(){
+vec4 centre=texture2D(u_MainTex,v_Texcoord0);
+vec3 sum=centre.rgb;
+float weights=1.0;
+float tolerance=0.04*centre.a+0.05;
+for(int i=1;i<=3;i++){
+float near=exp(-float(i*i)/4.5);
+vec4 a=texture2D(u_MainTex,v_Texcoord0+u_ZhudaShaftBlur.xy*float(i));
+vec4 b=texture2D(u_MainTex,v_Texcoord0-u_ZhudaShaftBlur.xy*float(i));
+float wa=near*exp(-abs(a.a-centre.a)/tolerance);
+float wb=near*exp(-abs(b.a-centre.a)/tolerance);
+sum+=a.rgb*wa+b.rgb*wb;
+weights+=wa+wb;
+}
+gl_FragColor=vec4(sum/weights,centre.a);
 }`;
 
 const registered = new WeakSet<object>();
 
 function register(l: any) {
   if (registered.has(l.Shader3D)) return;
-  const shader = l.Shader3D.add('ZhudaLightFog');
-  shader.shaderType = l.ShaderFeatureType.PostProcess;
-  const sub = new l.SubShader(
-    { a_PositionTexcoord: [l.VertexMesh.MESH_POSITION0, l.ShaderDataType.Vector4] },
-    {
-      u_MainTex: l.ShaderDataType.Texture2D,
-      u_ZhudaFogLights: l.ShaderDataType.Texture2D,
-      u_ZhudaFogEye: l.ShaderDataType.Vector4,
-      u_ZhudaFogForward: l.ShaderDataType.Vector4,
-      u_ZhudaFogRight: l.ShaderDataType.Vector3,
-      u_ZhudaFogUp: l.ShaderDataType.Vector3,
-      u_ZhudaFogShape: l.ShaderDataType.Vector4,
-      u_ZhudaFogColor: l.ShaderDataType.Vector4,
-      u_ZhudaShaftDepth: l.ShaderDataType.Texture2D,
-      u_ZhudaShaftC0: l.ShaderDataType.Vector4,
-      u_ZhudaShaftC1: l.ShaderDataType.Vector4,
-      u_ZhudaShaftC2: l.ShaderDataType.Vector4,
-      u_ZhudaShaftC3: l.ShaderDataType.Vector4,
-      u_ZhudaShaftShape: l.ShaderDataType.Vector4,
-      u_ZhudaShaftColor: l.ShaderDataType.Vector4,
-      u_ZhudaShaftSun: l.ShaderDataType.Vector3,
-    },
-  );
-  shader.addSubShader(sub);
-  const pass = sub.addShaderPass(VERTEX, FRAGMENT);
-  pass.statefirst = true;
-  pass.renderState.cull = l.RenderState.CULL_NONE;
+  const v4 = l.ShaderDataType.Vector4,
+    v3 = l.ShaderDataType.Vector3,
+    texture = l.ShaderDataType.Texture2D;
+  const fogUniforms = {
+    u_MainTex: texture,
+    u_ZhudaFogLights: texture,
+    u_ZhudaFogEye: v4,
+    u_ZhudaFogForward: v4,
+    u_ZhudaFogRight: v3,
+    u_ZhudaFogUp: v3,
+    u_ZhudaFogShape: v4,
+    u_ZhudaFogColor: v4,
+    u_ZhudaShaftDepth: texture,
+    u_ZhudaShaftC0: v4,
+    u_ZhudaShaftC1: v4,
+    u_ZhudaShaftC2: v4,
+    u_ZhudaShaftC3: v4,
+    u_ZhudaShaftShape: v4,
+    u_ZhudaShaftColor: v4,
+    u_ZhudaShaftSun: v3,
+  };
+  const add = (name: string, fragment: string, uniforms: Record<string, unknown>) => {
+    const shader = l.Shader3D.add(name);
+    shader.shaderType = l.ShaderFeatureType.PostProcess;
+    const sub = new l.SubShader(
+      { a_PositionTexcoord: [l.VertexMesh.MESH_POSITION0, l.ShaderDataType.Vector4] },
+      uniforms,
+    );
+    shader.addSubShader(sub);
+    const pass = sub.addShaderPass(VERTEX, fragment);
+    pass.statefirst = true;
+    pass.renderState.cull = l.RenderState.CULL_NONE;
+  };
+  add('ZhudaLightFog', FRAGMENT, {
+    ...fogUniforms,
+    u_ZhudaShaftBeams: texture,
+    u_ZhudaShaftLow: v4,
+  });
+  // Drawn with the fog's own shader data: the same camera, fog and light.
+  add('ZhudaLightShaftsMarch', MARCH_FRAGMENT, fogUniforms);
+  add('ZhudaLightShaftsBlur', SHAFT_BLUR_FRAGMENT, { u_MainTex: texture, u_ZhudaShaftBlur: v4 });
   registered.add(l.Shader3D);
 }
 zhudaShaderRegistrar(register);
@@ -432,6 +544,8 @@ export class ZhudaLightFog {
   private drawnFor: string | undefined;
   private boxCentre: number[] | undefined;
   private frame = 0;
+  /** With beams drawn smaller than the picture: the two smoothing passes. */
+  private low?: { across: any; down: any };
 
   constructor(options: ZhudaLightFogOptions = {}) {
     const issues = validateZhudaLightFog(options);
@@ -457,7 +571,57 @@ export class ZhudaLightFog {
     this.material = new l.Material();
     this.material.setShaderName('ZhudaLightFog');
     this.material.setTexture('u_ZhudaFogLights', this.lights);
-    this.effect = new l.MaterialPostProcessEffect();
+    const fog = this;
+    const Base = l.MaterialPostProcessEffect as new () => any;
+    // The fog in one pass; with beams drawn smaller, three passes before it in
+    // pooled targets released after the frame (as the clouds and LayaAir's own
+    // ambient occlusion do): the march, then smoothing across and down.
+    this.effect = new (class extends Base {
+      render(context: any) {
+        const low = fog.low;
+        const scale = fog.fog.shafts?.scale ?? 1;
+        if (!low || !fog.shaft || scale >= 1) return super.render(context);
+        const command = context.command,
+          source = context.indirectTarget;
+        const width = Math.max(1, Math.round(source.width * scale)),
+          height = Math.max(1, Math.round(source.height * scale));
+        const pooled = () =>
+          l.RenderTexture.createFromPool(
+            width,
+            height,
+            l.RenderTargetFormat.R16G16B16A16,
+            l.RenderTargetFormat.None,
+            false,
+            1,
+          );
+        const first = pooled(),
+          second = pooled();
+        const march = l.Shader3D.find('ZhudaLightShaftsMarch');
+        low.across.setVector4('u_ZhudaShaftBlur', new l.Vector4(1 / width, 0, 0, 0));
+        low.down.setVector4('u_ZhudaShaftBlur', new l.Vector4(0, 1 / height, 0, 0));
+        fog.material.setVector4(
+          'u_ZhudaShaftLow',
+          new l.Vector4(1 / width, 1 / height, width, height),
+        );
+        command.blitScreenTriangle(source, first, null, march, fog.material.shaderData, 0);
+        command.blitScreenTriangle(
+          first,
+          second,
+          null,
+          low.across.shader,
+          low.across.shaderData,
+          0,
+        );
+        command.blitScreenTriangle(second, first, null, low.down.shader, low.down.shaderData, 0);
+        command.setShaderDataTexture(
+          fog.material.shaderData,
+          l.Shader3D.propertyNameToID('u_ZhudaShaftBeams'),
+          first,
+        );
+        super.render(context);
+        context.deferredReleaseTextures.push(first, second);
+      }
+    })();
     this.effect.material = this.material;
     this.update([0, 0, 0], [0, 0, -1], 40, 16 / 9);
   }
@@ -578,6 +742,15 @@ export class ZhudaLightFog {
     };
     this.material.setTexture('u_ZhudaShaftDepth', depth);
     this.material.addDefine(l.Shader3D.getDefineByName('ZHUDA_SHAFTS'));
+    if (options.scale < 1) {
+      const blur = () => {
+        const material = new l.Material();
+        material.setShaderName('ZhudaLightShaftsBlur');
+        return material;
+      };
+      this.low = { across: blur(), down: blur() };
+      this.material.addDefine(l.Shader3D.getDefineByName('ZHUDA_SHAFTS_LOW'));
+    }
   }
 
   /**
@@ -780,6 +953,12 @@ export class ZhudaLightFog {
       this.shaft.camera.destroy(true);
       this.shaft.target.destroy();
       this.shaft = undefined;
+    }
+    if (this.low) {
+      this.material.setTexture('u_ZhudaShaftBeams', null);
+      this.low.across.destroy();
+      this.low.down.destroy();
+      this.low = undefined;
     }
     this.material.setTexture('u_ZhudaFogLights', null);
     this.material.destroy();

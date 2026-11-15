@@ -135,14 +135,14 @@ as a colour picker shows it (sRGB) and decoded to light the way LayaAir
 decodes its own colours. Intensities are linear. Measured on the scene-linear
 picture before tone mapping:
 
-| Field                                                       | 0.5 gives |
-| ----------------------------------------------------------- | --------- |
-| a flat material's `color`, a recipe material's `tint`      | 22 %      |
-| `look.sun.color`, a light's `color`                         | 21 %      |
-| `look.ambient`, alone or beside `ambientGround`; that too   | 21 %      |
-| `lightFog.color`, a water node's `color`                    | 21 %      |
-| `emission`                                                  | 21 %      |
-| `sun.intensity`, a light's `intensity`                      | 50 %      |
+| Field                                                     | 0.5 gives |
+| --------------------------------------------------------- | --------- |
+| a flat material's `color`, a recipe material's `tint`     | 22 %      |
+| `look.sun.color`, a light's `color`                       | 21 %      |
+| `look.ambient`, alone or beside `ambientGround`; that too | 21 %      |
+| `lightFog.color`, a water node's `color`                  | 21 %      |
+| `emission`                                                | 21 %      |
+| `sun.intensity`, a light's `intensity`                    | 50 %      |
 
 Halving a colour does not halve its light; halve the intensity for that. The
 same number is the same light everywhere: a lamp's glow in the fog has the
@@ -161,8 +161,7 @@ about a third of the sun's light on the ground); `"ambientGround": false`
 returns to one flat colour. The night preset keeps its flat, dim ambient.
 
 `emission` is decoded like a colour, and above 1 the decoding is a 2.4th
-power: 1 is white, 2 is 5.3 times white, 3 is 14, 4 is 28, 5.4 is 57 and 8 is
-147. The grade shows up to 56 after exposure; a brighter value is scaled down
+power: 1 is white, 2 is 5.3 times white, 3 is 14, 4 is 28, 5.4 is 57 and 8 is 147. The grade shows up to 56 after exposure; a brighter value is scaled down
 to that limit with its hue kept, which the grade draws near-white. Tone
 mapping takes any bright colour toward white: a red lamp is red on the lamp
 itself up to about 2, pale orange at 3, and cream above; its colour then
@@ -312,7 +311,11 @@ into haze. It needs `grade` and is off unless given.
   so a shorter distance gives sharper edges); `steps` (8..96) trades speed
   for smoothness. Final stills average the step noise away over their
   samples; a one-sample preview shows it as fine grain. The beams use their
-  own depth picture, so they work with `shadows: false` as well.
+  own depth picture, so they work with `shadows: false` as well. `scale`
+  (0.25..1, default 0.5) is the size they are marched at against the
+  picture: below 1 the steps run for a quarter (or fewer) of the pixels, are
+  smoothed, and are brought up by depth so they do not spill over the edges
+  of what stands in front; 1 marches every pixel.
 
 `panorama` draws a photograph as the sky instead of the procedural one:
 

@@ -397,6 +397,11 @@ export interface ZhudaFilmLightShafts {
   distance?: number;
   /** Steps along each view ray, 8..96 (default 40). */
   steps?: number;
+  /**
+   * Size the beams are marched at against the picture, 0.25..1 (default 0.5);
+   * smoothed and brought up by depth below 1 (see `ZhudaLightShaftOptions`).
+   */
+  scale?: number;
 }
 
 /** A baked recipe (a registered recipe name or an inline recipe) or a flat PBR colour. */
@@ -1379,13 +1384,14 @@ function validateLook(
         else {
           unknownKeys(
             s,
-            ['strength', 'anisotropy', 'distance', 'steps'],
+            ['strength', 'anisotropy', 'distance', 'steps', 'scale'],
             `${path}.lightFog.shafts`,
             issues,
           );
           range(s.strength, `${path}.lightFog.shafts.strength`, 0, 64);
           range(s.anisotropy, `${path}.lightFog.shafts.anisotropy`, 0, 0.95);
           range(s.distance, `${path}.lightFog.shafts.distance`, 5, 2000);
+          range(s.scale, `${path}.lightFog.shafts.scale`, 0.25, 1);
           if (
             s.steps !== undefined &&
             !(Number.isInteger(s.steps) && (s.steps as number) >= 8 && (s.steps as number) <= 96)
@@ -2382,6 +2388,7 @@ function lightFogOf(fog: Required<ZhudaFilmLightFog> | false): ZhudaResolvedFilm
             anisotropy: shafts.anisotropy ?? 0.6,
             distance: shafts.distance ?? 60,
             steps: shafts.steps ?? 40,
+            scale: shafts.scale ?? 0.5,
           }
         : false,
   };

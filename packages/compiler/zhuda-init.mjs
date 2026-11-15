@@ -8,6 +8,19 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const engineRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+// The project checks its types with the TypeScript the engine's declarations
+// were written by: an older one cannot read them (Float32Array<ArrayBuffer>
+// needs 5.7), and the project's `npm run verify` would stop at typecheck.
+const engineTypeScript = (() => {
+  try {
+    const own = JSON.parse(fs.readFileSync(path.join(engineRoot, 'package.json'), 'utf8'));
+    const version = own.dependencies?.typescript ?? own.devDependencies?.typescript;
+    if (/^\d+\.\d+\.\d+$/.test(version ?? '')) return version;
+  } catch {
+    // A copy without its package.json: the version the engine shipped with last.
+  }
+  return '5.9.3';
+})();
 
 function packageName(value) {
   const name = String(value || '')
@@ -101,7 +114,7 @@ function filesFor({ name, engine, template = '3d' }) {
             verify: 'npm run build && npm run typecheck && npm run doctor && npm test',
           },
           dependencies: { 'zhuda-laya-engine': engine },
-          devDependencies: { typescript: '5.6.3' },
+          devDependencies: { typescript: engineTypeScript },
         },
         null,
         2,

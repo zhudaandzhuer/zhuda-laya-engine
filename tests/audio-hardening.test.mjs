@@ -320,3 +320,41 @@ test('showcase audio delegates every event and owns no second WebAudio graph', (
   assert.doesNotMatch(code, /createOscillator|createBufferSource|\.destination/);
   assert.doesNotMatch(code, /Math\.random/);
 });
+
+test('a blur without a focus after it is undone by input on a visible page', () => {
+  const dom = installFakeDom();
+  try {
+    const context = new FakeAudioContext();
+    const adapter = new IframeSoundAdapter({ audioContextFactory: () => context });
+    adapter.unlockAudio('test');
+    dom.window.dispatch('blur');
+    assert.equal(adapter.getDiagnostics().autoSuspendedByBlur, true);
+    assert.equal(context.state, 'suspended');
+    dom.window.dispatch('pointerdown');
+    assert.equal(adapter.getDiagnostics().autoSuspendedByBlur, false);
+    adapter.dispose();
+  } finally {
+    dom.restore();
+  }
+});
+
+test('on a touch-only device a blur leaves the music playing; hiding the page still silences it', () => {
+  const dom = installFakeDom();
+  const saved = globalThis.matchMedia;
+  globalThis.matchMedia = (query) => ({ matches: query === '(pointer: coarse)' });
+  try {
+    const context = new FakeAudioContext();
+    const adapter = new IframeSoundAdapter({ audioContextFactory: () => context });
+    adapter.unlockAudio('test');
+    dom.window.dispatch('blur');
+    assert.equal(adapter.getDiagnostics().autoSuspendedByBlur, false);
+    assert.equal(context.state, 'running');
+    dom.document.visibilityState = 'hidden';
+    dom.document.dispatch('visibilitychange');
+    assert.equal(adapter.getDiagnostics().autoSuspendedByBlur, true);
+    adapter.dispose();
+  } finally {
+    globalThis.matchMedia = saved;
+    dom.restore();
+  }
+});

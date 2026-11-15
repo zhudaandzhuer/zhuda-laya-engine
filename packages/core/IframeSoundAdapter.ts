@@ -605,12 +605,26 @@ export class IframeSoundAdapter {
     this.addEventListener(document, 'visibilitychange', () => {
       this.handleFocusOrVisibilityChange(document.visibilityState !== 'hidden', this.windowFocused);
     });
+    // A phone sends `blur` when its address bar, keyboard or a system sheet
+    // takes focus, and often never sends `focus` back: the music would stay
+    // silent on a visible page. There, leaving the page is told by visibility
+    // and pagehide alone; a desktop window still goes quiet on blur. Input on
+    // a visible page means the player is here, whatever focus said.
+    const media = (query: string) =>
+      typeof globalThis.matchMedia === 'function' && globalThis.matchMedia(query).matches;
+    const touchOnly = media('(pointer: coarse)') && !media('(pointer: fine)');
     this.addEventListener(window, 'blur', () => {
-      this.handleFocusOrVisibilityChange(this.pageVisible, false);
+      if (!touchOnly) this.handleFocusOrVisibilityChange(this.pageVisible, false);
     });
     this.addEventListener(window, 'focus', () => {
       this.handleFocusOrVisibilityChange(true, true);
     });
+    const back = () => {
+      if (!this.windowFocused && document.visibilityState !== 'hidden')
+        this.handleFocusOrVisibilityChange(true, true);
+    };
+    this.addEventListener(window, 'pointerdown', back, { capture: true });
+    this.addEventListener(window, 'keydown', back, { capture: true });
     this.addEventListener(window, 'pagehide', () => {
       this.handleFocusOrVisibilityChange(false, false);
     });

@@ -33,6 +33,13 @@ export interface ZhudaLightShaftOptions {
     resolution?: number;
     /** Steps along each view ray, 8..96 (default 40). */
     steps?: number;
+    /**
+     * Size the beams are marched at against the picture, 0.25..1 (default 0.5:
+     * a quarter of the pixels). Below 1 they are smoothed and brought up to the
+     * picture by depth, so they do not spill over the edges of what stands in
+     * front; 1 marches every pixel, as before.
+     */
+    scale?: number;
 }
 export interface ZhudaFogSun {
     /** Unit vector from the scene toward the sun or moon. */
@@ -71,6 +78,7 @@ export declare function resolveZhudaLightFog(options?: ZhudaLightFogOptions): {
         distance: number;
         resolution: number;
         steps: number;
+        scale: number;
     } | undefined;
 };
 /**
@@ -107,6 +115,8 @@ export declare class ZhudaLightFog {
     private drawnFor;
     private boxCentre;
     private frame;
+    /** With beams drawn smaller than the picture: the two smoothing passes. */
+    private low?;
     constructor(options?: ZhudaLightFogOptions);
     /**
      * Changes the fog in place (weather turning): density, falloff, base

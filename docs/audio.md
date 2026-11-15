@@ -9,11 +9,15 @@ an oscillator to `destination`, or synthesize the same event through Laya's
 
 ```ts
 const audio = new IframeSoundAdapter({
-  allowedParentOrigins: ['https://shell.example']
+  allowedParentOrigins: ['https://shell.example'],
 });
 audio.scheduleTone({
-  id: 'ui-confirm', channel: 'ui', startFreq: 720,
-  endFreq: 480, durationSec: 0.08, peakGain: 0.15
+  id: 'ui-confirm',
+  channel: 'ui',
+  startFreq: 720,
+  endFreq: 480,
+  durationSec: 0.08,
+  peakGain: 0.15,
 });
 ```
 
@@ -49,16 +53,24 @@ await audio.loadSample('audio/theme.mp3', { signal });
 // Call unlockAudio from a real pointer/key gesture if not already unlocked.
 audio.unlockAudio('pointerdown');
 audio.playSample({
-  id: 'music-main', sampleId: 'audio/theme.mp3', channel: 'bgm',
-  loop: true, peakGain: .5, fadeInSec: .25,
+  id: 'music-main',
+  sampleId: 'audio/theme.mp3',
+  channel: 'bgm',
+  loop: true,
+  peakGain: 0.5,
+  fadeInSec: 0.25,
 });
 // Load the replacement first. Crossfades require capacity for both voices.
 await audio.loadSample('audio/battle.mp3');
 audio.playSample({
-  id: 'music-main', sampleId: 'audio/battle.mp3', channel: 'bgm',
-  loop: true, replace: true, crossFadeSec: .25,
+  id: 'music-main',
+  sampleId: 'audio/battle.mp3',
+  channel: 'bgm',
+  loop: true,
+  replace: true,
+  crossFadeSec: 0.25,
 });
-audio.stop('music-main', .2);
+audio.stop('music-main', 0.2);
 // When the owner no longer needs a sample, unload stops its voices immediately.
 audio.unloadSample('audio/theme.mp3');
 // At teardown:
@@ -99,7 +111,12 @@ once. There is no persistent replay/epoch ledger here; consumers should use the
 existing event gate for replay deduplication.
 
 Blur/hidden suspends the one context and mutes the master; resume continues the
-same source position if permitted. It does not reconstruct a stream or guarantee
+same source position if permitted. On a touch-only device (`(pointer: coarse)`
+without `(pointer: fine)`) a window blur does not: a phone sends one when its
+address bar, keyboard or a system sheet takes focus and often never sends the
+focus back, which left the music silent on a visible page. There only
+`visibilitychange` and `pagehide` silence it. On every device a `pointerdown`
+or `keydown` on a visible page ends a blur's silence. It does not reconstruct a stream or guarantee
 mobile autoplay. `peakGain` remains voice-local; channel/master gains apply once.
 Sources and voice gains disconnect on end, stop, failure and disposal.
 
@@ -123,7 +140,10 @@ position)` moves the active voices of a logical ID.
 ```ts
 audio.setListener({ position: [x, 1.6, z], forward: cameraForward, up: [0, 1, 0] });
 audio.playSample({
-  id: 'enemy-steps', sampleId: 'audio/steps.wav', channel: 'sfx', loop: true,
+  id: 'enemy-steps',
+  sampleId: 'audio/steps.wav',
+  channel: 'sfx',
+  loop: true,
   spatial: { position: enemyPosition, refDistance: 2, rolloffFactor: 1 },
 });
 // Each frame, from the game's own state:
@@ -172,23 +192,32 @@ is one; never connect another player or context for the same event.
 
 ```ts
 const streams = new DirectoryAssetProvider({
-  baseUrl: '/audio/', streamMode: 'native',
+  baseUrl: '/audio/',
+  streamMode: 'native',
   // This delivery policy has no whole-file SHA requirement.
 });
 const audio = new IframeSoundAdapter({
-  sampleProvider: assets, streamProvider: streams,
-  maxActiveVoices: 24, voiceOverflow: 'fifo', protectedChannels: ['bgm'],
+  sampleProvider: assets,
+  streamProvider: streams,
+  maxActiveVoices: 24,
+  voiceOverflow: 'fifo',
+  protectedChannels: ['bgm'],
   maxDecodedSampleBytes: 64 * 1024 * 1024,
   maxRetainedStreamBytes: 32 * 1024 * 1024,
 });
-await audio.loadStream('theme.mp3', {signal});
+await audio.loadStream('theme.mp3', { signal });
 // Call unlockAudio from the existing real user-gesture handler.
-audio.playStream({id:'music', streamId:'theme.mp3', loop:true, fadeInSec:.2});
-await audio.loadStream('battle.mp3', {signal});
-audio.playStream({id:'music', streamId:'battle.mp3', loop:true,
-  replace:true, crossFadeSec:.3});
+audio.playStream({ id: 'music', streamId: 'theme.mp3', loop: true, fadeInSec: 0.2 });
+await audio.loadStream('battle.mp3', { signal });
+audio.playStream({
+  id: 'music',
+  streamId: 'battle.mp3',
+  loop: true,
+  replace: true,
+  crossFadeSec: 0.3,
+});
 // Unload the previous stream after its fade completes; unloading stops immediately.
-audio.stop('music', .2);
+audio.stop('music', 0.2);
 // At owner teardown:
 audio.unloadStream('theme.mp3');
 audio.unloadStream('battle.mp3');
@@ -198,10 +227,10 @@ streams.dispose();
 
 Two provider modes make the integrity tradeoff explicit:
 
-| Mode | Data retained | Integrity |
-| --- | --- | --- |
-| `verified-blob` (default) | Complete encoded bytes in a leased Blob URL, no full PCM decode by the adapter | Existing byte bound and manifest SHA checks |
-| `native` (opt-in) | Browser-managed range/buffer/decoder data; adapter lease reports zero retained bytes | Transport only; rejects a manifest entry requiring full-file SHA |
+| Mode                      | Data retained                                                                        | Integrity                                                        |
+| ------------------------- | ------------------------------------------------------------------------------------ | ---------------------------------------------------------------- |
+| `verified-blob` (default) | Complete encoded bytes in a leased Blob URL, no full PCM decode by the adapter       | Existing byte bound and manifest SHA checks                      |
+| `native` (opt-in)         | Browser-managed range/buffer/decoder data; adapter lease reports zero retained bytes | Transport only; rejects a manifest entry requiring full-file SHA |
 
 Native `loadStream` resolves an address lease, not network/media readiness.
 Playback failures and the 15-second startup deadline are reported through

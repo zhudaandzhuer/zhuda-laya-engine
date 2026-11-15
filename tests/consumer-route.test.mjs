@@ -23,6 +23,12 @@ test('consumer starter creates a pinned public-SDK route', async () => {
       ],
       'github:zhudaandzhuer/zhuda-laya-engine#0127bd214752383b785193e6d940f61d0a89b5c8',
     );
+    // The project checks types with the TypeScript the engine's declarations were written by.
+    assert.equal(
+      JSON.parse(fs.readFileSync(path.join(target, 'package.json'))).devDependencies.typescript,
+      JSON.parse(fs.readFileSync(path.resolve(import.meta.dirname, '../package.json'))).dependencies
+        .typescript,
+    );
     assert.match(fs.readFileSync(path.join(target, 'public/index.html'), 'utf8'), /ZHUDA_LIBS/);
     assert.match(fs.readFileSync(path.join(target, 'public/index.html'), 'utf8'), /ZHUDA_ENTRY/);
     assert.match(fs.readFileSync(path.join(target, 'src/Main.ts'), 'utf8'), /ZhudaEngine\.boot/);

@@ -94,11 +94,22 @@ test('light shaft options are validated and resolved', () => {
     distance: 120,
     resolution: 2048,
     steps: 40,
+    scale: 0.5,
   });
+  assert.equal(resolveZhudaLightFog({ shafts: { scale: 1 } }).shafts.scale, 1);
+  assert.deepEqual(validateZhudaLightFog({ shafts: { scale: 0.25 } }), []);
   const issues = validateZhudaLightFog({
-    shafts: { strength: -1, anisotropy: 0.99, distance: 4, resolution: 1000.5, steps: 200, x: 1 },
+    shafts: {
+      strength: -1,
+      anisotropy: 0.99,
+      distance: 4,
+      resolution: 1000.5,
+      steps: 200,
+      scale: 0.2,
+      x: 1,
+    },
   });
-  for (const key of ['strength', 'anisotropy', 'distance', 'resolution', 'steps', 'x'])
+  for (const key of ['strength', 'anisotropy', 'distance', 'resolution', 'steps', 'scale', 'x'])
     assert.ok(
       issues.some((issue) => issue.startsWith(`shafts.${key}`)),
       key + ': ' + issues.join(' | '),

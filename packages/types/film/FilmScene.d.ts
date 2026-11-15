@@ -356,6 +356,11 @@ export interface ZhudaFilmLightShafts {
     distance?: number;
     /** Steps along each view ray, 8..96 (default 40). */
     steps?: number;
+    /**
+     * Size the beams are marched at against the picture, 0.25..1 (default 0.5);
+     * smoothed and brought up by depth below 1 (see `ZhudaLightShaftOptions`).
+     */
+    scale?: number;
 }
 /** A baked recipe (a registered recipe name or an inline recipe) or a flat PBR colour. */
 export type ZhudaFilmMaterial = {

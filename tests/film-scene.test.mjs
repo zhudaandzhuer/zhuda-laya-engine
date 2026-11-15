@@ -607,7 +607,7 @@ test('lightFog needs grade; fog-only lights are point lights outside the 32 limi
   // Light shafts: off by default, defaults filled in, values checked with paths.
   assert.deepEqual(
     resolveZhudaFilmLook({ grade: {}, lightFog: { shafts: { strength: 3 } } }).lightFog.shafts,
-    { strength: 3, anisotropy: 0.6, distance: 60, steps: 40 },
+    { strength: 3, anisotropy: 0.6, distance: 60, steps: 40, scale: 0.5 },
   );
   assert.equal(
     resolveZhudaFilmLook({ grade: {}, lightFog: { shafts: false } }).lightFog.shafts,
@@ -623,11 +623,13 @@ test('lightFog needs grade; fog-only lights are point lights outside the 32 limi
   const shaftIssues = validateZhudaFilmScene(
     withLook({
       grade: {},
-      lightFog: { shafts: { strength: 65, anisotropy: 1, distance: 2, steps: 7.5, glow: 1 } },
+      lightFog: {
+        shafts: { strength: 65, anisotropy: 1, distance: 2, steps: 7.5, scale: 0.1, glow: 1 },
+      },
     }),
     context,
   );
-  for (const key of ['strength', 'anisotropy', 'distance', 'steps', 'glow'])
+  for (const key of ['strength', 'anisotropy', 'distance', 'steps', 'scale', 'glow'])
     assert.ok(
       shaftIssues.some((issue) => issue.includes(`look.lightFog.shafts.${key}`)),
       key + ': ' + shaftIssues.join(' | '),
