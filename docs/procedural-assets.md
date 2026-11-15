@@ -276,3 +276,76 @@ Closed shapes are watertight with outward normals (`tests/geometry-shapes.test.m
 `npm run verify:geometry` draws them on WebGL and WebGPU. Arcs (a part of a
 torus or ring) are not built.
 
+
+## Shapes as distances, and a hand
+
+`Isosurface.ts` builds soft bodies from signed distances, pure data like the
+rest of the kit:
+
+- `createZhudaSdfField(shapes)` takes a list of `roundCone` (a cone between
+  two balls) and `ellipsoid` shapes, in order. Each may join what came before
+  it with a fillet `blend` metres wide (a smooth minimum), be cut out of it
+  (`subtract`), or be squeezed along one direction (`flatten`). A shape whose
+  box is farther than the fillet is skipped, so a long list stays fast.
+- `joinZhudaSdfFields(trunk, limbs)` joins each limb to the trunk with its
+  own fillet and the limbs to each other with none: fingers touch without
+  growing together.
+- `createZhudaIsosurfaceMesh({ distance, min, max, cellSize })` meshes the
+  surface by surface nets: one vertex a cell, moved onto the surface along
+  the field's slope (`project`, three steps), normals from the field, a
+  quad across every cut edge of the grid. A closed body inside the box gives
+  a closed mesh wound the engine's way; a surface that reaches the box's
+  side is refused. Past 65535 vertices the indices are 32-bit, and
+  `splitZhudaMesh(mesh)` cuts it into chunks a `ZhudaDynamicMesh` takes.
+  A sheet thinner than about three cells can pinch where both of its faces
+  cross one cell.
+- `createZhudaSdfUnion(shapes, { reach, cell })` is a plain union of many
+  small shapes (creases, rivets) found through a grid: exact within `reach`
+  of a shape, `reach` farther away (never more than the true distance). Use
+  it for details cut into, or joined onto, a surface that is already there.
+- Each shape's distance is held at least at the distance to its box, so the
+  broad phase that skips by the box never changes the field (an ellipsoid's
+  distance is an estimate, and without this a surface got a step where the
+  skipping started).
+
+`createZhudaHandMesh(options)` makes a human hand from numbers on top of it:
+the bones of the palm and the fingers with an adult's proportions (hand
+length 0.185 m, breadth 0.082 m, scaled by `length` and `breadth`), a pose
+as joint angles (`ZHUDA_HAND_RELAXED`, `ZHUDA_HAND_FLAT`, or each finger's
+three bends, `spread` and `thumbOut`), flesh round each bone with a pad on
+the palm side, the ball of the thumb, the heel of the hand, the web between
+thumb and index, knuckles and tendons on the back, five nails seated on the
+skin, and creases cut into it: across the palm side of each finger joint
+(two at the middle joint), where each finger leaves the palm, the thumb's,
+the three long lines of the palm, the wrist's two, and faint wrinkles over
+the backs of the middle joints. Each crease is a shallow groove (0.14 to
+0.5 mm deep) that fades out at its ends and darkens the skin in its bottom.
+`side: 'left'` is the mirror. It returns `skin` (chunks), `nails`, where
+each joint and tip ended up, and a colour a vertex: the skin's tint (paler
+palm, warmer joints and tips) as a display colour, and in alpha how thin the
+hand is there, for a lit surface's `subsurface`:
+
+```ts
+const hand = createZhudaHandMesh({ pose: ZHUDA_HAND_RELAXED });
+const skin = new ZhudaLitSurfaceMaterial({
+  name: 'GameSkin',
+  material: { roughness: 0.5 },
+  subsurface: { color: [1, 0.3, 0.2], wrap: 0.45, back: 1.6, power: 3, distortion: 0.25 },
+  surface: `void zhudaSurface(inout ZhudaLitSurface s, vec2 uv, vec3 p, vec3 n) {
+    s.baseColor *= s.vertexColor.rgb;
+    s.thickness = s.vertexColor.a;
+  }`,
+});
+for (const chunk of hand.skin) new ZhudaDynamicMesh(chunk, scene).node.meshRenderer.sharedMaterial = skin.material;
+```
+
+Measured (`tests/hand.test.mjs`): a flat hand is 186 mm long and within
+3 mm of 82 across the knuckles' level (the thumb left out); the fingers keep
+an adult's order of length; the skin is about 92 000 vertices in two chunks
+at the default cell (0.9 mm) and takes about 6 s to make in a browser on an
+Apple M4 (about 3 s in Node), so it is made once and kept. `npm run
+verify:hand` draws it on WebGPU (and WebGL with `HAND_RENDERER=webgl`) from
+the back, the palm, the side, three quarters, against the light and close
+to the nails, and keeps the pictures. The pose is baked into the mesh: there
+are no skinning weights or rig, no prints, pores or veins beyond a shader's
+grain, and the look is judged by eye, not against a photograph.
