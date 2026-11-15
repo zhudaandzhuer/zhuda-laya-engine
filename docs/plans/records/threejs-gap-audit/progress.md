@@ -1,7 +1,79 @@
 # three.js gap plan: progress
 
 Plan: `docs/plans/records/threejs-gap-audit/plan.md` (work packages WP0..WP16 from the audit; WP17..WP20 added on request on 2026-11-15, section 6)\
-Last updated: 2026-11-15, after WP18 (WP17, WP16 and what the merged packages had left open came before it the same day; batch 2 is done one package at a time, by one agent, without a review agent)
+Last updated: 2026-11-15, after WP20 (WP16 to WP19, the phone checks and what the merged packages had left open came before it the same day; batch 2 is done one package at a time, by one agent, without a review agent)
+
+## Handoff (2026-11-15, at the end of the session that did WP16 to WP20)
+
+Read this first when taking the work over.
+
+**State**
+
+- Every package of the plan, WP0 to WP20, is done within the scope its
+  record names; the table below has one line for each. Nothing is half
+  done: no uncommitted change, no branch other than `main` to merge.
+- GitHub `main` was pushed at `49586e0` on 2026-11-15 on the owner's word.
+  The commit that adds this section comes after it;
+  `git rev-list --count origin/main..main` says whether it has been pushed.
+- The main checkout's `dist/sdk` was rebuilt at `a83ed1a`; only documents
+  have changed since. A consumer that builds against the main checkout needs
+  no rebuild. After any later change to `packages/`, run `npm run build`
+  there first.
+- No SDK release was cut (the package is still 1.18.0), no pull request, no
+  tag. The session's work tree is the branch
+  `claude/fable-batch8-review-8b8d41`, equal to `main`; it can be removed.
+- Last gates, at `49586e0`: `npm run verify` 795 of 795, `npm run lint`,
+  `npm run format:check`, `git diff --check`; every draw check once on each
+  backend, WebGL 59 of 59 and WebGPU 46 of 46
+  (`character-surfaces/verification.md`).
+
+**Decided, and still in force**
+
+- Only `main`. A push, an SDK release, a pull request or a tag happens on the
+  owner's word each time, never on an agent's own.
+- A check that fails or cannot be run stays recorded as failing or
+  unavailable; no tolerance is widened to pass. The three phone failures
+  below are recorded that way.
+- Vendor files are not modified; no consumer asset comes into this
+  repository; a consumer's own tasks are not tracked here.
+- Realism and film work is drawn on WebGPU and verified on both backends.
+
+**Open** (the list under "Next" has the detail)
+
+1. WP19 (spring bones) and WP20 (the frame, `subsurface`, `strands`) were
+   never run on a phone. WP20 was drawn with one directional light and no
+   shadow: point and spot lights compile but are not measured, and that a
+   light's shadow removes the wrapped light is read from the formula.
+2. On the vivo V40 three checks fail and are not mended: screen reflections
+   on both backends (cause not found), one line of specular anti-aliasing
+   on WebGPU, the premise of the dither check on WebGL.
+3. Not started: `.hdr` panoramas in film scenes, `--ktx2` in
+   `zhuda-laya-lod`, the WebGPU table of `inspectEngineHealth`.
+4. Not built, by choice: a blur of the skin's light, a cornea's refraction,
+   hair's own shadowing, a soft fringe for hair cards, cloth against itself.
+
+**The exact next step**
+
+Nothing is in progress. When work resumes, the first thing owed is item 1 on
+the phone:
+
+```sh
+adb forward tcp:9333 localabstract:chrome_devtools_remote   # a blank tab open in the phone's Chrome
+ZHUDA_PHONE_CHROME=http://127.0.0.1:9333 npm run verify:lit-surface
+ZHUDA_PHONE_CHROME=http://127.0.0.1:9333 LIT_SURFACE_RENDERER=webgpu npm run verify:lit-surface
+ZHUDA_PHONE_CHROME=http://127.0.0.1:9333 npm run verify:spring-bones
+ZHUDA_PHONE_CHROME=http://127.0.0.1:9333 SPRING_BONES_RENDERER=webgpu npm run verify:spring-bones
+```
+
+(`docs/agent-development.md`, "A draw check on a phone"), and its result
+written into `character-surfaces/verification.md` and
+`cloth-and-spring-bones/verification-spring-bones.md`, pass or fail. Then
+item 2's screen reflections, which is the one phone failure a game would
+see.
+
+Where to read what was built: `docs/filmic-rendering.md` (the lit hook,
+sheen, the frame, skin, strands), `docs/cloth.md`, `docs/spring-bones.md`,
+and each package's record under `docs/plans/records/`.
 
 ## Where each package stands
 
@@ -103,6 +175,8 @@ Still open, by choice or for want of a device:
   as options when WP5 and WP6 were merged, not started.
 - What each record lists under "not verified, not built".
 - `inspectEngineHealth` counts loaded modules against the WebGL table only.
+- WP19 and WP20 on a phone; WP20 under a point light, a spot light and a
+  light with a shadow (`character-surfaces/task.md`, unverified limits).
 
 ## Found while closing what the merged packages left open
 
