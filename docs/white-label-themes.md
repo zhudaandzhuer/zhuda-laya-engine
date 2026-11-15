@@ -35,8 +35,12 @@ files, at most 2 MB. Symlinks, traversal and remote build paths fail explicitly.
 The compiler embeds the logo before asset allowlisting; unknown fields fail,
 including the old proposed `showEngineCredit` option. Title/caption are plain
 text, not HTML. The responsive layout, safe areas and reduced-motion behavior
-remain shared. Duration is the existing 2180 ms; `none` immediately completes
-`__ZHUDA_SPLASH__` without leaving startup code waiting.
+remain shared. The splash stays at least 2180 ms and until the page's `load`
+event (every start-up script has run), so a slow download never leaves a bare
+background between the splash and the game's own loading screen; while it
+waits past 2180 ms it carries `is-waiting` and its bar loops (a still bar under
+reduced motion). `none` immediately completes `__ZHUDA_SPLASH__` without
+leaving startup code waiting.
 
 For the official **1.10.0+** browser bundle, before its script tag:
 

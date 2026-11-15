@@ -181,6 +181,11 @@ draw checks on this backend (`plans/records/phone-checks/`): its adapter is a
 hardware one without `float32-filterable` and `bgra8unorm-storage`, eight of
 the ten pass, and screen reflections and one line of specular anti-aliasing
 do not. iOS and other browsers are unverified.
+One iPhone report (2026-11-15, a consumer 3D game at its medium setting) failed
+at start with `GPUCommandEncoder.finish: Unable to finish.`; it is not yet
+reproduced or explained. Until it is, ship such a game with `renderer: "auto"`
+and call `retryZhudaBackend(reason)` when boot fails, so the page reloads on WebGL
+(see [backend delivery](backend-delivery.md)).
 
 Run on a Windows GPU machine (Node 24+, Chrome, or set `CHROME_BIN` to Edge):
 

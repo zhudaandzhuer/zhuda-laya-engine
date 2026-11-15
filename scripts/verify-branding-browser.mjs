@@ -9,7 +9,14 @@ const root = path.resolve(
   ),
   out = path.resolve(process.env.SDK_EVIDENCE_DIR || '/tmp/zhuda-branding-evidence');
 fs.mkdirSync(out, { recursive: true });
+// `/__hold.png` answers after HOLD_MS: the page's load event waits for it, so
+// the splash must stay past its intro and show that it is still waiting.
+const HOLD_MS = 8000;
 const server = http.createServer((q, r) => {
+  if (q.url.startsWith('/__hold.png')) {
+    setTimeout(() => r.writeHead(204).end(), HOLD_MS);
+    return;
+  }
   try {
     const f = path.join(root, q.url.split('?')[0]);
     r.setHeader('Content-Type', f.endsWith('.js') ? 'application/javascript' : 'text/html');
@@ -45,7 +52,9 @@ try {
               ? { mode, brandId: 'client', logo, title: 'Customer', caption: 'White label' }
               : { mode };
           await b.send('Page.addScriptToEvaluateOnNewDocument', {
-            source: mode === 'engine' ? '' : `window.ZhudaBranding=${JSON.stringify(config)};`,
+            source:
+              (mode === 'engine' ? '' : `window.ZhudaBranding=${JSON.stringify(config)};`) +
+              `document.addEventListener('DOMContentLoaded',()=>{const i=new Image();i.src='/__hold.png';document.body.append(i);});`,
           });
           await b.send('Page.navigate', {
             url: `http://127.0.0.1:${server.address().port}/example-${profile}.html`,
@@ -53,7 +62,8 @@ try {
           await b.waitFor('!!window.__ZHUDA_SPLASH__');
           if (mode !== 'none')
             await b.waitFor(
-              `document.querySelector('#zhudaLogoSplash img')?.getAnimations().some(a=>a.currentTime>=1099)`,
+              // The intro's length depends on the mode (the tribute mark fades in, a custom logo scales in): wait for it to end.
+              `(a=>a.length>0&&a.every(x=>x.playState==='finished'))(document.querySelector('#zhudaLogoSplash img')?.getAnimations()||[])`,
             );
           const state = await b.evaluate(
             `({splash:__ZHUDA_SPLASH__,img:document.querySelector('#zhudaLogoSplash img')?{rect:document.querySelector('#zhudaLogoSplash img').getBoundingClientRect().toJSON(),alt:document.querySelector('#zhudaLogoSplash img').alt,src:document.querySelector('#zhudaLogoSplash img').getAttribute('src')}:null})`,
@@ -72,7 +82,21 @@ try {
             assert.ok(state.img.rect.top >= 0 && state.img.rect.bottom <= height + 1);
             await b.screenshot(path.join(out, `${profile}-${mode}-${width}x${height}.png`));
           }
+          if (mode !== 'none') {
+            // Past its intro, with the page still loading: the splash is still up and its bar loops.
+            await b.waitFor(
+              `document.querySelector('#zhudaLogoSplash')?.classList.contains('is-waiting')`,
+            );
+            assert.equal(await b.evaluate('window.__ZHUDA_SPLASH__.completed'), false);
+          }
           await b.waitFor('window.__ZHUDA_SPLASH__.completed');
+          // The splash leaves only once the page has loaded (never onto a bare background).
+          assert.equal(
+            await b.evaluate(
+              'window.__ZHUDA_SPLASH__.loaded===true||window.__ZHUDA_SPLASH__.mode==="none"',
+            ),
+            true,
+          );
           const api = profile === '3d-gltf' ? '__ZHUDA_MODEL_TEST__' : '__ZHUDA_PREFAB_TEST__';
           await b.waitFor(`window.${api}?.report().ready===true`);
           assert.deepEqual(b.errors, []);

@@ -114,8 +114,8 @@ A first-frame screenshot or a synthetic report does not prove a timeline,
 device or performance contract. See [cinematics](cinematics.md) for limits.
 
 A scripted press or drag sent right after the page loads is lost: the start
-splash takes pointer input until it is gone (about 2.2 seconds; WebGL is
-ready sooner than that). Wait for `window.__ZHUDA_SPLASH__.completed` before
+splash takes pointer input until it is gone (at least 2.2 seconds, longer
+while the page is still loading; WebGL is ready sooner than that). Wait for `window.__ZHUDA_SPLASH__.completed` before
 the first input, as `tests/fixtures/stylized-shading.ts` does.
 
 ## Evidence and handoff

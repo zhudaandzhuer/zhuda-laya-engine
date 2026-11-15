@@ -13,8 +13,9 @@ export const brandSplashCss = `      html.zhuda-splash-active, html.zhuda-splash
         background: radial-gradient(circle at 50% 42%, #17263c 0%, #0b1220 52%, #060a12 100%);
         opacity: 1;
         pointer-events: auto;
-        animation: zhuda-splash-exit 420ms ease 1760ms forwards;
       }
+      /* The splash leaves when the script releases it (time and page load), not on a fixed clock. */
+      #zhudaLogoSplash.is-complete { animation: zhuda-splash-exit 420ms ease forwards; }
       #zhudaLogoSplash .zhuda-splash-shell {
         display: grid;
         justify-items: center;
@@ -59,6 +60,12 @@ export const brandSplashCss = `      html.zhuda-splash-active, html.zhuda-splash
         animation: zhuda-splash-progress 1500ms cubic-bezier(.32, .1, .2, 1) 220ms both;
       }
       #zhudaLogoSplash.is-complete { pointer-events: none; }
+      /* Still downloading after the intro: the bar keeps moving so the page does not look stuck. */
+      #zhudaLogoSplash.is-waiting .zhuda-splash-progress::after {
+        width: 40%;
+        transform-origin: center;
+        animation: zhuda-splash-wait 1100ms ease-in-out infinite;
+      }
       /* The engine's own splash: a tribute to LayaAir, in the plain grey, black and white of its boot screen. */
       #zhudaLogoSplash.zhuda-splash-tribute { background: #8a8a8a; }
       #zhudaLogoSplash.zhuda-splash-tribute .zhuda-splash-shell { gap: clamp(22px, 5svh, 56px); }
@@ -93,6 +100,10 @@ export const brandSplashCss = `      html.zhuda-splash-active, html.zhuda-splash
         from { transform: scaleX(0); }
         to { transform: scaleX(1); }
       }
+      @keyframes zhuda-splash-wait {
+        from { transform: translateX(-100%); }
+        to { transform: translateX(250%); }
+      }
       @keyframes zhuda-splash-exit {
         from { opacity: 1; visibility: visible; }
         to { opacity: 0; visibility: hidden; }
@@ -106,6 +117,12 @@ export const brandSplashCss = `      html.zhuda-splash-active, html.zhuda-splash
         #zhudaLogoSplash .zhuda-splash-progress, #zhudaLogoSplash .zhuda-splash-progress::after {
           animation-duration: 1ms;
           animation-delay: 0ms;
+        }
+        #zhudaLogoSplash.is-waiting .zhuda-splash-progress::after {
+          animation: none;
+          width: 100%;
+          transform: none;
+          opacity: .6;
         }
       }
 `;
@@ -169,26 +186,52 @@ export function validateBrandLogo(source) {
     throw Error('branding.logo must be a relative image, HTTPS URL or base64 image data URL');
   return source;
 }
-/** Boot UI only: this timeout never advances the simulation clock. */
+/**
+ * Boot UI only: this timeout never advances the simulation clock.
+ * The splash stays at least `durationMs` and until the page's load event, so
+ * the start-up scripts have run (and a game can show its own loading screen)
+ * before it goes: on a slow network the page never sits on a bare background.
+ * Past `durationMs` it marks itself `is-waiting` and its bar loops.
+ * Must stay self-contained: it is injected into pages with `toString()`.
+ */
 export function runBrandSplash(mode) {
   const splash = document.getElementById('zhudaLogoSplash');
   const state = {
     started: true,
     durationMs: mode === 'none' ? 0 : 2180,
     completed: mode === 'none',
+    loaded: document.readyState === 'complete',
     mode,
   };
   window.__ZHUDA_SPLASH__ = state;
-  if (mode === 'none' || !splash) return;
-  document.documentElement.classList.add('zhuda-splash-active');
-  const release = () => {
-    if (state.completed) return;
+  if (mode === 'none' || !splash) {
     state.completed = true;
+    return;
+  }
+  document.documentElement.classList.add('zhuda-splash-active');
+  let timed = false;
+  const release = () => {
+    if (state.completed || !timed || !state.loaded) return;
+    state.completed = true;
+    splash.classList.remove('is-waiting');
     splash.classList.add('is-complete');
     document.documentElement.classList.remove('zhuda-splash-active');
     window.setTimeout(() => splash.remove(), 460);
   };
-  window.setTimeout(release, state.durationMs);
+  if (!state.loaded)
+    window.addEventListener(
+      'load',
+      () => {
+        state.loaded = true;
+        release();
+      },
+      { once: true },
+    );
+  window.setTimeout(() => {
+    timed = true;
+    if (!state.loaded) splash.classList.add('is-waiting');
+    release();
+  }, state.durationMs);
 }
 export function brandSplashMarkup(source, options) {
   const config = normalizeBranding(options);
