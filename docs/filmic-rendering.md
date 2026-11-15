@@ -97,6 +97,56 @@ Color/albedo and emission textures must be uploaded with the appropriate sRGB fl
 
 `surface.dispose()` destroys its material after detaching borrowed textures. Destroy meshes/instances first; the caller owns textures. Shader registrations/program caches persist in the native runtime, so use stable shader names rather than generating one per instance.
 
+### The surface's frame, skin and strands
+
+A hook that reads `s.tangent`, `s.bitangent` or `s.viewTS` is given the surface's own frame: unit vectors in the world along the texture's u and v, and the view direction in that frame (x along u, y along v, z out of the surface). They come from the mesh's tangents, or, on a mesh without, from how the place and the texture coordinates change across the pixel. A hook that reads none of them is the program it was.
+
+```ts
+// An eye: the iris lies under the cornea, so it is seen moved by the view direction.
+const eye = new ZhudaLitSurfaceMaterial({
+  name: 'ZhudaEye',
+  uniforms: { u_ZhudaIris: { type: 'texture2D' }, u_ZhudaDeep: { type: 'float', value: 0.04 } },
+  material: { roughness: 0.05 },
+  surface: `void zhudaSurface(inout ZhudaLitSurface s, vec2 uv, vec3 p, vec3 n) {
+    vec2 below = uv - s.viewTS.xy / max(s.viewTS.z, 0.3) * u_ZhudaDeep; // depth in parts of the texture
+    float fromMiddle = length(below - 0.5) * 2.0;
+    vec3 iris = zhudaSample_u_ZhudaIris(below).rgb;
+    s.baseColor = mix(iris * (1.0 - 0.6 * smoothstep(0.7, 1.0, fromMiddle)), vec3(0.9), step(1.0, fromMiddle)); // a darker rim, then the white
+    s.roughness = 0.05;                                                   // the wet highlight
+  }`,
+}, { u_ZhudaIris: irisTexture });
+
+// Skin: light reaches round the edge of its shadow, and through an ear.
+const skin = new ZhudaLitSurfaceMaterial({
+  name: 'ZhudaSkin',
+  subsurface: { color: [1, 0.35, 0.25], wrap: 0.5, back: 0.4 },
+  uniforms: { u_ZhudaThin: { type: 'texture2D' } },
+  surface: `void zhudaSurface(inout ZhudaLitSurface s, vec2 uv, vec3 p, vec3 n) {
+    s.thickness = zhudaSample_u_ZhudaThin(uv).r; // 1 where the body is thin, 0 where none comes through
+  }`,
+}, { u_ZhudaThin: thicknessTexture });
+
+// Hair: two bands of light across the strands, which run along the texture's v.
+const hair = new ZhudaLitSurfaceMaterial({
+  name: 'ZhudaHair',
+  alphaHash: true,
+  strands: { along: 'v', color: [0.5, 0.4, 0.3], shift: [0.05, -0.1], exponent: [120, 24] },
+  surface: `void zhudaSurface(inout ZhudaLitSurface s, vec2 uv, vec3 p, vec3 n) {
+    s.strandShift = (zhudaHash(vec2(floor(uv.x * 220.0), 0.0)) - 0.5) * 0.12; // each strand's band a little off its neighbour's
+  }`,
+  common: true,
+});
+```
+
+- **`subsurface`** (`true`, or `{ color, wrap, back, power, distortion }`) adds to each light, after LayaAir's own lighting: the light that goes round (`wrap`, 0..1, default 0.5: `saturate((n·l + wrap) / (1 + wrap)) - saturate(n·l)`, times the surface's colour and `color`), and the light that comes through from behind (`back`, default 0: `color × back × thickness × saturate(v · -normalize(l + n × distortion))^power`). The hook may set `s.subsurfaceColor` and `s.thickness` a pixel at a time; `material.setSubsurface({ ... })` changes the values in place. A light's own shadow takes the light that goes round away again (a ball in a sun with shadows keeps the red band on its lit side and loses what is past the edge); light from behind is not shadowed by a sun, so `thickness` is what keeps it out of a thick body. It is a wrap, not a blur: the light does not travel across the surface, and a screen-space blur of the skin's light is not built.
+- **`strands`** (`true`, or `{ along, color, strength, shift, exponent }`) adds Kajiya and Kay's highlight to each light: a white band of `strength` and a wider one of `color`, each where the half vector is square to the strand, moved along the strand by its `shift` (a positive shift toward where u, or v, grows) and as narrow as its `exponent`. `along` is `'v'` (the default) or `'u'` and is part of the program; `s.strandShift` in the hook moves both bands a pixel at a time; `material.setStrands({ ... })` changes the rest in place. The bands have no shadowing of one strand by another and no light through the hair.
+- `subsurface`, `strands` and `sheen` go together on one surface and are part of the shader name's contract; none of them goes with a `ZhudaLitShading` of one's own. Their uniforms (`u_ZhudaLitSubsurface`, `u_ZhudaLitSubsurfaceBack`, `u_ZhudaLitStrands`, `u_ZhudaLitStrandColor`) are the material's own names.
+- In the passes that draw no colour (shadow, depth) the frame is not worked out: `s.tangent` is `(1, 0, 0)`, `s.bitangent` `(0, 0, 1)` and `s.viewTS` `(0, 0, 1)` there. A cut-out whose alpha depends on the frame is cut in the picture by the real one and in its shadow by these.
+- The eye above is a recipe, not a class: the cornea's refraction is left out (the iris is moved along the straight line of sight), and under 0.3 of `viewTS.z` the move is held so that it does not run away at a grazing view.
+- Hair cards need no order when they are cut by chance (`alphaHash`, above): they write depth and cast a shadow, at the price of grain that temporal anti-aliasing smooths. A soft blended fringe round a cut-out core is not built.
+
+Measured on WebGL and WebGPU (`npm run verify:lit-surface`), the same on both: a disc drawn by a hook 0.4 under a plate is seen within 0.73 of a pixel of where a point that deep is, from two places, on a mesh with tangents and on one without (the depth moves it 14 and 17 pixels); a white ball lit from the side, black past the edge of the light without subsurface, is 0.104, 0.037, 0.027 at 0.3 of its radius past it with a wrap of one half (the formula gives 0.107, 0.037, 0.027; every reading within 0.004); lit from behind, the half its hook calls thin glows 0.482, 0.167, 0.119 and the other half not at all, and half the `back` is half the glow; a strand band is where the formula puts it and moves 0.608 along the strand for a shift of 0.05 (the formula: 0.604), the same from the hook as from the material, and strands run the other way show none of it.
+
 ### Vertex hook: wind, sway and waves
 
 `vertex` is an optional second function body that moves vertices in world space. It runs in the forward pass, the shadow caster and the depth-normal pass, so a blade that bends also bends its shadow and its ambient occlusion:

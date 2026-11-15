@@ -238,6 +238,17 @@ export const API_GUARDRAILS = [
       'The hook is given s.viewDirection (toward the eye; toward the light where a shadow is written, because LayaAir sets no u_CameraPos in that pass) and the mesh normal as its fourth argument, so no camera uniform is needed. s.vertexColor is white on a mesh without colours; rgb arrive as light (power 2.2), alpha as given, so a plain number for the hook goes in alpha. material.blend alpha, additive and cutout take effect with nothing set by hand. sheen is on the lit surface (s.sheenColor, s.sheenRoughness, setSheen); the other physical lobes (thin film, glass, coat) have no hook. sheen is part of the shader name contract. See docs/filmic-rendering.md.',
   },
   {
+    id: 'GUARD_CHARACTER_SURFACES',
+    topic:
+      'skin subsurface scattering sss wrap lighting translucency thickness ear back light eye iris cornea parallax tangent space view direction hair strands anisotropic highlight kajiya kay hair cards character face close-up',
+    hallucinatedLegacyApi:
+      'new THREE.MeshPhysicalMaterial({ transmission: 0.2, thickness: 0.5, attenuationColor }); new SubsurfaceScatteringShader(); material.onBeforeCompile = (shader) => { shader.fragmentShader = shader.fragmentShader.replace("#include <lights_fragment_begin>", wrapAndKajiyaKay) }; vViewPosition * tbn; material.anisotropy = 1;',
+    zhudaCanonicalApi:
+      "new ZhudaLitSurfaceMaterial({ name: 'ZhudaSkin', subsurface: { color: [1, 0.35, 0.25], wrap: 0.5, back: 0.4 }, surface: 'void zhudaSurface(inout ZhudaLitSurface s, vec2 uv, vec3 p, vec3 n){ s.thickness = zhudaSample_u_ZhudaThin(uv).r; }', uniforms: { u_ZhudaThin: { type: 'texture2D' } } }, { u_ZhudaThin: texture }); hair: { alphaHash: true, strands: { along: 'v', shift: [0.05, -0.1], exponent: [120, 24] } } with s.strandShift in the hook; an eye: vec2 below = uv - s.viewTS.xy / max(s.viewTS.z, 0.3) * depth; then sample the iris at below. setSubsurface({ ... }) and setStrands({ ... }) change values in place.",
+    reason:
+      "The lit hook is given the surface's frame when its text reads it: s.tangent and s.bitangent (world, along the texture's u and v) and s.viewTS (the view direction in that frame, z out), from the mesh's tangents or from the pixel's derivatives. subsurface and strands are options of the lit surface beside sheen: they add to each light after LayaAir's own lighting, go together, are part of the shader name contract and do not go with a ZhudaLitShading. subsurface is a wrap and a glow through thin parts (s.thickness), not a blur; a light's shadow removes the wrapped light. In the shadow and depth passes the frame is fixed ((1,0,0), (0,0,1), viewTS (0,0,1)). No refraction in the eye recipe, no shadow of one strand on another, no blended fringe for hair cards (cut them by chance with alphaHash). See docs/filmic-rendering.md.",
+  },
+  {
     id: 'GUARD_CLOTH',
     topic:
       'cloth simulation skirt cape curtain flag towel verlet particles distance constraints pin grab drag collider capsule sphere body fixed timestep ammo soft body cannon physics hanging fabric wind',

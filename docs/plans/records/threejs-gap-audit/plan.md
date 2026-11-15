@@ -490,7 +490,10 @@ consumer's and is not tracked here.
 - Gate G5, as for WP18, with a chain hung from a moving bone for its draw.
 - Task: the same document.
 
-### WP20. Skin, eyes and hair (placed, not started; nothing is built until a character close-up asks)
+### WP20. Skin, eyes and hair (done 2026-11-15 in its cheap forms, `records/character-surfaces/`; what is not built is named there)
+
+- Built: the surface's frame in the lit hook (`s.tangent`, `s.bitangent`, `s.viewTS`); `subsurface` (a wrap round the edge of a light's shadow, light through what the hook calls thin); `strands` (two Kajiya-Kay bands along u or v); an eye as a recipe on the frame. They are options of the lit surface beside `sheen`, not a `ZhudaLitShading`, so they keep LayaAir's own lighting and go together. Drawn on WebGL and WebGPU against their formulas.
+- Not built: a screen-space blur of the skin's light; a cornea's refraction; one strand's shadow on another and light through hair; a soft blended fringe round hair cards. The judgements below are as they were written before the work.
 
 - C3, each judged on its own:
   - Skin. Worth doing in its cheap form: a wrapped or pre-integrated diffuse and light through thin parts by a thickness map, written as a `ZhudaLitShading` on the lit hook. Small. A screen-space blur of the skin's light is not worth it now: it needs the diffuse light in a picture of its own and costs a phone several full-screen passes.
