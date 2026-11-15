@@ -500,3 +500,37 @@ consumer's and is not tracked here.
   - Eyes. Worth doing when a film or a game shows a face close: an iris seen through a cornea (parallax), a wet highlight, a darker rim. It needs the tangent frame in the hook, which the hook does not have (it has the view direction and the mesh's normal). Medium: the frame first, then the material.
   - Hair highlights. Worth doing with the same frame: a highlight along the strand (Kajiya-Kay), as a `ZhudaLitShading`. Small once the frame is there. `physical` surfaces already turn a highlight (`anisotropy`), without a hook.
   - Hair cards and their order. Mostly answered: a cut by chance (WP17) needs no order, writes depth and casts a shadow, at the price of grain that temporal anti-aliasing smooths. What is left is a soft fringe: a cut-out core drawn first and a blended fringe after it, as one material mode. Medium, later. Sorting a mesh's triangles by the camera every frame is not worth it; order-independent transparency stays in section 3.
+
+## 7. Found by a consumer's rebuild on `49586e0` (2026-11-15): triage
+
+A consumer study outside this repository rebuilt its three.js page on the engine's public API with WP17, WP18 and WP20 and reported five things. Each was checked against the code here; none was drawn here. Not started unless it says so.
+
+### WP21. Arrays of uniforms on a lit surface (scheduled)
+
+- Found: `ZhudaLitSurfaceMaterial` refuses `length` on a uniform, though `ShaderUniformSpec` and a plain shader material take arrays of 2..64. Twelve of a kind became twenty-four named uniforms and twelve calls written out.
+- To do: `float`, `vec2`, `vec3`, `vec4` arrays on the lit surface (the declaration in all three passes, the uniform map, `set()` with the numbers one after another, the name contract). Small to medium.
+- Gate: a hook that reads `u_ZhudaName[i]` in a loop draws the picture that many named uniforms draw, on WebGL and WebGPU; a wrong count is refused with the uniform's name.
+
+### WP22. The look's sun keeps its shadow, or says it has lost it (scheduled; the limit is documented)
+
+- Found: LayaAir's scene takes the directional light of the greatest `_intensity` as its main light, the one with the shadow (`getBrightestLight`, checked in the vendored `laya.d3.js`). Two rim lights at 2.4 to 3.6 beside a look's sun at 1.6 to 2.0 took the sun's shadow away, with no warning.
+- Done now: the limit is in `docs/film-scenes.md` (keep another directional light under the sun's intensity, its strength in its colour).
+- To do: either the look keeps its sun as the shadow light (without changing vendor files), or the look and `inspectEngineHealth` say by name that a brighter directional light has taken the shadow. Medium: how LayaAir orders its lights has to be read first.
+- Gate: a fixture with a sun and a brighter rim: the sun's shadow is drawn, or the finding is raised; the same scene without the rim is unchanged; both backends.
+
+### WP23. A program that fails to compile on WebGPU (the one known cause is refused now; the rest scheduled)
+
+- Found: a hook that wrote `s.sheenColor` on a material made without `sheen` did not compile; on WebGL the error is reported and drawing goes on; on WebGPU LayaAir then throws an uncaught `TypeError` in `WebGPUShaderInstance._create` and drawing stops. Not reproduced here.
+- Done now (2026-11-15): a hook that uses a field of a lobe the material was made without (`sheenColor`, `sheenRoughness`, `subsurfaceColor`, `thickness`, `strandShift`) is refused when the material is made, with the option's name (unit-tested; no draw is needed for a refusal).
+- To do: any other GLSL mistake still reaches the compiler. On WebGPU a failed program should be skipped or drawn with a fallback, the error in `renderer.errors`, the frame still drawn, without changing vendor files. Medium to large: it is LayaAir's WebGPU pipeline that throws.
+- Gate: a fixture with a hook that is deliberately wrong, on WebGPU: no uncaught error, the other objects are drawn, the error names the shader; the same on WebGL.
+
+### WP24. A hand that holds a patch of cloth (scheduled)
+
+- Found: `ZhudaClothSolver.grab` holds one particle, so lifting a hem pinches a small fold where a hand lifts a flap. The consumer held the particles within three rows and four columns itself, each dragged by a Gaussian weight.
+- To do: an optional patch for the hand (a radius, or weights), led and leashed as the single hand is. Medium.
+- Gate: as for the single hand in `records/cloth-and-spring-bones/`: the stretch at the hand, no particle inside a body at the end of a step, the same bytes for the same deltas, on a sheet and on a tube.
+
+### Not a package
+
+- The start splash takes pointer input for about 2.2 seconds after load, so a scripted press sent sooner is lost. It is how the splash is meant to behave; `docs/agent-development.md` now says to wait for `window.__ZHUDA_SPLASH__.completed`.

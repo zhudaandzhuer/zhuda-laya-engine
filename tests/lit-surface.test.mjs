@@ -818,3 +818,56 @@ test('a material with subsurface or strands keeps their values and changes them 
     globalThis.Laya = saved;
   }
 });
+
+test("a hook that uses a lobe's field on a material made without the lobe is refused by name", () => {
+  const hook = (line) =>
+    `void zhudaSurface(inout ZhudaLitSurface s, vec2 uv, vec3 p, vec3 n) { ${line} }`;
+  for (const [line, option, extra] of [
+    ['s.sheenColor = vec3(1.0);', 'sheen', { subsurface: true }],
+    ['s.sheenRoughness = 0.3;', 'sheen', {}],
+    ['s.subsurfaceColor = vec3(1.0);', 'subsurface', { sheen: true }],
+    ['float t = s . thickness;', 'subsurface', {}],
+    ['s.strandShift = 0.1;', 'strands', { sheen: true, subsurface: true }],
+  ]) {
+    assert.throws(
+      () => buildZhudaLitFragmentShaders({ surface: hook(line), ...extra }),
+      new RegExp(`The hook uses s\\.\\w+: make the material with \`${option}\``),
+      line,
+    );
+    // With the lobe it is the field it names.
+    assert.ok(buildZhudaLitFragmentShaders({ surface: hook(line), ...extra, [option]: true }));
+  }
+  // Whatever the hook calls its surface.
+  assert.throws(
+    () =>
+      buildZhudaLitFragmentShaders({
+        surface:
+          'void zhudaSurface(inout ZhudaLitSurface surf, vec2 uv, vec3 p, vec3 n) { surf.strandShift = 0.1; }',
+      }),
+    /The hook uses surf\.strandShift/,
+  );
+  // A name in a comment, or a field of something else, is not a use.
+  assert.ok(buildZhudaLitFragmentShaders({ surface: hook('// s.sheenColor') }));
+  assert.ok(
+    buildZhudaLitFragmentShaders({
+      surface: `struct Layer { float thickness; };\n${hook('Layer l; l.thickness = 1.0; s.roughness = l.thickness;')}`,
+    }),
+  );
+  // The material says it too, before any program is made.
+  const laya = fakeLaya();
+  const saved = globalThis.Laya;
+  globalThis.Laya = laya;
+  try {
+    assert.throws(
+      () =>
+        new ZhudaLitSurfaceMaterial({
+          name: 'ZhudaTestNoSheen',
+          surface: hook('s.sheenColor = vec3(1.0);'),
+        }),
+      /make the material with `sheen`/,
+    );
+    assert.equal(laya.shaders.get('ZhudaTestNoSheen'), undefined, 'no shader was added');
+  } finally {
+    globalThis.Laya = saved;
+  }
+});

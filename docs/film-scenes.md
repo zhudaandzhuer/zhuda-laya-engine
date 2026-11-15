@@ -459,6 +459,13 @@ film host is; Laya's own default is 32, and a scene asking for more than the
 runtime has is refused when it is mounted). A light that is both baked and
 real-time counts twice: lower one of the two.
 
+LayaAir gives the sun's shadow to whichever directional light has the
+greatest `intensity`. A directional light a game adds beside the look's sun
+(a rim light, say) that is brighter than the sun takes the shadow from it,
+and nothing says so: keep such a light's intensity under the sun's and put
+its strength in its colour. (Found in a consumer's scene on 2026-11-15; a
+check or a fix is scheduled as WP22 of the three.js gap plan.)
+
 A lightmap alone lights every pixel as if the surface were flat, so normal
 maps show nothing and stone or brick looks smooth. `lightmapDirection` fixes
 that: a second `.hdr` picture, on the same UV set, whose RGB is the

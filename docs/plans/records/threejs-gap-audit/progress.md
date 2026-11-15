@@ -1,6 +1,6 @@
 # three.js gap plan: progress
 
-Plan: `docs/plans/records/threejs-gap-audit/plan.md` (work packages WP0..WP16 from the audit; WP17..WP20 added on request on 2026-11-15, section 6)\
+Plan: `docs/plans/records/threejs-gap-audit/plan.md` (work packages WP0..WP16 from the audit; WP17..WP20 added on request on 2026-11-15, section 6; WP21..WP24 scheduled the same day from a consumer's rebuild, section 7)\
 Last updated: 2026-11-15, after WP20 (WP16 to WP19, the phone checks and what the merged packages had left open came before it the same day; batch 2 is done one package at a time, by one agent, without a review agent)
 
 ## Handoff (2026-11-15, at the end of the session that did WP16 to WP20)
@@ -22,7 +22,7 @@ Read this first when taking the work over.
 - No SDK release was cut (the package is still 1.18.0), no pull request, no
   tag. The session's work tree is the branch
   `claude/fable-batch8-review-8b8d41`, equal to `main`; it can be removed.
-- Last gates, at `49586e0`: `npm run verify` 795 of 795, `npm run lint`,
+- Last full gates, at `49586e0` (one refusal and its test were added after, `npm run verify` 796 of 796): `npm run verify` 795 of 795, `npm run lint`,
   `npm run format:check`, `git diff --check`; every draw check once on each
   backend, WebGL 59 of 59 and WebGPU 46 of 46
   (`character-surfaces/verification.md`).
@@ -51,6 +51,13 @@ Read this first when taking the work over.
    `zhuda-laya-lod`, the WebGPU table of `inspectEngineHealth`.
 4. Not built, by choice: a blur of the skin's light, a cornea's refraction,
    hair's own shadowing, a soft fringe for hair cards, cloth against itself.
+
+5. Scheduled on 2026-11-15 from a consumer's rebuild on `49586e0`, none
+   started: WP21 (arrays of uniforms on a lit surface), WP22 (a brighter
+   directional light takes the sun's shadow), WP23 (a failed program stops
+   drawing on WebGPU; its one known cause is refused now), WP24 (a hand that
+   holds a patch of cloth). Section 7 of the plan has each with its gate.
+   WP22 and WP23 are the two a game can fall into without knowing.
 
 **The exact next step**
 
@@ -100,6 +107,10 @@ and each package's record under `docs/plans/records/`.
 | WP18 cloth (C1: particles and distance constraints, a fixed step on a layer of the engine's clock, pins, bodies given as balls, rods, floors and tables of radius by height and angle, a point taken by a hand and let go; `ZhudaCloth`, `ZhudaClothSolver`) | Merged; desktop WebGL and WebGPU verified, gate G5 drawn on both (the same bytes and the same picture twice; thirty made and destroyed; a pause and a five-second delta; no particle inside a body in any frame); the same page on a vivo V40 with the same bytes (7.1 ms a frame for 1,681 particles, 3.0 ms for a skirt of 576); no self-collision, no tearing; a free cloth over small supports stretches about a tenth                                                                                                                            | `cloth-and-spring-bones/`        |
 | WP19 spring bones (C2: chains of a model's bones that lag, swing and settle, on WP18's fixed step and bodies; `ZhudaSpringBones`, `ZhudaSpringBoneSolver`)                                                                                                   | Merged; desktop WebGL and WebGPU verified, gate G5 drawn on both (the same joints and picture twice; thirty made and destroyed; a pause and a five-second delta; no joint inside a body in any frame, every bone its own length); drawn on chains of plain nodes, not on a skinned mesh; **no phone**                                                                                                                                                                                                                                                 | `cloth-and-spring-bones/`        |
 | WP20 skin, eyes and hair (C3)                                                                                                                                                                                                                                | Done 2026-11-15 in its cheap forms: the surface's frame in the lit hook (an eye's iris under its cornea is a recipe on it), `subsurface` (a wrap and light through thin parts), `strands` (two Kajiya-Kay bands); drawn against their formulas on WebGL and WebGPU. Not built: a blur of the skin's light, refraction, hair's own shadowing, a soft fringe for hair cards. No phone run                                                                                                                                                               | `character-surfaces/`            |
+| WP21 arrays of uniforms on a lit surface                                                                                                                                                                                                                     | Scheduled (found by a consumer's rebuild, 2026-11-15): the lit surface refuses `length`; the limit is in `docs/filmic-rendering.md`                                                                                                                                                                                                                                                                                                                                                                                                                   | plan, section 7                  |
+| WP22 the look's sun and the shadow light                                                                                                                                                                                                                     | Scheduled: a directional light brighter than the look's sun takes its shadow (LayaAir picks the greatest intensity); the limit is in `docs/film-scenes.md`                                                                                                                                                                                                                                                                                                                                                                                            | plan, section 7                  |
+| WP23 a program that fails to compile on WebGPU                                                                                                                                                                                                               | The one known cause is refused when the material is made (a lobe's field without the lobe; unit-tested). The rest scheduled: LayaAir throws and stops drawing on WebGPU after any other GLSL mistake; not reproduced here                                                                                                                                                                                                                                                                                                                             | plan, section 7                  |
+| WP24 a hand that holds a patch of cloth                                                                                                                                                                                                                      | Scheduled: `grab` holds one particle                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | plan, section 7                  |
 
 Each merged package's own record lists what it did not do; those lists are
 the open work, not this table.

@@ -517,6 +517,24 @@ export function buildZhudaLitFragmentShaders(
     throw Error(
       'subsurface and strands belong to the physically based lighting: not with a ZhudaLitShading',
     );
+  // A field of a lobe the material was made without is not in the struct.
+  // It is said here, by name, and not left to the GLSL compiler: on WebGPU
+  // LayaAir stops drawing when a program fails to compile.
+  const hookText = stripComments(spec.surface);
+  const owner = /\bzhudaSurface\s*\(\s*inout\s+ZhudaLitSurface\s+([A-Za-z_]\w*)/.exec(
+    hookText,
+  )?.[1];
+  if (owner)
+    for (const [option, fields, has] of [
+      ['sheen', ['sheenColor', 'sheenRoughness'], sheen],
+      ['subsurface', ['subsurfaceColor', 'thickness'], lobes.subsurface],
+      ['strands', ['strandShift'], lobes.strands !== null],
+    ] as const)
+      for (const field of fields)
+        if (!has && new RegExp(`\\b${owner}\\s*\\.\\s*${field}\\b`).test(hookText))
+          throw Error(
+            `The hook uses ${owner}.${field}: make the material with \`${option}\` (the field is not there without it)`,
+          );
   const library = spec.common || hash ? `#include "${ZHUDA_COMMON_INCLUDE}";\n` : '';
   const helper = Object.entries(uniforms)
     .filter(([, u]) => u.type === 'texture2D')

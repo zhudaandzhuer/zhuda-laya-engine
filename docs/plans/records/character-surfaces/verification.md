@@ -104,6 +104,28 @@ middle:
   the shader. The part now uses a narrow band in the plate's middle. No
   tolerance was changed.
 
+## Added after a consumer's report (2026-11-15, the commit after `6ba3cf6`)
+
+A consumer's hook wrote `s.sheenColor` on a material made without `sheen`:
+the field is not in the struct, the program did not compile, and on WebGPU
+LayaAir then threw and stopped drawing (reported; not reproduced here). A
+hook that uses a field of a lobe the material was made without is now
+refused when the material is made, with the option's name, before any
+program is made.
+
+| Check                                   | Exact command or procedure                                                               | Result                                                |
+| --------------------------------------- | ---------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| Build, types, doctor, tests             | `npm run verify`                                                                         | PASS, 796 of 796 (16 in `tests/lit-surface.test.mjs`) |
+| Format, lint, whitespace                | `npm run format:check`, `npm run lint`, `git diff --check`                               | PASS                                                  |
+| Lit surface, WebGL and WebGPU           | `npm run verify:lit-surface`, and with `LIT_SURFACE_RENDERER=webgpu`                     | PASS, PASS                                            |
+| Other checks whose hooks use the fields | `verify-stylized-shading.mjs`, `verify-physical-surfaces.mjs`, `verify-cloth.mjs`, WebGL | PASS                                                  |
+
+The unit test has the deliberate failures (each field, a surface called by
+another name) and what is not one (a name in a comment, a field of the
+hook's own struct). The refusal is not drawn: nothing is drawn when it
+happens. Any other GLSL mistake in a hook still reaches the compiler; that a
+failed program stops drawing on WebGPU is open as WP23 of the plan.
+
 ## Prefab evidence (visual work)
 
 Not applicable: no consumer prefab. The parts are engine fixtures.
