@@ -5,10 +5,16 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   ZHUDA_LIT_SHEEN_UNIFORM,
+  ZHUDA_LIT_STRANDS_UNIFORM,
+  ZHUDA_LIT_STRAND_COLOR_UNIFORM,
+  ZHUDA_LIT_SUBSURFACE_BACK_UNIFORM,
+  ZHUDA_LIT_SUBSURFACE_UNIFORM,
   ZhudaLitSurfaceMaterial,
   buildZhudaLitFragmentShaders,
   buildZhudaLitVertexShaders,
   resolveZhudaLitSheen,
+  resolveZhudaLitStrands,
+  resolveZhudaLitSubsurface,
   zhudaLitSurfaceWrites,
 } from '../packages/core/shaders/LitSurfaceMaterial.ts';
 import { ZhudaDynamicMesh } from '../packages/core/runtime3d/Surfaces.ts';
@@ -615,6 +621,199 @@ test('a dynamic mesh carries a colour a vertex, laid out as LayaAir reads it', (
         }),
       /Non-finite mesh data/,
     );
+  } finally {
+    globalThis.Laya = saved;
+  }
+});
+
+test("a hook that reads the surface's frame is given it where colours are drawn, and a fixed one elsewhere", () => {
+  const reads = `void zhudaSurface(inout ZhudaLitSurface s, vec2 uv, vec3 p, vec3 n) {
+    s.baseColor = s.tangent * 0.5 + s.bitangent * 0.25 + s.viewTS;
+    s.alpha = 0.5;
+  }`;
+  const made = buildZhudaLitFragmentShaders({ surface: reads, alphaHash: true });
+  assert.ok(made.forward.includes('vec4 vertexColor;vec3 tangent;vec3 bitangent;vec3 viewTS;};'));
+  assert.ok(before(made.forward, 'void zhudaSurfaceFrame(', 'void zhudaSurface('));
+  const forward = main(made.forward);
+  assert.ok(
+    before(
+      forward,
+      'zhudaSurfaceFrame(pixel,zhudaUV,s.tangent,s.bitangent);s.viewTS=vec3(dot(s.viewDirection,s.tangent),dot(s.viewDirection,s.bitangent),dot(s.viewDirection,normalize(pixel.normalWS)));',
+      'zhudaSurface(s,',
+    ),
+    'the frame first, then the hook',
+  );
+  // The passes that draw no colour: the fields are there, with fixed values.
+  const fixed =
+    's.tangent=vec3(1.0,0.0,0.0);s.bitangent=vec3(0.0,0.0,1.0);s.viewTS=vec3(0.0,0.0,1.0);';
+  assert.ok(made.shadowHook && made.depthHook);
+  for (const pass of [made.shadow, made.depth]) {
+    assert.ok(pass.includes('vec3 tangent;vec3 bitangent;vec3 viewTS;};'));
+    assert.ok(main(pass).includes(fixed));
+    assert.ok(!main(pass).includes('zhudaSurfaceFrame(pixel'));
+  }
+  assert.ok(
+    !made.shadow.includes('void zhudaSurfaceFrame('),
+    'the shadow pass has no pixel to ask',
+  );
+  // A hook that reads none of it costs nothing and is the program it was.
+  const without = buildZhudaLitFragmentShaders({ surface: plain });
+  assert.ok(!without.forward.includes('zhudaSurfaceFrame'));
+  assert.ok(!without.forward.includes('vec3 tangent;'));
+  // A name in a comment is not a read.
+  const commented = buildZhudaLitFragmentShaders({ surface: plain + '// s.viewTS' });
+  assert.ok(!commented.forward.includes('zhudaSurfaceFrame'));
+});
+
+test('subsurface and strands have defaults and ranges', () => {
+  assert.equal(resolveZhudaLitSubsurface(undefined), null);
+  assert.equal(resolveZhudaLitSubsurface(false), null);
+  assert.deepEqual(resolveZhudaLitSubsurface(true), {
+    color: [1, 0.35, 0.25],
+    wrap: 0.5,
+    back: 0,
+    power: 6,
+    distortion: 0.3,
+  });
+  assert.deepEqual(resolveZhudaLitSubsurface({ wrap: 0.2, back: 1 }).back, 1);
+  assert.throws(() => resolveZhudaLitSubsurface('skin'), /Invalid subsurface: true, or/);
+  assert.throws(() => resolveZhudaLitSubsurface({ wrap: 2 }), /Invalid subsurface.wrap: 0..1/);
+  assert.throws(() => resolveZhudaLitSubsurface({ color: [1, 1] }), /Invalid subsurface.color/);
+  assert.throws(() => resolveZhudaLitSubsurface({ power: 0 }), /Invalid subsurface.power/);
+  assert.throws(() => resolveZhudaLitSubsurface({ back: NaN }), /Invalid subsurface.back/);
+  assert.equal(resolveZhudaLitStrands(undefined), null);
+  assert.deepEqual(resolveZhudaLitStrands(true), {
+    along: 'v',
+    color: [0.5, 0.4, 0.3],
+    strength: 1,
+    shift: [0.05, -0.1],
+    exponent: [120, 24],
+  });
+  assert.equal(resolveZhudaLitStrands({ along: 'u' }).along, 'u');
+  assert.throws(() => resolveZhudaLitStrands({ along: 'w' }), /Invalid strands.along/);
+  assert.throws(() => resolveZhudaLitStrands({ shift: [0, 2] }), /Invalid strands.shift/);
+  assert.throws(() => resolveZhudaLitStrands({ exponent: [8] }), /Invalid strands.exponent/);
+  assert.throws(() => resolveZhudaLitStrands({ strength: -1 }), /Invalid strands.strength/);
+});
+
+test("subsurface and strands are added light by light after LayaAir's lighting; sheen alone is as it was", () => {
+  const skin = buildZhudaLitFragmentShaders({ surface: plain, subsurface: true });
+  assert.ok(skin.forward.includes('vec4 vertexColor;vec3 subsurfaceColor;float thickness;};'));
+  assert.ok(before(skin.forward, 'vec4 zhudaLitLobesFlow(', 'void main(){'));
+  assert.ok(before(skin.forward, 'vec3 zhudaLobeLight(', 'vec3 zhudaLobeLights('));
+  const forward = main(skin.forward);
+  assert.ok(
+    before(
+      forward,
+      `s.subsurfaceColor=${ZHUDA_LIT_SUBSURFACE_UNIFORM}.rgb;s.thickness=1.0;`,
+      'zhudaSurface(s,',
+    ),
+  );
+  assert.ok(
+    forward.includes(
+      'zhudaLitLobesFlow(inputs,pixel,vec3(0.0),1.0,max(s.subsurfaceColor,vec3(0.0)),clamp(s.thickness,0.0,1.0),vec3(0.0,1.0,0.0),0.0)',
+    ),
+  );
+  assert.ok(!forward.includes('PBR_Metallic_Flow(inputs,pixel)'));
+  assert.ok(
+    skin.forward.includes('surfaceColor+=PBRLighting(surface,info);surfaceColor+=zhudaLobeLights('),
+    "LayaAir's own lighting, then the lobes",
+  );
+  assert.ok(skin.forward.includes(`${ZHUDA_LIT_SUBSURFACE_BACK_UNIFORM}.x*zhudaThin`));
+  assert.ok(!skin.forward.includes(ZHUDA_LIT_STRANDS_UNIFORM), 'no strands were asked for');
+  assert.ok(!skin.forward.includes('zhudaSurfaceFrame'), 'and no frame');
+  // Strands need the frame; they run along v unless told u.
+  const hair = buildZhudaLitFragmentShaders({ surface: plain, strands: true });
+  assert.ok(hair.forward.includes('float strandShift;vec3 tangent;vec3 bitangent;vec3 viewTS;};'));
+  assert.ok(main(hair.forward).includes('vec3(0.0),0.0,s.bitangent,s.strandShift)'));
+  assert.ok(hair.forward.includes(`${ZHUDA_LIT_STRAND_COLOR_UNIFORM}.rgb`));
+  assert.ok(!hair.forward.includes(ZHUDA_LIT_SUBSURFACE_UNIFORM));
+  const ribbon = buildZhudaLitFragmentShaders({ surface: plain, strands: { along: 'u' } });
+  assert.ok(main(ribbon.forward).includes('s.tangent,s.strandShift)'));
+  // All three together: the sheen is set as the sheen flow sets it.
+  const all = buildZhudaLitFragmentShaders({
+    surface: plain,
+    sheen: true,
+    subsurface: true,
+    strands: true,
+  });
+  assert.ok(
+    main(all.forward).includes(
+      'zhudaLitLobesFlow(inputs,pixel,max(s.sheenColor,vec3(0.0)),clamp(s.sheenRoughness,0.0,1.0),max(s.subsurfaceColor,vec3(0.0)),clamp(s.thickness,0.0,1.0),s.bitangent,s.strandShift)',
+    ),
+  );
+  assert.ok(!all.forward.includes('vec4 zhudaLitSheenFlow('));
+  // Sheen alone keeps its own flow.
+  const cloth = buildZhudaLitFragmentShaders({ surface: plain, sheen: true });
+  assert.ok(cloth.forward.includes('vec4 zhudaLitSheenFlow('));
+  assert.ok(!cloth.forward.includes('zhudaLitLobesFlow'));
+  for (const spec of [{ subsurface: true }, { strands: true }])
+    assert.throws(
+      () => buildZhudaLitFragmentShaders({ surface: plain, ...spec }, {}),
+      /not with a ZhudaLitShading/,
+    );
+});
+
+test('a material with subsurface or strands keeps their values and changes them in place', () => {
+  const laya = fakeLaya();
+  const saved = globalThis.Laya;
+  globalThis.Laya = laya;
+  try {
+    const skin = new ZhudaLitSurfaceMaterial({
+      name: 'ZhudaTestSkin',
+      surface: plain,
+      subsurface: { wrap: 0.4, back: 0.5 },
+    });
+    assert.deepEqual(skin.material.vectors[ZHUDA_LIT_SUBSURFACE_UNIFORM], [1, 0.35, 0.25, 0.4]);
+    assert.deepEqual(skin.material.vectors[ZHUDA_LIT_SUBSURFACE_BACK_UNIFORM], [0.5, 6, 0.3, 0]);
+    const sub = laya.shaders.get('ZhudaTestSkin').subs[0];
+    assert.equal(sub.uniforms[ZHUDA_LIT_SUBSURFACE_UNIFORM], 'Vector4');
+    assert.equal(sub.uniforms[ZHUDA_LIT_SUBSURFACE_BACK_UNIFORM], 'Vector4');
+    assert.equal(sub.uniforms[ZHUDA_LIT_STRANDS_UNIFORM], undefined);
+    skin.setSubsurface({ color: [1, 0.5, 0.4], power: 12 });
+    assert.deepEqual(skin.material.vectors[ZHUDA_LIT_SUBSURFACE_UNIFORM], [1, 0.5, 0.4, 0.4]);
+    assert.deepEqual(skin.material.vectors[ZHUDA_LIT_SUBSURFACE_BACK_UNIFORM], [0.5, 12, 0.3, 0]);
+    assert.throws(() => skin.setSubsurface({ wrap: 3 }), /Invalid subsurface.wrap/);
+    assert.throws(() => skin.setStrands({ strength: 1 }), /made without strands/);
+    const hair = new ZhudaLitSurfaceMaterial({
+      name: 'ZhudaTestHair',
+      surface: plain,
+      strands: { color: [0.6, 0.3, 0.1], shift: [0.1, -0.2] },
+    });
+    assert.deepEqual(hair.material.vectors[ZHUDA_LIT_STRANDS_UNIFORM], [0.1, -0.2, 120, 24]);
+    assert.deepEqual(hair.material.vectors[ZHUDA_LIT_STRAND_COLOR_UNIFORM], [0.6, 0.3, 0.1, 1]);
+    hair.setStrands({ strength: 0.5, exponent: [200, 40] });
+    assert.deepEqual(hair.material.vectors[ZHUDA_LIT_STRANDS_UNIFORM], [0.1, -0.2, 200, 40]);
+    assert.deepEqual(hair.material.vectors[ZHUDA_LIT_STRAND_COLOR_UNIFORM], [0.6, 0.3, 0.1, 0.5]);
+    assert.throws(() => hair.setStrands({ along: 'u' }), /part of the program/);
+    assert.throws(() => hair.setSubsurface({ wrap: 0.1 }), /made without subsurface/);
+    // The name is the contract: the same name with the strands the other way is refused.
+    assert.throws(
+      () =>
+        new ZhudaLitSurfaceMaterial({
+          name: 'ZhudaTestHair',
+          surface: plain,
+          strands: { along: 'u' },
+        }),
+      /different contract/,
+    );
+    assert.throws(
+      () => new ZhudaLitSurfaceMaterial({ name: 'ZhudaTestSkin', surface: plain }),
+      /different contract/,
+    );
+    for (const own of [ZHUDA_LIT_SUBSURFACE_UNIFORM, ZHUDA_LIT_STRAND_COLOR_UNIFORM])
+      assert.throws(
+        () =>
+          new ZhudaLitSurfaceMaterial({
+            name: 'ZhudaTestTakenLobe',
+            surface: plain,
+            uniforms: { [own]: { type: 'vec4', value: [0, 0, 0, 0] } },
+          }),
+        /the material's own/,
+      );
+    skin.dispose();
+    hair.dispose();
+    assert.throws(() => skin.setSubsurface({ wrap: 0.2 }), /Disposed material/);
   } finally {
     globalThis.Laya = saved;
   }

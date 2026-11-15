@@ -931,6 +931,213 @@ function passes() {
   return result;
 }
 
+// --- 12. The surface's frame: a disc under the surface is seen where a point that deep is ---
+function under() {
+  const s = stage({ ambient: 0, sun: [-90, 0, 0], shadows: false });
+  s.sun.light.intensity = 0;
+  const deep = 0.4,
+    radius = 0.3;
+  // The plates are two by two: a length in the world is half as much of u and of v.
+  const material = s.lit({
+    name: 'ZhudaFixtureUnder',
+    surface: `${head}vec2 below=uv-s.viewTS.xy/max(s.viewTS.z,0.2)*u_ZhudaDeep*0.5;s.baseColor=vec3(0.0);s.roughness=1.0;s.emission=vec3(step(length((below-0.5)*2.0),${radius}));}`,
+    uniforms: { u_ZhudaDeep: { type: 'float', value: 0 } },
+    material: { roughness: 1 },
+  });
+  const plates: Record<string, { node: any; at: V }> = {
+    tangents: { node: s.plate(material, [-1.5, 1, 0], [2, 2], true), at: [-1.5, 1, 0] },
+    bare: { node: s.plate(material, [1.5, 1, 0], [2, 2], false), at: [1.5, 1, 0] },
+  };
+  const eyes: Record<string, V> = { front: EYE, side: [4, 4, 3] };
+  const look = [0, 1, 0];
+  /** Where a point of the world is on the screen, in parts of a pixel. */
+  const project = (eye: V, p: V) => {
+    const f = unit(sub(look, eye)),
+      r = unit(cross(f, [0, 1, 0])),
+      u = cross(r, f),
+      h = Math.tan(((FOV / 2) * Math.PI) / 180),
+      d = sub(p, eye),
+      depth = dot(d, f);
+    return [
+      round(((dot(d, r) / (depth * h * (W / H)) + 1) / 2) * W, 2),
+      round(((1 - dot(d, u) / (depth * h)) / 2) * H, 2),
+    ];
+  };
+  /** The middle of what is bright, and how many pixels that is. */
+  const middle = (p: Uint8ClampedArray) => {
+    let n = 0,
+      x = 0,
+      y = 0;
+    for (let j = 0; j < H; j++)
+      for (let i = 0; i < W; i++)
+        if (p[(j * W + i) * 4] > 128) {
+          n++;
+          x += i + 0.5;
+          y += j + 0.5;
+        }
+    return { found: n ? [round(x / n, 2), round(y / n, 2)] : [0, 0], pixels: n };
+  };
+  const result: any = {};
+  for (const [mesh, plate] of Object.entries(plates)) {
+    for (const other of Object.values(plates)) other.node.active = other === plate;
+    result[mesh] = {};
+    for (const [name, eye] of Object.entries(eyes)) {
+      s.view(eye, look, FOV);
+      result[mesh][name] = {};
+      for (const depth of [0, deep]) {
+        material.set('u_ZhudaDeep', depth);
+        flush(3);
+        if (mesh === 'tangents' && name === 'side' && depth) keep('under');
+        result[mesh][name][depth ? 'deep' : 'onTop'] = {
+          ...middle(read()),
+          expected: project(eye, [plate.at[0], plate.at[1] - depth, plate.at[2]]),
+        };
+      }
+    }
+  }
+  s.end();
+  return result;
+}
+
+// --- 13. Skin: a light reaches round the edge of its shadow, and through what is thin ---
+function skin() {
+  // The sun from one side, the eye in front.
+  const s = stage({ ambient: 0, sun: [0, 90, 0], shadows: false });
+  const toSun = () => {
+    const m = s.sun.node.transform.worldMatrix.elements;
+    return unit([m[8], m[9], m[10]]).map((v) => round(v, 4));
+  };
+  const at = s.farView([0, 3, 0], 1);
+  const shares = [-0.6, -0.3, 0.3, 0.6];
+  const body = 's.baseColor=vec3(0.8);s.metallic=0.0;s.roughness=1.0;';
+  const result: any = { shares, fromTheSide: toSun() };
+  const balls: Record<string, any> = {
+    plain: { name: 'ZhudaFixtureSkinPlain', surface: `${head}${body}}` },
+    skin: {
+      name: 'ZhudaFixtureSkin',
+      surface: `${head}${body}}`,
+      subsurface: { color: [1, 0.35, 0.25], wrap: 0.5 },
+    },
+    // The hook has the last word on the colour.
+    green: {
+      name: 'ZhudaFixtureSkinGreen',
+      surface: `${head}${body}s.subsurfaceColor=vec3(0.0,1.0,0.0);}`,
+      subsurface: { wrap: 0.5 },
+    },
+    // Thin on its right half only, by the hook.
+    thin: {
+      name: 'ZhudaFixtureSkinThin',
+      surface: `${head}${body}s.thickness=step(0.0,p.x);}`,
+      subsurface: { color: [1, 0.35, 0.25], wrap: 0, back: 0.5, power: 6, distortion: 0.3 },
+    },
+  };
+  for (const [name, spec] of Object.entries(balls)) {
+    const material = s.lit({ ...spec, material: { roughness: 1 } });
+    const node = s.ball(material, [0, 3, 0]);
+    if (name === 'thin') {
+      // The sun behind the ball: nothing of it lights the side that is seen.
+      s.sun.node.transform.rotationEuler = v3([0, 180, 0]);
+      result.fromBehind = toSun();
+    }
+    const sample = () => {
+      flush(3);
+      const p = read();
+      return shares.map((share) => channels(p, at(share)));
+    };
+    result[name] = sample();
+    if (name === 'skin' || name === 'thin') keep(name === 'skin' ? 'skin' : 'skin-thin');
+    if (name === 'thin') {
+      material.setSubsurface({ back: 0.25 });
+      result.halved = sample();
+    }
+    node.destroy();
+  }
+  s.end();
+  return result;
+}
+
+// --- 14. Strands: a band of light across them, moved along them by a shift ---------------
+function strands() {
+  // The sun straight overhead: the band is under the eye's own line, in the middle of the plate.
+  const s = stage({ ambient: 0, sun: [-90, 0, 0], shadows: false });
+  const m = s.sun.node.transform.worldMatrix.elements;
+  const toSun = unit([m[8], m[9], m[10]]);
+  const hook = `${head}s.baseColor=vec3(0.0);s.metallic=0.0;s.roughness=1.0;s.strandShift=u_ZhudaShift;}`;
+  const make = (name: string, along: string) =>
+    s.lit({
+      name,
+      surface: hook,
+      uniforms: { u_ZhudaShift: { type: 'float', value: 0 } },
+      strands: { along, strength: 0.5, color: [0, 0, 0], shift: [0, 0], exponent: [2000, 24] },
+      material: { roughness: 1 },
+    });
+  const alongU = make('ZhudaFixtureStrandsU', 'u'),
+    alongV = make('ZhudaFixtureStrandsV', 'v');
+  const node = s.plate(alongU, [0, 1, 0], [4, 2], true);
+  /** Where along the row through the plate's middle the band is, and how bright there. */
+  const band = () => {
+    flush(3);
+    const p = read();
+    let peak = 0;
+    const row: [number, number[]][] = [];
+    for (let x = -1.95; x <= 1.951; x += 0.01) {
+      const c = channels(p, pixel([x, 1, 0]));
+      row.push([x, c]);
+      peak = Math.max(peak, c[0] + c[1] + c[2]);
+    }
+    let weight = 0,
+      sum = 0;
+    const top = [0, 0, 0];
+    for (const [x, c] of row) {
+      const v = c[0] + c[1] + c[2];
+      if (v < peak / 2) continue;
+      weight += v;
+      sum += v * x;
+      for (let k = 0; k < 3; k++) top[k] = Math.max(top[k], c[k]);
+    }
+    return { at: weight ? round(sum / weight) : null, peak: top };
+  };
+  /** Where the band is by the formula: the half vector square to the shifted strand. */
+  const predicted = (shift: number) => {
+    const f = (x: number) => {
+      const v = unit(sub(EYE, [x, 1, 0]));
+      return toSun[0] + v[0] + shift * (toSun[1] + v[1]);
+    };
+    let low = -4,
+      high = 4;
+    for (let i = 0; i < 60; i++) {
+      const mid = (low + high) / 2;
+      if (f(low) * f(mid) <= 0) high = mid;
+      else low = mid;
+    }
+    return round((low + high) / 2);
+  };
+  const result: any = {
+    toSun: toSun.map((v) => round(v, 4)),
+    expected: { plain: predicted(0), shifted: predicted(0.05) },
+    plain: band(),
+  };
+  keep('strands');
+  alongU.set('u_ZhudaShift', 0.05);
+  result.byTheHook = band();
+  alongU.set('u_ZhudaShift', 0);
+  alongU.setStrands({ shift: [0.05, 0] });
+  result.byTheMaterial = band();
+  // The second band alone, in its colour.
+  alongU.setStrands({
+    shift: [0, 0],
+    exponent: [2000, 2000],
+    strength: 0,
+    color: [0.5, 0.25, 0],
+  });
+  result.coloured = band();
+  // Strands the other way: none of this row is square to the half vector.
+  node.meshRenderer.sharedMaterial = alongV.material;
+  result.acrossV = band();
+  s.end();
+  return result;
+}
+
 async function main() {
   const renderer = (globalThis as any).ZhudaBundle.renderer === 'webgpu' ? 'webgpu' : 'webgl';
   out.renderer = renderer;
@@ -957,6 +1164,9 @@ async function main() {
     cloth,
     cards,
     passes,
+    under,
+    skin,
+    strands,
   };
   out.left = {};
   // LayaAir keeps a sun's shadow map once it has made one: made before anything is counted.

@@ -36,7 +36,16 @@ export interface ZhudaLitSurfaceSpec {
      * (the mesh's colour at this place, white where it has none: red, green
      * and blue arrive as light, a display colour to the power 2.2; alpha
      * arrives as it was given, so a plain number for the hook goes there).
-     * With `sheen`: `sheenColor` and `sheenRoughness`. */
+     * With `sheen`: `sheenColor` and `sheenRoughness`; with `subsurface`:
+     * `subsurfaceColor` and `thickness`; with `strands`: `strandShift`.
+     *
+     * A hook that reads `s.tangent`, `s.bitangent` or `s.viewTS` is given the
+     * surface's own frame where the colours are drawn: unit vectors in the
+     * world along the texture's u and v (from the mesh's tangents, or from how
+     * the place and the texture coordinates change across the pixel), and the
+     * view direction in that frame (x along u, y along v, z out of the
+     * surface): what an iris seen through a cornea, or any pattern that lies
+     * under the surface, is moved by. */
     surface: string;
     /**
      * The soft glow cloth has at its edges (velvet, knit, a stocking), from
@@ -48,6 +57,42 @@ export interface ZhudaLitSurfaceSpec {
     sheen?: {
         color?: readonly [number, number, number];
         roughness?: number;
+    } | boolean;
+    /**
+     * Light that goes into the surface and comes out near by: skin, wax, a
+     * leaf. `wrap` (0..1, default 0.5) lets a light reach round where the
+     * surface turns from it, tinted by `color` (as light; default a skin's
+     * red, 1, 0.35, 0.25). `back` (default 0) is how much light from behind
+     * shows through a thin part, by the hook's `s.thickness` (1 thin, 0 none);
+     * `power` (6) how narrow that glow is, `distortion` (0.3) how far the
+     * surface's own facing bends it. The hook may change `s.subsurfaceColor`
+     * and `s.thickness` a pixel at a time. A light's own shadow takes the
+     * light that goes round away again; light from behind is not shadowed by
+     * a sun. Not with a `ZhudaLitShading` of one's own.
+     */
+    subsurface?: {
+        color?: readonly [number, number, number];
+        wrap?: number;
+        back?: number;
+        power?: number;
+        distortion?: number;
+    } | boolean;
+    /**
+     * A highlight along strands (hair, brushed fur, a satin ribbon), after
+     * Kajiya and Kay: two bands of light across the strands, a white one of
+     * `strength` (default 1) and a wider one of `color` (default 0.5, 0.4,
+     * 0.3), each moved along the strand by `shift` (default 0.05 and -0.1) and
+     * as narrow as `exponent` (default 120 and 24). The strands run along the
+     * texture's `along` (`'v'` by default, or `'u'`). The hook's
+     * `s.strandShift` moves both a pixel at a time (a noise there breaks the
+     * bands up as real hair does). Not with a `ZhudaLitShading`.
+     */
+    strands?: {
+        along?: 'u' | 'v';
+        color?: readonly [number, number, number];
+        strength?: number;
+        shift?: readonly [number, number];
+        exponent?: readonly [number, number];
     } | boolean;
     /** The surface may call `ZhudaCommon.glsl`: hash, noise, fractal noise, triplanar. */
     common?: boolean;
@@ -124,6 +169,12 @@ export declare function zhudaLitSurfaceWrites(surface: string): {
     alpha: boolean;
     normal: boolean;
 };
+/** A lit surface's subsurface light: its colour and wrap; how much comes through from behind, how narrow, how bent. */
+export declare const ZHUDA_LIT_SUBSURFACE_UNIFORM = "u_ZhudaLitSubsurface";
+export declare const ZHUDA_LIT_SUBSURFACE_BACK_UNIFORM = "u_ZhudaLitSubsurfaceBack";
+/** A lit surface's strand highlight: the two shifts and exponents; the wide band's colour and the white band's strength. */
+export declare const ZHUDA_LIT_STRANDS_UNIFORM = "u_ZhudaLitStrands";
+export declare const ZHUDA_LIT_STRAND_COLOR_UNIFORM = "u_ZhudaLitStrandColor";
 /** The uniform a lit surface's sheen is kept in: its colour, and its roughness in the fourth place. */
 export declare const ZHUDA_LIT_SHEEN_UNIFORM = "u_ZhudaLitSheen";
 export interface ZhudaLitFragmentOptions {
@@ -135,6 +186,9 @@ export interface ZhudaLitFragmentOptions {
     alphaHash?: boolean;
     /** The surface has a sheen (see `ZhudaLitSurfaceSpec.sheen`). */
     sheen?: unknown;
+    /** The surface has subsurface light, or a strand highlight (see `ZhudaLitSurfaceSpec`). */
+    subsurface?: unknown;
+    strands?: unknown;
 }
 /**
  * The three fragment programs of a lit material, and which of the passes
@@ -152,6 +206,22 @@ export declare function resolveZhudaLitSheen(sheen: ZhudaLitSurfaceSpec['sheen']
     color: [number, number, number];
     roughness: number;
 } | null;
+/** A lit surface's subsurface light with its defaults; null when it has none. Throws on values out of range. */
+export declare function resolveZhudaLitSubsurface(subsurface: ZhudaLitSurfaceSpec['subsurface']): {
+    color: [number, number, number];
+    wrap: number;
+    back: number;
+    power: number;
+    distortion: number;
+} | null;
+/** A lit surface's strand highlight with its defaults; null when it has none. Throws on values out of range. */
+export declare function resolveZhudaLitStrands(strands: ZhudaLitSurfaceSpec['strands']): {
+    along: 'u' | 'v';
+    color: [number, number, number];
+    strength: number;
+    shift: [number, number];
+    exponent: [number, number];
+} | null;
 /** Native Laya PBR lighting, IBL, shadows, depth normals and instancing with a bounded surface hook. */
 export declare class ZhudaLitSurfaceMaterial {
     readonly material: any;
@@ -163,6 +233,23 @@ export declare class ZhudaLitSurfaceMaterial {
     setSheen(sheen: {
         color?: readonly [number, number, number];
         roughness?: number;
+    }): void;
+    private writeSubsurface;
+    private writeStrands;
+    /** The subsurface light's values in place; only for a material made with `subsurface`. */
+    setSubsurface(subsurface: {
+        color?: readonly [number, number, number];
+        wrap?: number;
+        back?: number;
+        power?: number;
+        distortion?: number;
+    }): void;
+    /** The strand highlight's values in place (not `along`, which is in the program); only for a material made with `strands`. */
+    setStrands(strands: {
+        color?: readonly [number, number, number];
+        strength?: number;
+        shift?: readonly [number, number];
+        exponent?: readonly [number, number];
     }): void;
     dispose(): void;
 }

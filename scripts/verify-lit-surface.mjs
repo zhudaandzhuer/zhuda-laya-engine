@@ -402,6 +402,84 @@ assert.ok(
 );
 near(lum(passes.unseen.underCut), lum(passes.unseen.aside), 4, 'and only where the number is');
 
+// 12. The surface's frame, given to a hook that reads it. A disc drawn by
+// the hook as if it lay under the surface (the texture coordinate moved by
+// the view direction in the surface's frame) is seen where a point that deep
+// under the plate is, from two places, on a mesh with tangents and on one
+// without.
+const { under, skin, strands } = report;
+let worstUnder = 0;
+for (const mesh of ['tangents', 'bare'])
+  for (const eye of ['front', 'side']) {
+    for (const depth of ['onTop', 'deep']) {
+      const d = under[mesh][eye][depth];
+      assert.ok(d.pixels > 100, `${mesh}, ${eye}, ${depth}: the disc is drawn (${d.pixels} px)`);
+      const off = Math.hypot(d.found[0] - d.expected[0], d.found[1] - d.expected[1]);
+      worstUnder = Math.max(worstUnder, off);
+      assert.ok(off <= 1, `${mesh}, ${eye}, ${depth}: ${d.found} against ${d.expected}`);
+    }
+    const { onTop, deep } = under[mesh][eye];
+    assert.ok(
+      Math.hypot(deep.expected[0] - onTop.expected[0], deep.expected[1] - onTop.expected[1]) > 10,
+      'the depth is one that moves the disc',
+    );
+  }
+
+// 13. Subsurface light on a ball lit from one side. Past the edge of the
+// light a plain ball is black; with subsurface the light reaches round by
+// `wrap`, in the subsurface colour, by the formula. Lit from behind, the half
+// the hook calls thin glows and the other half does not.
+const sat = (v) => Math.min(1, Math.max(0, v));
+const scatter = [1, 0.35, 0.25];
+let worstSkin = 0;
+skin.shares.forEach((share, i) => {
+  const normal = [share, 0, Math.sqrt(1 - share * share)];
+  const nl = normal[0] * skin.fromTheSide[0] + normal[2] * skin.fromTheSide[2];
+  const round = sat((nl + 0.5) / 1.5) - sat(nl);
+  for (let k = 0; k < 3; k++) {
+    const want = skin.plain[i][k] + 0.8 * scatter[k] * round;
+    worstSkin = Math.max(worstSkin, Math.abs(skin.skin[i][k] - want));
+    near(skin.skin[i][k], want, 0.01, `subsurface at ${share} of the radius, channel ${k}`);
+    near(
+      skin.green[i][k],
+      skin.plain[i][k] + 0.8 * [0, 1, 0][k] * round,
+      0.01,
+      `the hook's colour at ${share}, channel ${k}`,
+    );
+  }
+  // From behind: the light bent by the surface's facing, toward the eye far in front.
+  const l = skin.fromBehind;
+  const through = [l[0] + 0.3 * normal[0], 0, l[2] + 0.3 * normal[2]];
+  const length = Math.hypot(...through);
+  const view = [-normal[0], 0, 40 - normal[2]];
+  const far = Math.hypot(...view);
+  const facing = sat(-(view[0] * through[0] + view[2] * through[2]) / (far * length));
+  for (let k = 0; k < 3; k++) {
+    const want = share > 0 ? scatter[k] * 0.5 * facing ** 6 : 0;
+    worstSkin = Math.max(worstSkin, Math.abs(skin.thin[i][k] - want));
+    near(skin.thin[i][k], want, 0.01, `light through at ${share}, channel ${k}`);
+    near(skin.halved[i][k], want / 2, 0.01, `half as much through at ${share}, channel ${k}`);
+  }
+});
+assert.ok(Math.max(...skin.plain[1]) < 0.005, `a plain ball is dark there (${skin.plain[1]})`);
+assert.ok(skin.skin[1][0] > 0.08, `with subsurface the light reaches round (${skin.skin[1]})`);
+assert.ok(skin.thin[2][0] > 0.4, `and comes through what is thin (${skin.thin[2]})`);
+
+// 14. Strands. One band across them where the half vector is square to the
+// strand; a shift moves it along them, the same from the hook as from the
+// material; the second band has its colour; strands run the other way show
+// none of it on this row.
+near(strands.plain.at, strands.expected.plain, 0.05, 'the band');
+near(strands.byTheHook.at, strands.expected.shifted, 0.05, 'the band shifted by the hook');
+near(strands.byTheMaterial.at, strands.byTheHook.at, 0.01, 'shifted by the material');
+assert.ok(strands.expected.shifted - strands.expected.plain > 0.3, 'the shift is one that shows');
+near(strands.plain.peak[1], 0.5, 0.02, "the band's light is its strength");
+near(strands.coloured.at, strands.expected.plain, 0.05, 'the second band');
+[0.5, 0.25, 0].forEach((want, k) =>
+  near(strands.coloured.peak[k], want, 0.02, `the second band's colour, channel ${k}`),
+);
+assert.ok(Math.max(...strands.acrossV.peak) < 0.02, `none across (${strands.acrossV.peak})`);
+
 assert.deepEqual(
   report.left,
   {
@@ -416,6 +494,9 @@ assert.deepEqual(
     cloth: 0,
     cards: 0,
     passes: 0,
+    under: 0,
+    skin: 0,
+    strands: 0,
   },
   'nothing left behind',
 );
@@ -435,5 +516,8 @@ console.log(
     `${cards.hash.madeAFirst.minusZ.topShare}/${cards.hash.madeAFirst.minusZ.underShare} upper/lower, the same made either way ` +
     `(blended, the ${blendWrong.madeAFirst[0]} side is drawn in the wrong order); ` +
     `the shadow of a surface too flat to be seen stays; ` +
+    `a disc under the surface within ${worstUnder.toFixed(2)} px of a point that deep; ` +
+    `subsurface ${skin.skin[1].join('/')} past the edge of the light (within ${worstSkin.toFixed(3)} of the formula); ` +
+    `a strand band at ${strands.plain.at}, ${strands.byTheHook.at} shifted (formula ${strands.expected.plain} and ${strands.expected.shifted}); ` +
     `evidence in ${path.join(out, 'evidence')}`,
 );
