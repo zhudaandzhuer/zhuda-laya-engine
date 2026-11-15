@@ -13,6 +13,18 @@ export interface ZhudaSceneLookOptions extends ZhudaRenderScaleOptions {
      * Below 1 the look holds the stage's one render scale.
      */
     scale?: number;
+    /**
+     * Passes the camera draws for other parts of the scene: `depth` the depth
+     * picture, `opaque` the opaque scene (a `ZhudaWaterSurface` reads both).
+     * Changing the quality level or the look rebuilds it and puts the camera back
+     * as it was before the look, so a pass another part turned on afterwards
+     * would be lost: name it here and the look turns it on again after every
+     * rebuild, and leaves it off once disposed.
+     */
+    cameraPasses?: {
+        depth?: boolean;
+        opaque?: boolean;
+    };
 }
 export declare class ZhudaSceneLook {
     /** The directional light of the look (`look.sun`). */
@@ -33,6 +45,7 @@ export declare class ZhudaSceneLook {
     private scaling;
     private readonly scene3D;
     private readonly camera;
+    private readonly cameraPasses;
     constructor(scene3D: any, camera: any, look: ZhudaFilmLook, options?: ZhudaSceneLookOptions);
     get quality(): ZhudaLookQuality;
     private colorTable;

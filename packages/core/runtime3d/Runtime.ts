@@ -156,10 +156,23 @@ export class ZhudaRuntimeSession {
       return;
     }
     listen(document, 'visibilitychange', () => this.setBackground(document.hidden));
-    listen(window, 'blur', () => this.setBackground(true));
-    listen(window, 'focus', () => {
-      if (!document.hidden && !this.contextLost) this.setBackground(false);
+    // A phone sends `blur` when its address bar, keyboard or a system sheet
+    // takes focus, and often never sends `focus` back: the game then stays
+    // paused on a visible page. There, leaving the page is told by visibility
+    // and pagehide alone; a desktop window still pauses on blur.
+    const media = (query: string) =>
+      typeof globalThis.matchMedia === 'function' && globalThis.matchMedia(query).matches;
+    const touchOnly = media('(pointer: coarse)') && !media('(pointer: fine)');
+    listen(window, 'blur', () => {
+      if (!touchOnly) this.setBackground(true);
     });
+    const back = () => {
+      if (!document.hidden && !this.contextLost) this.setBackground(false);
+    };
+    listen(window, 'focus', back);
+    // Input on a visible page means the player is here, whatever focus said.
+    listen(window, 'pointerdown', back, true);
+    listen(window, 'keydown', back, true);
     listen(window, 'pagehide', () => this.setBackground(true));
     listen(window, 'pageshow', () => {
       if (!document.hidden) this.setBackground(false);

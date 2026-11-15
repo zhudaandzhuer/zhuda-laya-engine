@@ -174,3 +174,52 @@ test('worker adapter rejects stale generation messages, switches RAF source and 
     Object.assign(globalThis, saved);
   }
 });
+
+test('input on a visible page resumes a runtime that a blur paused without a focus after it', () => {
+  const restore = environment(),
+    driver = new Driver();
+  try {
+    const runtime = new ZhudaRuntimeSession(new EventTarget(), { driver });
+    let ticks = 0;
+    runtime.start(() => ticks++);
+    driver.tick(100);
+    window.dispatchEvent(new Event('blur'));
+    driver.tick(200);
+    assert.equal(ticks, 1);
+    window.dispatchEvent(new Event('pointerdown'));
+    driver.tick(300);
+    driver.tick(320);
+    assert.equal(ticks, 3);
+    runtime.setPaused(true);
+    window.dispatchEvent(new Event('pointerdown'));
+    driver.tick(400);
+    assert.equal(ticks, 3, 'a manual pause stays');
+    runtime.dispose();
+  } finally {
+    restore();
+  }
+});
+
+test('on a touch-only device a blur does not pause; hiding the page still does', () => {
+  const restore = environment(),
+    driver = new Driver(),
+    saved = globalThis.matchMedia;
+  globalThis.matchMedia = (query) => ({ matches: query === '(pointer: coarse)' });
+  try {
+    const runtime = new ZhudaRuntimeSession(new EventTarget(), { driver });
+    let ticks = 0;
+    runtime.start(() => ticks++);
+    driver.tick(100);
+    window.dispatchEvent(new Event('blur'));
+    driver.tick(200);
+    assert.equal(ticks, 2);
+    document.hidden = true;
+    document.dispatchEvent(new Event('visibilitychange'));
+    driver.tick(300);
+    assert.equal(ticks, 2);
+    runtime.dispose();
+  } finally {
+    globalThis.matchMedia = saved;
+    restore();
+  }
+});

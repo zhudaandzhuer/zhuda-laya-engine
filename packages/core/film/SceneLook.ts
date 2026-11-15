@@ -42,6 +42,15 @@ export interface ZhudaSceneLookOptions extends ZhudaRenderScaleOptions {
    * Below 1 the look holds the stage's one render scale.
    */
   scale?: number;
+  /**
+   * Passes the camera draws for other parts of the scene: `depth` the depth
+   * picture, `opaque` the opaque scene (a `ZhudaWaterSurface` reads both).
+   * Changing the quality level or the look rebuilds it and puts the camera back
+   * as it was before the look, so a pass another part turned on afterwards
+   * would be lost: name it here and the look turns it on again after every
+   * rebuild, and leaves it off once disposed.
+   */
+  cameraPasses?: { depth?: boolean; opaque?: boolean };
 }
 
 export class ZhudaSceneLook {
@@ -64,11 +73,16 @@ export class ZhudaSceneLook {
 
   private readonly scene3D: any;
   private readonly camera: any;
+  private readonly cameraPasses: { depth: boolean; opaque: boolean };
 
   constructor(scene3D: any, camera: any, look: ZhudaFilmLook, options: ZhudaSceneLookOptions = {}) {
     this.scene3D = scene3D;
     this.camera = camera;
     this.scaling = zhudaRenderScaleOptions(options);
+    this.cameraPasses = {
+      depth: !!options.cameraPasses?.depth,
+      opaque: !!options.cameraPasses?.opaque,
+    };
     if (options.quality !== undefined && ![0, 1, 2, 3].includes(options.quality))
       throw Error('Look quality: use 0, 1, 2 or 3');
     this.look = resolveZhudaFilmLook(look);
@@ -317,6 +331,18 @@ export class ZhudaSceneLook {
     this.lightFog?.setShaftRefresh('moved');
     // The sun, its shadows and the shaft sun follow the look (also after `setLook`).
     this.updateInPlace(l, look);
+    // The passes other parts read, after the look's own chain has recorded the
+    // camera: released first, so the chain then puts back what it found.
+    const { depth, opaque } = this.cameraPasses;
+    if (depth || opaque) {
+      const found = { depth: this.camera.depthTextureMode, opaque: this.camera.opaquePass };
+      if (depth) this.camera.depthTextureMode |= l.DepthTextureMode.Depth;
+      if (opaque) this.camera.opaquePass = true;
+      cleanups.push(() => {
+        this.camera.depthTextureMode = found.depth;
+        this.camera.opaquePass = found.opaque;
+      });
+    }
   }
 
   private release(): void {

@@ -255,6 +255,13 @@ within(
 );
 within(look.lower.twoToOne, 0.22, 0.28, 'the lamps fall off the same');
 within(look.again.kerb, 0, 0.03, 'and back up');
+assert.deepEqual(
+  look.requestsAtZero,
+  { depth: true, opaque: true },
+  'cameraPasses survive a rebuild to level 0',
+);
+assert.deepEqual(look.requestsAgain, { depth: true, opaque: true }, 'and the rebuild back up');
+assert.deepEqual(look.requestsAfter, look.requestsBefore, 'and go with the look');
 assert.equal(look.back, 'updated');
 within(look.plainAgain.kerb, look.plainAgain.open - 0.02, look.plainAgain.open + 0.02);
 within(look.plainAgain.twoToOne, 0.59, 0.66);

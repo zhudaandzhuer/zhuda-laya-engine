@@ -695,6 +695,26 @@ async function main() {
     result.back = sceneLook.setLook(authored);
     result.plainAgain = reading('plain-again');
     sceneLook.dispose();
+    // A pass another part reads (a water surface: the depth picture and the
+    // opaque scene) named in `cameraPasses` survives every rebuild, and goes
+    // with the look. Nothing is drawn in between.
+    const requests = (cam: any) => ({
+      depth: (cam.depthTextureMode & Laya.DepthTextureMode.Depth) !== 0,
+      opaque: !!cam.opaquePass,
+    });
+    {
+      const before = requests(camera);
+      const passes = new Z.ZhudaSceneLook(scene, camera, authored, {
+        cameraPasses: { depth: true, opaque: true },
+      });
+      passes.setQuality(0);
+      result.requestsAtZero = requests(camera);
+      passes.setQuality(3);
+      result.requestsAgain = requests(camera);
+      passes.dispose();
+      result.requestsAfter = requests(camera);
+      result.requestsBefore = before;
+    }
     out.look = result;
     clear();
   }
