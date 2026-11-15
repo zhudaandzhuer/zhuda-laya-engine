@@ -588,16 +588,19 @@ const VERTEX = `void zhudaVertex(inout vec3 p, inout vec3 n, vec2 uv, vec3 origi
   float blown = (0.12 + 0.88 * gust * gust + 0.14 * flutter) * u_ZhudaGrassWind.z * tall * size;
   p.xz += dir * (blown * t * t);
   p.y -= tall * t * (1.0 - size) + blown * 0.4 * t * t * t;
-  // The blade opens from its middle line. Far blades are wider, for the
-  // ones that are not drawn.
+  // The blade opens from its middle line, about as wide along most of its
+  // length and pointed at the tip. Far blades are wider, for the ones that
+  // are not drawn.
   vec3 across = vec3(-n.z, 0.0, n.x);
-  float wide = u_ZhudaGrassShape.z * (0.7 + 0.6 * fract(rank * 17.3)) * (1.0 - t * t)
+  float wide = u_ZhudaGrassShape.z * (0.7 + 0.6 * fract(rank * 17.3)) * sqrt(max(0.0, 1.0 - t * t * t * t))
     * min(u_ZhudaGrassShape.w, inversesqrt(max(shown, 0.001)));
   p += across * ((side - 0.5) * 2.0 * wide * size);
-  // Lit almost like the ground under it, whichever side is seen, so a field
-  // is one soft surface.
+  // Lit by the way the blade faces, whichever side is seen, and rounded
+  // across its width; still mostly up, so a field stays one soft surface
+  // with each blade a little lighter or darker than its neighbours.
   vec2 face = dot(n.xz, toEye.xz) < 0.0 ? -n.xz : n.xz;
-  n = normalize(vec3(face.x * 0.4, 1.0, face.y * 0.4));
+  vec2 bow = across.xz * (side - 0.5) * 1.1;
+  n = normalize(vec3(face.x * 0.7 + bow.x, 0.75 + 0.35 * t, face.y * 0.7 + bow.y));
 }`;
 const SURFACE = `float zhudaGrassHash(vec2 c) { return fract(sin(dot(c, vec2(12.9898, 78.233))) * 43758.5453); }
 float zhudaGrassLand(vec2 g) {
@@ -619,20 +622,38 @@ void zhudaSurface(inout ZhudaLitSurface s, vec2 uv, vec3 p, vec3 n) {
     s.baseColor = mix(u_ZhudaGrassRoot.xyz, green, 0.2 + 0.3 * fine);
     s.roughness = 0.9;
     s.occlusion *= 0.5 + 0.2 * fine;
+    s.thickness = 0.0;
     return;
   }
   float rank = (floor(uv.x) + 0.5) / ${RANKS}.0;
   float t = clamp((fract(uv.y) - 0.25) * 2.0, 0.0, 1.0);
+  // Three numbers of the blade's own: how light, which green, whether dead.
   float own = fract(rank * 23.7);
-  // And a blade here and there is dry on its own.
+  float hue = fract(rank * 71.31);
+  float fate = fract(rank * 131.77 + 0.37);
+  // Dry in drifts, and a blade here and there dry on its own.
   float dry = clamp(u_ZhudaGrassDry.w * (0.35 + 1.3 * drift) + (own - 0.5) * 0.5 * u_ZhudaGrassDry.w, 0.0, 1.0);
-  vec3 tip = mix(u_ZhudaGrassTip.xyz, u_ZhudaGrassDry.xyz, dry * smoothstep(0.15, 1.0, t));
+  // No two blades the same green: some bluer, some yellower, lighter and darker.
+  vec3 green = u_ZhudaGrassTip.xyz * mix(vec3(0.82, 0.98, 1.22), vec3(1.16, 1.04, 0.72), hue);
+  // The land is lusher (darker, deeper green) in places and paler in others.
+  float lush = zhudaGrassLand(p.xz * 0.31) * 0.65 + zhudaGrassLand(p.xz * 1.7) * 0.35;
+  green *= mix(vec3(1.12, 1.08, 0.95), vec3(0.8, 0.9, 0.86), lush);
+  vec3 tip = mix(green, u_ZhudaGrassDry.xyz, dry * smoothstep(0.15, 1.0, t));
+  // The very tips of many blades have browned.
+  tip = mix(tip, u_ZhudaGrassDry.xyz * 0.8, smoothstep(0.82, 1.0, t) * 0.45 * step(0.45, own));
+  // A dead blade among the green ones: straw from foot to tip.
+  float dead = step(1.0 - (0.025 + 0.12 * u_ZhudaGrassDry.w), fate);
+  tip = mix(tip, u_ZhudaGrassDry.xyz * (0.75 + 0.35 * own), dead);
   // The foot of a blade is the colour of the turf it stands in.
   vec3 foot = mix(u_ZhudaGrassRoot.xyz, tip, 0.35);
-  s.baseColor = mix(foot, tip * (0.84 + 0.32 * own), smoothstep(0.0, 0.8, t));
-  s.roughness = 0.62;
+  s.baseColor = mix(foot, tip * (0.72 + 0.5 * own), smoothstep(0.0, 0.8, t));
+  // A blade has a faint shine along it; a dead one none.
+  s.roughness = mix(0.48, 0.8, dead);
   // Little of the sky reaches the foot of a blade among its neighbours.
-  s.occlusion *= mix(0.6, 1.0, smoothstep(0.0, 0.65, t));
+  s.occlusion *= mix(0.45, 1.0, smoothstep(0.0, 0.7, t));
+  // Light comes through a blade, most through its thin tip; less through a dead one.
+  s.thickness = mix(0.35, 1.0, t) * (1.0 - 0.6 * dead);
+  s.subsurfaceColor *= mix(green / max(max(green.r, green.g), 0.001), u_ZhudaGrassDry.xyz, dead);
 }`;
 const SHADER = 'ZhudaGrassBlades';
 
@@ -700,6 +721,9 @@ export class ZhudaGrassField {
       vertex: VERTEX,
       surface: SURFACE,
       backFaces: 'same',
+      // A blade is thin: the sun shows through it from behind, and wraps a
+      // little round it from the side. The hook tints it by the blade's green.
+      subsurface: { color: [0.9, 1.0, 0.55], wrap: 0.3, back: 0.55, power: 4, distortion: 0.35 },
       // No starting values here: fields of different colours share the shader.
       uniforms: {
         u_ZhudaGrassEye: { type: 'vec4' },

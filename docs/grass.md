@@ -38,9 +38,18 @@ grass.dispose();
 - The vertex program stands each blade up from its middle line, bends it in
   the wind (gusts cross the land the way the wind blows; each blade flutters
   on its own) and thins it. Nothing is updated per blade on the CPU.
-- A blade is lit almost like the ground under it, on both its sides
+- A blade is lit mostly like the ground under it, on both its sides
   (`backFaces: 'same'` of `ZhudaLitSurfaceMaterial`), so a field reads as one
-  soft surface. It takes shadows and casts none.
+  soft surface; its normal leans the way the blade faces and is rounded
+  across its width, so each blade is a little lighter or darker than its
+  neighbours. The sun shows through a blade from behind, most through its
+  thin tip (the material's `subsurface` lobe, tinted by the blade's green).
+  It takes shadows and casts none.
+- No two blades are the same colour: each has its own lightness and a green
+  between a bluer and a yellower one of `tip`, the land is deeper green in
+  places and paler in others, many tips have browned, and a few blades
+  (more with `dryness`) are dead straw from foot to tip. A blade is about as
+  wide along most of its length and pointed at the tip.
 - The same seed, area and options grow the same grass every time.
 - The turf is a sheet 2 cm over the ground in half-metre squares. Where
   grass stops growing its edge is cut raggedly. `turf: false` leaves it out.
@@ -81,8 +90,7 @@ rather than thin it further.
 - Desktop WebGL and WebGPU only have been drawn (`npm run verify:grass`, and
   with `GRASS_RENDERER=webgpu`). Phones are untested and frame times are not
   measured by the engine's checks.
-- Blades are not pushed aside by a foot and cast no shadow. Light does not
-  pass through a blade.
+- Blades are not pushed aside by a foot and cast no shadow.
 - Blades are geometry, without a texture: far grass is thinned, not faded,
   and it ends at `distanceM` (the turf sinks into the ground there).
 - The turf lies 2 cm over the ground the game reports: where that differs
