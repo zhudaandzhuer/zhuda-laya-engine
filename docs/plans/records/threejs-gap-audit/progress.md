@@ -1,7 +1,40 @@
 # three.js gap plan: progress
 
 Plan: `docs/plans/records/threejs-gap-audit/plan.md` (work packages WP0..WP16 from the audit; WP17..WP20 added on request on 2026-11-15, section 6; WP21..WP24 scheduled the same day from a consumer's rebuild, section 7)\
-Last updated: 2026-11-15, after WP20 (WP16 to WP19, the phone checks and what the merged packages had left open came before it the same day; batch 2 is done one package at a time, by one agent, without a review agent)
+Last updated: 2026-11-16 (handoff update at the top); before that 2026-11-15, after WP20 (WP16 to WP19, the phone checks and what the merged packages had left open came before it the same day; batch 2 is done one package at a time, by one agent, without a review agent)
+
+## Handoff update (2026-11-16, night: fixes found by a consumer game on an iPhone and a Mac)
+
+Read this first; the updates below it still hold.
+
+**State**
+
+- GitHub `main` and the main checkout are equal; the only branch is `main`. Last full gates on
+  `414d07a`: `npm run verify` 837 of 837, `npm run lint`, `git diff --check`; `verify-film-fog`,
+  `verify-film-look`, `verify-quality-route` on WebGL and WebGPU; `verify-grass` both backends on
+  `1ae8d7b`; `verify-lighting-depth` both backends on `0f65925`.
+- Added on `main`, each with its task and verification record:
+  - `e71da33` the start splash waits for the page's load event (`splash-hold-until-load/`);
+  - `0f65925` `ZhudaSceneLookOptions.cameraPasses` (a level change no longer drops the depth and
+    opaque passes a water surface reads) and the runtime no longer stays paused after an iPhone
+    `blur` (`look-rebuild-and-phone-pause/`);
+  - `1ae8d7b` grass blades vary in colour, are lit by their facing, let light through, and are
+    narrow and pointed (`grass-realism/`);
+  - `414d07a` light shafts marched at half size by default (`shafts.scale`), the sound adapter's
+    same `blur` fix, and `zhuda-init` pins the engine's own TypeScript (5.9.3; 5.6.3 could not read
+    the declarations) (`half-size-shafts/`).
+- The consumer that found them (`games/zhuda-spacetime-3d`, outside this repository) is pinned to
+  `414d07a`; its own `npm run verify` now passes.
+
+**Open**
+
+1. None of the four changes ran on a phone after the change. The iPhone evidence (a game clock
+   stopped for ten minutes after the address bar was opened) is from before the fix.
+2. Measured on that game, GPU-waited, 2560×1440, look level 2: grass is the largest part of a frame
+   (about 8–10 ms, about 5 ms of it whatever the density), water about 4.6 ms, the fog with its
+   beams about 1 ms. A cheaper grass (its fixed cost) is the next lever, not scheduled.
+3. An iPhone (Safari, medium) once failed at start on WebGPU with
+   `GPUCommandEncoder.finish: Unable to finish.` (recorded in `docs/webgpu.md`); not reproduced.
 
 ## Handoff update (2026-11-15, evening: the hand, routes and Spine)
 
