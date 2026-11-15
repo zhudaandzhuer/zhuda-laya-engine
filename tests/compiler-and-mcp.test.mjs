@@ -248,6 +248,9 @@ test('zhuda-laya-engine SDK bundles (ESM & CJS) and upstream LayaAir Official at
     'disposeMigratedMaterial',
     'convertUnityAnimationCurve',
     'compareVisualFrames',
+    'ZhudaSpineCharacter',
+    'zhudaSpineToCanvas',
+    'zhudaSpineFromCanvas',
   ]) {
     assert.equal(typeof sdkMod[name], 'function', `ESM SDK should export ${name}`);
     assert.equal(typeof cjsMod[name], 'function', `CJS SDK should export ${name}`);

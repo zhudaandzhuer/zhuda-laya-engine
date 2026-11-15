@@ -14,6 +14,7 @@ export * from './ResponsiveLayout.js';
 export * from './VideoSurface.js';
 export * from './WebViewSurface.js';
 export * from './SpineVisualContract.js';
+export * from './SpineCharacter.js';
 export * from './VisualFocusContract.js';
 export * from './particles/index.js';
 export type * from './zhuda-core.js';

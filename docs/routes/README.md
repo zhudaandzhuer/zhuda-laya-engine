@@ -25,6 +25,7 @@ say: how the pieces were put together for one result, and what went wrong on the
 | Scene | Route | Evidence | Reference consumer |
 | --- | --- | --- | --- |
 | A realistic modelled body (legs, feet) in layered clothing that can be pulled and torn: sheer stockings, trousers, skirts as cloth; touch on phones | [Layered cloth on a modelled body](layered-cloth-on-body.md) | Desktop WebGL and WebGPU; vivo V40 (Chrome 156, WebGPU) | `games/stocking-tear` (outside this repository) |
+| A 2D character from generated or painted art, rigged with zhuda-spine2D, that the hand changes: cloth lifted by IK and swung by Spine physics, a layer pulled and torn by swapping attachments | [Hand-driven Spine character](spine-character.md) | Desktop WebGL and WebGPU (not yet on a phone) | `games/stocking-tear-2d` (outside this repository) |
 
 ## Engine guides that already are routes
 

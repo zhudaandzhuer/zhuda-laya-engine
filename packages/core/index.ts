@@ -11,6 +11,7 @@ export * from './ResponsiveLayout';
 export * from './VideoSurface';
 export * from './WebViewSurface';
 export * from './SpineVisualContract';
+export * from './SpineCharacter.ts';
 export * from './VisualFocusContract';
 export * from './particles/index.ts';
 export type * from '../types/zhuda-core.ts';

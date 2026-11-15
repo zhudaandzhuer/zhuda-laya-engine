@@ -382,3 +382,19 @@ The Scene tells the instance where the eye is, usually once a frame: `instance.u
 `zhuda-laya-lod <model.glb> --ratio 0.4,0.15` writes the model again with that
 share of its triangles, for the `lod` levels of a model prefab. See
 [model levels of detail](model-lod.md).
+
+## Spine characters from zhuda-spine2D
+
+Rigs for the `spine42` feature can be made with the external toolkit
+[zhuda-spine2D](https://github.com/zhudaandzhuer/zhuda-spine2D) (Python CLI `spk.py`: parts,
+rig, physics, IK, animation, native spine-webgl checks). It stays its own repository:
+pin the version you used (the route names 2.7.0, `f751584`), never vendor it here or
+into a consumer bundle; it carries Spine Runtimes 4.2.119 under the Spine Runtimes
+License, so whoever ships a rig needs their own Spine Editor licence. Commit the rig's
+sources and its exported JSON, atlas and PNG in the consumer.
+
+Load the export with `Laya.loader.load(url, Laya.Loader.SPINE)` and draw it with
+`ZhudaSpineCharacter`, which sets LayaAir's `Spine2DRenderNode` up for a rig the game
+changes by hand (physics stepped, the slow render path, straight alpha) and converts
+between the rig's canvas and the skeleton. Check the asset with `SpineVisualContract`.
+The whole path, with what went wrong: [hand-driven Spine character](routes/spine-character.md).
