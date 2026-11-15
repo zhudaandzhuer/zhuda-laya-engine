@@ -484,7 +484,7 @@ consumer's and is not tracked here.
 - Risk: the cost of a step on a phone is not known; a body that bends needs more than one table.
 - Task: `records/cloth-and-spring-bones/task.md`. Built as `ZhudaCloth` and `ZhudaClothSolver` (`docs/cloth.md`), with a floor among the bodies, a limit on each particle's distance from its pin and spans along each thread; record: `records/cloth-and-spring-bones/verification-cloth.md`.
 
-### WP19. Spring bones (next)
+### WP19. Spring bones (done 2026-11-15)
 
 - C2. Chains of bones under a skeleton (hair, a skirt's hem, accessories) that lag, swing and settle, with colliders that follow bones, written after the animator; on WP18's core.
 - Gate G5, as for WP18, with a chain hung from a moving bone for its draw.

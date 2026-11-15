@@ -249,6 +249,17 @@ export const API_GUARDRAILS = [
       'The cloth has no timer: it is given the delta of a layer of the engine clock (updateFrom(layers) or update(seconds)), runs in fixed steps of 1/240 s, stands still on a paused layer and drops time over maxSteps instead of catching up, so the same deltas give the same cloth. Bodies are sphere, capsule, plane and table (radius by height and angle); move them with setCollider each frame and pins with movePin; carry the whole cloth with shift() after a teleport. There is no self-collision and no tearing; a body thinner than maxSpeed * step may be crossed. dispose() the cloth; the material is its owner’s. See docs/cloth.md.',
   },
   {
+    id: 'GUARD_SPRING_BONES',
+    topic:
+      'spring bone hair physics ponytail tail skirt hem earring ribbon jiggle secondary motion VRM spring bone dynamic bone wiggle bone collider',
+    hallucinatedLegacyApi:
+      'import { VRMSpringBoneManager } from "@pixiv/three-vrm"; springBoneManager.update(clock.getDelta()); new DynamicBone(bone); bone.rotation.x += Math.sin(Date.now() * 0.005) * 0.1; setInterval(updateHair, 16);',
+    zhudaCanonicalApi:
+      "const springs = new ZhudaSpringBones({ chains: [{ nodes: [hair1, hair2, hair3, hairEnd], stiffness: 3, drag: 3, radius: 0.03 }], colliders: [{ node: chest, type: 'sphere', radius: 0.18 }] }); const stop = runZhudaAfterAnimation(model, () => springs.updateFrom(session.layers)); later stop(); springs.dispose().",
+    reason:
+      'Spring bones take the delta of a layer of the engine clock (no timer, fixed steps of 1/120 s, a paused layer changes nothing, a long gap is dropped) and must run after LayaAir has posed the frame and before the skin is worked out: runZhudaAfterAnimation is that place. A chain is nodes that are each a child of the one before; the last node only marks the end. A bone never stretches; joints slide out of sphere, capsule, plane and table bodies. Call reset() after the model is teleported. See docs/spring-bones.md.',
+  },
+  {
     id: 'GUARD_GLTF_COPIES',
     topic:
       'glTF EXT_mesh_gpu_instancing instanced mesh from file forest scatter InstancedMesh aoMap uv2 second uv set texCoord 1 baked occlusion emissive lightmap meshopt decoder workers',

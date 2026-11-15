@@ -84,5 +84,6 @@ export type { ZhudaDequantizeResult, ZhudaGltfCamera, ZhudaGltfImageExtension, Z
 export * from './Themes.js';
 export * from './ResultPlayback.js';
 export * from './Cloth.js';
+export * from './SpringBones.js';
 export { ZhudaRendererError } from './Renderer.js';
 export type { RendererDiagnostics } from './Renderer.js';

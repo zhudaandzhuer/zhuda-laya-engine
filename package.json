@@ -165,6 +165,7 @@
     "verify:camera-effects": "node scripts/verify-camera-effects.mjs",
     "verify:grass": "node scripts/verify-grass.mjs",
     "verify:geometry": "node scripts/verify-geometry.mjs",
+    "verify:spring-bones": "node scripts/verify-spring-bones.mjs",
     "verify:spatial-audio": "node scripts/verify-spatial-audio.mjs",
     "verify:gltf-intake": "node scripts/verify-gltf-intake.mjs",
     "verify:physical-surfaces": "node scripts/verify-physical-surfaces.mjs",

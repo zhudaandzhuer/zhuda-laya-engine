@@ -1,6 +1,6 @@
 # Agent task: cloth-and-spring-bones
 
-Status: WP18 (cloth) implemented within scope, desktop WebGL and WebGPU verified, measured on a vivo V40; WP19 (spring bones) proposed, not started\
+Status: WP18 (cloth) implemented within scope, desktop WebGL and WebGPU verified, measured on a vivo V40; WP19 (spring bones) implemented within scope, desktop WebGL and WebGPU verified\
 Owner: Engine/toolchain\
 Last reviewed: 2026-11-15
 
@@ -136,7 +136,7 @@ does no harm.
 ## Evidence to attach
 
 - WP18: `records/cloth-and-spring-bones/verification-cloth.md`.
-- WP19: not started.
+- WP19: `records/cloth-and-spring-bones/verification-spring-bones.md`.
 
 ## Unverified limits
 
@@ -147,7 +147,7 @@ does no harm.
   two; its ends are flat, and a cloth over a sharp rim shows the rim.
 - WP18: no self-collision; a body thinner than `maxSpeed * step` may be
   crossed; a free cloth over small supports stretches about a tenth.
-- WP19: nothing is built.
+- WP19: drawn on chains of plain nodes, not on a skinned mesh; no phone.
 
 ## Rollback
 
