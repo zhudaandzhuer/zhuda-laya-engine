@@ -203,8 +203,13 @@ consumer build already chooses: leave `"ui"` out of `features`.
 
 ## Limits
 
-- One desktop GPU (Apple M4, Chrome). Which backend a phone's browser gets,
-  and how long its compilers take, was not measured: no phone was reachable.
+- One desktop GPU (Apple M4, Chrome) and one phone (a vivo V40, Adreno 720,
+  Chrome 156; `plans/records/phone-checks/`). The phone's Chrome gives a
+  hardware WebGPU adapter and the loader takes it on all three example
+  pages: ready in 2.8 to 3.0 s (2.5 s on WebGL when the page prefers it).
+  Its compilers take 0.53 to 0.59 s from inside the bundle, 0.27 s fetched,
+  0.06 s from the cache. The pages were opened on the phone; this check
+  itself was not run there.
 - The insecure-context row is unit-tested, not drawn: the check's pages are
   on localhost.
 - No SDK release was published with the loader; `--publish` was not run.

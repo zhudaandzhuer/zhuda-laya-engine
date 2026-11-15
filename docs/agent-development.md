@@ -124,6 +124,41 @@ run, write `UNAVAILABLE` with the reason and keep the capability unaccepted.
 The next agent should be able to reproduce the result from the report without
 reconstructing conversation context.
 
+### A draw check on a phone
+
+Every `verify-*.mjs` draw check starts a headless Chrome on this machine. The
+same check, unchanged, runs with the Chrome on an Android phone as its
+browser when `ZHUDA_PHONE_CHROME` names where the phone's debugging port was
+forwarded to:
+
+```sh
+adb forward tcp:9333 localabstract:chrome_devtools_remote
+# on the phone: Chrome open, a tab at about:blank, the screen on
+ZHUDA_PHONE_CHROME=http://127.0.0.1:9333 npm run verify:lit-surface
+ZHUDA_PHONE_CHROME=http://127.0.0.1:9333 LIT_SURFACE_RENDERER=webgpu npm run verify:lit-surface
+adb forward --remove tcp:9333
+```
+
+- The check serves its page on this machine's loopback; the phone reaches it
+  through `adb reverse`, made when the check navigates there and taken away
+  when it closes. `ZHUDA_PHONE_ADB` names the `adb` to use when it is not on
+  the path.
+- Only a blank tab, or one already at a page of this machine's loopback, is
+  used. It is brought to the front (a tab that is not shown draws no frames)
+  and left at about:blank. The phone's other tabs are not read, and no
+  setting of the phone is changed: keep the screen from sleeping yourself.
+- On WebGPU, LayaAir says at start what the phone's adapter does not have
+  ("WebGPU: float32-filterable is not supported by the adapter."). A check
+  takes any such line for a GPU warning and stops. With
+  `ZHUDA_PHONE_NOTICES=<file>` those lines are appended to the file and kept
+  from the check, so that it goes on to judge what is drawn; record the file
+  with the result.
+- The check's verdict is the phone's: the GPU it names is the phone's, and a
+  check that fails there has failed there. Do not widen a tolerance to make
+  a phone pass; record the number.
+- Times a check prints are the phone's. Its waits are the desktop's: a slow
+  page may run out of them, which is a result too.
+
 ## Making a 3D scene look good
 
 Follow the [quality route](quality-route.md): the steps, in order, from an

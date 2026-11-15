@@ -170,12 +170,17 @@ measurement. WebGPU resource figures are estimates, not driver memory readings.
 Compute is the one thing this backend has and WebGL does not:
 `ZhudaComputePass` steps many things on the GPU here, and runs the same step
 in JavaScript on WebGL ([GPU depth](gpu-depth.md)). Checked on one desktop
-GPU; no phone.
+GPU and one phone (a vivo V40: a million particles step in 14 ms on its GPU,
+81 ms in JavaScript).
 
 **Windows Chrome/Edge use this same browser WebGPU path, but actual Windows GPU
 acceptance remains UNAVAILABLE until run on the target machine.** Native EXE,
 Electron/WebView2 packaging, signing and Steam are separate, unverified work.
-Physical iOS/Android and other browsers are also unverified in this release.
+One Android phone (a vivo V40, Adreno 720, Chrome 156) has run ten of the
+draw checks on this backend (`plans/records/phone-checks/`): its adapter is a
+hardware one without `float32-filterable` and `bgra8unorm-storage`, eight of
+the ten pass, and screen reflections and one line of specular anti-aliasing
+do not. iOS and other browsers are unverified.
 
 Run on a Windows GPU machine (Node 24+, Chrome, or set `CHROME_BIN` to Edge):
 

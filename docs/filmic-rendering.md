@@ -555,6 +555,12 @@ while a look runs.
   it on a plain camera, 0.21 and 0.05 through an HDR chain. A pixel moves
   one step at most through a chain, two on a plain camera. Dithered at the
   other of the two places the bands stay.
+- On a phone a driver may already dither. A vivo V40 (Adreno 720) under
+  WebGL dithers what is written into an sRGB eight-bit picture, which is
+  what a plain camera's materials are drawn into: there are no bands there
+  to remove (0.05 of a step without the engine's dither) and `'materials'`
+  only adds grain. Through an HDR chain, and on WebGPU, the same phone shows
+  the bands and the engine's dither removes them as on the desktop.
 - A plain camera's darkest tones are coarse before any dither: LayaAir's
   eight-bit target is in the sRGB curve and its copy to the screen in a
   power of 2.2, so the first few steps of the target are two to six steps
