@@ -15,16 +15,16 @@ Date: 2026-11-17
 
 ## Checks
 
-| Check                                     | Exact command or procedure                                                                    | Result                             | Artifact               |
-| ----------------------------------------- | --------------------------------------------------------------------------------------------- | ---------------------------------- | ---------------------- |
-| Build, types, declarations, doctor, tests | `npm run verify`                                                                              | PASS (count in the commit message) | —                      |
-| Lint, format, whitespace                  | `npm run lint`, `npm run format:check`, `git diff --check`                                    | PASS                               | —                      |
-| Geometry fixtures                         | `node --test tests/csg.test.mjs`                                                              | PASS, 8                            | —                      |
-| Consumer typecheck of the subpath         | `tests/types-module-resolution.test.mjs` (Bundler, Node16, NodeNext, strict, no skipLibCheck) | PASS                               | —                      |
-| ESM, CJS, not in the main bundle          | `tests/csg.test.mjs` (the subpath test)                                                       | PASS                               | —                      |
-| Draw, WebGL                               | `npm run verify:csg`                                                                          | PASS                               | `EV/webgl/`            |
-| Draw, WebGPU                              | `CSG_RENDERER=webgpu npm run verify:csg`                                                      | PASS                               | `EV/webgpu/`           |
-| Repeated cuts                             | a script cutting windows and spheres one after another                                        | see below                          | `EV/repeated-cuts.txt` |
+| Check                                     | Exact command or procedure                                                                    | Result           | Artifact               |
+| ----------------------------------------- | --------------------------------------------------------------------------------------------- | ---------------- | ---------------------- |
+| Build, types, declarations, doctor, tests | `npm run verify`                                                                              | PASS, 927 of 927 | —                      |
+| Lint, format, whitespace                  | `npm run lint`, `npm run format:check`, `git diff --check`                                    | PASS             | —                      |
+| Geometry fixtures                         | `node --test tests/csg.test.mjs`                                                              | PASS, 8          | —                      |
+| Consumer typecheck of the subpath         | `tests/types-module-resolution.test.mjs` (Bundler, Node16, NodeNext, strict, no skipLibCheck) | PASS             | —                      |
+| ESM, CJS, not in the main bundle          | `tests/csg.test.mjs` (the subpath test)                                                       | PASS             | —                      |
+| Draw, WebGL                               | `npm run verify:csg`                                                                          | PASS             | `EV/webgl/`            |
+| Draw, WebGPU                              | `CSG_RENDERER=webgpu npm run verify:csg`                                                      | PASS             | `EV/webgpu/`           |
+| Repeated cuts                             | a script cutting windows and spheres one after another                                        | see below        | `EV/repeated-cuts.txt` |
 
 ## What the fixtures show
 
