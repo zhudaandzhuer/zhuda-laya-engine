@@ -606,11 +606,16 @@ test('lightFog needs grade; fog-only lights are point lights outside the 32 limi
   });
   assert.equal(resolveZhudaFilmLook({ grade: {} }).lightFog, false);
   // How far the fog is gathered: kept short, far things (a sea of cloud) stay clear.
-  assert.equal(resolveZhudaFilmLook({ grade: {}, lightFog: { maxDistance: 70 } }).lightFog.maxDistance, 70);
+  assert.equal(
+    resolveZhudaFilmLook({ grade: {}, lightFog: { maxDistance: 70 } }).lightFog.maxDistance,
+    70,
+  );
   assert.ok(
-    validateZhudaFilmScene({ schemaVersion: 1, look: { grade: {}, lightFog: { maxDistance: 0 } }, nodes: [] }).some((issue) =>
-      /lightFog\.maxDistance/.test(issue),
-    ),
+    validateZhudaFilmScene({
+      schemaVersion: 1,
+      look: { grade: {}, lightFog: { maxDistance: 0 } },
+      nodes: [],
+    }).some((issue) => /lightFog\.maxDistance/.test(issue)),
   );
   // Light shafts: off by default, defaults filled in, values checked with paths.
   assert.deepEqual(

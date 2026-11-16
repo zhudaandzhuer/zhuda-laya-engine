@@ -162,7 +162,8 @@ export function validateZhudaGrass(options: ZhudaGrassOptions): string[] {
 export function validateZhudaGrassBenders(benders: unknown): string[] {
   if (!Array.isArray(benders)) return ['benders must be an array'];
   const e: string[] = [];
-  if (benders.length > ZHUDA_GRASS_MAX_BENDERS) e.push(`at most ${ZHUDA_GRASS_MAX_BENDERS} benders`);
+  if (benders.length > ZHUDA_GRASS_MAX_BENDERS)
+    e.push(`at most ${ZHUDA_GRASS_MAX_BENDERS} benders`);
   benders.forEach((b, i) => {
     const p = b?.position;
     if (!Array.isArray(p) || p.length !== 3 || !p.every(Number.isFinite))
@@ -611,7 +612,9 @@ const BEND = `void zhudaGrassBend(vec4 b, vec3 foot, float tall, float t, inout 
   p.y -= k * tall * 0.55 * t * t;
 }
 `;
-const VERTEX = BEND + `void zhudaVertex(inout vec3 p, inout vec3 n, vec2 uv, vec3 origin) {
+const VERTEX =
+  BEND +
+  `void zhudaVertex(inout vec3 p, inout vec3 n, vec2 uv, vec3 origin) {
   float rank = (floor(uv.x) + 0.5) / ${RANKS}.0;
   float side = (fract(uv.x) - 0.25) * 2.0;
   float both = floor(uv.y);
@@ -823,7 +826,10 @@ export class ZhudaGrassField {
     if (errors.length) throw Error(errors.join('; '));
     for (let i = 0; i < ZHUDA_GRASS_MAX_BENDERS; i++) {
       const b = benders[i];
-      this.material.set(`u_ZhudaGrassBend${i}`, b ? [b.position[0], b.position[1], b.position[2], b.radius] : [0, 0, 0, 0]);
+      this.material.set(
+        `u_ZhudaGrassBend${i}`,
+        b ? [b.position[0], b.position[1], b.position[2], b.radius] : [0, 0, 0, 0],
+      );
     }
   }
   /** Changes the wind in place. */
