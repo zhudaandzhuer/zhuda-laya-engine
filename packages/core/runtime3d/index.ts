@@ -64,6 +64,7 @@ export * from './DebugStats.ts';
 export * from './TransformGizmo.ts';
 export * from './ComputePass.ts';
 export * from './DensityVolume.ts';
+export * from './DistanceBricks.ts';
 export * from './SurfaceBuffer.ts';
 export * from './ObjectMotion.ts';
 export * from './Foliage.ts';
