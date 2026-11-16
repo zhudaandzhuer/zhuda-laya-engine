@@ -1,8 +1,8 @@
 # Windows acceptance fixes
 
-Status: In progress: WIN-01..04, DIST-01, DIST-02 and MEM-01 implemented and
-verified on the Windows host (MEM-01 also on macOS and a phone); GFX, QA, CI
-and DEP not started\
+Status: In progress: WIN-01..04, DIST-01, DIST-02, MEM-01 and GFX-01
+implemented and verified on the Windows host (MEM-01 and GFX-01 also on a
+phone); GFX-02..06, QA, CI and DEP not started\
 Owner: Engine/toolchain\
 Last reviewed: 2026-11-16
 
@@ -84,13 +84,14 @@ Windows.
 
 ## Progress
 
-| Batch / item                         | State                                                                                          | Record                                                           |
-| ------------------------------------ | ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
-| WIN-01..04                           | Implemented within scope; Windows verified                                                     | [task](batch-1-task.md), [verification](batch-1-verification.md) |
-| DIST-01                              | Implemented within scope; Windows verified                                                     | [task](batch-2-task.md), [verification](batch-2-verification.md) |
-| DIST-02                              | Implemented within scope; install, update, uninstall verified on Windows                       | same                                                             |
-| MEM-01                               | Implemented within scope; churn check passes on macOS, Windows and the vivo V40, both backends | [task](mem-01-task.md), [verification](mem-01-verification.md)   |
-| GFX-01..06, QA-01..04, CI-01, DEP-01 | Not started                                                                                    |                                                                  |
+| Batch / item                         | State                                                                                                 | Record                                                           |
+| ------------------------------------ | ----------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| WIN-01..04                           | Implemented within scope; Windows verified                                                            | [task](batch-1-task.md), [verification](batch-1-verification.md) |
+| DIST-01                              | Implemented within scope; Windows verified                                                            | [task](batch-2-task.md), [verification](batch-2-verification.md) |
+| DIST-02                              | Implemented within scope; install, update, uninstall verified on Windows                              | same                                                             |
+| MEM-01                               | Implemented within scope; churn check passes on macOS, Windows and the vivo V40, both backends        | [task](mem-01-task.md), [verification](mem-01-verification.md)   |
+| GFX-01                               | Implemented within scope; 16 of the report's 17 checks pass on Windows WebGPU (render-scale is QA-02) | [task](gfx-01-task.md), [verification](gfx-01-verification.md)   |
+| GFX-02..06, QA-01..04, CI-01, DEP-01 | Not started                                                                                           |                                                                  |
 
 Found while verifying: on that host the SSH job context (session 0) is not
 a GPU context: WebGPU screenshots come out white and the Prefab page gets

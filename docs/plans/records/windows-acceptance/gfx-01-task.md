@@ -1,6 +1,6 @@
 # Agent task: windows-acceptance GFX-01, optional WebGPU features reported as warnings
 
-Status: In progress\
+Status: Implemented within scope; verified on the Windows host and the vivo V40 ([record](gfx-01-verification.md))\
 Owner: Engine/toolchain\
 Last reviewed: 2026-11-17
 

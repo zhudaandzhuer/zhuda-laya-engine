@@ -164,11 +164,13 @@ adb forward --remove tcp:9333
   used. It is brought to the front (a tab that is not shown draws no frames)
   and left at about:blank. The phone's other tabs are not read, and no
   setting of the phone is changed: keep the screen from sleeping yourself.
-- On WebGPU, LayaAir says at start what the phone's adapter does not have
-  ("WebGPU: float32-filterable is not supported by the adapter."). A check
-  takes any such line for a GPU warning and stops. With
-  `ZHUDA_PHONE_NOTICES=<file>` those lines are appended to the file and kept
-  from the check, so that it goes on to judge what is drawn; record the file
+- On WebGPU, LayaAir asks for thirteen features it can do without and used
+  to warn about each one the adapter lacks ("WebGPU: float32-filterable is
+  not supported by the adapter."), which a check takes for a GPU warning.
+  The engine now asks only for what the adapter has and reports the rest
+  in the renderer's `optionalFeatures` (GFX-01), so such lines no longer
+  appear. For a build from before that, `ZHUDA_PHONE_NOTICES=<file>` still
+  appends them to the file and keeps them from the check; record the file
   with the result.
 - The check's verdict is the phone's: the GPU it names is the phone's, and a
   check that fails there has failed there. Do not widen a tolerance to make
