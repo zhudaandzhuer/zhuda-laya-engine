@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {
   closeBrowser,
+  devToolsPortFileEndpoint,
   firstPageTarget,
   launchBrowser,
   ownedWindowsProcesses,
@@ -27,6 +28,15 @@ const gone = async (pid) => {
 
 test('prefab-check still exports the shared resolveChromeBinary', () => {
   assert.equal(fromPrefabCheck, resolveChromeBinary);
+});
+
+test('the port file is taken only when whole: no port 0, no cut-off id', () => {
+  const id = '/devtools/browser/0d1e2f3a-4b5c-6d7e-8f90-a1b2c3d4e5f6';
+  assert.equal(devToolsPortFileEndpoint('0\n' + id), null, 'before the server is bound');
+  assert.equal(devToolsPortFileEndpoint('53412\n' + id.slice(0, 30)), null);
+  assert.equal(devToolsPortFileEndpoint('534'), null);
+  assert.equal(devToolsPortFileEndpoint('70000\n' + id), null);
+  assert.equal(devToolsPortFileEndpoint('53412\r\n' + id).href, 'ws://127.0.0.1:53412' + id);
 });
 
 test('an unknown ZHUDA_BROWSER_GPU value is refused before a browser starts', async () => {

@@ -73,6 +73,19 @@ const exited = (child, ms) =>
     : Promise.resolve(true);
 
 /**
+ * The DevTools endpoint a profile's `DevToolsActivePort` file names (port on
+ * the first line, browser path on the second), or null while it is not a
+ * whole one: port 0 (written before the server is bound) or a cut-off id.
+ * Pure.
+ */
+export function devToolsPortFileEndpoint(text) {
+  const [port, where] = String(text).split(/\r?\n/);
+  if (!/^\d{1,5}$/.test(port) || Number(port) < 1 || Number(port) > 65535) return null;
+  if (!/^\/devtools\/browser\/[0-9a-f-]{36}$/.test(where ?? '')) return null;
+  return new URL(`ws://127.0.0.1:${port}${where}`);
+}
+
+/**
  * Starts a headless browser on a profile folder of its own and waits until
  * DevTools answers. `ZHUDA_BROWSER_GPU=hardware` (or `gpu: 'hardware'`)
  * leaves out the software-renderer fallback, for checks that must run on
@@ -130,12 +143,17 @@ export async function launchBrowser({
       );
       // The browser also writes its port here; a browser that hands over to
       // a new process (Edge relaunching itself) writes it from that one.
+      // It is taken only once it reads the same twice, 50 ms apart, with a
+      // real port (0 before the server is bound: seen on Windows, where
+      // fetch refuses it as a bad port) and a whole browser id.
       const portFile = path.join(profile, 'DevToolsActivePort');
+      let previous;
       const poll = setInterval(() => {
         try {
-          const [port, where] = fs.readFileSync(portFile, 'utf8').split(/\r?\n/);
-          if (/^\d+$/.test(port) && where?.startsWith('/devtools/browser/'))
-            finish(undefined, new URL(`ws://127.0.0.1:${port}${where}`));
+          const text = fs.readFileSync(portFile, 'utf8');
+          const endpoint = devToolsPortFileEndpoint(text);
+          if (endpoint && text === previous) finish(undefined, endpoint);
+          previous = text;
         } catch {}
       }, 50);
       child.once('error', (error) => finish(error));
