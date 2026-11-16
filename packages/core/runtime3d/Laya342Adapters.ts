@@ -184,6 +184,60 @@ export function installLaya342PassCacheBounds(native: any = (globalThis as any).
   }
 }
 
+/**
+ * GFX-03 (docs/plans/records/windows-acceptance/plan.md). LayaAir 3.4.2's
+ * WebGL textures ask for 4x anisotropic filtering from the start, also when
+ * they are set to point filtering. Direct3D 11 (ANGLE on Windows) then
+ * filters them anyway: an anisotropic sampler ignores the point setting, so
+ * pixel art, look-up tables and data textures come out blurred there (and a
+ * still picture under temporal anti-aliasing no longer matches one without),
+ * while Metal, GLES and WebGPU sample them as asked. A texture's anisotropy
+ * is sent as 1 while it is point-filtered and as asked otherwise; what was
+ * asked is what `anisoLevel` reports. Call after `Laya.init`; WebGPU has no
+ * such class and is left alone.
+ */
+export function installLaya342PointFilterFix(runtime: any = (globalThis as any).Laya): boolean {
+  const prototype = runtime?.WebGLInternalTex?.prototype;
+  if (!prototype || patched.has(prototype)) return false;
+  const find = (name: string) => {
+    for (let p = prototype; p; p = Object.getPrototypeOf(p)) {
+      const found = Object.getOwnPropertyDescriptor(p, name);
+      if (found) return found;
+    }
+    return undefined;
+  };
+  const filter = find('filterMode'),
+    aniso = find('anisoLevel');
+  if (!filter?.get || !filter.set || !aniso?.get || !aniso.set) return false;
+  const point = runtime.FilterMode?.Point ?? 0;
+  const asked = new WeakMap<object, number>();
+  const send = (texture: any, mode: unknown) =>
+    aniso.set!.call(texture, mode === point ? 1 : (asked.get(texture) ?? aniso.get!.call(texture)));
+  Object.defineProperty(prototype, 'anisoLevel', {
+    configurable: true,
+    get(this: any) {
+      return asked.get(this) ?? aniso.get!.call(this);
+    },
+    set(this: any, value: number) {
+      asked.set(this, value);
+      send(this, filter.get!.call(this));
+    },
+  });
+  Object.defineProperty(prototype, 'filterMode', {
+    configurable: true,
+    get(this: any) {
+      return filter.get!.call(this);
+    },
+    set(this: any, value: unknown) {
+      if (!asked.has(this)) asked.set(this, aniso.get!.call(this));
+      filter.set!.call(this, value);
+      send(this, value);
+    },
+  });
+  patched.add(prototype);
+  return true;
+}
+
 /** Model ownership seam: native Node.destroy queues component teardown for the
  * next frame. Finish only this tree's queued components before releasing its
  * cache lease; otherwise zero-reference clips/meshes survive resource disposal.
