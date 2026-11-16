@@ -357,10 +357,13 @@ for (const [name, s] of Object.entries(r.smooth)) {
     (s.on.sumHigh - s.on.sumLow) / s.on.sum <= 0.1,
     `smooth ${name}: the highlight does not come and go (${s.on.sumLow}..${s.on.sumHigh}; unpatched ${s.off.sumLow}..${s.off.sumHigh})`,
   );
-  // Under the game's sun: the clipped highlight is the size of the truth's.
+  // Under the game's sun: the clipped highlight is the size of the truth's,
+  // the truth taken under that sun (`gameSizeDirect`); the one scaled up
+  // from a dim sun (`gameSize`) is kept in the report only, since its 8-bit
+  // rounding differs by GPU (GFX-06).
   assert.ok(
-    Math.abs(s.game.on.size - t.gameSize) <= Math.max(4, t.gameSize * 0.15),
-    `smooth ${name}: the highlight as large as the truth's ${t.gameSize} pixels (${s.game.off.size} -> ${s.game.on.size})`,
+    Math.abs(s.game.on.size - t.gameSizeDirect) <= Math.max(4, t.gameSizeDirect * 0.15),
+    `smooth ${name}: the highlight as large as the truth's ${t.gameSizeDirect} pixels (${s.game.off.size} -> ${s.game.on.size}; scaled truth ${t.gameSize})`,
   );
   // No line along the silhouette: the rim is never brighter than unpatched.
   assert.ok(
@@ -375,7 +378,7 @@ for (const [name, s] of Object.entries(r.smooth)) {
       `smooth ${name}: a highlight wider than a pixel looks as it did (mean change ${s.game.diff}, at most ${s.game.maxDiff})`,
     );
   summary.push(
-    `smooth ${name}: peak ${s.off.peak}->${s.on.peak} (truth ${t.peak}), size ${s.game.off.size}->${s.game.on.size} (truth ${t.gameSize}), at most ${s.game.maxDiff} levels changed`,
+    `smooth ${name}: peak ${s.off.peak}->${s.on.peak} (truth ${t.peak}), size ${s.game.off.size}->${s.game.on.size} (truth ${t.gameSizeDirect}, scaled ${t.gameSize}), at most ${s.game.maxDiff} levels changed`,
   );
 }
 

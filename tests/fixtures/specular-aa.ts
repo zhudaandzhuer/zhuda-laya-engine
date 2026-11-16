@@ -818,6 +818,22 @@ async function main() {
     for (const i of rim) truthRim = Math.max(truthRim, display(ref[i / 4] * gain));
     const refHighlight = highlight((i) => ref[i / 4], mask);
     const refGame = highlight((i) => Math.min(1, ref[i / 4] * gain), mask);
+    // The truth under the game's sun itself: unpatched frames at sub-pixel
+    // offsets, each clipped as the screen clips it, averaged. `refGame` above
+    // scales a truth taken under a sun dim enough not to clip; at the dimmest
+    // suns that truth is mostly 8-bit rounding, which differs by GPU (Intel
+    // UHD 770 gave 8 pixels where Apple gave 12 for the same 12.6-pixel
+    // highlight; this one gives 13 on both). GFX-06 of
+    // docs/plans/records/windows-acceptance/plan.md.
+    use(material, false, game, distance);
+    const direct = new Float32Array(W * H);
+    const DIRECT = 256;
+    for (let k = 0; k < DIRECT; k++) {
+      if (k % 128 === 0) await breathe();
+      const p = shot(halton(k + 1, 2) - 0.5, halton(k + 1, 3) - 0.5, distance);
+      for (const i of mask) direct[i / 4] += linear(p, i) / DIRECT;
+    }
+    const refGameDirect = highlight((i) => direct[i / 4], mask);
     result.smooth[name] = {
       roughness,
       radius: round(discAt(distance), 1),
@@ -828,6 +844,7 @@ async function main() {
         sum: round(refHighlight.sum, 4),
         size: refHighlight.size,
         gameSize: refGame.size,
+        gameSizeDirect: refGameDirect.size,
         gameSum: round(refGame.sum, 2),
         gameRimMax: round(truthRim, 1),
       },
