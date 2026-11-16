@@ -1,6 +1,6 @@
-# Agent task: windows-acceptance GFX-03, WebGL temporal anti-aliasing on Windows
+# Agent task: windows-acceptance GFX-03 (and GFX-04, GFX-05), point filtering on Windows WebGL
 
-Status: In progress\
+Status: Implemented within scope ([verification](gfx-03-verification.md))\
 Owner: Engine/toolchain\
 Last reviewed: 2026-11-17
 
@@ -23,6 +23,10 @@ anisotropic sampler for that, which ignores the point setting; Metal, GLES
 and WebGPU keep it. A jittered frame of a filtered texture then never
 equals the unjittered one. TAA, the jitter (Halton, ±0.5 px) and the
 motion vectors (RGBA16F, location 4) are the same on all GPUs.
+
+The same cause failed GFX-04 (a KTX 2 model against its PNG twin, mean
+2.76..2.87) and GFX-05 (SMAA at 4°, 0.0523): both checks draw a
+point-filtered texture, so they are closed by the same change.
 
 ## Goal
 
@@ -47,6 +51,8 @@ A point-filtered texture is sampled point-wise on Windows WebGL too.
    filtered, the asked level otherwise, and reports what was asked.
 2. `verify:gpu-depth` WebGL on the Windows host's desktop session: TAA
    still 0 and tracked < 3; the sharp row is `255/0` stripes.
+   `verify:basis-textures` and `verify:post-quality` WebGL there pass
+   (GFX-04, GFX-05).
 3. macOS, V40 and `npm run verify` unchanged (pass).
 
 ## Rollback

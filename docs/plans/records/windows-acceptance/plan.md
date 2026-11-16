@@ -1,10 +1,12 @@
 # Windows acceptance fixes
 
-Status: In progress: WIN-01..04, DIST-01, DIST-02, MEM-01, GFX-01 and
-GFX-02 implemented and verified on the Windows host (MEM-01, GFX-01 and
-GFX-02 also on a phone); GFX-03..06, QA, CI and DEP not started\
+Status: Implemented within scope: all 19 items closed on the report's
+Windows host (desktop session, Intel UHD 770), with macOS and a vivo V40
+for comparison. QA-01 traced to a browser session's first frames, not
+the mounts (its Direct3D 11 cause not found); QA-04 not reproduced;
+hardware CI lanes remain a documented manual procedure\
 Owner: Engine/toolchain\
-Last reviewed: 2026-11-16
+Last reviewed: 2026-11-17
 
 ## Source requirement
 
@@ -84,15 +86,19 @@ Windows.
 
 ## Progress
 
-| Batch / item                         | State                                                                                                 | Record                                                           |
-| ------------------------------------ | ----------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
-| WIN-01..04                           | Implemented within scope; Windows verified                                                            | [task](batch-1-task.md), [verification](batch-1-verification.md) |
-| DIST-01                              | Implemented within scope; Windows verified                                                            | [task](batch-2-task.md), [verification](batch-2-verification.md) |
-| DIST-02                              | Implemented within scope; install, update, uninstall verified on Windows                              | same                                                             |
-| MEM-01                               | Implemented within scope; churn check passes on macOS, Windows and the vivo V40, both backends        | [task](mem-01-task.md), [verification](mem-01-verification.md)   |
-| GFX-01                               | Implemented within scope; 16 of the report's 17 checks pass on Windows WebGPU (render-scale is QA-02) | [task](gfx-01-task.md), [verification](gfx-01-verification.md)   |
-| GFX-02                               | Implemented within scope; reflections alike on Apple, Intel and Adreno, both backends                 | [task](gfx-02-task.md), [verification](gfx-02-verification.md)   |
-| GFX-03..06, QA-01..04, CI-01, DEP-01 | Not started                                                                                           |                                                                  |
+| Batch / item           | State                                                                                                 | Record                                                           |
+| ---------------------- | ----------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| WIN-01..04             | Implemented within scope; Windows verified                                                            | [task](batch-1-task.md), [verification](batch-1-verification.md) |
+| DIST-01                | Implemented within scope; Windows verified                                                            | [task](batch-2-task.md), [verification](batch-2-verification.md) |
+| DIST-02                | Implemented within scope; install, update, uninstall verified on Windows                              | same                                                             |
+| MEM-01                 | Implemented within scope; churn check passes on macOS, Windows and the vivo V40, both backends        | [task](mem-01-task.md), [verification](mem-01-verification.md)   |
+| GFX-01                 | Implemented within scope; 16 of the report's 17 checks pass on Windows WebGPU (render-scale is QA-02) | [task](gfx-01-task.md), [verification](gfx-01-verification.md)   |
+| GFX-02                 | Implemented within scope; reflections alike on Apple, Intel and Adreno, both backends                 | [task](gfx-02-task.md), [verification](gfx-02-verification.md)   |
+| GFX-03, GFX-04, GFX-05 | Implemented within scope; one cause (anisotropy on point-filtered WebGL textures under Direct3D 11)   | [task](gfx-03-task.md), [verification](gfx-03-verification.md)   |
+| GFX-06                 | Implemented within scope; the highlight size held to a truth taken under the game's sun               | [task](gfx-06-task.md), [verification](gfx-06-verification.md)   |
+| QA-01..04              | QA-01..03 implemented (QA-01: a session's first frames, not the mounts); QA-04 not reproduced         | [task](qa-task.md), [verification](qa-verification.md)           |
+| CI-01                  | Implemented within scope; macOS and Windows (spaces + CJK) consumer batches on every push, green      | [task](ci-01-task.md), [verification](ci-01-verification.md)     |
+| DEP-01                 | Implemented within scope; 0 advisories; desktop host on Electron 45.3.3 installs and verifies         | [task](dep-01-task.md), [verification](dep-01-verification.md)   |
 
 Found while verifying: on that host the SSH job context (session 0) is not
 a GPU context: WebGPU screenshots come out white and the Prefab page gets
