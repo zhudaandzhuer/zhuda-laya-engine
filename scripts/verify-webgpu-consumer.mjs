@@ -8,7 +8,7 @@ import ts from 'typescript';
 import { execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { chromeFixture } from './lib/chrome-fixture.mjs';
-import { importFile, runNpm } from './lib/node-tools.mjs';
+import { importFile, linkDirectory, runNpm } from './lib/node-tools.mjs';
 const engine = path.resolve(import.meta.dirname, '..'),
   root = path.resolve(process.env.WEBGPU_OUT || '/tmp/zhuda-webgpu'),
   consumer = path.join(root, 'consumer'),
@@ -32,7 +32,7 @@ fs.mkdirSync(sdk, { recursive: true });
 execFileSync('tar', ['-xzf', path.join(root, packed.filename), '-C', sdk, '--strip-components=1']);
 for (const dependency of ['@webgpu', 'i18next', 'typescript', 'esbuild']) {
   const dest = path.join(consumer, 'node_modules', dependency);
-  if (!fs.existsSync(dest)) fs.symlinkSync(path.join(engine, 'node_modules', dependency), dest);
+  linkDirectory(path.join(engine, 'node_modules', dependency), dest);
 }
 const { runConsumerBuild } = await importFile(
   path.join(sdk, 'packages/compiler/consumer-build.mjs'),

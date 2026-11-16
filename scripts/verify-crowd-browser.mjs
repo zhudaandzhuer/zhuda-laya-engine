@@ -9,7 +9,7 @@ import ts from 'typescript';
 import { PNG } from 'pngjs';
 import { chromeFixture } from './lib/chrome-fixture.mjs';
 import { runConsumerBuild } from '../packages/compiler/consumer-build.mjs';
-import { importFile, runNpm } from './lib/node-tools.mjs';
+import { importFile, linkDirectory, runNpm } from './lib/node-tools.mjs';
 const engineRoot = path.resolve(import.meta.dirname, '..');
 // RGB comparison (alpha ignored): a pixel changes when any channel differs by
 // more than 2; foreground is every pixel outside the most common colour.
@@ -101,7 +101,7 @@ fs.mkdirSync(sdk, { recursive: true });
 execFileSync('tar', ['-xzf', path.join(root, packed.filename), '-C', sdk, '--strip-components=1']);
 for (const dependency of ['@webgpu', 'i18next', 'typescript', 'esbuild']) {
   const dest = path.join(consumer, 'node_modules', dependency);
-  if (!fs.existsSync(dest)) fs.symlinkSync(path.join(engineRoot, 'node_modules', dependency), dest);
+  linkDirectory(path.join(engineRoot, 'node_modules', dependency), dest);
 }
 fs.writeFileSync(
   path.join(consumer, 'package.json'),

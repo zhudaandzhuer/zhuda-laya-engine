@@ -13,7 +13,7 @@ import {
   validateSequenceReport,
   compareSequenceReports,
 } from '../packages/ci-gate/verify-sequence.mjs';
-import { importFile, runNpm } from './lib/node-tools.mjs';
+import { importFile, linkDirectory, runNpm } from './lib/node-tools.mjs';
 const engine = path.resolve(import.meta.dirname, '..'),
   root = path.resolve(process.env.NEXT_ROUND_OUT ?? '/tmp/zhuda-next-round-hardening'),
   consumer = path.join(root, 'consumer'),
@@ -86,7 +86,7 @@ fs.mkdirSync(sdk, { recursive: true });
 execFileSync('tar', ['-xzf', path.join(root, packed.filename), '-C', sdk, '--strip-components=1']);
 for (const dep of ['@webgpu', 'i18next', 'esbuild', 'typescript', 'meshoptimizer', 'pngjs']) {
   const dest = path.join(consumer, 'node_modules', dep);
-  if (!fs.existsSync(dest)) fs.symlinkSync(path.join(engine, 'node_modules', dep), dest);
+  linkDirectory(path.join(engine, 'node_modules', dep), dest);
 }
 fs.writeFileSync(
   path.join(consumer, 'package.json'),

@@ -97,3 +97,41 @@ export function runNpm(args, { cwd = process.cwd(), maxBuffer = 16e6, timeout, e
  * escaped, so the path goes through `pathToFileURL` (WIN-03).
  */
 export const importFile = (file) => import(pathToFileURL(path.resolve(file)).href);
+
+/**
+ * Links folder `link` to the folder `target` (WIN-02): a junction on Windows,
+ * which needs no Developer Mode or elevation, a directory symbolic link
+ * elsewhere. The target must be a folder (a junction cannot point at a
+ * file). An existing link to the same folder is kept; a link to another
+ * folder or to nothing is replaced; a real file or folder at `link` is left
+ * as it is. Returns whether a link was made.
+ */
+export function linkDirectory(target, link) {
+  const real = fs.realpathSync(target);
+  if (!fs.statSync(real).isDirectory()) throw Error(`linkDirectory: not a folder: ${target}`);
+  const at = path.resolve(link);
+  let existing;
+  try {
+    existing = fs.lstatSync(at);
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error;
+  }
+  if (existing) {
+    if (!existing.isSymbolicLink()) return false;
+    let current;
+    try {
+      current = fs.realpathSync(at);
+    } catch {}
+    if (current === real) return false;
+    // Only the link goes: neither call follows it into the folder it names.
+    try {
+      fs.unlinkSync(at);
+    } catch (error) {
+      if (!['EPERM', 'EISDIR'].includes(error.code)) throw error;
+      fs.rmdirSync(at);
+    }
+  }
+  fs.mkdirSync(path.dirname(at), { recursive: true });
+  fs.symlinkSync(real, at, process.platform === 'win32' ? 'junction' : 'dir');
+  return true;
+}

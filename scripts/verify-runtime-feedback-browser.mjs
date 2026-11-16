@@ -6,12 +6,12 @@ import assert from 'node:assert/strict';
 import ts from 'typescript';
 import { runConsumerBuild } from '../packages/compiler/consumer-build.mjs';
 import { chromeFixture } from './lib/chrome-fixture.mjs';
+import { linkDirectory } from './lib/node-tools.mjs';
 const engineRoot = path.resolve(import.meta.dirname, '..');
 const root = process.env.RUNTIME_FIXTURE_DIR || '/tmp/zhuda-runtime-feedback';
 for (const sub of ['src', 'public/assets', 'evidence', 'node_modules'])
   fs.mkdirSync(path.join(root, sub), { recursive: true });
-if (!fs.existsSync(path.join(root, 'node_modules/zhuda-laya-engine')))
-  fs.symlinkSync(engineRoot, path.join(root, 'node_modules/zhuda-laya-engine'));
+linkDirectory(engineRoot, path.join(root, 'node_modules/zhuda-laya-engine'));
 fs.writeFileSync(
   path.join(root, 'package.json'),
   JSON.stringify({

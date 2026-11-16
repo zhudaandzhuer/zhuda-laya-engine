@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { importFile, resolveNpmCli, runNpm } from '../scripts/lib/node-tools.mjs';
+import { importFile, linkDirectory, resolveNpmCli, runNpm } from '../scripts/lib/node-tools.mjs';
 
 // A stand-in for npm's CLI at the path npm's own has: it prints what it was
 // given, or fails when asked to.
@@ -96,6 +96,44 @@ test('importFile loads a module from a path with spaces, CJK, # and %', async ()
     fs.writeFileSync(file, 'export const where = import.meta.url;');
     const { where } = await importFile(file);
     assert.equal(fs.realpathSync(fileURLToPath(where)), fs.realpathSync(file));
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('linkDirectory links a folder, keeps a right link, replaces a wrong one and refuses a file', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'zhuda link 測試 '));
+  try {
+    const a = path.join(root, 'a'),
+      b = path.join(root, 'b'),
+      link = path.join(root, 'node_modules/@scope/dep');
+    for (const dir of [a, b]) fs.mkdirSync(dir);
+    fs.writeFileSync(path.join(a, 'which.txt'), 'a');
+    fs.writeFileSync(path.join(b, 'which.txt'), 'b');
+    assert.equal(linkDirectory(a, link), true);
+    assert.equal(fs.lstatSync(link).isSymbolicLink(), true);
+    assert.equal(fs.readFileSync(path.join(link, 'which.txt'), 'utf8'), 'a');
+    assert.equal(linkDirectory(a, link), false);
+    assert.equal(linkDirectory(b, link), true);
+    assert.equal(fs.readFileSync(path.join(link, 'which.txt'), 'utf8'), 'b');
+    // Replacing the link left the folder it pointed at as it was.
+    assert.equal(fs.readFileSync(path.join(a, 'which.txt'), 'utf8'), 'a');
+    // A link whose folder is gone is replaced, not kept.
+    fs.rmSync(b, { recursive: true });
+    assert.equal(linkDirectory(a, link), true);
+    assert.equal(fs.readFileSync(path.join(link, 'which.txt'), 'utf8'), 'a');
+    // A real folder in the way is left alone.
+    const real = path.join(root, 'node_modules/real');
+    fs.mkdirSync(real);
+    assert.equal(linkDirectory(a, real), false);
+    assert.equal(fs.lstatSync(real).isSymbolicLink(), false);
+    assert.throws(
+      () => linkDirectory(path.join(a, 'which.txt'), path.join(root, 'file-link')),
+      /not a folder/,
+    );
+    assert.throws(() => linkDirectory(path.join(root, 'missing'), path.join(root, 'x')), {
+      code: 'ENOENT',
+    });
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }

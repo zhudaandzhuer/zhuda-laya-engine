@@ -5,7 +5,7 @@ import crypto from 'node:crypto';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { initConsumer } from '../packages/compiler/zhuda-init.mjs';
-import { importFile, runNpm } from './lib/node-tools.mjs';
+import { importFile, linkDirectory, runNpm } from './lib/node-tools.mjs';
 
 const engine = path.resolve(import.meta.dirname, '..');
 const root = path.resolve(process.env.MINIGAME_OUT || '/tmp/zhuda-minigame-acceptance');
@@ -44,7 +44,7 @@ for (const name of Object.keys(
 )) {
   const dest = path.join(consumer, 'node_modules', name);
   fs.mkdirSync(path.dirname(dest), { recursive: true });
-  if (!fs.existsSync(dest)) fs.symlinkSync(path.join(engine, 'node_modules', name), dest);
+  linkDirectory(path.join(engine, 'node_modules', name), dest);
 }
 const configFile = path.join(consumer, 'zhuda.config.json');
 const config = JSON.parse(fs.readFileSync(configFile));
