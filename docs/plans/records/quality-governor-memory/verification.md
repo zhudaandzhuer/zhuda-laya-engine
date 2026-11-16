@@ -95,12 +95,14 @@ level followed the governor (0 at the bottom, 1 at the end) and a new
 
 ## Limits and decision
 
-- No phone: the band, the warm start's pace and the default rungs are
-  desktop-checked only. A phone run (WebGPU and WebGL Chrome on the V40) is
-  requested from the owner's session.
+- Phone (run from the owner's session on 2026-11-17, vivo V40, Adreno
+  720, Chrome over `ZHUDA_PHONE_CHROME`): `verify:quality-governor` PASS on
+  WebGL and WebGPU, the same steps down (pillars 30 → 20 → 12, far red
+  379 → 274 → 0) as on the desktop. Its frame times there are the check's
+  own synthetic load, not a game's.
 - The warm start is unit-tested, not drawn.
 - `detail` is applied by the scene; the engine's own distance users (grass,
   model LOD) do not read it.
 
-Decision: **Implemented**, accepted for desktop WebGL and WebGPU; phone
-acceptance open.
+Decision: **Implemented**, accepted for desktop WebGL and WebGPU and on
+one phone (vivo V40).

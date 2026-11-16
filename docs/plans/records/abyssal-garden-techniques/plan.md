@@ -1,6 +1,7 @@
 # Techniques from Abyssal Garden
 
-Status: Implemented (AG1 to AG6; desktop WebGL and WebGPU, no phone record yet; see Progress)\
+Status: Implemented (AG1 to AG6; desktop WebGL and WebGPU; AG2, AG3 and AG1's
+regression checks also on a vivo V40; see Progress)\
 Owner: Engine/toolchain\
 Last reviewed: 2026-11-17
 
@@ -53,14 +54,14 @@ The figures below are the author's; none was run here.
 
 ## Progress
 
-| Package | State                                               | Record                                                        |
-| ------- | --------------------------------------------------- | ------------------------------------------------------------- |
-| AG2     | Implemented; desktop WebGL and WebGPU; no phone yet | [quality-governor-memory](../quality-governor-memory/task.md) |
-| AG5     | Implemented; desktop WebGL and WebGPU; no phone yet | [flythrough-critic](../flythrough-critic/task.md)             |
-| AG3     | Implemented; desktop WebGL and WebGPU; no phone yet | [isosurface-density](../isosurface-density/task.md)           |
-| AG4     | Implemented; pure data, checked by fixtures         | [distance-bricks](../distance-bricks/task.md)                 |
-| AG1     | Implemented; desktop WebGL and WebGPU; no phone yet | [underwater-look](../underwater-look/task.md)                 |
-| AG6     | Done (route; desktop only)                          | [underwater-route](../underwater-route/task.md)               |
+| Package | State                                                             | Record                                                        |
+| ------- | ----------------------------------------------------------------- | ------------------------------------------------------------- |
+| AG2     | Implemented; desktop WebGL and WebGPU; vivo V40 both              | [quality-governor-memory](../quality-governor-memory/task.md) |
+| AG5     | Implemented; desktop WebGL and WebGPU (film host; no phone)       | [flythrough-critic](../flythrough-critic/task.md)             |
+| AG3     | Implemented; desktop WebGL and WebGPU; vivo V40 both              | [isosurface-density](../isosurface-density/task.md)           |
+| AG4     | Implemented; pure data, checked by fixtures                       | [distance-bricks](../distance-bricks/task.md)                 |
+| AG1     | Implemented; desktop WebGL and WebGPU; V40 regression checks only | [underwater-look](../underwater-look/task.md)                 |
+| AG6     | Done (route; desktop only)                                        | [underwater-route](../underwater-route/task.md)               |
 
 ## Work packages
 
