@@ -91,6 +91,7 @@ test('every main/demo runtime export has a generated value declaration; minified
   for (const [stem, relative] of [
     ['zhuda-laya-engine', 'index.d.ts'],
     ['zhuda-laya-demo', 'demo/index.d.ts'],
+    ['zhuda-laya-csg', 'csg/index.d.ts'],
   ]) {
     const entry = path.join(repo, 'packages/types', relative);
     const program = ts.createProgram([entry], {

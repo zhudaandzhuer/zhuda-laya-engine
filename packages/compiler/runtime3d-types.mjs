@@ -7,7 +7,13 @@ const core = path.join(root, 'packages/core');
 const demo = path.join(root, 'packages/demo');
 const types = path.join(root, 'packages/types');
 const program = ts.createProgram(
-  [path.join(core, 'index.ts'), path.join(demo, 'index.ts'), path.join(types, 'index.ts')],
+  [
+    path.join(core, 'index.ts'),
+    // An entry of its own (zhuda-laya-engine/csg): the core entry does not import it.
+    path.join(core, 'csg', 'index.ts'),
+    path.join(demo, 'index.ts'),
+    path.join(types, 'index.ts'),
+  ],
   {
     target: ts.ScriptTarget.ES2022,
     module: ts.ModuleKind.ESNext,
