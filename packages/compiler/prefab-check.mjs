@@ -51,6 +51,7 @@ export async function checkPrefab({
       binary,
       profilePrefix: 'zhuda-prefab-browser-',
       args: ['--force-device-scale-factor=1', '--window-size=800,600'],
+      startupTimeoutMs: browserTimeoutMs,
     });
     phase = 'connecting-devtools';
     ws = new WebSocket((await firstPageTarget(browser.endpoint)).webSocketDebuggerUrl);

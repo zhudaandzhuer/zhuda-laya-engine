@@ -99,7 +99,8 @@ export async function launchBrowser({
   args = [],
   profilePrefix = 'zhuda-browser-',
   prepareProfile,
-  startupTimeoutMs = 10000,
+  // A cold Chrome on a busy CI runner has taken over 10 s to write its port.
+  startupTimeoutMs = 30000,
   gpu = process.env.ZHUDA_BROWSER_GPU,
 } = {}) {
   if (!binary) throw Error('Chrome unavailable. Set CHROME_BIN.');
