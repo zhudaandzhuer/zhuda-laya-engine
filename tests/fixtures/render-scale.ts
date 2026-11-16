@@ -67,16 +67,22 @@ const meanDiff = (a: Uint8Array, b: Uint8Array, r = SCENE) => {
  * opaque black on WebGPU.
  */
 let bare = [255, 0, 255];
+/** Where the last count found them (up to 12): x, y and the colour there. */
+let bareAt: number[][] = [];
 /** Pixels the 3D picture left uncovered: those of the bare canvas's colour. */
 const uncovered = (p: Uint8Array) => {
   let n = 0;
+  bareAt = [];
   for (let i = 0; i < p.length; i += 4)
     if (
       Math.abs(p[i] - bare[0]) <= 8 &&
       Math.abs(p[i + 1] - bare[1]) <= 8 &&
       Math.abs(p[i + 2] - bare[2]) <= 8
-    )
+    ) {
       n++;
+      if (bareAt.length < 12)
+        bareAt.push([(i / 4) % W, Math.floor(i / 4 / W), p[i], p[i + 1], p[i + 2]]);
+    }
   return n;
 };
 /** Mean colour of the outermost row or column of the frame. */
@@ -311,6 +317,7 @@ async function main() {
       scale: look.scale,
       ratio: Laya.Config3D.pixelRatio,
       uncovered: uncovered(p),
+      at: bareAt,
       size: [world.camera.viewport.width, world.camera.viewport.height],
     });
   }
