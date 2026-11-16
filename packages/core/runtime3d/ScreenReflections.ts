@@ -125,16 +125,22 @@ vec4 source=texture2D(u_MainTex,uv);
 #ifdef Gamma_u_MainTex
 source=gammaToLinear(source);
 #endif
-float depth=zhudaSsrDepth(uv);
-vec3 p=zhudaSsrRay(uv)*depth;
+// This picture has half the pixels of the depth picture each way, so the
+// centre of one of its pixels falls on the corner of four depth pixels, and
+// which of them a read returns is up to the GPU (Apple's and Intel's differ).
+// One a quarter of this pixel back is the centre of a depth pixel: read there,
+// so the ray starts on the surface and the normal is the surface's.
+vec2 texel=1.0/max(u_Viewport.zw,vec2(1.0));
+vec2 centre=uv-0.25*texel;
+float depth=zhudaSsrDepth(centre);
+vec3 p=zhudaSsrRay(centre)*depth;
 vec3 view=normalize(p);
 // The surface normal from the neighbours' depths. Of each pair of neighbours
 // the nearer one: it lies on this surface where the other is across an outline.
-vec2 texel=1.0/max(u_Viewport.zw,vec2(1.0));
-vec3 px=zhudaSsrPoint(uv+vec2(texel.x,0.0))-p;
-vec3 nx=p-zhudaSsrPoint(uv-vec2(texel.x,0.0));
-vec3 py=zhudaSsrPoint(uv+vec2(0.0,texel.y))-p;
-vec3 ny=p-zhudaSsrPoint(uv-vec2(0.0,texel.y));
+vec3 px=zhudaSsrPoint(centre+vec2(texel.x,0.0))-p;
+vec3 nx=p-zhudaSsrPoint(centre-vec2(texel.x,0.0));
+vec3 py=zhudaSsrPoint(centre+vec2(0.0,texel.y))-p;
+vec3 ny=p-zhudaSsrPoint(centre-vec2(0.0,texel.y));
 vec3 dx=dot(px,px)<dot(nx,nx)?px:nx;
 vec3 dy=dot(py,py)<dot(ny,ny)?py:ny;
 vec3 n=normalize(cross(dx,dy));
