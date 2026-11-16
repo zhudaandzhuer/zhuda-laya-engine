@@ -55,6 +55,9 @@ Evidence: macOS and phone reports in the session scratch folder; Windows
 | `verify:geometry` WebGL and WebGPU, `verify:lit-surface`, `verify:prefab-browser`, `verify:next-round`, `verify:webgpu-consumer` (macOS) | PASS                                                                                                                                                        |
 | `verify:film-remount` (macOS)                                                                                                            | FAIL, 1 265 stray green pixels on every mount, **also at `bd03844` without the fixes**: a failure already on `main`, not from MEM-01; left for its own task |
 
+The `verify:film-remount` failure came from `45f8664` and is fixed and
+recorded in `docs/plans/records/scene-uniform-order/`.
+
 ## Limits and decision
 
 - No run on the RTX 3060: Chrome picked the Intel adapter by default.
