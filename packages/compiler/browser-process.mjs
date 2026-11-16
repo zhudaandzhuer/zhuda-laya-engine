@@ -280,7 +280,18 @@ export async function closeBrowser(state) {
       report.forced.push(child.pid);
       if (!(await exited(child, 3000))) report.errors.push(`browser ${child.pid} did not exit`);
     }
-    if (process.platform === 'win32') {
+    const removeProfile = () =>
+      fs.rmSync(profile, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 });
+    let removed = false;
+    // A browser that quit by itself takes its children with it and frees the
+    // profile. The process list is read (a PowerShell query, about a second)
+    // only when that is in doubt.
+    if (report.graceful && !state.relaunched)
+      try {
+        removeProfile();
+        removed = true;
+      } catch {}
+    if (!removed && process.platform === 'win32') {
       // A relaunched browser, or a child process that outlived its parent:
       // given a moment to finish quitting, then ended.
       for (let round = 0; round < 6; round++) {
@@ -298,9 +309,10 @@ export async function closeBrowser(state) {
         await wait(300);
       }
     }
-    await attempt('remove profile', () =>
-      fs.rmSync(profile, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 }),
-    );
+    if (!removed)
+      await attempt('remove profile', () =>
+        fs.rmSync(profile, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 }),
+      );
     return report;
   })();
   return state.closing;

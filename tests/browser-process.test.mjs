@@ -5,6 +5,7 @@ import {
   closeBrowser,
   firstPageTarget,
   launchBrowser,
+  ownedWindowsProcesses,
   resolveChromeBinary,
 } from '../packages/compiler/browser-process.mjs';
 import { resolveChromeBinary as fromPrefabCheck } from '../packages/compiler/prefab-check.mjs';
@@ -56,6 +57,9 @@ test('close asks the browser to quit, waits, and removes the profile', { skip },
   assert.deepEqual(report, { graceful: true, forced: [], errors: [] });
   assert.equal(await gone(browser.child.pid), true);
   assert.equal(fs.existsSync(browser.profile), false);
+  // Nothing of it is left running: the quick path skips the process list,
+  // so check here that a browser which quit took its children with it.
+  if (process.platform === 'win32') assert.deepEqual(ownedWindowsProcesses(browser), []);
   // Closing twice is the same close.
   assert.equal(await browser.close(), report);
 });
