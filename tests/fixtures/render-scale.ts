@@ -69,19 +69,34 @@ const meanDiff = (a: Uint8Array, b: Uint8Array, r = SCENE) => {
 let bare = [255, 0, 255];
 /** Where the last count found them (up to 12): x, y and the colour there. */
 let bareAt: number[][] = [];
-/** Pixels the 3D picture left uncovered: those of the bare canvas's colour. */
+/**
+ * Pixels the 3D picture left uncovered: those of the bare canvas's colour
+ * with at least two of their four neighbours of it too. Canvas a scaled view
+ * fails to reach is a strip or a patch; a lone pixel of that colour is the
+ * scene's own (QA-02 of docs/plans/records/windows-acceptance/plan.md: on
+ * Intel WebGPU one shadow pixel read 8,7,7 against a bare 0,0,0). A strip one
+ * pixel wide along an edge still counts: its neighbours along the edge are bare.
+ */
 const uncovered = (p: Uint8Array) => {
-  let n = 0;
-  bareAt = [];
-  for (let i = 0; i < p.length; i += 4)
-    if (
+  const isBare = (x: number, y: number) => {
+    if (x < 0 || y < 0 || x >= W || y >= H) return false;
+    const i = (y * W + x) * 4;
+    return (
       Math.abs(p[i] - bare[0]) <= 8 &&
       Math.abs(p[i + 1] - bare[1]) <= 8 &&
       Math.abs(p[i + 2] - bare[2]) <= 8
-    ) {
+    );
+  };
+  let n = 0;
+  bareAt = [];
+  for (let y = 0; y < H; y++)
+    for (let x = 0; x < W; x++) {
+      if (!isBare(x, y)) continue;
+      const near = +isBare(x - 1, y) + +isBare(x + 1, y) + +isBare(x, y - 1) + +isBare(x, y + 1);
+      if (near < 2) continue;
       n++;
-      if (bareAt.length < 12)
-        bareAt.push([(i / 4) % W, Math.floor(i / 4 / W), p[i], p[i + 1], p[i + 2]]);
+      const i = (y * W + x) * 4;
+      if (bareAt.length < 12) bareAt.push([x, y, p[i], p[i + 1], p[i + 2]]);
     }
   return n;
 };
