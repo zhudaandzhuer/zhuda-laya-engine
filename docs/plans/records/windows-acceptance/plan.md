@@ -1,8 +1,8 @@
 # Windows acceptance fixes
 
-Status: In progress: WIN-01..04, DIST-01, DIST-02, MEM-01 and GFX-01
-implemented and verified on the Windows host (MEM-01 and GFX-01 also on a
-phone); GFX-02..06, QA, CI and DEP not started\
+Status: In progress: WIN-01..04, DIST-01, DIST-02, MEM-01, GFX-01 and
+GFX-02 implemented and verified on the Windows host (MEM-01, GFX-01 and
+GFX-02 also on a phone); GFX-03..06, QA, CI and DEP not started\
 Owner: Engine/toolchain\
 Last reviewed: 2026-11-16
 
@@ -91,7 +91,8 @@ Windows.
 | DIST-02                              | Implemented within scope; install, update, uninstall verified on Windows                              | same                                                             |
 | MEM-01                               | Implemented within scope; churn check passes on macOS, Windows and the vivo V40, both backends        | [task](mem-01-task.md), [verification](mem-01-verification.md)   |
 | GFX-01                               | Implemented within scope; 16 of the report's 17 checks pass on Windows WebGPU (render-scale is QA-02) | [task](gfx-01-task.md), [verification](gfx-01-verification.md)   |
-| GFX-02..06, QA-01..04, CI-01, DEP-01 | Not started                                                                                           |                                                                  |
+| GFX-02                               | Implemented within scope; reflections alike on Apple, Intel and Adreno, both backends                 | [task](gfx-02-task.md), [verification](gfx-02-verification.md)   |
+| GFX-03..06, QA-01..04, CI-01, DEP-01 | Not started                                                                                           |                                                                  |
 
 Found while verifying: on that host the SSH job context (session 0) is not
 a GPU context: WebGPU screenshots come out white and the Prefab page gets

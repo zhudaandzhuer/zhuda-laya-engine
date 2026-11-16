@@ -1,6 +1,6 @@
 # Agent task: windows-acceptance GFX-02, wet reflections
 
-Status: In progress\
+Status: Implemented within scope; verified on macOS, the Windows host and the vivo V40 ([record](gfx-02-verification.md))\
 Owner: Engine/toolchain\
 Last reviewed: 2026-11-17
 
