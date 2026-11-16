@@ -30,9 +30,12 @@ function runtime() {
     get anisoLevel() {
       return this._anisoLevel;
     }
+    // LayaAir clamps to 1..max: an undefined level becomes NaN, which WebGL
+    // refuses with GL_INVALID_VALUE.
     set anisoLevel(value) {
-      this.sent.push(['aniso', value]);
-      this._anisoLevel = value;
+      const clamped = Math.max(1, Math.min(16, value));
+      this.sent.push(['aniso', clamped]);
+      this._anisoLevel = clamped;
     }
   }
   return { FilterMode, WebGLInternalTex };
@@ -43,7 +46,11 @@ test('a point-filtered texture is sent anisotropy 1, others what was asked', () 
   assert.equal(installLaya342PointFilterFix(laya), true);
   assert.equal(installLaya342PointFilterFix(laya), false, 'once');
   const texture = new laya.WebGLInternalTex();
-  assert.deepEqual(texture.sent.at(-1), ['aniso', 4], 'LayaAir’s default stands for bilinear');
+  assert.deepEqual(
+    texture.sent.filter(([what]) => what === 'aniso'),
+    [['aniso', 4]],
+    'made: only LayaAir’s default is sent, never an unset level',
+  );
   texture.filterMode = FilterMode.Point;
   assert.deepEqual(texture.sent.slice(-2), [
     ['filter', FilterMode.Point],

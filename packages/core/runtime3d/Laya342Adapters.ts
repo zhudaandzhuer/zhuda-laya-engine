@@ -211,8 +211,16 @@ export function installLaya342PointFilterFix(runtime: any = (globalThis as any).
   if (!filter?.get || !filter.set || !aniso?.get || !aniso.set) return false;
   const point = runtime.FilterMode?.Point ?? 0;
   const asked = new WeakMap<object, number>();
-  const send = (texture: any, mode: unknown) =>
-    aniso.set!.call(texture, mode === point ? 1 : (asked.get(texture) ?? aniso.get!.call(texture)));
+  // What the texture asked for, or nothing yet: LayaAir's constructor sets the
+  // filter before the level, and an unset level would reach the GPU as NaN.
+  const level = (texture: any): number | undefined => {
+    const value = asked.get(texture) ?? aniso.get!.call(texture);
+    return Number.isFinite(value) && value >= 1 ? value : undefined;
+  };
+  const send = (texture: any, mode: unknown) => {
+    const value = mode === point ? 1 : level(texture);
+    if (value !== undefined) aniso.set!.call(texture, value);
+  };
   Object.defineProperty(prototype, 'anisoLevel', {
     configurable: true,
     get(this: any) {
@@ -229,7 +237,11 @@ export function installLaya342PointFilterFix(runtime: any = (globalThis as any).
       return filter.get!.call(this);
     },
     set(this: any, value: unknown) {
-      if (!asked.has(this)) asked.set(this, aniso.get!.call(this));
+      // A texture made before this ran: what it carries now is what it asked.
+      if (!asked.has(this) && filter.get!.call(this) !== point) {
+        const now = aniso.get!.call(this);
+        if (Number.isFinite(now) && now >= 1) asked.set(this, now);
+      }
       filter.set!.call(this, value);
       send(this, value);
     },
