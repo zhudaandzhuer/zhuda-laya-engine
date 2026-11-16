@@ -73,6 +73,11 @@ try {
       60000,
     );
     results[name] = await browser.evaluate('window.__PROC__');
+    // The page is screenshotted, not read from the canvas, so the boot splash
+    // must be off it. `__ZHUDA_SPLASH__.completed` (which the fixture waits for)
+    // means the splash is leaving: it fades over the panels for 420 ms and is
+    // removed at 460 ms (packages/compiler/branding.mjs, since e71da33).
+    await browser.waitFor('!document.getElementById("zhudaLogoSplash")', 10000);
     await browser.screenshot(path.join(out, 'evidence', `${name}.png`));
   }
   results.consoleErrors = browser.errors;

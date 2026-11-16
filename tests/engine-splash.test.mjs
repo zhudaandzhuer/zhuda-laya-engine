@@ -93,6 +93,27 @@ test('a page that loads during the intro still shows the whole intro', async (t)
   assert.equal(page.splash.classList.has('is-waiting'), false);
 });
 
+// verify-procedural-draw screenshotted the page as soon as `completed` was set
+// and caught the splash half-faded over its panels (fixed 2026-11-16). A
+// picture of the page waits until the node is gone; a canvas read does not.
+test('completed means the splash is leaving: it fades, then the node is removed', async (t) => {
+  const { brandSplashCss } = await import('../packages/compiler/branding.mjs');
+  const page = fakePage('complete');
+  const state = await runIn(t, page, 'engine');
+  page.runTimer(2180);
+  assert.equal(state.completed, true);
+  assert.equal(page.splash.classList.has('is-complete'), true);
+  assert.equal(page.splash.removed, false, 'still in the page while it fades');
+  page.runTimer(460);
+  assert.equal(page.splash.removed, true);
+  const fade = Number(
+    brandSplashCss.match(
+      /#zhudaLogoSplash\.is-complete \{ animation: zhuda-splash-exit (\d+)ms/,
+    )?.[1],
+  );
+  assert.ok(fade > 0 && fade < 460, `the ${fade} ms fade ends before the node is removed`);
+});
+
 test('mode none completes at once', async (t) => {
   const state = await runIn(t, fakePage('loading'), 'none');
   assert.equal(state.completed, true);

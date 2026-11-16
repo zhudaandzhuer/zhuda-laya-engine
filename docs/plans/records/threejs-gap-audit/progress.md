@@ -24,7 +24,12 @@ Last updated: 2026-11-16 (handoff updates at the top); before that 2026-11-15, a
 2. Building a large grass field at once blocks a page for 16–19 s on the M4 (the fixture's `fill`).
 3. `verify-procedural-draw` fails: one of the two relief panels is not found in `relief-u` or
    `relief-v`. Already failing on `3b63fee` (before this merge and before the ripples, foliage and
-   shaft commits); it passed in the `specular-aa` and `quality-defaults` records. Not investigated.
+   shaft commits); it passed in the `specular-aa` and `quality-defaults` records. **Found and
+   fixed, same night, in `main` and pushed (the user asked):** first bad commit `e71da33` (the
+   splash that waits for the page). `completed` is now set when the splash starts its 420 ms
+   fade, and the check screenshotted the page under it; the engine's pictures are unchanged
+   (pixel-identical to `a83ed1a`). The check now waits until `#zhudaLogoSplash` is gone. Record:
+   `docs/plans/records/procedural-draw-splash/`.
 
 ## Handoff update (2026-11-16, night: light shafts on a phone)
 

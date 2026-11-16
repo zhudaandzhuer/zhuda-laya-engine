@@ -117,6 +117,11 @@ A scripted press or drag sent right after the page loads is lost: the start
 splash takes pointer input until it is gone (at least 2.2 seconds, longer
 while the page is still loading; WebGL is ready sooner than that). Wait for `window.__ZHUDA_SPLASH__.completed` before
 the first input, as `tests/fixtures/stylized-shading.ts` does.
+`completed` means the splash is leaving, not that it is off the picture: it
+fades over the page for another 420 ms and `#zhudaLogoSplash` is removed at
+460 ms. A check that screenshots the page waits until that node is gone, as
+`scripts/verify-procedural-draw.mjs` does; reading the canvas's own pixels
+does not need to.
 
 ## Evidence and handoff
 
