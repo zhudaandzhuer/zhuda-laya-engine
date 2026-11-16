@@ -1,6 +1,6 @@
 # Techniques from Abyssal Garden
 
-Status: In progress (AG2, AG5, AG3, AG4 and AG1 implemented; the other packages as listed under Progress)\
+Status: Implemented (AG1 to AG6; desktop WebGL and WebGPU, no phone record yet; see Progress)\
 Owner: Engine/toolchain\
 Last reviewed: 2026-11-17
 
@@ -60,7 +60,7 @@ The figures below are the author's; none was run here.
 | AG3     | Implemented; desktop WebGL and WebGPU; no phone yet | [isosurface-density](../isosurface-density/task.md)           |
 | AG4     | Implemented; pure data, checked by fixtures         | [distance-bricks](../distance-bricks/task.md)                 |
 | AG1     | Implemented; desktop WebGL and WebGPU; no phone yet | [underwater-look](../underwater-look/task.md)                 |
-| AG6     | Proposed                                            |                                                               |
+| AG6     | Done (route; desktop only)                          | [underwater-route](../underwater-route/task.md)               |
 
 ## Work packages
 
