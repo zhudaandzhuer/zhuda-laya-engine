@@ -1,6 +1,6 @@
 # Agent task: windows-acceptance MEM-01, WebGPU objects kept after content is destroyed
 
-Status: In progress\
+Status: Implemented within scope; verified on macOS, the Windows host and the vivo V40 ([record](mem-01-verification.md))\
 Owner: Engine/toolchain\
 Last reviewed: 2026-11-17
 
