@@ -130,6 +130,7 @@
     "verify:prefab-editor": "node scripts/verify-prefab-editor-browser.mjs",
     "verify:webgpu": "node scripts/verify-webgpu.mjs",
     "verify:webgpu-consumer": "node scripts/verify-webgpu-consumer.mjs",
+    "verify:webgpu-churn": "node scripts/verify-webgpu-churn.mjs",
     "verify:cinematic": "node scripts/verify-cinematic.mjs",
     "verify:minigame": "node scripts/verify-minigame.mjs",
     "verify:branding": "node scripts/verify-branding-browser.mjs",
