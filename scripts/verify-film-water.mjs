@@ -327,17 +327,25 @@ try {
     `vertex colours darken it: ${report.vertexColour.shaded} against ${report.vertexColour.plain}`,
   );
 
-  // 6. Thirty mounts with and without water, then the first frame again.
+  // 6. Thirty mounts with and without water, then the same frame again,
+  // byte for byte. The baseline is the frame drawn just before them, not
+  // the first of the run: on the Windows host's Intel WebGL the first one
+  // or two frames of a browser session were one pixel 1/255 off in some
+  // sessions and settled after; the thirty mounts never changed the settled
+  // frame (QA-01 of docs/plans/records/windows-acceptance/plan.md). How the
+  // first frame differs is kept in the report, with where and by how much.
+  const before = await render('water-before', scene([...scenery, water()]));
+  report.firstFrame = differences(wet, before);
   for (let i = 0; i < 30; i++)
     await host.mountReport(scene(i % 2 ? [...scenery, water()] : scenery));
-  // Byte for byte (QA-01 of docs/plans/records/windows-acceptance/plan.md:
-  // a difference is kept with where it is and by how much, not loosened).
   const again = await render('water-again', scene([...scenery, water()]));
-  report.remount = differences(wet, again);
+  report.remount = differences(before, again);
   if (report.remount.pixels) {
-    const map = new PNG({ width: wet.width, height: wet.height });
-    for (let i = 0; i < wet.data.length; i += 4) {
-      const d = Math.max(...[0, 1, 2, 3].map((k) => Math.abs(wet.data[i + k] - again.data[i + k])));
+    const map = new PNG({ width: before.width, height: before.height });
+    for (let i = 0; i < before.data.length; i += 4) {
+      const d = Math.max(
+        ...[0, 1, 2, 3].map((k) => Math.abs(before.data[i + k] - again.data[i + k])),
+      );
       map.data.set(d ? [255, 255, 255, 255] : [0, 0, 0, 255], i);
     }
     fs.writeFileSync(path.join(out, 'water-again-diff.png'), PNG.sync.write(map));
