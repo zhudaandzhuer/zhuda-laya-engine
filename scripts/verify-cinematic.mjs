@@ -10,7 +10,7 @@ import ts from 'typescript';
 import { PNG } from 'pngjs';
 import { chromeFixture } from './lib/chrome-fixture.mjs';
 import { validateSequenceReport } from '../packages/ci-gate/verify-sequence.mjs';
-import { runNpm } from './lib/node-tools.mjs';
+import { importFile, runNpm } from './lib/node-tools.mjs';
 const engine = path.resolve(import.meta.dirname, '..'),
   root = path.resolve(process.env.CINEMA_OUT ?? '/tmp/zhuda-cinema'),
   consumer = path.join(root, 'consumer'),
@@ -107,7 +107,7 @@ assert.equal(
     getNewLine: () => '\n',
   }),
 );
-const esm = await import(path.join(sdk, 'dist/sdk/zhuda-laya-engine.esm.js')),
+const esm = await importFile(path.join(sdk, 'dist/sdk/zhuda-laya-engine.esm.js')),
   cjs = createRequire(import.meta.url)(path.join(sdk, 'dist/sdk/zhuda-laya-engine.cjs'));
 for (const name of [
   'ZhudaModelAnimationSampler',
@@ -118,7 +118,9 @@ for (const name of [
   assert.equal(typeof esm[name], 'function');
   assert.equal(typeof cjs[name], 'function');
 }
-const { runConsumerBuild } = await import(path.join(sdk, 'packages/compiler/consumer-build.mjs'));
+const { runConsumerBuild } = await importFile(
+  path.join(sdk, 'packages/compiler/consumer-build.mjs'),
+);
 const backends = process.env.CINEMA_BACKEND ? [process.env.CINEMA_BACKEND] : ['webgl', 'webgpu'];
 for (const renderer of backends) {
   const config = {

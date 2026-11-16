@@ -7,6 +7,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
+import { pathToFileURL } from 'node:url';
 
 const NPM_CLI = /(^|[\\/])npm[\\/]bin[\\/]npm-cli\.(c?js|mjs)$/;
 
@@ -89,3 +90,10 @@ export function runNpm(args, { cwd = process.cwd(), maxBuffer = 16e6, timeout, e
     throw failure;
   }
 }
+
+/**
+ * Imports a module by its file path. A Windows drive path is not a module
+ * specifier (`C:` reads as a URL scheme), and `#`, `%` and spaces must be
+ * escaped, so the path goes through `pathToFileURL` (WIN-03).
+ */
+export const importFile = (file) => import(pathToFileURL(path.resolve(file)).href);

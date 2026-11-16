@@ -13,7 +13,7 @@ import {
   validateSequenceReport,
   compareSequenceReports,
 } from '../packages/ci-gate/verify-sequence.mjs';
-import { runNpm } from './lib/node-tools.mjs';
+import { importFile, runNpm } from './lib/node-tools.mjs';
 const engine = path.resolve(import.meta.dirname, '..'),
   root = path.resolve(process.env.NEXT_ROUND_OUT ?? '/tmp/zhuda-next-round-hardening'),
   consumer = path.join(root, 'consumer'),
@@ -122,7 +122,7 @@ assert.equal(
     getNewLine: () => '\n',
   }),
 );
-const esm = await import(path.join(sdk, 'dist/sdk/zhuda-laya-engine.esm.js')),
+const esm = await importFile(path.join(sdk, 'dist/sdk/zhuda-laya-engine.esm.js')),
   cjs = createRequire(import.meta.url)(path.join(sdk, 'dist/sdk/zhuda-laya-engine.cjs'));
 for (const name of [
   'ZhudaTimelineSequencer',
@@ -134,7 +134,9 @@ for (const name of [
   assert.equal(typeof esm[name], 'function');
   assert.equal(typeof cjs[name], 'function');
 }
-const { runConsumerBuild } = await import(path.join(sdk, 'packages/compiler/consumer-build.mjs'));
+const { runConsumerBuild } = await importFile(
+  path.join(sdk, 'packages/compiler/consumer-build.mjs'),
+);
 for (const renderer of ['webgl', 'webgpu']) {
   const config = {
     name: 'next-round-' + renderer,

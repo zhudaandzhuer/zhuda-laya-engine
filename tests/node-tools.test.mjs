@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { resolveNpmCli, runNpm } from '../scripts/lib/node-tools.mjs';
+import { fileURLToPath } from 'node:url';
+import { importFile, resolveNpmCli, runNpm } from '../scripts/lib/node-tools.mjs';
 
 // A stand-in for npm's CLI at the path npm's own has: it prints what it was
 // given, or fails when asked to.
@@ -86,4 +87,16 @@ test('resolveNpmCli takes only npm’s own CLI and refuses a wrong explicit path
 
 test('runNpm runs the real npm', () => {
   assert.match(runNpm(['--version']).trim(), /^\d+\.\d+\.\d+/);
+});
+
+test('importFile loads a module from a path with spaces, CJK, # and %', async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'zhuda import 測試 #% '));
+  try {
+    const file = path.join(root, 'a #b %41.mjs');
+    fs.writeFileSync(file, 'export const where = import.meta.url;');
+    const { where } = await importFile(file);
+    assert.equal(fs.realpathSync(fileURLToPath(where)), fs.realpathSync(file));
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
 });

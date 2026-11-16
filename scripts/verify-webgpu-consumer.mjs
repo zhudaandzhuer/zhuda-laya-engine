@@ -8,7 +8,7 @@ import ts from 'typescript';
 import { execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { chromeFixture } from './lib/chrome-fixture.mjs';
-import { runNpm } from './lib/node-tools.mjs';
+import { importFile, runNpm } from './lib/node-tools.mjs';
 const engine = path.resolve(import.meta.dirname, '..'),
   root = path.resolve(process.env.WEBGPU_OUT || '/tmp/zhuda-webgpu'),
   consumer = path.join(root, 'consumer'),
@@ -34,8 +34,10 @@ for (const dependency of ['@webgpu', 'i18next', 'typescript', 'esbuild']) {
   const dest = path.join(consumer, 'node_modules', dependency);
   if (!fs.existsSync(dest)) fs.symlinkSync(path.join(engine, 'node_modules', dependency), dest);
 }
-const { runConsumerBuild } = await import(path.join(sdk, 'packages/compiler/consumer-build.mjs'));
-const esm = await import(path.join(sdk, 'dist/sdk/zhuda-laya-engine.esm.js')),
+const { runConsumerBuild } = await importFile(
+  path.join(sdk, 'packages/compiler/consumer-build.mjs'),
+);
+const esm = await importFile(path.join(sdk, 'dist/sdk/zhuda-laya-engine.esm.js')),
   cjs = createRequire(import.meta.url)(path.join(sdk, 'dist/sdk/zhuda-laya-engine.cjs'));
 for (const name of ['ZhudaRendererError', 'ZhudaEngine', 'TopologyResolver']) {
   assert.equal(typeof esm[name], 'function');

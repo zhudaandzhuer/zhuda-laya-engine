@@ -5,7 +5,7 @@ import crypto from 'node:crypto';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { initConsumer } from '../packages/compiler/zhuda-init.mjs';
-import { runNpm } from './lib/node-tools.mjs';
+import { importFile, runNpm } from './lib/node-tools.mjs';
 
 const engine = path.resolve(import.meta.dirname, '..');
 const root = path.resolve(process.env.MINIGAME_OUT || '/tmp/zhuda-minigame-acceptance');
@@ -86,9 +86,9 @@ for (const [name, command, args] of [
   );
   console.log('PASS ' + name);
 }
-const { buildMiniGame } = await import(path.join(sdk, 'packages/compiler/zhuda-minigame.mjs'));
-const { resolveMiniGameToolchain, listMiniGameTargets } = await import(
-  path.join(sdk, 'packages/compiler/minigame-toolchain.mjs')
+const { buildMiniGame } = await importFile(path.join(sdk, 'packages/compiler/zhuda-minigame.mjs'));
+const { resolveMiniGameToolchain, listMiniGameTargets } = await importFile(
+  path.join(sdk, 'packages/compiler/minigame-toolchain.mjs'),
 );
 const toolchain = resolveMiniGameToolchain(process.env.LAYA_CLI_ROOT);
 const platforms = await listMiniGameTargets(toolchain);

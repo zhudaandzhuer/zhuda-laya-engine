@@ -8,7 +8,7 @@ import { execFileSync } from 'node:child_process';
 import ts from 'typescript';
 import { chromeFixture } from './lib/chrome-fixture.mjs';
 import { runConsumerBuild } from '../packages/compiler/consumer-build.mjs';
-import { runNpm } from './lib/node-tools.mjs';
+import { importFile, runNpm } from './lib/node-tools.mjs';
 const engine = path.resolve(import.meta.dirname, '..'),
   root = path.resolve(process.env.SHOWCASE_OUT || '/tmp/zhuda-model-showcase'),
   consumer = path.join(root, 'consumer'),
@@ -95,7 +95,7 @@ assert.equal(
   }),
 );
 await runConsumerBuild({ projectRoot: consumer, engineRoot: sdk, config });
-const esm = await import(path.join(sdk, 'dist/sdk/zhuda-laya-engine.esm.js'));
+const esm = await importFile(path.join(sdk, 'dist/sdk/zhuda-laya-engine.esm.js'));
 const { createRequire } = await import('node:module');
 const cjs = createRequire(import.meta.url)(path.join(sdk, 'dist/sdk/zhuda-laya-engine.cjs'));
 for (const name of [

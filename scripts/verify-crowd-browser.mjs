@@ -9,7 +9,7 @@ import ts from 'typescript';
 import { PNG } from 'pngjs';
 import { chromeFixture } from './lib/chrome-fixture.mjs';
 import { runConsumerBuild } from '../packages/compiler/consumer-build.mjs';
-import { runNpm } from './lib/node-tools.mjs';
+import { importFile, runNpm } from './lib/node-tools.mjs';
 const engineRoot = path.resolve(import.meta.dirname, '..');
 // RGB comparison (alpha ignored): a pixel changes when any channel differs by
 // more than 2; foreground is every pixel outside the most common colour.
@@ -147,7 +147,7 @@ assert.equal(
   }),
 );
 await runConsumerBuild({ projectRoot: consumer, engineRoot: sdk, config });
-const esm = await import(path.join(sdk, 'dist/sdk/zhuda-laya-engine.esm.js'));
+const esm = await importFile(path.join(sdk, 'dist/sdk/zhuda-laya-engine.esm.js'));
 const { createRequire } = await import('node:module');
 const cjs = createRequire(import.meta.url)(path.join(sdk, 'dist/sdk/zhuda-laya-engine.cjs'));
 for (const name of [
