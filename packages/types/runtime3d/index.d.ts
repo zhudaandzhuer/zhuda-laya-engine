@@ -38,6 +38,7 @@ export { registerZhudaEffectShaders } from './ShaderRegistry.js';
 export * from './PointShadow.js';
 export * from './ProbeVolume.js';
 export * from './QualityGovernor.js';
+export * from './QualityMemory.js';
 export * from './ModelLod.js';
 export * from './EnvironmentProbe.js';
 export * from './HalfFloat.js';

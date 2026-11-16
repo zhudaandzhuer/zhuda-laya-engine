@@ -37,6 +37,7 @@ export { registerZhudaEffectShaders } from './ShaderRegistry.ts';
 export * from './PointShadow.ts';
 export * from './ProbeVolume.ts';
 export * from './QualityGovernor.ts';
+export * from './QualityMemory.ts';
 export * from './ModelLod.ts';
 export * from './EnvironmentProbe.ts';
 export * from './HalfFloat.ts';

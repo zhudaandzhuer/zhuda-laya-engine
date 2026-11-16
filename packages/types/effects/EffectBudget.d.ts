@@ -73,6 +73,8 @@ export declare class ZhudaRuntimeProfiler {
     private gpuPasses?;
     private webgpu;
     private gpuReason;
+    /** The newest GPU time resolved and not yet taken (`takeGpuMs`). */
+    private newestGpuMs;
     private frameOpen;
     constructor(options?: RuntimeProfilerOptions);
     attach(gl: any): void;
@@ -106,10 +108,19 @@ export declare class ZhudaRuntimeProfiler {
      */
     private resolvePasses;
     private pollGpu;
+    private pollQueries;
     beginFrame(): void;
     endFrame(frameMs: number, cpuMs: number, extra?: {
         heapBytes?: number;
     }): RuntimeFrameSample;
+    /**
+     * The newest GPU frame time resolved since the last call, in
+     * milliseconds, or undefined when none arrived (no GPU timing, a frame
+     * still on its way back, a disjoint or lost query). For a governor fed
+     * once a frame: `governor.sample(frameMs, profiler.takeGpuMs())`. A frame's
+     * time arrives a frame or more after the frame.
+     */
+    takeGpuMs(): number | undefined;
     report(): {
         measured: boolean;
         sources: {

@@ -70,7 +70,8 @@ export declare class ZhudaSceneLook {
     setRenderScale(scale: number, options?: Omit<ZhudaRenderScaleOptions, 'scale'>): void;
     /**
      * Moves to a rung of a quality ladder (`zhudaQualitySteps`): its look
-     * level and its render scale.
+     * level and its render scale. Its `detail` is the scene's to apply to its
+     * own distances.
      */
     setStep(step: ZhudaQualityStep): void;
     /**

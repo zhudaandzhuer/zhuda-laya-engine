@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ZhudaQualityGovernor } from '../packages/core/runtime3d/QualityGovernor.ts';
+import {
+  ZhudaQualityGovernor,
+  zhudaQualitySteps,
+} from '../packages/core/runtime3d/QualityGovernor.ts';
 import { zhudaLookForQuality } from '../packages/core/film/LookQuality.ts';
 import { resolveZhudaFilmLook } from '../packages/core/film/FilmScene.ts';
 
@@ -105,4 +108,146 @@ test('each quality level of a look drops the costliest parts first', () => {
   assert.throws(() => zhudaLookForQuality(look, 4), /0, 1, 2 or 3/);
   // A look without shadows or grade has nothing to drop.
   assert.deepEqual(zhudaLookForQuality(resolveZhudaFilmLook({}), 0).shadows, false);
+});
+
+/** Runs `windows` whole windows of 30 frames of `ms` with a GPU time `gpu`; returns the levels it changed to. */
+const windows = (governor, count, ms, gpu) => {
+  const changes = [];
+  for (let i = 0; i < count * 30; i++) {
+    const level = governor.sample(ms, gpu);
+    if (level !== undefined) changes.push(level);
+  }
+  return changes;
+};
+
+test('with GPU times it holds a band: down above it, up after calm below it, still inside it', () => {
+  // Budget 11.7 ms: the band is 9.8..13.6 ms of GPU time.
+  const governor = new ZhudaQualityGovernor({ budgetMs: 11.7, window: 30, start: 2 });
+  // Frames held at the display's 16.7 ms, which the CPU rule would read as over budget.
+  assert.deepEqual(windows(governor, 40, 16.7, 12), [], 'inside the band nothing changes');
+  assert.equal(governor.basis, 'gpu');
+  assert.deepEqual(windows(governor, 1, 16.7, 14.5), [1], 'above the band: a level down');
+  // 4 s of calm at 0.5 s a window: 7 windows are not enough, the 8th is.
+  assert.deepEqual(windows(governor, 7, 16.7, 5), [], 'below it, but not yet calm long enough');
+  assert.deepEqual(windows(governor, 1, 16.7, 5), [2], 'after the calm stretch, a level up');
+  // Inside the band the calm starts again.
+  assert.deepEqual(windows(governor, 4, 16.7, 5), []);
+  assert.deepEqual(windows(governor, 1, 16.7, 11), []);
+  assert.deepEqual(windows(governor, 4, 16.7, 5), [], 'the calm was reset inside the band');
+  // The same frames without GPU times: the CPU rule sees 16.7 ms against 11.7 and steps down.
+  const cpu = new ZhudaQualityGovernor({ budgetMs: 11.7, window: 30, start: 2 });
+  assert.deepEqual(windows(cpu, 2, 16.7), [1, 0]);
+  assert.equal(cpu.basis, 'cpu');
+  // A window where under half the frames brought a GPU time is decided on frame times.
+  const sparse = new ZhudaQualityGovernor({ budgetMs: 11.7, window: 30, start: 2 });
+  let changed;
+  for (let i = 0; i < 30; i++)
+    changed = sparse.sample(16.7, i % 3 === 0 ? 4 : undefined) ?? changed;
+  assert.equal(sparse.basis, 'cpu');
+  assert.equal(changed, 1);
+});
+
+test('a GPU band holds a level a frame-time rule would leave, and bad GPU times are refused', () => {
+  const governor = new ZhudaQualityGovernor({ budgetMs: 16.7, start: 1, calmSeconds: 4 });
+  // 15 ms of GPU work: inside 14.0..19.4, so it never tries the level above.
+  assert.deepEqual(windows(governor, 120, 16.7, 15), []);
+  assert.equal(governor.level, 1);
+  // The CPU rule, fed the same frames, keeps trying levels up.
+  const cpu = new ZhudaQualityGovernor({ budgetMs: 16.7, start: 1, calmSeconds: 4 });
+  assert.ok(windows(cpu, 120, 16.7).length > 0);
+  assert.throws(() => governor.sample(16, -1), /Invalid GPU time/);
+  assert.throws(() => governor.sample(16, Number.NaN), /Invalid GPU time/);
+  assert.equal(governor.sample(16, 900), undefined, 'a GPU hitch is ignored');
+  for (const gpuBand of [[1, 1.2], [0.8, 1], [0, 1.1], [0.8, 5], [0.8]])
+    assert.throws(() => new ZhudaQualityGovernor({ gpuBand }), /gpuBand/);
+  assert.throws(() => new ZhudaQualityGovernor({ warmWindow: 1 }), /warmWindow/);
+  assert.throws(() => new ZhudaQualityGovernor({ warmCalmFactor: 0 }), /warmCalmFactor/);
+});
+
+test('warming up behind a start screen reaches the level that fits in a shorter span', () => {
+  // From the top, on a machine where level 3 costs 30 ms and level 1 12 ms.
+  const reach = (warm) => {
+    const governor = new ZhudaQualityGovernor({ budgetMs: 16.7 });
+    if (warm) governor.warm();
+    const cost = () => [8, 12, 22, 30][governor.level];
+    let clock = 0;
+    while (governor.level !== 1 && clock < 20000) {
+      const ms = cost();
+      clock += ms;
+      governor.sample(ms);
+    }
+    return clock;
+  };
+  const cold = reach(false),
+    warm = reach(true);
+  assert.ok(warm < cold / 2, `level 1 after ${warm} ms warming, ${cold} ms cold`);
+  // And it tries the level above sooner: 1 s of calm instead of 4.
+  const governor = new ZhudaQualityGovernor({ start: 1 });
+  governor.warm();
+  const up = [];
+  for (let i = 0; i < 100; i++) up.push(governor.sample(12));
+  assert.equal(up.indexOf(2), 83, 'after 84 frames of 12 ms, the first window past 1 s');
+  // Play starts: back to the usual window from a fresh one.
+  const playing = new ZhudaQualityGovernor({ window: 30 });
+  playing.warm();
+  assert.equal(playing.warmingUp, true);
+  for (let i = 0; i < 11; i++) playing.sample(40);
+  playing.warm(false);
+  assert.equal(playing.warmingUp, false);
+  for (let i = 0; i < 29; i++) assert.equal(playing.sample(40), undefined);
+  assert.equal(playing.sample(40), 2);
+});
+
+test('a ladder with detail rungs: pixels to the middle size, then detail, then the rest', () => {
+  const name = (s) => `${s.look}@${s.renderScale}/${s.detail}`;
+  // Without details every rung keeps its distances: the ladder is as it was.
+  assert.deepEqual(zhudaQualitySteps().map(name), [
+    '0@0.5/1',
+    '0@0.7/1',
+    '1@0.7/1',
+    '2@0.7/1',
+    '3@0.7/1',
+    '3@0.85/1',
+    '3@1/1',
+  ]);
+  const steps = zhudaQualitySteps({ details: [0.7, 0.4] });
+  // A governor over frames that never fit walks it from the top in this order.
+  const governor = new ZhudaQualityGovernor({ levels: steps.length, window: 30 });
+  const walked = [name(steps[governor.level])];
+  for (let i = 0; i < 30 * steps.length; i++) {
+    const level = governor.sample(40);
+    if (level !== undefined) walked.push(name(steps[level]));
+  }
+  assert.deepEqual(walked, [
+    '3@1/1',
+    '3@0.85/1',
+    '3@0.85/0.7',
+    '3@0.85/0.4',
+    '3@0.7/0.4',
+    '2@0.7/0.4',
+    '1@0.7/0.4',
+    '0@0.7/0.4',
+    '0@0.5/0.4',
+  ]);
+  // A ladder can cut distances before any pixel goes, or after every one.
+  assert.deepEqual(
+    zhudaQualitySteps({ details: [0.6], detailAt: 1, lowest: false })
+      .reverse()
+      .map(name),
+    ['3@1/1', '3@1/0.6', '3@0.85/0.6', '3@0.7/0.6', '2@0.7/0.6', '1@0.7/0.6', '0@0.7/0.6'],
+  );
+  assert.deepEqual(
+    zhudaQualitySteps({ details: [0.6], detailAt: 0.7, lowest: false })
+      .reverse()
+      .map(name),
+    ['3@1/1', '3@0.85/1', '3@0.7/1', '3@0.7/0.6', '2@0.7/0.6', '1@0.7/0.6', '0@0.7/0.6'],
+  );
+  for (const bad of [
+    { details: [1] },
+    { details: [0.3] },
+    { details: [0.5, 0.7] },
+    { details: [0.6, 0.6] },
+    { details: [0.6], detailAt: 0.9 },
+  ])
+    assert.throws(() => zhudaQualitySteps(bad), /Quality steps/);
 });

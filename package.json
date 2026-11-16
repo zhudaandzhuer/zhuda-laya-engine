@@ -175,6 +175,7 @@
     "verify:physical-surfaces": "node scripts/verify-physical-surfaces.mjs",
     "verify:shadow-updates": "node scripts/verify-shadow-updates.mjs",
     "verify:render-scale": "node scripts/verify-render-scale.mjs",
+    "verify:quality-governor": "node scripts/verify-quality-governor.mjs",
     "verify:shader-warm-up": "node scripts/verify-shader-warm-up.mjs",
     "verify:basis-textures": "node scripts/verify-basis-textures.mjs",
     "verify:hdr-environment": "node scripts/verify-hdr-environment.mjs",
