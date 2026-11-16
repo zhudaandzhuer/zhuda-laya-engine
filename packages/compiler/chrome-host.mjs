@@ -1,7 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import os from 'node:os';
-import { spawn } from 'node:child_process';
+import { launchBrowser, firstPageTarget } from './browser-process.mjs';
 
 /**
  * Asks the page until `expression` is true. Without `timeoutMs`: up to 150
@@ -27,43 +26,21 @@ export async function zhudaWaitFor(evaluate, expression, timeoutMs) {
 export async function chromeFixture({ zoomFactor = 1 } = {}) {
   if (!Number.isFinite(zoomFactor) || zoomFactor < 0.25 || zoomFactor > 5)
     throw Error('Invalid Chrome zoom factor');
-  const binary =
-    process.env.CHROME_BIN ||
-    [
-      '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-      '/usr/bin/google-chrome',
-      '/usr/bin/chromium',
-      ...[process.env.PROGRAMFILES, process.env['PROGRAMFILES(X86)'], process.env.LOCALAPPDATA]
-        .filter(Boolean)
-        .map((base) => path.join(base, 'Google/Chrome/Application/chrome.exe')),
-    ].find(fs.existsSync);
-  if (!binary) throw Error('Chrome unavailable');
-  const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'zhuda-runtime-browser-'));
   // Chrome's real desktop page zoom (not CDP pinch/visual-viewport scaling).
   // Default partition key: chromium/src/chrome/browser/ui/zoom/chrome_zoom_level_prefs.cc.
-  fs.mkdirSync(path.join(profile, 'Default'), { recursive: true });
-  fs.writeFileSync(
-    path.join(profile, 'Default', 'Preferences'),
-    JSON.stringify({
-      partition: { default_zoom_level: { x: Math.log(zoomFactor) / Math.log(1.2) } },
-    }),
-  );
-  const child = spawn(
-    binary,
-    [
-      '--headless=new',
-      '--no-sandbox',
-      '--enable-unsafe-swiftshader',
-      '--use-mock-keychain',
-      '--no-first-run',
-      '--no-default-browser-check',
-      '--enable-precise-memory-info',
-      '--remote-debugging-port=0',
-      `--user-data-dir=${profile}`,
-      'about:blank',
-    ],
-    { detached: true, stdio: ['ignore', 'ignore', 'pipe'] },
-  );
+  const browser = await launchBrowser({
+    profilePrefix: 'zhuda-runtime-browser-',
+    args: ['--enable-precise-memory-info'],
+    prepareProfile: (profile) => {
+      fs.mkdirSync(path.join(profile, 'Default'), { recursive: true });
+      fs.writeFileSync(
+        path.join(profile, 'Default', 'Preferences'),
+        JSON.stringify({
+          partition: { default_zoom_level: { x: Math.log(zoomFactor) / Math.log(1.2) } },
+        }),
+      );
+    },
+  });
   let ws,
     serial = 0;
   const eventWaiters = new Map();
@@ -71,6 +48,7 @@ export async function chromeFixture({ zoomFactor = 1 } = {}) {
     errors = [],
     consoleMessages = [],
     glErrors = [];
+  /** Closes the page connection and the browser; resolves to what the browser close did. */
   const close = async () => {
     ws?.close();
     for (const r of pending.values()) {
@@ -83,48 +61,13 @@ export async function chromeFixture({ zoomFactor = 1 } = {}) {
       waiter.reject(Error('Browser closed'));
     }
     eventWaiters.clear();
-    if (child.pid) {
-      try {
-        if (process.platform === 'win32') child.kill();
-        else process.kill(-child.pid, 'SIGKILL');
-      } catch {}
-      if (child.exitCode === null && child.signalCode === null)
-        await new Promise((r) => child.once('exit', r));
-    }
-    fs.rmSync(profile, { recursive: true, force: true });
+    const report = await browser.close();
+    if (report.errors.length)
+      console.warn('Browser cleanup: ' + report.errors.join('; ') + ` (${browser.profile})`);
+    return report;
   };
   try {
-    const endpoint = await new Promise((resolve, reject) => {
-      const timer = setTimeout(() => reject(Error('Chrome startup timeout')), 10000);
-      let log = '';
-      child.once('error', (e) => {
-        clearTimeout(timer);
-        reject(e);
-      });
-      child.once('exit', () => {
-        clearTimeout(timer);
-        reject(Error('Chrome exited'));
-      });
-      child.stderr.on('data', (b) => {
-        log += b;
-        const match = log.match(/DevTools listening on (ws:\/\/\S+)/);
-        if (match) {
-          clearTimeout(timer);
-          resolve(new URL(match[1]));
-        }
-      });
-    });
-    // DevTools can announce its endpoint before the initial about:blank target
-    // is listed; poll briefly instead of racing the first /json/list response.
-    let page;
-    for (let attempt = 0; !page; attempt++) {
-      const tabs = await (await fetch(`http://${endpoint.host}/json/list`)).json();
-      page = tabs.find((t) => t.type === 'page');
-      if (!page) {
-        if (attempt >= 100) throw Error('Chrome did not expose a page target');
-        await new Promise((r) => setTimeout(r, 50));
-      }
-    }
+    const page = await firstPageTarget(browser.endpoint);
     ws = new WebSocket(page.webSocketDebuggerUrl);
     await new Promise((resolve, reject) => {
       ws.addEventListener('open', resolve, { once: true });

@@ -2,9 +2,8 @@
 import { cliMain } from './cli.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
-import os from 'node:os';
 import crypto from 'node:crypto';
-import { spawn, spawnSync } from 'node:child_process';
+import { resolveChromeBinary, launchBrowser, firstPageTarget } from './browser-process.mjs';
 import { fileURLToPath } from 'node:url';
 import {
   requestedPrefabEnvironment,
@@ -15,77 +14,10 @@ import { requestedPrefabCycles, auditPrefabLifecycle } from './prefab-lifecycle.
 import { selectPrefabDependencyProof } from './prefab-dependencies.mjs';
 
 const sha = (bytes) => crypto.createHash('sha256').update(bytes).digest('hex');
-/** Resolve Chrome without assuming a Unix installation path. CHROME_BIN remains
- * the explicit override used by CI and is reported in every browser result. */
-export function resolveChromeBinary(explicit = process.env.CHROME_BIN) {
-  const candidates = [
-    explicit,
-    ...(process.platform === 'win32'
-      ? [
-          process.env.PROGRAMFILES &&
-            path.join(process.env.PROGRAMFILES, 'Google/Chrome/Application/chrome.exe'),
-          process.env['PROGRAMFILES(X86)'] &&
-            path.join(process.env['PROGRAMFILES(X86)'], 'Google/Chrome/Application/chrome.exe'),
-          process.env.LOCALAPPDATA &&
-            path.join(process.env.LOCALAPPDATA, 'Google/Chrome/Application/chrome.exe'),
-          process.env.PROGRAMFILES &&
-            path.join(process.env.PROGRAMFILES, 'Microsoft/Edge/Application/msedge.exe'),
-          process.env['PROGRAMFILES(X86)'] &&
-            path.join(process.env['PROGRAMFILES(X86)'], 'Microsoft/Edge/Application/msedge.exe'),
-          process.env.LOCALAPPDATA &&
-            path.join(process.env.LOCALAPPDATA, 'Microsoft/Edge/Application/msedge.exe'),
-        ]
-      : [
-          '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-          '/usr/bin/google-chrome',
-          '/usr/bin/chromium',
-          '/usr/bin/chromium-browser',
-        ]),
-  ].filter(Boolean);
-  const found = candidates.find((file) => fs.existsSync(file));
-  if (found) return found;
-  const command = process.platform === 'win32' ? 'where.exe' : 'which';
-  for (const name of process.platform === 'win32'
-    ? ['chrome.exe', 'msedge.exe']
-    : ['google-chrome', 'chromium', 'chromium-browser']) {
-    const result = spawnSync(command, [name], {
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'ignore'],
-    });
-    const value =
-      result.status === 0
-        ? String(result.stdout || '')
-            .split(/\r?\n/)
-            .find(Boolean)
-        : undefined;
-    if (value && fs.existsSync(value.trim())) return value.trim();
-  }
-  return undefined;
-}
+// Resolving, starting and closing the browser are shared with the draw
+// checks (browser-process.mjs); resolveChromeBinary stays exported here.
+export { resolveChromeBinary };
 
-async function terminateBrowser(child, profile) {
-  const pid = child?.pid;
-  if (pid) {
-    if (process.platform === 'win32') {
-      // Negative process groups are not supported by Windows. taskkill /T
-      // retires Chrome's renderer children as well as the browser process.
-      spawnSync('taskkill', ['/PID', String(pid), '/T', '/F'], { stdio: 'ignore' });
-    } else {
-      try {
-        process.kill(-pid, 'SIGKILL');
-      } catch {}
-      try {
-        process.kill(pid, 'SIGKILL');
-      } catch {}
-    }
-    if (child.exitCode === null && child.signalCode === null)
-      await Promise.race([
-        new Promise((resolve) => child.once('exit', resolve)),
-        new Promise((resolve) => setTimeout(resolve, 2000)),
-      ]);
-  }
-  fs.rmSync(profile, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 });
-}
 /** Run an actual browser draw. The consumer exposes the same report bridge in its scene. */
 export async function checkPrefab({
   url,
@@ -109,52 +41,19 @@ export async function checkPrefab({
   requestedPrefabCycles(url);
   const binary = resolveChromeBinary(chromeBinary);
   if (!binary) throw Error('Chrome unavailable. Set CHROME_BIN.');
-  const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'zhuda-prefab-browser-'));
-  const child = spawn(
-    binary,
-    [
-      '--headless=new',
-      '--use-mock-keychain',
-      '--no-first-run',
-      '--no-default-browser-check',
-      '--no-sandbox',
-      '--enable-unsafe-swiftshader',
-      '--force-device-scale-factor=1',
-      '--window-size=800,600',
-      '--remote-debugging-port=0',
-      `--user-data-dir=${profile}`,
-      'about:blank',
-    ],
-    { detached: true, stdio: ['ignore', 'ignore', 'pipe'] },
-  );
+  let browser;
   let ws;
   let environment;
   let phase = 'starting-browser';
   const pending = new Map();
   try {
-    const endpoint = await new Promise((resolve, reject) => {
-      const timer = setTimeout(() => reject(Error('Chrome startup timeout')), 10000);
-      let text = '';
-      child.once('error', (error) => {
-        clearTimeout(timer);
-        reject(error);
-      });
-      child.once('exit', () => {
-        clearTimeout(timer);
-        reject(Error('Chrome exited before ready'));
-      });
-      child.stderr.on('data', (chunk) => {
-        text += chunk;
-        const match = text.match(/DevTools listening on (ws:\/\/\S+)/);
-        if (match) {
-          clearTimeout(timer);
-          resolve(new URL(match[1]));
-        }
-      });
+    browser = await launchBrowser({
+      binary,
+      profilePrefix: 'zhuda-prefab-browser-',
+      args: ['--force-device-scale-factor=1', '--window-size=800,600'],
     });
     phase = 'connecting-devtools';
-    const pages = await (await fetch(`http://${endpoint.host}/json/list`)).json();
-    ws = new WebSocket(pages.find((page) => page.type === 'page').webSocketDebuggerUrl);
+    ws = new WebSocket((await firstPageTarget(browser.endpoint)).webSocketDebuggerUrl);
     await new Promise((resolve, reject) => {
       ws.addEventListener('open', resolve, { once: true });
       ws.addEventListener('error', reject, { once: true });
@@ -348,7 +247,9 @@ export async function checkPrefab({
   } finally {
     ws?.close();
     for (const request of pending.values()) clearTimeout(request.timer);
-    await terminateBrowser(child, profile);
+    const cleanup = await browser?.close();
+    if (cleanup?.errors.length)
+      console.error('Browser cleanup: ' + cleanup.errors.join('; ') + ` (${browser.profile})`);
   }
 }
 const launchedAsCli = cliMain(
