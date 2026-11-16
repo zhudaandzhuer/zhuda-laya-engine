@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   summarizeZhudaFlythrough,
   validateZhudaFlythroughBudget,
@@ -147,7 +148,7 @@ test('JSON paths map to the lines they start on', () => {
 });
 
 test('a fly-through file: defaults, and every problem with its file and line', () => {
-  const good = loadFlythroughFile(new URL('yard.json', fixtures).pathname);
+  const good = loadFlythroughFile(fileURLToPath(new URL('yard.json', fixtures)));
   assert.deepEqual(good.issues, []);
   assert.equal(good.spec.durationSec, 6);
   assert.equal(good.spec.fps, 30);
@@ -195,7 +196,7 @@ test('a fly-through file: defaults, and every problem with its file and line', (
 });
 
 test('guidance names the budget line, the slowest frames and the camera key they follow', () => {
-  const { spec, lineOf } = loadFlythroughFile(new URL('over-budget.json', fixtures).pathname);
+  const { spec, lineOf } = loadFlythroughFile(fileURLToPath(new URL('over-budget.json', fixtures)));
   const summary = summarizeZhudaFlythrough(
     frames(
       Array.from({ length: 30 }, () => 0.4),
@@ -224,14 +225,14 @@ test('guidance names the budget line, the slowest frames and the camera key they
 });
 
 test('the critic file gate gives file and line for a blocking defect and for a bad report', () => {
-  const blocked = gateCriticFile(new URL('critic-major.json', fixtures).pathname);
+  const blocked = gateCriticFile(fileURLToPath(new URL('critic-major.json', fixtures)));
   assert.equal(blocked.status, 'blocked');
   assert.match(
     blocked.lines[0],
     /critic-major\.json:\d+: major banding in pose-0-0\.00s\.png: sky above/,
   );
   assert.equal(
-    gateCriticFile(new URL('critic-minor.json', fixtures).pathname).status,
+    gateCriticFile(fileURLToPath(new URL('critic-minor.json', fixtures))).status,
     'minor-only',
   );
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'zhuda-critic-test-'));
