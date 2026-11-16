@@ -1,7 +1,7 @@
 # Techniques from Abyssal Garden
 
-Status: Proposed (a reading of another project and a plan; nothing here is built by this document)  
-Owner: Engine/toolchain  
+Status: Proposed (a reading of another project and a plan; nothing here is built by this document)\
+Owner: Engine/toolchain\
 Last reviewed: 2026-11-16
 
 ## Source requirement

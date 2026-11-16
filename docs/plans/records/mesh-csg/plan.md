@@ -1,8 +1,8 @@
 # Mesh boolean operations (CSG)
 
 Status: Deferred (waiting for a consumer game that changes geometry while it
-runs; nothing here is built by this document)  
-Owner: Engine/toolchain  
+runs; nothing here is built by this document)\
+Owner: Engine/toolchain\
 Last reviewed: 2026-11-16
 
 ## Source requirement

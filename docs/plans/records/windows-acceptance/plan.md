@@ -1,8 +1,8 @@
 # Windows acceptance fixes
 
-Status: Proposed (a plan from a Windows acceptance report; no fix is made by
-this document)  
-Owner: Engine/toolchain  
+Status: In progress: batch 1 implemented and verified on the Windows host;
+DIST-01 verified, DIST-02 waiting for an install run, the rest not started\
+Owner: Engine/toolchain\
 Last reviewed: 2026-11-16
 
 ## Source requirement
@@ -22,6 +22,9 @@ documents with no fix. It lives outside this repository with its evidence:
   - `閱讀版/evidence/verification-notes.md` — corrections to earlier rounds;
   - ZIPs: documents (3.7 MB), full images and raw values (421 MB), heap
     snapshots (27.8 MB); SHA-256 in `desktop-package-check.json`.
+- The folder was no longer on that desktop by the evening of 2026-11-16
+  (moved by someone else); copies of its readme, report, reproduction
+  guide and case index were read before that.
 - The same folder holds an `engine/` checkout on `fix/windows-acceptance`
   and a task note addressed to another agent. This plan does not use either:
   work happens on this repository's `main` line, from current source.
@@ -77,6 +80,20 @@ Windows.
 | QA-04   | P2      | CDP timeout                    | One `Runtime.evaluate` timeout; isolated rerun passed                                                                                                                                                             | —                                                                                                                                                                 |
 | CI-01   | P1      | Acceptance layers              | Windows CI runs build and unit tests only; 4 verify skips plus file-symlink subchecks skipped inside passes                                                                                                       | `.github/workflows/verify.yml` has the `windows-latest` job only                                                                                                  |
 | DEP-01  | P1 inv. | Advisories                     | engine 7 moderate; desktop host 27 (1 critical `tar`, 21 high)                                                                                                                                                    | Not looked into                                                                                                                                                   |
+
+## Progress
+
+| Batch / item                                 | State                                               | Record                                                           |
+| -------------------------------------------- | --------------------------------------------------- | ---------------------------------------------------------------- |
+| WIN-01..04                                   | Implemented within scope; Windows verified          | [task](batch-1-task.md), [verification](batch-1-verification.md) |
+| DIST-01                                      | Implemented within scope; Windows verified          | [task](batch-2-task.md), [verification](batch-2-verification.md) |
+| DIST-02                                      | Implemented, unit-tested; install lifecycle not run | same                                                             |
+| MEM-01, GFX-01..06, QA-01..04, CI-01, DEP-01 | Not started                                         |                                                                  |
+
+Found while verifying: on that host the SSH job context (session 0) is not
+a GPU context: WebGPU screenshots come out white and the Prefab page gets
+no context, at the base commit too. GPU checks run in the signed-in
+desktop session.
 
 ## Work order
 

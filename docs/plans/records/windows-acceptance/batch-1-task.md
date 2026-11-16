@@ -1,7 +1,7 @@
 # Agent task: windows-acceptance batch 1 (WIN-01..04)
 
-Status: In progress  
-Owner: Engine/toolchain  
+Status: Implemented within scope; verified on the report's Windows host ([record](batch-1-verification.md))\
+Owner: Engine/toolchain\
 Last reviewed: 2026-11-16
 
 ## Source requirement
