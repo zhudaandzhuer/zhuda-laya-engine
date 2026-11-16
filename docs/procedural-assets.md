@@ -299,6 +299,28 @@ rest of the kit:
   `splitZhudaMesh(mesh)` cuts it into chunks a `ZhudaDynamicMesh` takes.
   A sheet thinner than about three cells can pinch where both of its faces
   cross one cell.
+- `removeFloating: true` keeps only the body connected (through the six
+  neighbours of each grid point) to the box's floor, the body that comes
+  within a cell of `min`'s height: loose specks of rock become empty before
+  meshing, so nothing floats. `{ anchor: 'largest' }` keeps the largest
+  body, `{ anchor: [x, y, z] }` the body at that point. Nothing on the floor,
+  or an anchor point outside every body, is refused with a message.
+- `volume` meshes values computed before instead of sampling `distance`
+  (which, when given, still moves the vertices onto the surface and gives
+  their normals; without it the volume is interpolated). The grid is
+  `zhudaIsosurfaceGrid(min, max, cellSize)`: the box padded by two cells.
+- `computeZhudaDensityVolume({ name, glsl, density, min, max, cellSize },
+{ signal, timeoutMs })` fills that grid on the GPU where there is compute
+  (`ZhudaComputePass`, WebGPU): `glsl` defines `float zhudaDensity(vec3 p)`,
+  `density` is the same field in JavaScript, run instead on WebGL in slices
+  of the grid (a turn for the browser between them, so a cancel or the time
+  limit stops it part way) and used to check a GPU result at 64 points
+  before it is accepted: a shader that did not compile, or that computes
+  another field, fails the load instead of making rock. Read back once;
+  cancelled, timed out or failed, the pass is released and nothing is
+  returned. A rock field of 4.9 million points took about 0.3 s on WebGPU
+  and 1.5 s in JavaScript on a desktop (record
+  `docs/plans/records/isosurface-density/`); meshing stays on the CPU.
 - `createZhudaSdfUnion(shapes, { reach, cell })` is a plain union of many
   small shapes (creases, rivets) found through a grid: exact within `reach`
   of a shape, `reach` farther away (never more than the true distance). Use

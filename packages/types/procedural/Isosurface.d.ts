@@ -68,9 +68,48 @@ export declare function validateZhudaSdfShapes(shapes: readonly ZhudaSdfShape[])
 export declare function zhudaSmoothMin(a: number, b: number, k: number): number;
 /** The shapes, in order, as one field. Throws with every problem `validateZhudaSdfShapes` finds. */
 export declare function createZhudaSdfField(shapes: readonly ZhudaSdfShape[]): ZhudaSdfField;
+/**
+ * Values of a field on the grid `createZhudaIsosurfaceMesh` samples
+ * (`zhudaIsosurfaceGrid`), negative inside: what `computeZhudaDensityVolume`
+ * makes on the GPU or in JavaScript.
+ */
+export interface ZhudaDensityVolume {
+    /** One value a grid point, x fastest, then y, then z. */
+    values: Float32Array;
+    /** Grid points along x, y and z. */
+    size: [number, number, number];
+    /** Where the first grid point is. */
+    origin: ZhudaVec3;
+    cellSize: number;
+    /** Where the values were computed. */
+    backend: 'webgpu' | 'cpu';
+}
+/** Which body `removeFloating` keeps: the one on the box's floor (default), the largest, or the one at a point. */
+export type ZhudaIsosurfaceAnchor = 'floor' | 'largest' | ZhudaVec3;
 export interface ZhudaIsosurfaceOptions {
-    /** The distance at a point, negative inside. A `ZhudaSdfField`'s `distance` serves. */
-    distance: (x: number, y: number, z: number) => number;
+    /**
+     * The distance at a point, negative inside. A `ZhudaSdfField`'s `distance`
+     * serves. With `volume` it may be left out: the volume, interpolated, is
+     * then the field.
+     */
+    distance?: (x: number, y: number, z: number) => number;
+    /**
+     * The field's values on this box's grid, computed before (on the GPU,
+     * `computeZhudaDensityVolume`): the mesher reads them instead of sampling
+     * `distance`, which only moves the vertices onto the surface and gives
+     * their normals.
+     */
+    volume?: ZhudaDensityVolume;
+    /**
+     * Before meshing, what is inside but not connected (through neighbouring
+     * grid points) to the anchor becomes outside: loose specks of rock do not
+     * float. `true` anchors on the box's floor: the body that comes within a
+     * cell of `min`'s height. `'largest'` keeps the largest body; a point keeps
+     * the body at it.
+     */
+    removeFloating?: boolean | {
+        anchor?: ZhudaIsosurfaceAnchor;
+    };
     /** The box to search; the surface must not touch its sides. */
     min: ZhudaVec3;
     max: ZhudaVec3;
@@ -90,6 +129,20 @@ export interface ZhudaIsosurfaceOptions {
 }
 /** What is wrong with the options; empty when they can be used. */
 export declare function validateZhudaIsosurface(options: ZhudaIsosurfaceOptions): string[];
+/**
+ * The grid `createZhudaIsosurfaceMesh` samples for a box: the box padded by
+ * two cells on every side, so a closed body never meets its edge; `size`
+ * grid points along each axis from `origin`, `cellSize` apart.
+ */
+export declare function zhudaIsosurfaceGrid(min: ZhudaVec3, max: ZhudaVec3, cellSize: number): {
+    origin: ZhudaVec3;
+    size: [number, number, number];
+};
+/**
+ * A volume as a field: its values interpolated (trilinear) between grid
+ * points, and the nearest edge value beyond the grid.
+ */
+export declare function zhudaVolumeDistance(volume: ZhudaDensityVolume): (x: number, y: number, z: number) => number;
 /**
  * The surface where the distance is 0, as a mesh, by surface nets: one vertex
  * in each cell the surface passes through, moved onto the surface, and a

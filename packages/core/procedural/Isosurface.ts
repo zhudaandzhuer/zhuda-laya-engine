@@ -327,9 +327,48 @@ export function createZhudaSdfField(shapes: readonly ZhudaSdfShape[]): ZhudaSdfF
   return { distance, nearest, bounds: { min, max } };
 }
 
+/**
+ * Values of a field on the grid `createZhudaIsosurfaceMesh` samples
+ * (`zhudaIsosurfaceGrid`), negative inside: what `computeZhudaDensityVolume`
+ * makes on the GPU or in JavaScript.
+ */
+export interface ZhudaDensityVolume {
+  /** One value a grid point, x fastest, then y, then z. */
+  values: Float32Array;
+  /** Grid points along x, y and z. */
+  size: [number, number, number];
+  /** Where the first grid point is. */
+  origin: ZhudaVec3;
+  cellSize: number;
+  /** Where the values were computed. */
+  backend: 'webgpu' | 'cpu';
+}
+
+/** Which body `removeFloating` keeps: the one on the box's floor (default), the largest, or the one at a point. */
+export type ZhudaIsosurfaceAnchor = 'floor' | 'largest' | ZhudaVec3;
+
 export interface ZhudaIsosurfaceOptions {
-  /** The distance at a point, negative inside. A `ZhudaSdfField`'s `distance` serves. */
-  distance: (x: number, y: number, z: number) => number;
+  /**
+   * The distance at a point, negative inside. A `ZhudaSdfField`'s `distance`
+   * serves. With `volume` it may be left out: the volume, interpolated, is
+   * then the field.
+   */
+  distance?: (x: number, y: number, z: number) => number;
+  /**
+   * The field's values on this box's grid, computed before (on the GPU,
+   * `computeZhudaDensityVolume`): the mesher reads them instead of sampling
+   * `distance`, which only moves the vertices onto the surface and gives
+   * their normals.
+   */
+  volume?: ZhudaDensityVolume;
+  /**
+   * Before meshing, what is inside but not connected (through neighbouring
+   * grid points) to the anchor becomes outside: loose specks of rock do not
+   * float. `true` anchors on the box's floor: the body that comes within a
+   * cell of `min`'s height. `'largest'` keeps the largest body; a point keeps
+   * the body at it.
+   */
+  removeFloating?: boolean | { anchor?: ZhudaIsosurfaceAnchor };
   /** The box to search; the surface must not touch its sides. */
   min: ZhudaVec3;
   max: ZhudaVec3;
@@ -352,7 +391,10 @@ export interface ZhudaIsosurfaceOptions {
 export function validateZhudaIsosurface(options: ZhudaIsosurfaceOptions): string[] {
   const errors: string[] = [];
   if (!options || typeof options !== 'object') return ['options must be an object'];
-  if (typeof options.distance !== 'function') errors.push('distance must be a function');
+  if (options.volume === undefined && typeof options.distance !== 'function')
+    errors.push('distance must be a function');
+  if (options.distance !== undefined && typeof options.distance !== 'function')
+    errors.push('distance must be a function');
   if (!isVec(options.min) || !isVec(options.max)) errors.push('min and max must be three numbers');
   else if (!options.min.every((v, k) => v < options.max[k]))
     errors.push('min must be below max on every axis');
@@ -381,7 +423,175 @@ export function validateZhudaIsosurface(options: ZhudaIsosurfaceOptions): string
     !(Number.isInteger(options.maxVertices) && options.maxVertices >= 3)
   )
     errors.push('maxVertices must be a whole number, 3 or more');
+  const floating = options.removeFloating;
+  if (floating !== undefined && typeof floating !== 'boolean') {
+    const anchor = floating && typeof floating === 'object' ? floating.anchor : null;
+    if (anchor !== undefined && anchor !== 'floor' && anchor !== 'largest' && !isVec(anchor))
+      errors.push("removeFloating: true, or { anchor: 'floor', 'largest' or a point }");
+  }
+  if (options.volume !== undefined && !errors.length) {
+    const v = options.volume;
+    const grid = zhudaIsosurfaceGrid(options.min, options.max, options.cellSize);
+    if (
+      !v ||
+      !(v.values instanceof Float32Array) ||
+      !Array.isArray(v.size) ||
+      v.size.some((n, k) => n !== grid.size[k]) ||
+      !isVec(v.origin) ||
+      v.origin.some((o, k) => Math.abs(o - grid.origin[k]) > options.cellSize * 1e-6) ||
+      v.cellSize !== options.cellSize ||
+      v.values.length !== grid.size[0] * grid.size[1] * grid.size[2]
+    )
+      errors.push(
+        `volume does not cover this box's grid (${grid.size.join(' x ')} points from ${grid.origin.map((o) => +o.toFixed(6)).join(', ')}); make it with the same min, max and cellSize`,
+      );
+  }
   return errors;
+}
+
+/**
+ * The grid `createZhudaIsosurfaceMesh` samples for a box: the box padded by
+ * two cells on every side, so a closed body never meets its edge; `size`
+ * grid points along each axis from `origin`, `cellSize` apart.
+ */
+export function zhudaIsosurfaceGrid(
+  min: ZhudaVec3,
+  max: ZhudaVec3,
+  cellSize: number,
+): { origin: ZhudaVec3; size: [number, number, number] } {
+  const h = cellSize;
+  return {
+    origin: [min[0] - 2 * h, min[1] - 2 * h, min[2] - 2 * h],
+    size: [
+      Math.ceil((max[0] - min[0]) / h) + 5,
+      Math.ceil((max[1] - min[1]) / h) + 5,
+      Math.ceil((max[2] - min[2]) / h) + 5,
+    ],
+  };
+}
+
+/**
+ * A volume as a field: its values interpolated (trilinear) between grid
+ * points, and the nearest edge value beyond the grid.
+ */
+export function zhudaVolumeDistance(
+  volume: ZhudaDensityVolume,
+): (x: number, y: number, z: number) => number {
+  const { values, size, origin, cellSize: h } = volume;
+  const [nx, ny, nz] = size;
+  const clamp = (v: number, n: number) => (v < 0 ? 0 : v > n - 1 ? n - 1 : v);
+  return (x, y, z) => {
+    const fx = clamp((x - origin[0]) / h, nx),
+      fy = clamp((y - origin[1]) / h, ny),
+      fz = clamp((z - origin[2]) / h, nz);
+    const x0 = Math.min(Math.floor(fx), nx - 2),
+      y0 = Math.min(Math.floor(fy), ny - 2),
+      z0 = Math.min(Math.floor(fz), nz - 2);
+    const tx = fx - x0,
+      ty = fy - y0,
+      tz = fz - z0;
+    const at = (i: number, j: number, k: number) => values[i + j * nx + k * nx * ny];
+    const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+    const c00 = lerp(at(x0, y0, z0), at(x0 + 1, y0, z0), tx),
+      c10 = lerp(at(x0, y0 + 1, z0), at(x0 + 1, y0 + 1, z0), tx),
+      c01 = lerp(at(x0, y0, z0 + 1), at(x0 + 1, y0, z0 + 1), tx),
+      c11 = lerp(at(x0, y0 + 1, z0 + 1), at(x0 + 1, y0 + 1, z0 + 1), tx);
+    return lerp(lerp(c00, c10, ty), lerp(c01, c11, ty), tz);
+  };
+}
+
+/**
+ * Keeps the inside grid points (value <= 0) connected, through the six
+ * neighbours of each, to the anchor's; every other inside point is set to
+ * `outside`. Returns how many bodies were removed. Grid points at or below
+ * the height `floorTop` anchor `'floor'`.
+ */
+function keepConnected(
+  values: Float32Array,
+  size: readonly [number, number, number],
+  origin: ZhudaVec3,
+  h: number,
+  anchor: ZhudaIsosurfaceAnchor,
+  floorTop: number,
+  outside: number,
+): number {
+  const [nx, ny, nz] = size;
+  const total = nx * ny * nz;
+  const label = new Int32Array(total);
+  const queue = new Int32Array(total);
+  const sizes: number[] = [0];
+  // Label every body: 1, 2, 3, ... in the order they are met.
+  for (let start = 0; start < total; start++) {
+    if (label[start] || values[start] > 0) continue;
+    const id = sizes.length;
+    let head = 0,
+      tail = 0,
+      count = 0;
+    queue[tail++] = start;
+    label[start] = id;
+    while (head < tail) {
+      const i = queue[head++];
+      count++;
+      const x = i % nx,
+        y = Math.floor(i / nx) % ny,
+        z = Math.floor(i / (nx * ny));
+      const visit = (j: number) => {
+        if (!label[j] && values[j] <= 0) {
+          label[j] = id;
+          queue[tail++] = j;
+        }
+      };
+      if (x > 0) visit(i - 1);
+      if (x < nx - 1) visit(i + 1);
+      if (y > 0) visit(i - nx);
+      if (y < ny - 1) visit(i + nx);
+      if (z > 0) visit(i - nx * ny);
+      if (z < nz - 1) visit(i + nx * ny);
+    }
+    sizes.push(count);
+  }
+  const keep = new Set<number>();
+  if (anchor === 'largest') {
+    let best = 0;
+    for (let id = 1; id < sizes.length; id++) if (sizes[id] > sizes[best]) best = id;
+    if (best) keep.add(best);
+  } else if (anchor === 'floor') {
+    const layers = Math.floor((floorTop - origin[1]) / h + 1e-9);
+    for (let z = 0; z < nz; z++)
+      for (let y = 0; y <= Math.min(layers, ny - 1); y++)
+        for (let x = 0; x < nx; x++) {
+          const id = label[x + y * nx + z * nx * ny];
+          if (id) keep.add(id);
+        }
+    if (!keep.size)
+      throw Error(
+        "removeFloating: nothing is inside within a cell of the box's floor (min's height)",
+      );
+  } else {
+    // The inside grid point nearest the anchor, within two cells.
+    let best = -1,
+      bestD = Infinity;
+    const cx = Math.round((anchor[0] - origin[0]) / h),
+      cy = Math.round((anchor[1] - origin[1]) / h),
+      cz = Math.round((anchor[2] - origin[2]) / h);
+    for (let z = cz - 2; z <= cz + 2; z++)
+      for (let y = cy - 2; y <= cy + 2; y++)
+        for (let x = cx - 2; x <= cx + 2; x++) {
+          if (x < 0 || y < 0 || z < 0 || x >= nx || y >= ny || z >= nz) continue;
+          const i = x + y * nx + z * nx * ny;
+          if (!label[i]) continue;
+          const d =
+            (origin[0] + x * h - anchor[0]) ** 2 +
+            (origin[1] + y * h - anchor[1]) ** 2 +
+            (origin[2] + z * h - anchor[2]) ** 2;
+          if (d < bestD) ((bestD = d), (best = i));
+        }
+    if (best < 0)
+      throw Error('removeFloating: the anchor point is not inside the body (within two cells)');
+    keep.add(label[best]);
+  }
+  for (let i = 0; i < total; i++) if (label[i] && !keep.has(label[i])) values[i] = outside;
+  return sizes.length - 1 - keep.size;
 }
 
 /**
@@ -393,43 +603,49 @@ export function validateZhudaIsosurface(options: ZhudaIsosurfaceOptions): string
 export function createZhudaIsosurfaceMesh(options: ZhudaIsosurfaceOptions): MeshData {
   const errors = validateZhudaIsosurface(options);
   if (errors.length) throw Error(`Invalid isosurface: ${errors.join('; ')}`);
-  const { distance, min, max, cellSize: h } = options;
+  const { min, max, cellSize: h } = options;
+  const distance = options.distance ?? zhudaVolumeDistance(options.volume!);
   const project = options.project ?? 3;
   const maxVertices = options.maxVertices ?? 2_000_000;
   // Grid points: n per axis, the box padded by two cells so the surface never meets its side.
-  const o: ZhudaVec3 = [min[0] - 2 * h, min[1] - 2 * h, min[2] - 2 * h];
-  const nx = Math.ceil((max[0] - min[0]) / h) + 5,
-    ny = Math.ceil((max[1] - min[1]) / h) + 5,
-    nz = Math.ceil((max[2] - min[2]) / h) + 5;
+  const grid = zhudaIsosurfaceGrid(min, max, h);
+  const o = grid.origin;
+  const [nx, ny, nz] = grid.size;
   const sx = 1,
     sy = nx,
     sz = nx * ny;
-  const values = new Float32Array(nx * ny * nz);
+  const values = options.volume ? options.volume.values.slice() : new Float32Array(nx * ny * nz);
   // Blocks of 8 cells a side: where the distance at a block's middle is more than its half
   // diagonal, the surface is not in it (the distance grows no faster than the way travelled)
   // and its points all take that sign without being asked.
   const B = 8;
   const reach = Math.sqrt(3) * (B / 2) * h * 1.05;
-  for (let bz = 0; bz < nz; bz += B)
-    for (let by = 0; by < ny; by += B)
-      for (let bx = 0; bx < nx; bx += B) {
-        const ex = Math.min(bx + B, nx),
-          ey = Math.min(by + B, ny),
-          ez = Math.min(bz + B, nz);
-        const mid = distance(
-          o[0] + ((bx + ex - 1) / 2) * h,
-          o[1] + ((by + ey - 1) / 2) * h,
-          o[2] + ((bz + ez - 1) / 2) * h,
-        );
-        const far = Math.abs(mid) > reach;
-        for (let z = bz; z < ez; z++)
-          for (let y = by; y < ey; y++)
-            for (let x = bx; x < ex; x++) {
-              values[x * sx + y * sy + z * sz] = far
-                ? mid
-                : distance(o[0] + x * h, o[1] + y * h, o[2] + z * h);
-            }
-      }
+  if (!options.volume)
+    for (let bz = 0; bz < nz; bz += B)
+      for (let by = 0; by < ny; by += B)
+        for (let bx = 0; bx < nx; bx += B) {
+          const ex = Math.min(bx + B, nx),
+            ey = Math.min(by + B, ny),
+            ez = Math.min(bz + B, nz);
+          const mid = distance(
+            o[0] + ((bx + ex - 1) / 2) * h,
+            o[1] + ((by + ey - 1) / 2) * h,
+            o[2] + ((bz + ez - 1) / 2) * h,
+          );
+          const far = Math.abs(mid) > reach;
+          for (let z = bz; z < ez; z++)
+            for (let y = by; y < ey; y++)
+              for (let x = bx; x < ex; x++) {
+                values[x * sx + y * sy + z * sz] = far
+                  ? mid
+                  : distance(o[0] + x * h, o[1] + y * h, o[2] + z * h);
+              }
+        }
+  if (options.removeFloating) {
+    const anchor =
+      (typeof options.removeFloating === 'object' && options.removeFloating.anchor) || 'floor';
+    keepConnected(values, grid.size, o, h, anchor, min[1] + h, h);
+  }
   for (const k of [0, nx - 1])
     for (let z = 0; z < nz; z++)
       for (let y = 0; y < ny; y++)

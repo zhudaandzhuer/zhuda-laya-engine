@@ -115,7 +115,7 @@ test('a compute spec is checked, and becomes the shader the engine wraps round i
       'buffer ZhudaPlaces{vec4 zhudaPlaces[];};\n' +
       'readonly buffer ZhudaSeeds{float zhudaSeeds[];};\n' +
       'void zhudaStep(uint index){zhudaPlaces[index].y-=u_ZhudaDrop*float(u_ZhudaTimes);}\n' +
-      'void main(){uint index=gl_GlobalInvocationID.x;if(index>=uint(u_ZhudaCount)){return;}zhudaStep(index);}',
+      'void main(){uint index=gl_GlobalInvocationID.x+gl_GlobalInvocationID.y*2097152u;if(index>=uint(u_ZhudaCount)){return;}zhudaStep(index);}',
   );
   assert.throws(() => zhudaComputeSource({ ...particles(), name: 'x' }), /Invalid compute pass/);
 });

@@ -66,6 +66,12 @@ const SIZE: Record<ZhudaComputeElement, number> = { float: 1, vec4: 4, uint: 1 }
 const GLSL: Record<ZhudaComputeElement, string> = { float: 'float', vec4: 'vec4', uint: 'uint' };
 /** Indices one group of the GPU's step covers. */
 export const ZHUDA_COMPUTE_GROUP = 64;
+/**
+ * Groups along x in one row of a dispatch. WebGPU allows at most 65535
+ * groups along an axis, so a dispatch of more than this many groups is laid
+ * out in rows along y; up to this many it is one row, as it always was.
+ */
+const GROUPS_PER_ROW = 32768;
 /** The uniform a step reads its count from. */
 export const ZHUDA_COMPUTE_COUNT = 'u_ZhudaCount';
 
@@ -142,7 +148,7 @@ export function zhudaComputeSource(spec: ZhudaComputeSpec): string {
     .join('\n');
   return (
     `layout(local_size_x=${ZHUDA_COMPUTE_GROUP},local_size_y=1,local_size_z=1)in;\n${blocks}\n${spec.code}\n` +
-    `void main(){uint index=gl_GlobalInvocationID.x;if(index>=uint(${ZHUDA_COMPUTE_COUNT})){return;}zhudaStep(index);}`
+    `void main(){uint index=gl_GlobalInvocationID.x+gl_GlobalInvocationID.y*${GROUPS_PER_ROW * ZHUDA_COMPUTE_GROUP}u;if(index>=uint(${ZHUDA_COMPUTE_COUNT})){return;}zhudaStep(index);}`
   );
 }
 /** `zhudaPlaces` is the array of the block `ZhudaPlaces`. */
@@ -369,7 +375,12 @@ export class ZhudaComputePass {
         this.shader,
         this.defines,
         [this.uniformData, this.bufferData],
-        new l.Vector3(Math.ceil(count / ZHUDA_COMPUTE_GROUP), 1, 1),
+        // More than 65535 groups along one axis is refused by WebGPU: rows along y past GROUPS_PER_ROW.
+        new l.Vector3(
+          Math.min(Math.ceil(count / ZHUDA_COMPUTE_GROUP), GROUPS_PER_ROW),
+          Math.ceil(Math.ceil(count / ZHUDA_COMPUTE_GROUP) / GROUPS_PER_ROW),
+          1,
+        ),
       );
       this.commands.executeCMDs();
       this.commands.clearCMDs();

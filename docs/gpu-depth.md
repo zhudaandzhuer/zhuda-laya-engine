@@ -64,6 +64,12 @@ pass.dispatch(100000);
   as `bounds`, since nothing else knows where they are.
 - `await pass.read(name)` copies a buffer out, for a check or a save. A draw
   does not need it.
+- A dispatch takes up to 16 777 216 indices. WebGPU allows at most 65 535
+  groups of 64 along an axis, so past 2 097 152 indices the groups are laid
+  out in rows (`index = x + y × 2 097 152`); `zhudaStep` still gets one
+  index. (Until 2026-11-17 a dispatch of more than 4 194 240 indices was
+  refused by WebGPU and wrote nothing; record
+  `docs/plans/records/isosurface-density/`.)
 - `pass.dispose()` after the draws that use its buffers.
 
 What a step of the check's particles costs (Apple M4, a step for each
