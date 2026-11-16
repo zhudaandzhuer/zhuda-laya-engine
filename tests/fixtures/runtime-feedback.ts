@@ -100,12 +100,16 @@ async function main() {
     await wait(150);
     const playing = audio.getDiagnostics(),
       heapPlaying = heap();
+    // suspend() and resume() settle when the audio device answers, not after
+    // a fixed time: a Windows CI runner without a sound card took over 50 ms.
+    const settled = async (state: string) => {
+      for (let i = 0; i < 100 && audio.getDiagnostics().contextState !== state; i++) await wait(20);
+      return audio.getDiagnostics();
+    };
     audio.handleFocusOrVisibilityChange(false, false);
-    await wait(30);
-    const hidden = audio.getDiagnostics();
+    const hidden = await settled('suspended');
     audio.handleFocusOrVisibilityChange(true, true);
-    await wait(50);
-    const resumed = audio.getDiagnostics();
+    const resumed = await settled('running');
     audio.playStream({
       id: 'music',
       streamId: 'long.wav',
