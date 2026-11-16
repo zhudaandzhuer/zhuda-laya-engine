@@ -423,3 +423,41 @@ the back, the palm, the side, three quarters, against the light and close
 to the nails, and keeps the pictures. The pose is baked into the mesh: there
 are no skinning weights or rig, no prints, pores or veins beyond a shader's
 grain, and the look is judged by eye, not against a photograph.
+
+## Cutting meshes: union, subtract, intersect
+
+`zhuda-laya-engine/csg` is an entry of its own: a game that does not import it
+does not carry it (record `docs/plans/records/mesh-csg/`; drawn on WebGL and
+WebGPU on a desktop).
+
+```ts
+import { zhudaCsg, validateZhudaCsgInput } from 'zhuda-laya-engine/csg';
+import { createZhudaBoxMesh, ZhudaDynamicMesh } from 'zhuda-laya-engine';
+
+const wall = createZhudaBoxMesh({ width: 4, height: 3, depth: 0.3, origin: 'bottom' });
+const door = createZhudaBoxMesh({ width: 1, height: 2.1, depth: 1, origin: 'bottom' });
+const { mesh, groups, report } = zhudaCsg(wall, door, 'subtract');
+new ZhudaDynamicMesh(mesh, scene).node.meshRenderer.sharedMaterial = plaster;
+```
+
+- Both inputs must be closed: `validateZhudaCsgInput(mesh)` counts open
+  edges, edges of more than two triangles and triangles without area; an
+  input with a hole or a shared edge is refused with that message, a
+  triangle without area is left out.
+- Each face keeps the normals, texture coordinates and colours of the
+  triangle it came from, interpolated where it was cut; faces from `b` keep
+  `b`'s (turned inward in a subtraction). `groups` gives the index ranges of
+  each input, for a material each. Tangents are worked out again when an
+  input had them.
+- `report`: triangles in and out, the open and non-manifold edges of the
+  result (both 0 when it is a closed single surface) and the time taken.
+- It is the binary space partitioning of csg.js (MIT): exact for planar
+  cuts, which chain well (five windows cut one after another stay closed,
+  12 to 664 triangles). Curved cutters splinter what they cut (a box bitten
+  by a sphere of 720 triangles: 12 to about 1 200) and, cut after cut, lose
+  closedness (by the second overlapping or third separate sphere): the
+  report says so and the next cut refuses the result. Points closer than
+  0.1 mm are made one. Destructible scenery cut many times needs another
+  base (a BVH clip or manifold-3d, in the plan).
+- Synchronous: 2 ms for the wall and its door, about 12 ms for a box minus
+  a sphere on a desktop. Past 65 535 vertices, `splitZhudaMesh` the result.

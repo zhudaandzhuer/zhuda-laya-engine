@@ -48,6 +48,11 @@
       "import": "./dist/sdk/zhuda-laya-demo.esm.js",
       "require": "./dist/sdk/zhuda-laya-demo.cjs"
     },
+    "./csg": {
+      "types": "./packages/types/csg/index.d.ts",
+      "import": "./dist/sdk/zhuda-laya-csg.esm.js",
+      "require": "./dist/sdk/zhuda-laya-csg.cjs"
+    },
     "./min": {
       "types": "./packages/types/index.d.ts",
       "import": "./dist/sdk/zhuda-laya-engine.min.esm.js",
@@ -179,6 +184,7 @@
     "verify:flythrough": "node scripts/verify-flythrough.mjs",
     "verify:density-volume": "node scripts/verify-density-volume.mjs",
     "verify:film-underwater": "node scripts/verify-film-underwater.mjs",
+    "verify:csg": "node scripts/verify-csg.mjs",
     "flythrough:critic": "node scripts/flythrough-critic.mjs",
     "verify:shader-warm-up": "node scripts/verify-shader-warm-up.mjs",
     "verify:basis-textures": "node scripts/verify-basis-textures.mjs",

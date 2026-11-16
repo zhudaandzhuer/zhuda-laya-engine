@@ -1,9 +1,10 @@
 # Mesh boolean operations (CSG)
 
-Status: Deferred (waiting for a consumer game that changes geometry while it
-runs; nothing here is built by this document)\
+Status: Implemented as an optional entry, `zhuda-laya-engine/csg` (BSP, for a
+few cuts; desktop WebGL and WebGPU; no consumer yet): see
+[task](task.md) and [verification](verification.md)\
 Owner: Engine/toolchain\
-Last reviewed: 2026-11-16
+Last reviewed: 2026-11-17
 
 ## Source requirement
 

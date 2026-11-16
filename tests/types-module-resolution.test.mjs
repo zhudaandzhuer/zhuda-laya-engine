@@ -40,7 +40,9 @@ const consumerSource = `
 import { TopologyResolver, EngineGuard, ZhudaRuntimeSession } from 'zhuda-laya-engine';
 import { TopologyResolver as MinTopology } from 'zhuda-laya-engine/min';
 import { UnityBridgePipeline } from 'zhuda-laya-engine/demo';
-export const values = [TopologyResolver, EngineGuard, ZhudaRuntimeSession, MinTopology, UnityBridgePipeline];
+import { zhudaCsg, validateZhudaCsgInput, type ZhudaCsgResult } from 'zhuda-laya-engine/csg';
+export const values = [TopologyResolver, EngineGuard, ZhudaRuntimeSession, MinTopology, UnityBridgePipeline, zhudaCsg, validateZhudaCsgInput];
+export type Cut = ZhudaCsgResult;
 `;
 
 test('published declarations resolve under Bundler, Node16 and NodeNext without skipLibCheck', () => {

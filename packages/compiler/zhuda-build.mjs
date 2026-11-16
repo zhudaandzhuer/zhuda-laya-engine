@@ -248,6 +248,8 @@ export async function runZhudaBuild(options = {}) {
     for (const [entry, stem] of [
       [sdkEntryFile, 'zhuda-laya-engine'],
       [path.join(engineRoot, 'packages/demo/index.ts'), 'zhuda-laya-demo'],
+      // Mesh booleans: an optional entry, never in the main bundle.
+      [path.join(engineRoot, 'packages/core/csg/index.ts'), 'zhuda-laya-csg'],
     ]) {
       for (const [format, extension, platform] of [
         ['esm', '.esm.js', 'neutral'],
