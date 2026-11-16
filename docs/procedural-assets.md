@@ -321,6 +321,21 @@ rest of the kit:
   returned. A rock field of 4.9 million points took about 0.3 s on WebGPU
   and 1.5 s in JavaScript on a desktop (record
   `docs/plans/records/isosurface-density/`); meshing stays on the CPU.
+- `ZhudaDistanceBricks.build({ distance | volume, min, max, cellSize, band })`
+  keeps the distance to the surface near it, for a camera or a character:
+  bricks of 4 × 4 × 4 samples as signed bytes (`band / 127` a step) where
+  the surface is within `band` (default four cells), only inside or outside
+  for every other brick. `distance(x, y, z)` (trilinear; `±band` beyond the
+  band; `band` outside the region), `normal`, `raycast(origin, direction,
+  max)` and `sweepSphere(from, to, radius)` answer from it, and
+  `queryProvider(id)` hands the same to `ZhudaSceneQueries`, so
+  `resolveCameraBoom` stops short of the rock. The engine answers; sliding,
+  stopping or taking damage is the game's rule. A field of distances must be
+  exact outside, or at least never more than the true distance (a union of
+  shapes is; `max(a, -b)` says less inside the cut). A sphere of radius 2 m
+  in an 8 m box at 0.1 m, band 0.5 m: 2 796 of 19 683 bricks kept, 258 KB
+  against 2.2 MB for the same samples as floats, built in about 9 ms on a
+  desktop (record `docs/plans/records/distance-bricks/`).
 - `createZhudaSdfUnion(shapes, { reach, cell })` is a plain union of many
   small shapes (creases, rivets) found through a grid: exact within `reach`
   of a shape, `reach` farther away (never more than the true distance). Use

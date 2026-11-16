@@ -65,6 +65,7 @@ export * from './DebugStats.js';
 export * from './TransformGizmo.js';
 export * from './ComputePass.js';
 export * from './DensityVolume.js';
+export * from './DistanceBricks.js';
 export * from './SurfaceBuffer.js';
 export * from './ObjectMotion.js';
 export * from './Foliage.js';
