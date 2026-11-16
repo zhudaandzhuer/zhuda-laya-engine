@@ -87,7 +87,26 @@ export function stageBundle(source, destination) {
     fs.rmSync(stage, { recursive: true, force: true });
   }
 }
+/**
+ * What a Squirrel package needs from package.json (DIST-01): Squirrel's
+ * NuGet spec requires authors and a description, and Electron Forge takes
+ * them from `author` and `description`. Empty when nothing is missing.
+ */
+export function missingPackageMetadata(pkg) {
+  const author = typeof pkg.author === 'string' ? pkg.author : pkg.author?.name;
+  return [
+    !String(author ?? '').trim() && 'author',
+    !String(pkg.description ?? '').trim() && 'description',
+  ].filter(Boolean);
+}
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  // Staging runs before every package build (prepackage): stop here rather
+  // than in the Squirrel maker after the app was built.
+  const missing = missingPackageMetadata(
+    JSON.parse(fs.readFileSync(path.join(import.meta.dirname, 'package.json'), 'utf8')),
+  );
+  if (missing.length)
+    throw Error('package.json needs ' + missing.join(' and ') + ' for the Windows installer');
   if (!process.env.ZHUDA_WEB_ROOT)
     throw Error('Set ZHUDA_WEB_ROOT to a built consumer dist/web before packaging');
   console.log(

@@ -1,6 +1,11 @@
 {
   "name": "zhuda-windows-webgpu-host",
   "version": "1.0.0",
+  "description": "Zhuda WebGPU desktop host: a built Zhuda consumer packaged with Electron",
+  "author": {
+    "name": "zhudaandzhuer",
+    "url": "https://github.com/zhudaandzhuer"
+  },
   "private": true,
   "type": "module",
   "main": "main.mjs",

@@ -4,7 +4,11 @@ import { linkFile, NO_FILE_LINKS } from './helpers/links.mjs';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { stageBundle, resolveBundleFile } from '../examples/windows-webgpu/bundle.mjs';
+import {
+  stageBundle,
+  resolveBundleFile,
+  missingPackageMetadata,
+} from '../examples/windows-webgpu/bundle.mjs';
 test('desktop stages a standalone consumer and rejects directory-index symlink escapes', (t) => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'zhuda-desktop-')),
     source = path.join(root, 'source'),
@@ -28,4 +32,14 @@ test('desktop stages a standalone consumer and rejects directory-index symlink e
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
+});
+
+test('the Windows installer metadata is present and checked before packaging (DIST-01)', () => {
+  const pkg = JSON.parse(
+    fs.readFileSync(new URL('../examples/windows-webgpu/package.json', import.meta.url), 'utf8'),
+  );
+  assert.deepEqual(missingPackageMetadata(pkg), []);
+  assert.deepEqual(missingPackageMetadata({}), ['author', 'description']);
+  assert.deepEqual(missingPackageMetadata({ author: { name: ' ' }, description: 'x' }), ['author']);
+  assert.deepEqual(missingPackageMetadata({ author: 'A', description: '' }), ['description']);
 });
