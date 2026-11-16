@@ -18,7 +18,7 @@ timestamps). Evidence (outside the repository): `EV` =
 | Fly-through with water, twice a backend   | `npm run verify:flythrough -- tests/fixtures/flythrough/underwater.json` (with and without `ZHUDA_FILM_RENDERER=webgpu`) | PASS each; GPU average WebGL 6.76, 6.85 ms; WebGPU 4.16, 4.15 ms | `EV/wet-*` |
 | The same without water                    | the same file with `look.underwater: false` (made in the session's scratch folder)                                       | PASS each; GPU average WebGL 6.72, 6.61 ms; WebGPU 4.06, 4.06 ms | `EV/dry-*` |
 | Links of the route                        | a script over its relative links and anchors                                                                             | all resolve                                                      | —          |
-| Build, types, declarations, doctor, tests | `npm run verify`                                                                                                         | see the commit's record of the run                               | —          |
+| Build, types, declarations, doctor, tests | `npm run verify`                                                                                                         | PASS, 919 of 919                                                 | —          |
 
 ## Limits and decision
 
