@@ -9,6 +9,7 @@ import ts from 'typescript';
 import { PNG } from 'pngjs';
 import { chromeFixture } from './lib/chrome-fixture.mjs';
 import { runConsumerBuild } from '../packages/compiler/consumer-build.mjs';
+import { runNpm } from './lib/node-tools.mjs';
 const engineRoot = path.resolve(import.meta.dirname, '..');
 // RGB comparison (alpha ignored): a pixel changes when any channel differs by
 // more than 2; foreground is every pixel outside the most common colour.
@@ -88,15 +89,10 @@ fs.cpSync(path.join(engineRoot, 'tests/fixtures/crowd'), path.join(consumer, 'sr
 });
 const version = JSON.parse(fs.readFileSync(path.join(engineRoot, 'package.json'))).version;
 const packed = JSON.parse(
-  execFileSync(
-    'npm',
-    ['pack', '--json', '--foreground-scripts=false', '--pack-destination', root],
-    {
-      cwd: engineRoot,
-      encoding: 'utf8',
-      maxBuffer: 16 * 1024 * 1024,
-    },
-  ),
+  runNpm(['pack', '--json', '--foreground-scripts=false', '--pack-destination', root], {
+    cwd: engineRoot,
+    maxBuffer: 16 * 1024 * 1024,
+  }),
 )[0];
 const sdk = path.join(consumer, 'node_modules/zhuda-laya-engine');
 // What an earlier run unpacked must not stay: a file the package no longer ships would shadow one it does.

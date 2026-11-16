@@ -3,22 +3,14 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { execFileSync } from 'node:child_process';
 import ts from 'typescript';
+import { runNpm as runNpmTool } from '../scripts/lib/node-tools.mjs';
 
 const repo = path.resolve(import.meta.dirname, '..');
 
-// On Windows `npm` is a .cmd shim that execFileSync cannot start without a
-// shell, so run npm's own CLI through Node when `npm test` provides its path.
-function runNpm(args) {
-  const options = { cwd: repo, encoding: 'utf8', maxBuffer: 32e6 };
-  if (process.env.npm_execpath?.endsWith('.js'))
-    return execFileSync(process.execPath, [process.env.npm_execpath, ...args], options);
-  return execFileSync(process.platform === 'win32' ? 'npm.cmd' : 'npm', args, {
-    ...options,
-    shell: process.platform === 'win32',
-  });
-}
+// npm through the shared helper: on Windows `npm` is a .cmd shim that
+// execFileSync cannot start without a shell.
+const runNpm = (args) => runNpmTool(args, { cwd: repo, maxBuffer: 32e6 });
 
 // Mirror exactly the declaration files npm would publish, so the check sees
 // what a consumer installs (and not the repository's TypeScript sources).

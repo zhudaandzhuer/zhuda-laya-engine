@@ -8,6 +8,7 @@ import ts from 'typescript';
 import { execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { chromeFixture } from './lib/chrome-fixture.mjs';
+import { runNpm } from './lib/node-tools.mjs';
 const engine = path.resolve(import.meta.dirname, '..'),
   root = path.resolve(process.env.WEBGPU_OUT || '/tmp/zhuda-webgpu'),
   consumer = path.join(root, 'consumer'),
@@ -19,15 +20,10 @@ const write = (p, v) => fs.writeFileSync(path.join(consumer, p), v),
   sha = (b) => crypto.createHash('sha256').update(b).digest('hex');
 const version = JSON.parse(fs.readFileSync(path.join(engine, 'package.json'))).version;
 const packed = JSON.parse(
-  execFileSync(
-    'npm',
-    ['pack', '--json', '--foreground-scripts=false', '--pack-destination', root],
-    {
-      cwd: engine,
-      encoding: 'utf8',
-      maxBuffer: 16e6,
-    },
-  ),
+  runNpm(['pack', '--json', '--foreground-scripts=false', '--pack-destination', root], {
+    cwd: engine,
+    maxBuffer: 16e6,
+  }),
 )[0];
 const sdk = path.join(consumer, 'node_modules/zhuda-laya-engine');
 // What an earlier run unpacked must not stay: a file the package no longer ships would shadow one it does.

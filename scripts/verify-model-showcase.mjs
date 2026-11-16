@@ -8,6 +8,7 @@ import { execFileSync } from 'node:child_process';
 import ts from 'typescript';
 import { chromeFixture } from './lib/chrome-fixture.mjs';
 import { runConsumerBuild } from '../packages/compiler/consumer-build.mjs';
+import { runNpm } from './lib/node-tools.mjs';
 const engine = path.resolve(import.meta.dirname, '..'),
   root = path.resolve(process.env.SHOWCASE_OUT || '/tmp/zhuda-model-showcase'),
   consumer = path.join(root, 'consumer'),
@@ -36,15 +37,10 @@ invalid.buffers[0].uri = 'data:application/octet-stream;base64,' + payload.toStr
 fs.writeFileSync(path.join(consumer, 'public/assets/invalid-cubic.gltf'), JSON.stringify(invalid));
 const version = JSON.parse(fs.readFileSync(path.join(engine, 'package.json'))).version;
 const packed = JSON.parse(
-  execFileSync(
-    'npm',
-    ['pack', '--json', '--foreground-scripts=false', '--pack-destination', root],
-    {
-      cwd: engine,
-      encoding: 'utf8',
-      maxBuffer: 16e6,
-    },
-  ),
+  runNpm(['pack', '--json', '--foreground-scripts=false', '--pack-destination', root], {
+    cwd: engine,
+    maxBuffer: 16e6,
+  }),
 )[0];
 const sdk = path.join(consumer, 'node_modules/zhuda-laya-engine');
 // What an earlier run unpacked must not stay: a file the package no longer ships would shadow one it does.

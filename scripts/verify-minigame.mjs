@@ -5,6 +5,7 @@ import crypto from 'node:crypto';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { initConsumer } from '../packages/compiler/zhuda-init.mjs';
+import { runNpm } from './lib/node-tools.mjs';
 
 const engine = path.resolve(import.meta.dirname, '..');
 const root = path.resolve(process.env.MINIGAME_OUT || '/tmp/zhuda-minigame-acceptance');
@@ -28,15 +29,10 @@ if (declaredEngine !== version)
     `Consumer must pin zhuda-laya-engine ${version}; found ${declaredEngine || 'missing'}`,
   );
 const packed = JSON.parse(
-  execFileSync(
-    'npm',
-    ['pack', '--json', '--foreground-scripts=false', '--pack-destination', root],
-    {
-      cwd: engine,
-      encoding: 'utf8',
-      maxBuffer: 16e6,
-    },
-  ),
+  runNpm(['pack', '--json', '--foreground-scripts=false', '--pack-destination', root], {
+    cwd: engine,
+    maxBuffer: 16e6,
+  }),
 )[0];
 const sdk = path.join(consumer, 'node_modules/zhuda-laya-engine');
 // What an earlier run unpacked must not stay: a file the package no longer ships would shadow one it does.
