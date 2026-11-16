@@ -64,3 +64,10 @@ and `EV/v40/`. That frame was slow for another reason (the light shafts,
 - Motion vectors: TAA and motion blur see swaying leaves as still.
 - Art direction: wind strength and direction are the game's (it uses 0.8,
   down the river).
+
+## Later finding (2026-11-17)
+
+The install put the wind in front of LayaAir's own `Scene3D` uniforms, which
+moved WebGL 2's `Scene3D` uniform block: lit WebGL shaders read the wrong fog
+and number of lights (`verify:film-remount` drew its yard blown out). Fixed
+and recorded in `docs/plans/records/scene-uniform-order/`.

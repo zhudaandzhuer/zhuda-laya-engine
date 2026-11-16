@@ -118,7 +118,7 @@ export function installLaya342Foliage(runtime: any = (globalThis as any).Laya): 
       if (!made.reason) {
         text = made.text;
         state.includes.add(name);
-        if (name === 'Sprite3DVertex.glsl') state.declared = declareWind(runtime);
+        if (name === 'Sprite3DVertex.glsl') declareWind(runtime, () => (state.declared = true));
       }
     }
     return addInclude.call(this, name, text, ...rest);
@@ -138,17 +138,38 @@ export function installLaya342Foliage(runtime: any = (globalThis as any).Laya): 
   return true;
 }
 
-function declareWind(l: any): boolean {
-  const map =
-    l.Scene3D?.sceneUniformMap ??
-    l.LayaGL?.renderDeviceFactory?.createGlobalUniformMap?.('Scene3D');
-  if (!map?.addShaderUniform) return false;
-  map.addShaderUniform(
-    l.Shader3D.propertyNameToID(ZHUDA_WIND_UNIFORM),
-    ZHUDA_WIND_UNIFORM,
-    l.ShaderDataType.Vector4,
-  );
-  return true;
+/**
+ * Adds the wind to LayaAir's `Scene3D` uniforms after LayaAir's own, then
+ * calls `done`. On WebGL 2 LayaAir packs the numbers of that map into one
+ * uniform buffer in the map's order, while its shaders declare the block from
+ * fixed text (`u_Time`, `u_FogParams`, `u_FogColor`, `u_GIRotate`,
+ * `u_DirationLightCount`). The include this is called from is registered
+ * before `Scene3D.shaderValueInit` makes that map: making it here put the wind
+ * first, moved each of those 16 bytes, and every lit WebGL shader read its fog
+ * and its number of lights from the wrong place. So the wind waits for
+ * LayaAir's map; with no map and no way to wait it is not declared, and
+ * `ZhudaFoliageWind` says so.
+ */
+function declareWind(l: any, done: () => void): void {
+  const scene = l.Scene3D;
+  const add = (map: any) => {
+    if (typeof map?.addShaderUniform !== 'function') return;
+    map.addShaderUniform(
+      l.Shader3D.propertyNameToID(ZHUDA_WIND_UNIFORM),
+      ZHUDA_WIND_UNIFORM,
+      l.ShaderDataType.Vector4,
+    );
+    done();
+  };
+  if (scene?.sceneUniformMap) return add(scene.sceneUniformMap);
+  const init = scene?.shaderValueInit;
+  if (typeof init !== 'function') return;
+  scene.shaderValueInit = function (this: unknown, ...args: unknown[]) {
+    scene.shaderValueInit = init;
+    const result = init.apply(this, args);
+    add(scene.sceneUniformMap);
+    return result;
+  };
 }
 
 /** Whether the wind and the coverage reach LayaAir's shaders in this runtime (after `Laya.init`). */

@@ -2,13 +2,16 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {
+  installLaya342Foliage,
   validateZhudaWind,
+  zhudaFoliageStatus,
   zhudaMarkFoliage,
   zhudaPatchFoliageInclude,
   zhudaPatchFoliagePass,
   zhudaWindOffset,
   ZHUDA_KEEP_COVERAGE_DEFINE,
   ZHUDA_WIND_DEFINE,
+  ZHUDA_WIND_UNIFORM,
 } from '../packages/core/runtime3d/Foliage.ts';
 
 /** An include's text as LayaAir 3.4.2 registers it (from the vendored build). */
@@ -129,6 +132,115 @@ test("the patches apply to LayaAir 3.4.2's own shader text and leave a changed u
       pass.text.includes('alpha=zhudaAlpha;'),
   );
   assert.deepEqual(zhudaPatchFoliagePass('void main(){}'), { text: 'void main(){}', reads: 0 });
+});
+
+/**
+ * A runtime that, like `Laya.init` in LayaAir 3.4.2, registers its includes
+ * before `Scene3D.shaderValueInit` makes the `Scene3D` uniform map and adds
+ * LayaAir's own uniforms to it, in the vendored build's order.
+ */
+function fakeLaya() {
+  const d3 = fs.readFileSync(
+    new URL('../vendor/laya-3.4.2/libs/laya.d3.js', import.meta.url),
+    'utf8',
+  );
+  const head = 'createGlobalUniformMap("Scene3D");';
+  const at = d3.indexOf(head);
+  assert.ok(at >= 0, 'LayaAir makes the Scene3D map');
+  const own = [
+    ...d3
+      .slice(at, d3.indexOf('}', at))
+      .matchAll(/addShaderUniform\([^,]+,"(\w+)",t\.ShaderDataType\.(\w+)\)/g),
+  ].map(([, name, type]) => [name, type]);
+  assert.ok(own.length >= 5, 'LayaAir adds its own uniforms there');
+  const maps = new Map();
+  const factory = {
+    createGlobalUniformMap(name) {
+      if (!maps.has(name)) {
+        const entries = [];
+        maps.set(name, { entries, addShaderUniform: (_id, n, type) => entries.push([n, type]) });
+      }
+      return maps.get(name);
+    },
+  };
+  const ids = new Map();
+  const runtime = {
+    Shader3D: {
+      addInclude() {},
+      propertyNameToID: (name) =>
+        ids.has(name) ? ids.get(name) : ids.set(name, ids.size).size - 1,
+    },
+    ShaderDataType: new Proxy({}, { get: (_, name) => name }),
+    LayaGL: { renderDeviceFactory: factory },
+    Scene3D: {
+      shaderValueInit() {
+        const map = (this.sceneUniformMap = factory.createGlobalUniformMap('Scene3D'));
+        for (const [name, type] of own) map.addShaderUniform(0, name, type);
+      },
+    },
+  };
+  return { runtime, maps };
+}
+
+test("the wind is added after LayaAir's own scene uniforms, so WebGL's Scene3D block keeps its layout", () => {
+  // On WebGL 2 LayaAir packs the map's numbers into one buffer in the map's
+  // order; its shaders declare the block from this fixed text. A number
+  // before them moved each one and every lit shader read the wrong fog and
+  // number of lights (verify:film-remount, a yard drawn blown out white).
+  const block = /uniform Scene3D\{([^}]*)\};/
+    .exec(vendorInclude('laya.d3.js', 'Scene.glsl'))[1]
+    .split(';')
+    .filter((member) => member.trim())
+    .map((member) => member.trim().split(/\s+/)[1]);
+  assert.deepEqual(block, [
+    'u_Time',
+    'u_FogParams',
+    'u_FogColor',
+    'u_GIRotate',
+    'u_DirationLightCount',
+  ]);
+  const numbers = (map) => map.entries.filter(([, type]) => !/^Texture/.test(type)).map(([n]) => n);
+
+  // Installed before Laya.init, as ZhudaEngine.boot does.
+  const early = fakeLaya();
+  assert.equal(installLaya342Foliage(early.runtime), true);
+  for (const name of ['Sprite3DVertex.glsl', 'ShadingVertex.glsl', 'DepthVertex.glsl'])
+    early.runtime.Shader3D.addInclude(name, vendorInclude('laya.d3.js', name));
+  assert.equal(early.maps.has('Scene3D'), false, "the map is LayaAir's to make");
+  assert.equal(
+    zhudaFoliageStatus(early.runtime).wind,
+    false,
+    'not declared before LayaAir has its map',
+  );
+  early.runtime.Scene3D.shaderValueInit();
+  const scene = early.maps.get('Scene3D');
+  assert.deepEqual(
+    numbers(scene).slice(0, block.length),
+    block,
+    'the block keeps its members first',
+  );
+  assert.equal(scene.entries.at(-1)[0], ZHUDA_WIND_UNIFORM, 'the wind comes after them');
+  assert.equal(scene.entries.filter(([n]) => n === ZHUDA_WIND_UNIFORM).length, 1);
+  assert.equal(zhudaFoliageStatus(early.runtime).wind, true);
+
+  // Includes registered after LayaAir made the map: added at once, at its end.
+  const late = fakeLaya();
+  late.runtime.Scene3D.shaderValueInit();
+  installLaya342Foliage(late.runtime);
+  late.runtime.Shader3D.addInclude(
+    'Sprite3DVertex.glsl',
+    vendorInclude('laya.d3.js', 'Sprite3DVertex.glsl'),
+  );
+  assert.deepEqual(numbers(late.maps.get('Scene3D')), [...block, ZHUDA_WIND_UNIFORM]);
+
+  // No map and no way to wait for one: not declared, and the wind says so.
+  const none = fakeLaya();
+  delete none.runtime.Scene3D;
+  installLaya342Foliage(none.runtime);
+  for (const name of ['Sprite3DVertex.glsl', 'ShadingVertex.glsl', 'DepthVertex.glsl'])
+    none.runtime.Shader3D.addInclude(name, vendorInclude('laya.d3.js', name));
+  assert.equal(none.maps.size, 0);
+  assert.equal(zhudaFoliageStatus(none.runtime).wind, false);
 });
 
 test('marking puts the defines on the materials under a node, cut-out ones keep coverage, and takes off only its own', () => {
