@@ -99,11 +99,14 @@ export function missingPackageMetadata(pkg) {
     !String(pkg.description ?? '').trim() && 'description',
   ].filter(Boolean);
 }
+/** package.json as npm reads it: a byte-order mark (Notepad, PowerShell 5.1) is allowed. */
+export const readPackageJson = (file) =>
+  JSON.parse(fs.readFileSync(file, 'utf8').replace(/^\uFEFF/, ''));
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   // Staging runs before every package build (prepackage): stop here rather
   // than in the Squirrel maker after the app was built.
   const missing = missingPackageMetadata(
-    JSON.parse(fs.readFileSync(path.join(import.meta.dirname, 'package.json'), 'utf8')),
+    readPackageJson(path.join(import.meta.dirname, 'package.json')),
   );
   if (missing.length)
     throw Error('package.json needs ' + missing.join(' and ') + ' for the Windows installer');

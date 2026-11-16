@@ -9,6 +9,7 @@ import {
   stageBundle,
   resolveBundleFile,
   missingPackageMetadata,
+  readPackageJson,
 } from '../examples/windows-webgpu/bundle.mjs';
 import { squirrelEvent, runSquirrelEvent } from '../examples/windows-webgpu/squirrel.mjs';
 test('desktop stages a standalone consumer and rejects directory-index symlink escapes', (t) => {
@@ -44,6 +45,14 @@ test('the Windows installer metadata is present and checked before packaging (DI
   assert.deepEqual(missingPackageMetadata({}), ['author', 'description']);
   assert.deepEqual(missingPackageMetadata({ author: { name: ' ' }, description: 'x' }), ['author']);
   assert.deepEqual(missingPackageMetadata({ author: 'A', description: '' }), ['description']);
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'zhuda-bom-'));
+  try {
+    const file = path.join(root, 'package.json');
+    fs.writeFileSync(file, '\uFEFF{"author":"A","description":"B"}');
+    assert.deepEqual(missingPackageMetadata(readPackageJson(file)), []);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
 });
 
 test('a Squirrel start makes or removes shortcuts, exits, and never starts the host (DIST-02)', async () => {
