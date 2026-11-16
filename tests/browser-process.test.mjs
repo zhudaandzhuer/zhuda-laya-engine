@@ -12,6 +12,9 @@ import {
 import { resolveChromeBinary as fromPrefabCheck } from '../packages/compiler/prefab-check.mjs';
 
 const chrome = resolveChromeBinary();
+// `node --test` runs the test files side by side: on a busy CI runner Chrome
+// can take longer than the launcher's 10 s default to come up.
+const STARTUP_MS = 30000;
 const skip = chrome ? false : 'no Chrome or Edge on this machine';
 const alive = (pid) => {
   try {
@@ -60,7 +63,7 @@ test('a browser that cannot start reports why and leaves no profile', async () =
 });
 
 test('close asks the browser to quit, waits, and removes the profile', { skip }, async () => {
-  const browser = await launchBrowser({ binary: chrome });
+  const browser = await launchBrowser({ binary: chrome, startupTimeoutMs: STARTUP_MS });
   const page = await firstPageTarget(browser.endpoint);
   assert.equal(page.type, 'page');
   const report = await browser.close();
@@ -75,8 +78,8 @@ test('close asks the browser to quit, waits, and removes the profile', { skip },
 });
 
 test('a browser that does not answer is ended by force, its own only', { skip }, async () => {
-  const other = await launchBrowser({ binary: chrome }); // stands for a browser the user runs
-  const browser = await launchBrowser({ binary: chrome });
+  const other = await launchBrowser({ binary: chrome, startupTimeoutMs: STARTUP_MS }); // stands for a browser the user runs
+  const browser = await launchBrowser({ binary: chrome, startupTimeoutMs: STARTUP_MS });
   try {
     browser.endpoint = new URL('ws://127.0.0.1:9/devtools/browser/none');
     const report = await closeBrowser(browser);

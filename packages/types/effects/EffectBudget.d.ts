@@ -25,7 +25,15 @@ export interface EffectAllocation {
     fallbackRequired: boolean;
     fallbackId?: string;
 }
-/** Admission plan for future births. Existing particles drain; fallback costs need their own budget. */
+/**
+ * Nanoseconds the GPU spent in a frame's render passes, from their begin and
+ * end stamps (`used` pairs). Passes that follow each other within one
+ * timestamp step are taken as one stretch, from the first's begin to the last's
+ * end, so rounding costs at most a step a stretch instead of a step a pass;
+ * idle time between stretches is not counted. A pass begun and never handed
+ * over leaves zeros and is skipped. Pure.
+ */
+export declare function zhudaPassesBusyNs(stamps: ArrayLike<bigint>, used: number): bigint;
 export declare class ZhudaEffectBudget {
     readonly spec: EffectBudgetSpec;
     quality: number;

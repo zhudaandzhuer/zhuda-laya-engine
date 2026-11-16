@@ -25,6 +25,46 @@ export interface EffectAllocation {
   fallbackId?: string;
 }
 /** Admission plan for future births. Existing particles drain; fallback costs need their own budget. */
+/**
+ * Chrome rounds WebGPU timestamps to 100 microseconds. A light frame's
+ * passes are each shorter than that, so their own begin and end often round
+ * to the same value and a sum of pass lengths reads 0 (QA-03 of
+ * docs/plans/records/windows-acceptance/plan.md).
+ */
+const TIMESTAMP_STEP_NS = 100_000n;
+
+/**
+ * Nanoseconds the GPU spent in a frame's render passes, from their begin and
+ * end stamps (`used` pairs). Passes that follow each other within one
+ * timestamp step are taken as one stretch, from the first's begin to the last's
+ * end, so rounding costs at most a step a stretch instead of a step a pass;
+ * idle time between stretches is not counted. A pass begun and never handed
+ * over leaves zeros and is skipped. Pure.
+ */
+export function zhudaPassesBusyNs(stamps: ArrayLike<bigint>, used: number): bigint {
+  const spans: [bigint, bigint][] = [];
+  for (let i = 0; i < used; i++) {
+    const begin = stamps[i * 2],
+      end = stamps[i * 2 + 1];
+    if (end >= begin && begin > 0n) spans.push([begin, end]);
+  }
+  spans.sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
+  let total = 0n;
+  let from = -1n,
+    to = -1n;
+  for (const [begin, end] of spans) {
+    if (from >= 0n && begin <= to + TIMESTAMP_STEP_NS) {
+      if (end > to) to = end;
+      continue;
+    }
+    if (from >= 0n) total += to - from;
+    from = begin;
+    to = end;
+  }
+  if (from >= 0n) total += to - from;
+  return total;
+}
+
 export class ZhudaEffectBudget {
   readonly spec: EffectBudgetSpec;
   quality = 1;
@@ -451,13 +491,7 @@ export class ZhudaRuntimeProfiler {
       .then(() => {
         const stamps = new BigUint64Array(target.getMappedRange(0, bytes).slice(0));
         target.unmap();
-        let total = 0n;
-        for (let i = 0; i < ended.used; i++) {
-          const begin = stamps[i * 2],
-            end = stamps[i * 2 + 1];
-          // A pass that was begun and never handed over leaves zeros.
-          if (end > begin) total += end - begin;
-        }
+        const total = zhudaPassesBusyNs(stamps, ended.used);
         if (this.gpuPasses === g) {
           ended.sample.gpuMs = this.newestGpuMs = Number(total) / 1e6;
           g.free.push(target);

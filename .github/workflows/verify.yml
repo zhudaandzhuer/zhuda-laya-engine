@@ -54,8 +54,9 @@ jobs:
           name: browser-evidence
           path: /tmp/zhuda-browser/
 
-  windows:
-    runs-on: windows-latest
+  macos:
+    # The base layer on the engine's own development platform.
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -63,8 +64,50 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci
+      - run: npm run verify
+
+  windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        # A folder with spaces and CJK, as a consumer's often is (WIN-01..04
+        # of docs/plans/records/windows-acceptance/plan.md).
+        working-directory: zhuda engine 測試
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: zhuda engine 測試
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: zhuda engine 測試/package-lock.json
+      - run: npm ci
       - run: npm run build
       - run: npm run typecheck
       - run: npm run audit:declarations
       - run: npm test
-      # Hosted CI is not a Windows hardware WebGPU acceptance run.
+      # The packed SDK through npm (no shell), dependency junctions, file-URL
+      # imports and the browser launcher's own cleanup, in a software-rendered
+      # Chrome. Not a Windows hardware or WebGPU acceptance run: that needs the
+      # signed-in desktop session of a machine with the GPU (see
+      # docs/agent-development.md, "Windows hardware runs").
+      - name: Consumer runtime batches
+        shell: pwsh
+        run: |
+          $env:FACTORY_OUT = "$env:RUNNER_TEMP\zhuda-browser\slot-foundation"
+          npm run verify:slot-foundation
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          $env:RUNTIME_FIXTURE_DIR = "$env:RUNNER_TEMP\zhuda-browser\runtime-feedback"
+          npm run verify:runtime-feedback
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: No check left a browser running
+        shell: pwsh
+        run: |
+          $left = @(Get-CimInstance Win32_Process -Filter "Name='chrome.exe' OR Name='msedge.exe'" | Where-Object { $_.CommandLine -match 'zhuda-(runtime|prefab)-browser-|zhuda-browser-' })
+          if ($left.Count) { $left | ForEach-Object { $_.CommandLine }; exit 1 }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-browser-evidence
+          path: ${{ runner.temp }}/zhuda-browser/

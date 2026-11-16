@@ -40,6 +40,19 @@ export declare function installLaya342LifecycleFix(runtime?: any): void;
  * lacks is skipped.
  */
 export declare function installLaya342PassCacheBounds(native?: any): void;
+/**
+ * GFX-03 (docs/plans/records/windows-acceptance/plan.md). LayaAir 3.4.2's
+ * WebGL textures ask for 4x anisotropic filtering from the start, also when
+ * they are set to point filtering. Direct3D 11 (ANGLE on Windows) then
+ * filters them anyway: an anisotropic sampler ignores the point setting, so
+ * pixel art, look-up tables and data textures come out blurred there (and a
+ * still picture under temporal anti-aliasing no longer matches one without),
+ * while Metal, GLES and WebGPU sample them as asked. A texture's anisotropy
+ * is sent as 1 while it is point-filtered and as asked otherwise; what was
+ * asked is what `anisoLevel` reports. Call after `Laya.init`; WebGPU has no
+ * such class and is left alone.
+ */
+export declare function installLaya342PointFilterFix(runtime?: any): boolean;
 /** Model ownership seam: native Node.destroy queues component teardown for the
  * next frame. Finish only this tree's queued components before releasing its
  * cache lease; otherwise zero-reference clips/meshes survive resource disposal.

@@ -8,6 +8,7 @@ import { createSurfaceMaterial } from './runtime3d/Surfaces.ts';
 import {
   installLaya342LifecycleFix,
   installLaya342PassCacheBounds,
+  installLaya342PointFilterFix,
   installLaya342ShadowBias,
   installLaya342SpecularAA,
   installLaya342Translucency,
@@ -206,6 +207,7 @@ export class ZhudaEngine {
       renderer.ready();
       installLaya342LifecycleFix();
       installLaya342PassCacheBounds();
+      installLaya342PointFilterFix();
 
       // 再次確認原型解毒補丁在 Laya.init 後保持生效
       EngineGuard.installPrototypeDetox();

@@ -68,6 +68,21 @@ const scene = (nodes) => ({
   nodes,
 });
 const host = new ZhudaFilmHost({ assets });
+/** Pixels that differ between two pictures: how many, the largest channel difference, the first few. */
+const differences = (a, b) => {
+  const at = [];
+  let pixels = 0,
+    largest = 0;
+  for (let i = 0; i < a.data.length; i += 4) {
+    const d = [0, 1, 2, 3].map((k) => b.data[i + k] - a.data[i + k]);
+    if (d.some(Boolean)) {
+      pixels++;
+      largest = Math.max(largest, ...d.map(Math.abs));
+      if (at.length < 10) at.push({ x: (i / 4) % a.width, y: Math.floor(i / 4 / a.width), d });
+    }
+  }
+  return { pixels, largest, at };
+};
 const render = async (name, s) => {
   const { png } = await host.preview(s, { width: W, height: H });
   fs.writeFileSync(path.join(out, name + '.png'), png);
@@ -315,9 +330,22 @@ try {
   // 6. Thirty mounts with and without water, then the first frame again.
   for (let i = 0; i < 30; i++)
     await host.mountReport(scene(i % 2 ? [...scenery, water()] : scenery));
-  assert.ok(
-    (await render('water-again', scene([...scenery, water()]))).data.equals(wet.data),
-    'identical after 30 mounts',
+  // Byte for byte (QA-01 of docs/plans/records/windows-acceptance/plan.md:
+  // a difference is kept with where it is and by how much, not loosened).
+  const again = await render('water-again', scene([...scenery, water()]));
+  report.remount = differences(wet, again);
+  if (report.remount.pixels) {
+    const map = new PNG({ width: wet.width, height: wet.height });
+    for (let i = 0; i < wet.data.length; i += 4) {
+      const d = Math.max(...[0, 1, 2, 3].map((k) => Math.abs(wet.data[i + k] - again.data[i + k])));
+      map.data.set(d ? [255, 255, 255, 255] : [0, 0, 0, 255], i);
+    }
+    fs.writeFileSync(path.join(out, 'water-again-diff.png'), PNG.sync.write(map));
+  }
+  assert.equal(
+    report.remount.pixels,
+    0,
+    `identical after 30 mounts: ${JSON.stringify(report.remount)}`,
   );
   assert.ok(
     (await render('dry-again', scene(scenery))).data.equals(dry.data),

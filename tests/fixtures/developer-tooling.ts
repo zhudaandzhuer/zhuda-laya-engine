@@ -471,7 +471,16 @@ async function main() {
           .map((s: any) => s.gpuMs)
           .filter((ms: any) => typeof ms === 'number')
           .sort((a: number, b: number) => a - b);
-        return { timed: times.length, ms: times.length ? times[times.length >> 1] : null };
+        return {
+          timed: times.length,
+          ms: times.length ? times[times.length >> 1] : null,
+          // Chrome rounds each stamp to 0.1 ms: a frame shorter than that reads
+          // 0 or 0.1, and how often 0.1 follows its length, so the mean
+          // estimates it where the median stays at 0 (QA-03).
+          mean: times.length
+            ? times.reduce((a: number, b: number) => a + b, 0) / times.length
+            : null,
+        };
       };
       const light = await median(40);
       const glass = new Z.ZhudaShaderMaterial({
