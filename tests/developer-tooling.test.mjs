@@ -1017,3 +1017,19 @@ test('a drag moves, turns and scales the node along the handle it began on', () 
     assert.equal(l.sprites[0].destroyed, true);
     assert.equal(gizmo.pointerDown(...px(1, 0)), false);
   }));
+
+test('GPU time counts a stretch of quickly following passes, so rounding to 0.1 ms leaves more than 0', async () => {
+  const { zhudaPassesBusyNs } = await import('../packages/core/effects/EffectBudget.ts');
+  const ms = (n) => BigInt(Math.round(n * 1e6));
+  // Five short passes of a light frame, Chrome's stamps rounded to 0.1 ms: each
+  // begins and ends within one step, and the steps fall between passes.
+  const rounded = [10.0, 10.0, 10.0, 10.0, 10.1, 10.1, 10.1, 10.1, 10.2, 10.2].map(ms);
+  let sum = 0n;
+  for (let i = 0; i < 5; i++) sum += rounded[i * 2 + 1] - rounded[i * 2];
+  assert.equal(sum, 0n, 'a sum of pass lengths reads 0 (QA-03)');
+  assert.equal(Number(zhudaPassesBusyNs(rounded, 5)) / 1e6, 0.2, 'the stretch does not');
+  // Idle time between stretches is not counted: 3 ms and 1.5 ms, 6 ms apart.
+  assert.equal(Number(zhudaPassesBusyNs([1, 4, 10, 11.5].map(ms), 2)) / 1e6, 4.5);
+  // Out of order, and a pass never handed over (zeros), are handled.
+  assert.equal(Number(zhudaPassesBusyNs([10, 11.5, 0, 0, 1, 4].map(ms), 3)) / 1e6, 4.5);
+});
