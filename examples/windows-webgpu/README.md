@@ -35,7 +35,11 @@ the runtime remains the pinned Electron version.
 `nativeEngine: "WebGPURenderEngine"`, a ready state, no validation errors and no
 software/fallback adapter. It records `report.json` with Windows, Electron,
 Chromium, GPU feature status, complete Chromium GPU information, renderer data
-and console messages. Run the consumer's own `npm run verify:webgpu` as well;
+and console messages; when the page never reports, also what it said
+(`pageError`) and whether it was still drawing frames (`pageState`). In
+`--verify` the window is shown and keeps drawing while it is not seen
+(started hidden, behind other windows, or taken as not seen for another
+reason), which a player's window does not. Run the consumer's own `npm run verify:webgpu` as well;
 this host check proves the packaged entry and the consumer report, not every
 game scene or Windows driver.
 
