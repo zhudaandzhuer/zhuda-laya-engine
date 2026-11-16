@@ -1,7 +1,7 @@
 # Windows acceptance fixes
 
-Status: In progress: batch 1 implemented and verified on the Windows host;
-DIST-01 verified, DIST-02 waiting for an install run, the rest not started\
+Status: In progress: WIN-01..04, DIST-01 and DIST-02 implemented and verified
+on the Windows host; MEM-01 and the rest not started\
 Owner: Engine/toolchain\
 Last reviewed: 2026-11-16
 
@@ -83,12 +83,12 @@ Windows.
 
 ## Progress
 
-| Batch / item                                 | State                                               | Record                                                           |
-| -------------------------------------------- | --------------------------------------------------- | ---------------------------------------------------------------- |
-| WIN-01..04                                   | Implemented within scope; Windows verified          | [task](batch-1-task.md), [verification](batch-1-verification.md) |
-| DIST-01                                      | Implemented within scope; Windows verified          | [task](batch-2-task.md), [verification](batch-2-verification.md) |
-| DIST-02                                      | Implemented, unit-tested; install lifecycle not run | same                                                             |
-| MEM-01, GFX-01..06, QA-01..04, CI-01, DEP-01 | Not started                                         |                                                                  |
+| Batch / item                                 | State                                                                    | Record                                                           |
+| -------------------------------------------- | ------------------------------------------------------------------------ | ---------------------------------------------------------------- |
+| WIN-01..04                                   | Implemented within scope; Windows verified                               | [task](batch-1-task.md), [verification](batch-1-verification.md) |
+| DIST-01                                      | Implemented within scope; Windows verified                               | [task](batch-2-task.md), [verification](batch-2-verification.md) |
+| DIST-02                                      | Implemented within scope; install, update, uninstall verified on Windows | same                                                             |
+| MEM-01, GFX-01..06, QA-01..04, CI-01, DEP-01 | Not started                                                              |                                                                  |
 
 Found while verifying: on that host the SSH job context (session 0) is not
 a GPU context: WebGPU screenshots come out white and the Prefab page gets

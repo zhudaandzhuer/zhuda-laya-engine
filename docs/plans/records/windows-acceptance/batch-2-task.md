@@ -1,6 +1,6 @@
 # Agent task: windows-acceptance batch 2, desktop delivery (DIST-01, DIST-02)
 
-Status: In progress\
+Status: Implemented within scope; verified on the report's Windows host ([record](batch-2-verification.md))\
 Owner: Engine/toolchain\
 Last reviewed: 2026-11-16
 
