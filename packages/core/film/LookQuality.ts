@@ -52,6 +52,8 @@ export function zhudaLookForQuality(
     next.autoExposure = false;
     next.clouds = false;
     next.lensFlare = false;
+    // The water is part of the HDR chain, which level 0 does not have.
+    next.underwater = false;
     next.bounceLight = false;
     if (options.keepGrade && next.grade)
       next.grade.bloom =
@@ -75,6 +77,8 @@ export function zhudaLookForQuality(
   }
   // Depth of field and motion blur each draw the frame again at level 3 and 2 only.
   if (level === 1) next.depthOfField = next.motionBlur = false;
+  // Caustics are a few sines more in every lit pixel under water: kept at level 2, gone at 1.
+  if (level === 1 && next.underwater) next.underwater.caustics = false;
   // Clouds take half the steps at level 2, a third at level 1.
   if (next.clouds)
     next.clouds.steps = Math.max(8, Math.round(next.clouds.steps / (level === 1 ? 3 : 2)));

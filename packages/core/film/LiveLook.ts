@@ -16,6 +16,7 @@ import type { ZhudaScreenReflections } from '../runtime3d/ScreenReflections.ts';
 import type { ZhudaLensFinish } from '../runtime3d/LensFinish.ts';
 import type { ZhudaColorLut } from '../runtime3d/ColorLut.ts';
 import type { ZhudaLensFlare } from '../runtime3d/LensFlare.ts';
+import type { ZhudaUnderwater } from '../runtime3d/Underwater.ts';
 import type { ZhudaLightingDepth, ZhudaLightingDepthOptions } from '../runtime3d/LightingDepth.ts';
 import type {
   ZhudaAutoExposure,
@@ -41,6 +42,8 @@ export interface ZhudaAppliedLookParts {
   /** The colour table of the look's grade: an unchanged picture until a table is handed over. */
   colorTable?: ZhudaColorLut;
   flare?: ZhudaLensFlare;
+  /** The water the camera can be in. */
+  underwater?: ZhudaUnderwater;
   /** The scene's falloff, shadow spread, cascade blend and contact shadows. */
   lighting?: ZhudaLightingDepth;
   /** The shadow update rule, when the look's shadows are not drawn every frame. */
@@ -210,6 +213,8 @@ export function updateZhudaLookInPlace(
       ...look.screenReflections,
       skyColor: zhudaDecodeColor(look.screenReflections.skyColor),
     });
+  if (parts.underwater && look.underwater)
+    parts.underwater.set({ ...look.underwater, color: zhudaDecodeColor(look.underwater.color) });
   if (parts.exposure && look.autoExposure) parts.exposure.setExposure(look.autoExposure);
   if (parts.depthOfField && look.depthOfField) parts.depthOfField.setLens(look.depthOfField);
   if (parts.motionBlur && look.motionBlur) parts.motionBlur.setBlur(look.motionBlur);

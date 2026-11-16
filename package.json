@@ -178,6 +178,7 @@
     "verify:quality-governor": "node scripts/verify-quality-governor.mjs",
     "verify:flythrough": "node scripts/verify-flythrough.mjs",
     "verify:density-volume": "node scripts/verify-density-volume.mjs",
+    "verify:film-underwater": "node scripts/verify-film-underwater.mjs",
     "flythrough:critic": "node scripts/flythrough-critic.mjs",
     "verify:shader-warm-up": "node scripts/verify-shader-warm-up.mjs",
     "verify:basis-textures": "node scripts/verify-basis-textures.mjs",

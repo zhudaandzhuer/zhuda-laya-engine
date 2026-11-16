@@ -31,6 +31,12 @@ import {
   type ZhudaMotionBlurOptions,
 } from '../runtime3d/CameraEffects.ts';
 import { resolveZhudaClouds, validateZhudaClouds } from '../runtime3d/Clouds.ts';
+import {
+  resolveZhudaUnderwater,
+  validateZhudaUnderwater,
+  type ZhudaResolvedUnderwater,
+  type ZhudaUnderwaterOptions,
+} from '../runtime3d/Underwater.ts';
 import { validateZhudaWaterRipples } from '../shaders/WaterRipples.ts';
 import { ZHUDA_TONE_MAPPINGS, type ZhudaToneMapping } from '../runtime3d/ToneCurves.ts';
 import {
@@ -309,6 +315,15 @@ export interface ZhudaFilmLook {
    * look's sun. Needs `grade`; off unless given.
    */
   lensFlare?: ZhudaFilmLensFlare | boolean;
+  /**
+   * Water the camera can be in (see `ZhudaUnderwater`): below
+   * `surfaceY` the view is dimmed per colour by the water and filled with
+   * its `color` (a display value), sunlight below the surface is dimmed and
+   * gathered into caustics, and the surface is seen from below with the sky
+   * in its window. `true` takes the defaults. Needs `grade`; off unless
+   * given.
+   */
+  underwater?: ZhudaUnderwaterOptions | boolean;
   /**
    * Light bounced once off the scene: probes on a grid over its objects
    * capture their surroundings when the scene is mounted, and light physically
@@ -1196,6 +1211,7 @@ function validateLook(
       'motionBlur',
       'clouds',
       'lensFlare',
+      'underwater',
       'bounceLight',
       'environment',
       'panorama',
@@ -1483,6 +1499,16 @@ function validateLook(
   lens('motionBlur', validateZhudaMotionBlur, true);
   lens('clouds', validateZhudaClouds, true);
   lens('lensFlare', validateZhudaLensFlare, true);
+  if (look.underwater !== undefined && look.underwater !== false) {
+    const at = `${path}.underwater`;
+    if (look.underwater !== true) {
+      if (!object(look.underwater)) issues.push(`${at}: object, true or false required`);
+      else
+        for (const issue of validateZhudaUnderwater(look.underwater)) issues.push(`${at}.${issue}`);
+    }
+    if (look.grade === undefined || look.grade === false)
+      issues.push(`${at}: needs grade (the water is part of the HDR chain)`);
+  }
   if (object(look.clouds))
     for (const key of ['sunToward', 'sunColor', 'skyColor'])
       if (key in look.clouds)
@@ -2345,6 +2371,7 @@ export function applyZhudaFilmScenePatch(
       'motionBlur',
       'clouds',
       'lensFlare',
+      'underwater',
       'bounceLight',
       'environment',
       'panorama',
@@ -2422,6 +2449,8 @@ export interface ZhudaResolvedFilmLook {
   lensFlare:
     | { strength: number; occlusionRadius: number; elements: readonly ZhudaLensFlareElement[] }
     | false;
+  /** Its `color` is a display value, decoded where the water is made. */
+  underwater: ZhudaResolvedUnderwater | false;
   bounceLight:
     | (Required<Pick<ZhudaFilmBounceLight, 'spacing' | 'strength' | 'visibility'>> &
         Pick<ZhudaFilmBounceLight, 'min' | 'max'>)
@@ -2603,6 +2632,13 @@ export function resolveZhudaFilmLook(
           ...(look.lensFlare === true ? {} : look.lensFlare),
         }
       : false,
+    underwater: look.underwater
+      ? resolveZhudaUnderwater({
+          // A display colour, like every colour of a look (about the medium's own default as light).
+          color: [0.17, 0.33, 0.38],
+          ...(look.underwater === true ? {} : look.underwater),
+        })
+      : false,
     bounceLight: look.bounceLight
       ? {
           spacing: look.bounceLight.spacing ?? 3,
@@ -2733,6 +2769,7 @@ export function zhudaFilmLookRebuildReason(
   | 'motionBlur'
   | 'clouds'
   | 'lensFlare'
+  | 'underwater'
   | 'colorTable'
   | 'bounceLight'
   | null {
@@ -2784,6 +2821,10 @@ export function zhudaFilmLookRebuildReason(
   if (!from.motionBlur !== !to.motionBlur) return 'motionBlur';
   if (!from.clouds !== !to.clouds) return 'clouds';
   if (!from.lensFlare !== !to.lensFlare) return 'lensFlare';
+  // The water's values are set in place; caustics and the surface from below are built or not.
+  const water = (look: ZhudaResolvedFilmLook) =>
+    look.underwater ? json([!!look.underwater.caustics, look.underwater.surface]) : 'off';
+  if (water(from) !== water(to)) return 'underwater';
   return null;
 }
 

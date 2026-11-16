@@ -119,6 +119,8 @@ export declare class ZhudaLightFog {
     private frame;
     /** With beams drawn smaller than the picture: the two smoothing passes. */
     private low?;
+    /** Layers left out of the shafts' depth picture (`excludeFromShafts`). */
+    private shaftExcluded;
     constructor(options?: ZhudaLightFogOptions);
     /**
      * Changes the fog in place (weather turning): density, falloff, base
@@ -138,6 +140,12 @@ export declare class ZhudaLightFog {
             anisotropy?: number;
         };
     }): void;
+    /**
+     * Leaves what is on `layer` (0..31) out of the shafts' depth picture: it
+     * then casts no beam shadow. For a surface that light passes through, such
+     * as water seen from below (`ZhudaUnderwater`).
+     */
+    excludeFromShafts(layer: number): void;
     /** Replaces the lights that shine into the fog (at most `ZHUDA_FOG_MAX_LIGHTS`). */
     setLights(lights: readonly ZhudaFogLight[]): void;
     /**

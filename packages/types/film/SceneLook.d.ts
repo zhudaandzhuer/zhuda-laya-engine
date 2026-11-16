@@ -36,6 +36,7 @@ export declare class ZhudaSceneLook {
     private lightFog;
     /** How long the clouds have drifted, in seconds. */
     private cloudSeconds;
+    private waterSeconds;
     private level;
     private frame;
     private disposed;

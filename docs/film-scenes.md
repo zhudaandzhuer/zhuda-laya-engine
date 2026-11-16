@@ -731,6 +731,53 @@ A `water` node is clear running water on a horizontal rectangle:
   draws exactly as before. On an Apple M4, a 1280×720 view of water costs about
   0.2–0.5 ms more with one still body, and about 1.4 ms more with four moving ones.
 
+## Under water
+
+`look.underwater` puts the camera in water (record
+`docs/plans/records/underwater-look/`; drawn on WebGL and WebGPU on a
+desktop, not on a phone). `true` takes the defaults; it needs `grade`.
+
+```json
+"underwater": {
+  "surfaceY": 7,
+  "color": [0.17, 0.33, 0.38],
+  "extinction": [0.42, 0.11, 0.075],
+  "maxDistance": 150,
+  "caustics": { "strength": 1.2, "waveMeters": 2.5, "waves": 1, "fadeDepth": 10, "fadeDistance": 40 },
+  "surface": true
+}
+```
+
+- **The view.** While the eye is below `surfaceY`, what it sees is dimmed
+  per colour channel by the water between (`extinction`, per metre: red
+  goes first, blue last, so far things turn blue-green) and replaced by
+  `color` (a display value), the light the water scatters, itself dimmer the
+  deeper the eye is. Only the water up to the surface counts: past it the
+  view is in air. Above the surface nothing changes (byte for byte).
+- **The light.** Sunlight on a lit surface below the surface is dimmed by
+  the water it came through and gathered into caustics, the bright net the
+  waves focus onto the floor: worked out from four wave trains where the
+  ray crossed the surface, strongest a few metres down, fading with
+  `fadeDepth` and with `fadeDistance` from the eye, moving with shot time.
+  It is LayaAir's PBR and Blinn-Phong lighting, taught at boot
+  (`installLaya342Underwater`); a scene without water compiles as before.
+  `caustics: false` keeps the dimmed sun without the net.
+- **The surface from below** (`surface`, default true): the sky through the
+  window overhead (within 48.6° of straight up), the sun in it, and the
+  water's own colour beyond it where light is totally reflected; its edge
+  wobbles with the same waves. It is left out of light shafts' depth
+  picture, so `lightFog` with `shafts` still shows sunbeams under water;
+  the water dims and tints them like everything else.
+- **Quality.** Level 1 drops the caustics; level 0 has no HDR chain and no
+  water (use `fog` for a cheap stand-in there).
+- **In place.** `setLook` changes the colour, extinction, surface height,
+  reach and the caustics' values in place; switching the water, its
+  caustics or its surface on or off rebuilds the look.
+- **In a game.** `ZhudaSceneLook` takes the same `underwater`; its `update`
+  moves the waves with the game's frame time.
+- An example scene: `tests/fixtures/film/underwater.json`, checked by
+  `npm run verify:film-underwater`.
+
 ## The same look in a game
 
 `ZhudaSceneLook` puts a film look on a game's own `Scene3D` and camera: the

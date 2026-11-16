@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "id": "underwater-wreck",
+  "camera": { "eye": [0, 2.4, 13], "target": [0, 1.2, 0], "focalLengthMm": 24 },
+  "look": {
+    "preset": "day",
+    "sun": { "elevationDeg": 62, "azimuthDeg": 210 },
+    "shadows": { "distance": 40, "cascades": 2, "resolution": 2048 },
+    "grade": { "exposure": 1.2, "bloom": 0.25, "ao": 0.6, "aoRadius": 0.8 },
+    "lightFog": {
+      "density": 0.03,
+      "falloffMeters": 20,
+      "shafts": { "strength": 1.6, "distance": 40 }
+    },
+    "underwater": {
+      "surfaceY": 7,
+      "extinction": [0.42, 0.11, 0.075],
+      "caustics": { "strength": 1.2, "waveMeters": 2.5 }
+    }
+  },
+  "materials": {
+    "sand": { "recipe": "concrete", "tint": [0.86, 0.8, 0.62, 1] },
+    "rock": { "recipe": "concrete", "tint": [0.45, 0.43, 0.4, 1] },
+    "hull": { "recipe": "painted-steel", "tint": [0.55, 0.22, 0.14, 1] }
+  },
+  "nodes": [
+    { "id": "floor", "type": "ground", "size": [120, 120], "material": "sand" },
+    {
+      "id": "wreck",
+      "type": "prop",
+      "prop": "container20",
+      "position": [-1, 0, -2],
+      "yawDeg": 28,
+      "seed": 4,
+      "params": { "paint": "hull" }
+    },
+    { "id": "r1", "type": "box", "size": [2.4, 1.6, 2], "position": [4.5, 0.8, 1], "yawDeg": 20, "bevel": 0.3, "material": "rock" },
+    { "id": "r2", "type": "box", "size": [1.4, 0.9, 1.2], "position": [5.6, 0.45, 3.2], "yawDeg": 60, "bevel": 0.25, "material": "rock" },
+    { "id": "r3", "type": "box", "size": [3, 2.2, 2.4], "position": [-6, 1.1, 2], "yawDeg": -15, "bevel": 0.4, "material": "rock" },
+    { "id": "b0", "type": "prop", "prop": "jersey-barrier", "position": [2, 0, 5] },
+    { "id": "b1", "type": "prop", "prop": "jersey-barrier", "position": [-3.5, 0, 6.5], "yawDeg": 70 }
+  ]
+}

@@ -63,6 +63,7 @@ export class ZhudaSceneLook {
   private lightFog: ZhudaLightFog | undefined;
   /** How long the clouds have drifted, in seconds. */
   private cloudSeconds = 0;
+  private waterSeconds = 0;
   private level: ZhudaLookQuality;
   private frame = 0;
   private disposed = false;
@@ -271,6 +272,11 @@ export class ZhudaSceneLook {
   ): void {
     if (this.disposed) throw Error('Disposed scene look');
     this.parts?.reflections?.update(eye, target, fieldOfViewDeg, aspect);
+    if (this.parts?.underwater) {
+      this.waterSeconds += frameSeconds;
+      this.parts.underwater.setTime(this.waterSeconds);
+      this.parts.underwater.update(eye, target, fieldOfViewDeg, aspect);
+    }
     this.parts?.motionBlur?.update(eye, target, fieldOfViewDeg, aspect);
     this.parts?.exposure?.setFrameSeconds(frameSeconds);
     if (this.parts?.clouds) {

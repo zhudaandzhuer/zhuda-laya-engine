@@ -28,6 +28,7 @@ import { ZhudaReflectiveSurface } from '../shaders/ReflectiveSurface.ts';
 import { ZhudaWaterSurface } from '../shaders/WaterSurface.ts';
 import { mountZhudaModel } from '../runtime3d/ModelPlacements.ts';
 import { ZhudaLightFog } from '../runtime3d/LightFog.ts';
+import { ZhudaUnderwater, ZHUDA_UNDERWATER_LAYER } from '../runtime3d/Underwater.ts';
 import { ZhudaDecal } from '../runtime3d/Decals.ts';
 import {
   ZhudaAutoExposure,
@@ -1013,6 +1014,7 @@ function buildFilmStageContents(
       // The samples of a still differ in time: each moves the ray noise elsewhere.
       effects.reflections?.setPhase(seconds);
       effects.clouds?.setTime(seconds);
+      effects.underwater?.setTime(seconds);
       // What moves with time may cast on the lamp's pictures: draw them again.
       if (pointShadows.length && timed.length && seconds !== shadowTime) {
         shadowTime = seconds;
@@ -1042,6 +1044,7 @@ function buildFilmStageContents(
       if (frame) lightFog?.setFrame(frame.index);
       lightFog?.update(current.eye, current.target, camera.fieldOfView, aspect);
       lightFog?.renderShafts();
+      effects.underwater?.update(current.eye, current.target, camera.fieldOfView, aspect);
       effects.reflections?.update(current.eye, current.target, camera.fieldOfView, aspect);
       effects.clouds?.update(current.eye, current.target, camera.fieldOfView, aspect);
       // A film frame is not smeared from the camera of the frame drawn before it:
@@ -1309,6 +1312,7 @@ export function applyResolvedFilmLook(
   let colorTable: ZhudaColorLut | undefined;
   let flare: ZhudaLensFlare | undefined;
   let lightFog: ZhudaLightFog | undefined;
+  let underwater: ZhudaUnderwater | undefined;
   let reflections: ZhudaScreenReflections | undefined;
   let exposure: ZhudaAutoExposure | undefined;
   let depthOfField: ZhudaDepthOfField | undefined;
@@ -1424,6 +1428,19 @@ export function applyResolvedFilmLook(
       // Cleanups run in reverse: the pipeline releases its chain first.
       cleanups.push(() => fog.dispose());
     }
+    if (look.underwater) {
+      const water = (underwater = new ZhudaUnderwater(
+        scene3D,
+        { ...look.underwater, color: zhudaDecodeColor(look.underwater.color) },
+        {
+          sky: zhudaDecodeColor(look.ambient),
+          sun: { toward: zhudaTowardSun(l, sun), color: zhudaSunRadiance(look) },
+        },
+      ));
+      // The surface seen from below lets the sun through: it casts no beam shadow.
+      lightFog?.excludeFromShafts(ZHUDA_UNDERWATER_LAYER);
+      cleanups.push(() => water.dispose());
+    }
     if (look.grade.grain > 0 || look.grade.vignette > 0 || look.grade.fringe > 0) {
       const lens = (finish = new ZhudaLensFinish({
         grain: look.grade.grain,
@@ -1459,6 +1476,8 @@ export function applyResolvedFilmLook(
         ...(clouds ? [clouds.effect] : []),
         ...(reflections ? [reflections.effect] : []),
         ...(lightFog ? [lightFog.effect] : []),
+        // The water after the fog: beams and haze under water are dimmed and tinted by it.
+        ...(underwater ? [underwater.effect] : []),
         // The lens after the air; the eye last, on what the lens drew.
         ...(depthOfField ? [depthOfField.effect] : []),
         ...(motionBlur ? [motionBlur.effect] : []),
@@ -1533,6 +1552,7 @@ export function applyResolvedFilmLook(
   }
   return {
     lightFog,
+    underwater,
     reflections,
     exposure,
     depthOfField,

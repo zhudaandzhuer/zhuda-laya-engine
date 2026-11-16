@@ -69,6 +69,7 @@ export * from './DistanceBricks.js';
 export * from './SurfaceBuffer.js';
 export * from './ObjectMotion.js';
 export * from './Foliage.js';
+export * from './Underwater.js';
 export * from './GltfSecondUv.js';
 export * from './Dither.js';
 export { installLaya342LifecycleFix } from './Laya342Adapters.js';

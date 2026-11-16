@@ -2,6 +2,7 @@
 import { type ZhudaTextureRecipe } from '../procedural/TextureRecipe.js';
 import { type ZhudaDecalShape } from '../runtime3d/Decals.js';
 import { type ZhudaAutoExposureOptions, type ZhudaDepthOfFieldOptions, type ZhudaMotionBlurOptions } from '../runtime3d/CameraEffects.js';
+import { type ZhudaResolvedUnderwater, type ZhudaUnderwaterOptions } from '../runtime3d/Underwater.js';
 import { type ZhudaToneMapping } from '../runtime3d/ToneCurves.js';
 import { type ZhudaLensFlareElement } from '../runtime3d/LensFlare.js';
 export type ZhudaFilmVec3 = [number, number, number];
@@ -269,6 +270,15 @@ export interface ZhudaFilmLook {
      * look's sun. Needs `grade`; off unless given.
      */
     lensFlare?: ZhudaFilmLensFlare | boolean;
+    /**
+     * Water the camera can be in (see `ZhudaUnderwater`): below
+     * `surfaceY` the view is dimmed per colour by the water and filled with
+     * its `color` (a display value), sunlight below the surface is dimmed and
+     * gathered into caustics, and the surface is seen from below with the sky
+     * in its window. `true` takes the defaults. Needs `grade`; off unless
+     * given.
+     */
+    underwater?: ZhudaUnderwaterOptions | boolean;
     /**
      * Light bounced once off the scene: probes on a grid over its objects
      * capture their surroundings when the scene is mounted, and light physically
@@ -917,6 +927,8 @@ export interface ZhudaResolvedFilmLook {
         occlusionRadius: number;
         elements: readonly ZhudaLensFlareElement[];
     } | false;
+    /** Its `color` is a display value, decoded where the water is made. */
+    underwater: ZhudaResolvedUnderwater | false;
     bounceLight: (Required<Pick<ZhudaFilmBounceLight, 'spacing' | 'strength' | 'visibility'>> & Pick<ZhudaFilmBounceLight, 'min' | 'max'>) | false;
     environment: Required<ZhudaFilmEnvironment> | false;
     panorama: Required<ZhudaFilmPanorama> | false;
@@ -950,7 +962,7 @@ export declare function sampleZhudaFilmCameraPath(keys: readonly ZhudaFilmCamera
  * and the colour table (`colorTable`) need assets or a capture; a running
  * look cannot change them at all.
  */
-export declare function zhudaFilmLookRebuildReason(from: ZhudaResolvedFilmLook, to: ZhudaResolvedFilmLook): 'environment' | 'panorama' | 'shadows' | 'atmosphere' | 'fog' | 'ambientGround' | 'grade' | 'lightFog' | 'screenReflections' | 'autoExposure' | 'depthOfField' | 'motionBlur' | 'clouds' | 'lensFlare' | 'colorTable' | 'bounceLight' | null;
+export declare function zhudaFilmLookRebuildReason(from: ZhudaResolvedFilmLook, to: ZhudaResolvedFilmLook): 'environment' | 'panorama' | 'shadows' | 'atmosphere' | 'fog' | 'ambientGround' | 'grade' | 'lightFog' | 'screenReflections' | 'autoExposure' | 'depthOfField' | 'motionBlur' | 'clouds' | 'lensFlare' | 'underwater' | 'colorTable' | 'bounceLight' | null;
 /**
  * The box a scene's bounce light fills by default: its objects and lights
  * (not the ground, a box used as ground, a reflector or water), widened by

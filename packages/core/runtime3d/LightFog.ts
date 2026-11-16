@@ -553,6 +553,8 @@ export class ZhudaLightFog {
   private frame = 0;
   /** With beams drawn smaller than the picture: the two smoothing passes. */
   private low?: { across: any; down: any };
+  /** Layers left out of the shafts' depth picture (`excludeFromShafts`). */
+  private shaftExcluded = 0;
 
   constructor(options: ZhudaLightFogOptions = {}) {
     const issues = validateZhudaLightFog(options);
@@ -666,6 +668,20 @@ export class ZhudaLightFog {
     this.fog = resolveZhudaLightFog(next);
   }
 
+  /**
+   * Leaves what is on `layer` (0..31) out of the shafts' depth picture: it
+   * then casts no beam shadow. For a surface that light passes through, such
+   * as water seen from below (`ZhudaUnderwater`).
+   */
+  excludeFromShafts(layer: number): void {
+    if (this.disposed) throw Error('Disposed light fog');
+    if (!(Number.isInteger(layer) && layer >= 0 && layer <= 31))
+      throw Error('Light fog: a layer 0..31');
+    this.shaftExcluded |= 1 << layer;
+    if (this.shaft) this.shaft.camera.cullingMask &= ~this.shaftExcluded;
+    this.drawnFor = undefined;
+  }
+
   /** Replaces the lights that shine into the fog (at most `ZHUDA_FOG_MAX_LIGHTS`). */
   setLights(lights: readonly ZhudaFogLight[]): void {
     if (this.disposed) throw Error('Disposed light fog');
@@ -738,6 +754,7 @@ export class ZhudaLightFog {
     camera.enableHDR = false;
     camera.renderTarget = target;
     camera.renderingOrder = -200;
+    camera.cullingMask &= ~this.shaftExcluded;
     // Drawn by `renderShafts`, not by the engine's frame loop.
     camera.enableRender = false;
     scene.addChild(camera);

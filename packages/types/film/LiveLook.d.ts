@@ -5,6 +5,7 @@ import type { ZhudaScreenReflections } from '../runtime3d/ScreenReflections.js';
 import type { ZhudaLensFinish } from '../runtime3d/LensFinish.js';
 import type { ZhudaColorLut } from '../runtime3d/ColorLut.js';
 import type { ZhudaLensFlare } from '../runtime3d/LensFlare.js';
+import type { ZhudaUnderwater } from '../runtime3d/Underwater.js';
 import type { ZhudaLightingDepth, ZhudaLightingDepthOptions } from '../runtime3d/LightingDepth.js';
 import type { ZhudaAutoExposure, ZhudaDepthOfField, ZhudaMotionBlur } from '../runtime3d/CameraEffects.js';
 import type { ZhudaClouds } from '../runtime3d/Clouds.js';
@@ -24,6 +25,8 @@ export interface ZhudaAppliedLookParts {
     /** The colour table of the look's grade: an unchanged picture until a table is handed over. */
     colorTable?: ZhudaColorLut;
     flare?: ZhudaLensFlare;
+    /** The water the camera can be in. */
+    underwater?: ZhudaUnderwater;
     /** The scene's falloff, shadow spread, cascade blend and contact shadows. */
     lighting?: ZhudaLightingDepth;
     /** The shadow update rule, when the look's shadows are not drawn every frame. */
