@@ -315,7 +315,13 @@ assert.equal(profiler.restored, true, "the browser's own methods are back");
 if (gpuBuild) assert.equal(profiler.gpuTiming, true, 'the device has timestamp queries');
 if (profiler.gpuTiming) {
   assert.ok(profiler.gpu.light.timed >= 30 && profiler.gpu.heavy.timed >= 30, 'frames were timed');
-  assert.ok(profiler.gpu.light.ms > 0 && profiler.gpu.light.ms < 20, `${profiler.gpu.light.ms} ms`);
+  // The light scene can take less than Chrome's 0.1 ms timestamp step: its
+  // median may then read 0, and its mean, over 40 frames, still reads the work
+  // (QA-03 of docs/plans/records/windows-acceptance/plan.md).
+  assert.ok(
+    profiler.gpu.light.mean > 0 && profiler.gpu.light.ms < 20,
+    `light: mean ${profiler.gpu.light.mean} ms, median ${profiler.gpu.light.ms} ms`,
+  );
   assert.ok(
     profiler.gpu.heavy.ms > profiler.gpu.light.ms + 0.5,
     `1,500 sheets of glass cost more (${profiler.gpu.light.ms} -> ${profiler.gpu.heavy.ms} ms)`,
