@@ -19,6 +19,16 @@ function fixture() {
     async _getAdapter() {
       return { info: { vendor: 'fixture' }, features: new Set() };
     }
+    // LayaAir's: keeps the wished features the adapter has, warns about the rest.
+    _initAdapter(adapter) {
+      this._adapter = adapter;
+      const descriptor = this._config.deviceDescriptor;
+      descriptor.requiredFeatures = descriptor.requiredFeatures.filter((name) => {
+        if (adapter.features.has(name)) return true;
+        console.warn(`WebGPU: ${name} is not supported by the adapter.`);
+        return false;
+      });
+    }
     async _getGPUdevice() {
       return device;
     }
@@ -33,6 +43,15 @@ function fixture() {
     }
   }
   const engine = new Engine();
+  engine._config = {
+    deviceDescriptor: {
+      requiredFeatures: [
+        'depth-clip-control',
+        'texture-compression-bc',
+        'texture-compression-etc2',
+      ],
+    },
+  };
   engine.objectName = 'WebGPURenderEngine';
   engine._context = { unconfigure() {} };
   const native = {
@@ -128,6 +147,39 @@ test('WebGPU loss pauses the existing runtime once; disposal removes listeners a
   assert.equal(f.device.destroyed, 1);
   f.device.dispatchEvent(error);
   assert.equal(handle.diagnostics.errors.length, 1);
+});
+test('features LayaAir wishes for but the adapter lacks are data, not console warnings', async () => {
+  Object.defineProperty(globalThis, 'navigator', { configurable: true, value: { gpu: {} } });
+  const f = fixture(),
+    handle = prepareRenderer('webgpu', f.native);
+  const warnings = [];
+  const warn = console.warn;
+  console.warn = (...args) => warnings.push(args.join(' '));
+  try {
+    f.engine._initAdapter({ features: new Set(['depth-clip-control', 'texture-compression-bc']) });
+  } finally {
+    console.warn = warn;
+  }
+  assert.deepEqual(warnings, []);
+  assert.deepEqual(handle.diagnostics.optionalFeatures, {
+    requested: ['depth-clip-control', 'texture-compression-bc', 'texture-compression-etc2'],
+    missing: ['texture-compression-etc2'],
+  });
+  // The device is asked for what LayaAir would have kept.
+  assert.deepEqual(f.engine._config.deviceDescriptor.requiredFeatures, [
+    'depth-clip-control',
+    'texture-compression-bc',
+  ]);
+  handle.release('disposed');
+  // Released: LayaAir's own method is back, warning as before.
+  console.warn = (...args) => warnings.push(args.join(' '));
+  try {
+    f.engine._config.deviceDescriptor.requiredFeatures = ['texture-compression-astc'];
+    f.engine._initAdapter({ features: new Set() });
+  } finally {
+    console.warn = warn;
+  }
+  assert.deepEqual(warnings, ['WebGPU: texture-compression-astc is not supported by the adapter.']);
 });
 test('noncooperative late device is destroyed and cannot resume retired initialization', async () => {
   const f = fixture();

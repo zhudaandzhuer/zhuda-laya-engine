@@ -31,6 +31,13 @@ export interface RendererDiagnostics {
    * both were ready, in milliseconds.
    */
   compilers?: { from: 'inline' | 'cache' | 'network'; ms: number };
+  /**
+   * WebGPU: the features LayaAir asks for when they are there (`requested`)
+   * and those this adapter does not have (`missing`). None is required:
+   * texture formats and effects fall back to what the device has, which
+   * `features` lists. Missing ones are data here, not console warnings.
+   */
+  optionalFeatures?: { requested: string[]; missing: string[] };
 }
 export class ZhudaRendererError extends Error {
   readonly code: string;
@@ -212,6 +219,33 @@ export function prepareRenderer(
               isFallbackAdapter: info.isFallbackAdapter ?? false,
             };
             return adapter;
+          },
+      );
+      patch(
+        native.WebGPURenderEngine?.prototype,
+        '_initAdapter',
+        (original) =>
+          function (this: any, adapter: any, ...rest: unknown[]) {
+            // LayaAir asks for a fixed wish list of thirteen features and, in
+            // this method, drops those the adapter lacks with a console
+            // warning each ("WebGPU: texture-compression-etc2 is not supported
+            // by the adapter.") before going on without them. None is
+            // required: a desktop adapter has no ETC2 or ASTC, a phone's no BC.
+            // The same list is cut to what the adapter has before LayaAir
+            // sees it, and what was missing is reported here as data, so the
+            // console keeps only messages that are about something wrong.
+            const descriptor = this._config?.deviceDescriptor;
+            const wished = descriptor?.requiredFeatures;
+            if (adapter?.features?.has && Array.isArray(wished)) {
+              diagnostics.optionalFeatures = {
+                requested: [...wished],
+                missing: wished.filter((name: string) => !adapter.features.has(name)),
+              };
+              descriptor.requiredFeatures = wished.filter((name: string) =>
+                adapter.features.has(name),
+              );
+            }
+            return original.call(this, adapter, ...rest);
           },
       );
       patch(

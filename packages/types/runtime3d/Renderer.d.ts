@@ -35,6 +35,16 @@ export interface RendererDiagnostics {
         from: 'inline' | 'cache' | 'network';
         ms: number;
     };
+    /**
+     * WebGPU: the features LayaAir asks for when they are there (`requested`)
+     * and those this adapter does not have (`missing`). None is required:
+     * texture formats and effects fall back to what the device has, which
+     * `features` lists. Missing ones are data here, not console warnings.
+     */
+    optionalFeatures?: {
+        requested: string[];
+        missing: string[];
+    };
 }
 export declare class ZhudaRendererError extends Error {
     readonly code: string;
