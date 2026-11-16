@@ -64,6 +64,7 @@ export * from './TransformGizmo.ts';
 export * from './ComputePass.ts';
 export * from './SurfaceBuffer.ts';
 export * from './ObjectMotion.ts';
+export * from './Foliage.ts';
 export * from './GltfSecondUv.ts';
 export * from './Dither.ts';
 export { installLaya342LifecycleFix } from './Laya342Adapters.ts';

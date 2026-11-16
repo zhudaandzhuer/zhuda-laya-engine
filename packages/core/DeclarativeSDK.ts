@@ -17,6 +17,7 @@ import { installLaya342SurfaceBuffer } from './runtime3d/SurfaceBuffer.ts';
 import { installLaya342ObjectMotion } from './runtime3d/ObjectMotion.ts';
 import { installLaya342SecondUv } from './runtime3d/GltfSecondUv.ts';
 import { installLaya342Dither } from './runtime3d/Dither.ts';
+import { installLaya342Foliage } from './runtime3d/Foliage.ts';
 import { buildPrefabTree } from './prefabs/PrefabTree3D.ts';
 import type { PrefabTree3D, PrefabTreeInstance3D } from './prefabs/PrefabTree3D.ts';
 import { assertZhudaRealmAvailable, markZhudaLayaRealm } from './RealmGuards.ts';
@@ -193,6 +194,7 @@ export class ZhudaEngine {
       installLaya342Dither();
       installLaya342ShadowBias();
       installLaya342SpecularAA();
+      installLaya342Foliage();
 
       // 3. 初始化 LayaAir 3.4.2 引擎核心與 WebGL/WASM 管線
       await withDeadline(() => Laya.init(width, height), {

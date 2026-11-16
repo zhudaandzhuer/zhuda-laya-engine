@@ -3,6 +3,26 @@
 Plan: `docs/plans/records/threejs-gap-audit/plan.md` (work packages WP0..WP16 from the audit; WP17..WP20 added on request on 2026-11-15, section 6; WP21..WP24 scheduled the same day from a consumer's rebuild, section 7)\
 Last updated: 2026-11-16 (handoff update at the top); before that 2026-11-15, after WP20 (WP16 to WP19, the phone checks and what the merged packages had left open came before it the same day; batch 2 is done one package at a time, by one agent, without a review agent)
 
+## Handoff update (2026-11-16, evening: foliage)
+
+**State**
+
+- Committed on `main` on top of `777f04c` as `feat: foliage that sways in the wind, keeps its leaves far away and is darker inside` and pushed (the user asked).
+- New: `ZhudaFoliageWind` and `zhudaMarkFoliage` (`packages/core/runtime3d/Foliage.ts`).
+  - Plants marked with them sway in the wind; the patch is in LayaAir's PBR vertex code, in the
+    visible, shadow and depth passes, so the shadows move too.
+  - Cut-out leaves keep their coverage in the distance.
+  - The build-time `zhuda-laya-crown` (`packages/compiler/model-crown.mjs`) darkens the inside of a
+    tree's crown.
+- Records are in `docs/plans/records/foliage-wind-coverage/`.
+  - `verify:foliage` passes on WebGL and WebGPU.
+  - Unmarked frames are pixel-identical to `3b63fee`.
+
+**Open**
+
+1. No phone measurement.
+2. The consumer game re-pins to this commit next (consumer work).
+
 ## Handoff update (2026-11-16, afternoon: water ripples)
 
 **State**

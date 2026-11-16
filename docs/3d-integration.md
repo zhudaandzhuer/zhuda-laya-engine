@@ -70,6 +70,29 @@ opaque-origin 無法讀取 storage 時，boot 安裝 realm 內記憶體替代。
 
 `ZhudaDynamicMesh` 接收 position／normal／UV／index，另可帶 `tangents` 與每頂點四個數的 `colors`（`setColor(i,r,g,b,a)` 修改、`updateRange` 上傳；`offsets`／`stride` 說明每個頂點在 `vertices` 中的排列；lit surface 的 hook 以 `s.vertexColor` 讀取：rgb 以光量到達，alpha 原值到達）。會動的布料（`ZhudaCloth`：釘點、碰撞體、抓取，時間取自 `ZhudaLayeredClock`）見 [cloth](cloth.md)。每 chunk 限 3..65,535 頂點，使用 UInt16 indices；大型水面自行切塊。`setPosition` 修改 CPU staging，`updateRange` 局部上傳並重算 bounds。`ZhudaInstanceGroup` 使用共享 mesh／material 交給 Laya instancing；`set(id,worldMatrix)` 的穩定 ID 由應用提供，不能使用合批順序當 entity ID。`dispose()` 清除本組節點，mesh／material 的 owner 仍須釋放。
 
+### 樹葉：風與遠處的覆蓋（Foliage）
+
+用 LayaAir PBR／glTF shader 畫的模型（Poly Haven 樹、灌木、蕨類）可以標成植物，`ZhudaEngine.boot` 已在 `Laya.init` 前裝好 shader 修補：
+
+```ts
+const marks = zhudaMarkFoliage(treeNode); // 這棵樹的材質：隨風擺動；鏤空的葉子保留遠處覆蓋
+const wind = new ZhudaFoliageWind(scene, { direction: [1, 0.3], strength: 0.8 });
+// 每幀：wind.update(seconds)（遊戲自己的時鐘）
+// 收尾：marks.dispose(); wind.dispose();
+```
+
+- **風**（材質 define `ZHUDA_WIND`）：
+  - 整株植物隨陣風傾斜、擺回，離底部越高擺得越多（以高度平方計，強度 1 時 10 m 高的樹頂約 16 cm）；鏤空的葉子另外各自顫動約 2 cm。
+  - 位移加在 LayaAir 算世界座標的地方，可見畫面與陰影、深度一起動。
+  - `zhudaWindOffset` 是同一條公式的 TypeScript 版。
+- **遠處覆蓋**（`ZHUDA_KEEP_COVERAGE`，只用在 glTF shader 的鏤空材質）：
+  - 葉子貼圖縮小時，透明度被平均掉，葉子會變稀，遠處樹冠成了一點一點的天空。
+  - 修補依貼圖被讀取的 mip 等級把透明度提高（每級四分之一），可見、陰影、深度三個 pass 都一樣。
+- 材質由一個模型的所有複本共用，所以標一次，每一棵都會動；`dispose` 只拿掉這次標上去的 define。
+- 沒有標的材質，編譯出來就是 LayaAir 原本的程式碼。
+- 驗證：`npm run verify:foliage`（`FOLIAGE_RENDERER=webgpu` 跑 WebGPU）。
+- 樹冠裡面的暗部是建置時的事，用 [`zhuda-laya-crown`](model-lod.md#shading-a-trees-crown)。
+
 ## 模型與非同步生命週期
 
 `ZhudaModelLibrary.instantiate(url,{signal,retries,independentMaterials})` 使用 `ZhudaAssetCache` 去重、引用 lease、最多三次重試、獨立取消與有界 idle cache。辨識 GLB magic，因此 `.bin` 也可載入，外部 JPG 以模型 URL 為基底。3.4.2 的 `_parseglb/_parse` 是版本綁定介面，升級 vendor 時需回歸。

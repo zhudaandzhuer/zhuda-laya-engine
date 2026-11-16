@@ -89,6 +89,28 @@ copy of a square turns lighter, or stops being drawn, together. A smaller
 `packages/compiler/model-lod.mjs` is the same thing as a function; it returns
 the new file and, part by part, what was done.
 
+## Shading a tree's crown
+
+A leaf card is lit alone, so a tree's crown comes out as bright inside as on
+its outside and looks flat. Leaves deep in a crown, and under it, see little
+of the sky.
+
+```sh
+zhuda-laya-crown tree.glb [--floor 0.45] [--under 0.75] [--out shaded.glb]
+```
+
+- It fits an ellipsoid round the model's cut-out (`MASK`) leaves and writes a
+  grey vertex colour (`COLOR_0`, unsigned bytes) on them.
+- A leaf at the middle of the crown gets `floor`, one on its outside gets 1.
+  That is then multiplied by `under` at the bottom of the crown, rising to 1 at the top.
+- LayaAir's glTF material multiplies the colour into the leaf picture.
+- Nothing else changes, and a file whose leaves already have a colour is left as it is.
+- It adds four bytes a leaf vertex.
+- Positions are read as the meshes store them: use one tree, shrub or bush to a file.
+- Run it on each level of detail: each is fitted on its own leaves.
+- `shadeCrownGlb(bytes, options)` in `packages/compiler/model-crown.mjs` is the
+  same thing as a function.
+
 ## Limits
 
 - Build-time only; nothing is simplified while a game runs.
