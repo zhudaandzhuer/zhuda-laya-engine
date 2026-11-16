@@ -69,8 +69,13 @@ differ from the scene without water.
 
 ## Limits and decision
 
-- No phone run (requested from the owner's session); the caustics' cost per
-  lit pixel is not measured.
+- No phone draw of the underwater look (`verify:film-underwater` runs on
+  the desktop film host only); the caustics' cost per lit pixel is not
+  measured. At the merge into `main` the global PBR / Blinn-Phong patch
+  and the three added Scene3D uniforms were checked for regressions on a
+  vivo V40 (Adreno 720): `verify:lit-surface` and
+  `verify:physical-surfaces` PASS on WebGL and WebGPU; on the Mac the same
+  two plus `verify:specular-aa` PASS on both backends.
 - The red channel reaches 0 near the floor at the default extinction (0.45
   a metre, about clear ocean); a scene that wants warmer near colours sets
   a lower red extinction.

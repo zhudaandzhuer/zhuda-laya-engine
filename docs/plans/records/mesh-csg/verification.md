@@ -70,7 +70,8 @@ snapping points 0.1 mm apart into one (6 open edges); the second is kept.
   after cut, break closedness; the report shows it and the next cut refuses
   the result. The plan's other bases (a BVH clip, manifold-3d) are the way
   on if a consumer cuts curved shapes repeatedly.
-- No consumer, no phone, no worker.
+- No consumer, no worker. Phone (added at the merge into `main`):
+  `verify:csg` PASS on a vivo V40 (Adreno 720), WebGL and WebGPU.
 
 Decision: **Implemented** as an optional entry for a few cuts; not accepted
 for destructible scenery cut many times.

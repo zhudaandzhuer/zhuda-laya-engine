@@ -79,11 +79,16 @@ could not be cancelled or stopped by the time limit part way.
 
 ## Limits and decision
 
-- No phone run (requested from the owner's session).
+- Phone (added at the merge into `main`, vivo V40, Adreno 720, Chrome
+  over `ZHUDA_PHONE_CHROME`): `verify:density-volume` PASS on WebGPU (the
+  4.86-million-point field on the GPU in 780 ms against 2 065 ms in
+  JavaScript, largest difference 1.2e-6, no sign flips) and on WebGL
+  (JavaScript fill); `verify:gpu-depth` PASS on both after the dispatch
+  change.
 - The JavaScript heap was measured in the 30 cycles (lower after than
   before on both backends); GPU buffers were counted on WebGPU by wrapping
   `createBuffer` and `destroy`.
 - Meshing a 4.9-million-point grid takes the CPU; not measured on a phone.
 
-Decision: **Implemented**, accepted for desktop WebGL and WebGPU; phone
-acceptance open.
+Decision: **Implemented**, accepted for desktop WebGL and WebGPU and on
+one phone (vivo V40).
