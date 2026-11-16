@@ -178,6 +178,32 @@ adb forward --remove tcp:9333
 - Times a check prints are the phone's. Its waits are the desktop's: a slow
   page may run out of them, which is a result too.
 
+## Windows hardware runs
+
+Hosted CI runs Windows with a software renderer (`windows` job in
+`.github/workflows/verify.yml`): it proves the scripts start, link, import
+and clean up there, not what a GPU draws. A Windows hardware result comes
+from a machine with the GPU, and only from its signed-in desktop session:
+
+- In a service or SSH session (session 0, no desktop) Chrome draws WebGL but
+  WebGPU frames come out white and some pages get no context, at any
+  commit. Run the checks as the signed-in user, for example through a
+  scheduled task with an interactive logon (`New-ScheduledTaskPrincipal
+-LogonType Interactive -RunLevel Limited`, which is also a standard,
+  non-administrator token), with the window hidden.
+- Use Node 24 or later; run npm-based checks through `npm run` (the scripts
+  find npm's own CLI; `ZHUDA_NPM_CLI` names it otherwise).
+- Chrome picks the integrated GPU by default on a laptop-style dual-GPU
+  machine; record which adapter ran (each check prints it) and do not
+  call a run on one GPU a result for the other.
+- After each check, no `chrome.exe`/`msedge.exe` whose command line names a
+  `zhuda-*-browser-` profile should remain, and no such folder in `%TEMP%`
+  should be added.
+
+The checks and the order used for the Windows acceptance plan are in
+`docs/plans/records/windows-acceptance/` (each item's verification record
+names the command, the session and the result).
+
 ## Making a 3D scene look good
 
 Follow the [quality route](quality-route.md): the steps, in order, from an
