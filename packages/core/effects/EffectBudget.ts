@@ -241,6 +241,8 @@ export class ZhudaRuntimeProfiler {
   };
   private webgpu = false;
   private gpuReason = 'GPU timer queries not enabled.';
+  /** The newest GPU time resolved and not yet taken (`takeGpuMs`). */
+  private newestGpuMs: number | undefined;
   private frameOpen = false;
   constructor(options: RuntimeProfilerOptions = {}) {
     this.capacity = options.capacity ?? 600;
@@ -491,7 +493,7 @@ export class ZhudaRuntimeProfiler {
         target.unmap();
         const total = zhudaPassesBusyNs(stamps, ended.used);
         if (this.gpuPasses === g) {
-          ended.sample.gpuMs = Number(total) / 1e6;
+          ended.sample.gpuMs = this.newestGpuMs = Number(total) / 1e6;
           g.free.push(target);
         }
       })
@@ -502,6 +504,9 @@ export class ZhudaRuntimeProfiler {
   }
   private pollGpu(): void {
     this.resolvePasses();
+    this.pollQueries();
+  }
+  private pollQueries(): void {
     const g = this.gpu;
     if (!g) return;
     const invalid = g.gl.isContextLost() || g.gl.getParameter(g.disjoint);
@@ -510,7 +515,7 @@ export class ZhudaRuntimeProfiler {
       if (invalid || g.gl.getQueryParameter(q.query, g.gl.QUERY_RESULT_AVAILABLE)) {
         if (!invalid && q.sample) {
           const ms = Number(g.gl.getQueryParameter(q.query, g.gl.QUERY_RESULT)) / 1e6;
-          if (Number.isFinite(ms) && ms >= 0) q.sample.gpuMs = ms;
+          if (Number.isFinite(ms) && ms >= 0) q.sample.gpuMs = this.newestGpuMs = ms;
         }
         g.gl.deleteQuery(q.query);
         g.pending.splice(i, 1);
@@ -564,6 +569,21 @@ export class ZhudaRuntimeProfiler {
     this.duration += frameMs;
     // Do not expose mutable retained samples to callers.
     return { ...sample };
+  }
+  /**
+   * The newest GPU frame time resolved since the last call, in
+   * milliseconds, or undefined when none arrived (no GPU timing, a frame
+   * still on its way back, a disjoint or lost query). For a governor fed
+   * once a frame: `governor.sample(frameMs, profiler.takeGpuMs())`. A frame's
+   * time arrives a frame or more after the frame.
+   */
+  takeGpuMs(): number | undefined {
+    // WebGPU timestamps are resolved when the next frame begins, once the
+    // ended frame's passes have been handed over; not here.
+    this.pollQueries();
+    const ms = this.newestGpuMs;
+    this.newestGpuMs = undefined;
+    return ms;
   }
   report() {
     this.pollGpu();

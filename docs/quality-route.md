@@ -229,6 +229,14 @@ shadows drawn every few frames (`shadows: { update: 'interval', interval: 3 }`).
 (`look.setStep(steps[level])`). Desktop-drawn, not phone-measured: see
 `docs/plans/records/frame-cost/`.
 
+A draw-distance rung (`zhudaQualitySteps({ details: [0.7, 0.4] })`, the scene
+multiplies `steps[level].detail` into its own distances), GPU time
+(`governor.sample(frameMs, profiler.takeGpuMs())` holds a band round the
+budget), a warm start behind the start screen (`governor.warm()`) and the
+level kept for the next visit with a load-crash fallback
+(`ZhudaQualityMemory`): `docs/film-scenes.md`, "Draw distance, GPU time and
+the next visit".
+
 ### 12. `final-evidence`
 
 Film: `film_render_job` with `kind: "still"` (16 samples) or `"video"`; with a

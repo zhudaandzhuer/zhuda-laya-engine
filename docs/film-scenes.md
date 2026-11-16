@@ -841,6 +841,72 @@ const level = governor.sample(dt * 1000);
 if (level !== undefined) look.setStep(steps[level]);
 ```
 
+### Draw distance, GPU time and the next visit
+
+Record `docs/plans/records/quality-governor-memory/` (desktop WebGL and
+WebGPU; no phone yet).
+
+- **Detail rungs.** `zhudaQualitySteps({ details: [0.7, 0.4] })` adds rungs
+  that keep the authored look and the picture size and cut `detail`, the
+  share of its own distances the scene keeps. The default order is the one
+  Abyssal Garden uses: the picture shrinks to the middle scale (0.85), then
+  the distances are cut, then the rest of the scales and the look levels go.
+  `detailAt: 1` cuts distances before any pixel goes; `detailAt: 0.7` after
+  every one. Every rung carries `detail` (1 without `details`). The engine
+  does not apply it: the scene multiplies it into what it owns (its draw
+  distance, `ZhudaGrassField`'s `distanceM`, the `cullMeters` of its models,
+  how far it scatters small things).
+- **GPU time.** `governor.sample(frameMs, gpuMs)` with
+  `ZhudaRuntimeProfiler.takeGpuMs()` (WebGPU timestamps; WebGL 2 where the
+  browser has `EXT_disjoint_timer_query_webgl2`, as desktop Chrome on this
+  Mac does): the governor holds the GPU time inside a band round the budget
+  (`gpuBand`, default 0.84..1.16): above it a level down, below it for a calm
+  stretch a level up, inside it nothing. A frame interval sits at the
+  display's refresh however little the GPU does, so only GPU time shows the
+  room left. When fewer than half the frames of a window brought a GPU time
+  the frame-time rule decides; `governor.basis` says which did. Single GPU
+  readings spike (17 ms against a median of 6 on this desktop): keep the
+  default window of 30 frames.
+- **Warm start.** `governor.warm()` behind a start screen decides on windows
+  of 12 frames and tries a level up after a quarter of the usual calm, so
+  the level has settled when play starts; `governor.warm(false)` then. It is
+  fed the same frame times from the game's clock and has no timer.
+- **The next visit.** `ZhudaQualityMemory` keeps the level (and the scale and
+  detail drawn at) in a storage the game passes, under a key it names; a
+  storage that throws, is empty, or holds another version or another ladder
+  length reads as nothing kept. Its load sentinel: `beginLoad()` before the
+  heavy build, `endLoad()` on the first frame and on `visibilitychange` to
+  hidden; still set at the next start means that load ended the tab, and
+  `startLevel` starts one level lower (and keeps that level, so a load that
+  fails again goes lower again).
+
+```ts
+const steps = zhudaQualitySteps({ details: [0.7, 0.4] });
+let storage: Storage | null = null;
+try {
+  storage = localStorage;
+} catch {}
+const memory = new ZhudaQualityMemory({ key: 'my-game', storage, levels: steps.length });
+const governor = new ZhudaQualityGovernor({
+  levels: steps.length,
+  start: memory.startLevel(steps.length - 1),
+  budgetMs: 1000 / 60,
+});
+memory.beginLoad();
+// ... build the scene, then on its first frame:
+memory.endLoad();
+document.addEventListener('visibilitychange', () => document.hidden && memory.endLoad());
+governor.warm(); // while the start screen shows; governor.warm(false) when play starts
+
+// each frame, with a ZhudaRuntimeProfiler that has enableGpuTiming:
+const level = governor.sample(dt * 1000, profiler.takeGpuMs());
+if (level !== undefined) {
+  look.setStep(steps[level]);
+  myScene.setDrawDistance(baseDistance * steps[level].detail);
+  memory.write({ level, renderScale: steps[level].renderScale, detail: steps[level].detail });
+}
+```
+
 ## Changing the look while it runs
 
 `stage.setLook(look)` (on a mounted film stage) and `ZhudaSceneLook.setLook`

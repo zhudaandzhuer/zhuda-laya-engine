@@ -161,12 +161,16 @@ export class ZhudaSceneLook {
 
   /**
    * Moves to a rung of a quality ladder (`zhudaQualitySteps`): its look
-   * level and its render scale.
+   * level and its render scale. Its `detail` is the scene's to apply to its
+   * own distances.
    */
   setStep(step: ZhudaQualityStep): void {
     if (this.disposed) throw Error('Disposed scene look');
     if (!step || typeof step !== 'object')
       throw Error('Quality step: { look, renderScale } required');
+    // The scene applies detail to its own distances; a wrong one is still refused here.
+    if (step.detail !== undefined && !(step.detail >= 0.4 && step.detail <= 1))
+      throw Error('Quality step: detail is 0.4..1');
     const scaling = zhudaRenderScaleOptions({ ...this.scaling, scale: step.renderScale });
     this.setQuality(step.look);
     this.scaleTo(scaling);

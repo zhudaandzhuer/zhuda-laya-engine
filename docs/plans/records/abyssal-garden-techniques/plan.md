@@ -1,8 +1,8 @@
 # Techniques from Abyssal Garden
 
-Status: Proposed (a reading of another project and a plan; nothing here is built by this document)\
+Status: In progress (AG2 implemented; the other packages as listed under Progress)\
 Owner: Engine/toolchain\
-Last reviewed: 2026-11-16
+Last reviewed: 2026-11-17
 
 ## Source requirement
 
@@ -50,6 +50,17 @@ The figures below are the author's; none was run here.
 | Isosurface     | `createZhudaIsosurfaceMesh` (surface nets, CPU), `ZhudaSdfField` ([procedural hand](../procedural-hand/task.md))                                                                                    | No removal of disconnected pieces; no GPU density; no distance query kept for collision                                                     |
 | GPU compute    | `ZhudaComputePass` with a JavaScript fallback ([GPU depth](../gpu-depth/task.md))                                                                                                                   | Not used for a density volume                                                                                                               |
 | Acceptance     | `measureZhudaFrame`, film verify scripts, [phone checks](../phone-checks/task.md)                                                                                                                   | No blind critic gate; no scripted fly-through with GPU average/p99/max                                                                      |
+
+## Progress
+
+| Package | State                                               | Record                                                        |
+| ------- | --------------------------------------------------- | ------------------------------------------------------------- |
+| AG2     | Implemented; desktop WebGL and WebGPU; no phone yet | [quality-governor-memory](../quality-governor-memory/task.md) |
+| AG5     | Proposed                                            |                                                               |
+| AG3     | Proposed                                            |                                                               |
+| AG4     | Proposed                                            |                                                               |
+| AG1     | Proposed                                            |                                                               |
+| AG6     | Proposed                                            |                                                               |
 
 ## Work packages
 
