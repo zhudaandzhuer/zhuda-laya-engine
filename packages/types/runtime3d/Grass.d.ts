@@ -84,6 +84,8 @@ export declare const ZHUDA_GRASS_BLADE_FLOATS = 7;
 /** Problems with grass options; an empty list means a field can be made of them. */
 export declare function validateZhudaGrass(options: ZhudaGrassOptions): string[];
 /** The options with every default filled in. Throws what `validateZhudaGrass` lists. */
+/** Lists what is wrong with a list of bodies for \`ZhudaGrassField.setBenders\`. */
+export declare function validateZhudaGrassBenders(benders: unknown): string[];
 export declare function resolveZhudaGrass(options: ZhudaGrassOptions): ZhudaGrassResolved;
 /** The share of blades drawn at a distance from the eye: all of them close by, fewer further off, none past the end. */
 export declare function zhudaGrassShown(distance: number, fullDensityM: number, distanceM: number): number;
@@ -133,6 +135,18 @@ export declare function zhudaGrassTurf(resolved: ZhudaGrassResolved, ground: (x:
  * along the blade in y. Pure: no Laya needed.
  */
 export declare function zhudaGrassMeshes(blades: Float32Array, segments: number): ZhudaGrassMeshData[];
+/** Bodies in the grass (setBenders): at most this many at once. */
+export declare const ZHUDA_GRASS_MAX_BENDERS = 4;
+/**
+ * How far a body pushes a blade's point aside and down, as the vertex program
+ * does it: \`[dx, dy, dz]\` for a blade standing at \`foot\` (its foot, world),
+ * \`tall\` metres high, at \`t\` (0 at the foot, 1 at the tip), from a body at
+ * \`[x, y, z]\` (its lowest point) reaching \`radius\` metres. Blades within a
+ * third of the radius are pressed flat away from the body; the push fades to
+ * nothing at the radius, and as the body rises more than 0.15 m above the
+ * blade's foot (gone by 0.7 m). The foot stays where it is.
+ */
+export declare function zhudaGrassBend(foot: readonly [number, number, number], tall: number, t: number, body: readonly [number, number, number], radius: number): [number, number, number];
 export interface ZhudaGrassStats {
     /** Patches of land that have a mesh now. */
     patches: number;
@@ -159,6 +173,18 @@ export declare class ZhudaGrassField {
     private job;
     private disposed;
     constructor(scene: any, options: ZhudaGrassOptions);
+    /**
+     * Bodies standing in the grass this frame (a character's feet, a thing
+     * dropped on it): each pushes the blades within \`radius\` aside and presses
+     * them down, fading as the body rises above them (see \`zhudaGrassBend\`).
+     * At most \`ZHUDA_GRASS_MAX_BENDERS\`; an empty list lets the grass stand.
+     * \`position\` is the body's lowest point, world metres. Cheap enough for
+     * every frame; nothing is rebuilt.
+     */
+    setBenders(benders: readonly {
+        position: readonly [number, number, number];
+        radius: number;
+    }[]): void;
     /** Changes the wind in place. */
     setWind(wind: {
         directionDeg?: number;

@@ -526,3 +526,35 @@ test('the back of a two-sided lit surface can keep the normal it was given', () 
     globalThis.Laya = before;
   }
 });
+
+// Bodies in the grass (setBenders): the push the vertex program applies, and the checks on a list.
+import { ZHUDA_GRASS_MAX_BENDERS, validateZhudaGrassBenders, zhudaGrassBend } from '../packages/core/runtime3d/Grass.ts';
+
+test('a body pushes a near blade aside and down, a far one not at all', () => {
+  const body = [0, 0, 0];
+  const near = zhudaGrassBend([0.1, 0, 0], 0.3, 1, body, 0.6);
+  assert.ok(near[0] > 0.2, 'pushed away from the body along +x');
+  assert.ok(Math.abs(near[2]) < 1e-9);
+  assert.ok(near[1] < -0.15, 'pressed down');
+  assert.deepEqual(zhudaGrassBend([0.7, 0, 0], 0.3, 1, body, 0.6), [0, -0, 0]);
+  // the foot never moves
+  assert.deepEqual(zhudaGrassBend([0.1, 0, 0], 0.3, 0, body, 0.6).map((v) => Math.abs(v)), [0, 0, 0]);
+});
+
+test('a body high above the grass leaves it standing; the push fades with height', () => {
+  const low = zhudaGrassBend([0.1, 0, 0], 0.3, 1, [0, 0.1, 0], 0.6);
+  const mid = zhudaGrassBend([0.1, 0, 0], 0.3, 1, [0, 0.4, 0], 0.6);
+  const high = zhudaGrassBend([0.1, 0, 0], 0.3, 1, [0, 0.8, 0], 0.6);
+  assert.ok(low[0] > mid[0] && mid[0] > high[0]);
+  assert.equal(high[0], 0);
+});
+
+test('benders are checked by name', () => {
+  assert.deepEqual(validateZhudaGrassBenders([]), []);
+  assert.deepEqual(validateZhudaGrassBenders([{ position: [0, 0, 0], radius: 0.5 }]), []);
+  assert.match(validateZhudaGrassBenders([{ position: [0, NaN, 0], radius: 0.5 }])[0], /benders\[0\]\.position/);
+  assert.match(validateZhudaGrassBenders([{ position: [0, 0, 0], radius: 9 }])[0], /benders\[0\]\.radius/);
+  const many = Array.from({ length: ZHUDA_GRASS_MAX_BENDERS + 1 }, () => ({ position: [0, 0, 0], radius: 0.5 }));
+  assert.match(validateZhudaGrassBenders(many)[0], /at most 4/);
+  assert.deepEqual(validateZhudaGrassBenders('x'), ['benders must be an array']);
+});

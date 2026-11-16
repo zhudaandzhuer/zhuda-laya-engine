@@ -29,7 +29,7 @@ test('clouds have defaults and refuse values out of range', () => {
   assert.deepEqual(
     validateZhudaClouds({
       coverage: 2,
-      baseMeters: 1,
+      baseMeters: -30000,
       wind: [1],
       steps: 12.5,
       sunToward: [0, 0, 0],
@@ -39,7 +39,7 @@ test('clouds have defaults and refuse values out of range', () => {
     [
       'rain: unknown option (coverage, baseMeters, thicknessMeters, sizeMeters, density, wind, steps, distanceMeters, sunToward, sunColor, skyColor)',
       'coverage: use 0..1',
-      'baseMeters: use 50..20000',
+      'baseMeters: use -20000..20000',
       'wind: use [x, z] in metres a second, each within 300',
       'steps: use a whole number 8..64',
       'sunToward: use a direction [x, y, z]',
@@ -142,4 +142,9 @@ test('a surface takes a clear coat and a drawn-out highlight', () => {
     validateZhudaFilmScene(scene({ color: [0.5, 0.1, 0.1], clearCoat: 2, anisotropy: -1 })),
     ['scene.materials.finish.clearCoat: use 0..1', 'scene.materials.finish.anisotropy: use 0..1'],
   );
+});
+
+test('a layer of cloud may lie below the eye: a sea of cloud', () => {
+  assert.deepEqual(validateZhudaClouds({ baseMeters: -80, thicknessMeters: 50 }), []);
+  assert.deepEqual(validateZhudaClouds({ baseMeters: 1 }), []);
 });

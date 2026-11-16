@@ -286,8 +286,9 @@ nodes.
   parallax: LayaAir's PBR shader takes no height map. A texture's own fine
   repeat (`variation` hides the grid of tiles, not the pattern inside one).
   A `sweep` does not round its corners.
-- Weather: `clouds` is one layer of one kind of cloud; it casts no shadow on
-  the ground and nothing rains from it.
+- Weather: `clouds` is one layer of one kind of cloud (above the eye, or
+  below it as a sea of cloud); it casts no shadow on the ground and nothing
+  rains from it. Rain is the game's own particles.
 - Skin (light that passes through it), hair strands, and cloth sheen in a
   film scene. A flat material has `clearCoat` (lacquer, a wet sheen) and
   `anisotropy` (brushed metal, satin, a band of light on hair); LayaAir's PBR

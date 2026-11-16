@@ -340,6 +340,14 @@ export interface ZhudaFilmLightFog {
     /** Strength of the glow around lights, 0..16 (default 1). */
     scatter?: number;
     /**
+     * How far along a view ray the fog is gathered, 1..100000 metres (default
+     * 600). Shorter keeps what is far away clear while the air round the scene
+     * stays hazy: a sea of cloud below a floating island, and things drawn
+     * without depth (particles) in front of the sky, which are otherwise
+     * fogged as if they were as far away as the sky.
+     */
+    maxDistance?: number;
+    /**
      * Beams of the sun or moon in the fog, cut by whatever stands in the light
      * (`look.sun` gives direction, colour and intensity); off unless given.
      */
@@ -754,7 +762,7 @@ export interface ZhudaFilmLensFlare {
 export interface ZhudaFilmClouds {
     /** How much of the sky is cloud, 0..1 (default 0.5). */
     coverage?: number;
-    /** Height of the clouds' underside in metres, 50..20000 (default 1500). */
+    /** Height of the clouds' underside in metres, -20000..20000 (default 1500); below the eye, a sea of cloud. */
     baseMeters?: number;
     /** How thick the layer is in metres, 50..8000 (default 900). */
     thicknessMeters?: number;

@@ -366,7 +366,10 @@ the clouds beyond it drawn in front of it. `setTime(seconds)` moves them with th
 wind; the same time draws the same sky. A look has it as `clouds` and gives
 it the sun's direction and light and the ambient colour; quality level 2
 halves the steps, level 1 takes a third, level 0 drops it. One layer of one
-kind of cloud: no shadow on the ground, no rain. Each step is about seventy
+kind of cloud: no shadow on the ground, no rain. `baseMeters` may be below
+the eye (down to -20000): the slab is then entered from its top, a sea of
+cloud seen from a floating island, a mountain or a plane; with a look's
+`lightFog`, keep the fog's `maxDistance` short or it fogs the sea away. Each step is about seventy
 arithmetic noise lookups a pixel; the cost in frame time is not measured.
 Drawn on desktop WebGL and WebGPU (`npm run verify:film-clouds`).
 

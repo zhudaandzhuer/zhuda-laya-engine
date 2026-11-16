@@ -54,6 +54,28 @@ grass.dispose();
 - The turf is a sheet 2 cm over the ground in half-metre squares. Where
   grass stops growing its edge is cut raggedly. `turf: false` leaves it out.
 
+## Bodies in the grass
+
+`setBenders([{ position, radius }])` presses the grass down where something
+stands in it: a character's feet, a thing dropped on it, a ring flattened by
+a hard landing for a moment. Each body (at most `ZHUDA_GRASS_MAX_BENDERS`,
+4) pushes the blades within `radius` metres away from it and down: those
+within a third of the radius lie almost flat, the push fades to nothing at
+the radius, and it fades as the body rises above the blades (from 0.15 m,
+gone at 0.7 m), so a thing flying over the field leaves it standing.
+`position` is the body's lowest point. Call it every frame the bodies move;
+an empty list lets the grass stand. Nothing is rebuilt: four more vectors
+reach the vertex program. `zhudaGrassBend` is the same push in TypeScript,
+for tests and for a game that wants to know it; `validateZhudaGrassBenders`
+names each wrong field.
+
+```ts
+grass.setBenders([
+  { position: pig.feet, radius: 0.55 },
+  ...(impact > 0 ? [{ position: landedAt, radius: 0.3 + 1.6 * impact }] : []),
+]);
+```
+
 ## Options
 
 | Option               | Default                                          | Meaning                                                                 |
@@ -90,7 +112,8 @@ rather than thin it further.
 - Desktop WebGL and WebGPU only have been drawn (`npm run verify:grass`, and
   with `GRASS_RENDERER=webgpu`). Phones are untested and frame times are not
   measured by the engine's checks.
-- Blades are not pushed aside by a foot and cast no shadow.
+- Blades are pushed aside only by the four bodies given to `setBenders`, not
+  by every mesh in the scene, and they cast no shadow.
 - Blades are geometry, without a texture: far grass is thinned, not faded,
   and it ends at `distanceM` (the turf sinks into the ground there).
 - The turf lies 2 cm over the ground the game reports: where that differs

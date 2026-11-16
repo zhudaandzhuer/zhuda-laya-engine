@@ -259,6 +259,15 @@ into haze. It needs `grade` and is off unless given.
 "lightFog": { "density": 0.015, "falloffMeters": 6, "baseY": 0, "color": [0.16, 0.19, 0.25], "scatter": 1.5 }
 ```
 
+`maxDistance` (default 600 m) is how far along a view ray the fog is
+gathered. The fog is laid by the depth of each pixel, and things drawn
+without depth (particles: rain, smoke, stars) take the depth of what lies
+behind them: in front of the sky they are fogged as if they were as far as
+the sky, and a thick fog hides them. A short `maxDistance` (tens of metres)
+keeps haze round the scene and its beams of light, and leaves far things
+clear: a sea of cloud below (`clouds.baseMeters` under the eye), stars, rain
+against the sky.
+
 - Shapes without a prop: `box`; `lathe`, a body of revolution about the
   vertical axis from its outline as `[radius, height]` pairs listed from the
   bottom up (`"profile": [[0.12, 0], [0.12, 0.8], [0.09, 0.95], [0, 1]]` is a

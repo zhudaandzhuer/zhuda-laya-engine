@@ -20,7 +20,11 @@ export declare const ZHUDA_CLOUD_MAX_STEPS = 64;
 export interface ZhudaCloudsOptions {
     /** How much of the sky is cloud, 0..1 (default 0.5). */
     coverage?: number;
-    /** Height of the clouds' underside in metres, 50..20000 (default 1500). */
+    /**
+     * Height of the clouds' underside in metres, -20000..20000 (default 1500).
+     * Below the eye is a sea of cloud seen from above (a floating island, a
+     * mountain top, a plane): the same slab, entered from its top.
+     */
     baseMeters?: number;
     /** How thick the layer is in metres, 50..8000 (default 900). */
     thicknessMeters?: number;

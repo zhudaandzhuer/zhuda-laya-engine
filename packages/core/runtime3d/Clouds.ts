@@ -192,7 +192,11 @@ zhudaShaderRegistrar(register);
 export interface ZhudaCloudsOptions {
   /** How much of the sky is cloud, 0..1 (default 0.5). */
   coverage?: number;
-  /** Height of the clouds' underside in metres, 50..20000 (default 1500). */
+  /**
+   * Height of the clouds' underside in metres, -20000..20000 (default 1500).
+   * Below the eye is a sea of cloud seen from above (a floating island, a
+   * mountain top, a plane): the same slab, entered from its top.
+   */
   baseMeters?: number;
   /** How thick the layer is in metres, 50..8000 (default 900). */
   thicknessMeters?: number;
@@ -245,7 +249,7 @@ export function validateZhudaClouds(options: ZhudaCloudsOptions): string[] {
       issues.push(`${key}: use ${min}..${max}`);
   };
   range('coverage', 0, 1);
-  range('baseMeters', 50, 20000);
+  range('baseMeters', -20000, 20000);
   range('thicknessMeters', 50, 8000);
   range('sizeMeters', 100, 50000);
   range('density', 0, 4);

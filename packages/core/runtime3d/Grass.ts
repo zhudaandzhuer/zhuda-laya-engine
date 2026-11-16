@@ -158,6 +158,20 @@ export function validateZhudaGrass(options: ZhudaGrassOptions): string[] {
 }
 
 /** The options with every default filled in. Throws what `validateZhudaGrass` lists. */
+/** Lists what is wrong with a list of bodies for \`ZhudaGrassField.setBenders\`. */
+export function validateZhudaGrassBenders(benders: unknown): string[] {
+  if (!Array.isArray(benders)) return ['benders must be an array'];
+  const e: string[] = [];
+  if (benders.length > ZHUDA_GRASS_MAX_BENDERS) e.push(`at most ${ZHUDA_GRASS_MAX_BENDERS} benders`);
+  benders.forEach((b, i) => {
+    const p = b?.position;
+    if (!Array.isArray(p) || p.length !== 3 || !p.every(Number.isFinite))
+      e.push(`benders[${i}].position must be [x, y, z], finite`);
+    if (!(Number.isFinite(b?.radius) && b.radius >= 0.05 && b.radius <= 5))
+      e.push(`benders[${i}].radius must be 0.05..5 metres`);
+  });
+  return e;
+}
 export function resolveZhudaGrass(options: ZhudaGrassOptions): ZhudaGrassResolved {
   const errors = validateZhudaGrass(options);
   if (errors.length) throw Error(errors.join('; '));
@@ -555,7 +569,49 @@ export function zhudaGrassMeshes(blades: Float32Array, segments: number): ZhudaG
   return meshes;
 }
 
-const VERTEX = `void zhudaVertex(inout vec3 p, inout vec3 n, vec2 uv, vec3 origin) {
+/** Bodies in the grass (setBenders): at most this many at once. */
+export const ZHUDA_GRASS_MAX_BENDERS = 4;
+/**
+ * How far a body pushes a blade's point aside and down, as the vertex program
+ * does it: \`[dx, dy, dz]\` for a blade standing at \`foot\` (its foot, world),
+ * \`tall\` metres high, at \`t\` (0 at the foot, 1 at the tip), from a body at
+ * \`[x, y, z]\` (its lowest point) reaching \`radius\` metres. Blades within a
+ * third of the radius are pressed flat away from the body; the push fades to
+ * nothing at the radius, and as the body rises more than 0.15 m above the
+ * blade's foot (gone by 0.7 m). The foot stays where it is.
+ */
+export function zhudaGrassBend(
+  foot: readonly [number, number, number],
+  tall: number,
+  t: number,
+  body: readonly [number, number, number],
+  radius: number,
+): [number, number, number] {
+  if (!(radius > 0)) return [0, 0, 0];
+  const ax = foot[0] - body[0],
+    az = foot[2] - body[2];
+  const dist = Math.hypot(ax, az);
+  const ease = (a: number, b: number, v: number) => {
+    const u = Math.min(1, Math.max(0, (v - a) / (b - a)));
+    return u * u * (3 - 2 * u);
+  };
+  const k = (1 - ease(radius * 0.35, radius, dist)) * (1 - ease(0.15, 0.7, body[1] - foot[1]));
+  const ox = dist > 1e-3 ? ax / dist : 0,
+    oz = dist > 1e-3 ? az / dist : 0;
+  const push = k * tall * 0.85 * t * t;
+  return [ox * push, -k * tall * 0.55 * t * t, oz * push];
+}
+const BEND = `void zhudaGrassBend(vec4 b, vec3 foot, float tall, float t, inout vec3 p) {
+  if (b.w <= 0.0) return;
+  vec2 away = foot.xz - b.xz;
+  float dist = length(away);
+  float k = (1.0 - smoothstep(b.w * 0.35, b.w, dist)) * (1.0 - smoothstep(0.15, 0.7, b.y - foot.y));
+  vec2 outward = dist > 0.001 ? away / dist : vec2(0.0);
+  p.xz += outward * (k * tall * 0.85 * t * t);
+  p.y -= k * tall * 0.55 * t * t;
+}
+`;
+const VERTEX = BEND + `void zhudaVertex(inout vec3 p, inout vec3 n, vec2 uv, vec3 origin) {
   float rank = (floor(uv.x) + 0.5) / ${RANKS}.0;
   float side = (fract(uv.x) - 0.25) * 2.0;
   float both = floor(uv.y);
@@ -588,6 +644,11 @@ const VERTEX = `void zhudaVertex(inout vec3 p, inout vec3 n, vec2 uv, vec3 origi
   float blown = (0.12 + 0.88 * gust * gust + 0.14 * flutter) * u_ZhudaGrassWind.z * tall * size;
   p.xz += dir * (blown * t * t);
   p.y -= tall * t * (1.0 - size) + blown * 0.4 * t * t * t;
+  // Bodies in the grass push it aside and press it down.
+  zhudaGrassBend(u_ZhudaGrassBend0, foot, tall * size, t, p);
+  zhudaGrassBend(u_ZhudaGrassBend1, foot, tall * size, t, p);
+  zhudaGrassBend(u_ZhudaGrassBend2, foot, tall * size, t, p);
+  zhudaGrassBend(u_ZhudaGrassBend3, foot, tall * size, t, p);
   // The blade opens from its middle line, about as wide along most of its
   // length and pointed at the tip. Far blades are wider, for the ones that
   // are not drawn.
@@ -732,6 +793,10 @@ export class ZhudaGrassField {
         u_ZhudaGrassTip: { type: 'vec4' },
         u_ZhudaGrassRoot: { type: 'vec4' },
         u_ZhudaGrassDry: { type: 'vec4' },
+        u_ZhudaGrassBend0: { type: 'vec4' },
+        u_ZhudaGrassBend1: { type: 'vec4' },
+        u_ZhudaGrassBend2: { type: 'vec4' },
+        u_ZhudaGrassBend3: { type: 'vec4' },
       },
       material: { color: [1, 1, 1, 1], roughness: 0.62, doubleSided: true },
     });
@@ -742,6 +807,24 @@ export class ZhudaGrassField {
     this.material.set('u_ZhudaGrassDry', [...zhudaDecodeColor(o.dry), o.dryness]);
     this.setWind(o.wind);
     this.material.set('u_ZhudaGrassEye', [0, 0, 0, 0]);
+    this.setBenders([]);
+  }
+  /**
+   * Bodies standing in the grass this frame (a character's feet, a thing
+   * dropped on it): each pushes the blades within \`radius\` aside and presses
+   * them down, fading as the body rises above them (see \`zhudaGrassBend\`).
+   * At most \`ZHUDA_GRASS_MAX_BENDERS\`; an empty list lets the grass stand.
+   * \`position\` is the body's lowest point, world metres. Cheap enough for
+   * every frame; nothing is rebuilt.
+   */
+  setBenders(benders: readonly { position: readonly [number, number, number]; radius: number }[]) {
+    if (this.disposed) throw Error('Disposed grass');
+    const errors = validateZhudaGrassBenders(benders);
+    if (errors.length) throw Error(errors.join('; '));
+    for (let i = 0; i < ZHUDA_GRASS_MAX_BENDERS; i++) {
+      const b = benders[i];
+      this.material.set(`u_ZhudaGrassBend${i}`, b ? [b.position[0], b.position[1], b.position[2], b.radius] : [0, 0, 0, 0]);
+    }
   }
   /** Changes the wind in place. */
   setWind(wind: { directionDeg?: number; strength?: number; speed?: number }) {

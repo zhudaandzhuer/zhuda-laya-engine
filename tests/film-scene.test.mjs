@@ -601,9 +601,17 @@ test('lightFog needs grade; fog-only lights are point lights outside the 32 limi
     // Without a preset the fog takes the flat sky colour (see look-defaults.test.mjs).
     color: [0.55, 0.65, 0.78],
     scatter: 1,
+    maxDistance: 600,
     shafts: false,
   });
   assert.equal(resolveZhudaFilmLook({ grade: {} }).lightFog, false);
+  // How far the fog is gathered: kept short, far things (a sea of cloud) stay clear.
+  assert.equal(resolveZhudaFilmLook({ grade: {}, lightFog: { maxDistance: 70 } }).lightFog.maxDistance, 70);
+  assert.ok(
+    validateZhudaFilmScene({ schemaVersion: 1, look: { grade: {}, lightFog: { maxDistance: 0 } }, nodes: [] }).some((issue) =>
+      /lightFog\.maxDistance/.test(issue),
+    ),
+  );
   // Light shafts: off by default, defaults filled in, values checked with paths.
   assert.deepEqual(
     resolveZhudaFilmLook({ grade: {}, lightFog: { shafts: { strength: 3 } } }).lightFog.shafts,
