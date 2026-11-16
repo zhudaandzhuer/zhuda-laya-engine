@@ -1,4 +1,6 @@
 // Generated from TypeScript source; run npm run types:generate.
+import { type ZhudaWaterRipple } from './WaterRipples.js';
+export { ZHUDA_WATER_MAX_RIPPLES, validateZhudaWaterRipples, zhudaWaterRipple, type ZhudaWaterRipple, } from './WaterRipples.js';
 export interface ZhudaWaterSurfaceOptions {
     /** Centre of the rectangle; `y` is the water level. */
     position: readonly [number, number, number];
@@ -65,6 +67,8 @@ export declare class ZhudaWaterSurface {
     private readonly scene;
     private readonly flow;
     private foamDepth;
+    private flip;
+    private ripples;
     private disposed;
     constructor(scene: any, options: ZhudaWaterSurfaceOptions);
     /** The mirrored camera, for matching the main camera's clear flag, sky and fog. */
@@ -76,6 +80,14 @@ export declare class ZhudaWaterSurface {
      * it at the same time.
      */
     setScreenFlip(flip: boolean): void;
+    /**
+     * The bodies in the water now, at most `ZHUDA_WATER_MAX_RIPPLES`: rings
+     * round each, a wake behind each that moves, froth at their waterline
+     * (drawn even with `foamDepth` 0). Call every frame they move; an empty
+     * list stills the water again. The ripples run on the water's time
+     * (`setTime`). They are drawn, not simulated: nothing floats on them.
+     */
+    setRipples(sources: readonly ZhudaWaterRipple[]): void;
     /**
      * Moves the sun the water glints in (a day passing). Same rules as the
      * `sun` option: `toward` is a unit vector toward the sun, `color` its linear

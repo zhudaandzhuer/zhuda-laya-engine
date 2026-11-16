@@ -31,6 +31,7 @@ import {
   type ZhudaMotionBlurOptions,
 } from '../runtime3d/CameraEffects.ts';
 import { resolveZhudaClouds, validateZhudaClouds } from '../runtime3d/Clouds.ts';
+import { validateZhudaWaterRipples } from '../shaders/WaterRipples.ts';
 import { ZHUDA_TONE_MAPPINGS, type ZhudaToneMapping } from '../runtime3d/ToneCurves.ts';
 import {
   ZHUDA_LENS_FLARE_SUN,
@@ -681,6 +682,21 @@ export type ZhudaFilmNode =
       resolution?: 256 | 512 | 1024 | 2048;
       /** Ids of model nodes the mirror must not draw (the bed, if it shows in the reflection). */
       hides?: string[];
+      /**
+       * Bodies in the water, at most four (`ZhudaWaterSurface.setRipples`):
+       * rings round each, a wake behind one with a `velocity` (a boat under
+       * way, a swimmer), froth at the waterline. They run on shot time.
+       */
+      ripples?: {
+        /** Where the body is on the water: x, z in metres. */
+        position: [number, number];
+        /** Its radius at the waterline, 0.05..20 m. */
+        radius: number;
+        /** 0..2 (1 suits a swimmer or a small boat). */
+        strength: number;
+        /** Metres a second along X and Z, each -30..30 (default still). */
+        velocity?: [number, number];
+      }[];
     }
   | {
       id: string;
@@ -1980,6 +1996,7 @@ function validateNode(
           'foamDepth',
           'resolution',
           'hides',
+          'ripples',
         ],
         path,
         issues,
@@ -2025,6 +2042,40 @@ function validateNode(
         !(Array.isArray(node.hides) && node.hides.every((id) => typeof id === 'string'))
       )
         issues.push(`${path}.hides: list model node ids`);
+      if (node.ripples !== undefined) {
+        if (!Array.isArray(node.ripples)) issues.push(`${path}.ripples: use a list of bodies`);
+        else {
+          node.ripples.forEach((ripple, i) => {
+            if (!object(ripple)) return;
+            unknownKeys(
+              ripple,
+              ['position', 'radius', 'strength', 'velocity'],
+              `${path}.ripples[${i}]`,
+              issues,
+            );
+            if (!(Array.isArray(ripple.position) && ripple.position.length === 2))
+              issues.push(`${path}.ripples[${i}].position: use [x, z] in metres`);
+          });
+          issues.push(
+            ...validateZhudaWaterRipples(
+              node.ripples.map((ripple) => {
+                const r = (object(ripple) ? ripple : {}) as Record<string, unknown>;
+                const [x, z] = Array.isArray(r.position)
+                  ? (r.position as number[])
+                  : [Number.NaN, Number.NaN];
+                return {
+                  x,
+                  z,
+                  radius: r.radius as number,
+                  strength: r.strength as number,
+                  velocity: r.velocity as [number, number] | undefined,
+                };
+              }),
+              `${path}.ripples`,
+            ),
+          );
+        }
+      }
       break;
     }
     case 'light':

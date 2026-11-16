@@ -3,6 +3,30 @@
 Plan: `docs/plans/records/threejs-gap-audit/plan.md` (work packages WP0..WP16 from the audit; WP17..WP20 added on request on 2026-11-15, section 6; WP21..WP24 scheduled the same day from a consumer's rebuild, section 7)\
 Last updated: 2026-11-16 (handoff update at the top); before that 2026-11-15, after WP20 (WP16 to WP19, the phone checks and what the merged packages had left open came before it the same day; batch 2 is done one package at a time, by one agent, without a review agent)
 
+## Handoff update (2026-11-16, afternoon: water ripples)
+
+**State**
+
+- Committed on `main` on top of `3b63fee` as `feat: water ripples from moving bodies` and pushed
+  (the user asked); GitHub `main` and the main checkout are equal.
+- New: `ZhudaWaterSurface.setRipples(sources)`, up to four bodies.
+  - Each body gets rings and froth at its waterline; a moving body also leaves a V-shaped wake.
+  - The pure maths and validation are in `packages/core/shaders/WaterRipples.ts`:
+    `zhudaWaterRipple`, `validateZhudaWaterRipples`, `ZHUDA_WATER_MAX_RIPPLES`.
+  - A film `water` node now takes `ripples`.
+- Records are in `docs/plans/records/water-ripples/`.
+  - Gates: `npm run verify` 842 of 842, lint, format and `git diff --check`;
+    `verify-film-water` on WebGL and WebGPU, with a new ripple section.
+  - Without ripples, the frames are pixel-identical to `3b63fee`.
+  - Cost, M4, 1280×720 of water: about +0.2–0.5 ms for one still body and about +1.4 ms for four
+    moving ones (`scripts/measure-water-ripples.mjs`).
+
+**Open**
+
+1. No phone measurement.
+2. The consumer game (`games/zhuda-spacetime-3d`) needs a re-pin and a call to `setRipples` for
+   its swimming pig and its moored boat. That is consumer work.
+
 ## Handoff update (2026-11-16, night: fixes found by a consumer game on an iPhone and a Mac)
 
 Read this first; the updates below it still hold.

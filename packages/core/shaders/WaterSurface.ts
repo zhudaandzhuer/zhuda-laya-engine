@@ -8,6 +8,9 @@
  * stones are ordinary scenery that crosses the rectangle; the water only
  * shows where it lies above them.
  *
+ * Bodies in the water (a swimmer, a boat) ripple it: `setRipples` each frame
+ * (see `WaterRipples.ts`).
+ *
  * The main camera must provide its depth and opaque colour textures (film
  * stages switch them on). Drawn after opaque geometry, without depth writes.
  * `zhudaWaterAbsorption` is the shader's depth tint in TypeScript.
@@ -16,6 +19,19 @@ import { ZhudaPlanarReflection } from '../runtime3d/Filmic.ts';
 import { ZhudaDynamicMesh } from '../runtime3d/Surfaces.ts';
 import { zhudaMirrorProjection } from './ReflectiveSurface.ts';
 import { ZhudaShaderMaterial, type ZhudaShaderSpec } from './ShaderMaterials.ts';
+import {
+  RIPPLE_GLSL,
+  validateZhudaWaterRipples,
+  ZHUDA_WATER_MAX_RIPPLES,
+  type ZhudaWaterRipple,
+} from './WaterRipples.ts';
+
+export {
+  ZHUDA_WATER_MAX_RIPPLES,
+  validateZhudaWaterRipples,
+  zhudaWaterRipple,
+  type ZhudaWaterRipple,
+} from './WaterRipples.ts';
 
 export interface ZhudaWaterSurfaceOptions {
   /** Centre of the rectangle; `y` is the water level. */
@@ -72,7 +88,7 @@ export function zhudaWaterAbsorption(metres: number, clarity: number): number {
   return Math.exp(-Math.max(metres, 0) / clarity);
 }
 
-const SURFACE = `float zhudaWaterHash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+const SURFACE = `${RIPPLE_GLSL}float zhudaWaterHash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
 float zhudaWaterNoise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);return mix(mix(zhudaWaterHash(i),zhudaWaterHash(i+vec2(1.0,0.0)),f.x),mix(zhudaWaterHash(i+vec2(0.0,1.0)),zhudaWaterHash(i+vec2(1.0,1.0)),f.x),f.y);}
 float zhudaWaterTrain(vec2 q,vec2 along,float turn,float scale,float speed,float phase){
 float c=cos(turn),sn=sin(turn);
@@ -98,7 +114,15 @@ vec3 v=normalize(u_CameraPos-p);
 vec2 q=p.xz/u_ZhudaWaterShape.x;
 float e=0.03;
 float h0=zhudaWaterHeight(q);
-vec3 wn=normalize(vec3((h0-zhudaWaterHeight(q+vec2(e,0.0)))/e*u_ZhudaWaterShape.y,1.0,(h0-zhudaWaterHeight(q+vec2(0.0,e)))/e*u_ZhudaWaterShape.y));
+vec2 tilt=vec2(h0-zhudaWaterHeight(q+vec2(e,0.0)),h0-zhudaWaterHeight(q+vec2(0.0,e)))/e*u_ZhudaWaterShape.y;
+// Bodies in the water: their ripples tilt the surface further (none: skipped).
+float froth=0.0;
+if(u_ZhudaWaterFlags.z>0.5){
+vec2 r0=zhudaWaterRipples(p.xz);
+float re=0.02;
+tilt-=vec2(zhudaWaterRipples(p.xz+vec2(re,0.0)).x-r0.x,zhudaWaterRipples(p.xz+vec2(0.0,re)).x-r0.x)/re;
+froth=r0.y;}
+vec3 wn=normalize(vec3(tilt.x,1.0,tilt.y));
 vec4 clip=u_ViewProjection*vec4(p,1.0);
 vec2 screen=clip.xy/clip.w*0.5+0.5;
 screen.y=mix(screen.y,1.0-screen.y,u_ZhudaWaterFlags.x);
@@ -156,6 +180,8 @@ colour+=u_ZhudaWaterSunColor.rgb*pow(max(dot(sn,between),0.0),1300.0)*5.0*sunlit
 float churn=zhudaWaterNoise(q*2.2-u_ZhudaWaterFlow.xy*u_ZhudaWaterFlow.z*1.5/u_ZhudaWaterShape.x);
 float reach=max(u_ZhudaWaterFlags.y,0.0001)*(0.55+0.9*churn);
 float foam=(1.0-smoothstep(0.0,reach,thick))*smoothstep(0.004,0.02,thick)*step(0.0001,u_ZhudaWaterFlags.y);
+// Froth at a body's waterline and close behind one that moves.
+foam=max(foam,min(froth,1.0));
 // Foam is the brightest thing on the water where the sun reaches it, grey in the shade.
 foam*=0.6;
 colour=mix(colour,u_ZhudaWaterLight.rgb*1.3*mix(0.35,1.0,sunlit),foam);
@@ -183,8 +209,17 @@ const SPEC: ZhudaShaderSpec = {
     u_ZhudaWaterTint: { type: 'vec4', value: [0.05, 0.32, 0.3, 1.5] },
     /** light that reaches the water (for its own colour and foam), glow. */
     u_ZhudaWaterLight: { type: 'vec4', value: [1, 1, 1, 0.25] },
-    /** flip the screen's V, foam depth, unused, unused. */
+    /** flip the screen's V, foam depth, how many bodies ripple the water, unused. */
     u_ZhudaWaterFlags: { type: 'vec4', value: [0, 0.12, 0, 0] },
+    /** Each body: x, z, radius, strength; and velocity x, z (see WaterRipples.ts). */
+    u_ZhudaWaterRippleA0: { type: 'vec4', value: [0, 0, 0, 0] },
+    u_ZhudaWaterRippleA1: { type: 'vec4', value: [0, 0, 0, 0] },
+    u_ZhudaWaterRippleA2: { type: 'vec4', value: [0, 0, 0, 0] },
+    u_ZhudaWaterRippleA3: { type: 'vec4', value: [0, 0, 0, 0] },
+    u_ZhudaWaterRippleB0: { type: 'vec4', value: [0, 0, 0, 0] },
+    u_ZhudaWaterRippleB1: { type: 'vec4', value: [0, 0, 0, 0] },
+    u_ZhudaWaterRippleB2: { type: 'vec4', value: [0, 0, 0, 0] },
+    u_ZhudaWaterRippleB3: { type: 'vec4', value: [0, 0, 0, 0] },
     u_ZhudaWaterSun: { type: 'vec3', value: [0, 1, 0] },
     u_ZhudaWaterSunColor: { type: 'vec4', value: [0, 0, 0, 0] },
   },
@@ -246,6 +281,8 @@ export class ZhudaWaterSurface {
   private readonly scene: any;
   private readonly flow: readonly [number, number];
   private foamDepth = 0.12;
+  private flip = false;
+  private ripples = 0;
   private disposed = false;
 
   constructor(scene: any, options: ZhudaWaterSurfaceOptions) {
@@ -286,7 +323,8 @@ export class ZhudaWaterSurface {
       set('u_ZhudaWaterFlow', [this.flow[0], this.flow[1], 0, 0]);
       set('u_ZhudaWaterTint', [colour[0], colour[1], colour[2], options.clarity ?? 1.5]);
       this.foamDepth = options.foamDepth ?? 0.12;
-      set('u_ZhudaWaterFlags', [options.flipScreen ? 1 : 0, this.foamDepth, 0, 0]);
+      this.flip = !!options.flipScreen;
+      set('u_ZhudaWaterFlags', [this.flip ? 1 : 0, this.foamDepth, 0, 0]);
       const sun = options.sun;
       set('u_ZhudaWaterSun', sun ? [...sun.toward] : [0, 1, 0]);
       set('u_ZhudaWaterSunColor', sun ? [...sun.color, 0] : [0, 0, 0, 0]);
@@ -342,7 +380,39 @@ export class ZhudaWaterSurface {
    */
   setScreenFlip(flip: boolean): void {
     if (this.disposed) throw Error('Disposed water surface');
-    this.material.setUniform('u_ZhudaWaterFlags', [flip ? 1 : 0, this.foamDepth, 0, 0]);
+    this.flip = flip;
+    this.material.setUniform('u_ZhudaWaterFlags', [flip ? 1 : 0, this.foamDepth, this.ripples, 0]);
+  }
+
+  /**
+   * The bodies in the water now, at most `ZHUDA_WATER_MAX_RIPPLES`: rings
+   * round each, a wake behind each that moves, froth at their waterline
+   * (drawn even with `foamDepth` 0). Call every frame they move; an empty
+   * list stills the water again. The ripples run on the water's time
+   * (`setTime`). They are drawn, not simulated: nothing floats on them.
+   */
+  setRipples(sources: readonly ZhudaWaterRipple[]): void {
+    if (this.disposed) throw Error('Disposed water surface');
+    const issues = validateZhudaWaterRipples(sources);
+    if (issues.length) throw Error('Invalid water ripples: ' + issues.join('; '));
+    for (let i = 0; i < ZHUDA_WATER_MAX_RIPPLES; i++) {
+      const s = sources[i];
+      this.material.setUniform(
+        'u_ZhudaWaterRippleA' + i,
+        s ? [s.x, s.z, s.radius, s.strength] : [0, 0, 0, 0],
+      );
+      this.material.setUniform(
+        'u_ZhudaWaterRippleB' + i,
+        s ? [s.velocity?.[0] ?? 0, s.velocity?.[1] ?? 0, 0, 0] : [0, 0, 0, 0],
+      );
+    }
+    this.ripples = sources.filter((s) => s.strength > 0).length;
+    this.material.setUniform('u_ZhudaWaterFlags', [
+      this.flip ? 1 : 0,
+      this.foamDepth,
+      this.ripples,
+      0,
+    ]);
   }
 
   /**

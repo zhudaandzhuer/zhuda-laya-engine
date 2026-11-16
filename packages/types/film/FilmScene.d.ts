@@ -626,6 +626,21 @@ export type ZhudaFilmNode = {
     resolution?: 256 | 512 | 1024 | 2048;
     /** Ids of model nodes the mirror must not draw (the bed, if it shows in the reflection). */
     hides?: string[];
+    /**
+     * Bodies in the water, at most four (`ZhudaWaterSurface.setRipples`):
+     * rings round each, a wake behind one with a `velocity` (a boat under
+     * way, a swimmer), froth at the waterline. They run on shot time.
+     */
+    ripples?: {
+        /** Where the body is on the water: x, z in metres. */
+        position: [number, number];
+        /** Its radius at the waterline, 0.05..20 m. */
+        radius: number;
+        /** 0..2 (1 suits a swimmer or a small boat). */
+        strength: number;
+        /** Metres a second along X and Z, each -30..30 (default still). */
+        velocity?: [number, number];
+    }[];
 } | {
     id: string;
     type: 'light';

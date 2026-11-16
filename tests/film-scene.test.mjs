@@ -1036,6 +1036,46 @@ test('model placements and translucency are validated with paths', () => {
   has(validateZhudaFilmScene(crowd(4), assets), 'at most 60000 placements');
 });
 
+test('water ripples in a film scene: bodies with a place, a radius, a strength and maybe a velocity', () => {
+  const withRipples = (ripples) => ({
+    ...scene(),
+    look: { grade: {} },
+    nodes: [{ id: 'river', type: 'water', position: [0, 0, 0], size: [40, 80], ripples }],
+  });
+  assert.deepEqual(
+    validateZhudaFilmScene(
+      withRipples([
+        { position: [1, 2], radius: 0.4, strength: 1 },
+        { position: [-3, 0], radius: 1.2, strength: 1.5, velocity: [2, -0.5] },
+      ]),
+      context,
+    ),
+    [],
+  );
+  const issues = validateZhudaFilmScene(
+    withRipples([
+      { position: [1], radius: 0, strength: 3, velocity: [99, 0], wake: true },
+      { position: [0, 0], radius: 1, strength: 1 },
+      { position: [0, 0], radius: 1, strength: 1 },
+      { position: [0, 0], radius: 1, strength: 1 },
+      { position: [0, 0], radius: 1, strength: 1 },
+    ]),
+    context,
+  ).join(' | ');
+  for (const part of [
+    'ripples[0].position',
+    'ripples[0].radius',
+    'ripples[0].strength',
+    'ripples[0].velocity',
+    'ripples[0].wake',
+    'at most 4 bodies',
+  ])
+    assert.ok(issues.includes(part), part + ': ' + issues);
+  assert.ok(
+    validateZhudaFilmScene(withRipples('boat'), context).join().includes('ripples: use a list'),
+  );
+});
+
 test('water nodes are validated, need grade and share the one mirror of a scene', () => {
   const withWater = (water = {}, look = { grade: {} }, more = []) => ({
     ...scene(),

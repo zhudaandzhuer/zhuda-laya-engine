@@ -140,6 +140,74 @@ try {
   assert.ok(brighter > 150, `foam brightens the shallows: ${brighter} pixels`);
   assert.ok(patch(foamy, DEEP)[0] < report.water.shelf[0], 'no foam over deep water');
 
+  // 3b. Ripples: a body in the water rings it; one that moves leaves a V
+  // behind it. Calm water bending the bed and glinting, with and without.
+  const glassy = (ripples) =>
+    scene([...scenery, water({ refraction: 0.8, reflection: 1, ...(ripples ? { ripples } : {}) })]);
+  const calmWater = await render('ripple-calm', glassy());
+  const still = await render(
+    'ripple-still',
+    glassy([{ position: [2, 2], radius: 0.4, strength: 1.5 }]),
+  );
+  const wake = await render(
+    'ripple-wake',
+    glassy([{ position: [0, 2], radius: 0.5, strength: 1.5, velocity: [0, -1.5] }]),
+  );
+  const change = (img, all) => {
+    // Only points in the frame (a 5-pixel patch round each).
+    const points = all.filter((point) => {
+      const [x, y] = at(point);
+      return x >= 2 && y >= 2 && x < W - 2 && y < H - 2;
+    });
+    assert.ok(points.length >= all.length / 2, 'most sample points are in view');
+    return +(
+      points.reduce((sum, point) => {
+        const a = patch(img, at(point)),
+          b = patch(calmWater, at(point));
+        return sum + Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]) + Math.abs(a[2] - b[2]);
+      }, 0) / points.length
+    ).toFixed(2);
+  };
+  const ring = (cx, cz, radii, from = 0, to = 2 * Math.PI) =>
+    radii.flatMap((r) =>
+      Array.from({ length: 12 }, (_, i) => {
+        const a = from + ((to - from) * (i + 0.5)) / 12;
+        return [cx + r * Math.cos(a), LEVEL, cz + r * Math.sin(a)];
+      }),
+    );
+  // The wake opens behind the body (toward +Z, the camera) at atan(0.5 / 1.5).
+  const arms = [1, 1.5, 2, 3].flatMap((along) => {
+    const across = 0.5 * 0.85 + (0.5 * along) / 1.5;
+    return [
+      [across, LEVEL, 2 + along],
+      [-across, LEVEL, 2 + along],
+    ];
+  });
+  report.ripples = {
+    stillNear: change(still, ring(2, 2, [0.6, 1, 1.5, 2.2])),
+    // About 8 m to the left, over the shelf (all in view).
+    stillFar: change(
+      still,
+      [-6, -5.5, -5.7, -5.2].map((x, i) => [x, LEVEL, [2, 0, 3, -1][i]]),
+    ),
+    wakeArms: change(wake, arms),
+    wakeAhead: change(wake, ring(0, 2, [2.5], Math.PI * 1.15, Math.PI * 1.85)),
+  };
+  assert.ok(
+    report.ripples.stillNear > 6,
+    `a still body rings the water round it: ${report.ripples.stillNear}`,
+  );
+  assert.ok(report.ripples.stillFar < 1, `nothing 8 m away: ${report.ripples.stillFar}`);
+  assert.ok(
+    report.ripples.wakeArms > 2 * report.ripples.wakeAhead && report.ripples.wakeArms > 6,
+    `a moving body leaves a wake behind it, not ahead: ${report.ripples.wakeArms} / ${report.ripples.wakeAhead}`,
+  );
+  // An empty list stills the water again (the calm frame, exactly).
+  assert.ok(
+    (await render('ripple-none', glassy([]))).data.equals(calmWater.data),
+    'no bodies: the calm frame',
+  );
+
   // 4. Flow: the waves move with shot time.
   const later = await host.preview(scene([...scenery, water({ waves: 0.4, flow: [0, 1] })]), {
     width: W,

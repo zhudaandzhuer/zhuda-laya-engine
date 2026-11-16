@@ -881,6 +881,16 @@ function buildFilmStageContents(
         camera.opaquePass = before.opaque;
       });
       timed.push((seconds) => surface.setTime(seconds));
+      if (node.ripples?.length)
+        surface.setRipples(
+          node.ripples.map(({ position: [x, z], radius, strength, velocity }) => ({
+            x,
+            z,
+            radius,
+            strength,
+            velocity,
+          })),
+        );
       water = surface;
     }
 
