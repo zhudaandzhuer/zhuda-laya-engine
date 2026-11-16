@@ -114,6 +114,8 @@ export declare class ZhudaLightFog {
     /** What the depth picture was last drawn for; undefined forces a redraw. */
     private drawnFor;
     private boxCentre;
+    /** The light's direction the depth picture is drawn from (see `update`). */
+    private aim;
     private frame;
     /** With beams drawn smaller than the picture: the two smoothing passes. */
     private low?;
@@ -159,7 +161,10 @@ export declare class ZhudaLightFog {
      * `always` (default): `renderShafts` redraws the depth picture every time,
      * which moving things in the light need. `moved`: the picture covers a
      * larger box that follows the camera in steps and is redrawn only when the
-     * camera has left it, which suits a game with still scenery.
+     * camera has left it, or when the sun or moon has turned more than half a
+     * degree from where the picture was drawn (a day that runs on a game's
+     * clock moves it a little every frame), which suits a game with still
+     * scenery.
      */
     setShaftRefresh(mode: 'always' | 'moved'): void;
     /** Forces the next `renderShafts` to redraw (the scenery changed). */

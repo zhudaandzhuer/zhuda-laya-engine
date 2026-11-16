@@ -45,10 +45,22 @@ through holes. That is a choice, recorded here.
   the player while the camera looked elsewhere, so held views showed a black
   river. That is a check artefact in the consumer, fixed there; play is not affected.
 
+## On a phone (vivo V40, later the same day)
+
+The consumer game at its medium setting, WebGPU, Chrome 157, built from the
+committed `45f8664`. The game's `gpuCost(2, 40)`, three times each, one load
+each, in this order: with the foliage 81.1–82.2 ms; `?off=foliage` 80.4–80.7;
+`?off=wind` (coverage only) 80.4–81.1; with the foliage again 85.8–90.5 (the
+phone warming). No cost is measurable against the rest of the frame.
+Two frames 1.5 s apart, the view held: 18 % of the close crown's pixels change
+with the foliage, 0.02 % without. Logs and pictures:
+`/Users/yaowei/Documents/ZhudaGameCenter/audits/shaft-sun-turn-2026-11-16/v40/`
+and `EV/v40/`. That frame was slow for another reason (the light shafts,
+`docs/plans/records/shaft-sun-turn/`).
+
 ## Not verified
 
-- Phones: the extra vertex work of the wind and the coverage arithmetic on
-  every leaf pixel are not measured on a device.
+- Phones other than the V40; the V40 on WebGL.
 - Motion vectors: TAA and motion blur see swaying leaves as still.
 - Art direction: wind strength and direction are the game's (it uses 0.8,
   down the river).

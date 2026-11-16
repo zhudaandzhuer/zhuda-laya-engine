@@ -1,7 +1,25 @@
 # three.js gap plan: progress
 
 Plan: `docs/plans/records/threejs-gap-audit/plan.md` (work packages WP0..WP16 from the audit; WP17..WP20 added on request on 2026-11-15, section 6; WP21..WP24 scheduled the same day from a consumer's rebuild, section 7)\
-Last updated: 2026-11-16 (handoff update at the top); before that 2026-11-15, after WP20 (WP16 to WP19, the phone checks and what the merged packages had left open came before it the same day; batch 2 is done one package at a time, by one agent, without a review agent)
+Last updated: 2026-11-16 (handoff updates at the top); before that 2026-11-15, after WP20 (WP16 to WP19, the phone checks and what the merged packages had left open came before it the same day; batch 2 is done one package at a time, by one agent, without a review agent)
+
+## Handoff update (2026-11-16, night: light shafts on a phone)
+
+**State**
+
+- Committed on `main` on top of `45f8664` as `fix: light shafts no longer redraw for every step of a game's sun` and pushed (the user asked).
+- `ZhudaLightFog` with the `moved` refresh (what `ZhudaSceneLook` uses) keeps the depth picture of
+  the light until the sun has turned half a degree. Before, a sun moved by a game's clock redrew it
+  almost every frame: about 40 ms a frame on the vivo V40.
+- The consumer game on the V40 (medium, WebGPU) went from 11–12 to 19–24 frames a second.
+- New real-draw check `verify:shaft-turn` (WebGL and WebGPU); it fails on the code before.
+- Records are in `docs/plans/records/shaft-sun-turn/`.
+
+**Open**
+
+1. The rest of the phone frame (about 44 ms) is Laya's per-object JavaScript: culling for four
+   shadow cascades, render-element preparation, bind groups. Not started.
+2. The consumer game re-pins after the push (consumer work).
 
 ## Handoff update (2026-11-16, evening: foliage)
 
@@ -20,8 +38,9 @@ Last updated: 2026-11-16 (handoff update at the top); before that 2026-11-15, af
 
 **Open**
 
-1. No phone measurement.
-2. The consumer game re-pins to this commit next (consumer work).
+1. Phone: measured later on the V40 (see the night entry). The foliage costs nothing measurable
+   there (81 ms a frame with it, 80.6 without).
+2. The consumer game re-pinned to this commit (consumer work).
 
 ## Handoff update (2026-11-16, afternoon: water ripples)
 

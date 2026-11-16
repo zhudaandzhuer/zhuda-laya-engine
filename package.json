@@ -149,6 +149,7 @@
     "verify:film-environment": "node scripts/verify-film-environment.mjs",
     "verify:film-water": "node scripts/verify-film-water.mjs",
     "verify:foliage": "node scripts/verify-foliage.mjs",
+    "verify:shaft-turn": "node scripts/verify-shaft-turn.mjs",
     "verify:film-remount": "node scripts/verify-film-remount.mjs",
     "verify:quality-route": "node scripts/verify-quality-route.mjs",
     "verify:film-highlights": "node scripts/verify-film-highlights.mjs",

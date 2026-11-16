@@ -74,6 +74,11 @@ export interface ZhudaFogSun {
 
 /** Most steps one view ray takes through the beams. */
 export const ZHUDA_SHAFT_MAX_STEPS = 96;
+/**
+ * With the `moved` refresh: the cosine of half a degree, how far the sun may
+ * turn before the depth picture of the light is drawn again.
+ */
+const SHAFT_TURN_COS = Math.cos((0.5 * Math.PI) / 180);
 
 export interface ZhudaFogLight {
   position: readonly [number, number, number];
@@ -543,6 +548,8 @@ export class ZhudaLightFog {
   /** What the depth picture was last drawn for; undefined forces a redraw. */
   private drawnFor: string | undefined;
   private boxCentre: number[] | undefined;
+  /** The light's direction the depth picture is drawn from (see `update`). */
+  private aim: [number, number, number] | undefined;
   private frame = 0;
   /** With beams drawn smaller than the picture: the two smoothing passes. */
   private low?: { across: any; down: any };
@@ -778,7 +785,10 @@ export class ZhudaLightFog {
    * `always` (default): `renderShafts` redraws the depth picture every time,
    * which moving things in the light need. `moved`: the picture covers a
    * larger box that follows the camera in steps and is redrawn only when the
-   * camera has left it, which suits a game with still scenery.
+   * camera has left it, or when the sun or moon has turned more than half a
+   * degree from where the picture was drawn (a day that runs on a game's
+   * clock moves it a little every frame), which suits a game with still
+   * scenery.
    */
   setShaftRefresh(mode: 'always' | 'moved'): void {
     if (mode !== 'always' && mode !== 'moved') throw Error('Shaft refresh: always or moved');
@@ -800,9 +810,9 @@ export class ZhudaLightFog {
     if (this.disposed) throw Error('Disposed light fog');
     if (!this.shaft) return;
     const l = (globalThis as any).Laya;
-    const { camera, scene, target, sun } = this.shaft;
+    const { camera, scene, target } = this.shaft;
     if (this.refresh === 'moved') {
-      const key = JSON.stringify([this.boxCentre, sun.toward]);
+      const key = JSON.stringify([this.boxCentre, this.aim]);
       if (key === this.drawnFor) return;
       this.drawnFor = key;
     }
@@ -878,17 +888,31 @@ export class ZhudaLightFog {
         const at = v + forward[i] * options.distance * 0.5;
         return grid ? Math.round(at / grid) * grid : at;
       });
+      // `moved`: a sun that moves with a game's clock keeps the picture it
+      // was drawn for until it has turned SHAFT_TURN_COS away (or the box
+      // moved on). The light's camera and the projection the march reads
+      // stay on the direction the picture was drawn from; only the
+      // brightness toward the sun follows the sun at once.
+      const keep =
+        grid > 0 &&
+        this.aim !== undefined &&
+        this.boxCentre !== undefined &&
+        centre.every((v, i) => v === this.boxCentre![i]) &&
+        this.aim[0] * sun.toward[0] + this.aim[1] * sun.toward[1] + this.aim[2] * sun.toward[2] >=
+          SHAFT_TURN_COS;
+      if (!keep) this.aim = [sun.toward[0], sun.toward[1], sun.toward[2]];
+      const aim = this.aim!;
       this.boxCentre = centre;
       camera.orthographicVerticalSize = half * 2;
       camera.aspectRatio = 1;
       camera.nearPlane = 0.5;
       camera.farPlane = back + half + 50;
       camera.transform.position = new l.Vector3(
-        centre[0] + sun.toward[0] * back,
-        centre[1] + sun.toward[1] * back,
-        centre[2] + sun.toward[2] * back,
+        centre[0] + aim[0] * back,
+        centre[1] + aim[1] * back,
+        centre[2] + aim[2] * back,
       );
-      const steep = Math.hypot(sun.toward[0], sun.toward[2]) < 1e-4;
+      const steep = Math.hypot(aim[0], aim[2]) < 1e-4;
       camera.transform.lookAt(
         new l.Vector3(centre[0], centre[1], centre[2]),
         steep ? new l.Vector3(0, 0, 1) : new l.Vector3(0, 1, 0),
@@ -896,7 +920,7 @@ export class ZhudaLightFog {
       );
       // The same projection as that camera, computed here: Laya refreshes a
       // camera's own matrices only when it draws, one frame too late.
-      const z = sun.toward,
+      const z = aim,
         upHint = steep ? [0, 0, 1] : [0, 1, 0];
       let x = [
         upHint[1] * z[2] - upHint[2] * z[1],

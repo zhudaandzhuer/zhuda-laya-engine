@@ -79,4 +79,6 @@ Found on that game's pictures (high setting, desktop):
 
 ## Unverified limits
 
-- Phones; consumer art direction (strength and direction are the game's).
+- Phones other than the vivo V40 (measured: no cost against the rest of the
+  frame; see `verification.md`); consumer art direction (strength and
+  direction are the game's).
