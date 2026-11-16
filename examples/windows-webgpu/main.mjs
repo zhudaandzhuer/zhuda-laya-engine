@@ -5,9 +5,14 @@ import { resolveBundleFile } from './bundle.mjs';
 import { squirrelEvent, runSquirrelEvent } from './squirrel.mjs';
 
 // An install, update or uninstall start by Squirrel is handled first and
-// ends the process (squirrel.mjs); the host below is then never started.
+// ends the process (squirrel.mjs); the host below is then never started. It
+// draws nothing, so no GPU process is started for it: Electron 45 took 11 to
+// 15 s to exit from a hook while one came up (Squirrel allows 15).
 const squirrel = squirrelEvent(process.argv);
-if (squirrel) runSquirrelEvent(squirrel, { app });
+if (squirrel) {
+  app.disableHardwareAcceleration();
+  runSquirrelEvent(squirrel, { app });
+}
 
 protocol.registerSchemesAsPrivileged([
   {
@@ -71,18 +76,35 @@ async function readReport(window) {
   return window.webContents.executeJavaScript(`(async()=>{
     const candidates=[globalThis.__ZHUDA_RENDERER__,globalThis.backendTest?.report?.(),globalThis.__ZHUDA_PREFAB_TEST__?.report?.(),globalThis.__ZHUDA_MODEL_TEST__?.report?.()];
     const media=await Promise.resolve(globalThis.__ZHUDA_MEDIA_TEST__?.report?.() || null);
-    for(const candidate of candidates){const value=await Promise.resolve(candidate);if(value)return {renderer:value.renderer||value,media};}
-    return {renderer:null,media};
+    const pageError=globalThis.backendTest?.error??globalThis.__ZHUDA_PREFAB_TEST__?.report?.()?.error??null;
+    for(const candidate of candidates){const value=await Promise.resolve(candidate);if(value)return {renderer:value.renderer||value,media,pageError};}
+    return {renderer:null,media,pageError};
   })()`);
+}
+
+/** Where a page that never reported stands: still drawing frames, booted, what it said. */
+async function readPageState(window) {
+  return window.webContents
+    .executeJavaScript(
+      `new Promise((done)=>{let frames=0;const tick=()=>{frames++;if(frames<1000)requestAnimationFrame(tick)};requestAnimationFrame(tick);setTimeout(()=>done({frames,visibility:document.visibilityState,focused:document.hasFocus(),booted:globalThis.__ZHUDA_ENGINE_BOOTED__===true,laya:!!globalThis.Laya?.stage,ready:globalThis.backendTest?.ready??null,error:globalThis.backendTest?.error??null,href:location.href}),1000)})`,
+    )
+    .catch((error) => ({ error: String(error) }));
 }
 
 async function createWindow() {
   protocol.handle('app', serve);
+  const verifying = args.has('--verify');
   const window = new BrowserWindow({
     width: 1280,
     height: 720,
     backgroundColor: '#0d1724',
-    webPreferences: { contextIsolation: true, sandbox: true, nodeIntegration: false },
+    webPreferences: {
+      contextIsolation: true,
+      sandbox: true,
+      nodeIntegration: false,
+      // A check keeps drawing when its window is not seen; a player's rests.
+      backgroundThrottling: !verifying,
+    },
   });
   const consoleLines = [];
   window.webContents.on('console-message', (_event, _level, message) => consoleLines.push(message));
@@ -95,10 +117,21 @@ async function createWindow() {
   );
   resolveBundleFile(root, `app://bundle/${entry}`);
   await window.loadURL(`app://bundle/${entry}`);
-  if (!args.has('--verify')) return window;
-  await new Promise((resolve) =>
-    setTimeout(resolve, Number(process.env.ZHUDA_VERIFY_WAIT_MS || 3500)),
-  );
+  if (!verifying) return window;
+  // Chromium draws no frames for a window it takes as not seen (started
+  // hidden, behind others, or as on the Windows host one night, for no
+  // cause found), and a page that waits for frames then never reports:
+  // Electron 36 and 45 failed 15 of 16 such runs there, 0 of 11 with this.
+  window.show();
+  // Until the page's renderer has settled (ready, failed or lost), not a
+  // fixed time: a new Chromium compiles its shaders with no cache on the
+  // first start (Electron 45 took over 3.5 s, which the old fixed wait was).
+  const settleBy = Date.now() + Number(process.env.ZHUDA_VERIFY_WAIT_MS || 30000);
+  while (Date.now() < settleBy) {
+    const { renderer } = await readReport(window).catch(() => ({ renderer: null }));
+    if (['ready', 'failed', 'lost'].includes(renderer?.status)) break;
+    await new Promise((resolve) => setTimeout(resolve, 200));
+  }
   let inputProbe = null;
   if (args.has('--verify-media')) {
     const readyDeadline = Date.now() + Number(process.env.ZHUDA_MEDIA_READY_WAIT_MS || 5000);
@@ -174,6 +207,8 @@ async function createWindow() {
   };
   const page = await readReport(window).catch((error) => ({ error: String(error) }));
   const renderer = reportRenderer(page);
+  // A page that never reported: what it was doing, so the report says why.
+  const pageState = renderer?.status === 'ready' ? null : await readPageState(window);
   const result = {
     schemaVersion: 1,
     host: 'electron',
@@ -186,6 +221,8 @@ async function createWindow() {
     packaged: app.isPackaged,
     gpu,
     renderer,
+    pageError: page.pageError ?? page.error ?? null,
+    pageState,
     media: page.media || null,
     mediaInput: inputProbe,
     consoleLines,
@@ -205,7 +242,10 @@ async function createWindow() {
   if (renderer?.fallbackReason != null || renderer?.adapter?.isFallbackAdapter !== false)
     errors.push('WebGPU fallback/software adapter is not accepted');
   if (renderer?.status !== 'ready')
-    errors.push(`renderer status is ${renderer?.status || 'missing'}`);
+    errors.push(
+      `renderer status is ${renderer?.status || 'missing'}` +
+        (result.pageError ? ` (page: ${result.pageError})` : ''),
+    );
   if (!Array.isArray(renderer?.errors)) errors.push('renderer errors array is missing');
   if (Array.isArray(renderer?.errors) && renderer.errors.length)
     errors.push(`renderer errors: ${renderer.errors.join('; ')}`);
