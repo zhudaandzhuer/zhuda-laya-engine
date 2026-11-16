@@ -252,7 +252,7 @@ const STEPS = [
     api: 'film_render_job { kind: "still", samples: 16 } · npm run verify in the consumer',
     why: 'A preview is one sample on one GPU. Declarations and unit tests prove no pixel.',
     check:
-      'The file exists and is the frame you approved; the verification record lists unverified platforms.',
+      'The file exists and is the frame you approved; the verification record lists unverified platforms. Optional for a 3D scene: npm run verify:flythrough within its budget on each backend, and a critic shown only the pictures (npm run flythrough:critic) proposing minor-only (docs/flythrough.md).',
   },
 ];
 

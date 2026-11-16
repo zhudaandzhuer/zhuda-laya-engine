@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "critic": "fixture",
+  "pictures": ["pose-0-0.00s.png", "pose-1-2.00s.png"],
+  "defects": [
+    {
+      "kind": "banding",
+      "severity": "major",
+      "picture": "pose-0-0.00s.png",
+      "where": "sky above the horizon: four visible steps"
+    },
+    {
+      "kind": "aliasing",
+      "severity": "minor",
+      "picture": "pose-1-2.00s.png",
+      "where": "top edge of the far container: faint steps"
+    }
+  ]
+}

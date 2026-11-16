@@ -20,6 +20,8 @@ Date: YYYY-MM-DD
 | Doctor | `npm run doctor` | PASS / FAIL / UNAVAILABLE | path or log |
 | Regression | `npm test` | PASS / FAIL / UNAVAILABLE | path or log |
 | Real WebGL/device | procedure and duration | PASS / FAIL / UNAVAILABLE | report/media |
+| Fly-through (3D, optional) | `npm run verify:flythrough -- <file>` on each backend; budget and device stated | PASS / FAIL / UNAVAILABLE (GPU time not measured) | `report.json`, poses, recording |
+| Blind critic (3D, optional) | critic given only `critic-brief.md` and the pictures; `npm run flythrough:critic -- <report> --run <dir>` | MINOR-ONLY (proposed, a person accepts) / BLOCKED / INVALID | critic report |
 
 ## Lifecycle and failure cases
 

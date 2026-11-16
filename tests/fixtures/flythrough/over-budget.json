@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "scene": {
+    "schemaVersion": 1,
+    "id": "flythrough-over-budget",
+    "camera": { "eye": [9, 2.2, 14], "target": [-1, 1.2, 0] },
+    "look": { "preset": "day", "grade": { "ao": 0.6 } },
+    "nodes": [
+      { "id": "ground", "type": "ground", "size": [60, 60], "material": "asphalt" },
+      { "id": "c1", "type": "prop", "prop": "container20", "position": [-3, 0, -4], "seed": 1 }
+    ]
+  },
+  "cameraPath": [
+    { "time": 0, "camera": { "eye": [9, 2.2, 14], "target": [-1, 1.2, 0] } },
+    { "time": 1, "camera": { "eye": [2, 2, 9], "target": [-3, 1, -4] } }
+  ],
+  "fps": 30,
+  "width": 480,
+  "height": 270,
+  "poses": [0, 1],
+  "budget": { "cpuMaxMs": 0.01, "gpuMaxMs": 0.01 },
+  "recording": false
+}

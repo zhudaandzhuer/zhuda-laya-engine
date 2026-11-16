@@ -1,6 +1,6 @@
 # Techniques from Abyssal Garden
 
-Status: In progress (AG2 implemented; the other packages as listed under Progress)\
+Status: In progress (AG2 and AG5 implemented; the other packages as listed under Progress)\
 Owner: Engine/toolchain\
 Last reviewed: 2026-11-17
 
@@ -56,7 +56,7 @@ The figures below are the author's; none was run here.
 | Package | State                                               | Record                                                        |
 | ------- | --------------------------------------------------- | ------------------------------------------------------------- |
 | AG2     | Implemented; desktop WebGL and WebGPU; no phone yet | [quality-governor-memory](../quality-governor-memory/task.md) |
-| AG5     | Proposed                                            |                                                               |
+| AG5     | Implemented; desktop WebGL and WebGPU; no phone yet | [flythrough-critic](../flythrough-critic/task.md)             |
 | AG3     | Proposed                                            |                                                               |
 | AG4     | Proposed                                            |                                                               |
 | AG1     | Proposed                                            |                                                               |

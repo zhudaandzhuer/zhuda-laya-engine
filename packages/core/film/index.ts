@@ -7,3 +7,5 @@ export * from './SceneLook.ts';
 export * from './FilmLint.ts';
 export * from './FrameMetrics.ts';
 export * from './ColorValues.ts';
+export * from './FlythroughReport.ts';
+export * from './Flythrough.ts';

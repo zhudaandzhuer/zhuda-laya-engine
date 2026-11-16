@@ -88,6 +88,16 @@ export declare class ZhudaCinematicCapture {
     constructor(scene: Laya.Scene3D, lens: ZhudaPhysicalCameraRig, runtime: ZhudaRuntimeSession, options: CinematicCaptureOptions);
     private check;
     renderFrame(request: CinematicFrameRequest): Promise<CinematicFramePixels>;
+    private drawInto;
+    /**
+     * Draws one frame at `index / fps` into the capture's target, as a single
+     * sample of `renderFrame` does (no jitter, no aperture), and does not read
+     * it back: for timing a camera move frame by frame. `readFrame()` reads the
+     * frame last drawn.
+     */
+    drawFrame(request: Pick<CinematicFrameRequest, 'index' | 'fps' | 'sample' | 'prepare'>): void;
+    /** The frame last drawn by `drawFrame`, RGBA with the top row first, opaque. */
+    readFrame(): Promise<Uint8Array>;
     private releaseTarget;
     dispose(): void;
 }

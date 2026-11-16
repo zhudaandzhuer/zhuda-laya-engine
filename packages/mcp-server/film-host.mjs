@@ -366,6 +366,46 @@ export class ZhudaFilmHost {
     });
   }
 
+  /**
+   * Times the scene along a keyed camera path, frame by frame, on this
+   * host's backend (`runZhudaFlythrough`): each frame's CPU time and, where
+   * the browser gives it, GPU time; then PNG pictures at `poses` (seconds),
+   * drawn after the timed run. Summarise with `summarizeZhudaFlythrough`.
+   */
+  flythrough(
+    scene,
+    {
+      cameraPath,
+      durationSec,
+      fps = 30,
+      width = 1280,
+      height = 720,
+      poses = [],
+      warmupFrames,
+    } = {},
+  ) {
+    size(width, height);
+    const issues = validateZhudaFilmCameraPath(cameraPath);
+    if (issues.length) throw Error('Invalid camera path:\n- ' + issues.join('\n- '));
+    return this.#serial(async () => {
+      await this.#start();
+      const mounted = await this.#mount(scene);
+      const result = await this.#call(
+        'flythrough',
+        { cameraPath, durationSec, fps, width, height, poses, warmupFrames },
+        900000,
+      );
+      return {
+        ...mounted,
+        renderer: this.#renderer,
+        gpu: this.info?.gpu,
+        frames: result.frames,
+        gpuTiming: result.gpuTiming,
+        pictures: result.pictures.map((p) => ({ time: p.time, png: encodePng(p) })),
+      };
+    });
+  }
+
   /** One PNG with up to four labelled shots. */
   review(scene, { shots, width = 384, height = 384 } = {}) {
     size(width, height, { max: 1024 });

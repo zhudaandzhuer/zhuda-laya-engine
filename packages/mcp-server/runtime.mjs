@@ -30,6 +30,7 @@ const runtime = installed
           'film/FilmScene',
           'film/FilmLint',
           'film/FrameMetrics',
+          'film/FlythroughReport',
           'ProceduralStarter',
         ].map(
           (name) =>
@@ -70,6 +71,11 @@ export const {
   ZHUDA_FILM_LINT_RULES,
   lintZhudaFilmScene,
   measureZhudaFrame,
+  summarizeZhudaFlythrough,
+  validateZhudaFlythroughBudget,
+  zhudaCriticBrief,
+  validateZhudaCriticReport,
+  gateZhudaCriticReport,
   ZHUDA_STARTER_PROPS,
   ZHUDA_STARTER_TEXTURES,
 } = runtime;

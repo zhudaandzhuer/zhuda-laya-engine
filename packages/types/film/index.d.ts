@@ -8,3 +8,5 @@ export * from './SceneLook.js';
 export * from './FilmLint.js';
 export * from './FrameMetrics.js';
 export * from './ColorValues.js';
+export * from './FlythroughReport.js';
+export * from './Flythrough.js';

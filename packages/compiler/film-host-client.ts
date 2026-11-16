@@ -146,6 +146,34 @@ async function review(options: {
   };
 }
 
+/**
+ * Times the mounted scene along a camera path frame by frame
+ * (`runZhudaFlythrough`).
+ */
+async function flythrough(options: {
+  cameraPath: { time: number; camera: Camera }[];
+  durationSec?: number;
+  fps?: number;
+  width: number;
+  height: number;
+  poses?: number[];
+  warmupFrames?: number;
+}) {
+  const stage = requireStage();
+  // GPU time from LayaAir's own device or context.
+  const result = await Z.runZhudaFlythrough(stage, state.context.runtime, options);
+  return {
+    frames: result.frames,
+    gpuTiming: result.gpuTiming,
+    pictures: result.pictures.map((p: any) => ({
+      time: p.time,
+      width: p.width,
+      height: p.height,
+      rgba: toBase64(p.rgba),
+    })),
+  };
+}
+
 async function boot(
   packs: readonly Pack[],
   options: { assets?: boolean; renderer?: 'webgl' | 'webgpu' },
@@ -187,6 +215,7 @@ export function startFilmHost(
     mount,
     render,
     review,
+    flythrough,
     info: () => ({
       ready: state.ready,
       error: state.error,

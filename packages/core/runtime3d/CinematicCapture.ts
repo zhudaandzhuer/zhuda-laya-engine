@@ -218,22 +218,8 @@ export class ZhudaCinematicCapture {
     const time = request.index / request.fps;
     const chain = count > 1 ? request.linear : undefined;
     const average = chain ? new Float32Array(this.width * this.height * 4) : undefined;
-    const draw = (target: Laya.RenderTexture, prepare: boolean) => {
-      // Native skin/culling caches key off this render marker, not u_Time.
-      // Advancing it invalidates draw caches without advancing simulation.
-      l.Stat.loopCount++;
-      l.LayaGL.renderEngine.startFrame();
-      const previousTarget = this.lens.camera.renderTarget;
-      try {
-        if (prepare) request.prepare?.();
-        prepareLaya342ManualDraw(this.scene);
-        l.Camera.drawRenderTextureByScene(this.lens.camera, this.scene, target);
-      } finally {
-        this.lens.camera.renderTarget = previousTarget;
-        this.scene.recaculateCullCamera();
-        l.LayaGL.renderEngine.endFrame();
-      }
-    };
+    const draw = (target: Laya.RenderTexture, prepare: boolean) =>
+      this.drawInto(target, prepare ? request.prepare : undefined);
     const read = async <T>(readback: Promise<T>): Promise<T> => {
       this.reading = true;
       const drained = () => {
@@ -376,6 +362,76 @@ export class ZhudaCinematicCapture {
       this.controller = null;
       this.releaseTarget();
     }
+  }
+  private drawInto(target: Laya.RenderTexture, prepare?: () => void) {
+    const l = (globalThis as unknown as { Laya: typeof Laya }).Laya;
+    // Native skin/culling caches key off this render marker, not u_Time.
+    // Advancing it invalidates draw caches without advancing simulation.
+    l.Stat.loopCount++;
+    l.LayaGL.renderEngine.startFrame();
+    const previousTarget = this.lens.camera.renderTarget;
+    try {
+      prepare?.();
+      prepareLaya342ManualDraw(this.scene);
+      l.Camera.drawRenderTextureByScene(this.lens.camera, this.scene, target);
+    } finally {
+      this.lens.camera.renderTarget = previousTarget;
+      this.scene.recaculateCullCamera();
+      l.LayaGL.renderEngine.endFrame();
+    }
+  }
+  /**
+   * Draws one frame at `index / fps` into the capture's target, as a single
+   * sample of `renderFrame` does (no jitter, no aperture), and does not read
+   * it back: for timing a camera move frame by frame. `readFrame()` reads the
+   * frame last drawn.
+   */
+  drawFrame(request: Pick<CinematicFrameRequest, 'index' | 'fps' | 'sample' | 'prepare'>): void {
+    this.check();
+    if (this.busy || this.reading)
+      throw Error('Cinematic capture is already rendering or draining readback');
+    if (
+      !Number.isSafeInteger(request.index) ||
+      request.index < 0 ||
+      !Number.isFinite(request.fps) ||
+      request.fps < 1 ||
+      request.fps > 1000 ||
+      typeof request.sample !== 'function'
+    )
+      throw Error('Invalid cinematic frame request');
+    const l = (globalThis as unknown as { Laya: typeof Laya }).Laya;
+    const seconds = request.index / request.fps;
+    const sampled = request.sample(seconds) as unknown;
+    if (sampled && typeof (sampled as PromiseLike<unknown>).then === 'function') {
+      void Promise.resolve(sampled).catch(() => {});
+      throw Error('Cinematic sample must be synchronous; load assets before capture');
+    }
+    this.lens.apply(this.width / this.height);
+    this.scene._time = seconds;
+    this.scene._shaderValues.setNumber(l.Shader3D.propertyNameToID('u_Time'), seconds);
+    const restore = this.lens.sample(0, 0, 0, 0, this.width, this.height);
+    try {
+      this.drawInto(this.target, request.prepare);
+    } finally {
+      restore();
+    }
+  }
+  /** The frame last drawn by `drawFrame`, RGBA with the top row first, opaque. */
+  async readFrame(): Promise<Uint8Array> {
+    this.check();
+    if (this.busy || this.reading)
+      throw Error('Cinematic capture is already rendering or draining readback');
+    const pixels = new Uint8Array(this.width * this.height * 4);
+    this.reading = true;
+    try {
+      await this.target.getDataAsync(0, 0, this.width, this.height, pixels);
+    } finally {
+      this.reading = false;
+      this.releaseTarget();
+    }
+    this.check();
+    for (let p = 3; p < pixels.length; p += 4) pixels[p] = 255;
+    return pixels;
   }
   private releaseTarget() {
     if (this.disposed && !this.busy && !this.reading && !this.released) {

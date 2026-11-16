@@ -246,6 +246,11 @@ and moving highlights keep their brightness. Game:
 sample on one GPU; declarations and unit tests prove no pixel. Write down what
 was not verified.
 
+Optional for a 3D scene: a fly-through timed against a budget on each
+backend and a critic that sees only its pictures (`docs/flythrough.md`):
+`npm run verify:flythrough -- <file>`, then `npm run flythrough:critic`.
+Minor-only is the critic's proposal, not a pass.
+
 ## What the engine does for you
 
 - Ground fog takes the colour of the sky near the horizon of the look.
