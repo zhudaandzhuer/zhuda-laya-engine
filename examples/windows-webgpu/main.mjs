@@ -2,6 +2,12 @@ import { app, BrowserWindow, protocol } from 'electron';
 import fs from 'node:fs';
 import path from 'node:path';
 import { resolveBundleFile } from './bundle.mjs';
+import { squirrelEvent, runSquirrelEvent } from './squirrel.mjs';
+
+// An install, update or uninstall start by Squirrel is handled first and
+// ends the process (squirrel.mjs); the host below is then never started.
+const squirrel = squirrelEvent(process.argv);
+if (squirrel) runSquirrelEvent(squirrel, { app });
 
 protocol.registerSchemesAsPrivileged([
   {
@@ -242,13 +248,15 @@ async function createWindow() {
   return window;
 }
 
-app
-  .whenReady()
-  .then(createWindow)
-  .catch((error) => {
-    console.error(error);
-    app.exit(1);
+if (!squirrel) {
+  app
+    .whenReady()
+    .then(createWindow)
+    .catch((error) => {
+      console.error(error);
+      app.exit(1);
+    });
+  app.on('window-all-closed', () => {
+    if (process.platform !== 'darwin') app.quit();
   });
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit();
-});
+}
