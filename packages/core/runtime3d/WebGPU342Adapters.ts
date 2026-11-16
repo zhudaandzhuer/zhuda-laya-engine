@@ -33,6 +33,84 @@ export function installLaya342WebGPUFix(native: any): void {
   patched.add(prototype);
   fixMergedIndices(native);
   keepShadowCastersApart(prototype);
+  releaseSpriteShaderData(native);
+  evictStaleBindGroups(native);
+  forgetDestroyedMaterialFlags(native);
+}
+
+/**
+ * MEM-01. LayaAir 3.4.2 keeps three change flags for each material it draws
+ * on WebGPU in a static map (shader name, then the material's shader data
+ * id) and never takes them out: every material ever drawn stays there. Ids
+ * are not reused, so the entry of shader data that is destroyed can go.
+ */
+function forgetDestroyedMaterialFlags(native: any): void {
+  const prototype = native.WebGPUShaderData?.prototype;
+  if (!prototype || patched.has(prototype) || typeof prototype.destroy !== 'function') return;
+  const destroy = prototype.destroy;
+  prototype.destroy = function (...args: unknown[]) {
+    const result = destroy.apply(this, args);
+    const flags: Map<string, Map<number, unknown>> | undefined =
+      native.WebGPURenderElement3D?._matChangeFlagMap;
+    if (flags instanceof Map) for (const byId of flags.values()) byId.delete(this._id);
+    return result;
+  };
+  patched.add(prototype);
+}
+
+/**
+ * MEM-01 (docs/plans/records/windows-acceptance/plan.md). A 2D sprite makes
+ * its own shader data the first time it draws, and LayaAir 3.4.2 never
+ * destroys it: neither `Sprite.destroy` nor its render struct does. On
+ * WebGL nothing else refers to it and it is collected; on WebGPU its uniform
+ * block comes from the engine-wide buffer manager, whose block keeps it as an
+ * observer, so the data and the block stay for good (two a destroyed panel
+ * with a label, about 5 KiB). The data is destroyed here once the sprite's
+ * own destroy is done (its components and children are gone by then), which
+ * returns the block to the manager.
+ */
+function releaseSpriteShaderData(native: any): void {
+  const prototype = native.Sprite?.prototype;
+  if (!prototype || patched.has(prototype) || typeof prototype.destroy !== 'function') return;
+  const destroy = prototype.destroy;
+  prototype.destroy = function (...args: unknown[]) {
+    const data = this._shaderData;
+    const result = destroy.apply(this, args);
+    if (data && this._shaderData === data) {
+      this._shaderData = null;
+      data.destroy();
+    }
+    return result;
+  };
+  patched.add(prototype);
+}
+
+/**
+ * MEM-01. LayaAir 3.4.2 keeps every WebGPU bind group it ever made in one map
+ * keyed by the ids of its buffers and textures. When those are released the
+ * group stops being valid (`isValid()`), and `getBindGroup` makes a new one
+ * rather than return it, but the old one stays in the map with the texture
+ * objects it refers to: a destroyed 3D scene left eight a cycle. Invalid
+ * groups are dropped when the map has doubled since the last sweep, so the
+ * cost stays a fraction of the inserts; a valid group is never dropped.
+ */
+function evictStaleBindGroups(native: any): void {
+  const prototype = native.WebGPUBindGroupCache?.prototype;
+  if (!prototype || patched.has(prototype) || typeof prototype.getBindGroup !== 'function') return;
+  const getBindGroup = prototype.getBindGroup;
+  const sweepAt = new WeakMap<object, number>();
+  prototype.getBindGroup = function (...args: unknown[]) {
+    const result = getBindGroup.apply(this, args);
+    const cache: Map<string, any> | undefined = this.bindGroupCache;
+    if (cache instanceof Map && cache.size >= (sweepAt.get(this) ?? 256)) {
+      for (const [key, group] of cache)
+        if (group !== result && typeof group?.isValid === 'function' && !group.isValid())
+          cache.delete(key);
+      sweepAt.set(this, Math.max(256, cache.size * 2));
+    }
+    return result;
+  };
+  patched.add(prototype);
 }
 
 /**

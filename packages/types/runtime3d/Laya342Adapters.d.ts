@@ -25,6 +25,21 @@ export declare function resizeLaya342Stage(runtime: {
 /** Laya 3.4.2 allocates two process-owned fallback textures but releases only depth.
  * Keep this version-specific repair isolated from consumer scene code. */
 export declare function installLaya342LifecycleFix(runtime?: any): void;
+/**
+ * MEM-01 (docs/plans/records/windows-acceptance/plan.md). LayaAir 3.4.2
+ * keys its pipeline state by pass, on WebGPU and on WebGL: a 3D pass by its
+ * scene's and camera's data ids, a WebGPU 2D pass by its pass data id. The
+ * render context keeps one entry a key (and the key's text) and every render
+ * element one more, forever, so each scene or camera ever drawn leaves them
+ * behind (two context entries and the long-lived elements' entries a
+ * destroyed scene). A key not used for PASS_KEY_FRAMES frames is dropped
+ * here, and an element drops the keys the context no longer has once it
+ * holds more than the context does. A dropped key that is drawn again is rebuilt by
+ * LayaAir's own path, marked changed, so the state it guards is refreshed.
+ * Call after `Laya.init` (the backend's classes exist then); what a backend
+ * lacks is skipped.
+ */
+export declare function installLaya342PassCacheBounds(native?: any): void;
 /** Model ownership seam: native Node.destroy queues component teardown for the
  * next frame. Finish only this tree's queued components before releasing its
  * cache lease; otherwise zero-reference clips/meshes survive resource disposal.

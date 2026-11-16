@@ -106,6 +106,84 @@ export function installLaya342LifecycleFix(runtime: any = (globalThis as any).La
   patched.add(prototype);
 }
 
+/** A pass key unused this many frames is forgotten (checked every half of it). */
+const PASS_KEY_FRAMES = 600;
+
+/**
+ * MEM-01 (docs/plans/records/windows-acceptance/plan.md). LayaAir 3.4.2
+ * keys its pipeline state by pass, on WebGPU and on WebGL: a 3D pass by its
+ * scene's and camera's data ids, a WebGPU 2D pass by its pass data id. The
+ * render context keeps one entry a key (and the key's text) and every render
+ * element one more, forever, so each scene or camera ever drawn leaves them
+ * behind (two context entries and the long-lived elements' entries a
+ * destroyed scene). A key not used for PASS_KEY_FRAMES frames is dropped
+ * here, and an element drops the keys the context no longer has once it
+ * holds more than the context does. A dropped key that is drawn again is rebuilt by
+ * LayaAir's own path, marked changed, so the state it guards is refreshed.
+ * Call after `Laya.init` (the backend's classes exist then); what a backend
+ * lacks is skipped.
+ */
+export function installLaya342PassCacheBounds(native: any = (globalThis as any).Laya): void {
+  for (const [context, keyMethod, element, fillMethod] of [
+    ['WebGPURenderContext3D', '_getSceneCameraCacheKey', 'WebGPURenderElement3D', '_preUpdatePre'],
+    ['WebGPURenderContext2D', '_getPassCacheKey', 'WebGPURenderElement2D', '_prepare'],
+    ['WebGLRenderContext3D', '_getSceneCameraCacheKey', 'WebGLRenderElement3D', '_preUpdatePre'],
+  ] as const) {
+    const contextPrototype = native[context]?.prototype;
+    if (
+      contextPrototype &&
+      !patched.has(contextPrototype) &&
+      typeof contextPrototype[keyMethod] === 'function'
+    ) {
+      const original = contextPrototype[keyMethod];
+      const lastUse = new WeakMap<object, Map<number, number>>();
+      const sweptAt = new WeakMap<object, number>();
+      contextPrototype[keyMethod] = function (...args: unknown[]) {
+        const result = original.apply(this, args);
+        const now = native.Stat?.loopCount ?? 0;
+        let used = lastUse.get(this);
+        if (!used) lastUse.set(this, (used = new Map()));
+        used.set(this._curRenderGlobalKey, now);
+        if (!sweptAt.has(this)) sweptAt.set(this, now);
+        if (now - sweptAt.get(this)! >= PASS_KEY_FRAMES / 2) {
+          sweptAt.set(this, now);
+          const dropped = new Set<number>();
+          for (const [key, frame] of used)
+            if (now - frame > PASS_KEY_FRAMES && key !== this._curRenderGlobalKey) {
+              used.delete(key);
+              this._globalRendercacheInfoMap?.delete(key);
+              dropped.add(key);
+            }
+          const names = this._globalComkeyNameMap;
+          if (dropped.size && names)
+            for (const name of Object.keys(names)) if (dropped.has(names[name])) delete names[name];
+        }
+        return result;
+      };
+      patched.add(contextPrototype);
+    }
+    const elementPrototype = native[element]?.prototype;
+    if (
+      elementPrototype &&
+      !patched.has(elementPrototype) &&
+      typeof elementPrototype[fillMethod] === 'function'
+    ) {
+      const fill = elementPrototype[fillMethod];
+      elementPrototype[fillMethod] = function (renderContext: any, ...rest: unknown[]) {
+        const result = fill.call(this, renderContext, ...rest);
+        const info: Map<number, unknown> | undefined = this._passRenderInfo;
+        const live: Map<number, unknown> | undefined = renderContext?._globalRendercacheInfoMap;
+        // An element cannot have more live passes than the context: past
+        // that (and a margin, so the walk is rare) the extra keys are gone ones.
+        if (info instanceof Map && live instanceof Map && info.size > live.size + 16)
+          for (const key of info.keys()) if (!live.has(key)) info.delete(key);
+        return result;
+      };
+      patched.add(elementPrototype);
+    }
+  }
+}
+
 /** Model ownership seam: native Node.destroy queues component teardown for the
  * next frame. Finish only this tree's queued components before releasing its
  * cache lease; otherwise zero-reference clips/meshes survive resource disposal.
