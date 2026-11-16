@@ -3,6 +3,29 @@
 Plan: `docs/plans/records/threejs-gap-audit/plan.md` (work packages WP0..WP16 from the audit; WP17..WP20 added on request on 2026-11-15, section 6; WP21..WP24 scheduled the same day from a consumer's rebuild, section 7)\
 Last updated: 2026-11-16 (handoff updates at the top); before that 2026-11-15, after WP20 (WP16 to WP19, the phone checks and what the merged packages had left open came before it the same day; batch 2 is done one package at a time, by one agent, without a review agent)
 
+## Handoff update (2026-11-16, night: the sky-island branch merged)
+
+**State**
+
+- The engine work of another session (`feat/sky-island-effects`, worktree
+  `engines/zhuda-laya-engine-island`, never committed) is committed, rebased onto `f21d10e` and in
+  `main`: grass pressed down by bodies (`ZhudaGrassField.setBenders`), clouds below the eye,
+  `look.lightFog.maxDistance`. Records in `docs/plans/records/sky-island-effects/`.
+- Found on the merge: its files had never been through Prettier (formatted), and the headless
+  harness's `waitFor` ignored the time a check gave it, so the WebGPU grass check failed when its
+  page was busy for more than 20 s. `zhudaWaitFor` in `packages/compiler/chrome-host.mjs` now honours it.
+- Pushed (the user asked).
+
+**Open**
+
+1. The worktree `engines/zhuda-laya-engine-island` and its branch are left in place: the consumer
+   `games/zhuda-sky-island` builds against it with `ZHUDA_ENGINE_ROOT`, and another session was
+   working in that game this evening. Remove both once that game is re-pinned to `main`.
+2. Building a large grass field at once blocks a page for 16–19 s on the M4 (the fixture's `fill`).
+3. `verify-procedural-draw` fails: one of the two relief panels is not found in `relief-u` or
+   `relief-v`. Already failing on `3b63fee` (before this merge and before the ripples, foliage and
+   shaft commits); it passed in the `specular-aa` and `quality-defaults` records. Not investigated.
+
 ## Handoff update (2026-11-16, night: light shafts on a phone)
 
 **State**

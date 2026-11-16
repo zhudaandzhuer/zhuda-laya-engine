@@ -2,6 +2,27 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { spawn } from 'node:child_process';
+
+/**
+ * Asks the page until `expression` is true. Without `timeoutMs`: up to 150
+ * asks 100 ms apart, each answered within 20 s. With it: that is the whole
+ * time allowed, and one ask may take all of what is left, so a page busy in
+ * one long task (a large field of grass built at once) answers late instead
+ * of failing the check at 20 s.
+ */
+export async function zhudaWaitFor(evaluate, expression, timeoutMs) {
+  if (timeoutMs !== undefined && !(Number.isFinite(timeoutMs) && timeoutMs > 0))
+    throw Error('Invalid wait: timeoutMs is a positive number of milliseconds');
+  const deadline = timeoutMs === undefined ? undefined : Date.now() + timeoutMs;
+  for (let i = 0; deadline === undefined ? i < 150 : Date.now() < deadline; i++) {
+    const options =
+      deadline === undefined ? {} : { timeoutMs: Math.max(20000, deadline - Date.now()) };
+    if (await evaluate(expression, options)) return;
+    await new Promise((r) => setTimeout(r, 100));
+  }
+  throw Error('Browser condition timeout: ' + expression);
+}
+
 /** Isolated headless Chrome for engine integration tests and the film host. */
 export async function chromeFixture({ zoomFactor = 1 } = {}) {
   if (!Number.isFinite(zoomFactor) || zoomFactor < 0.25 || zoomFactor > 5)
@@ -173,13 +194,7 @@ export async function chromeFixture({ zoomFactor = 1 } = {}) {
         throw Error(r.exceptionDetails.exception?.description || r.exceptionDetails.text);
       return r.result.value;
     };
-    const waitFor = async (expression) => {
-      for (let i = 0; i < 150; i++) {
-        if (await evaluate(expression)) return;
-        await new Promise((r) => setTimeout(r, 100));
-      }
-      throw Error('Browser condition timeout: ' + expression);
-    };
+    const waitFor = (expression, timeoutMs) => zhudaWaitFor(evaluate, expression, timeoutMs);
     await send('Page.enable');
     await send('Runtime.enable');
     // Optional: a browser without the Log domain still runs every check but the WebGL-error one.
