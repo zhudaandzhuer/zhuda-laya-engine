@@ -5,13 +5,13 @@ Last updated: 2026-11-17. State of `main` at the commit that adds this file
 
 ## Done
 
-Three plans written on 2026-11-16 into the plan index, all now implemented:
+Three plans written on 2026-11-16 into the plan index (`docs/plans/README.md`), all now implemented:
 
-| Plan                                                                        | State                                                                                                                       | Records                                   |
-| --------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
-| [Windows acceptance fixes](records/windows-acceptance/plan.md)              | All 19 items closed on the report's Windows host (desktop session, Intel UHD 770), with macOS and a vivo V40 for comparison | per item in `records/windows-acceptance/` |
-| [Techniques from Abyssal Garden](records/abyssal-garden-techniques/plan.md) | AG1..AG6 implemented (desktop WebGL and WebGPU; AG2, AG3 and AG1's regression checks also on the V40)                       | linked from the plan's Progress table     |
-| [Mesh boolean operations (CSG)](records/mesh-csg/plan.md)                   | `zhuda-laya-engine/csg` optional entry (BSP), desktop and V40                                                               | `records/mesh-csg/`                       |
+| Plan                                                                                   | State                                                                                                                       | Records                                              |
+| -------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| [Windows acceptance fixes](docs/plans/records/windows-acceptance/plan.md)              | All 19 items closed on the report's Windows host (desktop session, Intel UHD 770), with macOS and a vivo V40 for comparison | per item in `docs/plans/records/windows-acceptance/` |
+| [Techniques from Abyssal Garden](docs/plans/records/abyssal-garden-techniques/plan.md) | AG1..AG6 implemented (desktop WebGL and WebGPU; AG2, AG3 and AG1's regression checks also on the V40)                       | linked from the plan's Progress table                |
+| [Mesh boolean operations (CSG)](docs/plans/records/mesh-csg/plan.md)                   | `zhuda-laya-engine/csg` optional entry (BSP), desktop and V40                                                               | `docs/plans/records/mesh-csg/`                       |
 
 AG1..AG6 and CSG were built in a separate session on branch
 `claude/fervent-lovelace-44d9db` and merged into `main` after review, with
@@ -33,7 +33,7 @@ browser, macOS, Windows from a folder with spaces and CJK) was green on
 ## Open (not started)
 
 - Phone findings outside these plans, both the same before the changes
-  (`records/windows-acceptance/gfx-06-verification.md`): SMAA Low changes
+  (`docs/plans/records/windows-acceptance/gfx-06-verification.md`): SMAA Low changes
   202 pixels of faint grain on Adreno WebGL (`verify:post-quality`), and a
   zero-strength normal map moves 2.8 levels on Adreno WebGPU
   (`verify:specular-aa`). Both checks are labelled desktop-only.
