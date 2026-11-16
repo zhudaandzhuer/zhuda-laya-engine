@@ -17,8 +17,8 @@ AG1..AG6 and CSG were built in a separate session on branch
 `claude/fervent-lovelace-44d9db` and merged into `main` after review, with
 `npm run verify`, lint, format, the draw checks on both backends and phone
 runs at each merge. CI (`.github/workflows/verify.yml`: Linux verify and
-browser, macOS, Windows from a folder with spaces and CJK) was green on
-`6d3d362`; later pushes not yet watched to the end.
+browser, macOS, Windows from a folder with spaces and CJK) is green on
+`d0d17fa` (run 43955927723), the commit that put this file here.
 
 ## Decided
 
@@ -47,9 +47,8 @@ browser, macOS, Windows from a folder with spaces and CJK) was green on
 
 ## Next step
 
-Watch the CI run for the newest `main` commit to the end
-(`gh run list --workflow verify.yml -L 1`); if green, nothing in these three
-plans is left. The phone findings above are the natural next task.
+Nothing in these three plans is left. The phone findings above are the
+natural next task.
 
 ## Machines
 
