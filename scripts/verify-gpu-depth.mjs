@@ -172,6 +172,12 @@ assert.equal(mirror.installed, true, 'the glTF shader writes the surface picture
 assert.equal(mirror.modelShader, 'glTFPBR');
 const shots = mirror.shots;
 assert.ok(shots.alike.rough > shots.none.rough + 60, 'the wall is mirrored in the floor');
+// No bands across the mirrored wall: rays that started behind the floor (the
+// depth read at a corner of four depth pixels, which GPUs resolve differently)
+// missed every few rows on Apple and Intel WebGPU (46 before GFX-02, 1 after).
+for (const key of ['alike', 'surfaces', 'surfacesWet'])
+  assert.ok(shots[key].bands < 12, `${key}: no bands across the reflection (${shots[key].bands})`);
+
 near(shots.alike.rough, shots.alike.smooth, 6, 'without them, rough and smooth reflect alike');
 near(shots.alike.model, shots.alike.rough, 6, 'and so does the glTF material');
 assert.ok(shots.surfaces.smooth > shots.surfaces.rough + 40, 'with them, smooth reflects more');
@@ -179,7 +185,19 @@ assert.ok(shots.surfaces.rough < shots.alike.rough - 20, 'and rough less than be
 near(shots.surfaces.model, shots.surfaces.rough, 6, 'the glTF material is read as the PBR one');
 // Water polishes: at full wetness the three reflect alike again, and more.
 near(shots.surfacesWet.rough, shots.surfacesWet.smooth, 6, 'wet, rough is as smooth as smooth');
-assert.ok(shots.surfacesWet.rough > shots.alike.rough + 20);
+// "More" is measured where it cannot clip (GFX-02 of
+// docs/plans/records/windows-acceptance/plan.md): the reflected wall is red
+// and green enough that both saturate the 8-bit picture wet or not, so the
+// blue channel as light, above what the floor shows with no reflection.
+// Water raises the head-on reflection from 0.145 (wetness 0.5) to 0.27; at
+// this grazing view the rest of the Fresnel term is shared, which leaves
+// wet about 1.14 times the unwet reflection on every GPU measured. The same
+// measure on the smooth strip at half wetness (1.02) must not pass for wet.
+const added = (shot) => shot.blue.rough - shots.none.blue.rough;
+const wetter = added(shots.surfacesWet) / added(shots.alike);
+assert.ok(wetter > 1.08, `wet, rough reflects more than unwet (${wetter.toFixed(3)} times)`);
+const notWetter = (shots.surfaces.blue.smooth - shots.none.blue.rough) / added(shots.alike);
+assert.ok(notWetter < 1.05, `half wet is not taken for wet (${notWetter.toFixed(3)} times)`);
 for (const key of ['rough', 'smooth', 'model']) {
   near(shots.liveOn[key], shots.surfaces[key], 2, `switched on while it runs: ${key}`);
   near(shots.liveOffAgain[key], shots.alike[key], 2, `and off again: ${key}`);

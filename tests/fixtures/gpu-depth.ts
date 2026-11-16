@@ -557,6 +557,33 @@ function reflections() {
       }
     return round(sum / n, 1);
   };
+  /** The blue channel as light there: the wall's colour is mostly red and green, which clip; blue does not. */
+  const blue = (p: Uint8ClampedArray, point: V) => {
+    const [cx, cy] = pixel(point);
+    let sum = 0,
+      n = 0;
+    for (let y = cy - 3; y <= cy + 3; y++)
+      for (let x = cx - 6; x <= cx + 6; x++) {
+        sum += toLinear(p[(y * W + x) * 4 + 2]);
+        n++;
+      }
+    return round(sum / n, 5);
+  };
+  /**
+   * Bands across a reflection: the largest bend from row to row (green, 0..255)
+   * down the middle column, from just below where the wall meets the floor to
+   * the measured spot, all inside the mirrored wall. A smooth reflection bends
+   * a few levels; one whose rays miss every few rows bends by tens.
+   */
+  const bands = (p: Uint8ClampedArray) => {
+    const [cx, top] = pixel([0, 0, -3]);
+    const [, bottom] = pixel([0, 0, -1.5]);
+    const g = (row: number) => p[(row * W + cx) * 4 + 1];
+    let worst = 0;
+    for (let y = top + 4; y < bottom; y++)
+      worst = Math.max(worst, Math.abs(g(y - 1) - 2 * g(y) + g(y + 1)));
+    return worst;
+  };
   // On each strip, where the wall is mirrored.
   const spots = { rough: [-2, 0, -1.5], smooth: [0, 0, -1.5], model: [2, 0, -1.5] };
   const result: any = {
@@ -580,6 +607,8 @@ function reflections() {
       rough: mean(p, spots.rough),
       smooth: mean(p, spots.smooth),
       model: mean(p, spots.model),
+      blue: { rough: blue(p, spots.rough), smooth: blue(p, spots.smooth) },
+      bands: bands(p),
     };
     if (picture) keep('reflections-' + name);
     return { mirror, film };
