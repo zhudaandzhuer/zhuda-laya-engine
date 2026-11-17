@@ -46,6 +46,12 @@ export interface SequenceAuditIssue {
  * checks every name and `sizeBytes` against vendor/laya-3.4.2/libs.
  */
 export declare const ZHUDA_ENGINE_MODULES: readonly EngineModuleNode[];
+/**
+ * The engine's modules as one backend loads them: the WebGL table, or the
+ * same with LayaAir's WebGPU render modules and its two shader compilers.
+ * Renderer is a separate build axis; never load both backends in one realm.
+ */
+export declare function zhudaRendererModules(renderer: RendererBackend): readonly EngineModuleNode[];
 export type PresetProfileName = '2d-light' | '3d-standard' | 'spine-hybrid' | 'full-all-in-one';
 export declare const ENGINE_PRESET_PROFILES: Record<PresetProfileName, EngineFeatureTag[]>;
 /**

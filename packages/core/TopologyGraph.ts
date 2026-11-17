@@ -386,7 +386,15 @@ export const ZHUDA_ENGINE_MODULES: readonly EngineModuleNode[] = [
   },
 ] as const;
 
-/** Renderer is a separate build axis; never load both backends in one realm. */
+/**
+ * The engine's modules as one backend loads them: the WebGL table, or the
+ * same with LayaAir's WebGPU render modules and its two shader compilers.
+ * Renderer is a separate build axis; never load both backends in one realm.
+ */
+export function zhudaRendererModules(renderer: RendererBackend): readonly EngineModuleNode[] {
+  return rendererModules(renderer);
+}
+
 function rendererModules(renderer: RendererBackend): readonly EngineModuleNode[] {
   if (renderer !== 'webgl' && renderer !== 'webgpu')
     throw Error('[ZhudaTopology] renderer must be webgl or webgpu');

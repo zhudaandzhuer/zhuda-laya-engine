@@ -141,3 +141,34 @@ test('every main/demo runtime export has a generated value declaration; minified
     'named imports remain tree-shakable',
   );
 });
+
+test('on a WebGPU page health counts the WebGPU modules and their shader compilers', () => {
+  const previous = {
+    Laya: globalThis.Laya,
+    ShaderCompiler: globalThis.ShaderCompiler,
+    wasm_bindgen: globalThis.wasm_bindgen,
+  };
+  try {
+    globalThis.Laya = {
+      Node: class {},
+      Sprite: class {},
+      ClassUtils: {},
+      WebGPURenderDeviceFactory: class {},
+      WebGPU3DRenderPassFactory: class {},
+    };
+    delete globalThis.ShaderCompiler;
+    delete globalThis.wasm_bindgen;
+    // core, the two WebGPU render modules.
+    assert.equal(EngineGuard.inspectEngineHealth().loadedGlobalModules, 3);
+    globalThis.ShaderCompiler = {};
+    globalThis.wasm_bindgen = () => {};
+    assert.equal(EngineGuard.inspectEngineHealth().loadedGlobalModules, 5, 'and the compilers');
+    // The WebGL table would have counted core alone.
+    delete globalThis.Laya.WebGPURenderDeviceFactory;
+    assert.equal(EngineGuard.inspectEngineHealth().loadedGlobalModules, 1);
+  } finally {
+    for (const [key, value] of Object.entries(previous))
+      if (value === undefined) delete globalThis[key];
+      else globalThis[key] = value;
+  }
+});

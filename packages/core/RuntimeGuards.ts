@@ -1,4 +1,4 @@
-import { ZHUDA_ENGINE_MODULES } from './TopologyGraph.ts';
+import { zhudaRendererModules } from './TopologyGraph.ts';
 /**
  * @zhuda-laya/core — Runtime Ready Guards & Prototype Detox
  *
@@ -228,7 +228,11 @@ export class EngineGuard {
     const sp42 = this.checkSpine42();
     const buttonSetStateGuarded = typeof g.Laya?.Graphics?.prototype?.setState === 'function';
 
-    const loadedCount = ZHUDA_ENGINE_MODULES.filter(
+    // Counted against the table of the backend this page runs: the WebGPU one
+    // has its own render modules and two shader compilers.
+    const webgpu =
+      (g.Laya as Record<string, unknown> | undefined)?.WebGPURenderDeviceFactory != null;
+    const loadedCount = zhudaRendererModules(webgpu ? 'webgpu' : 'webgl').filter(
       (module) =>
         module.providesGlobals.length > 0 &&
         module.providesGlobals.every((name) => {
