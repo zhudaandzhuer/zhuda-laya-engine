@@ -1,9 +1,8 @@
 # Handoff: plans of 2026-11-16/17 and the defects after them
 
-Last updated: 2026-11-17 (evening). The three plans below are on `origin`.
-**The defect batch under "After the plans" is committed on the local `main`
-only (`c7ab3d1` to the commit that changes this file), not pushed: push when
-the owner says so.**
+Last updated: 2026-11-17 (evening). Everything below is on `origin/main`:
+the three plans, and the defect batch under "After the plans" (`c7ab3d1` to
+`3b0cf08`, pushed on the owner's word).
 
 ## Done
 
@@ -75,8 +74,7 @@ host and the iPhone 14.
 
 ## Next step
 
-1. Push `main` when the owner asks (the defect batch is local).
-2. The V40 run above.
+The V40 run above; nothing else is waiting.
 
 Earlier: the two Adreno findings of the phone runs were fixed
 ([record](docs/plans/records/phone-findings-adreno/verification.md)), and
