@@ -66,15 +66,32 @@ in `verify:basis-textures` that draws correctly: a variant lists every map
 of the render that compiled it, used or not, and WebGPU needs only the
 bindings a shader uses. It was taken out before the commit was kept.
 
+## In the game of the issue
+
+Verified by the game's own session with `3c15fdc` and `"renderer": "auto"`
+(issue #8, 2026-11-17 09:14 UTC): whole rounds played with real mouse or
+touch events, WebGPU on HeadlessChrome 157, macOS, `apple / metal-3`; the
+game reads `zhudaReflectionProbeFills()` at the end of each round.
+
+| Condition                        | Runs | Renderer errors | Page errors | Probe given | Before the fix |
+| -------------------------------- | ---- | --------------- | ----------- | ----------- | -------------- |
+| Fixed look quality 3, 1280 × 720 | 5    | 0               | 0           | 1–3 a run   | 3 of 4 failed  |
+| Governor-driven, 1280 × 720      | 4    | 0               | 0           | 0           | 4 of 9 failed  |
+| 844 × 390, touch                 | 1    | 0               | 0           | 2           | —              |
+| 390 × 844, touch                 | 1    | 0               | 0           | 2           | —              |
+
+The probe was given in every fixed-quality-3 round, where the failure used
+to start; the mid-round frames are no longer dark. The game is back on
+`"renderer": "auto"`.
+
 ## Limits
 
-- The game of the issue was not run (it is not in this repository); that
-  its renders lost the probe block is concluded from the binding the error
-  names, not observed. `zhudaReflectionProbeFills()` above 0 in the game
-  would show the fill at work there.
+- How the game's renders lost the probe was not found; the fix does not
+  depend on it.
 - A render missing another render-level block (`SkinSprite3D`,
   `MorphTarget`, `VolumetricGIProbe`) would still fail as before; none is
   known to happen.
-- RTX not selected on the Windows host; one phone.
+- The game was not played whole on a phone's WebGPU; RTX not selected on
+  the Windows host.
 
 Decision: **Implemented within scope**.
