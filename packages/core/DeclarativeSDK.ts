@@ -9,6 +9,7 @@ import {
   installLaya342LifecycleFix,
   installLaya342PassCacheBounds,
   installLaya342PointFilterFix,
+  installLaya342ReflectionProbeFill,
   installLaya342ShadowBias,
   installLaya342SpecularAA,
   installLaya342Translucency,
@@ -210,6 +211,7 @@ export class ZhudaEngine {
       installLaya342LifecycleFix();
       installLaya342PassCacheBounds();
       installLaya342PointFilterFix();
+      installLaya342ReflectionProbeFill();
 
       // 再次確認原型解毒補丁在 Laya.init 後保持生效
       EngineGuard.installPrototypeDetox();

@@ -41,6 +41,23 @@ export declare function installLaya342LifecycleFix(runtime?: any): void;
  */
 export declare function installLaya342PassCacheBounds(native?: any): void;
 /**
+ * Issue #8 (docs/plans/records/webgpu-node-bindings). LayaAir 3.4.2 compiles
+ * a shader variant once per set of defines and takes its render-level
+ * bindings from the first render that compiled it. A render whose shader
+ * reads the reflection probe block (PBR, glTFPBR, a lit surface:
+ * `Shader3D._supportReflectionProbe`) but holds no probe when it is drawn
+ * shares the variant of one that held it, since the scene's probe adds no
+ * define: on WebGPU its layout then lacks the block's binding, the pipeline
+ * is invalid and so is every command buffer after it (the frame turns dark);
+ * on WebGL the block keeps what another object bound. Such a render is given
+ * the scene's probe as it is prepared, as LayaAir's own instanced draw does;
+ * the volume manager still places a better one when it next updates. Both
+ * backends; call after `Laya.init`. Returns whether anything was patched.
+ */
+export declare function installLaya342ReflectionProbeFill(runtime?: any): boolean;
+/** How many times a render has been given the scene's probe in this runtime. */
+export declare function zhudaReflectionProbeFills(runtime?: any): number;
+/**
  * GFX-03 (docs/plans/records/windows-acceptance/plan.md). LayaAir 3.4.2's
  * WebGL textures ask for 4x anisotropic filtering from the start, also when
  * they are set to point filtering. Direct3D 11 (ANGLE on Windows) then

@@ -142,6 +142,7 @@
     "verify:browser-sdk": "npm run build:browser && node scripts/verify-browser-sdk.mjs",
     "verify:crowd": "node scripts/verify-crowd-browser.mjs",
     "verify:model-showcase": "node scripts/verify-model-showcase.mjs",
+    "verify:node-bindings": "node scripts/verify-node-bindings.mjs",
     "verify:next-round": "node scripts/verify-next-round.mjs",
     "verify:runtime-feedback": "node scripts/verify-runtime-feedback-browser.mjs",
     "verify:slot-foundation": "node scripts/verify-slot-foundation.mjs",

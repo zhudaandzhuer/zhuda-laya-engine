@@ -76,6 +76,7 @@ export {
   ZHUDA_NORMAL_NOMIPMAP_DEFINE,
   ZHUDA_SPECULAR_AA_DEFINE,
   setZhudaSpecularAA,
+  zhudaReflectionProbeFills,
   zhudaSpecularAAStatus,
   type ZhudaSpecularAAInstallOptions,
   type ZhudaSpecularAAStatus,

@@ -184,6 +184,68 @@ export function installLaya342PassCacheBounds(native: any = (globalThis as any).
   }
 }
 
+/** How often a render was given the scene's reflection probe (`installLaya342ReflectionProbeFill`). */
+const probeFills = new WeakMap<object, { filled: number }>();
+/** Element prototypes given the fill: its own set, as other adapters patch the same ones. */
+const probeFilled = new WeakSet<object>();
+
+/**
+ * Issue #8 (docs/plans/records/webgpu-node-bindings). LayaAir 3.4.2 compiles
+ * a shader variant once per set of defines and takes its render-level
+ * bindings from the first render that compiled it. A render whose shader
+ * reads the reflection probe block (PBR, glTFPBR, a lit surface:
+ * `Shader3D._supportReflectionProbe`) but holds no probe when it is drawn
+ * shares the variant of one that held it, since the scene's probe adds no
+ * define: on WebGPU its layout then lacks the block's binding, the pipeline
+ * is invalid and so is every command buffer after it (the frame turns dark);
+ * on WebGL the block keeps what another object bound. Such a render is given
+ * the scene's probe as it is prepared, as LayaAir's own instanced draw does;
+ * the volume manager still places a better one when it next updates. Both
+ * backends; call after `Laya.init`. Returns whether anything was patched.
+ */
+export function installLaya342ReflectionProbeFill(
+  runtime: any = (globalThis as any).Laya,
+): boolean {
+  const block: string = runtime?.ReflectionProbe?.BlockName ?? 'ReflectionProbe';
+  let installed = false;
+  for (const name of ['WebGPURenderElement3D', 'WebGLRenderElement3D']) {
+    const prototype = runtime?.[name]?.prototype;
+    if (!prototype || probeFilled.has(prototype) || typeof prototype._preUpdatePre !== 'function')
+      continue;
+    const prepare = prototype._preUpdatePre;
+    prototype._preUpdatePre = function (...args: unknown[]) {
+      const owner = this.owner;
+      const added = owner?.additionShaderData;
+      if (
+        added instanceof Map &&
+        !added.has(block) &&
+        this._subShader?._owner?._supportReflectionProbe
+      ) {
+        const probe = runtime.RenderContext3D?._instance?.scene?.sceneReflectionProb;
+        if (probe?.shaderData && probe._dataModule) {
+          owner.probeReflection = probe._dataModule;
+          added.set(block, probe.shaderData);
+          // LayaAir's setter: the keys, and the define change flags of the block.
+          owner.additionShaderData = added;
+          owner._applyReflection?.();
+          let state = probeFills.get(runtime);
+          if (!state) probeFills.set(runtime, (state = { filled: 0 }));
+          state.filled++;
+        }
+      }
+      return prepare.apply(this, args);
+    };
+    probeFilled.add(prototype);
+    installed = true;
+  }
+  return installed;
+}
+
+/** How many times a render has been given the scene's probe in this runtime. */
+export function zhudaReflectionProbeFills(runtime: any = (globalThis as any).Laya): number {
+  return probeFills.get(runtime)?.filled ?? 0;
+}
+
 /**
  * GFX-03 (docs/plans/records/windows-acceptance/plan.md). LayaAir 3.4.2's
  * WebGL textures ask for 4x anisotropic filtering from the start, also when
