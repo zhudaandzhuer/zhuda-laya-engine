@@ -227,9 +227,12 @@ test("WebGL batch marks of destroyed renders and their geometry's instance buffe
     }
   }
   InstanceElement._instanceBufferStateMap = new Map();
+  // LayaAir's timer: what is asked for the next frame runs when the frame starts.
+  const nextFrame = [];
   const runtime = {
     WebGLMeshRenderBatchAgent: Agent,
     WebGLInstanceRenderElement3D: InstanceElement,
+    timer: { frameOnce: (delay, caller, method) => nextFrame.push([delay, method]) },
   };
   assert.equal(installLaya342WebGLBatchMarkSweep({}), false, 'nothing to patch');
   assert.equal(installLaya342WebGLBatchMarkSweep(runtime), true);
@@ -276,6 +279,11 @@ test("WebGL batch marks of destroyed renders and their geometry's instance buffe
     [2],
     "the destroyed geometry's instance buffers are gone",
   );
+  // Out of the table at once; destroyed when the next frame starts, not in the middle of this one.
+  assert.ok(!destroyed.includes('state 1') && !destroyed.includes('vb 1'));
+  assert.equal(nextFrame.length, 1);
+  assert.equal(nextFrame[0][0], 1);
+  nextFrame.shift()[1]();
   assert.ok(destroyed.includes('state 1') && destroyed.includes('vb 1'));
   assert.ok(!destroyed.includes('state 2'));
 

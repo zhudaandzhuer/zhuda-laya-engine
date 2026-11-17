@@ -254,7 +254,8 @@ const instanceGeometries = new Map<number, any>();
  * one from the table again when its batch properties change. A mark never
  * drawn starts its count when the sweep first sees it. An instance buffer
  * state whose geometry is destroyed is destroyed as LayaAir does with the
- * scene. Call after `Laya.init`. Returns whether it was installed.
+ * scene, at the start of the next frame. Call after `Laya.init`. Returns
+ * whether it was installed.
  */
 export function installLaya342WebGLBatchMarkSweep(
   runtime: any = (globalThis as any).Laya,
@@ -271,7 +272,7 @@ export function installLaya342WebGLBatchMarkSweep(
   prototype._opaqueInstanceBatch = function (this: any, list: unknown) {
     if (this._updateCountMark % WEBGL_MARK_SWEEP_PASSES === 0) {
       sweepWebGLBatchMarks(this);
-      sweepInstanceBufferStates(element);
+      sweepInstanceBufferStates(runtime, element);
     }
     return batch.call(this, list);
   };
@@ -327,23 +328,36 @@ function sweepWebGLBatchMarks(agent: any): void {
   }
 }
 
-function sweepInstanceBufferStates(element: any): void {
+/**
+ * The instance buffers of destroyed geometry leave LayaAir's table now and
+ * are destroyed at the start of the next frame, not between a pass's cull
+ * and its draws.
+ */
+function sweepInstanceBufferStates(runtime: any, element: any): void {
   const states: Map<number, any> | undefined = element?._instanceBufferStateMap;
   if (!(states instanceof Map)) return;
+  const doomed: any[] = [];
   for (const [id, geometry] of instanceGeometries) {
     if (!states.has(id)) {
       instanceGeometries.delete(id);
       continue;
     }
     if (geometry.drawParams != null) continue;
-    const state = states.get(id);
-    state.state?.destroy?.();
-    state.worldInstanceVB?.destroy?.();
-    state.lightmapScaleOffsetVB?.destroy?.();
-    state.simpleAnimatorVB?.destroy?.();
+    doomed.push(states.get(id));
     states.delete(id);
     instanceGeometries.delete(id);
   }
+  if (!doomed.length) return;
+  const free = () => {
+    for (const state of doomed.splice(0)) {
+      state.state?.destroy?.();
+      state.worldInstanceVB?.destroy?.();
+      state.lightmapScaleOffsetVB?.destroy?.();
+      state.simpleAnimatorVB?.destroy?.();
+    }
+  };
+  if (typeof runtime?.timer?.frameOnce === 'function') runtime.timer.frameOnce(1, doomed, free);
+  else free();
 }
 
 const probeFilled = new WeakSet<object>();

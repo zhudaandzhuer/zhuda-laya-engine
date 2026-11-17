@@ -71,7 +71,8 @@ export declare function installLaya342ShadowLightFirst(runtime?: any): boolean;
  * one from the table again when its batch properties change. A mark never
  * drawn starts its count when the sweep first sees it. An instance buffer
  * state whose geometry is destroyed is destroyed as LayaAir does with the
- * scene. Call after `Laya.init`. Returns whether it was installed.
+ * scene, at the start of the next frame. Call after `Laya.init`. Returns
+ * whether it was installed.
  */
 export declare function installLaya342WebGLBatchMarkSweep(runtime?: any): boolean;
 /**
