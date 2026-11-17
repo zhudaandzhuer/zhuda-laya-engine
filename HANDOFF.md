@@ -44,7 +44,11 @@ browser, macOS, Windows from a folder with spaces and CJK) is green on
 
 Nothing in these three plans is left. The two Adreno findings of the phone
 runs were fixed afterwards
-([record](docs/plans/records/phone-findings-adreno/verification.md)).
+([record](docs/plans/records/phone-findings-adreno/verification.md)), and
+GitHub issue #8 (WebGPU glTFPBR pipeline invalid after ~70 s) is fixed in
+[webgpu-node-bindings](docs/plans/records/webgpu-node-bindings/verification.md);
+whether the game of the issue still fails is for its next run to show
+(`zhudaReflectionProbeFills()` above 0 there means the fix engaged).
 
 ## Machines
 
