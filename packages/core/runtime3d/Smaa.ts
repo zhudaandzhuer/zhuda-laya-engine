@@ -76,6 +76,11 @@ const VERTEX = (name: string) =>
 // Every read names its level: the passes branch on what they read.
 // "Above" is toward v = 0 throughout, as in the reference. Whether that is
 // the top of the screen does not matter: the method is the same in a mirror.
+// Each pass reads at its pixel's centre, worked out from the texture
+// coordinate rather than taken as it arrives: Adreno (WebGL and WebGPU)
+// interpolates it a little off the centre, and a bilinear read there mixes
+// in some of the next pixel, which turned faint grain one level off where
+// nothing was smoothed.
 const EDGES = `#define SHADER_NAME ZhudaSmaaEdgesFS
 #include "Color.glsl";
 varying vec2 v_Texcoord0;
@@ -87,8 +92,8 @@ c=gammaToLinear(c);
 return sqrt(clamp(c.rgb,0.0,1.0));}
 float zhudaSmaaStep(vec3 a,vec3 b){vec3 t=abs(a-b);return max(max(t.r,t.g),t.b);}
 void main(){
-vec2 uv=v_Texcoord0;
 vec2 px=u_ZhudaSmaaTexel.xy;
+vec2 uv=(floor(v_Texcoord0/px)+0.5)*px;
 vec3 here=zhudaSmaaShown(uv);
 vec4 delta;
 delta.x=zhudaSmaaStep(here,zhudaSmaaShown(uv+px*vec2(-1.0,0.0)));
@@ -163,8 +168,8 @@ return texture2DLodEXT(u_ZhudaSmaaArea,(at+0.5)/${ZHUDA_SMAA_AREA_SIZE}.0,0.0).r
 // of the corner is an edge too, the weights are taken back, most at the corner.
 vec2 zhudaSmaaCorner(vec2 d){vec2 nearer=step(d.xy,d.yx);return u_ZhudaSmaaShape.x*nearer/(nearer.x+nearer.y);}
 void main(){
-vec2 uv=v_Texcoord0;
 vec2 px=u_ZhudaSmaaTexel.xy;
+vec2 uv=(floor(v_Texcoord0/px)+0.5)*px;
 vec2 pixel=uv/px;
 // A quarter and an eighth of a pixel off centre: one read then tells four edges apart.
 vec4 o0=uv.xyxy+px.xyxy*vec4(-0.25,-0.125,1.25,-0.125);
@@ -215,8 +220,8 @@ c=gammaToLinear(c);
 #endif
 return c;}
 void main(){
-vec2 uv=v_Texcoord0;
 vec2 px=u_ZhudaSmaaTexel.xy;
+vec2 uv=(floor(v_Texcoord0/px)+0.5)*px;
 // How much of each neighbour this pixel takes: of the one to the right and
 // the one below from their own weights, of the one to the left and above from this pixel's.
 vec4 own=texture2DLodEXT(u_ZhudaSmaaWeights,uv,0.0);
