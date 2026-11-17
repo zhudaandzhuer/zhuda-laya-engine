@@ -11,6 +11,7 @@ import {
   installLaya342PointFilterFix,
   installLaya342ReflectionProbeFill,
   installLaya342ShadowLightFirst,
+  installLaya342WebGLBatchMarkSweep,
   installLaya342ShadowBias,
   installLaya342SpecularAA,
   installLaya342Translucency,
@@ -214,6 +215,7 @@ export class ZhudaEngine {
       installLaya342PointFilterFix();
       installLaya342ReflectionProbeFill();
       installLaya342ShadowLightFirst();
+      installLaya342WebGLBatchMarkSweep();
 
       // 再次確認原型解毒補丁在 Laya.init 後保持生效
       EngineGuard.installPrototypeDetox();

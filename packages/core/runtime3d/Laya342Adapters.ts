@@ -225,6 +225,127 @@ export function installLaya342ShadowLightFirst(runtime: any = (globalThis as any
 /** How often a render was given the scene's reflection probe (`installLaya342ReflectionProbeFill`). */
 const probeFills = new WeakMap<object, { filled: number }>();
 /** Element prototypes given the fill: its own set, as other adapters patch the same ones. */
+/** Batch passes between sweeps of a WebGL batch agent's marks; when a mark is let go. */
+const WEBGL_MARK_SWEEP_PASSES = 30;
+const WEBGL_MARK_RECENT_PASSES = 8;
+const WEBGL_MARK_STALE_PASSES = 600;
+const webglMarksSwept = new WeakSet<object>();
+/** The geometry of each entry of LayaAir's instance buffer table, by its id. */
+const instanceGeometries = new Map<number, any>();
+
+/**
+ * LayaAir 3.4.2's WebGL batch agent (`WebGLMeshRenderBatchAgent`) keeps a
+ * batch mark for every material and mesh it ever batched
+ * (`_batchOpaqueMarks`, by their ids), each with the instanced elements it
+ * drew, which hold the material's shader data and a render that drew them;
+ * and `WebGLInstanceRenderElement3D` keeps, for every geometry it ever drew
+ * instanced, a buffer state with an instance buffer of 1024 matrices (80 KiB
+ * of GPU memory). Both are freed only when a scene goes. In a scene that
+ * stays while materials and meshes come and go they piled up
+ * (`verify:webgpu-churn`, batch kind on WebGL: a material, two shader data,
+ * a buffer state and 6 KiB of heap a cycle; MEM-01 of
+ * `docs/plans/records/windows-acceptance/`, `docs/plans/records/engine-defects`).
+ *
+ * Every 30 batch passes a mark is let go when the renders and geometry its
+ * elements drew are destroyed and it was not drawn in the last 8 passes, or
+ * when it was not drawn for 600: its elements are destroyed and it leaves
+ * the agent's table. A render that still names it (one out of sight) keeps a
+ * working mark, which makes its elements anew when drawn; LayaAir gives it
+ * one from the table again when its batch properties change. A mark never
+ * drawn starts its count when the sweep first sees it. An instance buffer
+ * state whose geometry is destroyed is destroyed as LayaAir does with the
+ * scene. Call after `Laya.init`. Returns whether it was installed.
+ */
+export function installLaya342WebGLBatchMarkSweep(
+  runtime: any = (globalThis as any).Laya,
+): boolean {
+  const prototype = runtime?.WebGLMeshRenderBatchAgent?.prototype;
+  const element = runtime?.WebGLInstanceRenderElement3D;
+  if (
+    !prototype ||
+    webglMarksSwept.has(prototype) ||
+    typeof prototype._opaqueInstanceBatch !== 'function'
+  )
+    return false;
+  const batch = prototype._opaqueInstanceBatch;
+  prototype._opaqueInstanceBatch = function (this: any, list: unknown) {
+    if (this._updateCountMark % WEBGL_MARK_SWEEP_PASSES === 0) {
+      sweepWebGLBatchMarks(this);
+      sweepInstanceBufferStates(element);
+    }
+    return batch.call(this, list);
+  };
+  if (typeof element?.getInstanceBufferState === 'function') {
+    const get = element.getInstanceBufferState;
+    element.getInstanceBufferState = function (this: unknown, geometry: any, ...rest: unknown[]) {
+      if (geometry?._id != null) instanceGeometries.set(geometry._id, geometry);
+      return get.call(this, geometry, ...rest);
+    };
+  }
+  webglMarksSwept.add(prototype);
+  return true;
+}
+
+/** A render node LayaAir destroyed has no elements; a destroyed geometry has no draw parameters. */
+const drewOnlyTheDestroyed = (mark: any): boolean => {
+  const elements: any[] | undefined = mark._cacheRenderElement;
+  return (
+    !!elements?.length &&
+    elements.every(
+      (e) => !e || !e.owner || e.owner.renderelements == null || e.geometry?.drawParams == null,
+    )
+  );
+};
+
+function sweepWebGLBatchMarks(agent: any): void {
+  const marks: Record<string, Record<string, any>> | null | undefined = agent._batchOpaqueMarks;
+  if (!marks) return;
+  const now: number = agent._updateCountMark;
+  for (const key of Object.keys(marks)) {
+    const byLight = marks[key];
+    if (!byLight) continue;
+    for (const light of Object.keys(byLight)) {
+      const mark = byLight[light];
+      if (!mark) continue;
+      if (mark.updateMark < 0) {
+        mark.updateMark = now;
+        continue;
+      }
+      const idle = now - mark.updateMark;
+      if (
+        idle < WEBGL_MARK_STALE_PASSES &&
+        !(idle > WEBGL_MARK_RECENT_PASSES && drewOnlyTheDestroyed(mark))
+      )
+        continue;
+      for (const element of mark._cacheRenderElement ?? []) element?.destroy?.();
+      mark._cacheRenderElement = [];
+      mark._curBindElementIndex = 0;
+      mark.batched = false;
+      delete byLight[light];
+    }
+    if (Object.keys(byLight).length === 0) delete marks[key];
+  }
+}
+
+function sweepInstanceBufferStates(element: any): void {
+  const states: Map<number, any> | undefined = element?._instanceBufferStateMap;
+  if (!(states instanceof Map)) return;
+  for (const [id, geometry] of instanceGeometries) {
+    if (!states.has(id)) {
+      instanceGeometries.delete(id);
+      continue;
+    }
+    if (geometry.drawParams != null) continue;
+    const state = states.get(id);
+    state.state?.destroy?.();
+    state.worldInstanceVB?.destroy?.();
+    state.lightmapScaleOffsetVB?.destroy?.();
+    state.simpleAnimatorVB?.destroy?.();
+    states.delete(id);
+    instanceGeometries.delete(id);
+  }
+}
+
 const probeFilled = new WeakSet<object>();
 
 /**

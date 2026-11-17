@@ -198,3 +198,91 @@ test('a batch mark that holds nothing is freed at the next sweep; one in use sta
   assert.equal(agent._batchOpaqueMarks.has(2), false);
   assert.equal(agent._batchOpaqueMarks.has(1), true);
 });
+
+test("WebGL batch marks of destroyed renders and their geometry's instance buffers are let go", async () => {
+  const { installLaya342WebGLBatchMarkSweep } = await laya();
+  const destroyed = [];
+  const destroyable = (name) => ({ destroy: () => destroyed.push(name) });
+  class Agent {
+    constructor() {
+      this._batchOpaqueMarks = [];
+      this._updateCountMark = 0;
+    }
+    _opaqueInstanceBatch() {
+      this._updateCountMark++;
+    }
+  }
+  class InstanceElement {
+    static getInstanceBufferState(geometry) {
+      let state = InstanceElement._instanceBufferStateMap.get(geometry._id);
+      if (!state)
+        InstanceElement._instanceBufferStateMap.set(
+          geometry._id,
+          (state = {
+            state: destroyable(`state ${geometry._id}`),
+            worldInstanceVB: destroyable(`vb ${geometry._id}`),
+          }),
+        );
+      return state;
+    }
+  }
+  InstanceElement._instanceBufferStateMap = new Map();
+  const runtime = {
+    WebGLMeshRenderBatchAgent: Agent,
+    WebGLInstanceRenderElement3D: InstanceElement,
+  };
+  assert.equal(installLaya342WebGLBatchMarkSweep({}), false, 'nothing to patch');
+  assert.equal(installLaya342WebGLBatchMarkSweep(runtime), true);
+  assert.equal(installLaya342WebGLBatchMarkSweep(runtime), false, 'once');
+
+  const goneGeometry = { _id: 1, drawParams: [] };
+  const liveGeometry = { _id: 2, drawParams: [] };
+  InstanceElement.getInstanceBufferState(goneGeometry);
+  InstanceElement.getInstanceBufferState(liveGeometry);
+  const element = (name, owner, geometry) => ({
+    owner,
+    geometry,
+    destroy: () => destroyed.push(name),
+  });
+  const goneOwner = { renderelements: null };
+  const liveOwner = { renderelements: [] };
+  const agent = new Agent();
+  const mark = (updateMark, elements) => ({
+    updateMark,
+    batched: true,
+    _curBindElementIndex: 1,
+    _cacheRenderElement: elements,
+  });
+  agent._batchOpaqueMarks[10] = { 0: mark(5, [element('gone', goneOwner, goneGeometry)]) };
+  agent._batchOpaqueMarks[11] = { 0: mark(5, [element('live', liveOwner, liveGeometry)]) };
+  agent._batchOpaqueMarks[12] = { 0: mark(-1, []) };
+  agent._batchOpaqueMarks[13] = { 0: mark(29, [element('recent', goneOwner, goneGeometry)]) };
+  const kept13 = agent._batchOpaqueMarks[13][0];
+  agent._updateCountMark = 30; // the sweep runs before the pass that would be the 31st
+  delete goneGeometry.drawParams; // LayaAir's destroy
+  agent._opaqueInstanceBatch([]);
+  assert.equal(agent._batchOpaqueMarks[10], undefined, 'drew only destroyed renders: let go');
+  assert.ok(destroyed.includes('gone'));
+  assert.ok(agent._batchOpaqueMarks[11], 'a live render keeps its mark');
+  assert.equal(
+    agent._batchOpaqueMarks[12][0].updateMark,
+    30,
+    'a mark never drawn starts its count',
+  );
+  assert.equal(agent._batchOpaqueMarks[13][0], kept13, 'drawn in the last passes: kept');
+  assert.deepEqual(kept13._cacheRenderElement.length, 1);
+  assert.deepEqual(
+    [...InstanceElement._instanceBufferStateMap.keys()],
+    [2],
+    "the destroyed geometry's instance buffers are gone",
+  );
+  assert.ok(destroyed.includes('state 1') && destroyed.includes('vb 1'));
+  assert.ok(!destroyed.includes('state 2'));
+
+  // Not drawn for 600 passes: let go even with its render alive.
+  agent._updateCountMark = 630;
+  agent._opaqueInstanceBatch([]);
+  assert.equal(agent._batchOpaqueMarks[11], undefined, 'stale: let go');
+  assert.ok(destroyed.includes('live'));
+  assert.equal(agent._batchOpaqueMarks[13], undefined, 'idle past the recent passes: let go');
+});

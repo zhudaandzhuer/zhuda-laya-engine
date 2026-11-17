@@ -51,6 +51,30 @@ export declare function installLaya342PassCacheBounds(native?: any): void;
  */
 export declare function installLaya342ShadowLightFirst(runtime?: any): boolean;
 /**
+ * LayaAir 3.4.2's WebGL batch agent (`WebGLMeshRenderBatchAgent`) keeps a
+ * batch mark for every material and mesh it ever batched
+ * (`_batchOpaqueMarks`, by their ids), each with the instanced elements it
+ * drew, which hold the material's shader data and a render that drew them;
+ * and `WebGLInstanceRenderElement3D` keeps, for every geometry it ever drew
+ * instanced, a buffer state with an instance buffer of 1024 matrices (80 KiB
+ * of GPU memory). Both are freed only when a scene goes. In a scene that
+ * stays while materials and meshes come and go they piled up
+ * (`verify:webgpu-churn`, batch kind on WebGL: a material, two shader data,
+ * a buffer state and 6 KiB of heap a cycle; MEM-01 of
+ * `docs/plans/records/windows-acceptance/`, `docs/plans/records/engine-defects`).
+ *
+ * Every 30 batch passes a mark is let go when the renders and geometry its
+ * elements drew are destroyed and it was not drawn in the last 8 passes, or
+ * when it was not drawn for 600: its elements are destroyed and it leaves
+ * the agent's table. A render that still names it (one out of sight) keeps a
+ * working mark, which makes its elements anew when drawn; LayaAir gives it
+ * one from the table again when its batch properties change. A mark never
+ * drawn starts its count when the sweep first sees it. An instance buffer
+ * state whose geometry is destroyed is destroyed as LayaAir does with the
+ * scene. Call after `Laya.init`. Returns whether it was installed.
+ */
+export declare function installLaya342WebGLBatchMarkSweep(runtime?: any): boolean;
+/**
  * Issue #8 (docs/plans/records/webgpu-node-bindings). LayaAir 3.4.2 compiles
  * a shader variant once per set of defines and takes its render-level
  * bindings from the first render that compiled it. A render whose shader
