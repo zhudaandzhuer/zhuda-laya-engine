@@ -126,8 +126,9 @@ export declare function zhudaPatchSpecularLobe(text: string): {
 /**
  * The forward pass of a physically based shader (Laya's `PBR`, `glTFPBR`, a
  * `ZhudaLitSurfaceMaterial`) with the spread of the normals under the pixel
- * kept as the length of `inputs.normalTS`, for `PBRFrag.glsl` to read;
- * `getPixelInfo` normalises it as before. The spread is read one mipmap level
+ * kept as how much shorter the filtered normal is (`zhudaNormalShort`, 0 to
+ * 0.9), for `PBRFrag.glsl` to read; the stored normal stays as LayaAir made
+ * it. The spread is read one mipmap level
  * above the one the shading uses: the bumps under the pixel and its
  * neighbours, which is steadier from pixel to pixel. It is kept:
  * - only where the map is drawn at less than half its size, fading in from two

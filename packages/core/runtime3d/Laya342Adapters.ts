@@ -452,10 +452,17 @@ const PIXEL_ENERGY_SET = 'info.energyCompensation=(1.0+surface.f0*(1.0/info.dfg.
  * `max` keeps a mediump underflow of roughness squared from making a surface
  * smoother than it was. The derivatives run in getPixelInfo, which every
  * caller reaches outside any branch, as WebGPU's uniformity rule asks.
+ *
+ * How much shorter the filtered normal is comes in as its own number,
+ * `zhudaNormalShort`, set by the forward pass that reads the map (see
+ * `zhudaPatchNormalLength`), not as the length of the stored normal: that one
+ * has been through \`normalize\`, which on Adreno's WebGPU came back a little
+ * off 1 for a map at no strength and widened one pixel's highlight.
  */
 const SPECULAR_AA_HELPER = `
 #ifdef ${ZHUDA_SPECULAR_AA_DEFINE}
-float zhudaSpecularAA(float roughness,vec3 normalWS,vec3 normalTS){float r=specularAA(roughness,normalWS);float l=clamp(length(normalTS),0.05,1.0);float spread=2.0*(1.0-l*l)/(l*(3.0-l*l));float wide=max(sqrt(saturate(r*r+min(spread,0.5))),roughness);zhudaWidened=saturate((r*r-roughness*roughness)/(wide*wide));zhudaBumps=saturate(min(spread,0.5)/(wide*wide));return wide;}
+float zhudaNormalShort=0.0;
+float zhudaSpecularAA(float roughness,vec3 normalWS,float shortened){float r=specularAA(roughness,normalWS);float l=clamp(1.0-shortened,0.05,1.0);float spread=2.0*(1.0-l*l)/(l*(3.0-l*l));float wide=max(sqrt(saturate(r*r+min(spread,0.5))),roughness);zhudaWidened=saturate((r*r-roughness*roughness)/(wide*wide));zhudaBumps=saturate(min(spread,0.5)/(wide*wide));return wide;}
 #endif
 `;
 /**
@@ -465,11 +472,11 @@ float zhudaSpecularAA(float roughness,vec3 normalWS,vec3 normalTS){float r=specu
  * normal map is not applied to the shading, so it widens nothing either.
  */
 const PIXEL_ENERGY_SET_PATCHED = `${PIXEL_ENERGY_SET}#ifdef ${ZHUDA_SPECULAR_AA_DEFINE}
-vec3 zhudaNormalTS=vec3(0.0,0.0,1.0);
+float zhudaShortened=0.0;
 #ifdef TANGENT
-zhudaNormalTS=surface.normalTS;
+zhudaShortened=zhudaNormalShort;
 #endif
-surface.roughness=zhudaSpecularAA(surface.roughness,info.vertexNormalWS,zhudaNormalTS);surface.perceptualRoughness=sqrt(surface.roughness);
+surface.roughness=zhudaSpecularAA(surface.roughness,info.vertexNormalWS,zhudaShortened);surface.perceptualRoughness=sqrt(surface.roughness);
 #endif
 `;
 const occurrences = (text: string, part: string) => text.split(part).length - 1;
@@ -525,8 +532,9 @@ const SHADER_NAME = /#define SHADER_NAME (\w+)/;
 /**
  * The forward pass of a physically based shader (Laya's `PBR`, `glTFPBR`, a
  * `ZhudaLitSurfaceMaterial`) with the spread of the normals under the pixel
- * kept as the length of `inputs.normalTS`, for `PBRFrag.glsl` to read;
- * `getPixelInfo` normalises it as before. The spread is read one mipmap level
+ * kept as how much shorter the filtered normal is (`zhudaNormalShort`, 0 to
+ * 0.9), for `PBRFrag.glsl` to read; the stored normal stays as LayaAir made
+ * it. The spread is read one mipmap level
  * above the one the shading uses: the bumps under the pixel and its
  * neighbours, which is steadier from pixel to pixel. It is kept:
  * - only where the map is drawn at less than half its size, fading in from two
@@ -573,7 +581,7 @@ export function zhudaPatchNormalLength(fragment: string): { text: string; reason
       )
       .replace(
         NORMAL_STORE,
-        `${NORMAL_STORE}\n#if defined(${ZHUDA_SPECULAR_AA_DEFINE}) && defined(GRAPHICS_API_GLES3) && !defined(DETAILNORMAL) && !defined(${ZHUDA_NORMAL_NOMIPMAP_DEFINE})\n{vec2 zhudaSize=vec2(textureSize(u_NormalTexture,0));vec2 zhudaX=dFdx(${uv})*zhudaSize;vec2 zhudaY=dFdy(${uv})*zhudaSize;vec3 zhudaCoarse=texture2D(u_NormalTexture,${uv},1.0).${swizzle}*2.0-1.0;vec3 zhudaStep=zhudaCoarse-zhudaFine;float zhudaShort=max(1.0-length(zhudaCoarse)-0.004,0.0)*u_NormalScale*u_NormalScale*smoothstep(4.0,16.0,max(dot(zhudaX,zhudaX),dot(zhudaY,zhudaY)))*smoothstep(0.0,0.0001,dot(zhudaStep,zhudaStep));inputs.normalTS*=1.0-min(zhudaShort,0.9);}\n#endif\n`,
+        `${NORMAL_STORE}\n#if defined(${ZHUDA_SPECULAR_AA_DEFINE}) && defined(GRAPHICS_API_GLES3) && !defined(DETAILNORMAL) && !defined(${ZHUDA_NORMAL_NOMIPMAP_DEFINE})\n{vec2 zhudaSize=vec2(textureSize(u_NormalTexture,0));vec2 zhudaX=dFdx(${uv})*zhudaSize;vec2 zhudaY=dFdy(${uv})*zhudaSize;vec3 zhudaCoarse=texture2D(u_NormalTexture,${uv},1.0).${swizzle}*2.0-1.0;vec3 zhudaStep=zhudaCoarse-zhudaFine;float zhudaShort=max(1.0-length(zhudaCoarse)-0.004,0.0)*u_NormalScale*u_NormalScale*smoothstep(4.0,16.0,max(dot(zhudaX,zhudaX),dot(zhudaY,zhudaY)))*smoothstep(0.0,0.0001,dot(zhudaStep,zhudaStep));zhudaNormalShort=min(zhudaShort,0.9);}\n#endif\n`,
       ),
   };
 }

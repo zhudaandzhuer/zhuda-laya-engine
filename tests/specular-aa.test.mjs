@@ -152,7 +152,12 @@ test('PBRFrag.glsl is patched behind the define, at line starts, without #else',
   // than once is worked out from the material's roughness, before anything
   // else reads the roughness.
   const call = text.indexOf('surface.roughness=zhudaSpecularAA(surface.roughness,');
-  assert.ok(text.includes('zhudaSpecularAA(surface.roughness,info.vertexNormalWS,zhudaNormalTS)'));
+  assert.ok(text.includes('zhudaSpecularAA(surface.roughness,info.vertexNormalWS,zhudaShortened)'));
+  // The shortening comes in as its own number, not as the stored normal's
+  // length, which normalize leaves a little off 1 on some GPUs.
+  assert.ok(text.includes('float zhudaNormalShort=0.0;'));
+  assert.ok(text.includes('float l=clamp(1.0-shortened,0.05,1.0);'));
+  assert.ok(!text.includes('length(normalTS)'));
   assert.ok(call > text.indexOf('info.energyCompensation=(1.0+surface.f0'));
   assert.ok(call > text.indexOf('info.dfg=prefilteredDFG_LUT('));
   for (const later of ['#ifdef IRIDESCENCE', '#ifdef CLEARCOAT', 'info.ab=surface.roughness;'])
@@ -161,7 +166,7 @@ test('PBRFrag.glsl is patched behind the define, at line starts, without #else',
   // A mesh without tangents does not apply the normal map: it widens nothing.
   assert.ok(
     text.includes(
-      'vec3 zhudaNormalTS=vec3(0.0,0.0,1.0);\n#ifdef TANGENT\nzhudaNormalTS=surface.normalTS;\n#endif\n',
+      'float zhudaShortened=0.0;\n#ifdef TANGENT\nzhudaShortened=zhudaNormalShort;\n#endif\n',
     ),
   );
   directivesAtLineStarts(text, 'PBRFrag.glsl');
@@ -261,10 +266,10 @@ test('the forward passes keep the spread of the normals, only where a mipmapped 
       patched.includes('max(1.0-length(zhudaCoarse)-0.004,0.0)*u_NormalScale*u_NormalScale'),
     );
     assert.ok(patched.includes('smoothstep(0.0,0.0001,dot(zhudaStep,zhudaStep))'), name);
-    // The block comes after the normal is stored, and only shortens it.
-    assert.ok(
-      patched.indexOf('inputs.normalTS*=1.0-min(zhudaShort,0.9);') > patched.indexOf(STORE),
-    );
+    // The block comes after the normal is stored, leaves it as it is and
+    // says how much shorter the filtered one is.
+    assert.ok(patched.indexOf('zhudaNormalShort=min(zhudaShort,0.9);') > patched.indexOf(STORE));
+    assert.ok(!patched.includes('inputs.normalTS*='), name);
     assert.deepEqual(zhudaPatchNormalLength(patched), { text: patched }, `${name}: twice`);
     directivesAtLineStarts(patched, name);
     // Behind the define: without it, one local more and nothing else.
