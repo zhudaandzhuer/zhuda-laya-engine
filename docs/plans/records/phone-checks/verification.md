@@ -2,7 +2,7 @@
 
 Task document: `docs/plans/records/phone-checks/task.md`\
 Commit: the commit that adds this file, on top of `78b0dee`\
-Date: 2026-11-15
+Date: 2026-11-15; rerun 2026-11-17
 
 ## Environment
 
@@ -178,6 +178,27 @@ On its WebGL the pass runs its JavaScript step, as on the desktop.
 - On the phone, every check's own "nothing left behind" held where it has
   one.
 
+## Rerun on 2026-11-17: ten of ten on each backend
+
+`main` at `cfbee49`, the same vivo V40 (Chrome 157.0.8103.78 now), each
+check once on each backend with Chrome in front. Every one passes:
+
+| Check                      | WebGL | WebGPU | What changed since the table above                                                                                                                                                                                                   |
+| -------------------------- | ----- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `verify-cloth`             | PASS  | PASS   |                                                                                                                                                                                                                                      |
+| `verify-lit-surface`       | PASS  | PASS   |                                                                                                                                                                                                                                      |
+| `verify-dither`            | PASS  | PASS   | The premise was WebGL's own `DITHER` (on by default; desktop GPUs ignore it, Adreno applies it to the 8-bit canvas): with it off the ramp has bands, 0.2 → 0.0448 with the engine's dither; with both on 0.0504 → 0.0501 (`cfbee49`) |
+| `verify-gltf-instancing`   | PASS  | PASS   |                                                                                                                                                                                                                                      |
+| `verify-gpu-depth`         | PASS  | PASS   | The glTF material 95.9 against the PBR one 96.1 (was 94.3 against 84.1): depth read at a depth pixel's centre (`738a00f`, Windows acceptance GFX-02)                                                                                 |
+| `verify-physical-surfaces` | PASS  | PASS   |                                                                                                                                                                                                                                      |
+| `verify-gltf-intake`       | PASS  | PASS   |                                                                                                                                                                                                                                      |
+| `verify-animation-control` | PASS  | PASS   |                                                                                                                                                                                                                                      |
+| `verify-developer-tooling` | PASS  | PASS   | WebGL still says GPU time is unavailable (no `EXT_disjoint_timer_query_webgl2`); WebGPU 0.20 → 16.58 ms under glass                                                                                                                  |
+| `verify-specular-aa`       | PASS  | PASS   | A normal map at no strength 0 levels (was 2.8): the shortening passed as its own number (`13441d2`); see [phone-findings-adreno](../phone-findings-adreno/verification.md)                                                           |
+
+The same day `verify:post-quality` (not one of the ten) passes on the V40
+too, on both backends, after SMAA read at each pixel's centre (`d6d8130`).
+
 ## Prefab evidence (visual work)
 
 Not applicable: engine fixtures only.
@@ -185,10 +206,11 @@ Not applicable: engine fixtures only.
 ## Limits and decision
 
 - One phone, one run of each check on each backend (the WebGPU ten twice).
-- Three checks fail on the phone and stay failed: `verify-dither` on WebGL
+- On 2026-11-15 three checks failed on the phone: `verify-dither` on WebGL
   (its premise), `verify-gpu-depth` on both backends (a tolerance on
-  reflections), `verify-specular-aa` on WebGPU (one line). None was
-  changed, and nothing was mended.
+  reflections), `verify-specular-aa` on WebGPU (one line). By 2026-11-17
+  all three pass (see the rerun above): two engine fixes and the dither
+  check measuring with WebGL's own dither off. No threshold was loosened.
 - The backend delivery check itself was not run on the phone; its pages
   were.
 - The older packages' checks (films, looks, effects, grass, crowds) were
@@ -196,6 +218,6 @@ Not applicable: engine fixtures only.
 - No other phone, no iOS.
 
 **Recorded.** The switch is accepted (unit tests, twenty runs on a phone).
-The packages' phone results are what the table says: WP4, WP7, WP10, WP12,
-WP15, WP17 and WP18 pass on the phone on both backends; WP2 and WP16 each
-have a check that fails there.
+As of the 2026-11-17 rerun every package of the table (WP2, WP4, WP7,
+WP10, WP12, WP15, WP16, WP17, WP18) passes its checks on the phone on both
+backends.

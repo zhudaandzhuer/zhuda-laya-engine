@@ -1,8 +1,8 @@
 # Agent task: phone-checks
 
-Status: Run on one phone; three checks fail there and are recorded as failing\
+Status: Run on one phone; all ten checks pass there on both backends (rerun 2026-11-17)\
 Owner: Engine/toolchain\
-Last reviewed: 2026-11-15
+Last reviewed: 2026-11-17
 
 ## Source requirement
 
