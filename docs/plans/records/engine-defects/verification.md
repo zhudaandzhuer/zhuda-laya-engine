@@ -15,7 +15,7 @@ Date: 2026-11-17
 - An iPhone 14, iOS 27.2.1, Safari 27.2, WebGPU, over the LAN (HTTPS with a
   certificate made for the run).
 - A vivo V40 (Adreno 720, Chrome 157 on Android 16, WebGPU and WebGL), over
-  USB on 2026-11-18, at `1197e20`.
+  USB and then Wi-Fi on 2026-11-18, at `1197e20`.
 
 ## 1. Lit surfaces of one name with other starting values
 
@@ -175,34 +175,40 @@ batch run once.
 
 ## The vivo V40 (2026-11-18, `1197e20`)
 
-| Check                                           | WebGPU (Adreno 7xx)                               | WebGL (ANGLE GLES 3.2)                |
-| ----------------------------------------------- | ------------------------------------------------- | ------------------------------------- |
-| `node-bindings`: the probe (issue #8)           | 109.58 → 109.58, 0 errors                         | 109.57 → 109.57, 0 errors             |
-| `node-bindings`: WP23                           | 58 frames a second go on, the other sphere 120.43 | 60 frames, 120.41                     |
-| `node-bindings`: WP22, sun alone / with rim     | 0.943 / 0.567, the sun the main light             | 0.945 / 0.567                         |
-| `lit-surface` (the strand bands with strength)  | PASS                                              | PASS                                  |
-| `physical-surfaces`                             | PASS                                              | PASS                                  |
-| `gltf-instancing`                               | PASS                                              | PASS                                  |
-| `instanced-mesh`                                | PASS                                              | PASS, mean 0, worst 0 against nodes   |
-| `developer-tooling` (WP23's note, nothing left) | PASS                                              | PASS                                  |
-| `webgpu-churn`, 3D and batch, short settings    | **FAIL on the heap alone**, see below             | PASS: 3D 1.35, batch 1.39 KiB a cycle |
+| Check                                                | WebGPU (Adreno 7xx)                                     | WebGL (ANGLE GLES 3.2)                        |
+| ---------------------------------------------------- | ------------------------------------------------------- | --------------------------------------------- |
+| `node-bindings`: the probe (issue #8)                | 109.58 → 109.58, 0 errors                               | 109.57 → 109.57, 0 errors                     |
+| `node-bindings`: WP23                                | 58 frames a second go on, the other sphere 120.43       | 60 frames, 120.41                             |
+| `node-bindings`: WP22, sun alone / with rim          | 0.943 / 0.567, the sun the main light                   | 0.945 / 0.567                                 |
+| `lit-surface` (the strand bands with strength)       | PASS                                                    | PASS                                          |
+| `physical-surfaces`                                  | PASS                                                    | PASS                                          |
+| `gltf-instancing`                                    | PASS                                                    | PASS                                          |
+| `instanced-mesh`                                     | PASS                                                    | PASS, mean 0, worst 0 against nodes           |
+| `developer-tooling` (WP23's note, nothing left)      | PASS                                                    | PASS                                          |
+| `webgpu-churn`, the default settings (2D, 3D, batch) | PASS: 0.43, 0.57, 1.31 KiB a cycle; batch marks 1 to 32 | PASS: 0.30, 0.67 KiB a cycle; batch see below |
 
-The churn check was run with a warm-up of 150 cycles and 4 blocks to save
-time (the defaults are 300 and 6). On WebGPU no object grew (batch marks 1
-or 28, shader data 34 to 47, 15 materials at every sample), and the heap
-rose 0.87, 0.29, 0.46 and 0.09 MiB over the four blocks of 300 cycles: 1.99
-KiB a cycle by the check's rule, over its bound of 1.5, and falling. The
-phone's earlier runs with the defaults read 0.28 (WebGPU) and 0.38 (WebGL)
-for the 3D kind (`windows-acceptance/mem-01-verification.md`); these short
-ones read 1.40 and 1.35, so the short settings are not a fair run on the
-phone. The run with the defaults was started and lost 218 s in, when the
-phone's connection dropped (`CDP timeout`, then no device).
+In the batch kind no object grew on either backend (on WebGPU 15 materials
+at every sample and marks between 1 and 32; on WebGL 16 to 26 materials). The WebGPU
+heap went 32.61, 33.34, 33.44, 33.76, 33.84, 34.00, 34.39 MiB over 1 800
+cycles: 1.31 KiB a cycle by the check's rule (the lowest of the later
+samples against the lowest of the earlier ones), under its bound of 1.5 and
+above the desktop's 0.9; from the second sample on it is 0.7. On WebGL it
+went 47.77 to 48.56 MiB over 1 500 cycles (0.5 KiB a cycle) and fell to
+41.35 at the last sample, so the check's figure for it is negative.
+
+A first run of the churn check on this phone used a warm-up of 150 cycles
+and 4 blocks to save time, and failed on WebGPU on the heap alone (1.99 KiB
+a cycle, falling block by block; no object grew). The phone's 3D kind read
+1.40 there against 0.57 with the defaults: the short settings are not a fair
+run on the phone, and that result is not counted. A first try with the
+defaults was lost 218 s in, when the phone (then on USB) went out of adb's
+sight; the run above was over Wi-Fi.
 
 ## Limits
 
-- **The batch kind's heap on the V40's WebGPU is not settled**: the short
-  run failed on the heap alone and the run with the defaults was cut off by
-  the phone's connection. Its objects did not grow.
+- On the V40's WebGPU the batch kind's heap rises 1.31 KiB a cycle by the
+  check's rule (0.7 after the first sample), nearer the bound of 1.5 than on
+  a desktop; its objects do not grow. One phone, one run with the defaults.
 - LayaAir's single-light mode (multi-lighting off) takes the first
   directional light as the main light; WP22 does not change it.
 - A WebGL mark that a render out of sight still names is let go after 600
@@ -214,5 +220,4 @@ phone's connection dropped (`CDP timeout`, then no device).
   explained; body-lab and the iPhone game were not run.
 - RTX not selected on the Windows host (Chrome takes the Intel adapter).
 
-Decision: **Implemented within scope**; the V40's WebGPU churn run with the
-default settings is open.
+Decision: **Implemented within scope**.
