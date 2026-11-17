@@ -50,6 +50,8 @@ Low on Adreno WebGL. It is not a GFX-03 regression; the check is labelled
 desktop evidence only and was never claimed for phones. Recorded as a
 phone finding outside this plan, with the zero-strength normal map on
 Adreno WebGPU: both are desktop checks run on a phone for the first time.
+Both were fixed afterwards and now pass on the V40:
+[phone-findings-adreno](../phone-findings-adreno/verification.md).
 
 ## Other checks
 

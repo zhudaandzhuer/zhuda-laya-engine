@@ -32,11 +32,6 @@ browser, macOS, Windows from a folder with spaces and CJK) is green on
 
 ## Open (not started)
 
-- Phone findings outside these plans, both the same before the changes
-  (`docs/plans/records/windows-acceptance/gfx-06-verification.md`): SMAA Low changes
-  202 pixels of faint grain on Adreno WebGL (`verify:post-quality`), and a
-  zero-strength normal map moves 2.8 levels on Adreno WebGPU
-  (`verify:specular-aa`). Both checks are labelled desktop-only.
 - QA-01: why a browser session's first one or two frames differ by 1/255 at
   one pixel on Intel Direct3D 11 was not found.
 - The Windows host's packaged consumer web is the DIST-02 one; not rebuilt
@@ -47,8 +42,9 @@ browser, macOS, Windows from a folder with spaces and CJK) is green on
 
 ## Next step
 
-Nothing in these three plans is left. The phone findings above are the
-natural next task.
+Nothing in these three plans is left. The two Adreno findings of the phone
+runs were fixed afterwards
+([record](docs/plans/records/phone-findings-adreno/verification.md)).
 
 ## Machines
 
