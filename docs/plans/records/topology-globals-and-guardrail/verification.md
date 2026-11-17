@@ -141,9 +141,12 @@ closed when the branch was merged:
 - `TopologyGraph.ts`: the comment said 29 modules; the tables hold 31 (WebGL)
   and 33 (WebGPU).
 
-Still open: `inspectEngineHealth` counts loaded modules against the WebGL
-table only, so on a WebGPU page the two render modules and the two shader
-compilers are not counted. Nothing at run time reads the WebGPU table's
+Open when this was written, closed on 2026-11-17
+([engine defects](../engine-defects/verification.md)): `inspectEngineHealth`
+counted loaded modules against the WebGL table only, so on a WebGPU page
+the two render modules and the two shader compilers were not counted. It
+now reads the table of the page's backend. Nothing else at run time reads
+the WebGPU table's
 `providesGlobals`.
 
 `npm run verify` 566 of 566 on the merged branch (with the game-services

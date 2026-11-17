@@ -124,7 +124,9 @@ The unit test has the deliberate failures (each field, a surface called by
 another name) and what is not one (a name in a comment, a field of the
 hook's own struct). The refusal is not drawn: nothing is drawn when it
 happens. Any other GLSL mistake in a hook still reaches the compiler; that a
-failed program stops drawing on WebGPU is open as WP23 of the plan.
+failed program stopped drawing on WebGPU was WP23 of the plan, done on
+2026-11-17: its objects are left out and the rest is drawn
+([engine defects](../engine-defects/verification.md)).
 
 ## Prefab evidence (visual work)
 

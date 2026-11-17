@@ -63,7 +63,8 @@ recorded in `docs/plans/records/scene-uniform-order/`.
 - No run on the RTX 3060: Chrome picked the Intel adapter by default.
 - VRAM and process private memory were not measured; JS heap and live
   objects only. The report's 30-minute churn was not repeated.
-- `_batchOpaqueMarks` (batched meshes) not exercised.
+- `_batchOpaqueMarks` (batched meshes) not exercised here; exercised and bounded on
+  2026-11-17 ([engine defects](../engine-defects/verification.md)).
 - The remaining 0.2 to 0.4 KiB a cycle levels off in the series; code
   compiled by V8 during the run is part of it.
 

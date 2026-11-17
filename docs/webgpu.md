@@ -180,10 +180,14 @@ One Android phone (a vivo V40, Adreno 720, Chrome 156) has run ten of the
 draw checks on this backend (`plans/records/phone-checks/`): its adapter is a
 hardware one without `float32-filterable` and `bgra8unorm-storage`, eight of
 the ten pass, and screen reflections and one line of specular anti-aliasing
-do not. iOS and other browsers are unverified.
+do not. One iPhone 14 (iOS 27.2.1, Safari 27.2, 2026-11-17) drew the WebGPU
+defect checks, the lit-surface check and 38 film scenes with no renderer error
+and as the Mac draws them ([engine defects](plans/records/engine-defects/verification.md));
+other iOS devices and other browsers are unverified.
 One iPhone report (2026-11-15, a consumer 3D game at its medium setting) failed
-at start with `GPUCommandEncoder.finish: Unable to finish.`; it is not yet
-reproduced or explained. Until it is, ship such a game with `renderer: "auto"`
+at start with `GPUCommandEncoder.finish: Unable to finish.`; the pages above did
+not reproduce it and the game itself was not run here, so it is not explained.
+Until it is, ship such a game with `renderer: "auto"`
 and call `retryZhudaBackend(reason)` when boot fails, so the page reloads on WebGL
 (see [backend delivery](backend-delivery.md)).
 

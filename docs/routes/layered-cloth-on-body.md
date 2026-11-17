@@ -147,7 +147,7 @@ grip; its shape goes to the material. Through a hole in a garment, pick the laye
 | A hook that works on WebGL loses its tears on WebGPU | `fwidth`/`dFdx` inside a branch or a function called from one: WGSL demands uniform control flow | Compute derivatives at the top of the hook and pass them in |
 | Moire on fine weaves on a phone | A weave finer than a pixel | Fade it out by `fwidth` of its phase |
 | The sun's shadow disappears | LayaAir gives the shadow to the brightest directional light | Keep added lights' intensity below the sun's; put strength in their colour |
-| Two materials of one shader name fail ("different contract") | The lit surface's name contract includes each uniform's starting value | Create every material with neutral values, then `set()` its own |
+| Two materials of one shader name fail ("different contract") | The lit surface's name contract included each uniform's starting value (fixed in the engine on 2026-11-17: only the types count) | On an engine before the fix: create every material with neutral values, then `set()` its own |
 | The first press does nothing in a test | The start splash takes the pointer for ~2.2 s | Wait for `window.__ZHUDA_SPLASH__.completed` |
 | A held skirt jitters | Each hand of the engine's cloth waits on its own stretch | Pin a small pinch and move the pins smoothly |
 
@@ -156,8 +156,8 @@ grip; its shape goes to the material. Through a hole in a garment, pick the laye
 | Gap | Engine plan | Workaround in the reference consumer |
 | --- | --- | --- |
 | The lit surface takes no uniform arrays | WP21 | Twelve tears as 24 named `vec4` uniforms and twelve unrolled calls |
-| The scene look's sun loses its shadow to a brighter light | WP22 | Added lights dimmer than the sun |
-| A failed hook compile stops drawing on WebGPU | WP23 | Check `renderer.errors` after every shader change |
+| The scene look's sun loses its shadow to a brighter light | WP22, done 2026-11-17: a light that casts no shadow no longer takes it | On an engine before it: added lights dimmer than the sun |
+| A failed hook compile stops drawing on WebGPU | WP23, done 2026-11-17: its objects are left out, the rest is drawn | Check `renderer.errors` after every shader change |
 | The cloth's hand holds one particle | WP24 | A pinned 3 × 3 pinch moved with `movePin` |
 | No body-to-layer helper (offset shell, per-vertex pull, stretch, tear) | not scheduled | `src/meshleg.ts` in the consumer |
 
