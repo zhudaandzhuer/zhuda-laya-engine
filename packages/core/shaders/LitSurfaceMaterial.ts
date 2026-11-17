@@ -98,9 +98,11 @@ export interface ZhudaLitSurfaceSpec {
     | boolean;
   /**
    * A highlight along strands (hair, brushed fur, a satin ribbon), after
-   * Kajiya and Kay: two bands of light across the strands, a white one of
-   * `strength` (default 1) and a wider one of `color` (default 0.5, 0.4,
-   * 0.3), each moved along the strand by `shift` (default 0.05 and -0.1) and
+   * Kajiya and Kay: two bands of light across the strands, both as strong as
+   * `strength` (default 1), a narrow white one and a wider one of `color`
+   * (default 0.5, 0.4, 0.3; on dark hair keep it near the hair's own colour,
+   * since the band adds it to each light where the strands run square to it),
+   * each moved along the strand by `shift` (default 0.05 and -0.1) and
    * as narrow as `exponent` (default 120 and 24). The strands run along the
    * texture's `along` (`'v'` by default, or `'u'`). The hook's
    * `s.strandShift` moves both a pixel at a time (a noise there breaks the
@@ -304,7 +306,7 @@ const surfaceStruct = (lobes: Lobes) =>
 /** A lit surface's subsurface light: its colour and wrap; how much comes through from behind, how narrow, how bent. */
 export const ZHUDA_LIT_SUBSURFACE_UNIFORM = 'u_ZhudaLitSubsurface';
 export const ZHUDA_LIT_SUBSURFACE_BACK_UNIFORM = 'u_ZhudaLitSubsurfaceBack';
-/** A lit surface's strand highlight: the two shifts and exponents; the wide band's colour and the white band's strength. */
+/** A lit surface's strand highlight: the two shifts and exponents; the wide band's colour and the strength of both. */
 export const ZHUDA_LIT_STRANDS_UNIFORM = 'u_ZhudaLitStrands';
 export const ZHUDA_LIT_STRAND_COLOR_UNIFORM = 'u_ZhudaLitStrandColor';
 /** What the hook's new fields start as (and stay as, in the passes that draw no colour). */
@@ -385,7 +387,7 @@ ${
 }
 ${
   lobes.strands
-    ? `vec3 h=SafeNormalize(info.viewDir+l);vec3 t1=normalize(zhudaStrand+info.normalWS*(${ZHUDA_LIT_STRANDS_UNIFORM}.x+zhudaShift)),t2=normalize(zhudaStrand+info.normalWS*(${ZHUDA_LIT_STRANDS_UNIFORM}.y+zhudaShift));float d1=dot(t1,h),d2=dot(t2,h);c+=(vec3(${ZHUDA_LIT_STRAND_COLOR_UNIFORM}.a)*smoothstep(-1.0,0.0,d1)*pow(sqrt(max(1.0-d1*d1,0.0)),${ZHUDA_LIT_STRANDS_UNIFORM}.z)+${ZHUDA_LIT_STRAND_COLOR_UNIFORM}.rgb*smoothstep(-1.0,0.0,d2)*pow(sqrt(max(1.0-d2*d2,0.0)),${ZHUDA_LIT_STRANDS_UNIFORM}.w))*saturate(nl*0.75+0.25)*light.attenuation;`
+    ? `vec3 h=SafeNormalize(info.viewDir+l);vec3 t1=normalize(zhudaStrand+info.normalWS*(${ZHUDA_LIT_STRANDS_UNIFORM}.x+zhudaShift)),t2=normalize(zhudaStrand+info.normalWS*(${ZHUDA_LIT_STRANDS_UNIFORM}.y+zhudaShift));float d1=dot(t1,h),d2=dot(t2,h);c+=${ZHUDA_LIT_STRAND_COLOR_UNIFORM}.a*(vec3(smoothstep(-1.0,0.0,d1)*pow(sqrt(max(1.0-d1*d1,0.0)),${ZHUDA_LIT_STRANDS_UNIFORM}.z))+${ZHUDA_LIT_STRAND_COLOR_UNIFORM}.rgb*smoothstep(-1.0,0.0,d2)*pow(sqrt(max(1.0-d2*d2,0.0)),${ZHUDA_LIT_STRANDS_UNIFORM}.w))*saturate(nl*0.75+0.25)*light.attenuation;`
     : ''
 }
 return c*light.color;}
@@ -836,7 +838,10 @@ export class ZhudaLitSurfaceMaterial {
     if (!records) registry.set(l.Shader3D, (records = new Map()));
     const signature = JSON.stringify({
       surface: spec.surface,
-      uniforms,
+      // What the shader declares: each uniform's type. A starting value is
+      // the material's own (written below), so two materials of one name may
+      // start from different ones.
+      uniforms: Object.fromEntries(Object.entries(uniforms).map(([k, u]) => [k, u.type])),
       normalConvention: spec.normalConvention || 'directx',
       // Absent for hook-free materials, so their signatures stay as before.
       ...(spec.vertex !== undefined ? { vertex: spec.vertex } : {}),

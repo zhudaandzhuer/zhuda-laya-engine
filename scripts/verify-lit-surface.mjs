@@ -475,9 +475,16 @@ near(strands.byTheMaterial.at, strands.byTheHook.at, 0.01, 'shifted by the mater
 assert.ok(strands.expected.shifted - strands.expected.plain > 0.3, 'the shift is one that shows');
 near(strands.plain.peak[1], 0.5, 0.02, "the band's light is its strength");
 near(strands.coloured.at, strands.expected.plain, 0.05, 'the second band');
-[0.5, 0.25, 0].forEach((want, k) =>
-  near(strands.coloured.peak[k], want, 0.02, `the second band's colour, channel ${k}`),
-);
+// Both bands scale with the strength: 0.5 x (white + colour), then 0.1 x.
+[0.5, 0.25, 0].forEach((colour, k) => {
+  near(
+    strands.coloured.peak[k],
+    0.5 * (1 + colour),
+    0.02,
+    `the second band's colour, channel ${k}`,
+  );
+  near(strands.dimmed.peak[k], 0.1 * (1 + colour), 0.02, `both bands dimmed, channel ${k}`);
+});
 assert.ok(Math.max(...strands.acrossV.peak) < 0.02, `none across (${strands.acrossV.peak})`);
 
 assert.deepEqual(

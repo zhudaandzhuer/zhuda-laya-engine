@@ -1123,14 +1123,17 @@ function strands() {
   alongU.set('u_ZhudaShift', 0);
   alongU.setStrands({ shift: [0.05, 0] });
   result.byTheMaterial = band();
-  // The second band alone, in its colour.
+  // The second band on the first, in its colour: both as strong as `strength`.
   alongU.setStrands({
     shift: [0, 0],
     exponent: [2000, 2000],
-    strength: 0,
+    strength: 0.5,
     color: [0.5, 0.25, 0],
   });
   result.coloured = band();
+  // A lower strength dims both bands, the coloured one too.
+  alongU.setStrands({ strength: 0.1 });
+  result.dimmed = band();
   // Strands the other way: none of this row is square to the half vector.
   node.meshRenderer.sharedMaterial = alongV.material;
   result.acrossV = band();

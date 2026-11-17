@@ -727,6 +727,8 @@ test("subsurface and strands are added light by light after LayaAir's lighting; 
   assert.ok(hair.forward.includes('float strandShift;vec3 tangent;vec3 bitangent;vec3 viewTS;};'));
   assert.ok(main(hair.forward).includes('vec3(0.0),0.0,s.bitangent,s.strandShift)'));
   assert.ok(hair.forward.includes(`${ZHUDA_LIT_STRAND_COLOR_UNIFORM}.rgb`));
+  // The strength scales both bands, the coloured one too.
+  assert.ok(hair.forward.includes(`c+=${ZHUDA_LIT_STRAND_COLOR_UNIFORM}.a*(vec3(`));
   assert.ok(!hair.forward.includes(ZHUDA_LIT_SUBSURFACE_UNIFORM));
   const ribbon = buildZhudaLitFragmentShaders({ surface: plain, strands: { along: 'u' } });
   assert.ok(main(ribbon.forward).includes('s.tangent,s.strandShift)'));
@@ -867,6 +869,43 @@ test("a hook that uses a lobe's field on a material made without the lobe is ref
       /make the material with `sheen`/,
     );
     assert.equal(laya.shaders.get('ZhudaTestNoSheen'), undefined, 'no shader was added');
+  } finally {
+    globalThis.Laya = saved;
+  }
+});
+
+test('two materials of one shader name may start from different values', () => {
+  const laya = fakeLaya();
+  const saved = globalThis.Laya;
+  globalThis.Laya = laya;
+  try {
+    const surface = `${head}s.baseColor*=u_ZhudaShade;}`;
+    const uniforms = (value) => ({ u_ZhudaShade: { type: 'vec3', value } });
+    const red = new ZhudaLitSurfaceMaterial({
+      name: 'ZhudaTestShaded',
+      surface,
+      uniforms: uniforms([1, 0, 0]),
+    });
+    const blue = new ZhudaLitSurfaceMaterial({
+      name: 'ZhudaTestShaded',
+      surface,
+      uniforms: uniforms([0, 0, 1]),
+    });
+    assert.deepEqual(red.material.vectors.u_ZhudaShade, [1, 0, 0]);
+    assert.deepEqual(blue.material.vectors.u_ZhudaShade, [0, 0, 1], 'its own starting value');
+    assert.equal(laya.shaders.get('ZhudaTestShaded').subs.length, 1, 'one shader');
+    // A different type is still a different shader.
+    assert.throws(
+      () =>
+        new ZhudaLitSurfaceMaterial({
+          name: 'ZhudaTestShaded',
+          surface,
+          uniforms: { u_ZhudaShade: { type: 'vec4', value: [0, 0, 1, 1] } },
+        }),
+      /different contract/,
+    );
+    red.dispose();
+    blue.dispose();
   } finally {
     globalThis.Laya = saved;
   }

@@ -79,9 +79,11 @@ export interface ZhudaLitSurfaceSpec {
     } | boolean;
     /**
      * A highlight along strands (hair, brushed fur, a satin ribbon), after
-     * Kajiya and Kay: two bands of light across the strands, a white one of
-     * `strength` (default 1) and a wider one of `color` (default 0.5, 0.4,
-     * 0.3), each moved along the strand by `shift` (default 0.05 and -0.1) and
+     * Kajiya and Kay: two bands of light across the strands, both as strong as
+     * `strength` (default 1), a narrow white one and a wider one of `color`
+     * (default 0.5, 0.4, 0.3; on dark hair keep it near the hair's own colour,
+     * since the band adds it to each light where the strands run square to it),
+     * each moved along the strand by `shift` (default 0.05 and -0.1) and
      * as narrow as `exponent` (default 120 and 24). The strands run along the
      * texture's `along` (`'v'` by default, or `'u'`). The hook's
      * `s.strandShift` moves both a pixel at a time (a noise there breaks the
@@ -172,7 +174,7 @@ export declare function zhudaLitSurfaceWrites(surface: string): {
 /** A lit surface's subsurface light: its colour and wrap; how much comes through from behind, how narrow, how bent. */
 export declare const ZHUDA_LIT_SUBSURFACE_UNIFORM = "u_ZhudaLitSubsurface";
 export declare const ZHUDA_LIT_SUBSURFACE_BACK_UNIFORM = "u_ZhudaLitSubsurfaceBack";
-/** A lit surface's strand highlight: the two shifts and exponents; the wide band's colour and the white band's strength. */
+/** A lit surface's strand highlight: the two shifts and exponents; the wide band's colour and the strength of both. */
 export declare const ZHUDA_LIT_STRANDS_UNIFORM = "u_ZhudaLitStrands";
 export declare const ZHUDA_LIT_STRAND_COLOR_UNIFORM = "u_ZhudaLitStrandColor";
 /** The uniform a lit surface's sheen is kept in: its colour, and its roughness in the fourth place. */
