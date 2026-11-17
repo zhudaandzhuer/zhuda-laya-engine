@@ -47,6 +47,22 @@ const v3 = (a: number[]) => new Laya.Vector3(a[0], a[1], a[2]);
 const flush = (frames = 3) => Z.ZhudaEngine.flushRenderFrames(frames);
 const round = (v: number, places = 4) => +v.toFixed(places);
 const held = () => Z.inspectSceneResources().resources - (Laya.RenderTexture._pool?.length ?? 0);
+/**
+ * WebGL's own dither (\`DITHER\`, on by default): desktop GPUs ignore it, an
+ * Adreno applies it as a value is written to the 8-bit canvas, and a ramp
+ * drawn plainly there shows no bands. The engine's dither is measured with
+ * it off, so that the picture without dither has bands on every GPU, and the
+ * two together once more (\`gpuOwn\`). False on WebGPU, which has none.
+ */
+const gpuDither = (on: boolean) => {
+  const gl = (context.canvas as HTMLCanvasElement).getContext(
+    'webgl2',
+  ) as WebGL2RenderingContext | null;
+  if (!gl) return false;
+  if (on) gl.enable(gl.DITHER);
+  else gl.disable(gl.DITHER);
+  return true;
+};
 
 /** The green of every pixel, a row after a row. */
 const greens = (p: Uint8ClampedArray) => {
@@ -205,6 +221,22 @@ function ramp(pipeline: boolean) {
   Z.setZhudaDither(scene, false);
   flush(3);
   result.offAgain = apart(plain, greens(read()));
+  // With the GPU's own dither on as well, as WebGL starts.
+  result.gpuOwn = null;
+  if (gpuDither(true)) {
+    flush(3);
+    const plainOn = greens(read());
+    Z.setZhudaDither(scene, true);
+    flush(3);
+    const ditheredOn = greens(read());
+    Z.setZhudaDither(scene, false);
+    gpuDither(false);
+    result.gpuOwn = {
+      plain: against(plainOn, smooth),
+      dithered: against(ditheredOn, smooth),
+      apart: apart(plainOn, ditheredOn),
+    };
+  }
   chain?.dispose();
   flush(2);
   scene.destroy(true);
@@ -295,6 +327,7 @@ async function main() {
     features: [...(globalThis as any).ZhudaBundle.features],
     preserveDrawingBuffer: true,
   });
+  out.gpuDither = gpuDither(false);
   flush(2);
   out.status = Z.zhudaDitherStatus();
   // What LayaAir makes once and keeps (a sun's shadow map, the tables of its
@@ -312,6 +345,7 @@ async function main() {
     out[name] = part();
     out.left[name] = held() - before;
   }
+  gpuDither(true);
   out.rendererErrors = context.renderer.errors.slice(0, 6);
   out.ready = true;
 }

@@ -154,7 +154,23 @@ for (const [name, ramp, mode, other, most] of [
     `${name}: the other place is not where it is rounded (${ramp.otherPlace.block})`,
   );
   assert.deepEqual(ramp.offAgain, { most: 0, changed: 0, meanShift: 0 }, `${name}: off again`);
+  // The engine's dither is measured above with WebGL's own (DITHER) off: an
+  // Adreno applies that one to a plain camera's picture and its ramp shows
+  // no bands without ours (docs/plans/records/phone-checks). With both on, as
+  // WebGL starts, the ramp is still the shade that was meant, and a pixel
+  // moves no further than one step more.
+  assert.equal(
+    ramp.gpuOwn === null,
+    gpuBuild,
+    `${name}: WebGL's own dither measured on WebGL only`,
+  );
+  if (ramp.gpuOwn)
+    assert.ok(
+      ramp.gpuOwn.dithered.block < 0.08 && ramp.gpuOwn.apart.most <= most + 1,
+      `${name}: with WebGL's own dither too (${JSON.stringify(ramp.gpuOwn)})`,
+    );
 }
+assert.equal(report.gpuDither, !gpuBuild, "WebGL's own dither is off while measuring");
 // LayaAir's own lit program, on a plain camera.
 assert.ok(lit.apart.changed > 0.05 && lit.apart.most <= 4, JSON.stringify(lit.apart));
 assert.ok(
@@ -172,7 +188,11 @@ assert.equal(look.disposed, 'off');
 assert.deepEqual(report.left, { direct: 0, chain: 0, lit: 0, look: 0 }, 'nothing left behind');
 console.log(
   `PASS dither on ${report.renderer} (${report.gpu}): a block of pixels off the ramp by ` +
-    `${direct.plain.block} -> ${direct.dithered.block} of a step on a plain camera, ` +
+    `${direct.plain.block} -> ${direct.dithered.block} of a step on a plain camera` +
+    (direct.gpuOwn
+      ? ` (with WebGL's own dither on: ${direct.gpuOwn.plain.block} -> ${direct.gpuOwn.dithered.block})`
+      : '') +
+    ', ' +
     `${chain.plain.block} -> ${chain.dithered.block} through an HDR chain; black stays black; ` +
     `${report.status.passes} programs; evidence in ${path.join(out, 'evidence')}`,
 );
