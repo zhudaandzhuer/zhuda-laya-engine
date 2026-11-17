@@ -192,10 +192,12 @@ Run on a Windows GPU machine (Node 24+, Chrome, or set `CHROME_BIN` to Edge):
 ```powershell
 npm install
 npm run build
-npm run build:browser
 $env:WEBGPU_BROWSER_OUT = "$PWD\webgpu-evidence"
 npm run verify:webgpu
 ```
+
+The check builds this checkout's bundles into a fresh folder; set
+`WEBGPU_BROWSER_DIR` to a release folder to check that one instead.
 
 Or test a fixed hosted release with
 `node scripts/verify-webgpu.mjs --url https://host/fixed-release/ --out ./evidence`.

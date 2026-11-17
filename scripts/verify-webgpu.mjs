@@ -5,6 +5,7 @@ import os from 'node:os';
 import http from 'node:http';
 import assert from 'node:assert/strict';
 import { chromeFixture } from './lib/chrome-fixture.mjs';
+import { browserSdkFolder } from './lib/browser-release.mjs';
 const args = process.argv.slice(2),
   option = (name) => (args.includes(name) ? args[args.indexOf(name) + 1] : undefined);
 const root = path.resolve(
@@ -16,10 +17,8 @@ fs.mkdirSync(root, { recursive: true });
 let base, server;
 if (args.includes('--url')) base = option('--url').replace(/\/?$/, '/');
 else {
-  const dir = path.resolve(
-    process.env.WEBGPU_BROWSER_DIR ||
-      'dist/browser/' + JSON.parse(fs.readFileSync('package.json')).version,
-  );
+  // WEBGPU_BROWSER_DIR: a release folder to certify; otherwise this source, built fresh.
+  const dir = await browserSdkFolder(process.env.WEBGPU_BROWSER_DIR);
   server = http.createServer((req, res) => {
     try {
       const file = path.join(dir, new URL(req.url, 'http://localhost').pathname);

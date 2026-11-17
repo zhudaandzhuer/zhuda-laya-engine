@@ -139,7 +139,7 @@
     "verify:cinematic": "node scripts/verify-cinematic.mjs",
     "verify:minigame": "node scripts/verify-minigame.mjs",
     "verify:branding": "node scripts/verify-branding-browser.mjs",
-    "verify:browser-sdk": "npm run build:browser && node scripts/verify-browser-sdk.mjs",
+    "verify:browser-sdk": "node scripts/verify-browser-sdk.mjs",
     "verify:crowd": "node scripts/verify-crowd-browser.mjs",
     "verify:model-showcase": "node scripts/verify-model-showcase.mjs",
     "verify:node-bindings": "node scripts/verify-node-bindings.mjs",

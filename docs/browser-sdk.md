@@ -156,7 +156,10 @@ zhuda-laya-browser-sdk --out ./sdk-release
 ```
 
 預設輸出 `dist/browser/<version>`。相同內容可以重用；若同目錄已有不同產物，
-指令拒絕覆寫，請換新的輸出目錄。esbuild 固定為 0.27.1，工具版本不一致會拒絕。
+指令拒絕覆寫，請換新的輸出目錄。`verify:browser-sdk`、`verify:branding`、
+`verify:webgpu` 不讀這個目錄：未指定 `SDK_BROWSER_DIR`（`verify:webgpu` 是
+`WEBGPU_BROWSER_DIR`）時，各自把目前原始碼建到新的暫存目錄再檢查；要驗收某個
+發行目錄時才指定它。esbuild 固定為 0.27.1，工具版本不一致會拒絕。
 獨立安裝 tarball 的 CLI 與引擎 checkout 生成的完整產物已逐 byte 比對一致。
 
 編輯器型別可以使用已安裝套件的

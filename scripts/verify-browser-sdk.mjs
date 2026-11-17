@@ -3,10 +3,9 @@ import http from 'node:http';
 import path from 'node:path';
 import assert from 'node:assert/strict';
 import { chromeFixture } from './lib/chrome-fixture.mjs';
-const root = path.resolve(
-    process.env.SDK_BROWSER_DIR ||
-      'dist/browser/' + JSON.parse(fs.readFileSync('package.json')).version,
-  ),
+import { browserSdkFolder } from './lib/browser-release.mjs';
+// SDK_BROWSER_DIR: a release folder to certify; otherwise this source, built fresh.
+const root = await browserSdkFolder(process.env.SDK_BROWSER_DIR),
   out = path.resolve(process.env.SDK_EVIDENCE_DIR || '/tmp/zhuda-browser-evidence'),
   remote = process.env.SDK_RELEASE_URL;
 fs.mkdirSync(out, { recursive: true });

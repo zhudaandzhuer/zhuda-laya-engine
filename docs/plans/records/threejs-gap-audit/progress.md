@@ -486,7 +486,9 @@ Still open, by choice or for want of a device:
 - `verify-webgpu`, `verify-browser-sdk` and `verify-branding-browser` read
   `dist/browser/<version>` as it lies, and the builder refuses to overwrite
   a folder that differs. After a change to the bundles that folder has to
-  be removed and built again before they mean anything.
+  be removed and built again before they mean anything. (Since 2026-11-17
+  each builds this source into a fresh folder unless it is given one,
+  `scripts/lib/browser-release.mjs`.)
 - LayaAir swallows the error its adapter request throws and rejects with
   "Could not get WebGPU device"; the engine's `WEBGPU_ADAPTER` code never
   reaches a page. On WebGL `nativeEngine` is a minified class name (`Le`).
