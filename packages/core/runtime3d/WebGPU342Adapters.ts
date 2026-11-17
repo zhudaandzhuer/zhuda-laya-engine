@@ -28,6 +28,7 @@ export function installLaya342WebGPUFix(native: any): void {
         this._spotCullChangeMask =
           native.Stat.loopCount;
     }
+    sweepBatchMarks(this, now);
     return append.apply(this, args);
   };
   patched.add(prototype);
@@ -36,6 +37,49 @@ export function installLaya342WebGPUFix(native: any): void {
   releaseSpriteShaderData(native);
   evictStaleBindGroups(native);
   forgetDestroyedMaterialFlags(native);
+}
+
+/** Frames between sweeps of a batch agent's marks. */
+const BATCH_SWEEP_FRAMES = 60;
+const batchSweptAt = new WeakMap<object, number>();
+
+/**
+ * MEM-01 (docs/plans/records/windows-acceptance/mem-01-verification.md, left
+ * open there; docs/plans/records/engine-defects). LayaAir 3.4.2's WebGPU
+ * batch agent keeps a batch mark for every material and mesh it ever
+ * batched (`_batchOpaqueMarks`, by their ids), each with an instanced render
+ * element, its geometry and a render node, and frees them only with the
+ * scene. In a scene that stays while materials and meshes come and go they
+ * pile up (two marks, a bind group pair and a shader data a cycle in
+ * `verify:webgpu-churn`'s batch kind). A mark that holds nothing when the
+ * agent is swept is freed and forgotten; one wanted again is made anew by
+ * LayaAir's own path (`_getBatchMark`). Its element list stays, empty, for a
+ * render's old record that still names it.
+ */
+function sweepBatchMarks(agent: any, now: number): void {
+  const marks: Map<number, Record<string, any>> | undefined = agent._batchOpaqueMarks;
+  if (!(marks instanceof Map)) return;
+  const last = batchSweptAt.get(agent);
+  if (last === undefined) {
+    batchSweptAt.set(agent, now);
+    return;
+  }
+  if (now - last < BATCH_SWEEP_FRAMES) return;
+  batchSweptAt.set(agent, now);
+  for (const [key, byLight] of marks) {
+    for (const light of Object.keys(byLight)) {
+      const mark = byLight[light];
+      if (mark?.batchRenderList?.length !== 0 || mark.canBatch || mark._needCreateRenderElement)
+        continue;
+      mark.renderElement?.destroy?.();
+      mark.renderGeometry?.destroy?.();
+      mark.renderNode?.destroy?.();
+      mark.renderElement = mark.renderGeometry = mark.renderNode = null;
+      mark._elementInfoArray = mark._instanceStateInfo = mark._cacheUseNode = null;
+      delete byLight[light];
+    }
+    if (Object.keys(byLight).length === 0) marks.delete(key);
+  }
 }
 
 /**

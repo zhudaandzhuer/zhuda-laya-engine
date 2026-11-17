@@ -157,3 +157,44 @@ test('pass keys unused for 600 frames leave the context and the elements', async
   context._getSceneCameraCacheKey('scene0', 'camera0');
   assert.equal(context._globalRendercacheInfoMap.get(context._curRenderGlobalKey).made, 3000);
 });
+
+test('a batch mark that holds nothing is freed at the next sweep; one in use stays', async () => {
+  const { installLaya342WebGPUFix } = await webgpu();
+  const destroyed = [];
+  const piece = (name) => ({ destroy: () => destroyed.push(name) });
+  const mark = (elements, name) => ({
+    batchRenderList: { length: elements },
+    canBatch: elements > 1,
+    renderElement: piece(name + ':element'),
+    renderGeometry: piece(name + ':geometry'),
+    renderNode: piece(name + ':node'),
+  });
+  const native = nativeWith({});
+  installLaya342WebGPUFix(native);
+  const agent = new native.WebGPUMeshRenderBatchAgent();
+  const empty = mark(0, 'empty'),
+    used = mark(2, 'used'),
+    single = mark(1, 'single');
+  agent._batchOpaqueMarks = new Map([
+    [1, { 0: empty, 1024: used }],
+    [2, { 0: single }],
+  ]);
+  native.Stat.loopCount = 10;
+  agent.appendRenderElement(); // the first call starts the clock
+  native.Stat.loopCount = 40;
+  agent.appendRenderElement();
+  assert.equal(destroyed.length, 0, 'not before a sweep is due');
+  native.Stat.loopCount = 70;
+  agent.appendRenderElement();
+  assert.deepEqual(destroyed, ['empty:element', 'empty:geometry', 'empty:node']);
+  assert.deepEqual(Object.keys(agent._batchOpaqueMarks.get(1)), ['1024']);
+  assert.equal(agent._batchOpaqueMarks.get(2).single ?? agent._batchOpaqueMarks.get(2)[0], single);
+  assert.equal(empty.batchRenderList.length, 0, 'its list stays for an old record');
+  // Emptied later, it goes at the following sweep, and an emptied key with it.
+  single.batchRenderList.length = 0;
+  single.canBatch = false;
+  native.Stat.loopCount = 140;
+  agent.appendRenderElement();
+  assert.equal(agent._batchOpaqueMarks.has(2), false);
+  assert.equal(agent._batchOpaqueMarks.has(1), true);
+});

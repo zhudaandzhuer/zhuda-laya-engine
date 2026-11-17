@@ -2,16 +2,19 @@
 // MEM-01 of docs/plans/records/windows-acceptance/plan.md: does content that
 // is made, drawn and destroyed over and over leave renderer objects alive?
 // One page per kind (2D: sprites with graphics and text; 3D: a scene with a
-// camera, a light and two meshes with their own materials). After a warm-up
+// camera, a light and two meshes with their own materials; batch: in one
+// scene that stays, three boxes with a mesh and a material of their own
+// each cycle, which WebGPU draws as one batch). After a warm-up
 // block and after each following block of cycles the page is collected
 // (HeapProfiler.collectGarbage) and live instances of the renderer's
 // classes are counted (Runtime.queryObjects), with the JS heap in use.
 // A count that keeps rising by the same amount every block is kept by
 // something after its content was destroyed.
 //
-// CHURN_RENDERER=webgpu|webgl (default webgpu), CHURN_KINDS=2d,3d,
-// CHURN_CYCLES (per block, default 300), CHURN_BLOCKS (default 4),
-// CHURN_WARMUP (default 100), CHURN_OUT (evidence folder),
+// CHURN_RENDERER=webgpu|webgl (default webgpu), CHURN_KINDS=2d,3d,batch,
+// CHURN_CYCLES (per block, default 300), CHURN_BLOCKS (default 6),
+// CHURN_WARMUP (default 300: shorter, the heap still settling reads as a
+// leak, 1.6 KiB a cycle on 3D after 100), CHURN_OUT (evidence folder),
 // CHURN_MAX_PER_CYCLE (default 0.02: the most a counted class may grow per
 // cycle), CHURN_MAX_HEAP_KIB (default 1.5 KiB a cycle; 4.8 to 5.3 before the
 // MEM-01 fixes on macOS). ZHUDA_PHONE_CHROME runs it on a phone.
@@ -27,9 +30,9 @@ import { gpuLabelExpression } from './lib/gpu-label.mjs';
 const engineRoot = path.resolve(import.meta.dirname, '..');
 const renderer = process.env.CHURN_RENDERER || 'webgpu';
 if (!['webgpu', 'webgl'].includes(renderer)) throw Error('CHURN_RENDERER is webgpu or webgl');
-const kinds = (process.env.CHURN_KINDS || '2d,3d').split(',').filter(Boolean);
-if (!kinds.length || kinds.some((k) => !['2d', '3d'].includes(k)))
-  throw Error('CHURN_KINDS lists 2d and/or 3d');
+const kinds = (process.env.CHURN_KINDS || '2d,3d,batch').split(',').filter(Boolean);
+if (!kinds.length || kinds.some((k) => !['2d', '3d', 'batch'].includes(k)))
+  throw Error('CHURN_KINDS lists 2d, 3d and/or batch');
 const int = (name, fallback, max) => {
   const value = Number(process.env[name] ?? fallback);
   if (!Number.isSafeInteger(value) || value < 1 || value > max)
@@ -37,8 +40,8 @@ const int = (name, fallback, max) => {
   return value;
 };
 const cycles = int('CHURN_CYCLES', 300, 100000),
-  blocks = int('CHURN_BLOCKS', 4, 100),
-  warmup = int('CHURN_WARMUP', 100, 100000);
+  blocks = int('CHURN_BLOCKS', 6, 100),
+  warmup = int('CHURN_WARMUP', 300, 100000);
 const maxPerCycle = Number(process.env.CHURN_MAX_PER_CYCLE ?? 0.02),
   maxHeapKiB = Number(process.env.CHURN_MAX_HEAP_KIB ?? 1.5);
 const out = path.resolve(

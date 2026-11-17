@@ -54,9 +54,40 @@ function make3d(i: number) {
   };
 }
 
+let batchScene: any = null;
+/**
+ * In one scene that stays: three boxes with a mesh and a material of their
+ * own each cycle, drawn as one batch on WebGPU. LayaAir keeps a batch mark
+ * for every material and mesh it batched; the scene outlives them all.
+ */
+function makeBatch(i: number) {
+  if (!batchScene) {
+    batchScene = Z.Zhuda3D.createScene3D(context.rootScene, { ambientColor: [0.4, 0.4, 0.45, 1] });
+    Z.Zhuda3D.createCamera(batchScene, { position: [0, 1, 6], clearColor: [0.1, 0.12, 0.16, 1] });
+    Z.Zhuda3D.createDirectionalLight(batchScene, { rotationEuler: [-40, -30, 0], intensity: 1 });
+  }
+  const mesh = Z.Zhuda3D.createPrimitiveMesh('box', { width: 0.6, height: 0.6, depth: 0.6 });
+  const material = Z.createSurfaceMaterial({
+    type: 'pbr',
+    color: [0.3 + (i % 3) * 0.2, 0.5, 0.4, 1],
+  });
+  const boxes = [-1, 0, 1].map((x) => {
+    const box = new Laya.MeshSprite3D(mesh);
+    box.meshRenderer.sharedMaterial = material;
+    box.transform.position = new Laya.Vector3(x, 0, 0);
+    batchScene.addChild(box);
+    return box;
+  });
+  return () => {
+    boxes.forEach((box) => box.destroy(true));
+    material.destroy();
+    mesh.destroy();
+  };
+}
+
 /** `count` cycles of `kind`: make, draw one frame, destroy, draw one frame. */
-async function run(kind: '2d' | '3d', count: number) {
-  const make = kind === '2d' ? make2d : make3d;
+async function run(kind: '2d' | '3d' | 'batch', count: number) {
+  const make = kind === '2d' ? make2d : kind === '3d' ? make3d : makeBatch;
   for (let i = 0; i < count; i++) {
     const destroy = make(out.cycles[kind]++);
     await frame();
@@ -78,7 +109,7 @@ async function main() {
     features: [...(globalThis as any).ZhudaBundle.features],
   });
   context.runtime.start(() => {});
-  out.cycles = { '2d': 0, '3d': 0 };
+  out.cycles = { '2d': 0, '3d': 0, batch: 0 };
   out.run = run;
   out.report = () => context.runtime.renderer?.report?.() ?? null;
   await frame();
