@@ -288,7 +288,15 @@ assert.equal(report.stats.afterSecondHide, 0);
 assert.ok(report.stats.fps > 0);
 
 // 5. A shader that does not compile: its log and the lines round the one it names.
-assert.equal(report.shader.errors.length, 1);
+// On WebGPU the engine then says that the program's objects are not drawn,
+// and the frame goes on (WP23; LayaAir alone threw out of the frame there).
+assert.equal(report.shader.errors.length, gpuBuild ? 2 : 1, JSON.stringify(report.shader.errors));
+if (gpuBuild)
+  assert.match(
+    report.shader.errors[1],
+    /^ZhudaToolingBroken\b.*: a program that did not compile is not drawn on WebGPU/,
+  );
+assert.equal(report.shader.threw, null, 'the frame with the broken shader does not throw');
 const failed = report.shader.errors[0];
 const named =
   /^Shader compile failed \(fragment\): ERROR: \d*:(\d+): 'notDeclared' : undeclared identifier/.exec(
@@ -352,11 +360,12 @@ assert.deepEqual(gizmo.cancelled, [1, 1, 1], 'let go of: as it was');
 assert.equal(report.gizmoGone, 0, 'disposed, the picture is the first one');
 
 // Nothing left behind by the tools. LayaAir keeps the text atlas its panel
-// made, and on WebGPU the target of the frame the broken shader threw in.
+// made. (On WebGPU the frame the broken shader threw in left its target
+// behind too, until WP23.)
 const left = report.left;
 assert.deepEqual([left.sheet, left.onTop, left.cascades], [0, 0, 0], JSON.stringify(left));
 assert.ok(left.stats <= 1, JSON.stringify(left));
-assert.ok(left.shader - left.stats <= (gpuBuild ? 1 : 0), JSON.stringify(left));
+assert.equal(left.shader, left.stats, JSON.stringify(left));
 assert.equal(left.profiler, left.shader);
 assert.equal(left.gizmo, left.profiler);
 

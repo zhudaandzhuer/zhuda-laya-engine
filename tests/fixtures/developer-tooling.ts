@@ -401,7 +401,8 @@ async function main() {
     try {
       flush();
     } catch (error) {
-      // LayaAir on WebGPU throws on the buffer the failed shader never made.
+      // LayaAir on WebGPU threw here, on the buffer the failed shader never
+      // made, until the engine's adapter (WP23); kept to show that it does not.
       threw = String((error as Error).message ?? error);
     }
     probe.destroy();
