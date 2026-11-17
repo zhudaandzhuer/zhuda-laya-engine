@@ -1,8 +1,9 @@
 # Handoff: plans of 2026-11-16/17 and the defects after them
 
-Last updated: 2026-11-17 (evening). Everything below is on `origin/main`:
-the three plans, and the defect batch under "After the plans" (`c7ab3d1` to
-`3b0cf08`, pushed on the owner's word).
+Last updated: 2026-11-18. The three plans and the defect batch under "After
+the plans" (`c7ab3d1` to `1197e20`) are on `origin/main`. The V40 results of
+2026-11-18 were added in a later commit: `git log origin/main..main` says
+whether it is pushed.
 
 ## Done
 
@@ -48,17 +49,18 @@ The owner asked for every open defect to be fixed. Record:
 | Browser SDK checks read a stale `dist/browser/<version>`                                  | fixed: they build a fresh folder                                                    |
 
 Checked on macOS (every `verify:*` check on both backends), the Windows
-host and the iPhone 14.
+host, the iPhone 14 and, but for one churn run, the vivo V40.
 
 ## Open
 
-- **The vivo V40 has not run this batch**: its wireless debugging dropped
-  when the run was due. Exact next step: with the phone unlocked and
-  wireless debugging on, `adb forward tcp:9333 localabstract:chrome_devtools_remote`,
-  then `node-bindings`, `lit-surface`, `physical-surfaces`, `gltf-instancing`,
-  `instanced-mesh`, `developer-tooling` and `webgpu-churn` with
-  `ZHUDA_PHONE_CHROME=http://127.0.0.1:9333` on both backends, and add the
-  results to the record.
+- **One V40 run is left**: on 2026-11-18 the phone (USB) passed 13 of the
+  batch's 14 runs on both backends; `webgpu-churn` on WebGPU failed on the
+  heap alone with short settings (no object grew), and its run with the
+  default settings was cut off when the phone disconnected. Exact next step,
+  with the phone connected and unlocked and Chrome open:
+  `adb forward tcp:9333 localabstract:chrome_devtools_remote`, then
+  `ZHUDA_PHONE_CHROME=http://127.0.0.1:9333 ZHUDA_PHONE_ADB=<adb> ANDROID_SERIAL=10AEBU1QXM002NY npm run verify:webgpu-churn`
+  (about 20 minutes; keep the screen awake), and add the result to the record.
 - On the Windows host `verify:instanced-mesh` WebGL differed by 1/255 at one
   pixel in 2 of 26 runs of `95aee18`; 0 of 24 since the instance buffers are
   destroyed at the next frame's start, 0 of 19 before the sweep. Whether
@@ -74,7 +76,7 @@ host and the iPhone 14.
 
 ## Next step
 
-The V40 run above; nothing else is waiting.
+The V40's WebGPU churn run above; nothing else is waiting.
 
 Earlier: the two Adreno findings of the phone runs were fixed
 ([record](docs/plans/records/phone-findings-adreno/verification.md)), and
