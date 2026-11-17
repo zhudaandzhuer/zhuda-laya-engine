@@ -1,5 +1,7 @@
 #!/usr/bin/env node
-// Real-GPU check of issue #8 (docs/plans/records/webgpu-node-bindings),
+// Real-GPU check of issue #8 (docs/plans/records/webgpu-node-bindings), WP23
+// (a program that does not compile) and WP22 (a sun beside a brighter rim
+// light keeps its shadow; both docs/plans/records/engine-defects),
 // through the browser SDK: two glTFPBR spheres with one material; the
 // second loses its reflection probe (reflectionMode off, probe taken away),
 // so it shares the variant the first compiled with the probe block. Without
@@ -100,7 +102,7 @@ assert.equal(report.error, undefined, report.error);
 assert.equal(report.ready, true, 'the fixture finished');
 assert.deepEqual(report.errors, [], 'no page errors');
 assert.equal(report.renderer, gpuBuild ? 'webgpu' : 'webgl');
-const { probe } = report;
+const { probe, broken, shadowLight } = report;
 assert.deepEqual(probe.errors, [], 'no renderer error with the probe taken away');
 assert.ok(probe.fills >= 1, `the sphere was given the scene's probe (${probe.fills})`);
 assert.ok(probe.blocks?.includes('ReflectionProbe'), JSON.stringify(probe.blocks));
@@ -109,7 +111,33 @@ assert.ok(
   Math.abs(probe.withoutProbe - probe.withProbe) <= 1,
   `it looks as it did with its probe (${probe.withProbe} -> ${probe.withoutProbe})`,
 );
+// WP23: a program that does not compile leaves its objects undrawn, nothing else.
+assert.ok(broken.ticks > 20, `the engine keeps drawing (${broken.ticks} frames in a second)`);
+assert.ok(broken.good > 10, `the other sphere is drawn and lit (${broken.good})`);
+assert.ok(
+  broken.errors.some((e) => /zhudaNoSuchThing/.test(e)),
+  `the compiler's message is kept: ${JSON.stringify(broken.errors)}`,
+);
+if (gpuBuild)
+  assert.ok(
+    broken.errors.some((e) => /^ZhudaCheckBrokenHook: a program that did not compile/.test(e)),
+    JSON.stringify(broken.errors),
+  );
+// WP22: the sun keeps its shadow beside a brighter rim light that casts none.
+assert.ok(shadowLight.alone.main, 'the sun alone is the main light');
+assert.ok(
+  shadowLight.alone.shadow > 0.5,
+  `the sun's shadow is drawn (${shadowLight.alone.shadow})`,
+);
+assert.ok(shadowLight.withRim.main, 'beside a brighter rim light the sun is still the main light');
+assert.ok(
+  shadowLight.withRim.shadow > shadowLight.alone.shadow * 0.5,
+  `and its shadow is drawn (${shadowLight.alone.shadow} -> ${shadowLight.withRim.shadow})`,
+);
+assert.deepEqual(shadowLight.errors, [], 'no renderer error in the shadow case');
 console.log(
   `PASS node bindings on ${report.renderer} (${report.gpu}): a sphere without its probe ` +
-    `${probe.withProbe} -> ${probe.withoutProbe}, given the scene's ${probe.fills} time(s), 0 errors`,
+    `${probe.withProbe} -> ${probe.withoutProbe}, given the scene's ${probe.fills} time(s), 0 errors; ` +
+    `a program that does not compile: ${broken.ticks} frames a second go on, the other sphere ${broken.good}; ` +
+    `the sun's shadow alone ${shadowLight.alone.shadow}, beside a brighter rim ${shadowLight.withRim.shadow}`,
 );

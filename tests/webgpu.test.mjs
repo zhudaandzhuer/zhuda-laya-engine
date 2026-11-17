@@ -42,6 +42,18 @@ function fixture() {
       this.naga = {};
     }
   }
+  // LayaAir's: made as a program is first drawn; a rejected one throws here.
+  class ShaderInstance {
+    constructor(name) {
+      this.name = name;
+      this.complete = false;
+    }
+    _create(source) {
+      if (source === 'broken')
+        throw new TypeError("Cannot read properties of null (reading 'buffer')");
+      this.complete = true;
+    }
+  }
   const engine = new Engine();
   engine._config = {
     deviceDescriptor: {
@@ -58,11 +70,12 @@ function fixture() {
     WebGPURenderDeviceFactory: class {},
     WebGPURenderEngine: Engine,
     WebGPUShaderCompiler: Compiler,
+    WebGPUShaderInstance: ShaderInstance,
     LayaGL: { renderEngine: engine },
     Render: { paused: false },
     stage: { renderingEnabled: true },
   };
-  return { device, engine, native, Compiler, lose: finish };
+  return { device, engine, native, Compiler, ShaderInstance, lose: finish };
 }
 const navigatorDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
 test.after(() => Object.defineProperty(globalThis, 'navigator', navigatorDescriptor));
@@ -410,4 +423,24 @@ test('a hand-drawn pass first gives new renderers their reflection probe', async
   prepareLaya342ManualDraw({});
   prepareLaya342ManualDraw(null);
   assert.equal(calls.length, 2);
+});
+
+test('a WebGPU program the compiler rejects is left undrawn, said once, and drawing goes on', () => {
+  Object.defineProperty(globalThis, 'navigator', { configurable: true, value: { gpu: {} } });
+  const f = fixture();
+  const handle = prepareRenderer('webgpu', f.native);
+  const good = new f.ShaderInstance('Good');
+  good._create('fine');
+  assert.equal(good.complete, true);
+  for (const name of ['ZhudaBadHook', 'ZhudaBadHook']) {
+    const bad = new f.ShaderInstance(name);
+    assert.doesNotThrow(() => bad._create('broken'), 'the frame is not stopped');
+    assert.equal(bad.complete, false, "LayaAir's draw skips an incomplete program");
+  }
+  const said = handle.diagnostics.errors.filter((e) => e.startsWith('ZhudaBadHook'));
+  assert.equal(said.length, 1);
+  assert.match(said[0], /did not compile is not drawn on WebGPU/);
+  handle.release('disposed');
+  // Released: LayaAir's own method again.
+  assert.throws(() => new f.ShaderInstance('After')._create('broken'), TypeError);
 });

@@ -41,6 +41,16 @@ export declare function installLaya342LifecycleFix(runtime?: any): void;
  */
 export declare function installLaya342PassCacheBounds(native?: any): void;
 /**
+ * WP22 (docs/plans/records/threejs-gap-audit/plan.md). LayaAir 3.4.2 takes
+ * the brightest light of each kind as the scene's main one, the one that
+ * casts the shadow (and, for directional lights, the sun the sky and fog
+ * follow): a rim light brighter than a look's sun took the sun's shadow
+ * away without a word. A light that casts shadows now comes first; among
+ * those, and when none does, the brightest, as before. Call after
+ * `Laya.init`. Returns whether it was installed.
+ */
+export declare function installLaya342ShadowLightFirst(runtime?: any): boolean;
+/**
  * Issue #8 (docs/plans/records/webgpu-node-bindings). LayaAir 3.4.2 compiles
  * a shader variant once per set of defines and takes its render-level
  * bindings from the first render that compiled it. A render whose shader

@@ -197,6 +197,34 @@ export function prepareRenderer(
             }
           },
       );
+      // WP23 (docs/plans/records/threejs-gap-audit/plan.md): a program the
+      // compiler rejects makes LayaAir's WebGPU shader instance throw on a
+      // null buffer while it is made, inside the frame, and the engine's
+      // loop stops: nothing is drawn again. WebGL reports it and draws on.
+      // The instance is left incomplete instead, which LayaAir's draw skips,
+      // so only the objects of that program go undrawn.
+      const failedPrograms = new Set<string>();
+      patch(
+        native.WebGPUShaderInstance?.prototype,
+        '_create',
+        (original) =>
+          function (this: any, ...args: unknown[]) {
+            try {
+              return original.apply(this, args);
+            } catch (error) {
+              this.complete = false;
+              const name = String(this.name ?? 'a shader');
+              if (!failedPrograms.has(name)) {
+                failedPrograms.add(name);
+                if (diagnostics.errors.length < 64)
+                  diagnostics.errors.push(
+                    `${name}: a program that did not compile is not drawn on WebGPU (${String((error as Error)?.message ?? error).slice(0, 160)})`,
+                  );
+              }
+              return undefined;
+            }
+          },
+      );
       patch(
         native.WebGPURenderEngine?.prototype,
         '_getAdapter',

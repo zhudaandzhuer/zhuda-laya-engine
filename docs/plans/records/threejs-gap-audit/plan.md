@@ -511,18 +511,17 @@ A consumer study outside this repository rebuilt its three.js page on the engine
 - To do: `float`, `vec2`, `vec3`, `vec4` arrays on the lit surface (the declaration in all three passes, the uniform map, `set()` with the numbers one after another, the name contract). Small to medium.
 - Gate: a hook that reads `u_ZhudaName[i]` in a loop draws the picture that many named uniforms draw, on WebGL and WebGPU; a wrong count is refused with the uniform's name.
 
-### WP22. The look's sun keeps its shadow, or says it has lost it (scheduled; the limit is documented)
+### WP22. The look's sun keeps its shadow, or says it has lost it (implemented; [engine defects](../engine-defects/verification.md))
 
 - Found: LayaAir's scene takes the directional light of the greatest `_intensity` as its main light, the one with the shadow (`getBrightestLight`, checked in the vendored `laya.d3.js`). Two rim lights at 2.4 to 3.6 beside a look's sun at 1.6 to 2.0 took the sun's shadow away, with no warning.
-- Done now: the limit is in `docs/film-scenes.md` (keep another directional light under the sun's intensity, its strength in its colour).
-- To do: either the look keeps its sun as the shadow light (without changing vendor files), or the look and `inspectEngineHealth` say by name that a brighter directional light has taken the shadow. Medium: how LayaAir orders its lights has to be read first.
+- Done (2026-11-17): `installLaya342ShadowLightFirst` makes the main light the brightest that casts a shadow, else the brightest (directional, point and spot queues); `docs/film-scenes.md` says so. `verify:node-bindings`: a sun at 1.8 beside a rim at 3.6 keeps its shadow on both backends (0 before the fix); the sun alone draws as before.
 - Gate: a fixture with a sun and a brighter rim: the sun's shadow is drawn, or the finding is raised; the same scene without the rim is unchanged; both backends.
 
-### WP23. A program that fails to compile on WebGPU (the one known cause is refused now; the rest scheduled)
+### WP23. A program that fails to compile on WebGPU (implemented; [engine defects](../engine-defects/verification.md))
 
 - Found: a hook that wrote `s.sheenColor` on a material made without `sheen` did not compile; on WebGL the error is reported and drawing goes on; on WebGPU LayaAir then throws an uncaught `TypeError` in `WebGPUShaderInstance._create` and drawing stops. Not reproduced here.
 - Done now (2026-11-15): a hook that uses a field of a lobe the material was made without (`sheenColor`, `sheenRoughness`, `subsurfaceColor`, `thickness`, `strandShift`) is refused when the material is made, with the option's name (unit-tested; no draw is needed for a refusal).
-- To do: any other GLSL mistake still reaches the compiler. On WebGPU a failed program should be skipped or drawn with a fallback, the error in `renderer.errors`, the frame still drawn, without changing vendor files. Medium to large: it is LayaAir's WebGPU pipeline that throws.
+- Done (2026-11-17): on WebGPU a program that does not compile is not drawn, its objects are left out, the error goes to `renderer.errors` once with the shader's name, and the engine goes on drawing (an adapter on `WebGPUShaderInstance._create` in `Renderer.ts`; vendor files unchanged). `verify:node-bindings` checks a hook that uses an undeclared name on both backends: 60 frames a second, the other object drawn, the compiler's message kept.
 - Gate: a fixture with a hook that is deliberately wrong, on WebGPU: no uncaught error, the other objects are drawn, the error names the shader; the same on WebGL.
 
 ### WP24. A hand that holds a patch of cloth (scheduled)

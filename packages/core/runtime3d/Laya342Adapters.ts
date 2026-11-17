@@ -184,6 +184,44 @@ export function installLaya342PassCacheBounds(native: any = (globalThis as any).
   }
 }
 
+/**
+ * WP22 (docs/plans/records/threejs-gap-audit/plan.md). LayaAir 3.4.2 takes
+ * the brightest light of each kind as the scene's main one, the one that
+ * casts the shadow (and, for directional lights, the sun the sky and fog
+ * follow): a rim light brighter than a look's sun took the sun's shadow
+ * away without a word. A light that casts shadows now comes first; among
+ * those, and when none does, the brightest, as before. Call after
+ * `Laya.init`. Returns whether it was installed.
+ */
+export function installLaya342ShadowLightFirst(runtime: any = (globalThis as any).Laya): boolean {
+  const prototype = runtime?.LightQueue?.prototype;
+  if (!prototype || patched.has(prototype) || typeof prototype.getBrightestLight !== 'function')
+    return false;
+  const none = runtime.ShadowMode?.None ?? 0;
+  prototype.getBrightestLight = function () {
+    const lights: any[] = this._elements ?? [];
+    let brightest: number | undefined,
+      brightestValue = -1,
+      shadowed: number | undefined,
+      shadowedValue = -1;
+    for (let i = 0; i < this._length; i++) {
+      const value = lights[i]._intensity;
+      if (brightestValue < value) {
+        brightestValue = value;
+        brightest = i;
+      }
+      const mode = lights[i].shadowMode;
+      if (mode != null && mode !== none && shadowedValue < value) {
+        shadowedValue = value;
+        shadowed = i;
+      }
+    }
+    return shadowed ?? brightest;
+  };
+  patched.add(prototype);
+  return true;
+}
+
 /** How often a render was given the scene's reflection probe (`installLaya342ReflectionProbeFill`). */
 const probeFills = new WeakMap<object, { filled: number }>();
 /** Element prototypes given the fill: its own set, as other adapters patch the same ones. */

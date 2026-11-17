@@ -1,6 +1,8 @@
-// Real-draw fixture for scripts/verify-node-bindings.mjs (issue #8,
-// docs/plans/records/webgpu-node-bindings): a render that shares a shader
-// variant with one holding the reflection probe block it lacks.
+// Real-draw fixture for scripts/verify-node-bindings.mjs: a render that
+// shares a shader variant with one holding the reflection probe block it
+// lacks (issue #8, docs/plans/records/webgpu-node-bindings), and a program
+// that does not compile (WP23), and a sun beside a brighter rim light (WP22;
+// both docs/plans/records/engine-defects).
 // Runtime functions come from the browser SDK global (Zhuda).
 const Z = (globalThis as any).Zhuda;
 const Laya = (globalThis as any).Laya;
@@ -95,6 +97,124 @@ async function probeCase() {
   return result;
 }
 
+/**
+ * WP23: a lit surface whose hook does not compile. On WebGPU LayaAir used to
+ * throw while making the program and stop the engine's loop; now that
+ * program's objects are left undrawn and the rest goes on.
+ */
+async function brokenProgramCase() {
+  const scene = Z.Zhuda3D.createScene3D(context.rootScene, { ambientColor: [0.3, 0.3, 0.3] });
+  const camera = Z.Zhuda3D.createCamera(scene, { position: [0, 0, 6] });
+  camera.transform.lookAt(new Laya.Vector3(0, 0, 0), new Laya.Vector3(0, 1, 0));
+  Z.Zhuda3D.createDirectionalLight(scene, { color: [1, 1, 1, 1], intensity: 1 });
+  const mesh = Z.Zhuda3D.createPrimitiveMesh('sphere', { radius: 1 });
+  const goodMaterial = Z.createSurfaceMaterial({ type: 'pbr', color: [0.8, 0.5, 0.3, 1] });
+  const good = new Laya.MeshSprite3D(mesh);
+  good.meshRenderer.sharedMaterial = goodMaterial;
+  good.transform.position = new Laya.Vector3(-1.6, 0, 0);
+  scene.addChild(good);
+  await frames(5);
+  const errorsBefore = context.renderer.errors.length;
+  const broken = new Z.ZhudaLitSurfaceMaterial({
+    name: 'ZhudaCheckBrokenHook',
+    surface:
+      'void zhudaSurface(inout ZhudaLitSurface s,vec2 uv,vec3 p,vec3 n){s.baseColor*=zhudaNoSuchThing;}',
+  });
+  const bad = new Laya.MeshSprite3D(mesh);
+  bad.meshRenderer.sharedMaterial = broken.material;
+  bad.transform.position = new Laya.Vector3(1.6, 0, 0);
+  scene.addChild(bad);
+  let ticks = 0;
+  const counter = {};
+  Laya.timer.frameLoop(1, counter, () => ticks++);
+  await new Promise((resolve) => setTimeout(resolve, 1000));
+  Laya.timer.clearAll(counter);
+  const result = {
+    ticks,
+    good: mean(read(), 40, W / 2 - 40, H / 2 - 40, H / 2 + 40),
+    errors: newErrors(errorsBefore).map((e: string) => String(e).slice(0, 200)),
+  };
+  scene.destroy(true);
+  broken.dispose();
+  goodMaterial.destroy?.();
+  mesh.destroy();
+  await frames(3);
+  return result;
+}
+
+/**
+ * WP22: a sun that casts shadows beside a brighter directional light that
+ * does not (a rim light). LayaAir gave the shadow, and the sky's sun, to the
+ * brightest directional light; the sun keeps them now. A shadow is measured
+ * as how much of the frame darkens when the sun casts it, against the same
+ * frame with the sun's shadow off.
+ */
+async function shadowLightCase() {
+  const scene = Z.Zhuda3D.createScene3D(context.rootScene, { ambientColor: [0.2, 0.2, 0.2] });
+  const camera = Z.Zhuda3D.createCamera(scene, { position: [0, 7, 9] });
+  camera.transform.lookAt(new Laya.Vector3(0, 0, 0), new Laya.Vector3(0, 1, 0));
+  const material = Z.createSurfaceMaterial({
+    type: 'pbr',
+    color: [0.7, 0.7, 0.7, 1],
+    roughness: 0.9,
+  });
+  const floorMesh = Z.Zhuda3D.createPrimitiveMesh('box', { width: 14, height: 0.1, depth: 14 });
+  const floor = new Laya.MeshSprite3D(floorMesh);
+  floor.meshRenderer.sharedMaterial = material;
+  floor.meshRenderer.receiveShadow = true;
+  floor.meshRenderer.castShadow = false;
+  floor.transform.position = new Laya.Vector3(0, -0.05, 0);
+  scene.addChild(floor);
+  const boxMesh = Z.Zhuda3D.createPrimitiveMesh('box', { width: 1.5, height: 1.5, depth: 1.5 });
+  const box = new Laya.MeshSprite3D(boxMesh);
+  box.meshRenderer.sharedMaterial = material;
+  box.meshRenderer.castShadow = true;
+  box.transform.position = new Laya.Vector3(0, 1.5, 0);
+  scene.addChild(box);
+  // The consumer's numbers: a sun at 1.8 with its shadow, a rim at 3.6.
+  const sun = Z.Zhuda3D.createDirectionalLight(scene, { color: [1, 1, 1, 1], intensity: 1.8 });
+  sun.node.transform.rotationEuler = new Laya.Vector3(-55, 30, 0);
+  sun.light.shadowMode = Laya.ShadowMode.Hard;
+  sun.light.shadowDistance = 30;
+  sun.light.shadowResolution = 2048;
+  sun.light.shadowStrength = 1;
+  const luminance = (p: Uint8ClampedArray, i: number) =>
+    0.2126 * p[i] + 0.7152 * p[i + 1] + 0.0722 * p[i + 2];
+  /** Mean darkening over the frame by the sun's shadow, and whether the sun is the main light. */
+  const measure = async () => {
+    await settle();
+    const on = read();
+    const main = scene._mainDirectionLight === sun.light;
+    sun.light.shadowMode = Laya.ShadowMode.None;
+    await settle();
+    const off = read();
+    sun.light.shadowMode = Laya.ShadowMode.Hard;
+    let sum = 0;
+    for (let i = 0; i < on.length; i += 4) sum += Math.max(0, luminance(off, i) - luminance(on, i));
+    return { shadow: +(sum / (W * H)).toFixed(3), main };
+  };
+  const errorsBefore = context.renderer.errors.length;
+  const alone = await measure();
+  const rim = Z.Zhuda3D.createDirectionalLight(scene, {
+    color: [0.6, 0.7, 1, 1],
+    intensity: 3.6,
+  });
+  rim.node.transform.rotationEuler = new Laya.Vector3(-20, 200, 0);
+  rim.light.shadowMode = Laya.ShadowMode.None;
+  const withRim = await measure();
+  const result = {
+    alone,
+    withRim,
+    errors: newErrors(errorsBefore).map((e: string) => String(e).slice(0, 200)),
+  };
+  scene.destroy(true);
+  material.destroy?.();
+  floorMesh.destroy();
+  boxMesh.destroy();
+  await frames(3);
+  return result;
+}
+
 async function main() {
   const renderer = (globalThis as any).ZhudaBundle.renderer === 'webgpu' ? 'webgpu' : 'webgl';
   out.renderer = renderer;
@@ -109,6 +229,8 @@ async function main() {
   });
   await frames(3);
   out.probe = await probeCase();
+  out.broken = await brokenProgramCase();
+  out.shadowLight = await shadowLightCase();
   out.rendererErrors = context.renderer.errors.slice(0, 6);
   out.ready = true;
 }
