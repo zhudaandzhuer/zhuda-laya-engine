@@ -68,7 +68,41 @@ host, the iPhone 14 and the vivo V40 (2026-11-18, both backends).
 
 ## Next step
 
-Nothing is waiting.
+Nothing is waiting in this repository.
+
+Added on 2026-11-18, in the commit that carries this note: the route
+[a small floating island](docs/routes/floating-island.md), its row in the
+routes index and its record (`docs/plans/records/floating-island-route/`).
+It was written from the consumer `games/zhuda-sky-island` and its records;
+nothing was drawn again.
+
+On the owner's word the same day, three leftover local branches, all
+contained in `main`, were deleted with their two worktrees:
+`feat/sky-island-effects` (`engines/zhuda-laya-engine-island`),
+`claude/fervent-lovelace-44d9db`
+(`.claude/worktrees/angry-varahamihira-a9083c`) and
+`claude/angry-varahamihira-a9083c`. Only `main` is left, here and on origin;
+no issue or pull request is open. The floating-island consumer's build notes
+and its `tsconfig.engine-dev.json` still name the `zhuda-laya-engine-island`
+folder, which is gone: it builds against `main` instead (`ZHUDA_ENGINE_ROOT`
+at this checkout, or a pin at `a961cc6` or later). Its source typechecks
+against `e453b60`. That change is the consumer's and was not made.
+
+An outside review was started and none of its results are here; it stopped
+part-way when that account's quota ran out, and the owner restarts it by
+hand. On
+2026-11-18 a Claude Code cloud session on the Claude account of the iPhone 14
+(not this Mac's account; session title "豬大引擎架構審查與史…", Fable 5.2)
+was given a zip of `e453b60` and one brief, which is that session's first
+message: review the architecture, then build ten film scenes in a consumer
+project outside the engine, in one run without stopping to ask. It is to
+hand over a `deliverables` zip to download from that session
+(`ARCHITECTURE-REVIEW.md`, `epic-scenes/`, `engine-patches/`). Its own
+baseline on the zip: `npm run verify`, lint and format pass.
+
+When it ends: download the zip from that session, and treat each finding as
+a report to reproduce here before acting on it. The scenes are consumer
+content and stay outside this repository.
 
 Earlier: the two Adreno findings of the phone runs were fixed
 ([record](docs/plans/records/phone-findings-adreno/verification.md)), and

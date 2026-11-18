@@ -27,6 +27,7 @@ say: how the pieces were put together for one result, and what went wrong on the
 | A realistic modelled body (legs, feet) in layered clothing that can be pulled and torn: sheer stockings, trousers, skirts as cloth; touch on phones | [Layered cloth on a modelled body](layered-cloth-on-body.md) | Desktop WebGL and WebGPU; vivo V40 (Chrome 156, WebGPU) | `games/stocking-tear` (outside this repository) |
 | A 2D character from generated or painted art, rigged with zhuda-spine2D, that the hand changes: cloth lifted by IK and swung by Spine physics, a layer pulled and torn by swapping attachments | [Hand-driven Spine character](spine-character.md) | Desktop WebGL and WebGPU (not yet on a phone) | `games/stocking-tear-2d` (outside this repository) |
 | A camera under water: a sea floor with a wreck, the view fading blue-green, caustics, sunbeams, the surface from below with the sky in its window | [A scene under water](underwater.md) | Desktop WebGL and WebGPU (not yet on a phone) | The engine's example scene `tests/fixtures/film/underwater.json` (no consumer game yet) |
+| A small island above a sea of cloud, seen whole: grass a body presses down, a pond, rain, storm, mist and a passing day, a character that is picked up and thrown; picture settings held by a frame budget | [A small floating island](floating-island.md) | Desktop WebGL and WebGPU (not yet on a phone) | `games/zhuda-sky-island` (outside this repository) |
 
 ## Engine guides that already are routes
 
