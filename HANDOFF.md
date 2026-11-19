@@ -68,11 +68,10 @@ host, the iPhone 14 and the vivo V40 (2026-11-18, both backends).
 
 ## Next step
 
-The outside review ended and its ten patches are on the branch
-`fix/outside-review-patches` (2026-11-20), cut from `a5dfc6b`: `git log
-main..fix/outside-review-patches` says whether they are committed, `git
-status` whether they are still only in the working tree. Not merged into
-`main`, not pushed. Record:
+The outside review ended and its ten patches are on `main` as `87ab247`
+(2026-11-20), merged on the owner's word by fast-forward from the branch
+`fix/outside-review-patches`, which is still there and holds nothing else.
+`git log origin/main..main` says whether it is pushed. Record:
 [task](docs/plans/records/outside-review-patches/task.md),
 [verification](docs/plans/records/outside-review-patches/verification.md).
 
@@ -85,8 +84,7 @@ status` whether they are still only in the working tree. Not merged into
   on WebGL and WebGPU.
 - Decided by the owner: `COLOR_0` is read as glTF's linear value. Models with
   shade baked into vertex colours draw brighter; consumers are to look.
-- Open, in order: (1) commit the branch and merge it into `main` on the
-  owner's word; (2) run the six new draw checks and `verify:film-webgpu` on
+- Open, in order: (1) push `main` on the owner's word; (2) run the six new draw checks and `verify:film-webgpu` on
   the Windows host, the vivo V40 and the iPhone 14 (patches 07 and 08 matter
   most on Direct3D 11); (3) tell the consumers about `COLOR_0`; (4) the
   review's findings without a patch (its `deliverables/engine-patches/README.md`,
@@ -94,8 +92,7 @@ status` whether they are still only in the working tree. Not merged into
 - This Mac: `node@24` is installed beside the default Node (Homebrew,
   keg-only, `/opt/homebrew/opt/node@24/bin`); the default went from 26.12.0 to
   26.13.1 the same day. The checkout got its `node_modules` again with
-  `npm ci`, and `dist/` here is built from the branch: build again after
-  switching back to `main` before a consumer builds against it.
+  `npm ci`, and `dist/` here was built from `87ab247`'s tree.
 
 Added on 2026-11-18, in the commit that carries this note: the route
 [a small floating island](docs/routes/floating-island.md), its row in the
