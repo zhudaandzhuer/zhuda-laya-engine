@@ -94,6 +94,32 @@ The outside review ended and its ten patches are on `main` as `87ab247`
   26.13.1 the same day. The checkout got its `node_modules` again with
   `npm ci`, and `dist/` here was built from `87ab247`'s tree.
 
+Frame-rate tiers (2026-11-20, the same day). The owner set the rendering
+goal: the best picture that stays smooth on mobile devices, in three tiers by
+frame rate (60 and over on this Mac, the vivo V40 and the iPhone 14; 45 to
+60; 10 to 45, never under 10). Record:
+[task](docs/plans/records/quality-tiers/task.md),
+[verification](docs/plans/records/quality-tiers/verification.md), which has
+the numbers.
+
+- Done: `scripts/measure-quality-tiers.mjs` and its fixture, on the branch
+  `feat/quality-tiers-measure` (`git log main..feat/quality-tiers-measure`
+  says whether it is merged). Measured on the three devices. No runtime file
+  changed and no tier is defined in the engine.
+- Found: on the V40 a smaller render scale brings a level into a band (level
+  1 at 0.7 is 56 to 60); on the iPhone the number of draws decides, and
+  houses drawn as instanced copies take level 1 at 0.7 from 31..35 to 45..49.
+- Open: (1) on the iPhone any pass into a target of its own takes the rate
+  under 60 though the frames drawn back to back take 7 to 10 ms: not
+  explained, the guess (targets not discarded on a tile-based GPU) is not
+  tested; (2) the iPhone on WebGPU (needs HTTPS); (3) the instanced town on
+  the V40; (4) repeat runs, a heavier scene; (5) then the tiers as steps for
+  each device, and a warning for too many draws.
+- Reports: `ZhudaGameCenter/audits/quality-tiers-2026-11-20/`. The iPhone is
+  driven through the mobile-control service: it must be unlocked and awake,
+  and its Safari was left at a page of this Mac (`192.168.50.80`, the server
+  is stopped).
+
 Added on 2026-11-18, in the commit that carries this note: the route
 [a small floating island](docs/routes/floating-island.md), its row in the
 routes index and its record (`docs/plans/records/floating-island-route/`).
