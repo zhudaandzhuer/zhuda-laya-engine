@@ -303,6 +303,13 @@ export class ZhudaFilmHost {
   }
 
   async #call(method, args, timeoutMs = 120000) {
+    // The page's capture gives up after 30 s unless told otherwise, far sooner
+    // than this call does: a still of many samples on a slow or software GPU
+    // then failed with advice ("pass a larger timeoutMs") no caller could
+    // follow. The page is given the time this call waits, less a margin, so
+    // its own error arrives first and names the frame.
+    if (method === 'render' || method === 'review')
+      args = { ...args, timeoutMs: Math.max(30000, timeoutMs - 10000) };
     const result = await this.#browser.evaluate(
       `window.__ZHUDA_FILM__.${method}(${JSON.stringify(args)})`,
       { timeoutMs },
@@ -424,7 +431,7 @@ export class ZhudaFilmHost {
     return this.#serial(async () => {
       await this.#start();
       await this.#mount(scene);
-      const grid = await this.#call('review', { shots, width, height });
+      const grid = await this.#call('review', { shots, width, height }, 120000 * shots.length);
       return {
         png: encodePng(grid),
         width: grid.width,

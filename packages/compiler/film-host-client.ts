@@ -103,6 +103,8 @@ async function render(options: {
   index?: number;
   fps?: number;
   timeSec?: number;
+  /** How long the capture may take; the host passes the time it waits itself. */
+  timeoutMs?: number;
 }) {
   requireStage();
   const started = performance.now();
@@ -122,9 +124,14 @@ async function review(options: {
   width: number;
   height: number;
   samples?: number;
+  /** The whole sheet's time; each shot gets an equal share of it. */
+  timeoutMs?: number;
 }) {
   requireStage();
   const shots = [];
+  const perShot = options.timeoutMs
+    ? Math.floor(options.timeoutMs / options.shots.length)
+    : undefined;
   for (const shot of options.shots)
     shots.push({
       label: shot.label,
@@ -134,6 +141,7 @@ async function review(options: {
         height: options.height,
         samples: options.samples ?? 1,
         timeSec: shot.time,
+        timeoutMs: perShot,
       }),
     });
   // The sheet is composed with Laya 2D (Sprite, Text, RenderTexture2D).

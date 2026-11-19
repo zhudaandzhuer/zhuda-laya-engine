@@ -286,12 +286,12 @@ export class DirectoryAssetProvider implements AssetProvider {
     if (this.disposed) throw new AssetProviderError('disposed', 'Asset provider disposed');
     if (this.manifest) return this.manifest;
     if (!this.manifestId) return { schemaVersion: 1, entries: [] };
+    if (signal?.aborted) throw abortReason(signal, this.manifestId);
     if (!this.manifestPromise) {
       const pending = (async () => {
-        const result = await this.load(this.manifestId!, {
-          signal,
-          maxBytes: 2 * 1024 * 1024,
-        });
+        // Shared by every caller, so it is no caller's to cancel: dispose() and the
+        // request deadline end it. A caller's own signal ends that caller's wait below.
+        const result = await this.load(this.manifestId!, { maxBytes: 2 * 1024 * 1024 });
         try {
           const parsed = JSON.parse(new TextDecoder().decode(result.bytes));
           this.manifest = validateAssetManifest(parsed);
@@ -306,7 +306,13 @@ export class DirectoryAssetProvider implements AssetProvider {
         throw error;
       });
     }
-    return this.manifestPromise;
+    if (!signal) return this.manifestPromise;
+    try {
+      return await awaitAbortable(this.manifestPromise, signal);
+    } catch (error) {
+      if (signal.aborted) throw abortReason(signal, this.manifestId);
+      throw error;
+    }
   }
 
   async load(value: string, options: AssetLoadOptions = {}): Promise<LoadedAssetBytes> {

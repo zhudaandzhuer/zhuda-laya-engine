@@ -15,7 +15,11 @@ const VERTEX =
 const FRAGMENT = `#define SHADER_NAME ZhudaEdgeSmoothingFS
 #include "Color.glsl";
 varying vec2 v_Texcoord0;
-vec3 zhudaEdgeSample(vec2 uv){vec4 c=texture2D(u_MainTex,uv);
+// A read outside the picture stops at its border: the frame Laya hands a post
+// effect repeats, so a read half a pixel past the left edge would otherwise
+// come back with the colour of the right edge.
+vec3 zhudaEdgeSample(vec2 uv){vec2 inset=u_ZhudaEdgeTexel.xy*0.5;
+vec4 c=texture2D(u_MainTex,clamp(uv,inset,vec2(1.0)-inset));
 #ifdef Gamma_u_MainTex
 c=gammaToLinear(c);
 #endif

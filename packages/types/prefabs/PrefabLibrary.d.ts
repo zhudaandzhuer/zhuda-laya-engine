@@ -166,5 +166,11 @@ export declare class ZhudaPrefabLibrary<T extends AnyPrefabDefinition = PrefabDe
         instances: number;
     };
     dispose(): void;
+    /**
+     * Cancelled acquisitions release their leases, and the models they had already
+     * instantiated, in their own catch/finally paths: the caches and the model
+     * library go once the last of them has, not before.
+     */
+    private releaseCaches;
 }
 export {};

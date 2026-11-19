@@ -131,7 +131,7 @@ export declare class ZhudaFilmAssets {
     readonly colorTables: ZhudaAssetCache<ZhudaCubeLut>;
     private disposed;
     constructor(provider: AssetProvider, options?: ZhudaFilmAssetsOptions);
-    /** Dispose every stage first. */
+    /** Dispose every stage first. A refusal (something is still held) can be tried again. */
     dispose(): void;
 }
 /**

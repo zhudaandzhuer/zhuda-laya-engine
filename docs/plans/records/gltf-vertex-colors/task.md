@@ -44,6 +44,10 @@ A model that already carried `COLOR_0` now shows it, as glTF specifies. Content
 exported with an unintended colour set will look different; remove the set in
 the source file.
 
+Since 2026-11-20 the colour is read as glTF's linear value; until then it was
+drawn as a display value (0.2 came out near 0.03). See
+[the outside review's patches](../outside-review-patches/task.md).
+
 ## Acceptance evidence
 
 See [verification](verification.md).

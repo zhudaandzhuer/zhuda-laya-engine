@@ -124,7 +124,10 @@ gl_FragColor=sum/weights;
 
 // Full size: the clouds over the picture, where the view reaches the slab
 // before it reaches anything solid. Where nothing was drawn the stored depth
-// is the far plane, whatever the camera's is.
+// is the far plane, whatever the camera's is: sky is what lies at the far
+// plane, judged in metres. A threshold on the stored value is crossed far
+// nearer: 0.99999 is about 2.2 km with a 0.05..4000 m camera, and every solid
+// beyond that was drawn behind the clouds.
 const COMPOSE_FRAGMENT = `#define SHADER_NAME ZhudaCloudsComposeFS
 #include "Color.glsl";
 // The depth picture is read at high precision: a phone reads textures at low precision unless told.
@@ -145,7 +148,8 @@ vec2 ndc=uv*2.0-1.0;
 vec3 ray=u_ZhudaCloudForward.xyz+ndc.x*u_ZhudaCloudRight.xyz+ndc.y*u_ZhudaCloudUp.xyz;
 float len=length(ray);
 vec2 span=zhudaCloudSpan(ray/len);
-float open=raw<u_ZhudaCloudForward.w?step(span.x,depth*len):1.0;
+float far=u_ZBufferParams.y/u_ZBufferParams.w;
+float open=depth<far*0.998?step(span.x,depth*len):1.0;
 vec4 clouds=texture2D(u_ZhudaCloudTraced,uv);
 gl_FragColor=vec4(source.rgb*mix(1.0,clouds.a,open)+clouds.rgb*open,source.a);
 }`;
@@ -287,9 +291,6 @@ export function resolveZhudaClouds(options: ZhudaCloudsOptions = {}): Required<Z
     skyColor: options.skyColor ? [...options.skyColor] : [0.35, 0.4, 0.5],
   };
 }
-
-/** A stored depth at or beyond this is the far plane: nothing was drawn there. */
-const SKY_FROM = 0.99999;
 
 export class ZhudaClouds {
   /** The Laya post-process effect; give it to `ZhudaFilmicPipeline` in `sceneEffects`, first. */
@@ -443,10 +444,7 @@ export class ZhudaClouds {
         'u_ZhudaCloudEye',
         new l.Vector4(eye[0], eye[1], eye[2], this.options.distanceMeters),
       );
-      m.setVector4(
-        'u_ZhudaCloudForward',
-        new l.Vector4(forward[0], forward[1], forward[2], SKY_FROM),
-      );
+      m.setVector4('u_ZhudaCloudForward', new l.Vector4(forward[0], forward[1], forward[2], 0));
       m.setVector4(
         'u_ZhudaCloudRight',
         new l.Vector4(right[0] * tan * aspect, right[1] * tan * aspect, right[2] * tan * aspect, 0),

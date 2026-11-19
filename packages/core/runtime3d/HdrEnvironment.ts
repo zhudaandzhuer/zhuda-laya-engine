@@ -503,6 +503,11 @@ export class ZhudaHdrEnvironment {
         texture.setPixelsData(data, false, false);
       }
       texture.filterMode = l.FilterMode.Bilinear;
+      // No anisotropic filtering (LayaAir asks for 4x from the start): along
+      // the meridian where the picture's edges meet, the panoramic sky's
+      // texture coordinate jumps by the whole width of the picture between
+      // two pixels, and anisotropic reads spread along that whole row.
+      texture.anisoLevel = 1;
       texture.wrapModeU = l.WrapMode.Repeat;
       texture.wrapModeV = l.WrapMode.Clamp;
       const material = new l.SkyPanoramicMaterial();

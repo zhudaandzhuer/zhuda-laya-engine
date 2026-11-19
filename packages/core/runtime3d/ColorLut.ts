@@ -296,6 +296,11 @@ export class ZhudaColorLut {
       false,
     );
     texture.filterMode = l.FilterMode.Bilinear;
+    // No anisotropic filtering (LayaAir asks for 4x on every WebGL texture). The shader's
+    // texture coordinate jumps from one blue slice of the atlas to the next between two
+    // neighbouring pixels; anisotropic reads spread along that jump and bring in colours of
+    // other slices: dashed lines across smooth gradients and specks on textured ground.
+    texture.anisoLevel = 1;
     texture.wrapModeU = texture.wrapModeV = l.WrapMode.Clamp;
     texture.setPixelsData(
       half

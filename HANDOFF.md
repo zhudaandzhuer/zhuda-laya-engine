@@ -1,6 +1,6 @@
 # Handoff: plans of 2026-11-16/17 and the defects after them
 
-Last updated: 2026-11-18. The three plans and the defect batch under "After
+Last updated: 2026-11-20 ("Next step": the outside review's patches). The three plans and the defect batch under "After
 the plans" (`c7ab3d1` to `1197e20`) are on `origin/main`. The V40 results of
 2026-11-18 were added in a later commit: `git log origin/main..main` says
 whether it is pushed.
@@ -68,7 +68,34 @@ host, the iPhone 14 and the vivo V40 (2026-11-18, both backends).
 
 ## Next step
 
-Nothing is waiting in this repository.
+The outside review ended and its ten patches are on the branch
+`fix/outside-review-patches` (2026-11-20), cut from `a5dfc6b`: `git log
+main..fix/outside-review-patches` says whether they are committed, `git
+status` whether they are still only in the working tree. Not merged into
+`main`, not pushed. Record:
+[task](docs/plans/records/outside-review-patches/task.md),
+[verification](docs/plans/records/outside-review-patches/verification.md).
+
+- Done: the review's repository cloned beside the engine
+  (`ZhudaGameCenter/audits/VerifyZhuda`, private, branch
+  `claude/zhuda-engine-review-scenes-w8btzs`; its own `HANDOFF.md` is the way
+  in). Its reproductions run on this Mac against `e453b60` and `a5dfc6b`
+  (the same results; an Apple M4, the first real GPU they ran on), the ten
+  patches applied here, documents updated, every check of the record green
+  on WebGL and WebGPU.
+- Decided by the owner: `COLOR_0` is read as glTF's linear value. Models with
+  shade baked into vertex colours draw brighter; consumers are to look.
+- Open, in order: (1) commit the branch and merge it into `main` on the
+  owner's word; (2) run the six new draw checks and `verify:film-webgpu` on
+  the Windows host, the vivo V40 and the iPhone 14 (patches 07 and 08 matter
+  most on Direct3D 11); (3) tell the consumers about `COLOR_0`; (4) the
+  review's findings without a patch (its `deliverables/engine-patches/README.md`,
+  second table) are not started.
+- This Mac: `node@24` is installed beside the default Node (Homebrew,
+  keg-only, `/opt/homebrew/opt/node@24/bin`); the default went from 26.12.0 to
+  26.13.1 the same day. The checkout got its `node_modules` again with
+  `npm ci`, and `dist/` here is built from the branch: build again after
+  switching back to `main` before a consumer builds against it.
 
 Added on 2026-11-18, in the commit that carries this note: the route
 [a small floating island](docs/routes/floating-island.md), its row in the
@@ -88,9 +115,7 @@ folder, which is gone: it builds against `main` instead (`ZHUDA_ENGINE_ROOT`
 at this checkout, or a pin at `a961cc6` or later). Its source typechecks
 against `e453b60`. That change is the consumer's and was not made.
 
-An outside review was started and none of its results are here; it stopped
-part-way when that account's quota ran out, and the owner restarts it by
-hand. On
+An outside review was started (it has since ended: see "Next step"). On
 2026-11-18 a Claude Code cloud session on the Claude account of the iPhone 14
 (not this Mac's account; session title "豬大引擎架構審查與史…", Fable 5.2)
 was given a zip of `e453b60` and one brief, which is that session's first

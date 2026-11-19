@@ -46,7 +46,20 @@ export declare function laya342GltfNodes(resource: object): readonly any[];
 /** Adds a LayaAir light component, set from `zhudaGltfLightToLaya`, to a node.
  * It points down the node's -Z, as glTF's does, and casts no shadow. */
 export declare function createLaya342GltfLight(node: any, settings: ZhudaLayaLightSettings, runtime: any): any;
-/** A colour accessor's values as RGBA floats in 0..1 (see glTF 2.0, COLOR_0). */
+/**
+ * Gives every primitive (sub-mesh) of one glTF mesh the same vertex attributes,
+ * the union of theirs, before LayaAir 3.4.2 packs them into one buffer laid out
+ * as the first one's. A missing attribute gets a value that changes nothing (see
+ * LAYA342_DEFAULTS). Returns how many attributes were added; leaves the list as
+ * it was when it holds a name this function does not know.
+ */
+export declare function unifyLaya342SubMeshAttributes(subMeshes: any[]): number;
+/**
+ * A colour accessor's values as RGBA floats in 0..1 (see glTF 2.0, COLOR_0), for
+ * LayaAir's vertex colour: glTF's colour is linear, and LayaAir's shader raises
+ * the red, green and blue it is given to the power 2.2 (it takes them as display
+ * values), so they are handed over raised to 1/2.2. Alpha is passed as it is.
+ */
 export declare function zhudaGltfColors(raw: ArrayLike<number>, accessor: {
     type?: string;
     componentType?: number;

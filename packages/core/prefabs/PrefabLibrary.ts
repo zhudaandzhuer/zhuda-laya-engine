@@ -657,10 +657,7 @@ export class ZhudaPrefabLibrary<T extends AnyPrefabDefinition = PrefabDefinition
       clearTimeout(timer);
       this.active.delete(controller);
       options.signal?.removeEventListener('abort', abort);
-      if (this.disposed && !this.active.size) {
-        this.cache.dispose();
-        this.shared3DCache.dispose();
-      }
+      this.releaseCaches();
     }
   }
   report() {
@@ -675,13 +672,20 @@ export class ZhudaPrefabLibrary<T extends AnyPrefabDefinition = PrefabDefinition
     this.disposed = true;
     for (const controller of this.active) controller.abort();
     for (const instance of [...this.instances]) instance.dispose();
-    // Cancelled acquisitions release their leases in their finally paths.
-    if (!this.active.size) {
-      this.cache.dispose();
-      this.shared3DCache.dispose();
-    }
+    this.releaseCaches();
+  }
+  /**
+   * Cancelled acquisitions release their leases, and the models they had already
+   * instantiated, in their own catch/finally paths: the caches and the model
+   * library go once the last of them has, not before.
+   */
+  private releaseCaches() {
+    if (!this.disposed || this.active.size) return;
+    this.cache.dispose();
+    this.shared3DCache.dispose();
     // Instances are gone; the model library releases what it kept warm.
-    this.models?.dispose();
+    const models = this.models;
     this.models = undefined;
+    models?.dispose();
   }
 }

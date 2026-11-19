@@ -17,18 +17,22 @@ const scripts = [
   'verify-film-animation',
   'verify-film-environment',
   'verify-film-water',
+  'verify-film-lut',
   'verify-film-remount',
   'verify-quality-route',
   'verify-film-highlights',
+  'verify-film-gltf-vertex-data',
   'verify-film-reflections',
   'verify-film-variation',
   'verify-film-point-shadow',
   'verify-film-shapes',
   'verify-film-colours',
   'verify-film-bounce',
+  'verify-film-cloud-depth',
   'verify-film-decals',
   'verify-film-clouds',
   'verify-film-finishes',
+  'verify-film-panorama',
 ];
 const failed = [];
 for (const name of scripts) {

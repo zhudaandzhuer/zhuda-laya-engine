@@ -247,17 +247,20 @@ export class ZhudaFilmAssets {
       2,
     );
   }
-  /** Dispose every stage first. */
+  /** Dispose every stage first. A refusal (something is still held) can be tried again. */
   dispose(): void {
     if (this.disposed) return;
+    // Every part is asked, also after one refused; the library counts as disposed
+    // only once none did, so a second call finishes what the first could not.
+    let refused: unknown;
+    for (const part of [this.models, this.lightmaps, this.pictures, this.colorTables])
+      try {
+        part.dispose();
+      } catch (error) {
+        refused ??= error;
+      }
+    if (refused !== undefined) throw refused;
     this.disposed = true;
-    try {
-      this.models.dispose();
-    } finally {
-      this.lightmaps.dispose();
-      this.pictures.dispose();
-      this.colorTables.dispose();
-    }
   }
 }
 
@@ -1243,16 +1246,24 @@ function applyPanorama(
   panorama: { exposure: number; rotationDeg: number },
 ) {
   const l = (globalThis as any).Laya;
+  // No mip levels and no anisotropic filtering. LayaAir's panoramic sky finds
+  // the picture's column with an arc tangent, which jumps from one edge of the
+  // picture to the other along one meridian. To the graphics card the whole
+  // width of the picture then lies between two neighbouring pixels: with mip
+  // levels it reads the smallest one there, with anisotropic filtering it
+  // spreads its reads along the whole row, and either way the sky shows the
+  // average of the picture as a line from the horizon to the zenith.
   const texture = new l.Texture2D(
     bitmap.width,
     bitmap.height,
     l.TextureFormat.R8G8B8A8,
-    true,
+    false,
     false,
     true,
   );
   texture.setImageData(bitmap, false, false);
-  texture.filterMode = l.FilterMode.Trilinear;
+  texture.filterMode = l.FilterMode.Bilinear;
+  texture.anisoLevel = 1;
   texture.wrapModeU = l.WrapMode.Repeat;
   texture.wrapModeV = l.WrapMode.Clamp;
   const sky = new l.SkyPanoramicMaterial();

@@ -58,7 +58,9 @@ vec2 uv=v_Texcoord0;
 vec2 centred=uv*2.0-1.0;
 vec2 shift=centred*dot(centred,centred)*0.5*u_ZhudaFinish.z*0.004;
 // Stay inside the picture: a sample past the edge would bring in the opposite side.
-vec2 low=vec2(0.002),high=vec2(0.998);
+// The bounds never lie inside the pixel's own place, so a sample that is not shifted
+// (fringe 0, or the middle of the frame) is read exactly where green is read.
+vec2 low=min(uv,vec2(0.002)),high=max(uv,vec2(0.998));
 vec3 colour=vec3(zhudaFinishSample(clamp(uv+shift,low,high)).r,zhudaFinishSample(uv).g,zhudaFinishSample(clamp(uv-shift,low,high)).b);
 float r2=dot(centred,centred)*0.5;
 float falloff=r2*r2;

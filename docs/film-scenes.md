@@ -336,7 +336,11 @@ The picture is a 2:1 panorama (equirectangular: the top row is straight up,
 the bottom row straight down) in the asset directory, `.png` or `.jpg`.
 `rotationDeg` turns it about the vertical axis to put the moon or the sun
 where the shot wants it. It is a backdrop: it does not light the scene by
-itself, but an `environment` probe sees it and reflects it.
+itself, but an `environment` probe sees it and reflects it. The picture is
+read without mip levels or anisotropic filtering (either one draws a line down
+the meridian where its left and right edges meet): a picture much larger than
+the frame is not filtered down first, and its smallest stars can flicker as
+the camera turns (not measured).
 
 `environment` captures the scene around one point when the scene is loaded
 and uses it as the environment of the whole scene:
@@ -379,9 +383,7 @@ npx zhuda-laya-mcp --film-output ./films --film-pack ./my-city/pack.mjs
 // my-city/pack.mjs
 import { createZhudaBoxMesh } from 'zhuda-laya-engine';
 export const recipes = {
-  'stone-paving': {
-    /* ZhudaTextureRecipe */
-  },
+  'stone-paving': {/* ZhudaTextureRecipe */},
 };
 export const props = [
   {

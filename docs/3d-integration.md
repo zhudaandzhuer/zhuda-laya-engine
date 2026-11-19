@@ -103,7 +103,7 @@ download／parse／ready 與 GPU 已顯示分開：report 的 `gpuReady: require
 
 3.4.2 原本 `WebRender3DProcess.destroy` 漏掉 `_defaultShadowMap`。隔離的 `installLaya342LifecycleFix` 在 boot 後安裝，僅補釋放該 process 擁有的 fallback texture，具冪等性。
 
-模型的 `COLOR_0` 頂點色會乘上底色（glTF 規格）：可用來放烘焙好的遮蔽陰影、濕痕或色調變化，執行期零成本。LayaAir 3.4.2 原本不會套用，也讀不對 16 位元或三分量的顏色，引擎在載入時補上（`enableLaya342VertexColors`、`prepareLaya342GltfResource`）。模型若帶有非預期的 `COLOR_0` 會因此變色，請在來源檔移除。
+模型的 `COLOR_0` 頂點色會乘上底色（glTF 規格）：可用來放烘焙好的遮蔽陰影、濕痕或色調變化，執行期零成本。LayaAir 3.4.2 原本不會套用，也讀不對 16 位元或三分量的顏色，引擎在載入時補上（`enableLaya342VertexColors`、`prepareLaya342GltfResource`）。模型若帶有非預期的 `COLOR_0` 會因此變色，請在來源檔移除。`COLOR_0` 照 glTF 規格讀成線性值（0.2 就是把底色乘以 0.2）；在這之前它被當成顯示值（0.2 畫成約 0.03），為舊行為調過的烘焙陰影現在會比較亮，請在來源檔重烘或把數值取 2.2 次方（[紀錄](plans/records/outside-review-patches/task.md)）。同一個 mesh 裡屬性不同的 primitive（例如身體有頂點色、眼睛沒有）會先補齊成同樣的屬性再交給 LayaAir，補上的值不改變外觀。
 
 ## 查詢、輸入、時鐘與掛點
 

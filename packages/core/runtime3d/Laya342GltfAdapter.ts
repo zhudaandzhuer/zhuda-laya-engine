@@ -308,6 +308,19 @@ export function prepareLaya342GltfResource(
       map.set(name, fixed);
       return fixed;
     };
+  // A mesh's primitives go into one vertex buffer laid out as the first one's:
+  // parseMeshwithSubMeshData takes the first primitive's attribute list and
+  // fillMeshBuffers packs each primitive's own attributes in order. A primitive
+  // without an attribute the first has (a body with vertex colours, eyes
+  // without) is written out of step: its weights land in the colour slot and its
+  // skin collapses, its texture coordinates become colours. Give every primitive
+  // of the mesh the same attributes first.
+  const parseMesh = resource.parseMeshwithSubMeshData;
+  if (typeof parseMesh === 'function')
+    resource.parseMeshwithSubMeshData = function (subMeshes: any[], mesh: any) {
+      unifyLaya342SubMeshAttributes(subMeshes);
+      return parseMesh.call(this, subMeshes, mesh);
+    };
   for (const method of ['createMeshSprite3D', 'createSkinnedMeshSprite3D']) {
     const original = resource[method];
     if (typeof original !== 'function') continue;
@@ -505,7 +518,71 @@ export function createLaya342GltfLight(
   return light;
 }
 
-/** A colour accessor's values as RGBA floats in 0..1 (see glTF 2.0, COLOR_0). */
+/** The vertex attributes of LayaAir 3.4.2's glTF loader, in the order it lists and packs them. */
+const LAYA342_ATTRIBUTES = [
+  'POSITION',
+  'NORMAL',
+  'COLOR',
+  'UV',
+  'UV1',
+  'BLENDWEIGHT',
+  'BLENDINDICES',
+  'TANGENT',
+] as const;
+const repeat = (values: number[], n: number) => {
+  const out = new Float32Array(values.length * n);
+  for (let i = 0; i < n; i++) out.set(values, i * values.length);
+  return out;
+};
+/** What a primitive lacking an attribute its mesh's others have gets, for n vertices. */
+const LAYA342_DEFAULTS: Record<string, (n: number) => ArrayLike<number>> = {
+  NORMAL: (n) => repeat([0, 1, 0], n),
+  // White: a vertex colour multiplies, so this changes nothing.
+  COLOR: (n) => new Float32Array(n * 4).fill(1),
+  UV: (n) => new Float32Array(n * 2),
+  UV1: (n) => new Float32Array(n * 2),
+  // The whole weight on the first joint of its batch.
+  BLENDWEIGHT: (n) => repeat([1, 0, 0, 0], n),
+  BLENDINDICES: (n) => new Uint8Array(n * 4),
+  TANGENT: (n) => repeat([1, 0, 0, 1], n),
+};
+/**
+ * Gives every primitive (sub-mesh) of one glTF mesh the same vertex attributes,
+ * the union of theirs, before LayaAir 3.4.2 packs them into one buffer laid out
+ * as the first one's. A missing attribute gets a value that changes nothing (see
+ * LAYA342_DEFAULTS). Returns how many attributes were added; leaves the list as
+ * it was when it holds a name this function does not know.
+ */
+export function unifyLaya342SubMeshAttributes(subMeshes: any[]): number {
+  if (!Array.isArray(subMeshes) || subMeshes.length < 2) return 0;
+  const names = subMeshes.map((s) =>
+    String(s?.vertexDecler ?? '')
+      .split(',')
+      .filter(Boolean),
+  );
+  const known = new Set<string>(LAYA342_ATTRIBUTES);
+  if (names.some((list) => list.some((name) => !known.has(name)))) return 0;
+  const union = LAYA342_ATTRIBUTES.filter((name) => names.some((list) => list.includes(name)));
+  const declaration = union.join(',');
+  let added = 0;
+  subMeshes.forEach((s, i) => {
+    if (names[i].join(',') === declaration) return;
+    for (const name of union)
+      if (!s.attributeMap.has(name)) {
+        s.attributeMap.set(name, LAYA342_DEFAULTS[name](s.vertexCount));
+        added++;
+      }
+    s.vertexDecler = declaration;
+  });
+  return added;
+}
+
+/**
+ * A colour accessor's values as RGBA floats in 0..1 (see glTF 2.0, COLOR_0), for
+ * LayaAir's vertex colour: glTF's colour is linear, and LayaAir's shader raises
+ * the red, green and blue it is given to the power 2.2 (it takes them as display
+ * values), so they are handed over raised to 1/2.2. Alpha is passed as it is.
+ */
 export function zhudaGltfColors(
   raw: ArrayLike<number>,
   accessor: { type?: string; componentType?: number; count?: number } | undefined,
@@ -515,7 +592,8 @@ export function zhudaGltfColors(
   const count = Math.floor(raw.length / size);
   const out = new Float32Array(count * 4);
   for (let i = 0; i < count; i++) {
-    for (let c = 0; c < 3; c++) out[i * 4 + c] = raw[i * size + c] * scale;
+    for (let c = 0; c < 3; c++)
+      out[i * 4 + c] = Math.min(1, Math.max(0, raw[i * size + c] * scale)) ** (1 / 2.2);
     out[i * 4 + 3] = size === 4 ? raw[i * size + 3] * scale : 1;
   }
   return out;
