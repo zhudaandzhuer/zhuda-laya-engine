@@ -102,9 +102,9 @@ frame rate (60 and over on this Mac, the vivo V40 and the iPhone 14; 45 to
 [verification](docs/plans/records/quality-tiers/verification.md), which has
 the numbers.
 
-- Done: `scripts/measure-quality-tiers.mjs` and its fixture, on the branch
-  `feat/quality-tiers-measure` (`git log main..feat/quality-tiers-measure`
-  says whether it is merged). Measured on the three devices. No runtime file
+- Done: `scripts/measure-quality-tiers.mjs` and its fixture, on `main` as
+  `f56f8a4` (`git log origin/main..main` says whether it is pushed).
+  Measured on the three devices. No runtime file
   changed and no tier is defined in the engine.
 - Found: on the V40 a smaller render scale brings a level into a band (level
   1 at 0.7 is 56 to 60); on the iPhone the number of draws decides, and
