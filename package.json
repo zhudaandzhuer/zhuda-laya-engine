@@ -169,6 +169,7 @@
     "verify:film-detail": "node scripts/verify-film-detail.mjs",
     "verify:film-grass": "node scripts/verify-film-grass.mjs",
     "verify:film-query": "node scripts/verify-film-query.mjs",
+    "verify:film-glow": "node scripts/verify-film-glow.mjs",
     "verify:film-triplanar": "node scripts/verify-film-triplanar.mjs",
     "verify:film-terrain": "node scripts/verify-film-terrain.mjs",
     "verify:film-pack-reload": "node scripts/verify-film-pack-reload.mjs",

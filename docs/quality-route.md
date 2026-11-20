@@ -181,6 +181,7 @@ Preview after every change. Each reply carries two things to act on.
 | `ambient.flat`            | tip   | Shadowed sides are lit by one flat colour.                |
 | `lights.unshadowed`       | tip   | Lamps are the key light and none casts a shadow.          |
 | `emission.no-bloom`       | tip   | A material brighter than white, with bloom off.           |
+| `emission.lights-nothing` | tip   | A large glowing surface, with no bounce light to carry it. |
 | `emission.washes-out`     | tip   | A coloured lamp so bright that it is drawn near-white.    |
 | `texture.density`         | tip   | A ground texture too coarse for a camera this close.      |
 | `texture.repeats`         | tip   | A ground texture repeated many times, every tile alike.   |

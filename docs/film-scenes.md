@@ -62,6 +62,17 @@ models, water, mirrors, grass and decals are not. Up to 2000 questions a
 call, and no picture is drawn. In a program the same question is
 `stage.raycast(origin, direction, maxMeters)`.
 
+Draws and triangles a frame are counted two ways, and they differ.
+`ZhudaFilmHost.flythrough` draws each frame through the capture path (one
+view of the film camera into a picture); a page that runs the stage in the
+engine's loop and counts with `ZhudaRuntimeProfiler` counts what the loop
+draws to the screen. Measured on one outside scene at 640 by 360 with a still
+camera: 166 draws and 1,720,324 triangles through the capture path against
+183 and 1,861,756 in its page. Of the difference two draws come with the size
+(164 at 320 by 180: bloom has a level more) and none with camera movement;
+what the other 17 draws and 141,000 triangles are was not traced. For a
+phone's budget count in the page, in the loop the game runs.
+
 `film_scene_get` reads the scene and its revision; `film_scene_lint` returns
 the advice for a session or for a scene without drawing it; `film_scene_close`
 discards the session. The [quality route](quality-route.md) is the order in
@@ -661,6 +672,16 @@ bounced once off the scene:
 - Probes that fall inside a prop, a box or a shape are switched off. Light can
   still leak through a wall thinner than the spacing when no probe falls
   inside it.
+- What glows lights what is round it: a material's `emission` is drawn into
+  the probes like everything else, so a pool of lava, a furnace mouth or a
+  lit window colours the walls near it, falling off with distance. Without
+  bounce light a glowing surface is only drawn bright and lights nothing
+  (the advice rule `emission.lights-nothing` says so for a large one). The
+  light is as coarse as the probes: `spacing` 2 gives a glow that changes
+  over a couple of metres, no sharp pool of light and no shadow of its own;
+  for that add point lights along the glow. In a dark scene the borders
+  between probe cells show as thin lines on walls and floor (seen at night
+  with a strong glow; not looked into).
 - `strength` scales the whole ambient light in the volume, sky included.
 - Blinn-Phong and unlit materials are not lit by it. Quality level 0 drops it.
 - In a game: `new ZhudaProbeVolume(scene3D, { min, max, solids })` and

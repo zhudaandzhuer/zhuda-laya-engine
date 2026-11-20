@@ -199,6 +199,28 @@ test('surfaces in the ground plane and coarse ground textures are caught', () =>
   );
 });
 
+test('a large glowing surface without bounce light is a tip', () => {
+  const scene = (look, size = [6, 0.1, 6]) => ({
+    schemaVersion: 1,
+    id: 'glow-advice',
+    camera: { eye: [0, 3, 10], target: [0, 1, 0], focalLengthMm: 35 },
+    look: { preset: 'night', grade: { bloom: 0.3 }, ...look },
+    materials: {
+      lava: { color: [0.05, 0.02, 0.01], emission: [2, 0.8, 0.2] },
+      stone: { color: [0.5, 0.5, 0.5] },
+    },
+    nodes: [
+      { id: 'ground', type: 'ground', size: [40, 40], material: 'stone' },
+      { id: 'pool', type: 'box', size, position: [0, 0, 0], material: 'lava' },
+    ],
+  });
+  const rules = (s) => lint(s).map((a) => a.rule);
+  assert.ok(rules(scene({})).includes('emission.lights-nothing'));
+  assert.ok(!rules(scene({ bounceLight: { spacing: 3 } })).includes('emission.lights-nothing'));
+  // A small lamp is not asked to light the room.
+  assert.ok(!rules(scene({}, [0.3, 0.3, 0.3])).includes('emission.lights-nothing'));
+});
+
 test('warnings come before tips and every rule is listed', () => {
   const advice = lint(
     change((s) => {

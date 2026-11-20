@@ -47,6 +47,7 @@ export const ZHUDA_FILM_LINT_RULES: Readonly<Record<string, string>> = Object.fr
   'lights.unshadowed': 'Lamps are the key light and none casts a shadow.',
   'emission.no-bloom': 'A material brighter than white, with bloom off.',
   'emission.washes-out': 'A coloured lamp so bright that the lamp itself is drawn near-white.',
+  'emission.lights-nothing': 'A large glowing surface, with no bounce light to carry its light.',
   'surface.in-ground-plane': 'Water or a reflector exactly in the plane of the ground.',
   'texture.density': 'A ground texture too coarse for a camera this close.',
   'texture.repeats': 'A ground texture repeated many times with every tile the same.',
@@ -229,6 +230,30 @@ export function lintZhudaFilmScene(
           `to see the colour on the lamp itself keep the brightest channel near 2: ${json(emission.map((v) => round((v * 2) / most)))}`,
         );
     }
+
+  // A glowing surface is drawn bright and lights nothing by itself: bounce
+  // light captures it with the rest of the scene and carries its light on.
+  if (!look.bounceLight) {
+    const glowing = new Set(
+      Object.entries(scene.materials ?? {}).flatMap(([name, material]) => {
+        const emission = (material as { emission?: readonly number[] }).emission;
+        return emission && Math.max(...emission) > 1 ? [name] : [];
+      }),
+    );
+    const index = nodes.findIndex(
+      (n) =>
+        ((n.type === 'box' && n.size[0] * n.size[2] >= 4) || n.type === 'terrain') &&
+        glowing.has(n.material),
+    );
+    if (index >= 0)
+      add(
+        'tip',
+        'emission.lights-nothing',
+        `scene.nodes[${index}].material`,
+        'This large surface glows but lights nothing round it: emission is only how bright the surface itself is drawn.',
+        'look: { "bounceLight": { "spacing": 3, "strength": 1 } }  (captured at mount; or point lights along it)',
+      );
+  }
 
   const ground = nodes.some((n) => n.type === 'ground');
   nodes.forEach((node, index) => {
