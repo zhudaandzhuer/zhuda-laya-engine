@@ -1,6 +1,6 @@
 # Handoff: plans of 2026-11-16/17 and the defects after them
 
-Last updated: 2026-11-21 ("Next step": routes as formal documents, on a branch). The three plans and the defect batch under "After
+Last updated: 2026-11-21 ("Next step": the underwater horizon, on a branch). The three plans and the defect batch under "After
 the plans" (`c7ab3d1` to `1197e20`) are on `origin/main`. The V40 results of
 2026-11-18 were added in a later commit: `git log origin/main..main` says
 whether it is pushed.
@@ -169,6 +169,16 @@ pushed). Record:
   routes for an outdoor landscape and a rigged phone character wait for the
   outside review's next round on the current engine; `docs/zh-CN/README.md` has
   no "Start here" table.
+
+The underwater horizon (2026-11-21, last). The consumer's re-check of the
+seam fix found a step at the horizon with light fog on (a dark band above it).
+Fixed on branch `fix/underwater-horizon`: the medium counts `maxDistance` of
+open water on both sides of the horizon and the backdrop carries the rest. The
+second round is in the same record
+([verification](docs/plans/records/underwater-seam/verification.md), "Second
+round"); `git branch --contains` says whether it is merged. The consumer's frame
+1380 reads level across the horizon on both backends with the fix; its own
+builds and film were not touched.
 
 Frame-rate tiers (2026-11-20, the same day). The owner set the rendering
 goal: the best picture that stays smooth on mobile devices, in three tiers by

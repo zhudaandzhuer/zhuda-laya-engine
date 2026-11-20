@@ -165,6 +165,50 @@ try {
     }
   report.bright = { unlikePixels: unlike, of: Math.floor(H * 0.55) * W };
 
+  // Open water on both sides of the horizon, with the light fog on: the eye
+  // beyond the floor's edge, looking away from it. Down a column, no row may
+  // differ from the next by a step, and no band above the horizon may be
+  // darker than the water below it.
+  const OPEN = { eye: [0, 3, 75], target: [0, 3, 140], focalLengthMm: 20 };
+  const openWater = await render(
+    'open-level-170',
+    variant('underwater-open-170', {
+      ...scene.look.underwater,
+      color: [0.03, 0.32, 0.56],
+      extinction: CLEAR,
+      maxDistance: 170,
+      // Deep enough that the surface is 170 m off some 9 degrees up, not 1.
+      surfaceY: 30,
+    }),
+    OPEN,
+    0,
+  );
+  {
+    const rows = [];
+    for (let y = Math.floor(H * 0.2); y < Math.floor(H * 0.8); y++) {
+      let sum = 0;
+      for (let x = Math.floor(W * 0.4); x < Math.floor(W * 0.6); x++) {
+        const i = (y * W + x) * 4;
+        sum +=
+          0.2126 * openWater.data[i] +
+          0.7152 * openWater.data[i + 1] +
+          0.0722 * openWater.data[i + 2];
+      }
+      rows.push(sum / (Math.floor(W * 0.6) - Math.floor(W * 0.4)));
+    }
+    let step = 0;
+    for (let i = 1; i < rows.length; i++) step = Math.max(step, Math.abs(rows[i] - rows[i - 1]));
+    const half = rows.length >> 1;
+    report.open = {
+      largestStep: +step.toFixed(2),
+      darkestAboveHorizon: +Math.min(...rows.slice(0, half)).toFixed(1),
+      belowHorizon: +(
+        rows.slice(half + 8).reduce((a, b) => a + b, 0) /
+        (rows.length - half - 8)
+      ).toFixed(1),
+    };
+  }
+
   const deepWater = variant('underwater-below-all', { ...scene.look.underwater, surfaceY: -5 });
   const above = await render('above-water-below-all', deepWater, ABOVE, 0);
   const aboveDry = await render('above-dry', dry, ABOVE, 0);
@@ -210,6 +254,14 @@ assert.ok(
   report.bright.unlikePixels < 40,
   `bright clear water looks the same with the plane ending at 170 m and at 600 m (${report.bright.unlikePixels} of ${report.bright.of} pixels differ)`,
 );
+assert.ok(
+  report.open.largestStep < 3,
+  `open clear water with light fog has no step down a column (largest ${report.open.largestStep} of 255 between two rows)`,
+);
+assert.ok(
+  report.open.darkestAboveHorizon > report.open.belowHorizon - 4,
+  `nor a band above the horizon darker than the water below it (${report.open.darkestAboveHorizon} against ${report.open.belowHorizon})`,
+);
 assert.equal(report.above.differingPixels, 0, 'above the surface nothing changes');
 assert.deepEqual(report.glErrors, [], 'no WebGL error');
 console.log(
@@ -219,6 +271,7 @@ console.log(
       caustics: c,
       window: report.window,
       clear: report.clear,
+      open: report.open,
       bright: report.bright,
       above: report.above,
     }) +

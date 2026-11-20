@@ -960,7 +960,10 @@ desktop, not on a phone). `true` takes the defaults; it needs `grade`.
   line across the frame; `maxDistance` no longer has to be raised for it.
   Things that are drawn beyond `maxDistance` are still seen through
   `maxDistance` of water and no more, and nothing is drawn in the last
-  twentieth of the camera's range.
+  twentieth of the camera's range. Open water is counted to `maxDistance`
+  on both sides of the horizon, so `lightFog` under water (sunbeams) is
+  dimmed alike above and below it; toward the horizon the surface runs into
+  the water's own colour.
 - **Quality.** Level 1 drops the caustics; level 0 has no HDR chain and no
   water (use `fog` for a cheap stand-in there).
 - **In place.** `setLook` changes the colour, extinction, surface height,

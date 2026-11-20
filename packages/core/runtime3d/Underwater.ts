@@ -381,20 +381,15 @@ vec2 ndc=uv*2.0-1.0;
 ndc.y*=u_ZhudaUwRight.w;
 vec3 ray=u_ZhudaUwForward.xyz+ndc.x*u_ZhudaUwRight.xyz+ndc.y*u_ZhudaUwUp.xyz;
 float reach=eyeDepth*length(ray);
-float t=min(reach,u_ZhudaUwSigma.w);
+// Where nothing is drawn (the far plane's depth, or the backdrop just inside
+// it) the water is counted to maxDistance, whatever the camera's far plane
+// is: one length on both sides of the horizon. What lies farther is in the
+// backdrop's colour.
+bool open=eyeDepth>=u_ZBufferParams.y/u_ZBufferParams.w*0.94;
+float t=open?u_ZhudaUwSigma.w:min(reach,u_ZhudaUwSigma.w);
 vec3 dir=normalize(ray);
-if(dir.y>0.0001){
 // Only the water between the eye and the surface: beyond it the view is in air.
-float toSurface=(u_ZhudaUwEye.w-u_ZhudaUwEye.y)/dir.y;
-// With the surface drawn (w), where nothing under water is in the way the
-// surface is what is seen, through all the water up to it, however far that
-// is: a view nearly level with it ends in the water's own light. Cut at
-// maxDistance, it kept a share of whatever lay behind.
-// Nothing drawn there means the far plane's depth, which can be nearer than the surface.
-bool open=eyeDepth>=u_ZBufferParams.y/u_ZBufferParams.w*0.998;
-if(u_ZhudaUwUp.w>0.5&&(open||reach>toSurface))t=toSurface;
-else t=min(t,toSurface);
-}
+if(dir.y>0.0001)t=min(t,(u_ZhudaUwEye.w-u_ZhudaUwEye.y)/dir.y);
 vec3 through=exp(-u_ZhudaUwSigma.xyz*t);
 vec3 scattered=u_ZhudaUwColor.rgb*exp(-u_ZhudaUwSigma.xyz*max(u_ZhudaUwEye.w-u_ZhudaUwEye.y,0.0));
 gl_FragColor=vec4(source.rgb*through+scattered*(1.0-through),source.a);
@@ -451,26 +446,44 @@ return vec4(mix(seen,deep,reflected),1.0);
 
 /**
  * What lies behind everything under water: a sphere round the eye, just
- * inside the camera's far plane. Above level it is the still surface as the
- * plane shows it (the plane ends at `maxDistance`, and the camera's far plane
- * cuts it sooner); level and below it is the water's own light at the eye's
- * depth, which is what any thickness of that water comes to. Without it the
- * sky, or the camera's clear colour, stood behind the water there, and clear
- * water let it through: a line across the frame at the plane's edge.
+ * inside the camera's far plane. Level and below it is the water's own light
+ * at the eye's depth, which is what any thickness of that water comes to.
+ * Above level it is the still surface as the plane shows it (the plane ends
+ * at `maxDistance`, and the camera's far plane cuts it sooner), seen through
+ * the water that lies beyond the `maxDistance` the medium counts: so it runs
+ * into the water's own light toward the horizon and meets the lower half
+ * there without a step. Without it the sky, or the camera's clear colour,
+ * stood behind the water, and clear water let it through: a line across the
+ * frame at the plane's edge.
+ *
+ * The medium counts the same length of water on both sides of the horizon.
+ * Counting all the water up to the surface above it and `maxDistance` below
+ * it took the light fog's light away above the horizon only: a step there.
  */
 const BACKDROP = `vec4 zhudaSurface(vec2 uv,vec3 p,vec3 n){
 vec3 dir=normalize(p-u_CameraPos);
 vec3 deep=u_ZhudaUwDeep.rgb;
-if(dir.y<=0.0001)return vec4(deep*exp(-u_ZhudaUwSigma.xyz*max(u_ZhudaUwWave.x-u_CameraPos.y,0.0)),1.0);
+float depth=max(u_ZhudaUwWave.x-u_CameraPos.y,0.0);
+// The water's own light at the eye's depth: what any thickness of it comes to.
+vec3 own=deep*exp(-u_ZhudaUwSigma.xyz*depth);
+if(dir.y<=0.0001)return vec4(own,1.0);
 float cosI=dir.y;
 float sinT2=1.7769*(1.0-cosI*cosI);
-if(sinT2>=1.0)return vec4(deep,1.0);
+vec3 seen=deep;
+if(sinT2<1.0){
 float cosT=sqrt(1.0-sinT2);
 vec3 outward=normalize(1.333*dir+(cosT-1.333*cosI)*vec3(0.0,1.0,0.0));
 float reflected=0.02+0.98*pow(1.0-cosT,5.0);
 vec3 sky=u_ZhudaUwSky.rgb*(0.55+0.45*outward.y);
 float sun=pow(max(dot(outward,u_ZhudaUwSun.xyz),0.0),u_ZhudaUwSun.w);
-return vec4(mix(sky+u_ZhudaUwSunColor.rgb*sun,deep,reflected),1.0);
+seen=mix(sky+u_ZhudaUwSunColor.rgb*sun,deep,reflected);
+}
+// The medium counts maxDistance (w) of water in front of this; the surface is
+// farther along the view than that by \`beyond\`, and that much water is put
+// into the colour here. Level with the eye the surface is endlessly far and
+// the colour is the water's own, as it is below.
+float beyond=max(depth/dir.y-u_ZhudaUwSigma.w,0.0);
+return vec4(own+(seen-own)*exp(-u_ZhudaUwSigma.xyz*beyond),1.0);
 }`;
 /** The backdrop's radius as a share of the camera's far plane. */
 const BACKDROP_REACH = 0.95;
@@ -667,7 +680,7 @@ export class ZhudaUnderwater {
       const b = this.backdrop.shader.material;
       b.setVector4('u_ZhudaUwWave', new l.Vector4(r.surfaceY, this.seconds, 0, 0));
       b.setVector4('u_ZhudaUwDeep', new l.Vector4(...r.color, 1));
-      b.setVector4('u_ZhudaUwSigma', new l.Vector4(...r.extinction, 0));
+      b.setVector4('u_ZhudaUwSigma', new l.Vector4(...r.extinction, r.maxDistance));
     }
   }
 

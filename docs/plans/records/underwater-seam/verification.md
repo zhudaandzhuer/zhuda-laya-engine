@@ -74,6 +74,60 @@ plane's. `verify:film-remount` (a scene mounted again draws the same and
 leaves no WebGL error) passes; no count of GPU objects across mounts of an
 underwater scene was taken for this change.
 
+## Second round: a step at the horizon (2026-11-21)
+
+The consumer built against `7cdf0a7` and drew frame 1380 of its film (the
+eye in mid-water, open water below the horizon, light fog on): the old line
+was gone and a new one stood at the horizon, a band above it darker than
+the water below (its `ENGINE-TASK-underwater-seam.md`, section 複驗). The
+first round's checks never crossed the horizon over open water: the
+engine's floor reached past it, and the consumer's station 5 did not look
+there.
+
+Cause, reproduced in the engine: with the surface drawn, a view above the
+horizon with nothing in the way was counted through all the water up to the
+surface (endless near level), and one below it through `maxDistance`. The
+water's own colour is the same either way, but the light fog's light, which
+the medium dims by the length it counts, was taken away above the horizon
+and kept below it.
+
+Change (`packages/core/runtime3d/Underwater.ts`): the medium counts
+`maxDistance` wherever nothing is drawn (the far plane's depth, or within
+six hundredths of it, where the backdrop is), on both sides of the horizon,
+and never more than the way to the surface. The backdrop above level is the
+surface seen through the water that lies beyond that `maxDistance`, so it
+runs into the water's own colour toward the horizon.
+
+| Check                                                                                         | Before (`7cdf0a7`)            | After                         |
+| --------------------------------------------------------------------------------------------- | ----------------------------- | ----------------------------- |
+| `verify:film-underwater`, new case: open clear water, light fog, eye 27 m deep, largest step between two rows of a column (of 255) | 20.68: the check fails | 1.53 on WebGL, 1.53 on WebGPU |
+| The same: darkest row above the horizon against the water below                                | (not reached)                 | 58.2 against 58.4             |
+| Consumer, frame 1380, 1920 by 1080, x = 1700, green at rows 452, 476, 500, 524, 548, 554, 560, 584, WebGPU | 69 56 48 45 44 65 66 66 | 69 66 66 66 66 66 66 66       |
+| The same, WebGL                                                                                | 67 56 48 45 44 65 66 66       | 67 65 65 65 66 66 66 66       |
+| Consumer, largest step between two rows of that column, rows 380 to 700 (mean of RGB)          | 11.7 (WebGPU), 12.0 (WebGL)   | 1.0, 1.0                      |
+
+The other cases of `verify:film-underwater` read as before (the window, the
+level view over the floor, bright water with the plane at 170 m and 600 m:
+7 of 71,040 pixels differ, as in the first round).
+
+Not looked at in this round: with the eye a few metres under the surface and
+a strong light fog, the fog's light changes fast just above the horizon (the
+way to the surface shortens quickly there). It is a steep gradient, not a
+step (9.5 of 255 a row at 270 rows with the eye 4 m down in the fixture's
+fog); whether it reads as a line in a real scene was not judged. The medium
+dims the fog's light by the whole length it counts, though that light is
+made within the fog's own reach: a model's limit, not changed here.
+
+Run for this round, on the Apple M4: `npm run verify` (963 tests),
+`npm run lint`, `npm run format:check`, `git diff --check`,
+`node --test tests/underwater.test.mjs`; on WebGL `verify:film-underwater`,
+`verify:film-fog`, `verify:film-look`, `verify:film-water`, `verify:film`;
+`npm run verify:film-webgpu` (33 checks). All pass. No phone.
+
+The consumer's own `dist/webgpu` and `dist/webgl` were not touched; it was
+built into `dist/webgpu-engine-fix` and `dist/webgl-engine-fix`, and the two
+frames are in its `evidence/engine-fix2-webgpu/` and `engine-fix2-webgl/`.
+
 ## Limits and decision
 
 - One desktop GPU. No phone, no Windows.

@@ -81,7 +81,11 @@ recipe materials.
   shows. The engine puts the water itself there (the surface carried on past
   the plane's edge, the water's own light below the horizon), so there is no line
   across the frame; before `fix: underwater backdrop` (2026-11-21) there was, and
-  the way round it was a `maxDistance` of 5.5 over the smallest extinction. What
+  the way round it was a `maxDistance` of 5.5 over the smallest extinction. That
+  first fix left a step at the horizon wherever light fog was on (a dark band
+  above it): the water above the horizon was counted all the way to the surface
+  and below it to `maxDistance`; since `fix: underwater horizon` (2026-11-21) it
+  is `maxDistance` on both sides. What
   remains: things beyond `maxDistance` are seen through `maxDistance` of water, so
   in clear water a far rock is plainer than it should be. Raise `maxDistance` to
   the distance things should fade by.
@@ -102,8 +106,9 @@ recipe materials.
 - `npm run verify:film-underwater` (and with `ZHUDA_FILM_RENDERER=webgpu`): the view
   dimmed per channel and bluer far off, caustics with spread and motion, the window
   brighter than the reflected surface, nothing changed above the surface, no WebGL
-  error; clear water one colour from the surface to the horizon, and bright clear
-  water the same with the plane ending at 170 m and at 600 m. Both pass (records
+  error; clear water one colour from the surface to the horizon, bright clear
+  water the same with the plane ending at 170 m and at 600 m, and open clear water
+  with light fog without a step down a column across the horizon. Both pass (records
   `docs/plans/records/underwater-look/` and `docs/plans/records/underwater-seam/`).
 - `npm run verify:flythrough -- tests/fixtures/flythrough/underwater.json` (6 s, 180
   frames, 960 by 540; GPU time per frame, two runs each):
