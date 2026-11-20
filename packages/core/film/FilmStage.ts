@@ -31,6 +31,7 @@ import { ZhudaLightFog } from '../runtime3d/LightFog.ts';
 import { ZhudaUnderwater, ZHUDA_UNDERWATER_LAYER } from '../runtime3d/Underwater.ts';
 import { ZhudaDecal } from '../runtime3d/Decals.ts';
 import { ZhudaGrassField } from '../runtime3d/Grass.ts';
+import { ZhudaEffect3D } from '../effects/Effect3D.ts';
 import { ZhudaTriangleBvh } from '../runtime3d/MeshQuery.ts';
 import {
   ZhudaAutoExposure,
@@ -1029,6 +1030,22 @@ function buildFilmStageContents(
         if (eyeNow) for (const field of fields) field.fill(eyeNow, seconds);
       });
 
+    // Ready particle effects, placed and stepped to the shot's time.
+    const particleEffects: ZhudaEffect3D[] = [];
+    for (const node of scene.nodes) {
+      if (node.type !== 'effect') continue;
+      const effect = new ZhudaEffect3D(scene3D, node.preset, {
+        position: node.position,
+        yawDeg: node.yawDeg,
+        scale: node.scale,
+        seed: node.seed,
+      });
+      particleEffects.push(effect);
+      cleanups.push(() => effect.dispose());
+      const start = node.startSec ?? 0;
+      timed.push((seconds) => effect.seek(seconds - start));
+    }
+
     // Marks on surfaces, after the surfaces they lie on.
     for (const node of scene.nodes) {
       if (node.type !== 'decal') continue;
@@ -1343,6 +1360,8 @@ function buildFilmStageContents(
     cleanups.push(() => lens.dispose());
     let current = resolveZhudaFilmCamera(scene.camera);
     const prepare = (aspect: number, frame?: { width: number; height: number; index: number }) => {
+      // Particles face the camera of this frame.
+      for (const effect of particleEffects) effect.render(camera);
       // A still or a sample of a video draws the sun's shadows whatever `shadows.update` says.
       effects.shadowUpdates?.redraw();
       for (const casting of pointShadows)

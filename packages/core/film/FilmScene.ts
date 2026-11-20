@@ -20,6 +20,7 @@ import {
 } from '../procedural/Geometry.ts';
 import { validateZhudaDecal, type ZhudaDecalShape } from '../runtime3d/Decals.ts';
 import { validateZhudaGrass } from '../runtime3d/Grass.ts';
+import { ZHUDA_EFFECT_PRESETS_3D, ZHUDA_EFFECT_PRESET_IDS_3D } from '../effects/EffectPresets.ts';
 import {
   validateZhudaTerrainMesh,
   type ZhudaTerrainMeshOptions,
@@ -659,6 +660,28 @@ export type ZhudaFilmNode =
       /** Width (X) and depth (Z) in metres; the top surface sits at y = 0. */
       size: [number, number];
       material: string;
+    }
+  | {
+      id: string;
+      /**
+       * A ready particle effect (`ZhudaEffect3D`) from the built-in presets
+       * (`ZHUDA_EFFECT_PRESETS_3D`: campfire, torch, smoke-column, steam,
+       * sparks, explosion, hit, magic-aura, heal, portal, fireflies, rain,
+       * snow, dust-motes, falling-leaves, petals, bubbles, embers), at
+       * `position`, turned by `yawDeg`, every length times `scale` (0.05 to
+       * 50). It begins at `startSec` of shot time (default 0): a burst
+       * (explosion, hit) happens once from then, a loop runs on. A frame at
+       * the same shot time is the same frame. Particles are drawn unlit over
+       * the scene: they cast no shadow and light nothing (put a point light
+       * in a fire). At most 32 a scene.
+       */
+      type: 'effect';
+      preset: string;
+      position: [number, number, number];
+      yawDeg?: number;
+      scale?: number;
+      startSec?: number;
+      seed?: number;
     }
   | {
       id: string;
@@ -2126,6 +2149,33 @@ function validateNode(
         issues.push(`${path}.size: use [width, depth] in metres`);
       usesMaterial();
       break;
+    case 'effect': {
+      unknownKeys(
+        node,
+        ['id', 'type', 'preset', 'position', 'yawDeg', 'scale', 'startSec', 'seed'],
+        path,
+        issues,
+      );
+      if (typeof node.preset !== 'string' || !(node.preset in ZHUDA_EFFECT_PRESETS_3D))
+        issues.push(
+          `${path}.preset: unknown effect ${String(node.preset)}; known: ${ZHUDA_EFFECT_PRESET_IDS_3D.join(', ')}`,
+        );
+      vec3(node.position, `${path}.position`, issues);
+      yaw();
+      if (
+        node.scale !== undefined &&
+        !(finite(node.scale) && node.scale >= 0.05 && node.scale <= 50)
+      )
+        issues.push(`${path}.scale: use 0.05..50`);
+      if (
+        node.startSec !== undefined &&
+        !(finite(node.startSec) && node.startSec >= 0 && node.startSec <= 36000)
+      )
+        issues.push(`${path}.startSec: seconds of shot time from 0`);
+      if (node.seed !== undefined && !(Number.isInteger(node.seed) && (node.seed as number) >= 0))
+        issues.push(`${path}.seed: a whole number from 0`);
+      break;
+    }
     case 'terrain': {
       unknownKeys(
         node,
@@ -2654,6 +2704,8 @@ export function validateZhudaFilmScene(
           `scene.nodes[${i}].follows.node: ${node.follows.node} is not a model node in this scene`,
         );
     });
+    if (scene.nodes.filter((node) => object(node) && node.type === 'effect').length > 32)
+      issues.push('scene.nodes: at most 32 effect nodes');
     const terrainIds = new Set(
       scene.nodes.flatMap((node) =>
         object(node) && node.type === 'terrain' && typeof node.id === 'string' ? [node.id] : [],

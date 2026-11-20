@@ -62,8 +62,10 @@ The format in full is [film scenes](../film-scenes.md#scene-format).
    floors, `detail` for close range, `blend: "cutout"` with a `shape` mask for
    leaves and cards, `blend: "alpha"` and `opacity` for mist, glass and falling
    water, `doubleSided` for thin things.
-6. **Plants and water.** A `grass` node on level ground (`y`) or on a terrain
-   (`on`); one `water` or one `reflector` node.
+6. **Plants, water and effects.** A `grass` node on level ground (`y`) or on a
+   terrain (`on`); one `water` or one `reflector` node; `effect` nodes for fire,
+   smoke, sparks, explosions, magic, rain, snow, leaves and bubbles from the
+   built-in presets (put a point light in a fire: particles light nothing).
 7. **Look.** Follow [good-looking-3d-scene](good-looking-3d-scene.md): preset,
    grade, sun from the side, shadows, fog, `bounceLight`.
 8. **Preview after every change**: `film_scene_apply` with `expectedRevision` and
@@ -108,7 +110,8 @@ The format in full is [film scenes](../film-scenes.md#scene-format).
 `npm run verify:film`, `verify:film-look`, `verify:film-model`,
 `verify:film-terrain`, `verify:film-triplanar`, `verify:film-grass`,
 `verify:film-query`, `verify:film-pack-reload`, `verify:film-cutout`,
-`verify:film-detail`, `verify:film-glow`, `verify:film-model-distance`, and all of
+`verify:film-detail`, `verify:film-glow`, `verify:film-effects`,
+`verify:film-model-distance`, and all of
 them on WebGPU with `npm run verify:film-webgpu`. Records:
 [film scene loop](../plans/records/film-scene-loop/verification.md),
 [the review's requests](../plans/records/review-requests-2/verification.md).

@@ -608,6 +608,27 @@ export type ZhudaFilmNode = {
 } | {
     id: string;
     /**
+     * A ready particle effect (`ZhudaEffect3D`) from the built-in presets
+     * (`ZHUDA_EFFECT_PRESETS_3D`: campfire, torch, smoke-column, steam,
+     * sparks, explosion, hit, magic-aura, heal, portal, fireflies, rain,
+     * snow, dust-motes, falling-leaves, petals, bubbles, embers), at
+     * `position`, turned by `yawDeg`, every length times `scale` (0.05 to
+     * 50). It begins at `startSec` of shot time (default 0): a burst
+     * (explosion, hit) happens once from then, a loop runs on. A frame at
+     * the same shot time is the same frame. Particles are drawn unlit over
+     * the scene: they cast no shadow and light nothing (put a point light
+     * in a fire). At most 32 a scene.
+     */
+    type: 'effect';
+    preset: string;
+    position: [number, number, number];
+    yawDeg?: number;
+    scale?: number;
+    startSec?: number;
+    seed?: number;
+} | {
+    id: string;
+    /**
      * Ground with heights (`createZhudaTerrainMesh`): a grid of `cells`
      * over `size` metres, centred on `position`, each corner at its own
      * height above `position`'s. Give `heights` (a number a corner, row by

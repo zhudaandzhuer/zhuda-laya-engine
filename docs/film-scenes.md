@@ -224,6 +224,60 @@ coordinates are metres seen from above: give it a triplanar material where it
 is steep. One mesh; no caves or overhangs (those are meshes of their own),
 and for ground that is streamed or edited use `ZhudaTerrain3D` in a program.
 
+An `effect` node is a ready particle effect:
+
+```json
+{ "id": "fire", "type": "effect", "preset": "campfire", "position": [2, 0, -1] },
+{ "id": "blast", "type": "effect", "preset": "explosion", "position": [0, 1, 0],
+  "startSec": 2.5, "scale": 1.5 }
+```
+
+| Preset | What it is | Runs |
+| --- | --- | --- |
+| `campfire` | Flames, a thread of smoke, a few embers | on |
+| `torch` | A small steady flame | on |
+| `smoke-column` | Grey smoke rising and spreading | on |
+| `steam` | White vapour that rises and is gone | on |
+| `sparks` | A spray of sparks falling under gravity | on |
+| `explosion` | A flash, a ball of fire, debris, smoke left behind | once, 3.5 s |
+| `hit` | A flash, a ring and a few sparks | once, 0.6 s |
+| `magic-aura` | Motes rising round a figure, a ring on the ground | on |
+| `heal` | Green lights and small stars drifting up | on |
+| `portal` | A ball of violet light with motes round it | on |
+| `fireflies` | Slow points of light near the ground | on |
+| `rain` | Rain over a 16 m square from 9 m: place it over the camera | on |
+| `snow` | Snow over a 14 m square from 7 m: place it over the camera | on |
+| `dust-motes` | Fine dust hanging in still air | on |
+| `falling-leaves` | Leaves turning as they fall, over 10 m | on |
+| `petals` | Blossom petals on a light wind, over 10 m | on |
+| `bubbles` | Bubbles rising and wobbling | on |
+| `embers` | Embers lifted on warm air over 8 m | on |
+
+`position` is its origin (the foot of a fire, the top of rain), `yawDeg` turns
+it, `scale` (0.05 to 50) multiplies every length, `seed` makes two copies move
+differently. It begins at `startSec` of shot time: before that nothing is
+drawn; one that runs once is over after its time. The effect is stepped at
+120 Hz from its start, so a frame at the same shot time is the same frame
+whichever frames were drawn before it. Particles are drawn unlit over the
+scene: they cast no shadow, take none, and light nothing; put a point light
+in a fire or an explosion. Nothing is loaded: the sprites are made by a
+program (`bakeZhudaEffectSprite`). At most 32 effect nodes a scene; the
+largest preset holds 900 particles (rain). In a game:
+
+```ts
+const fire = new ZhudaEffect3D(scene3D, 'campfire', { position: [2, 0, -1] });
+// each frame:
+fire.update(deltaSeconds);
+fire.render(camera);
+// at the end:
+fire.dispose();
+```
+
+A preset is data (`ZHUDA_EFFECT_PRESETS_3D[id].effect`, a
+`ParticleEffectSpec3D`): copy one and change it for an effect of your own,
+and pass it in place of the id. The particle system itself is described in
+[particles](../packages/core/particles/README.md).
+
 A `grass` node is grass a camera can walk through ([grass](grass.md)), on
 level ground, or on a terrain node with `"on": "hills"` in place of `y`:
 
