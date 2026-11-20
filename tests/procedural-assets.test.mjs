@@ -1069,3 +1069,70 @@ test('a film material says how it is put into the picture', async () => {
   assert.match(issues({ ...flat, opacity: -1 })[0], /opacity: use 0\.\.1/);
   assert.match(issues({ recipe: 'concrete', opacity: 0.5 }).join(' '), /opacity/);
 });
+
+test('a detail map leaves the base alone on average and strays from that by its strength', async () => {
+  const { zhudaDetailPixels } = await import('../packages/core/procedural/ProceduralMaterial.ts');
+  // Two greys, half the pixels each.
+  const albedo = new Uint8Array(8 * 4);
+  for (let i = 0; i < 8; i++) albedo.set(i % 2 ? [200, 200, 200, 255] : [90, 90, 90, 255], i * 4);
+  const linear = (c) => Math.pow(c / 255, 2.2);
+  const none = zhudaDetailPixels(albedo, 0);
+  // Nothing of it: every pixel is the value LayaAir's detail leaves the base unchanged at.
+  for (let i = 0; i < none.length; i += 4) {
+    assert.ok(Math.abs(linear(none[i]) * 4.5947938 - 1) < 0.03, `neutral (${none[i]})`);
+    assert.equal(none[i + 3], 255);
+  }
+  const full = zhudaDetailPixels(albedo, 1);
+  const factors = [...Array(8)].map((_, i) => linear(full[i * 4]) * 4.5947938);
+  assert.ok(
+    factors[1] > 1.3 && factors[0] < 0.7,
+    `lighter and darker than the base (${factors.slice(0, 2)})`,
+  );
+  assert.ok(Math.abs(factors.reduce((a, b) => a + b) / 8 - 1) < 0.05, 'and the base on average');
+  const half = zhudaDetailPixels(albedo, 0.5);
+  assert.ok(
+    linear(half[4]) < linear(full[4]) && linear(half[4]) > linear(none[4]),
+    'half way at 0.5',
+  );
+});
+
+test('a film recipe material takes a detail recipe, and not with variation', async () => {
+  const { validateZhudaFilmScene } = await import('../packages/core/film/FilmScene.ts');
+  const scene = (material) => ({
+    schemaVersion: 1,
+    id: 'material-detail-check',
+    camera: { eye: [0, 1, 6], target: [0, 1, 0], focalLengthMm: 35 },
+    materials: { m: material },
+    nodes: [{ id: 'b', type: 'box', size: [1, 1, 1], position: [0, 0, 0], material: 'm' }],
+  });
+  const issues = (material) =>
+    validateZhudaFilmScene(scene(material)).filter((issue) => /materials\.m\.detail/.test(issue));
+  const detail = { recipe: 'concrete', meters: 1.5 };
+  assert.deepEqual(issues({ recipe: 'concrete', detail }), []);
+  assert.deepEqual(
+    issues({ recipe: 'concrete', detail: { ...detail, size: 512, albedo: 0.4, normal: 1.5 } }),
+    [],
+  );
+  assert.match(
+    issues({ recipe: 'concrete', detail: { recipe: 'concrete' } })[0],
+    /detail\.meters: use 0\.01/,
+  );
+  assert.match(issues({ recipe: 'concrete', detail: { ...detail, size: 100 } })[0], /detail\.size/);
+  assert.match(
+    issues({ recipe: 'concrete', detail: { ...detail, albedo: 2 } })[0],
+    /detail\.albedo: use 0\.\.1/,
+  );
+  assert.match(
+    issues({ recipe: 'concrete', detail: { ...detail, normal: 3 } })[0],
+    /detail\.normal: use 0\.\.2/,
+  );
+  assert.match(issues({ recipe: 'concrete', detail: { ...detail, fade: 1 } }).join(' '), /detail/);
+  assert.match(
+    issues({ recipe: 'concrete', variation: 0.5, detail })[0],
+    /detail: not with variation/,
+  );
+  assert.match(
+    issues({ recipe: 'concrete', detail: { recipe: { id: 'X' }, meters: 1 } }).join(' '),
+    /detail\.recipe/,
+  );
+});

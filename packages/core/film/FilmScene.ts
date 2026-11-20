@@ -447,6 +447,22 @@ export type ZhudaFilmMaterial =
        */
       variation?: number;
       /**
+       * Fine detail for close range: a second recipe laid over this one,
+       * repeating every `meters` (grain, pores, scratches at a metre or two
+       * where the material itself tiles at tens). `albedo` (0..1, default
+       * 0.5) is how far its colour moves the surface's about its own mean,
+       * `normal` (0..2, default 1) how strong its relief is. Its bake `size`
+       * is 128 to 1024 (default 256). Far away it changes nothing. Not
+       * together with `variation`: they are the material's one detail map.
+       */
+      detail?: {
+        recipe: string | ZhudaTextureRecipe;
+        meters: number;
+        size?: number;
+        albedo?: number;
+        normal?: number;
+      };
+      /**
        * How the surface is put into the picture (default 'opaque'):
        * 'cutout' draws it where its alpha is above `alphaCutoff` and nowhere
        * else, with depth and shadows (leaves, grass, petals, lace); 'alpha'
@@ -1702,7 +1718,7 @@ function validateMaterial(
   if ('recipe' in material) {
     unknownKeys(
       material,
-      ['recipe', 'tint', 'size', 'variation', 'blend', 'alphaCutoff', 'doubleSided'],
+      ['recipe', 'tint', 'size', 'variation', 'detail', 'blend', 'alphaCutoff', 'doubleSided'],
       path,
       issues,
     );
@@ -1712,6 +1728,42 @@ function validateMaterial(
       !(typeof variation === 'number' && variation >= 0 && variation <= 1)
     )
       issues.push(`${path}.variation: use 0..1`);
+    const detail: unknown = material.detail;
+    if (detail !== undefined) {
+      if (!object(detail)) issues.push(`${path}.detail: object required`);
+      else {
+        unknownKeys(
+          detail,
+          ['recipe', 'meters', 'size', 'albedo', 'normal'],
+          `${path}.detail`,
+          issues,
+        );
+        if (typeof detail.recipe === 'string') {
+          if (context.recipes && !context.recipes.includes(detail.recipe))
+            issues.push(
+              `${path}.detail.recipe: unknown recipe ${detail.recipe}; known: ${context.recipes.join(', ')}`,
+            );
+        } else
+          for (const issue of validateZhudaTextureRecipe(detail.recipe))
+            issues.push(`${path}.detail.recipe${issue.startsWith('.') ? '' : ': '}${issue}`);
+        if (!(finite(detail.meters) && detail.meters >= 0.01 && detail.meters <= 1000))
+          issues.push(`${path}.detail.meters: use 0.01..1000`);
+        if (detail.size !== undefined && ![128, 256, 512, 1024].includes(detail.size as number))
+          issues.push(`${path}.detail.size: use 128, 256, 512 or 1024`);
+        if (
+          detail.albedo !== undefined &&
+          !(finite(detail.albedo) && detail.albedo >= 0 && detail.albedo <= 1)
+        )
+          issues.push(`${path}.detail.albedo: use 0..1`);
+        if (
+          detail.normal !== undefined &&
+          !(finite(detail.normal) && detail.normal >= 0 && detail.normal <= 2)
+        )
+          issues.push(`${path}.detail.normal: use 0..2`);
+        if (typeof variation === 'number' && variation > 0)
+          issues.push(`${path}.detail: not with variation (they are the one detail map)`);
+      }
+    }
     if (typeof material.recipe === 'string') {
       if (context.recipes && !context.recipes.includes(material.recipe))
         issues.push(

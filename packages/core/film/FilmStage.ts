@@ -592,8 +592,33 @@ function buildFilmStageContents(
           set = bakeZhudaTextureSet(recipe, { size });
           bakeCache.set(key, set);
         }
+        let fine: ZhudaBakedTextureSet | undefined;
+        if (spec.detail) {
+          const other =
+            typeof spec.detail.recipe === 'string'
+              ? recipes[spec.detail.recipe]
+              : spec.detail.recipe;
+          if (!other) throw Error(`Film scene: unknown recipe ${String(spec.detail.recipe)}`);
+          const side = spec.detail.size ?? 256,
+            fineKey = zhudaBakeKey(other, side);
+          fine = bakeCache.get(fineKey);
+          if (!fine) {
+            fine = bakeZhudaTextureSet(other, { size: side });
+            bakeCache.set(fineKey, fine);
+          }
+        }
         const baked = createZhudaProceduralMaterial(set, {
           ...(spec.tint ? { tint: spec.tint } : {}),
+          ...(fine
+            ? {
+                detail: {
+                  set: fine,
+                  meters: spec.detail!.meters,
+                  albedo: spec.detail!.albedo,
+                  normal: spec.detail!.normal,
+                },
+              }
+            : {}),
           ...(spec.blend ? { blend: spec.blend } : {}),
           ...(spec.alphaCutoff !== undefined ? { alphaCutoff: spec.alphaCutoff } : {}),
           ...(spec.doubleSided ? { doubleSided: true } : {}),

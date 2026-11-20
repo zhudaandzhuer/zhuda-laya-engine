@@ -398,6 +398,22 @@ export type ZhudaFilmMaterial = {
      */
     variation?: number;
     /**
+     * Fine detail for close range: a second recipe laid over this one,
+     * repeating every `meters` (grain, pores, scratches at a metre or two
+     * where the material itself tiles at tens). `albedo` (0..1, default
+     * 0.5) is how far its colour moves the surface's about its own mean,
+     * `normal` (0..2, default 1) how strong its relief is. Its bake `size`
+     * is 128 to 1024 (default 256). Far away it changes nothing. Not
+     * together with `variation`: they are the material's one detail map.
+     */
+    detail?: {
+        recipe: string | ZhudaTextureRecipe;
+        meters: number;
+        size?: number;
+        albedo?: number;
+        normal?: number;
+    };
+    /**
      * How the surface is put into the picture (default 'opaque'):
      * 'cutout' draws it where its alpha is above `alphaCutoff` and nowhere
      * else, with depth and shadows (leaves, grass, petals, lace); 'alpha'

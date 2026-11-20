@@ -166,6 +166,7 @@
     "verify:film-gltf-vertex-data": "node scripts/verify-film-gltf-vertex-data.mjs",
     "verify:film-model-distance": "node scripts/verify-film-model-distance.mjs",
     "verify:film-cutout": "node scripts/verify-film-cutout.mjs",
+    "verify:film-detail": "node scripts/verify-film-detail.mjs",
     "verify:film-reflections": "node scripts/verify-film-reflections.mjs",
     "verify:film-variation": "node scripts/verify-film-variation.mjs",
     "verify:film-point-shadow": "node scripts/verify-film-point-shadow.mjs",

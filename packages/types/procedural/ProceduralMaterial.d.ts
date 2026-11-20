@@ -30,6 +30,22 @@ export interface ZhudaProceduralMaterialOptions {
     alphaCutoff?: number;
     /** Both faces are drawn: one sheet for a leaf or a blade, not two back to back. */
     doubleSided?: boolean;
+    /**
+     * Fine detail for close range: a second baked set laid over the first,
+     * repeating every `meters` (well under the base tile: grain, pores,
+     * scratches). Its colour changes the base's brightness and tone by
+     * `albedo` (0..1, default 0.5) about the set's own mean, so the surface
+     * keeps its overall colour; its normal map is added at `normal` (0..2,
+     * default 1). Far away its small mip levels are its mean, which changes
+     * nothing: it fades by itself. It is the material's one detail map: not
+     * together with `variation`.
+     */
+    detail?: {
+        set: ZhudaBakedTextureSet;
+        meters: number;
+        albedo?: number;
+        normal?: number;
+    };
 }
 export interface ZhudaProceduralMaterial {
     readonly material: any;
@@ -37,4 +53,11 @@ export interface ZhudaProceduralMaterial {
     /** Destroys the material and the textures it owns. */
     dispose(): void;
 }
+/**
+ * A baked albedo map as LayaAir's detail map: each channel as a share of its
+ * mean, about the value that leaves the base unchanged, `strength` of the way
+ * from it. LayaAir multiplies the base by the detail in linear light times
+ * 4.5948 (2 to the power 2.2), so that value is 1 / 4.5948. Pure.
+ */
+export declare function zhudaDetailPixels(albedo: Uint8Array, strength: number): Uint8Array;
 export declare function createZhudaProceduralMaterial(set: ZhudaBakedTextureSet, options?: ZhudaProceduralMaterialOptions): ZhudaProceduralMaterial;

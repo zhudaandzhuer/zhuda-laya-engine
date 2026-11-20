@@ -145,8 +145,23 @@ A material says how it is put into the picture with `blend` (default
   and are drawn after the solid ones, sorted by their mesh, not by their
   triangles: a prop merged into one mesh is one thing to the sort.
 - `"doubleSided": true` draws both faces: a leaf or a blade of grass is one
-  sheet, not two back to back, and half the triangles. The far face is lit
-  with the near face's normal.
+  sheet, not two back to back, and half the triangles. How the far face is
+  lit was not looked at.
+
+A recipe material may carry fine `detail` for close range:
+
+```json
+"rock": { "recipe": "cliff", "size": 1024,
+          "detail": { "recipe": "rock-grain", "meters": 1.5, "albedo": 0.5, "normal": 1 } }
+```
+
+A recipe that tiles at 40 m is right from the main camera and a blur from a
+metre away (a texel is centimetres wide). The detail is a second recipe laid
+over it, repeating every `meters`: its colour moves the surface's about its
+own mean by `albedo` (0..1), so the surface keeps its overall colour, and its
+relief is added at `normal` (0..2). Far away its small mip levels are its
+mean and it changes nothing, so there is no distance to set. It is the
+material's one detail map: `detail` and `variation` cannot both be given.
 
 A prop node may say how it behaves with distance, like a model node:
 
