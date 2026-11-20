@@ -108,9 +108,13 @@ try {
     'from inside a box its far wall is met, the normal toward the ray',
   );
   // The picture agrees: the point reported on the box's top is drawn red, a point beside it is not.
-  const png = (
-    await executeFilmTool('film_scene_preview', { sessionId: id, width: W, height: H })
-  ).find((part) => part.type === 'image');
+  const preview = await executeFilmTool('film_scene_preview', {
+    sessionId: id,
+    width: W,
+    height: H,
+  });
+  report.gpu = data(preview).gpu;
+  const png = preview.find((part) => part.type === 'image');
   fs.writeFileSync(path.join(out, 'scene.png'), Buffer.from(png.data, 'base64'));
   const img = PNG.sync.read(Buffer.from(png.data, 'base64'));
   const red = (point) => {

@@ -53,8 +53,8 @@ test('MCP Server resolves topology, diagnoses Laya crashes, and serves Golden Ex
   assert.equal(rpcRes.id, 42);
   // 24 configuration/guardrail tools (with get_quality_route) plus 8 film scene tools
   // (with film_scene_lint).
-  assert.equal(rpcRes.result.tools.length, 32);
-  assert.equal(rpcRes.result.tools.filter((tool) => tool.name.startsWith('film_')).length, 8);
+  assert.equal(rpcRes.result.tools.length, 33);
+  assert.equal(rpcRes.result.tools.filter((tool) => tool.name.startsWith('film_')).length, 9);
   assert.ok(rpcRes.result.tools.some((tool) => tool.name === 'get_quality_route'));
   assert.ok(rpcRes.result.tools.some((tool) => tool.name === 'get_cinematic_contract'));
   assert.ok(rpcRes.result.tools.some((tool) => tool.name === 'get_agent_contract'));

@@ -103,6 +103,14 @@ try {
   // Untouched, the page stays: the same fingerprint and load time.
   const fourth = data(await executeFilmTool('film_scene_create', { scene: scene([POST]) }));
   assert.deepEqual(fourth.packs, third.packs, 'no reload without a change');
+  // Which adapter the page drew with (the WebGPU batch asks for it).
+  report.gpu = data(
+    await executeFilmTool('film_scene_preview', {
+      sessionId: fourth.sessionId,
+      width: 64,
+      height: 36,
+    }),
+  ).gpu;
   report.status = 'pass';
 } catch (error) {
   report.status = 'fail';

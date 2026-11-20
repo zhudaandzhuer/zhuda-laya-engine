@@ -9,8 +9,8 @@
  * `top` lays a second set where the surface faces up: moss on the top of a
  * stone, snow on a ledge, dust on a shelf.
  *
- * Three reads of each of the three maps a pixel (six more with `top`),
- * against one each for `createZhudaProceduralMaterial`: use it where the
+ * Three reads of each of the three maps a pixel (and one more of each with
+ * `top`), against one each for `createZhudaProceduralMaterial`: use it where the
  * stretching shows, not everywhere. Lit, shadowed and occluded like any
  * material of the engine (`ZhudaLitSurfaceMaterial`).
  */

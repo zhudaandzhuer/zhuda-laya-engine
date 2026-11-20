@@ -1,6 +1,6 @@
 # Handoff: plans of 2026-11-16/17 and the defects after them
 
-Last updated: 2026-11-20 ("Next step": the outside review's patches). The three plans and the defect batch under "After
+Last updated: 2026-11-21 ("Next step": the rest of the review's requests, on a branch). The three plans and the defect batch under "After
 the plans" (`c7ab3d1` to `1197e20`) are on `origin/main`. The V40 results of
 2026-11-18 were added in a later commit: `git log origin/main..main` says
 whether it is pushed.
@@ -121,11 +121,39 @@ occlusion without the extra scene pass. Record:
 [verification](docs/plans/records/review-requests/verification.md).
 
 - Open: whether `gtao` becomes the look's default (the owner's call: every
-  scene's picture changes); the other five requests (detail textures on
-  materials, cut-out props, grass and terrain nodes, transparency, light
-  from what glows) and the tool requests; a phone run.
+  scene's picture changes); a phone run. The other requests: next paragraph.
 - The review's phone models load on `main` on the M4, both backends, every
   clip moving (`beasts-hd`, `bosses-hd`); no frame rate was taken on a phone.
+
+The rest of the review's requests (2026-11-21, later). The owner asked for
+all of them. They are on branch `feat/review-requests-2` (from `a2d95f7`),
+committed there and **not merged into `main` and not pushed**: `git branch
+--contains` and `git log main..feat/review-requests-2` say whether that has
+changed. Record:
+[task](docs/plans/records/review-requests-2/task.md),
+[verification](docs/plans/records/review-requests-2/verification.md).
+
+- Done: prop nodes' `castShadow`, `cullMeters`, `lod`; materials' `blend`,
+  `alphaCutoff`, `doubleSided`, `opacity`; a recipe's `alpha` and `shape`
+  masks; `detail`; `grass` and `terrain` nodes (grass `on` a terrain);
+  `projection: 'triplanar'` with a `top` recipe; `film_scene_query`; packs
+  read again when edited, with a fingerprint; glow through `bounceLight`
+  shown by a check and advised (`emission.lights-nothing`). Nine draw checks,
+  all in `verify:film-webgpu`'s list.
+- Not done, and said so in the record: area and line lights; a recipe mask
+  by height above ground; the page's and the film host's draw counts brought
+  together (17 draws and 141,000 triangles on the review's scene 01 are
+  untraced); thin lines between probe cells in a dark scene lit by a glow
+  (seen, not looked into); any phone or Windows run.
+- For the review: sixteen tileable texture sets (albedo, height, normal;
+  scales, fur, feathers, hide, horn, bone, rock, lava, bronze, armour) were
+  generated with the image model (gpt-image-2.6-flare, 32 pictures), made
+  seamless and pushed to `VerifyZhuda` as `7ee3f17` (`textures/`, with a
+  sampler for its bake and the script that made them). The source pictures
+  (102 MB) are on this Mac only, in `audits/VerifyZhuda/textures/raw/`
+  (ignored by git there).
+- Next: the owner's word on merging the branch into `main` and pushing; then
+  tell the review which engine commit carries the scene-format keys.
 
 Frame-rate tiers (2026-11-20, the same day). The owner set the rendering
 goal: the best picture that stays smooth on mobile devices, in three tiers by
