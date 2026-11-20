@@ -99,9 +99,8 @@ whether it is pushed. Record:
 The line across clear water (2026-11-21). The session of the consumer film
 `films/pelagic-grove` found a level line across its underwater shots and
 wrote the task (`films/pelagic-grove/ENGINE-TASK-underwater-seam.md`). Fixed
-on the branch `fix/underwater-seam` (`git status` there says whether it is
-still only in the working tree, `git log main..fix/underwater-seam` whether
-merged): a backdrop sphere behind the water in `Underwater.ts`, and the view
+and merged into `main` (`git log origin/main..main` says whether it is
+pushed): a backdrop sphere behind the water in `Underwater.ts`, and the view
 counting all the water up to the surface. Record:
 [task](docs/plans/records/underwater-seam/task.md),
 [verification](docs/plans/records/underwater-seam/verification.md). The
