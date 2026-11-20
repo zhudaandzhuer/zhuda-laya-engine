@@ -139,8 +139,7 @@ the numbers.
   and its Safari was left at a page of this Mac (`192.168.50.80`, the server
   is stopped).
 
-Ribbon draw range (2026-11-20, a session started from the game's session,
-branch `claude/reverent-wu-861b2f`, not merged into `main`): a 3D ribbon or
+Ribbon draw range (2026-11-20, on `main` as `025dc21` and pushed): a 3D ribbon or
 particle system whose count changes after its first draw kept drawing the
 first count, on WebGPU and WebGL (LayaAir's `MeshRenderer` copies a submesh's
 range into the draw only when a mesh is assigned). Fixed in
@@ -148,8 +147,20 @@ range into the draw only when a mesh is assigned). Fixed in
 backends. Record:
 [task](docs/plans/records/dynamic-mesh-draw-range/task.md),
 [verification](docs/plans/records/dynamic-mesh-draw-range/verification.md).
-Open: merge on the owner's word; phone runs; the game that found it
-(`SWEEP_POINTS` fixed at 64) can drop its workaround after re-pinning.
+The game that found it re-pinned to `025dc21` and dropped its 64-point
+workaround (its blade's rings still draw whole). Open: phone runs.
+
+Draw warm-up (2026-11-20, `main`): `zhudaWarmUpByDrawing` draws a scene
+behind its loading screen from the eyes a game names, every way round and
+down, with a `beforeView` hook for the game's own passes, and puts the
+camera back. The fixture's first frame then compiles nothing: 7 ms on
+WebGL and 32 ms on WebGPU (306 / 1252 ms cold). Found by
+`zhuda-spacetime-3d` on a vivo V40 (frames of 450–2500 ms walking in right
+after loading; its prototype of the same method took the worst to 151 ms).
+Record: [task](docs/plans/records/draw-warm-up/task.md),
+[verification](docs/plans/records/draw-warm-up/verification.md). Open: the
+game's switch from its prototype to this API, measured on the V40; the
+unexplained ~20 s of ~50 FPS after loading on the V40.
 
 Added on 2026-11-18, in the commit that carries this note: the route
 [a small floating island](docs/routes/floating-island.md), its row in the

@@ -5,7 +5,9 @@
 // - ?mode=cold: the scene is drawn as a game draws it, and what the first
 //   frame and each change of level compile and cost is measured;
 // - ?mode=warm: the same, after zhudaWarmUpShaders has compiled the list the
-//   record run made (handed over in window.__WARM_LIST__).
+//   record run made (handed over in window.__WARM_LIST__);
+// - ?mode=draw: the same, after zhudaWarmUpByDrawing has drawn the scene from
+//   three places round it.
 // Runtime functions come from the browser SDK global (Zhuda).
 const Z = (globalThis as any).Zhuda;
 const Laya = (globalThis as any).Laya;
@@ -270,6 +272,24 @@ async function main() {
       () => 'resolved',
       (error: any) => String(error?.name),
     );
+  }
+
+  if (mode === 'draw') {
+    // The scene drawn behind a loading screen from three places round it, every way round and down from each
+    // (zhudaWarmUpByDrawing): no list, and on WebGPU the pipelines are made too. The camera is put back.
+    out.warmUp = await Z.zhudaWarmUpByDrawing({
+      camera: world.camera,
+      eyes: [
+        [0, 2.2, 7],
+        [0, 2.2, -7],
+        [6, 2.2, 0],
+      ],
+    });
+    await settle();
+    out.duringWarmUp = instances - out.beforeDraw;
+    const at = world.camera.transform.position;
+    out.cameraBack = [at.x, at.y, at.z].map((v: number) => +v.toFixed(4));
+    out.fovBack = world.camera.fieldOfView;
   }
 
   // The first frame, then steady frames.

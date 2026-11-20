@@ -34,6 +34,7 @@ export * from './RenderScale.js';
 export * from './ShadowUpdates.js';
 export * from './BasisTexture.js';
 export * from './ShaderWarmUp.js';
+export * from './DrawWarmUp.js';
 export { registerZhudaEffectShaders } from './ShaderRegistry.js';
 export * from './PointShadow.js';
 export * from './ProbeVolume.js';

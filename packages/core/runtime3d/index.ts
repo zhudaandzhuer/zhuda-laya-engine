@@ -33,6 +33,7 @@ export * from './RenderScale.ts';
 export * from './ShadowUpdates.ts';
 export * from './BasisTexture.ts';
 export * from './ShaderWarmUp.ts';
+export * from './DrawWarmUp.ts';
 export { registerZhudaEffectShaders } from './ShaderRegistry.ts';
 export * from './PointShadow.ts';
 export * from './ProbeVolume.ts';

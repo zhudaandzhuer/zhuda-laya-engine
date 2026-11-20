@@ -1,14 +1,17 @@
 #!/usr/bin/env node
 // Real-GPU check of the shader warm-up (`ZhudaShaderVariantRecorder`,
 // `zhudaWarmUpShaders`), through the browser SDK. One scene with a look is
-// mounted in three fresh browsers:
+// mounted in four fresh browsers:
 // - record: every variant compiled while the scene is drawn at each level of
 //   its look is listed; the list is valid, sorted and without repeats;
 // - cold: a game's own mount. The first frame and each change of level
 //   compile shaders, and how many and how long is measured;
 // - warm: the list is compiled behind a loading screen first, a few
 //   milliseconds a frame while frames go on being drawn. Then the first
-//   frame and every change of level compile nothing.
+//   frame and every change of level compile nothing;
+// - draw: the scene is drawn once from three places round it
+//   (`zhudaWarmUpByDrawing`). Then the first frame compiles nothing, the
+//   camera is where it was and the picture is the cold one.
 // What a warm-up cannot use (another backend's list, something that is not a
 // list, a shader that is not registered, a cancelled signal) is refused or
 // reported without failing.
@@ -117,7 +120,8 @@ try {
   const record = await run('record');
   const cold = await run('cold');
   const warm = record.list ? await run('warm', record.list) : null;
-  report = { record, cold, warm };
+  const draw = await run('draw');
+  report = { record, cold, warm, draw };
 } finally {
   server.close();
 }
@@ -138,8 +142,8 @@ if (report.record.list)
     JSON.stringify(report.record.list, null, 1) + '\n',
   );
 
-const { record, cold, warm } = report;
-for (const [name, page] of Object.entries({ record, cold, warm })) {
+const { record, cold, warm, draw } = report;
+for (const [name, page] of Object.entries({ record, cold, warm, draw })) {
   assert.ok(page, `${name} ran`);
   assert.equal(page.ready, true, `${name}: ${page.error}`);
   assert.deepEqual(page.errors, [], `${name}: page errors`);
@@ -237,6 +241,23 @@ assert.equal(warm.unknownShader.missing.length, 1, 'a shader that is not registe
 assert.equal(warm.unknownShader.compiled, 0);
 assert.equal(warm.aborted, 'AbortError', 'a cancelled signal rejects');
 
+// Draw: the scene drawn from three places round it before it is shown. Its first frame compiles nothing (what
+// a list cannot reach, the WebGPU pipelines, is made too), the camera is put back, and the picture is the cold one.
+const d = draw.warmUp;
+assert.equal(d.views, 15, 'three eyes, five ways from each');
+assert.ok(
+  draw.duringWarmUp >= cold.first.compiled,
+  `the warm-up compiles what the cold first frame did (${draw.duringWarmUp} of ${cold.first.compiled})`,
+);
+assert.equal(draw.first.compiled, 0, 'the first frame compiles nothing after drawing it once');
+assert.equal(draw.steadyCompiled, 0);
+assert.deepEqual(draw.cameraBack, [0, 2.2, 7], 'the camera is put back where it was');
+assert.equal(draw.fovBack, 50, 'and sees as wide as it did');
+report.pictureDiff.draw = gridDiff(cold.grid, draw.grid);
+assert.ok(
+  report.pictureDiff.draw.mean < 0.5 && report.pictureDiff.draw.worst < 4,
+  `the picture after drawing it once is the cold one (${JSON.stringify(report.pictureDiff.draw)})`,
+);
 const line = (page) =>
   `first frame ${page.first.ms} ms (${page.first.compiled} compiled), steady ${page.steadyMs} ms, levels ` +
   page.levels.map((l) => `${l.level}: ${l.ms} ms (${l.compiled})`).join(', ');
@@ -245,6 +266,7 @@ console.log(
     `${list.variants.length} variants listed\n` +
     `  cold: ${line(cold)}\n` +
     `  warm: ${line(warm)}\n` +
+    `  draw: ${line(draw)}; the warm-up drew ${d.views} views in ${d.ms} ms (longest ${d.longestMs} ms) over ${d.slices} slices\n` +
     `  picture, warm against cold: ${JSON.stringify(report.pictureDiff)}\n` +
     `  warm-up: ${w.compiled} compiled in ${w.ms} ms over ${w.slices} slices (${w.wallMs} ms of wall time, ${w.framesMeanwhile} frames meanwhile), longest single compile ${w.longestMs} ms\n` +
     `Report: ${path.join(out, 'evidence/report.json')}`,

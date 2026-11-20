@@ -7,11 +7,11 @@ nobody has drawn yet, and the frame that compiles them is long. Measured on
 a small scene (six materials on thirteen objects, one lamp, one look;
 `npm run verify:shader-warm-up`, and the same page on a phone):
 
-| | First frame | Look to level 0 |
-| --- | --- | --- |
-| Desktop WebGL (Apple M4) | 112 ms, 27 compiled | 40 ms, 4 compiled |
+|                           | First frame         | Look to level 0    |
+| ------------------------- | ------------------- | ------------------ |
+| Desktop WebGL (Apple M4)  | 112 ms, 27 compiled | 40 ms, 4 compiled  |
 | Desktop WebGPU (Apple M4) | 626 ms, 27 compiled | 132 ms, 4 compiled |
-| vivo V40, WebGL 2 | 161 ms, 27 compiled | 43 ms, 4 compiled |
+| vivo V40, WebGL 2         | 161 ms, 27 compiled | 43 ms, 4 compiled  |
 
 With the warm-up below, the same frames compile nothing: 13, 177 and 43 ms
 for the first frame, 4, 20 and 13 ms for the change of level. The pictures
@@ -87,3 +87,39 @@ know; `registerZhudaEffectShaders()` does the same on request.
   order, and the warm-up puts them in force for each compile.
 
 [Record](plans/records/shader-warm-up/verification.md).
+
+## Warm up by drawing
+
+A list covers shader modules. A first draw does more: on WebGPU it makes
+the render pipeline and bind groups, and a pass of the game's own (a water
+mirror, a reflection) compiles shaders a list recorded without it does not
+hold. `zhudaWarmUpByDrawing` draws the scene behind the loading screen from
+the places the game names, four ways round and once down from each, then
+puts the camera back:
+
+```ts
+const report = await zhudaWarmUpByDrawing({
+  camera,
+  eyes: [
+    [0, 2.2, 18],
+    [0, 2.2, 50],
+    [1.5, 2.2, 105],
+  ], // where the player starts, the way it goes on
+  beforeView: ({ eye, target }) => {
+    lod.update(eye); // the game's own things, as that eye would see them
+    mirror.update(eye, target); // and its own passes
+    mirror.render();
+  },
+  onProgress: (done, total) => bar.set(done / total),
+});
+```
+
+On the fixture scene the first frame then compiles nothing and takes 7 ms
+on WebGL (306 ms cold, 30 ms after a list) and 32 ms on WebGPU (1252 ms
+cold, 153 ms after a list). It warms only what its views see: turn on for
+it what the game hides by distance, and name an eye near each place the
+player will reach early. It costs whole frames (15 views: 0.3 s on desktop
+WebGL, 1.2 s on desktop WebGPU; 30 views about 3 s on a vivo V40). Changes
+of look level are still compiled when they come: a list covers those.
+
+[Record](plans/records/draw-warm-up/verification.md).
