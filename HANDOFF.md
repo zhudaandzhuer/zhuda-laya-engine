@@ -69,9 +69,11 @@ host, the iPhone 14 and the vivo V40 (2026-11-18, both backends).
 ## Next step
 
 The outside review ended and its ten patches are on `main` as `87ab247`
-(2026-11-20), merged on the owner's word by fast-forward from the branch
-`fix/outside-review-patches`, which is still there and holds nothing else.
-`git log origin/main..main` says whether it is pushed. Record:
+(2026-11-20), merged on the owner's word by fast-forward. The branches of
+that day (`fix/outside-review-patches`, `feat/quality-tiers-measure`,
+`feat/quality-tiers-engine`) were deleted on the owner's word once merged;
+only `main` is left, here and on origin. `git log origin/main..main` says
+whether it is pushed. Record:
 [task](docs/plans/records/outside-review-patches/task.md),
 [verification](docs/plans/records/outside-review-patches/verification.md).
 
