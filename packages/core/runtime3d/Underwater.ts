@@ -20,7 +20,10 @@
  * - The surface from below (`surface`): a plane at the surface, drawn while
  *   the eye is below it, showing the sky through the window the critical
  *   angle leaves (48.6°) and the water's own colour where light is totally
- *   reflected beyond it.
+ *   reflected beyond it. The plane ends at `maxDistance`; behind it, and
+ *   behind everything else under water, a sphere just inside the camera's
+ *   far plane carries the still surface on and the water's own light below
+ *   it, so that nothing but water stands behind clear water.
  *
  * `zhudaUnderwaterTransmittance` and `zhudaCausticIntensity` are the
  * shaders' formulas in TypeScript.
@@ -377,10 +380,21 @@ float eyeDepth=1.0/(u_ZBufferParams.z*texture2D(u_CameraDepthTexture,uv).x+u_ZBu
 vec2 ndc=uv*2.0-1.0;
 ndc.y*=u_ZhudaUwRight.w;
 vec3 ray=u_ZhudaUwForward.xyz+ndc.x*u_ZhudaUwRight.xyz+ndc.y*u_ZhudaUwUp.xyz;
-float t=min(eyeDepth*length(ray),u_ZhudaUwSigma.w);
+float reach=eyeDepth*length(ray);
+float t=min(reach,u_ZhudaUwSigma.w);
 vec3 dir=normalize(ray);
+if(dir.y>0.0001){
 // Only the water between the eye and the surface: beyond it the view is in air.
-if(dir.y>0.0001)t=min(t,(u_ZhudaUwEye.w-u_ZhudaUwEye.y)/dir.y);
+float toSurface=(u_ZhudaUwEye.w-u_ZhudaUwEye.y)/dir.y;
+// With the surface drawn (w), where nothing under water is in the way the
+// surface is what is seen, through all the water up to it, however far that
+// is: a view nearly level with it ends in the water's own light. Cut at
+// maxDistance, it kept a share of whatever lay behind.
+// Nothing drawn there means the far plane's depth, which can be nearer than the surface.
+bool open=eyeDepth>=u_ZBufferParams.y/u_ZBufferParams.w*0.998;
+if(u_ZhudaUwUp.w>0.5&&(open||reach>toSurface))t=toSurface;
+else t=min(t,toSurface);
+}
 vec3 through=exp(-u_ZhudaUwSigma.xyz*t);
 vec3 scattered=u_ZhudaUwColor.rgb*exp(-u_ZhudaUwSigma.xyz*max(u_ZhudaUwEye.w-u_ZhudaUwEye.y,0.0));
 gl_FragColor=vec4(source.rgb*through+scattered*(1.0-through),source.a);
@@ -435,6 +449,32 @@ vec3 seen=sky+u_ZhudaUwSunColor.rgb*sun;
 return vec4(mix(seen,deep,reflected),1.0);
 }`;
 
+/**
+ * What lies behind everything under water: a sphere round the eye, just
+ * inside the camera's far plane. Above level it is the still surface as the
+ * plane shows it (the plane ends at `maxDistance`, and the camera's far plane
+ * cuts it sooner); level and below it is the water's own light at the eye's
+ * depth, which is what any thickness of that water comes to. Without it the
+ * sky, or the camera's clear colour, stood behind the water there, and clear
+ * water let it through: a line across the frame at the plane's edge.
+ */
+const BACKDROP = `vec4 zhudaSurface(vec2 uv,vec3 p,vec3 n){
+vec3 dir=normalize(p-u_CameraPos);
+vec3 deep=u_ZhudaUwDeep.rgb;
+if(dir.y<=0.0001)return vec4(deep*exp(-u_ZhudaUwSigma.xyz*max(u_ZhudaUwWave.x-u_CameraPos.y,0.0)),1.0);
+float cosI=dir.y;
+float sinT2=1.7769*(1.0-cosI*cosI);
+if(sinT2>=1.0)return vec4(deep,1.0);
+float cosT=sqrt(1.0-sinT2);
+vec3 outward=normalize(1.333*dir+(cosT-1.333*cosI)*vec3(0.0,1.0,0.0));
+float reflected=0.02+0.98*pow(1.0-cosT,5.0);
+vec3 sky=u_ZhudaUwSky.rgb*(0.55+0.45*outward.y);
+float sun=pow(max(dot(outward,u_ZhudaUwSun.xyz),0.0),u_ZhudaUwSun.w);
+return vec4(mix(sky+u_ZhudaUwSunColor.rgb*sun,deep,reflected),1.0);
+}`;
+/** The backdrop's radius as a share of the camera's far plane. */
+const BACKDROP_REACH = 0.95;
+
 /** One underwater medium: its post effect, the scene's lighting values and the surface from below. */
 export class ZhudaUnderwater {
   /** The Laya post-process effect; the HDR chain takes it after the light fog. */
@@ -443,6 +483,9 @@ export class ZhudaUnderwater {
   private readonly scene: any;
   private resolved: ZhudaResolvedUnderwater;
   private readonly underside?: { node: any; mesh: any; shader: ZhudaShaderMaterial };
+  private readonly backdrop?: { node: any; mesh: any; shader: ZhudaShaderMaterial };
+  /** The camera's far plane, as last told or last seen by the effect. */
+  private far = 4000;
   private readonly define: any;
   private seconds = 0;
   private disposed = false;
@@ -500,16 +543,62 @@ export class ZhudaUnderwater {
       node.active = false;
       scene3D.addChild(node);
       this.underside = { node, mesh, shader };
+      const round = new ZhudaShaderMaterial({
+        schemaVersion: 1,
+        name: 'ZhudaWaterBackdrop',
+        dimension: 3,
+        surface: BACKDROP,
+        uniforms: {
+          u_ZhudaUwWave: { type: 'vec4' },
+          u_ZhudaUwDeep: { type: 'vec4' },
+          u_ZhudaUwSigma: { type: 'vec4' },
+          u_ZhudaUwSky: { type: 'vec4' },
+          u_ZhudaUwSun: { type: 'vec4' },
+          u_ZhudaUwSunColor: { type: 'vec4' },
+        },
+        doubleSided: true,
+        fog: false,
+      });
+      const ball = l.PrimitiveMesh.createSphere(1, 24, 48);
+      const behind = new l.MeshSprite3D(ball);
+      behind.name = 'zhuda-water-backdrop';
+      behind.meshRenderer.sharedMaterial = round.material;
+      behind.meshRenderer.castShadow = false;
+      behind.meshRenderer.receiveShadow = false;
+      behind.layer = ZHUDA_UNDERWATER_LAYER;
+      behind.active = false;
+      scene3D.addChild(behind);
+      this.backdrop = { node: behind, mesh: ball, shader: round };
+      // The light of the window, for the plane and for what stands behind it.
       const sky = light.sky ?? [0.5, 0.65, 0.8];
       const sun = light.sun ?? { toward: [0.3, 0.9, 0.3], color: [3, 2.9, 2.7] };
-      const m = shader.material;
-      m.setVector4('u_ZhudaUwSky', new l.Vector4(sky[0], sky[1], sky[2], 1));
       const length = Math.hypot(...sun.toward) || 1;
-      m.setVector4(
-        'u_ZhudaUwSun',
-        new l.Vector4(sun.toward[0] / length, sun.toward[1] / length, sun.toward[2] / length, 300),
-      );
-      m.setVector4('u_ZhudaUwSunColor', new l.Vector4(sun.color[0], sun.color[1], sun.color[2], 1));
+      for (const m of [shader.material, round.material]) {
+        m.setVector4('u_ZhudaUwSky', new l.Vector4(sky[0], sky[1], sky[2], 1));
+        m.setVector4(
+          'u_ZhudaUwSun',
+          new l.Vector4(
+            sun.toward[0] / length,
+            sun.toward[1] / length,
+            sun.toward[2] / length,
+            300,
+          ),
+        );
+        m.setVector4(
+          'u_ZhudaUwSunColor',
+          new l.Vector4(sun.color[0], sun.color[1], sun.color[2], 1),
+        );
+      }
+    }
+    // The far plane of whichever camera draws the view, for the backdrop's size.
+    const render = this.effect.render;
+    if (typeof render === 'function') {
+      const water = this;
+      this.effect.render = function (context: any) {
+        const far = context?.camera?.farPlane;
+        if (Number.isFinite(far) && far > 0) water.far = far;
+        return render.call(this, context);
+      };
     }
     this.write(l);
     this.update(
@@ -574,6 +663,12 @@ export class ZhudaUnderwater {
       );
       s.setVector4('u_ZhudaUwDeep', new l.Vector4(...r.color, 1));
     }
+    if (this.backdrop) {
+      const b = this.backdrop.shader.material;
+      b.setVector4('u_ZhudaUwWave', new l.Vector4(r.surfaceY, this.seconds, 0, 0));
+      b.setVector4('u_ZhudaUwDeep', new l.Vector4(...r.color, 1));
+      b.setVector4('u_ZhudaUwSigma', new l.Vector4(...r.extinction, 0));
+    }
   }
 
   /** Where the waves are: seconds of a shot (a film) or of play (a game's clock). */
@@ -587,10 +682,17 @@ export class ZhudaUnderwater {
   /**
    * The camera for the next frame (as `ZhudaLightFog.update`): the medium is
    * drawn while the eye is below the surface, and the surface seen from
-   * below follows the eye.
+   * below follows the eye. `farMeters` is the camera's far plane: what stands
+   * behind the water is put just inside it. Left out, it is taken from the
+   * camera that draws the effect, a frame late.
    */
-  update(eye: V3, target: V3, fieldOfViewDeg: number, aspect: number): void {
+  update(eye: V3, target: V3, fieldOfViewDeg: number, aspect: number, farMeters?: number): void {
     if (this.disposed) return;
+    if (farMeters !== undefined) {
+      if (!(Number.isFinite(farMeters) && farMeters > 0))
+        throw Error('Underwater: farMeters is the camera far plane, above 0');
+      this.far = farMeters;
+    }
     const l = (globalThis as any).Laya;
     const r = this.resolved;
     const below = eye[1] < r.surfaceY;
@@ -622,11 +724,25 @@ export class ZhudaUnderwater {
       'u_ZhudaUwRight',
       new l.Vector4(right[0] * tan * aspect, right[1] * tan * aspect, right[2] * tan * aspect, 1),
     );
-    m.setVector4('u_ZhudaUwUp', new l.Vector4(up[0] * tan, up[1] * tan, up[2] * tan, 0));
+    // w: the surface is drawn from below, with the water behind it.
+    m.setVector4(
+      'u_ZhudaUwUp',
+      new l.Vector4(up[0] * tan, up[1] * tan, up[2] * tan, this.underside ? 1 : 0),
+    );
     if (this.underside) {
       const node = this.underside.node;
       node.active = below;
       if (below) node.transform.position = new l.Vector3(eye[0], r.surfaceY, eye[2]);
+    }
+    if (this.backdrop) {
+      const node = this.backdrop.node;
+      node.active = below;
+      if (below) {
+        // Round the eye, just inside the far plane: behind everything that is drawn.
+        const radius = this.far * BACKDROP_REACH;
+        node.transform.position = new l.Vector3(eye[0], eye[1], eye[2]);
+        node.transform.localScale = new l.Vector3(radius, radius, radius);
+      }
     }
   }
 
@@ -638,6 +754,11 @@ export class ZhudaUnderwater {
       if (!this.underside.node.destroyed) this.underside.node.destroy();
       this.underside.mesh.destroy();
       this.underside.shader.dispose();
+    }
+    if (this.backdrop) {
+      if (!this.backdrop.node.destroyed) this.backdrop.node.destroy();
+      this.backdrop.mesh.destroy();
+      this.backdrop.shader.dispose();
     }
     this.material.destroy();
   }

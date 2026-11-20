@@ -1060,7 +1060,13 @@ function buildFilmStageContents(
       if (frame) lightFog?.setFrame(frame.index);
       lightFog?.update(current.eye, current.target, camera.fieldOfView, aspect);
       lightFog?.renderShafts();
-      effects.underwater?.update(current.eye, current.target, camera.fieldOfView, aspect);
+      effects.underwater?.update(
+        current.eye,
+        current.target,
+        camera.fieldOfView,
+        aspect,
+        camera.farPlane,
+      );
       effects.reflections?.update(current.eye, current.target, camera.fieldOfView, aspect);
       effects.clouds?.update(current.eye, current.target, camera.fieldOfView, aspect);
       // A film frame is not smeared from the camera of the frame drawn before it:

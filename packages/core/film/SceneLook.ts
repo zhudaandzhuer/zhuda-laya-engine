@@ -275,7 +275,7 @@ export class ZhudaSceneLook {
     if (this.parts?.underwater) {
       this.waterSeconds += frameSeconds;
       this.parts.underwater.setTime(this.waterSeconds);
-      this.parts.underwater.update(eye, target, fieldOfViewDeg, aspect);
+      this.parts.underwater.update(eye, target, fieldOfViewDeg, aspect, this.camera.farPlane);
     }
     this.parts?.motionBlur?.update(eye, target, fieldOfViewDeg, aspect);
     this.parts?.exposure?.setFrameSeconds(frameSeconds);

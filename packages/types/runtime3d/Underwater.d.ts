@@ -79,6 +79,9 @@ export declare class ZhudaUnderwater {
     private readonly scene;
     private resolved;
     private readonly underside?;
+    private readonly backdrop?;
+    /** The camera's far plane, as last told or last seen by the effect. */
+    private far;
     private readonly define;
     private seconds;
     private disposed;
@@ -107,9 +110,11 @@ export declare class ZhudaUnderwater {
     /**
      * The camera for the next frame (as `ZhudaLightFog.update`): the medium is
      * drawn while the eye is below the surface, and the surface seen from
-     * below follows the eye.
+     * below follows the eye. `farMeters` is the camera's far plane: what stands
+     * behind the water is put just inside it. Left out, it is taken from the
+     * camera that draws the effect, a frame late.
      */
-    update(eye: V3, target: V3, fieldOfViewDeg: number, aspect: number): void;
+    update(eye: V3, target: V3, fieldOfViewDeg: number, aspect: number, farMeters?: number): void;
     dispose(): void;
 }
 export {};

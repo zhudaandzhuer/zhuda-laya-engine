@@ -96,6 +96,21 @@ whether it is pushed. Record:
   26.13.1 the same day. The checkout got its `node_modules` again with
   `npm ci`, and `dist/` here was built from `87ab247`'s tree.
 
+The line across clear water (2026-11-21). The session of the consumer film
+`films/pelagic-grove` found a level line across its underwater shots and
+wrote the task (`films/pelagic-grove/ENGINE-TASK-underwater-seam.md`). Fixed
+on the branch `fix/underwater-seam` (`git status` there says whether it is
+still only in the working tree, `git log main..fix/underwater-seam` whether
+merged): a backdrop sphere behind the water in `Underwater.ts`, and the view
+counting all the water up to the surface. Record:
+[task](docs/plans/records/underwater-seam/task.md),
+[verification](docs/plans/records/underwater-seam/verification.md). The
+consumer builds against this checkout's files, so its next build carries
+the fix whether or not it is committed; it was built once into
+`dist/webgpu-engine-fix` there for the check, its own outputs untouched, and
+stills named `engine-fix-*.png` were added to its `evidence/` (ten; five
+of them are kept in `audits/underwater-seam-2026-11-21/consumer/`).
+
 The review's requests (2026-11-21). The outside review made its fifteen
 characters and eleven scenes for phones on `ba24ae4` and listed what the
 engine kept it from (`ENGINE-REQUESTS.md` in `VerifyZhuda`, `3c182f0`, eight

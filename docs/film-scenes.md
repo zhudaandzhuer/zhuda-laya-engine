@@ -792,6 +792,15 @@ desktop, not on a phone). `true` takes the defaults; it needs `grade`.
   wobbles with the same waves. It is left out of light shafts' depth
   picture, so `lightFog` with `shafts` still shows sunbeams under water;
   the water dims and tints them like everything else.
+- **Behind the water** there is only water. The plane of the surface ends
+  at `maxDistance` from the eye; beyond it, and below the horizon, a sphere
+  just inside the camera's far plane carries the still surface on above
+  level and the water's own light below it. In clear water (an `extinction`
+  of 0.01 or 0.02 a metre) the sky used to show past the plane's edge as a
+  line across the frame; `maxDistance` no longer has to be raised for it.
+  Things that are drawn beyond `maxDistance` are still seen through
+  `maxDistance` of water and no more, and nothing is drawn in the last
+  twentieth of the camera's range.
 - **Quality.** Level 1 drops the caustics; level 0 has no HDR chain and no
   water (use `fog` for a cheap stand-in there).
 - **In place.** `setLook` changes the colour, extinction, surface height,

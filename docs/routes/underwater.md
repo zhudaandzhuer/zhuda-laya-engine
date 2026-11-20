@@ -72,6 +72,15 @@ recipe materials.
 - **A look at level 0 has no water.** The medium needs the HDR chain, which level 0
   drops; level 1 drops only the caustics. A phone that falls to level 0 shows the
   scene dry: give that level a `fog` of the water's colour as a stand-in.
+- **Clear water shows what is behind it.** With an `extinction` near 0.01 a
+  metre a tenth of the light survives 170 m, so whatever stands behind the water
+  shows. The engine puts the water itself there (the surface carried on past
+  the plane's edge, the water's own light below the horizon), so there is no line
+  across the frame; before `fix: underwater backdrop` (2026-11-21) there was, and
+  the way round it was a `maxDistance` of 5.5 over the smallest extinction. What
+  remains: things beyond `maxDistance` are seen through `maxDistance` of water, so
+  in clear water a far rock is plainer than it should be. Raise `maxDistance` to
+  the distance things should fade by.
 - **Looking up, the window is most of the frame.** With a wide lens pointed
   straight up almost everything is inside 48.6°: the edge of the window shows only
   when the camera is pitched about 50° up.
@@ -89,7 +98,9 @@ recipe materials.
 - `npm run verify:film-underwater` (and with `ZHUDA_FILM_RENDERER=webgpu`): the view
   dimmed per channel and bluer far off, caustics with spread and motion, the window
   brighter than the reflected surface, nothing changed above the surface, no WebGL
-  error. Both pass (record `docs/plans/records/underwater-look/`).
+  error; clear water one colour from the surface to the horizon, and bright clear
+  water the same with the plane ending at 170 m and at 600 m. Both pass (records
+  `docs/plans/records/underwater-look/` and `docs/plans/records/underwater-seam/`).
 - `npm run verify:flythrough -- tests/fixtures/flythrough/underwater.json` (6 s, 180
   frames, 960 by 540; GPU time per frame, two runs each):
 

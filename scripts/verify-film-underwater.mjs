@@ -9,6 +9,11 @@
 //   in brightness with them than without, and they move with shot time;
 // - looking up, the sky shows through the window in the surface and the
 //   water's own colour beyond it;
+// - in clear water (extinction 0.02, 0.014, 0.012 a metre) a view level with
+//   the surface is one colour from the surface down to the floor: the plane
+//   drawn at the surface ends at maxDistance, and the sky behind it used to
+//   show past its edge as a bright band across the frame; with bright water
+//   the frame is the same whether the plane ends at 170 m or at 600 m;
 // - above the surface (a scene whose water lies below everything) nothing
 //   changes: the frame is byte-identical to the scene without water;
 // - no WebGL error and no WebGPU error.
@@ -87,6 +92,10 @@ const FLOOR = { eye: [0, 2.6, 9], target: [0.5, 0, 0], focalLengthMm: 24 };
 // Pitched 50° up: the window (within 48.6° of overhead) at the top, total reflection below it.
 const UP = { eye: [0, 2, 4], target: [0, 9.66, -2.43], focalLengthMm: 18 };
 const ABOVE = { eye: [0, 12, 22], target: [0, 1, 0], focalLengthMm: 28 };
+// Four metres under the surface, looking a little above level: the plane's
+// edge is 1.3 to 1.5 degrees above the horizon, a few rows above the floor's end.
+const LEVEL = { eye: [0, 3, 13], target: [0, 5.5, -60], focalLengthMm: 24 };
+const CLEAR = [0.02, 0.014, 0.012];
 try {
   await host.ready();
   report.gpu = host.info.gpu;
@@ -110,6 +119,51 @@ try {
     window: mean(up, 0.2, 0.02, 0.8, 0.2),
     reflected: mean(up, 0.2, 0.75, 0.8, 0.95),
   };
+
+  report.clear = {};
+  for (const maxDistance of [150, 170]) {
+    const clear = {
+      ...variant('underwater-clear-' + maxDistance, {
+        ...scene.look.underwater,
+        extinction: CLEAR,
+        maxDistance,
+      }),
+    };
+    clear.look = { ...clear.look, lightFog: false };
+    const level = await render('clear-level-' + maxDistance, clear, LEVEL, 0);
+    report.clear[maxDistance] = {
+      // Open water well above the horizon, and the rows just over the floor's far end.
+      above: mean(level, 0.33, 0.3, 0.67, 0.4),
+      horizon: mean(level, 0.33, 0.5, 0.67, 0.545),
+    };
+  }
+
+  // Bright clear water, where the surface's own colour shows through 170 m of
+  // it: what stands behind the plane's edge must be what the plane would show.
+  const bright = (maxDistance) => {
+    const made = variant('underwater-bright-' + maxDistance, {
+      ...scene.look.underwater,
+      color: [0.03, 0.32, 0.56],
+      extinction: CLEAR,
+      maxDistance,
+    });
+    made.look = { ...made.look, lightFog: false };
+    return made;
+  };
+  const near = await render('bright-level-170', bright(170), LEVEL, 0);
+  const wide = await render('bright-level-600', bright(600), LEVEL, 0);
+  let unlike = 0;
+  for (let y = 0; y < Math.floor(H * 0.55); y++)
+    for (let x = 0; x < W; x++) {
+      const i = (y * W + x) * 4;
+      if (
+        Math.abs(near.data[i] - wide.data[i]) > 3 ||
+        Math.abs(near.data[i + 1] - wide.data[i + 1]) > 3 ||
+        Math.abs(near.data[i + 2] - wide.data[i + 2]) > 3
+      )
+        unlike++;
+    }
+  report.bright = { unlikePixels: unlike, of: Math.floor(H * 0.55) * W };
 
   const deepWater = variant('underwater-below-all', { ...scene.look.underwater, surfaceY: -5 });
   const above = await render('above-water-below-all', deepWater, ABOVE, 0);
@@ -147,6 +201,15 @@ assert.ok(
   lum(report.window.window) > lum(report.window.reflected) * 1.3,
   `the window overhead is brighter than the surface beyond it (${report.window.window} against ${report.window.reflected})`,
 );
+for (const [maxDistance, clear] of Object.entries(report.clear))
+  assert.ok(
+    Math.abs(lum(clear.horizon) - lum(clear.above)) < 6,
+    `clear water is one colour down to the horizon with maxDistance ${maxDistance} (at the horizon ${clear.horizon}, above it ${clear.above})`,
+  );
+assert.ok(
+  report.bright.unlikePixels < 40,
+  `bright clear water looks the same with the plane ending at 170 m and at 600 m (${report.bright.unlikePixels} of ${report.bright.of} pixels differ)`,
+);
 assert.equal(report.above.differingPixels, 0, 'above the surface nothing changes');
 assert.deepEqual(report.glErrors, [], 'no WebGL error');
 console.log(
@@ -155,6 +218,8 @@ console.log(
       view: { wet: v.wet, dry: v.dry, vivid: v.metrics.vivid, flags: v.metrics.flags },
       caustics: c,
       window: report.window,
+      clear: report.clear,
+      bright: report.bright,
       above: report.above,
     }) +
     `\nPictures: ${out}`,
