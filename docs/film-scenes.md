@@ -173,8 +173,48 @@ relief is added at `normal` (0..2). Far away its small mip levels are its
 mean and it changes nothing, so there is no distance to set. It is the
 material's one detail map: `detail` and `variation` cannot both be given.
 
+A recipe material may be laid on by place instead of by the mesh's texture
+coordinates:
+
+```json
+"rock": { "recipe": "cliff-stone", "projection": "triplanar",
+          "top": { "recipe": "moss", "from": 0.55, "to": 0.8 } }
+```
+
+`"projection": "triplanar"` projects the recipe along the three world axes and
+mixes them by which way the surface faces, so a steep slope, a cone or a rock
+shows it at its true size instead of squeezed or stretched, and two meshes
+that meet carry one pattern across the join. `top` lays a second recipe where
+the surface faces up (moss on a stone's top, snow on a ledge, dust on a
+shelf): `from` and `to` are the upward share of the surface normal, 1 level
+and 0 a wall, between which it comes in. It reads each map three times a
+pixel (and the top's once more), so use it where the stretching shows. Not
+with `variation`, `detail`, `blend` or `doubleSided`. In a program:
+`createZhudaTriplanarMaterial(set, { top })`.
+
+A `terrain` node is ground with heights:
+
+```json
+{ "id": "hills", "type": "terrain", "position": [0, 0, 0],
+  "size": [80, 80], "cells": [96, 96], "material": "rock",
+  "noise": { "seed": 5, "heightM": 14, "scaleM": 30,
+             "flatten": [{ "minX": -6, "maxX": 6, "minZ": -6, "maxZ": 6, "y": 3, "marginM": 6 }] } }
+```
+
+A grid of `cells` (1..254 a side) over `size` metres centred on `position`,
+each corner at its own height above `position`'s. `noise` makes fractal hills
+up to `heightM` high and about `scaleM` across, the same for the same `seed`
+(`ridged: true` folds them into ridges), with up to 32 `flatten` rectangles
+pressed level at `y` for a plot or a road, in the piece's own metres, eased in
+over `marginM`. Or give `heights`: `(cells[0] + 1) * (cells[1] + 1)` numbers,
+row by row from -Z, each row from -X. It is drawn, lit and shadowed like a
+box, and `film_scene_query` gives its height anywhere. Its texture
+coordinates are metres seen from above: give it a triplanar material where it
+is steep. One mesh; no caves or overhangs (those are meshes of their own),
+and for ground that is streamed or edited use `ZhudaTerrain3D` in a program.
+
 A `grass` node is grass a camera can walk through ([grass](grass.md)), on
-level ground:
+level ground, or on a terrain node with `"on": "hills"` in place of `y`:
 
 ```json
 { "id": "meadow", "type": "grass",
@@ -189,8 +229,8 @@ like the ground, thinned with distance and gone beyond `distanceM`. Nothing
 grows on a `clear` rectangle, nor under what stands on the ground (the boxes
 of props and of `box`, `lathe`, `extrude` and `sweep` nodes that reach down to
 `y`; `"avoidSolids": false` lets it). It is grown for where the camera is
-whenever the camera is set. The ground it stands on is level: a hill needs a
-heightfield, which the scene format does not have.
+whenever the camera is set. With `y` the ground it stands on is level; with `on` it
+follows the terrain node's heights and stops at its edge.
 
 A prop node may say how it behaves with distance, like a model node:
 

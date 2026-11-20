@@ -4,6 +4,8 @@ export * from './TextureRecipe.ts';
 export * from './PhotoMaterial.ts';
 export * from './Variation.ts';
 export * from './ProceduralMaterial.ts';
+export * from './TriplanarMaterial.ts';
+export * from './TerrainMesh.ts';
 export * from './Geometry.ts';
 export * from './PropFactory.ts';
 export * from './SynthAudio.ts';

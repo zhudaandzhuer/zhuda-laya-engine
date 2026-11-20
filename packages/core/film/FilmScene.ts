@@ -21,6 +21,10 @@ import {
 import { validateZhudaDecal, type ZhudaDecalShape } from '../runtime3d/Decals.ts';
 import { validateZhudaGrass } from '../runtime3d/Grass.ts';
 import {
+  validateZhudaTerrainMesh,
+  type ZhudaTerrainMeshOptions,
+} from '../procedural/TerrainMesh.ts';
+import {
   resolveZhudaAutoExposure,
   resolveZhudaDepthOfField,
   resolveZhudaMotionBlur,
@@ -464,6 +468,23 @@ export type ZhudaFilmMaterial =
         normal?: number;
       };
       /**
+       * 'triplanar' lays the recipe on by where the surface is in the world
+       * (three flat projections mixed by which way it faces) instead of by
+       * the mesh's texture coordinates: a steep slope or a rock then shows
+       * it at its true size, not stretched. Default 'uv'. Three times the
+       * texture reads; not with `variation`, `detail`, `blend` or
+       * `doubleSided`.
+       */
+      projection?: 'uv' | 'triplanar';
+      /**
+       * With `projection: 'triplanar'`: a second recipe where the surface
+       * faces up (moss on a stone's top, snow on a ledge). `from` and `to`
+       * are the upward share of the surface normal (1 level, 0 a wall)
+       * between which it comes in, defaults 0.55 and 0.8; `size` its bake
+       * size (default 256).
+       */
+      top?: { recipe: string | ZhudaTextureRecipe; from?: number; to?: number; size?: number };
+      /**
        * How the surface is put into the picture (default 'opaque'):
        * 'cutout' draws it where its alpha is above `alphaCutoff` and nowhere
        * else, with depth and shadows (leaves, grass, petals, lace); 'alpha'
@@ -642,6 +663,28 @@ export type ZhudaFilmNode =
   | {
       id: string;
       /**
+       * Ground with heights (`createZhudaTerrainMesh`): a grid of `cells`
+       * over `size` metres, centred on `position`, each corner at its own
+       * height above `position`'s. Give `heights` (a number a corner, row by
+       * row from -Z, each row from -X) or `noise` (fractal hills up to
+       * `heightM`, about `scaleM` across, with `flatten` rectangles pressed
+       * level for plots and roads, in the piece's own metres). It is lit,
+       * shadowed and asked by `film_scene_query` like a box; a `grass` node
+       * stands on it with `on`. Lay its recipe with `projection:
+       * 'triplanar'` where it is steep. One mesh of at most 254 cells a
+       * side; no caves or overhangs.
+       */
+      type: 'terrain';
+      position: [number, number, number];
+      size: [number, number];
+      cells: [number, number];
+      heights?: number[];
+      noise?: NonNullable<ZhudaTerrainMeshOptions['noise']>;
+      material: string;
+    }
+  | {
+      id: string;
+      /**
        * Grass a camera can walk through (`ZhudaGrassField`): narrow curved
        * blades in clumps over turf, moved by the wind with shot time, lit and
        * shadowed like the ground, thinned with distance. It stands on level
@@ -652,6 +695,8 @@ export type ZhudaFilmNode =
       area: { minX: number; maxX: number; minZ: number; maxZ: number };
       /** Height of the ground it grows on (default 0). */
       y?: number;
+      /** Or the id of a `terrain` node it stands on, at that ground's heights. */
+      on?: string;
       /** Rectangles of the area where nothing grows (a road, a pond), at most 32. */
       clear?: { minX: number; maxX: number; minZ: number; maxZ: number }[];
       /**
@@ -1760,10 +1805,53 @@ function validateMaterial(
   if ('recipe' in material) {
     unknownKeys(
       material,
-      ['recipe', 'tint', 'size', 'variation', 'detail', 'blend', 'alphaCutoff', 'doubleSided'],
+      [
+        'recipe',
+        'tint',
+        'size',
+        'variation',
+        'detail',
+        'blend',
+        'alphaCutoff',
+        'doubleSided',
+        'projection',
+        'top',
+      ],
       path,
       issues,
     );
+    if (
+      material.projection !== undefined &&
+      !['uv', 'triplanar'].includes(material.projection as string)
+    )
+      issues.push(`${path}.projection: use uv or triplanar`);
+    const triplanar = material.projection === 'triplanar';
+    if (triplanar)
+      for (const key of ['variation', 'detail', 'blend', 'alphaCutoff', 'doubleSided'] as const)
+        if (material[key] !== undefined)
+          issues.push(`${path}.${key}: not with projection triplanar`);
+    const top: unknown = material.top;
+    if (top !== undefined) {
+      if (!triplanar) issues.push(`${path}.top: needs projection triplanar`);
+      if (!object(top)) issues.push(`${path}.top: object required`);
+      else {
+        unknownKeys(top, ['recipe', 'from', 'to', 'size'], `${path}.top`, issues);
+        if (typeof top.recipe === 'string') {
+          if (context.recipes && !context.recipes.includes(top.recipe))
+            issues.push(
+              `${path}.top.recipe: unknown recipe ${top.recipe}; known: ${context.recipes.join(', ')}`,
+            );
+        } else
+          for (const issue of validateZhudaTextureRecipe(top.recipe))
+            issues.push(`${path}.top.recipe${issue.startsWith('.') ? '' : ': '}${issue}`);
+        const from = top.from ?? 0.55,
+          to = top.to ?? 0.8;
+        if (!(finite(from) && finite(to) && from >= 0 && to <= 1 && from < to))
+          issues.push(`${path}.top: from and to are 0..1, from below to`);
+        if (top.size !== undefined && ![128, 256, 512, 1024].includes(top.size as number))
+          issues.push(`${path}.top.size: use 128, 256, 512 or 1024`);
+      }
+    }
     const variation: unknown = material.variation;
     if (
       variation !== undefined &&
@@ -2038,8 +2126,26 @@ function validateNode(
         issues.push(`${path}.size: use [width, depth] in metres`);
       usesMaterial();
       break;
+    case 'terrain': {
+      unknownKeys(
+        node,
+        ['id', 'type', 'position', 'size', 'cells', 'heights', 'noise', 'material'],
+        path,
+        issues,
+      );
+      vec3(node.position, `${path}.position`, issues);
+      for (const issue of validateZhudaTerrainMesh({
+        size: node.size,
+        cells: node.cells,
+        heights: node.heights,
+        noise: node.noise,
+      } as ZhudaTerrainMeshOptions))
+        issues.push(`${path}.${issue}`);
+      usesMaterial();
+      break;
+    }
     case 'grass': {
-      const own = ['id', 'type', 'y', 'clear', 'avoidSolids'];
+      const own = ['id', 'type', 'y', 'on', 'clear', 'avoidSolids'];
       const passed = [
         'area',
         'density',
@@ -2061,6 +2167,11 @@ function validateNode(
         issues.push(`${path}.${issue.replace(/^grass\./, '')}`);
       if (node.y !== undefined && !(finite(node.y) && Math.abs(node.y) <= ZHUDA_FILM_LIMITS.extent))
         issues.push(`${path}.y: a height in metres`);
+      if (node.on !== undefined) {
+        if (typeof node.on !== 'string') issues.push(`${path}.on: the id of a terrain node`);
+        if (node.y !== undefined)
+          issues.push(`${path}.y: not with on (the terrain gives the height)`);
+      }
       if (node.avoidSolids !== undefined && typeof node.avoidSolids !== 'boolean')
         issues.push(`${path}.avoidSolids: true or false`);
       if (node.clear !== undefined) {
@@ -2542,6 +2653,16 @@ export function validateZhudaFilmScene(
         issues.push(
           `scene.nodes[${i}].follows.node: ${node.follows.node} is not a model node in this scene`,
         );
+    });
+    const terrainIds = new Set(
+      scene.nodes.flatMap((node) =>
+        object(node) && node.type === 'terrain' && typeof node.id === 'string' ? [node.id] : [],
+      ),
+    );
+    scene.nodes.forEach((node, i) => {
+      if (!object(node) || node.type !== 'grass' || typeof node.on !== 'string') return;
+      if (!terrainIds.has(node.on))
+        issues.push(`scene.nodes[${i}].on: ${node.on} is not a terrain node in this scene`);
     });
     let reflectors = 0;
     scene.nodes.forEach((node, i) => {

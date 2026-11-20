@@ -663,3 +663,91 @@ test('a copy of a crowd shows the frame of its clip at the time it is given, and
   assert.equal(zhudaCrowdFrame(clip, 12.3456, 0.1, 1.3), zhudaCrowdFrame(clip, 12.3456, 0.1, 1.3));
   assert.throws(() => zhudaCrowdFrame(clip, NaN), /finite/);
 });
+
+test('a film scene takes a terrain node, grass on it, and a triplanar recipe material', async () => {
+  const { createZhudaTerrainMesh, zhudaTerrainHeightAt, zhudaTerrainHeights } = await import(
+    '../packages/core/procedural/TerrainMesh.ts'
+  );
+  const scene = (terrain, extra = {}, material = { color: [0.5, 0.5, 0.5] }) => ({
+    schemaVersion: 1,
+    id: 'terrain-node-check',
+    camera: { eye: [0, 1, 6], target: [0, 1, 0], focalLengthMm: 35 },
+    materials: { rock: material },
+    nodes: [
+      {
+        id: 'land',
+        type: 'terrain',
+        position: [0, 0, 0],
+        size: [10, 10],
+        cells: [2, 2],
+        material: 'rock',
+        ...terrain,
+      },
+      { id: 'meadow', type: 'grass', area: { minX: -5, maxX: 5, minZ: -5, maxZ: 5 }, ...extra },
+    ],
+  });
+  const issues = (...args) => validateZhudaFilmScene(scene(...args));
+  const flat = { heights: [0, 0, 0, 0, 1, 0, 0, 0, 0] };
+  assert.deepEqual(issues(flat, { on: 'land' }), []);
+  assert.deepEqual(issues({ noise: { heightM: 5, scaleM: 20, seed: 3, ridged: true } }), []);
+  assert.match(issues({}).join(' '), /give heights or noise/);
+  assert.match(issues({ ...flat, noise: { heightM: 1, scaleM: 5 } }).join(' '), /one of them/);
+  assert.match(issues({ heights: [0, 1] }).join(' '), /heights: 9 numbers/);
+  assert.match(issues({ ...flat, cells: [300, 2] }).join(' '), /cells: use/);
+  assert.match(issues({ noise: { heightM: 5, scaleM: 0 } }).join(' '), /noise\.scaleM/);
+  assert.match(issues(flat, { on: 'nowhere' }).join(' '), /on: nowhere is not a terrain node/);
+  assert.match(issues(flat, { on: 'land', y: 1 }).join(' '), /y: not with on/);
+
+  // The mesh: a peak of 1 m in the middle, fronts facing up, heights between corners.
+  const options = { size: [10, 10], cells: [2, 2], heights: flat.heights };
+  const mesh = createZhudaTerrainMesh(options);
+  assert.equal(mesh.positions.length, 27);
+  assert.equal(mesh.indices.length, 24);
+  for (let t = 0; t < mesh.indices.length; t += 3) {
+    const [a, b, c] = [0, 1, 2].map((k) => {
+      const i = mesh.indices[t + k] * 3;
+      return [mesh.positions[i], mesh.positions[i + 1], mesh.positions[i + 2]];
+    });
+    // Clockwise seen from above, as the engine's box top is.
+    assert.ok((b[2] - a[2]) * (c[0] - a[0]) - (b[0] - a[0]) * (c[2] - a[2]) < 0);
+  }
+  const at = (x, z) => zhudaTerrainHeightAt(zhudaTerrainHeights(options), [10, 10], [2, 2], x, z);
+  assert.equal(at(0, 0), 1);
+  assert.equal(at(-5, -5), 0);
+  assert.ok(Math.abs(at(2.5, 0) - 0.5) < 1e-6);
+  assert.equal(at(6, 0), null);
+  // Noise: the same for a seed, level inside a flattened rectangle.
+  const hills = {
+    size: [60, 60],
+    cells: [30, 30],
+    noise: {
+      seed: 2,
+      heightM: 10,
+      scaleM: 20,
+      flatten: [{ minX: -4, maxX: 4, minZ: -4, maxZ: 4, y: 2, marginM: 4 }],
+    },
+  };
+  const h = zhudaTerrainHeights(hills);
+  assert.deepEqual([...zhudaTerrainHeights(hills)], [...h]);
+  assert.ok(Math.abs(zhudaTerrainHeightAt(h, hills.size, hills.cells, 1, -1) - 2) < 1e-5);
+  assert.ok(Math.max(...h) - Math.min(...h) > 2);
+
+  // The material's projection.
+  const recipe = {
+    schemaVersion: 1,
+    id: 'tri-check',
+    tileMeters: [1, 1],
+    seed: 1,
+    base: { color: [0.5, 0.5, 0.5], roughness: 0.8, metallic: 0 },
+    layers: [],
+  };
+  const m = (extra) => issues(flat, {}, { recipe, ...extra }).filter((i) => /materials/.test(i));
+  assert.deepEqual(m({ projection: 'triplanar', top: { recipe, from: 0.4, to: 0.9 } }), []);
+  assert.match(m({ projection: 'cube' })[0], /projection: use uv or triplanar/);
+  assert.match(m({ top: { recipe } })[0], /top: needs projection triplanar/);
+  assert.match(m({ projection: 'triplanar', variation: 0.3 })[0], /variation: not with projection/);
+  assert.match(
+    m({ projection: 'triplanar', top: { recipe, from: 0.9, to: 0.4 } })[0],
+    /from and to are 0\.\.1/,
+  );
+});

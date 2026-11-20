@@ -1,6 +1,7 @@
 // Generated from TypeScript source; run npm run types:generate.
 import { type ZhudaTextureRecipe } from '../procedural/TextureRecipe.js';
 import { type ZhudaDecalShape } from '../runtime3d/Decals.js';
+import { type ZhudaTerrainMeshOptions } from '../procedural/TerrainMesh.js';
 import { type ZhudaAutoExposureOptions, type ZhudaDepthOfFieldOptions, type ZhudaMotionBlurOptions } from '../runtime3d/CameraEffects.js';
 import { type ZhudaResolvedUnderwater, type ZhudaUnderwaterOptions } from '../runtime3d/Underwater.js';
 import { type ZhudaToneMapping } from '../runtime3d/ToneCurves.js';
@@ -414,6 +415,28 @@ export type ZhudaFilmMaterial = {
         normal?: number;
     };
     /**
+     * 'triplanar' lays the recipe on by where the surface is in the world
+     * (three flat projections mixed by which way it faces) instead of by
+     * the mesh's texture coordinates: a steep slope or a rock then shows
+     * it at its true size, not stretched. Default 'uv'. Three times the
+     * texture reads; not with `variation`, `detail`, `blend` or
+     * `doubleSided`.
+     */
+    projection?: 'uv' | 'triplanar';
+    /**
+     * With `projection: 'triplanar'`: a second recipe where the surface
+     * faces up (moss on a stone's top, snow on a ledge). `from` and `to`
+     * are the upward share of the surface normal (1 level, 0 a wall)
+     * between which it comes in, defaults 0.55 and 0.8; `size` its bake
+     * size (default 256).
+     */
+    top?: {
+        recipe: string | ZhudaTextureRecipe;
+        from?: number;
+        to?: number;
+        size?: number;
+    };
+    /**
      * How the surface is put into the picture (default 'opaque'):
      * 'cutout' draws it where its alpha is above `alphaCutoff` and nowhere
      * else, with depth and shadows (leaves, grass, petals, lace); 'alpha'
@@ -585,6 +608,27 @@ export type ZhudaFilmNode = {
 } | {
     id: string;
     /**
+     * Ground with heights (`createZhudaTerrainMesh`): a grid of `cells`
+     * over `size` metres, centred on `position`, each corner at its own
+     * height above `position`'s. Give `heights` (a number a corner, row by
+     * row from -Z, each row from -X) or `noise` (fractal hills up to
+     * `heightM`, about `scaleM` across, with `flatten` rectangles pressed
+     * level for plots and roads, in the piece's own metres). It is lit,
+     * shadowed and asked by `film_scene_query` like a box; a `grass` node
+     * stands on it with `on`. Lay its recipe with `projection:
+     * 'triplanar'` where it is steep. One mesh of at most 254 cells a
+     * side; no caves or overhangs.
+     */
+    type: 'terrain';
+    position: [number, number, number];
+    size: [number, number];
+    cells: [number, number];
+    heights?: number[];
+    noise?: NonNullable<ZhudaTerrainMeshOptions['noise']>;
+    material: string;
+} | {
+    id: string;
+    /**
      * Grass a camera can walk through (`ZhudaGrassField`): narrow curved
      * blades in clumps over turf, moved by the wind with shot time, lit and
      * shadowed like the ground, thinned with distance. It stands on level
@@ -600,6 +644,8 @@ export type ZhudaFilmNode = {
     };
     /** Height of the ground it grows on (default 0). */
     y?: number;
+    /** Or the id of a `terrain` node it stands on, at that ground's heights. */
+    on?: string;
     /** Rectangles of the area where nothing grows (a road, a pond), at most 32. */
     clear?: {
         minX: number;

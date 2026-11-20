@@ -5,6 +5,8 @@ export * from './TextureRecipe.js';
 export * from './PhotoMaterial.js';
 export * from './Variation.js';
 export * from './ProceduralMaterial.js';
+export * from './TriplanarMaterial.js';
+export * from './TerrainMesh.js';
 export * from './Geometry.js';
 export * from './PropFactory.js';
 export * from './SynthAudio.js';

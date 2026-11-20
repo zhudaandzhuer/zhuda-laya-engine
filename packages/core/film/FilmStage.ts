@@ -72,6 +72,12 @@ import {
   type ZhudaTextureRecipe,
 } from '../procedural/TextureRecipe.ts';
 import { createZhudaProceduralMaterial } from '../procedural/ProceduralMaterial.ts';
+import { createZhudaTriplanarMaterial } from '../procedural/TriplanarMaterial.ts';
+import {
+  createZhudaTerrainMesh,
+  zhudaTerrainHeightAt,
+  zhudaTerrainHeights,
+} from '../procedural/TerrainMesh.ts';
 import {
   createZhudaBoxMesh,
   createZhudaExtrudeMesh,
@@ -632,32 +638,51 @@ function buildFilmStageContents(
             bakeCache.set(fineKey, fine);
           }
         }
-        const baked = createZhudaProceduralMaterial(set, {
-          ...(spec.tint ? { tint: spec.tint } : {}),
-          ...(fine
-            ? {
-                detail: {
-                  set: fine,
-                  meters: spec.detail!.meters,
-                  albedo: spec.detail!.albedo,
-                  normal: spec.detail!.normal,
-                },
-              }
-            : {}),
-          ...(spec.blend ? { blend: spec.blend } : {}),
-          ...(spec.alphaCutoff !== undefined ? { alphaCutoff: spec.alphaCutoff } : {}),
-          ...(spec.doubleSided ? { doubleSided: true } : {}),
-          // One repeat of the picture spans many tiles and is not a multiple of one: its own
-          // repeat is rare in a view and never lines up with the tiles.
-          ...(spec.variation
-            ? {
-                variation: {
-                  amount: spec.variation,
-                  meters: Math.max(24, Math.max(...set.tileMeters) * 13.7),
-                },
-              }
-            : {}),
-        });
+        let over: ZhudaBakedTextureSet | undefined;
+        if (spec.top) {
+          const other =
+            typeof spec.top.recipe === 'string' ? recipes[spec.top.recipe] : spec.top.recipe;
+          if (!other) throw Error(`Film scene: unknown recipe ${String(spec.top.recipe)}`);
+          const side = spec.top.size ?? 256,
+            topKey = zhudaBakeKey(other, side);
+          over = bakeCache.get(topKey);
+          if (!over) {
+            over = bakeZhudaTextureSet(other, { size: side });
+            bakeCache.set(topKey, over);
+          }
+        }
+        const baked =
+          spec.projection === 'triplanar'
+            ? createZhudaTriplanarMaterial(set, {
+                ...(spec.tint ? { tint: spec.tint } : {}),
+                ...(over ? { top: { set: over, from: spec.top!.from, to: spec.top!.to } } : {}),
+              })
+            : createZhudaProceduralMaterial(set, {
+                ...(spec.tint ? { tint: spec.tint } : {}),
+                ...(fine
+                  ? {
+                      detail: {
+                        set: fine,
+                        meters: spec.detail!.meters,
+                        albedo: spec.detail!.albedo,
+                        normal: spec.detail!.normal,
+                      },
+                    }
+                  : {}),
+                ...(spec.blend ? { blend: spec.blend } : {}),
+                ...(spec.alphaCutoff !== undefined ? { alphaCutoff: spec.alphaCutoff } : {}),
+                ...(spec.doubleSided ? { doubleSided: true } : {}),
+                // One repeat of the picture spans many tiles and is not a multiple of one: its own
+                // repeat is rare in a view and never lines up with the tiles.
+                ...(spec.variation
+                  ? {
+                      variation: {
+                        amount: spec.variation,
+                        meters: Math.max(24, Math.max(...set.tileMeters) * 13.7),
+                      },
+                    }
+                  : {}),
+              });
         cleanups.push(() => baked.dispose());
         material = baked.material;
       } else {
@@ -844,6 +869,15 @@ function buildFilmStageContents(
     }
     // Boxes and ground: one merged mesh per material, like props.
     const primitives = new Map<string, MeshData[]>();
+    const terrains = new Map<
+      string,
+      {
+        heights: Float32Array;
+        size: [number, number];
+        cells: [number, number];
+        position: readonly number[];
+      }
+    >();
     for (const node of scene.nodes) {
       let mesh: MeshData, material: string;
       if (node.type === 'box') {
@@ -876,6 +910,21 @@ function buildFilmStageContents(
           createZhudaSweepMesh({ profile: node.profile, path: node.path, closed: node.closed }),
           { position: node.position, yawDeg: node.yawDeg },
         );
+      } else if (node.type === 'terrain') {
+        material = node.material;
+        const options = {
+          size: node.size,
+          cells: node.cells,
+          heights: node.heights,
+          noise: node.noise,
+        };
+        terrains.set(node.id, {
+          heights: zhudaTerrainHeights(options),
+          size: node.size,
+          cells: node.cells,
+          position: node.position,
+        });
+        mesh = transformZhudaMesh(createZhudaTerrainMesh(options), { position: node.position });
       } else if (node.type === 'ground') {
         material = node.material;
         mesh = transformZhudaMesh(
@@ -888,7 +937,7 @@ function buildFilmStageContents(
           { position: [0, -0.1, 0] },
         );
       } else continue;
-      if (node.type !== 'ground') {
+      if (node.type !== 'ground' && node.type !== 'terrain') {
         const min = [Infinity, Infinity, Infinity],
           max = [-Infinity, -Infinity, -Infinity];
         for (let i = 0; i < mesh.positions.length; i += 3)
@@ -923,18 +972,49 @@ function buildFilmStageContents(
     let grassSeconds = 0;
     for (const node of scene.nodes) {
       if (node.type !== 'grass') continue;
-      const y = node.y ?? 0,
-        clear = node.clear ?? [];
-      // What reaches down to the ground, as rectangles of it.
+      const clear = node.clear ?? [];
+      const land = node.on ? terrains.get(node.on) : undefined;
+      if (node.on && !land) throw Error(`Film scene grass ${node.id}: no terrain ${node.on}`);
+      const groundAt = land
+        ? (x: number, z: number) =>
+            land.position[1] +
+            (zhudaTerrainHeightAt(
+              land.heights,
+              land.size,
+              land.cells,
+              x - land.position[0],
+              z - land.position[2],
+            ) ?? 0)
+        : () => node.y ?? 0;
+      // What reaches down to the ground where it stands, as rectangles of it.
       const feet =
         node.avoidSolids === false
           ? []
-          : solids.filter((box) => box.min[1] <= y + 0.25 && box.max[1] > y + 0.02);
-      const { id: _id, type: _type, y: _y, clear: _clear, avoidSolids: _avoid, ...options } = node;
+          : solids.filter((box) => {
+              const y = groundAt((box.min[0] + box.max[0]) / 2, (box.min[2] + box.max[2]) / 2);
+              return box.min[1] <= y + 0.25 && box.max[1] > y + 0.02;
+            });
+      const {
+        id: _id,
+        type: _type,
+        y: _y,
+        on: _on,
+        clear: _clear,
+        avoidSolids: _avoid,
+        ...options
+      } = node;
       const field = new ZhudaGrassField(scene3D, {
         ...options,
-        ground: () => y,
+        ground: groundAt,
         grows: (x, z) =>
+          (!land ||
+            zhudaTerrainHeightAt(
+              land.heights,
+              land.size,
+              land.cells,
+              x - land.position[0],
+              z - land.position[2],
+            ) !== null) &&
           !clear.some((r) => x >= r.minX && x <= r.maxX && z >= r.minZ && z <= r.maxZ) &&
           !feet.some(
             (box) => x >= box.min[0] && x <= box.max[0] && z >= box.min[2] && z <= box.max[2],
