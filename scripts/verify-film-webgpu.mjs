@@ -26,6 +26,8 @@ const scripts = [
   'verify-film-cutout',
   'verify-film-detail',
   'verify-film-grass',
+  'verify-film-query',
+  'verify-film-pack-reload',
   'verify-film-reflections',
   'verify-film-variation',
   'verify-film-point-shadow',

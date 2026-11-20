@@ -191,6 +191,7 @@ test('film tools are listed and answer over JSON-RPC without a browser for data 
     'film_scene_apply',
     'film_scene_preview',
     'film_scene_review',
+    'film_scene_query',
     'film_render_job',
     'film_scene_close',
   ])

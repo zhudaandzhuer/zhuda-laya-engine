@@ -82,6 +82,35 @@ export const FILM_TOOLS_MANIFEST = [
     },
   },
   {
+    name: 'film_scene_query',
+    description:
+      'Ask the mounted scene where its surfaces are, instead of working positions out by hand. `heights`: [[x, z], ...] gives, for each, the height of the topmost surface there (a ray straight down from 10 km up). `rays`: [{origin, direction, maxMeters}] gives the nearest surface along each. Each answer names the node met, the distance, the point and the surface normal, or is null when nothing is met. Only props, boxes, lathes, extrusions, sweeps and ground are asked: models, water, mirrors, grass and decals are not. Up to 2000 questions a call. No picture is drawn.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        ...session,
+        heights: {
+          type: 'array',
+          items: { type: 'array', items: { type: 'number' }, minItems: 2, maxItems: 2 },
+          description: '[[x, z], ...] in metres',
+        },
+        rays: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              origin: { type: 'array', items: { type: 'number' }, minItems: 3, maxItems: 3 },
+              direction: { type: 'array', items: { type: 'number' }, minItems: 3, maxItems: 3 },
+              maxMeters: { type: 'number', description: 'Above 0, default 100000' },
+            },
+            required: ['origin', 'direction'],
+          },
+        },
+      },
+      required: ['sessionId'],
+    },
+  },
+  {
     name: 'film_scene_review',
     description:
       'Render one to four labelled shots of the same revision into one PNG grid to compare views. Returns the image and each cell position.',
@@ -186,15 +215,17 @@ async function filmHost() {
  */
 async function filmContext() {
   if (context !== ZHUDA_FILM_HOST_CONTEXT) return context;
-  let base = ZHUDA_FILM_HOST_CONTEXT;
   const film = packs.length || assetsDir ? await filmHost() : undefined;
-  if (packs.length) {
-    await film.ready();
-    base = { props: film.info.props, recipes: film.info.recipes };
-  }
+  if (packs.length) await film.ready();
+  // Read from the host each time: a pack edited on disk is loaded again, and
+  // its props and recipes are then the ones a scene is checked against.
   context = Object.freeze({
-    props: base.props,
-    recipes: base.recipes,
+    get props() {
+      return packs.length ? film.info.props : ZHUDA_FILM_HOST_CONTEXT.props;
+    },
+    get recipes() {
+      return packs.length ? film.info.recipes : ZHUDA_FILM_HOST_CONTEXT.recipes;
+    },
     get assets() {
       return film ? film.assetList().ids : [];
     },
@@ -246,6 +277,8 @@ export async function executeFilmTool(name, args = {}) {
   switch (name) {
     case 'film_scene_create': {
       await filmContext();
+      // A new session starts on the packs as they are on disk now.
+      if (packs.length) await (await filmHost()).ready();
       const created = sessions.create(args.scene);
       return [
         text({
@@ -255,6 +288,7 @@ export async function executeFilmTool(name, args = {}) {
           props: context.props,
           recipes: context.recipes,
           assets: context.assets,
+          ...(packs.length ? { packs: (await filmHost()).info.packs } : {}),
           advice: advise(sessions.get(created.sessionId).scene),
         }),
       ];
@@ -310,8 +344,66 @@ export async function executeFilmTool(name, args = {}) {
           batches: preview.batches,
           renderMs: preview.renderMs,
           gpu: film.info?.gpu,
+          ...(film.info?.packs ? { packs: film.info.packs } : {}),
           scope: 'one-sample preview through ZhudaCinematicCapture; not a final render',
           ...(await describeFrame(film, snapshot.sessionId, preview.png)),
+        }),
+      ];
+    }
+    case 'film_scene_query': {
+      const snapshot = current(args);
+      const heights = args.heights ?? [],
+        rays = args.rays ?? [];
+      if (!Array.isArray(heights) || !Array.isArray(rays))
+        throw Error('heights and rays must be lists');
+      if (!heights.length && !rays.length) throw Error('Give heights or rays');
+      if (heights.length + rays.length > 2000) throw Error('At most 2000 questions a call');
+      const finite = (list, count) =>
+        Array.isArray(list) && list.length === count && list.every((n) => Number.isFinite(n));
+      heights.forEach((at, i) => {
+        if (!finite(at, 2)) throw Error(`heights[${i}]: [x, z] required`);
+      });
+      rays.forEach((ray, i) => {
+        if (!finite(ray?.origin, 3)) throw Error(`rays[${i}].origin: [x, y, z] required`);
+        if (!finite(ray?.direction, 3) || !ray.direction.some((n) => n !== 0))
+          throw Error(`rays[${i}].direction: [x, y, z], not zero, required`);
+        if (ray.maxMeters !== undefined && !(Number.isFinite(ray.maxMeters) && ray.maxMeters > 0))
+          throw Error(`rays[${i}].maxMeters: must be above 0`);
+      });
+      const TOP = 10000;
+      const hits = await (
+        await filmHost()
+      ).raycast(snapshot.scene, [
+        ...heights.map(([x, z]) => ({ origin: [x, TOP, z], direction: [0, -1, 0] })),
+        ...rays.map(({ origin, direction, maxMeters }) => ({ origin, direction, maxMeters })),
+      ]);
+      const round = (n) => Math.round(n * 10000) / 10000;
+      const tidy = (hit) =>
+        hit && {
+          node: hit.node,
+          distance: round(hit.distance),
+          position: hit.position.map(round),
+          normal: hit.normal.map(round),
+        };
+      return [
+        text({
+          tool: name,
+          sessionId: snapshot.sessionId,
+          revision: snapshot.revision,
+          heights: heights.map(([x, z], i) => {
+            const hit = hits[i];
+            return hit
+              ? {
+                  at: [x, z],
+                  y: round(hit.position[1]),
+                  node: hit.node,
+                  normal: hit.normal.map(round),
+                }
+              : { at: [x, z], y: null };
+          }),
+          rays: hits.slice(heights.length).map(tidy),
+          scope:
+            'props, boxes, lathes, extrusions, sweeps and ground only; models, water, mirrors, grass and decals are not asked',
         }),
       ];
     }

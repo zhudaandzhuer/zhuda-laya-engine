@@ -119,6 +119,16 @@ async function render(options: {
   };
 }
 
+/** Rays asked of the mounted scene's props, boxes, shapes and ground. */
+function raycast(options: {
+  rays: { origin: number[]; direction: number[]; maxMeters?: number }[];
+}) {
+  const stage = requireStage();
+  return {
+    hits: options.rays.map((ray) => stage.raycast(ray.origin, ray.direction, ray.maxMeters)),
+  };
+}
+
 async function review(options: {
   shots: { label: string; camera: Camera; time?: number }[];
   width: number;
@@ -223,6 +233,7 @@ export function startFilmHost(
     mount,
     render,
     review,
+    raycast,
     flythrough,
     info: () => ({
       ready: state.ready,

@@ -68,6 +68,10 @@ export class ZhudaFilmHost {
   info;
 
   #packs;
+  /** Every file the packs were built from (their own and what they import), and their state then. */
+  #packInputs = [];
+  #packStamp = '';
+  #packInfo;
   #assetsDir;
   #renderer;
   /**
@@ -182,7 +186,8 @@ export class ZhudaFilmHost {
         (file, i) =>
           `{ name: ${JSON.stringify(path.basename(file))}, ...(pack${i}.default ?? pack${i}) }`,
       );
-      await esbuild.build({
+      const built = await esbuild.build({
+        metafile: true,
         stdin: {
           contents: [
             ...imports,
@@ -216,6 +221,31 @@ export class ZhudaFilmHost {
           },
         ],
       });
+      // What the packs are made of, so a reply can say which pack drew a picture
+      // and a pack edited on disk is loaded again instead of being drawn stale.
+      this.#packInputs = this.#packs.length
+        ? Object.keys(built.metafile.inputs)
+            .filter((input) => !input.includes(':'))
+            .map((input) => path.resolve(input))
+            .filter(
+              (file) =>
+                fs.existsSync(file) &&
+                !file.startsWith(path.join(engineRoot, 'packages') + path.sep) &&
+                !file.split(path.sep).includes('node_modules'),
+            )
+            .sort()
+        : [];
+      this.#packStamp = this.#stampPacks();
+      const hash = crypto.createHash('sha256');
+      for (const file of this.#packInputs)
+        hash.update(path.basename(file)).update(fs.readFileSync(file));
+      this.#packInfo = this.#packs.length
+        ? {
+            fingerprint: hash.digest('hex').slice(0, 16),
+            files: this.#packInputs.length,
+            loadedAt: new Date().toISOString(),
+          }
+        : undefined;
       await fsp.writeFile(
         path.join(web, 'index.html'),
         '<!doctype html><meta charset="utf-8"><title>Zhuda film host</title>' +
@@ -266,6 +296,7 @@ export class ZhudaFilmHost {
           this.info = {
             ...info,
             renderer: this.#renderer,
+            ...(this.#packInfo ? { packs: this.#packInfo } : {}),
             gpu: await this.#browser.evaluate(
               this.#renderer === 'webgpu'
                 ? `(()=>{const r=window.__ZHUDA_FILM__.state.context.renderer;return 'WebGPU '+[r.adapter?.vendor,r.adapter?.architecture,r.adapter?.description].filter(Boolean).join(' ')+(r.status?' ('+r.status+')':'')})()`
@@ -288,9 +319,47 @@ export class ZhudaFilmHost {
     }
   }
 
-  /** Starts the browser and loads the page (and its packs). */
+  #stampPacks() {
+    return this.#packInputs
+      .map((file) => {
+        try {
+          const stat = fs.statSync(file);
+          return `${stat.mtimeMs}:${stat.size}`;
+        } catch {
+          return 'gone';
+        }
+      })
+      .join('|');
+  }
+
+  /** A pack file written since the page loaded it: the page is started again with the new one. */
+  async #reloadChangedPacks() {
+    if (!this.#browser || !this.#packInputs.length || this.#stampPacks() === this.#packStamp)
+      return;
+    await this.#stop();
+  }
+
+  async #stop() {
+    await this.#browser?.close().catch(() => {});
+    this.#browser = undefined;
+    await new Promise((resolve) => (this.#server ? this.#server.close(resolve) : resolve()));
+    this.#server = undefined;
+    this.#starting = undefined;
+    this.#mounted = undefined;
+    if (this.#work) await fsp.rm(this.#work, { recursive: true, force: true });
+    this.#work = undefined;
+  }
+
+  /**
+   * Starts the browser and loads the page (and its packs). A pack edited on
+   * disk since it was loaded is loaded again here and before the next scene
+   * is mounted; `info.packs.fingerprint` says which one is in the page.
+   */
   ready() {
-    return this.#serial(() => this.#start());
+    return this.#serial(async () => {
+      await this.#reloadChangedPacks();
+      await this.#start();
+    });
   }
 
   /**
@@ -331,6 +400,8 @@ export class ZhudaFilmHost {
     const assetsVersion = this.assetList().version;
     const key = assetsVersion + JSON.stringify(scene);
     if (this.#mounted?.key === key) return this.#mounted.result;
+    await this.#reloadChangedPacks();
+    await this.#start();
     this.#mounted = undefined;
     const result = await this.#call('mount', { scene, assetsVersion });
     this.#mounted = { key, result };
@@ -358,6 +429,19 @@ export class ZhudaFilmHost {
     return this.#serial(async () => {
       await this.#start();
       return this.#mount(scene);
+    });
+  }
+
+  /**
+   * Rays asked of the scene's props, boxes, shapes and ground (not its
+   * models, water, mirrors, grass or decals): for each, the node met, the
+   * distance, the point and the surface normal, or null.
+   */
+  raycast(scene, rays) {
+    return this.#serial(async () => {
+      await this.#start();
+      await this.#mount(scene);
+      return (await this.#call('raycast', { rays })).hits;
     });
   }
 
@@ -538,10 +622,6 @@ export class ZhudaFilmHost {
 
   async close() {
     this.#closed = true;
-    await this.#browser?.close().catch(() => {});
-    this.#browser = undefined;
-    await new Promise((resolve) => (this.#server ? this.#server.close(resolve) : resolve()));
-    this.#server = undefined;
-    if (this.#work) await fsp.rm(this.#work, { recursive: true, force: true });
+    await this.#stop();
   }
 }

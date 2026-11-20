@@ -25,6 +25,16 @@ export interface ZhudaFilmStageOptions {
      */
     bakeCache?: Map<string, ZhudaBakedTextureSet>;
 }
+/** What a ray asked of a film stage met. */
+export interface ZhudaFilmRayHit {
+    /** The id of the scene node met. */
+    readonly node: string;
+    /** Metres from the ray's origin. */
+    readonly distance: number;
+    readonly position: [number, number, number];
+    /** The surface normal there, unit length, on the side the ray came from. */
+    readonly normal: [number, number, number];
+}
 export interface ZhudaFilmStage {
     readonly scene: ZhudaFilmScene;
     readonly scene3D: any;
@@ -75,6 +85,14 @@ export interface ZhudaFilmStage {
         readonly min: number[];
         readonly max: number[];
     }[];
+    /**
+     * The nearest thing a ray meets among the scene's props, boxes, shapes and
+     * ground, either face: the node, the distance in metres, the point and the
+     * surface normal there; null when it meets none within `maxMeters`. Models,
+     * water, mirrors, grass and decals are not asked. A prop with levels
+     * answers with its nearest level.
+     */
+    raycast(origin: readonly number[], direction: readonly number[], maxMeters?: number): ZhudaFilmRayHit | null;
     /** The look in use, fully resolved (`scene.look` is the authored one). */
     readonly look: ZhudaResolvedFilmLook;
     /**

@@ -52,6 +52,16 @@ image request and closes with the server. Render jobs write only into the
 5. `film_render_job` with `kind: "still"` (anti-aliasing and depth of field,
    16 samples by default) or `kind: "video"` along a camera path.
 
+`film_scene_query` asks the scene where its surfaces are, so a camera, a lamp
+or a tuft is put on the ground and not inside it. `heights: [[x, z], ...]`
+gives the height of the topmost surface at each place; `rays: [{origin,
+direction, maxMeters}]` the nearest surface along each. An answer names the
+node met, the distance, the point and the surface normal (toward the ray), or
+is null. Props, boxes, lathes, extrusions, sweeps and ground are asked;
+models, water, mirrors, grass and decals are not. Up to 2000 questions a
+call, and no picture is drawn. In a program the same question is
+`stage.raycast(origin, direction, maxMeters)`.
+
 `film_scene_get` reads the scene and its revision; `film_scene_lint` returns
 the advice for a session or for a scene without drawing it; `film_scene_close`
 discards the session. The [quality route](quality-route.md) is the order in
@@ -486,6 +496,15 @@ Packs are trusted like server code; an agent only names what they provide,
 and `film_scene_create` lists every prop and recipe the host can build. In the
 page, `zhuda-laya-engine` resolves to the loaded browser SDK, so a pack adds no
 second engine copy. Duplicate ids across packs are refused.
+
+A pack is read from disk again when it has changed: the host notes every file
+a pack is built from (its own and what it imports) and, when one of them is
+written, starts its page again with the new pack before the next session or
+the next scene it mounts. `film_scene_create` and `film_scene_preview` report
+`packs: { fingerprint, files, loadedAt }`, the first sixteen hex digits of a
+SHA-256 over those files, so a measurement can say which pack it was taken
+with. A scene mounted before the change is not drawn again until it is asked
+for again.
 
 ## Models and baked global illumination
 

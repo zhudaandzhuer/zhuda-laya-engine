@@ -31,6 +31,7 @@ import { ZhudaLightFog } from '../runtime3d/LightFog.ts';
 import { ZhudaUnderwater, ZHUDA_UNDERWATER_LAYER } from '../runtime3d/Underwater.ts';
 import { ZhudaDecal } from '../runtime3d/Decals.ts';
 import { ZhudaGrassField } from '../runtime3d/Grass.ts';
+import { ZhudaTriangleBvh } from '../runtime3d/MeshQuery.ts';
 import {
   ZhudaAutoExposure,
   ZhudaDepthOfField,
@@ -121,6 +122,17 @@ export interface ZhudaFilmStageOptions {
   bakeCache?: Map<string, ZhudaBakedTextureSet>;
 }
 
+/** What a ray asked of a film stage met. */
+export interface ZhudaFilmRayHit {
+  /** The id of the scene node met. */
+  readonly node: string;
+  /** Metres from the ray's origin. */
+  readonly distance: number;
+  readonly position: [number, number, number];
+  /** The surface normal there, unit length, on the side the ray came from. */
+  readonly normal: [number, number, number];
+}
+
 export interface ZhudaFilmStage {
   readonly scene: ZhudaFilmScene;
   readonly scene3D: any;
@@ -158,6 +170,18 @@ export interface ZhudaFilmStage {
   linearChain(): CinematicLinearChain | undefined;
   /** What stands in the scene (props, boxes, shapes) as world axis-aligned boxes. */
   readonly solids: readonly { readonly min: number[]; readonly max: number[] }[];
+  /**
+   * The nearest thing a ray meets among the scene's props, boxes, shapes and
+   * ground, either face: the node, the distance in metres, the point and the
+   * surface normal there; null when it meets none within `maxMeters`. Models,
+   * water, mirrors, grass and decals are not asked. A prop with levels
+   * answers with its nearest level.
+   */
+  raycast(
+    origin: readonly number[],
+    direction: readonly number[],
+    maxMeters?: number,
+  ): ZhudaFilmRayHit | null;
   /** The look in use, fully resolved (`scene.look` is the authored one). */
   readonly look: ZhudaResolvedFilmLook;
   /**
@@ -664,6 +688,43 @@ function buildFilmStageContents(
       invalidate(): void;
     }[] = [];
     const solids: { min: number[]; max: number[] }[] = [];
+    const shapes: { node: string; mesh: MeshData; bvh?: ZhudaTriangleBvh }[] = [];
+    const raycast = (
+      origin: readonly number[],
+      direction: readonly number[],
+      maxMeters = 100000,
+    ): ZhudaFilmRayHit | null => {
+      const triple = (v: readonly number[], name: string) => {
+        if (!Array.isArray(v) || v.length !== 3 || !v.every((n) => Number.isFinite(n)))
+          throw Error(`Film stage ray ${name}: [x, y, z] required`);
+      };
+      triple(origin, 'origin');
+      triple(direction, 'direction');
+      const length = Math.hypot(direction[0], direction[1], direction[2]);
+      if (!(length > 0)) throw Error('Film stage ray direction: must not be zero');
+      if (!(maxMeters > 0)) throw Error('Film stage ray maxMeters: must be above 0');
+      const ray = {
+        origin: { x: origin[0], y: origin[1], z: origin[2] },
+        direction: { x: direction[0] / length, y: direction[1] / length, z: direction[2] / length },
+      };
+      let best: ZhudaFilmRayHit | null = null;
+      for (const shape of shapes) {
+        shape.bvh ??= new ZhudaTriangleBvh({
+          positions: shape.mesh.positions,
+          indices: shape.mesh.indices,
+        });
+        const hit = shape.bvh.raycast(ray, best ? best.distance : maxMeters);
+        if (!hit || (best && hit.distance >= best.distance)) continue;
+        const sign = hit.frontFace ? 1 : -1;
+        best = {
+          node: shape.node,
+          distance: hit.distance,
+          position: [hit.position.x, hit.position.y, hit.position.z],
+          normal: [sign * hit.normal.x, sign * hit.normal.y, sign * hit.normal.z],
+        };
+      }
+      return best;
+    };
     // A prop with a distance of its own is built by itself; the rest are merged, a mesh a material.
     type SceneNode = (typeof scene.nodes)[number];
     type PropNode = Extract<SceneNode, { type: 'prop' }>;
@@ -683,10 +744,23 @@ function buildFilmStageContents(
         : [],
     );
     const batches = new Map<string, number>();
-    // What stands in the scene, as world axis-aligned boxes (for probes to keep out of).
-    for (const prop of placed)
+    // What stands in the scene, as world axis-aligned boxes (for probes to keep out of),
+    // and its triangles by node, for a ray asked of the stage.
+    const stand = (
+      prop: {
+        colliders: readonly { min: readonly number[]; max: readonly number[] }[];
+        parts: readonly { mesh: MeshData }[];
+      },
+      id: string,
+    ) => {
       for (const collider of prop.colliders)
         solids.push({ min: [...collider.min], max: [...collider.max] });
+      for (const part of prop.parts) shapes.push({ node: id, mesh: part.mesh });
+    };
+    const propIds = scene.nodes.flatMap((node) =>
+      node.type === 'prop' && !ownDistance(node) && node.castShadow !== false ? [node.id] : [],
+    );
+    placed.forEach((prop, i) => stand(prop, propIds[i]));
     if (placed.length) {
       const props = instantiateZhudaPropBatches(
         mergeZhudaPlacedProps(placed),
@@ -712,9 +786,10 @@ function buildFilmStageContents(
         ? [placeProp(node)]
         : [],
     );
-    for (const prop of quiet)
-      for (const collider of prop.colliders)
-        solids.push({ min: [...collider.min], max: [...collider.max] });
+    const quietIds = scene.nodes.flatMap((node) =>
+      node.type === 'prop' && !ownDistance(node) && node.castShadow === false ? [node.id] : [],
+    );
+    quiet.forEach((prop, i) => stand(prop, quietIds[i]));
     if (quiet.length) {
       const props = instantiateZhudaPropBatches(
         mergeZhudaPlacedProps(quiet),
@@ -734,9 +809,7 @@ function buildFilmStageContents(
         ...(node.lod ?? []).map((l) => ({ ...node.params, ...l.params })),
       ].map((params, i) => {
         const one = placeProp(node, params);
-        if (i === 0)
-          for (const collider of one.colliders)
-            solids.push({ min: [...collider.min], max: [...collider.max] });
+        if (i === 0) stand(one, node.id);
         const made = instantiateZhudaPropBatches(
           mergeZhudaPlacedProps([one]),
           resolveMaterial,
@@ -825,6 +898,7 @@ function buildFilmStageContents(
           }
         solids.push({ min, max });
       }
+      shapes.push({ node: node.id, mesh });
       const list = primitives.get(material);
       if (list) list.push(mesh);
       else primitives.set(material, [mesh]);
@@ -1396,6 +1470,7 @@ function buildFilmStageContents(
       adopt: (release: () => void) => void cleanups.push(release),
       linearChain: () => effects.film?.linearChain(),
       solids,
+      raycast,
       dispose,
     };
   }
