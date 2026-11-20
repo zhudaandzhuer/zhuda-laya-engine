@@ -115,6 +115,14 @@ the numbers.
   `verify:quality-governor` fails on this Mac today on both backends, **also
   without the change** (timed assertions, the machine under load): run it
   again on a quiet machine before trusting either result.
+- Third round, on the same branch: `ZhudaFilmicPipeline` no longer keeps an
+  idle occlusion effect in its chain (LayaAir drew the whole scene again for
+  its normals at look levels 1 and 2, and for any look with `ao: 0`). V40,
+  level 1 at 0.7: 57 to 60 frames a second; iPhone: 44..47 to 51..54. 35 draw
+  checks on WebGL and 24 on WebGPU pass. An experiment that held back
+  LayaAir's binds of the canvas between passes gained nothing on the iPhone
+  and was not built. `verify:quality-governor` passes on WebGPU and fails on
+  WebGL, also at `87ab247`.
 - Found: on the V40 a smaller render scale brings a level into a band (level
   1 at 0.7 is 56 to 60); on the iPhone the number of draws decides, and
   houses drawn as instanced copies take level 1 at 0.7 from 31..35 to 45..49.

@@ -290,6 +290,12 @@ The current consumer remains a first visual slice. Its screenshot review still i
   Sixteen more texture reads a pixel in that pass; measured as a picture, not
   as a frame time.
 - The pipeline writes the occlusion colour of LayaAir's `ScalableAO` (black).
+- With `ao: false` LayaAir's `ScalableAO` is not in the chain at all. LayaAir
+  asks every effect of a chain what the camera must draw for it, active or
+  not, and its occlusion asks for the scene's normals: left in the chain and
+  switched off, it had the whole scene drawn once more each frame. Setting
+  `pipeline.ao.active` afterwards does nothing; build the pipeline with
+  `ao` on.
   LayaAir 3.4.2 leaves it unset and its shader then reads what the last owner
   of that uniform block left behind: creases glowed in a stale colour from the
   second scene on. Any shader of your own must set every uniform it declares

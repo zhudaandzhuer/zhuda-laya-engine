@@ -134,10 +134,17 @@ export interface FilmicOptions extends ZhudaFilmicGrade {
 export declare class ZhudaFilmicPipeline {
     readonly post: any;
     readonly grade: any;
+    /**
+     * LayaAir's occlusion effect. With `ao: false` it is not in the chain (it
+     * would cost a pass of the whole scene for its normals): making it active
+     * afterwards does nothing; build the pipeline with `ao` on instead.
+     */
     readonly ao: any;
     /** The occlusion by horizons, with `aoMethod: 'gtao'`; `ao` is then idle. */
     readonly groundAO: ZhudaGroundTruthAO | undefined;
     readonly bloom: any;
+    /** Whether an occlusion effect is in the chain: not with `ao: false`. */
+    private readonly occludes;
     /** The effect that darkens creases: LayaAir's, or the one by horizons. */
     private readonly occlusion;
     private previous;

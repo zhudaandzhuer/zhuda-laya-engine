@@ -157,3 +157,42 @@ Limits added by this round:
   change.
 
 Decision: **In progress**.
+
+## Third round (the same day)
+
+Commit: the one that carries this section.
+
+| Check                            | Exact command or procedure                                                                                               | Result                                                                                                  |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------- |
+| Verify, lint, format, whitespace | `npm run verify`, `npm run lint`, `npm run format:check`, `git diff --check`                                             | PASS, 942 tests. One earlier run failed `tests/minesweeper-domain.test.mjs` (a random board won on its first click); 0 failures in 40 runs of it after |
+| Draw checks, WebGL               | every `verify:film*` script but `film-webgpu`, and `hdr-environment`, `lens-finish`, `edge-smoothing`, `live-look`, `post-quality`, `camera-effects`, `render-scale`, `grass`, `quality-route`, `game-look`, `lighting-depth`, `specular-aa`: 35 scripts | PASS, 35 of 35                                                                                          |
+| Draw checks, WebGPU              | `npm run verify:film-webgpu`                                                                                             | PASS, 24 verifications                                                                                  |
+| The governor on the ladder       | `npm run verify:quality-governor`; with `GOVERNOR_RENDERER=webgpu`                                                       | WebGPU: PASS (load average 4). WebGL: FAIL, "fast frames climb back to the top", and the same on the engine at `87ab247` in the same minute: not this change, cause not looked for |
+| The passes of a frame            | the fixture's `out.trace(1, 0.7)` in headless Chrome                                                                     | 50 render targets before, 48 after: the pass of 70 draws into a colour target with a depth buffer is gone at levels 1 and 2; level 3 (occlusion on) keeps it |
+
+Frames a second, `street` / `wide`, medians of two readings, before and
+after the occlusion change:
+
+| Step      | V40, a node each, before | after    | iPhone, instanced, before | after   |
+| --------- | ------------------------ | -------- | ------------------------- | ------- |
+| 1 at 1    | 39 / 53                  | 44 / 56  | 44 / 47                   | 43 / 49 |
+| 1 at 0.85 | 45 / 59                  | 50 / 60  | not run                   | not run |
+| 1 at 0.7  | 57 / 60                  | 60 / 60  | 44 / 47                   | 51 / 54 |
+| 1 at 0.5  | 60 / 60                  | 60 / 60  | not run                   | 54 / 55 |
+| 2 at 0.7  | 45 / 56                  | 49 / 59  | 43 / 41                   | 43 / 45 |
+| 2 at 0.5  | 60 / 60                  | 60 / 60  | not run                   | 49 / 53 |
+| 0 at 1    | 60 / 60                  | 60 / 60  | 56 / 60                   | 56 / 60 |
+
+Draws a frame on the V40 at level 1: 745 / 1112 before, 569 / 795 after.
+The iPhone's "before" column is the run of the same hour (`iphone-plain2`).
+
+The experiment that held back binds of the canvas (`lazy=1`, iPhone,
+instanced, medians of two): level 1 at 0.7 read 45 / 49 with it and 44 / 47
+without; render targets 23 against 50. No gain: not built.
+
+Limits of this round: the pictures of the measuring scene itself were
+compared only between two runs, which differ by more than the change does
+(clouds and grass move between runs); that the change leaves pictures alone
+rests on the 35 draw checks, which compare their own. No game was drawn.
+
+Decision: **In progress**.

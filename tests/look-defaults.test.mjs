@@ -244,6 +244,28 @@ test('the HDR chain writes the occlusion colour LayaAir leaves unset', () => {
   });
 });
 
+test('an idle occlusion is not in the HDR chain: LayaAir would draw the scene again for it', () => {
+  withLaya(filmicLaya(), () => {
+    const make = (options) => {
+      const camera = { postProcess: null, enableHDR: false, msaa: false, depthTextureMode: 0 };
+      return new ZhudaFilmicPipeline(camera, options);
+    };
+    // LayaAir asks every effect of a chain what the camera must draw for it,
+    // active or not; its occlusion asks for the normals of the whole scene.
+    const off = make({ ao: false });
+    assert.equal(off.post.effects.includes(off.ao), false, 'left out with ao: false');
+    assert.equal(off.ao.active, false);
+    assert.equal(off.post.effects.includes(off.bloom), true, 'the rest of the chain is there');
+    off.dispose();
+    const on = make({});
+    assert.equal(on.post.effects[0], on.ao, 'first in the chain when it is on');
+    on.dispose();
+    const explicit = make({ ao: true, aoIntensity: 0.5 });
+    assert.equal(explicit.post.effects.includes(explicit.ao), true);
+    explicit.dispose();
+  });
+});
+
 test('the HDR chain multisamples on request and puts the camera back', () => {
   withLaya(filmicLaya(), () => {
     const camera = { postProcess: null, enableHDR: false, msaa: false, depthTextureMode: 0 };

@@ -421,10 +421,17 @@ function addAfterGrade(post: any, effect: any) {
 export class ZhudaFilmicPipeline {
   readonly post: any;
   readonly grade: any;
+  /**
+   * LayaAir's occlusion effect. With `ao: false` it is not in the chain (it
+   * would cost a pass of the whole scene for its normals): making it active
+   * afterwards does nothing; build the pipeline with `ao` on instead.
+   */
   readonly ao: any;
   /** The occlusion by horizons, with `aoMethod: 'gtao'`; `ao` is then idle. */
   readonly groundAO: ZhudaGroundTruthAO | undefined;
   readonly bloom: any;
+  /** Whether an occlusion effect is in the chain: not with `ao: false`. */
+  private readonly occludes: boolean;
   /** The effect that darkens creases: LayaAir's, or the one by horizons. */
   private readonly occlusion: any;
   private previous: any;
@@ -479,6 +486,11 @@ export class ZhudaFilmicPipeline {
       this.ao.active = false;
     }
     this.occlusion = this.groundAO ? this.groundAO.effect : this.ao;
+    // LayaAir asks every effect of a chain what the camera must draw for it,
+    // whether the effect is active or not, and its occlusion asks for the
+    // normals: an idle occlusion in the chain had the whole scene drawn once
+    // more every frame. It joins the chain only when it darkens something.
+    this.occludes = Boolean(this.groundAO) || this.ao.active;
     this.bloom = new l.BloomEffect();
     this.bloom.intensity = options.bloomIntensity ?? 0.12;
     this.bloom.threshold = 1.2;
@@ -507,7 +519,7 @@ export class ZhudaFilmicPipeline {
     this.grade.saturation = options.saturation ?? 0.96;
     this.sceneEffects = [...(options.sceneEffects ?? [])];
     this.finishEffects = [...(options.finishEffects ?? [])];
-    post.addEffect(this.occlusion);
+    if (this.occludes) post.addEffect(this.occlusion);
     for (const effect of this.sceneEffects) post.addEffect(effect);
     if (this.sceneEffects.length) camera.depthTextureMode |= l.DepthTextureMode.Depth;
     post.addEffect(this.bloom);
@@ -663,7 +675,11 @@ export class ZhudaFilmicPipeline {
     const source = new l.MaterialPostProcessEffect();
     source.material = material;
     source.active = false;
-    const linearPart = [this.occlusion, ...this.sceneEffects, this.bloom],
+    const linearPart = [
+        ...(this.occludes ? [this.occlusion] : []),
+        ...this.sceneEffects,
+        this.bloom,
+      ],
       displayPart = [...(this.range ? [this.range.effect] : []), this.grade, ...this.finishEffects],
       all = [...linearPart, ...displayPart];
     // LayaAir sets its own passes up when the grade joins a chain: it leaves and joins as LayaAir made it.

@@ -68,6 +68,9 @@ async function main() {
   const gl = renderer === 'webgl' ? canvas.getContext('webgl2') : null;
   // WebGL only: draws issued and switches to another render target, counted from the page.
   const counted = { draws: 0, targets: 0 };
+  // `out.trace(level, scale)`: one frame as the passes it is made of.
+  let tracing: { target: string; size: string; draws: number; clears: number }[] | null = null;
+  const names = new Map<unknown, string>();
   if (gl) {
     for (const name of [
       'drawElements',
@@ -79,6 +82,22 @@ async function main() {
       const original = (gl as any)[name].bind(gl);
       (gl as any)[name] = (...args: unknown[]) => {
         counted.draws++;
+        if (tracing?.length) {
+          const pass = tracing[tracing.length - 1];
+          // What the pass draws into, read at its first draw.
+          if (!pass.draws && pass.target !== 'canvas') {
+            const kind = (attachment: number) => {
+              const type = gl.getFramebufferAttachmentParameter(
+                gl.FRAMEBUFFER,
+                attachment,
+                gl.FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE,
+              );
+              return type === gl.TEXTURE ? 'texture' : type === gl.RENDERBUFFER ? 'buffer' : 'none';
+            };
+            pass.size += ` colour:${kind(gl.COLOR_ATTACHMENT0)} depth:${kind(gl.DEPTH_ATTACHMENT)} mask:${gl.getParameter(gl.COLOR_WRITEMASK).map(Number).join('')}`;
+          }
+          pass.draws++;
+        }
         return original(...args);
       };
     }
@@ -88,9 +107,97 @@ async function main() {
       if (target !== gl.READ_FRAMEBUFFER && framebuffer !== bound) {
         bound = framebuffer;
         counted.targets++;
+        if (tracing) {
+          if (framebuffer && !names.has(framebuffer)) names.set(framebuffer, `t${names.size + 1}`);
+          tracing.push({
+            target: framebuffer ? names.get(framebuffer)! : 'canvas',
+            size: '',
+            draws: 0,
+            clears: 0,
+          });
+        }
       }
       return bind(target, framebuffer);
     };
+    const clear = gl.clear.bind(gl);
+    gl.clear = (mask: number) => {
+      if (tracing?.length) tracing[tracing.length - 1].clears++;
+      return clear(mask);
+    };
+    const viewport = gl.viewport.bind(gl);
+    gl.viewport = (x: number, y: number, w: number, h: number) => {
+      if (tracing?.length && !tracing[tracing.length - 1].size)
+        tracing[tracing.length - 1].size = `${w}x${h}`;
+      return viewport(x, y, w, h);
+    };
+  }
+  // `lazy=1`, an experiment: a bind of the canvas is held back until something
+  // draws to it or reads from it. LayaAir goes back to the canvas after every
+  // pass; a pass that returns to the target it left is then one pass, not two
+  // with the target stored and loaded between them.
+  if (gl && params.get('lazy') === '1') {
+    const real = gl.bindFramebuffer.bind(gl);
+    let actual: WebGLFramebuffer | null = null,
+      pending = false;
+    const flush = () => {
+      if (!pending) return;
+      pending = false;
+      if (actual !== null) {
+        actual = null;
+        real(gl.FRAMEBUFFER, null);
+      }
+    };
+    gl.bindFramebuffer = (target: number, framebuffer: WebGLFramebuffer | null) => {
+      if (target !== gl.FRAMEBUFFER) {
+        // A draw or read framebuffer bound on its own: nothing is held back round it.
+        flush();
+        if (target === gl.DRAW_FRAMEBUFFER) actual = framebuffer;
+        return real(target, framebuffer);
+      }
+      if (framebuffer === null) {
+        pending = actual !== null;
+        return;
+      }
+      pending = false;
+      if (framebuffer !== actual) {
+        actual = framebuffer;
+        real(target, framebuffer);
+      }
+    };
+    for (const name of [
+      'drawArrays',
+      'drawElements',
+      'drawArraysInstanced',
+      'drawElementsInstanced',
+      'drawRangeElements',
+      'drawBuffers',
+      'clear',
+      'clearBufferfv',
+      'clearBufferiv',
+      'clearBufferuiv',
+      'clearBufferfi',
+      'readPixels',
+      'readBuffer',
+      'blitFramebuffer',
+      'copyTexImage2D',
+      'copyTexSubImage2D',
+      'copyTexSubImage3D',
+      'framebufferTexture2D',
+      'framebufferRenderbuffer',
+      'framebufferTextureLayer',
+      'checkFramebufferStatus',
+      'invalidateFramebuffer',
+      'invalidateSubFramebuffer',
+      'getFramebufferAttachmentParameter',
+      'getParameter',
+      'finish',
+    ]) {
+      const original = (gl as any)[name].bind(gl);
+      (gl as any)[name] = (...args: unknown[]) => {
+        flush();
+        return original(...args);
+      };
+    }
   }
   const scene = Z.Zhuda3D.createScene3D(context.rootScene);
   const camera = Z.Zhuda3D.createCamera(scene, {
@@ -301,6 +408,27 @@ async function main() {
       ...(ROUNDS > 1 ? { allFps: fps } : {}),
     };
   };
+  out.cameraState = () => ({
+    depthTextureMode: camera.depthTextureMode,
+    opaquePass: camera.opaquePass,
+    modes: { ...Laya.DepthTextureMode },
+    msaa: camera.msaa,
+    hdr: camera.enableHDR,
+  });
+  out.trace = async (level: number, scale = 1, patch: any = {}) => {
+    view = VIEWS.street;
+    camera.transform.position = new Laya.Vector3(...view[0]);
+    camera.transform.lookAt(new Laya.Vector3(...view[1]), new Laya.Vector3(0, 1, 0));
+    look.setLook({ ...LOOK, ...patch });
+    look.setStep({ look: level, renderScale: scale });
+    for (let i = 0; i < 20; i++) frame();
+    await settle();
+    tracing = [];
+    frame();
+    const passes = tracing;
+    tracing = null;
+    return passes;
+  };
   out.info = {
     renderer,
     cssSize: [W, H],
@@ -309,6 +437,7 @@ async function main() {
     dprCap: DPR_CAP,
     userAgent: navigator.userAgent,
     meshes,
+    lazyCanvasBind: params.get('lazy') === '1',
     town: instanced ? `instanced, ${groups} groups` : 'a node each',
     grass: grass.stats ?? null,
   };

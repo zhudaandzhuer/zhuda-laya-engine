@@ -92,6 +92,35 @@ costs the iPhone a frame; the iPhone on WebGPU; a cheaper HDR chain, light
 fog at a lower resolution, cheaper smoothing at levels 2 and 3, shadow maps
 drawn less often inside the ladder; a heavier scene.
 
+## Third round: the first cut in the HDR chain
+
+On the owner's word ("繼續做後製優化"). The tool can now list one frame's
+passes (`out.trace` of the fixture). What it showed, at look level 1:
+
+- LayaAir binds the canvas between every two passes: a frame of 25 passes
+  counts 50 render targets. Holding those binds back (an experiment in the
+  fixture, `lazy=1`) halves the count and joins the shadow cascades into one
+  pass, and changes nothing on the iPhone (44 against 45 frames a second):
+  **not the cause there, and not built into the engine.**
+- With ambient occlusion off, the scene was still drawn a third time each
+  frame, into a colour target with a depth buffer. `ZhudaFilmicPipeline`
+  always put LayaAir's `ScalableAO` in the chain and switched it off with
+  `active`; LayaAir's `PostProcess.recaculateCameraFlag` asks every effect
+  what the camera must draw for it whether it is active or not, and
+  `ScalableAO` asks for depth and normals.
+
+Change: `packages/core/runtime3d/Filmic.ts` puts the occlusion effect in the
+chain only when it darkens something (`ao` not false, or `aoMethod: 'gtao'`).
+Look levels 1 and 2 switch occlusion off, as does any look with `ao: 0`:
+each of them now draws the scene once less a frame. `pipeline.ao` is still
+there; with `ao: false` it is not in the chain and making it active
+afterwards does nothing.
+
+Still open: the HDR chain's own passes (at level 1 at 0.7: eight full-screen
+passes at the render size after the scene, five for bloom, three for the
+clouds, two more at the canvas's size for the upscale), light fog at a lower
+resolution, smoothing at levels 2 and 3, and what holds the iPhone under 60.
+
 ## Invariants
 
 - Nothing on a phone is changed; only a blank tab or one at this machine's
