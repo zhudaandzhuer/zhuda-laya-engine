@@ -141,9 +141,16 @@ export class ZhudaEffect3D {
         system.setTransform(position[0], position[1], position[2], rotation);
         system.play();
         this.systems.push(system);
-        this.renderers.push(
-          new ZhudaLayaParticleRenderer3D(system, parent, (key) => this.textures.get(key)),
+        const renderer = new ZhudaLayaParticleRenderer3D(system, parent, (key) =>
+          this.textures.get(key),
         );
+        // Emitters are drawn in the preset's order, later ones over earlier ones.
+        // Left to the sorting of blended meshes by distance, two emitters at one
+        // place changed places from frame to frame (seen on WebGPU: smoke over an
+        // ember in one frame, under it in the next).
+        const material = (renderer.node as any)?.meshRenderer?.sharedMaterial;
+        if (material) material.renderQueue = 3000 + this.renderers.length;
+        this.renderers.push(renderer);
       }
     } catch (error) {
       this.dispose();

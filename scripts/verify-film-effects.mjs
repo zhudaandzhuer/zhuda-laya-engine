@@ -81,6 +81,11 @@ const changed = (a, b) => {
   return n;
 };
 const same = (a, b) => Buffer.compare(a.data, b.data) === 0;
+const largest = (a, b) => {
+  let most = 0;
+  for (let i = 0; i < a.data.length; i++) most = Math.max(most, Math.abs(a.data[i] - b.data[i]));
+  return most;
+};
 const report = { presets: {} };
 try {
   await host.ready();
@@ -95,11 +100,16 @@ try {
     const first = await render(withEffect, at);
     const later = await render(withEffect, burst ? preset.seconds + 0.5 : at + 0.25);
     const again = await render(withEffect, at);
+    await render(withEffect, burst ? preset.seconds + 0.5 : at + 0.25);
+    const third = await render(withEffect, at);
     const row = {
       kind: preset.kind,
       atSeconds: at,
       drawnPixels: changed(first, empty),
-      sameAgain: same(first, again),
+      // The first drawing after the mount and two later ones of the same shot
+      // time, with another time drawn between them: the same bytes.
+      sameAgain: same(first, again) && same(again, third),
+      firstLargestDifference: largest(first, again),
       laterPixels: changed(later, burst ? empty : first),
     };
     // Put off by ten seconds, nothing of it is drawn yet.
