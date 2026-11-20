@@ -172,11 +172,12 @@ pushed). Record:
 
 The underwater horizon (2026-11-21, last). The consumer's re-check of the
 seam fix found a step at the horizon with light fog on (a dark band above it).
-Fixed on branch `fix/underwater-horizon`: the medium counts `maxDistance` of
+Fixed (`dc642b2`): the medium counts `maxDistance` of
 open water on both sides of the horizon and the backdrop carries the rest. The
 second round is in the same record
 ([verification](docs/plans/records/underwater-seam/verification.md), "Second
-round"); `git branch --contains` says whether it is merged. The consumer's frame
+round"). Merged into `main` by fast-forward on the owner's word (`git log
+origin/main..main` says whether it is pushed). The consumer's frame
 1380 reads level across the horizon on both backends with the fix; its own
 builds and film were not touched.
 
