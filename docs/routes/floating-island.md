@@ -7,6 +7,10 @@ and can be picked up, swung, thrown and dropped in the pond. Mouse or touch turn
 the camera and grabs the character. Checked by drawing on a desktop with WebGL and
 WebGPU only.
 
+- **Id:** `floating-island`
+- **Kind:** scene
+- **For:** A small diorama seen whole: an island above a sea of cloud with grass a body presses down, a pond, weather and a passing day, a character that is picked up and thrown; picture settings held by a frame budget.
+- **Checked on:** desktop WebGL; desktop WebGPU; no phone (touch emulated)
 - **Status:** checked on desktop WebGL and WebGPU (Apple M4, Chrome 157 headless,
   1280 by 720), 2026-11-16; a phone's screen and touch were emulated only; not on a
   phone.
@@ -123,7 +127,7 @@ queries, [3D integration](../3d-integration.md)); a still or a film
     low, anything else mid; `?fx=` picks one. A `ZhudaQualityGovernor` with
     `budgetMs: 1000 / 55` moves along a ladder of `{ look, renderScale }` with
     `look.setStep`: resolution first, then the look, then the grass
-    ([hold the frame budget](../quality-route.md#11-hold-the-frame-budget)). It
+    ([hold the frame budget](../quality-route.md#13-hold-the-frame-budget)). It
     does not judge the first 8 s or the 2.5 s after each change, and stops once
     the player chooses a setting.
 13. **Sound.** One `IframeSoundAdapter` on the same provider

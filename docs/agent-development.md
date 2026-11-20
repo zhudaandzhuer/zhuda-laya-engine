@@ -10,10 +10,12 @@ project use different build roots; do not copy the workbench into a game.
 
 ## Start from a route
 
-Before researching how to build a scene, look in [implementation routes](routes/README.md)
-(docs/routes): a route is a scene already built end to end on this engine and checked
-on devices, with its steps, pitfalls and limits. When you finish a new kind of scene,
-add a route from [its template](routes/TEMPLATE.md).
+Before researching how to build anything, look in [implementation routes](routes/README.md)
+(docs/routes), or call `list_routes` and `get_route` on the MCP server. A route is one
+page in one format: a workflow every project of its kind takes, or a scene already
+built end to end on this engine and checked on devices, with its steps, pitfalls and
+limits. When you finish a new kind of thing, add a route from
+[its template](routes/TEMPLATE.md).
 
 ## Start with a bounded task
 

@@ -4,6 +4,14 @@ This file is a binding repository contract for coding agents. Read it before
 editing code. It is intentionally concrete: an agent must leave reproducible
 commands and evidence, not a confidence statement.
 
+## Start here
+
+| You are about to | Do this first |
+| --- | --- |
+| Build a game, a scene, a film, a model or a release **with** the engine | `node packages/mcp-server/index.mjs --tool list_routes`, pick the route, then `--tool get_route --args '{"id":"<id>"}'`. Every route is one page in [`docs/routes/`](docs/routes/README.md), in one format. |
+| Change the engine itself | Read on: "Required reading before implementation", then "Development protocol". |
+| Pick up unfinished work | [`HANDOFF.md`](HANDOFF.md), then [`docs/plans/README.md`](docs/plans/README.md). |
+
 ## Repository boundary
 
 `zhuda-laya-engine` is the reusable engine and toolchain. It owns public
@@ -81,13 +89,16 @@ WebGL and device acceptance still require the consumer's own reports.
    is not built yet.
 5. The corresponding public declaration in `packages/types/` and an existing
    test before adding a new API.
-6. [`docs/routes/README.md`](docs/routes/README.md): implementation routes,
-   scenes already built end to end on this engine and checked on devices, with
-   their steps, pitfalls and limits. Take a route that fits before researching
-   one; after building a new kind of scene, add a route from its template.
+6. [`docs/routes/README.md`](docs/routes/README.md): every implementation
+   route, one page each in one format: workflows (a new game, a 3D scene that
+   looks good, a film as data, a model from a DCC tool, visual content as
+   prefabs, one HTML page, a mini-game build) and scenes already built end to
+   end and checked on devices. Take the route that fits before researching
+   one; after building a new kind of thing, add a route from its template.
 
 Use `node packages/mcp-server/index.mjs --tool get_agent_contract` to retrieve
-this workflow as machine-readable data, and `--tool get_quality_route` for the
+this workflow as machine-readable data, `--tool list_routes` and
+`--tool get_route` for the routes, and `--tool get_quality_route` for the
 quality route. Use the other MCP guardrails before
 guessing LayaAir APIs.
 

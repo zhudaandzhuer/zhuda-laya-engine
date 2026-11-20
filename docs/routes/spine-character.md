@@ -7,6 +7,10 @@ while Spine 4.2 physics carries the rest and swings it back; a leg's nylon is pu
 toward the finger by a bone that carries a mesh; a hard pull tears it by swapping
 attachments. Mouse or touch.
 
+- **Id:** `spine-character`
+- **Kind:** scene
+- **For:** A 2D character from generated or painted art, rigged with zhuda-spine2D, that the hand changes: cloth lifted by IK and swung by Spine physics, a layer torn by swapping attachments.
+- **Checked on:** desktop WebGL; desktop WebGPU; no phone
 - **Status:** checked on desktop WebGL and WebGPU (Chrome, Apple M4), 2026-11-15. Real
   touch was checked on a vivo V40 with an earlier, shader-drawn version of the same
   scene only; this Spine version was not run on a phone (see **Not checked**).

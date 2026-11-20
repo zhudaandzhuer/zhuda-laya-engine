@@ -182,11 +182,19 @@ const STEPS = [
   },
   {
     id: 'physically-based-surfaces',
-    do: 'Use physically based materials only. Film: recipes, sized for the camera. Game: createSurfaceMaterial, createZhudaProceduralMaterial, or Zhuda3D.createMaterial with type "pbr".',
-    api: 'materials: { "road": { "recipe": "asphalt", "size": 1024, "variation": 0.5 } }; nodes: box, lathe { "profile": [[radius, height], ...] }, extrude { "outline": [[x, z], ...], "height" }',
-    why: 'Zhuda3D.createMaterial defaults to Blinn-Phong, which ignores the sky, the environment and the HDR chain. A recipe bakes at 256 unless told otherwise: 128 pixels per metre on a two-metre tile.',
+    do: 'Use physically based materials only. Film: recipes, sized for the camera, with detail for close range and projection triplanar where the mesh would stretch them. Game: createSurfaceMaterial, createZhudaProceduralMaterial, createZhudaTriplanarMaterial, or Zhuda3D.createMaterial without a shininess.',
+    api: 'materials: { "road": { "recipe": "asphalt", "size": 1024, "variation": 0.5 }, "cliff": { "recipe": "concrete", "projection": "triplanar", "top": { "recipe": "asphalt" } }, "wall": { "recipe": "concrete", "detail": { "recipe": "asphalt", "meters": 1.5 } } }; nodes: box, lathe { "profile": [[radius, height], ...] }, extrude { "outline": [[x, z], ...], "height" }',
+    why: "Zhuda3D.createMaterial given a shininess is Blinn-Phong, which ignores the sky, the environment and the HDR chain. A recipe bakes at 256 unless told otherwise: 128 pixels per metre on a two-metre tile. A recipe on a cone, a rock or a steep slope is squeezed or stretched by the mesh's own texture coordinates; laid on by place it keeps its size.",
     check:
       'Advice holds neither texture.density nor texture.repeats. Aim for 256 pixels per metre or more on what the camera stands on; give a large floor some variation so its tiles do not read as a grid.',
+  },
+  {
+    id: 'ground-and-plants',
+    do: 'Ground with heights is a terrain node; grass is a grass node, on level ground or on a terrain. Ask the scene for heights before placing anything on it.',
+    api: 'node: { "type": "terrain", "position": [0, 0, 0], "size": [80, 80], "cells": [96, 96], "material": "cliff", "noise": { "seed": 5, "heightM": 14, "scaleM": 30, "flatten": [{ "minX": -6, "maxX": 6, "minZ": -6, "maxZ": 6, "y": 3 }] } }; { "type": "grass", "on": "<terrain id>", "area": { … } }; film_scene_query { "heights": [[x, z], …] }',
+    why: "A flat ground with objects stood on it reads as a table. A height worked out by hand puts cameras and lamps inside steps and slopes; the query reads the scene's own meshes. Grass built from cards does not move and vanishes at night; the grass node is lit, shadowed and blown.",
+    check:
+      'film_scene_query returns the node and height under every placed object; no object floats or is buried in the preview.',
   },
   {
     id: 'light-from-the-side',
@@ -219,10 +227,19 @@ const STEPS = [
   },
   {
     id: 'baked-light-for-models',
-    do: 'For light bounced off props, boxes, shapes and the ground give the look bounceLight. For static models, bake light in Blender and give the model its lightmap; mark lamps that are in the bake as fogOnly.',
+    do: 'For light bounced off props, boxes, shapes and the ground give the look bounceLight; it also carries the light of what glows (lava, a furnace, a lit window). For static models, bake light in Blender and give the model its lightmap; mark lamps that are in the bake as fogOnly.',
     api: 'look: { "bounceLight": { "spacing": 3 } }; node: { "type": "model", "asset": "…glb", "lightmap": "….hdr", "lightmapDirection": "….hdr" }',
     why: 'There is no real-time global illumination. bounceLight is captured once, at mount, from probes over the scene (six small draws each); a lightmap is baked offline.',
-    check: 'docs/film-scenes.md, "Baked light". The model needs a second UV set.',
+    check:
+      'docs/film-scenes.md, "Baked light". The model needs a second UV set. Advice holds no emission.lights-nothing.',
+  },
+  {
+    id: 'distance',
+    do: 'Say how what is many or far behaves with distance: a cull distance, no shadow for small things, lighter levels for large ones, copies of a model as placements.',
+    api: 'model node: { "cullMeters": 120, "castShadow": false, "cellMeters": 64, "placements": [[x, y, z, yawDeg, scale], …] }; prop node: { "cullMeters": 400, "castShadow": false, "lod": [{ "fromMeters": 60, "params": { "detail": 0.5 } }] }',
+    why: 'Every caster is drawn again in each shadow cascade, and a scene of thousands of small objects is bound by its draw calls on a phone before its pixels. Props without these keys are merged one mesh a material; one with them is its own draws, so keep them for large pieces.',
+    check:
+      "The draw count of a frame (ZhudaRuntimeProfiler in the game's own loop) is within the budget for the target device; nothing pops in view at the chosen distances.",
   },
   {
     id: 'finish',
@@ -235,7 +252,7 @@ const STEPS = [
   {
     id: 'look-at-it',
     do: 'Preview after every change. Read the advice and the metrics that come with the reply; compare two to four cameras in one review grid.',
-    api: 'film_scene_apply { preview: true } · film_scene_preview · film_scene_review',
+    api: 'film_scene_apply { preview: true } · film_scene_preview · film_scene_review · film_scene_query',
     why: 'Advice names scenes that are valid and still wrong. Metrics describe the frame in numbers for an agent that cannot judge a picture; `vivid` lists strong hues, and one the scene has no source for is a defect.',
     check: 'advice is empty, metrics.flags is empty, glErrors is absent.',
   },
@@ -291,7 +308,7 @@ export function getQualityRoute() {
       "Reflections of things that are off screen: screenReflections shows what the frame holds and, with sky, the sky's colour where a ray finds nothing (it cannot tell a roof off screen from open sky). One planar mirror, one environment probe (environment.box looks it up at the room's walls).",
       'Shadows from more than eight point lights and one spot light (LayaAir 3.4.2 draws one spot shadow map).',
       "Motion blur of things that move by themselves: look.motionBlur smears only what the camera's own movement smears. look.depthOfField is one disc radius per pixel, without the shape of an aperture.",
-      "Decals that wrap round geometry (a decal node lies on one plane); parallax (LayaAir's PBR shader takes no height map); the fine repeat inside one texture tile (variation hides the grid of tiles only). A sweep does not round its corners.",
+      "Decals that wrap round geometry (a decal node lies on one plane); parallax (LayaAir's PBR shader takes no height map); a recipe mask by height above ground (a top recipe covers what faces up; damp at the foot of a wall is a decal); area and line lights (bounceLight carries a glow as coarsely as its probes). A sweep does not round its corners.",
       'Weather: clouds is one layer of one kind of cloud (above the eye, or below it as a sea of cloud), without shadows on the ground or rain. Skin (subsurface light), hair strands, and cloth sheen in a film scene: a flat material has clearCoat and anisotropy only (game code has sheen, thin films and glass on createSurfaceMaterial type physical).',
     ],
     evidence: {

@@ -1,6 +1,6 @@
 # Handoff: plans of 2026-11-16/17 and the defects after them
 
-Last updated: 2026-11-21 ("Next step": the rest of the review's requests, on a branch). The three plans and the defect batch under "After
+Last updated: 2026-11-21 ("Next step": routes as formal documents, on a branch). The three plans and the defect batch under "After
 the plans" (`c7ab3d1` to `1197e20`) are on `origin/main`. The V40 results of
 2026-11-18 were added in a later commit: `git log origin/main..main` says
 whether it is pushed.
@@ -153,6 +153,22 @@ log origin/main..main` says whether it is pushed). Record:
   (ignored by git there).
 - The review is told in `ENGINE-REPLY.md` of its repository, which names the
   `main` commit that carries the scene-format keys.
+
+Routes as formal documents (2026-11-21, later still). On the owner's word every
+route is now one page in `docs/routes/<id>.md` in one format, listed by the MCP
+tools `list_routes` and `get_route` and by a "Start here" table at the top of
+`AGENTS.md` and `README.md`: seven workflow routes (written from the guides, which
+stay where they are) and the four scene routes. The quality route has two more
+steps and the film tool text names the week's features. On branch
+`docs/route-registry`, committed there; `git branch --contains` says whether it is
+merged. Record:
+[task](docs/plans/records/route-registry/task.md),
+[verification](docs/plans/records/route-registry/verification.md).
+
+- Not done: no agent was run on the routes to see whether it follows them; scene
+  routes for an outdoor landscape and a rigged phone character wait for the
+  outside review's next round on the current engine; `docs/zh-CN/README.md` has
+  no "Start here" table.
 
 Frame-rate tiers (2026-11-20, the same day). The owner set the rendering
 goal: the best picture that stays smooth on mobile devices, in three tiers by

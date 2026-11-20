@@ -6,6 +6,10 @@ the water, the surface seen from below with the sky in its window. Driven by dat
 (a film scene, or a game's `ZhudaSceneLook`); the camera is the scene's or the
 game's. Checked by drawing on a desktop with WebGL and WebGPU only.
 
+- **Id:** `underwater`
+- **Kind:** scene
+- **For:** A camera under water, in a film or a game: a sea floor, the view fading blue-green, caustics, sunbeams, the surface from below with the sky in its window.
+- **Checked on:** desktop WebGL; desktop WebGPU; no phone
 - **Status:** checked on desktop WebGL and WebGPU (Apple M4, Chrome 157 headless),
   2026-11-17; not on a phone.
 - **Reference consumer:** the engine's own example scene,

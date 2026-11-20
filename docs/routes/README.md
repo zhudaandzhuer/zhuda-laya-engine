@@ -1,59 +1,93 @@
 # Implementation routes
 
-A route is a way to build one kind of scene that has already been built on this
-engine, end to end, by an agent, and checked on real devices: which tools, which
-public APIs, in which order, which mistakes cost the most time, and what it measured.
-Read the route for your scene **before** researching or designing one: the point is
-to start where the last agent stopped, not where it started.
+Every way of building something on this engine that has been done end to end is a
+**route**: one page in this folder, `docs/routes/<id>.md`, in one format. Read the
+route for your task **before** researching or designing: the point is to start where
+the last agent stopped, not where it started.
 
-A route is not a plan (see [plans](../plans/README.md)) and not an API guide (each
-guide in `docs/` owns its API). It links to those guides and adds what they do not
-say: how the pieces were put together for one result, and what went wrong on the way.
+```sh
+node packages/mcp-server/index.mjs --tool list_routes          # every route, one line each
+node packages/mcp-server/index.mjs --tool get_route --args '{"id":"film-as-data"}'
+```
 
-## How to use a route
+Over MCP the same two tools are `list_routes` and `get_route`; `get_agent_contract`
+carries the list as `routes`. From an installed package the pages are under
+`node_modules/zhuda-laya-engine/docs/routes/`.
 
-1. Find your scene in the table below. If two fit, read both: routes share steps.
-2. Follow the steps in order. Each step names the public API or tool, the values
-   that worked, and the check that says it worked.
-3. Read **Pitfalls** before the first build: each one cost a previous agent hours.
-4. Keep to **Boundaries**: what belongs in the consumer stays there.
-5. Your result is not verified by a route. Run your own checks (the route's
-   **Checks** section says which) and record them in your project.
+## The format
 
-## Routes
+Every page has the same header and the same sections, in the same order
+([TEMPLATE.md](TEMPLATE.md)); the audit behind `npm run verify` and the Doctor
+refuses a page that lacks one.
 
-| Scene | Route | Evidence | Reference consumer |
-| --- | --- | --- | --- |
-| A realistic modelled body (legs, feet) in layered clothing that can be pulled and torn: sheer stockings, trousers, skirts as cloth; touch on phones | [Layered cloth on a modelled body](layered-cloth-on-body.md) | Desktop WebGL and WebGPU; vivo V40 (Chrome 156, WebGPU) | `games/stocking-tear` (outside this repository) |
-| A 2D character from generated or painted art, rigged with zhuda-spine2D, that the hand changes: cloth lifted by IK and swung by Spine physics, a layer pulled and torn by swapping attachments | [Hand-driven Spine character](spine-character.md) | Desktop WebGL and WebGPU (not yet on a phone) | `games/stocking-tear-2d` (outside this repository) |
-| A camera under water: a sea floor with a wreck, the view fading blue-green, caustics, sunbeams, the surface from below with the sky in its window | [A scene under water](underwater.md) | Desktop WebGL and WebGPU (not yet on a phone) | The engine's example scene `tests/fixtures/film/underwater.json` (no consumer game yet) |
-| A small island above a sea of cloud, seen whole: grass a body presses down, a pond, rain, storm, mist and a passing day, a character that is picked up and thrown; picture settings held by a frame budget | [A small floating island](floating-island.md) | Desktop WebGL and WebGPU (not yet on a phone) | `games/zhuda-sky-island` (outside this repository) |
+| Part                                                                                        | What it tells you                                                                 |
+| ------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| Header: `Id`, `Kind`, `For`, `Checked on`, `Status`, `Reference consumer`, `Engine version` | Whether the route fits, and on which devices it was really checked                |
+| When to take this route                                                                     | What it fits, what it does not, and which route to take instead                   |
+| Tools                                                                                       | Commands, MCP tools and outside tools with their versions                         |
+| Steps                                                                                       | The order, the public API or tool of each step, the values that worked, the check |
+| Pitfalls                                                                                    | What cost a previous agent hours: what was seen, the cause, the fix               |
+| Engine gaps and their workarounds                                                           | What the engine does not do yet, and what to do meanwhile                         |
+| Checks                                                                                      | The commands and device steps that show the result works                          |
+| Not checked                                                                                 | Everything the route does not claim                                               |
+| Boundaries                                                                                  | What stays in the consumer and what belongs to the engine                         |
 
-## Engine guides that already are routes
+Two kinds. A **workflow** is a path every project of its kind takes, whatever the
+scene. A **scene** route is one kind of scene built end to end by a reference
+consumer. Most tasks take one or two workflows and, when one fits, a scene route.
 
-These guides describe a whole path on their own; start there for their scenes.
+## Workflows
 
-| Scene | Guide |
-| --- | --- |
-| A new game project on the engine | [Consumer route](../consumer-route.md) |
-| Any 3D scene, film or game that should look lit, grounded and deep | [Quality route](../quality-route.md) |
-| New or changed visual content (UI, characters, models, effects) | [Prefab workflow](../prefab-workflow.md) |
-| A model from Blender or another DCC tool into a game | [Model pipeline](../model-pipeline.md), then [model showcase](../model-showcase.md) |
-| A film or a still authored as data, rendered to MP4 | [Film scenes](../film-scenes.md), [cinematics](../cinematics.md) |
-| A single HTML page that loads the real runtime | [Browser SDK](../browser-sdk.md) |
-| A WeChat, Douyin or other mini-game build | [Mini-game packaging](../minigame-packaging.md) |
+| Id                                                | For                                                                                                                 | Checked on                   |
+| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | ---------------------------- |
+| [new-game-project](new-game-project.md)           | Starting any game or app on the engine: project shape, engine pin, build, Doctor                                    | desktop CI; no phone         |
+| [good-looking-3d-scene](good-looking-3d-scene.md) | Any 3D scene that must look good: look settings in order, each with its check                                       | desktop WebGL and WebGPU     |
+| [film-as-data](film-as-data.md)                   | A scene, still or film as JSON through the MCP film tools: nodes, materials, terrain, grass, queries, packs, render | desktop WebGL and WebGPU     |
+| [model-from-dcc](model-from-dcc.md)               | A model from Blender or another DCC tool: export, inspection, skins, levels of detail, mounting                     | desktop WebGL and WebGPU     |
+| [visual-content-prefab](visual-content-prefab.md) | Anything a player sees in a game: prefab first, checked alone, then composed                                        | desktop WebGL                |
+| [single-html-page](single-html-page.md)           | A prototype or embed that must be one HTML file                                                                     | desktop WebGL and WebGPU     |
+| [mini-game-build](mini-game-build.md)             | Packaging for WeChat, Douyin and other mini-game hosts                                                              | macOS static builds; no host |
 
-## Adding a route
+## Scenes
 
-Write a route when you have built a scene end to end and checked it on the devices
-you name, so the next agent can repeat it. Copy [TEMPLATE.md](TEMPLATE.md).
+| Id                                                | For                                                                                                                                                    | Checked on                         |
+| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------- |
+| [floating-island](floating-island.md)             | A small island above a sea of cloud: grass a body presses down, pond, weather, a passing day, a character that is picked up and thrown; a frame budget | desktop WebGL and WebGPU           |
+| [layered-cloth-on-body](layered-cloth-on-body.md) | A realistic modelled body in layered clothing that is pulled and torn: sheer stockings, trousers, skirts as cloth                                      | desktop WebGL and WebGPU; vivo V40 |
+| [spine-character](spine-character.md)             | A 2D Spine character from generated art that the hand changes: IK, Spine physics, tearing by attachment swaps                                          | desktop WebGL and WebGPU           |
+| [underwater](underwater.md)                       | A camera under water: sea floor, fading view, caustics, sunbeams, the surface from below                                                               | desktop WebGL and WebGPU           |
 
-- Name only what was run. A step that was not checked is listed under **Not checked**.
+## Which route for which task
+
+| The task                                     | Read, in this order                                                                                           |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| A new 3D game                                | `new-game-project`, `good-looking-3d-scene`, `visual-content-prefab`, then a scene route if one fits          |
+| A new 2D game or UI                          | `new-game-project`, `visual-content-prefab`; `spine-character` for a rigged character                         |
+| A film, a still, or a level laid out as data | `film-as-data`, `good-looking-3d-scene`                                                                       |
+| A character, prop or building model          | `model-from-dcc`, then `film-as-data` or `visual-content-prefab` to show it                                   |
+| An outdoor scene with hills and grass        | `film-as-data` (terrain, grass, triplanar), `good-looking-3d-scene`, `floating-island` for grass a body moves |
+| A quick prototype in one file                | `single-html-page`                                                                                            |
+| A mini-game release                          | `new-game-project`, `mini-game-build`                                                                         |
+| Changing the engine itself                   | Not a route: `AGENTS.md`, then [agent development](../agent-development.md)                                   |
+
+A route is not a plan (see [plans](../plans/README.md)) and not an API reference:
+each guide in `docs/` owns its API, and a route links to it for detail and adds the
+order, the values and what went wrong.
+
+## Adding or changing a route
+
+Write a route when you have built something end to end and checked it on the
+devices you name, so the next agent can repeat it. Copy [TEMPLATE.md](TEMPLATE.md) to
+`docs/routes/<id>.md`.
+
+- The `Id` line is the file name. `Kind` is `scene` or `workflow`.
+- Name only what was run. A step that was not checked goes under **Not checked**.
 - Numbers keep their device, browser, backend and date.
-- Link the engine guide for each API instead of restating it; restate only the values
-  and the order that worked.
-- Put the consumer's own files (models, textures, game rules) in the consumer and
-  point to them; never copy them here.
+- Link the engine guide for each API instead of restating it; restate only the
+  values and the order that worked.
+- The consumer's own files (models, textures, game rules) stay in the consumer;
+  point to them, never copy them here.
 - When an engine change makes a pitfall or a workaround obsolete, update the route
   in the same change.
-- Add the row to the table above.
+- Add its row to the table above. `npm run verify` fails on a page that is not
+  listed, lacks a header line or a section, or whose id is not its file name.

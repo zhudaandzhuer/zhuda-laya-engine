@@ -20,6 +20,29 @@ English · [简体中文](docs/zh-CN/README.md)
 
 **An agent-friendly game SDK and toolchain built on LayaAir 3.4.2.**
 
+## Start here
+
+Every way of building something on this engine is a **route**: one page in
+[`docs/routes/`](docs/routes/README.md), all in one format (when to take it, tools,
+steps, pitfalls, engine gaps, checks, what was not checked, boundaries).
+
+```sh
+node packages/mcp-server/index.mjs --tool list_routes
+node packages/mcp-server/index.mjs --tool get_route --args '{"id":"new-game-project"}'
+```
+
+| You want to | Route |
+| --- | --- |
+| Start a game or app | [new-game-project](docs/routes/new-game-project.md) |
+| Make a 3D scene look good | [good-looking-3d-scene](docs/routes/good-looking-3d-scene.md) |
+| Build a scene, a still or a film as data (terrain, grass, props, models) | [film-as-data](docs/routes/film-as-data.md) |
+| Bring in a model from Blender | [model-from-dcc](docs/routes/model-from-dcc.md) |
+| Add or change anything a player sees | [visual-content-prefab](docs/routes/visual-content-prefab.md) |
+| Write one HTML page | [single-html-page](docs/routes/single-html-page.md) |
+| Package a mini-game | [mini-game-build](docs/routes/mini-game-build.md) |
+| Build a kind of scene someone already built | [scene routes](docs/routes/README.md#scenes) |
+| Change the engine | [`AGENTS.md`](AGENTS.md) |
+
 ## Built with this engine
 
 [![Zhuda: Murder on a Rainy Night — an isometric neon alley in the rain](https://img.itch.zone/aW1nLzMyMTQ5NjkyLnBuZw==/original/nkisJO.png)](https://zhudaandzhuer.itch.io/zhuda-rainy-night-murder)

@@ -42,7 +42,12 @@ import {
 } from './runtime.mjs';
 import { auditVisualAssetMigration } from '../compiler/visual-asset-audit.mjs';
 import { auditVisualPresentationContracts } from '../compiler/visual-contract-audit.mjs';
-import { getAgentContract, validateTaskSpec } from '../compiler/agent-contract.mjs';
+import {
+  getAgentContract,
+  listImplementationRoutes,
+  readImplementationRoute,
+  validateTaskSpec,
+} from '../compiler/agent-contract.mjs';
 import { API_GUARDRAILS, ERROR_DIAGNOSTICS_DB, GOLDEN_EXAMPLES } from './corpus.mjs';
 import { getQualityRoute } from './quality-route.mjs';
 
@@ -188,6 +193,27 @@ export const MCP_TOOLS_MANIFEST = [
         error: { type: 'string', description: '錯誤訊息字串' },
       },
       required: ['error'],
+    },
+  },
+  {
+    name: 'list_routes',
+    description:
+      'Every implementation route of the engine, one line each: its id, kind (scene: one kind of scene built end to end by a reference consumer; workflow: a path every project of its kind takes, such as a new game, a film as data, a model from Blender, a mini-game build), what it is for, and the devices it was checked on. Call this FIRST, before designing or researching: pick the route that fits and read it with get_route. All routes live in docs/routes/<id>.md in one format.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        kind: { type: 'string', enum: ['scene', 'workflow'], description: 'Only this kind' },
+      },
+    },
+  },
+  {
+    name: 'get_route',
+    description:
+      'One implementation route by id (from list_routes): the whole page as Markdown with its header as data. Sections, always in this order: When to take this route, Tools, Steps, Pitfalls, Engine gaps and their workarounds, Checks, Not checked, Boundaries. A route says what was built and measured by someone else; your own result still needs its own checks.',
+    inputSchema: {
+      type: 'object',
+      properties: { id: { type: 'string', description: 'A route id, such as film-as-data' } },
+      required: ['id'],
     },
   },
   {
@@ -492,6 +518,37 @@ export function executeMcpTool(toolName, args = {}) {
       };
     }
 
+    case 'list_routes': {
+      const routes = listImplementationRoutes(projectRoot).filter(
+        (route) => !args.kind || route.kind === args.kind,
+      );
+      return {
+        tool: toolName,
+        index: 'docs/routes/README.md',
+        format: 'docs/routes/TEMPLATE.md',
+        count: routes.length,
+        routes: routes.map(({ id, kind, title, for: purpose, checkedOn, document }) => ({
+          id,
+          kind,
+          title,
+          for: purpose,
+          checkedOn,
+          document,
+        })),
+        next: 'get_route { "id": "<id>" } returns the page. No route fits: read get_quality_route (3D) or docs/consumer-route.md, build it, then add a route from the template.',
+      };
+    }
+    case 'get_route': {
+      const route = readImplementationRoute(projectRoot, String(args.id ?? ''));
+      if (!route)
+        return {
+          tool: toolName,
+          found: false,
+          message: `No route ${String(args.id)}`,
+          known: listImplementationRoutes(projectRoot).map((item) => item.id),
+        };
+      return { tool: toolName, found: true, ...route };
+    }
     case 'get_quality_route':
       return { tool: toolName, ...getQualityRoute() };
 

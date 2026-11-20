@@ -16,14 +16,110 @@ const ROUTES_INDEX_FILE = 'docs/routes/README.md';
 const ROUTES_TEMPLATE_FILE = 'docs/routes/TEMPLATE.md';
 /** What every implementation route must say, so an agent can act on it and knows its limits. */
 export const ROUTE_REQUIRED_SECTIONS = [
+  '**Id:**',
+  '**Kind:**',
+  '**For:**',
+  '**Checked on:**',
   '**Status:**',
   '## When to take this route',
+  '## Tools',
   '## Steps',
   '## Pitfalls',
+  '## Engine gaps and their workarounds',
   '## Checks',
   '## Not checked',
   '## Boundaries',
 ];
+
+/**
+ * The two kinds of route. `scene`: one kind of scene, built end to end by a
+ * reference consumer. `workflow`: a path every project of its kind takes (a
+ * new game, a model from a DCC tool, a film as data), whatever the scene.
+ */
+export const ROUTE_KINDS = ['workflow', 'scene'];
+/** The header every route page carries, in this order, as `- **Name:** value`. */
+export const ROUTE_HEADER_FIELDS = [
+  'Id',
+  'Kind',
+  'For',
+  'Checked on',
+  'Status',
+  'Reference consumer',
+  'Engine version',
+];
+
+/**
+ * A route page's header as data: its title, its one-paragraph summary and
+ * the header fields (a value may run over indented lines). Pure.
+ */
+export function parseRoutePage(text) {
+  const lines = text.split('\n');
+  const title = (lines.find((line) => line.startsWith('# ')) ?? '').replace(/^# (Route: )?/, '');
+  const fields = {};
+  let current;
+  for (const line of lines) {
+    if (line.startsWith('## ')) break;
+    const match = /^- \*\*([^*]+):\*\*\s*(.*)$/.exec(line);
+    if (match) {
+      current = match[1];
+      fields[current] = match[2].trim();
+    } else if (current && /^ {2,}\S/.test(line)) fields[current] += ' ' + line.trim();
+    else if (line.trim() === '') current = undefined;
+  }
+  const first = lines.findIndex((line) => line.startsWith('# '));
+  const summary = [];
+  for (const line of lines.slice(first + 1)) {
+    if (line.startsWith('- **') || line.startsWith('## ')) break;
+    summary.push(line.trim());
+  }
+  const sections = lines.filter((line) => line.startsWith('## ')).map((line) => line.slice(3));
+  return {
+    title,
+    summary: summary.join(' ').replace(/\s+/g, ' ').trim(),
+    fields,
+    sections,
+  };
+}
+
+/**
+ * Every route of the repository as data, sorted by kind then id: what an
+ * agent reads to pick one without opening the pages. The page itself is the
+ * source: nothing here is written down twice.
+ */
+export function listImplementationRoutes(projectRoot) {
+  const routesRoot = path.join(projectRoot, 'docs/routes');
+  if (!fs.existsSync(routesRoot)) return [];
+  return fs
+    .readdirSync(routesRoot)
+    .filter((file) => file.endsWith('.md') && file !== 'README.md' && file !== 'TEMPLATE.md')
+    .map((file) => {
+      const page = parseRoutePage(fs.readFileSync(path.join(routesRoot, file), 'utf8'));
+      const plain = (value) => (value ?? '').replace(/`/g, '');
+      return {
+        id: plain(page.fields.Id) || file.replace(/\.md$/, ''),
+        kind: plain(page.fields.Kind),
+        title: page.title,
+        for: page.fields.For ?? '',
+        checkedOn: page.fields['Checked on'] ?? '',
+        status: page.fields.Status ?? '',
+        referenceConsumer: page.fields['Reference consumer'] ?? '',
+        engineVersion: page.fields['Engine version'] ?? '',
+        document: path.posix.join('docs/routes', file),
+      };
+    })
+    .sort(
+      (a, b) =>
+        ROUTE_KINDS.indexOf(a.kind) - ROUTE_KINDS.indexOf(b.kind) || a.id.localeCompare(b.id),
+    );
+}
+
+/** One route: its listing entry and the whole page; undefined for an unknown id. */
+export function readImplementationRoute(projectRoot, id) {
+  const entry = listImplementationRoutes(projectRoot).find((route) => route.id === id);
+  if (!entry) return undefined;
+  const text = fs.readFileSync(path.join(projectRoot, entry.document), 'utf8');
+  return { ...entry, summary: parseRoutePage(text).summary, text };
+}
 
 export const REQUIRED_AGENT_FILES = [
   'AGENTS.md',
@@ -221,6 +317,27 @@ export function auditImplementationRoutes(projectRoot) {
           `Add a row for it to the table in ${ROUTES_INDEX_FILE}.`,
         ),
       );
+    const page = parseRoutePage(text);
+    const id = (page.fields.Id ?? '').replace(/`/g, '');
+    if (page.fields.Id !== undefined && id !== file.replace(/\.md$/, ''))
+      issues.push(
+        issue(
+          'ROUTE_ID_MISMATCH',
+          relative,
+          `Route id ${id} is not its file name ${file}`,
+          'A route is docs/routes/<id>.md: make the Id line and the file name the same.',
+        ),
+      );
+    const kind = (page.fields.Kind ?? '').replace(/`/g, '');
+    if (page.fields.Kind !== undefined && !ROUTE_KINDS.includes(kind))
+      issues.push(
+        issue(
+          'ROUTE_KIND_INVALID',
+          relative,
+          `Route kind ${kind} is not one of: ${ROUTE_KINDS.join(', ')}`,
+          'Use scene for one kind of scene built by a reference consumer, workflow for a path every project of its kind takes.',
+        ),
+      );
     for (const section of ROUTE_REQUIRED_SECTIONS)
       if (!text.includes(section))
         issues.push(
@@ -343,6 +460,17 @@ export function getAgentContract(projectRoot) {
     consumerRoute: 'docs/consumer-route.md',
     qualityRoute: QUALITY_ROUTE_FILE,
     implementationRoutes: ROUTES_INDEX_FILE,
+    // Every route, to pick one from without opening a page: `list_routes` returns
+    // the same, `get_route { id }` the page.
+    routes: listImplementationRoutes(projectRoot).map(
+      ({ id, kind, for: purpose, checkedOn, document }) => ({
+        id,
+        kind,
+        for: purpose,
+        checkedOn,
+        document,
+      }),
+    ),
     requiredReading: [...REQUIRED_AGENT_FILES],
     commands: [
       'node packages/compiler/zhuda-init.mjs /absolute/path/to/consumer',

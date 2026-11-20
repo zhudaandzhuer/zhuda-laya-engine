@@ -58,13 +58,37 @@ pixels per metre or more on what the camera stands on; sizes go up to 2048
 [ahead of the mount](film-scenes.md#baking-textures-ahead-of-a-mount)).
 A floor many tiles wide shows them as a grid, because every tile is the same:
 `variation` lays slow changes of brightness, several tiles wide, over it.
+`detail` lays a second recipe over the first for close range, and
+`"projection": "triplanar"` lays a recipe on by where the surface is in the
+world, so a cone, a rock or a steep slope shows it at its true size; with
+`top` a second recipe covers what faces up
+([film scenes](film-scenes.md#scene-format)).
 
-Game: `createSurfaceMaterial`, `createZhudaProceduralMaterial`, or
+Game: `createSurfaceMaterial`, `createZhudaProceduralMaterial`,
+`createZhudaTriplanarMaterial`, or
 `Zhuda3D.createMaterial({ albedoColor, smoothness })`, which is physically
 based unless it is given a `shininess`: that one option still makes it
 Blinn-Phong, which ignores the sky, the environment and the HDR chain.
 
-### 4. `light-from-the-side`
+### 4. `ground-and-plants`
+
+Ground with heights is a `terrain` node: fractal hills from `noise`, with
+`flatten` rectangles pressed level for plots and roads, or `heights` of your
+own. Grass is a `grass` node, on level ground (`y`) or on a terrain (`on`).
+
+```json
+{ "id": "hills", "type": "terrain", "position": [0, 0, 0], "size": [80, 80], "cells": [96, 96],
+  "material": "cliff", "noise": { "seed": 5, "heightM": 14, "scaleM": 30 } },
+{ "id": "meadow", "type": "grass", "on": "hills",
+  "area": { "minX": -40, "maxX": 40, "minZ": -40, "maxZ": 40 } }
+```
+
+Before placing a camera, a lamp or an object on it, ask the scene:
+`film_scene_query` with `heights: [[x, z], ...]` returns the height and the
+node under each place, read from the scene's own meshes. A height worked out
+by hand puts things inside steps and slopes.
+
+### 5. `light-from-the-side`
 
 ```json
 "look": { "sun": { "azimuthDeg": 160, "elevationDeg": 32 }, "ambient": [0.62, 0.63, 0.67], "ambientGround": [0.55, 0.52, 0.48] }
@@ -80,7 +104,7 @@ values like every colour. The day, dawn, dusk and overcast presets give both
 colour below); write your own to change them, or `"ambientGround": false`
 for one flat colour.
 
-### 5. `shadows-that-carry`
+### 6. `shadows-that-carry`
 
 By day, four cascades at 4096 for anything wider than a room:
 
@@ -92,7 +116,7 @@ At night the lamps are the key light. Up to eight point lights and one spot
 light per scene can cast shadows: give the lamps that carry the scene
 `"castsShadow": true`, or their light passes through walls.
 
-### 6. `air`
+### 7. `air`
 
 ```json
 "lightFog": { "density": 0.003, "falloffMeters": 12 }
@@ -104,7 +128,7 @@ fog far darker than the sky it meets draws a dark band along the horizon. At
 night lamps light the fog (halos); with a low sun, `shafts` cuts beams out of
 it.
 
-### 7. `wet-ground-and-water`
+### 8. `wet-ground-and-water`
 
 ```json
 { "id": "wet", "type": "reflector", "position": [0, 0.01, 6], "size": [50, 24], "wetness": 0.5 }
@@ -120,7 +144,7 @@ For rain on everything else, `"screenReflections": { "wetness": 0.6 }` in the
 look reflects what is on screen in walls, props and ground alike, by Fresnel.
 It shows only what the frame holds, and not the sky.
 
-### 8. `baked-light-for-models`
+### 9. `baked-light-for-models`
 
 There is no real-time global illumination. Light bounced once off props,
 boxes, shapes and the ground comes from `"bounceLight": {}` in the look:
@@ -133,7 +157,31 @@ so normal maps keep their relief); mark lamps that are already in the bake as
 `"fogOnly": true`. See
 [baked light](film-scenes.md#models-and-baked-global-illumination).
 
-### 9. `finish`
+Bounce light also carries the light of what glows: a pool of lava or a lit
+window is drawn into the probes like everything else and colours the walls
+near it. Without it a glowing surface is only drawn bright (advice
+`emission.lights-nothing`).
+
+### 10. `distance`
+
+What is many or far says how it behaves with distance. A model node takes
+`cullMeters`, `castShadow`, `cellMeters` and `placements`; a prop node takes
+`cullMeters`, `castShadow` and `lod` (the same prop with lighter parameters
+from a distance):
+
+```json
+{ "id": "gate", "type": "prop", "prop": "container20", "position": [0, 0, 0],
+  "cullMeters": 400, "lod": [{ "fromMeters": 60, "params": {} }] }
+```
+
+Every caster is drawn again in each shadow cascade, and a phone is bound by
+draw calls before pixels in a scene of many small objects. Props without
+these keys are merged one mesh a material; one with them is its own draws, so
+keep them for large pieces. Count draws in the game's own loop
+(`ZhudaRuntimeProfiler`), not in the film host: the two count different
+paths ([film scenes](film-scenes.md#the-loop)).
+
+### 11. `finish`
 
 ```json
 "grade": { "exposure": 1.1, "bloom": 0.2, "ao": 0.7, "grain": 0.15, "vignette": 0.3 }
@@ -163,7 +211,7 @@ exposure and drops the other two; level 0 drops all three. A film still or
 video needs neither depth of field nor motion blur here: it gets them from
 the camera's `fStop` and its samples.
 
-### 10. `look-at-it`
+### 12. `look-at-it`
 
 Preview after every change. Each reply carries two things to act on.
 
@@ -209,7 +257,7 @@ lists WebGL errors raised while drawing; there should be none.
 
 `film_scene_review` puts two to four cameras of one revision into one grid.
 
-### 11. `hold-the-frame-budget`
+### 13. `hold-the-frame-budget`
 
 In a game, `ZhudaQualityGovernor` decides the level and the look applies it:
 
@@ -238,7 +286,7 @@ level kept for the next visit with a load-crash fallback
 (`ZhudaQualityMemory`): `docs/film-scenes.md`, "Draw distance, GPU time and
 the next visit".
 
-### 12. `final-evidence`
+### 14. `final-evidence`
 
 Film: `film_render_job` with `kind: "still"` (16 samples) or `"video"`; with a
 grade the samples are averaged in scene-linear light, so lamps out of focus
@@ -297,9 +345,10 @@ nodes.
   radius a pixel, without the shape of an aperture. A still or a video gets
   both exactly, by sampling.
 - Decals that wrap round geometry (a `decal` node lies on one plane);
-  parallax: LayaAir's PBR shader takes no height map. A texture's own fine
-  repeat (`variation` hides the grid of tiles, not the pattern inside one).
-  A `sweep` does not round its corners.
+  parallax: LayaAir's PBR shader takes no height map. A recipe mask by
+  height above ground (`top` covers what faces up; damp at the foot of a wall
+  is a `decal`). Area and line lights (`bounceLight` carries a glow as
+  coarsely as its probes). A `sweep` does not round its corners.
 - Weather: `clouds` is one layer of one kind of cloud (above the eye, or
   below it as a sea of cloud); it casts no shadow on the ground and nothing
   rains from it. Rain is the game's own particles.

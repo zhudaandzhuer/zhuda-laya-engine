@@ -7,6 +7,10 @@ it, and through a hole in a garment the stocking below can be pulled in turn. Th
 stocking is see-through head on and denser toward the edge, thins where it is
 stretched, and ladders from a tear.
 
+- **Id:** `layered-cloth-on-body`
+- **Kind:** scene
+- **For:** A realistic modelled body (legs, feet) in layered clothing that is pulled and torn by mouse or touch: sheer stockings, trousers, skirts as cloth.
+- **Checked on:** desktop WebGL; desktop WebGPU; vivo V40 (Chrome 156, WebGPU, real touch)
 - **Status:** checked on desktop WebGL and WebGPU (Chrome, Apple M4) and on a vivo V40
   (Android 16, Chrome 156, WebGPU, real touch), 2026-11-15.
 - **Reference consumer:** `games/stocking-tear` in the ZhudaGameCenter workspace (not in
