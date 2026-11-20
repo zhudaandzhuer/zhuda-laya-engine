@@ -49,8 +49,9 @@ and draws nothing before its `startSec`.
 | bubbles          | 1,638             | 3,077                                                |
 | embers           | 270               | 636                                                  |
 
-(The table was taken before the last tuning of four presets' sizes; the
-check's own report in its evidence folder has the current numbers.) Twice the
+(The table was taken before the draw-order fix below, which moves a few
+pixels where two emitters overlap; the check's own report in its evidence
+folder has the numbers of a run.) Twice the
 scale covers 23,098 pixels against 7,548; another seed moves 6,250 pixels.
 
 Unit tests (`tests/effect-presets.test.mjs`): each sprite is white with
