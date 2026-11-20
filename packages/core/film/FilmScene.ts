@@ -437,6 +437,31 @@ export interface ZhudaFilmLightShafts {
 /** A baked recipe (a registered recipe name or an inline recipe) or a flat PBR colour. */
 export type ZhudaFilmMaterial =
   | {
+      /**
+       * A picture as the surface's colour: the logical id of a `.png` or
+       * `.jpg` among the scene's assets, repeated every `tileMeters`
+       * (a photographed or generated tile). `normal` is its normal map
+       * (`normalConvention` 'opengl', green up, as glTF and most libraries
+       * write it, the default; or 'directx'), `normalStrength` 0..2 its
+       * relief. The picture carries no roughness: `roughness` (default 0.8)
+       * and `metallic` (default 0) are the whole surface's. Needs
+       * `loadZhudaFilmScene` and an assets library (the MCP server's
+       * `--film-assets`).
+       */
+      picture: string;
+      normal?: string;
+      normalConvention?: 'opengl' | 'directx';
+      normalStrength?: number;
+      /** Width and height in metres that one repeat of the picture covers. */
+      tileMeters: [number, number];
+      roughness?: number;
+      metallic?: number;
+      tint?: [number, number, number, number];
+      blend?: 'opaque' | 'cutout' | 'alpha' | 'additive';
+      alphaCutoff?: number;
+      doubleSided?: boolean;
+    }
+  | {
       recipe: string | ZhudaTextureRecipe;
       tint?: [number, number, number, number];
       /**
@@ -1825,7 +1850,69 @@ function validateMaterial(
     issues.push(`${path}.alphaCutoff: use 0..1`);
   if (material.doubleSided !== undefined && typeof material.doubleSided !== 'boolean')
     issues.push(`${path}.doubleSided: true or false`);
-  if ('recipe' in material) {
+  if ('picture' in material) {
+    unknownKeys(
+      material,
+      [
+        'picture',
+        'normal',
+        'normalConvention',
+        'normalStrength',
+        'tileMeters',
+        'roughness',
+        'metallic',
+        'tint',
+        'blend',
+        'alphaCutoff',
+        'doubleSided',
+      ],
+      path,
+      issues,
+    );
+    for (const key of ['picture', 'normal'] as const) {
+      const value = material[key];
+      if (value === undefined && key === 'normal') continue;
+      let id: string | undefined;
+      try {
+        id = normalizeAssetId(value as string);
+      } catch {
+        // Reported below.
+      }
+      if (id === undefined || id !== value || !/\.(png|jpe?g)$/i.test(id))
+        issues.push(`${path}.${key}: use a logical asset id ending in .png or .jpg`);
+      else if (context.assets && !context.assets.includes(id))
+        issues.push(`${path}.${key}: unknown asset ${id}`);
+    }
+    if (
+      !Array.isArray(material.tileMeters) ||
+      material.tileMeters.length !== 2 ||
+      !material.tileMeters.every((n) => finite(n) && n >= 0.01 && n <= 10000)
+    )
+      issues.push(`${path}.tileMeters: use [width, height] in metres, 0.01..10000`);
+    if (
+      material.normalConvention !== undefined &&
+      !['opengl', 'directx'].includes(material.normalConvention as string)
+    )
+      issues.push(`${path}.normalConvention: use opengl or directx`);
+    for (const [key, max] of [
+      ['normalStrength', 2],
+      ['roughness', 1],
+      ['metallic', 1],
+    ] as const) {
+      const value = material[key];
+      if (value !== undefined && !(finite(value) && value >= 0 && value <= max))
+        issues.push(`${path}.${key}: use 0..${max}`);
+    }
+    if (
+      material.tint !== undefined &&
+      !(
+        Array.isArray(material.tint) &&
+        material.tint.length === 4 &&
+        material.tint.every((n) => finite(n) && n >= 0 && n <= 4)
+      )
+    )
+      issues.push(`${path}.tint: use four values between 0 and 4`);
+  } else if ('recipe' in material) {
     unknownKeys(
       material,
       [

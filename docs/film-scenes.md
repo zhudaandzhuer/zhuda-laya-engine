@@ -184,6 +184,29 @@ relief is added at `normal` (0..2). Far away its small mip levels are its
 mean and it changes nothing, so there is no distance to set. It is the
 material's one detail map: `detail` and `variation` cannot both be given.
 
+A material may be a picture among the scene's assets (a photographed or
+generated tile) in place of a recipe:
+
+```json
+"wall": { "picture": "textures/red-brick/albedo-512.png",
+          "normal": "textures/red-brick/normal-512.png",
+          "tileMeters": [2, 2], "roughness": 0.85 }
+```
+
+The picture is the surface's colour, repeated every `tileMeters` (the width
+and height in metres one repeat covers). `normal` is its normal map, read as
+`"normalConvention": "opengl"` (green up, as glTF and most texture libraries
+write it) unless told `"directx"`; `normalStrength` (0..2) is its relief. A
+picture carries no roughness: `roughness` (default 0.8) and `metallic`
+(default 0) are the whole surface's. `tint`, `blend`, `alphaCutoff` and
+`doubleSided` are as for a recipe; a picture with alpha and `"blend":
+"cutout"` is a leaf or a fence. Pictures are assets: the MCP server needs
+`--film-assets <dir>` and a program `loadZhudaFilmScene` with an assets
+library. Each picture is decoded once and uploaded with mip levels; a 1024
+picture is 5.6 MB on the graphics card, so use the 512 one unless the camera
+comes close. Not with `variation`, `detail` or `projection`: those are a
+recipe's.
+
 A recipe material may be laid on by place instead of by the mesh's texture
 coordinates:
 

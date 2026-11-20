@@ -58,7 +58,8 @@ The format in full is [film scenes](../film-scenes.md#scene-format).
    `cullMeters` and `lod` for large or distant ones), `box`, `lathe`, `extrude`,
    `sweep`, `model` (a `.glb`, with `animation`, `motion`, `placements`),
    `decal` for stains and marks.
-5. **Materials.** Recipes sized for the camera (`size`), `variation` on large
+5. **Materials.** A picture among the assets (`picture`, `normal`, `tileMeters`)
+   for photographed or generated tiles; recipes sized for the camera (`size`), `variation` on large
    floors, `detail` for close range, `blend: "cutout"` with a `shape` mask for
    leaves and cards, `blend: "alpha"` and `opacity` for mist, glass and falling
    water, `doubleSided` for thin things.
@@ -111,6 +112,7 @@ The format in full is [film scenes](../film-scenes.md#scene-format).
 `verify:film-terrain`, `verify:film-triplanar`, `verify:film-grass`,
 `verify:film-query`, `verify:film-pack-reload`, `verify:film-cutout`,
 `verify:film-detail`, `verify:film-glow`, `verify:film-effects`,
+`verify:film-picture-material`,
 `verify:film-model-distance`, and all of
 them on WebGPU with `npm run verify:film-webgpu`. Records:
 [film scene loop](../plans/records/film-scene-loop/verification.md),

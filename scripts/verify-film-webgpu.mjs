@@ -28,6 +28,7 @@ const scripts = [
   'verify-film-grass',
   'verify-film-query',
   'verify-film-effects',
+  'verify-film-picture-material',
   'verify-film-glow',
   'verify-film-triplanar',
   'verify-film-terrain',

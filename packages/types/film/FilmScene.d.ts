@@ -383,6 +383,30 @@ export interface ZhudaFilmLightShafts {
 }
 /** A baked recipe (a registered recipe name or an inline recipe) or a flat PBR colour. */
 export type ZhudaFilmMaterial = {
+    /**
+     * A picture as the surface's colour: the logical id of a `.png` or
+     * `.jpg` among the scene's assets, repeated every `tileMeters`
+     * (a photographed or generated tile). `normal` is its normal map
+     * (`normalConvention` 'opengl', green up, as glTF and most libraries
+     * write it, the default; or 'directx'), `normalStrength` 0..2 its
+     * relief. The picture carries no roughness: `roughness` (default 0.8)
+     * and `metallic` (default 0) are the whole surface's. Needs
+     * `loadZhudaFilmScene` and an assets library (the MCP server's
+     * `--film-assets`).
+     */
+    picture: string;
+    normal?: string;
+    normalConvention?: 'opengl' | 'directx';
+    normalStrength?: number;
+    /** Width and height in metres that one repeat of the picture covers. */
+    tileMeters: [number, number];
+    roughness?: number;
+    metallic?: number;
+    tint?: [number, number, number, number];
+    blend?: 'opaque' | 'cutout' | 'alpha' | 'additive';
+    alphaCutoff?: number;
+    doubleSided?: boolean;
+} | {
     recipe: string | ZhudaTextureRecipe;
     tint?: [number, number, number, number];
     /**

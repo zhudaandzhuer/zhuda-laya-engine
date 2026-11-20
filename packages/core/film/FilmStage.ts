@@ -10,6 +10,7 @@ import {
   ZhudaDynamicMesh,
   computeMeshTangents,
   createSurfaceMaterial,
+  createSurfaceTexture,
   disposeSurfaceMaterial,
   type MeshData,
 } from '../runtime3d/Surfaces.ts';
@@ -418,14 +419,61 @@ export async function loadZhudaFilmScene(
       );
     }
   }
+  // Pictures that materials are made of, each decoded once however many materials name it.
+  const pictureLeases = new Map<string, AssetLease<ImageBitmap>>();
+  const releasePictures = () => {
+    for (const lease of pictureLeases.values()) lease.release();
+    pictureLeases.clear();
+  };
+  const wanted = new Set<string>();
+  for (const material of Object.values(scene.materials ?? {}))
+    if ('picture' in material) {
+      wanted.add(material.picture);
+      if (material.normal) wanted.add(material.normal);
+    }
+  if (wanted.size) {
+    try {
+      if (!options.assets)
+        throw Error('Film scene uses picture materials; give loadZhudaFilmScene an assets library');
+      for (const id of wanted) {
+        try {
+          pictureLeases.set(
+            id,
+            await options.assets.pictures.acquire(id, { signal: options.signal }),
+          );
+        } catch (error) {
+          if (options.signal?.aborted) throw error;
+          throw Error(
+            `Film scene material picture: cannot load ${id}: ${(error as Error)?.message ?? error}`,
+            { cause: error },
+          );
+        }
+      }
+    } catch (error) {
+      releaseLoaded(loaded.values());
+      panorama?.release();
+      colorTable?.release();
+      releasePictures();
+      throw error;
+    }
+  }
   let stage: ZhudaFilmStage;
   try {
-    stage = buildFilmStage(rootScene, scene, options, loaded, colorTable?.value);
+    stage = buildFilmStage(
+      rootScene,
+      scene,
+      options,
+      loaded,
+      colorTable?.value,
+      new Map([...pictureLeases].map(([id, lease]) => [id, lease.value])),
+    );
   } catch (error) {
     panorama?.release();
     colorTable?.release();
+    releasePictures();
     throw error;
   }
+  if (pictureLeases.size) stage.adopt(releasePictures);
   if (colorTable) {
     const lease = colorTable;
     stage.adopt(() => lease.release());
@@ -510,6 +558,7 @@ function buildFilmStage(
   options: ZhudaFilmStageOptions,
   loaded: Map<string, LoadedFilmModel>,
   colorTable?: ZhudaCubeLut,
+  pictures: Map<string, ImageBitmap> = new Map(),
 ): ZhudaFilmStage {
   const cleanups: (() => void)[] = [() => releaseLoaded(loaded.values())];
   let disposed = false;
@@ -525,7 +574,16 @@ function buildFilmStage(
     }
   };
   try {
-    return buildFilmStageContents(rootScene, input, options, loaded, cleanups, dispose, colorTable);
+    return buildFilmStageContents(
+      rootScene,
+      input,
+      options,
+      loaded,
+      cleanups,
+      dispose,
+      colorTable,
+      pictures,
+    );
   } catch (error) {
     dispose();
     throw error;
@@ -540,6 +598,7 @@ function buildFilmStageContents(
   cleanups: (() => void)[],
   dispose: () => void,
   colorTable?: ZhudaCubeLut,
+  pictures: Map<string, ImageBitmap> = new Map(),
 ): ZhudaFilmStage {
   const l = (globalThis as any).Laya;
   if (!l?.Scene3D) throw Error('Film scenes need the Laya 3D runtime');
@@ -614,7 +673,50 @@ function buildFilmStageContents(
         scene.materials?.[name] ?? (recipes[name] ? { recipe: name } : undefined);
       if (!spec) throw Error(`Film scene: no material ${name}; add it to scene.materials`);
       let material: any;
-      if ('recipe' in spec) {
+      if ('picture' in spec) {
+        const made: any[] = [];
+        const texture = (id: string, role: 'color' | 'normal') => {
+          const bitmap = pictures.get(id);
+          if (!bitmap)
+            throw Error(
+              `Film scene material ${name}: picture ${id} is not loaded; mount with loadZhudaFilmScene and an assets library`,
+            );
+          const pixels = zhudaBitmapPixels(bitmap);
+          // LayaAir reads a normal map's green as pointing down the picture.
+          if (role === 'normal' && (spec.normalConvention ?? 'opengl') === 'opengl')
+            for (let i = 1; i < pixels.length; i += 4) pixels[i] = 255 - pixels[i];
+          const created = createSurfaceTexture(bitmap.width, bitmap.height, pixels, role, {
+            mipmap: true,
+          });
+          made.push(created);
+          return created;
+        };
+        try {
+          const albedo = texture(spec.picture, 'color');
+          const normal = spec.normal ? texture(spec.normal, 'normal') : undefined;
+          material = createSurfaceMaterial({
+            type: 'pbr',
+            color: spec.tint ?? [1, 1, 1, 1],
+            metallic: spec.metallic ?? 0,
+            roughness: spec.roughness ?? 0.8,
+            textures: { albedo, ...(normal ? { normal } : {}) },
+            ...(spec.blend ? { blend: spec.blend } : {}),
+            ...(spec.alphaCutoff !== undefined ? { alphaCutoff: spec.alphaCutoff } : {}),
+            ...(spec.doubleSided ? { doubleSided: true } : {}),
+          });
+        } catch (error) {
+          for (const one of made) one.destroy();
+          throw error;
+        }
+        material.tilingOffset = new l.Vector4(1 / spec.tileMeters[0], 1 / spec.tileMeters[1], 0, 0);
+        if (spec.normal && spec.normalStrength !== undefined)
+          material.normalTextureScale = spec.normalStrength;
+        const own = material;
+        cleanups.push(() => {
+          disposeSurfaceMaterial(own);
+          for (const one of made) one.destroy();
+        });
+      } else if ('recipe' in spec) {
         const recipe = typeof spec.recipe === 'string' ? recipes[spec.recipe] : spec.recipe;
         if (!recipe) throw Error(`Film scene: unknown recipe ${String(spec.recipe)}`);
         const size = spec.size ?? 256,
@@ -1573,6 +1675,16 @@ function buildFilmStageContents(
       dispose,
     };
   }
+}
+
+/** A decoded picture's pixels, straight RGBA row by row from the top. */
+function zhudaBitmapPixels(bitmap: ImageBitmap): Uint8Array {
+  const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+  const context = canvas.getContext('2d', { willReadFrequently: true, colorSpace: 'srgb' });
+  if (!context) throw Error('Film scene: no 2D canvas to read a picture with');
+  context.drawImage(bitmap, 0, 0);
+  const data = context.getImageData(0, 0, bitmap.width, bitmap.height).data;
+  return new Uint8Array(data.buffer.slice(0));
 }
 
 /** The picture as the sky: Laya's panoramic sky material on a dome the stage owns. */
