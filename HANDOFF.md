@@ -106,8 +106,8 @@ the numbers.
   `f56f8a4` (`git log origin/main..main` says whether it is pushed).
   Measured on the three devices. No runtime file
   changed and no tier is defined in the engine.
-- Second round, the same day, on the branch `feat/quality-tiers-engine`
-  (`git log main..feat/quality-tiers-engine` says whether it is merged): the
+- Second round, the same day, on `main` as `f9f1e86` (`git log
+  origin/main..main` says whether it is pushed): the
   tiers as data (`ZHUDA_FRAME_TIERS`, `zhudaFrameTier`, `zhudaTierBudgetMs`),
   a rung at level 1 drawn at 0.5 in the default ladder, advice for a frame
   of many draws, render targets counted by the profiler, repeated readings
@@ -115,7 +115,7 @@ the numbers.
   `verify:quality-governor` fails on this Mac today on both backends, **also
   without the change** (timed assertions, the machine under load): run it
   again on a quiet machine before trusting either result.
-- Third round, on the same branch: `ZhudaFilmicPipeline` no longer keeps an
+- Third round, on `main` as `94eb400`: `ZhudaFilmicPipeline` no longer keeps an
   idle occlusion effect in its chain (LayaAir drew the whole scene again for
   its normals at look levels 1 and 2, and for any look with `ao: 0`). V40,
   level 1 at 0.7: 57 to 60 frames a second; iPhone: 44..47 to 51..54. 35 draw
