@@ -562,6 +562,45 @@ test('a film scene prop node takes a shadow switch, a cull distance and levels',
   assert.match(issues({ lod: [{ fromMeters: 10, params: {}, extra: 1 }] }).join(' '), /lod\[0\]/);
 });
 
+test('a film scene takes a grass node: an area, level ground, strips kept clear', () => {
+  const scene = (grass) => ({
+    schemaVersion: 1,
+    id: 'grass-node-check',
+    camera: { eye: [0, 1, 6], target: [0, 1, 0], focalLengthMm: 35 },
+    nodes: [
+      { id: 'meadow', type: 'grass', area: { minX: -10, maxX: 10, minZ: -10, maxZ: 10 }, ...grass },
+    ],
+  });
+  const issues = (grass) =>
+    validateZhudaFilmScene(scene(grass)).filter((issue) => /nodes\[0\]/.test(issue));
+  assert.deepEqual(issues({}), []);
+  assert.deepEqual(
+    issues({
+      y: 2,
+      clear: [{ minX: -1, maxX: 1, minZ: -10, maxZ: 10 }],
+      avoidSolids: false,
+      density: 300,
+      heightM: [0.1, 0.3],
+      distanceM: 50,
+      tip: [0.4, 0.6, 0.2],
+      dryness: 0.2,
+      wind: { directionDeg: 30, strength: 0.4 },
+      seed: 7,
+      turf: false,
+    }),
+    [],
+  );
+  assert.match(issues({ area: { minX: 5, maxX: 1, minZ: 0, maxZ: 1 } })[0], /area: minX < maxX/);
+  assert.match(issues({ density: 5 })[0], /density: 20\.\.1500/);
+  assert.match(issues({ y: 'low' })[0], /\.y: a height in metres/);
+  assert.match(
+    issues({ clear: [{ minX: 2, maxX: 1, minZ: 0, maxZ: 1 }] })[0],
+    /clear: up to 32 rectangles/,
+  );
+  assert.match(issues({ avoidSolids: 'yes' })[0], /avoidSolids: true or false/);
+  assert.match(issues({ ground: 3 }).join(' '), /nodes\[0\]/);
+});
+
 test('a baked animation is laid out clip after clip, frame after frame, four texels a bone', () => {
   const layout = zhudaBakedLayout(
     [

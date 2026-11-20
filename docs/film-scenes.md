@@ -163,6 +163,25 @@ relief is added at `normal` (0..2). Far away its small mip levels are its
 mean and it changes nothing, so there is no distance to set. It is the
 material's one detail map: `detail` and `variation` cannot both be given.
 
+A `grass` node is grass a camera can walk through ([grass](grass.md)), on
+level ground:
+
+```json
+{ "id": "meadow", "type": "grass",
+  "area": { "minX": -40, "maxX": 40, "minZ": -60, "maxZ": 12 }, "y": 0,
+  "clear": [{ "minX": -7, "maxX": -4, "minZ": -60, "maxZ": 12 }],
+  "density": 400, "heightM": [0.14, 0.34], "distanceM": 60,
+  "tip": [0.46, 0.6, 0.22], "dryness": 0.3, "wind": { "strength": 0.4 } }
+```
+
+Blades in clumps over turf, moved by the wind with shot time, lit and shadowed
+like the ground, thinned with distance and gone beyond `distanceM`. Nothing
+grows on a `clear` rectangle, nor under what stands on the ground (the boxes
+of props and of `box`, `lathe`, `extrude` and `sweep` nodes that reach down to
+`y`; `"avoidSolids": false` lets it). It is grown for where the camera is
+whenever the camera is set. The ground it stands on is level: a hill needs a
+heightfield, which the scene format does not have.
+
 A prop node may say how it behaves with distance, like a model node:
 
 ```json

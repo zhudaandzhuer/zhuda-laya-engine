@@ -584,6 +584,60 @@ export type ZhudaFilmNode = {
     material: string;
 } | {
     id: string;
+    /**
+     * Grass a camera can walk through (`ZhudaGrassField`): narrow curved
+     * blades in clumps over turf, moved by the wind with shot time, lit and
+     * shadowed like the ground, thinned with distance. It stands on level
+     * ground at `y`.
+     */
+    type: 'grass';
+    /** The land it may cover, world metres. */
+    area: {
+        minX: number;
+        maxX: number;
+        minZ: number;
+        maxZ: number;
+    };
+    /** Height of the ground it grows on (default 0). */
+    y?: number;
+    /** Rectangles of the area where nothing grows (a road, a pond), at most 32. */
+    clear?: {
+        minX: number;
+        maxX: number;
+        minZ: number;
+        maxZ: number;
+    }[];
+    /**
+     * Nothing grows under what stands on the ground (default true): the
+     * boxes of the scene's props, `box`, `lathe`, `extrude` and `sweep`
+     * nodes that reach down to `y`. Models are not asked.
+     */
+    avoidSolids?: boolean;
+    /** Blades on a square metre close to the eye, 20..1500 (default 400). */
+    density?: number;
+    /** Shortest and tallest blade, metres (default [0.14, 0.34]). */
+    heightM?: [number, number];
+    /** Width of a blade at its foot, metres, 0.005..0.2 (default 0.03). */
+    widthM?: number;
+    /** How far from the eye grass is drawn, metres, 10..300 (default 60). */
+    distanceM?: number;
+    /** Colour of a blade at its tip, at its foot, and of dry blades: display RGB. */
+    tip?: ZhudaFilmVec3;
+    root?: ZhudaFilmVec3;
+    dry?: ZhudaFilmVec3;
+    /** How much of the grass is dry, 0..1 (default 0.3). */
+    dryness?: number;
+    /** Where the wind blows toward (degrees from +X toward +Z), how far it bends a blade (0..1), how fast it moves. */
+    wind?: {
+        directionDeg?: number;
+        strength?: number;
+        speed?: number;
+    };
+    seed?: number;
+    /** False leaves out the turf under the blades (default true). */
+    turf?: boolean;
+} | {
+    id: string;
     type: 'model';
     /** Logical id of a self-contained `.glb` the host's asset provider delivers. */
     asset: string;

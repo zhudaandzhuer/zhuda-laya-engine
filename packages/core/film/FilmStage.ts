@@ -30,6 +30,7 @@ import { mountZhudaModel } from '../runtime3d/ModelPlacements.ts';
 import { ZhudaLightFog } from '../runtime3d/LightFog.ts';
 import { ZhudaUnderwater, ZHUDA_UNDERWATER_LAYER } from '../runtime3d/Underwater.ts';
 import { ZhudaDecal } from '../runtime3d/Decals.ts';
+import { ZhudaGrassField } from '../runtime3d/Grass.ts';
 import {
   ZhudaAutoExposure,
   ZhudaDepthOfField,
@@ -655,6 +656,8 @@ function buildFilmStageContents(
       return material;
     };
 
+    /** Where the camera was last set; unset until it first is (shot time is applied before that). */
+    let eyeNow: readonly [number, number, number] | undefined;
     /** Models and props with a cull distance or levels, by what chooses what they draw. */
     const culled: {
       update(eye: readonly [number, number, number]): unknown;
@@ -840,6 +843,38 @@ function buildFilmStageContents(
       }
     }
 
+    // Grass on level ground, kept off what stands on it. It is grown for where the
+    // camera is whenever the camera is set, and blown by shot time.
+    const fields: ZhudaGrassField[] = [];
+    let grassSeconds = 0;
+    for (const node of scene.nodes) {
+      if (node.type !== 'grass') continue;
+      const y = node.y ?? 0,
+        clear = node.clear ?? [];
+      // What reaches down to the ground, as rectangles of it.
+      const feet =
+        node.avoidSolids === false
+          ? []
+          : solids.filter((box) => box.min[1] <= y + 0.25 && box.max[1] > y + 0.02);
+      const { id: _id, type: _type, y: _y, clear: _clear, avoidSolids: _avoid, ...options } = node;
+      const field = new ZhudaGrassField(scene3D, {
+        ...options,
+        ground: () => y,
+        grows: (x, z) =>
+          !clear.some((r) => x >= r.minX && x <= r.maxX && z >= r.minZ && z <= r.maxZ) &&
+          !feet.some(
+            (box) => x >= box.min[0] && x <= box.max[0] && z >= box.min[2] && z <= box.max[2],
+          ),
+      });
+      fields.push(field);
+      cleanups.push(() => field.dispose());
+    }
+    if (fields.length)
+      timed.push((seconds) => {
+        grassSeconds = seconds;
+        if (eyeNow) for (const field of fields) field.fill(eyeNow, seconds);
+      });
+
     // Marks on surfaces, after the surfaces they lie on.
     for (const node of scene.nodes) {
       if (node.type !== 'decal') continue;
@@ -875,7 +910,7 @@ function buildFilmStageContents(
           holder.transform.rotationEuler = new l.Vector3(0, pose.yawDeg, 0);
           // Whatever is culled by distance reads where the model is now.
           for (const lod of culled) lod.invalidate();
-          for (const lod of culled) lod.update(current.eye);
+          if (eyeNow) for (const lod of culled) lod.update(eyeNow);
         });
       }
       const mounted = mountZhudaModel(holder, item.instance, {
@@ -1191,7 +1226,9 @@ function buildFilmStageContents(
       current = c;
       camera.transform.position = new l.Vector3(...c.eye);
       camera.transform.lookAt(new l.Vector3(...c.target), new l.Vector3(0, 1, 0));
+      eyeNow = [c.eye[0], c.eye[1], c.eye[2]];
       for (const lod of culled) lod.update(c.eye);
+      for (const field of fields) field.fill(c.eye, grassSeconds);
       lens.configure({
         focalLengthMm: c.focalLengthMm,
         fStop: c.fStop,

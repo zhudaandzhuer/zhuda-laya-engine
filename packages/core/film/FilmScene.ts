@@ -19,6 +19,7 @@ import {
   validateZhudaSweep,
 } from '../procedural/Geometry.ts';
 import { validateZhudaDecal, type ZhudaDecalShape } from '../runtime3d/Decals.ts';
+import { validateZhudaGrass } from '../runtime3d/Grass.ts';
 import {
   resolveZhudaAutoExposure,
   resolveZhudaDepthOfField,
@@ -637,6 +638,47 @@ export type ZhudaFilmNode =
       /** Width (X) and depth (Z) in metres; the top surface sits at y = 0. */
       size: [number, number];
       material: string;
+    }
+  | {
+      id: string;
+      /**
+       * Grass a camera can walk through (`ZhudaGrassField`): narrow curved
+       * blades in clumps over turf, moved by the wind with shot time, lit and
+       * shadowed like the ground, thinned with distance. It stands on level
+       * ground at `y`.
+       */
+      type: 'grass';
+      /** The land it may cover, world metres. */
+      area: { minX: number; maxX: number; minZ: number; maxZ: number };
+      /** Height of the ground it grows on (default 0). */
+      y?: number;
+      /** Rectangles of the area where nothing grows (a road, a pond), at most 32. */
+      clear?: { minX: number; maxX: number; minZ: number; maxZ: number }[];
+      /**
+       * Nothing grows under what stands on the ground (default true): the
+       * boxes of the scene's props, `box`, `lathe`, `extrude` and `sweep`
+       * nodes that reach down to `y`. Models are not asked.
+       */
+      avoidSolids?: boolean;
+      /** Blades on a square metre close to the eye, 20..1500 (default 400). */
+      density?: number;
+      /** Shortest and tallest blade, metres (default [0.14, 0.34]). */
+      heightM?: [number, number];
+      /** Width of a blade at its foot, metres, 0.005..0.2 (default 0.03). */
+      widthM?: number;
+      /** How far from the eye grass is drawn, metres, 10..300 (default 60). */
+      distanceM?: number;
+      /** Colour of a blade at its tip, at its foot, and of dry blades: display RGB. */
+      tip?: ZhudaFilmVec3;
+      root?: ZhudaFilmVec3;
+      dry?: ZhudaFilmVec3;
+      /** How much of the grass is dry, 0..1 (default 0.3). */
+      dryness?: number;
+      /** Where the wind blows toward (degrees from +X toward +Z), how far it bends a blade (0..1), how fast it moves. */
+      wind?: { directionDeg?: number; strength?: number; speed?: number };
+      seed?: number;
+      /** False leaves out the turf under the blades (default true). */
+      turf?: boolean;
     }
   | {
       id: string;
@@ -1996,6 +2038,42 @@ function validateNode(
         issues.push(`${path}.size: use [width, depth] in metres`);
       usesMaterial();
       break;
+    case 'grass': {
+      const own = ['id', 'type', 'y', 'clear', 'avoidSolids'];
+      const passed = [
+        'area',
+        'density',
+        'heightM',
+        'widthM',
+        'distanceM',
+        'tip',
+        'root',
+        'dry',
+        'dryness',
+        'wind',
+        'seed',
+        'turf',
+      ];
+      unknownKeys(node, [...own, ...passed], path, issues);
+      const options: Record<string, unknown> = { ground: () => 0 };
+      for (const key of passed) if (node[key] !== undefined) options[key] = node[key];
+      for (const issue of validateZhudaGrass(options as never))
+        issues.push(`${path}.${issue.replace(/^grass\./, '')}`);
+      if (node.y !== undefined && !(finite(node.y) && Math.abs(node.y) <= ZHUDA_FILM_LIMITS.extent))
+        issues.push(`${path}.y: a height in metres`);
+      if (node.avoidSolids !== undefined && typeof node.avoidSolids !== 'boolean')
+        issues.push(`${path}.avoidSolids: true or false`);
+      if (node.clear !== undefined) {
+        const ok = (r: unknown) =>
+          object(r) &&
+          ['minX', 'maxX', 'minZ', 'maxZ'].every((k) => finite(r[k])) &&
+          (r.maxX as number) > (r.minX as number) &&
+          (r.maxZ as number) > (r.minZ as number);
+        if (!Array.isArray(node.clear) || node.clear.length > 32 || !node.clear.every(ok))
+          issues.push(`${path}.clear: up to 32 rectangles, each minX < maxX and minZ < maxZ`);
+      }
+      break;
+    }
     case 'model': {
       unknownKeys(
         node,
