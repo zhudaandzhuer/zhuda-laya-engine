@@ -127,9 +127,8 @@ occlusion without the extra scene pass. Record:
 
 The rest of the review's requests (2026-11-21, later). The owner asked for
 all of them. They are on branch `feat/review-requests-2` (from `a2d95f7`),
-committed there and **not merged into `main` and not pushed**: `git branch
---contains` and `git log main..feat/review-requests-2` say whether that has
-changed. Record:
+merged into `main` by fast-forward on the owner's word the same day (`git
+log origin/main..main` says whether it is pushed). Record:
 [task](docs/plans/records/review-requests-2/task.md),
 [verification](docs/plans/records/review-requests-2/verification.md).
 
@@ -152,8 +151,8 @@ changed. Record:
   sampler for its bake and the script that made them). The source pictures
   (102 MB) are on this Mac only, in `audits/VerifyZhuda/textures/raw/`
   (ignored by git there).
-- Next: the owner's word on merging the branch into `main` and pushing; then
-  tell the review which engine commit carries the scene-format keys.
+- The review is told in `ENGINE-REPLY.md` of its repository, which names the
+  `main` commit that carries the scene-format keys.
 
 Frame-rate tiers (2026-11-20, the same day). The owner set the rendering
 goal: the best picture that stays smooth on mobile devices, in three tiers by
