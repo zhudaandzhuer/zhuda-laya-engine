@@ -159,9 +159,9 @@ route is now one page in `docs/routes/<id>.md` in one format, listed by the MCP
 tools `list_routes` and `get_route` and by a "Start here" table at the top of
 `AGENTS.md` and `README.md`: seven workflow routes (written from the guides, which
 stay where they are) and the four scene routes. The quality route has two more
-steps and the film tool text names the week's features. On branch
-`docs/route-registry`, committed there; `git branch --contains` says whether it is
-merged. Record:
+steps and the film tool text names the week's features. Merged into `main` by
+fast-forward on the owner's word (`git log origin/main..main` says whether it is
+pushed). Record:
 [task](docs/plans/records/route-registry/task.md),
 [verification](docs/plans/records/route-registry/verification.md).
 
