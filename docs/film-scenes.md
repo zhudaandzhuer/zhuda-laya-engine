@@ -124,6 +124,28 @@ when more than 16 are open.
 Props are merged into one mesh per material, so a yard of containers costs a
 handful of draws.
 
+A prop node may say how it behaves with distance, like a model node:
+
+```json
+{ "id": "crowd", "type": "prop", "prop": "people", "position": [0, 0, -20],
+  "castShadow": false,
+  "lod": [{ "fromMeters": 15, "params": { "detail": 0.5 } },
+          { "fromMeters": 40, "params": { "detail": 0 } }],
+  "cullMeters": 120 }
+```
+
+- `castShadow: false`: it casts no shadow and still takes them. For grass,
+  petals, pebbles: a prop is drawn again in every split of the shadow map.
+- `lod` (at most four levels, `fromMeters` rising): from that distance the
+  prop is built with `params` laid over its own. Every level is built when
+  the scene is mounted and one is drawn, chosen by the distance from the
+  camera to the node's `position` whenever the camera is set.
+- `cullMeters`: beyond it the prop is not drawn.
+
+A prop with `lod` or `cullMeters` is a mesh of its own for each of its
+materials, not part of the merged ones: give them to the few props that are
+worth it.
+
 A patch has `camera` and `look` (merged), `materials` (a `null` value removes
 one), `remove` (node ids, applied first) and `upsert` (nodes replaced by id or
 added). The whole result is validated before it is accepted.

@@ -520,6 +520,48 @@ test('a film scene model node takes a cell size, a cull distance and no shadow',
   );
 });
 
+test('a film scene prop node takes a shadow switch, a cull distance and levels', () => {
+  const scene = (prop) => ({
+    schemaVersion: 1,
+    id: 'prop-distance-check',
+    camera: { eye: [0, 1, 6], target: [0, 1, 0], focalLengthMm: 35 },
+    nodes: [{ id: 'crowd', type: 'prop', prop: 'people', position: [0, 0, 0], ...prop }],
+  });
+  const issues = (prop) =>
+    validateZhudaFilmScene(scene(prop)).filter((issue) =>
+      /nodes\[0\]\.(castShadow|cullMeters|lod)/.test(issue),
+    );
+  assert.deepEqual(
+    issues({
+      castShadow: false,
+      cullMeters: 120,
+      lod: [
+        { fromMeters: 15, params: { detail: 0.5 } },
+        { fromMeters: 40, params: { detail: 0 } },
+      ],
+    }),
+    [],
+  );
+  assert.match(issues({ castShadow: 'no' })[0], /castShadow: true or false/);
+  assert.match(issues({ cullMeters: -1 })[0], /cullMeters: beyond the last level/);
+  assert.match(
+    issues({ cullMeters: 30, lod: [{ fromMeters: 40, params: {} }] })[0],
+    /cullMeters: beyond the last level/,
+  );
+  assert.match(
+    issues({
+      lod: [
+        { fromMeters: 40, params: {} },
+        { fromMeters: 20, params: {} },
+      ],
+    })[0],
+    /lod\[1\]\.fromMeters: must rise/,
+  );
+  assert.match(issues({ lod: [] })[0], /lod: one to four levels/);
+  assert.match(issues({ lod: [{ fromMeters: 10 }] })[0], /lod\[0\]\.params: object required/);
+  assert.match(issues({ lod: [{ fromMeters: 10, params: {}, extra: 1 }] }).join(' '), /lod\[0\]/);
+});
+
 test('a baked animation is laid out clip after clip, frame after frame, four texels a bone', () => {
   const layout = zhudaBakedLayout(
     [

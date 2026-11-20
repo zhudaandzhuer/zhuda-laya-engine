@@ -5,6 +5,9 @@
 // still drawn), and `cellMeters` beside `instanced` (the picture is the same
 // whatever the size of the squares the copies are grouped by). Red posts
 // stand on a pale floor at 15, 40 and 90 m; the model is generated here.
+// A program prop (the built-in container) says the same and has levels: red
+// near, built again in blue from 30 m, gone beyond 100 m, with and without
+// its shadow.
 // Desktop GPU evidence only (WebGL, or WebGPU through verify:film-webgpu); not
 // mobile.
 import fs from 'node:fs';
@@ -265,6 +268,96 @@ try {
   report.cellsCulled = POSTS.map((post) => redAt(cellsCulled, FAR_EYE, post));
   assert.ok(report.cellsCulled[0] > 20 && report.cellsCulled[1] > 20, 'near groups stay');
   assert.equal(report.cellsCulled[2], 0, 'the group at 90 m is not drawn');
+
+  // 5. A prop with levels and a cull distance: which one is drawn follows the camera.
+  const CRATE = [0, 0, -60];
+  const propScene = (eye, prop) => ({
+    schemaVersion: 1,
+    id: 'prop-distance',
+    camera: { eye, target: [CRATE[0], 1.3, CRATE[2]], focalLengthMm: LENS },
+    look: {
+      preset: 'day',
+      sun: { azimuthDeg: 90, elevationDeg: 40, intensity: 1.5 },
+      shadows: { distance: 160, resolution: 2048, cascades: 2 },
+      fog: false,
+      grade: { exposure: 1, bloom: 0, ao: 0, antialias: 'none' },
+    },
+    materials: {
+      pale: { color: [0.8, 0.8, 0.78], roughness: 1 },
+      near: { color: [0.9, 0.05, 0.05], roughness: 1 },
+      far: { color: [0.05, 0.1, 0.9], roughness: 1 },
+    },
+    nodes: [
+      { id: 'ground', type: 'ground', size: [600, 600], material: 'pale' },
+      {
+        id: 'crate',
+        type: 'prop',
+        prop: 'container20',
+        position: CRATE,
+        yawDeg: 90,
+        params: { paint: 'near' },
+        ...prop,
+      },
+    ],
+  });
+  const shoot = async (name, eye, prop) => {
+    const { png } = await host.preview(propScene(eye, prop), { width: W, height: H });
+    fs.writeFileSync(path.join(out, name + '.png'), png);
+    return PNG.sync.read(png);
+  };
+  /** Red and blue pixels round the crate's middle, and the floor where its shadow falls. */
+  const crate = (img, eye) => {
+    const aim = [CRATE[0], 1.3, CRATE[2]];
+    const [cx, cy] = projectPixel(aim, eye, aim, W, H, LENS);
+    let red = 0,
+      blue = 0;
+    for (let y = cy - 20; y < cy + 20; y++)
+      for (let x = cx - 20; x < cx + 20; x++) {
+        const i = (y * W + x) * 4;
+        if (img.data[i] > 80 && img.data[i] > 2.5 * Math.max(img.data[i + 1], img.data[i + 2]))
+          red++;
+        if (img.data[i + 2] > 80 && img.data[i + 2] > 2.5 * Math.max(img.data[i], img.data[i + 1]))
+          blue++;
+      }
+    const [sx, sy] = projectPixel([CRATE[0] - 3.2, 0, CRATE[2]], eye, aim, W, H, LENS);
+    let sum = 0,
+      n = 0;
+    for (let y = sy - 2; y <= sy + 2; y++)
+      for (let x = sx - 2; x <= sx + 2; x++, n++) {
+        const i = (y * W + x) * 4;
+        sum += (img.data[i] + img.data[i + 1] + img.data[i + 2]) / 3;
+      }
+    return { red, blue, floor: Math.round(sum / n) };
+  };
+  const levels = { lod: [{ fromMeters: 30, params: { paint: 'far' } }], cullMeters: 100 };
+  const eyeAt = (meters) => [CRATE[0], 3, CRATE[2] + meters];
+  report.prop = {
+    near: crate(await shoot('prop-near', eyeAt(18), levels), eyeAt(18)),
+    middle: crate(await shoot('prop-middle', eyeAt(50), levels), eyeAt(50)),
+    beyond: crate(await shoot('prop-beyond', eyeAt(130), levels), eyeAt(130)),
+    plainFar: crate(await shoot('prop-plain-far', eyeAt(130), {}), eyeAt(130)),
+    shadowless: crate(await shoot('prop-no-shadow', eyeAt(18), { castShadow: false }), eyeAt(18)),
+    shadowed: crate(await shoot('prop-shadow', eyeAt(18), {}), eyeAt(18)),
+  };
+  const p = report.prop;
+  assert.ok(
+    p.near.red > 200 && p.near.blue === 0,
+    `within 30 m the prop is its own (${JSON.stringify(p.near)})`,
+  );
+  assert.ok(
+    p.middle.blue > 200 && p.middle.red === 0,
+    `from 30 m it is the lighter level (${JSON.stringify(p.middle)})`,
+  );
+  assert.ok(
+    p.plainFar.red > 20,
+    `without a cull distance it is drawn at 130 m (${JSON.stringify(p.plainFar)})`,
+  );
+  assert.equal(p.beyond.red + p.beyond.blue, 0, 'beyond 100 m it is not drawn');
+  assert.ok(p.shadowless.red > 200, 'without a shadow the prop is still drawn');
+  assert.ok(
+    p.shadowed.floor < p.shadowless.floor - 25,
+    `the prop's shadow is on the floor by default (${p.shadowed.floor}) and gone with castShadow false (${p.shadowless.floor})`,
+  );
 
   report.ok = true;
   fs.writeFileSync(path.join(out, 'report.json'), JSON.stringify(report, null, 2));

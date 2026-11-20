@@ -479,6 +479,22 @@ export type ZhudaFilmNode =
       yawDeg?: number;
       seed?: number;
       params?: Record<string, unknown>;
+      /**
+       * False: the prop casts no shadow (it still takes them). For grass,
+       * petals, pebbles and whatever is too small for its shadow to show: a
+       * prop is drawn again in every split of the shadow map it reaches.
+       */
+      castShadow?: boolean;
+      /** Beyond this distance from the camera to the prop's `position`, in metres, it is not drawn. */
+      cullMeters?: number;
+      /**
+       * Lighter versions for distance, nearest first, at most 4: from
+       * `fromMeters` on, the prop is built with `params` laid over its own
+       * (a `detail` of 0.5, fewer blades). Each is built when the scene is
+       * mounted; one is drawn at a time, chosen by the distance from the
+       * camera to the prop's `position` whenever the camera is set.
+       */
+      lod?: { fromMeters: number; params: Record<string, unknown> }[];
     }
   | {
       id: string;
@@ -1740,7 +1756,18 @@ function validateNode(
     case 'prop':
       unknownKeys(
         node,
-        ['id', 'type', 'prop', 'position', 'yawDeg', 'seed', 'params'],
+        [
+          'id',
+          'type',
+          'prop',
+          'position',
+          'yawDeg',
+          'seed',
+          'params',
+          'castShadow',
+          'cullMeters',
+          'lod',
+        ],
         path,
         issues,
       );
@@ -1757,6 +1784,31 @@ function validateNode(
         issues.push(`${path}.seed: use a non-negative integer`);
       if (node.params !== undefined && !object(node.params))
         issues.push(`${path}.params: object required`);
+      if (node.castShadow !== undefined && typeof node.castShadow !== 'boolean')
+        issues.push(`${path}.castShadow: true or false`);
+      {
+        let last = 0;
+        if (node.lod !== undefined) {
+          if (!Array.isArray(node.lod) || !node.lod.length || node.lod.length > 4)
+            issues.push(`${path}.lod: one to four levels`);
+          else
+            node.lod.forEach((level, i) => {
+              if (!object(level)) return issues.push(`${path}.lod[${i}]: object required`);
+              unknownKeys(level, ['fromMeters', 'params'], `${path}.lod[${i}]`, issues);
+              if (
+                !(finite(level.fromMeters) && level.fromMeters > last && level.fromMeters <= 100000)
+              )
+                issues.push(`${path}.lod[${i}].fromMeters: must rise and stay within 0..100000`);
+              else last = level.fromMeters;
+              if (!object(level.params)) issues.push(`${path}.lod[${i}].params: object required`);
+            });
+        }
+        if (
+          node.cullMeters !== undefined &&
+          !(finite(node.cullMeters) && node.cullMeters > last && node.cullMeters <= 100000)
+        )
+          issues.push(`${path}.cullMeters: beyond the last level and at most 100000`);
+      }
       break;
     case 'box':
       unknownKeys(

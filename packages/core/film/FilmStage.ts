@@ -624,18 +624,28 @@ function buildFilmStageContents(
       return material;
     };
 
+    /** Models and props with a cull distance or levels, by what chooses what they draw. */
+    const culled: {
+      update(eye: readonly [number, number, number]): unknown;
+      invalidate(): void;
+    }[] = [];
     const solids: { min: number[]; max: number[] }[] = [];
+    // A prop with a distance of its own is built by itself; the rest are merged, a mesh a material.
+    type SceneNode = (typeof scene.nodes)[number];
+    type PropNode = Extract<SceneNode, { type: 'prop' }>;
+    const ownDistance = (node: SceneNode) =>
+      node.type === 'prop' && (node.cullMeters !== undefined || node.lod !== undefined);
+    const placeProp = (node: PropNode, params = node.params) =>
+      registry.place(node.prop, {
+        position: node.position,
+        yawDeg: node.yawDeg,
+        seed: node.seed,
+        params,
+        instance: node.id,
+      });
     const placed = scene.nodes.flatMap((node) =>
-      node.type === 'prop'
-        ? [
-            registry.place(node.prop, {
-              position: node.position,
-              yawDeg: node.yawDeg,
-              seed: node.seed,
-              params: node.params,
-              instance: node.id,
-            }),
-          ]
+      node.type === 'prop' && !ownDistance(node) && node.castShadow !== false
+        ? [placeProp(node)]
         : [],
     );
     const batches = new Map<string, number>();
@@ -655,6 +665,75 @@ function buildFilmStageContents(
         const name = materialName(mesh.node.meshRenderer.sharedMaterial, materials);
         batches.set(name, (batches.get(name) ?? 0) + 1);
       }
+    }
+    const count = (meshes: readonly { node: any }[]) => {
+      for (const mesh of meshes) {
+        const name = materialName(mesh.node.meshRenderer.sharedMaterial, materials);
+        batches.set(name, (batches.get(name) ?? 0) + 1);
+      }
+    };
+    // Props that cast no shadow and have no distance of their own: merged together.
+    const quiet = scene.nodes.flatMap((node) =>
+      node.type === 'prop' && !ownDistance(node) && node.castShadow === false
+        ? [placeProp(node)]
+        : [],
+    );
+    for (const prop of quiet)
+      for (const collider of prop.colliders)
+        solids.push({ min: [...collider.min], max: [...collider.max] });
+    if (quiet.length) {
+      const props = instantiateZhudaPropBatches(
+        mergeZhudaPlacedProps(quiet),
+        resolveMaterial,
+        scene3D,
+      );
+      cleanups.push(() => props.dispose());
+      for (const mesh of props.meshes) mesh.node.meshRenderer.receiveShadow = true;
+      count(props.meshes);
+    }
+    // Props with levels or a cull distance: every level built now, one drawn at a time.
+    for (const node of scene.nodes) {
+      if (node.type !== 'prop' || !ownDistance(node)) continue;
+      const from = (node.lod ?? []).map((level) => level.fromMeters);
+      const levels = [
+        node.params,
+        ...(node.lod ?? []).map((l) => ({ ...node.params, ...l.params })),
+      ].map((params, i) => {
+        const one = placeProp(node, params);
+        if (i === 0)
+          for (const collider of one.colliders)
+            solids.push({ min: [...collider.min], max: [...collider.max] });
+        const made = instantiateZhudaPropBatches(
+          mergeZhudaPlacedProps([one]),
+          resolveMaterial,
+          scene3D,
+        );
+        cleanups.push(() => made.dispose());
+        for (const mesh of made.meshes) {
+          if (node.castShadow === false) mesh.node.meshRenderer.receiveShadow = true;
+          else castsShadow(mesh.node);
+          mesh.node.active = i === 0;
+        }
+        if (i === 0) count(made.meshes);
+        return made.meshes;
+      });
+      const at = node.position,
+        cull = node.cullMeters;
+      let shown = 0;
+      culled.push({
+        update(eye) {
+          const d = Math.hypot(eye[0] - at[0], eye[1] - at[1], eye[2] - at[2]);
+          let level = 0;
+          while (level < from.length && d >= from[level]) level++;
+          const next = cull !== undefined && d > cull ? -1 : level;
+          if (next === shown) return;
+          shown = next;
+          levels.forEach((meshes, i) => {
+            for (const mesh of meshes) mesh.node.active = i === next;
+          });
+        },
+        invalidate() {},
+      });
     }
     // Boxes and ground: one merged mesh per material, like props.
     const primitives = new Map<string, MeshData[]>();
@@ -741,11 +820,6 @@ function buildFilmStageContents(
     // Models: clones from the shared library; baked lightmaps through Laya's
     // native lightmap path (`Scene3D.lightmaps`, renderer `lightmapIndex`).
     const models: ZhudaFilmStage['models'][number][] = [];
-    /** The models with a cull distance, by what chooses what they draw. */
-    const culled: {
-      update(eye: readonly [number, number, number]): unknown;
-      invalidate(): void;
-    }[] = [];
     const modelHolders = new Map<string, any>();
     const lightmaps: any[] = [];
     const lightmapped: { renderer: any; index: number }[] = [];

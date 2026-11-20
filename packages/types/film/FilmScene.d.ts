@@ -427,6 +427,25 @@ export type ZhudaFilmNode = {
     yawDeg?: number;
     seed?: number;
     params?: Record<string, unknown>;
+    /**
+     * False: the prop casts no shadow (it still takes them). For grass,
+     * petals, pebbles and whatever is too small for its shadow to show: a
+     * prop is drawn again in every split of the shadow map it reaches.
+     */
+    castShadow?: boolean;
+    /** Beyond this distance from the camera to the prop's `position`, in metres, it is not drawn. */
+    cullMeters?: number;
+    /**
+     * Lighter versions for distance, nearest first, at most 4: from
+     * `fromMeters` on, the prop is built with `params` laid over its own
+     * (a `detail` of 0.5, fewer blades). Each is built when the scene is
+     * mounted; one is drawn at a time, chosen by the distance from the
+     * camera to the prop's `position` whenever the camera is set.
+     */
+    lod?: {
+        fromMeters: number;
+        params: Record<string, unknown>;
+    }[];
 } | {
     id: string;
     type: 'box';
