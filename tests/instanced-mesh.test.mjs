@@ -492,6 +492,34 @@ test('a film scene takes instanced copies only with placements', () => {
   assert.match(issues({ placements: [[0, 0, 0, 0, 1]], instanced: 'yes' })[0], /true or false/);
 });
 
+test('a film scene model node takes a cell size, a cull distance and no shadow', () => {
+  const scene = (model) => ({
+    schemaVersion: 1,
+    id: 'model-distance-check',
+    camera: { eye: [0, 1, 6], target: [0, 1, 0], focalLengthMm: 35 },
+    nodes: [{ id: 'pines', type: 'model', asset: 'set/pine.glb', position: [0, 0, 0], ...model }],
+  });
+  const issues = (model) =>
+    validateZhudaFilmScene(scene(model)).filter((issue) => /nodes\[0\]/.test(issue));
+  const copies = { placements: [[0, 0, 0, 0, 1]] };
+  assert.deepEqual(
+    issues({ ...copies, instanced: true, cellMeters: 1000, cullMeters: 4000, castShadow: false }),
+    [],
+  );
+  // On a single model too: a distance and no shadow need no copies.
+  assert.deepEqual(issues({ cullMeters: 60, castShadow: false }), []);
+  assert.match(issues({ ...copies, cellMeters: 64 })[0], /cellMeters: needs instanced/);
+  assert.match(issues({ ...copies, instanced: true, cellMeters: 0.1 })[0], /cellMeters: use 0\.5/);
+  assert.match(issues({ ...copies, instanced: true, cellMeters: '64' })[0], /cellMeters: use 0\.5/);
+  assert.match(issues({ castShadow: 0 })[0], /castShadow: true or false/);
+  assert.match(issues({ cullMeters: 0 })[0], /cullMeters: use a distance above 0/);
+  assert.match(issues({ cullMeters: 200000 })[0], /cullMeters: use a distance above 0/);
+  assert.match(
+    issues({ cullMeters: 60, lightmap: 'set/pine.hdr' }).find((issue) => /cullMeters/.test(issue)),
+    /cullMeters: not with lightmap/,
+  );
+});
+
 test('a baked animation is laid out clip after clip, frame after frame, four texels a bone', () => {
   const layout = zhudaBakedLayout(
     [

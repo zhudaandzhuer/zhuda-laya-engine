@@ -741,6 +741,11 @@ function buildFilmStageContents(
     // Models: clones from the shared library; baked lightmaps through Laya's
     // native lightmap path (`Scene3D.lightmaps`, renderer `lightmapIndex`).
     const models: ZhudaFilmStage['models'][number][] = [];
+    /** The models with a cull distance, by what chooses what they draw. */
+    const culled: {
+      update(eye: readonly [number, number, number]): unknown;
+      invalidate(): void;
+    }[] = [];
     const modelHolders = new Map<string, any>();
     const lightmaps: any[] = [];
     const lightmapped: { renderer: any; index: number }[] = [];
@@ -763,16 +768,24 @@ function buildFilmStageContents(
           modelPose.set(node.id, pose);
           holder.transform.position = new l.Vector3(...pose.position);
           holder.transform.rotationEuler = new l.Vector3(0, pose.yawDeg, 0);
+          // Whatever is culled by distance reads where the model is now.
+          for (const lod of culled) lod.invalidate();
+          for (const lod of culled) lod.update(current.eye);
         });
       }
       const mounted = mountZhudaModel(holder, item.instance, {
         placements: node.placements,
         instanced: node.instanced,
+        cellMeters: node.cellMeters,
+        castShadow: node.castShadow,
+        cullMeters: node.cullMeters,
         translucent: node.translucent,
         emission: node.emission,
         label: `ZhudaFilmModel:${node.id}`,
       });
       cleanups.push(() => mounted.dispose());
+      // A cull distance: what is drawn is chosen again whenever the camera is set.
+      if (mounted.lod) culled.push(mounted.lod);
       const clips = new ZhudaModelInspector(item.instance).inspect().animations;
       if (node.animation) {
         const animation = node.animation;
@@ -1067,6 +1080,7 @@ function buildFilmStageContents(
       current = c;
       camera.transform.position = new l.Vector3(...c.eye);
       camera.transform.lookAt(new l.Vector3(...c.target), new l.Vector3(0, 1, 0));
+      for (const lod of culled) lod.update(c.eye);
       lens.configure({
         focalLengthMm: c.focalLengthMm,
         fStop: c.fStop,

@@ -22,6 +22,7 @@ const scripts = [
   'verify-quality-route',
   'verify-film-highlights',
   'verify-film-gltf-vertex-data',
+  'verify-film-model-distance',
   'verify-film-reflections',
   'verify-film-variation',
   'verify-film-point-shadow',

@@ -96,6 +96,24 @@ whether it is pushed. Record:
   26.13.1 the same day. The checkout got its `node_modules` again with
   `npm ci`, and `dist/` here was built from `87ab247`'s tree.
 
+The review's requests (2026-11-21). The outside review made its fifteen
+characters and eleven scenes for phones on `ba24ae4` and listed what the
+engine kept it from (`ENGINE-REQUESTS.md` in `VerifyZhuda`, `3c182f0`, eight
+items). On the owner's word the three small ones are done, on the branch
+`feat/review-requests` (`git status` there says whether they are still only
+in the working tree, `git log main..feat/review-requests` whether merged): a film model node's `cullMeters`, `castShadow`, `cellMeters`;
+skins over 24 joints ordered at load into few pieces; `gtao` named as the
+occlusion without the extra scene pass. Record:
+[task](docs/plans/records/review-requests/task.md),
+[verification](docs/plans/records/review-requests/verification.md).
+
+- Open: whether `gtao` becomes the look's default (the owner's call: every
+  scene's picture changes); the other five requests (detail textures on
+  materials, cut-out props, grass and terrain nodes, transparency, light
+  from what glows) and the tool requests; a phone run.
+- The review's phone models load on `main` on the M4, both backends, every
+  clip moving (`beasts-hd`, `bosses-hd`); no frame rate was taken on a phone.
+
 Frame-rate tiers (2026-11-20, the same day). The owner set the rendering
 goal: the best picture that stays smooth on mobile devices, in three tiers by
 frame rate (60 and over on this Mac, the vivo V40 and the iPhone 14; 45 to

@@ -567,6 +567,25 @@ export type ZhudaFilmNode = {
      */
     instanced?: boolean;
     /**
+     * With `instanced`: the side of the squares of ground the copies are
+     * grouped by, in metres, 0.5..100000 (default 32). Copies spread over
+     * kilometres want squares to match: a group is one draw, and a square
+     * that holds one copy is one draw a copy again.
+     */
+    cellMeters?: number;
+    /**
+     * False: the model casts no shadow (it still takes them). For ground,
+     * paving and what is too small for its shadow to show: a model is
+     * drawn again in every split of the shadow map it reaches.
+     */
+    castShadow?: boolean;
+    /**
+     * Beyond this distance from the camera, in metres, the model (each
+     * copy, or each group of instanced copies) is not drawn. Not with a
+     * lightmap.
+     */
+    cullMeters?: number;
+    /**
      * Leaves let light through: the cut-out (alpha-tested) materials of the
      * model glow in their own colour when the sun or a lamp is behind
      * them. Opaque materials of the same model (bark) are unchanged.

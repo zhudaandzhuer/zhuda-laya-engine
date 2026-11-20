@@ -321,6 +321,23 @@ export function prepareLaya342GltfResource(
       unifyLaya342SubMeshAttributes(subMeshes);
       return parseMesh.call(this, subMeshes, mesh);
     };
+  // A skin of more than 24 joints is cut into pieces, a draw each in every
+  // pass: the loader walks the triangles in the file's order, gathers the
+  // joints they name and starts a piece when the next triangle would bring
+  // the count past 24. How many pieces that is depends on the order alone (a
+  // skin of 36 joints was cut into 1,065). The triangles are put in an order
+  // that cuts into few, and the joints a vertex names without weighting it
+  // are not counted.
+  const split = resource.splitSubMeshByBonesCount;
+  if (typeof split === 'function')
+    resource.splitSubMeshByBonesCount = function (attributes: any, ...rest: any[]) {
+      const indices = rest[1],
+        joints = attributes?.get?.('BLENDINDICES'),
+        weights = attributes?.get?.('BLENDWEIGHT');
+      if (indices?.length && joints?.length && weights?.length === joints.length)
+        orderLaya342SkinTriangles(indices, joints, weights);
+      return split.call(this, attributes, ...rest);
+    };
   for (const method of ['createMeshSprite3D', 'createSkinnedMeshSprite3D']) {
     const original = resource[method];
     if (typeof original !== 'function') continue;
@@ -516,6 +533,120 @@ export function createLaya342GltfLight(
   if (settings.range !== null) light.range = settings.range;
   if (settings.spotAngleDeg !== null) light.spotAngle = settings.spotAngleDeg;
   return light;
+}
+
+/** The most joints LayaAir 3.4.2 gives one draw of a skinned mesh. */
+const LAYA342_JOINTS_A_DRAW = 24;
+
+/**
+ * How many pieces LayaAir 3.4.2's glTF loader cuts a skinned primitive into
+ * for these triangles in this order: it gathers the joints the triangles
+ * name, all four a vertex, and starts a piece when one more triangle would
+ * bring them past 24. One for a skin that names 24 joints or fewer. Pure.
+ */
+export function countLaya342SkinPieces(
+  indices: ArrayLike<number>,
+  joints: ArrayLike<number>,
+): number {
+  let pieces = 1,
+    held = new Set<number>();
+  for (let t = 0; t + 2 < indices.length; t += 3) {
+    const triangle = new Set<number>();
+    for (let k = 0; k < 3; k++)
+      for (let j = 0; j < 4; j++) triangle.add(joints[indices[t + k] * 4 + j]);
+    const both = new Set([...held, ...triangle]);
+    if (both.size > LAYA342_JOINTS_A_DRAW) {
+      pieces++;
+      held = triangle;
+    } else held = both;
+  }
+  return pieces;
+}
+
+/**
+ * Puts a skinned primitive's triangles in an order LayaAir 3.4.2 cuts into
+ * few pieces, in place, and returns the pieces before and after. Two things
+ * are done, neither of which changes what is drawn:
+ *
+ * - a joint a vertex names with no weight is replaced by the joint that
+ *   vertex is weighted to most (`joints` is changed in place): the loader
+ *   counts a named joint whether it is weighted or not;
+ * - the triangles are gathered a piece at a time: every triangle whose
+ *   joints the piece already holds, then the one that adds the fewest, until
+ *   no triangle fits in 24.
+ *
+ * The order is left as it is when it is already cut as little, or when the
+ * skin names 24 joints or fewer.
+ */
+export function orderLaya342SkinTriangles(
+  indices: { [index: number]: number; readonly length: number },
+  joints: { [index: number]: number; readonly length: number },
+  weights: ArrayLike<number>,
+): { before: number; after: number } {
+  const vertices = Math.floor(joints.length / 4);
+  for (let v = 0; v < vertices; v++) {
+    let most = 0;
+    for (let j = 1; j < 4; j++) if (weights[v * 4 + j] > weights[v * 4 + most]) most = j;
+    if (!(weights[v * 4 + most] > 0)) continue;
+    for (let j = 0; j < 4; j++)
+      if (!(weights[v * 4 + j] > 0)) joints[v * 4 + j] = joints[v * 4 + most];
+  }
+  const before = countLaya342SkinPieces(indices, joints);
+  if (before === 1) return { before, after: 1 };
+  let highest = 0;
+  for (let i = 0; i < joints.length; i++) if (joints[i] > highest) highest = joints[i];
+  const words = (highest >> 5) + 1,
+    count = Math.floor(indices.length / 3);
+  // Each triangle's joints as bits.
+  const bits = new Uint32Array(count * words);
+  for (let t = 0; t < count; t++)
+    for (let k = 0; k < 3; k++)
+      for (let j = 0; j < 4; j++) {
+        const joint = joints[indices[t * 3 + k] * 4 + j];
+        bits[t * words + (joint >> 5)] |= 1 << (joint & 31);
+      }
+  const ones = (value: number) => {
+    value -= (value >>> 1) & 0x55555555;
+    value = (value & 0x33333333) + ((value >>> 2) & 0x33333333);
+    return (((value + (value >>> 4)) & 0x0f0f0f0f) * 0x01010101) >>> 24;
+  };
+  const order = new Uint32Array(count),
+    placed = new Uint8Array(count),
+    held = new Uint32Array(words);
+  let done = 0,
+    heldCount = 0;
+  while (done < count) {
+    // Everything the piece's joints already cover, and the nearest of what is left.
+    let nearest = -1,
+      fewest = Infinity;
+    for (let t = 0; t < count; t++) {
+      if (placed[t]) continue;
+      let added = 0;
+      for (let w = 0; w < words; w++) added += ones(bits[t * words + w] & ~held[w]);
+      if (added === 0) {
+        placed[t] = 1;
+        order[done++] = t;
+      } else if (added < fewest) {
+        fewest = added;
+        nearest = t;
+      }
+    }
+    if (nearest < 0) break;
+    // The nearest joins the piece when it fits; otherwise a new piece starts with it.
+    if (heldCount + fewest > LAYA342_JOINTS_A_DRAW) {
+      held.fill(0);
+      heldCount = 0;
+      for (let w = 0; w < words; w++) heldCount += ones(bits[nearest * words + w]);
+    } else heldCount += fewest;
+    for (let w = 0; w < words; w++) held[w] |= bits[nearest * words + w];
+  }
+  const sorted = new Uint32Array(count * 3);
+  for (let i = 0; i < count; i++)
+    for (let k = 0; k < 3; k++) sorted[i * 3 + k] = indices[order[i] * 3 + k];
+  const after = countLaya342SkinPieces(sorted, joints);
+  if (after >= before) return { before, after: before };
+  for (let i = 0; i < sorted.length; i++) indices[i] = sorted[i];
+  return { before, after };
 }
 
 /** The vertex attributes of LayaAir 3.4.2's glTF loader, in the order it lists and packs them. */

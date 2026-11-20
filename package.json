@@ -164,6 +164,7 @@
     "verify:quality-route": "node scripts/verify-quality-route.mjs",
     "verify:film-highlights": "node scripts/verify-film-highlights.mjs",
     "verify:film-gltf-vertex-data": "node scripts/verify-film-gltf-vertex-data.mjs",
+    "verify:film-model-distance": "node scripts/verify-film-model-distance.mjs",
     "verify:film-reflections": "node scripts/verify-film-reflections.mjs",
     "verify:film-variation": "node scripts/verify-film-variation.mjs",
     "verify:film-point-shadow": "node scripts/verify-film-point-shadow.mjs",

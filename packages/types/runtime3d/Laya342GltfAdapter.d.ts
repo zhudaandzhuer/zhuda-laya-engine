@@ -47,6 +47,38 @@ export declare function laya342GltfNodes(resource: object): readonly any[];
  * It points down the node's -Z, as glTF's does, and casts no shadow. */
 export declare function createLaya342GltfLight(node: any, settings: ZhudaLayaLightSettings, runtime: any): any;
 /**
+ * How many pieces LayaAir 3.4.2's glTF loader cuts a skinned primitive into
+ * for these triangles in this order: it gathers the joints the triangles
+ * name, all four a vertex, and starts a piece when one more triangle would
+ * bring them past 24. One for a skin that names 24 joints or fewer. Pure.
+ */
+export declare function countLaya342SkinPieces(indices: ArrayLike<number>, joints: ArrayLike<number>): number;
+/**
+ * Puts a skinned primitive's triangles in an order LayaAir 3.4.2 cuts into
+ * few pieces, in place, and returns the pieces before and after. Two things
+ * are done, neither of which changes what is drawn:
+ *
+ * - a joint a vertex names with no weight is replaced by the joint that
+ *   vertex is weighted to most (`joints` is changed in place): the loader
+ *   counts a named joint whether it is weighted or not;
+ * - the triangles are gathered a piece at a time: every triangle whose
+ *   joints the piece already holds, then the one that adds the fewest, until
+ *   no triangle fits in 24.
+ *
+ * The order is left as it is when it is already cut as little, or when the
+ * skin names 24 joints or fewer.
+ */
+export declare function orderLaya342SkinTriangles(indices: {
+    [index: number]: number;
+    readonly length: number;
+}, joints: {
+    [index: number]: number;
+    readonly length: number;
+}, weights: ArrayLike<number>): {
+    before: number;
+    after: number;
+};
+/**
  * Gives every primitive (sub-mesh) of one glTF mesh the same vertex attributes,
  * the union of theirs, before LayaAir 3.4.2 packs them into one buffer laid out
  * as the first one's. A missing attribute gets a value that changes nothing (see

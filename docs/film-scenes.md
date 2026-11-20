@@ -226,7 +226,12 @@ A grade also names how the picture is finished (see
   numbers each).
 - `antialias`: `msaa` (default), `fxaa`, `smaa` or `none`.
 - `aoMethod`: `sao` (default) or `gtao`, which leaves open ground and the
-  sky as they are; `ao` is then a power and 1 unless given.
+  sky as they are; `ao` is then a power and 1 unless given. `sao` has the
+  whole scene drawn once more each frame for its normals (a scene of 380,000
+  triangles drew 380,000 more with it); `gtao` reads the depth picture only
+  and takes six passes fewer. Where triangles or draws are the budget, a phone
+  above all, use `gtao`. The two do not look the same: compare before changing
+  a scene that is already approved.
 - `bloomThreshold`, `bloomSoftKnee`, `bloomAnamorphic`, `bloomDiffusion`.
 - `lut`: a `.cube` colour table by asset id, loaded with the scene.
 - `dither`: `true` adds about one step of eight bits of noise where the
@@ -677,6 +682,21 @@ model's meshes and materials. A node holds up to 20 000 copies and a scene
 a group instead of a node tree a copy ([instanced meshes](instanced-meshes.md)):
 for thousands of ferns or stones. The picture is the same. Only for a model
 of plain meshes (no bones, no morph targets).
+
+`"cellMeters"` beside `"instanced": true` is the side of the squares of
+ground the copies are grouped by (default 32 m, 0.5..100000). Copies spread
+over kilometres want squares of their size: a group is one draw, and a square
+that holds a single copy is one draw a copy again (a town, pines and lamps
+over 8 km drew 54,698 times a frame at 32 m).
+
+`"castShadow": false` on a model node: it casts no shadow and still takes
+them. For ground, paving and what is too small for its shadow to show; a
+model is drawn again in every split of the shadow map it reaches.
+
+`"cullMeters"` on a model node: beyond that distance from the camera the
+model is not drawn (each copy of `placements`, each group of instanced
+copies by the middle of its box). Chosen again whenever the camera is set.
+Not with a lightmap.
 
 `"emission": 0` on a model node puts out what its materials give off by
 themselves (lit windows, lanterns), and other values scale it (0..8): a
