@@ -99,9 +99,8 @@ whether it is pushed. Record:
 The review's requests (2026-11-21). The outside review made its fifteen
 characters and eleven scenes for phones on `ba24ae4` and listed what the
 engine kept it from (`ENGINE-REQUESTS.md` in `VerifyZhuda`, `3c182f0`, eight
-items). On the owner's word the three small ones are done, on the branch
-`feat/review-requests` (`git status` there says whether they are still only
-in the working tree, `git log main..feat/review-requests` whether merged): a film model node's `cullMeters`, `castShadow`, `cellMeters`;
+items). On the owner's word the three small ones are done and merged into
+`main` (`git log origin/main..main` says whether it is pushed): a film model node's `cullMeters`, `castShadow`, `cellMeters`;
 skins over 24 joints ordered at load into few pieces; `gtao` named as the
 occlusion without the extra scene pass. Record:
 [task](docs/plans/records/review-requests/task.md),
