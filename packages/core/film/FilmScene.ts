@@ -446,6 +446,19 @@ export type ZhudaFilmMaterial =
        * changes are several tiles wide.
        */
       variation?: number;
+      /**
+       * How the surface is put into the picture (default 'opaque'):
+       * 'cutout' draws it where its alpha is above `alphaCutoff` and nowhere
+       * else, with depth and shadows (leaves, grass, petals, lace); 'alpha'
+       * blends it over what is behind (mist, a sheet of falling water) and
+       * 'additive' adds its light (flame, a glow). Blended surfaces write no
+       * depth and are drawn after the solid ones, far to near by their mesh.
+       */
+      blend?: 'opaque' | 'cutout' | 'alpha' | 'additive';
+      /** With 'cutout': the alpha at which the surface begins, 0..1 (default 0.5). */
+      alphaCutoff?: number;
+      /** Both faces are drawn: a leaf or a blade is one sheet, not two back to back. */
+      doubleSided?: boolean;
     }
   | {
       color: ZhudaFilmVec3;
@@ -467,6 +480,21 @@ export type ZhudaFilmMaterial =
        * hair, satin. On a `lathe` it becomes a ring about the axis.
        */
       anisotropy?: number;
+      /**
+       * How the surface is put into the picture (default 'opaque'):
+       * 'cutout' draws it where its alpha is above `alphaCutoff` and nowhere
+       * else, with depth and shadows (leaves, grass, petals, lace); 'alpha'
+       * blends it over what is behind (mist, a sheet of falling water) and
+       * 'additive' adds its light (flame, a glow). Blended surfaces write no
+       * depth and are drawn after the solid ones, far to near by their mesh.
+       */
+      blend?: 'opaque' | 'cutout' | 'alpha' | 'additive';
+      /** With 'cutout': the alpha at which the surface begins, 0..1 (default 0.5). */
+      alphaCutoff?: number;
+      /** Both faces are drawn: a leaf or a blade is one sheet, not two back to back. */
+      doubleSided?: boolean;
+      /** How solid the colour is, 0..1 (default 1): what 'alpha' blends by and 'cutout' compares. */
+      opacity?: number;
     };
 
 export type ZhudaFilmNode =
@@ -1659,8 +1687,25 @@ function validateMaterial(
   context: ZhudaFilmValidationContext,
 ) {
   if (!object(material)) return void issues.push(`${path}: material object required`);
+  if (
+    material.blend !== undefined &&
+    !['opaque', 'cutout', 'alpha', 'additive'].includes(material.blend as string)
+  )
+    issues.push(`${path}.blend: use opaque, cutout, alpha or additive`);
+  if (
+    material.alphaCutoff !== undefined &&
+    !(finite(material.alphaCutoff) && material.alphaCutoff >= 0 && material.alphaCutoff <= 1)
+  )
+    issues.push(`${path}.alphaCutoff: use 0..1`);
+  if (material.doubleSided !== undefined && typeof material.doubleSided !== 'boolean')
+    issues.push(`${path}.doubleSided: true or false`);
   if ('recipe' in material) {
-    unknownKeys(material, ['recipe', 'tint', 'size', 'variation'], path, issues);
+    unknownKeys(
+      material,
+      ['recipe', 'tint', 'size', 'variation', 'blend', 'alphaCutoff', 'doubleSided'],
+      path,
+      issues,
+    );
     const variation: unknown = material.variation;
     if (
       variation !== undefined &&
@@ -1700,10 +1745,19 @@ function validateMaterial(
         'clearCoat',
         'clearCoatRoughness',
         'anisotropy',
+        'blend',
+        'alphaCutoff',
+        'doubleSided',
+        'opacity',
       ],
       path,
       issues,
     );
+    if (
+      material.opacity !== undefined &&
+      !(finite(material.opacity) && material.opacity >= 0 && material.opacity <= 1)
+    )
+      issues.push(`${path}.opacity: use 0..1`);
     colour(material.color, `${path}.color`, issues);
     if (
       material.emission !== undefined &&

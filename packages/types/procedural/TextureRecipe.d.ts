@@ -39,6 +39,20 @@ export type ZhudaTextureMask = {
     mode?: 'mortar' | 'id' | 'edge';
     seed?: number;
     range?: Range;
+} | {
+    /**
+     * One shape filling the tile, for a card that is cut out (a leaf, a
+     * blade of grass, a petal, a puff): 1 inside, falling to 0 over
+     * `softness` of the tile (default 0.04) at its outline. It does not
+     * repeat: use it with a material whose card spans one tile.
+     * disc: an ellipse touching the tile's edges. leaf: pointed at both
+     * ends along v. blade: full width at v = 0, a point at v = 1.
+     * petal: round at v = 1 with a notch, narrowing to v = 0.
+     */
+    type: 'shape';
+    shape: 'disc' | 'leaf' | 'blade' | 'petal';
+    softness?: number;
+    range?: Range;
 };
 export interface ZhudaTextureLayer {
     name?: string;
@@ -52,6 +66,13 @@ export interface ZhudaTextureLayer {
     metallic?: number;
     /** Signed relief in millimetres where the mask is 1. */
     heightMm?: number;
+    /**
+     * How solid the surface is where the mask is 1, 0..1: the albedo map's
+     * alpha. With a material that is cut out (`blend: 'cutout'`) or blended,
+     * a base `alpha` of 0 and a layer with a `shape` mask and `alpha: 1` is a
+     * card with an outline.
+     */
+    alpha?: number;
 }
 export interface ZhudaTextureRecipe {
     schemaVersion: 1;
@@ -59,10 +80,12 @@ export interface ZhudaTextureRecipe {
     /** Real size of one tile in metres along u and v. */
     tileMeters: [number, number];
     seed?: number;
+    /** `alpha` (default 1): how solid the surface is before the layers; the albedo map's alpha. */
     base: {
         color: ZhudaLinearColor;
         roughness: number;
         metallic: number;
+        alpha?: number;
     };
     layers?: ZhudaTextureLayer[];
 }

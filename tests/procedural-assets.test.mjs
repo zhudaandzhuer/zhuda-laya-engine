@@ -981,3 +981,91 @@ test('brick ids are constant inside a brick, differ between bricks and wrap; edg
     }).some((issue) => issue.includes('mode: use mortar, id or edge')),
   );
 });
+
+test("a recipe bakes how solid the surface is into the albedo map's alpha", async () => {
+  const { bakeZhudaTextureSet, validateZhudaTextureRecipe, evaluateZhudaTextureMask } =
+    await import('../packages/core/procedural/TextureRecipe.ts');
+  const plain = {
+    schemaVersion: 1,
+    id: 'alpha-plain',
+    tileMeters: [1, 1],
+    base: { color: [0.2, 0.5, 0.1], roughness: 0.8, metallic: 0 },
+  };
+  // Without an alpha anywhere the map is solid, as it always was.
+  const solid = bakeZhudaTextureSet(plain, { size: 32 });
+  for (let i = 3; i < solid.albedo.length; i += 4) assert.equal(solid.albedo[i], 255);
+  const leaf = {
+    ...plain,
+    id: 'alpha-leaf',
+    base: { ...plain.base, alpha: 0 },
+    layers: [{ mask: { type: 'shape', shape: 'disc', softness: 0.02 }, alpha: 1 }],
+  };
+  assert.deepEqual(validateZhudaTextureRecipe(leaf), []);
+  const cut = bakeZhudaTextureSet(leaf, { size: 64 });
+  const alphaAt = (x, y) => cut.albedo[(y * 64 + x) * 4 + 3];
+  assert.equal(alphaAt(32, 32), 255, 'solid in the middle of the disc');
+  assert.equal(alphaAt(1, 1), 0, 'nothing in the corner');
+  let inside = 0;
+  for (let i = 3; i < cut.albedo.length; i += 4) if (cut.albedo[i] > 127) inside++;
+  assert.ok(
+    Math.abs(inside / (64 * 64) - Math.PI / 4) < 0.04,
+    `a disc covers pi / 4 of its square (${inside})`,
+  );
+  // Each shape is 1 well inside and 0 outside its outline.
+  const at = (shape, u, v) => evaluateZhudaTextureMask({ type: 'shape', shape }, u, v);
+  assert.equal(at('disc', 0.5, 0.5), 1);
+  assert.equal(at('disc', 0.02, 0.02), 0);
+  assert.equal(at('leaf', 0.5, 0.5), 1);
+  assert.equal(at('leaf', 0.5, 0.001) < 0.5, true, 'a leaf is pointed at its ends');
+  assert.equal(at('leaf', 0.02, 0.1), 0, 'and narrow near them');
+  assert.equal(at('blade', 0.5, 0.2), 1);
+  assert.equal(at('blade', 0.5, 0.99) < 0.5, true, 'a blade ends in a point');
+  assert.equal(at('blade', 0.05, 0.6), 0, 'and is narrower toward it');
+  assert.equal(at('petal', 0.5, 0.6), 1);
+  assert.equal(at('petal', 0.5, 0.97), 0, 'a petal has a notch at its tip');
+  assert.equal(at('petal', 0.05, 0.1), 0);
+  for (const [bad, said] of [
+    [{ ...leaf, base: { ...leaf.base, alpha: 2 } }, /base\.alpha/],
+    [
+      { ...leaf, layers: [{ mask: { type: 'shape', shape: 'star' }, alpha: 1 }] },
+      /shape: use disc/,
+    ],
+    [
+      { ...leaf, layers: [{ mask: { type: 'shape', shape: 'disc', softness: 0 }, alpha: 1 }] },
+      /softness/,
+    ],
+    [
+      { ...leaf, layers: [{ mask: { type: 'shape', shape: 'disc' }, alpha: 1.5 }] },
+      /alpha: use 0\.\.1/,
+    ],
+  ])
+    assert.match(validateZhudaTextureRecipe(bad).join(' '), said);
+});
+
+test('a film material says how it is put into the picture', async () => {
+  const { validateZhudaFilmScene } = await import('../packages/core/film/FilmScene.ts');
+  const scene = (material) => ({
+    schemaVersion: 1,
+    id: 'material-blend-check',
+    camera: { eye: [0, 1, 6], target: [0, 1, 0], focalLengthMm: 35 },
+    materials: { m: material },
+    nodes: [{ id: 'b', type: 'box', size: [1, 1, 1], position: [0, 0, 0], material: 'm' }],
+  });
+  const issues = (material) =>
+    validateZhudaFilmScene(scene(material)).filter((issue) => /materials\.m/.test(issue));
+  const flat = { color: [0.5, 0.5, 0.5] };
+  assert.deepEqual(issues({ ...flat, blend: 'alpha', opacity: 0.4, doubleSided: true }), []);
+  assert.deepEqual(issues({ ...flat, blend: 'cutout', alphaCutoff: 0.3 }), []);
+  assert.deepEqual(
+    issues({ recipe: 'concrete', blend: 'cutout', alphaCutoff: 0.5, doubleSided: true }),
+    [],
+  );
+  assert.match(
+    issues({ ...flat, blend: 'glass' })[0],
+    /blend: use opaque, cutout, alpha or additive/,
+  );
+  assert.match(issues({ ...flat, alphaCutoff: 2 })[0], /alphaCutoff: use 0\.\.1/);
+  assert.match(issues({ ...flat, doubleSided: 1 })[0], /doubleSided: true or false/);
+  assert.match(issues({ ...flat, opacity: -1 })[0], /opacity: use 0\.\.1/);
+  assert.match(issues({ recipe: 'concrete', opacity: 0.5 }).join(' '), /opacity/);
+});

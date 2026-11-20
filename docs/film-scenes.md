@@ -124,6 +124,30 @@ when more than 16 are open.
 Props are merged into one mesh per material, so a yard of containers costs a
 handful of draws.
 
+A material says how it is put into the picture with `blend` (default
+`"opaque"`), on a recipe or a flat colour alike:
+
+```json
+"leaf":  { "recipe": { "schemaVersion": 1, "id": "leaf", "tileMeters": [0.3, 0.5],
+                       "base": { "color": [0.1, 0.3, 0.06], "roughness": 0.6, "metallic": 0, "alpha": 0 },
+                       "layers": [{ "mask": { "type": "shape", "shape": "leaf" }, "alpha": 1 }] },
+           "blend": "cutout", "doubleSided": true },
+"mist":  { "color": [0.8, 0.85, 0.9], "roughness": 1, "blend": "alpha", "opacity": 0.3 }
+```
+
+- `"cutout"`: drawn where the alpha is above `alphaCutoff` (default 0.5)
+  and nowhere else, with depth and with a shadow of the same outline. A
+  recipe's alpha is its `base.alpha` and its layers' `alpha`; the `shape`
+  mask (`disc`, `leaf`, `blade`, `petal`) is one outline filling the tile, so
+  the card it is on spans one tile (`tileMeters`), from the mesh's UV origin.
+- `"alpha"` blends over what is behind and `"additive"` adds its light; a
+  flat colour's `opacity` is how solid it is. Blended surfaces write no depth
+  and are drawn after the solid ones, sorted by their mesh, not by their
+  triangles: a prop merged into one mesh is one thing to the sort.
+- `"doubleSided": true` draws both faces: a leaf or a blade of grass is one
+  sheet, not two back to back, and half the triangles. The far face is lit
+  with the near face's normal.
+
 A prop node may say how it behaves with distance, like a model node:
 
 ```json

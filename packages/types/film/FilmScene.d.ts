@@ -397,6 +397,19 @@ export type ZhudaFilmMaterial = {
      * changes are several tiles wide.
      */
     variation?: number;
+    /**
+     * How the surface is put into the picture (default 'opaque'):
+     * 'cutout' draws it where its alpha is above `alphaCutoff` and nowhere
+     * else, with depth and shadows (leaves, grass, petals, lace); 'alpha'
+     * blends it over what is behind (mist, a sheet of falling water) and
+     * 'additive' adds its light (flame, a glow). Blended surfaces write no
+     * depth and are drawn after the solid ones, far to near by their mesh.
+     */
+    blend?: 'opaque' | 'cutout' | 'alpha' | 'additive';
+    /** With 'cutout': the alpha at which the surface begins, 0..1 (default 0.5). */
+    alphaCutoff?: number;
+    /** Both faces are drawn: a leaf or a blade is one sheet, not two back to back. */
+    doubleSided?: boolean;
 } | {
     color: ZhudaFilmVec3;
     roughness?: number;
@@ -417,6 +430,21 @@ export type ZhudaFilmMaterial = {
      * hair, satin. On a `lathe` it becomes a ring about the axis.
      */
     anisotropy?: number;
+    /**
+     * How the surface is put into the picture (default 'opaque'):
+     * 'cutout' draws it where its alpha is above `alphaCutoff` and nowhere
+     * else, with depth and shadows (leaves, grass, petals, lace); 'alpha'
+     * blends it over what is behind (mist, a sheet of falling water) and
+     * 'additive' adds its light (flame, a glow). Blended surfaces write no
+     * depth and are drawn after the solid ones, far to near by their mesh.
+     */
+    blend?: 'opaque' | 'cutout' | 'alpha' | 'additive';
+    /** With 'cutout': the alpha at which the surface begins, 0..1 (default 0.5). */
+    alphaCutoff?: number;
+    /** Both faces are drawn: a leaf or a blade is one sheet, not two back to back. */
+    doubleSided?: boolean;
+    /** How solid the colour is, 0..1 (default 1): what 'alpha' blends by and 'cutout' compares. */
+    opacity?: number;
 };
 export type ZhudaFilmNode = {
     id: string;

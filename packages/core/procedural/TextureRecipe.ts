@@ -49,6 +49,21 @@ export type ZhudaTextureMask =
       mode?: 'mortar' | 'id' | 'edge';
       seed?: number;
       range?: Range;
+    }
+  | {
+      /**
+       * One shape filling the tile, for a card that is cut out (a leaf, a
+       * blade of grass, a petal, a puff): 1 inside, falling to 0 over
+       * `softness` of the tile (default 0.04) at its outline. It does not
+       * repeat: use it with a material whose card spans one tile.
+       * disc: an ellipse touching the tile's edges. leaf: pointed at both
+       * ends along v. blade: full width at v = 0, a point at v = 1.
+       * petal: round at v = 1 with a notch, narrowing to v = 0.
+       */
+      type: 'shape';
+      shape: 'disc' | 'leaf' | 'blade' | 'petal';
+      softness?: number;
+      range?: Range;
     };
 
 export interface ZhudaTextureLayer {
@@ -63,6 +78,13 @@ export interface ZhudaTextureLayer {
   metallic?: number;
   /** Signed relief in millimetres where the mask is 1. */
   heightMm?: number;
+  /**
+   * How solid the surface is where the mask is 1, 0..1: the albedo map's
+   * alpha. With a material that is cut out (`blend: 'cutout'`) or blended,
+   * a base `alpha` of 0 and a layer with a `shape` mask and `alpha: 1` is a
+   * card with an outline.
+   */
+  alpha?: number;
 }
 
 export interface ZhudaTextureRecipe {
@@ -71,7 +93,8 @@ export interface ZhudaTextureRecipe {
   /** Real size of one tile in metres along u and v. */
   tileMeters: [number, number];
   seed?: number;
-  base: { color: ZhudaLinearColor; roughness: number; metallic: number };
+  /** `alpha` (default 1): how solid the surface is before the layers; the albedo map's alpha. */
+  base: { color: ZhudaLinearColor; roughness: number; metallic: number; alpha?: number };
   layers?: ZhudaTextureLayer[];
 }
 
@@ -160,6 +183,12 @@ function validateMask(mask: unknown, path: string, issues: string[]): void {
       if (m.mode !== undefined && !['mortar', 'id', 'edge'].includes(m.mode as string))
         issues.push(`${path}.mode: use mortar, id or edge`);
       break;
+    case 'shape':
+      if (!['disc', 'leaf', 'blade', 'petal'].includes(m.shape as string))
+        issues.push(`${path}.shape: use disc, leaf, blade or petal`);
+      if (m.softness !== undefined && !(finite(m.softness) && m.softness > 0 && m.softness <= 0.5))
+        issues.push(`${path}.softness: use a tile fraction above 0, at most 0.5`);
+      break;
     default:
       issues.push(`${path}.type: unknown mask type ${String(m.type)}`);
   }
@@ -191,6 +220,7 @@ export function validateZhudaTextureRecipe(recipe: unknown): string[] {
     if (!colorOk(base.color)) issues.push('base.color: use linear RGB with each channel in 0..1');
     if (!unit(base.roughness)) issues.push('base.roughness: use 0..1');
     if (!unit(base.metallic)) issues.push('base.metallic: use 0..1');
+    if (base.alpha !== undefined && !unit(base.alpha)) issues.push('base.alpha: use 0..1');
   }
   if (r.layers !== undefined) {
     if (!Array.isArray(r.layers) || r.layers.length > 32)
@@ -214,13 +244,15 @@ export function validateZhudaTextureRecipe(recipe: unknown): string[] {
           issues.push(`${path}.metallic: use 0..1`);
         if (l.heightMm !== undefined && !(finite(l.heightMm) && Math.abs(l.heightMm) <= 500))
           issues.push(`${path}.heightMm: use a relief between -500 and 500 millimetres`);
+        if (l.alpha !== undefined && !unit(l.alpha)) issues.push(`${path}.alpha: use 0..1`);
         if (
           l.color === undefined &&
           l.roughness === undefined &&
           l.metallic === undefined &&
-          l.heightMm === undefined
+          l.heightMm === undefined &&
+          l.alpha === undefined
         )
-          issues.push(`${path}: set at least one of color, roughness, metallic or heightMm`);
+          issues.push(`${path}: set at least one of color, roughness, metallic, heightMm or alpha`);
       });
   }
   return issues;
@@ -288,6 +320,30 @@ export function evaluateZhudaTextureMask(
       } else value = Math.min(cu, 1 - cu) < half || Math.min(cv, 1 - cv) < half ? 1 : 0;
       break;
     }
+    case 'shape': {
+      // Signed distance to the outline in tile units, positive inside.
+      const x = u - 0.5,
+        y = v - 0.5;
+      let inside: number;
+      if (mask.shape === 'disc') inside = 0.5 - Math.hypot(x, y);
+      else if (mask.shape === 'leaf')
+        inside =
+          0.5 * Math.pow(Math.max(0, Math.sin(Math.PI * Math.min(1, Math.max(0, v)))), 0.8) -
+          Math.abs(x);
+      else if (mask.shape === 'blade')
+        inside = Math.min(0.5 * (1 - Math.min(1, Math.max(0, v))) - Math.abs(x), v);
+      else {
+        // A petal: a disc toward v = 1 with a notch at its tip, drawn down to a point at v = 0.
+        const body = 0.42 - Math.hypot(x, v - 0.56),
+          stem = 0.5 * Math.min(1, Math.max(0, v) / 0.56) * 0.84 - Math.abs(x),
+          notch = Math.hypot(x, v - 1.02) - 0.1;
+        inside = Math.min(v < 0.56 ? Math.max(body, Math.min(stem, v)) : body, notch);
+      }
+      const soft = mask.softness ?? 0.04;
+      const t = Math.min(1, Math.max(0, inside / soft));
+      value = t * t * (3 - 2 * t);
+      break;
+    }
   }
   if (mask.range) {
     const t = Math.min(1, Math.max(0, (value - mask.range[0]) / (mask.range[1] - mask.range[0])));
@@ -333,6 +389,7 @@ export function bakeZhudaTextureSet(
         b = recipe.base.color[2],
         roughness = recipe.base.roughness,
         metallic = recipe.base.metallic,
+        solid = recipe.base.alpha ?? 1,
         relief = 0;
       for (let k = 0; k < layers.length; k++) {
         const layer = layers[k];
@@ -349,13 +406,14 @@ export function bakeZhudaTextureSet(
         if (layer.roughness !== undefined) roughness += (layer.roughness - roughness) * amount;
         if (layer.metallic !== undefined) metallic += (layer.metallic - metallic) * amount;
         if (layer.heightMm !== undefined) relief += layer.heightMm * 0.001 * amount;
+        if (layer.alpha !== undefined) solid += (layer.alpha - solid) * amount;
       }
       const p = j * size + i,
         o = p * 4;
       albedo[o] = toSrgb8(r);
       albedo[o + 1] = toSrgb8(g);
       albedo[o + 2] = toSrgb8(b);
-      albedo[o + 3] = 255;
+      albedo[o + 3] = to8(solid);
       metallicGloss[o] = to8(metallic);
       metallicGloss[o + 1] = 255;
       metallicGloss[o + 3] = to8(1 - roughness);

@@ -594,6 +594,9 @@ function buildFilmStageContents(
         }
         const baked = createZhudaProceduralMaterial(set, {
           ...(spec.tint ? { tint: spec.tint } : {}),
+          ...(spec.blend ? { blend: spec.blend } : {}),
+          ...(spec.alphaCutoff !== undefined ? { alphaCutoff: spec.alphaCutoff } : {}),
+          ...(spec.doubleSided ? { doubleSided: true } : {}),
           // One repeat of the picture spans many tiles and is not a multiple of one: its own
           // repeat is rare in a view and never lines up with the tiles.
           ...(spec.variation
@@ -610,7 +613,10 @@ function buildFilmStageContents(
       } else {
         material = createSurfaceMaterial({
           type: 'pbr',
-          color: [...spec.color, 1],
+          color: [...spec.color, spec.opacity ?? 1],
+          ...(spec.blend ? { blend: spec.blend } : {}),
+          ...(spec.alphaCutoff !== undefined ? { alphaCutoff: spec.alphaCutoff } : {}),
+          ...(spec.doubleSided ? { doubleSided: true } : {}),
           metallic: spec.metallic ?? 0,
           roughness: spec.roughness ?? 0.6,
           emission: spec.emission,

@@ -29,6 +29,15 @@ export interface ZhudaProceduralMaterialOptions {
    * one). Off unless given. It is the material's detail map.
    */
   variation?: { amount: number; meters: number; seed?: number };
+  /**
+   * How the baked alpha is used (a recipe's `alpha`): 'cutout' draws where it
+   * is above `alphaCutoff` (default 0.5) and keeps depth and shadows, 'alpha'
+   * and 'additive' blend. Default 'opaque': the alpha is ignored.
+   */
+  blend?: 'opaque' | 'cutout' | 'alpha' | 'additive';
+  alphaCutoff?: number;
+  /** Both faces are drawn: one sheet for a leaf or a blade, not two back to back. */
+  doubleSided?: boolean;
 }
 
 export interface ZhudaProceduralMaterial {
@@ -62,6 +71,9 @@ export function createZhudaProceduralMaterial(
       metallic: 0,
       roughness: 0,
       textures: { albedo: textures[0], normal: textures[1], metallicGloss: textures[2] },
+      ...(options.blend ? { blend: options.blend } : {}),
+      ...(options.alphaCutoff !== undefined ? { alphaCutoff: options.alphaCutoff } : {}),
+      ...(options.doubleSided ? { doubleSided: true } : {}),
     });
     if (uvUnit === 'meters')
       material.tilingOffset = new l.Vector4(1 / set.tileMeters[0], 1 / set.tileMeters[1], 0, 0);

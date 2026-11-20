@@ -23,6 +23,7 @@ const scripts = [
   'verify-film-highlights',
   'verify-film-gltf-vertex-data',
   'verify-film-model-distance',
+  'verify-film-cutout',
   'verify-film-reflections',
   'verify-film-variation',
   'verify-film-point-shadow',
