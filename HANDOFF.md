@@ -1,6 +1,6 @@
 # Handoff: plans of 2026-11-16/17 and the defects after them
 
-Last updated: 2026-11-21 ("Next step": the underwater horizon, on a branch). The three plans and the defect batch under "After
+Last updated: 2026-11-21 ("Next step": ready effects and picture materials). The three plans and the defect batch under "After
 the plans" (`c7ab3d1` to `1197e20`) are on `origin/main`. The V40 results of
 2026-11-18 were added in a later commit: `git log origin/main..main` says
 whether it is pushed.
@@ -180,6 +180,26 @@ round"). Merged into `main` by fast-forward on the owner's word (`git log
 origin/main..main` says whether it is pushed). The consumer's frame
 1380 reads level across the horizon on both backends with the fix; its own
 builds and film were not touched.
+
+Ready effects and picture materials (2026-11-21, last of the day). The owner
+asked for a real default library: textures, particle effects and 3D effects
+ready to take. In the engine, as code only: eighteen 3D effect presets on
+sprites made by a program, `ZhudaEffect3D`, a film scene's `effect` node, and a
+film material that is a picture among the assets. Merged into `main` on the
+owner's word (`git log origin/main..main` says whether it is pushed). Record:
+[task](docs/plans/records/ready-effects/task.md),
+[verification](docs/plans/records/ready-effects/verification.md).
+
+- The pictures are outside this repository: `ZhudaGameCenter/commonAssets/`
+  (not a git repository, like `commonPrefabs/` beside it) holds 48 tileable
+  texture sets with `catalog.json`, a README and an example scene; point
+  `--film-assets` at it. Their 512 versions are also in `VerifyZhuda/textures/`.
+- Open, the owner's to decide: which built-in files under `assets/` to remove
+  ("把沒用的都移除"). All eleven are read by tests, the showcase or the guides,
+  so removing any means removing what reads it; nothing was removed.
+- Not done: ready 2D effects; lit or soft particles; a VRM importer (the
+  owner asked whether the 3D tools are enough: spring bones, toon shading and
+  the glTF loader exist, the VRM extensions are not read).
 
 Frame-rate tiers (2026-11-20, the same day). The owner set the rendering
 goal: the best picture that stays smooth on mobile devices, in three tiers by
