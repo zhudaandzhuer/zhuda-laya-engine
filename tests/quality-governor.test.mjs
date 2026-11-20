@@ -204,6 +204,7 @@ test('a ladder with detail rungs: pixels to the middle size, then detail, then t
   assert.deepEqual(zhudaQualitySteps().map(name), [
     '0@0.5/1',
     '0@0.7/1',
+    '1@0.5/1',
     '1@0.7/1',
     '2@0.7/1',
     '3@0.7/1',
@@ -226,6 +227,7 @@ test('a ladder with detail rungs: pixels to the middle size, then detail, then t
     '3@0.7/0.4',
     '2@0.7/0.4',
     '1@0.7/0.4',
+    '1@0.5/0.4',
     '0@0.7/0.4',
     '0@0.5/0.4',
   ]);
@@ -250,4 +252,119 @@ test('a ladder with detail rungs: pixels to the middle size, then detail, then t
     { details: [0.6], detailAt: 0.9 },
   ])
     assert.throws(() => zhudaQualitySteps(bad), /Quality steps/);
+});
+
+test('the three frame-rate tiers: bands, the tier of a rate, the budget that holds one', async () => {
+  const { ZHUDA_FRAME_TIERS, zhudaFrameTier, zhudaTierBudgetMs } = await import(
+    '../packages/core/runtime3d/QualityGovernor.ts'
+  );
+  assert.deepEqual(ZHUDA_FRAME_TIERS, {
+    low: { minFps: 60 },
+    high: { minFps: 45, belowFps: 60 },
+    extreme: { minFps: 10, belowFps: 45 },
+  });
+  // A 60 Hz screen paces at 59.7: that is the low tier.
+  assert.equal(zhudaFrameTier(120), 'low');
+  assert.equal(zhudaFrameTier(59.7), 'low');
+  assert.equal(zhudaFrameTier(58.9), 'high');
+  assert.equal(zhudaFrameTier(44.6), 'high');
+  assert.equal(zhudaFrameTier(43.9), 'extreme');
+  assert.equal(zhudaFrameTier(9.2), 'extreme');
+  assert.equal(zhudaFrameTier(8.9), null);
+  // Without the allowance the bounds are exact.
+  assert.equal(zhudaFrameTier(59.7, 0), 'high');
+  assert.equal(zhudaFrameTier(60, 0), 'low');
+  assert.equal(zhudaFrameTier(9.9, 0), null);
+  for (const bad of [-1, NaN, Infinity]) assert.throws(() => zhudaFrameTier(bad), /Frame tier/);
+  assert.throws(() => zhudaFrameTier(50, 9), /Frame tier/);
+  assert.equal(+zhudaTierBudgetMs('low').toFixed(2), 16.67);
+  assert.equal(+zhudaTierBudgetMs('high').toFixed(2), 22.22);
+  assert.equal(zhudaTierBudgetMs('extreme'), 100);
+  assert.throws(() => zhudaTierBudgetMs('medium'), /Frame tier/);
+});
+
+test('the ladder keeps the HDR chain one rung longer, unless asked not to', () => {
+  const name = (s) => `${s.look}@${s.renderScale}`;
+  assert.deepEqual(zhudaQualitySteps({ effectsAtLowest: false }).map(name), [
+    '0@0.5',
+    '0@0.7',
+    '1@0.7',
+    '2@0.7',
+    '3@0.7',
+    '3@0.85',
+    '3@1',
+  ]);
+  // Without a lowest size there is no such rung either.
+  assert.deepEqual(zhudaQualitySteps({ lowest: false }).map(name), [
+    '0@0.7',
+    '1@0.7',
+    '2@0.7',
+    '3@0.7',
+    '3@0.85',
+    '3@1',
+  ]);
+  // Each rung down is the same look drawn smaller, or a lower look.
+  const steps = zhudaQualitySteps();
+  for (let i = 1; i < steps.length; i++) {
+    const below = steps[i - 1],
+      above = steps[i];
+    assert.ok(
+      below.look < above.look ||
+        (below.look === above.look && below.renderScale < above.renderScale),
+      `${name(below)} is under ${name(above)}`,
+    );
+  }
+});
+
+test('a frame of many draws gets advice; one of few gets none', async () => {
+  const { zhudaFrameLoadAdvice, ZHUDA_DRAW_ADVICE_FROM } = await import(
+    '../packages/core/runtime3d/QualityGovernor.ts'
+  );
+  assert.equal(ZHUDA_DRAW_ADVICE_FROM, 500);
+  assert.deepEqual(zhudaFrameLoadAdvice({ drawCalls: 300, renderTargets: 50 }), []);
+  assert.deepEqual(zhudaFrameLoadAdvice({ drawCalls: 500 }), []);
+  const said = zhudaFrameLoadAdvice({ drawCalls: 1148 });
+  assert.equal(said.length, 1);
+  assert.match(said[0], /^1148 draws a frame \(over 500\)/);
+  assert.match(said[0], /ZhudaInstancedMesh/);
+  assert.equal(zhudaFrameLoadAdvice({ drawCalls: 1148 }, { from: 2000 }).length, 0);
+  assert.equal(zhudaFrameLoadAdvice({ drawCalls: 120 }, { from: 100 }).length, 1);
+  assert.throws(() => zhudaFrameLoadAdvice({ drawCalls: -1 }), /Frame load/);
+  assert.throws(() => zhudaFrameLoadAdvice({ drawCalls: 10 }, { from: 0 }), /Frame load/);
+});
+
+test('the profiler counts the render targets a WebGL frame goes to', async () => {
+  const { ZhudaRuntimeProfiler } = await import('../packages/core/effects/EffectBudget.ts');
+  const bound = [];
+  const gl = {
+    TRIANGLES: 4,
+    READ_FRAMEBUFFER: 0x8ca8,
+    FRAMEBUFFER: 0x8d40,
+    drawArrays() {},
+    drawElements() {},
+    bindFramebuffer(target, framebuffer) {
+      bound.push(framebuffer);
+    },
+  };
+  const original = gl.bindFramebuffer;
+  const profiler = new ZhudaRuntimeProfiler();
+  profiler.attach(gl);
+  const a = {},
+    b = {};
+  profiler.beginFrame();
+  gl.bindFramebuffer(gl.FRAMEBUFFER, a);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+  // The same target again is not another pass; the source of a copy is not one either.
+  gl.bindFramebuffer(gl.FRAMEBUFFER, a);
+  gl.bindFramebuffer(gl.READ_FRAMEBUFFER, b);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, b);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  const sample = profiler.endFrame(10, 5);
+  assert.equal(sample.renderTargets, 3);
+  assert.equal(sample.drawCalls, 1);
+  assert.equal(bound.length, 5, 'every bind still reaches the context');
+  profiler.beginFrame();
+  assert.equal(profiler.endFrame(1, 1).renderTargets, 0, 'counted a frame at a time');
+  profiler.dispose();
+  assert.equal(gl.bindFramebuffer, original, 'the context has its own function back');
 });

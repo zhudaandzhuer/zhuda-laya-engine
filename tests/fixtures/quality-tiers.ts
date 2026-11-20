@@ -66,6 +66,32 @@ async function main() {
   context.runtime.start(() => onLoop?.());
   const canvas = context.canvas as HTMLCanvasElement;
   const gl = renderer === 'webgl' ? canvas.getContext('webgl2') : null;
+  // WebGL only: draws issued and switches to another render target, counted from the page.
+  const counted = { draws: 0, targets: 0 };
+  if (gl) {
+    for (const name of [
+      'drawElements',
+      'drawArrays',
+      'drawElementsInstanced',
+      'drawArraysInstanced',
+      'drawRangeElements',
+    ] as const) {
+      const original = (gl as any)[name].bind(gl);
+      (gl as any)[name] = (...args: unknown[]) => {
+        counted.draws++;
+        return original(...args);
+      };
+    }
+    const bind = gl.bindFramebuffer.bind(gl);
+    let bound: WebGLFramebuffer | null = null;
+    gl.bindFramebuffer = (target: number, framebuffer: WebGLFramebuffer | null) => {
+      if (target !== gl.READ_FRAMEBUFFER && framebuffer !== bound) {
+        bound = framebuffer;
+        counted.targets++;
+      }
+      return bind(target, framebuffer);
+    };
+  }
   const scene = Z.Zhuda3D.createScene3D(context.rootScene);
   const camera = Z.Zhuda3D.createCamera(scene, {
     position: [0, 1.7, 34],
@@ -188,14 +214,19 @@ async function main() {
   const median = (list: number[]) => [...list].sort((a, b) => a - b)[Math.floor(list.length / 2)];
   /** Milliseconds a frame, drawn back to back, the graphics card waited for: the median of three runs. */
   /** The time the page spent issuing the last back-to-back run's frames, before the graphics card was waited for. */
-  let issueMs = 0;
+  let issueMs = 0,
+    drawsAFrame = 0,
+    targetsAFrame = 0;
   const backToBack = async (frames: number) => {
     const runs: number[] = [],
       issue: number[] = [];
     for (let run = 0; run < 3; run++) {
       await settle();
+      counted.draws = counted.targets = 0;
       const from = performance.now();
       for (let i = 0; i < frames; i++) frame();
+      drawsAFrame = Math.round(counted.draws / frames);
+      targetsAFrame = Math.round(counted.targets / frames);
       issue.push((performance.now() - from) / frames);
       await settle();
       runs.push((performance.now() - from) / frames);
@@ -234,6 +265,7 @@ async function main() {
       };
     });
 
+  const ROUNDS = Math.max(1, Number(params.get('rounds')) || 1);
   out.measure = async (level: number, name: string, scale = 1) => {
     view = VIEWS[name];
     camera.transform.position = new Laya.Vector3(...view[0]);
@@ -242,16 +274,31 @@ async function main() {
     grass.fill(view[0], seconds);
     for (let i = 0; i < 40; i++) frame();
     await settle();
-    const ms = await backToBack(40);
-    const rate = await paced(4000);
+    // `rounds=N`: the step is measured N times; the medians are reported, every reading kept.
+    const ms: number[] = [],
+      issued: number[] = [],
+      fps: number[] = [],
+      p95: number[] = [];
+    for (let round = 0; round < ROUNDS; round++) {
+      ms.push(await backToBack(40));
+      issued.push(issueMs);
+      const rate = await paced(ROUNDS > 1 ? 3000 : 4000);
+      fps.push(rate.fps);
+      p95.push(rate.p95Ms);
+    }
     return {
       level,
       scale,
       view: name,
-      msBackToBack: ms,
-      msIssued: issueMs,
-      fps: rate.fps,
-      p95GapMs: rate.p95Ms,
+      msBackToBack: median(ms),
+      msIssued: median(issued),
+      fps: median(fps),
+      // The owner's tier this rate falls in (null under 10 frames a second).
+      tier: Z.zhudaFrameTier(median(fps)),
+      p95GapMs: median(p95),
+      draws: gl ? drawsAFrame : null,
+      targets: gl ? targetsAFrame : null,
+      ...(ROUNDS > 1 ? { allFps: fps } : {}),
     };
   };
   out.info = {

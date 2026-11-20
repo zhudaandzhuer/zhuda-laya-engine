@@ -106,6 +106,15 @@ the numbers.
   `f56f8a4` (`git log origin/main..main` says whether it is pushed).
   Measured on the three devices. No runtime file
   changed and no tier is defined in the engine.
+- Second round, the same day, on the branch `feat/quality-tiers-engine`
+  (`git log main..feat/quality-tiers-engine` says whether it is merged): the
+  tiers as data (`ZHUDA_FRAME_TIERS`, `zhudaFrameTier`, `zhudaTierBudgetMs`),
+  a rung at level 1 drawn at 0.5 in the default ladder, advice for a frame
+  of many draws, render targets counted by the profiler, repeated readings
+  and counters in the tool. `npm run verify` 941 of 941.
+  `verify:quality-governor` fails on this Mac today on both backends, **also
+  without the change** (timed assertions, the machine under load): run it
+  again on a quiet machine before trusting either result.
 - Found: on the V40 a smaller render scale brings a level into a band (level
   1 at 0.7 is 56 to 60); on the iPhone the number of draws decides, and
   houses drawn as instanced copies take level 1 at 0.7 from 31..35 to 45..49.

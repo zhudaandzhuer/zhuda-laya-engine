@@ -222,7 +222,8 @@ async function main() {
   const walk = async (governor: any, holdMs: number, until: number, withGpu: boolean) => {
     const rungs: any[] = [];
     const bases = new Set<string>();
-    for (let i = 0; i < 1200 && governor.level !== until; i++) {
+    // Enough frames for a ladder of any length: it was 1200 for the ten rungs it had.
+    for (let i = 0; i < 150 * steps.length && governor.level !== until; i++) {
       const f = await frame(holdMs);
       const level = governor.sample(f.ms, withGpu ? f.gpu : undefined);
       if (governor.basis) bases.add(governor.basis);

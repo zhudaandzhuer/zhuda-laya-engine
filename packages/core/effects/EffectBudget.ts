@@ -177,6 +177,12 @@ export interface RuntimeFrameSample {
   cpuMs: number;
   drawCalls: number;
   triangles: number;
+  /**
+   * WebGL: how often the frame went to another render target (a framebuffer
+   * bound that was not the one bound before). Each is a pass a tile-based
+   * phone GPU starts and ends. Not counted on WebGPU.
+   */
+  renderTargets?: number;
   /** Only populated by a valid, non-disjoint GPU timer query. */
   gpuMs?: number;
   /** Optional caller-measured JS heap, never inferred GPU/native memory. */
@@ -210,6 +216,8 @@ const TIMING_BUFFERS = 8;
 export class ZhudaRuntimeProfiler {
   private calls = 0;
   private triangles = 0;
+  private targets = 0;
+  private countsTargets = false;
   private contexts = new WeakSet<object>();
   private contextCount = 0;
   private restore: Array<() => void> = [];
@@ -277,6 +285,24 @@ export class ZhudaRuntimeProfiler {
       }
     };
     wrap(gl, ['drawArrays', 'drawElements', 'drawArraysInstanced', 'drawElementsInstanced']);
+    if (typeof gl.bindFramebuffer === 'function') {
+      const original = gl.bindFramebuffer,
+        profiler = this;
+      let bound: unknown = null;
+      const wrapper = function (target: number, framebuffer: unknown) {
+        // A read framebuffer is the source of a copy, not where the frame draws.
+        if (target !== gl.READ_FRAMEBUFFER && framebuffer !== bound) {
+          bound = framebuffer;
+          profiler.targets++;
+        }
+        return original.call(gl, target, framebuffer);
+      };
+      gl.bindFramebuffer = wrapper;
+      this.countsTargets = true;
+      this.restore.push(() => {
+        if (gl.bindFramebuffer === wrapper) gl.bindFramebuffer = original;
+      });
+    }
     if (!gl.drawArraysInstanced) {
       const angle = gl.getExtension?.('ANGLE_instanced_arrays');
       if (angle) wrap(angle, ['drawArraysInstancedANGLE', 'drawElementsInstancedANGLE']);
@@ -526,7 +552,7 @@ export class ZhudaRuntimeProfiler {
   beginFrame(): void {
     if (this.frameOpen) throw Error('End the previous profiler frame first.');
     this.frameOpen = true;
-    this.calls = this.triangles = 0;
+    this.calls = this.triangles = this.targets = 0;
     this.pollGpu();
     if (this.gpuPasses) this.gpuPasses.used = 0;
     const g = this.gpu;
@@ -552,6 +578,7 @@ export class ZhudaRuntimeProfiler {
       cpuMs,
       drawCalls: this.calls,
       triangles: this.triangles,
+      ...(this.countsTargets ? { renderTargets: this.targets } : {}),
       ...(extra.heapBytes === undefined ? {} : { heapBytes: extra.heapBytes }),
     };
     const g = this.gpu;
@@ -655,6 +682,7 @@ export class ZhudaRuntimeProfiler {
     this.frameOpen = false;
     this.restore.forEach((fn) => fn());
     this.restore = [];
+    this.countsTargets = false;
     this.contexts = new WeakSet();
     this.contextCount = 0;
   }

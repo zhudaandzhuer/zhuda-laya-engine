@@ -12,7 +12,8 @@
 //                                                                         opened by hand (an iPhone's Safari) to send its report
 //
 // TIERS_RENDERER=webgpu (or ZHUDA_FILM_RENDERER=webgpu) measures the WebGPU
-// build. TIERS_TOWN=instanced draws the houses as instanced copies instead of a
+// build. TIERS_ROUNDS=3 measures each step that many times and reports the
+// medians. TIERS_TOWN=instanced draws the houses as instanced copies instead of a
 // node each. TIERS_PROFILE=1@0.7 measures one step from the street with parts of
 // the look and the scene taken away one at a time, twice each. TIERS_STEPS=3@1,1@0.7 lists look levels at render scales (default the
 // four levels at full size). TIERS_DPR caps the device pixel ratio (default 2). TIERS_VIEW=WxH
@@ -42,7 +43,10 @@ const steps = process.env.TIERS_PROFILE
   : process.env.TIERS_STEPS
     ? `&steps=${process.env.TIERS_STEPS}`
     : '';
-const town = process.env.TIERS_TOWN ? `&town=${process.env.TIERS_TOWN}` : '';
+const town =
+  (process.env.TIERS_TOWN ? `&town=${process.env.TIERS_TOWN}` : '') +
+  (process.env.TIERS_ROUNDS ? `&rounds=${process.env.TIERS_ROUNDS}` : '') +
+  (process.env.TIERS_EXTRA ? `&${process.env.TIERS_EXTRA}` : '');
 const [viewW, viewH] = (process.env.TIERS_VIEW || '1920x1080').split('x').map(Number);
 
 await buildBrowserSdk({ engineRoot, outDir: web, profiles: [profile] });
@@ -92,8 +96,8 @@ await new Promise((resolve) =>
 );
 const port = server.address().port;
 
-/** The owner's bands, by paced frames a second. A display's own pacing reads a little under 60. */
-const band = (fps) => (fps >= 59 ? '60+' : fps >= 45 ? '45-60' : fps >= 10 ? '10-45' : 'under 10');
+/** The owner's tiers (ZHUDA_FRAME_TIERS), as the bands of frames a second they are. */
+const BANDS = { low: '60+ (low)', high: '45-60 (high)', extreme: '10-45 (extreme)' };
 
 let report;
 let browser;
@@ -130,7 +134,7 @@ try {
     await browser.screenshot(path.join(out, 'last-frame.png')).catch(() => {});
   }
   assert.ok(report.rows, `the page failed: ${(report.errors || []).join('\n')}`);
-  for (const row of report.rows) row.band = band(row.fps);
+  for (const row of report.rows) row.band = BANDS[row.tier] ?? 'under 10';
   report.where = lan
     ? 'opened by hand over the network'
     : phone
@@ -142,7 +146,7 @@ try {
   );
   for (const row of report.rows)
     console.log(
-      `${(row.variant ? `${row.variant} #${row.round}` : row.view).padEnd(row.variant ? 64 : 7)} level ${row.level} at ${String(row.scale).padEnd(4)}  ${String(row.fps).padStart(6)} fps  p95 gap ${String(row.p95GapMs).padStart(6)} ms  back to back ${String(row.msBackToBack).padStart(7)} ms (issued in ${String(row.msIssued).padStart(6)})  ${row.band}`,
+      `${(row.variant ? `${row.variant} #${row.round}` : row.view).padEnd(row.variant ? 64 : 7)} level ${row.level} at ${String(row.scale).padEnd(4)}  ${String(row.fps).padStart(6)} fps  p95 gap ${String(row.p95GapMs).padStart(6)} ms  back to back ${String(row.msBackToBack).padStart(7)} ms (issued in ${String(row.msIssued).padStart(6)})  ${row.draws == null ? '' : `${String(row.draws).padStart(5)} draws ${String(row.targets).padStart(3)} targets  `}${row.band}`,
     );
   assert.deepEqual(report.errors, [], 'no page errors');
 } finally {

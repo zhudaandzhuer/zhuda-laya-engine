@@ -881,8 +881,33 @@ and WebGPU, not yet measured on a phone):
   hold it; a look disposed, or its scene destroyed, gives it back.
 - `zhudaQualitySteps()` is a ladder of look levels and render scales for the
   governor, cheapest first: the picture shrinks to 0.85 and 0.7 before any
-  effect goes, then the levels drop at 0.7, then 0.5 at level 0. The rungs
-  are a proposal until a phone measures them.
+  effect goes, then the levels drop at 0.7 down to level 1, then level 1 is
+  drawn at 0.5 (the last rung with the HDR chain: bloom, fog and the grade
+  stay; `effectsAtLowest: false` leaves it out), then level 0 at 0.7 and at
+  0.5. Measured on a vivo V40, an iPhone 14 and a desktop in one synthetic
+  scene (`docs/plans/records/quality-tiers`): where a phone is bound by its
+  pixels, level 1 at 0.5 holds 60 frames a second where level 1 at 0.7 reads
+  57; where it is bound by its draws (an iPhone's Safari), a smaller picture
+  gains little.
+- **Frame-rate tiers.** `ZHUDA_FRAME_TIERS` names three bands by the frames a
+  second a device holds: `low` 60 and over, `high` 45 to 60, `extreme` 10 to
+  45 (for taking pictures). `zhudaTierBudgetMs(tier)` is the budget that holds
+  one, `zhudaFrameTier(fps)` the tier a measured rate falls in:
+
+  ```ts
+  const governor = new ZhudaQualityGovernor({
+    levels: steps.length,
+    budgetMs: zhudaTierBudgetMs('high'), // steps down while frames run over 22.2 ms
+  });
+  ```
+
+  `node scripts/measure-quality-tiers.mjs` (in the engine repository) reads
+  what each rung gives on a device.
+- **Many draws.** `zhudaFrameLoadAdvice({ drawCalls })` says what to do about
+  a frame of more than 500 draws (`ZhudaRuntimeProfiler`'s samples carry
+  `drawCalls`, and on WebGL `renderTargets`, how often a frame went to
+  another render target): on an iPhone's Safari such a frame is bound by
+  issuing its draws, not by its pixels.
 
 ```ts
 const steps = zhudaQualitySteps();

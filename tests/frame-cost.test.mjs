@@ -701,6 +701,7 @@ test('the quality ladder: smaller first, then effects, then smaller again', () =
     [
       [0, 0.5],
       [0, 0.7],
+      [1, 0.5],
       [1, 0.7],
       [2, 0.7],
       [3, 0.7],
@@ -734,13 +735,13 @@ test('a governor over the ladder steps through the render scales before any effe
   const governor = new ZhudaQualityGovernor({ levels: steps.length, budgetMs: 16.7, window: 30 });
   const walked = [steps[governor.level]];
   // Frames of 30 ms: one rung down a window, to the bottom.
-  for (let i = 0; i < 30 * 10; i++) {
+  for (let i = 0; i < 30 * 12; i++) {
     const level = governor.sample(30);
     if (level !== undefined) walked.push(steps[level]);
   }
   assert.deepEqual(
     walked.map((s) => `${s.look}@${s.renderScale}`),
-    ['3@1', '3@0.85', '3@0.7', '2@0.7', '1@0.7', '0@0.7', '0@0.5'],
+    ['3@1', '3@0.85', '3@0.7', '2@0.7', '1@0.7', '1@0.5', '0@0.7', '0@0.5'],
   );
   // Calm frames walk it back up, one rung at a time.
   const up = [];
@@ -748,5 +749,5 @@ test('a governor over the ladder steps through the render scales before any effe
     const level = governor.sample(8);
     if (level !== undefined) up.push(level);
   }
-  assert.deepEqual(up, [1, 2, 3, 4, 5, 6]);
+  assert.deepEqual(up, [1, 2, 3, 4, 5, 6, 7]);
 });

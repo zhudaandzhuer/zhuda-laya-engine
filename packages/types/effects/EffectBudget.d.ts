@@ -48,6 +48,12 @@ export interface RuntimeFrameSample {
     cpuMs: number;
     drawCalls: number;
     triangles: number;
+    /**
+     * WebGL: how often the frame went to another render target (a framebuffer
+     * bound that was not the one bound before). Each is a pass a tile-based
+     * phone GPU starts and ends. Not counted on WebGPU.
+     */
+    renderTargets?: number;
     /** Only populated by a valid, non-disjoint GPU timer query. */
     gpuMs?: number;
     /** Optional caller-measured JS heap, never inferred GPU/native memory. */
@@ -68,6 +74,8 @@ export interface RuntimePercentiles {
 export declare class ZhudaRuntimeProfiler {
     private calls;
     private triangles;
+    private targets;
+    private countsTargets;
     private contexts;
     private contextCount;
     private restore;
@@ -154,6 +162,12 @@ export declare class ZhudaRuntimeProfiler {
             cpuMs: number;
             drawCalls: number;
             triangles: number;
+            /**
+             * WebGL: how often the frame went to another render target (a framebuffer
+             * bound that was not the one bound before). Each is a pass a tile-based
+             * phone GPU starts and ends. Not counted on WebGPU.
+             */
+            renderTargets?: number;
             /** Only populated by a valid, non-disjoint GPU timer query. */
             gpuMs?: number;
             /** Optional caller-measured JS heap, never inferred GPU/native memory. */

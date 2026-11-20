@@ -1,6 +1,6 @@
 # Agent task: frame-rate tiers, measured
 
-Status: In progress; a measuring tool and first numbers on three devices ([verification](verification.md))\
+Status: In progress; a measuring tool, numbers on three devices, the tiers and a measured ladder in the engine ([verification](verification.md))\
 Owner: Engine/toolchain\
 Last reviewed: 2026-11-20
 
@@ -59,6 +59,38 @@ by this task: the numbers come first.
   its report (an iPhone's Safari cannot be driven from here).
 - It is a measurement: it exits 0 whatever the numbers are, and fails only
   when the page failed.
+
+## Second round: what went into the engine
+
+On the owner's word of the same day ("去把他們完成", after a list of what was
+left). Done in this round:
+
+- `zhudaQualitySteps`: a rung at look level 1 drawn at `lowest` (0.5),
+  between level 1 at 0.7 and level 0; `effectsAtLowest: false` leaves it out.
+- `ZHUDA_FRAME_TIERS`, `zhudaFrameTier(fps)`, `zhudaTierBudgetMs(tier)`: the
+  three tiers as data, the tier of a measured rate, and the governor budget
+  that holds one. A tier is a budget for the existing governor and ladder,
+  which find the rung on each device; there is no table of devices.
+- `zhudaFrameLoadAdvice({ drawCalls })` and `ZHUDA_DRAW_ADVICE_FROM` (500):
+  what to do about a frame of many draws.
+- `ZhudaRuntimeProfiler`: a sample carries `renderTargets` on WebGL, how
+  often the frame went to another render target.
+- The tool: `TIERS_ROUNDS` (medians of repeated readings), draws and render
+  targets a frame, the tier beside each row.
+
+Files: `packages/core/runtime3d/QualityGovernor.ts`,
+`packages/core/effects/EffectBudget.ts`, their declarations, the two tests,
+`scripts/verify-render-scale.mjs` and `tests/fixtures/quality-governor.ts`
+(the ladder they expect and walk), `docs/film-scenes.md`.
+
+Behaviour change: the default ladder has eight rungs where it had seven. A
+level kept by `ZhudaQualityMemory` from before means the rung one cheaper
+than it did from index 2 up.
+
+Not done in this round, each still open: why a pass into its own target
+costs the iPhone a frame; the iPhone on WebGPU; a cheaper HDR chain, light
+fog at a lower resolution, cheaper smoothing at levels 2 and 3, shadow maps
+drawn less often inside the ladder; a heavier scene.
 
 ## Invariants
 

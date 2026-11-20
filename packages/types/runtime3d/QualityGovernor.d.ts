@@ -114,6 +114,14 @@ export interface ZhudaQualityStepsOptions {
     /** A last rung at look level 0 drawn smaller still, 0.5..1 (default 0.5); `false` for none. */
     lowest?: number | false;
     /**
+     * A rung at look level 1 drawn at `lowest`, between level 1 at the smallest
+     * of `scales` and level 0 (default true; nothing without `lowest`): the
+     * last rung that keeps the HDR chain. On a phone bound by its pixels it
+     * holds 60 frames a second where level 1 at 0.7 does not
+     * (docs/plans/records/quality-tiers).
+     */
+    effectsAtLowest?: boolean;
+    /**
      * Detail rungs below 1, from the largest, each 0.4..1 (default none): the
      * scene's distances are cut to these shares one rung at a time. The rungs
      * below keep the smallest of them.
@@ -134,11 +142,60 @@ export interface ZhudaQualityStepsOptions {
  * `levels: steps.length` walks it (`steps[governor.level]`). Each rung down
  * draws less than the one above it: first the picture gets smaller, then
  * (with `details`) the scene's distances are cut, then the rest of the
- * picture sizes go, then effects go at the smallest of those sizes, last the
- * picture shrinks again. Every rung carries `detail` (1 without `details`).
- * The default rungs are a proposal. One phone has measured the scale in one
- * game (docs/plans/records/frame-cost): 0.67 took 25 to 30 % off a frame at
- * look levels 1 and 2 and under a tenth at level 0, where the frame is no
- * longer bound by its pixels; the rungs were not tuned from that.
+ * picture sizes go, then effects go at the smallest of those sizes, then
+ * the picture shrinks once more with the HDR chain still on (level 1 at
+ * `lowest`), then the chain goes, last the picture shrinks again. Every rung
+ * carries `detail` (1 without `details`).
+ *
+ * Measured (docs/plans/records/quality-tiers, one synthetic scene): on a
+ * vivo V40 the picture's size decides, level 1 at 0.7 reads 57 frames a
+ * second and at 0.5 it reads 60, so the rung at `lowest` keeps bloom, fog
+ * and the grade where the ladder used to drop to level 0. On an iPhone 14
+ * the number of draws decides and a smaller picture gains less. One game on
+ * one phone before that (docs/plans/records/frame-cost): 0.67 took 25 to
+ * 30 % off a frame at look levels 1 and 2 and under a tenth at level 0.
  */
 export declare function zhudaQualitySteps(options?: ZhudaQualityStepsOptions): ZhudaQualityStep[];
+/**
+ * The owner's three frame-rate tiers (docs/plans/records/quality-tiers), by
+ * the frames a second a device holds: `low` is 60 and over on every target,
+ * `high` is 45 to 60 with the picture as good as it can be made, `extreme`
+ * is 10 to 45, the picture as perfect as possible, for taking pictures.
+ */
+export type ZhudaFrameTier = 'low' | 'high' | 'extreme';
+/** Each tier's band: at least `minFps`, under `belowFps` (none for `low`). */
+export declare const ZHUDA_FRAME_TIERS: Readonly<Record<ZhudaFrameTier, {
+    readonly minFps: number;
+    readonly belowFps?: number;
+}>>;
+/**
+ * The tier a measured rate falls in, or null under 10 frames a second. A
+ * display paces frames a little under its nominal rate (59.7 on a 60 Hz
+ * screen): `tolerance` (default 1) is taken off each lower bound.
+ */
+export declare function zhudaFrameTier(fps: number, tolerance?: number): ZhudaFrameTier | null;
+/**
+ * The frame budget that holds a tier, for `ZhudaQualityGovernor`'s
+ * `budgetMs`: the governor steps down while frames run over it, so the rate
+ * stays at or over the tier's lower bound (16.7 ms, 22.2 ms, 100 ms).
+ */
+export declare function zhudaTierBudgetMs(tier: ZhudaFrameTier): number;
+/** What a frame issued: its draws, and (WebGL) how often it went to another render target. */
+export interface ZhudaFrameLoad {
+    drawCalls: number;
+    renderTargets?: number;
+}
+/** Draws a frame above which `zhudaFrameLoadAdvice` speaks, unless told otherwise. */
+export declare const ZHUDA_DRAW_ADVICE_FROM = 500;
+/**
+ * What to do about a frame that issues many draws, as sentences; none when
+ * it does not. Measured on an iPhone 14's Safari
+ * (docs/plans/records/quality-tiers): issuing about 1100 draws took 10 to
+ * 15 ms of a 16.7 ms frame and a smaller picture gained nothing; the same
+ * houses as instanced copies, about 300 draws, took 4 ms. A phone's Chrome
+ * and a desktop pay less a draw. One phone, one scene: a line to look at,
+ * not a limit.
+ */
+export declare function zhudaFrameLoadAdvice(load: ZhudaFrameLoad, options?: {
+    from?: number;
+}): string[];

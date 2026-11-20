@@ -226,6 +226,14 @@ export interface ZhudaQualityStepsOptions {
   /** A last rung at look level 0 drawn smaller still, 0.5..1 (default 0.5); `false` for none. */
   lowest?: number | false;
   /**
+   * A rung at look level 1 drawn at `lowest`, between level 1 at the smallest
+   * of `scales` and level 0 (default true; nothing without `lowest`): the
+   * last rung that keeps the HDR chain. On a phone bound by its pixels it
+   * holds 60 frames a second where level 1 at 0.7 does not
+   * (docs/plans/records/quality-tiers).
+   */
+  effectsAtLowest?: boolean;
+  /**
    * Detail rungs below 1, from the largest, each 0.4..1 (default none): the
    * scene's distances are cut to these shares one rung at a time. The rungs
    * below keep the smallest of them.
@@ -247,12 +255,18 @@ export interface ZhudaQualityStepsOptions {
  * `levels: steps.length` walks it (`steps[governor.level]`). Each rung down
  * draws less than the one above it: first the picture gets smaller, then
  * (with `details`) the scene's distances are cut, then the rest of the
- * picture sizes go, then effects go at the smallest of those sizes, last the
- * picture shrinks again. Every rung carries `detail` (1 without `details`).
- * The default rungs are a proposal. One phone has measured the scale in one
- * game (docs/plans/records/frame-cost): 0.67 took 25 to 30 % off a frame at
- * look levels 1 and 2 and under a tenth at level 0, where the frame is no
- * longer bound by its pixels; the rungs were not tuned from that.
+ * picture sizes go, then effects go at the smallest of those sizes, then
+ * the picture shrinks once more with the HDR chain still on (level 1 at
+ * `lowest`), then the chain goes, last the picture shrinks again. Every rung
+ * carries `detail` (1 without `details`).
+ *
+ * Measured (docs/plans/records/quality-tiers, one synthetic scene): on a
+ * vivo V40 the picture's size decides, level 1 at 0.7 reads 57 frames a
+ * second and at 0.5 it reads 60, so the rung at `lowest` keeps bloom, fog
+ * and the grade where the ladder used to drop to level 0. On an iPhone 14
+ * the number of draws decides and a smaller picture gains less. One game on
+ * one phone before that (docs/plans/records/frame-cost): 0.67 took 25 to
+ * 30 % off a frame at look levels 1 and 2 and under a tenth at level 0.
  */
 export function zhudaQualitySteps(options: ZhudaQualityStepsOptions = {}): ZhudaQualityStep[] {
   const scales = options.scales ?? [1, 0.85, 0.7],
@@ -291,7 +305,81 @@ export function zhudaQualitySteps(options: ZhudaQualityStepsOptions = {}): Zhuda
     if (i === atIndex)
       for (const share of details) best.push({ look: 3, renderScale, detail: (detail = share) });
   });
-  for (const look of [2, 1, 0] as const) best.push({ look, renderScale: smallest, detail });
+  for (const look of [2, 1] as const) best.push({ look, renderScale: smallest, detail });
+  if (lowest !== false && options.effectsAtLowest !== false)
+    best.push({ look: 1, renderScale: lowest, detail });
+  best.push({ look: 0, renderScale: smallest, detail });
   if (lowest !== false) best.push({ look: 0, renderScale: lowest, detail });
   return best.reverse();
+}
+
+/**
+ * The owner's three frame-rate tiers (docs/plans/records/quality-tiers), by
+ * the frames a second a device holds: `low` is 60 and over on every target,
+ * `high` is 45 to 60 with the picture as good as it can be made, `extreme`
+ * is 10 to 45, the picture as perfect as possible, for taking pictures.
+ */
+export type ZhudaFrameTier = 'low' | 'high' | 'extreme';
+/** Each tier's band: at least `minFps`, under `belowFps` (none for `low`). */
+export const ZHUDA_FRAME_TIERS: Readonly<
+  Record<ZhudaFrameTier, { readonly minFps: number; readonly belowFps?: number }>
+> = Object.freeze({
+  low: Object.freeze({ minFps: 60 }),
+  high: Object.freeze({ minFps: 45, belowFps: 60 }),
+  extreme: Object.freeze({ minFps: 10, belowFps: 45 }),
+});
+/**
+ * The tier a measured rate falls in, or null under 10 frames a second. A
+ * display paces frames a little under its nominal rate (59.7 on a 60 Hz
+ * screen): `tolerance` (default 1) is taken off each lower bound.
+ */
+export function zhudaFrameTier(fps: number, tolerance = 1): ZhudaFrameTier | null {
+  if (!Number.isFinite(fps) || fps < 0) throw Error('Frame tier: frames a second, 0 or more');
+  if (!Number.isFinite(tolerance) || tolerance < 0 || tolerance > 5)
+    throw Error('Frame tier: tolerance 0..5');
+  if (fps >= ZHUDA_FRAME_TIERS.low.minFps - tolerance) return 'low';
+  if (fps >= ZHUDA_FRAME_TIERS.high.minFps - tolerance) return 'high';
+  if (fps >= ZHUDA_FRAME_TIERS.extreme.minFps - tolerance) return 'extreme';
+  return null;
+}
+/**
+ * The frame budget that holds a tier, for `ZhudaQualityGovernor`'s
+ * `budgetMs`: the governor steps down while frames run over it, so the rate
+ * stays at or over the tier's lower bound (16.7 ms, 22.2 ms, 100 ms).
+ */
+export function zhudaTierBudgetMs(tier: ZhudaFrameTier): number {
+  const band = ZHUDA_FRAME_TIERS[tier];
+  if (!band) throw Error("Frame tier: 'low', 'high' or 'extreme'");
+  return 1000 / band.minFps;
+}
+
+/** What a frame issued: its draws, and (WebGL) how often it went to another render target. */
+export interface ZhudaFrameLoad {
+  drawCalls: number;
+  renderTargets?: number;
+}
+/** Draws a frame above which `zhudaFrameLoadAdvice` speaks, unless told otherwise. */
+export const ZHUDA_DRAW_ADVICE_FROM = 500;
+/**
+ * What to do about a frame that issues many draws, as sentences; none when
+ * it does not. Measured on an iPhone 14's Safari
+ * (docs/plans/records/quality-tiers): issuing about 1100 draws took 10 to
+ * 15 ms of a 16.7 ms frame and a smaller picture gained nothing; the same
+ * houses as instanced copies, about 300 draws, took 4 ms. A phone's Chrome
+ * and a desktop pay less a draw. One phone, one scene: a line to look at,
+ * not a limit.
+ */
+export function zhudaFrameLoadAdvice(
+  load: ZhudaFrameLoad,
+  options: { from?: number } = {},
+): string[] {
+  const from = options.from ?? ZHUDA_DRAW_ADVICE_FROM;
+  if (!Number.isFinite(load?.drawCalls) || load.drawCalls < 0)
+    throw Error('Frame load: drawCalls is a count');
+  if (!Number.isInteger(from) || from < 1)
+    throw Error('Frame load: from is a whole number, 1 or more');
+  if (load.drawCalls <= from) return [];
+  return [
+    `${Math.round(load.drawCalls)} draws a frame (over ${from}): on an iPhone's Safari the frame is bound by issuing them, and a smaller render scale will not help. Draw repeated things as copies (ZhudaInstancedMesh, a model's instanced placements), merge what stands still, and let small things cast no shadow: every shadow cascade and the depth pass draw them again.`,
+  ];
 }

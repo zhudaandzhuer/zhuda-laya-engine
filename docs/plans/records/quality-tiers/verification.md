@@ -98,3 +98,62 @@ The V40's column is one round.
 - No picture was judged: the tool measures rate, not how a step looks.
 
 Decision: **In progress**. The tool is in; the tiers are not defined.
+
+## Second round (the same day)
+
+Commit: the one that carries this section, on `ec9c59f`.
+
+| Check                                | Exact command or procedure                                                              | Result                                                                                   |
+| ------------------------------------ | --------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Verify, lint, format, whitespace     | `npm run verify`, `npm run lint`, `npm run format:check`, `git diff --check`            | PASS, 941 tests (937 before; four new)                                                   |
+| Render scale and the ladder, drawn   | `npm run verify:render-scale`, and with `RENDER_SCALE_RENDERER=webgpu`                  | PASS on both: the eight rungs are drawn in their order                                   |
+| The governor on the ladder, drawn    | `npm run verify:quality-governor`, and with `GOVERNOR_RENDERER=webgpu`                  | FAIL on both, **and on the engine without this change** (a clone at `87ab247`), the same two assertions: "fast frames climb back to the top" (WebGL), "frames held slow by the CPU do not move a governor whose GPU time is inside its band" (WebGPU). Both are timed; this Mac's load average was 5 to 29 (Spotlight indexing). It passed once on WebGPU with this change earlier in the round. Not run on a quiet machine |
+| V40, three readings a step           | `TIERS_ROUNDS=3 TIERS_STEPS=... ZHUDA_PHONE_CHROME=...`, a node each and `TIERS_TOWN=instanced` | PASS; the three readings of a step differ by under 1 frame a second                      |
+| iPhone, the profile with counters    | `TIERS_LAN=... TIERS_TOWN=instanced TIERS_PROFILE=1@0.7`                                | PASS                                                                                     |
+
+V40, WebGL, medians of three, frames a second `street` / `wide`; the same
+with the houses instanced within 1 frame a second (the phone is bound by its
+pixels: issuing takes 6.2 to 8.5 ms with a node each, 3.5 to 4.5 instanced):
+
+| Step     | Frames a second | Draws a frame (a node each) | Render targets |
+| -------- | --------------- | --------------------------- | -------------- |
+| 3 at 1   | 18 / 27         | 793 / 1148                  | 67             |
+| 3 at 0.5 | 48 / 60         | 792 / 1147                  | 65             |
+| 2 at 0.7 | 45 / 56         | 792 / 1147                  | 61             |
+| 2 at 0.5 | 60 / 60         | 790 / 1145                  | 57             |
+| 1 at 1   | 39 / 53         | 745 / 1112                  | 48             |
+| 1 at 0.7 | 57 / 60         | 746 / 1113                  | 50             |
+| 1 at 0.5 | 60 / 60         | 744 / 1111                  | 46             |
+| 0 at 1   | 60 / 60         | 280 / 369                   | 8              |
+
+A frame with the HDR chain goes to 46 to 67 render targets; level 0 to 8.
+
+iPhone 14, the houses instanced, level 1 at 0.7 from the street (one round
+shown; the second agreed within 2 frames a second in the run before):
+
+| Variant                     | Frames a second | Draws | Render targets |
+| --------------------------- | --------------- | ----- | -------------- |
+| full                        | 45              | 296   | 50             |
+| no clouds                   | 52              | 292   | 42             |
+| no light fog                | 47              | 295   | 48             |
+| no shadows                  | 52              | 230   | 44             |
+| no bloom                    | 47              | 290   | 38             |
+| bare HDR chain              | 54              | 284   | 26             |
+| no HDR chain (shadows only) | 54              | 139   | 12             |
+| none of them                | 60              | 73    | 6              |
+
+The rate does not follow the number of targets alone (no bloom, 38 targets,
+reads 47; no clouds, 42 targets, reads 52): clouds and shadows cost the
+iPhone most. Why the paced rate is under 60 when the same frames drawn back
+to back take 7 to 10 ms is still not explained.
+
+Limits added by this round:
+
+- The new rung and the tiers rest on one synthetic scene on two phones.
+- `zhudaFrameLoadAdvice`'s 500 is one iPhone's cost a draw in that scene.
+- The Mac's own numbers in this round were taken under load and are not
+  recorded.
+- `verify:quality-governor` does not pass here today, with or without the
+  change.
+
+Decision: **In progress**.
