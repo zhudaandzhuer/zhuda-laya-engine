@@ -267,12 +267,19 @@ test('3D renderer uses scene depth, submits preallocated geometry, and destroys 
         throw Error('static index buffer reuploaded');
       },
     },
+    // As in LayaAir 3.4.2: the range is stored on the submesh, and the draw
+    // call only uses it once _updateRenderParams copies it over (which the
+    // MeshRenderer itself does only when its mesh is assigned).
+    subMesh: {
+      _setIndexRange(start, count) {
+        this._indexCount = count;
+      },
+      _updateRenderParams() {
+        mesh.drawCount = this._indexCount;
+      },
+    },
     getSubMesh() {
-      return {
-        _setIndexRange(start, count) {
-          mesh.drawCount = count;
-        },
-      };
+      return this.subMesh;
     },
     destroy() {
       owned.push('mesh');
@@ -339,6 +346,10 @@ test('3D renderer uses scene depth, submits preallocated geometry, and destroys 
     const buffer = mesh.vertices;
     r.render(cam);
     assert.equal(buffer, mesh.vertices);
+    // A later, larger submission reaches the draw call (it once kept the first count).
+    s.burst(3);
+    r.render(cam);
+    assert.equal(mesh.drawCount, 7 * 6);
     r.render(cam, 0);
     assert.equal(r.node.active, false);
     r.dispose();

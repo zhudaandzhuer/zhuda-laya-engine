@@ -147,6 +147,7 @@
     "verify:runtime-feedback": "node scripts/verify-runtime-feedback-browser.mjs",
     "verify:slot-foundation": "node scripts/verify-slot-foundation.mjs",
     "verify:procedural": "node scripts/verify-procedural-draw.mjs",
+    "verify:ribbon-growth": "node scripts/verify-ribbon-growth.mjs",
     "verify:film": "node scripts/verify-film-scene.mjs",
     "verify:film-look": "node scripts/verify-film-look.mjs",
     "verify:edge-smoothing": "node scripts/verify-edge-smoothing.mjs",

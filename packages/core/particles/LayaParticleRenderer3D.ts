@@ -83,7 +83,13 @@ class DynamicParticleMesh3D {
     );
     if (!this.staticIndices) this.mesh._indexBuffer.setData(g.indices, 0, 0, g.indexCount);
     if (this.drawCount !== g.indexCount) {
-      this.mesh.getSubMesh(0)._setIndexRange(0, g.indexCount);
+      const subMesh = this.mesh.getSubMesh(0);
+      subMesh._setIndexRange(0, g.indexCount);
+      // LayaAir 3.4.2's MeshRenderer copies a submesh's range into the draw
+      // call (_updateRenderParams) only when its mesh is (re)assigned, so a
+      // new range alone keeps the first drawn count on WebGL and WebGPU.
+      // Refresh the draw parameters of the geometry the render element uses.
+      subMesh._updateRenderParams(null);
       this.drawCount = g.indexCount;
     }
     this.min.setValue(Infinity, Infinity, Infinity);

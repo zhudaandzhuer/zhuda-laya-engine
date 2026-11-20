@@ -139,6 +139,18 @@ the numbers.
   and its Safari was left at a page of this Mac (`192.168.50.80`, the server
   is stopped).
 
+Ribbon draw range (2026-11-20, a session started from the game's session,
+branch `claude/reverent-wu-861b2f`, not merged into `main`): a 3D ribbon or
+particle system whose count changes after its first draw kept drawing the
+first count, on WebGPU and WebGL (LayaAir's `MeshRenderer` copies a submesh's
+range into the draw only when a mesh is assigned). Fixed in
+`DynamicParticleMesh3D.submit()`; `verify:ribbon-growth` draws it on both
+backends. Record:
+[task](docs/plans/records/dynamic-mesh-draw-range/task.md),
+[verification](docs/plans/records/dynamic-mesh-draw-range/verification.md).
+Open: merge on the owner's word; phone runs; the game that found it
+(`SWEEP_POINTS` fixed at 64) can drop its workaround after re-pinning.
+
 Added on 2026-11-18, in the commit that carries this note: the route
 [a small floating island](docs/routes/floating-island.md), its row in the
 routes index and its record (`docs/plans/records/floating-island-route/`).
