@@ -42,6 +42,20 @@ export interface ZhudaSpringChainOptions {
   gravity?: ZhudaSimVec3;
   /** How far outside a body a joint is kept, metres (default 0.02; 0 to 1). */
   radius?: number;
+  /**
+   * Settings of their own for the bones, from the one nearest what the chain
+   * hangs from: a key left out takes the chain's. At most one a bone; bones
+   * past the end of the list take the chain's (a VRM spring sets each joint).
+   */
+  bones?: readonly ZhudaSpringBoneSetting[];
+}
+
+/** One bone's own settings in a chain: the same meanings and limits as the chain's. */
+export interface ZhudaSpringBoneSetting {
+  stiffness?: number;
+  drag?: number;
+  gravity?: ZhudaSimVec3;
+  radius?: number;
 }
 
 export interface ZhudaSpringBoneOptions {
@@ -72,10 +86,11 @@ interface Chain {
   rest: [number, number, number, number][];
   axes: [number, number, number][];
   lengths: number[];
-  stiffness: number;
-  drag: number;
-  gravity: [number, number, number];
-  radius: number;
+  /** Each bone's settings: the chain's, or its own. Gravity is three numbers a bone. */
+  stiffness: Float64Array;
+  drag: Float64Array;
+  gravity: Float64Array;
+  radius: Float64Array;
   /** The joints after the first: three numbers each, where they are and where they were. */
   tails: Float64Array;
   previous: Float64Array;
@@ -154,8 +169,20 @@ export class ZhudaSpringBoneSolver {
     )
       throw Error('Invalid chain: 1 to 256 bones, a rotation, an axis and a length for each');
     for (const key of Object.keys(options))
-      if (!['stiffness', 'drag', 'gravity', 'radius'].includes(key))
+      if (!['stiffness', 'drag', 'gravity', 'radius', 'bones'].includes(key))
         throw Error(`Unknown chain option: ${key}`);
+    const own = options.bones ?? [];
+    if (!Array.isArray(own) || own.length > bones)
+      throw Error('Invalid chain: bones is a list of at most one setting a bone');
+    own.forEach((setting, i) => {
+      if (setting === null || typeof setting !== 'object')
+        throw Error(`Invalid chain: bones[${i}] is an object`);
+      for (const key of Object.keys(setting))
+        if (!['stiffness', 'drag', 'gravity', 'radius'].includes(key))
+          throw Error(`Unknown bone setting: bones[${i}].${key}`);
+      if (setting.gravity !== undefined && !finite3(setting.gravity))
+        throw Error(`Invalid gravity: bones[${i}] three finite numbers`);
+    });
     const axes: [number, number, number][] = [],
       rotations: [number, number, number, number][] = [];
     for (let i = 0; i < bones; i++) {
@@ -170,18 +197,29 @@ export class ZhudaSpringBoneSolver {
     }
     if (options.gravity !== undefined && !finite3(options.gravity))
       throw Error('Invalid gravity: three finite numbers');
+    const stiffness = ranged('stiffness', options.stiffness, 10, 0, 1000),
+      drag = ranged('drag', options.drag, 4, 0, 100),
+      radius = ranged('radius', options.radius, 0.02, 0, 1),
+      gravity: readonly number[] = options.gravity ?? [0, -9.81, 0];
     const id = this.next++;
     this.chains.set(id, {
       bones,
       rest: rotations,
       axes,
       lengths: [...rest.lengths],
-      stiffness: ranged('stiffness', options.stiffness, 10, 0, 1000),
-      drag: ranged('drag', options.drag, 4, 0, 100),
-      gravity: options.gravity
-        ? [options.gravity[0], options.gravity[1], options.gravity[2]]
-        : [0, -9.81, 0],
-      radius: ranged('radius', options.radius, 0.02, 0, 1),
+      stiffness: Float64Array.from({ length: bones }, (_, i) =>
+        ranged('stiffness', own[i]?.stiffness, stiffness, 0, 1000),
+      ),
+      drag: Float64Array.from({ length: bones }, (_, i) =>
+        ranged('drag', own[i]?.drag, drag, 0, 100),
+      ),
+      gravity: Float64Array.from({ length: bones * 3 }, (_, k) => {
+        const g = own[Math.floor(k / 3)]?.gravity ?? gravity;
+        return g[k % 3];
+      }),
+      radius: Float64Array.from({ length: bones }, (_, i) =>
+        ranged('radius', own[i]?.radius, radius, 0, 1),
+      ),
       tails: new Float64Array(bones * 3),
       previous: new Float64Array(bones * 3),
       before: new Float64Array(bones * 3),
@@ -327,8 +365,6 @@ export class ZhudaSpringBoneSolver {
 
   private stepChain(chain: Chain, share: number, quiet = false) {
     const dt = this.step,
-      keep = Math.exp(-chain.drag * dt),
-      pull = 1 - Math.exp(-chain.stiffness * dt),
       { tails, previous, anchor, anchorWas, turn, turnWas, gravity } = chain;
     // Where the chain hangs from at this step, between the last frame's place and this one's.
     let hx = anchorWas[0] + (anchor[0] - anchorWas[0]) * share,
@@ -348,7 +384,10 @@ export class ZhudaSpringBoneSolver {
     chain.before.set(tails);
     for (let i = 0; i < chain.bones; i++) {
       const k = i * 3,
-        length = chain.lengths[i];
+        length = chain.lengths[i],
+        keep = Math.exp(-chain.drag[i] * dt),
+        pull = 1 - Math.exp(-chain.stiffness[i] * dt),
+        radius = chain.radius[i];
       const rest = zhudaQuatMultiply(parent, chain.rest[i]);
       const restWay = zhudaQuatRotate(rest, chain.axes[i]);
       // It keeps its motion (less the drag) and takes gravity...
@@ -356,9 +395,9 @@ export class ZhudaSpringBoneSolver {
         y = tails[k + 1],
         z = tails[k + 2];
       if (!quiet) {
-        x += (x - previous[k]) * keep + gravity[0] * dt * dt;
-        y += (y - previous[k + 1]) * keep + gravity[1] * dt * dt;
-        z += (z - previous[k + 2]) * keep + gravity[2] * dt * dt;
+        x += (x - previous[k]) * keep + gravity[k] * dt * dt;
+        y += (y - previous[k + 1]) * keep + gravity[k + 1] * dt * dt;
+        z += (z - previous[k + 2]) * keep + gravity[k + 2] * dt * dt;
         // ...is pulled toward where its bone points at rest...
         x += (hx + restWay[0] * length - x) * pull;
         y += (hy + restWay[1] * length - y) * pull;
@@ -398,7 +437,7 @@ export class ZhudaSpringBoneSolver {
           ny = 0,
           nz = 0;
         for (const [id, body] of this.bodies) {
-          const depth = zhudaColliderDepth(body, chain.radius, x, y, z, out, this.tables.get(id));
+          const depth = zhudaColliderDepth(body, radius, x, y, z, out, this.tables.get(id));
           if (depth > deepest) {
             deepest = depth;
             nx = out[3];
@@ -457,7 +496,7 @@ export class ZhudaSpringBoneSolver {
     }
   }
 
-  /** How many joints are inside a body grown by their chain's radius by more than `tolerance` metres. */
+  /** How many joints are inside a body grown by their bone's radius by more than `tolerance` metres. */
   countInside(tolerance = 1e-4): number {
     this.alive();
     let inside = 0;
@@ -467,7 +506,7 @@ export class ZhudaSpringBoneSolver {
           if (
             zhudaColliderDepth(
               body,
-              chain.radius,
+              chain.radius[i],
               chain.tails[i * 3],
               chain.tails[i * 3 + 1],
               chain.tails[i * 3 + 2],

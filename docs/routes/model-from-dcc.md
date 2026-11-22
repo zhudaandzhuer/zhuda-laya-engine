@@ -23,7 +23,8 @@ Importer and draws checked on a desktop with both backends.
 For every authored model. For geometry made by a program (props from parameters,
 boxes, lathes, terrain) take [film-as-data](film-as-data.md) or
 [procedural assets](../procedural-assets.md) instead. For a 2D character take
-[spine-character](spine-character.md).
+[spine-character](spine-character.md). A VRM 1.0 avatar (`.vrm`) is a model from
+a DCC tool too: load it this way, then give it to `ZhudaVrm` ([VRM](../vrm.md)).
 
 ## Tools
 
@@ -89,7 +90,8 @@ boxes, lathes, terrain) take [film-as-data](film-as-data.md) or
 
 `npm run verify:model-showcase`, `verify:gltf-intake`, `verify:gltf-instancing`,
 `verify:prefab-models`, `verify:film-model`, `verify:film-animation`,
-`verify:film-model-distance`; on WebGPU through `npm run verify:film-webgpu`.
+`verify:film-model-distance`, `verify:vrm` (a VRM 1.0 avatar, WebGL); on WebGPU
+through `npm run verify:film-webgpu`.
 
 ## Not checked
 

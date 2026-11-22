@@ -70,6 +70,23 @@ export interface ZhudaToonOutline {
   width: number;
   space?: 'screen' | 'world';
 }
+/**
+ * A colour for the side away from the light, as MToon has it (VRM): the
+ * bands go from this colour (level 0) to the base colour (level 1) instead
+ * of darkening the base colour. They are laid on 0.5 + 0.5·N·L, the whole
+ * way round, so `ramp.edges` 0.5 is where the surface turns from the
+ * light; a directional light's shadow takes a point to the shade colour,
+ * and a lamp's falloff dims both colours.
+ */
+export interface ZhudaToonShade {
+  /** Display colour. */
+  color: ZhudaToonColor;
+  /**
+   * `true` (default): the base colour (with its texture) times this colour,
+   * a darker tint of the same picture. `false`: this colour alone.
+   */
+  multiply?: boolean;
+}
 export interface ZhudaToonAmbient {
   /** How much of the scene's ambient light the surface takes (default 1), 0..8. */
   strength?: number;
@@ -89,6 +106,8 @@ export interface ZhudaToonSpec {
   /** Whether a shader has the outline pass is fixed by the first material of its name. */
   outline?: ZhudaToonOutline;
   ambient?: ZhudaToonAmbient;
+  /** A shade colour (MToon's); without it a band's level darkens the base colour. */
+  shade?: ZhudaToonShade;
   /** As `ZhudaLitSurfaceSpec.surface`; metallic and roughness are not used. */
   surface?: string;
   /** As `ZhudaLitSurfaceSpec.vertex`; the outline moves with it. */
@@ -213,6 +232,12 @@ export function validateZhudaToonSpec(spec: unknown): string[] {
     if (!o || !finite(o.width, 0, o.space === 'world' ? 10 : 32))
       e.push('outline.width: 0..32 pixels (screen) or 0..10 units (world)');
   }
+  if (s.shade !== undefined) {
+    const h = s.shade;
+    if (!h || !colour(h.color)) e.push('shade.color: three numbers 0..1');
+    if (h?.multiply !== undefined && typeof h.multiply !== 'boolean')
+      e.push('shade.multiply: true or false');
+  }
   if (s.ambient !== undefined) {
     const a = s.ambient;
     if (!a || typeof a !== 'object') e.push('ambient: expected { strength?, flat? }');
@@ -237,11 +262,21 @@ v=mix(v,u_ZhudaToonLevels.z,smoothstep(u_ZhudaToonEdges.z-w,u_ZhudaToonEdges.z+w
 v=mix(v,u_ZhudaToonLevels.w,smoothstep(u_ZhudaToonEdges.w-w,u_ZhudaToonEdges.w+w,x));
 return v;}
 #if defined(DIRECTIONLIGHT) || defined(POINTLIGHT) || defined(SPOTLIGHT)
-vec3 zhudaToonLight(const in Surface surface,const in PixelInfo info,const in Light light){
+vec3 zhudaToonLight(const in Surface surface,const in PixelInfo info,const in Light light,const in float directional){
 vec3 l=normalize(-light.dir);
 // What the point receives: the shadow is inside the band, so it has the band's edge.
 float lit=saturate(dot(info.normalWS,l))*light.attenuation;
-vec3 c=surface.diffuseColor*zhudaToonBand(lit);
+vec3 c;
+if(u_ZhudaToonShade.a>0.5){
+// A shade colour (MToon): bands from it to the base colour on 0.5+0.5*N.L; a sun's shadow
+// takes the point to the shade colour, a lamp's falloff dims both.
+vec3 shade=u_ZhudaToonShade.a>1.5?u_ZhudaToonShade.rgb:surface.diffuseColor*u_ZhudaToonShade.rgb;
+float b=zhudaToonBand(saturate(0.5+0.5*dot(info.normalWS,l)));
+lit=directional>0.5?b*light.attenuation:b;
+c=mix(shade,surface.diffuseColor,lit)*(directional>0.5?1.0:light.attenuation);
+}else{
+c=surface.diffuseColor*zhudaToonBand(lit);
+}
 float hw=max(u_ZhudaToonShape.x,0.00001);
 float nh=saturate(dot(info.normalWS,SafeNormalize(info.viewDir+l)));
 float tw=max(u_ZhudaToonBase.y*0.5,0.00001);
@@ -264,16 +299,16 @@ writeGBuffer(info.normalWS,inputs.diffuseColor,0.0,1.0,surface.occlusion);
 #endif
 vec3 color=vec3(0.0);
 #ifdef DIRECTIONLIGHT
-for(int i=0;i<CalculateLightCount;i++){if(i>=DirectionCount)break;DirectionLight directionLight=getDirectionLight(i,info.positionWS);if(directionLight.lightMode==LightMode_Mix){continue;}Light light=getLight(directionLight);color+=zhudaToonLight(surface,info,light);}
+for(int i=0;i<CalculateLightCount;i++){if(i>=DirectionCount)break;DirectionLight directionLight=getDirectionLight(i,info.positionWS);if(directionLight.lightMode==LightMode_Mix){continue;}Light light=getLight(directionLight);color+=zhudaToonLight(surface,info,light,1.0);}
 #endif
 #if defined(POINTLIGHT) || defined(SPOTLIGHT)
 ivec4 clusterInfo=getClusterInfo(u_View,u_Viewport,info.positionWS,gl_FragCoord,u_ProjectionParams);
 #endif
 #ifdef POINTLIGHT
-for(int i=0;i<CalculateLightCount;i++){if(i>=clusterInfo.x)break;PointLight pointLight=getPointLight(i,clusterInfo,info.positionWS);if(pointLight.lightMode==LightMode_Mix){continue;}Light light=getLight(pointLight,info.normalWS,info.positionWS);color+=zhudaToonLight(surface,info,light);}
+for(int i=0;i<CalculateLightCount;i++){if(i>=clusterInfo.x)break;PointLight pointLight=getPointLight(i,clusterInfo,info.positionWS);if(pointLight.lightMode==LightMode_Mix){continue;}Light light=getLight(pointLight,info.normalWS,info.positionWS);color+=zhudaToonLight(surface,info,light,0.0);}
 #endif
 #ifdef SPOTLIGHT
-for(int i=0;i<CalculateLightCount;i++){if(i>=clusterInfo.y)break;SpotLight spotLight=getSpotLight(i,clusterInfo,info.positionWS);if(spotLight.lightMode==LightMode_Mix){continue;}Light light=getLight(spotLight,info.normalWS,info.positionWS);color+=zhudaToonLight(surface,info,light);}
+for(int i=0;i<CalculateLightCount;i++){if(i>=clusterInfo.y)break;SpotLight spotLight=getSpotLight(i,clusterInfo,info.positionWS);if(spotLight.lightMode==LightMode_Mix){continue;}Light light=getLight(spotLight,info.normalWS,info.positionWS);color+=zhudaToonLight(surface,info,light,0.0);}
 #endif
 #if defined(USELIGHTMAP)
 color+=getBakedLightmapColor(info.lightmapUV,info.normalWS)*surface.diffuseColor;
@@ -360,7 +395,17 @@ export class ZhudaToonMaterial {
   constructor(spec: ZhudaToonSpec, textures: Record<string, any> = {}) {
     const problems = validateZhudaToonSpec(spec);
     if (problems.length) throw Error('Toon material: ' + problems.join('; '));
-    this.spec = JSON.parse(JSON.stringify(spec));
+    // A copy of the numbers; the textures are LayaAir objects (with references
+    // back to the engine) and are kept as they are, not stringified.
+    const surfaceTextures = spec.material?.textures;
+    const copy = JSON.parse(
+      JSON.stringify({
+        ...spec,
+        material: spec.material ? { ...spec.material, textures: undefined } : undefined,
+      }),
+    );
+    if (surfaceTextures) copy.material.textures = { ...surfaceTextures };
+    this.spec = copy;
     this.hasOutline = spec.outline !== undefined;
     const own: Record<string, ShaderUniformSpec> = {
       u_ZhudaToonEdges: { type: 'vec4' },
@@ -368,13 +413,14 @@ export class ZhudaToonMaterial {
       u_ZhudaToonBase: { type: 'vec4' },
       u_ZhudaToonHighlight: { type: 'vec4' },
       u_ZhudaToonRim: { type: 'vec4' },
+      u_ZhudaToonShade: { type: 'vec4' },
       u_ZhudaToonShape: { type: 'vec4' },
       ...(this.hasOutline
         ? { u_ZhudaOutline: { type: 'vec4' }, u_ZhudaOutlineShape: { type: 'vec4' } }
         : {}),
     };
     const shading: ZhudaLitShading = {
-      key: this.hasOutline ? 'toon-1+outline' : 'toon-1',
+      key: this.hasOutline ? 'toon-2+outline' : 'toon-2',
       functions: BAND + FLOW,
       flow: 'zhudaToonFlow',
       passes: this.hasOutline
@@ -396,6 +442,7 @@ export class ZhudaToonMaterial {
       this.setRamp(spec.ramp ?? ZHUDA_TOON_DEFAULT_RAMP);
       this.setHighlight(spec.highlight ?? null);
       this.setRim(spec.rim ?? null);
+      this.setShade(spec.shade ?? null);
       this.setAmbient(spec.ambient ?? {});
       if (spec.outline) this.setOutline(spec.outline);
     } catch (error) {
@@ -472,6 +519,15 @@ export class ZhudaToonMaterial {
     this.spec.rim = rim ? { ...rim } : undefined;
     this.shape();
   }
+  /** The shade colour, or `null` for none (the bands darken the base colour). */
+  setShade(shade: ZhudaToonShade | null): void {
+    if (shade) this.probe({ shade });
+    this.lit.set(
+      'u_ZhudaToonShade',
+      shade ? [...linear(shade.color), shade.multiply === false ? 2 : 1] : [0, 0, 0, 0],
+    );
+    this.spec.shade = shade ? { ...shade } : undefined;
+  }
   setAmbient(ambient: ZhudaToonAmbient): void {
     this.probe({ ambient });
     this.spec.ambient = { ...ambient };
@@ -491,7 +547,8 @@ export class ZhudaToonMaterial {
   }
   /** A custom uniform of the hooks (`spec.uniforms`). */
   set(name: string, value: any): void {
-    if (OWN.test(name)) throw Error('Toon material: use setRamp, setHighlight, setRim, setOutline');
+    if (OWN.test(name))
+      throw Error('Toon material: use setRamp, setHighlight, setRim, setShade, setOutline');
     this.lit.set(name, value);
   }
   dispose(): void {

@@ -64,6 +64,23 @@ export interface ZhudaToonOutline {
     width: number;
     space?: 'screen' | 'world';
 }
+/**
+ * A colour for the side away from the light, as MToon has it (VRM): the
+ * bands go from this colour (level 0) to the base colour (level 1) instead
+ * of darkening the base colour. They are laid on 0.5 + 0.5·N·L, the whole
+ * way round, so `ramp.edges` 0.5 is where the surface turns from the
+ * light; a directional light's shadow takes a point to the shade colour,
+ * and a lamp's falloff dims both colours.
+ */
+export interface ZhudaToonShade {
+    /** Display colour. */
+    color: ZhudaToonColor;
+    /**
+     * `true` (default): the base colour (with its texture) times this colour,
+     * a darker tint of the same picture. `false`: this colour alone.
+     */
+    multiply?: boolean;
+}
 export interface ZhudaToonAmbient {
     /** How much of the scene's ambient light the surface takes (default 1), 0..8. */
     strength?: number;
@@ -83,6 +100,8 @@ export interface ZhudaToonSpec {
     /** Whether a shader has the outline pass is fixed by the first material of its name. */
     outline?: ZhudaToonOutline;
     ambient?: ZhudaToonAmbient;
+    /** A shade colour (MToon's); without it a band's level darkens the base colour. */
+    shade?: ZhudaToonShade;
     /** As `ZhudaLitSurfaceSpec.surface`; metallic and roughness are not used. */
     surface?: string;
     /** As `ZhudaLitSurfaceSpec.vertex`; the outline moves with it. */
@@ -143,6 +162,8 @@ export declare class ZhudaToonMaterial {
     setHighlight(highlight: ZhudaToonHighlight | null): void;
     /** The rim light, or `null` for none. */
     setRim(rim: ZhudaToonRim | null): void;
+    /** The shade colour, or `null` for none (the bands darken the base colour). */
+    setShade(shade: ZhudaToonShade | null): void;
     setAmbient(ambient: ZhudaToonAmbient): void;
     /**
      * Colour, width and space of the outline. Only for a material made with an

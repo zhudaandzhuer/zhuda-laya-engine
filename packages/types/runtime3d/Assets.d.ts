@@ -4,6 +4,7 @@ import { type ZhudaGltfNodeData, type ZhudaImageDecodeSupport } from './GltfInta
 import type { ZhudaBasisTranscoder } from './BasisTexture.js';
 import { type ModelCompatibilityReport } from './ModelCompatibility.js';
 import type { AssetProvider } from './AssetProvider.js';
+import { type ZhudaVrmDocument, type ZhudaVrmIssue } from './VrmDocument.js';
 export type AssetPhase = 'downloading' | 'parsing' | 'ready';
 export interface AssetLease<T> {
     readonly value: T;
@@ -59,6 +60,14 @@ export interface ZhudaModelGltfNode extends ZhudaGltfNodeData {
      */
     readonly instances?: Float32Array;
 }
+/** A mesh renderer of a model copy and the glTF material each of its slots was made from. */
+export interface ZhudaModelMaterialSlots {
+    readonly node: Laya.Sprite3D;
+    /** The node's `MeshRenderer` or `SkinnedMeshRenderer`. */
+    readonly renderer: any;
+    /** For each of the renderer's materials, in order: its glTF material index, or -1 (LayaAir's default material). */
+    readonly materials: readonly number[];
+}
 export interface ModelInstance {
     readonly node: Laya.Sprite3D;
     readonly compatibility: ModelCompatibilityReport;
@@ -68,6 +77,22 @@ export interface ModelInstance {
      * light or copies of their mesh (`EXT_mesh_gpu_instancing`), in node order.
      */
     readonly gltfNodes: readonly ZhudaModelGltfNode[];
+    /**
+     * The Laya node this copy has for glTF node `index`, or null (no such
+     * node, or one outside the default scene).
+     */
+    gltfNode(index: number): Laya.Sprite3D | null;
+    /** Every mesh renderer of this copy, with the glTF material of each slot. */
+    readonly gltfMaterialSlots: readonly ZhudaModelMaterialSlots[];
+    /**
+     * The texture LayaAir made for glTF texture `index`, or null. Borrowed from
+     * the loaded model: it lives while any copy does; never destroy it.
+     */
+    gltfTexture(index: number): any | null;
+    /** The file's VRM 1.0 data (`readZhudaVrm`), or null: not a VRM, or one an error refused. `ZhudaVrm` applies it. */
+    readonly vrm: ZhudaVrmDocument | null;
+    /** What reading the VRM data found: the errors that refused it, and the parts left out. */
+    readonly vrmIssues: readonly ZhudaVrmIssue[];
     setTint(color: [number, number, number, number]): void;
     find(name: string): Laya.Sprite3D | null;
     dispose(): void;

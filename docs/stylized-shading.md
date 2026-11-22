@@ -61,6 +61,16 @@ shadow and depth passes, skinning, instancing and fog.
   and with the vertex hook because it is the same vertex program. Whether a
   shader has the pass is fixed by the first material of its name;
   `setOutline` changes colour, width and space, and a width of 0 hides it.
+- **Shade colour** (`shade: { color, multiply }`, `setShade`): the bands go
+  from this colour (level 0) to the base colour (level 1) instead of
+  darkening the base colour, as MToon draws it (VRM). They are laid on
+  0.5 + 0.5·N·L, the whole way round, so an edge of 0.5 is where the surface
+  turns from the light. `multiply: true` (default) is the base colour and
+  its texture times the colour; `false` the colour alone. A directional
+  light's shadow takes a point to the shade colour; a lamp's falloff dims
+  both colours. Without `shade` the material draws as before.
+- Textures in `material.textures` are LayaAir objects and are kept as they
+  are (a real texture there once failed: the spec was copied through JSON).
 - Metallic and roughness are not used: the whole base colour is banded.
 - `validateZhudaToonSpec` and `validateZhudaToonRamp` list what is wrong
   without the runtime.

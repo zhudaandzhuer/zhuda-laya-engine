@@ -167,6 +167,11 @@ const extensionNames = [
   'KHR_texture_basisu',
   'KHR_lights_punctual',
   'EXT_mesh_gpu_instancing',
+  // VRM 1.0: read into `instance.vrm` by the model library, applied by `ZhudaVrm`.
+  'VRMC_vrm',
+  'VRMC_springBone',
+  'VRMC_materials_mtoon',
+  'VRMC_node_constraint',
 ] as const;
 const engineExtensions: readonly string[] = [
   'KHR_mesh_quantization',
@@ -175,6 +180,10 @@ const engineExtensions: readonly string[] = [
   'KHR_texture_basisu',
   'KHR_lights_punctual',
   'EXT_mesh_gpu_instancing',
+  'VRMC_vrm',
+  'VRMC_springBone',
+  'VRMC_materials_mtoon',
+  'VRMC_node_constraint',
 ];
 // Read by a registered decoder before the native parser, never by the parser.
 const decoderExtensions: readonly string[] = ['EXT_meshopt_compression', 'KHR_meshopt_compression'];

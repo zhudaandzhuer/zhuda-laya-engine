@@ -29,6 +29,12 @@ import {
 import { destroyLaya342ModelTree, enableLaya342VertexColors } from './Laya342Adapters.ts';
 import { applyZhudaAnisotropy } from './Surfaces.ts';
 import type { AssetProvider, LoadedAssetBytes } from './AssetProvider.ts';
+import {
+  readZhudaVrm,
+  type ZhudaVrmDocument,
+  type ZhudaVrmIssue,
+  type ZhudaVrmReadResult,
+} from './VrmDocument.ts';
 import { normalizeAssetId } from './AssetProvider.ts';
 export type AssetPhase = 'downloading' | 'parsing' | 'ready';
 export interface AssetLease<T> {
@@ -224,6 +230,16 @@ export class ZhudaRequestSlot {
     this.active = null;
   }
 }
+/** A node's mesh renderer (plain or skinned), or null. */
+function meshRendererOf(n: any, l: any): any {
+  return (
+    n.meshRenderer ||
+    n.skinnedMeshRenderer ||
+    (l.SkinnedMeshRenderer && n.getComponent?.(l.SkinnedMeshRenderer)) ||
+    (l.MeshRenderer && n.getComponent?.(l.MeshRenderer)) ||
+    null
+  );
+}
 function visit(node: any, fn: (n: any) => void) {
   fn(node);
   for (let i = 0; i < (node.numChildren || 0); i++) visit(node.getChildAt(i), fn);
@@ -243,6 +259,14 @@ export interface ZhudaModelGltfNode extends ZhudaGltfNodeData {
    */
   readonly instances?: Float32Array;
 }
+/** A mesh renderer of a model copy and the glTF material each of its slots was made from. */
+export interface ZhudaModelMaterialSlots {
+  readonly node: Laya.Sprite3D;
+  /** The node's `MeshRenderer` or `SkinnedMeshRenderer`. */
+  readonly renderer: any;
+  /** For each of the renderer's materials, in order: its glTF material index, or -1 (LayaAir's default material). */
+  readonly materials: readonly number[];
+}
 export interface ModelInstance {
   readonly node: Laya.Sprite3D;
   readonly compatibility: ModelCompatibilityReport;
@@ -252,6 +276,22 @@ export interface ModelInstance {
    * light or copies of their mesh (`EXT_mesh_gpu_instancing`), in node order.
    */
   readonly gltfNodes: readonly ZhudaModelGltfNode[];
+  /**
+   * The Laya node this copy has for glTF node `index`, or null (no such
+   * node, or one outside the default scene).
+   */
+  gltfNode(index: number): Laya.Sprite3D | null;
+  /** Every mesh renderer of this copy, with the glTF material of each slot. */
+  readonly gltfMaterialSlots: readonly ZhudaModelMaterialSlots[];
+  /**
+   * The texture LayaAir made for glTF texture `index`, or null. Borrowed from
+   * the loaded model: it lives while any copy does; never destroy it.
+   */
+  gltfTexture(index: number): any | null;
+  /** The file's VRM 1.0 data (`readZhudaVrm`), or null: not a VRM, or one an error refused. `ZhudaVrm` applies it. */
+  readonly vrm: ZhudaVrmDocument | null;
+  /** What reading the VRM data found: the errors that refused it, and the parts left out. */
+  readonly vrmIssues: readonly ZhudaVrmIssue[];
   setTint(color: [number, number, number, number]): void;
   find(name: string): Laya.Sprite3D | null;
   dispose(): void;
@@ -291,6 +331,13 @@ export class ZhudaModelLibrary {
       compatibility: ModelCompatibilityReport;
       /** Node data with the child-index path from the template root to its node. */
       gltfNodes: { data: ZhudaGltfNodeData; path: number[]; instances?: Float32Array }[];
+      /** The child-index path of the node made for each glTF node, or null when it is not in the template. */
+      nodePaths: (number[] | null)[];
+      /** Each renderer's path and the glTF material of each of its slots. */
+      rendererSlots: { path: number[]; materials: number[] }[];
+      /** LayaAir's textures, by glTF texture index (the resource's own). */
+      textures: readonly any[];
+      vrm: ZhudaVrmReadResult;
     }
   >();
   private readonly timeoutMs: number;
@@ -383,6 +430,7 @@ export class ZhudaModelLibrary {
           const parsed = readGltfAssetDocument(bytes);
           // Read before LayaAir's JSON parse, which names unnamed nodes in place.
           const nodeData = readZhudaGltfNodeData(parsed.document);
+          const vrm = readZhudaVrm(parsed.document);
           if (this.provider) {
             for (const item of [
               ...((parsed.document.buffers ?? []) as { uri?: string }[]),
@@ -483,7 +531,40 @@ export class ZhudaModelLibrary {
                 hint: 'Give every copy a scale whose three numbers multiply to more than zero, or mirror the mesh itself.',
               })),
           );
-          this.templates.set(resource, { node: template, clips, compatibility, gltfNodes });
+          // Every glTF node's place under the template, and each renderer's glTF materials.
+          const pathTo = (node: any): number[] | null => {
+            const path: number[] = [];
+            while (node && node !== template && node.parent) {
+              path.unshift(node.parent.getChildIndex(node));
+              node = node.parent;
+            }
+            return node === template ? path : null;
+          };
+          const nodePaths = made.map((node) => (node ? pathTo(node) : null));
+          const ownMaterials: any[] = resource._materials ?? [];
+          const rendererSlots: { path: number[]; materials: number[] }[] = [];
+          visit(template, (n) => {
+            const renderer = meshRendererOf(n, l);
+            if (!renderer) return;
+            const path = pathTo(n);
+            if (path)
+              rendererSlots.push({
+                path,
+                materials: [...(renderer.sharedMaterials ?? [])].map((m: any) =>
+                  ownMaterials.indexOf(m),
+                ),
+              });
+          });
+          this.templates.set(resource, {
+            node: template,
+            clips,
+            compatibility,
+            gltfNodes,
+            nodePaths,
+            rendererSlots,
+            textures: resource._textures ?? [],
+            vrm,
+          });
           resource._addReference(); // Cache owns the prefab even while no instances are visible.
           return resource;
         } catch (e) {
@@ -559,6 +640,8 @@ export class ZhudaModelLibrary {
     let node: any;
     const materials: any[] = [];
     const gltfNodes: ZhudaModelGltfNode[] = [];
+    let byIndex: (any | null)[] = [];
+    const slots: ZhudaModelMaterialSlots[] = [];
     try {
       if (options.signal?.aborted) throw abortError();
       const template = this.templates.get(lease.value);
@@ -597,6 +680,20 @@ export class ZhudaModelLibrary {
             });
           }
         });
+      const follow = (path: readonly number[]) => {
+        let target = node;
+        for (const index of path) target = target?.getChildAt(index);
+        return target ?? null;
+      };
+      byIndex = template.nodePaths.map((path) => (path ? follow(path) : null));
+      for (const { path, materials: indices } of template.rendererSlots) {
+        const owner = follow(path);
+        const renderer = owner && meshRendererOf(owner, l);
+        if (!renderer) throw Error('A renderer is missing from the model copy');
+        slots.push(
+          Object.freeze({ node: owner, renderer, materials: Object.freeze([...indices]) }),
+        );
+      }
       // The clone keeps the template's child order: follow each recorded path.
       for (const { data, path, instances } of template.gltfNodes) {
         let target = node;
@@ -627,11 +724,23 @@ export class ZhudaModelLibrary {
     }
     this.instances.add(node);
     let disposed = false;
+    const made = this.templates.get(lease.value)!;
     return {
       node,
-      compatibility: this.templates.get(lease.value)!.compatibility,
+      compatibility: made.compatibility,
       materials,
       gltfNodes: Object.freeze(gltfNodes),
+      gltfNode: (index: number) => {
+        if (disposed) throw Error('Disposed model instance');
+        return Number.isInteger(index) ? (byIndex[index] ?? null) : null;
+      },
+      gltfMaterialSlots: Object.freeze(slots),
+      gltfTexture: (index: number) => {
+        if (disposed) throw Error('Disposed model instance');
+        return Number.isInteger(index) ? (made.textures[index] ?? null) : null;
+      },
+      vrm: made.vrm.vrm,
+      vrmIssues: made.vrm.issues,
       setTint: (color: [number, number, number, number]) => {
         if (disposed) throw Error('Disposed model instance');
         if (!options.independentMaterials) throw Error('Tint requires independent materials');

@@ -19,6 +19,19 @@ export interface ZhudaSpringChainOptions {
     gravity?: ZhudaSimVec3;
     /** How far outside a body a joint is kept, metres (default 0.02; 0 to 1). */
     radius?: number;
+    /**
+     * Settings of their own for the bones, from the one nearest what the chain
+     * hangs from: a key left out takes the chain's. At most one a bone; bones
+     * past the end of the list take the chain's (a VRM spring sets each joint).
+     */
+    bones?: readonly ZhudaSpringBoneSetting[];
+}
+/** One bone's own settings in a chain: the same meanings and limits as the chain's. */
+export interface ZhudaSpringBoneSetting {
+    stiffness?: number;
+    drag?: number;
+    gravity?: ZhudaSimVec3;
+    radius?: number;
 }
 export interface ZhudaSpringBoneOptions {
     /** Seconds a step (default 1/120; 1/1000 to 1/10). */
@@ -87,7 +100,7 @@ export declare class ZhudaSpringBoneSolver {
         dropped: number;
     };
     private stepChain;
-    /** How many joints are inside a body grown by their chain's radius by more than `tolerance` metres. */
+    /** How many joints are inside a body grown by their bone's radius by more than `tolerance` metres. */
     countInside(tolerance?: number): number;
     inspect(): ZhudaSpringBoneReport;
     dispose(): void;

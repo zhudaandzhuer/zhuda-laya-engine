@@ -39,6 +39,11 @@ springs.dispose(); // the nodes are their owner's
   holds its shape. **`drag`** (4) is how fast a joint loses its speed.
   **`gravity`** is metres a second a second (`[0, -9.81, 0]`). **`radius`**
   (0.02) is how far outside a body a joint is kept.
+- **Each bone its own settings**: `bones: [{ stiffness, drag, gravity,
+  radius }, ...]` on a chain, from the bone nearest what it hangs from; a
+  key left out takes the chain's. A VRM spring sets every joint this way
+  ([VRM](vrm.md)). The same settings given per bone run bit for bit as the
+  chain's.
 - **Bodies** are a cloth's: `sphere`, `capsule`, `plane` and `table`. One
   given with a `node` (a sphere or a capsule in that node's own space) goes
   with it every frame. A joint that is inside a body slides round its own

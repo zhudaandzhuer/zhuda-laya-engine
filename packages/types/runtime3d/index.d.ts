@@ -91,5 +91,7 @@ export * from './Themes.js';
 export * from './ResultPlayback.js';
 export * from './Cloth.js';
 export * from './SpringBones.js';
+export * from './VrmDocument.js';
+export * from './Vrm.js';
 export { ZhudaRendererError } from './Renderer.js';
 export type { RendererDiagnostics } from './Renderer.js';

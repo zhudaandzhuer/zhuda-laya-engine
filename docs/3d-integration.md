@@ -158,6 +158,10 @@ A surface that is drawn rather than photographed has its own materials: a
 with an outline; a matcap and a normal view as shader recipes; and a line
 round what is selected, in another colour where it is behind something.
 
+A [VRM 1.0 avatar](vrm.md) loads through the model library like any GLB and
+`ZhudaVrm` gives it its humanoid bones, expressions, gaze, node constraints,
+spring bones and MToon materials (as toon materials with a shade colour).
+
 Thousands of one prop, or hundreds of one animated character, are drawn
 [in groups without a node for each](instanced-meshes.md): `instanced: true`
 on a model's placements, `ZhudaInstancedMesh`, and `ZhudaBakedCrowd`.

@@ -271,6 +271,17 @@ export const API_GUARDRAILS = [
       'Spring bones take the delta of a layer of the engine clock (no timer, fixed steps of 1/120 s, a paused layer changes nothing, a long gap is dropped) and must run after LayaAir has posed the frame and before the skin is worked out: runZhudaAfterAnimation is that place. A chain is nodes that are each a child of the one before; the last node only marks the end. A bone never stretches; joints slide out of sphere, capsule, plane and table bodies. Call reset() after the model is teleported. See docs/spring-bones.md.',
   },
   {
+    id: 'GUARD_VRM',
+    topic:
+      'VRM avatar vrm model VRM 1.0 VRMC_vrm humanoid expression blendshape blink lip sync look at gaze MToon toon avatar spring bone node constraint three-vrm UniVRM VTuber',
+    hallucinatedLegacyApi:
+      'import { VRMLoaderPlugin } from "@pixiv/three-vrm"; loader.register((parser) => new VRMLoaderPlugin(parser)); const vrm = gltf.userData.vrm; vrm.expressionManager.setValue("happy", 1); vrm.lookAt.target = camera; vrm.update(clock.getDelta()); Laya.loader.load("avatar.vrm", Laya.Handler.create(this, onLoaded));',
+    zhudaCanonicalApi:
+      "const library = new ZhudaModelLibrary({ provider }); const model = await library.instantiate('avatars/hero.vrm'); scene.addChild(model.node); model.vrm?.meta (licence fields as the file states them); const vrm = new ZhudaVrm(model); vrm.setExpression('happy', 1); vrm.lookAt([x, y, z]); const stop = vrm.runAfterAnimation(session.layers); later stop(); vrm.dispose(); model.dispose().",
+    reason:
+      "VRM 1.0 (VRMC_vrm, VRMC_springBone, VRMC_materials_mtoon, VRMC_node_constraint) loads through ZhudaModelLibrary like any GLB: the instance carries vrm and vrmIssues, read before LayaAir parses the file. ZhudaVrm applies it with the engine parts: expressions on morph targets and material colours with the specification's overrides, gaze by bone or by expression through the range maps, node constraints, spring bones on ZhudaSpringBoneSolver (each joint's per-frame settings turned into rates at a fixed step) and MToon as ZhudaToonMaterial with a shade colour. It has no timer: update(seconds) or updateFrom(layers) after the animation. VRM 0.x is refused by name (convert it). Matcap, UV animation, outline width textures, a spring's center space and first-person layers are not drawn; vrm.issues lists what a model loses. See docs/vrm.md.",
+  },
+  {
     id: 'GUARD_GLTF_COPIES',
     topic:
       'glTF EXT_mesh_gpu_instancing instanced mesh from file forest scatter InstancedMesh aoMap uv2 second uv set texCoord 1 baked occlusion emissive lightmap meshopt decoder workers',
