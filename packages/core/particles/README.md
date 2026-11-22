@@ -1,6 +1,6 @@
 # 2D / 3D particles and ribbon trails
 
-The public ESM/CJS SDK exports a renderer-independent CPU simulator, Laya 3.4.2 textured mesh renderers, world-space trail history and an attack/sustain/release envelope. Scenes, texture assets, presets and gameplay belong to the consuming application.
+The public ESM/CJS SDK exports a renderer-independent CPU simulator, Laya 3.4.2 textured mesh renderers, world-space trail history and an attack/sustain/release envelope. Ready effects are built on them: twenty 2D presets (`ZHUDA_EFFECT_PRESETS_2D`, played by `ZhudaEffect2D`) and eighteen 3D ones (`ZHUDA_EFFECT_PRESETS_3D`, `ZhudaEffect3D`), on sprites made by a program; see the [effects README](../effects/README.md). Scenes, the application's own textures and presets, and gameplay belong to the consuming application.
 
 ## Minimal integration
 
@@ -117,7 +117,7 @@ Trail history uses a bounded ring buffer. Points expire by age; short movements 
 
 ## Verification
 
-`tests/particles.test.mjs` checks 30/60/120 fps replay, capacity/recycling, moving emitter spaces, distance emission, non-integral duration loops, graceful drain, invalid input, bounded catch-up, curved trails/teleports/expiry, envelopes and renderer ownership. Public SDK integration tests check ESM and CJS exports; browser/scene validation belongs in the consuming application.
+`tests/particles.test.mjs` checks 30/60/120 fps replay, capacity/recycling, moving emitter spaces, distance emission, non-integral duration loops, graceful drain, invalid input, bounded catch-up, curved trails/teleports/expiry, envelopes and renderer ownership. Public SDK integration tests check ESM and CJS exports. `npm run verify:effects-2d` is the first real draw of `ZhudaLayaParticleRenderer` in this repository (WebGL, the `2d` browser profile, through the ready 2D presets): its pictures must be premultiplied, and sRGB as Laya's own 2D pictures are, or a soft sprite shows a square halo with `lighter` or brighter edges than its alpha. Scene validation of an application's own effects belongs in the consuming application.
 
 ## 3D simulation and rendering
 

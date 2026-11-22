@@ -33,6 +33,8 @@ export * from './effects/ParticleEventLink.js';
 export * from './effects/EffectSprites.js';
 export * from './effects/EffectPresets.js';
 export * from './effects/Effect3D.js';
+export * from './effects/EffectPresets2D.js';
+export * from './effects/Effect2D.js';
 export * from './VisualMigrationPipeline.js';
 export * from './prefabs/index.js';
 export * from './simulation/index.js';

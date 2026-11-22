@@ -4,7 +4,41 @@ These APIs coordinate application-owned effects. Scenes, texture assets, Spine r
 
 ## Ready effects (3D)
 
-`ZHUDA_EFFECT_PRESETS_3D` holds eighteen effects as data (campfire, torch, smoke-column, steam, sparks, explosion, hit, magic-aura, heal, portal, fireflies, rain, snow, dust-motes, falling-leaves, petals, bubbles, embers), each a `ParticleEffectSpec3D` in metres and seconds on the eleven built-in sprites (`ZHUDA_EFFECT_SPRITES`, baked by `bakeZhudaEffectSprite`: no file is loaded). `new ZhudaEffect3D(scene3D, 'campfire', { position, yawDeg, scale, seed })` owns the emitters, their textures and renderers: `update(dt)` and `render(camera)` in a game, `seek(seconds)` for a film (the same time is the same state), `dispose()` at the end. A film scene places one with an `effect` node ([film scenes](../../../docs/film-scenes.md)). `npm run verify:film-effects` draws every preset. There are no ready 2D presets yet: a 2D effect is still a descriptor and textures of the application's own.
+`ZHUDA_EFFECT_PRESETS_3D` holds eighteen effects as data (campfire, torch, smoke-column, steam, sparks, explosion, hit, magic-aura, heal, portal, fireflies, rain, snow, dust-motes, falling-leaves, petals, bubbles, embers), each a `ParticleEffectSpec3D` in metres and seconds on the eleven built-in sprites (`ZHUDA_EFFECT_SPRITES`, baked by `bakeZhudaEffectSprite`: no file is loaded). `new ZhudaEffect3D(scene3D, 'campfire', { position, yawDeg, scale, seed })` owns the emitters, their textures and renderers: `update(dt)` and `render(camera)` in a game, `seek(seconds)` for a film (the same time is the same state), `dispose()` at the end. A film scene places one with an `effect` node ([film scenes](../../../docs/film-scenes.md)). `npm run verify:film-effects` draws every preset.
+
+## Ready effects (2D)
+
+`ZHUDA_EFFECT_PRESETS_2D` holds twenty effects for a 2D game or interface, each a `ParticleEffectSpec` in pixels and seconds on canvas axes (+Y down) on the same built-in sprites:
+
+| Kind  | Presets                                                                                                                                          |
+| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| burst | coin-burst, level-up, hit-spark, explosion, smoke-puff, confetti, landing-dust, click-ripple                                                     |
+| loop  | sparkle, torch, campfire, magic-aura, heal, rain, snow, falling-leaves, petals, bubbles, embers, sparkle-trail (emits along the way it is moved) |
+
+Each has a `description`, a `kind`, `sizePixels` (the box it fills at scale 1), `origin` (where its x, y lies in that box, as fractions from the top left: a torch's at the bottom of its flame, rain's at the top of its sky) and `seconds` (a burst is over by then; a loop has settled). No preset holds more than 1,000 particles.
+
+```ts
+import { ZhudaEffect2D } from 'zhuda-laya-engine';
+
+// A burst where the player tapped: it ends by itself; dispose it then.
+const coins = new ZhudaEffect2D(layer, 'coin-burst', { x: 320, y: 400, scale: 0.8, seed: 1 });
+// A trail: move it each frame; it emits along the way it went.
+const trail = new ZhudaEffect2D(layer, 'sparkle-trail', { x: 0, y: 0 });
+
+// The game's frame, from its clock (session.layers.scaledDeltas):
+coins.update(dt);
+coins.render();
+trail.setPosition(pointer.x, pointer.y);
+trail.update(dt);
+trail.render();
+if (coins.seconds >= coins.preset.seconds) coins.dispose();
+// A replay or a test: the same time is the same picture.
+coins.seek(0.4);
+```
+
+`ZhudaEffect2D` runs the preset on the engine's own 2D particles (`ZhudaParticleSystem`, `ZhudaLayaParticleRenderer`): one Sprite under the parent, one under that for each emitter in the preset's order (later ones drawn over earlier ones), the sprites baked once as premultiplied sRGB textures, as Laya makes a loaded 2D picture. `update(dt)` lets it run (each emitter catches up at most a quarter of a second at once), `seek(seconds)` steps it from its start at 120 Hz, `stop()` lets a loop end, `restart()` begins again (move it first to begin elsewhere with no trail between), `scaleZhudaEffect2D` and the `scale` option multiply every length, `dispose()` releases its sprites and textures and never the parent. A preset of one's own is checked by `validateZhudaEffectPreset2D` and may use any built-in sprite.
+
+`npm run verify:effects-2d` draws every preset on WebGL (`2d` browser profile; run `npm run build` first): each changes the picture, the same time drawn twice is the same bytes, a loop moves, a burst leaves nothing at its `seconds`, a moved trail draws along its path, one soft sprite shows its own alpha with both blends, and thirty made and released leave no resource.
 
 | API                      | Contract and limits                                                                                                                                                                                                                                                                                                                                                                                                 |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

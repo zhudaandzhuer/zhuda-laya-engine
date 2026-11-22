@@ -1,0 +1,1011 @@
+/**
+ * Ready effects for a 2D game or interface, as data: each is a
+ * `ParticleEffectSpec` in pixels and seconds, on canvas axes (+X right, +Y
+ * down, angles in radians from +X), whose emitters name the built-in sprites
+ * (`EffectSprites.ts`). Nothing is loaded from a file. `ZhudaEffect2D` plays
+ * one.
+ *
+ * `kind` says how it runs: `loop` goes on until stopped (a torch, snow);
+ * `burst` happens once from its start and ends by itself (coins, a hit).
+ * `sizePixels` is roughly the box it fills at scale 1 and `origin` where its
+ * (x, y) lies in that box, as fractions from the top left: a torch's origin
+ * is at the bottom of its flames, rain's at the top of the sky it falls
+ * through.
+ */
+import type { ParticleEffectSpec, ParticleEmitterSpec } from '../particles/ParticleTypes.ts';
+import { validateParticleEffect } from '../particles/ParticleTypes.ts';
+import type { ZhudaEffectSpriteId } from './EffectSprites.ts';
+
+export interface ZhudaEffectPreset2D {
+  description: string;
+  kind: 'loop' | 'burst';
+  /** Width and height it fills at scale 1, in pixels. */
+  sizePixels: [number, number];
+  /** Where its (x, y) is inside that box: fractions of the width and height from the top left. */
+  origin: [number, number];
+  /** A burst is over after this long; a loop has settled into its look by then. */
+  seconds: number;
+  effect: ParticleEffectSpec;
+}
+
+type Emitter = Omit<ParticleEmitterSpec, 'texture' | 'seed' | 'space'> & {
+  texture: ZhudaEffectSpriteId;
+  space?: ParticleEmitterSpec['space'];
+};
+const preset = (
+  description: string,
+  kind: 'loop' | 'burst',
+  sizePixels: [number, number],
+  origin: [number, number],
+  seconds: number,
+  emitters: Emitter[],
+): ZhudaEffectPreset2D => ({
+  description,
+  kind,
+  sizePixels,
+  origin,
+  seconds,
+  effect: {
+    schemaVersion: 1,
+    emitters: emitters.map((e, i) => ({
+      space: 'world',
+      seed: 2000 + i * 77,
+      ...e,
+    })) as ParticleEmitterSpec[],
+  },
+});
+const fade = (peak: number, inAt = 0.15) => [
+  { time: 0, value: 0 },
+  { time: inAt, value: peak },
+  { time: 1, value: 0 },
+];
+/** Fades in, holds, fades out: things that cross the screen (rain, snow). */
+const hold = (peak: number, inAt = 0.08, outAt = 0.9) => [
+  { time: 0, value: 0 },
+  { time: inAt, value: peak },
+  { time: outAt, value: peak },
+  { time: 1, value: 0 },
+];
+const out = (from = 1) => [
+  { time: 0, value: from },
+  { time: 1, value: 0 },
+];
+/** Straight up the screen, and straight down. */
+const UP = -Math.PI / 2,
+  DOWN = Math.PI / 2;
+const ALL: [number, number] = [-3.14159, 3.14159];
+const near = (angle: number, spread: number): [number, number] => [angle - spread, angle + spread];
+/** Emitted once at the start: a burst's emitters stop emitting after it. */
+const once = (count: number, time = 0) => ({
+  rate: 0,
+  bursts: [{ time, count }],
+  duration: Math.max(0.1, time + 0.05),
+  loop: false,
+});
+const confetti = (id: string, color: string): Emitter => ({
+  id,
+  texture: 'disc',
+  maxParticles: 30,
+  blend: 'alpha',
+  shape: { type: 'circle', radius: 10 },
+  ...once(24),
+  lifetime: [2, 2.8],
+  speed: [300, 520],
+  angle: near(UP, 0.7),
+  size: [10, 14],
+  // A paper chip turning over: a squeezed disc spinning.
+  stretch: 0.5,
+  rotation: [0, 6.28],
+  angularVelocity: [-9, 9],
+  acceleration: { x: 0, y: 420 },
+  drag: 1.6,
+  turbulence: { strength: 90, frequency: 2.2 },
+  alphaOverLife: hold(1, 0.01, 0.85),
+  colorOverLife: [{ time: 0, color }],
+});
+const leaves = (id: string, from: string, to: string): Emitter => ({
+  id,
+  texture: 'leaf',
+  maxParticles: 40,
+  blend: 'alpha',
+  shape: { type: 'box', width: 960, height: 10 },
+  rate: 3,
+  lifetime: [7, 9],
+  speed: [50, 80],
+  angle: near(DOWN, 0.35),
+  size: [18, 28],
+  rotation: [0, 6.28],
+  angularVelocity: [-1.6, 1.6],
+  turbulence: { strength: 60, frequency: 0.9 },
+  alphaOverLife: hold(1, 0.06),
+  colorOverLife: [
+    { time: 0, color: from },
+    { time: 1, color: to },
+  ],
+});
+const dust = (id: string, angle: [number, number]): Emitter => ({
+  id,
+  texture: 'smoke',
+  maxParticles: 10,
+  blend: 'alpha',
+  shape: { type: 'box', width: 30, height: 4 },
+  ...once(7),
+  lifetime: [0.5, 0.9],
+  speed: [90, 160],
+  angle,
+  size: [24, 40],
+  rotation: [0, 6.28],
+  drag: 4,
+  sizeOverLife: [
+    { time: 0, value: 0.6 },
+    { time: 1, value: 1.6 },
+  ],
+  alphaOverLife: fade(0.5, 0.1),
+  colorOverLife: [
+    { time: 0, color: '#cdbfa6' },
+    { time: 1, color: '#b0a48e' },
+  ],
+});
+
+export const ZHUDA_EFFECT_PRESETS_2D: Readonly<Record<string, ZhudaEffectPreset2D>> = Object.freeze(
+  {
+    'coin-burst': preset(
+      'Coins thrown up from a point that fall back, with glints: a reward, a pick-up, a win.',
+      'burst',
+      [440, 320],
+      [0.5, 0.4],
+      1.6,
+      [
+        {
+          id: 'coins',
+          texture: 'disc',
+          maxParticles: 24,
+          blend: 'alpha',
+          shape: { type: 'point' },
+          ...once(18),
+          lifetime: [0.8, 1.1],
+          speed: [280, 440],
+          angle: near(UP, 0.45),
+          size: [14, 20],
+          acceleration: { x: 0, y: 980 },
+          drag: 0.4,
+          alphaOverLife: hold(1, 0.01, 0.8),
+          colorOverLife: [
+            { time: 0, color: '#fff4a8' },
+            { time: 0.3, color: '#ffcc33' },
+            { time: 1, color: '#e3901a' },
+          ],
+        },
+        {
+          id: 'glints',
+          texture: 'spark',
+          maxParticles: 24,
+          blend: 'additive',
+          shape: { type: 'point' },
+          ...once(14),
+          lifetime: [0.35, 0.7],
+          speed: [60, 220],
+          angle: ALL,
+          size: [10, 22],
+          rotation: [0, 0.8],
+          drag: 2,
+          alphaOverLife: fade(1, 0.1),
+          colorOverLife: [
+            { time: 0, color: '#fffbe6' },
+            { time: 1, color: '#ffd34d' },
+          ],
+        },
+      ],
+    ),
+    sparkle: preset(
+      'Stars that twinkle in and out round a point: something to pick up, a button to press, a shine.',
+      'loop',
+      [120, 120],
+      [0.5, 0.5],
+      1.2,
+      [
+        {
+          id: 'stars',
+          texture: 'spark',
+          maxParticles: 24,
+          blend: 'additive',
+          shape: { type: 'circle', radius: 50 },
+          rate: 9,
+          lifetime: [0.6, 1.1],
+          speed: [0, 8],
+          angle: ALL,
+          size: [10, 22],
+          rotation: [0, 0.8],
+          angularVelocity: [-1, 1],
+          sizeOverLife: [
+            { time: 0, value: 0.2 },
+            { time: 0.4, value: 1 },
+            { time: 1, value: 0 },
+          ],
+          alphaOverLife: fade(1, 0.3),
+          colorOverLife: [
+            { time: 0, color: '#fff8dc' },
+            { time: 1, color: '#ffe08a' },
+          ],
+        },
+      ],
+    ),
+    'level-up': preset(
+      'Two rings that open at the feet and light that rises with sparks: a level gained, a power taken.',
+      'burst',
+      [260, 300],
+      [0.5, 0.8],
+      1.8,
+      [
+        {
+          id: 'rings',
+          texture: 'ring',
+          maxParticles: 4,
+          blend: 'additive',
+          shape: { type: 'point' },
+          rate: 0,
+          bursts: [
+            { time: 0, count: 1 },
+            { time: 0.18, count: 1 },
+          ],
+          duration: 0.3,
+          loop: false,
+          lifetime: 0.7,
+          speed: 0,
+          angle: 0,
+          size: 60,
+          sizeOverLife: [
+            { time: 0, value: 0.3 },
+            { time: 1, value: 3.2 },
+          ],
+          alphaOverLife: out(0.9),
+          colorOverLife: [
+            { time: 0, color: '#fff5b0' },
+            { time: 1, color: '#ffb43a' },
+          ],
+        },
+        {
+          id: 'rise',
+          texture: 'soft',
+          maxParticles: 64,
+          blend: 'additive',
+          shape: { type: 'box', width: 120, height: 10 },
+          ...once(40),
+          lifetime: [0.8, 1.4],
+          speed: [90, 200],
+          angle: near(UP, 0.12),
+          size: [6, 12],
+          drag: 0.8,
+          alphaOverLife: fade(1),
+          colorOverLife: [
+            { time: 0, color: '#fff8c0' },
+            { time: 1, color: '#ffb020' },
+          ],
+        },
+        {
+          id: 'sparks',
+          texture: 'spark',
+          maxParticles: 32,
+          blend: 'additive',
+          shape: { type: 'box', width: 140, height: 20 },
+          ...once(20, 0.05),
+          lifetime: [0.6, 1.2],
+          speed: [120, 260],
+          angle: near(UP, 0.3),
+          size: [10, 18],
+          rotation: [0, 0.8],
+          drag: 1.2,
+          alphaOverLife: fade(1, 0.1),
+          colorOverLife: [
+            { time: 0, color: '#ffffff' },
+            { time: 1, color: '#ffd25a' },
+          ],
+        },
+      ],
+    ),
+    'hit-spark': preset(
+      'A hit: a flash, sparks thrown out fast and a small ring, over in a quarter of a second.',
+      'burst',
+      [140, 140],
+      [0.5, 0.5],
+      0.6,
+      [
+        {
+          id: 'flash',
+          texture: 'soft',
+          maxParticles: 2,
+          blend: 'additive',
+          shape: { type: 'point' },
+          ...once(1),
+          lifetime: 0.1,
+          speed: 0,
+          angle: 0,
+          size: 70,
+          alphaOverLife: out(),
+          colorOverLife: [{ time: 0, color: '#fffbe8' }],
+        },
+        {
+          id: 'streaks',
+          texture: 'streak',
+          maxParticles: 24,
+          blend: 'additive',
+          shape: { type: 'point' },
+          ...once(16),
+          lifetime: [0.12, 0.28],
+          speed: [500, 900],
+          angle: ALL,
+          size: [18, 30],
+          stretch: 2.5,
+          alignToVelocity: true,
+          drag: 6,
+          alphaOverLife: fade(1, 0.05),
+          colorOverLife: [
+            { time: 0, color: '#ffffff' },
+            { time: 0.4, color: '#ffc040' },
+            { time: 1, color: '#ff6a10' },
+          ],
+        },
+        {
+          id: 'ring',
+          texture: 'ring',
+          maxParticles: 2,
+          blend: 'additive',
+          shape: { type: 'point' },
+          ...once(1),
+          lifetime: 0.22,
+          speed: 0,
+          angle: 0,
+          size: 30,
+          sizeOverLife: [
+            { time: 0, value: 1 },
+            { time: 1, value: 3 },
+          ],
+          alphaOverLife: out(0.8),
+          colorOverLife: [{ time: 0, color: '#ffe9b0' }],
+        },
+      ],
+    ),
+    explosion: preset(
+      'One blast: a flash, a ball of fire, debris thrown out and falling, and smoke left behind.',
+      'burst',
+      [320, 320],
+      [0.5, 0.5],
+      2.2,
+      [
+        {
+          id: 'flash',
+          texture: 'soft',
+          maxParticles: 2,
+          blend: 'additive',
+          shape: { type: 'point' },
+          ...once(1),
+          lifetime: 0.18,
+          speed: 0,
+          angle: 0,
+          size: 220,
+          alphaOverLife: out(),
+          colorOverLife: [{ time: 0, color: '#fff1c4' }],
+        },
+        {
+          id: 'fire',
+          texture: 'smoke',
+          maxParticles: 40,
+          blend: 'additive',
+          shape: { type: 'circle', radius: 20 },
+          ...once(30),
+          lifetime: [0.4, 0.8],
+          speed: [80, 260],
+          angle: ALL,
+          size: [50, 90],
+          rotation: [0, 6.28],
+          drag: 3,
+          sizeOverLife: [
+            { time: 0, value: 0.5 },
+            { time: 1, value: 1.6 },
+          ],
+          alphaOverLife: fade(0.9, 0.08),
+          colorOverLife: [
+            { time: 0, color: '#fff0a8' },
+            { time: 0.3, color: '#ff8a1e' },
+            { time: 1, color: '#7a1604' },
+          ],
+        },
+        {
+          id: 'debris',
+          texture: 'streak',
+          maxParticles: 48,
+          blend: 'additive',
+          shape: { type: 'circle', radius: 10 },
+          ...once(36),
+          lifetime: [0.5, 1],
+          speed: [300, 640],
+          angle: ALL,
+          size: [10, 18],
+          stretch: 2,
+          alignToVelocity: true,
+          acceleration: { x: 0, y: 700 },
+          drag: 1,
+          alphaOverLife: fade(1, 0.04),
+          colorOverLife: [
+            { time: 0, color: '#fff6d0' },
+            { time: 1, color: '#ff5a10' },
+          ],
+        },
+        {
+          id: 'smoke',
+          texture: 'smoke',
+          maxParticles: 24,
+          blend: 'alpha',
+          shape: { type: 'circle', radius: 30 },
+          ...once(16, 0.12),
+          lifetime: [1.2, 1.9],
+          speed: [30, 90],
+          angle: ALL,
+          size: [60, 100],
+          rotation: [0, 6.28],
+          angularVelocity: [-0.5, 0.5],
+          acceleration: { x: 0, y: -40 },
+          drag: 1.2,
+          sizeOverLife: [
+            { time: 0, value: 0.7 },
+            { time: 1, value: 1.8 },
+          ],
+          alphaOverLife: fade(0.5, 0.2),
+          colorOverLife: [
+            { time: 0, color: '#4a4038' },
+            { time: 1, color: '#6e6a66' },
+          ],
+        },
+      ],
+    ),
+    'smoke-puff': preset(
+      'A few puffs of pale smoke that swell and thin out: something appears, vanishes or lands.',
+      'burst',
+      [160, 120],
+      [0.5, 0.7],
+      1.6,
+      [
+        {
+          id: 'puffs',
+          texture: 'smoke',
+          maxParticles: 12,
+          blend: 'alpha',
+          shape: { type: 'circle', radius: 10 },
+          ...once(8),
+          lifetime: [0.8, 1.4],
+          speed: [30, 80],
+          angle: near(UP, 1.2),
+          size: [36, 56],
+          rotation: [0, 6.28],
+          angularVelocity: [-0.6, 0.6],
+          drag: 2,
+          sizeOverLife: [
+            { time: 0, value: 0.6 },
+            { time: 1, value: 1.7 },
+          ],
+          alphaOverLife: fade(0.6),
+          colorOverLife: [
+            { time: 0, color: '#d8d4cc' },
+            { time: 1, color: '#a8a49c' },
+          ],
+        },
+      ],
+    ),
+    torch: preset(
+      'A small flame with a few embers, its origin at the bottom of the flame: a torch, a candle.',
+      'loop',
+      [80, 200],
+      [0.5, 0.9],
+      1,
+      [
+        {
+          id: 'flames',
+          texture: 'flame',
+          maxParticles: 60,
+          blend: 'additive',
+          shape: { type: 'circle', radius: 6 },
+          rate: 45,
+          lifetime: [0.35, 0.6],
+          speed: [70, 130],
+          angle: near(UP, 0.15),
+          size: [24, 40],
+          acceleration: { x: 0, y: -60 },
+          turbulence: { strength: 60, frequency: 3 },
+          sizeOverLife: [
+            { time: 0, value: 0.6 },
+            { time: 0.3, value: 1 },
+            { time: 1, value: 0.25 },
+          ],
+          alphaOverLife: fade(0.85, 0.12),
+          colorOverLife: [
+            { time: 0, color: '#fff2b0' },
+            { time: 0.35, color: '#ff9a2e' },
+            { time: 1, color: '#c5260a' },
+          ],
+        },
+        {
+          id: 'embers',
+          texture: 'soft',
+          maxParticles: 16,
+          blend: 'additive',
+          shape: { type: 'circle', radius: 6 },
+          rate: 5,
+          lifetime: [0.8, 1.5],
+          speed: [60, 140],
+          angle: near(UP, 0.4),
+          size: [3, 5],
+          turbulence: { strength: 80, frequency: 2 },
+          alphaOverLife: fade(1, 0.1),
+          colorOverLife: [
+            { time: 0, color: '#ffd27a' },
+            { time: 1, color: '#ff4a12' },
+          ],
+        },
+      ],
+    ),
+    campfire: preset(
+      'A wood fire on the ground: flames, a thread of smoke and embers, its origin at the logs.',
+      'loop',
+      [200, 280],
+      [0.5, 0.92],
+      3,
+      [
+        {
+          id: 'flames',
+          texture: 'flame',
+          maxParticles: 110,
+          blend: 'additive',
+          shape: { type: 'box', width: 70, height: 8 },
+          rate: 70,
+          lifetime: [0.45, 0.8],
+          speed: [80, 150],
+          angle: near(UP, 0.12),
+          size: [34, 60],
+          acceleration: { x: 0, y: -80 },
+          turbulence: { strength: 50, frequency: 2.6 },
+          sizeOverLife: [
+            { time: 0, value: 0.6 },
+            { time: 0.3, value: 1 },
+            { time: 1, value: 0.25 },
+          ],
+          alphaOverLife: fade(0.75, 0.12),
+          colorOverLife: [
+            { time: 0, color: '#fff2b0' },
+            { time: 0.35, color: '#ff9a2e' },
+            { time: 1, color: '#c5260a' },
+          ],
+        },
+        {
+          id: 'smoke',
+          texture: 'smoke',
+          maxParticles: 40,
+          blend: 'alpha',
+          shape: { type: 'box', width: 30, height: 6 },
+          rate: 6,
+          lifetime: [2.2, 3.2],
+          speed: [50, 80],
+          angle: near(UP, 0.15),
+          size: [40, 60],
+          rotation: [0, 6.28],
+          angularVelocity: [-0.4, 0.4],
+          turbulence: { strength: 25, frequency: 0.8 },
+          sizeOverLife: [
+            { time: 0, value: 0.5 },
+            { time: 1, value: 2.2 },
+          ],
+          alphaOverLife: fade(0.18, 0.3),
+          colorOverLife: [
+            { time: 0, color: '#5a4a40' },
+            { time: 1, color: '#8a8a8a' },
+          ],
+        },
+        {
+          id: 'embers',
+          texture: 'soft',
+          maxParticles: 24,
+          blend: 'additive',
+          shape: { type: 'box', width: 60, height: 8 },
+          rate: 6,
+          lifetime: [1, 2],
+          speed: [80, 180],
+          angle: near(UP, 0.5),
+          size: [3, 6],
+          turbulence: { strength: 70, frequency: 1.5 },
+          alphaOverLife: fade(1, 0.1),
+          colorOverLife: [
+            { time: 0, color: '#ffd27a' },
+            { time: 1, color: '#ff4a12' },
+          ],
+        },
+      ],
+    ),
+    'magic-aura': preset(
+      'Violet motes that rise round a figure from its feet, with glints: a spell held, a buff.',
+      'loop',
+      [160, 200],
+      [0.5, 0.85],
+      2,
+      [
+        {
+          id: 'motes',
+          texture: 'soft',
+          maxParticles: 80,
+          blend: 'additive',
+          shape: { type: 'box', width: 130, height: 14 },
+          rate: 36,
+          lifetime: [1, 1.8],
+          speed: [30, 70],
+          angle: near(UP, 0.2),
+          size: [6, 12],
+          turbulence: { strength: 40, frequency: 1.6 },
+          sizeOverLife: [
+            { time: 0, value: 0.4 },
+            { time: 0.3, value: 1 },
+            { time: 1, value: 0.2 },
+          ],
+          alphaOverLife: fade(0.9, 0.2),
+          colorOverLife: [
+            { time: 0, color: '#e6d0ff' },
+            { time: 0.5, color: '#a070ff' },
+            { time: 1, color: '#5a2ad0' },
+          ],
+        },
+        {
+          id: 'glints',
+          texture: 'spark',
+          maxParticles: 16,
+          blend: 'additive',
+          shape: { type: 'box', width: 120, height: 60 },
+          rate: 6,
+          lifetime: [0.5, 0.9],
+          speed: [10, 30],
+          angle: near(UP, 0.3),
+          size: [10, 18],
+          rotation: [0, 0.8],
+          alphaOverLife: fade(1, 0.3),
+          colorOverLife: [
+            { time: 0, color: '#ffffff' },
+            { time: 1, color: '#c8a8ff' },
+          ],
+        },
+      ],
+    ),
+    heal: preset(
+      'Green light that rises from the feet with a few stars: health given back, a cure.',
+      'loop',
+      [140, 200],
+      [0.5, 0.85],
+      1.5,
+      [
+        {
+          id: 'motes',
+          texture: 'soft',
+          maxParticles: 48,
+          blend: 'additive',
+          shape: { type: 'box', width: 110, height: 12 },
+          rate: 22,
+          lifetime: [0.9, 1.5],
+          speed: [50, 100],
+          angle: near(UP, 0.08),
+          size: [6, 11],
+          alphaOverLife: fade(0.9, 0.2),
+          colorOverLife: [
+            { time: 0, color: '#e8ffd8' },
+            { time: 0.5, color: '#6ee36a' },
+            { time: 1, color: '#20a040' },
+          ],
+        },
+        {
+          id: 'stars',
+          texture: 'spark',
+          maxParticles: 16,
+          blend: 'additive',
+          shape: { type: 'box', width: 100, height: 40 },
+          rate: 6,
+          lifetime: [0.6, 1],
+          speed: [30, 60],
+          angle: near(UP, 0.1),
+          size: [12, 20],
+          rotation: [0, 0.8],
+          alphaOverLife: fade(1, 0.25),
+          colorOverLife: [
+            { time: 0, color: '#ffffff' },
+            { time: 1, color: '#9cff8a' },
+          ],
+        },
+      ],
+    ),
+    confetti: preset(
+      'Paper chips of four colours thrown up that spin and flutter down: a win, a celebration.',
+      'burst',
+      [520, 520],
+      [0.5, 0.55],
+      3,
+      [
+        confetti('red', '#ff4d6d'),
+        confetti('yellow', '#ffd23f'),
+        confetti('blue', '#3fa7ff'),
+        confetti('green', '#5ee07a'),
+      ],
+    ),
+    rain: preset(
+      'Rain across a screen-wide sky, slanting a little: the origin is at the top of the sky.',
+      'loop',
+      [960, 640],
+      [0.5, 0],
+      1,
+      [
+        {
+          id: 'drops',
+          texture: 'streak',
+          maxParticles: 240,
+          blend: 'alpha',
+          shape: { type: 'box', width: 1000, height: 10 },
+          rate: 280,
+          lifetime: [0.6, 0.7],
+          speed: [950, 1100],
+          angle: [DOWN + 0.12, DOWN + 0.16],
+          size: [22, 30],
+          stretch: 2.5,
+          alignToVelocity: true,
+          alphaOverLife: hold(0.55, 0.1),
+          colorOverLife: [{ time: 0, color: '#c8d8ee' }],
+        },
+      ],
+    ),
+    snow: preset(
+      'Snowflakes that drift down and sway across a screen-wide sky: the origin is at its top.',
+      'loop',
+      [960, 640],
+      [0.5, 0],
+      8,
+      [
+        {
+          id: 'flakes',
+          texture: 'flake',
+          maxParticles: 300,
+          blend: 'alpha',
+          shape: { type: 'box', width: 1000, height: 10 },
+          rate: 30,
+          lifetime: [7, 8.5],
+          speed: [60, 90],
+          angle: near(DOWN, 0.25),
+          size: [8, 16],
+          rotation: [0, 6.28],
+          angularVelocity: [-0.8, 0.8],
+          turbulence: { strength: 30, frequency: 0.7 },
+          alphaOverLife: hold(0.95),
+          colorOverLife: [{ time: 0, color: '#ffffff' }],
+        },
+      ],
+    ),
+    'falling-leaves': preset(
+      'Autumn leaves that tumble down a screen-wide sky in two colours: the origin is at its top.',
+      'loop',
+      [900, 640],
+      [0.5, 0],
+      8,
+      [leaves('orange', '#e09a3a', '#c0602a'), leaves('gold', '#c9b23a', '#9a7a24')],
+    ),
+    petals: preset(
+      'Pink petals that flutter down a screen-wide sky: the origin is at its top.',
+      'loop',
+      [900, 640],
+      [0.5, 0],
+      8,
+      [
+        {
+          id: 'petals',
+          texture: 'petal',
+          maxParticles: 90,
+          blend: 'alpha',
+          shape: { type: 'box', width: 960, height: 10 },
+          rate: 8,
+          lifetime: [7, 9],
+          speed: [40, 70],
+          angle: near(DOWN, 0.5),
+          size: [12, 18],
+          rotation: [0, 6.28],
+          angularVelocity: [-2, 2],
+          turbulence: { strength: 70, frequency: 1.1 },
+          alphaOverLife: hold(1, 0.06),
+          colorOverLife: [
+            { time: 0, color: '#ffd0dc' },
+            { time: 1, color: '#ffb0c8' },
+          ],
+        },
+      ],
+    ),
+    bubbles: preset(
+      'Clear bubbles that rise and wobble from a line at the bottom: water, a potion, a tank.',
+      'loop',
+      [200, 480],
+      [0.5, 1],
+      4,
+      [
+        {
+          id: 'bubbles',
+          texture: 'bubble',
+          maxParticles: 40,
+          blend: 'alpha',
+          shape: { type: 'box', width: 160, height: 10 },
+          rate: 8,
+          lifetime: [2.5, 4],
+          speed: [70, 120],
+          angle: near(UP, 0.1),
+          size: [10, 24],
+          turbulence: { strength: 40, frequency: 1.4 },
+          sizeOverLife: [
+            { time: 0, value: 0.6 },
+            { time: 1, value: 1.1 },
+          ],
+          alphaOverLife: hold(0.85, 0.1),
+          colorOverLife: [{ time: 0, color: '#e8f8ff' }],
+        },
+      ],
+    ),
+    'landing-dust': preset(
+      'Dust kicked out to both sides along the ground: a landing, a stamp, a skid. The origin is at the feet.',
+      'burst',
+      [220, 90],
+      [0.5, 1],
+      1.2,
+      [dust('left', [Math.PI + 0.05, Math.PI + 0.35]), dust('right', [-0.35, -0.05])],
+    ),
+    'click-ripple': preset(
+      'Two rings that open where a finger or pointer pressed, with a soft dot: a tap answered.',
+      'burst',
+      [120, 120],
+      [0.5, 0.5],
+      0.7,
+      [
+        {
+          id: 'rings',
+          texture: 'ring',
+          maxParticles: 3,
+          blend: 'additive',
+          shape: { type: 'point' },
+          rate: 0,
+          bursts: [
+            { time: 0, count: 1 },
+            { time: 0.08, count: 1 },
+          ],
+          duration: 0.1,
+          loop: false,
+          lifetime: 0.5,
+          speed: 0,
+          angle: 0,
+          size: 24,
+          sizeOverLife: [
+            { time: 0, value: 0.4 },
+            { time: 1, value: 4 },
+          ],
+          alphaOverLife: out(0.9),
+          colorOverLife: [{ time: 0, color: '#bfe6ff' }],
+        },
+        {
+          id: 'dot',
+          texture: 'soft',
+          maxParticles: 2,
+          blend: 'additive',
+          shape: { type: 'point' },
+          ...once(1),
+          lifetime: 0.25,
+          speed: 0,
+          angle: 0,
+          size: 30,
+          alphaOverLife: out(0.6),
+          colorOverLife: [{ time: 0, color: '#e6f6ff' }],
+        },
+      ],
+    ),
+    'sparkle-trail': preset(
+      'Sparkles left behind a moving point (a wand, a cursor, a thrown star); a few glint while it is still. Move it with setPosition.',
+      'loop',
+      [120, 120],
+      [0.5, 0.5],
+      1,
+      [
+        {
+          id: 'stars',
+          texture: 'spark',
+          maxParticles: 160,
+          blend: 'additive',
+          shape: { type: 'circle', radius: 4 },
+          rate: 6,
+          rateOverDistance: 0.12,
+          lifetime: [0.35, 0.7],
+          speed: [5, 25],
+          angle: ALL,
+          size: [8, 16],
+          rotation: [0, 0.8],
+          angularVelocity: [-2, 2],
+          sizeOverLife: [
+            { time: 0, value: 1 },
+            { time: 1, value: 0.2 },
+          ],
+          alphaOverLife: fade(1, 0.05),
+          colorOverLife: [
+            { time: 0, color: '#fffbe6' },
+            { time: 1, color: '#ffd24a' },
+          ],
+        },
+        {
+          id: 'glow',
+          texture: 'soft',
+          maxParticles: 120,
+          blend: 'additive',
+          shape: { type: 'point' },
+          rate: 0,
+          rateOverDistance: 0.08,
+          lifetime: [0.25, 0.45],
+          speed: 0,
+          angle: 0,
+          size: [10, 16],
+          alphaOverLife: out(0.5),
+          colorOverLife: [
+            { time: 0, color: '#fff0c0' },
+            { time: 1, color: '#ffb040' },
+          ],
+        },
+      ],
+    ),
+    embers: preset(
+      'Glowing embers that drift up and fade from a wide line at the bottom: a forge, a burnt field.',
+      'loop',
+      [400, 400],
+      [0.5, 1],
+      4,
+      [
+        {
+          id: 'embers',
+          texture: 'soft',
+          maxParticles: 60,
+          blend: 'additive',
+          shape: { type: 'box', width: 360, height: 20 },
+          rate: 12,
+          lifetime: [2.5, 4],
+          speed: [40, 90],
+          angle: near(UP, 0.4),
+          size: [3, 6],
+          turbulence: { strength: 50, frequency: 1.2 },
+          alphaOverLife: [
+            { time: 0, value: 0 },
+            { time: 0.15, value: 1 },
+            { time: 0.6, value: 0.7 },
+            { time: 1, value: 0 },
+          ],
+          colorOverLife: [
+            { time: 0, color: '#ffd68a' },
+            { time: 1, color: '#ff3c0c' },
+          ],
+        },
+      ],
+    ),
+  },
+);
+
+/** The preset ids, sorted. */
+export const ZHUDA_EFFECT_PRESET_IDS_2D: readonly string[] = Object.freeze(
+  Object.keys(ZHUDA_EFFECT_PRESETS_2D).sort(),
+);
+
+/** Every issue in a 2D preset (none expected in the built-in ones): for tests and for a preset of one's own. */
+export function validateZhudaEffectPreset2D(preset: ZhudaEffectPreset2D): string[] {
+  const issues = validateParticleEffect(preset?.effect);
+  if (!preset || !['loop', 'burst'].includes(preset.kind)) issues.push('kind: loop or burst');
+  if (!(Number.isFinite(preset?.seconds) && preset.seconds > 0)) issues.push('seconds: above 0');
+  if (
+    !Array.isArray(preset?.sizePixels) ||
+    preset.sizePixels.length !== 2 ||
+    !preset.sizePixels.every((n) => Number.isFinite(n) && n > 0)
+  )
+    issues.push('sizePixels: [width, height] above 0');
+  if (
+    !Array.isArray(preset?.origin) ||
+    preset.origin.length !== 2 ||
+    !preset.origin.every((n) => Number.isFinite(n) && n >= 0 && n <= 1)
+  )
+    issues.push('origin: [x, y], each 0..1 of sizePixels from the top left');
+  return issues;
+}

@@ -170,6 +170,7 @@
     "verify:film-grass": "node scripts/verify-film-grass.mjs",
     "verify:film-query": "node scripts/verify-film-query.mjs",
     "verify:film-effects": "node scripts/verify-film-effects.mjs",
+    "verify:effects-2d": "node scripts/verify-effects-2d.mjs",
     "verify:film-picture-material": "node scripts/verify-film-picture-material.mjs",
     "verify:film-glow": "node scripts/verify-film-glow.mjs",
     "verify:film-triplanar": "node scripts/verify-film-triplanar.mjs",

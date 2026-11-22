@@ -30,6 +30,8 @@ export * from './effects/ParticleEventLink.ts';
 export * from './effects/EffectSprites.ts';
 export * from './effects/EffectPresets.ts';
 export * from './effects/Effect3D.ts';
+export * from './effects/EffectPresets2D.ts';
+export * from './effects/Effect2D.ts';
 export * from './VisualMigrationPipeline.ts';
 export * from './prefabs/index.ts';
 export * from './simulation/index.ts';
