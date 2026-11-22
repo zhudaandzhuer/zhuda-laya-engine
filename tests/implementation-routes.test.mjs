@@ -90,6 +90,7 @@ test('every route is one page in docs/routes in one format, and is listed as dat
     'visual-content-prefab',
     'single-html-page',
     'mini-game-build',
+    'game-2d',
     'floating-island',
     'layered-cloth-on-body',
     'spine-character',

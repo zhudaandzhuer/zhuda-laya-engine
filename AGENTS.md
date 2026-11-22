@@ -90,10 +90,10 @@ WebGL and device acceptance still require the consumer's own reports.
 5. The corresponding public declaration in `packages/types/` and an existing
    test before adding a new API.
 6. [`docs/routes/README.md`](docs/routes/README.md): every implementation
-   route, one page each in one format: workflows (a new game, a 3D scene that
-   looks good, a film as data, a model from a DCC tool, visual content as
-   prefabs, one HTML page, a mini-game build) and scenes already built end to
-   end and checked on devices. Take the route that fits before researching
+   route, one page each in one format: workflows (a new game, a 2D game, a
+   3D scene that looks good, a film as data, a model from a DCC tool, visual
+   content as prefabs, one HTML page, a mini-game build) and scenes already
+   built end to end and checked on devices. Take the route that fits before researching
    one; after building a new kind of thing, add a route from its template.
 
 Use `node packages/mcp-server/index.mjs --tool get_agent_contract` to retrieve

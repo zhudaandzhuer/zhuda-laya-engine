@@ -272,9 +272,10 @@ any coding agent working here:
    - \`node_modules/zhuda-laya-engine/docs/quality-route.md\` before any 3D
      scene: the steps, in order, that make a scene look lit, grounded and deep.
    - \`node_modules/zhuda-laya-engine/docs/routes/README.md\`: every route,
-     one page each in one format (a new game, a 3D scene that looks good, a film
-     as data, a model from Blender, prefabs, a mini-game build, and scenes
-     already built end to end); take the ones that fit before designing.
+     one page each in one format (a new game, a 2D game, a 3D scene that looks
+     good, a film as data, a model from Blender, prefabs, a mini-game build,
+     and scenes already built end to end); take the ones that fit before
+     designing.
 3. With the MCP server connected (\`.mcp.json\`), call \`list_routes\`, then
    \`get_route\` for the ones that fit, \`get_agent_contract\`
    and \`get_quality_route\` first. Author and preview 3D scenes with the

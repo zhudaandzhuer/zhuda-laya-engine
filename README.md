@@ -34,6 +34,7 @@ node packages/mcp-server/index.mjs --tool get_route --args '{"id":"new-game-proj
 | You want to | Route |
 | --- | --- |
 | Start a game or app | [new-game-project](docs/routes/new-game-project.md) |
+| Build a 2D game or a game's interface | [game-2d](docs/routes/game-2d.md) |
 | Make a 3D scene look good | [good-looking-3d-scene](docs/routes/good-looking-3d-scene.md) |
 | Build a scene, a still or a film as data (terrain, grass, props, models) | [film-as-data](docs/routes/film-as-data.md) |
 | Bring in a model from Blender | [model-from-dcc](docs/routes/model-from-dcc.md) |

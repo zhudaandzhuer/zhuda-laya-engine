@@ -41,6 +41,7 @@ consumer. Most tasks take one or two workflows and, when one fits, a scene route
 | Id                                                | For                                                                                                                 | Checked on                   |
 | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | ---------------------------- |
 | [new-game-project](new-game-project.md)           | Starting any game or app on the engine: project shape, engine pin, build, Doctor                                    | desktop CI; no phone         |
+| [game-2d](game-2d.md)                             | A 2D game or a game's 2D interface: scaffold, layout, time, input, prefabs, Spine, tile maps, ready 2D effects, audio | desktop WebGL; no phone      |
 | [good-looking-3d-scene](good-looking-3d-scene.md) | Any 3D scene that must look good: look settings in order, each with its check                                       | desktop WebGL and WebGPU     |
 | [film-as-data](film-as-data.md)                   | A scene, still or film as JSON through the MCP film tools: nodes, materials, terrain, grass, queries, packs, render | desktop WebGL and WebGPU     |
 | [model-from-dcc](model-from-dcc.md)               | A model from Blender or another DCC tool: export, inspection, skins, levels of detail, mounting                     | desktop WebGL and WebGPU     |
@@ -62,7 +63,7 @@ consumer. Most tasks take one or two workflows and, when one fits, a scene route
 | The task                                     | Read, in this order                                                                                           |
 | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
 | A new 3D game                                | `new-game-project`, `good-looking-3d-scene`, `visual-content-prefab`, then a scene route if one fits          |
-| A new 2D game or UI                          | `new-game-project`, `visual-content-prefab`; `spine-character` for a rigged character                         |
+| A new 2D game or UI                          | `new-game-project`, `game-2d`, `visual-content-prefab`; `spine-character` for a rigged character              |
 | A film, a still, or a level laid out as data | `film-as-data`, `good-looking-3d-scene`                                                                       |
 | A character, prop or building model          | `model-from-dcc`, then `film-as-data` or `visual-content-prefab` to show it                                   |
 | An outdoor scene with hills and grass        | `film-as-data` (terrain, grass, triplanar), `good-looking-3d-scene`, `floating-island` for grass a body moves |
