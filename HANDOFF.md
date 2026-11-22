@@ -1,9 +1,43 @@
 # Handoff: plans of 2026-11-16/17 and the defects after them
 
-Last updated: 2026-11-21 ("Next step": ready effects and picture materials). The three plans and the defect batch under "After
-the plans" (`c7ab3d1` to `1197e20`) are on `origin/main`. The V40 results of
-2026-11-18 were added in a later commit: `git log origin/main..main` says
-whether it is pushed.
+Last updated: 2026-11-23 (owner confirmed that the built-in example Prefabs
+and Minesweeper scene stay; next priorities are a dedicated 2D route and ready
+2D effects, VRM import, and mobile frame-rate checks). The three plans and the
+defect batch under "After the plans" (`c7ab3d1` to `1197e20`) are on
+`origin/main`. The V40 results of 2026-11-18 were added in a later commit:
+`git log origin/main..main` says whether it is pushed.
+
+## Repository snapshot (2026-11-23)
+
+This is a point-in-time snapshot; check the refs again before starting new work.
+
+- Engine: local `main` and `origin/main` are at `6f467bb`. The local
+  `feat/vrm` ref also points to `6f467bb` and has no unique commits. The
+  untracked VRM parser draft was rolled back before this update; no VRM
+  implementation was committed.
+- Review consumer: local `claude/zhuda-engine-review-scenes-w8btzs` is at
+  `dc82408`; GitHub is now at `05bffa8`, so the local clone no longer matches
+  the remote (the earlier `ccccbdb` snapshot is also stale). The local
+  `audits/VerifyZhuda` checkout has untracked verification outputs under
+  `review-work/main-verification/out/mac-2026-11-20/`; they are not source
+  changes and are not on GitHub.
+
+## Current priorities (owner's order)
+
+1. **A dedicated 2D workflow route and ready 2D effect presets.** The
+   [route index](docs/routes/README.md) already directs a new 2D game or UI
+   through `new-game-project` and `visual-content-prefab`, with
+   [spine-character](docs/routes/spine-character.md) for rigged characters; it
+   does not yet have a dedicated end-to-end 2D workflow. The 2D effects system
+   has descriptors and renderers, but no ready presets.
+2. **VRM import.** The glTF loader, spring-bone simulation and toon shading
+   exist, but the loader does not read VRM extensions. The local parser draft
+   was rolled back; there is no VRM extension reader on `main`.
+3. **Mobile frame-rate checks.** Measure the recent 3D effect presets and
+   picture materials, plus triplanar projection and terrain, on the vivo V40
+   and iPhone 14. These features have desktop checks, but no phone frame-rate
+   measurements. See [ready-effects verification](docs/plans/records/ready-effects/verification.md)
+   and [review-requests-2 verification](docs/plans/records/review-requests-2/verification.md).
 
 ## Done
 
@@ -194,10 +228,14 @@ owner's word (`git log origin/main..main` says whether it is pushed). Record:
   (not a git repository, like `commonPrefabs/` beside it) holds 48 tileable
   texture sets with `catalog.json`, a README and an example scene; point
   `--film-assets` at it. Their 512 versions are also in `VerifyZhuda/textures/`.
-- Open, the owner's to decide: which built-in files under `assets/` to remove
-  ("把沒用的都移除"). All eleven are read by tests, the showcase or the guides,
-  so removing any means removing what reads it; nothing was removed.
-- Not done: ready 2D effects; lit or soft particles; a VRM importer (the
+- **Decided: keep built-in examples unchanged.** The owner confirmed that the
+  built-in example Prefabs and the Minesweeper scene stay. The earlier question
+  about removing built-in files under `assets/` is closed: all eleven are read
+  by tests, the showcase or the guides, so no removal is planned. The linked
+  2026-11-21 task and verification record reflect that the decision was still
+  open when they were written.
+- Not done: a dedicated 2D workflow route; ready 2D effects; lit or soft
+  particles; a VRM importer (the
   owner asked whether the 3D tools are enough: spring bones, toon shading and
   the glTF loader exist, the VRM extensions are not read).
 
