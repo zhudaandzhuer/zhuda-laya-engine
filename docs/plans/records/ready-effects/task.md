@@ -37,7 +37,7 @@ megabytes of art.
 - **A film scene's `effect` node**: `preset`, `position`, `yawDeg`, `scale`,
   `startSec`, `seed`; at most 32 a scene.
 - **A film material that is a picture** (`{ picture, normal, tileMeters,
-  roughness, metallic, tint, normalConvention, normalStrength }`): a `.png`
+roughness, metallic, tint, normalConvention, normalStrength }`): a `.png`
   or `.jpg` among the scene's assets as the surface's colour, loaded through
   the film assets' picture cache and released with the stage.
 - The pictures themselves (48 tileable sets generated with an image model)
@@ -61,8 +61,10 @@ megabytes of art.
 - **Removing built-in assets.** All eleven files under `assets/` are read by
   tests, the showcase or the guides (3 to 10 references each); none is
   unused. Which of them the owner means to drop was not decided: nothing
-  was removed.
+  was removed. (Decided on 2026-11-23: the owner keeps the built-in example
+  Prefabs and the Minesweeper scene; see HANDOFF.md, "Decided".)
 - Ready 2D effects: the 2D system has descriptors and renderers, no presets.
+  (Done on 2026-11-23: [ready-effects-2d](../ready-effects-2d/task.md).)
 - Lit or shadow-casting particles, soft particles (fading where they meet
   geometry), and effects that light the scene.
 - Roughness, metallic or height pictures for a picture material; triplanar

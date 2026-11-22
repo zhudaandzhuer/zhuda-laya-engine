@@ -1,63 +1,153 @@
-# Handoff: plans of 2026-11-16/17 and the defects after them
+# Handoff: engine state and open work
 
-Last updated: 2026-11-23 (owner confirmed that the built-in example Prefabs
-and Minesweeper scene stay; next priorities are a dedicated 2D route and ready
-2D effects, VRM import, and mobile frame-rate checks). The three plans and the
-defect batch under "After the plans" (`c7ab3d1` to `1197e20`) are on
-`origin/main`. The V40 results of 2026-11-18 were added in a later commit:
-`git log origin/main..main` says whether it is pushed.
+Last updated: 2026-11-23. Read "State now", "Current priorities" and "Open
+work" first; "History" keeps what each round did, newest first, with its
+records. Check every ref again with `git log` before starting.
 
-## Repository snapshot (2026-11-23)
+## State now (2026-11-23)
 
-This is a point-in-time snapshot; check the refs again before starting new work.
+- `origin/main` is at `27c41b5` (the owner's priority update; CI run 164
+  green on Linux, macOS and Windows). Nothing newer is on `main`.
+- Branch `claude/handover-review-3q105d` (pushed, **not merged**) adds on
+  `27c41b5`: `2623b15` VRM 1.0 import, `78404c8` twenty ready 2D effects,
+  `c8b1889` the 2D route and its record, and the commit that carries this
+  file. On that branch, in a Linux container (Node 24.22.3): `npm run
+verify` 985 of 985, lint, format and `git diff --check` pass. CI runs on
+  `main`, pull requests and by hand only, so the branch has no CI run yet.
+  Merging is the owner's call.
+- The owner's Mac (not visible from a cloud session; as the last Mac update
+  left it): the local `feat/vrm` ref pointed at `6f467bb` with no commits of
+  its own and the VRM parser draft there was rolled back. The VRM import on
+  the branch above is a new implementation, not that draft. The review
+  consumer's local `claude/zhuda-engine-review-scenes-w8btzs` is at
+  `dc82408` while GitHub has `05bffa8`; `audits/VerifyZhuda` has untracked
+  outputs under `review-work/main-verification/out/mac-2026-11-20/` (not
+  source, not on GitHub).
 
-- Engine: local `main` and `origin/main` are at `6f467bb`. The local
-  `feat/vrm` ref also points to `6f467bb` and has no unique commits. The
-  untracked VRM parser draft was rolled back before this update; no VRM
-  implementation was committed.
-- Review consumer: local `claude/zhuda-engine-review-scenes-w8btzs` is at
-  `dc82408`; GitHub is now at `05bffa8`, so the local clone no longer matches
-  the remote (the earlier `ccccbdb` snapshot is also stale). The local
-  `audits/VerifyZhuda` checkout has untracked verification outputs under
-  `review-work/main-verification/out/mac-2026-11-20/`; they are not source
-  changes and are not on GitHub.
+## Current priorities (owner's order, 2026-11-23)
 
-## Current priorities (owner's order)
+1. **A dedicated 2D route and ready 2D effects.** Done within scope on the
+   branch: the workflow route [game-2d](docs/routes/game-2d.md), twenty
+   presets (`ZHUDA_EFFECT_PRESETS_2D`) played by `ZhudaEffect2D` on the
+   existing 2D particles, `npm run verify:effects-2d`. Drawn on desktop WebGL
+   in software (SwiftShader) only. Record:
+   [task](docs/plans/records/ready-effects-2d/task.md),
+   [verification](docs/plans/records/ready-effects-2d/verification.md).
+2. **VRM import, VRM 1.0** (the owner chose 1.0 on 2026-11-23). Done within
+   scope on the branch: `ZhudaModelLibrary` reads the four `VRMC_*`
+   extensions into `instance.vrm`, `ZhudaVrm` applies them (bones,
+   expressions, gaze, constraints, spring bones, MToon as toon); `npm run
+verify:vrm` draws an avatar the test makes itself. Guide:
+   [docs/vrm.md](docs/vrm.md). Record:
+   [task](docs/plans/records/vrm-import/task.md),
+   [verification](docs/plans/records/vrm-import/verification.md).
+3. **Mobile frame-rate checks.** Not started: they need the owner's Mac with
+   the vivo V40 and the iPhone 14. Measure the 3D effect presets, picture
+   materials, triplanar projection and terrain, and now also the 2D presets
+   and a VRM avatar (toon with outline, springs). See
+   [ready-effects](docs/plans/records/ready-effects/verification.md) and
+   [review-requests-2](docs/plans/records/review-requests-2/verification.md).
 
-1. **A dedicated 2D workflow route and ready 2D effect presets.** The
-   [route index](docs/routes/README.md) already directs a new 2D game or UI
-   through `new-game-project` and `visual-content-prefab`, with
-   [spine-character](docs/routes/spine-character.md) for rigged characters; it
-   does not yet have a dedicated end-to-end 2D workflow. The 2D effects system
-   has descriptors and renderers, but no ready presets.
-2. **VRM import.** The glTF loader, spring-bone simulation and toon shading
-   exist, but the loader does not read VRM extensions. The local parser draft
-   was rolled back; there is no VRM extension reader on `main`.
-3. **Mobile frame-rate checks.** Measure the recent 3D effect presets and
-   picture materials, plus triplanar projection and terrain, on the vivo V40
-   and iPhone 14. These features have desktop checks, but no phone frame-rate
-   measurements. See [ready-effects verification](docs/plans/records/ready-effects/verification.md)
-   and [review-requests-2 verification](docs/plans/records/review-requests-2/verification.md).
+## Open work
 
-## Done
+One list of what earlier rounds left open, by kind; each line names its
+record.
 
-Three plans written on 2026-11-16 into the plan index (`docs/plans/README.md`), all now implemented:
+### Waiting for the owner
 
-| Plan                                                                                   | State                                                                                                                       | Records                                              |
-| -------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
-| [Windows acceptance fixes](docs/plans/records/windows-acceptance/plan.md)              | All 19 items closed on the report's Windows host (desktop session, Intel UHD 770), with macOS and a vivo V40 for comparison | per item in `docs/plans/records/windows-acceptance/` |
-| [Techniques from Abyssal Garden](docs/plans/records/abyssal-garden-techniques/plan.md) | AG1..AG6 implemented (desktop WebGL and WebGPU; AG2, AG3 and AG1's regression checks also on the V40)                       | linked from the plan's Progress table                |
-| [Mesh boolean operations (CSG)](docs/plans/records/mesh-csg/plan.md)                   | `zhuda-laya-engine/csg` optional entry (BSP), desktop and V40                                                               | `docs/plans/records/mesh-csg/`                       |
+- Merge `claude/handover-review-3q105d` into `main` (above).
+- Whether `gtao` becomes the look's default: every scene's picture changes
+  ([review-requests](docs/plans/records/review-requests/verification.md)).
 
-AG1..AG6 and CSG were built in a separate session on branch
-`claude/fervent-lovelace-44d9db` and merged into `main` after review, with
-`npm run verify`, lint, format, the draw checks on both backends and phone
-runs at each merge. CI (`.github/workflows/verify.yml`: Linux verify and
-browser, macOS, Windows from a folder with spaces and CJK) is green on
-`d0d17fa` (run 43955927723), the commit that put this file here.
+### Devices and backends
+
+- The phone frame rates of priority 3.
+- The six new draw checks and `verify:film-webgpu` of the outside review's
+  patches on the Windows host, the V40 and the iPhone 14; patches 07 and 08
+  matter most on Direct3D 11
+  ([outside-review-patches](docs/plans/records/outside-review-patches/verification.md)).
+- No phone and no Windows run for: the review's requests (both rounds), the
+  ready 3D effects and picture materials, the underwater seam and horizon,
+  the ribbon draw range. The review's phone models load on the M4 on both
+  backends with every clip moving (`beasts-hd`, `bosses-hd`); no frame rate
+  was taken on a phone.
+- WebGPU for the new work: `verify:vrm` and `verify:effects-2d` were not run
+  on WebGPU (no device in the cloud container); the toon material's shade
+  colour was drawn on WebGL only.
+- A third-party VRM file (VRoid Studio, UniVRM, the Blender add-on) has not
+  been loaded; nobody has judged the 2D presets in motion.
+- The iPhone on WebGPU (needs HTTPS)
+  ([quality-tiers](docs/plans/records/quality-tiers/verification.md)).
+
+### Engine questions not answered
+
+- QA-01: why a browser session's first one or two frames differ by 1/255
+  at one pixel on Intel Direct3D 11. On the Windows host
+  `verify:instanced-mesh` WebGL differed by 1/255 at one pixel in 2 of 26
+  runs of `95aee18` (0 of 24 since instance buffers are destroyed at the
+  next frame's start, 0 of 19 before the sweep): that change or QA-01 is not
+  known.
+- The iPhone: any pass into a target of its own takes the rate under 60
+  though frames drawn back to back take 7 to 10 ms; the guess (targets not
+  discarded on a tile-based GPU) is not tested.
+- The V40: about 20 s of about 50 FPS after loading
+  ([draw-warm-up](docs/plans/records/draw-warm-up/verification.md)).
+- `verify:quality-governor` fails on WebGL on the Mac, also at `87ab247`,
+  and passes on WebGPU (timed assertions under load): run it on a quiet
+  machine before trusting either result.
+- The page's and the film host's draw counts are not brought together (17
+  draws and 141,000 triangles of the review's scene 01 untraced); thin lines
+  between probe cells in a dark scene lit by a glow (seen, not looked into)
+  ([review-requests-2](docs/plans/records/review-requests-2/verification.md)).
+
+### Not built (each named in its record)
+
+- Area and line lights; a recipe mask by height above ground; lit or soft
+  particles.
+- VRM: VRM 0.x, `.vrma` clips, extended colliders, MToon's matcap and UV
+  animation, a spring's `center` space, first-person layers
+  ([docs/vrm.md](docs/vrm.md)).
+- Frame-rate tiers as steps for each device and a warning for too many
+  draws; the instanced town on the V40; repeat runs and a heavier scene
+  ([quality-tiers](docs/plans/records/quality-tiers/verification.md)).
+- The quality route's unbuilt areas
+  ([render-gaps](docs/plans/records/render-gaps/verification.md)).
+
+### Consumers and the outside review
+
+- Tell the consumers that `COLOR_0` is read as glTF's linear value: models
+  with shade baked into vertex colours draw brighter.
+- The review's findings without a patch (its
+  `deliverables/engine-patches/README.md`, second table) are not started.
+- Scene routes for an outdoor landscape and a rigged phone character wait
+  for the review's next round on the current engine; no agent was run on
+  the routes to see whether it follows them; `docs/zh-CN/README.md` has no
+  "Start here" table of routes.
+- `zhuda-spacetime-3d` to switch from its prototype to
+  `zhudaWarmUpByDrawing`, measured on the V40.
+- The floating-island consumer's build notes and `tsconfig.engine-dev.json`
+  still name the removed `zhuda-laya-engine-island` folder (it builds
+  against `main`; the change is the consumer's).
+- The Windows host's packaged consumer web is the DIST-02 one, not rebuilt
+  from the current engine.
+
+### Plans still in progress (plan index)
+
+3D model editor, quality defaults and the quality route, what a frame costs
+on a phone, phone checks, frame-rate tiers, the quality route's unbuilt
+areas, the procedural hand (how it looks is the owner's to judge), and the
+three.js gap audit (Proposed). See [docs/plans/README.md](docs/plans/README.md).
 
 ## Decided
 
+- VRM 1.0, not 0.x (owner, 2026-11-23).
+- The built-in example Prefabs and the Minesweeper scene stay (owner,
+  2026-11-23). All eleven files under `assets/` are read by tests, the
+  showcase or the guides; nothing is removed. The 2026-11-21 ready-effects
+  record was written while this was still open.
+- `COLOR_0` is read as glTF's linear value (owner, 2026-11-20).
+- LayaAir stays on 3.4.2
+  ([decision](docs/plans/records/laya-3.4.3-upgrade/decision.md)).
 - The desktop host example runs Electron 45.3.3 with Forge 8.0.1 (0
   advisories); `--verify` shows its window and keeps drawing.
 - `verify:film-water` compares the frame after thirty mounts with the one
@@ -66,10 +156,133 @@ browser, macOS, Windows from a folder with spaces and CJK) is green on
 - Hardware CI lanes (Intel/NVIDIA, Chrome/Edge) stay a manual procedure:
   `docs/agent-development.md`, "Windows hardware runs".
 
-## After the plans: the open engine defects (2026-11-17)
+## Working in a cloud session
 
-The owner asked for every open defect to be fixed. Record:
-[engine defects](docs/plans/records/engine-defects/verification.md).
+- Node 24 is required (`engines`); the container's default is 22. Use
+  `export PATH=/opt/node24/bin:$PATH`, then `npm ci`.
+- Draw checks: `export CHROME_BIN=/opt/pw-browsers/chromium`. WebGL is
+  SwiftShader (software); there is no WebGPU device. Record WebGPU and every
+  device check as UNAVAILABLE, never as a pass.
+- The browser checks bundle `dist/sdk`: run `npm run build` (or `npm run
+verify`) after a source change and before a `verify:*` check, or it draws
+  the old engine.
+- `verify:stylized-shading` times out in its 1280 by 720 timing step on
+  SwiftShader (the page is too busy to answer); its picture assertions pass
+  when that step is left out of a scratch copy.
+
+## History (newest first)
+
+**2026-11-23, cloud session (branch `claude/handover-review-3q105d`).** The
+handoff was checked against the repository: its links resolve, `npm run
+verify` passed on `27c41b5`, its claims about 2D and VRM held, and its
+stale parts (push notes, the CI line, the outside review's download step,
+two Safari addresses) were rewritten here. Then priorities 1 and 2 (above).
+Defects found on the way and fixed: `ZhudaToonMaterial` copied its spec
+through JSON and failed on a real texture in `material.textures` (as its
+own guide shows); the 2D particle sprites were marked as plain data, so
+LayaAir's 2D pipeline showed a half-alpha pixel at 191 of 255 instead of 135. New on the way: per-bone spring settings, a toon shade colour.
+
+**2026-11-23, owner.** Priorities set (`27c41b5`).
+
+**2026-11-21, ready effects and picture materials.** Eighteen 3D effect
+presets on sprites made by a program, `ZhudaEffect3D`, a film scene's
+`effect` node, a film material that is a picture among the assets. The
+pictures live outside this repository: `ZhudaGameCenter/commonAssets/` (not
+a git repository) holds 48 tileable sets with `catalog.json`, a README and
+an example scene (point `--film-assets` at it); their 512 versions are also
+in `VerifyZhuda/textures/`. Record:
+[task](docs/plans/records/ready-effects/task.md),
+[verification](docs/plans/records/ready-effects/verification.md).
+
+**2026-11-21, the underwater horizon** (`dc642b2`). The consumer's re-check
+of the seam fix found a step at the horizon with light fog on. The medium
+counts `maxDistance` of open water on both sides of the horizon and the
+backdrop carries the rest; the consumer's frame 1380 reads level on both
+backends. Record: the second round of
+[underwater-seam](docs/plans/records/underwater-seam/verification.md).
+
+**2026-11-21, routes as formal documents.** Every route is one page in
+`docs/routes/<id>.md` in one format, listed by `list_routes` and `get_route`
+and by a "Start here" table in `AGENTS.md` and `README.md`. Record:
+[task](docs/plans/records/route-registry/task.md),
+[verification](docs/plans/records/route-registry/verification.md).
+
+**2026-11-21, the rest of the review's requests** (branch
+`feat/review-requests-2`, merged). Prop nodes' `castShadow`, `cullMeters`,
+`lod`; materials' `blend`, `alphaCutoff`, `doubleSided`, `opacity`; a
+recipe's `alpha` and `shape` masks; `detail`; `grass` and `terrain` nodes;
+`projection: 'triplanar'`; `film_scene_query`; packs read again when
+edited; glow through `bounceLight` with a check and advice. Nine draw
+checks, all in `verify:film-webgpu`. For the review, sixteen tileable
+texture sets were generated (gpt-image-2.6-flare) and pushed to
+`VerifyZhuda` as `7ee3f17`; the source pictures (102 MB) are on the Mac only
+(`audits/VerifyZhuda/textures/raw/`). The review is told in its
+`ENGINE-REPLY.md`. Record:
+[task](docs/plans/records/review-requests-2/task.md),
+[verification](docs/plans/records/review-requests-2/verification.md).
+
+**2026-11-21, three requests of the review.** A film model node's
+`cullMeters`, `castShadow`, `cellMeters`; skins over 24 joints ordered at
+load into few pieces; `gtao` as the occlusion without the extra scene pass.
+Record: [task](docs/plans/records/review-requests/task.md),
+[verification](docs/plans/records/review-requests/verification.md).
+
+**2026-11-21, the line across clear water.** Found by the consumer film
+`films/pelagic-grove` (its `ENGINE-TASK-underwater-seam.md`): a backdrop
+sphere behind the water in `Underwater.ts`, and the view counting all the
+water to the surface. Ten stills `engine-fix-*.png` went to the consumer's
+`evidence/` (five kept in `audits/underwater-seam-2026-11-21/consumer/`).
+Record: [task](docs/plans/records/underwater-seam/task.md),
+[verification](docs/plans/records/underwater-seam/verification.md).
+
+**2026-11-20, the outside review's ten patches** (`87ab247`, merged by
+fast-forward on the owner's word; the day's branches deleted). The review's
+repository is cloned beside the engine (`ZhudaGameCenter/audits/VerifyZhuda`,
+private, branch `claude/zhuda-engine-review-scenes-w8btzs`; its own
+`HANDOFF.md` is the way in); its reproductions ran on the Mac (Apple M4)
+against `e453b60` and `a5dfc6b`. The Mac has `node@24` beside the default
+Node (`/opt/homebrew/opt/node@24/bin`). Record:
+[task](docs/plans/records/outside-review-patches/task.md),
+[verification](docs/plans/records/outside-review-patches/verification.md).
+
+**2026-11-20, frame-rate tiers.** The owner's goal: the best picture that
+stays smooth on mobile, in three tiers (60 and over on the Mac, the V40 and
+the iPhone 14; 45 to 60; 10 to 45, never under 10). `f56f8a4` the
+measuring tool; `f9f1e86` the tiers as data (`ZHUDA_FRAME_TIERS`,
+`zhudaFrameTier`, `zhudaTierBudgetMs`), a rung at level 1 drawn at 0.5,
+advice for many draws, render targets counted; `94eb400`
+`ZhudaFilmicPipeline` keeps no idle occlusion effect (V40 level 1 at 0.7: 57
+to 60; iPhone 44..47 to 51..54). On the V40 a smaller render scale brings a
+level into a band; on the iPhone the number of draws decides (instanced
+houses: 31..35 to 45..49). Reports: `ZhudaGameCenter/audits/quality-tiers-2026-11-20/`.
+Record: [task](docs/plans/records/quality-tiers/task.md),
+[verification](docs/plans/records/quality-tiers/verification.md).
+
+**2026-11-20, ribbon draw range** (`025dc21`). A 3D ribbon or particle
+system whose count changed after its first draw kept the first count;
+fixed in `DynamicParticleMesh3D.submit()`, `verify:ribbon-growth` on both
+backends. The game that found it re-pinned and dropped its workaround.
+Record: [task](docs/plans/records/dynamic-mesh-draw-range/task.md),
+[verification](docs/plans/records/dynamic-mesh-draw-range/verification.md).
+
+**2026-11-20, draw warm-up.** `zhudaWarmUpByDrawing` draws a scene behind
+its loading screen from the eyes a game names; the fixture's first frame
+then compiles nothing (7 ms WebGL, 32 ms WebGPU; 306 / 1252 ms cold). Found
+by `zhuda-spacetime-3d` on a V40. Record:
+[task](docs/plans/records/draw-warm-up/task.md),
+[verification](docs/plans/records/draw-warm-up/verification.md).
+
+**2026-11-18.** The route [a small floating island](docs/routes/floating-island.md)
+(from the consumer `games/zhuda-sky-island`; nothing drawn again; record in
+`docs/plans/records/floating-island-route/`). Three leftover local
+branches, all in `main`, were deleted with their worktrees on the owner's
+word. An outside review started on a zip of `e453b60` in a cloud session of
+the iPhone's Claude account; it ended on 2026-11-20 with the patches above.
+
+**2026-11-17, the open engine defects.** The owner asked for every open
+defect to be fixed. Checked on macOS (every `verify:*` check on both
+backends), the Windows host, the iPhone 14 and the V40 (2026-11-18, both
+backends). Record: [engine defects](docs/plans/records/engine-defects/verification.md).
 
 | Defect                                                                                    | State                                                                               |
 | ----------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
@@ -82,264 +295,22 @@ The owner asked for every open defect to be fixed. Record:
 | iPhone Safari `Unable to finish` on WebGPU                                                | not reproduced on an iPhone 14 with the engine's pages; the game itself was not run |
 | Browser SDK checks read a stale `dist/browser/<version>`                                  | fixed: they build a fresh folder                                                    |
 
-Checked on macOS (every `verify:*` check on both backends), the Windows
-host, the iPhone 14 and the vivo V40 (2026-11-18, both backends).
+**2026-11-16/17, three plans**, all implemented:
 
-## Open
+| Plan                                                                                   | State                                                                                                                       | Records                                              |
+| -------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| [Windows acceptance fixes](docs/plans/records/windows-acceptance/plan.md)              | All 19 items closed on the report's Windows host (desktop session, Intel UHD 770), with macOS and a vivo V40 for comparison | per item in `docs/plans/records/windows-acceptance/` |
+| [Techniques from Abyssal Garden](docs/plans/records/abyssal-garden-techniques/plan.md) | AG1..AG6 implemented (desktop WebGL and WebGPU; AG2, AG3 and AG1's regression checks also on the V40)                       | linked from the plan's Progress table                |
+| [Mesh boolean operations (CSG)](docs/plans/records/mesh-csg/plan.md)                   | `zhuda-laya-engine/csg` optional entry (BSP), desktop and V40                                                               | `docs/plans/records/mesh-csg/`                       |
 
-- On the Windows host `verify:instanced-mesh` WebGL differed by 1/255 at one
-  pixel in 2 of 26 runs of `95aee18`; 0 of 24 since the instance buffers are
-  destroyed at the next frame's start, 0 of 19 before the sweep. Whether
-  those two were the change or Direct3D 11's own first-frame 1/255 (QA-01)
-  is not known.
-- QA-01: why a browser session's first one or two frames differ by 1/255 at
-  one pixel on Intel Direct3D 11 was not found.
-- The Windows host's packaged consumer web is the DIST-02 one; not rebuilt
-  from the current engine.
-- Other plans in the index that were already in progress before this work
-  (3D model editor, quality defaults, phone costs, phone checks, quality
-  route's unbuilt areas, three.js gap audit) were not part of it.
+AG1..AG6 and CSG were built in a separate session on branch
+`claude/fervent-lovelace-44d9db` and merged into `main` after review, with
+`npm run verify`, lint, format, the draw checks on both backends and phone
+runs at each merge.
 
-## Next step
-
-The outside review ended and its ten patches are on `main` as `87ab247`
-(2026-11-20), merged on the owner's word by fast-forward. The branches of
-that day (`fix/outside-review-patches`, `feat/quality-tiers-measure`,
-`feat/quality-tiers-engine`) were deleted on the owner's word once merged;
-only `main` is left, here and on origin. `git log origin/main..main` says
-whether it is pushed. Record:
-[task](docs/plans/records/outside-review-patches/task.md),
-[verification](docs/plans/records/outside-review-patches/verification.md).
-
-- Done: the review's repository cloned beside the engine
-  (`ZhudaGameCenter/audits/VerifyZhuda`, private, branch
-  `claude/zhuda-engine-review-scenes-w8btzs`; its own `HANDOFF.md` is the way
-  in). Its reproductions run on this Mac against `e453b60` and `a5dfc6b`
-  (the same results; an Apple M4, the first real GPU they ran on), the ten
-  patches applied here, documents updated, every check of the record green
-  on WebGL and WebGPU.
-- Decided by the owner: `COLOR_0` is read as glTF's linear value. Models with
-  shade baked into vertex colours draw brighter; consumers are to look.
-- Open, in order: (1) push `main` on the owner's word; (2) run the six new draw checks and `verify:film-webgpu` on
-  the Windows host, the vivo V40 and the iPhone 14 (patches 07 and 08 matter
-  most on Direct3D 11); (3) tell the consumers about `COLOR_0`; (4) the
-  review's findings without a patch (its `deliverables/engine-patches/README.md`,
-  second table) are not started.
-- This Mac: `node@24` is installed beside the default Node (Homebrew,
-  keg-only, `/opt/homebrew/opt/node@24/bin`); the default went from 26.12.0 to
-  26.13.1 the same day. The checkout got its `node_modules` again with
-  `npm ci`, and `dist/` here was built from `87ab247`'s tree.
-
-The line across clear water (2026-11-21). The session of the consumer film
-`films/pelagic-grove` found a level line across its underwater shots and
-wrote the task (`films/pelagic-grove/ENGINE-TASK-underwater-seam.md`). Fixed
-and merged into `main` (`git log origin/main..main` says whether it is
-pushed): a backdrop sphere behind the water in `Underwater.ts`, and the view
-counting all the water up to the surface. Record:
-[task](docs/plans/records/underwater-seam/task.md),
-[verification](docs/plans/records/underwater-seam/verification.md). The
-consumer builds against this checkout's files, so its next build carries
-the fix whether or not it is committed; it was built once into
-`dist/webgpu-engine-fix` there for the check, its own outputs untouched, and
-stills named `engine-fix-*.png` were added to its `evidence/` (ten; five
-of them are kept in `audits/underwater-seam-2026-11-21/consumer/`).
-
-The review's requests (2026-11-21). The outside review made its fifteen
-characters and eleven scenes for phones on `ba24ae4` and listed what the
-engine kept it from (`ENGINE-REQUESTS.md` in `VerifyZhuda`, `3c182f0`, eight
-items). On the owner's word the three small ones are done and merged into
-`main` (`git log origin/main..main` says whether it is pushed): a film model node's `cullMeters`, `castShadow`, `cellMeters`;
-skins over 24 joints ordered at load into few pieces; `gtao` named as the
-occlusion without the extra scene pass. Record:
-[task](docs/plans/records/review-requests/task.md),
-[verification](docs/plans/records/review-requests/verification.md).
-
-- Open: whether `gtao` becomes the look's default (the owner's call: every
-  scene's picture changes); a phone run. The other requests: next paragraph.
-- The review's phone models load on `main` on the M4, both backends, every
-  clip moving (`beasts-hd`, `bosses-hd`); no frame rate was taken on a phone.
-
-The rest of the review's requests (2026-11-21, later). The owner asked for
-all of them. They are on branch `feat/review-requests-2` (from `a2d95f7`),
-merged into `main` by fast-forward on the owner's word the same day (`git
-log origin/main..main` says whether it is pushed). Record:
-[task](docs/plans/records/review-requests-2/task.md),
-[verification](docs/plans/records/review-requests-2/verification.md).
-
-- Done: prop nodes' `castShadow`, `cullMeters`, `lod`; materials' `blend`,
-  `alphaCutoff`, `doubleSided`, `opacity`; a recipe's `alpha` and `shape`
-  masks; `detail`; `grass` and `terrain` nodes (grass `on` a terrain);
-  `projection: 'triplanar'` with a `top` recipe; `film_scene_query`; packs
-  read again when edited, with a fingerprint; glow through `bounceLight`
-  shown by a check and advised (`emission.lights-nothing`). Nine draw checks,
-  all in `verify:film-webgpu`'s list.
-- Not done, and said so in the record: area and line lights; a recipe mask
-  by height above ground; the page's and the film host's draw counts brought
-  together (17 draws and 141,000 triangles on the review's scene 01 are
-  untraced); thin lines between probe cells in a dark scene lit by a glow
-  (seen, not looked into); any phone or Windows run.
-- For the review: sixteen tileable texture sets (albedo, height, normal;
-  scales, fur, feathers, hide, horn, bone, rock, lava, bronze, armour) were
-  generated with the image model (gpt-image-2.6-flare, 32 pictures), made
-  seamless and pushed to `VerifyZhuda` as `7ee3f17` (`textures/`, with a
-  sampler for its bake and the script that made them). The source pictures
-  (102 MB) are on this Mac only, in `audits/VerifyZhuda/textures/raw/`
-  (ignored by git there).
-- The review is told in `ENGINE-REPLY.md` of its repository, which names the
-  `main` commit that carries the scene-format keys.
-
-Routes as formal documents (2026-11-21, later still). On the owner's word every
-route is now one page in `docs/routes/<id>.md` in one format, listed by the MCP
-tools `list_routes` and `get_route` and by a "Start here" table at the top of
-`AGENTS.md` and `README.md`: seven workflow routes (written from the guides, which
-stay where they are) and the four scene routes. The quality route has two more
-steps and the film tool text names the week's features. Merged into `main` by
-fast-forward on the owner's word (`git log origin/main..main` says whether it is
-pushed). Record:
-[task](docs/plans/records/route-registry/task.md),
-[verification](docs/plans/records/route-registry/verification.md).
-
-- Not done: no agent was run on the routes to see whether it follows them; scene
-  routes for an outdoor landscape and a rigged phone character wait for the
-  outside review's next round on the current engine; `docs/zh-CN/README.md` has
-  no "Start here" table.
-
-The underwater horizon (2026-11-21, last). The consumer's re-check of the
-seam fix found a step at the horizon with light fog on (a dark band above it).
-Fixed (`dc642b2`): the medium counts `maxDistance` of
-open water on both sides of the horizon and the backdrop carries the rest. The
-second round is in the same record
-([verification](docs/plans/records/underwater-seam/verification.md), "Second
-round"). Merged into `main` by fast-forward on the owner's word (`git log
-origin/main..main` says whether it is pushed). The consumer's frame
-1380 reads level across the horizon on both backends with the fix; its own
-builds and film were not touched.
-
-Ready effects and picture materials (2026-11-21, last of the day). The owner
-asked for a real default library: textures, particle effects and 3D effects
-ready to take. In the engine, as code only: eighteen 3D effect presets on
-sprites made by a program, `ZhudaEffect3D`, a film scene's `effect` node, and a
-film material that is a picture among the assets. Merged into `main` on the
-owner's word (`git log origin/main..main` says whether it is pushed). Record:
-[task](docs/plans/records/ready-effects/task.md),
-[verification](docs/plans/records/ready-effects/verification.md).
-
-- The pictures are outside this repository: `ZhudaGameCenter/commonAssets/`
-  (not a git repository, like `commonPrefabs/` beside it) holds 48 tileable
-  texture sets with `catalog.json`, a README and an example scene; point
-  `--film-assets` at it. Their 512 versions are also in `VerifyZhuda/textures/`.
-- **Decided: keep built-in examples unchanged.** The owner confirmed that the
-  built-in example Prefabs and the Minesweeper scene stay. The earlier question
-  about removing built-in files under `assets/` is closed: all eleven are read
-  by tests, the showcase or the guides, so no removal is planned. The linked
-  2026-11-21 task and verification record reflect that the decision was still
-  open when they were written.
-- Not done: a dedicated 2D workflow route; ready 2D effects; lit or soft
-  particles; a VRM importer (the
-  owner asked whether the 3D tools are enough: spring bones, toon shading and
-  the glTF loader exist, the VRM extensions are not read).
-
-Frame-rate tiers (2026-11-20, the same day). The owner set the rendering
-goal: the best picture that stays smooth on mobile devices, in three tiers by
-frame rate (60 and over on this Mac, the vivo V40 and the iPhone 14; 45 to
-60; 10 to 45, never under 10). Record:
-[task](docs/plans/records/quality-tiers/task.md),
-[verification](docs/plans/records/quality-tiers/verification.md), which has
-the numbers.
-
-- Done: `scripts/measure-quality-tiers.mjs` and its fixture, on `main` as
-  `f56f8a4` (`git log origin/main..main` says whether it is pushed).
-  Measured on the three devices. No runtime file
-  changed and no tier is defined in the engine.
-- Second round, the same day, on `main` as `f9f1e86` (`git log
-  origin/main..main` says whether it is pushed): the
-  tiers as data (`ZHUDA_FRAME_TIERS`, `zhudaFrameTier`, `zhudaTierBudgetMs`),
-  a rung at level 1 drawn at 0.5 in the default ladder, advice for a frame
-  of many draws, render targets counted by the profiler, repeated readings
-  and counters in the tool. `npm run verify` 941 of 941.
-  `verify:quality-governor` fails on this Mac today on both backends, **also
-  without the change** (timed assertions, the machine under load): run it
-  again on a quiet machine before trusting either result.
-- Third round, on `main` as `94eb400`: `ZhudaFilmicPipeline` no longer keeps an
-  idle occlusion effect in its chain (LayaAir drew the whole scene again for
-  its normals at look levels 1 and 2, and for any look with `ao: 0`). V40,
-  level 1 at 0.7: 57 to 60 frames a second; iPhone: 44..47 to 51..54. 35 draw
-  checks on WebGL and 24 on WebGPU pass. An experiment that held back
-  LayaAir's binds of the canvas between passes gained nothing on the iPhone
-  and was not built. `verify:quality-governor` passes on WebGPU and fails on
-  WebGL, also at `87ab247`.
-- Found: on the V40 a smaller render scale brings a level into a band (level
-  1 at 0.7 is 56 to 60); on the iPhone the number of draws decides, and
-  houses drawn as instanced copies take level 1 at 0.7 from 31..35 to 45..49.
-- Open: (1) on the iPhone any pass into a target of its own takes the rate
-  under 60 though the frames drawn back to back take 7 to 10 ms: not
-  explained, the guess (targets not discarded on a tile-based GPU) is not
-  tested; (2) the iPhone on WebGPU (needs HTTPS); (3) the instanced town on
-  the V40; (4) repeat runs, a heavier scene; (5) then the tiers as steps for
-  each device, and a warning for too many draws.
-- Reports: `ZhudaGameCenter/audits/quality-tiers-2026-11-20/`. The iPhone is
-  driven through the mobile-control service: it must be unlocked and awake,
-  and its Safari was left at a page of this Mac (`192.168.50.80`, the server
-  is stopped).
-
-Ribbon draw range (2026-11-20, on `main` as `025dc21` and pushed): a 3D ribbon or
-particle system whose count changes after its first draw kept drawing the
-first count, on WebGPU and WebGL (LayaAir's `MeshRenderer` copies a submesh's
-range into the draw only when a mesh is assigned). Fixed in
-`DynamicParticleMesh3D.submit()`; `verify:ribbon-growth` draws it on both
-backends. Record:
-[task](docs/plans/records/dynamic-mesh-draw-range/task.md),
-[verification](docs/plans/records/dynamic-mesh-draw-range/verification.md).
-The game that found it re-pinned to `025dc21` and dropped its 64-point
-workaround (its blade's rings still draw whole). Open: phone runs.
-
-Draw warm-up (2026-11-20, `main`): `zhudaWarmUpByDrawing` draws a scene
-behind its loading screen from the eyes a game names, every way round and
-down, with a `beforeView` hook for the game's own passes, and puts the
-camera back. The fixture's first frame then compiles nothing: 7 ms on
-WebGL and 32 ms on WebGPU (306 / 1252 ms cold). Found by
-`zhuda-spacetime-3d` on a vivo V40 (frames of 450–2500 ms walking in right
-after loading; its prototype of the same method took the worst to 151 ms).
-Record: [task](docs/plans/records/draw-warm-up/task.md),
-[verification](docs/plans/records/draw-warm-up/verification.md). Open: the
-game's switch from its prototype to this API, measured on the V40; the
-unexplained ~20 s of ~50 FPS after loading on the V40.
-
-Added on 2026-11-18, in the commit that carries this note: the route
-[a small floating island](docs/routes/floating-island.md), its row in the
-routes index and its record (`docs/plans/records/floating-island-route/`).
-It was written from the consumer `games/zhuda-sky-island` and its records;
-nothing was drawn again.
-
-On the owner's word the same day, three leftover local branches, all
-contained in `main`, were deleted with their two worktrees:
-`feat/sky-island-effects` (`engines/zhuda-laya-engine-island`),
-`claude/fervent-lovelace-44d9db`
-(`.claude/worktrees/angry-varahamihira-a9083c`) and
-`claude/angry-varahamihira-a9083c`. Only `main` is left, here and on origin;
-no issue or pull request is open. The floating-island consumer's build notes
-and its `tsconfig.engine-dev.json` still name the `zhuda-laya-engine-island`
-folder, which is gone: it builds against `main` instead (`ZHUDA_ENGINE_ROOT`
-at this checkout, or a pin at `a961cc6` or later). Its source typechecks
-against `e453b60`. That change is the consumer's and was not made.
-
-An outside review was started (it has since ended: see "Next step"). On
-2026-11-18 a Claude Code cloud session on the Claude account of the iPhone 14
-(not this Mac's account; session title "豬大引擎架構審查與史…", Fable 5.2)
-was given a zip of `e453b60` and one brief, which is that session's first
-message: review the architecture, then build ten film scenes in a consumer
-project outside the engine, in one run without stopping to ask. It is to
-hand over a `deliverables` zip to download from that session
-(`ARCHITECTURE-REVIEW.md`, `epic-scenes/`, `engine-patches/`). Its own
-baseline on the zip: `npm run verify`, lint and format pass.
-
-When it ends: download the zip from that session, and treat each finding as
-a report to reproduce here before acting on it. The scenes are consumer
-content and stay outside this repository.
-
-Earlier: the two Adreno findings of the phone runs were fixed
-([record](docs/plans/records/phone-findings-adreno/verification.md)), and
-GitHub issue #8 (WebGPU glTFPBR pipeline invalid after ~70 s) is fixed in
+**Earlier.** The two Adreno findings of the phone runs were fixed
+([record](docs/plans/records/phone-findings-adreno/verification.md)); GitHub
+issue #8 (WebGPU glTFPBR pipeline invalid after about 70 s) is fixed in
 [webgpu-node-bindings](docs/plans/records/webgpu-node-bindings/verification.md)
 and verified in the game by its own session (0 errors in 11 rounds on
 `renderer: auto`).
@@ -351,9 +322,11 @@ and verified in the game by its own session (0 errors in 11 rounds on
   logs and evidence). No test install or scheduled task of this work is
   left; GPU checks there run in the signed-in desktop session through a
   scheduled task, never over SSH (session 0).
-- iPhone 14: Safari was left on a page of this Mac's check server
-  (`https://192.168.2.59:8765/control.html`, the server is stopped); close
-  the tab. Safari keeps an exception for that self-signed certificate.
+- iPhone 14: Safari was last left on a page of a check server on the Mac,
+  which is stopped; earlier updates named two addresses on different days
+  (`https://192.168.2.59:8765/control.html` and `192.168.50.80`): close the
+  tab. Safari keeps an exception for that self-signed certificate. It is
+  driven through the mobile-control service and must be unlocked and awake.
 - vivo V40: checks through `ZHUDA_PHONE_CHROME` with
   `adb forward tcp:9333 localabstract:chrome_devtools_remote`; the forward is
   removed after use.
