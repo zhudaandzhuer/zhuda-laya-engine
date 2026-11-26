@@ -1,8 +1,0 @@
-[
-  { "wait": 3, "shot": "v2-overview" },
-  { "js": "const c = S.pig.center; const [x, y] = S.project(c); S.press(1, x, y); window.__hand = [x, y]; return {x, y, state: S.pig.state};", "wait": 0.2 },
-  { "js": "let [x, y] = window.__hand; for (let k = 0; k < 30; k++) { y -= 8; S.move(1, x, y); await new Promise(r => setTimeout(r, 20)); } window.__hand = [x, y];", "wait": 0.6, "shot": "v2-held" },
-  { "js": "let [x, y] = window.__hand; for (let k = 0; k < 24; k++) { x += (k % 12 < 6 ? 30 : -30); S.move(1, x, y); await new Promise(r => setTimeout(r, 25)); } window.__hand = [x, y];", "wait": 0.05, "shot": "v2-swing" },
-  { "js": "let [x, y] = window.__hand; for (let k = 0; k < 6; k++) { x -= 40; y -= 25; S.move(1, x, y); await new Promise(r => setTimeout(r, 16)); } S.release(1); return S.pig.state;", "wait": 0.35, "shot": "v2-thrown" },
-  { "wait": 2.2, "shot": "v2-landed" }
-]

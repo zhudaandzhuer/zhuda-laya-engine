@@ -104,9 +104,9 @@ hundreds of enemies ([survivors-2d](survivors-2d.md)); a real online match (`go-
     samples (the score among them) and 7 voice lines loaded with `loadSample` before the title;
     channels `bgm` (score, looped, `peakGain: 0.33`), `sfx` and `ui` (voice, one id with
     `replace`); `unlockAudio` on the first press ([audio](../audio.md)).
-15. **Menus from the prefab library.** `prefabs/ui/game-menu`, `prefabs/ui/settings-form` and
-    `prefabs/ui/dom` (library 0.2.0 in `client/common-prefabs.lock.json`), copied with
-    `node node_modules/zhuda-laya-engine/prefabs/scripts/sync.mjs . ui/game-menu ui/settings-form`.
+15. **Menus from the prefab library.** `zhuda-engine-prefabs/ui/game-menu`, `zhuda-engine-prefabs/ui/settings-form` and
+    `zhuda-engine-prefabs/ui/dom` (library 0.2.0 in `client/common-prefabs.lock.json`), copied with
+    `node node_modules/zhuda-engine-prefabs/scripts/sync.mjs . ui/game-menu ui/settings-form`.
     Colours are the `--cp-menu-*` variables in `client/public/main-menu.css`; never edit the copies.
 16. **Loading and fallbacks.** World and survivor load together; the close-up model loads on the
     loading screen; twelve frames behind the title draw it and every infected (`?nowarm` skips).
@@ -214,6 +214,6 @@ hundreds of enemies ([survivors-2d](survivors-2d.md)); a real online match (`go-
 
 The game keeps its rules, layout, recipes, assets and their provenance, story lines, voice, shots,
 Electron host with its checks, and the Go session service. The prefab library holds the menus
-(`prefabs/ui/*`); the game's HANDOFF names the supply case, radio and shelter as next to move
+(`zhuda-engine-prefabs/ui/*`); the game's HANDOFF names the supply case, radio and shelter as next to move
 there (`game-to-prefabs`). The engine owns boot, libraries, provider, particles, sound, the filmic
 pipeline, action frame data and the build gates; it takes no game rules and none of its assets.

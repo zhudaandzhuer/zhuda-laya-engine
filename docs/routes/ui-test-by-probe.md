@@ -19,7 +19,7 @@ tree every run. Checked in headless Chrome on a Mac at three shapes of page; on 
   and the log identical; the probe's click points agree with the game's own to the pixel at
   three shapes of page; a scene of the 2D viewer was driven the same way on real time.
 - **Reference consumer:** `games/zhuda-match` in this repository (`tools/scenarios/ui-flow.json`,
-  `tools/scenarios/bot-to-result.json`, `src/ui/kit.ts`); `prefabs/viewer2d/scenarios/dungeon-spin-named.json`
+  `tools/scenarios/bot-to-result.json`, `src/ui/kit.ts`); `zhuda-engine-prefabs/viewer2d/scenarios/dungeon-spin-named.json`
 - **Engine version:** zhuda-laya-engine 2.0.0 (LayaAir 3.4.2), branch `unified` after `92d7da5c`
 
 ## When to take this route
@@ -47,10 +47,10 @@ tree every run. Checked in headless Chrome on a Mac at three shapes of page; on 
   `stageSteps` (the named click and the expectation for any player). It is not in the engine's
   runtime: a release build is not one byte larger, and a page built before the probe existed can
   be read as it is. It needs `window.Laya` on the page, which every web build of this engine has.
-- `prefabs/tools/detplay.mjs`: plays a scenario on a virtual clock (fixed frames of 1/60 s, a
-  seeded `Math.random`, a frozen `Date`). `prefabs/tools/detrepeat.mjs`: runs one scenario N
+- `zhuda-engine-prefabs/tools/detplay.mjs`: plays a scenario on a virtual clock (fixed frames of 1/60 s, a
+  seeded `Math.random`, a frozen `Date`). `zhuda-engine-prefabs/tools/detrepeat.mjs`: runs one scenario N
   times under it and says whether every run gave the same files.
-- `prefabs/viewer2d/tools/play.mjs` (the same file in `viewer3d`): the same steps on real time,
+- `zhuda-engine-prefabs/viewer2d/tools/play.mjs` (the same file in `viewer3d`): the same steps on real time,
   for the viewers' scenes.
 - `games/tools/device-measure.mjs` (a script for `games/tools/shot.mjs`, which needs Playwright):
   reports `stageNodes` and `stageNodesShown` beside `domNodes`.
@@ -95,13 +95,13 @@ tree every run. Checked in headless Chrome on a Mac at three shapes of page; on 
    - File: `games/zhuda-match/tools/scenarios/ui-flow.json` (title, mute and back by its label, a
      closed level that must do nothing, the first level, back to the title).
 4. **Run it once.**
-   `HOOK=__GAME__ READY=ready VIEWPORT=540x960 node prefabs/tools/detplay.mjs games/zhuda-match/dist/web games/zhuda-match/tools/scenarios/ui-flow.json "fresh=1&seed=7" <out dir>`
+   `HOOK=__GAME__ READY=ready VIEWPORT=540x960 node zhuda-engine-prefabs/tools/detplay.mjs games/zhuda-match/dist/web games/zhuda-match/tools/scenarios/ui-flow.json "fresh=1&seed=7" <out dir>`
    prints the log (every click with its point and the node's path, every expectation with the
    time it waited) and exits 0. A step that fails exits 1 with, on stderr,
    `FAILED step 3 of 4: expected {"name":"mute","text":"聲音：關"} within 0.5 s: found no node named "mute"; shown names: ZhudaRootScene, design, menu`,
    and leaves `failed.png` in the out dir.
 5. **Run it N times.**
-   `HOOK=__GAME__ READY=ready VIEWPORT=540x960 node prefabs/tools/detrepeat.mjs 20 games/zhuda-match/dist/web games/zhuda-match/tools/scenarios/ui-flow.json "fresh=1&seed=7" <out dir>`
+   `HOOK=__GAME__ READY=ready VIEWPORT=540x960 node zhuda-engine-prefabs/tools/detrepeat.mjs 20 games/zhuda-match/dist/web games/zhuda-match/tools/scenarios/ui-flow.json "fresh=1&seed=7" <out dir>`
    compares every run with the first: each screenshot by its decoded pixels, each stage report by
    its bytes, the log by its bytes. `<out dir>/repeat.json` has `"identical": true` and, per
    file, how many runs were the same; where a picture differs it says in how many pixels. Exit 1
@@ -133,7 +133,7 @@ tree every run. Checked in headless Chrome on a Mac at three shapes of page; on 
   passed) and not in the picture, the same way in all 20 runs. Put the picture in the next step:
   `{ "expect": { …, "within": 180 } }`, then `{ "wait": 0.2, "shot": "result" }`.
 - **A control that takes no click.** A button that acts on press and release (`listens:
-  ["mousedown", "mouseup"]`, as the spin button of `prefabs/2d/slot-ui`) may tell a tap from a
+  ["mousedown", "mouseup"]`, as the spin button of `zhuda-engine-prefabs/2d/slot-ui`) may tell a tap from a
   long press by time: give the click a `hold`.
 - **A label inside a Label.** LayaAir's `Label` holds a `Text` with the same words. A selector by
   text alone counts the pair once (the outer node); asked for by `"class": "Text"`, both are
@@ -183,7 +183,7 @@ tree every run. Checked in headless Chrome on a Mac at three shapes of page; on 
   20 the same for every file. Reports: `local-results/stage-probe/`.
 - Deliberate failures: an expectation that cannot hold and a click on a name that does not exist
   each exit 1 with the step and what was found.
-- `prefabs/viewer2d`: `node tools/play.mjs scenarios/dungeon-spin-named.json "scene=dungeon-spin"`
+- `zhuda-engine-prefabs/viewer2d`: `node tools/play.mjs scenarios/dungeon-spin-named.json "scene=dungeon-spin"`
   (real time): the probe reads 320 nodes, 49 shown; the spin button is clicked by its label and
   the round runs.
 

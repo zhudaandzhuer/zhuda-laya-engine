@@ -16,8 +16,8 @@ stretched, and ladders from a tear.
   1.18.0. Re-checked on 2026-11-26 as the prefab module `3d/layered-hosiery` on this repository's
   engine (2.0.0 and what came after it): desktop WebGPU and WebGL on the graphics card with a
   real mouse. Not re-checked on a phone.
-- **Reference consumer:** the prefab library's module `prefabs/3d/layered-hosiery/`, opened by
-  `prefabs/viewer3d` at `?scene=layered-hosiery`. It was the game `stocking-tear`, which left the
+- **Reference consumer:** the prefab library's module `zhuda-engine-prefabs/3d/layered-hosiery/`, opened by
+  `zhuda-engine-prefabs/viewer3d` at `?scene=layered-hosiery`. It was the game `stocking-tear`, which left the
   game centre workspace on 2026-11-25; its programs and its body were moved into the library on
   2026-11-26 and shown to draw the same pictures (see Checks). The files named below are the
   module's: `source/export_legs.py`, `meshleg.ts`, `layered-hosiery.ts`, `shaders.ts`,
@@ -134,7 +134,7 @@ grip; its shape goes to the material. Through a hole in a garment, pick the laye
 4. Lifting: pin a 3 × 3 pinch with `pin`/`movePin` and move it toward the finger at most
    1.6 m/s; the cloth makes the fold.
 
-### 6. Look and phones (reference: `hosieryLook`, `mountHosieryStudio`, `frameHosiery` in `layered-hosiery.ts`; the phone settings in `prefabs/viewer3d/src/presets/layered-hosiery.ts`)
+### 6. Look and phones (reference: `hosieryLook`, `mountHosieryStudio`, `frameHosiery` in `layered-hosiery.ts`; the phone settings in `zhuda-engine-prefabs/viewer3d/src/presets/layered-hosiery.ts`)
 
 1. [`ZhudaSceneLook`](../quality-route.md) with the sun from above the camera, AgX tone
    mapping, SMAA; `ZhudaHdrEnvironment` with `zhudaStudioEnvironment()` for the room's
@@ -170,7 +170,7 @@ grip; its shape goes to the material. Through a hole in a garment, pick the laye
 | The scene look's sun loses its shadow to a brighter light | WP22, done 2026-11-17: a light that casts no shadow no longer takes it | On an engine before it: added lights dimmer than the sun |
 | A failed hook compile stops drawing on WebGPU | WP23, done 2026-11-17: its objects are left out, the rest is drawn | Check `renderer.errors` after every shader change |
 | The cloth's hand holds one particle | WP24 | A pinned 3 × 3 pinch moved with `movePin` |
-| No body-to-layer helper (offset shell, per-vertex pull, stretch, tear) | not scheduled as an engine API; since 2026-11-26 a prefab module | `meshleg.ts` of `prefabs/3d/layered-hosiery` (`npx zhuda-prefab-sync . 3d/layered-hosiery`) |
+| No body-to-layer helper (offset shell, per-vertex pull, stretch, tear) | not scheduled as an engine API; since 2026-11-26 a prefab module | `meshleg.ts` of `zhuda-engine-prefabs/3d/layered-hosiery` (`npx zhuda-prefabs-sync . 3d/layered-hosiery`) |
 
 ## Checks
 
@@ -188,7 +188,7 @@ As the game, 2026-11-15 (engine 1.18.0):
   skirt cloth 64 × 14 ~6 ms a frame.
 
 As the prefab module, 2026-11-26 (Apple M4, Chrome 158 on the graphics card, this repository at
-`e4ba0212` with the module on top; pictures in `prefabs/3d/layered-hosiery/preview/`, the record in
+`e4ba0212` with the module on top; pictures in `zhuda-engine-prefabs/3d/layered-hosiery/preview/`, the record in
 `local-results/hosiery-modules/`):
 
 - **The move changed no picture.** The game's sources, unchanged, build against this engine;
@@ -197,18 +197,18 @@ As the prefab module, 2026-11-26 (Apple M4, Chrome 158 on the graphics card, thi
   In each of the six pictures the share of pixels that differ by more than 8 of 255 is 0.000%;
   two of the pictures are identical; the largest single difference (26) is of the size of the
   game's own difference between its two runs (18).
-- `prefabs/3d/layered-hosiery/source/look-book.mjs` through `games/tools/shot.mjs --gpu --hook
+- `zhuda-engine-prefabs/3d/layered-hosiery/source/look-book.mjs` through `games/tools/shot.mjs --gpu --hook
   __SCENE__`, on the WebGPU build and on the WebGL build, 39 pictures each: no renderer error,
   no page error. By real mouse: a tear on each thigh; jeans torn (tears `[0,0,1,0]`: two
   stockings, two garments) and the fishnet under them torn through the same hole
   (`[1,0,1,0]`); the long skirt's hem lifted from a mean height of 0.285 m to 0.435 m and back
   at 0.286 m 1.2 s after letting go. All fifteen kinds and all thirteen bottoms were drawn on
   both backends (this closes "the WebGL build after the switch to the modelled legs").
-- `prefabs/tests/layered-hosiery.test.mjs`, nine tests without a browser: the catalogue, the body
+- `zhuda-engine-prefabs/tests/layered-hosiery.test.mjs`, nine tests without a browser: the catalogue, the body
   file, the hooks' three rules (no derivative under a branch among them), and the per-vertex
   layer run on the real body (pull, relax, where a tear starts, a garment layer, the cloth's
   bodies).
-- `prefabs/viewer3d`: `npm run verify`; `node tools/play.mjs scenarios/layered-hosiery.json
+- `zhuda-engine-prefabs/viewer3d`: `npm run verify`; `node tools/play.mjs scenarios/layered-hosiery.json
   "scene=layered-hosiery"` tears both thighs by `drag` steps.
 
 ## Not checked
@@ -230,8 +230,8 @@ As the prefab module, 2026-11-26 (Apple M4, Chrome 158 on the graphics card, thi
 ## Boundaries
 
 - The prefab module owns the body, its parameters, the export script, the stocking catalogue,
-  the pull and tear rules and its evidence (`prefabs/3d/layered-hosiery/`). A game takes them with
-  `zhuda-prefab-sync` and writes only its own rules and interface on top.
+  the pull and tear rules and its evidence (`zhuda-engine-prefabs/3d/layered-hosiery/`). A game takes them with
+  `zhuda-prefabs-sync` and writes only its own rules and interface on top.
 - MPFB is not in the repository and must not be: it is GPL-3. Its output (the body file) is CC0.
 - The engine owns the APIs this route uses. The generic part of `meshleg.ts` (an offset layer
   over any mesh that can be pulled, measured for stretch and torn) is a candidate engine

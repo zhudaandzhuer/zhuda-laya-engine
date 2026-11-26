@@ -11,8 +11,8 @@ Three kinds of page, for three questions.
 
 The reference games under [`games/`](../games/README.md) are the routes' worked examples: real
 consumers of the engine in this checkout, rebuilt and tested by `npm run verify:games`.
-The [prefab library](prefab-library.md) under [`prefabs/`](../prefabs/README.md) holds the modules
-several games share; `npm run verify:prefabs` checks it against this checkout.
+The [prefab library](prefab-library.md) under [`zhuda-engine-prefabs/`](https://github.com/zhudaandzhuer/zhuda-engine-prefabs/blob/main/README.md) holds the modules
+several games share; `npm run verify:library` checks it against this checkout.
 
 ## Guides
 
@@ -90,7 +90,7 @@ several games share; `npm run verify:prefabs` checks it against this checkout.
 
 | Path | What it holds |
 | --- | --- |
-| `packages/core/` | The SDK. `index.ts` is the public entry; `runtime3d/` is the runtime session, time layers, input, actions, models, cameras, look and most 3D features; `film/` is scenes as data; `procedural/` textures, props and synthesised sound; `particles/`, `effects/`, `terrain/`, `shaders/`, `audio/`, `csg/`, `simulation/`, `prefabs/` are what their names say. Files directly under `core/` are the 2D, layout, Spine, platform and audio adapters. |
+| `packages/core/` | The SDK. `index.ts` is the public entry; `runtime3d/` is the runtime session, time layers, input, actions, models, cameras, look and most 3D features; `film/` is scenes as data; `procedural/` textures, props and synthesised sound; `particles/`, `effects/`, `terrain/`, `shaders/`, `audio/`, `csg/`, `simulation/`, `zhuda-engine-prefabs/` are what their names say. Files directly under `core/` are the 2D, layout, Spine, platform and audio adapters. |
 | `packages/types/` | Public declarations, generated from `packages/core` by `npm run build`. Read these before using a helper. |
 | `packages/compiler/` | Every command-line tool: build, init, Doctor, prefab and model editors, level-of-detail, mini-game packaging, the audits. |
 | `packages/mcp-server/` | The MCP server and the film host: routes, guardrails, examples and validators for agents. |

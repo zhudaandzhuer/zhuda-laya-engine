@@ -17,15 +17,15 @@ playing in the engine in headless desktop Chrome; not on a phone.
 - **Status:** the cocky stickman as it stands on 2026-11-26: 2,994 triangles (699 of them the two
   hands), one material with three 512×512 textures (base colour with the face painted in, normal,
   occlusion), 20 bones, two idles of 4 s and 3.2 s; rebuilt in this repository on 2026-11-26 (two
-  runs give the same file) with `prefabs/tests/stickman.test.mjs` passing 10 of 10; overlap with
+  runs give the same file) with `zhuda-engine-prefabs/tests/stickman.test.mjs` passing 10 of 10; overlap with
   the three-view turnaround 0.892 (front) / 0.936 (side), after the hands, feet and armpits were
   changed on purpose toward a generated high-poly model; 0 errors and 0 warnings from the Khronos
   validator; played in the engine with a continuous cross-fade and idles that take turns by
   themselves (read frame by frame on 2026-11-25, before those last changes); made for a
   colleague, who reviewed it in two rounds
-- **Reference consumer:** this repository, `prefabs/3d/stickman/` (`source/stickman-def.mjs`,
+- **Reference consumer:** this repository, `zhuda-engine-prefabs/3d/stickman/` (`source/stickman-def.mjs`,
   `source/build.mjs`, `source/bake.mjs`, `source/face/`, `stickman.ts`) and the viewer's
-  `prefabs/viewer3d/src/presets/stickman.ts`
+  `zhuda-engine-prefabs/viewer3d/src/presets/stickman.ts`
 - **Engine version:** zhuda-laya-engine 1.18.0, `def94aae9e7ebf5f9f35b915b54dbb4c3e5fe43c`, for the
   run in the browser; the model was rebuilt and its tests run in this repository (2.0.0) on
   2026-11-26
@@ -55,16 +55,16 @@ playing in the engine in headless desktop Chrome; not on a phone.
 - The turnaround: the image command of the owner's `zhuda-windows` agent skill (not in this
   repository), with gpt-image-2.6 `flare`; it spends the owner's image quota, and 2 pictures take
   about 20 seconds. An example batch file:
-  `prefabs/3d/stickman/source/turnaround/turnaround-batch.json`.
-- The face: `prefabs/3d/stickman/source/face/face-mask.png`, taken by
+  `zhuda-engine-prefabs/3d/stickman/source/turnaround/turnaround-batch.json`.
+- The face: `zhuda-engine-prefabs/3d/stickman/source/face/face-mask.png`, taken by
   `source/face/extract-face.mjs` from the head of a 50,000-triangle model that Hunyuan 3D (an
   outside image-to-3D tool) generated from the turnaround. The mask is in this repository; that
   model is not.
 - Validation: Khronos `gltf-validator`. The run used a copy that is not in this repository: the one
   in the `node_modules` of `games/jiuye-seal-pact`, a game left on the verification repository's
   old review branch (see `docs/plans/records/repo-unification/left-behind.md`), used read-only by
-  `require(<absolute path>)`. The viewer's `prefabs/viewer3d/tools/play.mjs` (real time) and
-  `prefabs/tools/detplay.mjs` (virtual clock, for recording); ffmpeg.
+  `require(<absolute path>)`. The viewer's `zhuda-engine-prefabs/viewer3d/tools/play.mjs` (real time) and
+  `zhuda-engine-prefabs/tools/detplay.mjs` (virtual clock, for recording); ffmpeg.
 
 ## Steps
 
@@ -374,7 +374,7 @@ model's present ones.
   stripping does not support `constructor(private readonly x)`; use ordinary fields.
 - **Screenshots in real time cannot be made into a video.** Every screenshot of `play.mjs` takes
   over a thousand milliseconds while the scene's clock keeps running, so the recording has less
-  than one frame a second. Record with `prefabs/tools/detplay.mjs` (a virtual clock;
+  than one frame a second. Record with `zhuda-engine-prefabs/tools/detplay.mjs` (a virtual clock;
   `STEP_MS=33.33` is a fixed 1/30 s per step, `VIEWPORT=720x720`, query `scene=stickman&auto=0`).
 - **In the viewer's scenario, changing clip with a `fade` makes the hands jump to the bind pose.**
   `S.set({ clip, fade })` changes clip once and then cross-fades once more in the same frame. It
@@ -401,7 +401,7 @@ model's present ones.
   in the same way. Since 2.0.0 the engine's glTF adapter files the nodes when it makes a clip
   (`indexLaya342ClipNodes` in `packages/core/runtime3d/Laya342GltfAdapter.ts`,
   [animation control](../animation-control.md)). On an engine before 2.0.0, or in plain LayaAir 3,
-  call `repairGltfCrossFade(animator)` (`prefabs/3d/stickman/stickman.ts`) after loading; on 2.0.0
+  call `repairGltfCrossFade(animator)` (`zhuda-engine-prefabs/3d/stickman/stickman.ts`) after loading; on 2.0.0
   it finds nothing to change and may stay.
 - glTF has no loop flag, and a clip read by LayaAir does not necessarily loop by default: set
   `clip.islooping = true` yourself after loading.
@@ -415,7 +415,7 @@ model's present ones.
 
 ## Checks
 
-The commands are written for this repository's `prefabs/`.
+The commands are written for this repository's `zhuda-engine-prefabs/`.
 
 ```sh
 cd prefabs
@@ -428,7 +428,7 @@ cd viewer3d && npm run verify                                 # sync, build, typ
 node tools/play.mjs scenarios/stickman.json "scene=stickman&auto=0"
 ```
 
-From the repository's root, `npm run verify:prefabs` runs the library's and both viewers' checks.
+From the repository's root, `npm run verify:library` runs the library's and both viewers' checks.
 
 Checked on 2026-11-26 in this repository: `build.mjs` run twice gives the same `stickman.glb`,
 which differs from the file built in the workspace only in its `asset.generator` label (geometry,
@@ -468,7 +468,7 @@ video in `preview/` were shot again from the model of 2026-11-26.
 ## Boundaries
 
 - A character's definition, the way it is made, its model and its helper code go in
-  `prefabs/3d/<name>/`; a game takes them with `sync.mjs`.
+  `zhuda-engine-prefabs/3d/<name>/`; a game takes them with `sync.mjs`.
 - The character kit itself is `games/tools/characters/` in this repository; the stickman's tools
   import it from there.
 - The Animator, glTF reading and the cross-fade are the engine's (LayaAir's); do not write your

@@ -37,10 +37,10 @@ none is repeated here.
   No MCP tool was used.
 - Headless Chrome through the engine's `packages/compiler/chrome-host.mjs` (`chromeFixture`) and CDP events
   for size, touch and keys; the Chrome version is not in the game's records.
-- Prefab modules, copied with `node node_modules/zhuda-laya-engine/prefabs/scripts/sync.mjs . <module…>` and
-  never edited in the game: `prefabs/input/hold-input`, `prefabs/ui/virtual-stick`, `prefabs/ui/dom`,
-  `prefabs/ui/game-menu`, `prefabs/ui/settings-form`, `prefabs/systems/storage`, `prefabs/2d/prefab-atlas`,
-  `prefabs/ui/page-lock`; the Go package `prefabs/server/matchrelay` for the server.
+- Prefab modules, copied with `node node_modules/zhuda-engine-prefabs/scripts/sync.mjs . <module…>` and
+  never edited in the game: `zhuda-engine-prefabs/input/hold-input`, `zhuda-engine-prefabs/ui/virtual-stick`, `zhuda-engine-prefabs/ui/dom`,
+  `zhuda-engine-prefabs/ui/game-menu`, `zhuda-engine-prefabs/ui/settings-form`, `zhuda-engine-prefabs/systems/storage`, `zhuda-engine-prefabs/2d/prefab-atlas`,
+  `zhuda-engine-prefabs/ui/page-lock`; the Go package `zhuda-engine-prefabs/server/matchrelay` for the server.
 - Python 3 with Pillow, NumPy, SciPy and fontTools for the asset tools (versions not recorded). Art: seven
   sheets from an image model the design notes name `gpt-image-2.6` (prompts in `design/prod-v1.json`); font:
   a subset of Noto Sans CJK TC Bold (SIL Open Font License). Both stay in the game.
@@ -230,6 +230,6 @@ on the owner's portals (see `PORTALS.md` in the workspace).
 - The game: the rules and tables, stages, the computer opponent, art, screens, the protocol document, and
   for now `src/net/`, `src/ui/rotate.ts` and the test tools, which belong in the prefab library before a
   second game.
-- The prefab library: the eight modules under Tools and `prefabs/server/matchrelay`.
+- The prefab library: the eight modules under Tools and `zhuda-engine-prefabs/server/matchrelay`.
 - The engine: boot and sizing, the frame loop, the prefab library class, the audio adapter, the synthesiser,
   build, Doctor and the headless fixture. Nothing in the engine knows about a match.

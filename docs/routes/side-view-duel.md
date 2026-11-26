@@ -7,7 +7,7 @@ breastplate that dents at the point of contact and springs back, and combat on a
 simulation. It is played with the keyboard, with the mouse held to charge, or with two thumbs on a
 phone, and has a pause menu, sound settings and a victory or defeat screen. The result is Ashfall
 Duel (灰燼之庭), a game by another author that was taken apart on 2026-11-25 into the modules that
-are now `prefabs/2d/ashfall-duel` and `prefabs/2d/cel-motion`; the viewer's `?scene=ashfall-duel`
+are now `zhuda-engine-prefabs/2d/ashfall-duel` and `zhuda-engine-prefabs/2d/cel-motion`; the viewer's `?scene=ashfall-duel`
 is pixel for pixel the same as the original game. Checked only in desktop Chrome and its touch
 emulation.
 
@@ -20,14 +20,14 @@ emulation.
 - **Checked on:** desktop WebGL (Apple M4, headless Chrome 158 on macOS, 1280×720); phones only as
   Chrome's touch emulation (390×844, 844×390), no real phone
 - **Status:** taken apart on 2026-11-25 from the original game (removed after it was taken apart;
-  its history is kept as a git bundle under `prefabs/2d/ashfall-duel/source/`): the duel's state
+  its history is kept as a git bundle under `zhuda-engine-prefabs/2d/ashfall-duel/source/`): the duel's state
   the same as the original over 240,000 steps, 12 desktop views and 6 portrait views pixel for
   pixel the same as the original game, the three prefab comparisons and the 12 touch, keyboard and
   mouse checks passed
-- **Reference consumer:** this repository, `prefabs/2d/ashfall-duel/` (the game itself and
+- **Reference consumer:** this repository, `zhuda-engine-prefabs/2d/ashfall-duel/` (the game itself and
   `source/`: the git bundle, the bake scripts, the comparison tools, the new-project template
-  `source/proof/library-game/`), `prefabs/2d/cel-motion/`,
-  `prefabs/viewer2d/src/presets/ashfall-duel.ts`
+  `source/proof/library-game/`), `zhuda-engine-prefabs/2d/cel-motion/`,
+  `zhuda-engine-prefabs/viewer2d/src/presets/ashfall-duel.ts`
 - **Engine version:** zhuda-laya-engine 1.18.0, `def94aae9e7ebf5f9f35b915b54dbb4c3e5fe43c`
   (LayaAir 3.4.2)
 
@@ -51,45 +51,45 @@ emulation.
 
 ## Tools
 
-- `prefabs/scripts/sync.mjs` (`2d/ashfall-duel` brings in `2d/cel-motion`, `input/hold-input`,
-  `ui/dom`, `ui/game-menu`, `ui/settings-form` and `systems/storage`); the viewer `prefabs/viewer2d`
+- `zhuda-engine-prefabs/scripts/sync.mjs` (`2d/ashfall-duel` brings in `2d/cel-motion`, `input/hold-input`,
+  `ui/dom`, `ui/game-menu`, `ui/settings-form` and `systems/storage`); the viewer `zhuda-engine-prefabs/viewer2d`
   (`npm run build && npm run view`, `?scene=ashfall-duel&view=…`).
 - Engine commands: `zhuda-laya-build`, `zhuda-laya-accept` (prefab comparison), `zhuda-laya-doctor`.
   Node 24.
-- The touch, keyboard and mouse script `prefabs/2d/ashfall-duel/source/tools/check-controls.mjs`
+- The touch, keyboard and mouse script `zhuda-engine-prefabs/2d/ashfall-duel/source/tools/check-controls.mjs`
   needs Playwright (or playwright-core) and Chrome. The Mac it was run on has no Playwright of its
   own: the run used a `playwright-core` 1.61.1 that belongs to another application, in a folder
   outside the workspace, with
   `CHROME_BIN="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"` and `ASHFALL_VIDEO=0`
   (recording needs Playwright's own ffmpeg, which that Mac does not have).
 - Pictures: the image command of the owner's `zhuda-windows` agent skill (not in this repository);
-  the original author used ImageGen, and the prompts are in `prefabs/2d/ashfall-duel/source/ART.md`.
+  the original author used ImageGen, and the prompts are in `zhuda-engine-prefabs/2d/ashfall-duel/source/ART.md`.
   Baking the in-betweens: Python 3 with Pillow, NumPy and OpenCV (see
   [pose-atlas-motion](pose-atlas-motion.md)). Sound effects: the engine's `renderZhudaSynthWav`
   (`source/tools/bake-audio.mjs`; a re-run is byte for byte the same).
 - Release: the owner's `zhuda-windows` agent skill (not in this repository), its route B. A release
   acts outside the workspace: ask the owner first.
-- Comparison: `prefabs/tools/detplay.mjs` (`PRELOAD=`) and `prefabs/tools/pixdiff.py`.
+- Comparison: `zhuda-engine-prefabs/tools/detplay.mjs` (`PRELOAD=`) and `zhuda-engine-prefabs/tools/pixdiff.py`.
 
 ## Steps
 
-1. **Look first.** `cd prefabs/viewer2d && npm run build && npm run view`, then open
+1. **Look first.** `cd zhuda-engine-prefabs/viewer2d && npm run build && npm run view`, then open
    `index.html?scene=ashfall-duel`; `&view=impact|heavy|charge|evade|paused|sound|help|victory|defeat|duel`
    jumps straight to that moment (the views of a blow are frozen; `S.set({ freeze: false })` lets
    them go on). To see it without running anything, look at
-   `prefabs/2d/ashfall-duel/preview/sheet.jpg`.
-2. **Start the project.** Follow `prefabs/2d/ashfall-duel/source/proof/library-game/`:
+   `zhuda-engine-prefabs/2d/ashfall-duel/preview/sheet.jpg`.
+2. **Start the project.** Follow `zhuda-engine-prefabs/2d/ashfall-duel/source/proof/library-game/`:
    `package.json` pins the engine at `def94aa`; `zhuda.config.json` has
    `features: ["core","2d","ui"]`, `branding: { mode: "engine" }`, `viewport: 1280×720 full`,
    `prefabPreview: "src/prefabs.ts"` and three `prefabChecks`; `public/index.html` holds only
    `<main id="game">` and the two engine markers. Sync the module in:
-   `node prefabs/scripts/sync.mjs <game dir> 2d/ashfall-duel` from a checkout of this repository,
-   or from the game `node node_modules/zhuda-laya-engine/prefabs/scripts/sync.mjs . 2d/ashfall-duel`.
+   `node zhuda-engine-prefabs/scripts/sync.mjs <game dir> 2d/ashfall-duel` from a checkout of this repository,
+   or from the game `node node_modules/zhuda-engine-prefabs/scripts/sync.mjs . 2d/ashfall-duel`.
    `src/Main.ts` makes two calls, `mountCourtPage({ replace })` → `startAshfallDuel(host)`, chained
    with `.then()`: **no top-level await**. `src/prefabs.ts` is one line that re-exports
    `definitions` and `createAssetProvider`. Check: `npm run verify` (build, types, Doctor).
 3. **Prefab comparison.** Put the reference pictures in `references/` (for the same art use
-   `prefabs/2d/ashfall-duel/source/references/`) and run `npx zhuda-laya-accept` first: the whole
+   `zhuda-engine-prefabs/2d/ashfall-duel/source/references/`) and run `npx zhuda-laya-accept` first: the whole
    scene with `maxDiffPixels: 1000` (SwiftShader on the Mac and on Windows differ by 338 pixels, by
    at most 11/255 at any pixel), the knight and the warden at 0, and the warden unloaded and loaded
    30 times in a row. On 2026-11-25 the library version gave 338 / 0 / 0, and its three screenshots
@@ -149,7 +149,7 @@ emulation.
     this repository): copy `dist/game.zip` to the Windows host, unpack it outside the site's
     folder, and run `scripts/publish.py <id> <folder> --title "<name>"`. After the release, run
     `check-controls.mjs` again against the public address and keep a record in the format of
-    `prefabs/2d/ashfall-duel/source/release-records/public-release-20261125.json`.
+    `zhuda-engine-prefabs/2d/ashfall-duel/source/release-records/public-release-20261125.json`.
 
 ## Pitfalls
 
@@ -190,8 +190,8 @@ Commit ids below are in the original game's history (the git bundle).
   library's DOM types have no NodeList iterator → `Array.from()`. None of the three changes
   behaviour (the state is the same over 240,000 steps).
 - **The static server's MIME types.** An SVG sent as `application/octet-stream` is not drawn by
-  `<img>` (the co-branding mark on the title disappears). → Both `prefabs/viewer2d/tools/serve.mjs`
-  and `prefabs/tools/detplay.mjs` need `.svg` (and, while there, `.webp`, `.wav`, `.lh`).
+  `<img>` (the co-branding mark on the title disappears). → Both `zhuda-engine-prefabs/viewer2d/tools/serve.mjs`
+  and `zhuda-engine-prefabs/tools/detplay.mjs` need `.svg` (and, while there, `.webp`, `.wav`, `.lh`).
 - **The viewer's own background style also applied to the new `#game`.** → The preset adds one
   rule, `#theatre>#game{background:none}`; after that it is pixel for pixel the same as the
   original game.
@@ -214,14 +214,14 @@ Commit ids below are in the original game's history (the git bundle).
 
 | Gap | Workaround |
 | --- | --- |
-| No character animation by "key-pose atlas plus in-betweens" (the engine's 2D characters are Spine) | `prefabs/2d/cel-motion`: `PoseTrack` and `CelSprite` (every frame draws a 16×20 deforming mesh with `graphics.drawTriangles`) |
+| No character animation by "key-pose atlas plus in-betweens" (the engine's 2D characters are Spine) | `zhuda-engine-prefabs/2d/cel-motion`: `PoseTrack` and `CelSprite` (every frame draws a 16×20 deforming mesh with `graphics.drawTriangles`) |
 | No hit test along an arbitrary polyline, no weapon that bends as a cantilever | The game's own `motion.ts` (`intersectsPlate`, `plantBlade`, `FlexibleBlade`) |
 | The engine's opening screen (the LayaAir mark) is a CSS animation in real time, and goes only after a `setTimeout` of 2.18 s and the page's load | Screenshots and comparisons wait for it to finish (`ready` is true only once the opening has left and 10 frames have run); on a virtual clock use `NOTRANSITIONS=1` and shoot 0.5 s or more after the hook appears **After 2.0.0:** it still runs on real time, but `whenZhudaSplashGone()` says when it has gone, so a script waits for that and not for a fixed time. |
-| The engine's headless comparison has no clock entry for a game without a hook | `PRELOAD=` of `detplay.mjs`: it loads `prefabs/2d/ashfall-duel/source/proof/original-hook.js`, which, when `#theatre` leaves `loading` (before the first frame), attaches a `__SCENE__` that reads its values from the DOM |
+| The engine's headless comparison has no clock entry for a game without a hook | `PRELOAD=` of `detplay.mjs`: it loads `zhuda-engine-prefabs/2d/ashfall-duel/source/proof/original-hook.js`, which, when `#theatre` leaves `loading` (before the first frame), attaches a `__SCENE__` that reads its values from the DOM |
 
 ## Checks
 
-The commands are written for this repository's `prefabs/`; the results are those of 2026-11-25,
+The commands are written for this repository's `zhuda-engine-prefabs/`; the results are those of 2026-11-25,
 from before the library moved into this repository.
 
 ```sh
@@ -237,7 +237,7 @@ Results on 2026-11-25: the library's 105 tests and the viewer's verify all passe
 keyboard and mouse checks passed, with the position and size of the buttons in portrait and in
 landscape exactly those of the original game's record; prefab comparison 338 / 0 / 0; the
 pixel-for-pixel comparison with the original game is in the verification section (「驗證」) of
-`prefabs/2d/ashfall-duel/README.md`.
+`zhuda-engine-prefabs/2d/ashfall-duel/README.md`.
 
 ## Not checked
 
@@ -257,7 +257,7 @@ pixel-for-pixel comparison with the original game is in the verification section
 - The game (or a `2d/<name>` game module): the character pictures, joint tables, move timetables,
   the warden's AI, the numbers, the interface's text and layout, sound, release settings and
   records.
-- The prefab library (`prefabs/`): `2d/cel-motion` (motion and drawing for any side-view
+- The prefab library (`zhuda-engine-prefabs/`): `2d/cel-motion` (motion and drawing for any side-view
   character), `input/hold-input`, `ui/game-menu`, `ui/settings-form`, `ui/dom`, `systems/storage`;
   and `2d/ashfall-duel`, the game itself as taken apart.
 - The engine: the action frame state machine, the input buffer, the fixed clock and time layers,

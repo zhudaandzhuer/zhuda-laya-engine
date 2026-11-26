@@ -1,2 +1,0 @@
-[ { "js": "S.set({ run: false, hour: 10.5 }); window.__log = []; setInterval(() => { const s = S.state(); window.__log.push(s.setting + ':' + s.renderScale + '@' + s.fps); }, 2000);", "wait": 30 },
-  { "js": "return window.__log.join(' ');" } ]

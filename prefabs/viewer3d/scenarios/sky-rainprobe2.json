@@ -1,5 +1,0 @@
-[
-  { "js": "S.set({ run: false, hour: 14, weather: 'rain', distance: 12, pitch: 0.2 });", "wait": 2 },
-  { "js": "const s = S.fx.rain.system; s.spec.billboard = 'camera'; s.spec.stretch = 1; s.spec.size = [0.3, 0.3]; S.fx.splashes.system.spec.billboard = 'camera';", "wait": 1.5, "shot": "p-rain-cam" },
-  { "js": "const s = S.fx.rain.system; s.spec.billboard = 'velocity'; s.spec.stretch = 3; s.spec.size = [0.2, 0.2];", "wait": 1.5, "shot": "p-rain-vel" }
-]

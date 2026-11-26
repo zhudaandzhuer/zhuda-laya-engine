@@ -1,6 +1,0 @@
-[
- {"wait": 1, "expect": [{"text": "前進"}, {"text": "準備出發"}, {"text": "100,000"}, {"js": "S.state().phase === 'idle' && S.state().sequence === 0"}], "probe": "named-01-idle"},
- {"expect": {"js": "window.__ZHUDA_SPLASH__ && window.__ZHUDA_SPLASH__.gone === true", "within": 20}, "shot": "named-01-idle"},
- {"click": {"text": "前進"}, "expect": {"js": "S.state().sequence === 1", "within": 10}},
- {"expect": [{"js": "S.state().phase === 'idle'", "within": 30}, {"text": "100,000", "count": 0}, {"text": "準備出發", "count": 0}], "wait": 0.5, "shot": "named-02-after-advance"}
-]

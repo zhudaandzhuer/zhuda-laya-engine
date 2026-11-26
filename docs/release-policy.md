@@ -5,6 +5,16 @@ The engine has one version source: the root [`package.json`](../package.json).
 artifacts must carry the same version. A Git tag and GitHub release are created
 for every public stable version.
 
+## Not released yet
+
+**2.1.0** — the prefab library leaves this repository and this package for a repository of its
+own, [`zhuda-engine-prefabs`](https://github.com/zhudaandzhuer/zhuda-engine-prefabs). This is
+why the number is a minor one: the package no longer has `prefabs/` or the `zhuda-prefab-sync`
+command, and a game takes modules with the library's `zhuda-prefabs-sync`. The library's
+version follows the engine line it was checked on, and `npm run verify:library` runs its checks
+on this checkout before a release. No change to the public API. Details in the
+[changelog](../CHANGELOG.md).
+
 ## Current stable release
 
 **v2.0.1** (2026-11-26) — what came after 2.0.0 the same week: a film scene drawn

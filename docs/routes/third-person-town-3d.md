@@ -28,7 +28,7 @@ place already exists as a film scene or a set of models. Take [new-game-project]
 Not this route: a diorama seen whole ([floating-island](floating-island.md)); kilometres of terrain
 ([outdoor-landscape](outdoor-landscape.md)); a film ([film-as-data](film-as-data.md)); fighting as the core
 ([hunting-action-3d](hunting-action-3d.md); this game's three fighting callings are left out here; their rules are
-`prefabs/systems/pig-combat`); a crowd that walks ([crowd runtime](../crowd-runtime.md): here all fifteen stand still).
+`zhuda-engine-prefabs/systems/pig-combat`); a crowd that walks ([crowd runtime](../crowd-runtime.md): here all fifteen stand still).
 
 ## Tools
 
@@ -229,8 +229,8 @@ height grid, the camera rig and queries, clip blending, toon materials, the clot
 warm-up. The game owns the place and its data, the rules of walking, of the day and of interaction, the people and their
 texts, the interface, the picture settings, its tools and its checks.
 
-For the prefab library (`prefabs/`): `prefabs/systems/cloth` and `prefabs/systems/pig-combat` already came from this
-game, which still uses its own copies. Candidates, set against `prefabs/3d/`: the walker and camera (`island-walker`
+For the prefab library (`zhuda-engine-prefabs/`): `zhuda-engine-prefabs/systems/cloth` and `zhuda-engine-prefabs/systems/pig-combat` already came from this
+game, which still uses its own copies. Candidates, set against `zhuda-engine-prefabs/3d/`: the walker and camera (`island-walker`
 asks a world only "how high" and "may I stand", its camera avoids given spheres, and it has no steps, slopes, colliders,
 run or swim: `stepPlayer` and `camera-walls.ts` are the fuller set); the day (`day-look.ts` returns a whole look with
 rain and storm for two islands; `daylight.ts` has dark nights lit by lamps and mist at dawn, and could be a third

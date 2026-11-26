@@ -1,7 +1,7 @@
 # Route: a finished game dissolved into shared prefabs, then the original project removed
 
 A game that is finished but no longer maintained on its own has its scenes, characters, systems
-and assets taken apart into modules of the prefab library (`prefabs/`): any game can fetch them
+and assets taken apart into modules of the prefab library (`zhuda-engine-prefabs/`): any game can fetch them
 with `sync.mjs`, the viewer shows them at `?scene=<id>`, and every module has preview pictures
 and a README. Afterwards the modules are compared with the original game pixel by pixel, on the
 same engine, in the same Chrome, on a virtual clock, and only when they are the same is the
@@ -17,9 +17,9 @@ of about 30 MB.
   floating island 15, home island 10) and three 2D games (the duel `ashfall-duel` 18 frames,
   Dungeon Spin 26, the slot machine's maths round by round) are the same as the original games;
   the library's 147 tests and `verify` in both viewers all pass.
-- **Reference consumer:** `prefabs/3d/` (the three islands), `prefabs/2d/` (ashfall-duel,
-  dungeon-spin, slot-ui and others), `prefabs/viewer3d/`, `prefabs/viewer2d/`,
-  `prefabs/tools/detplay.mjs`.
+- **Reference consumer:** `zhuda-engine-prefabs/3d/` (the three islands), `zhuda-engine-prefabs/2d/` (ashfall-duel,
+  dungeon-spin, slot-ui and others), `zhuda-engine-prefabs/viewer3d/`, `zhuda-engine-prefabs/viewer2d/`,
+  `zhuda-engine-prefabs/tools/detplay.mjs`.
 - **Engine version:** zhuda-laya-engine 1.18.0, `def94aae9e7ebf5f9f35b915b54dbb4c3e5fe43c`
 
 Everything on this page was done and checked on 2026-11-25, when the prefab library and the two
@@ -43,23 +43,23 @@ them.
     `3d/layered-hosiery` and `2d/spine-tights`, because a route that names files nobody can
     open is half a route. Those two were moved in without this route's pixel proof against a
     running original; what was compared instead is written in each module's README.
-- Read first: `prefabs/README.md` and `prefabs/AGENTS.md` (the module rules, the folder rules,
+- Read first: `zhuda-engine-prefabs/README.md` and `zhuda-engine-prefabs/AGENTS.md` (the module rules, the folder rules,
   sync).
 
 ## Tools
 
-- `prefabs/scripts/sync.mjs`: copies modules into a game
-  (`node prefabs/scripts/sync.mjs <game dir> <module…>` from a checkout of this repository, or
-  from a game `node node_modules/zhuda-laya-engine/prefabs/scripts/sync.mjs . <module…>`). `.ts`
+- `zhuda-engine-prefabs/scripts/sync.mjs`: copies modules into a game
+  (`node zhuda-engine-prefabs/scripts/sync.mjs <game dir> <module…>` from a checkout of this repository, or
+  from a game `node node_modules/zhuda-engine-prefabs/scripts/sync.mjs . <module…>`). `.ts`
   files go to `src/common/`, other files (models, sounds) go unchanged to `public/common/`;
   `--check` compares byte by byte.
-- `prefabs/viewer3d/`: a consumer project of the engine. `?scene=<id>` opens any scene;
+- `zhuda-engine-prefabs/viewer3d/`: a consumer project of the engine. `?scene=<id>` opens any scene;
   `tools/play.mjs` plays `scenarios/*.json` in headless Chrome and takes screenshots;
   `npm run verify`.
-- `prefabs/tools/detplay.mjs`: a player on a virtual clock (every frame is 1/60 s;
+- `zhuda-engine-prefabs/tools/detplay.mjs`: a player on a virtual clock (every frame is 1/60 s;
   `performance.now`, `Date` and the timers follow it; `Math.random` has a fixed seed;
   `BLOCK=<regex>` answers 404 for some files, `NOTRANSITIONS=1` turns CSS transitions off).
-- `prefabs/tools/pixdiff.py`: the number of differing pixels between PNGs of the same name in
+- `zhuda-engine-prefabs/tools/pixdiff.py`: the number of differing pixels between PNGs of the same name in
   two folders (Python 3 with Pillow).
 - For taking several games apart in parallel: Claude sub-agents, each with an isolated work area
   of its own.
@@ -90,7 +90,7 @@ them.
 5. **The viewer must build and run first.** Start with one minimal preset (`nature-pack`) to
    make sure that binary assets sync, that `common/…` URLs load, and that the build, the types
    and the Doctor all pass.
-6. **One sub-agent for each game, each in an isolated work area.** `rsync` a copy of `prefabs/`
+6. **One sub-agent for each game, each in an isolated work area.** `rsync` a copy of `zhuda-engine-prefabs/`
    (without `node_modules` and `viewer3d/dist`), with `node_modules` as a symlink back to the
    real one. In its work area a sub-agent may change `catalog.json` and `presets.ts`; only the
    main agent merges into the real library. Say plainly: which files to read, how to cut the
@@ -102,7 +102,7 @@ them.
    was hard-wired to one island takes it by injection instead** (`PigWorld`, `WalkWorld`), so it
    can be used on another island. The parts that do not touch the engine (ground queries, rules,
    the table of lines) go in a file of their own, so that node can test them. The original
-   game's node tests move into `prefabs/tests/` with them.
+   game's node tests move into `zhuda-engine-prefabs/tests/` with them.
 8. **A viewer preset reproduces the original game.** Keep every URL parameter it had; offer the
    original `window.__ISLAND__` hook unchanged as `window.__SCENE__` (with `ready` added), so
    that an original scenario file runs once `I.` is replaced by `S.`.
@@ -131,7 +131,7 @@ them.
     garden island moved to the workspace's `films/zhuda-garden-island-a-day-off/` (the mp4, the
     narration, the storyboard); the single frames are not kept.
 13. **Documents.** The module table and the version record (raise the version) in
-    `prefabs/README.md`, the rules in its `AGENTS.md`; each module's own README (how to call it,
+    `zhuda-engine-prefabs/README.md`, the rules in its `AGENTS.md`; each module's own README (how to call it,
     a code example, the parameters, what was verified, what was not, where it came from).
 14. **Find what refers to the original project from outside.** `grep -rl` over the whole
     workspace (excluding `node_modules` and `dist`); a "Reference consumer" in a route or a
@@ -156,7 +156,7 @@ them.
   health that the script returns), never the pixels alone.
 - **A 2D game needs the viewer that is fixed to WebGL.** The 3D viewer is `renderer: auto`
   (headless Chrome takes WebGPU) and the original 2D games are WebGL; drawn differently, they
-  cannot be compared pixel by pixel. Use `prefabs/viewer2d` for 2D. A 2D build opens with about
+  cannot be compared pixel by pixel. Use `zhuda-engine-prefabs/viewer2d` for 2D. A 2D build opens with about
   5 s of engine logo; `ready` must wait until it is over.
 - **The original game has no `__SCENE__` hook.** `detplay.mjs` takes `HOOK=<global name>`
   (Dungeon Spin's `__DUNGEON_GAME__`, for example) or `PRELOAD=<script>` (the duel used a hook
@@ -197,12 +197,12 @@ them.
 
 | Gap | Workaround |
 | --- | --- |
-| The engine's runtime has no fixed-clock mode for comparing two builds | `prefabs/tools/detplay.mjs`, which ships in the package since 2.0.0, replaces `requestAnimationFrame`, `performance.now`, `Date`, the timers and `Math.random` before the page's scripts run **After 2.0.0:** `fixedDeltaSec` on the session fixes its clock per frame (timers, waits, tweens, layers, `update(dt)`); it does not replace the page's clocks, which `detplay.mjs` still does. |
+| The engine's runtime has no fixed-clock mode for comparing two builds | `zhuda-engine-prefabs/tools/detplay.mjs`, which ships in the package since 2.0.0, replaces `requestAnimationFrame`, `performance.now`, `Date`, the timers and `Math.random` before the page's scripts run **After 2.0.0:** `fixedDeltaSec` on the session fixes its clock per frame (timers, waits, tweens, layers, `update(dt)`); it does not replace the page's clocks, which `detplay.mjs` still does. |
 
 Closed in 2.0.0: the headless Chrome host is a public entry
 (`zhuda-laya-engine/compiler/chrome-host`; when the route was checked the tools imported the
 installed package's file by path), and [floating-island](floating-island.md) names
-`prefabs/3d/sky-island` as its reference consumer instead of the removed game.
+`zhuda-engine-prefabs/3d/sky-island` as its reference consumer instead of the removed game.
 
 ## Checks
 
@@ -211,9 +211,9 @@ cd prefabs && npm run verify                                  # types (against e
 cd viewer3d && node ../scripts/sync.mjs . && npm run verify   # sync check, build, types, Doctor, tests
 # from the repository root: the original game (a copy with only the pin changed) and the viewer,
 # on the same scenario with the same parameters
-node prefabs/tools/detplay.mjs <original game>/dist/web <scenario.json> "width=1280&height=720&fx=high&governor=0" <out A>
-node prefabs/tools/detplay.mjs prefabs/viewer3d/dist/web <scenario.json> "scene=<id>&width=1280&height=720&fx=high&governor=0" <out B>
-python3 prefabs/tools/pixdiff.py <out A> <out B>
+node zhuda-engine-prefabs/tools/detplay.mjs <original game>/dist/web <scenario.json> "width=1280&height=720&fx=high&governor=0" <out A>
+node zhuda-engine-prefabs/tools/detplay.mjs zhuda-engine-prefabs/viewer3d/dist/web <scenario.json> "scene=<id>&width=1280&height=720&fx=high&governor=0" <out B>
+python3 zhuda-engine-prefabs/tools/pixdiff.py <out A> <out B>
 npm run verify                                                # in the repository root: its route audit checks the format of this page
 ```
 
@@ -240,7 +240,7 @@ original game's results; `rendererErrors` and `pageErrors` were empty every time
 - The game: its play, its levels, the content of its lines, its publishing settings. A new game
   made after the taking apart writes only a thin layer (boot, wiring the modules, input, the
   frame loop); the viewer's `src/presets/*.ts` are the examples of that layer.
-- The prefab library (`prefabs/`): reusable scenes, character behaviour, walking, sound,
+- The prefab library (`zhuda-engine-prefabs/`): reusable scenes, character behaviour, walking, sound,
   interface and assets, with their preview pictures, how they were made (`source/`) and their
   tests.
 - The engine: general features such as rendering, grass, water surfaces, particles, spring bones

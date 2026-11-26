@@ -4,8 +4,23 @@ What each release added, newest first. The version source of truth is `package.j
 releases are on [GitHub](https://github.com/zhudaandzhuer/zhuda-laya-engine/releases). The sections
 below 1.18.0 were moved here from the README as they were written at the time.
 
-## After 2.0.1 (not released)
+## 2.1.0 (not released yet)
 
+- **The prefab library left this repository and this package.** It is a repository of its own,
+  [zhuda-engine-prefabs](https://github.com/zhudaandzhuer/zhuda-engine-prefabs), and this is why the version is a minor one:
+  - The package no longer has `prefabs/` or the `zhuda-prefab-sync` command. A game installs the
+    library beside the engine and takes modules with its `zhuda-prefabs-sync`; a game that synced
+    from the 2.0 packages passes `--check` against the library while its modules are unchanged.
+  - `npm run verify:prefabs` is gone. `npm run verify:library` takes a copy of the library, links
+    this checkout where its pinned engine would be, and runs the library's own checks: its types and
+    tests and both viewers built on the engine as it is here. The workflow runs it on every push.
+  - The library's version follows the engine line it was checked on (2.1.x with 2.1.x); a game pins
+    a tag or a commit of each, never a branch.
+  - The routes and documents name modules as `zhuda-engine-prefabs/<path>`;
+    [the routes index](docs/routes/README.md) says where modules and assets come from
+    ([zhuda-engine-assets](https://github.com/zhudaandzhuer/zhuda-engine-assets) for pictures and
+    textures). The engine's own tests keep two models as fixtures (`tests/fixtures/characters/`).
+  - No change to the public API or to the runtime.
 - **Prefab library: an onboarding tutorial.** `systems/tutorial` (a step machine with no engine
   and no DOM in it) and `2d/tutorial-coach` (the spotlight, the hand and the card drawn on the
   Laya stage; touches go through the cut-out to the real control). Route:
@@ -161,7 +176,7 @@ major number is for that change of what the repository and the package are; the 
 API has no breaking change from 1.18.0. Record:
 [v2-consolidation](docs/plans/records/v2-consolidation/verification.md).
 
-- **The prefab library is in the repository and in the package.** [`prefabs/`](prefabs/README.md)
+- **The prefab library is in the repository and in the package.** [`prefabs/`](https://github.com/zhudaandzhuer/zhuda-engine-prefabs/blob/main/README.md)
   (the workspace's `commonPrefabs/` 0.10.0): its 35 modules (interface components, input, saving,
   languages, slot rounds, combat rules, cloth presets; a side-view duel, a dungeon line slot and a
   cascade slot's client as modules; three islands, their characters, walking, sound and light; a

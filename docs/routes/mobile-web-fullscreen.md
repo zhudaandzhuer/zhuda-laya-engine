@@ -5,7 +5,7 @@ zoom the page; on Android one tap enters native full screen (the address bar and
 system bars are hidden); in an iPhone browser (Safari and the like, not WeChat) the player
 swipes once on first entry so that Safari collapses its address bar. The whole strategy is
 practice taken from a production H5 platform (not in this repository), made into the
-component `prefabs/ui/page-lock`. Zoom prevention and the swipe-up layer were checked in
+component `zhuda-engine-prefabs/ui/page-lock`. Zoom prevention and the swipe-up layer were checked in
 headless Chrome emulating phones; real phones have not been tried yet.
 
 - **Id:** `mobile-web-fullscreen`
@@ -26,8 +26,8 @@ headless Chrome emulating phones; real phones have not been tried yet.
   component; published at 02:31, and the public URL was measured in the same way. Both
   were published to the owner's portals (see `PORTALS.md` in the workspace, which holds
   the two publication ids). No real phone was tried.
-- **Reference consumer:** `prefabs/ui/page-lock/page-lock.ts`
-  (`prefabs/tests/page-lock.test.mjs`) in this repository; ZhudaGameCenter
+- **Reference consumer:** `zhuda-engine-prefabs/ui/page-lock/page-lock.ts`
+  (`zhuda-engine-prefabs/tests/page-lock.test.mjs`) in this repository; ZhudaGameCenter
   `games/zhuda-whirlwind-1` (outside this repository): `src/Main.ts` (the `lockPage`
   call), `public/index.html` (the viewport), `public/game.css` (`.cp-menu-panel`, and
   `#app` fixed), `tools/check-zoom.mjs`, `tools/check-swipe-up.mjs`.
@@ -46,9 +46,9 @@ headless Chrome emulating phones; real phones have not been tried yet.
 
 ## Tools
 
-- The component `prefabs/ui/page-lock`: `node prefabs/scripts/sync.mjs <game dir> ui/page-lock`
+- The component `zhuda-engine-prefabs/ui/page-lock`: `node zhuda-engine-prefabs/scripts/sync.mjs <game dir> ui/page-lock`
   from a checkout of this repository, or from a game
-  `node node_modules/zhuda-laya-engine/prefabs/scripts/sync.mjs . ui/page-lock`.
+  `node node_modules/zhuda-engine-prefabs/scripts/sync.mjs . ui/page-lock`.
 - The check: the game's `tools/check-zoom.mjs` (headless Chrome;
   `Input.synthesizeTapGesture` for the double tap, `Input.synthesizePinchGesture` for two
   fingers).
@@ -197,7 +197,7 @@ The game named is the workspace's `games/zhuda-whirlwind-1`.
 
 ## Checks
 
-- `npm run verify` of the prefab library in `prefabs/` (it includes the 10 tests of
+- `npm run verify` of the prefab library in `zhuda-engine-prefabs/` (it includes the 10 tests of
   `tests/page-lock.test.mjs`):
   - the viewport keys that lock zoom, and the other keys kept;
   - gestures, two fingers and Ctrl + wheel are blocked, one finger is not;
@@ -245,7 +245,7 @@ The game named is the workspace's `games/zhuda-whirlwind-1`.
 
 ## Boundaries
 
-- The prefab library (`prefabs/`): `ui/page-lock` (zoom prevention, Android full screen,
+- The prefab library (`zhuda-engine-prefabs/`): `ui/page-lock` (zoom prevention, Android full screen,
   the iPhone swipe-up layer).
 - The game:
   - the call of `lockPage` and the condition in `fullscreenWhen` (when the switch is not

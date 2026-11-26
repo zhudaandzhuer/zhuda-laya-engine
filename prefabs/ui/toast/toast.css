@@ -1,8 +1,0 @@
-/* Toast near the top centre. Theme: --cp-accent-2 (label, left rule), --cp-line; --cp-toast-top (distance from the top). */
-.cp-toast { position: absolute; left: 50%; top: calc(var(--cp-toast-top, 86px) + env(safe-area-inset-top, 0px)); transform: translate(-50%, -8px);
-  max-width: 84vw; padding: 8px 16px; background: rgba(7, 8, 15, .9); border: 1px solid var(--cp-line, rgba(236, 231, 220, .22));
-  border-left: 3px solid var(--cp-accent-2, #4ff0c8); border-radius: 3px; opacity: 0; transition: opacity .3s, transform .3s;
-  pointer-events: none; text-align: center; }
-.cp-toast.show { opacity: 1; transform: translate(-50%, 0); }
-.cp-toast b { color: var(--cp-accent-2, #4ff0c8); font-weight: 600; margin-right: .5em; }
-@media (prefers-reduced-motion: reduce) { .cp-toast { transition: none; } }

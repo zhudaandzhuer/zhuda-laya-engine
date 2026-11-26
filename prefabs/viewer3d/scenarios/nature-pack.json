@@ -1,4 +1,0 @@
-[
-  { "wait": 2, "shot": "nature-day" },
-  { "js": "S.set({ hour: 18.2, yaw: 0.5 });", "wait": 2, "shot": "nature-dusk" }
-]

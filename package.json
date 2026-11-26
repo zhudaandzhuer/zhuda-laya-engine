@@ -1,6 +1,6 @@
 {
   "name": "zhuda-laya-engine",
-  "version": "2.0.1",
+  "version": "2.1.0",
   "description": "豬大 LayaAir 引擎 (zhuda-laya-engine) — 基於 LayaAir 官方 (layabox/LayaAir 3.4.2) 打造的豬大 AI-Agent-Friendly 開源分支版本，內建 Zero-IDE 極速打包、DAG 拓撲守衛、AST 自動反射、靜態資產 ΔE00 校準與 MCP 語料伺服器",
   "private": false,
   "license": "MIT",
@@ -78,8 +78,7 @@
     "zhuda-laya-browser-sdk": "./packages/compiler/browser-sdk.mjs",
     "zhuda-sequence-check": "./packages/ci-gate/verify-sequence.mjs",
     "zhuda-film-export": "./packages/ci-gate/export-film.mjs",
-    "zhuda-laya-minigame": "./packages/compiler/zhuda-minigame.mjs",
-    "zhuda-prefab-sync": "prefabs/scripts/sync.mjs"
+    "zhuda-laya-minigame": "./packages/compiler/zhuda-minigame.mjs"
   },
   "files": [
     "packages",
@@ -98,21 +97,7 @@
     "examples/browser-sdk",
     "examples/model-inspector",
     "examples/windows-webgpu",
-    "examples/cinematic-capture",
-    "prefabs/README.md",
-    "prefabs/AGENTS.md",
-    "prefabs/catalog.json",
-    "prefabs/scripts",
-    "prefabs/tools",
-    "prefabs/2d",
-    "prefabs/3d",
-    "prefabs/ui",
-    "prefabs/input",
-    "prefabs/systems",
-    "prefabs/audio",
-    "prefabs/server",
-    "!prefabs/**/source",
-    "!prefabs/**/preview"
+    "examples/cinematic-capture"
   ],
   "keywords": [
     "layaair",
@@ -139,8 +124,7 @@
     "agent:contract": "node packages/mcp-server/index.mjs --tool get_agent_contract",
     "test": "node --test tests/*.test.mjs",
     "verify:games": "node games/tools/verify-all.mjs",
-    "verify:prefabs": "node prefabs/scripts/verify.mjs",
-    "verify:prefabs:go": "node prefabs/scripts/verify.mjs --go",
+    "verify:library": "node scripts/verify-prefab-library.mjs",
     "pack:tarball": "npm pack --pack-destination dist",
     "verify": "npm run build && npm run typecheck && npm run audit:declarations && npm run doctor && npm run test",
     "start": "node scripts/serve.mjs dist/web 8890",

@@ -189,7 +189,7 @@ tools' command line; they show no play in those tools and none on a phone.
 
 - **Game:** tier values, names, art, strings, ad unit ids, lose timings, `src/Main.ts`, store
   material; where it is published: the owner's portals (see `PORTALS.md` in the workspace).
-- **Prefab library (`prefabs/` in this repository); the game uses no shared module today.**
+- **Prefab library (`zhuda-engine-prefabs/` in this repository); the game uses no shared module today.**
   Candidates: `src/physics.ts` with its test (no imports: a circle world that merges by tier);
   `src/platform.ts` (a `wx` back end beside the library's browser-only `systems/storage`, plus the
   ad pacing); the skin switch (`src/skin.ts`, `tools/use-skin.mjs`: tied to two skin ids and the

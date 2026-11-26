@@ -88,7 +88,7 @@ realistic layered clothing ([layered-cloth-on-body](layered-cloth-on-body.md)) o
    gravity 0.3). Drawn with `ZhudaToonMaterial` (`src/toon-hero.ts`, [stylized shading](../stylized-shading.md)): lit as the world
    is, her skin was plaster grey.
 9. **A skirt as cloth.** `src/skirt-cloth.ts`: `createZhudaClothTube` and `ZhudaCloth` ([cloth](../cloth.md)), 40 × 13 particles
-   in the skirt's measured profile, waistband sewn to hips, spine and chest, kind of cloth from `prefabs/systems/cloth-presets`.
+   in the skirt's measured profile, waistband sewn to hips, spine and chest, kind of cloth from `zhuda-engine-prefabs/systems/cloth-presets`.
    `SKIRT_TUNE`: feels 0.2 of her motion and 0.45 of her turning, strays 2 cm (waist) to 17 cm (hem) from its skinned shape,
    backstop 0.5–1.2 cm, bend `1e-5`, gravity 8, step 1/240 s. Check: `node tools/zhuer-skirt.mjs <url> <dir>` (longest stretch
    39%, nothing over 1 cm inside the body, 2026-11-25).
@@ -101,7 +101,7 @@ realistic layered clothing ([layered-cloth-on-body](layered-cloth-on-body.md)) o
 ### Rules, bosses, story
 
 12. **Rules first, shared rules synced.**
-    `node node_modules/zhuda-laya-engine/prefabs/scripts/sync.mjs . systems/pig-combat systems/cloth-presets` copies them to
+    `node node_modules/zhuda-engine-prefabs/scripts/sync.mjs . systems/pig-combat systems/cloth-presets` copies them to
     `src/common/systems/`. `src/combat.ts` (no LayaAir, seeded randomness) builds on `pig-combat`'s `JOBS`, `pressAttack`,
     `stepCombat`, `REACH` and `struck`: `createBattle(…)`, then `step(battle, dt)` returns `BattleEvent[]`. The view decides
     nothing: `Main.ts` steps the battle each frame and turns events into `vfx.ts` effects and sounds; `actors.ts` draws each
@@ -230,7 +230,7 @@ All from the game's HANDOFF; none was re-run for this page.
 
 - **Game:** its rules above the shared ones (`combat.ts`, `skills.ts`), story and staging tables, world, UI, `platform.ts`, the
   asset tools under `tools/` (some hold paths of the machine they were written on: pass paths explicitly) and all art.
-- **Prefab library:** `prefabs/systems/pig-combat` (rounds, reach, hits) and `prefabs/systems/cloth-presets` (kinds of cloth,
+- **Prefab library:** `zhuda-engine-prefabs/systems/pig-combat` (rounds, reach, hits) and `zhuda-engine-prefabs/systems/cloth-presets` (kinds of cloth,
   wind). Change them there and sync; `sync.mjs . --check` says whether a copy has drifted.
 - **Engine:** boot, scene look, model library, clip blending, spring bones, cloth, VRM, toon material, terrain, instancing and the
   mini-game build. The game imports only the package's public entries (Doctor checks it).

@@ -187,7 +187,7 @@ it and the renderer's errors in the report when re-checking at 2.0.0.
 ## Boundaries
 
 - **The game:** the rules and numbers in `src/logic.ts`, the kinds and what they wear, words, voices, store pictures.
-- **The prefab library** (`prefabs/` in this repository): the game uses no shared module today, but holds copies of
+- **The prefab library** (`zhuda-engine-prefabs/` in this repository): the game uses no shared module today, but holds copies of
   library files (bytes compared on 2026-11-26): `src/math.ts` is `3d/math.ts`, and the player's character is the
   `zhuer.glb` of `3d/zhuda-characters`, which could gain the 8,990-triangle pig; `tools/sfx_base.py` is a copy of what
   is now `3d/island-sound/source/sfx.py`. Parts that would be modules there: the seaside (shore, pier and raft, with

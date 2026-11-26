@@ -1,8 +1,0 @@
-{
-  "name": "zhuda-home-island",
-  "entry": "src/Main.ts",
-  "outDir": "dist/web",
-  "features": ["core", "3d", "gltf", "postProcess"],
-  "renderer": "webgl",
-  "maxPackageBytes": 80000000
-}

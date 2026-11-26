@@ -69,14 +69,19 @@ on a phone, and their art is placeholder.
 
 ## The prefab library
 
-[`prefabs/`](prefabs/README.md) holds what several games use and none should rewrite: interface
-components, input, saving and languages; a side-view duel, a dungeon line slot and a cascade slot's
-client as modules; three finished islands with their characters, walking, sound and light; a
-seaside with a pier; a low-poly rigged figure; sounds; a mini-game host bridge; the Go packages of
-a game server. A game copies the modules it names
-(`npx zhuda-prefab-sync . ui/dialog 3d/sky-island`) and a lock file records them; two viewers show
-every module (`?scene=<id>`); `npm run verify:prefabs` checks the library against this checkout.
-It came into the repository with 2.0.0: [the prefab library](docs/prefab-library.md).
+What several games use and none should rewrite is a repository of its own,
+[`zhuda-engine-prefabs`](https://github.com/zhudaandzhuer/zhuda-engine-prefabs): interface components, input, saving and languages; a side-view
+duel, a dungeon line slot and a cascade slot's client as modules; three finished islands with
+their characters, walking, sound and light; a seaside with a pier; a low-poly rigged figure;
+sounds; a mini-game host bridge; an onboarding tutorial; the Go packages of a game server. A game
+installs it beside the engine and copies the modules it names
+(`npx zhuda-prefabs-sync . ui/dialog 3d/sky-island`); a lock file records them; two viewers show
+every module (`?scene=<id>`). Pictures, textures and reference pictures for models are in
+[`zhuda-engine-assets`](https://github.com/zhudaandzhuer/zhuda-engine-assets), fetched by address through its catalog.
+
+The library lived under `prefabs/` here in 2.0.0 and 2.0.1 and left with 2.1.0. Its version
+follows the engine line it was checked on, and `npm run verify:library` runs its checks on this
+checkout: [the prefab library](docs/prefab-library.md).
 
 ## Built with this engine
 
@@ -211,7 +216,6 @@ packages/mcp-server/    Agent tools: routes, guardrails, examples, the film host
 packages/ci-gate/       Sequence and film export gates
 vendor/                 LayaAir 3.4.2 runtime and pinned third-party pieces, with licences
 games/                  The reference games: consumers of this checkout, and their tools
-prefabs/                The prefab library: modules several games share, two viewers, Go packages
 docs/routes/            How to build each kind of thing
 docs/                   One guide per subsystem (index: docs/README.md); plans and records
 examples/               Small runnable hosts (browser SDK, model inspector, film capture)
@@ -221,7 +225,7 @@ scripts/, tests/        Browser checks (npm run verify:<name>) and Node tests
 
 ## Releases
 
-**This checkout is 2.0.1**, tagged `v2.0.1` on [the engine's own repository](https://github.com/zhudaandzhuer/zhuda-laya-engine); 2.0.0 was tagged in the owner's verification repository only, so the release before it there is [v1.17.0](https://github.com/zhudaandzhuer/zhuda-laya-engine/releases/tag/v1.17.0) · The version source of truth is `package.json`; `zhuda.config.json`, the lockfile and generated manifests must match it. Older tags such as v1.1.0 are historical releases, not the current SDK. What each release added is in the [changelog](CHANGELOG.md).
+**This checkout is 2.1.0, not released yet**; the last release is 2.0.1, tagged `v2.0.1` on [the engine's own repository](https://github.com/zhudaandzhuer/zhuda-laya-engine); 2.0.0 was tagged in the owner's verification repository only, so the release before it there is [v1.17.0](https://github.com/zhudaandzhuer/zhuda-laya-engine/releases/tag/v1.17.0) · The version source of truth is `package.json`; `zhuda.config.json`, the lockfile and generated manifests must match it. Older tags such as v1.1.0 are historical releases, not the current SDK. What each release added is in the [changelog](CHANGELOG.md).
 
 Maintained by [Zhuda](https://github.com/zhudaandzhuer). Rendering and physics come from [LayaAir / Layabox](https://layaair.com/). This is an independent fork; donations support Zhuda's work on this repository.
 

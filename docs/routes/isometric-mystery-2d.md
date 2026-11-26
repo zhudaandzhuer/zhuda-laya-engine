@@ -25,7 +25,7 @@ this page adds what this kind of game needs. Paths are relative to the game.
 - Not for a map of square tiles ([platformer-2d](platformer-2d.md)); hundreds of moving things
   ([survivors-2d](survivors-2d.md)); a camera that turns or real 3D light
   ([good-looking-3d-scene](good-looking-3d-scene.md)); rigged characters ([spine-character](spine-character.md)) or
-  many poses per character (`pose-atlas-motion`); talk with no walking (the prefab `prefabs/ui/visual-novel`); a
+  many poses per character (`pose-atlas-motion`); talk with no walking (the prefab `zhuda-engine-prefabs/ui/visual-novel`); a
   server that judges or keeps saves (`go-game-server`).
 
 ## Tools
@@ -37,9 +37,9 @@ this page adds what this kind of game needs. Paths are relative to the game.
   1536 x 1024 transparent sheet per character, the lead from the owner's reference drawing and the others styled after
   the lead's sheet; prompts in `client/art/characters/prompts/`. Voices: a local text-to-speech model (Qwen3-TTS).
   Both are generated content, which a store asks to be disclosed. No licence file; sources stay in `client/art/`.
-- Shared prefab modules ([prefab library](../../prefabs/README.md)), copied into `client/src/common/` and
+- Shared prefab modules ([prefab library](https://github.com/zhudaandzhuer/zhuda-engine-prefabs/blob/main/README.md)), copied into `client/src/common/` and
   `client/public/common/` and never edited there:
-  `node node_modules/zhuda-laya-engine/prefabs/scripts/sync.mjs . ui/virtual-stick ui/dom ui/dialog ui/toast ui/collection-book input/move-input systems/storage systems/i18n`
+  `node node_modules/zhuda-engine-prefabs/scripts/sync.mjs . ui/virtual-stick ui/dom ui/dialog ui/toast ui/collection-book input/move-input systems/storage systems/i18n`
 - Engine API from the public entry only, re-exported by one file, `client/src/zhuda.ts`; the guides are
   [procedural assets](../procedural-assets.md) and [asset loading](../asset-loading.md) (`DirectoryAssetProvider`).
 
@@ -72,8 +72,8 @@ this page adds what this kind of game needs. Paths are relative to the game.
    `allReachable` still reaches every person and clue.
 6. **Move.** Screen to ground: mx = sx + 2·sy, mz = 2·sy - sx; 3.3 m/s walking, 5.4 m/s running, in sub-steps of at
    most 0.06 m; a blocked step slides on one axis, then bends the heading by 0.55, 1.05 and 1.57 rad either way
-   (`walk` in `client/src/game.ts`); four facings. `moveVector` (`prefabs/input/move-input`) sums the keys and the
-   stick (`createVirtualStick`, `prefabs/ui/virtual-stick`); buttons use `press()` (`prefabs/ui/dom`), so two fingers
+   (`walk` in `client/src/game.ts`); four facings. `moveVector` (`zhuda-engine-prefabs/input/move-input`) sums the keys and the
+   stick (`createVirtualStick`, `zhuda-engine-prefabs/ui/virtual-stick`); buttons use `press()` (`zhuda-engine-prefabs/ui/dom`), so two fingers
    work at once. `game.walkTo(id)` follows `nav.findPath`, aiming 0.35 m ahead, re-planning up to three times.
 7. **Draw in this order.** `client/src/present.ts` boots with `renderer: 'webgl'`, `dprCap: 3`,
    `preserveDrawingBuffer: true`, `backgroundPolicy: 'continue'`, `maxFrameDeltaSec: 0.05`
@@ -114,17 +114,17 @@ this page adds what this kind of game needs. Paths are relative to the game.
     `objective()`, `targets()`, `available(id)`, `snapshot()`, `restore()`. The accusation is two chained choices: who
     (four names), then which found clue breaks the alibi; a wrong answer gives the reason and can be retried. Five of
     the nine clues close the case; the other four stay findable after the ending.
-13. **Talk, tags, book, films.** `createDialog`, `createChoiceBox` (`prefabs/ui/dialog`) and `createToast`
-    (`prefabs/ui/toast`); during a talk the controls hide and a tap anywhere else carries it on. Name tags are DOM
+13. **Talk, tags, book, films.** `createDialog`, `createChoiceBox` (`zhuda-engine-prefabs/ui/dialog`) and `createToast`
+    (`zhuda-engine-prefabs/ui/toast`); during a talk the controls hide and a tap anywhere else carries it on. Name tags are DOM
     elements placed each frame with `projectX`/`projectY` times the zoom; tapping one, or the "Go" button, walks
-    there. `createCollectionBook` (`prefabs/ui/collection-book`): people (8 x 3 pages) and clues (9), opened by
+    there. `createCollectionBook` (`zhuda-engine-prefabs/ui/collection-book`): people (8 x 3 pages) and clues (9), opened by
     conditions in `client/src/cast.ts`; a locked entry says where to look. Four films (`client/src/cutscene.ts`) are a
     muted DOM `<video>` with the game's voices and subtitles; one that cannot start in 10 s is shown as talk.
 14. **Languages.** Traditional Chinese source strings are the keys everywhere, voices included. `createI18n`
-    (`prefabs/systems/i18n`): tables for Simplified Chinese and English, `detect`, `compound` rules.
+    (`zhuda-engine-prefabs/systems/i18n`): tables for Simplified Chinese and English, `detect`, `compound` rules.
     `client/art/i18n/translations.py` → `client/scripts/build-locales.py` → `client/src/locales/*.ts`; the build
     refuses a missing, extra or duplicate string, unequal `{slots}` and Traditional characters in Simplified text.
-15. **Saving.** `client/src/save.ts` over `prefabs/systems/storage`: `<game>.save` =
+15. **Saving.** `client/src/save.ts` over `zhuda-engine-prefabs/systems/storage`: `<game>.save` =
     `{ v: 1, story, x, z, torch, seconds, at }`, written after each exchange, every 5 s and when the page hides;
     `<game>.cast` (book pages) survives a fresh start. Continue restores the story, then `game.place(x, z)`.
 16. **Go host.** `server/cmd/zhuda-rainy-night-murder-server/main.go` (41 lines): `GET /healthz`, and `GET /` serving
@@ -198,7 +198,7 @@ No engine plan item is recorded for any of these.
 
 - Engine 2.0.0: nothing was re-run; this page was written from the game's files and records. iOS, any phone in
   landscape, WebGPU (the game asks for `webgl` only), Firefox and Safari on a desktop.
-- Syncing the modules from this repository's `prefabs/` (the lock records the game centre's library 0.2.0). The prefab
+- Syncing the modules from this repository's `zhuda-engine-prefabs/` (the lock records the game centre's library 0.2.0). The prefab
   evidence gate ([visual-content-prefab](visual-content-prefab.md)): none, so the claim is "built with" only.
 - Sound through `IframeSoundAdapter`: the game opens its own `AudioContext` (kept from the prototype), which the
   [audio contract](../audio.md) says not to do; Doctor at 1.18.0 reported HEALTHY all the same. A new game should play
@@ -212,6 +212,6 @@ No engine plan item is recorded for any of these.
 
 The game owns the case, the street's layout and props, the texture and sound recipes, its rasteriser, torch and walk
 map, the sheets, packers and atlas, voices, translations, the page, portal packaging and its device evidence. The
-prefab library owns the eight modules: change them in `prefabs/` and sync, never in the game's copies. The engine owns
+prefab library owns the eight modules: change them in `zhuda-engine-prefabs/` and sync, never in the game's copies. The engine owns
 the runtime session and Laya 2D stage, the procedural kit, the asset providers, the build and the Doctor. The
 rasteriser, torch and walk map are the next things to lift out; until then a new game copies the idea, not the files.

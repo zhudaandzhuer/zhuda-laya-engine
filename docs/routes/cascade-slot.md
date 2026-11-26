@@ -7,7 +7,7 @@ A slot game in which eight or more of one symbol anywhere on the board pay and a
 - **For:** building a slot with pay-anywhere awards, cascades, multipliers and free games (or a reel game of the same kind, where the board is refilled after symbols are removed), as a client and a Go authoritative server, with a theme of your own
 - **Checked on:** desktop WebGL (Apple M4, headless Chrome, 1280×720, virtual clock); local Go 1.26.5 (darwin/arm64); no phone
 - **Status:** taken on 2026-11-25 out of an earlier cascade slot game in the workspace (removed after it was taken apart; its theme and art were not kept): the mathematics is the same as the original game's round for round (Go 111,010 rounds; TS 86,000 rounds plus 40,000 sets of bonus rows), the simulator report is the same number for number, the TS engine and the Go engine give the same digest over 90 rounds, ten viewer screens were checked against the ledger, and the client ran 30 rounds in a row against the real server with the accounts agreeing
-- **Reference consumer:** this repository: `prefabs/viewer2d/src/presets/cascade-slot.ts` (the whole client), `prefabs/2d/cascade-math`, `prefabs/2d/slot-client`, `prefabs/2d/slot-ui`, `prefabs/systems/slot-round`; `prefabs/server/cmd/slotserver` and `prefabs/server/cmd/slotsim` (the server and the simulator)
+- **Reference consumer:** this repository: `zhuda-engine-prefabs/viewer2d/src/presets/cascade-slot.ts` (the whole client), `zhuda-engine-prefabs/2d/cascade-math`, `zhuda-engine-prefabs/2d/slot-client`, `zhuda-engine-prefabs/2d/slot-ui`, `zhuda-engine-prefabs/systems/slot-round`; `zhuda-engine-prefabs/server/cmd/slotserver` and `zhuda-engine-prefabs/server/cmd/slotsim` (the server and the simulator)
 - **Engine version:** zhuda-laya-engine 1.18.0, `def94aae9e7ebf5f9f35b915b54dbb4c3e5fe43c`
 
 ## When to take this route
@@ -17,14 +17,14 @@ A slot game in which eight or more of one symbol anywhere on the board pay and a
   - Payline or ways awards, or a reel-stop presentation: the award judging and the drop are yours to write, but `systems/slot-round` (round state machine, ledger, auto play), `2d/slot-client`, and the control bar, dialogs, clock and sound bridge of `2d/slot-ui` are used as they are.
   - Only a server: read [go-game-server](go-game-server.md).
   - A game whose mathematics is still being designed: run your own `Config` through `server/slotsim` first, and build the screen once the numbers are settled.
-- Read first: the routes [new-game-project](new-game-project.md) and [game-2d](game-2d.md) (project, size, time, input, prefabs, audio), and `prefabs/README.md`. This route covers only the slot layer.
+- Read first: the routes [new-game-project](new-game-project.md) and [game-2d](game-2d.md) (project, size, time, input, prefabs, audio), and `zhuda-engine-prefabs/README.md`. This route covers only the slot layer.
 
 ## Tools
 
-- `prefabs/scripts/sync.mjs`: from a checkout of this repository `node prefabs/scripts/sync.mjs <game dir> 2d/slot-ui 2d/cascade-math`, or from a game `node node_modules/zhuda-laya-engine/prefabs/scripts/sync.mjs . 2d/slot-ui 2d/cascade-math` (`2d/slot-client` and `systems/slot-round` come along). `<game dir>` is the game's client project; for a game of the workspace that is ZhudaGameCenter `games/<game>/client` (outside this repository).
-- `prefabs/viewer2d` (the viewer): `?scene=cascade-slot` (`&round=seed:168`, `&round=seed:22:buy`, `&turbo=1`, `&autoplay=10`, `&dialog=buy|auto|receipt`); `scenarios/cascade-slot*.json`.
-- `prefabs/server`: `go run ./cmd/slotsim -n 1000000 -seed 1` (simulation), `SLOT_JWT_SECRET=… SLOT_DEV=1 go run ./cmd/slotserver` (local server). Go 1.26.5, standard library only. Go commands run in `prefabs/server/`.
-- `prefabs/tools/detplay.mjs` (screenshots under a virtual clock; the fraction in its `Date.now()` was fixed on 2026-11-25), `prefabs/tools/pixdiff.py`.
+- `zhuda-engine-prefabs/scripts/sync.mjs`: from a checkout of this repository `node zhuda-engine-prefabs/scripts/sync.mjs <game dir> 2d/slot-ui 2d/cascade-math`, or from a game `node node_modules/zhuda-engine-prefabs/scripts/sync.mjs . 2d/slot-ui 2d/cascade-math` (`2d/slot-client` and `systems/slot-round` come along). `<game dir>` is the game's client project; for a game of the workspace that is ZhudaGameCenter `games/<game>/client` (outside this repository).
+- `zhuda-engine-prefabs/viewer2d` (the viewer): `?scene=cascade-slot` (`&round=seed:168`, `&round=seed:22:buy`, `&turbo=1`, `&autoplay=10`, `&dialog=buy|auto|receipt`); `scenarios/cascade-slot*.json`.
+- `zhuda-engine-prefabs/server`: `go run ./cmd/slotsim -n 1000000 -seed 1` (simulation), `SLOT_JWT_SECRET=… SLOT_DEV=1 go run ./cmd/slotserver` (local server). Go 1.26.5, standard library only. Go commands run in `zhuda-engine-prefabs/server/`.
+- `zhuda-engine-prefabs/tools/detplay.mjs` (screenshots under a virtual clock; the fraction in its `Date.now()` was fixed on 2026-11-25), `zhuda-engine-prefabs/tools/pixdiff.py`.
 - Engine: `ZhudaEngine.boot({ features: ['core', '2d', 'ui'] })`, `context.runtime.start(dt)`, `IframeSoundAdapter`.
 
 ## Steps
@@ -62,7 +62,7 @@ A slot game in which eight or more of one symbol anywhere on the board pay and a
 | --- | --- |
 | A 2D start shows a LayaAir splash screen for about 5 seconds | The ready signal (`__SCENE__.ready`), the screenshots and the automatic round start all wait until `FrameClock` has passed 5.5 seconds **After 2.0.0:** `await whenZhudaSplashGone()` or the page's `zhuda:splash-gone` event says when it is out of the page. |
 | There are per-frame timers (`runtime.timers`), but no tweens and no "wait this long" Promise that follow the run-time clock | `2d/slot-ui/frame-clock.ts` (`wait`, `tween`, `speed`, `finishAll`), with `update(dt)` every frame **After 2.0.0:** `runtime.timers.wait(seconds)` and `runtime.timers.tween({ duration, update, ease })` follow the session's clock; `finishAll` and a speed of their own remain the module's. |
-| No general slot-machine components (the engine should not have them) | They are all in the prefab library (`prefabs/`): this route's modules |
+| No general slot-machine components (the engine should not have them) | They are all in the prefab library (`zhuda-engine-prefabs/`): this route's modules |
 
 ## Checks
 
@@ -89,5 +89,5 @@ Results of 2026-11-25: the library's 109 node tests and all six Go packages pass
 ## Boundaries
 
 - The game: the theme, the symbol pictures, the text, its own `Config` numbers and simulation report, the layout, the release; the server's deployment (secrets, TLS, persistence, the operator's wallet).
-- The prefab library (`prefabs/`): the round state machine and the ledger (`systems/slot-round`), the cascade mathematics and its example (`2d/cascade-math`, `server/slotmath`), the rest of the client (`2d/slot-client`), the screen drawn in code (`2d/slot-ui`), the server packages (`server/`), the viewer preset.
+- The prefab library (`zhuda-engine-prefabs/`): the round state machine and the ledger (`systems/slot-round`), the cascade mathematics and its example (`2d/cascade-math`, `server/slotmath`), the rest of the client (`2d/slot-client`), the screen drawn in code (`2d/slot-ui`), the server packages (`server/`), the viewer preset.
 - The engine: 2D drawing, the run-time clock, the audio authority, the prefab flow. What taking a game apart shows the engine should add is written under "Engine gaps and their workarounds" above.

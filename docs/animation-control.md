@@ -66,7 +66,7 @@ Clips read from a glTF or GLB file cross fade from one clip to the other since 2
 reader files the node; the animator pairs the two clips' nodes through that entry, found none, and
 blended towards the bind pose and back (arms dropped, then snapped into the next clip). The
 engine's glTF adapter now files the nodes when it makes a clip. A consumer that corrected this
-itself (`repairGltfCrossFade` in `prefabs/3d/stickman`) finds nothing left to correct.
+itself (`repairGltfCrossFade` in `zhuda-engine-prefabs/3d/stickman`) finds nothing left to correct.
 
 ## A clip in a given time
 

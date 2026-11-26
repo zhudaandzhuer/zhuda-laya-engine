@@ -19,8 +19,8 @@ Mouse only; desktop Chrome on an Apple M4.
   nobody judged a picture.
 - **Reference consumer:** this repository: `games/tools/characters/motion-audit.mjs`,
   `games/tools/characters/blender/raise-rig.py` with `blender/examples/wardrobe-body.json` and
-  `zhuda.json`, and `prefabs/viewer3d` at `?scene=model-stand`. The characters raised are
-  `games/zhuda-wardrobe/assets/parts/body.glb` and `prefabs/3d/zhuda-characters/assets/zhuda.glb`;
+  `zhuda.json`, and `zhuda-engine-prefabs/viewer3d` at `?scene=model-stand`. The characters raised are
+  `games/zhuda-wardrobe/assets/parts/body.glb` and `zhuda-engine-prefabs/3d/zhuda-characters/assets/zhuda.glb`;
   the raised copies replace nothing (the record is `local-results/character-bar/`).
 - **Engine version:** zhuda-laya-engine 2.0.0 and what came after it (`6b6f1cfc`, with this
   route's commit on top).
@@ -55,7 +55,7 @@ about each:
 | Tool | Version | Where from | Licence and what may be committed |
 | --- | --- | --- | --- |
 | Blender | 5.2.2 LTS | blender.org (on the owner's Mac: Homebrew) | Run headless: `blender -b --factory-startup -noaudio --python <script> -- <arguments>`. Nothing of it is committed. |
-| MPFB (MakeHuman for Blender) | 2.0.18 | extensions.blender.org | GPL-3: an external tool, never in this repository or a game's bundle. The bodies it makes are CC0. Used for the body of `prefabs/3d/layered-hosiery` (`source/export_legs.py`). |
+| MPFB (MakeHuman for Blender) | 2.0.18 | extensions.blender.org | GPL-3: an external tool, never in this repository or a game's bundle. The bodies it makes are CC0. Used for the body of `zhuda-engine-prefabs/3d/layered-hosiery` (`source/export_legs.py`). |
 | VRM Add-on for Blender | as installed | extensions.blender.org | An external tool. Writes VRM 1.0, which the engine reads ([VRM](../vrm.md)). Not used by this route yet. |
 | An image-to-mesh service | - | the owner's own accounts | Gives a mesh with no skeleton. Ask the owner before a paid service; its output's licence is the service's. |
 
@@ -68,9 +68,9 @@ In this repository:
 - `blender -b ... --python games/tools/characters/blender/raise-rig.py -- in.glb out.glb
   config.json [--report r.json] [--stills dir]`: twist bones, hair and cloth swung and written
   into the clips, every clip dense and a whole number of frames.
-- `prefabs/viewer3d` at `?scene=model-stand&file=local/<name>.glb`: any rigged `.glb` in the
+- `zhuda-engine-prefabs/viewer3d` at `?scene=model-stand&file=local/<name>.glb`: any rigged `.glb` in the
   engine, its clips changed by cross-fades in seconds or frozen at a second. Copy the file to
-  `prefabs/viewer3d/dist/web/local/` after `npm run build` (no rebuild for a new file).
+  `zhuda-engine-prefabs/viewer3d/dist/web/local/` after `npm run build` (no rebuild for a new file).
   Photograph it with `games/tools/shot.mjs . --gpu --hook __SCENE__ --script <steps.mjs>`.
 - Engine: `ZhudaModelLibrary`, `ZhudaModelInspector` (`inspect`, `play`, `crossFade` in
   seconds), `ZhudaModelAnimationSampler`, `ZhudaAnimationBlend`, `runZhudaAfterAnimation`
@@ -114,7 +114,7 @@ In this repository:
    wardrobe's run was 19.8 frames: 0.66 s became 0.667 s) and writes each clip over exactly its
    own frames. Body motion itself is authored as before: poses as functions of time sampled 30
    times a second (`games/tools/characters/kit.mjs`, `sampleClips`), or keys set by a Blender
-   script (`prefabs/3d/zhuda-characters/source/pig-clips.py`). Start, Loop and End of a pose
+   script (`zhuda-engine-prefabs/3d/zhuda-characters/source/pig-clips.py`). Start, Loop and End of a pose
    are three clips.
 5. **Put the hair, the cloth and the tail into the clips.** One `chains` entry a chain of bones.
    Each bone's far end is a point on a spring that rests on what the clip already does with the
@@ -155,7 +155,7 @@ In this repository:
    reference turns the face's shadow with the head through a texture; the toon material has no
    such thing. Not run.
 10. **Look at it in the engine, every version.** Copy the file to
-    `prefabs/viewer3d/dist/web/local/` and photograph it on the model stand with a script that
+    `zhuda-engine-prefabs/viewer3d/dist/web/local/` and photograph it on the model stand with a script that
     names its moments (`S.set({ clip, fade: 0 })`, `S.set({ freeze: seconds })`, `S.set({ yaw })`;
     `S.where(bone)` gives a bone's place for a number; `S.set({ aim: [x, y, z] })` looks at a
     point from near). A generated mesh is often 1 unit tall, centred on the origin and facing
@@ -235,7 +235,7 @@ All on 2026-11-26, Apple M4; the outputs are in `local-results/character-bar/`.
   jump.
 - `node --test tests/character-motion-audit.test.mjs`: nine tests on files made in the test
   (each measure alone) and on the repository's three characters.
-- `prefabs/viewer3d`: `npm run verify` with the model stand among its presets.
+- `zhuda-engine-prefabs/viewer3d`: `npm run verify` with the model stand among its presets.
 
 ## Not checked
 

@@ -1,8 +1,0 @@
-{
-  "name": "zhuda-common-2d-viewer",
-  "entry": "src/Main.ts",
-  "outDir": "dist/web",
-  "features": ["core", "2d", "ui", "spine42"],
-  "renderer": "webgl",
-  "maxPackageBytes": 80000000
-}

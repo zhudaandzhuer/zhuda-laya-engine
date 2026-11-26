@@ -25,14 +25,14 @@ was used, and the direct connection was never tried across two networks.
   connection, input delay 2 frames, every hash equal; the success rate of the direct
   connection across networks is unknown). On 2026-11-25 it was made into the shared package
   `matchrelay` for ZhudaGameCenter `games/zhuda-whirlwind-1` (outside this repository). On
-  2026-11-26 `prefabs/server/matchrelay` holds 56 tests (55 test functions and one example;
+  2026-11-26 `zhuda-engine-prefabs/server/matchrelay` holds 56 tests (55 test functions and one example;
   45 before protocol v2), among them two real WebSocket clients playing 600 lockstep frames
   with a random 0–40 ms delay on every message; `relayclient` has no test files of its own
   and is driven by those integration tests. `go vet ./...` and `go test ./...` in
-  `prefabs/server` were run in this repository on 2026-11-26: every package ok (`-race`
+  `zhuda-engine-prefabs/server` were run in this repository on 2026-11-26: every package ok (`-race`
   passed on 2026-11-25, in the workspace). On 2026-11-25 a local server with two bots ran
   quick match, room plus rematch, a deliberate desync and the queue timeout.
-- **Reference consumer:** `prefabs/server/matchrelay` (with `relayclient/`) in this
+- **Reference consumer:** `zhuda-engine-prefabs/server/matchrelay` (with `relayclient/`) in this
   repository; the workspace's `games/zhuda-whirlwind-1/server` (`cmd/server`,
   `cmd/botclient`, `internal/standin`, `DEPLOY.md`); the protocol is `design/PROTOCOL.md` in
   the same game.
@@ -63,20 +63,20 @@ was used, and the direct connection was never tried across two networks.
 
 - Go 1.26.5; `go vet`, `go test`, `go test -race`, `gofmt`.
 - `github.com/coder/websocket` v1.8.15 (2026-06-15, ISC): the **only** external dependency
-  of the `prefabs/server` module (the standard library has no WebSocket server). Why this
+  of the `zhuda-engine-prefabs/server` module (the standard library has no WebSocket server). Why this
   one: it has no dependencies of its own, a per-message size limit can be set (a larger
   message closes the connection with 1009), it has an API that sends a ping and waits for
   the pong, and it allows concurrent writes; the documentation of
   `golang.org/x/net/websocket` itself recommends a more actively maintained package. The
-  reasons are recorded in `prefabs/server/README.md`.
-- The shared packages `prefabs/server/matchrelay` (the server) and `matchrelay/relayclient`
+  reasons are recorded in `zhuda-engine-prefabs/server/README.md`.
+- The shared packages `zhuda-engine-prefabs/server/matchrelay` (the server) and `matchrelay/relayclient`
   (a Go client and the lockstep loop). The Go module path is
   `zhudagamecenter/commonprefabs/server`, and it stays that. The game's `server/go.mod`
   requires it and reaches it with a `replace` directive. Until the game is moved to engine
   2.0.0 that directive still points at the workspace's old library folder; after the move
-  its target is `prefabs/server` in a checkout of this repository, or
-  `node_modules/zhuda-laya-engine/prefabs/server` inside the game (the npm package carries
-  `prefabs/server`).
+  its target is `zhuda-engine-prefabs/server` in a checkout of this repository, or
+  `node_modules/zhuda-engine-prefabs/server` inside the game (the npm package carries
+  `zhuda-engine-prefabs/server`).
 - The bot: `server/cmd/botclient` in the workspace's `games/zhuda-whirlwind-1`; the Windows
   cross-compile is `build-windows.sh` (`GOOS=windows GOARCH=amd64 CGO_ENABLED=0`).
 - Going live used the owner's `zhuda-windows` agent skill (not in this repository): its
@@ -360,8 +360,8 @@ game's own code, and this route did not look for engine gaps in it.)
 ## Checks
 
 ```sh
-# in this repository (npm run verify:go in prefabs/ runs the same go vet and go test)
-cd prefabs/server && go vet ./... && go test ./...             # matchrelay: 56 tests on 2026-11-26; the 600-frame integration test takes about 11 s
+# in this repository (npm run verify:go in zhuda-engine-prefabs/ runs the same go vet and go test)
+cd zhuda-engine-prefabs/server && go vet ./... && go test ./...             # matchrelay: 56 tests on 2026-11-26; the 600-frame integration test takes about 11 s
 go test -race -count=1 ./matchrelay/...
 # in the workspace, outside this repository
 cd <workspace>/games/zhuda-whirlwind-1/server && go vet ./... && go test ./...
@@ -380,7 +380,7 @@ E2E_SERVER=<origin of the public server> E2E_P2P=1 E2E_BASE=<URL of the public r
 
 Results in this repository, 2026-11-26:
 
-- `go vet ./...` and `go test ./...` in `prefabs/server`: every package that has tests is
+- `go vet ./...` and `go test ./...` in `zhuda-engine-prefabs/server`: every package that has tests is
   ok. `matchrelay` lists 55 test functions and one `Example` (`go test -list`);
   `relayclient` has no test files and is driven by `integration_test.go` and
   `p2p_integration_test.go`. `-race` was not part of that run.
@@ -467,7 +467,7 @@ Results of 2026-11-26, in the workspace (from the game's `HANDOFF.md`):
   the wiring and defaults of `cmd/server` (port, path, Origin, stages, characters), the bot
   and its stand-in simulation, `DEPLOY.md`, the scheduled task and the routing in
   production.
-- The prefab library (`prefabs/server`): `matchrelay` (matching, rooms, delay, relay and
+- The prefab library (`zhuda-engine-prefabs/server`): `matchrelay` (matching, rooms, delay, relay and
   validation, hash and end comparison, disconnects, protections, healthz), `relayclient`
   (the Go client and the lockstep loop), their tests, the one external dependency.
 - The engine: not involved.

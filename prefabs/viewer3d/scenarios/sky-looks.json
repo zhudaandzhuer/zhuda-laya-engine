@@ -1,8 +1,0 @@
-[
-  { "js": "S.set({ run: false, hour: 10 });", "wait": 3, "shot": "l-day" },
-  { "js": "S.set({ distance: 8.5, pitch: 0.18 }); await new Promise(r => setTimeout(r, 1500)); const [x, y] = S.project(S.pig.center); S.press(1, x, y); for (let k = 0; k < 12; k++) { S.move(1, x, y - 6 * k); await new Promise(r => setTimeout(r, 25)); } return [x, y];", "wait": 1.2, "shot": "l-held-close" },
-  { "js": "S.release(1); S.set({ distance: 25, pitch: 0.3, weather: 'rain', hour: 15 });", "wait": 4, "shot": "l-rain" },
-  { "js": "S.set({ weather: 'clear', hour: 21.5 });", "wait": 3, "shot": "l-night" },
-  { "js": "S.set({ weather: 'clear', hour: 18.1 });", "wait": 3, "shot": "l-dusk" },
-  { "js": "S.set({ weather: 'mist', hour: 7 });", "wait": 3, "shot": "l-mist" }
-]

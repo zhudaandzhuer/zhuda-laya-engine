@@ -1,9 +1,0 @@
-[
- {"wait": 1.7, "shot": "p1-title"},
- {"js": "__qa.key('Enter')", "wait": 0.8, "shot": "p2-battlefield"},
- {"js": "__qa.key('KeyJ')", "wait": 0.32, "shot": "p3-hit"},
- {"wait": 0.9},
- {"js": "__qa.key('KeyJ', 'down')", "wait": 0.8, "shot": "p4-charge"},
- {"js": "__qa.key('KeyJ', 'up')", "wait": 0.36, "shot": "p5-heavy-hit"},
- {"js": "__qa.key('Escape')", "wait": 0.3, "shot": "p6-pause"}
-]

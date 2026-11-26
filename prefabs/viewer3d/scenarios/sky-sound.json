@@ -1,6 +1,0 @@
-[
-  { "wait": 6 },
-  { "click": [40, 600], "wait": 4 },
-  { "js": "return S.sound.state();" },
-  { "js": "const [x, y] = S.project(S.pig.center); S.press(1, x, y); for (let k = 0; k < 20; k++) { S.move(1, x + (k % 4 < 2 ? 40 : -40), y - 6 * k); await new Promise(r => setTimeout(r, 30)); } await new Promise(r => setTimeout(r, 400)); S.release(1); await new Promise(r => setTimeout(r, 2500)); S.set({ weather: 'storm' }); await new Promise(r => setTimeout(r, 6000)); S.set({ weather: 'clear', hour: 22 }); await new Promise(r => setTimeout(r, 4000)); return S.sound.state();" }
-]

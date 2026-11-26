@@ -18,7 +18,7 @@ an 844×390 phone held sideways and a 1280×720 desktop.
   canvas is unchanged.
 - **Reference consumer:** ZhudaGameCenter `games/zhuda-whirlwind-1` (outside this
   repository): `src/ui/rotate.ts`, `public/game.css` (`html.rot`), `src/Main.ts`,
-  `src/ui/input.ts`, `tools/check-rotate.mjs`; `prefabs/ui/virtual-stick` (`toLocal`,
+  `src/ui/input.ts`, `tools/check-rotate.mjs`; `zhuda-engine-prefabs/ui/virtual-stick` (`toLocal`,
   `bounds`) in this repository.
 - **Engine version:** zhuda-laya-engine `def94aa` (LayaAir 3.4.2)
 
@@ -81,7 +81,7 @@ The files named are in the workspace's `games/zhuda-whirlwind-1`.
    interface) will be displayed, run `tools/subset-font.py` again, otherwise the font test
    fails.
 7. **Zoom prevention and full screen.** That is another route,
-   [mobile-web-fullscreen](mobile-web-fullscreen.md) (`prefabs/ui/page-lock`); a phone web
+   [mobile-web-fullscreen](mobile-web-fullscreen.md) (`zhuda-engine-prefabs/ui/page-lock`); a phone web
    game takes both.
 
 ## Pitfalls
@@ -123,7 +123,7 @@ The files named are in the workspace's `games/zhuda-whirlwind-1`.
   `#app`, and the canvas is the size of the window (measured on 2026-11-26 with a one-off
   script).
 - `npm run verify` in the game (build, types, Doctor, tests); `npm run verify` of the
-  prefab library in `prefabs/` (`tests/virtual-stick-local.test.mjs`: the turned
+  prefab library in `zhuda-engine-prefabs/` (`tests/virtual-stick-local.test.mjs`: the turned
   conversion, and the default behaviour unchanged).
 
 ## Not checked
@@ -143,7 +143,7 @@ The files named are in the workspace's `games/zhuda-whirlwind-1`.
 
 - The game: `rotate.ts`, the CSS of `html.rot`, the call of `measureUnturned`. Which
   element is turned and how the font size is computed differ with each game's layout.
-- The prefab library (`prefabs/`): the virtual stick's `toLocal`/`bounds` options
-  (`prefabs/ui/virtual-stick`). When a second game needs the turn, take `rotate.ts` out
-  into a component under `prefabs/ui/`.
+- The prefab library (`zhuda-engine-prefabs/`): the virtual stick's `toLocal`/`bounds` options
+  (`zhuda-engine-prefabs/ui/virtual-stick`). When a second game needs the turn, take `rotate.ts` out
+  into a component under `zhuda-engine-prefabs/ui/`.
 - The engine: an option for the canvas's layout size (see the engine gap above).

@@ -42,10 +42,10 @@ pose part (step 1) does not.
 - MCP server: `node packages/mcp-server/index.mjs --film-output <dir> --film-assets <dir> --film-renderer webgpu`;
   tools `film_scene_create`, `film_scene_review`, `film_scene_preview`,
   `film_render_job`, `film_scene_close`.
-- Character: the stickman builder `prefabs/3d/stickman/source/build.mjs` with
+- Character: the stickman builder `zhuda-engine-prefabs/3d/stickman/source/build.mjs` with
   `STICKMAN_CLIPS=<module>` (the clips to bake), `STICKMAN_OUT=<file.glb>` (trial
   output, the asset is untouched), `STICKMAN_BODY`, `STICKMAN_MOUTH`. The rig and
-  points come from `prefabs/3d/stickman/source/stickman-def.mjs` (`RIG`, `HEAD`);
+  points come from `zhuda-engine-prefabs/3d/stickman/source/stickman-def.mjs` (`RIG`, `HEAD`);
   inverse kinematics from `games/tools/characters/hero-kit.mjs` (`poser`), quaternions
   from `games/tools/characters/kit.mjs` (`Q`).
 - Node v26.13.1; Python 3 with numpy 2.0.2 and Pillow 11.3.0; ffmpeg 8.1.1.

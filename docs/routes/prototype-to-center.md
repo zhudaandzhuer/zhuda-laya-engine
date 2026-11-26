@@ -18,8 +18,8 @@ headless Chrome on a desktop.
   acceptance the build, the types, the Doctor and the tests all pass; three prefabs at 0 pixels
   from the original reference pictures, 30 cycles each; the module taken out of it passed once
   more in a minimal game.
-- **Reference consumer:** `prefabs/2d/dungeon-spin/source/prefab-check/` (the smallest game that
-  passes the gates), `prefabs/2d/dungeon-spin/prefabs.ts`, `prefabs/tests/dungeon-spin.test.mjs`
+- **Reference consumer:** `zhuda-engine-prefabs/2d/dungeon-spin/source/prefab-check/` (the smallest game that
+  passes the gates), `zhuda-engine-prefabs/2d/dungeon-spin/prefabs.ts`, `zhuda-engine-prefabs/tests/dungeon-spin.test.mjs`
   (the boundary test and the asset-manifest test).
 - **Engine version:** zhuda-laya-engine 1.18.0, `def94aae9e7ebf5f9f35b915b54dbb4c3e5fe43c` (the
   original move was at `dd9b5fd`)
@@ -49,7 +49,7 @@ in this repository; nothing was run again from them.
   `zhuda-laya-build` (`--candidate`), `zhuda-laya-accept` (`-- --capture` only makes the
   reference pictures), `zhuda-laya-doctor`.
 - `node --test`: the boundary test and the asset-manifest test (example:
-  `prefabs/tests/dungeon-spin.test.mjs`).
+  `zhuda-engine-prefabs/tests/dungeon-spin.test.mjs`).
 - Go (when there is a server): `go test ./...`, `go vet ./...`.
 
 ## Steps
@@ -64,7 +64,7 @@ in this repository; nothing was run again from them.
    workspace's `games/<game>/server`. Confirm with `tsc --strict` and `zhuda-laya-doctor`:
    imports from the root of `zhuda-laya-engine` only, no `packages/core`, `packages/types` or
    `vendor/`, and no `declare const Laya: any` (written as a test: the boundary case in
-   `prefabs/tests/dungeon-spin.test.mjs`).
+   `zhuda-engine-prefabs/tests/dungeon-spin.test.mjs`).
 3. **Register every file.** `assetManifest`: `{ id, kind: 'image' | 'scene', bytes, sha256 }`,
    given to
    `new DirectoryAssetProvider({ baseUrl, manifest, timeoutMs: 15_000, maxBytes: 20_000_000 })`;
@@ -72,7 +72,7 @@ in this repository; nothing was run again from them.
    ships is in the manifest and that the manifest lists nothing more.
 4. **One prefab for each picture.** The `.lh`: a Sprite root with one `Image` child (its name is
    the `node` of the check, its `skin` is the picture's id). The definition:
-   `{ id: 'visual/…', asset: 'prefabs/….lh', textures: ['….png'], states: { idle: { <node>: { visible: true } } } }`.
+   `{ id: 'visual/…', asset: 'zhuda-engine-prefabs/….lh', textures: ['….png'], states: { idle: { <node>: { visible: true } } } }`.
 5. **The preview module.** `prefabPreview` in `zhuda.config.json` points to a module that
    exports `definitions` and `createAssetProvider()`. The engine's preview page calls
    `createAssetProvider()` **with no arguments**, so its default `baseUrl` must be a place the
@@ -86,7 +86,7 @@ in this repository; nothing was run again from them.
    passing evidence that matches this build).
 8. **The scene mounts the same one.** The scene uses the same `definitions` and the same
    `createAssetProvider()`; the pictures a moving picture needs are taken from the mounted
-   prefab instance (`mountAtlasPrefab` of `prefabs/2d/prefab-atlas`), with no other URL and no
+   prefab instance (`mountAtlasPrefab` of `zhuda-engine-prefabs/2d/prefab-atlas`), with no other URL and no
    `Laya.loader`. A test checks that every id is `instantiate`d in the scene's source.
 9. **The server is verified apart.** `go test ./...`, `go vet ./...`, a health check; recorded
    apart from the client's results.
@@ -124,7 +124,7 @@ in this repository; nothing was run again from them.
 
 | Gap | Workaround |
 | --- | --- |
-| Prefab evidence is bound to the built code, so several projects cannot share one set of it | Every module that is to be shared carries a minimal game made of it alone (`prefabs/2d/dungeon-spin/source/prefab-check/`), where its checks run and its evidence is kept |
+| Prefab evidence is bound to the built code, so several projects cannot share one set of it | Every module that is to be shared carries a minimal game made of it alone (`zhuda-engine-prefabs/2d/dungeon-spin/source/prefab-check/`), where its checks run and its evidence is kept |
 | The gates do not check the other promises of a spec (a single sound output, the DPR cap, whether a layer can be seen) | Compare by hand when moving; write what can be measured as a test or a comparison |
 
 ## Checks
@@ -139,7 +139,7 @@ cd ../server && go test ./... && go vet ./...
 2026-11-25 (a copy of Dungeon Spin with only the pin changed, to `def94aa`): all three accepted,
 0 pixels, 30 cycles; the build, the types, the Doctor (HEALTHY, 0 violations), 6 tests, the Go
 tests and vet all pass. The module taken out of it was run once more with
-`prefabs/2d/dungeon-spin/source/prefab-check/`: the same three at 0 pixels and 30 cycles, with
+`zhuda-engine-prefabs/2d/dungeon-spin/source/prefab-check/`: the same three at 0 pixels and 30 cycles, with
 definition hashes and source SHA-256 equal to those of the original evidence.
 
 ## Not checked
@@ -155,7 +155,7 @@ definition hashes and source SHA-256 equal to those of the original evidence.
 
 - The game: its pictures, `.lh` files, definitions, reference pictures and evidence, its rules,
   its server and its device records.
-- The prefab library (`prefabs/`): reusable pictures and systems (taken out by
+- The prefab library (`zhuda-engine-prefabs/`): reusable pictures and systems (taken out by
   [game-to-prefabs](game-to-prefabs.md)).
 - The engine: the prefab runtime library, `AssetProvider`, the preview page, the acceptance and
   build commands. Do not change the engine or import from deep inside it in order to pass a

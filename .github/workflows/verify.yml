@@ -39,6 +39,19 @@ jobs:
       - run: npm ci
       - run: npm run verify:games
 
+  library:
+    # The prefab library is a repository of its own (zhuda-engine-prefabs) and pins a released
+    # engine. Its checks run here on this checkout, so that an engine change that breaks a module
+    # is seen before the engine is released.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm run verify:library
   browser:
     # Headless Chrome with SwiftShader. These batches prove geometry, paint,
     # input and lifecycle contracts; they are not GPU/device acceptance.

@@ -14,9 +14,9 @@ WebGPU only.
 - **Status:** checked on desktop WebGL and WebGPU (Apple M4, Chrome 157 headless,
   1280 by 720), 2026-11-16; a phone's screen and touch were emulated only; not on a
   phone.
-- **Reference consumer:** this repository, `prefabs/3d/sky-island` with `prefabs/3d/island-pig`,
+- **Reference consumer:** this repository, `zhuda-engine-prefabs/3d/sky-island` with `zhuda-engine-prefabs/3d/island-pig`,
   `island-sound`, `day-look.ts`, `quality-tiers.ts`, `nature-pack` and `zhuda-characters`, shown by
-  `prefabs/viewer3d` (`?scene=sky-island`). The game this route was written from
+  `zhuda-engine-prefabs/viewer3d` (`?scene=sky-island`). The game this route was written from
   (`games/zhuda-sky-island` in the game centre workspace) was taken apart into those modules on
   2026-11-25 and removed; the modules were compared with it pixel for pixel first
   ([game-to-prefabs](game-to-prefabs.md), [shared-islands](shared-islands.md)).
@@ -57,9 +57,9 @@ queries, [3D integration](../3d-integration.md)); a still or a film
    `zhuda-laya-engine/compiler/consumer` (`runConsumerBuild`). Check: the consumer's
    `npm run doctor`.
 2. **One source for the ground.** The Blender script that shapes the island's top
-   also writes its heights as data (`prefabs/3d/sky-island/island-data.ts`: a 0.2 m grid with `null`
+   also writes its heights as data (`zhuda-engine-prefabs/3d/sky-island/island-data.ts`: a 0.2 m grid with `null`
    off the island, the rim's radius at 128 angles, the pond's ellipse and water
-   level, the path's points). `prefabs/3d/sky-island/ground.ts` reads it: `groundAt`, `insideBy`,
+   level, the path's points). `zhuda-engine-prefabs/3d/sky-island/ground.ts` reads it: `groundAt`, `insideBy`,
    `pondDistance`, `pathDistance`. Grass, props, the character and particles all
    ask these, never the mesh. Check: `node --test tests/` (ground inside the rim,
    `null` outside, the pond's floor below its water).
@@ -68,7 +68,7 @@ queries, [3D integration](../3d-integration.md)); a still or a film
    (`house.find('sails')`, `tree.find('canopy')`); props are clones of the nodes of
    one file. The character is loaded with `independentMaterials: true`. A failed
    download is tried again and the count that has arrived is shown.
-4. **The look as a function of hour and weather.** `skyAt` in `prefabs/3d/day-look.ts` takes
+4. **The look as a function of hour and weather.** `skyAt` in `zhuda-engine-prefabs/3d/day-look.ts` takes
    the hour, the weather, the focus distance and the lightning's flash and returns
    a whole `ZhudaFilmLook`; the game eases three
    weather amounts (rain, storm, mist) toward the chosen weather and calls
@@ -127,7 +127,7 @@ queries, [3D integration](../3d-integration.md)); a still or a film
 11. **Night.** Windows and the lamp share a material named `glow`, whose emission
     follows the night; three point lights, at the lamp and at the cottage's front,
     follow it too.
-12. **Picture settings and the frame budget.** Four settings (`prefabs/3d/quality-tiers.ts`): look
+12. **Picture settings and the frame budget.** Four settings (`zhuda-engine-prefabs/3d/quality-tiers.ts`): look
     level, pixel ratio, grass density and the share of particles. A phone starts
     low, anything else mid; `?fx=` picks one. A `ZhudaQualityGovernor` with
     `budgetMs: 1000 / 55` moves along a ladder of `{ look, renderScale }` with
@@ -179,7 +179,7 @@ queries, [3D integration](../3d-integration.md)); a still or a film
 | Gap | Workaround | Plan |
 | --- | --- | --- |
 | Particles in front of the sky take the fog of what lies behind them | A short `lightFog.maxDistance` | none yet |
-| (Closed in 2.0.0) No public entry for the headless Chrome host a consumer's scripted check needs | Import `zhuda-laya-engine/compiler/chrome-host`; `prefabs/viewer3d/tools/play.mjs` still imports the file by path | done |
+| (Closed in 2.0.0) No public entry for the headless Chrome host a consumer's scripted check needs | Import `zhuda-laya-engine/compiler/chrome-host`; `zhuda-engine-prefabs/viewer3d/tools/play.mjs` still imports the file by path | done |
 | `ZhudaSceneLook` has no call for a game's own lamps or a material's emission (a film stage has `setLight`) | LayaAir's `PointLightCom` and the material's emission strength, set by the game | none yet |
 
 ## Checks

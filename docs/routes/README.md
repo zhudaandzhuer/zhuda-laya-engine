@@ -14,6 +14,18 @@ Over MCP the same two tools are `list_routes` and `get_route`; `get_agent_contra
 carries the list as `routes`. From an installed package the pages are under
 `node_modules/zhuda-laya-engine/docs/routes/`.
 
+## The modules and the assets a route names
+
+A route names modules of the prefab library and kinds of asset. Neither is in this repository.
+
+- **Modules** (`ui/dialog`, `3d/sky-island`, …; a path written `zhuda-engine-prefabs/<path>` is a
+  path in that repository): [zhuda-engine-prefabs](https://github.com/zhudaandzhuer/zhuda-engine-prefabs).
+  In a game: `npm install -D git+https://github.com/zhudaandzhuer/zhuda-engine-prefabs.git#<tag or commit>`,
+  then `npx zhuda-prefabs-sync . <module …>`. [How it works](../prefab-library.md).
+- **Assets** (textures, pictures, reference pictures to turn into models):
+  [zhuda-engine-assets](https://github.com/zhudaandzhuer/zhuda-engine-assets). Read its
+  `catalog/kinds.json`, then the slice of the kind, then fetch single files by address.
+
 ## The format
 
 Every page has the same header and the same sections, in the same order
@@ -33,7 +45,7 @@ refuses a page that lacks one.
 | Boundaries                                                                                  | What stays in the consumer and what belongs to the engine                         |
 
 Since 2.0.0 the folder also holds the routes the game centre workspace kept beside the engine
-(their modules are in [`prefabs/`](../prefab-library.md)) and one route written from each game of
+(their modules are in [`zhuda-engine-prefabs/`](../prefab-library.md)) and one route written from each game of
 the workspace's `games/` folder; those games are outside this repository, and their routes say
 what the games' own records show, with dates.
 
@@ -142,7 +154,7 @@ consumer. Most tasks take one or two workflows and, when one fits, a scene route
 | A WeChat mini-game | `new-game-project`, `mini-game-build`, then the one nearest: `drop-merge-2d-minigame` (2D), `raft-brawl-3d-minigame` (3D, small), `action-adventure-3d-minigame` (3D, large); a game whose interface is HTML: `aqua-freeze-2d-minigame` |
 | A game like one the workspace already shipped | Its route: `isometric-mystery-2d`, `story-counting-2d`, `third-person-town-3d`, `apocalypse-survival-3d`, `pole-rescue-arcade-3d`, `platform-fighter-2d`, and the three mini-games above |
 | A test of an interface that clicks named controls and asserts each step, without a model | `ui-test-by-probe` |
-| Something several games will share | [The prefab library](../prefab-library.md): look in `prefabs/catalog.json` first, add a module there, not in a game |
+| Something several games will share | [The prefab library](../prefab-library.md): look in `zhuda-engine-prefabs/catalog.json` first, add a module there, not in a game |
 | Changing the engine itself                   | Not a route: `AGENTS.md`, then [agent development](../agent-development.md)                                                                                                                  |
 
 A route is not a plan (see [plans](../plans/README.md)) and not an API reference:

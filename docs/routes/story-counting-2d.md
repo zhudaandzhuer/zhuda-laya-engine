@@ -34,9 +34,9 @@ written in its `HANDOFF.md`, `client/README.md` or `client/reports/`, or in the 
 
 - Node 24 or newer (`node --test` imports the game's `.ts` files directly), TypeScript `^5.9.3`.
   `client/zhuda.config.json`: features `core`, `2d`, `ui`; viewport 1280×720 `showall`; `dprCap` 2.
-- Prefab modules (`client/common-prefabs.lock.json`, library 0.3.0): `prefabs/ui/visual-novel`,
-  `prefabs/ui/settings-form`, `prefabs/ui/dom`, `prefabs/systems/i18n`, `prefabs/systems/storage`:
-  `node node_modules/zhuda-laya-engine/prefabs/scripts/sync.mjs . ui/visual-novel ui/settings-form systems/i18n systems/storage`.
+- Prefab modules (`client/common-prefabs.lock.json`, library 0.3.0): `zhuda-engine-prefabs/ui/visual-novel`,
+  `zhuda-engine-prefabs/ui/settings-form`, `zhuda-engine-prefabs/ui/dom`, `zhuda-engine-prefabs/systems/i18n`, `zhuda-engine-prefabs/systems/storage`:
+  `node node_modules/zhuda-engine-prefabs/scripts/sync.mjs . ui/visual-novel ui/settings-form systems/i18n systems/storage`.
 - Pictures: the owner's image-generation command-line tool (`client/art/gen-20261115/*.png.json`
   records tool version 1.5.0, image model `gpt-image-2.6-flare`), prompts in `prompts/`, the owner's
   own character sheets as references. No third-party art and no licence file is recorded; the store
@@ -169,7 +169,7 @@ written in its `HANDOFF.md`, `client/README.md` or `client/reports/`, or in the 
 | No helper for a landscape stage on an upright phone (DOM layers, pointer mapping)   | `html.rot` CSS and `toStage` / `toScreen` in `Main.ts`              |
 | `Laya.stage.mouseX` followed a real mouse only, not touch (`ZhudaPointerInput` was not tried) | Browser pointer events mapped through the canvas rectangle |
 | No portal layer: ad SDKs, a portal's save store, gameplay start and stop            | `src/portal.ts`, `scripts/pack-zip.mjs`                             |
-| No story player and no DOM interface kit in the SDK                                 | `prefabs/ui/visual-novel`; the game's own page in `cqw`             |
+| No story player and no DOM interface kit in the SDK                                 | `zhuda-engine-prefabs/ui/visual-novel`; the game's own page in `cqw`             |
 | No build step that resizes or re-encodes pictures and sound                         | `pack_assets.py`, then WebP by hand                                 |
 | The [audio contract](../audio.md), `AssetProvider` ([asset loading](../asset-loading.md)), the layered clock and the prefab gate ([prefab workflow](../prefab-workflow.md)) were not used; the records do not say why | The game's `audio.ts`, `Laya.loader.load`, `setTimeout` for interface timers |
 

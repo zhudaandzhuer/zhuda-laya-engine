@@ -5,7 +5,7 @@ game that is continuous and does not jump: measure ten joint pins, write move ti
 in-between cels between two poses offline with optical flow (poses that overlap, such as an arm
 crossing the helmet, get layered masks as well), and at run time change picture along the baked
 in-betweens while a mesh deforms with the joints. The knight (69 in-between cels) and the warden
-(61) of Ashfall Duel (灰燼之庭) were made this way; the run-time part is `prefabs/2d/cel-motion`.
+(61) of Ashfall Duel (灰燼之庭) were made this way; the run-time part is `zhuda-engine-prefabs/2d/cel-motion`.
 Checked on desktop only.
 
 - **Id:** `pose-atlas-motion`
@@ -20,11 +20,11 @@ Checked on desktop only.
   Ashfall Duel as in the original game, and 3 + 15 tests pass; the bake script runs to the end on
   the Mac in about 5 seconds, and its output differs from the shipped in-betweens (see
   **Pitfalls**)
-- **Reference consumer:** this repository, `prefabs/2d/cel-motion/` (`cel-motion.ts`,
+- **Reference consumer:** this repository, `zhuda-engine-prefabs/2d/cel-motion/` (`cel-motion.ts`,
   `cel-sprite.ts`, `preview/pins.jpg`, `preview/strip-3-4.jpg`),
-  `prefabs/2d/ashfall-duel/source/tools/bake-transitions.py`, `prefabs/2d/ashfall-duel/motion.ts`
+  `zhuda-engine-prefabs/2d/ashfall-duel/source/tools/bake-transitions.py`, `zhuda-engine-prefabs/2d/ashfall-duel/motion.ts`
   (the two characters' joint tables and move timetables),
-  `prefabs/2d/ashfall-duel/source/ART.md` (the image prompts)
+  `zhuda-engine-prefabs/2d/ashfall-duel/source/ART.md` (the image prompts)
 - **Engine version:** zhuda-laya-engine 1.18.0, `def94aae9e7ebf5f9f35b915b54dbb4c3e5fe43c`
 
 ## When to take this route
@@ -45,15 +45,15 @@ Checked on desktop only.
 
 - Pictures: the image command of the owner's `zhuda-windows` agent skill (not in this repository),
   with gpt-image-2.6 (generating single pictures on the Mac itself has been retired). The original
-  author used ImageGen; the prompts are in full in `prefabs/2d/ashfall-duel/source/ART.md`.
-- The bake: `prefabs/2d/ashfall-duel/source/tools/bake-transitions.py`. It needs Python 3 with
+  author used ImageGen; the prompts are in full in `zhuda-engine-prefabs/2d/ashfall-duel/source/ART.md`.
+- The bake: `zhuda-engine-prefabs/2d/ashfall-duel/source/tools/bake-transitions.py`. It needs Python 3 with
   Pillow, NumPy and OpenCV (`cv2.DISOpticalFlow`, `inpaint`, `distanceTransform`), and Node 24
   (to read the joint tables in `motion.ts`).
-- Run time: `2d/cel-motion` (`node prefabs/scripts/sync.mjs <game dir> 2d/cel-motion` from a
+- Run time: `2d/cel-motion` (`node zhuda-engine-prefabs/scripts/sync.mjs <game dir> 2d/cel-motion` from a
   checkout of this repository, or from the game
-  `node node_modules/zhuda-laya-engine/prefabs/scripts/sync.mjs . 2d/cel-motion`), the engine's
+  `node node_modules/zhuda-engine-prefabs/scripts/sync.mjs . 2d/cel-motion`), the engine's
   prefabs (`ZhudaPrefabLibrary`, `.lh` scenes) and `zhuda-laya-accept`.
-- Looking: any image tool that can lay points over a picture; `prefabs/2d/cel-motion/preview/pins.jpg`
+- Looking: any image tool that can lay points over a picture; `zhuda-engine-prefabs/2d/cel-motion/preview/pins.jpg`
   and `strip-3-4.jpg` were overlaid with PIL.
 
 ## Steps
@@ -105,7 +105,7 @@ Checked on desktop only.
    `assets/art/*-motion-*.webp`).
 7. **Into the prefab.** A character is one Sprite node with, under it, `Art` (the key-pose atlas)
    and one hidden `Motion0`, `Motion1`… for each page; the prefab's `textures` lists them all.
-   `CelSprite` only reads these textures (an example: `prefabs/2d/ashfall-duel/assets/courtyard.lh`).
+   `CelSprite` only reads these textures (an example: `zhuda-engine-prefabs/2d/ashfall-duel/assets/courtyard.lh`).
 8. **The order at run time.** The target pose (from a timetable or `Footwork.walkPose()`) →
    `Footwork.shape()` (planting the feet, rise and fall, breathing) → the move's own adjustments
    (for example the wrist lifted while the sword is raised) →
@@ -148,13 +148,13 @@ Checked on desktop only.
 
 | Gap | Workaround |
 | --- | --- |
-| The engine's 2D characters are Spine only; there is no "atlas of key poses plus in-betweens" | `prefabs/2d/cel-motion` (`PoseTrack`, `Footwork`, `CelSprite`) |
-| No tool that bakes in-betweens offline | `prefabs/2d/ashfall-duel/source/tools/bake-transitions.py` (the characters' data is written into the script; another character means changing it) |
+| The engine's 2D characters are Spine only; there is no "atlas of key poses plus in-betweens" | `zhuda-engine-prefabs/2d/cel-motion` (`PoseTrack`, `Footwork`, `CelSprite`) |
+| No tool that bakes in-betweens offline | `zhuda-engine-prefabs/2d/ashfall-duel/source/tools/bake-transitions.py` (the characters' data is written into the script; another character means changing it) |
 | No component that deforms a picture by a mesh | `CelSprite` draws a mesh of 17×21 vertices every frame with Laya's `graphics.drawTriangles` |
 
 ## Checks
 
-The commands are written for this repository's `prefabs/`; the results are those of 2026-11-25,
+The commands are written for this repository's `zhuda-engine-prefabs/`; the results are those of 2026-11-25,
 from before the library moved into this repository.
 
 ```sh
@@ -182,7 +182,7 @@ differed by 0 pixels; the bake runs to the end on the Mac with a different resul
 
 - The game: the character's atlas, joint tables, move timetables, the bake's guide points and
   masks, the in-between pages and index, the lossless originals.
-- The prefab library (`prefabs/`): `2d/cel-motion` (motion and drawing at run time) and the bake
+- The prefab library (`zhuda-engine-prefabs/`): `2d/cel-motion` (motion and drawing at run time) and the bake
   script (for now in `2d/ashfall-duel/source/tools/`, with the characters' data written into it).
 - The engine: prefab loading and comparison, Laya's drawing. To build this into the engine (for
   example a general atlas-character component), move it from `2d/cel-motion`.

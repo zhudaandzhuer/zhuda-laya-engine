@@ -327,14 +327,7 @@ test('scenario files written before these steps are read as before; a slip in a 
     { note: 'a key no player reads' },
   ];
   assert.equal(checkScenario(old), old);
-  // Every scenario kept in the repository.
-  let files = 0;
-  for (const dir of ['prefabs/viewer2d/scenarios', 'prefabs/viewer3d/scenarios'])
-    for (const file of fs.readdirSync(path.join(repo, dir)).filter((f) => f.endsWith('.json'))) {
-      checkScenario(JSON.parse(fs.readFileSync(path.join(repo, dir, file), 'utf8')));
-      files++;
-    }
-  assert.ok(files >= 30, String(files));
+  // The scenarios the prefab library keeps are checked by its own tests (zhuda-engine-prefabs).
   const fine = [
     { click: 'level-0', wait: 1, expect: { name: 'menu' }, probe: 'board', shot: '02' },
     { click: { text: '選單' }, expect: [{ text: '豬大果園' }, { js: 'S.screen === "title"' }] },
@@ -486,16 +479,6 @@ test('an expectation is checked at once, or again as the clock runs until its ti
     expect: 1,
     waited: 0,
   });
-});
-
-test('the two viewers play scenarios with the same file, and both players take the new steps', () => {
-  const read = (file) => fs.readFileSync(path.join(repo, file), 'utf8');
-  assert.equal(read('prefabs/viewer2d/tools/play.mjs'), read('prefabs/viewer3d/tools/play.mjs'));
-  for (const file of ['prefabs/viewer2d/tools/play.mjs', 'prefabs/tools/detplay.mjs']) {
-    const text = read(file);
-    for (const word of ['stage-probe.mjs', 'checkScenario', 'step.expect', 'step.probe'])
-      assert.ok(text.includes(word), `${file}: ${word}`);
-  }
 });
 
 test('the stage probe is a public entry of the package', () => {

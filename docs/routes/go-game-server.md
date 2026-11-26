@@ -7,7 +7,7 @@ The result of a round-based game (a slot, a reel game, a draw) is decided by the
 - **For:** building a Go authoritative server for a game: mathematics whose randomness can be replaced, a wallet seam, JWT identity, an HTTP API, replay, an RTP simulator, and a round format and tests shared with the client
 - **Checked on:** local Go 1.26.5 (darwin/arm64), `httptest` and a real server on `127.0.0.1`; no deployment, no TLS, no operator wallet
 - **Status:** on 2026-11-25 the server of an earlier cascade slot game in the workspace (removed after it was taken apart; its theme and art were not kept) was taken apart into shared packages (the same as the original server round for round, and the simulator report the same number for number), and the general steps were worked out against the server of the original Dungeon Spin game (removed after it was taken apart); the TS client ran 30 rounds in a row against the real server with the accounts agreeing
-- **Reference consumer:** this repository: `prefabs/server/` (`slotmath`, `slotsim`, `slotgateway`, `wallet`, `authjwt`, `replay`, `cmd/slotserver`, `cmd/slotsim`); a second example was the server of the original Dungeon Spin game (fixed-round mathematics and a single-lock authority service; now that it is taken apart, see the dungeon packages of `prefabs/server`)
+- **Reference consumer:** this repository: `zhuda-engine-prefabs/server/` (`slotmath`, `slotsim`, `slotgateway`, `wallet`, `authjwt`, `replay`, `cmd/slotserver`, `cmd/slotsim`); a second example was the server of the original Dungeon Spin game (fixed-round mathematics and a single-lock authority service; now that it is taken apart, see the dungeon packages of `zhuda-engine-prefabs/server`)
 - **Engine version:** no engine is used (a server); the client side was checked on zhuda-laya-engine 1.18.0, `def94aae9e7ebf5f9f35b915b54dbb4c3e5fe43c`
 
 ## When to take this route
@@ -16,17 +16,17 @@ The result of a round-based game (a slot, a reel game, a draw) is decided by the
 - Does not fit:
   - Purely single-player play with trial points: the client's `systems/slot-round` `LocalSession` (books first and plays afterwards, computes every round again on loading) is enough, see [cascade-slot](cascade-slot.md).
   - Real-time multiplayer and state synchronisation: this is "one request, one round", with no connection state.
-- A slot-type game uses the packages of `prefabs/server` as they are; another game builds its own mathematics package to the structure below, and copies the way the wallet, the JWT, the replay and the API are written.
+- A slot-type game uses the packages of `zhuda-engine-prefabs/server` as they are; another game builds its own mathematics package to the structure below, and copies the way the wallet, the JWT, the replay and the API are written.
 
 ## Tools
 
 - Go 1.26.5 (installed on the local machine), standard library only; `go vet ./...`, `go test ./...`, `gofmt`.
-- The shared packages: `prefabs/server` (one Go module, `zhudagamecenter/commonprefabs/server`; `sync.mjs` does not copy it). In the game's `server/go.mod`:
+- The shared packages: `zhuda-engine-prefabs/server` (one Go module, `zhudagamecenter/commonprefabs/server`; `sync.mjs` does not copy it). In the game's `server/go.mod`:
   ```go
   require zhudagamecenter/commonprefabs/server v0.0.0
-  replace zhudagamecenter/commonprefabs/server => <relative path to this repository>/prefabs/server
+  replace zhudagamecenter/commonprefabs/server => <path to a checkout of zhuda-engine-prefabs>/server
   ```
-- Checks: `cd prefabs && npm run verify:go`; simulation: `go run ./cmd/slotsim -n 1000000 -seed 1`; local server: `SLOT_JWT_SECRET=… SLOT_DEV=1 go run ./cmd/slotserver`; `curl`. Go commands run in `prefabs/server/`.
+- Checks: `cd prefabs && npm run verify:go`; simulation: `go run ./cmd/slotsim -n 1000000 -seed 1`; local server: `SLOT_JWT_SECRET=… SLOT_DEV=1 go run ./cmd/slotserver`; `curl`. Go commands run in `zhuda-engine-prefabs/server/`.
 - Client: `RemoteSlotClient`, `RemoteSession` and `toResolvedRound()` of `2d/slot-client`.
 
 ## Steps
@@ -63,7 +63,7 @@ The result of a round-based game (a slot, a reel game, a draw) is decided by the
 
 | Gap | Workaround |
 | --- | --- |
-| The server does not go through the engine; the engine has no contract for "round JSON and the client's presentation" | The contract is kept in the prefab library (`prefabs/`): Go `slotmath.Round` + TS `2d/slot-client/server-round.ts`, held together by the parity digest test |
+| The server does not go through the engine; the engine has no contract for "round JSON and the client's presentation" | The contract is kept in the prefab library (`zhuda-engine-prefabs/`): Go `slotmath.Round` + TS `2d/slot-client/server-round.ts`, held together by the parity digest test |
 
 ## Checks
 
@@ -91,5 +91,5 @@ Results of 2026-11-25: the tests of all six packages pass; the same as the origi
 ## Boundaries
 
 - The game: its own mathematics configuration and simulation report, the wiring of `cmd/server` and the deployment settings, the secrets, the integration with an operator.
-- The prefab library (`prefabs/server`): the general packages (mathematics engine, simulator, gateway, wallet seam, JWT, replay) and their tests; the client's counterpart in `2d/slot-client`.
+- The prefab library (`zhuda-engine-prefabs/server`): the general packages (mathematics engine, simulator, gateway, wallet seam, JWT, replay) and their tests; the client's counterpart in `2d/slot-client`.
 - The engine: not involved.

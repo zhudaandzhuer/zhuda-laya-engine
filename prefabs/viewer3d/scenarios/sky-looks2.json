@@ -1,6 +1,0 @@
-[
-  { "js": "S.set({ run: false, hour: 10, pitch: 0.08 }); return { clouds: S.fx.clouds.system.aliveCount, sky: S.fx.sky.system.aliveCount };", "wait": 3, "shot": "m-low" },
-  { "js": "S.set({ pitch: 0.3, distance: 8.5 }); await new Promise(r => setTimeout(r, 1500)); const [x, y] = S.project(S.pig.center); S.press(1, x, y); for (let k = 0; k < 12; k++) { S.move(1, x + 4 * k, y - 8 * k); await new Promise(r => setTimeout(r, 25)); } return [x, y];", "wait": 1.0, "shot": "m-held-close" },
-  { "js": "S.release(1); S.set({ distance: 22, pitch: 0.25, weather: 'rain', hour: 15 });", "wait": 4, "shot": "m-rain" },
-  { "js": "S.set({ weather: 'clear', hour: 22 });", "wait": 3, "shot": "m-night" }
-]

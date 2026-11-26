@@ -1,6 +1,0 @@
-[
-  { "js": "S.set({ run: false, hour: 10.5 });", "wait": 3 },
-  { "click": [640, 120], "js": "S.perform('sing');", "wait": 9, "shot": "stage-a" },
-  { "js": "S.endShow(); S.STAGE.center = [-3.75, 4.4]; S.STAGE.yaw = -0.35; S.perform('sing');", "wait": 9, "shot": "stage-b" },
-  { "js": "S.set({ hour: 22.5 });", "wait": 3, "shot": "stage-b-night" }
-]

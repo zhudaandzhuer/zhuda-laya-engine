@@ -1,6 +1,6 @@
 # Handoff: engine state and open work
 
-Last updated: 2026-11-26 (the 2.0.1 section, the section on other sessions' work, the audit-hardening section, the stage-on-a-page section, the watch-scripts-only section, the ui-test-probe section, the 2.0.0 section, with what came after it the same day, and the unification section; the rest is as of 2026-11-23). Read "State now", "Current priorities" and "Open
+Last updated: 2026-11-26 (the 2.0.1 section, the section on the prefab library moving out, the section on other sessions' work, the audit-hardening section, the stage-on-a-page section, the watch-scripts-only section, the ui-test-probe section, the 2.0.0 section, with what came after it the same day, and the unification section; the rest is as of 2026-11-23). Read "State now", "Current priorities" and "Open
 work" first; "History" keeps what each round did, newest first, with its
 records. Check every ref again with `git log` before starting.
 
@@ -38,6 +38,41 @@ formatting of `tests/minigame-toolchain.test.mjs`, which made the public reposit
 fail on the release commit (`npm run format:check` is a step there). Both repositories carry
 the two; the tags stay where they were.
 
+## The prefab library moved out (2026-11-26): what is done, what is owed
+
+The owner's direction: three repositories. Assets in `zhuda-engine-assets` (done the same day),
+the prefab library in its own repository, the engine and the routes here; an agent is handed this
+repository and its routes send it to the other two. The owner's word for the library: "開始拆".
+
+- **Done:** [zhuda-engine-prefabs](https://github.com/zhudaandzhuer/zhuda-engine-prefabs) is public
+  at 2.0.2: the content of `prefabs/` at the public `764e46f`, made to stand alone (its own package
+  and command `zhuda-prefabs-sync`, the engine as a pinned dependency, the viewers as npm
+  workspaces on the engine's public entries, the stickman builders finding this repository's
+  character kit through `ZHUDA_ENGINE_CHECKOUT`). On the released engine 2.0.1: library 209 of
+  209, both viewers, ten Go packages; its own workflow passes on Linux with Node 24; installed
+  from GitHub into an empty project, the command syncs and checks; an existing game's lock passes
+  `--check` against it.
+- **Here (the owner's word for the second step: "做第二步"):** this checkout is **2.1.0, not
+  released**. `prefabs/` is gone from the repository and from the package (`files`, the
+  `zhuda-prefab-sync` bin, `verify:prefabs`). `npm run verify:library`
+  (`scripts/verify-prefab-library.mjs`) runs the library's checks on this checkout and is a job
+  of the workflow. The current documents and routes name modules as `zhuda-engine-prefabs/<path>`
+  and the library's command; records, and the older sections of the changelog and of this file,
+  say `prefabs/` as they were written. Two tests that read the library's files were cut down
+  (the library carries those checks now); two models the motion audit's tests read are fixtures
+  under `tests/fixtures/characters/`. The git bundle that must stay private is under
+  `archive/ashfall-duel/`, which the public export leaves out. Record:
+  [prefab-library-split](docs/plans/records/prefab-library-split/verification.md).
+- **Owed:** the release itself (tag, release page, the browser SDK at 2.1.0: its source has
+  moved on from the published 2.0.1 since the audit clean-up); then the library's 2.1.0 with its
+  pin moved to the engine's tag; then the workspace's eleven games on engine 2.1.0 with their
+  locks taken from the library. Until the engine is released, the library stays at 2.0.2 on
+  engine 2.0.1, and games on 2.0.1 work as they did.
+- **The version rule the owner and the session talked through:** the library's first two numbers
+  follow the engine line it was checked on (2.0.x with 2.0.x); a game pins a tag or a commit,
+  never a branch; a branch is cut for an old line only when it needs a fix.
+- **State:** committed on `unified`; not pushed, not on the public repository, no tag.
+
 ## Other sessions' work in this worktree, checked and committed (2026-11-26)
 
 Three pieces had been left uncommitted here by other sessions the same day. The owner's word:
@@ -52,7 +87,8 @@ nothing of them was rewritten.
 
 Not checked: the two tutorial modules were not read line by line, and no picture of either
 stickman look was taken here (the session that made them recorded its own). The worktree is
-clean after these. **State:** committed on `unified`; not pushed, not on the public repository.
+clean after these. **State:** on both repositories, pushed 2026-11-26 on the owner's word:
+`1e05512b` on `unified`, `764e46fc` on the public `main` (the export, one commit).
 
 ## audit-hardening: an outside audit of the public repository, checked and closed (2026-11-26)
 
@@ -203,7 +239,7 @@ that state is version 2.0.0. Task and record:
 
 **What is where now.**
 
-- [`prefabs/`](prefabs/README.md): the prefab library (39 modules at 2.0.0, 41 since the two
+- [`prefabs/`](https://github.com/zhudaandzhuer/zhuda-engine-prefabs/blob/main/README.md): the prefab library (39 modules at 2.0.0, 41 since the two
   hosiery modules; two viewers, Go packages), from
   the workspace's `commonPrefabs/` 0.10.0 plus five things taken out of games. It ships in the npm
   package; a game copies modules with `npx zhuda-prefab-sync`. Guide:

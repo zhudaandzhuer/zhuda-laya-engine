@@ -43,7 +43,7 @@ before changing genre) and cannot be followed; every screenshot in `evidence/` i
 
 - Engine pin above; Node 24 or later (exact version not recorded); TypeScript 5.9.3; the LayaAir
   3.4.2 command line behind the build ([mini-game packaging](../minigame-packaging.md)).
-- `prefabs/systems/pig-combat` (library 0.4.0 in `common-prefabs.lock.json`). It and the model
+- `zhuda-engine-prefabs/systems/pig-combat` (library 0.4.0 in `common-prefabs.lock.json`). It and the model
   come from the game of [third-person-town-3d](third-person-town-3d.md); how the model was made
   and its licence are not recorded here.
 - `@gltf-transform/core`, `extensions`, `functions` ^4.1.1, `meshoptimizer` ^0.22.0, `sharp`
@@ -64,7 +64,7 @@ before changing genre) and cannot be followed; every screenshot in `evidence/` i
    ([asset loading](../asset-loading.md)): `wx.getFileSystemManager().readFile` in WeChat,
    `fetch` in a browser; it goes to `new ZhudaModelLibrary({ provider, timeoutMs: 60_000 })`.
 3. **Take the fighting from the prefab library.**
-   `node node_modules/zhuda-laya-engine/prefabs/scripts/sync.mjs . systems/pig-combat` copies
+   `node node_modules/zhuda-engine-prefabs/scripts/sync.mjs . systems/pig-combat` copies
    `jobs.ts` and `targets.ts` to `src/common/systems/pig-combat/`. Used here: `JOBS` (three
    callings, each a round of five attacks and a skill), `newCombat`, `pressAttack`, `pressSkill`,
    `stepCombat`, `current`; `REACH`, `struck`, `aimAt`, `aimRange`, `landAhead`, `SHATTER`.
@@ -200,6 +200,6 @@ All from the game's HANDOFF of 2026-11-19 unless dated otherwise; none repeated 
 
 The game owns `src/brawl.ts` and its numbers, the bots, the HUD and its text, the props from
 code, the slimmed model, app id, ad units and advice text. The prefab library owns
-`prefabs/systems/pig-combat`: change it there and sync, never in `src/common/`. The engine owns
+`zhuda-engine-prefabs/systems/pig-combat`: change it there and sync, never in `src/common/`. The engine owns
 the look, the water, the governor, the camera rig, the model library, clip blending, particles
 and the mini-game build; the files named under Engine gaps are game code until it takes them.

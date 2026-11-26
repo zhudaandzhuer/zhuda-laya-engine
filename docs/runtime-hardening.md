@@ -39,7 +39,7 @@ boot({ ...options, fixedDeltaSec: 1 / 60 });
 Every frame then advances the session's clock by exactly that time, whatever really passed:
 timers, waits, tweens, time layers and `update(dt)` see the same values on every run. It does not
 change what does not go through this clock: `Date`, `performance.now()` read by the game, audio
-and CSS animation. For those, `prefabs/tools/detplay.mjs` replaces the page's clocks.
+and CSS animation. For those, `zhuda-engine-prefabs/tools/detplay.mjs` replaces the page's clocks.
 
 
 Use `scaled` for gameplay and hit-stop windows. Use `unscaled` for UI,

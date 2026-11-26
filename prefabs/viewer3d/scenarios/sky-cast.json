@@ -1,5 +1,0 @@
-[
-  { "js": "S.set({ run: false, hour: 10.5, distance: 7, pitch: 0.18 });", "wait": 6, "shot": "cast-idle" },
-  { "js": "const [x, y] = S.project(S.pig.center); S.press(1, x, y); for (let k = 0; k < 14; k++) { S.move(1, x + 30 * Math.sin(k), y - 8 * k); await new Promise(r => setTimeout(r, 30)); }", "wait": 0.7, "shot": "cast-held" },
-  { "js": "S.release(1);", "wait": 3.5, "shot": "cast-after" }
-]

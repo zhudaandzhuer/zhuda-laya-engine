@@ -493,11 +493,11 @@ try {
 `whenZhudaSplashGone()` in the page (after 2.0.0) before the first picture, or build with
 `{"branding":{"mode":"none"}}`; a fixed sleep is a guess.
 
-[`prefabs/tools/detplay.mjs`](../prefabs/tools/detplay.mjs) plays a scenario (steps of waits,
+[`zhuda-engine-prefabs/tools/detplay.mjs`](https://github.com/zhudaandzhuer/zhuda-engine-prefabs/blob/main/tools/detplay.mjs) plays a scenario (steps of waits,
 clicks, keys and screenshots) on a **virtual clock**: every animation frame advances time by one
 fixed step, `performance.now`, `Date` and the timers follow it, and `Math.random` is seeded, so
 two runs on a busy machine give the same pixels. It is how two builds are compared pixel by pixel
-(route [game-to-prefabs](routes/game-to-prefabs.md)); `prefabs/tools/pixdiff.py` counts the
+(route [game-to-prefabs](routes/game-to-prefabs.md)); `zhuda-engine-prefabs/tools/pixdiff.py` counts the
 differing pixels of two folders of pictures. The engine's splash runs on real time by design:
 wait it out, or build the pair with `{"branding":{"mode":"none"}}`.
 
@@ -512,7 +512,7 @@ for, its text and its rectangle in CSS pixels. Nothing of it is in a game's bund
 The scenario players use it for three steps: `"click": "name"` (or `{ "text": … }`), which
 clicks the middle of the one shown node it picks; `"expect": { … }`, which fails the run with
 the step and what was found; `"probe": "file"`, which writes the report.
-[`prefabs/tools/detrepeat.mjs`](../prefabs/tools/detrepeat.mjs) runs one scenario N times on the
+[`zhuda-engine-prefabs/tools/detrepeat.mjs`](https://github.com/zhudaandzhuer/zhuda-engine-prefabs/blob/main/tools/detrepeat.mjs) runs one scenario N times on the
 virtual clock and says whether every run gave the same pictures, stage reports and log. How to
 write such a test, what it was checked on and what is missing (a phone, iOS, a mini-game runtime):
 [ui-test-by-probe](routes/ui-test-by-probe.md).

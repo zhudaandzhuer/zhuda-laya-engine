@@ -487,7 +487,7 @@ test('what the file is: quantized turns, a vertex on five joints, no clip, not a
 test("the repository's own characters stand where the route says they stand", () => {
   const read = (file) =>
     auditCharacter(new Uint8Array(fs.readFileSync(new URL(`../${file}`, import.meta.url))));
-  const stickman = read('prefabs/3d/stickman/assets/stickman.glb');
+  const stickman = read('tests/fixtures/characters/stickman.glb');
   assert.equal(stickman.passes, true);
   assert.deepEqual(
     [stickman.rig.joints, stickman.rig.groups.secondary, stickman.rig.twist.length],
@@ -507,7 +507,7 @@ test("the repository's own characters stand where the route says they stand", ()
   assert.equal(verdict(body, 'dense-keys').ok, true);
   assert.equal(verdict(body, 'secondary-in-clips').ok, false);
   assert.equal(body.clips.find((c) => c.name === 'Idle').seconds, 3.2);
-  const pig = read('prefabs/3d/zhuda-characters/assets/zhuda.glb');
+  const pig = read('tests/fixtures/characters/zhuda.glb');
   assert.equal(pig.rig.humanoid, false);
   assert.deepEqual(pig.rig.secondary, [
     'ear.L',
@@ -520,14 +520,12 @@ test("the repository's own characters stand where the route says they stand", ()
   assert.equal(pig.rig.groups.secondary, 3);
   assert.ok(pig.clips.every((c) => c.keysPerSecond === 21 && !c.moving.secondary));
   assert.equal(pig.passes, false);
-  // Its ears and tail are a solver's at run time (prefabs/3d/island-pig): said so, the clips are not failed for them.
+  // Its ears and tail are a solver's at run time (the prefab library's 3d/island-pig): said so, the clips are not failed for them.
   assert.equal(
     verdict(
       auditCharacter(
         new Uint8Array(
-          fs.readFileSync(
-            new URL('../prefabs/3d/zhuda-characters/assets/zhuda.glb', import.meta.url),
-          ),
+          fs.readFileSync(new URL('./fixtures/characters/zhuda.glb', import.meta.url)),
         ),
         { secondaryAtRunTime: true },
       ),

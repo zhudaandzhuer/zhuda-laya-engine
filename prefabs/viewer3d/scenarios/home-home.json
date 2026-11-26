@@ -1,9 +1,0 @@
-[
-  { "js": "S.set({ run: false, hour: 10.5, distance: 22, pitch: 0.24, yaw: 0.62 });", "wait": 5, "shot": "home-day" },
-  { "click": [640, 120], "js": "S.perform('wave');", "wait": 4, "shot": "home-wave" },
-  { "js": "S.set({ distance: 11, pitch: 0.2 }); S.perform('sing');", "wait": 7, "shot": "home-sing" },
-  { "js": "return JSON.stringify({ song: S.state().songTime, sound: S.sound.state().song, acting: S.state().actors.map(a => a.acting) });", "wait": 3, "shot": "home-sing2" },
-  { "js": "S.endShow(); S.perform('hands');", "wait": 5, "shot": "home-hands" },
-  { "js": "S.set({ distance: 9 }); await new Promise(r => setTimeout(r, 1500)); const [x, y] = S.project(S.zhuer.center); S.press(1, x, y); for (let k = 0; k < 14; k++) { S.move(1, x + 6 * Math.sin(k), y - 7 * k); await new Promise(r => setTimeout(r, 30)); }", "wait": 0.9, "shot": "home-held" },
-  { "js": "S.release(1); S.set({ hour: 22.5, distance: 20 }); S.perform('sit');", "wait": 5, "shot": "home-night" }
-]

@@ -35,7 +35,7 @@ one test-only shim) and by the WeChat developer tools' preview build; no phone r
   `zhuda-laya-build`, `zhuda-laya-doctor`, `zhuda-laya-minigame` with LayaAir 3.4.2 at
   `~/.layaair/3.4.2`.
 - Prefab module `systems/minigame-host` (host bridge, polyfills, `PlatformAssetProvider`), copied
-  with `npx zhuda-prefab-sync . systems/minigame-host`.
+  with `npx zhuda-prefabs-sync . systems/minigame-host`.
 - Node 26.13.1, TypeScript 5.9.3, esbuild 0.27.1 (through the engine), Playwright core 1.62.1 with
   the installed Google Chrome (`CHROME_BIN`, found by the script on macOS and Windows).
 - WeChat developer tools (Stable, arm64) and its command line through the owner's
@@ -145,7 +145,7 @@ tools/patch-wx.mjs`: every `.js` lowered to ES2017 with esbuild, `project.config
 
 | Gap                                                                                                                                               | Workaround                                                                                            |
 | ------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| `ZhudaPrefabLibrary` needs `TextEncoder`, `Blob`, `URL.createObjectURL`, `crypto.subtle` and `DOMException`, which a WeChat mini game (iOS) lacks | `src/platform/wx-polyfills.ts` (step 5); a candidate for `prefabs/systems/minigame-host/polyfills.ts` |
+| `ZhudaPrefabLibrary` needs `TextEncoder`, `Blob`, `URL.createObjectURL`, `crypto.subtle` and `DOMException`, which a WeChat mini game (iOS) lacks | `src/platform/wx-polyfills.ts` (step 5); a candidate for `zhuda-engine-prefabs/systems/minigame-host/polyfills.ts` |
 | No accepted mini-game audio backend (`IframeSoundAdapter` is refused)                                                                             | `src/audio/ToneSynth.ts` (step 6)                                                                     |
 | `zhuda-laya-minigame` at 2.0.0 has no syntax target and no orientation (both added after `91d21f79`)                                              | `tools/patch-wx.mjs` (step 8)                                                                         |
 | No Laya-drawn interface module in the prefab library (`ui/*` modules are DOM)                                                                     | `src/ui/GameUI.ts`                                                                                    |

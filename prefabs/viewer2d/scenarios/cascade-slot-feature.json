@@ -1,9 +1,0 @@
-[
-  { "wait": 6.2 },
-  { "js": "S.set({ dialog: 'buy' })" },
-  { "wait": 0.3, "shot": "06-buy-dialog" },
-  { "js": "S.set({ dialog: 'none', round: 'seed:22:buy' })" },
-  { "wait": 24.8, "shot": "07-free-spins" },
-  { "wait": 4.9, "shot": "08-feature-total" },
-  { "wait": 3, "js": "return JSON.stringify(S.state().last)" }
-]

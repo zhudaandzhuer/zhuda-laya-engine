@@ -1,4 +1,0 @@
-[
- {"wait": 0.6},
- {"js": "__qa.key('Enter')", "wait": 30, "shot": "12-defeat"}
-]

@@ -11,7 +11,8 @@ commands and evidence, not a confidence statement.
 | Build a game, a scene, a film, a model or a release **with** the engine | `node packages/mcp-server/index.mjs --tool list_routes`, pick the route, then `--tool get_route --args '{"id":"<id>"}'`. Every route is one page in [`docs/routes/`](docs/routes/README.md), in one format. |
 | Change the engine itself | Read on: "Required reading before implementation", then "Development protocol". |
 | Check an engine change against real games | `npm run verify:games`: the reference games under [`games/`](games/README.md) build, type-check, doctor and test against this checkout. |
-| Use or add something several games share (interface, input, saving, a 3D scene, a 2D game as modules, a game server's Go packages) | [`prefabs/`](prefabs/README.md), the prefab library: [how a game takes modules from it](docs/prefab-library.md). Look there before writing a component in a game; `npm run verify:prefabs` checks it against this checkout. |
+| Use or add something several games share (interface, input, saving, a 3D scene, a 2D game as modules, a game server's Go packages) | The prefab library, a repository of its own: [`zhuda-engine-prefabs`](https://github.com/zhudaandzhuer/zhuda-engine-prefabs); [how a game takes modules from it](docs/prefab-library.md). Look there before writing a component in a game. `npm run verify:library` runs its checks on this checkout. |
+| Find a picture, a texture or a reference picture to turn into a model | The asset repository: [`zhuda-engine-assets`](https://github.com/zhudaandzhuer/zhuda-engine-assets). Read its `catalog/kinds.json`, then fetch single files by address. |
 | Pick up unfinished work | [`HANDOFF.md`](HANDOFF.md), then [`docs/plans/README.md`](docs/plans/README.md). |
 
 ## Repository boundary
@@ -37,20 +38,23 @@ ship still lives in its own repository. Record where every picture and model
 under `games/` came from in [`games/ASSETS.md`](games/ASSETS.md), and keep
 `games/` small: everyone who installs the engine from Git clones it.
 
-The prefab library under [`prefabs/`](prefabs/README.md) is the second exception,
-decided by the owner on 2026-11-26 ("能融化出來的3d場景和資產，都可以搬運…全部只剩下這個庫，
-以及games/ 擺放各種依賴這個庫的遊戲"): the modules several games share, with the models,
-pictures and sounds they need, the viewers that show them and the Go packages a
-game server is built from, live here and ship in the npm package (without their
-`source/`, `preview/` and the viewers). It came from the game centre workspace's
-`commonPrefabs/`. A module holds no single game's content, is listed in
-[`prefabs/catalog.json`](prefabs/catalog.json), has tests, and is copied into a
-game by `zhuda-prefab-sync`, never imported from the engine's main entry: the
-engine's runtime does not depend on it. A game made to ship still lives outside
-this repository (the workspace's `games/`), pins a release of this one, and gets
-its own page in [`docs/routes/`](docs/routes/README.md) when what it learned is
-worth repeating. Where each piece of art in `prefabs/` came from is in its
-module's README; nothing of a third party's product goes in.
+The prefab library was the second exception from 2.0.0 to 2.0.1, when it lived under
+`prefabs/` here and shipped in the npm package. Since 2.1.0 it is a repository of its own,
+[`zhuda-engine-prefabs`](https://github.com/zhudaandzhuer/zhuda-engine-prefabs): the modules several games share, with the models, pictures
+and sounds they need, the viewers that show them and the Go packages a game server is built
+from. Raw material (pictures, textures, reference pictures for models) is a third repository,
+[`zhuda-engine-assets`](https://github.com/zhudaandzhuer/zhuda-engine-assets). This repository is where an agent starts: the routes say
+which modules and which kind of asset a job needs, and the agent takes them from the other two.
+
+- A module is copied into a game by the library's `zhuda-prefabs-sync`, never imported from the
+  engine's main entry: the engine's runtime does not depend on the library.
+- The library pins a released engine. Its version follows the engine line it was checked on
+  (library 2.1.x goes with engine 2.1.x); a game pins a tag or a commit of each, never a branch.
+- A change here that can reach a module is checked with `npm run verify:library`, which runs
+  the library's own checks on this checkout; the workflow runs it too.
+- A game made to ship still lives outside this repository (the workspace's `games/`), pins a
+  release of this one, and gets its own page in [`docs/routes/`](docs/routes/README.md) when
+  what it learned is worth repeating.
 
 The `src/` showcase and `assets/` fixtures are engine examples and regression
 fixtures. They are not a place for a consumer game's production content.
@@ -162,7 +166,7 @@ Run from the repository root:
 ```sh
 npm run verify
 npm run verify:games   # when the change can reach a consumer: public API, runtime, compiler, Doctor
-npm run verify:prefabs # the same condition, and whenever prefabs/ changes (add :go for prefabs/server)
+npm run verify:library # the same condition: the prefab library's own checks on this checkout (add -- --go for its Go packages)
 git diff --check
 git status --short
 ```
