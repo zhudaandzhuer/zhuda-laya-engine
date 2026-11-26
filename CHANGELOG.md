@@ -4,7 +4,7 @@ What each release added, newest first. The version source of truth is `package.j
 releases are on [GitHub](https://github.com/zhudaandzhuer/zhuda-laya-engine/releases). The sections
 below 1.18.0 were moved here from the README as they were written at the time.
 
-## 2.1.0 (not released yet)
+## 2.1.0 (2026-11-27)
 
 - **The prefab library left this repository and this package.** It is a repository of its own,
   [zhuda-engine-prefabs](https://github.com/zhudaandzhuer/zhuda-engine-prefabs), and this is why the version is a minor one:
@@ -58,9 +58,11 @@ below 1.18.0 were moved here from the README as they were written at the time.
   engine has. Not built here yet.
 - `tests/minigame-toolchain.test.mjs` is in the form `npm run format:check` asks for: the check
   passes again.
-- The browser SDK 2.0.1 is published ([releases](docs/browser-sdk-releases.json)): six bundles and,
-  for the first time in a recorded release, the backend loader. Templates and
-  [the SDK page](docs/browser-sdk.md) point at it.
+- **The browser SDK 2.1.0 is published with this release** ([releases](docs/browser-sdk-releases.json)):
+  the same runtime as 2.0.1 less three lines of dead code, under this version's number.
+  Templates and [the SDK page](docs/browser-sdk.md) point at it. (The SDK 2.0.1 was published
+  on 2026-11-26, after the 2.0.1 tag: six bundles and, for the first time in a recorded release,
+  the backend loader.)
 
 ## 2.0.1 (2026-11-26)
 

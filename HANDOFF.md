@@ -1,8 +1,29 @@
 # Handoff: engine state and open work
 
-Last updated: 2026-11-26 (the 2.0.1 section, the section on the prefab library moving out, the section on other sessions' work, the audit-hardening section, the stage-on-a-page section, the watch-scripts-only section, the ui-test-probe section, the 2.0.0 section, with what came after it the same day, and the unification section; the rest is as of 2026-11-23). Read "State now", "Current priorities" and "Open
+Last updated: 2026-11-27 (the 2.1.0 section; 2026-11-26: the 2.0.1 section, the section on the prefab library moving out, the section on other sessions' work, the audit-hardening section, the stage-on-a-page section, the watch-scripts-only section, the ui-test-probe section, the 2.0.0 section, with what came after it the same day, and the unification section; the rest is as of 2026-11-23). Read "State now", "Current priorities" and "Open
 work" first; "History" keeps what each round did, newest first, with its
 records. Check every ref again with `git log` before starting.
+
+## 2.1.0 (2026-11-27)
+
+The owner's word: "發 2.1.0" (the tag, the release page, the browser SDK). 2.1.0 is what came
+after 2.0.1: the prefab library in a repository of its own and gone from this package (the
+reason for a minor number), the audit hardening, an onboarding tutorial's routes, and the
+browser SDK under this number.
+
+- **Tag:** `v2.1.0` on the commit that adds this section (`unified`), and on its export on the
+  public `main`. A consumer pins `git+https://github.com/zhudaandzhuer/zhuda-laya-engine.git#v2.1.0`.
+- **Browser SDK 2.1.0:** published on the owner's game site and recorded in
+  `docs/browser-sdk-releases.json`; the twenty published files are the local build byte for byte,
+  `verify:browser-sdk` runs its six scenarios against the published address, `browser:check` and
+  `browser:drift` pass. It was built from this tree before the record was written; the record
+  changes no SDK source.
+- **Not done with this release:** the prefab library still says 2.0.2 and pins engine 2.0.1 (its
+  checks pass on 2.1.0: `npm run verify:library`); the workspace's eleven games are on engine
+  2.0.1 with locks taken from the 2.0 packages. Both are the owner's word.
+- Records: [prefab-library-split](docs/plans/records/prefab-library-split/verification.md),
+  [audit-hardening](docs/plans/records/audit-hardening/verification.md); the public side in
+  `docs/plans/records/public-release/2.1.0.md` (this repository only).
 
 ## 2.0.1 (2026-11-26)
 
@@ -52,8 +73,8 @@ repository and its routes send it to the other two. The owner's word for the lib
   209, both viewers, ten Go packages; its own workflow passes on Linux with Node 24; installed
   from GitHub into an empty project, the command syncs and checks; an existing game's lock passes
   `--check` against it.
-- **Here (the owner's word for the second step: "做第二步"):** this checkout is **2.1.0, not
-  released**. `prefabs/` is gone from the repository and from the package (`files`, the
+- **Here (the owner's word for the second step: "做第二步"):** this checkout is **2.1.0**
+  (released the next day: the section at the top). `prefabs/` is gone from the repository and from the package (`files`, the
   `zhuda-prefab-sync` bin, `verify:prefabs`). `npm run verify:library`
   (`scripts/verify-prefab-library.mjs`) runs the library's checks on this checkout and is a job
   of the workflow. The current documents and routes name modules as `zhuda-engine-prefabs/<path>`
@@ -63,15 +84,15 @@ repository and its routes send it to the other two. The owner's word for the lib
   under `tests/fixtures/characters/`. The git bundle that must stay private is under
   `archive/ashfall-duel/`, which the public export leaves out. Record:
   [prefab-library-split](docs/plans/records/prefab-library-split/verification.md).
-- **Owed:** the release itself (tag, release page, the browser SDK at 2.1.0: its source has
-  moved on from the published 2.0.1 since the audit clean-up); then the library's 2.1.0 with its
-  pin moved to the engine's tag; then the workspace's eleven games on engine 2.1.0 with their
-  locks taken from the library. Until the engine is released, the library stays at 2.0.2 on
-  engine 2.0.1, and games on 2.0.1 work as they did.
+- **Owed after the release:** the library's 2.1.0 with its pin moved to the engine's tag; then
+  the workspace's eleven games on engine 2.1.0 with their locks taken from the library. Games on
+  2.0.1 work as they did.
 - **The version rule the owner and the session talked through:** the library's first two numbers
   follow the engine line it was checked on (2.0.x with 2.0.x); a game pins a tag or a commit,
   never a branch; a branch is cut for an old line only when it needs a fix.
-- **State:** committed on `unified`; not pushed, not on the public repository, no tag.
+- **State:** pushed 2026-11-27 on the owner's word, no tag: `38430208` on `unified`, `8d2de8c1` on
+  the public `main` (the export, one commit), `09f855b` on the library's `main`. `v2.0.1` is
+  still the release; the public `main` is the unreleased 2.1.0.
 
 ## Other sessions' work in this worktree, checked and committed (2026-11-26)
 

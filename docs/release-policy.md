@@ -5,17 +5,19 @@ The engine has one version source: the root [`package.json`](../package.json).
 artifacts must carry the same version. A Git tag and GitHub release are created
 for every public stable version.
 
-## Not released yet
-
-**2.1.0** — the prefab library leaves this repository and this package for a repository of its
-own, [`zhuda-engine-prefabs`](https://github.com/zhudaandzhuer/zhuda-engine-prefabs). This is
-why the number is a minor one: the package no longer has `prefabs/` or the `zhuda-prefab-sync`
-command, and a game takes modules with the library's `zhuda-prefabs-sync`. The library's
-version follows the engine line it was checked on, and `npm run verify:library` runs its checks
-on this checkout before a release. No change to the public API. Details in the
-[changelog](../CHANGELOG.md).
-
 ## Current stable release
+
+**v2.1.0** (2026-11-27) — the prefab library left this repository and this package for a
+repository of its own, [`zhuda-engine-prefabs`](https://github.com/zhudaandzhuer/zhuda-engine-prefabs).
+This is why the number is a minor one: the package no longer has `prefabs/` or the
+`zhuda-prefab-sync` command, and a game takes modules with the library's `zhuda-prefabs-sync`.
+The library's version follows the engine line it was checked on, and `npm run verify:library`
+runs its checks on this checkout before a release. Also in it: MCP tools keep to the folders
+their operator allowed and check a call against the tool's input schema, the engine's own build
+works through a symbolic link, and a stricter lint with the tree cleaned up. No change to the
+public API. The tag `v2.1.0` is on `main` of the engine's own GitHub repository
+(`git+https://github.com/zhudaandzhuer/zhuda-laya-engine.git#v2.1.0`). Details in the
+[changelog](../CHANGELOG.md).
 
 **v2.0.1** (2026-11-26) — what came after 2.0.0 the same week: a film scene drawn
 live on a page takes its lens from `prepare` and keeps what was fixed at mount

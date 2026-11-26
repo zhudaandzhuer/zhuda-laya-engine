@@ -225,7 +225,7 @@ scripts/, tests/        Browser checks (npm run verify:<name>) and Node tests
 
 ## Releases
 
-**This checkout is 2.1.0, not released yet**; the last release is 2.0.1, tagged `v2.0.1` on [the engine's own repository](https://github.com/zhudaandzhuer/zhuda-laya-engine); 2.0.0 was tagged in the owner's verification repository only, so the release before it there is [v1.17.0](https://github.com/zhudaandzhuer/zhuda-laya-engine/releases/tag/v1.17.0) · The version source of truth is `package.json`; `zhuda.config.json`, the lockfile and generated manifests must match it. Older tags such as v1.1.0 are historical releases, not the current SDK. What each release added is in the [changelog](CHANGELOG.md).
+**This checkout is 2.1.0**, tagged `v2.1.0` on [the engine's own repository](https://github.com/zhudaandzhuer/zhuda-laya-engine); 2.0.0 was tagged in the owner's verification repository only, so the release before it there is [v1.17.0](https://github.com/zhudaandzhuer/zhuda-laya-engine/releases/tag/v1.17.0) · The version source of truth is `package.json`; `zhuda.config.json`, the lockfile and generated manifests must match it. Older tags such as v1.1.0 are historical releases, not the current SDK. What each release added is in the [changelog](CHANGELOG.md).
 
 Maintained by [Zhuda](https://github.com/zhudaandzhuer). Rendering and physics come from [LayaAir / Layabox](https://layaair.com/). This is an independent fork; donations support Zhuda's work on this repository.
 
