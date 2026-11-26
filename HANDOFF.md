@@ -1,6 +1,6 @@
 # Handoff: engine state and open work
 
-Last updated: 2026-11-26 (the 2.0.1 section, the stage-on-a-page section, the watch-scripts-only section, the ui-test-probe section, the 2.0.0 section, with what came after it the same day, and the unification section; the rest is as of 2026-11-23). Read "State now", "Current priorities" and "Open
+Last updated: 2026-11-26 (the 2.0.1 section, the audit-hardening section, the stage-on-a-page section, the watch-scripts-only section, the ui-test-probe section, the 2.0.0 section, with what came after it the same day, and the unification section; the rest is as of 2026-11-23). Read "State now", "Current priorities" and "Open
 work" first; "History" keeps what each round did, newest first, with its
 records. Check every ref again with `git log` before starting.
 
@@ -29,11 +29,44 @@ The same day, on the owner's word ("發行改2.0.1 遊戲全部升級2.0.1 / sdk
   `HANDOFF.md` has a "引擎升到 2.0.1" section and an `evidence/upgrade-2.0.1/` folder. No game
   was opened in a browser or on a phone for this, and none was published.
 
+Both repositories carry the SDK record (`6d2a9184` here, `fff32231` on the public `main`); the
+tags stay where they were.
+
 After the tag, the same day: the route `papercraft-diorama` (an outside skill's rules for a
 pop-up paper scene made of code alone, set against this engine; not built here) and the
 formatting of `tests/minigame-toolchain.test.mjs`, which made the public repository's workflow
 fail on the release commit (`npm run format:check` is a step there). Both repositories carry
 the two; the tags stay where they were.
+
+## audit-hardening: an outside audit of the public repository, checked and closed (2026-11-26)
+
+An outside agent (Gemini) audited the public repository at `5ccc746` and listed ten findings,
+three marked high. Each was checked against the code; the owner said "開始修" for those that
+hold. Record: [audit-hardening](docs/plans/records/audit-hardening/verification.md), which has
+the ten findings with their verdicts.
+
+- **Closed:** the two MCP tools that read a folder their caller names
+  (`audit_visual_migration`, `audit_visual_contract`) keep to the folder the server was started
+  in and the folders given with `--root` or `ZHUDA_MCP_ROOTS` (`packages/mcp-server/roots.mjs`);
+  every tool call is checked against the tool's input schema before it runs
+  (`packages/mcp-server/arguments.mjs`); `runZhudaBuild` compares the project and the engine by
+  real path and refuses an `outDir` outside the project; `npm run lint` refuses unused names,
+  empty blocks without a reason, unknown names in plain JavaScript and Node in the browser
+  code, and the tree was cleaned up to pass (72 places); the workflow's actions are pinned to
+  commits.
+- **Not true, or already past:** two of the four MCP tools the audit names do not exist; the
+  public workflow failed on the tagged commit only and passes on the two after it; the browser
+  SDK 2.0.1 is out; `local-results/` holds no path of anyone's machine.
+- **True and left alone:** `typescript-eslint`'s whole recommended set (about 1,900 uses of
+  `any`), the upstream path written in eight files, the number of npm scripts.
+- **For whoever publishes the browser SDK next:** three lines of dead code left the runtime, so
+  the SDK built from this source is no longer the published 2.0.1 byte for byte
+  (`npm run browser:drift` says so). That is what the check is for: raise the version before the
+  next SDK release.
+- **A behaviour an agent will meet:** an audit of a project outside the server's folder now
+  needs `--root`; the error names the flag.
+- **State:** committed on `unified`; not pushed, not on the public repository. Pushing is the
+  owner's word.
 
 ## stage-on-a-page: an outside agent's report on 2.0.0, checked and closed (2026-11-26)
 
@@ -103,10 +136,10 @@ Mac's numbers and a summary in Chinese: `local-results/watch-fast-path/`.
   no link are byte for byte what they were. Record:
   [consumer-symlink-entry](docs/plans/records/consumer-symlink-entry/verification.md).
 - **Found, not fixed:** the watcher's start line prints a `prefab-preview.html` address for
-  projects that have no such page; the engine workbench reached through a symbolic link is taken
-  for a consumer (`runZhudaBuild` compares the two roots as strings) and stops with a missing
-  `public/index.html`; timing tests in six files fail when the machine is heavily loaded and
-  pass when run alone (listed in the record).
+  projects that have no such page; timing tests in six files fail when the machine is heavily
+  loaded and pass when run alone (listed in the record). The third thing found then, the engine
+  workbench taken for a consumer when reached through a symbolic link, was closed in
+  audit-hardening (above).
 - **State: two commits on `unified`, pushed 2026-11-26** together with the stage-on-a-page commit (`git log -2 -- packages/compiler/consumer-build.mjs`).
   Pushing is the owner's word. The exact next step, if wanted: the same for a project with
   `prefabPreview` (keep a context per preview bundle and serve those from memory too).

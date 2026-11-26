@@ -83,7 +83,7 @@ test('a bright world direction lands mirrored in X and lights surfaces that face
 });
 
 test('rougher mips blur a small bright spot and keep its energy roughly', () => {
-  const world = cube(32, ([x, y, z]) => (z > 0.98 ? [50, 50, 50] : [0, 0, 0]));
+  const world = cube(32, ([, , z]) => (z > 0.98 ? [50, 50, 50] : [0, 0, 0]));
   const { spec, pixels } = prefilterZhudaEnvironment(world, { size: 32, samples: 128 });
   const peak = (m) => {
     const level = spec.levels[m];

@@ -48,29 +48,12 @@ out.pictures = () => Object.keys(saved);
 type V = number[];
 const v3 = (a: V) => new Laya.Vector3(a[0], a[1], a[2]);
 const sub = (a: V, b: V) => a.map((v, i) => v - b[i]);
-const add = (a: V, b: V) => a.map((v, i) => v + b[i]);
 const scale = (a: V, s: number) => a.map((v) => v * s);
 const dot = (a: V, b: V) => a.reduce((s, v, i) => s + v * b[i], 0);
 const unit = (a: V) => scale(a, 1 / Math.hypot(...a));
-const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
-const smooth = (low: number, high: number, x: number) => {
-  const t = clamp01((x - low) / (high - low));
-  return t * t * (3 - 2 * t);
-};
-/** What the screen shows for a linear value, without a grade. */
-const shown = (linear: number) => 255 * clamp01(linear) ** (1 / 2.2);
 const at = (p: Uint8Array, x: number, y: number) => {
   const i = (Math.round(y) * W + Math.round(x)) * 4;
   return [p[i], p[i + 1], p[i + 2]];
-};
-/** Mean colour of a square round a point. */
-const patch = (p: Uint8Array, cx: number, cy: number, half = 2) => {
-  const sum = [0, 0, 0];
-  let n = 0;
-  for (let y = Math.round(cy) - half; y <= Math.round(cy) + half; y++)
-    for (let x = Math.round(cx) - half; x <= Math.round(cx) + half; x++, n++)
-      for (let c = 0; c < 3; c++) sum[c] += p[(y * W + x) * 4 + c];
-  return sum.map((v) => +(v / n).toFixed(1));
 };
 const far = (a: V, b: V) => Math.max(...a.map((v, i) => Math.abs(v - b[i])));
 const difference = (a: Uint8Array, b: Uint8Array) => {

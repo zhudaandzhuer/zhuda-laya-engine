@@ -10,6 +10,11 @@ import { cliMain } from '../compiler/cli.mjs';
  *    node packages/mcp-server/index.mjs --tool search_api_guardrails --args '{"query":"Button"}'
  *    node packages/mcp-server/index.mjs --tool diagnose_error --args '{"error":"reading '\''I'\''"}'
  *    node packages/mcp-server/index.mjs --tool get_golden_example --args '{"id":"boot-declarative-3d"}'
+ *
+ * Every call's arguments are checked against the tool's input schema before the tool runs
+ * (arguments.mjs). A tool that takes a path from its caller reads only inside the folder the
+ * server was started in and the folders given with `--root DIRECTORY` or `ZHUDA_MCP_ROOTS`
+ * (roots.mjs).
  */
 
 import readline from 'node:readline';
@@ -49,6 +54,8 @@ import {
   validateTaskSpec,
 } from '../compiler/agent-contract.mjs';
 import { API_GUARDRAILS, ERROR_DIAGNOSTICS_DB, GOLDEN_EXAMPLES } from './corpus.mjs';
+import { assertToolArguments } from './arguments.mjs';
+import { configureAllowedRoots, resolveAllowedPath } from './roots.mjs';
 import { getQualityRoute } from './quality-route.mjs';
 
 const projectRoot = fileURLToPath(new URL('../..', import.meta.url));
@@ -335,14 +342,20 @@ export const MCP_TOOLS_MANIFEST = [
     inputSchema: {
       type: 'object',
       properties: {
-        sourceRoot: { type: 'string', description: 'Unity 專案或 Game 資產根目錄的絕對路徑' },
+        sourceRoot: {
+          type: 'string',
+          description:
+            'Unity 專案或 Game 資產根目錄的絕對路徑。必須在伺服器允許讀取的資料夾內（啟動時的工作目錄，或以 --root 加入的資料夾）',
+        },
         targetRoot: {
           type: 'string',
-          description: 'Laya 專案 assets 根目錄或專案根目錄的絕對路徑',
+          description:
+            'Laya 專案 assets 根目錄或專案根目錄的絕對路徑。必須在伺服器允許讀取的資料夾內',
         },
         contractPath: {
           type: 'string',
-          description: '可選的 visual-migration-manifest.json 絕對路徑',
+          description:
+            '可選的 visual-migration-manifest.json 絕對路徑。必須在伺服器允許讀取的資料夾內',
         },
         strict: {
           type: 'boolean',
@@ -361,16 +374,36 @@ export const MCP_TOOLS_MANIFEST = [
       properties: {
         projectRoot: {
           type: 'string',
-          description: '包含 visual-presentation-manifest.json 的專案絕對路徑',
+          description:
+            '包含 visual-presentation-manifest.json 的專案絕對路徑。必須在伺服器允許讀取的資料夾內',
         },
-        manifestPath: { type: 'string', description: '可選的契約檔相對或絕對路徑' },
+        manifestPath: {
+          type: 'string',
+          description:
+            '可選的契約檔路徑，相對於 projectRoot 或絕對路徑；同樣要在允許讀取的資料夾內',
+        },
       },
       required: ['projectRoot'],
     },
   },
 ];
 
+const TOOLS_BY_NAME = new Map(MCP_TOOLS_MANIFEST.map((tool) => [tool.name, tool]));
+
+/**
+ * Throws when `args` do not fit the input schema the named tool declares.
+ *
+ * A `validate_*` tool is itself the judge of what it is handed: a recipe that is
+ * `null` or the wrong shape gets that tool's own report (`passed: false` and the
+ * reasons), so the schema check is not put in front of it.
+ */
+export function assertMcpToolArguments(toolName, args = {}) {
+  const tool = TOOLS_BY_NAME.get(toolName);
+  if (tool && !toolName.startsWith('validate_')) assertToolArguments(tool, args);
+}
+
 export function executeMcpTool(toolName, args = {}) {
+  assertMcpToolArguments(toolName, args);
   switch (toolName) {
     case 'validate_texture_recipe': {
       const issues = validateZhudaTextureRecipe(args.recipe);
@@ -661,9 +694,12 @@ export function executeMcpTool(toolName, args = {}) {
 
     case 'audit_visual_migration': {
       const report = auditVisualAssetMigration({
-        sourceRoot: args.sourceRoot,
-        targetRoot: args.targetRoot,
-        contractPath: args.contractPath,
+        sourceRoot: resolveAllowedPath(args.sourceRoot, 'sourceRoot'),
+        targetRoot: resolveAllowedPath(args.targetRoot, 'targetRoot'),
+        contractPath:
+          args.contractPath === undefined
+            ? undefined
+            : resolveAllowedPath(args.contractPath, 'contractPath'),
         strict: Boolean(args.strict),
       });
       return {
@@ -673,9 +709,13 @@ export function executeMcpTool(toolName, args = {}) {
     }
 
     case 'audit_visual_contract': {
+      const contractRoot = resolveAllowedPath(args.projectRoot, 'projectRoot');
       const report = auditVisualPresentationContracts({
-        projectRoot: args.projectRoot,
-        manifestPath: args.manifestPath,
+        projectRoot: contractRoot,
+        manifestPath:
+          args.manifestPath === undefined
+            ? undefined
+            : resolveAllowedPath(args.manifestPath, 'manifestPath', contractRoot),
       });
       return {
         tool: 'audit_visual_contract',
@@ -746,12 +786,14 @@ export function handleJsonRpcMessage(msg) {
             Array.isArray(params.arguments)))
       )
         throw Error('Invalid tool parameters');
-      if (isFilmTool(params.name))
+      if (isFilmTool(params.name)) {
+        assertMcpToolArguments(params.name, params.arguments || {});
         // Film tools render in a browser and answer asynchronously, with image blocks.
         return executeFilmTool(params.name, params.arguments || {}).then(
           (content) => ({ jsonrpc: '2.0', id, result: { content } }),
           (err) => ({ jsonrpc: '2.0', id, error: { code: -32602, message: err.message } }),
         );
+      }
       const output = executeMcpTool(params.name, params.arguments || {});
       return {
         jsonrpc: '2.0',
@@ -790,7 +832,7 @@ export function handleJsonRpcMessage(msg) {
 if (
   cliMain(
     import.meta.url,
-    'Usage: zhuda-laya-mcp [--tool NAME --args JSON] [--film-output DIRECTORY] [--film-pack MODULE ...] [--film-assets DIRECTORY] [--film-renderer webgl|webgpu]\nWithout --tool, starts the JSON-RPC stdio server. --film-output lets film_render_job write stills and MP4 there; --film-pack adds an operator prop/recipe module (repeatable); --film-assets serves a directory of .glb models and .hdr lightmaps to film scenes; --film-renderer picks the backend film scenes are drawn with (default webgl, or ZHUDA_FILM_RENDERER).',
+    'Usage: zhuda-laya-mcp [--tool NAME --args JSON] [--root DIRECTORY ...] [--film-output DIRECTORY] [--film-pack MODULE ...] [--film-assets DIRECTORY] [--film-renderer webgl|webgpu]\nWithout --tool, starts the JSON-RPC stdio server. --film-output lets film_render_job write stills and MP4 there; --film-pack adds an operator prop/recipe module (repeatable); --film-assets serves a directory of .glb models and .hdr lightmaps to film scenes; --film-renderer picks the backend film scenes are drawn with (default webgl, or ZHUDA_FILM_RENDERER).',
   )
 ) {
   const { resolve } = await import('node:path');
@@ -820,12 +862,20 @@ if (
     return [resolve(file)];
   });
   if (packList.length) configureFilmTools({ packs: packList });
+  const rootList = process.argv.flatMap((arg, i) => {
+    if (arg !== '--root') return [];
+    const dir = process.argv[i + 1];
+    if (!dir) throw Error('--root needs a directory');
+    return [resolve(dir)];
+  });
+  if (rootList.length) configureAllowedRoots(rootList);
   const toolIdx = process.argv.indexOf('--tool');
   if (toolIdx !== -1) {
     const toolName = process.argv[toolIdx + 1];
     const argsIdx = process.argv.indexOf('--args');
     const rawArgs = argsIdx !== -1 ? JSON.parse(process.argv[argsIdx + 1]) : {};
     if (isFilmTool(toolName)) {
+      assertMcpToolArguments(toolName, rawArgs);
       const content = await executeFilmTool(toolName, rawArgs);
       await closeFilmTools();
       console.log(

@@ -196,6 +196,11 @@ node packages/mcp-server/index.mjs --tool get_golden_example --args '{"id":"boot
 
 A validator checks data; a real draw and a device are separate checks.
 
+Every call's arguments are checked against the tool's input schema before the tool runs: a call
+that does not fit is refused, with the argument named. The two tools that read a folder their
+caller names (`audit_visual_migration`, `audit_visual_contract`) read only inside the folder the
+server was started in; allow others with `--root DIRECTORY` (repeatable) or `ZHUDA_MCP_ROOTS`.
+
 ## Repository map
 
 ```text

@@ -86,7 +86,6 @@ export function measureZhudaBitmapText(
   manifest: ZhudaBitmapFontManifest,
   text: string,
 ): { width: number; height: number; lines: number } {
-  const report = validateZhudaBitmapFont(manifest, text);
   const advances = new Map(manifest.glyphs.map((g) => [g.char, g.xAdvance]));
   const fallback = manifest.fallbackChar ? (advances.get(manifest.fallbackChar) ?? 0) : 0;
   const lines = text.split(/\r?\n/);

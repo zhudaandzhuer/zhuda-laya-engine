@@ -143,11 +143,6 @@ function streak(p: Uint8Array) {
     centre: [round(mx, 1), round(my, 1)],
   };
 }
-/** Smallest difference between two axis angles (a line at 10 and at 190 degrees is the same). */
-const axisGap = (a: number, b: number) => {
-  const d = Math.abs(a - b) % 180;
-  return round(Math.min(d, 180 - d), 1);
-};
 
 async function main() {
   const renderer = (globalThis as any).ZhudaBundle.renderer === 'webgpu' ? 'webgpu' : 'webgl';

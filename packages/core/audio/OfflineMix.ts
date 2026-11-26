@@ -177,7 +177,9 @@ export async function renderOfflineMix(
     for (const source of sources) {
       try {
         source.stop();
-      } catch {}
+      } catch {
+        // A source that never started, or has already ended, throws here: it is stopped either way.
+      }
     }
     for (const node of nodes) node.disconnect();
   }

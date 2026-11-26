@@ -47,22 +47,6 @@ out.pictures = () => Object.keys(saved);
 
 type V = number[];
 const v3 = (a: V) => new Laya.Vector3(a[0], a[1], a[2]);
-const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
-/** What the screen shows for a linear value. */
-const shown = (linear: number) => 255 * clamp01(linear) ** (1 / 2.2);
-const round1 = (v: number) => +v.toFixed(1);
-/** Mean colour of a square round a point. */
-const patch = (p: Uint8Array, cx: number, cy: number, half = 2) => {
-  const sum = [0, 0, 0];
-  let n = 0;
-  for (let y = Math.round(cy) - half; y <= Math.round(cy) + half; y++)
-    for (let x = Math.round(cx) - half; x <= Math.round(cx) + half; x++, n++)
-      for (let c = 0; c < 3; c++) sum[c] += p[(y * W + x) * 4 + c];
-  return sum.map((v) => +(v / n).toFixed(1));
-};
-const far = (a: V, b: V) => Math.max(...a.map((v, i) => Math.abs(v - b[i])));
-const worstOf = (drawn: V[], expected: V[]) =>
-  +Math.max(...drawn.map((d, i) => far(d, expected[i]))).toFixed(2);
 const difference = (a: Uint8Array, b: Uint8Array) => {
   let sum = 0,
     worst = 0;
@@ -592,7 +576,7 @@ async function main() {
       [-5, 3, 0],
       [5, 3, 0],
     ];
-    const lamps = LAMPS.map((at) => lamp('point', at, 2, 12));
+    for (const at of LAMPS) lamp('point', at, 2, 12);
     const shadow = new Z.ZhudaPointShadow(scene, { lights: 2 });
     let draws: number[] = [];
     const schedule = new Z.ZhudaPointShadowSchedule(

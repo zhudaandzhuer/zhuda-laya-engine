@@ -112,7 +112,9 @@ export function runOfficialCli(
       if (log !== undefined)
         try {
           fs.closeSync(log);
-        } catch {}
+        } catch {
+          // The spawn error is the one to report; a log that will not close changes nothing.
+        }
       if (commandShimRoot) fs.rmSync(commandShimRoot, { recursive: true, force: true });
       reject(error);
       return;

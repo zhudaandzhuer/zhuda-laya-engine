@@ -3,7 +3,6 @@ import { cliMain } from '../compiler/cli.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { PNG } from 'pngjs';
 const sha256 = (bytes) => crypto.createHash('sha256').update(bytes).digest('hex');

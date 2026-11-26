@@ -2,7 +2,6 @@ import {
   DirectoryAssetProvider,
   Zhuda3D,
   ZhudaAssetShowcase,
-  ZhudaModelInspector,
   ZhudaModelLibrary,
 } from 'zhuda-laya-engine';
 import type {

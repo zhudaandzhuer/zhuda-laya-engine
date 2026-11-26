@@ -1,11 +1,4 @@
-import {
-  normalized,
-  inverse4,
-  multiply4,
-  transformPoint,
-  type Vec3,
-  type Matrix4,
-} from './Math3D.ts';
+import { normalized, inverse4, multiply4, transformPoint, type Vec3 } from './Math3D.ts';
 export interface QueryRay {
   origin: Vec3;
   direction: Vec3;

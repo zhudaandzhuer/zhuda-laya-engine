@@ -114,7 +114,7 @@ async function bootMicroPreview() {
     const baseOriginY = Math.round(stageY + (stageH - expH) / 2 - report.expectedBox.y);
 
     // 實例化靜態預製體 (凍結 Spine 動態更新以便像素比對)
-    const inst = ZhudaPrefab.instantiate(lhData, quadrantLayer, {
+    ZhudaPrefab.instantiate(lhData, quadrantLayer, {
       x: baseOriginX + (lhData.x ?? 10),
       y: baseOriginY + (lhData.y ?? 10),
     });

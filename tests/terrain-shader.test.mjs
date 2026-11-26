@@ -137,8 +137,7 @@ test('DDA rays hit analytic slopes from each side and use a bounded ray distance
       heights,
     });
   for (let i = 0; i < 80; i++) {
-    const x = 0.1 + (i % 8),
-      z = 0.1 + Math.floor(i / 10),
+    const z = 0.1 + Math.floor(i / 10),
       o = { x: i % 2 ? -2 : 10, y: 6, z },
       d = { x: i % 2 ? 1 : -1, y: -0.6, z: 0 };
     const t = (0.25 * o.x + 0.5 * o.z - o.y) / (d.y - 0.25 * d.x),

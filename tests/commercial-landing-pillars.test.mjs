@@ -7,7 +7,6 @@ import { IframeSoundAdapter } from '../packages/core/IframeSoundAdapter.ts';
 import { ViewportMatrixEngine } from '../packages/core/ViewportMatrixEngine.ts';
 import {
   UNITY_CYBER_SHRINE_SCENE,
-  UnityAnimatorStateMachine,
   UnityBridgePipeline,
 } from '../packages/core/UnityBridgePipeline.ts';
 

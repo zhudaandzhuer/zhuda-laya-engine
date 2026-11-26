@@ -1,10 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  ENGINE_PRESET_PROFILES,
-  TopologyResolver,
-  ZHUDA_ENGINE_MODULES,
-} from '../packages/core/TopologyGraph.ts';
+import { ENGINE_PRESET_PROFILES, TopologyResolver } from '../packages/core/TopologyGraph.ts';
 import { EngineGuard } from '../packages/core/RuntimeGuards.ts';
 
 test('TopologyResolver resolves all 29 LayaAir 3.4.2 modules in strict DAG order', () => {

@@ -2,7 +2,6 @@
 import { cliMain } from './cli.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import {
   buildLayoutPreview,
   compareLayoutSvg,
@@ -46,11 +45,6 @@ function resolveInside(root, value, field) {
   const file = path.resolve(root, normalized);
   if (!file.startsWith(root + path.sep)) throw Error(`${field} escapes --root`);
   return { normalized, file };
-}
-function sourcePathFor(root, value) {
-  const absolute = path.resolve(root, value);
-  if (!absolute.startsWith(root + path.sep)) throw Error('--source must be inside --root');
-  return path.relative(root, absolute).split(path.sep).join('/');
 }
 function writeOutput(output, value) {
   if (!output) {

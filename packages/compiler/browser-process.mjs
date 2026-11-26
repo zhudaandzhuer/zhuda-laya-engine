@@ -155,7 +155,9 @@ export async function launchBrowser({
           const endpoint = devToolsPortFileEndpoint(text);
           if (endpoint && text === previous) finish(undefined, endpoint);
           previous = text;
-        } catch {}
+        } catch {
+          // The browser has not written the port file yet: read again at the next tick.
+        }
       }, 50);
       child.once('error', (error) => finish(error));
       child.once('exit', (code, signal) => {
@@ -266,7 +268,9 @@ function forceEnd(pid) {
   for (const target of [-pid, pid])
     try {
       process.kill(target, 'SIGKILL');
-    } catch {}
+    } catch {
+      // Already gone (or never a group leader): there is nothing left to kill.
+    }
 }
 
 /**
@@ -309,7 +313,9 @@ export async function closeBrowser(state) {
       try {
         removeProfile();
         removed = true;
-      } catch {}
+      } catch {
+        // Still held: `removed` stays false and the slower path below takes over.
+      }
     if (!removed && process.platform === 'win32') {
       // A relaunched browser, or a child process that outlived its parent:
       // given a moment to finish quitting, then ended.

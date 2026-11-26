@@ -80,7 +80,6 @@ export class ZhudaSceneBudget {
   }
   report() {
     const counts = { mesh: 0, texture: 0, renderTarget: 0 };
-    const animation = { clips: 0, materials: 0 };
     let estimatedBytes = 0;
     for (const r of this.resources.values()) {
       counts[r.kind]++;

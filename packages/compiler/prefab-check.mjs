@@ -4,7 +4,6 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { resolveChromeBinary, launchBrowser, firstPageTarget } from './browser-process.mjs';
-import { fileURLToPath } from 'node:url';
 import {
   requestedPrefabEnvironment,
   measurePrefabEnvironment,

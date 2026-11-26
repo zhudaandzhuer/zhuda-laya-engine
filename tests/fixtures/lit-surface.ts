@@ -80,7 +80,6 @@ function colourAt(p: Uint8ClampedArray, point: V): V {
       for (let k = 0; k < 3; k++) sum[k] += p[(y * W + x) * 4 + k] / 9;
   return sum.map((v) => round(v, 1));
 }
-const lum = (c: V) => round(0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2], 1);
 const isPlate = (p: Uint8ClampedArray, i: number) => p[i] - p[i + 1] > 60;
 
 /** A flat sheet lying in the ground plane, facing up: u along +x, v along +z. */

@@ -26,7 +26,7 @@ import {
   ViewportMatrixEngine,
   UnityBridgePipeline,
 } from './compiler-runtime.mjs';
-import { runConsumerBuild } from './consumer-build.mjs';
+import { ENGINE_OWN_DIRECTORIES, runConsumerBuild } from './consumer-build.mjs';
 import { auditVisualPresentationContracts } from './visual-contract-audit.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -36,6 +36,53 @@ const defaultEngineRoot = path.resolve(__dirname, '../..');
 export function resolveEngineRoot(projectRoot, configuredRoot, fallback = defaultEngineRoot) {
   const candidate = configuredRoot || fallback;
   return path.resolve(projectRoot, candidate);
+}
+
+/**
+ * Whether two paths name one directory once links are followed. The engine's
+ * own root comes from this module's address, which Node gives by its real path;
+ * a project named on the command line through a symbolic link is still that
+ * directory.
+ */
+export function sameDirectory(a, b) {
+  const real = (file) => {
+    try {
+      return fs.realpathSync.native(file);
+    } catch {
+      return path.resolve(file);
+    }
+  };
+  return real(a) === real(b);
+}
+
+/**
+ * The workbench build's output directory: a directory of its own inside the
+ * project, apart from the engine's own directories. `outDir` comes from the
+ * project's `zhuda.config.json`; `..` or an absolute path in it must not send
+ * the build's files somewhere else.
+ */
+export function resolveWorkbenchOutput(projectRoot, outDir = 'dist/web') {
+  const root = path.resolve(projectRoot);
+  const output = path.resolve(root, outDir);
+  const inside = (file, directory) => {
+    const relative = path.relative(directory, file);
+    return (
+      relative === '' ||
+      (relative !== '..' && !relative.startsWith('..' + path.sep) && !path.isAbsolute(relative))
+    );
+  };
+  // `dist` is where a build belongs; the rest hold sources.
+  const sources = ENGINE_OWN_DIRECTORIES.filter((name) => name !== 'dist');
+  const own = sources.map((name) => path.join(root, name));
+  if (
+    output === root ||
+    !inside(output, root) ||
+    own.some((directory) => inside(output, directory) || inside(directory, output))
+  )
+    throw Error(
+      `zhuda.config.json: outDir ${JSON.stringify(outDir)} resolves to ${output}; it must be a directory of its own inside the project, apart from ${sources.join(', ')}`,
+    );
+  return output;
 }
 
 export async function runZhudaBuild(options = {}) {
@@ -52,7 +99,8 @@ export async function runZhudaBuild(options = {}) {
     fs.readFileSync(path.join(engineRoot, 'package.json'), 'utf8'),
   ).version;
 
-  if (projectRoot !== engineRoot && config.demoAssets !== true)
+  const engineItself = sameDirectory(projectRoot, engineRoot);
+  if (!engineItself && config.demoAssets !== true)
     return runConsumerBuild({
       projectRoot,
       engineRoot,
@@ -60,6 +108,7 @@ export async function runZhudaBuild(options = {}) {
       mode: options.candidate ? 'candidate' : 'release',
     });
   if (options.candidate) throw Error('--candidate requires an independent consumer project');
+  const outWebDir = resolveWorkbenchOutput(projectRoot, config.outDir || 'dist/web');
 
   // A project that declares a visual presentation manifest must pass its
   // semantic state/scope gate before gameplay code is bundled. Engine-only
@@ -110,7 +159,6 @@ export async function runZhudaBuild(options = {}) {
   );
 
   // Step 3: 同步引擎庫至 dist/web/libs
-  const outWebDir = path.join(projectRoot, config.outDir || 'dist/web');
   const outLibsDir = path.join(outWebDir, 'libs');
   const outJsDir = path.join(outWebDir, 'js');
   const vendorLibsDir = path.join(engineRoot, 'vendor/laya-3.4.2/libs');
@@ -134,7 +182,6 @@ export async function runZhudaBuild(options = {}) {
 
   for (const [fileName, hierarchyData] of Object.entries(builtinAssets)) {
     const isScene = fileName.endsWith('.ls');
-    const srcTarget = path.join(isScene ? scenesSrcDir : prefabsSrcDir, fileName);
     const outTarget = path.join(isScene ? scenesOutDir : prefabsOutDir, fileName);
     const jsonText = JSON.stringify(hierarchyData, null, 2);
     // Demo sources are checked in; builds only emit into the output directory.
@@ -233,7 +280,7 @@ export async function runZhudaBuild(options = {}) {
   let sdkEsmSizeKB = 0;
   let sdkCjsSizeKB = 0;
   const sdkEntryFile = path.join(engineRoot, 'packages/core/index.ts');
-  if (fs.existsSync(sdkEntryFile) && (projectRoot === engineRoot || config.buildSdk)) {
+  if (fs.existsSync(sdkEntryFile) && (engineItself || config.buildSdk)) {
     const sdkOutDir = path.join(projectRoot, 'dist/sdk');
     fs.mkdirSync(sdkOutDir, { recursive: true });
     const sdkEsmFile = path.join(sdkOutDir, 'zhuda-laya-engine.esm.js');

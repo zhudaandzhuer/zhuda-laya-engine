@@ -14,7 +14,6 @@ import type {
   IframeSampleBackend,
   IframeBackendVoice,
   IframeSampleOptions,
-  AssetProvider,
 } from 'zhuda-laya-engine';
 const params = new URLSearchParams(location.search),
   cap = Number(params.get('cap') ?? 3);

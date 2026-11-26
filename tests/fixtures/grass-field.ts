@@ -140,8 +140,7 @@ async function main() {
     fog: false,
     grade: { exposure: 1, contrast: 1, saturation: 1, bloom: 0, ao: 0.5 },
   });
-  let view = VIEWS.walk,
-    seconds = 0;
+  let view = VIEWS.walk;
   let field: any = null;
   const eye = () => view[0];
   const frame = (frames = 2) => {

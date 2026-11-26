@@ -17,7 +17,7 @@ export type Terrain3DOptions = {
 };
 import { ZhudaHeightfield, type HeightRegion } from './Heightfield.ts';
 import { ZhudaDynamicMesh, computeMeshTangents } from '../runtime3d/Surfaces.ts';
-import { inverse4, transformPoint, normalized, type Vec3 } from '../runtime3d/Math3D.ts';
+import { inverse4, transformPoint, normalized } from '../runtime3d/Math3D.ts';
 import type { QueryRay, QueryProvider } from '../runtime3d/SceneQueries.ts';
 import { buildTerrainShell, shellTriangleDistance } from './TerrainShell.ts';
 type Chunk = {

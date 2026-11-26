@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { createPreviewServer } from '../../../packages/compiler/prefab-watch.mjs';
 import { projectRoot } from './update-manifest.mjs';
 

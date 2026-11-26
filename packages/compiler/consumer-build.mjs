@@ -214,7 +214,7 @@ export function archiveConsumer(root, destination, maxBytes = 50_000_000) {
   };
 }
 /** The engine's own directories: what a consumer kept inside the engine's repository must not build into. */
-const ENGINE_OWN_DIRECTORIES = [
+export const ENGINE_OWN_DIRECTORIES = [
   'packages',
   'vendor',
   'dist',

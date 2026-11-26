@@ -13,7 +13,6 @@ import { cliMain } from './cli.mjs';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 
 const DEFAULT_IGNORED_DIRS = new Set([
   '.git',

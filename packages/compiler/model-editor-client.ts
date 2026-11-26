@@ -7,7 +7,6 @@ import {
   ZhudaModelLibrary,
   ZhudaTransformGizmo,
   Zhuda3D,
-  inspectGltfAsset,
   inspectSceneResources,
 } from 'zhuda-laya-engine';
 import type {

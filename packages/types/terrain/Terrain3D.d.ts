@@ -20,7 +20,6 @@ export type Terrain3DOptions = {
     };
 };
 import { ZhudaHeightfield, type HeightRegion } from './Heightfield.js';
-import { type Vec3 } from '../runtime3d/Math3D.js';
 import type { QueryRay, QueryProvider } from '../runtime3d/SceneQueries.js';
 /** Resident heightfield chunks. The supplied material is borrowed; dispose releases only terrain meshes/nodes. */
 export declare class ZhudaTerrain3D {
@@ -41,7 +40,7 @@ export declare class ZhudaTerrain3D {
     flush(): void;
     sampleLocal(x: number, z: number): {
         height: number;
-        normal: Vec3;
+        normal: import("../index.js").Vec3;
         cellX: number;
         cellZ: number;
     } | null;
@@ -49,8 +48,8 @@ export declare class ZhudaTerrain3D {
     private raycastLocal;
     raycast(ray: QueryRay, maxDistance?: number): {
         distance: number;
-        position: Vec3;
-        normal: Vec3;
+        position: import("../index.js").Vec3;
+        normal: import("../index.js").Vec3;
         cellX: number;
         cellZ: number;
     } | null;

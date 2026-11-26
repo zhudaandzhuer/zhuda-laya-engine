@@ -1,4 +1,4 @@
-import { Zhuda3D, ZhudaEngine, ZhudaPrefabLibrary } from 'zhuda-laya-engine';
+import { ZhudaEngine, ZhudaPrefabLibrary } from 'zhuda-laya-engine';
 import type { AssetManifestEntry, PrefabInstance } from 'zhuda-laya-engine';
 import { createAssetProvider, definitions, manifest, symbolId } from './prefabs';
 import { SlotSymbolEffect, type SlotSymbolState } from './slot-symbol-effect';
@@ -513,13 +513,9 @@ const main = async () => {
     const stageScale = Math.abs(Number(context.stage.scaleX) || 1);
     const artNode = art;
     const artWidth = Math.abs(Number(artNode?.width) || 400);
-    const artHeight = Math.abs(Number(artNode?.height) || 400);
     const artScaleX = Number(artNode?.scaleX) || 1;
-    const artScaleY = Number(artNode?.scaleY) || 1;
     const designWidth = artWidth * Math.abs(artScaleX) * currentLayout.scale;
-    const designHeight = artHeight * Math.abs(artScaleY) * currentLayout.scale;
     const screenWidth = designWidth * stageScale;
-    const screenHeight = designHeight * stageScale;
     const selected = selectedNode as LayoutNode | undefined;
     const selectedIsRoot = Boolean(selected && instance && selected === instance.root);
     const selectedWidth = Math.abs(Number(selected?.width) || 0);
@@ -642,7 +638,6 @@ const main = async () => {
   particleRenderer.setLayout(currentLayout);
   let objectUrl: string | undefined;
   let disposed = false;
-  let currentAssetId = selectedImage;
   const setStateUI = (state: SlotSymbolState) => {
     const label = document.querySelector<HTMLElement>('#state-label');
     if (label) label.textContent = state;
@@ -789,7 +784,6 @@ const main = async () => {
     setPreviewMode('prefab');
     if (entry.kind === 'image') {
       const url = new URL(`assets/${entry.id}`, document.baseURI).href;
-      currentAssetId = entry.id;
       art!.skin = url;
       loadSourceMetadata(url, entry.id);
       selectedNode = art;

@@ -6,6 +6,27 @@ below 1.18.0 were moved here from the README as they were written at the time.
 
 ## After 2.0.1 (not released)
 
+- **The MCP server keeps to the folders its operator allowed.** `audit_visual_migration` and
+  `audit_visual_contract` took any path their caller gave. They now read only inside the folder
+  the server was started in and the folders given with `--root DIRECTORY` (repeatable) or
+  `ZHUDA_MCP_ROOTS`; links are followed before the comparison. An agent that audits a project
+  somewhere else gets an error that says so and names the flag.
+- **A tool call is checked against the tool's input schema** before the tool runs (required
+  arguments, types, `enum`, array sizes). A call that does not fit is refused with the argument
+  named; before, a wrong type went into the tool as it was. A `validate_*` tool still answers a
+  malformed recipe with its own report.
+- **The engine's own build through a symbolic link.** `zhuda-laya-build --project <link to the
+  engine>` took the engine for a consumer and stopped at a missing `public/index.html`; the two
+  roots are now compared by real path. The same build refuses an `outDir` that leaves the project
+  or lands in a source folder, before it writes anything (a consumer's build already did).
+- **`npm run lint` is stricter**: an unused name, an empty block without a comment that says why,
+  an unknown name in plain JavaScript, and Node (`process`, `Buffer`, `node:*`) in the code that
+  runs in a browser are errors. 72 places were cleaned up; three were dead code in the runtime
+  (a validation whose report was dropped in `measureZhudaBitmapText`, an unused object in
+  `ZhudaSceneBudget.report`, an unused read of `Laya` in a material's `dispose`). No behaviour
+  changes.
+- The workflow's actions are pinned to commits, with the release in a comment; a test holds it.
+- Records: [audit-hardening](docs/plans/records/audit-hardening/verification.md).
 - A route for a pop-up papercraft diorama made of code alone
   ([papercraft-diorama](docs/routes/papercraft-diorama.md)): an outside skill's rules for the
   look, the paper structures, the folds and the rules against flicker, set against what this

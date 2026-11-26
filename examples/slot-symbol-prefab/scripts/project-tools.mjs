@@ -8,7 +8,7 @@ import { writeManifest, projectRoot } from './update-manifest.mjs';
 export const engineRoot = path.resolve(projectRoot, '../..');
 export { projectRoot };
 
-function copyFilter(source, destination) {
+function copyFilter(source) {
   const relative = path.relative(projectRoot, source);
   if (!relative) return true;
   const first = relative.split(path.sep)[0];

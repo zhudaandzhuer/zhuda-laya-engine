@@ -121,7 +121,9 @@ export function linkDirectory(target, link) {
     let current;
     try {
       current = fs.realpathSync(at);
-    } catch {}
+    } catch {
+      // A link whose target is gone: `current` stays undefined and the link is replaced.
+    }
     if (current === real) return false;
     // Only the link goes: neither call follows it into the folder it names.
     try {

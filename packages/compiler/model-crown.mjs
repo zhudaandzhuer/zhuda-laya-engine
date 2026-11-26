@@ -16,7 +16,6 @@ import path from 'node:path';
 import { readGlb, writeGlb } from './model-lod.mjs';
 import { cliMain } from './cli.mjs';
 
-const SIZES = { SCALAR: 1, VEC2: 2, VEC3: 3, VEC4: 4 };
 const READ = {
   5126: ['getFloat32', 4],
   5125: ['getUint32', 4],

@@ -1069,7 +1069,6 @@ export class ZhudaLitSurfaceMaterial {
   dispose() {
     if (this.disposed) return;
     this.disposed = true;
-    const l = (globalThis as any).Laya;
     for (const [k, u] of Object.entries(this.spec.uniforms || {}))
       if (u.type === 'texture2D') this.material.setTexture(k, null);
     disposeSurfaceMaterial(this.material);

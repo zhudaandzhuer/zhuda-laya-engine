@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { fixture, flush, deferred, Gain, Source, Media } from './helpers/audio-fixture.mjs';
+import { fixture, flush, deferred, Gain, Media } from './helpers/audio-fixture.mjs';
 import { DirectoryAssetProvider } from '../packages/core/runtime3d/AssetProvider.ts';
 import crypto from 'node:crypto';
 

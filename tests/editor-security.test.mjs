@@ -7,7 +7,6 @@ import os from 'node:os';
 import http from 'node:http';
 import { createPrefabEditorServer } from '../packages/compiler/prefab-editor-server.mjs';
 import { createModelEditorServer } from '../packages/compiler/model-editor.mjs';
-import { authorizedFetch } from './helpers/editor-request.mjs';
 
 function raw(port, route, headers = {}, body) {
   return new Promise((resolve, reject) => {

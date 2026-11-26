@@ -204,7 +204,7 @@ async function main() {
     const angryAa = await shot('face-angry-aa', { angry: 1, aa: 1 });
     const winkLow = await shot('face-wink-low', { wink: 0.4 });
     const winkHigh = await shot('face-wink-high', { wink: 0.6 });
-    const surprised = await shot('face-surprised', { surprised: 1 });
+    await shot('face-surprised', { surprised: 1 });
     const t = vrm.toonMaterials.get(1).material.tilingOffset;
     result.hairTiling = [t.x, t.y, t.z, t.w];
     for (const [k, v] of Object.entries({

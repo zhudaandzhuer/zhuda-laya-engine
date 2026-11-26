@@ -53,20 +53,6 @@ function topology(mesh) {
   }
   return { open, pinched, edges: edges.size };
 }
-function closed(mesh) {
-  const edges = new Map();
-  for (let i = 0; i < mesh.indices.length; i += 3)
-    for (let k = 0; k < 3; k++) {
-      const a = mesh.indices[i + k],
-        b = mesh.indices[i + ((k + 1) % 3)];
-      edges.set(`${a}>${b}`, (edges.get(`${a}>${b}`) ?? 0) + 1);
-    }
-  for (const [key, n] of edges) {
-    const [a, b] = key.split('>');
-    if (n !== 1 || edges.get(`${b}>${a}`) !== 1) return false;
-  }
-  return true;
-}
 
 const flat = createZhudaHandMesh({ pose: ZHUDA_HAND_FLAT });
 

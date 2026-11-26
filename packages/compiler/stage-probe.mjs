@@ -47,7 +47,7 @@ export function zhudaStageProbe(options) {
     let value;
     try {
       value = L[key];
-    } catch (e) {
+    } catch {
       continue;
     }
     if (typeof value === 'function' && value.prototype && !names.has(value)) names.set(value, key);
@@ -105,7 +105,7 @@ export function zhudaStageProbe(options) {
           h = b.height;
         }
       }
-    } catch (e) {
+    } catch {
       /* a node that cannot say its size has none */
     }
     let x0 = Infinity;
@@ -124,7 +124,7 @@ export function zhudaStageProbe(options) {
       let g;
       try {
         g = node.localToGlobal(point, false);
-      } catch (e) {
+      } catch {
         return null;
       }
       const p = toPage(g.x, g.y);
@@ -141,7 +141,7 @@ export function zhudaStageProbe(options) {
       let value;
       try {
         value = node[keys[i]];
-      } catch (e) {
+      } catch {
         continue;
       }
       if (typeof value === 'string') return value;

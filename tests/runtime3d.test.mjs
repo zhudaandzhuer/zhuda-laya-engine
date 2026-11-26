@@ -18,7 +18,6 @@ import {
   ZhudaSnapshotBuffer,
   ZhudaEventGate,
   compose4,
-  multiply4,
   inverse4,
   transformPoint,
   ZhudaSceneQueries,
