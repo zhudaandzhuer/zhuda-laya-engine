@@ -9,11 +9,17 @@ records. Check every ref again with `git log` before starting.
 The owner's word: "改成2.0.1". Everything on `unified` after `v2.0.0` is released as 2.0.1:
 `package.json`, `zhuda.config.json` and the lockfile say 2.0.1, the changelog's "After 2.0.0"
 section is the 2.0.1 section. The owner also said to put it on the engine's own, public
-repository in place of what was there: 2.0.1 is on its `main` as one commit on top of the
-history that was there, tagged `v2.0.1`, and a consumer pins
+repository in place of what was there: 2.0.1 is on its `main` as one commit (`57b3acec`) on top
+of the history that was there, tagged `v2.0.1`, and a consumer pins
 `git+https://github.com/zhudaandzhuer/zhuda-laya-engine.git#v2.0.1`. The browser SDK was not
 published for it (its last published release is 1.17.0), and no game was moved to it. The
 sections below say "after 2.0.0" as they were written: all of it is in 2.0.1.
+
+After the tag, the same day: the route `papercraft-diorama` (an outside skill's rules for a
+pop-up paper scene made of code alone, set against this engine; not built here) and the
+formatting of `tests/minigame-toolchain.test.mjs`, which made the public repository's workflow
+fail on the release commit (`npm run format:check` is a step there). Both repositories carry
+the two; the tags stay where they were.
 
 ## stage-on-a-page: an outside agent's report on 2.0.0, checked and closed (2026-11-26)
 

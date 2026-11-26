@@ -137,8 +137,9 @@ test('mini-game settings: the syntax target and the orientation are checked, and
 });
 
 test("the bundle is compared at the web build's syntax and lowered after that, or refused", async () => {
-  const { MINIGAME_GATED_SYNTAX, MINIGAME_SYNTAX_TARGETS, lowerMiniGameScript } =
-    await import('../packages/compiler/zhuda-minigame.mjs');
+  const { MINIGAME_GATED_SYNTAX, MINIGAME_SYNTAX_TARGETS, lowerMiniGameScript } = await import(
+    '../packages/compiler/zhuda-minigame.mjs'
+  );
   const { CONSUMER_SYNTAX_TARGET } = await import('../packages/compiler/consumer-build.mjs');
   // The mini-game tool compares its bundle with the gated app.js character for character, so
   // both are built at one target; a lower target for the comparison made every export fail.

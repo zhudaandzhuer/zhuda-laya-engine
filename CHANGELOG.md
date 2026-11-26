@@ -4,6 +4,15 @@ What each release added, newest first. The version source of truth is `package.j
 releases are on [GitHub](https://github.com/zhudaandzhuer/zhuda-laya-engine/releases). The sections
 below 1.18.0 were moved here from the README as they were written at the time.
 
+## After 2.0.1 (not released)
+
+- A route for a pop-up papercraft diorama made of code alone
+  ([papercraft-diorama](docs/routes/papercraft-diorama.md)): an outside skill's rules for the
+  look, the paper structures, the folds and the rules against flicker, set against what this
+  engine has. Not built here yet.
+- `tests/minigame-toolchain.test.mjs` is in the form `npm run format:check` asks for: the check
+  passes again.
+
 ## 2.0.1 (2026-11-26)
 
 What came after 2.0.0 the same week, released together. Where a document says "after 2.0.0",
