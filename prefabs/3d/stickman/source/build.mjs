@@ -7,13 +7,14 @@
 // 每段動作都寫滿 20 根骨頭的轉動和根骨頭的位移，所以兩段之間 crossfade 時不會有骨頭被漏掉。
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { MeshoptSimplifier } from 'meshoptimizer';
 import { PNG } from 'pngjs';
 import { createZhudaSdfField } from 'zhuda-laya-engine';
 import { Q, add, bare, cross, dot, meshOf, mul, norm, skinner, sub } from '../../../../games/tools/characters/kit.mjs';
 import { relaxOnSurface, surfaceError } from './surface.mjs';
 import { bakeMaps, tangentsOf, unwrap } from './bake.mjs';
+import { FUZZY, PLUSH, makePlush, withSheen } from './plush.mjs';
 import { buildBvh, loadMeshSource, sampleTexture, weld } from './mesh-source.mjs';
 import { writeRiggedGlb } from '../../../../games/tools/characters/rig-glb.mjs';
 import { look, pngBytes, sheet, writePng } from '../../../../games/tools/characters/raster.mjs';
@@ -30,7 +31,20 @@ const SOURCE = process.env.STICKMAN_SOURCE ? path.resolve(process.env.STICKMAN_S
 // 用來做近看的高清版（面數會超過 3000）。
 const KEEP = !!SOURCE && process.env.STICKMAN_SOURCE_KEEP === '1';
 if (process.env.STICKMAN_BODY) COLOURS.body = process.env.STICKMAN_BODY;
-const ROUGH = process.env.STICKMAN_ROUGHNESS ? Number(process.env.STICKMAN_ROUGHNESS) : ROUGHNESS;
+// STICKMAN_STYLE=plush：布偶版（同一個網格、骨架、動作；縫線、針腳、不織布眼睛做進貼圖，材質霧一點，見 plush.mjs）。
+// STICKMAN_STYLE=fuzzy：絨毛版（沒有針腳；全身細毛流、毛色深淺、不織布眼睛，材質寫 KHR_materials_sheen 的絨布柔光）。
+// 一定要配 STICKMAN_OUT 寫到別的檔：assets/stickman.glb 是交付出去的那一版，不給它蓋掉。
+const STYLE = process.env.STICKMAN_STYLE ?? 'default';
+const STYLE_OF = { default: null, plush: PLUSH, fuzzy: FUZZY };
+if (!(STYLE in STYLE_OF)) throw Error(`STICKMAN_STYLE=${STYLE}: only ${Object.keys(STYLE_OF).join(', ')}`);
+if (STYLE !== 'default' && !TRIAL) throw Error(`STICKMAN_STYLE=${STYLE} needs STICKMAN_OUT=<another file>: assets/stickman.glb stays the default style`);
+const LOOK = STYLE_OF[STYLE];
+// STICKMAN_CLIPS=<模組.mjs>：動作換成那個模組 export 的 CLIPS（例如影片用的打鬥動作，在消費端的專案裡寫）。
+// STICKMAN_MOUTH=#rrggbb：嘴的顏色（紅色身體配深色的嘴）。兩個都要配 STICKMAN_OUT，assets/stickman.glb 不變。
+const CLIP_SET = process.env.STICKMAN_CLIPS ? (await import(pathToFileURL(path.resolve(process.env.STICKMAN_CLIPS)).href)).CLIPS : CLIPS;
+if ((process.env.STICKMAN_CLIPS || process.env.STICKMAN_MOUTH) && !TRIAL) throw Error('STICKMAN_CLIPS / STICKMAN_MOUTH need STICKMAN_OUT=<another file>: assets/stickman.glb keeps its own clips and colours');
+if (process.env.STICKMAN_MOUTH) COLOURS.mouth = process.env.STICKMAN_MOUTH;
+const ROUGH = process.env.STICKMAN_ROUGHNESS ? Number(process.env.STICKMAN_ROUGHNESS) : LOOK ? LOOK.roughness : ROUGHNESS;
 const REPORT = path.join(HERE, 'build-report.json');
 const previewDir = process.argv.includes('--preview') ? process.argv[process.argv.indexOf('--preview') + 1] : null;
 const started = Date.now();
@@ -414,7 +428,7 @@ if (triangles > BUDGET.total && !KEEP) throw Error(`${triangles} triangles: over
 // 面數不變，從距離場（真正的形狀）烘一張法線貼圖和一張環境遮蔽：低模的光影照著圓的形狀走，指縫有陰影。
 // 一張 UV 給全部貼圖（LayaAir 3.4.2 的 glTF 讀取器只認第一組 UV），所以底色也換成同一張 UV 的貼圖。
 const MAPS = process.env.STICKMAN_MAPS !== '0';
-const TEX = Number(process.env.STICKMAN_TEX ?? BUDGET.texture);
+const TEX = Number(process.env.STICKMAN_TEX ?? (LOOK ? LOOK.texture : BUDGET.texture));
 let tangents = null, maps = null, unwrapped = null;
 if (KEEP) {
   // 高模自己的 UV 和貼圖：底色、法線縮成 TEX 邊長（每 k×k 個像素平均），切線照它的 UV 算。
@@ -492,12 +506,23 @@ if (KEEP) {
       }
     : null;
   const bakeStarted = Date.now();
+  const bakeInputs = {
+    surfaceOf: (g) => (g === 0 ? bodyField : headField),
+    aoField,
+    // 法線貼圖只用在手（離手的形狀 1 cm 內全用、3 cm 外不用）：身體、頭的低模法線本來就準，用了只會多出塊與塊之間的接縫。
+    normalWeight: source ? () => 1 : (p) => smooth01((0.03 - handField.distance(...p)) / 0.02),
+    colourAt,
+  };
+  if (LOOK) {
+    if (!faceMask) throw Error(`STICKMAN_STYLE=${STYLE} needs the face in the texture (not STICKMAN_MAPS=0, not STICKMAN_SOURCE)`);
+    Object.assign(bakeInputs, makePlush({ ...bakeInputs, faceAngles, maskAt, cBody, style: LOOK }));
+  }
   maps = bakeMaps({
     positions: Float32Array.from(pos), normals: Float32Array.from(nor), uvs: unwrapped.uvs, tangents, indices: unwrapped.indices,
     group: triGroup, chartOfTri: unwrapped.chartOfTri, size: TEX,
-    surfaceOf: (g) => (g === 0 ? bodyField : headField), aoField, colourOf: colourOfGroup, colourAt,
-    // 法線貼圖只用在手（離手的形狀 1 cm 內全用、3 cm 外不用）：身體、頭的低模法線本來就準，用了只會多出塊與塊之間的接縫。
-    normalWeight: source ? () => 1 : (p) => smooth01((0.03 - handField.distance(...p)) / 0.02),
+    surfaceOf: bakeInputs.surfaceOf, aoField: bakeInputs.aoField, colourOf: colourOfGroup, colourAt: bakeInputs.colourAt,
+    normalWeight: bakeInputs.normalWeight,
+    extraAt: bakeInputs.sheenAt ?? null,
     // 高模來源：沿低模法線找高模的表面，取那裡的法線和底色（沒找到、或找到的是背面就不改）。
     highSample: source
       ? (() => {
@@ -526,7 +551,7 @@ const unit = (q) => {
 };
 const animations = [];
 const motionReport = {};
-for (const [name, clip] of Object.entries(CLIPS)) {
+for (const [name, clip] of Object.entries(CLIP_SET)) {
   const frames = Math.round(clip.seconds * 30) + 1;
   const times = new Float32Array(frames);
   const rot = joints.map(() => new Float32Array(frames * 4));
@@ -568,7 +593,7 @@ for (const [name, clip] of Object.entries(CLIPS)) {
 }
 
 // ------------------------------------------------------------------ 寫檔
-const glb = writeRiggedGlb({
+const written = writeRiggedGlb({
   name: 'stickman',
   generator: 'zhuda-laya-engine prefabs/3d/stickman (kit: games/tools/characters)',
   joints: joints.map((j) => ({ name: j.name, parent: j.parent ? index.get(j.parent) : -1, position: j.at })),
@@ -592,6 +617,8 @@ const glb = writeRiggedGlb({
           { name: 'stickman-basecolor', mime: 'image/png', bytes: maps.baseColor },
           { name: 'stickman-normal', mime: 'image/png', bytes: maps.normal },
           ...(maps.occlusion ? [{ name: 'stickman-occlusion', mime: 'image/png', bytes: maps.occlusion }] : []),
+          // 絨毛版：柔光強度圖（第 4 張，給 KHR_materials_sheen 的 sheenColorTexture）。
+          ...(maps.extra ? [{ name: 'stickman-sheen', mime: 'image/png', bytes: maps.extra }] : []),
         ],
         sampler: { magFilter: 9729, minFilter: 9987, wrapS: 33071, wrapT: 33071 },
       }
@@ -602,6 +629,8 @@ const glb = writeRiggedGlb({
       }),
   animations,
 });
+// 絨毛版：材質加上絨布的柔光（KHR_materials_sheen）。
+const glb = LOOK?.sheen ? withSheen(written, LOOK.sheen, maps?.extra ? 3 : null, LOOK.specular ?? null) : written;
 fs.writeFileSync(OUT, glb);
 const lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
 for (let i = 0; i < pos.length; i += 3) for (let a = 0; a < 3; a++) (lo[a] = Math.min(lo[a], pos[i + a])), (hi[a] = Math.max(hi[a], pos[i + a]));
@@ -730,7 +759,7 @@ if (previewDir) {
   };
   const bind = {};
   const tiles = [shade(bind, 0, 0), shade(bind, 35, 8), shade(bind, 90, 0)];
-  for (const [name, clip] of Object.entries(CLIPS)) {
+  for (const [name, clip] of Object.entries(CLIP_SET)) {
     for (const k of [0, 0.3, 0.55, 0.8]) tiles.push(shade(clip.pose(clip.seconds * k), 20, 6));
     tiles.push(shade(clip.pose(clip.seconds * 0.3), 90, 0));
   }

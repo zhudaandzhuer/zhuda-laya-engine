@@ -62,6 +62,7 @@ consumer. Most tasks take one or two workflows and, when one fits, a scene route
 | [high-quality-character](high-quality-character.md) | A 3D character that is looked at closely: what its rig and clips must hold, raising one with Blender and the repository's tools, the measured bar, what a person judges | desktop WebGPU; Blender headless; no phone |
 | [game-rules-first](game-rules-first.md)             | Any small game: rules as tested TypeScript, bots for balance, a thin view, a recorded run with real input                        | desktop WebGL in software; no phone       |
 | [ui-test-by-probe](ui-test-by-probe.md) | A regression test of an interface as JSON: clicks on controls found by name or label through a probe of the Laya stage, an expectation after every step, the same result every run on a virtual clock | desktop headless Chrome at three shapes; no phone |
+| [onboarding-tutorial-2d](onboarding-tutorial-2d.md) | Interactive spotlight onboarding tutorial on the Laya 2D stage: four-quadrant touch-passthrough cutout, animated tap/double-tap/drag hand cues, mistake-safe nudges, and mini-game compatibility | Node tests; desktop headless Chrome; no physical phone |
 | [hunting-action-3d](hunting-action-3d.md)           | Third-person melee against one large monster: frame-data moves, dodge frames, part breaks, crafting                              | desktop WebGL in software; no phone       |
 | [tower-defence-3d](tower-defence-3d.md)             | Tower defence on a path through a 3D place: pooled models, DOM markers tied to world positions                                   | desktop WebGL in software; no phone       |
 | [idle-gacha-2d](idle-gacha-2d.md)                   | A portrait idle game with summons at published rates, offline earnings and an upgrade economy                                    | desktop WebGL in software; no phone       |
@@ -92,6 +93,7 @@ consumer. Most tasks take one or two workflows and, when one fits, a scene route
 | [isometric-mystery-2d](isometric-mystery-2d.md) | A short isometric investigation game: a baked multi-level map, a torch that relights it, characters from one atlas, clues and an accusation as data | desktop WebGL; vivo V40 |
 | [platform-fighter-2d](platform-fighter-2d.md) | A two-player fighting game identical on two machines: an integer simulation, moves as frame data, a computer opponent, the client side of lockstep | desktop WebGL; phone emulation; no real phone |
 | [pole-rescue-arcade-3d](pole-rescue-arcade-3d.md) | A one-screen 3D arcade game: a pointer moves a tool's tip over a plane, targets are taken in a short window and carried to a goal | desktop WebGPU and WebGL; phone emulation; no phone |
+| [aqua-freeze-2d-minigame](aqua-freeze-2d-minigame.md) | A 2D game with an HTML interface moved into a WeChat mini game: the interface drawn on the stage, the stage fitted to tall phones, prefab textures, sound and saving without browser APIs | desktop headless Chrome at three shapes; a WeChat simulator in the browser; no phone |
 
 ## Scenes
 
@@ -137,7 +139,7 @@ consumer. Most tasks take one or two workflows and, when one fits, a scene route
 | A title screen from one flat picture that must fit other shapes or move (動態) | `screen-fit-game-box`, then `key-art-to-animated-title` |
 | A realistic 2D character without Spine, or a side-view fight | `pose-atlas-motion`, `side-view-duel` |
 | A low-poly rigged character without a modelling tool | `low-poly-character-from-shapes`; a dressed human figure: `humanoid-from-shapes` |
-| A WeChat mini-game | `new-game-project`, `mini-game-build`, then the one nearest: `drop-merge-2d-minigame` (2D), `raft-brawl-3d-minigame` (3D, small), `action-adventure-3d-minigame` (3D, large) |
+| A WeChat mini-game | `new-game-project`, `mini-game-build`, then the one nearest: `drop-merge-2d-minigame` (2D), `raft-brawl-3d-minigame` (3D, small), `action-adventure-3d-minigame` (3D, large); a game whose interface is HTML: `aqua-freeze-2d-minigame` |
 | A game like one the workspace already shipped | Its route: `isometric-mystery-2d`, `story-counting-2d`, `third-person-town-3d`, `apocalypse-survival-3d`, `pole-rescue-arcade-3d`, `platform-fighter-2d`, and the three mini-games above |
 | A test of an interface that clicks named controls and asserts each step, without a model | `ui-test-by-probe` |
 | Something several games will share | [The prefab library](../prefab-library.md): look in `prefabs/catalog.json` first, add a module there, not in a game |

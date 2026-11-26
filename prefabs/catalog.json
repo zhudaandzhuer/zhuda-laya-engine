@@ -727,6 +727,30 @@
    ],
    "deps": [],
    "usedBy": []
+  },
+  "systems/tutorial": {
+   "kind": "system",
+   "summary": "宣告式新手教學狀態機：步驟流程、動態聚光燈目標、事件過關條件與錯操作溫和提醒（不扣血只提示）、tap/double-tap/drag/hold 手勢規格、已看過紀錄（無引擎、無 DOM 相依）",
+   "files": [
+    "systems/tutorial/tutorial.ts"
+   ],
+   "deps": [],
+   "usedBy": [
+    "zhuda-sudoku"
+   ]
+  },
+  "2d/tutorial-coach": {
+   "kind": "2d-ui",
+   "summary": "Laya 2D 舞台版聚光燈新手教學層（零瀏覽器 DOM，支援網頁與微信小遊戲）：四象限鏤空遮罩讓點擊與拖曳原生穿透進目標區、呼吸發光框、動態手指圖示（點按／雙擊／拖曳／長按）、避開目標區的氣泡卡與步驟點、支援自訂卡片與按鈕皮膚、?scene=tutorial-coach",
+   "files": [
+    "2d/tutorial-coach/tutorial-coach.ts"
+   ],
+   "deps": [
+    "systems/tutorial"
+   ],
+   "usedBy": [
+    "zhuda-sudoku"
+   ]
   }
  }
 }

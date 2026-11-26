@@ -261,11 +261,13 @@ const TET = [[1, 1, 1], [1, -1, -1], [-1, 1, -1], [-1, -1, 1]];
  * `colourOf(group)`：那一組的底色（0..255，sRGB）。`ao`：兩種尺度（`small` 給指縫，`large` 給腋下胯下）的取樣間距與強度。
  * 回傳三張 PNG（底色、法線、環境遮蔽）和統計。
  */
-export function bakeMaps({ positions, normals, uvs, tangents, indices, group, chartOfTri, size = 1024, surfaceOf, aoField, colourOf, colourAt = null, normalWeight = () => 1, highSample = null, ao = { small: 0.006, large: 0.025, strength: 0.75 } }) {
+export function bakeMaps({ positions, normals, uvs, tangents, indices, group, chartOfTri, size = 1024, surfaceOf, aoField, colourOf, colourAt = null, extraAt = null, normalWeight = () => 1, highSample = null, ao = { small: 0.006, large: 0.025, strength: 0.75 } }) {
   const W = size, H = size;
   const owner = new Int32Array(W * H).fill(-1);
   const strict = new Int32Array(W * H).fill(-1);
   const colour = new Float32Array(W * H * 3), normal = new Float32Array(W * H * 3), occl = new Float32Array(W * H);
+  // `extraAt(p, 組, 遮蔽)`：另外一張灰階貼圖（例如絨毛版的柔光強度），沒給就不做。
+  const extra = extraAt ? new Float32Array(W * H) : null;
   let texels = 0, overlap = 0, worstTilt = 0, steep = 0;
   const overlapAt = new Map();
   const filled = new Uint8Array(W * H);
@@ -369,6 +371,7 @@ export function bakeMaps({ positions, normals, uvs, tangents, indices, group, ch
         occl[o] = 1 - ao.strength * Math.max(occAt(ao.small), occAt(ao.large));
         // `colourAt(p, 組)`：每個像素自己的底色（臉的眼睛、嘴）；沒給就是整組一個顏色。
         colour.set(hs?.colour ?? (colourAt && colourAt(p0, group[tri])) ?? base, o * 3);
+        if (extra) extra[o] = extraAt(p0, group[tri], occl[o]);
         filled[o] = 1;
         texels++;
       }
@@ -376,6 +379,7 @@ export function bakeMaps({ positions, normals, uvs, tangents, indices, group, ch
   dilate(colour, 3, filled, W, H, 16);
   dilate(normal, 3, filled, W, H, 16);
   dilate(occl, 1, filled, W, H, 16);
+  if (extra) dilate(extra, 1, filled, W, H, 16);
   const png = (data, channels, colorType) => {
     const img = new PNG({ width: W, height: H, colorType, inputColorType: 6, bitDepth: 8 });
     for (let i = 0; i < W * H; i++) {
@@ -388,6 +392,7 @@ export function bakeMaps({ positions, normals, uvs, tangents, indices, group, ch
     baseColor: png(colour, 3, 2),
     normal: png(normal, 3, 2),
     occlusion: png(occl, 1, 0),
+    ...(extra ? { extra: png(extra, 1, 0) } : {}),
     stats: { size, texels, filled: +(texels / (W * H)).toFixed(3), overlapTexels: overlap, overlapAt: [...overlapAt.values()].slice(0, 12), steepestNormalDeg: +((worstTilt * 180) / Math.PI).toFixed(1), texelsOver60Deg: steep },
   };
 }

@@ -15,7 +15,9 @@
     "ui/settings-form",
     "systems/storage",
     "2d/ashfall-duel",
-    "2d/spine-tights"
+    "2d/spine-tights",
+    "systems/tutorial",
+    "2d/tutorial-coach"
   ],
   "files": {
     "src/common/ui/dom.ts": "6c5f898ae64ad0aca5de3dd5dd6742538609e24fd03d8c865374fa97d7e12cbc",
@@ -110,6 +112,8 @@
     "public/common/2d/spine-tights/assets/outfit.atlas": "9b64837a1f3d2813ba4c6988bcfccb7a34a9da890edddff0f4500d09e5c2299f",
     "public/common/2d/spine-tights/assets/outfit.png": "35f3d5fa799507cecc613bff8c3e60d2cbe730138c4d9969137465a62901178c",
     "public/common/2d/spine-tights/assets/bg.png": "c8db2163834fc6a31b2461982041e9739b875b3a17e3e0f86ef35e71ef95ed85",
-    "public/common/2d/spine-tights/assets/sites.json": "bc827bcd1d57bf322110c713c76154afd986acf0ecb6777beb7b05e7f39ceab9"
+    "public/common/2d/spine-tights/assets/sites.json": "bc827bcd1d57bf322110c713c76154afd986acf0ecb6777beb7b05e7f39ceab9",
+    "src/common/systems/tutorial/tutorial.ts": "1c2c8b8edf37c1a91199fe3351a10a8972cf9f87c13b2a48fd38c42dc144c09b",
+    "src/common/2d/tutorial-coach/tutorial-coach.ts": "cfc90fb5ad9f49cb9ce3c8971cc8e0be10d9187746002540de45e0a8a20cbbdb"
   }
 }

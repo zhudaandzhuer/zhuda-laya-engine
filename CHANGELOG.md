@@ -6,6 +6,16 @@ below 1.18.0 were moved here from the README as they were written at the time.
 
 ## After 2.0.1 (not released)
 
+- **Prefab library: an onboarding tutorial.** `systems/tutorial` (a step machine with no engine
+  and no DOM in it) and `2d/tutorial-coach` (the spotlight, the hand and the card drawn on the
+  Laya stage; touches go through the cut-out to the real control). Route:
+  [onboarding-tutorial-2d](docs/routes/onboarding-tutorial-2d.md). Viewer:
+  `prefabs/viewer2d`, `?scene=tutorial-coach`.
+- A route for a 2D game whose interface was HTML, moved into a WeChat mini game
+  ([aqua-freeze-2d-minigame](docs/routes/aqua-freeze-2d-minigame.md)).
+- `prefabs/3d/stickman` can be built in two trial looks from the same mesh, rig and clips
+  (`STICKMAN_STYLE=plush` or `fuzzy`, with `STICKMAN_OUT`); the model as shipped is unchanged, byte
+  for byte. The 3D viewer takes `?model=<file>`.
 - **The MCP server keeps to the folders its operator allowed.** `audit_visual_migration` and
   `audit_visual_contract` took any path their caller gave. They now read only inside the folder
   the server was started in and the folders given with `--root DIRECTORY` (repeatable) or

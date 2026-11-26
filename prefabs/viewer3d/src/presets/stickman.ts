@@ -1,6 +1,7 @@
 // 囂張小黑人站在地上，兩段 idle 用 LayaAir 自己的 Animator 播放、互相 crossfade。
 // 左上角的按鈕換段（0.35 秒過渡），「自動輪播」讓 StickmanIdles 每兩三輪自己換。
 // 拖曳轉視角、滾輪拉近。?clip=Idle_ArmsCrossed 從抱胸開始；?auto=0 不自動換；?maps=0 關掉法線貼圖和環境遮蔽（normal／occlusion 只留一張）。
+// ?model=<網址>（相對 index.html）換成別的版本的 glb，例如建置時另外輸出的布偶版（STICKMAN_STYLE=plush）。
 import { ZhudaEngine, Zhuda3D, ZhudaModelLibrary, ZhudaModelInspector, ZhudaSceneLook, DirectoryAssetProvider, createSurfaceMaterial } from 'zhuda-laya-engine';
 import { skyAt, OCEAN, type WeatherMix } from '../common/3d/day-look.ts';
 import { STICKMAN, STICKMAN_CLIPS, STICKMAN_CLIP_NAMES, StickmanIdles, fadeShare, repairGltfCrossFade, stickmanPath, type StickmanClip } from '../common/3d/stickman/stickman.ts';
@@ -63,7 +64,7 @@ export const stickman: ScenePreset = {
 
     const provider = new DirectoryAssetProvider({ baseUrl: './', timeoutMs: 60_000 });
     const models = new ZhudaModelLibrary({ provider, timeoutMs: 60_000 });
-    const model = await models.instantiate(stickmanPath(), { retries: 2 });
+    const model = await models.instantiate(params.get('model') || stickmanPath(), { retries: 2 });
     scene.addChild(model.node);
     const inspector = new ZhudaModelInspector(model);
     const report = inspector.inspect();

@@ -10,5 +10,6 @@
 | `2d/cascade-math` | 隨處消除連消倍數數學（純 TS）：和 Go 伺服器 `server/slotmath` 同種子同結果的引擎、種子局（給本機存檔重算）、腳本局插拔管線、中性範例設定 |
 | `2d/slot-client` | slot 用戶端的其餘部分（純 TS）：連消畫面資料、伺服器回合轉換、伺服器用戶端與伺服器權威 session、管線、事件、狀態、語系級聯、資產尋址 |
 | `2d/slot-ui` | 畫面（Laya，程式繪製）：演出播放器、逐格時鐘、盤面、大獎、控制列、倍數看板、三個對話框、掛載層、音效橋、佔位符號 |
+| `2d/tutorial-coach` | 舞台版聚光燈新手教學層（Laya 2D，零 DOM，搭 `systems/tutorial`）：四象限鏤空點擊穿透、手勢動畫（`tap`/`double-tap`/`drag`/`hold`）、次要高亮區、防遮擋氣泡卡與皮膚掛鉤，支援網頁與微信小遊戲；觀看台 `?scene=tutorial-coach` |
 
 回合狀態機與本機帳本是 `systems/slot-round`（和 dungeon-spin 共用）。觀看台：`viewer2d` 的 `?scene=cascade-slot`；做法：`docs/routes/cascade-slot.md`。

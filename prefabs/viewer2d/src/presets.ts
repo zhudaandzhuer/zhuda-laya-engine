@@ -6,5 +6,6 @@ import { dungeonSpin } from './presets/dungeon-spin.ts';
 import { cascadeSlot } from './presets/cascade-slot.ts';
 import { ashfallDuel } from './presets/ashfall-duel.ts';
 import { spineTights } from './presets/spine-tights.ts';
+import { tutorialCoach } from './presets/tutorial-coach.ts';
 
-export const PRESETS: ScenePreset[] = [ashfallDuel, dungeonSpin, cascadeSlot, spineTights, stageCheck];
+export const PRESETS: ScenePreset[] = [ashfallDuel, dungeonSpin, cascadeSlot, spineTights, tutorialCoach, stageCheck];

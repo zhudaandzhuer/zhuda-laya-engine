@@ -1,6 +1,6 @@
 # Handoff: engine state and open work
 
-Last updated: 2026-11-26 (the 2.0.1 section, the audit-hardening section, the stage-on-a-page section, the watch-scripts-only section, the ui-test-probe section, the 2.0.0 section, with what came after it the same day, and the unification section; the rest is as of 2026-11-23). Read "State now", "Current priorities" and "Open
+Last updated: 2026-11-26 (the 2.0.1 section, the section on other sessions' work, the audit-hardening section, the stage-on-a-page section, the watch-scripts-only section, the ui-test-probe section, the 2.0.0 section, with what came after it the same day, and the unification section; the rest is as of 2026-11-23). Read "State now", "Current priorities" and "Open
 work" first; "History" keeps what each round did, newest first, with its
 records. Check every ref again with `git log` before starting.
 
@@ -38,6 +38,22 @@ formatting of `tests/minigame-toolchain.test.mjs`, which made the public reposit
 fail on the release commit (`npm run format:check` is a step there). Both repositories carry
 the two; the tags stay where they were.
 
+## Other sessions' work in this worktree, checked and committed (2026-11-26)
+
+Three pieces had been left uncommitted here by other sessions the same day. The owner's word:
+"火才人 教學模組那個，你直接幫我處理". Each was checked and committed as its own commit;
+nothing of them was rewritten.
+
+| Commit | What | Checked |
+| --- | --- | --- |
+| `8d96535f` | `systems/tutorial`, `2d/tutorial-coach`, their test, the catalog rows, the viewer preset | its tests 3 of 3; `verify:prefabs` (library 209 of 209, both viewers); neither module touches `document`, `window` or `localStorage` |
+| `a1edb4e7` | routes `onboarding-tutorial-2d` and `aqua-freeze-2d-minigame`, their rows in the index | `tests/implementation-routes.test.mjs` 7 of 7 |
+| `32b2811d` | `prefabs/3d/stickman`: `STICKMAN_STYLE=plush` and `fuzzy`, the viewer's `?model=` | the default build is `assets/stickman.glb` byte for byte; both styles build; a style with no `STICKMAN_OUT` is refused |
+
+Not checked: the two tutorial modules were not read line by line, and no picture of either
+stickman look was taken here (the session that made them recorded its own). The worktree is
+clean after these. **State:** committed on `unified`; not pushed, not on the public repository.
+
 ## audit-hardening: an outside audit of the public repository, checked and closed (2026-11-26)
 
 An outside agent (Gemini) audited the public repository at `5ccc746` and listed ten findings,
@@ -65,8 +81,8 @@ the ten findings with their verdicts.
   next SDK release.
 - **A behaviour an agent will meet:** an audit of a project outside the server's folder now
   needs `--root`; the error names the flag.
-- **State:** committed on `unified`; not pushed, not on the public repository. Pushing is the
-  owner's word.
+- **State:** on both repositories, pushed 2026-11-26 on the owner's word: `f208cbc2` on
+  `unified`, `cbf83d9b` on the public `main` (the export; the tag `v2.0.1` unmoved).
 
 ## stage-on-a-page: an outside agent's report on 2.0.0, checked and closed (2026-11-26)
 
