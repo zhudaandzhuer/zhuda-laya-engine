@@ -18,9 +18,15 @@ browser SDK under this number.
   `verify:browser-sdk` runs its six scenarios against the published address, `browser:check` and
   `browser:drift` pass. It was built from this tree before the record was written; the record
   changes no SDK source.
-- **Not done with this release:** the prefab library still says 2.0.2 and pins engine 2.0.1 (its
-  checks pass on 2.1.0: `npm run verify:library`); the workspace's eleven games are on engine
-  2.0.1 with locks taken from the 2.0 packages. Both are the owner's word.
+- **The prefab library's 2.1.0 followed the same day** (the owner's word: "發元件庫 2.1.0"):
+  tag `v2.1.0` on `2fa76c5` of `zhuda-engine-prefabs`, its pin moved to this engine's `v2.1.0`,
+  its checks run on the engine installed from that tag (211 tests, both viewers, ten Go
+  packages). The upgrade line of this engine's release page names it.
+- **The workspace's eleven games followed, the same day** (the owner's word: "升級遊戲"): each
+  is on this engine's `v2.1.0` and passes its own `npm run verify` with the same count before and
+  after; the eight that use shared modules have the library as a devDependency and a lock that
+  names it, with every copy's hash unchanged. No game was opened in a browser or on a phone for
+  this, and none was published.
 - Records: [prefab-library-split](docs/plans/records/prefab-library-split/verification.md),
   [audit-hardening](docs/plans/records/audit-hardening/verification.md); the public side in
   `docs/plans/records/public-release/2.1.0.md` (this repository only).
@@ -84,9 +90,9 @@ repository and its routes send it to the other two. The owner's word for the lib
   under `tests/fixtures/characters/`. The git bundle that must stay private is under
   `archive/ashfall-duel/`, which the public export leaves out. Record:
   [prefab-library-split](docs/plans/records/prefab-library-split/verification.md).
-- **Owed after the release:** the library's 2.1.0 with its pin moved to the engine's tag; then
-  the workspace's eleven games on engine 2.1.0 with their locks taken from the library. Games on
-  2.0.1 work as they did.
+- **After the release (2026-11-27):** the library's 2.1.0 and the workspace's eleven games on
+  engine 2.1.0 with their locks taken from the library are both done; the section at the top
+  has them.
 - **The version rule the owner and the session talked through:** the library's first two numbers
   follow the engine line it was checked on (2.0.x with 2.0.x); a game pins a tag or a commit,
   never a branch; a branch is cut for an old line only when it needs a fix.
