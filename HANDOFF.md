@@ -11,9 +11,23 @@ The owner's word: "改成2.0.1". Everything on `unified` after `v2.0.0` is relea
 section is the 2.0.1 section. The owner also said to put it on the engine's own, public
 repository in place of what was there: 2.0.1 is on its `main` as one commit (`57b3acec`) on top
 of the history that was there, tagged `v2.0.1`, and a consumer pins
-`git+https://github.com/zhudaandzhuer/zhuda-laya-engine.git#v2.0.1`. The browser SDK was not
-published for it (its last published release is 1.17.0), and no game was moved to it. The
+`git+https://github.com/zhudaandzhuer/zhuda-laya-engine.git#v2.0.1`. The
 sections below say "after 2.0.0" as they were written: all of it is in 2.0.1.
+
+The same day, on the owner's word ("發行改2.0.1 遊戲全部升級2.0.1 / sdk 也是推到win升級2.0.1"):
+
+- **A release page** for `v2.0.1` on the public repository (marked latest).
+- **The browser SDK 2.0.1** is published on the owner's game site and recorded in
+  `docs/browser-sdk-releases.json`; the six templates and `docs/browser-sdk.md` point at it. The
+  published files are the local build byte for byte (20 files), and `verify:browser-sdk` runs its
+  six scenarios against it. It is the first recorded release that has the backend loader.
+- **The workspace's eleven game projects** (outside this repository, under the workspace's
+  `games/`) are on `git+https://github.com/zhudaandzhuer/zhuda-laya-engine.git#57b3acec…`: each
+  passes its own `npm run verify` with the same count before and after. Three needed more than the
+  pin: two had their prefab evidence compared again on the new build (0 different pixels, baselines
+  untouched), one names the engine version in its own configuration and source. Each game's
+  `HANDOFF.md` has a "引擎升到 2.0.1" section and an `evidence/upgrade-2.0.1/` folder. No game
+  was opened in a browser or on a phone for this, and none was published.
 
 After the tag, the same day: the route `papercraft-diorama` (an outside skill's rules for a
 pop-up paper scene made of code alone, set against this engine; not built here) and the

@@ -55,8 +55,10 @@ test('a release may carry the backend loader; one without every bundle is refuse
       fs.writeFileSync(file, JSON.stringify(record));
       return file;
     };
-    // The releases recorded so far have no loader, and are read as they are.
-    assert.equal(readRecord().releases[0].files['zhuda-loader.js'], undefined);
+    // The releases before 2.0.1 have no loader, and are read as they are; 2.0.1 is the first with one.
+    const recorded = readRecord().releases;
+    assert.equal(recorded.find((r) => r.version === '1.17.0').files['zhuda-loader.js'], undefined);
+    assert.equal(typeof recorded[0].files['zhuda-loader.js'].bytes, 'number');
     const withLoader = readRecord(
       write((latest) => {
         latest.files['zhuda-loader.js'] = { bytes: 5297, integrity: 'sha384-' + 'B'.repeat(64) };

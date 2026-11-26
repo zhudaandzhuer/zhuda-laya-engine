@@ -12,6 +12,9 @@ below 1.18.0 were moved here from the README as they were written at the time.
   engine has. Not built here yet.
 - `tests/minigame-toolchain.test.mjs` is in the form `npm run format:check` asks for: the check
   passes again.
+- The browser SDK 2.0.1 is published ([releases](docs/browser-sdk-releases.json)): six bundles and,
+  for the first time in a recorded release, the backend loader. Templates and
+  [the SDK page](docs/browser-sdk.md) point at it.
 
 ## 2.0.1 (2026-11-26)
 
