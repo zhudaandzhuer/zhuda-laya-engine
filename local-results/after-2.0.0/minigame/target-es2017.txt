@@ -1,0 +1,9 @@
+▲ [WARNING] Big integer literals are not available in the configured target environment ("es2017") and may crash at run-time [bigint]
+▲ [WARNING] Big integer literals are not available in the configured target environment ("es2017") and may crash at run-time [bigint]
+▲ [WARNING] Big integer literals are not available in the configured target environment ("es2017") and may crash at run-time [bigint]
+▲ [WARNING] Big integer literals are not available in the configured target environment ("es2017") and may crash at run-time [bigint]
+▲ [WARNING] Big integer literals are not available in the configured target environment ("es2017") and may crash at run-time [bigint]
+▲ [WARNING] Big integer literals are not available in the configured target environment ("es2017") and may crash at run-time [bigint]
+▲ [WARNING] Big integer literals are not available in the configured target environment ("es2017") and may crash at run-time [bigint]
+▲ [WARNING] Big integer literals are not available in the configured target environment ("es2017") and may crash at run-time [bigint]
+[MINIGAME_SOURCE_RACE] Consumer sources changed between the gated web build and the platform bundle; rebuild from a stable checkout.

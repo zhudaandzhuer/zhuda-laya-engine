@@ -1,0 +1,8 @@
+[
+  { "wait": 6.2, "js": "S.set({ autoplay: 10 })" },
+  { "wait": 4.6, "shot": "09-auto-running" },
+  { "js": "S.set({ turbo: true })" },
+  { "wait": 30, "js": "return JSON.stringify(S.state().auto)" },
+  { "js": "S.set({ dialog: 'auto' })" },
+  { "wait": 0.3, "shot": "10-auto-dialog" }
+]

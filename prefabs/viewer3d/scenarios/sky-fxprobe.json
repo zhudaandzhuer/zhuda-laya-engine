@@ -1,0 +1,3 @@
+[
+  { "js": "S.set({ run: false, hour: 10, distance: 14 }); for (let k = 0; k < 5; k++) { S.fx.poof.burst([0, 1.5, 0], 2); S.fx.sparks.burst([1, 1.5, 1], 2); S.fx.dust.burst([2, 0.2, 2], 2); await new Promise(r => setTimeout(r, 120)); } const r = S.fx.poof.renderer; return { alive: S.fx.poof.system.aliveCount, node: !!r.node, active: r.node && r.node.active, parent: r.node && r.node.parent && r.node.parent.name, batches: r.submittedBatches, mesh: r.node && r.node.meshFilter && !!r.node.meshFilter.sharedMesh };", "wait": 0.3, "shot": "p-fx" }
+]

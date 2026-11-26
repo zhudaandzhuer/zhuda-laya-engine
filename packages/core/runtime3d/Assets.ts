@@ -293,6 +293,12 @@ export interface ModelInstance {
   /** What reading the VRM data found: the errors that refused it, and the parts left out. */
   readonly vrmIssues: readonly ZhudaVrmIssue[];
   setTint(color: [number, number, number, number]): void;
+  /**
+   * Whether this copy's meshes cast shadows and take them: every `MeshRenderer` and
+   * `SkinnedMeshRenderer` of the copy, at once. A key left out is left as it is.
+   * Returns how many renderers were set.
+   */
+  setShadows(shadows: { cast?: boolean; receive?: boolean }): number;
   find(name: string): Laya.Sprite3D | null;
   dispose(): void;
 }
@@ -753,6 +759,20 @@ export class ZhudaModelLibrary {
             m.setVector4('u_BaseColorFactor', new l.Vector4(...color));
           else throw Error('Model material does not expose a base color');
         }
+      },
+      setShadows: (shadows: { cast?: boolean; receive?: boolean }) => {
+        if (disposed) throw Error('Disposed model instance');
+        if (
+          !shadows ||
+          (shadows.cast !== undefined && typeof shadows.cast !== 'boolean') ||
+          (shadows.receive !== undefined && typeof shadows.receive !== 'boolean')
+        )
+          throw Error('Invalid shadow switch: { cast?: boolean, receive?: boolean }');
+        for (const slot of slots) {
+          if (shadows.cast !== undefined) slot.renderer.castShadow = shadows.cast;
+          if (shadows.receive !== undefined) slot.renderer.receiveShadow = shadows.receive;
+        }
+        return slots.length;
       },
       find: (name: string) => {
         let found: any = null;

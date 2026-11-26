@@ -1,0 +1,447 @@
+{
+ "game": "games/zhuda-match",
+ "shapes": [
+  {
+   "shape": "desktop-1280x720",
+   "canvas": [
+    0,
+    0,
+    1280,
+    720
+   ],
+   "stage": [
+    1280,
+    720
+   ],
+   "controls": {
+    "level-0": {
+     "probe": [
+      640,
+      281
+     ],
+     "game": [
+      640,
+      281
+     ],
+     "rect": [
+      499.38,
+      247.5,
+      281.25,
+      67.5
+     ],
+     "off": 0
+    },
+    "level-1": {
+     "probe": [
+      640,
+      366
+     ],
+     "game": [
+      640,
+      366
+     ],
+     "rect": [
+      499.38,
+      331.88,
+      281.25,
+      67.5
+     ],
+     "off": 0
+    },
+    "level-2": {
+     "probe": [
+      640,
+      450
+     ],
+     "game": [
+      640,
+      450
+     ],
+     "rect": [
+      499.38,
+      416.25,
+      281.25,
+      67.5
+     ],
+     "off": 0
+    },
+    "level-3": {
+     "probe": [
+      640,
+      534
+     ],
+     "game": [
+      640,
+      534
+     ],
+     "rect": [
+      499.38,
+      500.63,
+      281.25,
+      67.5
+     ],
+     "off": 0
+    },
+    "mute": {
+     "probe": [
+      781,
+      33
+     ],
+     "game": [
+      781,
+      33
+     ],
+     "rect": [
+      735.63,
+      16.88,
+      90,
+      31.5
+     ],
+     "off": 0
+    }
+   },
+   "title": {
+    "stageNodes": 21,
+    "stageNodesShown": 21,
+    "walked": 21,
+    "domNodes": 35
+   },
+   "clicks": [
+    {
+     "click": {
+      "name": "level-0"
+     },
+     "at": [
+      640,
+      281
+     ],
+     "node": "Stage/design/Sprite[4]/level-0"
+    },
+    {
+     "click": {
+      "text": "選單"
+     },
+     "at": [
+      786,
+      36
+     ],
+     "node": "Stage/design/Sprite[3]/menu/Text[0]"
+    }
+   ],
+   "board": {
+    "stageNodes": 50,
+    "stageNodesShown": 50,
+    "walked": 50,
+    "domNodes": 35
+   }
+  },
+  {
+   "shape": "upright-540x960",
+   "canvas": [
+    0,
+    0,
+    540,
+    960
+   ],
+   "stage": [
+    540,
+    960
+   ],
+   "controls": {
+    "level-0": {
+     "probe": [
+      270,
+      375
+     ],
+     "game": [
+      270,
+      375
+     ],
+     "rect": [
+      82.5,
+      330,
+      375,
+      90
+     ],
+     "off": 0
+    },
+    "level-1": {
+     "probe": [
+      270,
+      488
+     ],
+     "game": [
+      270,
+      488
+     ],
+     "rect": [
+      82.5,
+      442.5,
+      375,
+      90
+     ],
+     "off": 0
+    },
+    "level-2": {
+     "probe": [
+      270,
+      600
+     ],
+     "game": [
+      270,
+      600
+     ],
+     "rect": [
+      82.5,
+      555,
+      375,
+      90
+     ],
+     "off": 0
+    },
+    "level-3": {
+     "probe": [
+      270,
+      713
+     ],
+     "game": [
+      270,
+      713
+     ],
+     "rect": [
+      82.5,
+      667.5,
+      375,
+      90
+     ],
+     "off": 0
+    },
+    "mute": {
+     "probe": [
+      458,
+      44
+     ],
+     "game": [
+      458,
+      44
+     ],
+     "rect": [
+      397.5,
+      22.5,
+      120,
+      42
+     ],
+     "off": 0
+    }
+   },
+   "title": {
+    "stageNodes": 21,
+    "stageNodesShown": 21,
+    "walked": 21,
+    "domNodes": 35
+   },
+   "clicks": [
+    {
+     "click": {
+      "name": "level-0"
+     },
+     "at": [
+      270,
+      375
+     ],
+     "node": "Stage/design/Sprite[4]/level-0"
+    },
+    {
+     "click": {
+      "text": "選單"
+     },
+     "at": [
+      465,
+      48
+     ],
+     "node": "Stage/design/Sprite[3]/menu/Text[0]"
+    }
+   ],
+   "board": {
+    "stageNodes": 50,
+    "stageNodesShown": 50,
+    "walked": 50,
+    "domNodes": 35
+   }
+  },
+  {
+   "shape": "phone-390x844-dpr3",
+   "canvas": [
+    0,
+    0,
+    390,
+    844
+   ],
+   "stage": [
+    390,
+    844
+   ],
+   "controls": {
+    "level-0": {
+     "probe": [
+      195,
+      346
+     ],
+     "game": [
+      195,
+      346
+     ],
+     "rect": [
+      59.58,
+      313.67,
+      270.83,
+      65
+     ],
+     "off": 0
+    },
+    "level-1": {
+     "probe": [
+      195,
+      427
+     ],
+     "game": [
+      195,
+      427
+     ],
+     "rect": [
+      59.58,
+      394.92,
+      270.83,
+      65
+     ],
+     "off": 0
+    },
+    "level-2": {
+     "probe": [
+      195,
+      509
+     ],
+     "game": [
+      195,
+      509
+     ],
+     "rect": [
+      59.58,
+      476.17,
+      270.83,
+      65
+     ],
+     "off": 0
+    },
+    "level-3": {
+     "probe": [
+      195,
+      590
+     ],
+     "game": [
+      195,
+      590
+     ],
+     "rect": [
+      59.58,
+      557.42,
+      270.83,
+      65
+     ],
+     "off": 0
+    },
+    "mute": {
+     "probe": [
+      330,
+      107
+     ],
+     "game": [
+      330,
+      107
+     ],
+     "rect": [
+      287.08,
+      91.58,
+      86.67,
+      30.33
+     ],
+     "off": 0
+    }
+   },
+   "title": {
+    "stageNodes": 21,
+    "stageNodesShown": 21,
+    "walked": 21,
+    "domNodes": 35
+   },
+   "clicks": [
+    {
+     "click": {
+      "name": "level-0"
+     },
+     "at": [
+      195,
+      346
+     ],
+     "node": "Stage/design/Sprite[4]/level-0"
+    },
+    {
+     "click": {
+      "text": "選單"
+     },
+     "at": [
+      336,
+      110
+     ],
+     "node": "Stage/design/Sprite[3]/menu/Text[0]"
+    }
+   ],
+   "board": {
+    "stageNodes": 50,
+    "stageNodesShown": 50,
+    "walked": 50,
+    "domNodes": 35
+   }
+  }
+ ],
+ "turned": {
+  "turned": true,
+  "canvas": [
+   0,
+   0,
+   540,
+   303
+  ],
+  "stage": [
+   540,
+   962
+  ],
+  "level0": [
+   303.68,
+   46.29,
+   50.52,
+   210.42
+  ],
+  "click": {
+   "click": {
+    "name": "level-0"
+   },
+   "at": [
+    329,
+    152
+   ],
+   "node": "Stage/design/Sprite[4]/level-0"
+  },
+  "click2": {
+   "click": {
+    "name": "menu"
+   },
+   "at": [
+    513,
+    261
+   ],
+   "node": "Stage/design/Sprite[3]/menu"
+  }
+ },
+ "failures": []
+}

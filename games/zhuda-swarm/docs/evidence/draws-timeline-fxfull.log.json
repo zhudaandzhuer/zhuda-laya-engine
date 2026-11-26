@@ -1,0 +1,299 @@
+{
+ "errors": [],
+ "failed": "",
+ "final": {
+  "ready": true,
+  "screen": "result",
+  "frames": 1290,
+  "hot": {
+   "home": [
+    480,
+    384
+   ]
+  },
+  "maxDraws": 85,
+  "save": {
+   "coins": 164,
+   "meta": {
+    "might": 0,
+    "vitality": 0,
+    "greed": 0
+   },
+   "best": 300.0000000000558,
+   "runs": 1
+  },
+  "run": {
+   "time": 300,
+   "state": "won",
+   "hp": 55,
+   "level": 17,
+   "kills": 1483,
+   "enemies": 420,
+   "peak": 421,
+   "drops": 95,
+   "shots": 0,
+   "weapons": "blade3 vine3 fire5* thunder1",
+   "passives": "vitality1 area1 haste1 might1"
+  },
+  "fx": 0,
+  "zones": "",
+  "draws": 81,
+  "payout": 164
+ },
+ "log": [
+  {
+   "rows": [
+    [
+     1,
+     1,
+     3,
+     0,
+     "",
+     "blade1"
+    ],
+    [
+     11,
+     14,
+     3,
+     0,
+     "",
+     "blade1"
+    ],
+    [
+     21,
+     26,
+     3,
+     0,
+     "",
+     "blade1"
+    ],
+    [
+     31,
+     45,
+     3,
+     0,
+     "",
+     "blade1"
+    ],
+    [
+     41,
+     48,
+     9,
+     2,
+     "slash",
+     "blade1 vine1 fire1"
+    ],
+    [
+     50,
+     60,
+     7,
+     2,
+     "",
+     "blade2 vine1 fire1"
+    ],
+    [
+     60,
+     86,
+     5,
+     0,
+     "",
+     "blade2 vine1 fire1"
+    ],
+    [
+     70,
+     114,
+     20,
+     0,
+     "",
+     "blade2 vine1 fire1"
+    ],
+    [
+     80,
+     86,
+     52,
+     3,
+     "",
+     "blade2 vine2 fire1"
+    ],
+    [
+     89,
+     44,
+     42,
+     1,
+     "",
+     "blade2 vine2 fire1"
+    ],
+    [
+     100,
+     68,
+     36,
+     1,
+     "",
+     "blade2 vine3 fire1"
+    ],
+    [
+     109,
+     72,
+     45,
+     1,
+     "",
+     "blade2 vine3 fire2"
+    ],
+    [
+     119,
+     68,
+     30,
+     1,
+     "slash",
+     "blade3 vine3 fire2"
+    ],
+    [
+     129,
+     67,
+     45,
+     1,
+     "",
+     "blade3 vine3 fire3"
+    ],
+    [
+     139,
+     100,
+     64,
+     1,
+     "slash",
+     "blade3 vine3 fire3"
+    ],
+    [
+     148,
+     159,
+     42,
+     0,
+     "slash",
+     "blade3 vine3 fire3"
+    ],
+    [
+     158,
+     199,
+     73,
+     1,
+     "",
+     "blade3 vine3 fire3 thunder1"
+    ],
+    [
+     169,
+     227,
+     76,
+     0,
+     "",
+     "blade3 vine3 fire3 thunder1"
+    ],
+    [
+     179,
+     269,
+     66,
+     0,
+     "",
+     "blade3 vine3 fire3 thunder1"
+    ],
+    [
+     189,
+     326,
+     64,
+     1,
+     "slash,thunder",
+     "blade3 vine3 fire4 thunder1"
+    ],
+    [
+     200,
+     394,
+     66,
+     0,
+     "slash",
+     "blade3 vine3 fire4 thunder1"
+    ],
+    [
+     210,
+     412,
+     60,
+     1,
+     "",
+     "blade3 vine3 fire5 thunder1"
+    ],
+    [
+     221,
+     418,
+     72,
+     0,
+     "thunder",
+     "blade3 vine3 fire5 thunder1"
+    ],
+    [
+     231,
+     420,
+     73,
+     0,
+     "",
+     "blade3 vine3 fire5 thunder1"
+    ],
+    [
+     241,
+     419,
+     67,
+     1,
+     "slash",
+     "blade3 vine3 fire5* thunder1"
+    ],
+    [
+     251,
+     418,
+     64,
+     0,
+     "",
+     "blade3 vine3 fire5* thunder1"
+    ],
+    [
+     261,
+     420,
+     72,
+     0,
+     "",
+     "blade3 vine3 fire5* thunder1"
+    ],
+    [
+     271,
+     420,
+     58,
+     0,
+     "",
+     "blade3 vine3 fire5* thunder1"
+    ],
+    [
+     281,
+     420,
+     59,
+     1,
+     "",
+     "blade3 vine3 fire5* thunder1"
+    ],
+    [
+     291,
+     420,
+     60,
+     1,
+     "thunder",
+     "blade3 vine3 fire5* thunder1"
+    ]
+   ]
+  },
+  {
+   "draws": {
+    "under50": 8,
+    "to150": 34,
+    "to300": 70,
+    "over300": 67
+   },
+   "samples": 180,
+   "max": 85
+  }
+ ]
+}

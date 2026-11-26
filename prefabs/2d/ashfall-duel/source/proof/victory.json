@@ -1,0 +1,15 @@
+[
+ {"wait": 0.6},
+ {"js": "__qa.key('Enter'); __qa.key('KeyJ', 'down')", "wait": 0.75},
+ {"js": "__qa.key('KeyJ', 'up')", "wait": 1},
+ {"js": "__qa.key('KeyJ')", "wait": 1},
+ {"js": "__qa.key('KeyJ')", "wait": 1},
+ {"js": "__qa.key('KeyJ')", "wait": 1},
+ {"js": "__qa.key('KeyJ')", "wait": 1},
+ {"js": "__qa.key('KeyJ')", "wait": 1},
+ {"js": "__qa.key('KeyJ')", "wait": 1},
+ {"js": "__qa.key('KeyJ')", "wait": 1},
+ {"js": "__qa.key('KeyJ')", "wait": 1},
+ {"js": "__qa.key('KeyJ')", "wait": 1},
+ {"js": "__qa.key('KeyJ')", "wait": 1.2, "shot": "11-victory"}
+]

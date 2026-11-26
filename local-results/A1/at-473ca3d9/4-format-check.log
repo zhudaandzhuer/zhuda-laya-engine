@@ -1,0 +1,18 @@
+
+> zhuda-laya-engine@2.0.0 format:check
+> prettier --check --ignore-unknown packages/core packages/compiler packages/demo packages/mcp-server packages/ci-gate src scripts tests examples eslint.config.mjs package.json tsconfig.json
+
+Checking formatting...
+[warn] packages/core/runtime3d/Assets.ts
+[warn] packages/core/runtime3d/CharacterController.ts
+[warn] packages/core/runtime3d/Clocks.ts
+[warn] packages/core/runtime3d/Runtime.ts
+[warn] packages/core/runtime3d/Utf8.ts
+[warn] packages/core/runtime3d/WalkGrid.ts
+[warn] packages/core/SplashSignal.ts
+[warn] packages/compiler/zhuda-minigame.mjs
+[warn] tests/clock-waits-tweens.test.mjs
+[warn] tests/gltf-intake.test.mjs
+[warn] tests/minigame-toolchain.test.mjs
+[warn] tests/walk-and-character.test.mjs
+[warn] Code style issues found in 12 files. Run Prettier with --write to fix.

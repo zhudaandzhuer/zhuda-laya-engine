@@ -1,0 +1,695 @@
+{
+  "ready": true,
+  "componentId": null,
+  "selection": {
+    "id": "visual/template-background",
+    "state": "idle",
+    "node": "Background"
+  },
+  "renderer": {
+    "requested": "webgl",
+    "selected": "webgl",
+    "fallbackReason": null,
+    "nativeEngine": "Le",
+    "status": "ready",
+    "features": [],
+    "errors": []
+  },
+  "provenance": {
+    "id": "visual/template-background",
+    "state": "idle",
+    "kind": "2d",
+    "definitionHash": "9cd7c6a19df15492233a792604c9fdfa8221d040b0c753376e80b9921fa8939e",
+    "sources": {
+      "prefabs/template-background.lh": "cf9dbf64453ab17fe0305f91e3f92e2eec5618212a9ea95c5faaff6139cd34e2",
+      "template-v2.png": "42d32c92ec1b83d3f79b0e87c987c1e64e464ce76a7c0866c272df402f285ba4"
+    }
+  },
+  "bounds": {
+    "x": 0,
+    "y": 0,
+    "width": 572,
+    "height": 1024
+  },
+  "resources": {
+    "instances": 1,
+    "entries": 2,
+    "references": 2,
+    "pending": 0,
+    "loads": 62,
+    "phases": [
+      {
+        "key": "prefabs/template-background.lh",
+        "phase": "ready",
+        "references": 1
+      },
+      {
+        "key": "template-v2.png",
+        "phase": "ready",
+        "references": 1
+      }
+    ],
+    "gpuReady": "requires-first-draw",
+    "shared3D": {
+      "entries": 0,
+      "references": 0,
+      "pending": 0,
+      "loads": 0,
+      "phases": [],
+      "gpuReady": "requires-first-draw"
+    }
+  },
+  "lifecycle": [
+    {
+      "instances": 0,
+      "entries": 0,
+      "references": 0,
+      "pending": 0,
+      "loads": 2,
+      "phases": [],
+      "gpuReady": "requires-first-draw",
+      "shared3D": {
+        "entries": 0,
+        "references": 0,
+        "pending": 0,
+        "loads": 0,
+        "phases": [],
+        "gpuReady": "requires-first-draw"
+      }
+    },
+    {
+      "instances": 0,
+      "entries": 0,
+      "references": 0,
+      "pending": 0,
+      "loads": 4,
+      "phases": [],
+      "gpuReady": "requires-first-draw",
+      "shared3D": {
+        "entries": 0,
+        "references": 0,
+        "pending": 0,
+        "loads": 0,
+        "phases": [],
+        "gpuReady": "requires-first-draw"
+      }
+    },
+    {
+      "instances": 0,
+      "entries": 0,
+      "references": 0,
+      "pending": 0,
+      "loads": 6,
+      "phases": [],
+      "gpuReady": "requires-first-draw",
+      "shared3D": {
+        "entries": 0,
+        "references": 0,
+        "pending": 0,
+        "loads": 0,
+        "phases": [],
+        "gpuReady": "requires-first-draw"
+      }
+    },
+    {
+      "instances": 0,
+      "entries": 0,
+      "references": 0,
+      "pending": 0,
+      "loads": 8,
+      "phases": [],
+      "gpuReady": "requires-first-draw",
+      "shared3D": {
+        "entries": 0,
+        "references": 0,
+        "pending": 0,
+        "loads": 0,
+        "phases": [],
+        "gpuReady": "requires-first-draw"
+      }
+    },
+    {
+      "instances": 0,
+      "entries": 0,
+      "references": 0,
+      "pending": 0,
+      "loads": 10,
+      "phases": [],
+      "gpuReady": "requires-first-draw",
+      "shared3D": {
+        "entries": 0,
+        "references": 0,
+        "pending": 0,
+        "loads": 0,
+        "phases": [],
+        "gpuReady": "requires-first-draw"
+      }
+    },
+    {
+      "instances": 0,
+      "entries": 0,
+      "references": 0,
+      "pending": 0,
+      "loads": 12,
+      "phases": [],
+      "gpuReady": "requires-first-draw",
+      "shared3D": {
+        "entries": 0,
+        "references": 0,
+        "pending": 0,
+        "loads": 0,
+        "phases": [],
+        "gpuReady": "requires-first-draw"
+      }
+    },
+    {
+      "instances": 0,
+      "entries": 0,
+      "references": 0,
+      "pending": 0,
+      "loads": 14,
+      "phases": [],
+      "gpuReady": "requires-first-draw",
+      "shared3D": {
+        "entries": 0,
+        "references": 0,
+        "pending": 0,
+        "loads": 0,
+        "phases": [],
+        "gpuReady": "requires-first-draw"
+      }
+    },
+    {
+      "instances": 0,
+      "entries": 0,
+      "references": 0,
+      "pending": 0,
+      "loads": 16,
+      "phases": [],
+      "gpuReady": "requires-first-draw",
+      "shared3D": {
+        "entries": 0,
+        "references": 0,
+        "pending": 0,
+        "loads": 0,
+        "phases": [],
+        "gpuReady": "requires-first-draw"
+      }
+    },
+    {
+      "instances": 0,
+      "entries": 0,
+      "references": 0,
+      "pending": 0,
+      "loads": 18,
+      "phases": [],
+      "gpuReady": "requires-first-draw",
+      "shared3D": {
+        "entries": 0,
+        "references": 0,
+        "pending": 0,
+        "loads": 0,
+        "phases": [],
+        "gpuReady": "requires-first-draw"
+      }
+    },
+    {
+      "instances": 0,
+      "entries": 0,
+      "references": 0,
+      "pending": 0,
+      "loads": 20,
+      "phases": [],
+      "gpuReady": "requires-first-draw",
+      "shared3D": {
+        "entries": 0,
+        "references": 0,
+        "pending": 0,
+        "loads": 0,
+        "phases": [],
+        "gpuReady": "requires-first-draw"
+      }
+    },
+    {
+      "instances": 0,
+      "entries": 0,
+      "references": 0,
+      "pending": 0,
+      "loads": 22,
+      "phases": [],
+      "gpuReady": "requires-first-draw",
+      "shared3D": {
+        "entries": 0,
+        "references": 0,
+        "pending": 0,
+        "loads": 0,
+        "phases": [],
+        "gpuReady": "requires-first-draw"
+      }
+    },
+    {
+      "instances": 0,
+      "entries": 0,
+      "references": 0,
+      "pending": 0,
+      "loads": 24,
+      "phases": [],
+      "gpuReady": "requires-first-draw",
+      "shared3D": {
+        "entries": 0,
+        "references": 0,
+        "pending": 0,
+        "loads": 0,
+        "phases": [],
+        "gpuReady": "requires-first-draw"
+      }
+    },
+    {
+      "instances": 0,
+      "entries": 0,
+      "references": 0,
+      "pending": 0,
+      "loads": 26,
+      "phases": [],
+      "gpuReady": "requires-first-draw",
+      "shared3D": {
+        "entries": 0,
+        "references": 0,
+        "pending": 0,
+        "loads": 0,
+        "phases": [],
+        "gpuReady": "requires-first-draw"
+      }
+    },
+    {
+      "instances": 0,
+      "entries": 0,
+      "references": 0,
+      "pending": 0,
+      "loads": 28,
+      "phases": [],
+      "gpuReady": "requires-first-draw",
+      "shared3D": {
+        "entries": 0,
+        "references": 0,
+        "pending": 0,
+        "loads": 0,
+        "phases": [],
+        "gpuReady": "requires-first-draw"
+      }
+    },
+    {
+      "instances": 0,
+      "entries": 0,
+      "references": 0,
+      "pending": 0,
+      "loads": 30,
+      "phases": [],
+      "gpuReady": "requires-first-draw",
+      "shared3D": {
+        "entries": 0,
+        "references": 0,
+        "pending": 0,
+        "loads": 0,
+        "phases": [],
+        "gpuReady": "requires-first-draw"
+      }
+    },
+    {
+      "instances": 0,
+      "entries": 0,
+      "references": 0,
+      "pending": 0,
+      "loads": 32,
+      "phases": [],
+      "gpuReady": "requires-first-draw",
+      "shared3D": {
+        "entries": 0,
+        "references": 0,
+        "pending": 0,
+        "loads": 0,
+        "phases": [],
+        "gpuReady": "requires-first-draw"
+      }
+    },
+    {
+      "instances": 0,
+      "entries": 0,
+      "references": 0,
+      "pending": 0,
+      "loads": 34,
+      "phases": [],
+      "gpuReady": "requires-first-draw",
+      "shared3D": {
+        "entries": 0,
+        "references": 0,
+        "pending": 0,
+        "loads": 0,
+        "phases": [],
+        "gpuReady": "requires-first-draw"
+      }
+    },
+    {
+      "instances": 0,
+      "entries": 0,
+      "references": 0,
+      "pending": 0,
+      "loads": 36,
+      "phases": [],
+      "gpuReady": "requires-first-draw",
+      "shared3D": {
+        "entries": 0,
+        "references": 0,
+        "pending": 0,
+        "loads": 0,
+        "phases": [],
+        "gpuReady": "requires-first-draw"
+      }
+    },
+    {
+      "instances": 0,
+      "entries": 0,
+      "references": 0,
+      "pending": 0,
+      "loads": 38,
+      "phases": [],
+      "gpuReady": "requires-first-draw",
+      "shared3D": {
+        "entries": 0,
+        "references": 0,
+        "pending": 0,
+        "loads": 0,
+        "phases": [],
+        "gpuReady": "requires-first-draw"
+      }
+    },
+    {
+      "instances": 0,
+      "entries": 0,
+      "references": 0,
+      "pending": 0,
+      "loads": 40,
+      "phases": [],
+      "gpuReady": "requires-first-draw",
+      "shared3D": {
+        "entries": 0,
+        "references": 0,
+        "pending": 0,
+        "loads": 0,
+        "phases": [],
+        "gpuReady": "requires-first-draw"
+      }
+    },
+    {
+      "instances": 0,
+      "entries": 0,
+      "references": 0,
+      "pending": 0,
+      "loads": 42,
+      "phases": [],
+      "gpuReady": "requires-first-draw",
+      "shared3D": {
+        "entries": 0,
+        "references": 0,
+        "pending": 0,
+        "loads": 0,
+        "phases": [],
+        "gpuReady": "requires-first-draw"
+      }
+    },
+    {
+      "instances": 0,
+      "entries": 0,
+      "references": 0,
+      "pending": 0,
+      "loads": 44,
+      "phases": [],
+      "gpuReady": "requires-first-draw",
+      "shared3D": {
+        "entries": 0,
+        "references": 0,
+        "pending": 0,
+        "loads": 0,
+        "phases": [],
+        "gpuReady": "requires-first-draw"
+      }
+    },
+    {
+      "instances": 0,
+      "entries": 0,
+      "references": 0,
+      "pending": 0,
+      "loads": 46,
+      "phases": [],
+      "gpuReady": "requires-first-draw",
+      "shared3D": {
+        "entries": 0,
+        "references": 0,
+        "pending": 0,
+        "loads": 0,
+        "phases": [],
+        "gpuReady": "requires-first-draw"
+      }
+    },
+    {
+      "instances": 0,
+      "entries": 0,
+      "references": 0,
+      "pending": 0,
+      "loads": 48,
+      "phases": [],
+      "gpuReady": "requires-first-draw",
+      "shared3D": {
+        "entries": 0,
+        "references": 0,
+        "pending": 0,
+        "loads": 0,
+        "phases": [],
+        "gpuReady": "requires-first-draw"
+      }
+    },
+    {
+      "instances": 0,
+      "entries": 0,
+      "references": 0,
+      "pending": 0,
+      "loads": 50,
+      "phases": [],
+      "gpuReady": "requires-first-draw",
+      "shared3D": {
+        "entries": 0,
+        "references": 0,
+        "pending": 0,
+        "loads": 0,
+        "phases": [],
+        "gpuReady": "requires-first-draw"
+      }
+    },
+    {
+      "instances": 0,
+      "entries": 0,
+      "references": 0,
+      "pending": 0,
+      "loads": 52,
+      "phases": [],
+      "gpuReady": "requires-first-draw",
+      "shared3D": {
+        "entries": 0,
+        "references": 0,
+        "pending": 0,
+        "loads": 0,
+        "phases": [],
+        "gpuReady": "requires-first-draw"
+      }
+    },
+    {
+      "instances": 0,
+      "entries": 0,
+      "references": 0,
+      "pending": 0,
+      "loads": 54,
+      "phases": [],
+      "gpuReady": "requires-first-draw",
+      "shared3D": {
+        "entries": 0,
+        "references": 0,
+        "pending": 0,
+        "loads": 0,
+        "phases": [],
+        "gpuReady": "requires-first-draw"
+      }
+    },
+    {
+      "instances": 0,
+      "entries": 0,
+      "references": 0,
+      "pending": 0,
+      "loads": 56,
+      "phases": [],
+      "gpuReady": "requires-first-draw",
+      "shared3D": {
+        "entries": 0,
+        "references": 0,
+        "pending": 0,
+        "loads": 0,
+        "phases": [],
+        "gpuReady": "requires-first-draw"
+      }
+    },
+    {
+      "instances": 0,
+      "entries": 0,
+      "references": 0,
+      "pending": 0,
+      "loads": 58,
+      "phases": [],
+      "gpuReady": "requires-first-draw",
+      "shared3D": {
+        "entries": 0,
+        "references": 0,
+        "pending": 0,
+        "loads": 0,
+        "phases": [],
+        "gpuReady": "requires-first-draw"
+      }
+    },
+    {
+      "instances": 0,
+      "entries": 0,
+      "references": 0,
+      "pending": 0,
+      "loads": 60,
+      "phases": [],
+      "gpuReady": "requires-first-draw",
+      "shared3D": {
+        "entries": 0,
+        "references": 0,
+        "pending": 0,
+        "loads": 0,
+        "phases": [],
+        "gpuReady": "requires-first-draw"
+      }
+    }
+  ],
+  "lifecycleCheck": {
+    "requestedCycles": 30,
+    "completedCycles": 30,
+    "status": "complete",
+    "before": {
+      "counts": {
+        "mesh": 0,
+        "texture": 10,
+        "renderTarget": 1
+      },
+      "animation": {
+        "clips": 0,
+        "materials": 2
+      },
+      "resources": 14,
+      "estimatedBytes": 6289180,
+      "meshBytes": 0,
+      "textureBytes": 6289180,
+      "renderTargetBytes": 0,
+      "memoryMeasurement": "estimate",
+      "assumptions": "Texture RGBA8, render target RGBA8 + 32-bit depth; vendor mesh accounting. Excludes driver overhead and compressed/HDR format corrections."
+    },
+    "after": {
+      "counts": {
+        "mesh": 0,
+        "texture": 10,
+        "renderTarget": 1
+      },
+      "animation": {
+        "clips": 0,
+        "materials": 2
+      },
+      "resources": 14,
+      "estimatedBytes": 6289180,
+      "meshBytes": 0,
+      "textureBytes": 6289180,
+      "renderTargetBytes": 0,
+      "memoryMeasurement": "estimate",
+      "assumptions": "Texture RGBA8, render target RGBA8 + 32-bit depth; vendor mesh accounting. Excludes driver overhead and compressed/HDR format corrections."
+    }
+  },
+  "environment": {
+    "requested": {
+      "viewport": {
+        "width": 572,
+        "height": 1024
+      },
+      "canvas": {
+        "width": 572,
+        "height": 1024
+      },
+      "dpr": 1,
+      "renderDpr": 1
+    },
+    "measured": {
+      "viewport": {
+        "width": 572,
+        "height": 1024
+      },
+      "dpr": 1,
+      "canvas": {
+        "css": {
+          "x": 0,
+          "y": 44,
+          "width": 572,
+          "height": 1024
+        },
+        "backing": {
+          "width": 572,
+          "height": 1024
+        }
+      },
+      "stage": {
+        "width": 572,
+        "height": 1024,
+        "scaleX": 1,
+        "scaleY": 1
+      }
+    },
+    "passed": true,
+    "issues": []
+  },
+  "schemaVersion": 2,
+  "passed": true,
+  "url": "http://127.0.0.1:62843/prefab-preview.html?id=visual%2Ftemplate-background&state=idle&node=Background&width=572&height=1024&dpr=1&cycles=30",
+  "comparison": {
+    "passed": true,
+    "differentPixels": 0
+  },
+  "previewEnvironment": {
+    "requested": {
+      "width": 572,
+      "height": 1024,
+      "dpr": 1
+    },
+    "measured": {
+      "width": 572,
+      "height": 1024,
+      "dpr": 1
+    },
+    "provider": "directory",
+    "engine": "1.18.0"
+  },
+  "lifecycleAudit": {
+    "passed": true,
+    "requestedCycles": 30,
+    "completedCycles": 30,
+    "issues": []
+  },
+  "dependencyProof": null,
+  "fingerprint": "2898ecdde9d29e8faea7aa3e3b365917d36e1f5a53f4b1f2660707ddda16aa54",
+  "actual": "prefab-template-background.json.png",
+  "actualSha256": "74c933d102adae329f747eca30450792d08fb71ec5f613ed26ee3d31656ffb5b",
+  "baseline": "../references/template-background.png",
+  "baselineSha256": "74c933d102adae329f747eca30450792d08fb71ec5f613ed26ee3d31656ffb5b",
+  "browser": "Chrome/158.0.8127.38",
+  "renderState": {
+    "labels": [],
+    "scaleX": 1,
+    "scaleY": 1
+  }
+}

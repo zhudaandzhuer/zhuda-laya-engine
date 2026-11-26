@@ -27,7 +27,10 @@ on the engine itself (read `AGENTS.md`).
 
 - `zhuda-laya-init` (`node packages/compiler/zhuda-init.mjs`): writes the project.
 - In the project: `zhuda-laya-build`, `zhuda-laya-doctor`, `zhuda-laya-accept`,
-  `zhuda-laya-watch`. Node 24 or newer.
+  `zhuda-laya-watch`. Node 24 or newer. For the edit loop run
+  `zhuda-laya-watch --candidate`: a save that changes only `src/` rebuilds `app.js`
+  alone and reloads the page
+  ([rules](../consumer-tooling.md#the-watcher-saves-that-change-only-scripts)).
 - MCP: `get_agent_contract`, `list_routes`, `get_route`.
 
 ## Steps

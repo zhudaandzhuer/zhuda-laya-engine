@@ -1,0 +1,4 @@
+[
+  { "js": "S.set({ run: false, hour: 14, weather: 'rain', distance: 12, pitch: 0.2 });", "wait": 3 },
+  { "js": "const r = S.fx.rain.renderer; const s = S.fx.rain.system; let n = 0, ys = []; s.forEach && s.forEach((p) => { if (n++ < 3) ys.push([p.x.toFixed(1), p.y.toFixed(1), p.z.toFixed(1), p.vx.toFixed(1), p.vy.toFixed(1), p.size]); }); const b = r.node.meshRenderer && r.node.meshRenderer.bounds; return { alive: s.aliveCount, batches: r.submittedBatches, ys, bmin: b && [b.min.x, b.min.y, b.min.z], bmax: b && [b.max.x, b.max.y, b.max.z], opacity: S.fx.rain.opacity, rate: s.spec.rate };", "shot": "p-rain" }
+]

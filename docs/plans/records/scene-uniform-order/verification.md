@@ -15,7 +15,7 @@ Date: 2026-11-17
 - DPR, viewport and network mode: DPR 1; the checks' own sizes (480 by 270
   for `verify:film-remount`); loopback.
 - Evidence (outside the repository): `EV` =
-  `/Users/yaowei/Documents/ZhudaGameCenter/audits/scene-uniform-order-2026-11-17/`:
+  `<workspace>/audits/scene-uniform-order-2026-11-17/`:
   the remount frames of `1e75db1` (with the stray pixels marked), `777f04c`,
   the fix on WebGL and on WebGPU; the bisect summary; the three sweeps; the
   foliage logs; the `npm run verify` log.

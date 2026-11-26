@@ -232,6 +232,37 @@ test('warnings come before tips and every rule is listed', () => {
     advice.map((item) => item.level),
     ['warn', 'tip'],
   );
+  // Grass: a wide field under a far, high camera is hundreds of meshes and says so, with a reach that is not.
+  const meadow = (extra = {}) =>
+    change((s) => {
+      s.camera = { eye: [0, 40, -38], target: [0, 0, 1] };
+      s.nodes.push({
+        id: 'meadow',
+        type: 'grass',
+        area: { minX: -36, maxX: 36, minZ: -20, maxZ: 22 },
+        density: 40,
+        distanceM: 70,
+        ...extra,
+      });
+    });
+  const wide = lint(meadow()).find((item) => item.rule === 'grass.draws');
+  assert.ok(wide && wide.level === 'tip' && wide.path === 'scene.nodes[2].distanceM');
+  assert.match(wide.message, /at least 256 meshes over 96 patches/);
+  const offered = Number(/"distanceM": (\d+)/.exec(wide.fix)[1]);
+  assert.ok(offered >= 10 && offered < 70);
+  assert.ok(!lint(meadow({ distanceM: offered })).some((item) => item.rule === 'grass.draws'));
+  // A field a walking camera stands in, at the default reach of a small garden, is left alone.
+  assert.ok(
+    !lint(
+      change((s) => {
+        s.nodes.push({
+          id: 'lawn',
+          type: 'grass',
+          area: { minX: -12, maxX: 12, minZ: -12, maxZ: 12 },
+        });
+      }),
+    ).some((item) => item.rule === 'grass.draws'),
+  );
   for (const rule of seen) assert.ok(rule in ZHUDA_FILM_LINT_RULES, rule);
   assert.deepEqual([...seen].sort(), Object.keys(ZHUDA_FILM_LINT_RULES).sort());
 });

@@ -682,9 +682,11 @@ export type ZhudaFilmNode =
   | {
       id: string;
       type: 'ground';
-      /** Width (X) and depth (Z) in metres; the top surface sits at y = 0. */
+      /** Width (X) and depth (Z) in metres; the top surface sits at `y`. */
       size: [number, number];
       material: string;
+      /** Height of the top surface, metres (default 0): above a `terrain` it lies over, by a few centimetres. */
+      y?: number;
     }
   | {
       id: string;
@@ -2227,7 +2229,9 @@ function validateNode(
       break;
     }
     case 'ground':
-      unknownKeys(node, ['id', 'type', 'size', 'material'], path, issues);
+      unknownKeys(node, ['id', 'type', 'size', 'material', 'y'], path, issues);
+      if (node.y !== undefined && !(finite(node.y) && Math.abs(node.y) <= ZHUDA_FILM_LIMITS.extent))
+        issues.push(`${path}.y: use a height in metres`);
       if (
         !Array.isArray(node.size) ||
         node.size.length !== 2 ||
@@ -3259,6 +3263,28 @@ export function sampleZhudaFilmCameraPath(
     fStop: mix(a.fStop, b.fStop, k),
     focusDistanceM: mix(a.focusDistanceM, b.focusDistanceM, k),
   };
+}
+
+/**
+ * What a mounted film stage cannot change, when `to` asks for it: the
+ * environment, the panorama, a colour table other than the one loaded with
+ * the scene (`loadedTable`: the asset of the look it was mounted with, or
+ * null), or the bounce light, which is captured at mount. Null when the look
+ * can be drawn. A look without a grade takes no table (quality level 0) and
+ * may come back to the loaded one.
+ */
+export function zhudaFilmLookFixedReason(
+  from: ZhudaResolvedFilmLook,
+  to: ZhudaResolvedFilmLook,
+  loadedTable: string | null,
+): 'environment' | 'panorama' | 'colorTable' | 'bounceLight' | null {
+  const json = (value: unknown) => JSON.stringify(value);
+  if (json(from.environment) !== json(to.environment)) return 'environment';
+  if (json(from.panorama) !== json(to.panorama)) return 'panorama';
+  const table = to.grade && to.grade.lut ? to.grade.lut.asset : null;
+  if (table !== null && table !== loadedTable) return 'colorTable';
+  if (json(from.bounceLight) !== json(to.bounceLight)) return 'bounceLight';
+  return null;
 }
 
 /**

@@ -1,0 +1,99 @@
+{
+ "page": "prefabs/viewer2d/dist/web",
+ "runs": [
+  {
+   "early": {
+    "state": {
+     "started": true,
+     "durationMs": 2180,
+     "completed": false,
+     "loaded": true,
+     "gone": false,
+     "mode": "engine"
+    },
+    "node": true
+   },
+   "late": {
+    "state": {
+     "started": true,
+     "durationMs": 2180,
+     "completed": true,
+     "loaded": true,
+     "gone": true,
+     "mode": "engine"
+    },
+    "node": false,
+    "seen": {
+     "events": 1,
+     "at": 2653,
+     "nodeAtEvent": false,
+     "completedAt": 2202
+    }
+   },
+   "errors": []
+  },
+  {
+   "early": {
+    "state": {
+     "started": true,
+     "durationMs": 2180,
+     "completed": false,
+     "loaded": true,
+     "gone": false,
+     "mode": "engine"
+    },
+    "node": true
+   },
+   "late": {
+    "state": {
+     "started": true,
+     "durationMs": 2180,
+     "completed": true,
+     "loaded": true,
+     "gone": true,
+     "mode": "engine"
+    },
+    "node": false,
+    "seen": {
+     "events": 1,
+     "at": 2652,
+     "nodeAtEvent": false,
+     "completedAt": 2202
+    }
+   },
+   "errors": []
+  },
+  {
+   "early": {
+    "state": {
+     "started": true,
+     "durationMs": 2180,
+     "completed": false,
+     "loaded": true,
+     "gone": false,
+     "mode": "engine"
+    },
+    "node": true
+   },
+   "late": {
+    "state": {
+     "started": true,
+     "durationMs": 2180,
+     "completed": true,
+     "loaded": true,
+     "gone": true,
+     "mode": "engine"
+    },
+    "node": false,
+    "seen": {
+     "events": 1,
+     "at": 2652,
+     "nodeAtEvent": false,
+     "completedAt": 2201
+    }
+   },
+   "errors": []
+  }
+ ],
+ "ok": true
+}

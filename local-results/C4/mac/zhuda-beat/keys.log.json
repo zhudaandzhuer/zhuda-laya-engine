@@ -1,0 +1,630 @@
+{
+ "errors": [
+  "Failed to load resource: the server responded with a status of 404 (Not Found) http://localhost:63041/favicon.ico",
+  "Failed to load resource: the server responded with a status of 404 (Not Found) http://localhost:63041/favicon.ico"
+ ],
+ "failed": "",
+ "renderer": {
+  "webgl": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+  "webgpu": true,
+  "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/158.0.0.0 Safari/537.36",
+  "dpr": 1
+ },
+ "final": {
+  "ready": true,
+  "screen": "result",
+  "frames": 2579,
+  "hot": {
+   "pause": [
+    473,
+    38
+   ],
+   "again": [
+    154,
+    621
+   ],
+   "next": [
+    386,
+    621
+   ]
+  },
+  "songsReady": 2,
+  "mixMs": {
+   "bamboo": 25,
+   "market": 12
+  },
+  "lanes": [
+   [
+    101,
+    780
+   ],
+   [
+    214,
+    780
+   ],
+   [
+    326,
+    780
+   ],
+   [
+    439,
+    780
+   ]
+  ],
+  "schedule": [],
+  "best": {
+   "bamboo-easy": 6875
+  },
+  "game": {
+   "song": "bamboo",
+   "hard": false,
+   "time": 38.108,
+   "paused": false,
+   "score": 6875,
+   "combo": 54,
+   "bestCombo": 54,
+   "notes": 54,
+   "counts": {
+    "perfect": 54,
+    "good": 0,
+    "late": 0,
+    "miss": 0,
+    "empty": 0
+   },
+   "accuracy": 1,
+   "rank": "S",
+   "lean": 1,
+   "audio": true,
+   "clock": {
+    "samples": 2324,
+    "maxGapMs": 3.6,
+    "jumps": 0,
+    "latencyMs": 40
+   }
+  }
+ },
+ "log": [
+  {
+   "mixMs": {
+    "bamboo": 25,
+    "market": 12
+   },
+   "songsReady": 2
+  },
+  {
+   "shot": "00-title",
+   "seconds": 0.605,
+   "state": {
+    "ready": true,
+    "screen": "title",
+    "frames": 19,
+    "hot": {
+     "song-0-0": [
+      154,
+      335
+     ],
+     "song-0-1": [
+      386,
+      335
+     ],
+     "song-1-0": [
+      154,
+      522
+     ],
+     "song-1-1": [
+      386,
+      522
+     ],
+     "cal-0": [
+      199,
+      769
+     ],
+     "cal-1": [
+      341,
+      769
+     ],
+     "mute": [
+      458,
+      44
+     ]
+    },
+    "songsReady": 2,
+    "mixMs": {
+     "bamboo": 25,
+     "market": 12
+    },
+    "lanes": [
+     [
+      101,
+      780
+     ],
+     [
+      214,
+      780
+     ],
+     [
+      326,
+      780
+     ],
+     [
+      439,
+      780
+     ]
+    ],
+    "schedule": [],
+    "best": {}
+   }
+  },
+  {
+   "shot": "01-playing",
+   "seconds": 9.979,
+   "state": {
+    "ready": true,
+    "screen": "play",
+    "frames": 581,
+    "hot": {
+     "pause": [
+      473,
+      38
+     ]
+    },
+    "songsReady": 2,
+    "mixMs": {
+     "bamboo": 25,
+     "market": 12
+    },
+    "lanes": [
+     [
+      101,
+      780
+     ],
+     [
+      214,
+      780
+     ],
+     [
+      326,
+      780
+     ],
+     [
+      439,
+      780
+     ]
+    ],
+    "schedule": [
+     [
+      2,
+      10504,
+      12
+     ],
+     [
+      1,
+      11081,
+      13
+     ],
+     [
+      2,
+      12235,
+      14
+     ],
+     [
+      0,
+      12812,
+      15
+     ],
+     [
+      1,
+      13389,
+      16
+     ],
+     [
+      1,
+      13966,
+      17
+     ],
+     [
+      2,
+      14543,
+      18
+     ],
+     [
+      2,
+      15697,
+      19
+     ],
+     [
+      3,
+      16274,
+      20
+     ],
+     [
+      1,
+      16850,
+      21
+     ],
+     [
+      2,
+      17427,
+      22
+     ],
+     [
+      0,
+      18004,
+      23
+     ],
+     [
+      3,
+      18581,
+      24
+     ],
+     [
+      1,
+      19158,
+      25
+     ],
+     [
+      2,
+      19735,
+      26
+     ],
+     [
+      1,
+      20312,
+      27
+     ],
+     [
+      2,
+      21466,
+      28
+     ],
+     [
+      0,
+      22043,
+      29
+     ],
+     [
+      2,
+      22620,
+      30
+     ],
+     [
+      1,
+      23197,
+      31
+     ],
+     [
+      3,
+      23774,
+      32
+     ],
+     [
+      1,
+      24350,
+      33
+     ],
+     [
+      3,
+      24927,
+      34
+     ],
+     [
+      3,
+      25504,
+      35
+     ],
+     [
+      0,
+      26081,
+      36
+     ],
+     [
+      1,
+      26658,
+      37
+     ],
+     [
+      3,
+      27235,
+      38
+     ],
+     [
+      0,
+      27812,
+      39
+     ],
+     [
+      2,
+      28389,
+      40
+     ],
+     [
+      1,
+      28966,
+      41
+     ],
+     [
+      2,
+      29543,
+      42
+     ],
+     [
+      2,
+      30697,
+      43
+     ],
+     [
+      0,
+      31850,
+      44
+     ],
+     [
+      0,
+      32427,
+      45
+     ],
+     [
+      1,
+      33004,
+      46
+     ],
+     [
+      0,
+      34158,
+      47
+     ],
+     [
+      1,
+      34735,
+      48
+     ],
+     [
+      3,
+      35312,
+      49
+     ],
+     [
+      1,
+      35889,
+      50
+     ],
+     [
+      0,
+      36466,
+      51
+     ],
+     [
+      2,
+      37043,
+      52
+     ],
+     [
+      0,
+      37620,
+      53
+     ]
+    ],
+    "best": {},
+    "game": {
+     "song": "bamboo",
+     "hard": false,
+     "time": 6.957,
+     "paused": false,
+     "score": 1278,
+     "combo": 12,
+     "bestCombo": 12,
+     "notes": 54,
+     "counts": {
+      "perfect": 12,
+      "good": 0,
+      "late": 0,
+      "miss": 0,
+      "empty": 0
+     },
+     "accuracy": 1,
+     "rank": "S",
+     "lean": 1,
+     "audio": true,
+     "clock": {
+      "samples": 418,
+      "maxGapMs": 3.2,
+      "jumps": 0,
+      "latencyMs": 40
+     }
+    }
+   }
+  },
+  {
+   "shot": "02-paused",
+   "seconds": 20.697,
+   "state": {
+    "ready": true,
+    "screen": "play",
+    "frames": 1224,
+    "hot": {
+     "pause": [
+      473,
+      38
+     ],
+     "resume": [
+      154,
+      501
+     ],
+     "quit": [
+      386,
+      501
+     ]
+    },
+    "songsReady": 2,
+    "mixMs": {
+     "bamboo": 25,
+     "market": 12
+    },
+    "lanes": [
+     [
+      101,
+      780
+     ],
+     [
+      214,
+      780
+     ],
+     [
+      326,
+      780
+     ],
+     [
+      439,
+      780
+     ]
+    ],
+    "schedule": [],
+    "best": {},
+    "game": {
+     "song": "bamboo",
+     "hard": false,
+     "time": 16.739,
+     "paused": true,
+     "score": 3078,
+     "combo": 27,
+     "bestCombo": 27,
+     "notes": 54,
+     "counts": {
+      "perfect": 27,
+      "good": 0,
+      "late": 0,
+      "miss": 0,
+      "empty": 0
+     },
+     "accuracy": 1,
+     "rank": "S",
+     "lean": 1,
+     "audio": true,
+     "clock": {
+      "samples": 1004,
+      "maxGapMs": 3.3,
+      "jumps": 0,
+      "latencyMs": 40
+     }
+    }
+   }
+  },
+  {
+   "pausedAfter": 27,
+   "paused": true,
+   "timeStill": true,
+   "at": 16.739,
+   "clockBeforePause": {
+    "samples": 1004,
+    "maxGapMs": 3.3,
+    "jumps": 0,
+    "latencyMs": 40
+   }
+  },
+  {
+   "shot": "03-result",
+   "seconds": 43.269,
+   "state": {
+    "ready": true,
+    "screen": "result",
+    "frames": 2579,
+    "hot": {
+     "pause": [
+      473,
+      38
+     ],
+     "again": [
+      154,
+      621
+     ],
+     "next": [
+      386,
+      621
+     ]
+    },
+    "songsReady": 2,
+    "mixMs": {
+     "bamboo": 25,
+     "market": 12
+    },
+    "lanes": [
+     [
+      101,
+      780
+     ],
+     [
+      214,
+      780
+     ],
+     [
+      326,
+      780
+     ],
+     [
+      439,
+      780
+     ]
+    ],
+    "schedule": [],
+    "best": {
+     "bamboo-easy": 6875
+    },
+    "game": {
+     "song": "bamboo",
+     "hard": false,
+     "time": 38.108,
+     "paused": false,
+     "score": 6875,
+     "combo": 54,
+     "bestCombo": 54,
+     "notes": 54,
+     "counts": {
+      "perfect": 54,
+      "good": 0,
+      "late": 0,
+      "miss": 0,
+      "empty": 0
+     },
+     "accuracy": 1,
+     "rank": "S",
+     "lean": 1,
+     "audio": true,
+     "clock": {
+      "samples": 2324,
+      "maxGapMs": 3.6,
+      "jumps": 0,
+      "latencyMs": 40
+     }
+    }
+   }
+  },
+  {
+   "end": {
+    "song": "bamboo",
+    "hard": false,
+    "time": 37.659,
+    "paused": false,
+    "score": 6875,
+    "combo": 54,
+    "bestCombo": 54,
+    "notes": 54,
+    "counts": {
+     "perfect": 54,
+     "good": 0,
+     "late": 0,
+     "miss": 0,
+     "empty": 0
+    },
+    "accuracy": 1,
+    "rank": "S",
+    "lean": 1,
+    "audio": true,
+    "clock": {
+     "samples": 2324,
+     "maxGapMs": 3.6,
+     "jumps": 0,
+     "latencyMs": 40
+    }
+   }
+  }
+ ]
+}

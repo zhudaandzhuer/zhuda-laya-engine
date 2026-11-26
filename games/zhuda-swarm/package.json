@@ -1,0 +1,20 @@
+{
+  "name": "zhuda-swarm",
+  "private": true,
+  "type": "module",
+  "description": "豬大割草——原創的割草生存遊戲：自動攻擊、升級三選一、武器進化、五分鐘一局，全部用引擎 2D 做（zhuda-laya-engine）",
+  "engines": { "node": ">=24" },
+  "scripts": {
+    "build": "zhuda-laya-build",
+    "typecheck": "tsc --noEmit",
+    "doctor": "zhuda-laya-doctor --project .",
+    "test": "node --test test/*.test.ts",
+    "verify": "npm run build && npm run typecheck && npm run doctor && npm test"
+  },
+  "dependencies": {
+    "zhuda-laya-engine": "file:../.."
+  },
+  "devDependencies": {
+    "typescript": "5.9.3"
+  }
+}

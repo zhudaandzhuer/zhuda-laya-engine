@@ -1,0 +1,9 @@
+[
+  { "wait": 0.6, "shot": "stand-playing" },
+  { "js": "return ['the clips the file carries', S.state().clips];" },
+  { "js": "S.set({ freeze: 1.5, yaw: 0.6 });", "wait": 0.4, "shot": "stand-frozen-1_5" },
+  { "js": "const a = S.where('handL'); await new Promise((r) => setTimeout(r, 400)); const b = S.where('handL'); return ['frozen: the hand stays', a, b];" },
+  { "js": "S.set({ clip: 'Idle_ArmsCrossed', fade: 0.18, freeze: null });", "wait": 0.09 },
+  { "js": "const a = S.where('handL'); await new Promise((r) => setTimeout(r, 120)); const b = S.where('handL'); return ['across the fade: the hand moves', a, b, S.state().clip];", "wait": 0.5, "shot": "stand-arms-crossed" },
+  { "js": "S.set({ yaw: 3.14 });", "wait": 0.3, "shot": "stand-from-behind" }
+]

@@ -1,0 +1,20 @@
+{
+  "name": "zhuda-beat",
+  "private": true,
+  "type": "module",
+  "description": "豬大打鼓——原創的四軌節奏遊戲：整首歌用引擎的合成器逐音算出來混成一個 WAV，判定用頁面時鐘（zhuda-laya-engine）",
+  "engines": { "node": ">=24" },
+  "scripts": {
+    "build": "zhuda-laya-build",
+    "typecheck": "tsc --noEmit",
+    "doctor": "zhuda-laya-doctor --project .",
+    "test": "node --test test/*.test.ts",
+    "verify": "npm run build && npm run typecheck && npm run doctor && npm test"
+  },
+  "dependencies": {
+    "zhuda-laya-engine": "file:../.."
+  },
+  "devDependencies": {
+    "typescript": "5.9.3"
+  }
+}

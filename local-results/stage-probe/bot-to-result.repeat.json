@@ -1,0 +1,60 @@
+{
+ "scenario": "games/zhuda-match/tools/scenarios/bot-to-result.json",
+ "query": "fresh=1&seed=3&auto=1&level=1",
+ "times": 20,
+ "viewport": "540x960",
+ "stepMs": 16.666666666666668,
+ "failed": [],
+ "files": {
+  "01-result.png": {
+   "kind": "shot",
+   "size": [
+    540,
+    960
+   ],
+   "sha256": "78f6c426fcd60130f9ed8593dc08e4216e8dbfe3b83d38f017e9d4f6052a54d1",
+   "same": 20
+  },
+  "01-result.stage.json": {
+   "kind": "probe",
+   "sha256": "c91540c7be5ff18ec379615797a21ed63438244ff052874646b670ccc96bfb1f",
+   "same": 20
+  },
+  "02-result-again.png": {
+   "kind": "shot",
+   "size": [
+    540,
+    960
+   ],
+   "sha256": "7d2afe133003909c28c8693a47cd1c200831b2a143fac5feaec3c78adf0bdec3",
+   "same": 20
+  },
+  "02-result-again.stage.json": {
+   "kind": "probe",
+   "sha256": "c91540c7be5ff18ec379615797a21ed63438244ff052874646b670ccc96bfb1f",
+   "same": 20
+  },
+  "03-after-next.png": {
+   "kind": "shot",
+   "size": [
+    540,
+    960
+   ],
+   "sha256": "55388fd4ad774e3fd199b946003f5712d9420ce0050c43c8c8dcc31dd746ddfc",
+   "same": 20
+  },
+  "03-after-next.stage.json": {
+   "kind": "probe",
+   "sha256": "a3d909795a798c7cd191b655e0cf742c610d2c0241b5b7486e2ad4dcef7818fc",
+   "same": 20
+  },
+  "(log)": {
+   "kind": "log",
+   "sha256": "bf2ee4d0cb0745460020885375c2cecad8bd3d1992add8bc6eb2f29f5f3861fa",
+   "same": 20
+  }
+ },
+ "different": [],
+ "identical": true,
+ "seconds": 410
+}

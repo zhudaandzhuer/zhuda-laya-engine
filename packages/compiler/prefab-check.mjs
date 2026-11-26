@@ -12,6 +12,7 @@ import {
 } from './prefab-environment.mjs';
 import { requestedPrefabCycles, auditPrefabLifecycle } from './prefab-lifecycle.mjs';
 import { selectPrefabDependencyProof } from './prefab-dependencies.mjs';
+import { stalePayloadReason } from './consumer-scripts.mjs';
 
 const sha = (bytes) => crypto.createHash('sha256').update(bytes).digest('hex');
 // Resolving, starting and closing the browser are shared with the draw
@@ -159,6 +160,12 @@ export async function checkPrefab({
     const manifest = await evaluate(
       "fetch('./payload-manifest.json').then(r=>{if(!r.ok)throw Error('Missing payload manifest');return r.json()})",
     );
+    // A watcher that answered a save from the scripts alone serves a manifest of no build.
+    const stale = stalePayloadReason(manifest);
+    if (stale)
+      throw Error(
+        `Payload manifest is stale (${stale}); run a full build, then check again: this page stands for no build`,
+      );
     let comparison = { passed: false, reason: 'Baseline updated; rerun comparison after review' };
     if (updateBaseline) {
       fs.mkdirSync(path.dirname(baseline), { recursive: true });

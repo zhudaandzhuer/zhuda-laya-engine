@@ -44,7 +44,11 @@ export function collectTsFiles(dir, result = []) {
  * 以 TypeScript AST 解析單一檔案中的可反射組件類別
  */
 export function parseReflectableClassesInFile(filePath) {
-  const sourceText = fs.readFileSync(filePath, 'utf8');
+  return parseReflectableClasses(filePath, fs.readFileSync(filePath, 'utf8'));
+}
+
+/** The same, for a file whose text the caller already holds. */
+export function parseReflectableClasses(filePath, sourceText) {
   const sourceFile = ts.createSourceFile(
     filePath,
     sourceText,
@@ -133,6 +137,22 @@ export function parseReflectableClassesInFile(filePath) {
 
   visit(sourceFile);
   return discovered;
+}
+
+/**
+ * The reflectable classes of every script under `srcDir`, in the order of the files. With a
+ * `cache` (a Map the caller keeps) a file whose text has not changed is not parsed again.
+ */
+export function collectReflectableClasses(srcDir, cache) {
+  return collectTsFiles(srcDir).flatMap((file) => {
+    if (!cache) return parseReflectableClassesInFile(file);
+    const text = fs.readFileSync(file, 'utf8');
+    const held = cache.get(file);
+    if (held?.text === text) return held.classes;
+    const classes = parseReflectableClasses(file, text);
+    cache.set(file, { text, classes });
+    return classes;
+  });
 }
 
 /**

@@ -1,0 +1,161 @@
+{
+ "errors": [
+  "Failed to load resource: the server responded with a status of 404 (Not Found) http://localhost:62833/favicon.ico"
+ ],
+ "failed": "",
+ "renderer": {
+  "webgl": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+  "webgpu": true,
+  "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/158.0.0.0 Safari/537.36",
+  "dpr": 2
+ },
+ "final": {
+  "ready": true,
+  "screen": "title",
+  "frames": 1203,
+  "save": {
+   "version": 1,
+   "coins": 0,
+   "items": {},
+   "weapon": "w0",
+   "armor": "a0",
+   "owned": [
+    "w0",
+    "a0"
+   ],
+   "cleared": {}
+  },
+  "sound": {
+   "loadedStreams": 0,
+   "pendingStreamLoads": 0,
+   "retainedStreamBytes": 0,
+   "pendingAdmissions": 0,
+   "retiredVoices": 0,
+   "sampleBackend": "native",
+   "loadedSamples": 16,
+   "pendingSampleLoads": 0,
+   "decodedSampleBytes": 3446388,
+   "inIframe": false,
+   "contextState": "running",
+   "unlockedByGesture": false,
+   "unlockGestureType": "none",
+   "pageVisible": true,
+   "windowFocused": true,
+   "autoSuspendedByBlur": false,
+   "userMuted": false,
+   "volumes": {
+    "master": 0.85,
+    "bgm": 0.6,
+    "sfx": 0.9,
+    "ui": 0.85
+   },
+   "queuedBeforeUnlockCount": 0,
+   "pendingQueue": 0,
+   "droppedQueue": 0,
+   "activeVoices": 0,
+   "droppedVoices": 0,
+   "playedEventsCount": 0,
+   "postMessageBridgeActive": true,
+   "lastBridgeCommand": "init",
+   "backend": "webaudio",
+   "contextAvailable": true,
+   "lastError": null,
+   "spatialVoices": 0,
+   "spatialBackend": "panner"
+  },
+  "draws": 124,
+  "triangles": 143431
+ },
+ "log": [
+  {
+   "measure": "rate",
+   "frames": 624,
+   "seconds": 15,
+   "fps": 41.6,
+   "frameMs": {
+    "median": 16.7,
+    "p95": 33.4,
+    "p99": 33.4,
+    "worst": 50.1
+   },
+   "over33ms": 34,
+   "over50ms": 1,
+   "game": {
+    "triangles": 131956,
+    "draws": 127,
+    "frames": 923,
+    "look": null,
+    "clip": null
+   },
+   "memory": {
+    "jsHeapUsedMB": 16.7,
+    "jsHeapTotalMB": 21.8,
+    "domNodes": 128,
+    "listeners": 76,
+    "rendererProcessMB": 588,
+    "gpuProcessMB": 222.9
+   }
+  },
+  {
+   "shot": "zhuda-hunt-webgpu-rate-rate",
+   "seconds": 33.683,
+   "state": {
+    "ready": true,
+    "screen": "title",
+    "frames": 1203,
+    "save": {
+     "version": 1,
+     "coins": 0,
+     "items": {},
+     "weapon": "w0",
+     "armor": "a0",
+     "owned": [
+      "w0",
+      "a0"
+     ],
+     "cleared": {}
+    },
+    "sound": {
+     "loadedStreams": 0,
+     "pendingStreamLoads": 0,
+     "retainedStreamBytes": 0,
+     "pendingAdmissions": 0,
+     "retiredVoices": 0,
+     "sampleBackend": "native",
+     "loadedSamples": 16,
+     "pendingSampleLoads": 0,
+     "decodedSampleBytes": 3446388,
+     "inIframe": false,
+     "contextState": "running",
+     "unlockedByGesture": false,
+     "unlockGestureType": "none",
+     "pageVisible": true,
+     "windowFocused": true,
+     "autoSuspendedByBlur": false,
+     "userMuted": false,
+     "volumes": {
+      "master": 0.85,
+      "bgm": 0.6,
+      "sfx": 0.9,
+      "ui": 0.85
+     },
+     "queuedBeforeUnlockCount": 0,
+     "pendingQueue": 0,
+     "droppedQueue": 0,
+     "activeVoices": 0,
+     "droppedVoices": 0,
+     "playedEventsCount": 0,
+     "postMessageBridgeActive": true,
+     "lastBridgeCommand": "init",
+     "backend": "webaudio",
+     "contextAvailable": true,
+     "lastError": null,
+     "spatialVoices": 0,
+     "spatialBackend": "panner"
+    },
+    "draws": 124,
+    "triangles": 143431
+   }
+  }
+ ]
+}

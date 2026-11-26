@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
+import { fileURLToPath } from 'node:url';
 import { collectTsFiles } from './ast-scanner.mjs';
 
 const ENGINE_PACKAGE = 'zhuda-laya-engine';
@@ -67,6 +68,23 @@ function isPinnedDependency(value) {
   return /^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/.test(spec);
 }
 
+/**
+ * A consumer kept inside the engine's own repository (the reference games under
+ * `games/`) depends on the checkout it sits in: `file:` up to the engine root.
+ * Its engine version is the repository's commit, so that is a pin. Any other
+ * `file:` path is not.
+ */
+export function isInRepoEngineDependency(value, projectRoot, engineRoot) {
+  if (typeof value !== 'string' || !/^file:/i.test(value.trim())) return false;
+  const project = path.resolve(projectRoot),
+    engine = path.resolve(engineRoot);
+  return (
+    project !== engine &&
+    project.startsWith(engine + path.sep) &&
+    path.resolve(project, value.trim().slice(5)) === engine
+  );
+}
+
 function isExternalRendererSpecifier(specifier) {
   return EXTERNAL_RENDERER_IMPORT.test(specifier);
 }
@@ -83,20 +101,11 @@ function addTextIssue(issues, projectRoot, file, code, message, text, pattern) {
   });
 }
 
-/**
- * Check a consumer's public boundary before the compiler bundles it.
- *
- * The checks intentionally prove only static integration: a passing report
- * still needs a real WebGL/browser and device report before a project can
- * claim visual or performance acceptance.
- */
-export function auditConsumerSources(projectRoot, overrides = {}) {
-  const root = path.resolve(projectRoot);
+/** What one TypeScript source breaks, and whether it imports the public SDK. */
+function auditTypeScriptSource(root, file, text) {
   const issues = [];
-  const sourceFiles = collectConsumerSourceFiles(path.join(root, 'src'));
-  let hasPublicSdkImport = false;
-  let hasEngineBoot = false;
-
+  let publicSdkImport = false;
+  const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
   const add = (source, node, code, message) =>
     issues.push({
       file: path.relative(root, source.fileName),
@@ -105,54 +114,70 @@ export function auditConsumerSources(projectRoot, overrides = {}) {
       message,
     });
 
-  for (const file of collectTsFiles(path.join(root, 'src'))) {
-    const source = ts.createSourceFile(
-      file,
-      fs.readFileSync(file, 'utf8'),
-      ts.ScriptTarget.Latest,
-      true,
-    );
-    const visit = (node) => {
-      if (ts.isClassDeclaration(node) && node.name && FACADE_NAMES.has(node.name.text)) {
+  const visit = (node) => {
+    if (ts.isClassDeclaration(node) && node.name && FACADE_NAMES.has(node.name.text)) {
+      add(
+        source,
+        node,
+        'FAKE_ENGINE_FACADE',
+        `Do not reimplement ${node.name.text} in a consumer; import the public SDK and report missing APIs upstream.`,
+      );
+    }
+    if (ts.isFunctionDeclaration(node) && node.name && FACADE_NAMES.has(node.name.text)) {
+      add(
+        source,
+        node,
+        'FAKE_ENGINE_FACADE',
+        `Do not reimplement ${node.name.text} in a consumer; import the public SDK and report missing APIs upstream.`,
+      );
+    }
+    if (
+      ts.isVariableDeclaration(node) &&
+      ts.isIdentifier(node.name) &&
+      FACADE_NAMES.has(node.name.text) &&
+      node.initializer
+    ) {
+      add(
+        source,
+        node,
+        'FAKE_ENGINE_FACADE',
+        `Do not reimplement ${node.name.text} in a consumer; import the public SDK and report missing APIs upstream.`,
+      );
+    }
+    if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) {
+      const specifier = node.moduleSpecifier?.text || '';
+      if (specifier === ENGINE_PACKAGE) publicSdkImport = true;
+      if (PRIVATE_ENGINE_IMPORT.test(specifier))
         add(
           source,
           node,
-          'FAKE_ENGINE_FACADE',
-          `Do not reimplement ${node.name.text} in a consumer; import the public SDK and report missing APIs upstream.`,
+          'PRIVATE_ENGINE_IMPORT',
+          "Import { ZhudaEngine, Zhuda3D } from 'zhuda-laya-engine'. Its public declarations also expose typed Laya.Sprite3D/Laya.Vector3; report any remaining API gap with a strict consumer fixture.",
         );
-      }
-      if (ts.isFunctionDeclaration(node) && node.name && FACADE_NAMES.has(node.name.text)) {
+      if (isExternalRendererSpecifier(specifier))
         add(
           source,
           node,
-          'FAKE_ENGINE_FACADE',
-          `Do not reimplement ${node.name.text} in a consumer; import the public SDK and report missing APIs upstream.`,
+          'EXTERNAL_RENDERER_IMPORT',
+          "Use Zhuda's public rendering contracts; a Three.js renderer is not evidence of Zhuda engine usage.",
         );
-      }
-      if (
-        ts.isVariableDeclaration(node) &&
-        ts.isIdentifier(node.name) &&
-        FACADE_NAMES.has(node.name.text) &&
-        node.initializer
-      ) {
-        add(
-          source,
-          node,
-          'FAKE_ENGINE_FACADE',
-          `Do not reimplement ${node.name.text} in a consumer; import the public SDK and report missing APIs upstream.`,
-        );
-      }
-      if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) {
-        const specifier = node.moduleSpecifier?.text || '';
-        if (specifier === ENGINE_PACKAGE) hasPublicSdkImport = true;
-        if (PRIVATE_ENGINE_IMPORT.test(specifier))
+    }
+    if (
+      ts.isCallExpression(node) &&
+      (node.expression.kind === ts.SyntaxKind.ImportKeyword ||
+        node.expression.getText(source) === 'require')
+    ) {
+      const argument = node.arguments[0];
+      if (argument && ts.isStringLiteral(argument)) {
+        if (argument.text === ENGINE_PACKAGE) publicSdkImport = true;
+        if (PRIVATE_ENGINE_IMPORT.test(argument.text))
           add(
             source,
             node,
             'PRIVATE_ENGINE_IMPORT',
-            "Import { ZhudaEngine, Zhuda3D } from 'zhuda-laya-engine'. Its public declarations also expose typed Laya.Sprite3D/Laya.Vector3; report any remaining API gap with a strict consumer fixture.",
+            "Use the pinned 'zhuda-laya-engine' root (ZhudaEngine/Zhuda3D) and its typed Laya runtime declarations; do not import engine source paths.",
           );
-        if (isExternalRendererSpecifier(specifier))
+        if (isExternalRendererSpecifier(argument.text))
           add(
             source,
             node,
@@ -160,44 +185,58 @@ export function auditConsumerSources(projectRoot, overrides = {}) {
             "Use Zhuda's public rendering contracts; a Three.js renderer is not evidence of Zhuda engine usage.",
           );
       }
-      if (
-        ts.isCallExpression(node) &&
-        (node.expression.kind === ts.SyntaxKind.ImportKeyword ||
-          node.expression.getText(source) === 'require')
-      ) {
-        const argument = node.arguments[0];
-        if (argument && ts.isStringLiteral(argument)) {
-          if (argument.text === ENGINE_PACKAGE) hasPublicSdkImport = true;
-          if (PRIVATE_ENGINE_IMPORT.test(argument.text))
-            add(
-              source,
-              node,
-              'PRIVATE_ENGINE_IMPORT',
-              "Use the pinned 'zhuda-laya-engine' root (ZhudaEngine/Zhuda3D) and its typed Laya runtime declarations; do not import engine source paths.",
-            );
-          if (isExternalRendererSpecifier(argument.text))
-            add(
-              source,
-              node,
-              'EXTERNAL_RENDERER_IMPORT',
-              "Use Zhuda's public rendering contracts; a Three.js renderer is not evidence of Zhuda engine usage.",
-            );
-        }
-      }
-      if (
-        ts.isVariableDeclaration(node) &&
-        node.name.getText(source) === 'Laya' &&
-        node.type?.kind === ts.SyntaxKind.AnyKeyword
-      )
-        add(
-          source,
-          node,
-          'UNTYPED_LAYA',
-          "Remove Laya: any. Import { ZhudaEngine, Zhuda3D } from 'zhuda-laya-engine'; after boot, use typed new Laya.Vector3(...) / new Laya.MeshSprite3D(...). LayaVector3 and LayaMeshSprite3D are not named SDK exports.",
-        );
-      ts.forEachChild(node, visit);
-    };
-    visit(source);
+    }
+    if (
+      ts.isVariableDeclaration(node) &&
+      node.name.getText(source) === 'Laya' &&
+      node.type?.kind === ts.SyntaxKind.AnyKeyword
+    )
+      add(
+        source,
+        node,
+        'UNTYPED_LAYA',
+        "Remove Laya: any. Import { ZhudaEngine, Zhuda3D } from 'zhuda-laya-engine'; after boot, use typed new Laya.Vector3(...) / new Laya.MeshSprite3D(...). LayaVector3 and LayaMeshSprite3D are not named SDK exports.",
+      );
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  return { issues, publicSdkImport };
+}
+
+/**
+ * Check a consumer's public boundary before the compiler bundles it.
+ *
+ * The checks intentionally prove only static integration: a passing report
+ * still needs a real WebGL/browser and device report before a project can
+ * claim visual or performance acceptance.
+ */
+const ENGINE_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+const realPath = (target) => {
+  try {
+    return fs.realpathSync(target);
+  } catch {
+    return path.resolve(target);
+  }
+};
+
+export function auditConsumerSources(projectRoot, overrides = {}, cache) {
+  const root = path.resolve(projectRoot);
+  const issues = [];
+  const sourceFiles = collectConsumerSourceFiles(path.join(root, 'src'));
+  let hasPublicSdkImport = false;
+  let hasEngineBoot = false;
+
+  // With a `cache` (a Map the caller keeps), a source whose text has not changed is not parsed
+  // again: the watcher's scripts-only rebuild runs this at every save.
+  for (const file of collectTsFiles(path.join(root, 'src'))) {
+    const text = fs.readFileSync(file, 'utf8');
+    let found = cache?.get(file);
+    if (found?.text !== text) {
+      found = { text, ...auditTypeScriptSource(root, file, text) };
+      cache?.set(file, found);
+    }
+    issues.push(...found.issues);
+    if (found.publicSdkImport) hasPublicSdkImport = true;
   }
 
   for (const file of sourceFiles) {
@@ -246,7 +285,10 @@ export function auditConsumerSources(projectRoot, overrides = {}) {
       message:
         'Declare zhuda-laya-engine in dependencies with an exact version or commit-pinned Git specification.',
     });
-  } else if (!isPinnedDependency(dependency.value)) {
+  } else if (
+    !isPinnedDependency(dependency.value) &&
+    !isInRepoEngineDependency(dependency.value, realPath(root), ENGINE_ROOT)
+  ) {
     issues.push({
       file: 'package.json',
       line: 1,
@@ -367,7 +409,9 @@ export function auditConsumerSources(projectRoot, overrides = {}) {
         ? {
             section: dependency.section,
             value: dependency.value,
-            pinned: isPinnedDependency(dependency.value),
+            pinned:
+              isPinnedDependency(dependency.value) ||
+              isInRepoEngineDependency(dependency.value, realPath(root), ENGINE_ROOT),
           }
         : null,
       publicSdkImport: hasPublicSdkImport,

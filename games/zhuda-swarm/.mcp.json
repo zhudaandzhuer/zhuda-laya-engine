@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "zhuda-laya-engine": {
+      "command": "node",
+      "args": [
+        "node_modules/zhuda-laya-engine/packages/mcp-server/index.mjs"
+      ]
+    }
+  }
+}

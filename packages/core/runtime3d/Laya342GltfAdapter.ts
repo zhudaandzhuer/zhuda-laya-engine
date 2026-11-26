@@ -405,6 +405,7 @@ export function prepareLaya342GltfResource(
     // The native 3.4.2 path drops these channels. Keep all native transform and
     // LINEAR/STEP paths, then append exact cubic scalar tracks to that same clip.
     const clip = createClip.call(this, animation, root);
+    indexLaya342ClipNodes(clip);
     try {
       for (const track of tracks)
         for (let morph = 0; morph < track.names.length; morph++) {
@@ -424,7 +425,7 @@ export function prepareLaya342GltfResource(
           node._setPropertyByIndex(0, 'morphTargetValues');
           node._setPropertyByIndex(1, name);
           node.fullPath = `${ownerPath}.${track.owner}.morphTargetValues.${name}`;
-          clip._nodesDic[node.fullPath] = node.fullPath;
+          clip._nodesDic[node.fullPath] = node;
           node.callbackFunData = '_changeMorphTargetValue';
           node.callParams = [name];
           node.propertyChangePath = 'morphTargetValues';
@@ -445,6 +446,25 @@ export function prepareLaya342GltfResource(
       throw error;
     }
   };
+}
+
+/** LayaAir 3.4.2's glTF reader files every keyframe node of a clip under its full path as the
+ * path string itself; its `.lani` reader files the node. `Animator.crossFade` reads
+ * `_indexInList` from that entry to pair the two clips' nodes, finds none on a string, and so
+ * blends a glTF model towards its bind pose and back instead of from one clip to the other.
+ * File the nodes. Returns how many entries were corrected. */
+export function indexLaya342ClipNodes(clip: any): number {
+  const nodes = clip?._nodes,
+    index = clip?._nodesDic;
+  if (!nodes || !index || typeof nodes.getNodeByIndex !== 'function') return 0;
+  let corrected = 0;
+  for (let i = 0; i < nodes.count; i++) {
+    const node = nodes.getNodeByIndex(i);
+    if (!node || typeof node.fullPath !== 'string' || index[node.fullPath] === node) continue;
+    index[node.fullPath] = node;
+    corrected++;
+  }
+  return corrected;
 }
 
 /** Native MeshRenderer cloning does not consistently preserve authored weights.

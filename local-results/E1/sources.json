@@ -1,0 +1,256 @@
+{
+  "source": "https://polyhaven.com",
+  "licence": "CC0 1.0 (https://polyhaven.com/license), as stated on the day of the download",
+  "assets": {
+    "cotton_jersey": {
+      "page": "https://polyhaven.com/a/cotton_jersey",
+      "name": "Cotton Jersey",
+      "authors": {
+        "colormass": "Photography",
+        "Rico Cilliers": "Processing"
+      },
+      "categories": [
+        "fabric",
+        "cotton",
+        "stretchy"
+      ],
+      "sizeMillimetres": [
+        263.6027473872483,
+        263.7999951839447
+      ],
+      "files": {
+        "colour": {
+          "file": "cotton_jersey/cotton_jersey_diff_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/cotton_jersey/cotton_jersey_diff_1k.jpg",
+          "bytes": 581360,
+          "md5": "d2f4493fdd48634b50d40f810ce9deb7"
+        },
+        "normal-gl": {
+          "file": "cotton_jersey/cotton_jersey_nor_gl_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/cotton_jersey/cotton_jersey_nor_gl_1k.jpg",
+          "bytes": 678670,
+          "md5": "2dcc9dda3b726477f607c808e52f1833"
+        },
+        "roughness": {
+          "file": "cotton_jersey/cotton_jersey_rough_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/cotton_jersey/cotton_jersey_rough_1k.jpg",
+          "bytes": 865264,
+          "md5": "ac691d215d3aca34dcd6ea2d03937286"
+        }
+      }
+    },
+    "denim_fabric_03": {
+      "page": "https://polyhaven.com/a/denim_fabric_03",
+      "name": "Denim Fabric 03",
+      "authors": {
+        "colormass": "Photography",
+        "Rico Cilliers": "Processing"
+      },
+      "categories": [
+        "fabric",
+        "denim"
+      ],
+      "sizeMillimetres": [
+        271.42801281852286,
+        270.9999978542328
+      ],
+      "files": {
+        "colour": {
+          "file": "denim_fabric_03/denim_fabric_03_diff_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/denim_fabric_03/denim_fabric_03_diff_1k.jpg",
+          "bytes": 1082373,
+          "md5": "47d393fc300542e8694912fd5201dc8c"
+        },
+        "normal-gl": {
+          "file": "denim_fabric_03/denim_fabric_03_nor_gl_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/denim_fabric_03/denim_fabric_03_nor_gl_1k.jpg",
+          "bytes": 981862,
+          "md5": "5178f20974cb959c88ecf40dc8010bee"
+        },
+        "roughness": {
+          "file": "denim_fabric_03/denim_fabric_03_rough_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/denim_fabric_03/denim_fabric_03_rough_1k.jpg",
+          "bytes": 830762,
+          "md5": "5c4a7da91600e1cab87bba0f8d6311ed"
+        }
+      }
+    },
+    "stretch_poplin": {
+      "page": "https://polyhaven.com/a/stretch_poplin",
+      "name": "Stretch Poplin",
+      "authors": {
+        "colormass": "Photography",
+        "Rico Cilliers": "Processing"
+      },
+      "categories": [
+        "fabric",
+        "stretchy"
+      ],
+      "sizeMillimetres": [
+        291.0233241569048,
+        280.8000147342682
+      ],
+      "files": {
+        "colour": {
+          "file": "stretch_poplin/stretch_poplin_diff_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/stretch_poplin/stretch_poplin_diff_1k.jpg",
+          "bytes": 493642,
+          "md5": "03f707a3a0367d2cd3fa90b71eec4b89"
+        },
+        "normal-gl": {
+          "file": "stretch_poplin/stretch_poplin_nor_gl_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/stretch_poplin/stretch_poplin_nor_gl_1k.jpg",
+          "bytes": 582698,
+          "md5": "930a92aa642c2c4c196cc8c9d26bf65d"
+        },
+        "roughness": {
+          "file": "stretch_poplin/stretch_poplin_rough_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/stretch_poplin/stretch_poplin_rough_1k.jpg",
+          "bytes": 662992,
+          "md5": "88a1fad107109b61fce5ae316ddb7363"
+        }
+      }
+    },
+    "hessian_380": {
+      "page": "https://polyhaven.com/a/hessian_380",
+      "name": "Hessian 380",
+      "authors": {
+        "colormass": "Photography",
+        "Rico Cilliers": "Processing"
+      },
+      "categories": [
+        "fabric",
+        "hessian"
+      ],
+      "sizeMillimetres": [
+        273.86577004511844,
+        273.79998564720154
+      ],
+      "files": {
+        "colour": {
+          "file": "hessian_380/hessian_380_diff_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/hessian_380/hessian_380_diff_1k.jpg",
+          "bytes": 944914,
+          "md5": "46f362631d102c66cac0979ecc3bb2a7"
+        },
+        "normal-gl": {
+          "file": "hessian_380/hessian_380_nor_gl_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/hessian_380/hessian_380_nor_gl_1k.jpg",
+          "bytes": 1076074,
+          "md5": "b37d7a02e8c58ee005eb95f5af81d7e7"
+        },
+        "roughness": {
+          "file": "hessian_380/hessian_380_rough_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/hessian_380/hessian_380_rough_1k.jpg",
+          "bytes": 956823,
+          "md5": "463d8d9b48fe04a8004b30451948ecc3"
+        }
+      }
+    },
+    "brown_leather": {
+      "page": "https://polyhaven.com/a/brown_leather",
+      "name": "Brown Leather",
+      "authors": {
+        "Rob Tuytel": "All"
+      },
+      "categories": [
+        "fabric",
+        "leather"
+      ],
+      "sizeMillimetres": [
+        400.0000059604645,
+        400.00003576278687
+      ],
+      "files": {
+        "colour": {
+          "file": "brown_leather/brown_leather_albedo_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/brown_leather/brown_leather_albedo_1k.jpg",
+          "bytes": 503348,
+          "md5": "080b3bf1372766ff2c7ff121ed07b5e8"
+        },
+        "normal-gl": {
+          "file": "brown_leather/brown_leather_nor_gl_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/brown_leather/brown_leather_nor_gl_1k.jpg",
+          "bytes": 863280,
+          "md5": "b63ae0121a415c23d74eed0b07fc6065"
+        },
+        "roughness": {
+          "file": "brown_leather/brown_leather_rough_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/brown_leather/brown_leather_rough_1k.jpg",
+          "bytes": 686142,
+          "md5": "0f3a0148c8d2d25fbeca67e64e79bca0"
+        }
+      }
+    },
+    "tatami_mat_borderless": {
+      "page": "https://polyhaven.com/a/tatami_mat_borderless",
+      "name": "Tatami Mat Borderless",
+      "authors": {
+        "Charlotte Baglioni": "All"
+      },
+      "categories": [
+        "woven",
+        "floor"
+      ],
+      "sizeMillimetres": [
+        19999.996185302734,
+        19999.996185302734
+      ],
+      "files": {
+        "colour": {
+          "file": "tatami_mat_borderless/tatami_mat_borderless_diff_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/tatami_mat_borderless/tatami_mat_borderless_diff_1k.jpg",
+          "bytes": 563998,
+          "md5": "08e7c02f8896fa44d3610e7e8692e0c9"
+        },
+        "normal-gl": {
+          "file": "tatami_mat_borderless/tatami_mat_borderless_nor_gl_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/tatami_mat_borderless/tatami_mat_borderless_nor_gl_1k.jpg",
+          "bytes": 655949,
+          "md5": "20284056b90d94ef6c84289e1d100a90"
+        },
+        "roughness": {
+          "file": "tatami_mat_borderless/tatami_mat_borderless_rough_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/tatami_mat_borderless/tatami_mat_borderless_rough_1k.jpg",
+          "bytes": 250851,
+          "md5": "3ead95cb7d0e62131694d76bf77227bf"
+        }
+      }
+    },
+    "rubber_tiles": {
+      "page": "https://polyhaven.com/a/rubber_tiles",
+      "name": "Rubber Tiles",
+      "authors": {
+        "Amal Kumar": "All"
+      },
+      "categories": [
+        "floor",
+        "man made"
+      ],
+      "sizeMillimetres": [
+        1999.9996423721313,
+        1999.9996423721313
+      ],
+      "files": {
+        "colour": {
+          "file": "rubber_tiles/rubber_tiles_diff_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/rubber_tiles/rubber_tiles_diff_1k.jpg",
+          "bytes": 351085,
+          "md5": "2a2cc9b5e06639c7fb6cc26c263c00ff"
+        },
+        "normal-gl": {
+          "file": "rubber_tiles/rubber_tiles_nor_gl_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/rubber_tiles/rubber_tiles_nor_gl_1k.jpg",
+          "bytes": 477716,
+          "md5": "4ed5fac176252df9dde7d0fbf8a9b76d"
+        },
+        "roughness": {
+          "file": "rubber_tiles/rubber_tiles_rough_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/rubber_tiles/rubber_tiles_rough_1k.jpg",
+          "bytes": 590975,
+          "md5": "d6b5978530f81121c2e9812c4732d8b0"
+        }
+      }
+    }
+  }
+}

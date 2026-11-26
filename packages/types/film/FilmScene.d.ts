@@ -626,9 +626,11 @@ export type ZhudaFilmNode = {
 } | {
     id: string;
     type: 'ground';
-    /** Width (X) and depth (Z) in metres; the top surface sits at y = 0. */
+    /** Width (X) and depth (Z) in metres; the top surface sits at `y`. */
     size: [number, number];
     material: string;
+    /** Height of the top surface, metres (default 0): above a `terrain` it lies over, by a few centimetres. */
+    y?: number;
 } | {
     id: string;
     /**
@@ -1168,6 +1170,15 @@ export declare function validateZhudaFilmCameraPath(keys: unknown): string[];
  * (smoothstep). Times outside the path hold the first or last key.
  */
 export declare function sampleZhudaFilmCameraPath(keys: readonly ZhudaFilmCameraKey[], t: number): Required<ZhudaFilmCamera>;
+/**
+ * What a mounted film stage cannot change, when `to` asks for it: the
+ * environment, the panorama, a colour table other than the one loaded with
+ * the scene (`loadedTable`: the asset of the look it was mounted with, or
+ * null), or the bounce light, which is captured at mount. Null when the look
+ * can be drawn. A look without a grade takes no table (quality level 0) and
+ * may come back to the loaded one.
+ */
+export declare function zhudaFilmLookFixedReason(from: ZhudaResolvedFilmLook, to: ZhudaResolvedFilmLook, loadedTable: string | null): 'environment' | 'panorama' | 'colorTable' | 'bounceLight' | null;
 /**
  * What changing a running look from `from` to `to` has to rebuild, or `null`
  * when every difference can be set in place: the sun (direction, colour,

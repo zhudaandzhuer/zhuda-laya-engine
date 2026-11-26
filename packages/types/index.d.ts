@@ -3,6 +3,7 @@
 /// <reference path="./vendor/spine.runtime.d.ts" />
 export * from './TopologyGraph.js';
 export * from './RuntimeGuards.js';
+export * from './SplashSignal.js';
 export * from './DeclarativeSDK.js';
 export * from './Prefab.js';
 export * from './BitmapFontContract.js';

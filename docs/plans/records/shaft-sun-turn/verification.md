@@ -7,7 +7,7 @@ page served from the Mac through `adb reverse` (a secure `localhost` page, as
 the published HTTPS site is).
 
 Evidence, kept outside the repository: `EV` =
-`/Users/yaowei/Documents/ZhudaGameCenter/audits/shaft-sun-turn-2026-11-16/`.
+`<workspace>/audits/shaft-sun-turn-2026-11-16/`.
 
 | Command                                                                                        | Result                                                              | Artifact                       |
 | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- | ------------------------------ |

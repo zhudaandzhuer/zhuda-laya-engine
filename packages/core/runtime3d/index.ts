@@ -84,6 +84,11 @@ export {
 } from './Laya342Adapters.ts';
 export * from './CrowdPresentation.ts';
 export * from './ModelInspector.ts';
+export * from './SkinBinding.ts';
+export * from './TriangleMask.ts';
+export * from './Utf8.ts';
+export * from './WalkGrid.ts';
+export * from './CharacterController.ts';
 export * from './AssetShowcase.ts';
 export {
   inspectGltfDocument,

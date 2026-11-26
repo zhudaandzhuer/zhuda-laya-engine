@@ -18,6 +18,7 @@ import {
   resolveZhudaFilmLook,
   validateZhudaFilmScene,
   zhudaFilmBounceBox,
+  zhudaFilmLookFixedReason,
   zhudaFilmLookRebuildReason,
 } from '../packages/core/film/FilmScene.ts';
 import { zhudaLookForQuality } from '../packages/core/film/LookQuality.ts';
@@ -177,6 +178,39 @@ test('a film look takes bounce light; its box defaults to the objects and lights
   // The wall's half diagonal around it, the lamp's place, 2 m around, 1.5 m above.
   assert.ok(close(box.min, [-2 - reach - 2, 0, -reach - 2]), `${box.min}`);
   assert.ok(close(box.max, [2.5 + 2, 3.5 + 1.5, reach + 2]), `${box.max}`);
+});
+
+test('what a mounted stage cannot change: its bounce light and another colour table, not a quality level', () => {
+  const look = (extra) => resolveZhudaFilmLook({ preset: 'day', grade: {}, ...extra });
+  const lit = look({ bounceLight: {} });
+  const fixed = zhudaFilmLookFixedReason;
+  assert.equal(fixed(lit, look({ bounceLight: {} }), null), null);
+  assert.equal(fixed(lit, look({ bounceLight: { strength: 2 } }), null), 'bounceLight');
+  assert.equal(fixed(lit, look({}), null), 'bounceLight');
+  assert.equal(fixed(look({}), lit, null), 'bounceLight');
+  // A stage draws a quality level with the bounce light it was mounted with (FilmStage's atQuality).
+  const level0 = zhudaLookForQuality(lit, 0);
+  assert.equal(fixed(lit, level0, null), 'bounceLight', 'the bare level drops it');
+  level0.bounceLight = structuredClone(lit.bounceLight);
+  assert.equal(fixed(lit, level0, null), null, 'kept, the level can be drawn');
+  assert.equal(zhudaFilmLookRebuildReason(lit, level0), 'grade', 'by building the look again');
+
+  // The colour table loaded with the scene is the only one a look may name.
+  const graded = look({ grade: { lut: { asset: 'luts/warm.cube' } } });
+  const other = look({ grade: { lut: { asset: 'luts/cold.cube' } } });
+  assert.equal(fixed(graded, other, 'luts/warm.cube'), 'colorTable');
+  assert.equal(fixed(look({}), graded, null), 'colorTable', 'none was loaded');
+  // Quality 0 has no grade, so no table; coming back names the loaded one again.
+  const bare = zhudaLookForQuality(graded, 0);
+  assert.equal(bare.grade, false);
+  assert.equal(fixed(graded, bare, 'luts/warm.cube'), null);
+  assert.equal(fixed(bare, graded, 'luts/warm.cube'), null);
+  assert.equal(fixed(graded, look({}), 'luts/warm.cube'), null, 'a look may stop using it');
+  // The panorama is asked about before the rest.
+  assert.equal(
+    fixed(lit, look({ bounceLight: { strength: 2 }, panorama: { asset: 'sky/day.jpg' } }), null),
+    'panorama',
+  );
 });
 
 test('a probe keeps how far it sees: a tile of mean and mean squared distances', () => {

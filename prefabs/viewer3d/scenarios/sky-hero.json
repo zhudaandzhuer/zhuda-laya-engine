@@ -1,0 +1,8 @@
+[
+  { "js": "S.set({ run: false, hour: 10.5, distance: 24, pitch: 0.26, yaw: 0.62 });", "wait": 4, "shot": "hero-day" },
+  { "js": "S.set({ distance: 9, pitch: 0.22, yaw: 0.4 }); await new Promise(r => setTimeout(r, 1800)); const [x, y] = S.project(S.pig.center); S.press(1, x, y); for (let k = 0; k < 14; k++) { S.move(1, x + 6 * Math.sin(k), y - 7 * k); await new Promise(r => setTimeout(r, 30)); }", "wait": 0.9, "shot": "hero-held" },
+  { "js": "S.release(1); S.set({ distance: 20, pitch: 0.22, weather: 'storm', hour: 16 });", "wait": 4, "shot": "hero-storm" },
+  { "js": "S.set({ weather: 'clear', hour: 18.15, distance: 24, pitch: 0.18, yaw: 1.2 });", "wait": 3.5, "shot": "hero-dusk" },
+  { "js": "S.set({ weather: 'clear', hour: 22.5, distance: 22, pitch: 0.2, yaw: 0.62 });", "wait": 3.5, "shot": "hero-night" },
+  { "js": "S.set({ weather: 'mist', hour: 7.2, distance: 22, pitch: 0.24 });", "wait": 3.5, "shot": "hero-mist" }
+]

@@ -1,0 +1,18 @@
+
+> zhuda-laya-engine@1.18.0 verify:games
+> node games/tools/verify-all.mjs
+
+zhuda-beat           ok   tests 5 pass / 0 fail  4 s
+zhuda-guard          ok   tests 5 pass / 0 fail  4 s
+zhuda-hunt           ok   tests 9 pass / 0 fail  4 s
+zhuda-idle           ok   tests 9 pass / 0 fail  4 s
+zhuda-jump           ok   tests 6 pass / 0 fail  5 s
+zhuda-match          ok   tests 7 pass / 0 fail  7 s
+zhuda-merge          ok   tests 6 pass / 0 fail  5 s
+zhuda-swarm          FAIL tests 6 pass / 1 fail  48 s
+  • 體檢結論:       ✅ HEALTHY (0 阻斷錯誤)
+✖ a player who keeps moving and builds one kit wins most runs, never all, and the field fills (17140.493333ms)
+✖ failing tests:
+✖ a player who keeps moving and builds one kit wins most runs, never all, and the field fills (17140.493333ms)
+  AssertionError [ERR_ASSERTION]: wins 3
+zhuda-wardrobe       ok   tests 11 pass / 0 fail  5 s

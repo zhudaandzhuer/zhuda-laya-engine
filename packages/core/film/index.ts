@@ -9,3 +9,4 @@ export * from './FrameMetrics.ts';
 export * from './ColorValues.ts';
 export * from './FlythroughReport.ts';
 export * from './Flythrough.ts';
+export * from './Projection.ts';

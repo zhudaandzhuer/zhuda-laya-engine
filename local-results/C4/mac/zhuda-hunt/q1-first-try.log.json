@@ -1,0 +1,101 @@
+{
+ "errors": [
+  "Failed to load resource: the server responded with a status of 404 (Not Found) http://localhost:63119/favicon.ico"
+ ],
+ "failed": "page.screenshot: Timeout 30000ms exceeded.\nCall log:\n  - taking page screenshot\n  - waiting for fonts to load...\n  - fonts loaded\n\n    at shot (<repo>/games/tools/shot.mjs:65:43)\n    at Module.default (<repo>/games/zhuda-hunt/tools/play-auto.mjs:15:13)\n    at async file://<repo>/games/tools/shot.mjs:72:15",
+ "renderer": {
+  "webgl": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+  "webgpu": true,
+  "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/158.0.0.0 Safari/537.36",
+  "dpr": 1
+ },
+ "final": {
+  "ready": true,
+  "screen": "result",
+  "frames": 2146,
+  "save": {
+   "version": 1,
+   "coins": 600,
+   "items": {
+    "饕餮厚皮": 4,
+    "饕餮巨齒": 1
+   },
+   "weapon": "w0",
+   "armor": "a0",
+   "owned": [
+    "w0",
+    "a0"
+   ],
+   "cleared": {
+    "q1": {
+     "best": 149,
+     "times": 1
+    }
+   }
+  },
+  "draws": 183,
+  "triangles": 495704,
+  "sound": {
+   "loadedStreams": 0,
+   "pendingStreamLoads": 0,
+   "retainedStreamBytes": 0,
+   "pendingAdmissions": 0,
+   "retiredVoices": 0,
+   "sampleBackend": "native",
+   "loadedSamples": 16,
+   "pendingSampleLoads": 0,
+   "decodedSampleBytes": 3446388,
+   "inIframe": false,
+   "contextState": "suspended",
+   "unlockedByGesture": false,
+   "unlockGestureType": "none",
+   "pageVisible": true,
+   "windowFocused": true,
+   "autoSuspendedByBlur": false,
+   "userMuted": false,
+   "volumes": {
+    "master": 0.85,
+    "bgm": 0.6,
+    "sfx": 0.9,
+    "ui": 0.85
+   },
+   "queuedBeforeUnlockCount": 0,
+   "pendingQueue": 0,
+   "droppedQueue": 0,
+   "activeVoices": 0,
+   "droppedVoices": 0,
+   "playedEventsCount": 0,
+   "postMessageBridgeActive": true,
+   "lastBridgeCommand": "init",
+   "backend": "webaudio",
+   "contextAvailable": true,
+   "lastError": null,
+   "spatialVoices": 0,
+   "spatialBackend": "panner"
+  },
+  "hunt": {
+   "quest": "q1",
+   "time": 148.7,
+   "hp": 100,
+   "stamina": 93,
+   "faints": 0,
+   "monster": 0,
+   "state": "dead",
+   "move": null,
+   "enraged": false,
+   "broken": [
+    "legs"
+   ],
+   "result": "won",
+   "hits": 164,
+   "hurts": 0,
+   "dist": 1.7,
+   "action": "light1"
+  },
+  "loot": {
+   "饕餮厚皮": 4,
+   "饕餮巨齒": 1
+  }
+ },
+ "log": []
+}

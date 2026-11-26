@@ -9,7 +9,7 @@ Date: 2026-11-17
 - macOS 27.0.1, Apple M4; Node 26.12.0, npm 11.20.0. Pure data: no browser
   or GPU involved.
 - Evidence (outside the repository): `EV` =
-  `/Users/yaowei/Documents/ZhudaGameCenter/audits/distance-bricks-2026-11-17/`
+  `<workspace>/audits/distance-bricks-2026-11-17/`
   (`unit.log`, `verify.log`).
 
 ## Checks

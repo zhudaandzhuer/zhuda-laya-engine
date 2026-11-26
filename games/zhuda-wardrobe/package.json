@@ -1,0 +1,25 @@
+{
+  "name": "zhuda-wardrobe",
+  "private": true,
+  "type": "module",
+  "description": "豬大衣櫥——原創的 3D 換裝：一副骨架、身體分區、衣服頭髮鞋子各是一個檔，執行時綁到身體的骨架上（zhuda-laya-engine）",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "parts": "node tools/build-parts.mjs",
+    "build": "zhuda-laya-build",
+    "typecheck": "tsc --noEmit",
+    "doctor": "zhuda-laya-doctor --project .",
+    "test": "node --test test/*.test.ts",
+    "verify": "npm run build && npm run typecheck && npm run doctor && npm test",
+    "look": "node tools/look-report.mjs",
+    "measure": "node tools/measure.mjs"
+  },
+  "dependencies": {
+    "zhuda-laya-engine": "file:../.."
+  },
+  "devDependencies": {
+    "typescript": "5.9.3"
+  }
+}

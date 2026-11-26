@@ -1,0 +1,60 @@
+{
+ "scenario": "games/zhuda-match/tools/scenarios/ui-flow.json",
+ "query": "fresh=1&seed=7",
+ "times": 20,
+ "viewport": "540x960",
+ "stepMs": 16.666666666666668,
+ "failed": [],
+ "files": {
+  "01-title.png": {
+   "kind": "shot",
+   "size": [
+    540,
+    960
+   ],
+   "sha256": "7d2f81c7db3701e9201bf3a4f7735aea63abc942d553b1792f48b94ef7a9a7b0",
+   "same": 20
+  },
+  "01-title.stage.json": {
+   "kind": "probe",
+   "sha256": "09f0ed752465142db356490dee2d207a0bd0d93d9044b7da2efa49357f8208d4",
+   "same": 20
+  },
+  "02-board.png": {
+   "kind": "shot",
+   "size": [
+    540,
+    960
+   ],
+   "sha256": "96c08f1e1d1ceb733231dd57854f5f9f36c8f3bed26a28a7036c631816f0cc66",
+   "same": 20
+  },
+  "02-board.stage.json": {
+   "kind": "probe",
+   "sha256": "5005d22bad0fc2182cfada852923b25c70791b05219cc3af43f2b47201717a02",
+   "same": 20
+  },
+  "03-title-again.png": {
+   "kind": "shot",
+   "size": [
+    540,
+    960
+   ],
+   "sha256": "7d2f81c7db3701e9201bf3a4f7735aea63abc942d553b1792f48b94ef7a9a7b0",
+   "same": 20
+  },
+  "03-title-again.stage.json": {
+   "kind": "probe",
+   "sha256": "09f0ed752465142db356490dee2d207a0bd0d93d9044b7da2efa49357f8208d4",
+   "same": 20
+  },
+  "(log)": {
+   "kind": "log",
+   "sha256": "c738821ac5b01d48d33f20f3520546f21d6190925853810f85e8440a92984008",
+   "same": 20
+  }
+ },
+ "different": [],
+ "identical": true,
+ "seconds": 108
+}

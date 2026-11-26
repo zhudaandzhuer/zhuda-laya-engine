@@ -31,7 +31,10 @@ export interface EffectAllocation {
  * to the same value and a sum of pass lengths reads 0 (QA-03 of
  * docs/plans/records/windows-acceptance/plan.md).
  */
-const TIMESTAMP_STEP_NS = 100_000n;
+const TIMESTAMP_STEP_NS = 100_000;
+// (The 64-bit values below are made with `BigInt(...)`, inside the function, and never written as
+// literals: a literal has no older form, so a mini-game that used the effect budget could not be
+// lowered below ES2020. The function is only reached where the host has timestamps, and so BigInt.)
 
 /**
  * Nanoseconds the GPU spent in a frame's render passes, from their begin and
@@ -42,26 +45,29 @@ const TIMESTAMP_STEP_NS = 100_000n;
  * over leaves zeros and is skipped. Pure.
  */
 export function zhudaPassesBusyNs(stamps: ArrayLike<bigint>, used: number): bigint {
+  const zero = BigInt(0),
+    none = BigInt(-1),
+    step = BigInt(TIMESTAMP_STEP_NS);
   const spans: [bigint, bigint][] = [];
   for (let i = 0; i < used; i++) {
     const begin = stamps[i * 2],
       end = stamps[i * 2 + 1];
-    if (end >= begin && begin > 0n) spans.push([begin, end]);
+    if (end >= begin && begin > zero) spans.push([begin, end]);
   }
   spans.sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
-  let total = 0n;
-  let from = -1n,
-    to = -1n;
+  let total = zero;
+  let from = none,
+    to = none;
   for (const [begin, end] of spans) {
-    if (from >= 0n && begin <= to + TIMESTAMP_STEP_NS) {
+    if (from >= zero && begin <= to + step) {
       if (end > to) to = end;
       continue;
     }
-    if (from >= 0n) total += to - from;
+    if (from >= zero) total += to - from;
     from = begin;
     to = end;
   }
-  if (from >= 0n) total += to - from;
+  if (from >= zero) total += to - from;
   return total;
 }
 

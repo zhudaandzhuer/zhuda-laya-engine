@@ -1,0 +1,36 @@
+{
+  "kind": "design",
+  "model": "design",
+  "model_dir": "qwen3-tts-1.7b-voicedesign-bf16",
+  "text": "耶！今天天氣真好，草地好軟好舒服喔！",
+  "language": "Chinese",
+  "created": "2026-11-16T14:45:28",
+  "instruct": "原創動畫小豬角色「豬大」，青年死宅氣質，性格慵懶幽默、慢半拍吐槽。台灣華語。音域稍偏低中音，帶著沒睡飽的隨興拖音與反差喜感，圓潤親切不油膩，非煙嗓或老成大叔。此刻在陽光下的草地上開心地跳起來歡呼，笑著說話，語氣雀躍、帶笑意、尾音上揚，像真人卡通配音，不要播音腔，不要平淡朗讀。",
+  "candidate": 1,
+  "load_seconds": 6.11,
+  "seed": 786168982,
+  "speed": 1.0,
+  "segments": 1,
+  "tokens": 81,
+  "gen_seconds": 19.0,
+  "peak_memory_gb": 6.98,
+  "rtf": 2.969,
+  "file": "<workspace>/games/zhuda-sky-island/work/voice-design/happyL-1.wav",
+  "srt": "<workspace>/games/zhuda-sky-island/work/voice-design/happyL-1.srt",
+  "sample_rate": 24000,
+  "pcm_bits": 24,
+  "normalization_gain": 1.0,
+  "analysis": {
+    "seconds": 6.4,
+    "peak": 0.6766,
+    "rms": 0.0833,
+    "voiced_ratio": 0.327,
+    "f0_median_hz": 190.5,
+    "f0_p10_p90": [
+      148.7,
+      255.3
+    ]
+  },
+  "sha256": "f73ec0dc5d42c0d00e3e437f565c5a5ece6ad54467830b7925c5faea20745603",
+  "ai_generated": true
+}

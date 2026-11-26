@@ -23,8 +23,10 @@ This is staged publication with rollback. Filesystem renames across the web
 directory, ZIP and report are synchronous but are not one filesystem operation.
 Power loss, SIGKILL during publication, external writers and readers in other
 processes are not covered by an atomic snapshot guarantee. The watcher reloads
-only after successful publication and shows failures in an overlay without
-removing the displayed game.
+after a successful publication, or, for a save that changed only scripts under
+`--candidate`, after rebuilding `app.js` in memory
+([below](#the-watcher-saves-that-change-only-scripts)); it shows failures in an
+overlay without removing the displayed game.
 
 ## KTX 2 textures
 
@@ -161,6 +163,68 @@ by default), with their own ZIP, report and lock. Compilation, source guards and
 package limits remain enforced; the evidence gate is deferred. The build report
 says `unverified-candidate`. Release configuration and accepted output stay intact.
 The watcher honors `outDir` and the candidate flag.
+
+### The watcher: saves that change only scripts
+
+`zhuda-laya-watch` watches `src/`, `assets/`, `public/`, `zhuda.config.json` and
+`package.json`, waits 120 ms after the last change and builds. Every build is the
+whole consumer build (assets and engine libraries copied, pages written, every
+file hashed, the ZIP packed) except in one case:
+
+- the watcher runs with `--candidate`;
+- its last full build succeeded, and `zhuda.config.json` and `package.json` still
+  hold the bytes that build read;
+- every path that changed since is inside `src/`;
+- the project configures none of `prefabPreview`, `prefabChecks`, `prefabEvidence`
+  and is a consumer (not the engine workbench).
+
+Then only `app.js` can differ, and the watcher rebuilds that one file through an
+esbuild context it keeps, with the options of the full build and after the same
+source gates (visual contract, layout contracts, consumer guards). The bytes are
+the ones the full build would write for the same sources; a test compares them.
+Nothing else in a consumer build is made from the scripts: the engine features
+and libraries come from `zhuda.config.json`, and the component class registry is
+inside `app.js`.
+
+**The result is served from memory and never written.** The output directory,
+`game.zip` and `consumer-build.json` stay the last full build, whole, so there is
+no file that could be taken for a release or for an accepted candidate:
+
+- `zhuda-laya-build` and `zhuda-laya-accept` build from the sources themselves
+  and never read what a watcher holds.
+- While the watcher answers `app.js` from memory, it answers
+  `payload-manifest.json` with `"fingerprint": null`, no `prefabDependencies` and
+  a `stale` entry naming the files and the fingerprint of the full build beneath.
+  `zhuda-prefab-check` refuses a manifest marked `stale`; a report with no
+  fingerprint matches no release.
+- The next full build (any change outside `src/`, a changed configuration, or
+  `zhuda-laya-build --candidate`) puts the directory at the sources again, and
+  the watcher serves from disk. A watcher stopped after a scripts-only rebuild
+  says that the directory is older than the scripts; it does not build on exit.
+
+Each build is one log line with its time, and the first lines say which mode the
+watcher is in:
+
+```text
+[Zhuda Watch] a save that changes only src/ rebuilds app.js alone, served from memory; dist/candidate/web on disk keeps the last full build
+[Zhuda Watch] rebuilt after initial build in 430 ms, full
+[Zhuda Watch] rebuilt after src/Main.ts in 17 ms, scripts only
+[Zhuda Watch] rebuilt after assets/hero.glb in 880 ms, full
+[Zhuda Watch] build failed after src/Main.ts in 9 ms, scripts only: ...
+```
+
+A project that keeps the full build is told why once
+(`every change runs the full build: ...`). A failed scripts-only rebuild behaves
+as a failed build always has: the error is shown over the page, and the page
+keeps what it had. `--full-builds` turns the scripts-only rebuild off.
+
+Without `--candidate` every build is still a gated release written to the output
+directory, so a release watcher is as slow as a build. Not covered: a change to
+the engine's own libraries or to `node_modules` while the watcher runs (restart
+it, as before, or save a watched file outside `src/`).
+
+`node scripts/measure-watch.mjs --project <dir>` in the engine checkout measures
+the loop: start, then save to `reload` for nine saves of the same bytes.
 
 Declare the checks in `zhuda.config.json`:
 
@@ -398,3 +462,57 @@ Load the export with `Laya.loader.load(url, Laya.Loader.SPINE)` and draw it with
 changes by hand (physics stepped, the slow render path, straight alpha) and converts
 between the rig's canvas and the skeleton. Check the asset with `SpineVisualContract`.
 The whole path, with what went wrong: [hand-driven Spine character](routes/spine-character.md).
+
+## A headless Chrome of your own, and a clock that does not drift (2.0.0)
+
+`import { chromeFixture, zhudaWaitFor } from 'zhuda-laya-engine/compiler/chrome-host'` is the
+isolated headless Chrome the engine's own browser checks use; a consumer's tools no longer reach
+into the installed package by path for it. It is its own small driver over Chrome's protocol, not
+Playwright or Puppeteer:
+
+```js
+import { fileURLToPath } from 'node:url';
+import { chromeFixture } from 'zhuda-laya-engine/compiler/chrome-host';
+
+const here = fileURLToPath(new URL('.', import.meta.url)); // not `.pathname`: a folder name may have spaces or Chinese in it
+const chrome = await chromeFixture();
+try {
+  await chrome.send('Emulation.setDeviceMetricsOverride', { width: 1280, height: 720, deviceScaleFactor: 1, mobile: false });
+  await chrome.send('Page.navigate', { url: 'http://127.0.0.1:8890/' });
+  await chrome.waitFor('window.__GAME__ && window.__GAME__.ready', 60000); // an expression, as text
+  const state = await chrome.evaluate('window.__GAME__.state()'); // text, or (after 2.0.0) a function called in the page:
+  const size = await chrome.evaluate(() => [innerWidth, innerHeight]); // it sees the page, nothing of this file
+  await chrome.screenshot(here + 'evidence/first.png'); // writes the file; (after 2.0.0) also returns the PNG bytes
+  if (chrome.errors.length) throw Error(chrome.errors.join('\n')); // uncaught exceptions and console errors
+} finally {
+  await chrome.close();
+}
+```
+
+`ZhudaEngine.boot` resolves while the engine's splash is still fading. Wait for
+`whenZhudaSplashGone()` in the page (after 2.0.0) before the first picture, or build with
+`{"branding":{"mode":"none"}}`; a fixed sleep is a guess.
+
+[`prefabs/tools/detplay.mjs`](../prefabs/tools/detplay.mjs) plays a scenario (steps of waits,
+clicks, keys and screenshots) on a **virtual clock**: every animation frame advances time by one
+fixed step, `performance.now`, `Date` and the timers follow it, and `Math.random` is seeded, so
+two runs on a busy machine give the same pixels. It is how two builds are compared pixel by pixel
+(route [game-to-prefabs](routes/game-to-prefabs.md)); `prefabs/tools/pixdiff.py` counts the
+differing pixels of two folders of pictures. The engine's splash runs on real time by design:
+wait it out, or build the pair with `{"branding":{"mode":"none"}}`.
+
+## An interface test by name, without a model (after 2.0.0)
+
+`import { stageProbeExpression, findStageNodes, stageSteps } from 'zhuda-laya-engine/compiler/stage-probe'`
+reads the Laya stage of a running page from outside it: evaluate `stageProbeExpression()` in the
+page (Chrome's protocol, Playwright, the phone driver) and the answer is the node tree, each node
+with its name, LayaAir class, `visible`, `shown`, `mouseEnabled`, the pointer events it listens
+for, its text and its rectangle in CSS pixels. Nothing of it is in a game's bundle.
+
+The scenario players use it for three steps: `"click": "name"` (or `{ "text": … }`), which
+clicks the middle of the one shown node it picks; `"expect": { … }`, which fails the run with
+the step and what was found; `"probe": "file"`, which writes the report.
+[`prefabs/tools/detrepeat.mjs`](../prefabs/tools/detrepeat.mjs) runs one scenario N times on the
+virtual clock and says whether every run gave the same pictures, stage reports and log. How to
+write such a test, what it was checked on and what is missing (a phone, iOS, a mini-game runtime):
+[ui-test-by-probe](routes/ui-test-by-probe.md).

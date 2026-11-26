@@ -1,0 +1,36 @@
+{
+  "kind": "design",
+  "model": "design",
+  "model_dir": "qwen3-tts-1.7b-voicedesign-bf16",
+  "text": "哇！放我下來啦！不要抓我後頸，我會怕高啦！",
+  "language": "Chinese",
+  "created": "2026-11-16T14:45:01",
+  "instruct": "原創動畫小豬角色「豬大」，青年死宅氣質，性格慵懶幽默、慢半拍吐槽。台灣華語。音域稍偏低中音，帶著沒睡飽的隨興拖音與反差喜感，圓潤親切不油膩，非煙嗓或老成大叔。此刻突然被人揪著後頸整隻拎到半空中，腳懸空亂踢，又驚慌又委屈地大叫求饒，語氣急促、音調拉高、尾音上揚，像真人卡通配音，不要播音腔，不要平淡朗讀。",
+  "candidate": 4,
+  "load_seconds": 3.24,
+  "seed": 941481776,
+  "speed": 1.0,
+  "segments": 1,
+  "tokens": 64,
+  "gen_seconds": 14.1,
+  "peak_memory_gb": 7.75,
+  "rtf": 2.754,
+  "file": "<workspace>/games/zhuda-sky-island/work/voice-design/panicL-4.wav",
+  "srt": "<workspace>/games/zhuda-sky-island/work/voice-design/panicL-4.srt",
+  "sample_rate": 24000,
+  "pcm_bits": 24,
+  "normalization_gain": 1.0,
+  "analysis": {
+    "seconds": 5.12,
+    "peak": 0.4304,
+    "rms": 0.0863,
+    "voiced_ratio": 0.709,
+    "f0_median_hz": 333.3,
+    "f0_p10_p90": [
+      255.3,
+      363.6
+    ]
+  },
+  "sha256": "d581c0af44f0127ccfe6cc647691a3f9a907f93ac3fd46d57c79168f423b1a9c",
+  "ai_generated": true
+}

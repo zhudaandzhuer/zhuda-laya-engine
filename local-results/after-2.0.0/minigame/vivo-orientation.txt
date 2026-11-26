@@ -1,0 +1,1 @@
+zhuda.config.json:1 [MINIGAME_ORIENTATION] minigame.orientation is not applied for vivogame: the official tool packs and signs its package before this step. Set the orientation in that platform's own manifest settings.

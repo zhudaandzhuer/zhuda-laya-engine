@@ -1,0 +1,12 @@
+The 2D bench's own sources and the module, WebGL, 600x900, three still states.
+The skirt sways by itself, so the two were not caught at one moment.
+
+as-worn    whole frame                        pixels over 8:  98996 (18.333%)   largest 233
+as-worn    rows 330 to 341 (the hem's edge)   pixels over 8:   2038 (28.306%)   largest 208
+as-worn    from row 342 down                  pixels over 8:      0 (0.000%)   largest 0
+all-small  whole frame                        pixels over 8:  90763 (16.808%)   largest 223
+all-small  rows 330 to 341 (the hem's edge)   pixels over 8:   1883 (26.153%)   largest 221
+all-small  from row 342 down                  pixels over 8:      0 (0.000%)   largest 0
+all-large  whole frame                        pixels over 8:  91384 (16.923%)   largest 224
+all-large  rows 330 to 341 (the hem's edge)   pixels over 8:   1767 (24.542%)   largest 207
+all-large  from row 342 down                  pixels over 8:      0 (0.000%)   largest 0

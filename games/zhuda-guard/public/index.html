@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8">
+    <link rel="icon" href="data:,">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+    <title>豬大守關</title>
+    <style>
+      html,body,#game{width:100%;height:100%;margin:0;overflow:hidden;background:#0b0f14}
+      #game{touch-action:none}
+      body{font-family:"Noto Serif TC","Noto Serif CJK TC","Songti TC",serif;color:#f3ead8;-webkit-user-select:none;user-select:none}
+      .layer{position:fixed;inset:0;pointer-events:none}.hide{display:none!important}
+      #top{position:absolute;left:0;right:0;top:0;display:flex;gap:12px;align-items:center;padding:10px max(14px,env(safe-area-inset-left));background:linear-gradient(#000a,#0000);font-size:20px;text-shadow:0 1px 3px #000}
+      .pill{background:#000a;border:1px solid #f3ead844;border-radius:16px;padding:4px 14px}
+      #wave b{font-size:24px;letter-spacing:.1em}
+      .sp{flex:1}
+      button{font:700 18px/1 inherit;color:#f3ead8;background:#0009;border:1px solid #f3ead877;border-radius:8px;padding:10px 16px;cursor:pointer;pointer-events:auto}
+      button.go{color:#1a1208;background:linear-gradient(#f6dfa6,#c9a86a);border:0;letter-spacing:.2em}
+      button:disabled{opacity:.4;cursor:default}
+      .pad{position:absolute;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;border:2px dashed #f6dfa6cc;background:#f6dfa622;pointer-events:auto;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;color:#f6dfa6;text-shadow:0 1px 2px #000}
+      .pad.has{border:0;background:#0000;width:60px;height:70px;margin:-52px 0 0 -30px;align-items:flex-end}
+      .pad.sel{outline:3px solid #fff;outline-offset:2px}
+      .hp{position:absolute;width:40px;height:5px;margin:-3px 0 0 -20px;background:#000a;border-radius:3px;overflow:hidden}.hp i{display:block;height:100%;background:#e0503a}
+      .hp.boss{width:110px;height:8px;margin-left:-55px}
+      #menu{position:absolute;display:flex;gap:8px;transform:translate(-50%,14px);background:#12171eee;border:1px solid #c9a86a88;border-radius:10px;padding:8px;pointer-events:auto;z-index:5}
+      #menu button{display:flex;flex-direction:column;gap:5px;align-items:center;min-width:92px;font-size:16px}#menu small{font:400 12px/1.2 inherit;opacity:.85;max-width:110px;white-space:normal}
+      #tip{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);font-size:16px;opacity:.9;text-shadow:0 1px 3px #000;text-align:center}
+      .float{position:absolute;font:700 18px/1 sans-serif;color:#ffd978;text-shadow:0 1px 2px #000;animation:rise .8s ease-out forwards;transform:translate(-50%,-50%)}
+      @keyframes rise{to{opacity:0;margin-top:-34px}}
+      #banner{position:absolute;left:0;right:0;top:30%;text-align:center;font-size:52px;letter-spacing:.3em;text-shadow:0 0 18px #000;opacity:0;transition:opacity .4s}#banner.on{opacity:1}
+      #screens{pointer-events:auto;display:flex;align-items:center;justify-content:center;background:#0b0f14bb}
+      .panel{width:min(90vw,560px);background:#12171ee8;border:1px solid #c9a86a66;border-radius:10px;padding:24px 28px;text-align:center;box-shadow:0 10px 60px #000}
+      h1{font-size:60px;letter-spacing:.3em;margin:0 0 6px;color:#f6dfa6;text-shadow:0 4px 0 #5a2a12}
+      .panel p{line-height:1.8}.stars{font-size:44px;color:#ffb238;letter-spacing:.2em}
+      #loading{display:flex;align-items:center;justify-content:center;background:#0b0f14;font-size:22px;letter-spacing:.4em;pointer-events:auto}
+    </style>
+  </head>
+  <body>
+    <main id="game" aria-label="豬大守關"></main>
+    <div id="hud" class="layer hide">
+      <div id="marks"></div>
+      <div id="top"><span id="wave" class="pill"></span><span class="pill">金幣 <b id="coins"></b></span><span class="pill">村口 <b id="lives"></b></span><span class="sp"></span>
+        <button id="speed">×1</button><button id="mute">聲音</button><button id="send" class="go">送出下一波</button></div>
+      <div id="menu" class="hide"></div>
+      <div id="banner"></div>
+      <div id="tip"></div>
+    </div>
+    <div id="screens" class="layer hide"></div>
+    <div id="loading" class="layer">山口佈防中…</div>
+    <!-- ZHUDA_LIBS -->
+    <!-- ZHUDA_ENTRY -->
+  </body>
+</html>

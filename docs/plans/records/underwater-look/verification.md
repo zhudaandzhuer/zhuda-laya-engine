@@ -14,7 +14,7 @@ Date: 2026-11-17
 - Engine and consumer commits: on top of `b945c03`; no consumer.
 - DPR, viewport and network mode: DPR 1, 480 by 270, loopback.
 - Evidence (outside the repository): `EV` =
-  `/Users/yaowei/Documents/ZhudaGameCenter/audits/underwater-look-2026-11-17/`:
+  `<workspace>/audits/underwater-look-2026-11-17/`:
   `film-underwater-webgl/`, `film-underwater-webgpu/` (pictures and
   reports), the run logs, the WebGL sweep logs, `verify-ag1.log`.
 

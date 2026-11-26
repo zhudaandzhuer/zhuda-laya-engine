@@ -1,0 +1,1 @@
+[ { "js": "S.set({ run: false, hour: 10.5 });", "wait": 14, "shot": "tier" } ]

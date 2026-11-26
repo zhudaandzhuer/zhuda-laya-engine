@@ -1,0 +1,22 @@
+{
+ "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+ "renderer": "webgl",
+ "page": {
+  "fov17": 50,
+  "aspect": 1.6,
+  "fov50": 50,
+  "bounceError": "Film stage: setLook cannot change the bounceLight; mount the scene again",
+  "wetAntialias": "msaa",
+  "wet2": "updated",
+  "wet1": "rebuilt",
+  "wet1Reflections": false,
+  "wet3": "rebuilt",
+  "wetBack": 0,
+  "wet0": "rebuilt",
+  "wet3Again": "rebuilt",
+  "wetBackAgain": 0
+ },
+ "errors": [],
+ "consoleErrors": [],
+ "rendererErrors": []
+}

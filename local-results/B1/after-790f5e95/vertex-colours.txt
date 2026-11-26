@@ -1,0 +1,98 @@
+# node local-results/B1/after-790f5e95/glb-dark-heights.mjs games/zhuda-wardrobe/assets/parts/*.glb   (at 9bcf7f5c)
+ankle-boots.glb    part y -0.00 to 0.18  hem-dark 0   
+belt-pouch.glb     part y 0.90 to 0.99  hem-dark 0   
+body.glb           part y 0.00 to 1.68  hem-dark 0   
+boots.glb          part y -0.01 to 0.28  hem-dark 0   
+cap-tee.glb        part y 0.79 to 1.44  hem-dark 38   0.75:38(r0.15,ny-1.0)
+capri.glb          part y 0.30 to 1.03  hem-dark 0   
+crop-shirt.glb     part y 0.95 to 1.45  hem-dark 54   1.00:54(r0.14,ny-1.0)
+crop-tank.glb      part y 1.03 to 1.44  hem-dark 29   1.00:29(r0.14,ny-1.0)
+crop-tee.glb       part y 1.03 to 1.45  hem-dark 45   1.00:44(r0.14,ny-1.0) 1.20:1(r0.14,ny1.0)
+dress.glb          part y 0.51 to 1.44  hem-dark 124   0.50:124(r0.14,ny-1.0)
+elbow-top.glb      part y 0.79 to 1.45  hem-dark 54   0.75:54(r0.15,ny-1.0)
+gown.glb           part y 0.09 to 1.44  hem-dark 162   0.05:162(r0.16,ny-1.0)
+hair-bob.glb       part y 1.46 to 1.69  hem-dark 0   
+hair-bun.glb       part y 1.47 to 1.74  hem-dark 0   
+hair-long.glb      part y 1.14 to 1.69  hem-dark 0   
+jumpsuit.glb       part y 0.08 to 1.44  hem-dark 17   0.05:17(r0.11,ny-1.0)
+knee-shorts.glb    part y 0.51 to 1.03  hem-dark 0   
+knit.glb           part y Infinity to -Infinity  hem-dark 0   
+long-skirt.glb     part y 0.09 to 0.99  hem-dark 172   0.05:158(r0.15,ny-1.0) 0.95:14(r0.13,ny0.9)
+pack.glb           part y 0.98 to 1.45  hem-dark 0   
+playsuit.glb       part y 0.67 to 1.43  hem-dark 0   
+robe.glb           part y 0.09 to 1.45  hem-dark 149   0.05:149(r0.16,ny-1.0)
+shirt.glb          part y 0.79 to 1.45  hem-dark 52   0.75:52(r0.15,ny-1.0)
+shoes.glb          part y -0.00 to 0.10  hem-dark 0   
+shorts.glb         part y 0.67 to 1.03  hem-dark 0   
+skirt.glb          part y 0.51 to 0.99  hem-dark 139   0.50:124(r0.13,ny-1.0) 0.95:15(r0.14,ny0.9)
+straw-hat.glb      part y 1.59 to 1.74  hem-dark 0   
+sun-dress.glb      part y 0.41 to 1.44  hem-dark 132   0.40:132(r0.14,ny-1.0)
+tall-boots.glb     part y -0.01 to 0.41  hem-dark 0   
+tank.glb           part y 0.79 to 1.44  hem-dark 35   0.75:35(r0.15,ny-1.0)
+tee.glb            part y 0.79 to 1.45  hem-dark 41   0.75:41(r0.14,ny-1.0)
+trousers.glb       part y 0.08 to 1.03  hem-dark 15   0.05:15(r0.12,ny-1.0)
+turtleneck.glb     part y 0.79 to 1.44  hem-dark 54   0.75:54(r0.15,ny-1.0)
+
+# node local-results/B1/after-790f5e95/glb-dark-up.mjs crop-tee skirt long-skirt
+crop-tee.glb dark vertices not facing down: 1
+   v 1334 pos -0.001 1.211 0.145 n 0.05 0.98 0.21 triangles 12 of which all-dark 0
+skirt.glb dark vertices not facing down: 15
+   v 249 pos 0.057 0.990 -0.104 n 0.44 0.75 -0.49 triangles 7 of which all-dark 0
+   v 252 pos 0.083 0.991 -0.089 n 0.00 1.00 0.00 triangles 11 of which all-dark 0
+   v 272 pos -0.106 0.990 -0.080 n -0.11 0.96 -0.25 triangles 11 of which all-dark 0
+   v 274 pos 0.101 0.991 -0.081 n 0.27 0.92 -0.27 triangles 7 of which all-dark 0
+   v 284 pos 0.117 0.991 -0.069 n 0.33 0.89 -0.33 triangles 12 of which all-dark 0
+   v 302 pos -0.125 0.991 -0.059 n -0.04 1.00 0.04 triangles 8 of which all-dark 0
+   v 326 pos 0.135 0.991 -0.046 n 0.28 0.92 -0.28 triangles 8 of which all-dark 0
+   v 364 pos -0.143 0.991 -0.029 n -0.08 0.99 0.08 triangles 14 of which all-dark 0
+   v 380 pos 0.145 0.990 -0.029 n 0.61 0.73 -0.32 triangles 7 of which all-dark 0
+   v 521 pos -0.146 0.988 0.043 n -0.64 0.73 0.24 triangles 8 of which all-dark 0
+   v 560 pos -0.131 0.991 0.065 n -0.34 0.88 0.34 triangles 11 of which all-dark 0
+   v 618 pos -0.119 0.991 0.077 n -0.24 0.94 0.24 triangles 8 of which all-dark 0
+   v 638 pos -0.109 0.983 0.098 n -0.25 0.90 0.37 triangles 10 of which all-dark 0
+   v 647 pos -0.085 0.991 0.101 n -0.17 0.97 0.17 triangles 9 of which all-dark 0
+   v 662 pos -0.055 0.991 0.113 n -0.09 0.99 0.09 triangles 8 of which all-dark 0
+long-skirt.glb dark vertices not facing down: 14
+   v 202 pos -0.043 0.990 -0.108 n 0.05 0.81 -0.58 triangles 10 of which all-dark 0
+   v 204 pos 0.065 0.989 -0.102 n 0.29 0.65 -0.70 triangles 11 of which all-dark 0
+   v 207 pos -0.084 0.991 -0.092 n 0.11 0.99 -0.11 triangles 10 of which all-dark 0
+   v 218 pos 0.094 0.991 -0.086 n 0.29 0.91 -0.29 triangles 11 of which all-dark 0
+   v 230 pos -0.106 0.990 -0.080 n -0.14 0.95 -0.28 triangles 11 of which all-dark 0
+   v 246 pos -0.126 0.991 -0.059 n -0.05 1.00 0.05 triangles 9 of which all-dark 0
+   v 259 pos 0.123 0.991 -0.062 n 0.32 0.89 -0.32 triangles 11 of which all-dark 0
+   v 293 pos 0.140 0.990 -0.038 n 0.45 0.77 -0.45 triangles 9 of which all-dark 0
+   v 431 pos -0.141 0.990 0.051 n -0.61 0.71 0.34 triangles 14 of which all-dark 0
+   v 456 pos 0.123 0.991 0.073 n 0.04 1.00 -0.01 triangles 10 of which all-dark 0
+   v 484 pos 0.103 0.990 0.093 n 0.21 0.89 0.39 triangles 8 of which all-dark 0
+   v 486 pos -0.097 0.991 0.091 n 0.00 1.00 0.00 triangles 12 of which all-dark 0
+   v 510 pos -0.046 0.990 0.118 n -0.37 0.78 0.51 triangles 11 of which all-dark 0
+   v 515 pos 0.053 0.991 0.113 n 0.00 1.00 0.00 triangles 10 of which all-dark 0
+
+# node local-results/B1/after-790f5e95/glb-colours.mjs: now (9bcf7f5c)
+sun-dress.glb vertices 2380 dark(<0.3 linear) 132
+   rgb 0.604,0.604,0.604 n 2248 y 0.410 to 1.440
+   rgb 0.073,0.068,0.084 n 132 y 0.410 to 0.410
+trousers.glb vertices 1847 dark(<0.3 linear) 15
+   rgb 0.604,0.604,0.604 n 1832 y 0.077 to 1.027
+   rgb 0.073,0.068,0.084 n 15 y 0.083 to 0.092
+shorts.glb vertices 1028 dark(<0.3 linear) 0
+   rgb 0.604,0.604,0.604 n 1028 y 0.674 to 1.027
+tee.glb vertices 1769 dark(<0.3 linear) 41
+   rgb 0.604,0.604,0.604 n 1728 y 0.793 to 1.447
+   rgb 0.073,0.068,0.084 n 41 y 0.793 to 0.797
+# the same four parts before (aaf10902)
+sun-dress.glb vertices 2380 dark(<0.3 linear) 993
+   rgb 0.604,0.604,0.604 n 1387 y 0.430 to 1.411
+   rgb 0.095,0.089,0.107 n 871 y 0.410 to 1.440
+   rgb 0.073,0.068,0.084 n 122 y 0.410 to 0.411
+trousers.glb vertices 1847 dark(<0.3 linear) 523
+   rgb 0.604,0.604,0.604 n 1324 y 0.117 to 0.973
+   rgb 0.095,0.089,0.107 n 497 y 0.077 to 1.027
+   rgb 0.073,0.068,0.084 n 26 y 0.079 to 0.093
+shorts.glb vertices 1028 dark(<0.3 linear) 638
+   rgb 0.095,0.089,0.107 n 638 y 0.674 to 1.027
+   rgb 0.604,0.604,0.604 n 390 y 0.705 to 0.971
+tee.glb vertices 1769 dark(<0.3 linear) 750
+   rgb 0.604,0.604,0.604 n 1019 y 0.817 to 1.427
+   rgb 0.095,0.089,0.107 n 699 y 0.793 to 1.447
+   rgb 0.073,0.068,0.084 n 51 y 0.793 to 0.798

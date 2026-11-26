@@ -1,4 +1,5 @@
 import { awaitAbortable } from './AsyncOperation.ts';
+import { zhudaUtf8Decode } from './Utf8.ts';
 import type { ZhudaAssetCache } from './Assets.ts';
 import { ZhudaAssetCache as AssetCache } from './Assets.ts';
 
@@ -293,7 +294,7 @@ export class DirectoryAssetProvider implements AssetProvider {
         // request deadline end it. A caller's own signal ends that caller's wait below.
         const result = await this.load(this.manifestId!, { maxBytes: 2 * 1024 * 1024 });
         try {
-          const parsed = JSON.parse(new TextDecoder().decode(result.bytes));
+          const parsed = JSON.parse(zhudaUtf8Decode(result.bytes));
           this.manifest = validateAssetManifest(parsed);
           return this.manifest;
         } catch (error) {

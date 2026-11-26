@@ -1,0 +1,1512 @@
+{
+ "errors": [],
+ "failed": "",
+ "renderer": {
+  "webgl": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+  "webgpu": true,
+  "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/158.0.0.0 Safari/537.36",
+  "dpr": 2
+ },
+ "final": {
+  "ready": true,
+  "frames": 264,
+  "hot": {
+   "random": [
+    953,
+    -263
+   ],
+   "clear": [
+    1037,
+    -263
+   ],
+   "none-hair": [
+    939,
+    -189
+   ],
+   "wear-hair-long": [
+    995,
+    -189
+   ],
+   "wear-hair-bob": [
+    1051,
+    -189
+   ],
+   "wear-hair-bun": [
+    1107,
+    -189
+   ],
+   "none-hat": [
+    939,
+    -115
+   ],
+   "wear-straw-hat": [
+    995,
+    -115
+   ],
+   "none-top": [
+    939,
+    -41
+   ],
+   "wear-tank": [
+    995,
+    -41
+   ],
+   "wear-crop-tank": [
+    1058,
+    -41
+   ],
+   "wear-tee": [
+    1121,
+    -41
+   ],
+   "wear-crop-tee": [
+    1191,
+    -41
+   ],
+   "wear-cap-tee": [
+    953,
+    1
+   ],
+   "wear-elbow-top": [
+    1030,
+    1
+   ],
+   "wear-shirt": [
+    1093,
+    1
+   ],
+   "wear-turtleneck": [
+    1163,
+    1
+   ],
+   "wear-crop-shirt": [
+    953,
+    43
+   ],
+   "wear-knit": [
+    1039,
+    43
+   ],
+   "none-bottom": [
+    939,
+    117
+   ],
+   "wear-shorts": [
+    995,
+    117
+   ],
+   "wear-knee-shorts": [
+    1058,
+    117
+   ],
+   "wear-capri": [
+    1128,
+    117
+   ],
+   "wear-trousers": [
+    1191,
+    117
+   ],
+   "wear-skirt": [
+    946,
+    159
+   ],
+   "wear-long-skirt": [
+    1009,
+    159
+   ],
+   "none-full": [
+    939,
+    233
+   ],
+   "wear-robe": [
+    995,
+    233
+   ],
+   "wear-dress": [
+    1065,
+    233
+   ],
+   "wear-sun-dress": [
+    1156,
+    233
+   ],
+   "wear-gown": [
+    967,
+    275
+   ],
+   "wear-jumpsuit": [
+    1058,
+    275
+   ],
+   "wear-playsuit": [
+    1135,
+    275
+   ],
+   "colour-robe-0": [
+    932,
+    317
+   ],
+   "colour-robe-1": [
+    974,
+    317
+   ],
+   "colour-robe-2": [
+    1016,
+    317
+   ],
+   "colour-robe-3": [
+    1058,
+    317
+   ],
+   "colour-robe-4": [
+    1100,
+    317
+   ],
+   "colour-robe-5": [
+    1142,
+    317
+   ],
+   "colour-robe-6": [
+    1184,
+    317
+   ],
+   "colour-robe-7": [
+    1226,
+    317
+   ],
+   "none-waist": [
+    939,
+    391
+   ],
+   "wear-belt-pouch": [
+    1016,
+    391
+   ],
+   "none-back": [
+    939,
+    465
+   ],
+   "wear-pack": [
+    995,
+    465
+   ],
+   "none-shoes": [
+    939,
+    539
+   ],
+   "wear-shoes": [
+    995,
+    539
+   ],
+   "wear-ankle-boots": [
+    1051,
+    539
+   ],
+   "wear-boots": [
+    1100,
+    539
+   ],
+   "wear-tall-boots": [
+    1149,
+    539
+   ],
+   "clip-Idle": [
+    932,
+    613
+   ],
+   "clip-Walk": [
+    974,
+    613
+   ],
+   "clip-Run": [
+    1016,
+    613
+   ],
+   "clip-Greet": [
+    1065,
+    613
+   ],
+   "hold-arms": [
+    1149,
+    613
+   ],
+   "hold-crouch": [
+    967,
+    655
+   ],
+   "hold-kick": [
+    1079,
+    655
+   ]
+  },
+  "bound": {
+   "robe": {
+    "renderers": 1,
+    "joints": 24,
+    "missing": [],
+    "offsets": 0
+   }
+  },
+  "loads": 1,
+  "order": {
+   "region-feet": [
+    700,
+    412365
+   ],
+   "region-forearms": [
+    600,
+    365824
+   ],
+   "region-hands": [
+    1699,
+    452124
+   ],
+   "region-head": [
+    2999,
+    980198
+   ],
+   "region-hips": [
+    800,
+    432935
+   ],
+   "region-shins": [
+    900,
+    670841
+   ],
+   "region-shoulders": [
+    600,
+    344592
+   ],
+   "region-thighs": [
+    1000,
+    843236
+   ],
+   "region-torso": [
+    1700,
+    1126804
+   ],
+   "region-upperArms": [
+    600,
+    383640
+   ],
+   "robe": [
+    8638,
+    8170273
+   ]
+  },
+  "clip": "_Stress@kick",
+  "yaw": 180,
+  "draws": 57,
+  "triangles": {
+   "rules": 14719,
+   "drawn": 77328
+  },
+  "masked": {
+   "body": 3117,
+   "parts": {
+    "robe": 0
+   }
+  },
+  "maskedSum": {
+   "region-feet": 0,
+   "region-forearms": 283029,
+   "region-hands": 0,
+   "region-head": 0,
+   "region-shins": 562228,
+   "region-shoulders": 245155,
+   "region-torso": 1025448,
+   "robe": 0
+  },
+  "look": "_._._._.robe._._._",
+  "worn": [
+   "robe"
+  ],
+  "hidden": [
+   "hips",
+   "thighs",
+   "upperArms"
+  ],
+  "shown": [
+   "feet",
+   "forearms",
+   "hands",
+   "head",
+   "shins",
+   "shoulders",
+   "torso"
+  ]
+ },
+ "log": [
+  {
+   "picture": "1-bare-walk-front.jpg",
+   "name": "什麼都不穿",
+   "look": "_._._._._._._._",
+   "clip": "Walk",
+   "yaw": 0,
+   "triangles": {
+    "rules": 11598,
+    "drawn": 52376
+   },
+   "draws": 65,
+   "error": null
+  },
+  {
+   "picture": "1-bare-run-front.jpg",
+   "name": "什麼都不穿",
+   "look": "_._._._._._._._",
+   "clip": "Run",
+   "yaw": 0,
+   "triangles": {
+    "rules": 11598,
+    "drawn": 52376
+   },
+   "draws": 65,
+   "error": null
+  },
+  {
+   "picture": "1-bare-arms-front.jpg",
+   "name": "什麼都不穿",
+   "look": "_._._._._._._._",
+   "clip": "_Stress@arms",
+   "yaw": 0,
+   "triangles": {
+    "rules": 11598,
+    "drawn": 52376
+   },
+   "draws": 65,
+   "error": null
+  },
+  {
+   "picture": "1-bare-crouch-front.jpg",
+   "name": "什麼都不穿",
+   "look": "_._._._._._._._",
+   "clip": "_Stress@crouch",
+   "yaw": 0,
+   "triangles": {
+    "rules": 11598,
+    "drawn": 52376
+   },
+   "draws": 65,
+   "error": null
+  },
+  {
+   "picture": "1-bare-kick-front.jpg",
+   "name": "什麼都不穿",
+   "look": "_._._._._._._._",
+   "clip": "_Stress@kick",
+   "yaw": 0,
+   "triangles": {
+    "rules": 11598,
+    "drawn": 52376
+   },
+   "draws": 65,
+   "error": null
+  },
+  {
+   "picture": "1-bare-walk-side.jpg",
+   "name": "什麼都不穿",
+   "look": "_._._._._._._._",
+   "clip": "Walk",
+   "yaw": 90,
+   "triangles": {
+    "rules": 11598,
+    "drawn": 52376
+   },
+   "draws": 65,
+   "error": null
+  },
+  {
+   "picture": "1-bare-run-side.jpg",
+   "name": "什麼都不穿",
+   "look": "_._._._._._._._",
+   "clip": "Run",
+   "yaw": 90,
+   "triangles": {
+    "rules": 11598,
+    "drawn": 52376
+   },
+   "draws": 65,
+   "error": null
+  },
+  {
+   "picture": "1-bare-arms-side.jpg",
+   "name": "什麼都不穿",
+   "look": "_._._._._._._._",
+   "clip": "_Stress@arms",
+   "yaw": 90,
+   "triangles": {
+    "rules": 11598,
+    "drawn": 52376
+   },
+   "draws": 65,
+   "error": null
+  },
+  {
+   "picture": "1-bare-crouch-side.jpg",
+   "name": "什麼都不穿",
+   "look": "_._._._._._._._",
+   "clip": "_Stress@crouch",
+   "yaw": 90,
+   "triangles": {
+    "rules": 11598,
+    "drawn": 52376
+   },
+   "draws": 65,
+   "error": null
+  },
+  {
+   "picture": "1-bare-kick-side.jpg",
+   "name": "什麼都不穿",
+   "look": "_._._._._._._._",
+   "clip": "_Stress@kick",
+   "yaw": 90,
+   "triangles": {
+    "rules": 11598,
+    "drawn": 52376
+   },
+   "draws": 65,
+   "error": null
+  },
+  {
+   "picture": "1-bare-walk-back.jpg",
+   "name": "什麼都不穿",
+   "look": "_._._._._._._._",
+   "clip": "Walk",
+   "yaw": 180,
+   "triangles": {
+    "rules": 11598,
+    "drawn": 52376
+   },
+   "draws": 65,
+   "error": null
+  },
+  {
+   "picture": "1-bare-run-back.jpg",
+   "name": "什麼都不穿",
+   "look": "_._._._._._._._",
+   "clip": "Run",
+   "yaw": 180,
+   "triangles": {
+    "rules": 11598,
+    "drawn": 52376
+   },
+   "draws": 65,
+   "error": null
+  },
+  {
+   "picture": "1-bare-arms-back.jpg",
+   "name": "什麼都不穿",
+   "look": "_._._._._._._._",
+   "clip": "_Stress@arms",
+   "yaw": 180,
+   "triangles": {
+    "rules": 11598,
+    "drawn": 52376
+   },
+   "draws": 65,
+   "error": null
+  },
+  {
+   "picture": "1-bare-crouch-back.jpg",
+   "name": "什麼都不穿",
+   "look": "_._._._._._._._",
+   "clip": "_Stress@crouch",
+   "yaw": 180,
+   "triangles": {
+    "rules": 11598,
+    "drawn": 52376
+   },
+   "draws": 65,
+   "error": null
+  },
+  {
+   "picture": "1-bare-kick-back.jpg",
+   "name": "什麼都不穿",
+   "look": "_._._._._._._._",
+   "clip": "_Stress@kick",
+   "yaw": 180,
+   "triangles": {
+    "rules": 11598,
+    "drawn": 52376
+   },
+   "draws": 65,
+   "error": null
+  },
+  {
+   "picture": "2-tee-trousers-walk-front.jpg",
+   "name": "短髮、短袖、長褲、布鞋",
+   "look": "hair-bob.tee.trousers.shoes._._._._",
+   "clip": "Walk",
+   "yaw": 0,
+   "triangles": {
+    "rules": 14723,
+    "drawn": 85544
+   },
+   "draws": 69,
+   "error": null
+  },
+  {
+   "picture": "2-tee-trousers-run-front.jpg",
+   "name": "短髮、短袖、長褲、布鞋",
+   "look": "hair-bob.tee.trousers.shoes._._._._",
+   "clip": "Run",
+   "yaw": 0,
+   "triangles": {
+    "rules": 14723,
+    "drawn": 85544
+   },
+   "draws": 69,
+   "error": null
+  },
+  {
+   "picture": "2-tee-trousers-arms-front.jpg",
+   "name": "短髮、短袖、長褲、布鞋",
+   "look": "hair-bob.tee.trousers.shoes._._._._",
+   "clip": "_Stress@arms",
+   "yaw": 0,
+   "triangles": {
+    "rules": 14723,
+    "drawn": 85544
+   },
+   "draws": 69,
+   "error": null
+  },
+  {
+   "picture": "2-tee-trousers-crouch-front.jpg",
+   "name": "短髮、短袖、長褲、布鞋",
+   "look": "hair-bob.tee.trousers.shoes._._._._",
+   "clip": "_Stress@crouch",
+   "yaw": 0,
+   "triangles": {
+    "rules": 14723,
+    "drawn": 85544
+   },
+   "draws": 69,
+   "error": null
+  },
+  {
+   "picture": "2-tee-trousers-kick-front.jpg",
+   "name": "短髮、短袖、長褲、布鞋",
+   "look": "hair-bob.tee.trousers.shoes._._._._",
+   "clip": "_Stress@kick",
+   "yaw": 0,
+   "triangles": {
+    "rules": 14723,
+    "drawn": 85544
+   },
+   "draws": 69,
+   "error": null
+  },
+  {
+   "picture": "2-tee-trousers-walk-side.jpg",
+   "name": "短髮、短袖、長褲、布鞋",
+   "look": "hair-bob.tee.trousers.shoes._._._._",
+   "clip": "Walk",
+   "yaw": 90,
+   "triangles": {
+    "rules": 14723,
+    "drawn": 85544
+   },
+   "draws": 69,
+   "error": null
+  },
+  {
+   "picture": "2-tee-trousers-run-side.jpg",
+   "name": "短髮、短袖、長褲、布鞋",
+   "look": "hair-bob.tee.trousers.shoes._._._._",
+   "clip": "Run",
+   "yaw": 90,
+   "triangles": {
+    "rules": 14723,
+    "drawn": 85544
+   },
+   "draws": 69,
+   "error": null
+  },
+  {
+   "picture": "2-tee-trousers-arms-side.jpg",
+   "name": "短髮、短袖、長褲、布鞋",
+   "look": "hair-bob.tee.trousers.shoes._._._._",
+   "clip": "_Stress@arms",
+   "yaw": 90,
+   "triangles": {
+    "rules": 14723,
+    "drawn": 85544
+   },
+   "draws": 69,
+   "error": null
+  },
+  {
+   "picture": "2-tee-trousers-crouch-side.jpg",
+   "name": "短髮、短袖、長褲、布鞋",
+   "look": "hair-bob.tee.trousers.shoes._._._._",
+   "clip": "_Stress@crouch",
+   "yaw": 90,
+   "triangles": {
+    "rules": 14723,
+    "drawn": 85544
+   },
+   "draws": 69,
+   "error": null
+  },
+  {
+   "picture": "2-tee-trousers-kick-side.jpg",
+   "name": "短髮、短袖、長褲、布鞋",
+   "look": "hair-bob.tee.trousers.shoes._._._._",
+   "clip": "_Stress@kick",
+   "yaw": 90,
+   "triangles": {
+    "rules": 14723,
+    "drawn": 85544
+   },
+   "draws": 69,
+   "error": null
+  },
+  {
+   "picture": "2-tee-trousers-walk-back.jpg",
+   "name": "短髮、短袖、長褲、布鞋",
+   "look": "hair-bob.tee.trousers.shoes._._._._",
+   "clip": "Walk",
+   "yaw": 180,
+   "triangles": {
+    "rules": 14723,
+    "drawn": 85544
+   },
+   "draws": 69,
+   "error": null
+  },
+  {
+   "picture": "2-tee-trousers-run-back.jpg",
+   "name": "短髮、短袖、長褲、布鞋",
+   "look": "hair-bob.tee.trousers.shoes._._._._",
+   "clip": "Run",
+   "yaw": 180,
+   "triangles": {
+    "rules": 14723,
+    "drawn": 85544
+   },
+   "draws": 69,
+   "error": null
+  },
+  {
+   "picture": "2-tee-trousers-arms-back.jpg",
+   "name": "短髮、短袖、長褲、布鞋",
+   "look": "hair-bob.tee.trousers.shoes._._._._",
+   "clip": "_Stress@arms",
+   "yaw": 180,
+   "triangles": {
+    "rules": 14723,
+    "drawn": 85544
+   },
+   "draws": 69,
+   "error": null
+  },
+  {
+   "picture": "2-tee-trousers-crouch-back.jpg",
+   "name": "短髮、短袖、長褲、布鞋",
+   "look": "hair-bob.tee.trousers.shoes._._._._",
+   "clip": "_Stress@crouch",
+   "yaw": 180,
+   "triangles": {
+    "rules": 14723,
+    "drawn": 85544
+   },
+   "draws": 69,
+   "error": null
+  },
+  {
+   "picture": "2-tee-trousers-kick-back.jpg",
+   "name": "短髮、短袖、長褲、布鞋",
+   "look": "hair-bob.tee.trousers.shoes._._._._",
+   "clip": "_Stress@kick",
+   "yaw": 180,
+   "triangles": {
+    "rules": 14723,
+    "drawn": 85544
+   },
+   "draws": 69,
+   "error": null
+  },
+  {
+   "picture": "3-shirt-skirt-walk-front.jpg",
+   "name": "短髮、長袖、及膝裙、短靴",
+   "look": "hair-bob.shirt.skirt.ankle-boots._._._._",
+   "clip": "Walk",
+   "yaw": 0,
+   "triangles": {
+    "rules": 16831,
+    "drawn": 93392
+   },
+   "draws": 69,
+   "error": null
+  },
+  {
+   "picture": "3-shirt-skirt-run-front.jpg",
+   "name": "短髮、長袖、及膝裙、短靴",
+   "look": "hair-bob.shirt.skirt.ankle-boots._._._._",
+   "clip": "Run",
+   "yaw": 0,
+   "triangles": {
+    "rules": 16831,
+    "drawn": 93392
+   },
+   "draws": 69,
+   "error": null
+  },
+  {
+   "picture": "3-shirt-skirt-arms-front.jpg",
+   "name": "短髮、長袖、及膝裙、短靴",
+   "look": "hair-bob.shirt.skirt.ankle-boots._._._._",
+   "clip": "_Stress@arms",
+   "yaw": 0,
+   "triangles": {
+    "rules": 16831,
+    "drawn": 93392
+   },
+   "draws": 69,
+   "error": null
+  },
+  {
+   "picture": "3-shirt-skirt-crouch-front.jpg",
+   "name": "短髮、長袖、及膝裙、短靴",
+   "look": "hair-bob.shirt.skirt.ankle-boots._._._._",
+   "clip": "_Stress@crouch",
+   "yaw": 0,
+   "triangles": {
+    "rules": 16831,
+    "drawn": 93392
+   },
+   "draws": 69,
+   "error": null
+  },
+  {
+   "picture": "3-shirt-skirt-kick-front.jpg",
+   "name": "短髮、長袖、及膝裙、短靴",
+   "look": "hair-bob.shirt.skirt.ankle-boots._._._._",
+   "clip": "_Stress@kick",
+   "yaw": 0,
+   "triangles": {
+    "rules": 16831,
+    "drawn": 93392
+   },
+   "draws": 69,
+   "error": null
+  },
+  {
+   "picture": "3-shirt-skirt-walk-side.jpg",
+   "name": "短髮、長袖、及膝裙、短靴",
+   "look": "hair-bob.shirt.skirt.ankle-boots._._._._",
+   "clip": "Walk",
+   "yaw": 90,
+   "triangles": {
+    "rules": 16831,
+    "drawn": 93392
+   },
+   "draws": 69,
+   "error": null
+  },
+  {
+   "picture": "3-shirt-skirt-run-side.jpg",
+   "name": "短髮、長袖、及膝裙、短靴",
+   "look": "hair-bob.shirt.skirt.ankle-boots._._._._",
+   "clip": "Run",
+   "yaw": 90,
+   "triangles": {
+    "rules": 16831,
+    "drawn": 93392
+   },
+   "draws": 69,
+   "error": null
+  },
+  {
+   "picture": "3-shirt-skirt-arms-side.jpg",
+   "name": "短髮、長袖、及膝裙、短靴",
+   "look": "hair-bob.shirt.skirt.ankle-boots._._._._",
+   "clip": "_Stress@arms",
+   "yaw": 90,
+   "triangles": {
+    "rules": 16831,
+    "drawn": 93392
+   },
+   "draws": 69,
+   "error": null
+  },
+  {
+   "picture": "3-shirt-skirt-crouch-side.jpg",
+   "name": "短髮、長袖、及膝裙、短靴",
+   "look": "hair-bob.shirt.skirt.ankle-boots._._._._",
+   "clip": "_Stress@crouch",
+   "yaw": 90,
+   "triangles": {
+    "rules": 16831,
+    "drawn": 93392
+   },
+   "draws": 69,
+   "error": null
+  },
+  {
+   "picture": "3-shirt-skirt-kick-side.jpg",
+   "name": "短髮、長袖、及膝裙、短靴",
+   "look": "hair-bob.shirt.skirt.ankle-boots._._._._",
+   "clip": "_Stress@kick",
+   "yaw": 90,
+   "triangles": {
+    "rules": 16831,
+    "drawn": 93392
+   },
+   "draws": 69,
+   "error": null
+  },
+  {
+   "picture": "3-shirt-skirt-walk-back.jpg",
+   "name": "短髮、長袖、及膝裙、短靴",
+   "look": "hair-bob.shirt.skirt.ankle-boots._._._._",
+   "clip": "Walk",
+   "yaw": 180,
+   "triangles": {
+    "rules": 16831,
+    "drawn": 93392
+   },
+   "draws": 69,
+   "error": null
+  },
+  {
+   "picture": "3-shirt-skirt-run-back.jpg",
+   "name": "短髮、長袖、及膝裙、短靴",
+   "look": "hair-bob.shirt.skirt.ankle-boots._._._._",
+   "clip": "Run",
+   "yaw": 180,
+   "triangles": {
+    "rules": 16831,
+    "drawn": 93392
+   },
+   "draws": 69,
+   "error": null
+  },
+  {
+   "picture": "3-shirt-skirt-arms-back.jpg",
+   "name": "短髮、長袖、及膝裙、短靴",
+   "look": "hair-bob.shirt.skirt.ankle-boots._._._._",
+   "clip": "_Stress@arms",
+   "yaw": 180,
+   "triangles": {
+    "rules": 16831,
+    "drawn": 93392
+   },
+   "draws": 69,
+   "error": null
+  },
+  {
+   "picture": "3-shirt-skirt-crouch-back.jpg",
+   "name": "短髮、長袖、及膝裙、短靴",
+   "look": "hair-bob.shirt.skirt.ankle-boots._._._._",
+   "clip": "_Stress@crouch",
+   "yaw": 180,
+   "triangles": {
+    "rules": 16831,
+    "drawn": 93392
+   },
+   "draws": 69,
+   "error": null
+  },
+  {
+   "picture": "3-shirt-skirt-kick-back.jpg",
+   "name": "短髮、長袖、及膝裙、短靴",
+   "look": "hair-bob.shirt.skirt.ankle-boots._._._._",
+   "clip": "_Stress@kick",
+   "yaw": 180,
+   "triangles": {
+    "rules": 16831,
+    "drawn": 93392
+   },
+   "draws": 69,
+   "error": null
+  },
+  {
+   "picture": "4-sun-dress-walk-front.jpg",
+   "name": "長髮、無袖長洋裝",
+   "look": "hair-long._._._.sun-dress._._._",
+   "clip": "Walk",
+   "yaw": 0,
+   "triangles": {
+    "rules": 15311,
+    "drawn": 76848
+   },
+   "draws": 65,
+   "error": null
+  },
+  {
+   "picture": "4-sun-dress-run-front.jpg",
+   "name": "長髮、無袖長洋裝",
+   "look": "hair-long._._._.sun-dress._._._",
+   "clip": "Run",
+   "yaw": 0,
+   "triangles": {
+    "rules": 15311,
+    "drawn": 76848
+   },
+   "draws": 65,
+   "error": null
+  },
+  {
+   "picture": "4-sun-dress-arms-front.jpg",
+   "name": "長髮、無袖長洋裝",
+   "look": "hair-long._._._.sun-dress._._._",
+   "clip": "_Stress@arms",
+   "yaw": 0,
+   "triangles": {
+    "rules": 15311,
+    "drawn": 76848
+   },
+   "draws": 65,
+   "error": null
+  },
+  {
+   "picture": "4-sun-dress-crouch-front.jpg",
+   "name": "長髮、無袖長洋裝",
+   "look": "hair-long._._._.sun-dress._._._",
+   "clip": "_Stress@crouch",
+   "yaw": 0,
+   "triangles": {
+    "rules": 15311,
+    "drawn": 76848
+   },
+   "draws": 65,
+   "error": null
+  },
+  {
+   "picture": "4-sun-dress-kick-front.jpg",
+   "name": "長髮、無袖長洋裝",
+   "look": "hair-long._._._.sun-dress._._._",
+   "clip": "_Stress@kick",
+   "yaw": 0,
+   "triangles": {
+    "rules": 15311,
+    "drawn": 76848
+   },
+   "draws": 65,
+   "error": null
+  },
+  {
+   "picture": "4-sun-dress-walk-side.jpg",
+   "name": "長髮、無袖長洋裝",
+   "look": "hair-long._._._.sun-dress._._._",
+   "clip": "Walk",
+   "yaw": 90,
+   "triangles": {
+    "rules": 15311,
+    "drawn": 76848
+   },
+   "draws": 65,
+   "error": null
+  },
+  {
+   "picture": "4-sun-dress-run-side.jpg",
+   "name": "長髮、無袖長洋裝",
+   "look": "hair-long._._._.sun-dress._._._",
+   "clip": "Run",
+   "yaw": 90,
+   "triangles": {
+    "rules": 15311,
+    "drawn": 76848
+   },
+   "draws": 65,
+   "error": null
+  },
+  {
+   "picture": "4-sun-dress-arms-side.jpg",
+   "name": "長髮、無袖長洋裝",
+   "look": "hair-long._._._.sun-dress._._._",
+   "clip": "_Stress@arms",
+   "yaw": 90,
+   "triangles": {
+    "rules": 15311,
+    "drawn": 76848
+   },
+   "draws": 65,
+   "error": null
+  },
+  {
+   "picture": "4-sun-dress-crouch-side.jpg",
+   "name": "長髮、無袖長洋裝",
+   "look": "hair-long._._._.sun-dress._._._",
+   "clip": "_Stress@crouch",
+   "yaw": 90,
+   "triangles": {
+    "rules": 15311,
+    "drawn": 76848
+   },
+   "draws": 65,
+   "error": null
+  },
+  {
+   "picture": "4-sun-dress-kick-side.jpg",
+   "name": "長髮、無袖長洋裝",
+   "look": "hair-long._._._.sun-dress._._._",
+   "clip": "_Stress@kick",
+   "yaw": 90,
+   "triangles": {
+    "rules": 15311,
+    "drawn": 76848
+   },
+   "draws": 65,
+   "error": null
+  },
+  {
+   "picture": "4-sun-dress-walk-back.jpg",
+   "name": "長髮、無袖長洋裝",
+   "look": "hair-long._._._.sun-dress._._._",
+   "clip": "Walk",
+   "yaw": 180,
+   "triangles": {
+    "rules": 15311,
+    "drawn": 76848
+   },
+   "draws": 65,
+   "error": null
+  },
+  {
+   "picture": "4-sun-dress-run-back.jpg",
+   "name": "長髮、無袖長洋裝",
+   "look": "hair-long._._._.sun-dress._._._",
+   "clip": "Run",
+   "yaw": 180,
+   "triangles": {
+    "rules": 15311,
+    "drawn": 76848
+   },
+   "draws": 65,
+   "error": null
+  },
+  {
+   "picture": "4-sun-dress-arms-back.jpg",
+   "name": "長髮、無袖長洋裝",
+   "look": "hair-long._._._.sun-dress._._._",
+   "clip": "_Stress@arms",
+   "yaw": 180,
+   "triangles": {
+    "rules": 15311,
+    "drawn": 76848
+   },
+   "draws": 65,
+   "error": null
+  },
+  {
+   "picture": "4-sun-dress-crouch-back.jpg",
+   "name": "長髮、無袖長洋裝",
+   "look": "hair-long._._._.sun-dress._._._",
+   "clip": "_Stress@crouch",
+   "yaw": 180,
+   "triangles": {
+    "rules": 15311,
+    "drawn": 76848
+   },
+   "draws": 65,
+   "error": null
+  },
+  {
+   "picture": "4-sun-dress-kick-back.jpg",
+   "name": "長髮、無袖長洋裝",
+   "look": "hair-long._._._.sun-dress._._._",
+   "clip": "_Stress@kick",
+   "yaw": 180,
+   "triangles": {
+    "rules": 15311,
+    "drawn": 76848
+   },
+   "draws": 65,
+   "error": null
+  },
+  {
+   "picture": "5-tank-shorts-hat-pack-walk-front.jpg",
+   "name": "短髮、背心、短褲、斗笠、背包",
+   "look": "hair-bob.tank.shorts._._._.pack.straw-hat",
+   "clip": "Walk",
+   "yaw": 0,
+   "triangles": {
+    "rules": 15730,
+    "drawn": 84532
+   },
+   "draws": 81,
+   "error": null
+  },
+  {
+   "picture": "5-tank-shorts-hat-pack-run-front.jpg",
+   "name": "短髮、背心、短褲、斗笠、背包",
+   "look": "hair-bob.tank.shorts._._._.pack.straw-hat",
+   "clip": "Run",
+   "yaw": 0,
+   "triangles": {
+    "rules": 15730,
+    "drawn": 84532
+   },
+   "draws": 81,
+   "error": null
+  },
+  {
+   "picture": "5-tank-shorts-hat-pack-arms-front.jpg",
+   "name": "短髮、背心、短褲、斗笠、背包",
+   "look": "hair-bob.tank.shorts._._._.pack.straw-hat",
+   "clip": "_Stress@arms",
+   "yaw": 0,
+   "triangles": {
+    "rules": 15730,
+    "drawn": 84532
+   },
+   "draws": 81,
+   "error": null
+  },
+  {
+   "picture": "5-tank-shorts-hat-pack-crouch-front.jpg",
+   "name": "短髮、背心、短褲、斗笠、背包",
+   "look": "hair-bob.tank.shorts._._._.pack.straw-hat",
+   "clip": "_Stress@crouch",
+   "yaw": 0,
+   "triangles": {
+    "rules": 15730,
+    "drawn": 84532
+   },
+   "draws": 81,
+   "error": null
+  },
+  {
+   "picture": "5-tank-shorts-hat-pack-kick-front.jpg",
+   "name": "短髮、背心、短褲、斗笠、背包",
+   "look": "hair-bob.tank.shorts._._._.pack.straw-hat",
+   "clip": "_Stress@kick",
+   "yaw": 0,
+   "triangles": {
+    "rules": 15730,
+    "drawn": 84532
+   },
+   "draws": 81,
+   "error": null
+  },
+  {
+   "picture": "5-tank-shorts-hat-pack-walk-side.jpg",
+   "name": "短髮、背心、短褲、斗笠、背包",
+   "look": "hair-bob.tank.shorts._._._.pack.straw-hat",
+   "clip": "Walk",
+   "yaw": 90,
+   "triangles": {
+    "rules": 15730,
+    "drawn": 84532
+   },
+   "draws": 81,
+   "error": null
+  },
+  {
+   "picture": "5-tank-shorts-hat-pack-run-side.jpg",
+   "name": "短髮、背心、短褲、斗笠、背包",
+   "look": "hair-bob.tank.shorts._._._.pack.straw-hat",
+   "clip": "Run",
+   "yaw": 90,
+   "triangles": {
+    "rules": 15730,
+    "drawn": 84532
+   },
+   "draws": 81,
+   "error": null
+  },
+  {
+   "picture": "5-tank-shorts-hat-pack-arms-side.jpg",
+   "name": "短髮、背心、短褲、斗笠、背包",
+   "look": "hair-bob.tank.shorts._._._.pack.straw-hat",
+   "clip": "_Stress@arms",
+   "yaw": 90,
+   "triangles": {
+    "rules": 15730,
+    "drawn": 84532
+   },
+   "draws": 81,
+   "error": null
+  },
+  {
+   "picture": "5-tank-shorts-hat-pack-crouch-side.jpg",
+   "name": "短髮、背心、短褲、斗笠、背包",
+   "look": "hair-bob.tank.shorts._._._.pack.straw-hat",
+   "clip": "_Stress@crouch",
+   "yaw": 90,
+   "triangles": {
+    "rules": 15730,
+    "drawn": 84532
+   },
+   "draws": 81,
+   "error": null
+  },
+  {
+   "picture": "5-tank-shorts-hat-pack-kick-side.jpg",
+   "name": "短髮、背心、短褲、斗笠、背包",
+   "look": "hair-bob.tank.shorts._._._.pack.straw-hat",
+   "clip": "_Stress@kick",
+   "yaw": 90,
+   "triangles": {
+    "rules": 15730,
+    "drawn": 84532
+   },
+   "draws": 81,
+   "error": null
+  },
+  {
+   "picture": "5-tank-shorts-hat-pack-walk-back.jpg",
+   "name": "短髮、背心、短褲、斗笠、背包",
+   "look": "hair-bob.tank.shorts._._._.pack.straw-hat",
+   "clip": "Walk",
+   "yaw": 180,
+   "triangles": {
+    "rules": 15730,
+    "drawn": 84532
+   },
+   "draws": 81,
+   "error": null
+  },
+  {
+   "picture": "5-tank-shorts-hat-pack-run-back.jpg",
+   "name": "短髮、背心、短褲、斗笠、背包",
+   "look": "hair-bob.tank.shorts._._._.pack.straw-hat",
+   "clip": "Run",
+   "yaw": 180,
+   "triangles": {
+    "rules": 15730,
+    "drawn": 84532
+   },
+   "draws": 81,
+   "error": null
+  },
+  {
+   "picture": "5-tank-shorts-hat-pack-arms-back.jpg",
+   "name": "短髮、背心、短褲、斗笠、背包",
+   "look": "hair-bob.tank.shorts._._._.pack.straw-hat",
+   "clip": "_Stress@arms",
+   "yaw": 180,
+   "triangles": {
+    "rules": 15730,
+    "drawn": 84532
+   },
+   "draws": 81,
+   "error": null
+  },
+  {
+   "picture": "5-tank-shorts-hat-pack-crouch-back.jpg",
+   "name": "短髮、背心、短褲、斗笠、背包",
+   "look": "hair-bob.tank.shorts._._._.pack.straw-hat",
+   "clip": "_Stress@crouch",
+   "yaw": 180,
+   "triangles": {
+    "rules": 15730,
+    "drawn": 84532
+   },
+   "draws": 81,
+   "error": null
+  },
+  {
+   "picture": "5-tank-shorts-hat-pack-kick-back.jpg",
+   "name": "短髮、背心、短褲、斗笠、背包",
+   "look": "hair-bob.tank.shorts._._._.pack.straw-hat",
+   "clip": "_Stress@kick",
+   "yaw": 180,
+   "triangles": {
+    "rules": 15730,
+    "drawn": 84532
+   },
+   "draws": 81,
+   "error": null
+  },
+  {
+   "picture": "6-robe-walk-front.jpg",
+   "name": "長袍",
+   "look": "_._._._.robe._._._",
+   "clip": "Walk",
+   "yaw": 0,
+   "triangles": {
+    "rules": 14719,
+    "drawn": 77328
+   },
+   "draws": 57,
+   "error": null
+  },
+  {
+   "picture": "6-robe-run-front.jpg",
+   "name": "長袍",
+   "look": "_._._._.robe._._._",
+   "clip": "Run",
+   "yaw": 0,
+   "triangles": {
+    "rules": 14719,
+    "drawn": 77328
+   },
+   "draws": 57,
+   "error": null
+  },
+  {
+   "picture": "6-robe-arms-front.jpg",
+   "name": "長袍",
+   "look": "_._._._.robe._._._",
+   "clip": "_Stress@arms",
+   "yaw": 0,
+   "triangles": {
+    "rules": 14719,
+    "drawn": 77328
+   },
+   "draws": 57,
+   "error": null
+  },
+  {
+   "picture": "6-robe-crouch-front.jpg",
+   "name": "長袍",
+   "look": "_._._._.robe._._._",
+   "clip": "_Stress@crouch",
+   "yaw": 0,
+   "triangles": {
+    "rules": 14719,
+    "drawn": 77328
+   },
+   "draws": 57,
+   "error": null
+  },
+  {
+   "picture": "6-robe-kick-front.jpg",
+   "name": "長袍",
+   "look": "_._._._.robe._._._",
+   "clip": "_Stress@kick",
+   "yaw": 0,
+   "triangles": {
+    "rules": 14719,
+    "drawn": 77328
+   },
+   "draws": 57,
+   "error": null
+  },
+  {
+   "picture": "6-robe-walk-side.jpg",
+   "name": "長袍",
+   "look": "_._._._.robe._._._",
+   "clip": "Walk",
+   "yaw": 90,
+   "triangles": {
+    "rules": 14719,
+    "drawn": 77328
+   },
+   "draws": 57,
+   "error": null
+  },
+  {
+   "picture": "6-robe-run-side.jpg",
+   "name": "長袍",
+   "look": "_._._._.robe._._._",
+   "clip": "Run",
+   "yaw": 90,
+   "triangles": {
+    "rules": 14719,
+    "drawn": 77328
+   },
+   "draws": 57,
+   "error": null
+  },
+  {
+   "picture": "6-robe-arms-side.jpg",
+   "name": "長袍",
+   "look": "_._._._.robe._._._",
+   "clip": "_Stress@arms",
+   "yaw": 90,
+   "triangles": {
+    "rules": 14719,
+    "drawn": 77328
+   },
+   "draws": 57,
+   "error": null
+  },
+  {
+   "picture": "6-robe-crouch-side.jpg",
+   "name": "長袍",
+   "look": "_._._._.robe._._._",
+   "clip": "_Stress@crouch",
+   "yaw": 90,
+   "triangles": {
+    "rules": 14719,
+    "drawn": 77328
+   },
+   "draws": 57,
+   "error": null
+  },
+  {
+   "picture": "6-robe-kick-side.jpg",
+   "name": "長袍",
+   "look": "_._._._.robe._._._",
+   "clip": "_Stress@kick",
+   "yaw": 90,
+   "triangles": {
+    "rules": 14719,
+    "drawn": 77328
+   },
+   "draws": 57,
+   "error": null
+  },
+  {
+   "picture": "6-robe-walk-back.jpg",
+   "name": "長袍",
+   "look": "_._._._.robe._._._",
+   "clip": "Walk",
+   "yaw": 180,
+   "triangles": {
+    "rules": 14719,
+    "drawn": 77328
+   },
+   "draws": 57,
+   "error": null
+  },
+  {
+   "picture": "6-robe-run-back.jpg",
+   "name": "長袍",
+   "look": "_._._._.robe._._._",
+   "clip": "Run",
+   "yaw": 180,
+   "triangles": {
+    "rules": 14719,
+    "drawn": 77328
+   },
+   "draws": 57,
+   "error": null
+  },
+  {
+   "picture": "6-robe-arms-back.jpg",
+   "name": "長袍",
+   "look": "_._._._.robe._._._",
+   "clip": "_Stress@arms",
+   "yaw": 180,
+   "triangles": {
+    "rules": 14719,
+    "drawn": 77328
+   },
+   "draws": 57,
+   "error": null
+  },
+  {
+   "picture": "6-robe-crouch-back.jpg",
+   "name": "長袍",
+   "look": "_._._._.robe._._._",
+   "clip": "_Stress@crouch",
+   "yaw": 180,
+   "triangles": {
+    "rules": 14719,
+    "drawn": 77328
+   },
+   "draws": 57,
+   "error": null
+  },
+  {
+   "picture": "6-robe-kick-back.jpg",
+   "name": "長袍",
+   "look": "_._._._.robe._._._",
+   "clip": "_Stress@kick",
+   "yaw": 180,
+   "triangles": {
+    "rules": 14719,
+    "drawn": 77328
+   },
+   "draws": 57,
+   "error": null
+  }
+ ]
+}

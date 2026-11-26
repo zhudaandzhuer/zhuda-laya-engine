@@ -1,0 +1,20 @@
+{
+  "name": "zhuda-idle",
+  "private": true,
+  "type": "module",
+  "description": "豬大掛機傳——原創的放置抽卡手遊：開局送十連、公開機率與保底、掛機收益、一鍵升級，全部用引擎 2D 做（zhuda-laya-engine）",
+  "engines": { "node": ">=24" },
+  "scripts": {
+    "build": "zhuda-laya-build",
+    "typecheck": "tsc --noEmit",
+    "doctor": "zhuda-laya-doctor --project .",
+    "test": "node --test test/*.test.ts",
+    "verify": "npm run build && npm run typecheck && npm run doctor && npm test"
+  },
+  "dependencies": {
+    "zhuda-laya-engine": "file:../.."
+  },
+  "devDependencies": {
+    "typescript": "5.9.3"
+  }
+}

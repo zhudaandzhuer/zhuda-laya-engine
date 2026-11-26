@@ -116,3 +116,58 @@ test('2D scaffold uses the same isolated definitions and complete declaration ch
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
+
+test('a consumer kept in the engine repository pins the checkout it sits in, and builds beside the engine, not into it', async () => {
+  const { isInRepoEngineDependency } = await import('../packages/compiler/consumer-guards.mjs');
+  const { consumerOutputConflicts } = await import('../packages/compiler/consumer-build.mjs');
+  const engine = path.resolve('/work/engine'),
+    game = path.join(engine, 'games', 'pig-jump');
+  assert.equal(isInRepoEngineDependency('file:../..', game, engine), true);
+  assert.equal(isInRepoEngineDependency('file:../../', game, engine), true);
+  assert.equal(isInRepoEngineDependency('file:..', game, engine), false, 'not the engine root');
+  assert.equal(
+    isInRepoEngineDependency('file:../engine', path.resolve('/work/game'), engine),
+    false,
+  );
+  assert.equal(
+    isInRepoEngineDependency('file:.', engine, engine),
+    false,
+    'the engine is not its own consumer',
+  );
+  assert.equal(isInRepoEngineDependency('latest', game, engine), false);
+  const sources = [
+    path.join(game, 'src'),
+    path.join(game, 'public'),
+    path.join(game, 'node_modules'),
+  ];
+  const conflicts = (output, projectRoot = game) =>
+    consumerOutputConflicts({ output, projectRoot, engineRoot: engine, sources });
+  assert.equal(conflicts(path.join(game, 'dist', 'web')), false);
+  assert.equal(conflicts(path.join(game, 'src', 'out')), true, 'inside its own source');
+  assert.equal(conflicts(game), true, 'the project itself');
+  assert.equal(conflicts(path.join(engine, 'dist', 'web')), true, 'outside the project');
+  // A project nested in one of the engine's own directories would build into the engine.
+  const nested = path.join(engine, 'packages', 'toy');
+  assert.equal(conflicts(path.join(nested, 'dist'), nested), true);
+  // Outside the repository nothing changes: the whole engine root is off limits.
+  const outside = path.resolve('/work/game');
+  assert.equal(
+    consumerOutputConflicts({
+      output: path.join(outside, 'dist'),
+      projectRoot: outside,
+      engineRoot: engine,
+      sources: [],
+    }),
+    false,
+  );
+  assert.equal(
+    consumerOutputConflicts({
+      output: path.join(engine, 'x'),
+      projectRoot: engine,
+      engineRoot: engine,
+      sources: [],
+    }),
+    true,
+    'the engine root as the project is refused as before',
+  );
+});

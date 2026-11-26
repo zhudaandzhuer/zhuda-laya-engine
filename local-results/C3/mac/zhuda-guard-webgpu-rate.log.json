@@ -1,0 +1,186 @@
+{
+ "errors": [
+  "Failed to load resource: the server responded with a status of 404 (Not Found) http://localhost:62916/favicon.ico",
+  "Failed to load resource: the server responded with a status of 404 (Not Found) http://localhost:62916/favicon.ico"
+ ],
+ "failed": "",
+ "renderer": {
+  "webgl": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+  "webgpu": true,
+  "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/158.0.0.0 Safari/537.36",
+  "dpr": 2
+ },
+ "final": {
+  "ready": true,
+  "screen": "play",
+  "frames": 1930,
+  "maxDraws": 207,
+  "pads": [
+   [
+    920,
+    428
+   ],
+   [
+    765,
+    417
+   ],
+   [
+    867,
+    289
+   ],
+   [
+    723,
+    281
+   ],
+   [
+    574,
+    376
+   ],
+   [
+    715,
+    498
+   ],
+   [
+    526,
+    339
+   ],
+   [
+    520,
+    498
+   ],
+   [
+    404,
+    322
+   ],
+   [
+    372,
+    386
+   ],
+   [
+    540,
+    237
+   ],
+   [
+    406,
+    237
+   ]
+  ],
+  "game": {
+   "state": "wave",
+   "wave": 1,
+   "coins": 60,
+   "lives": 20,
+   "enemies": 12,
+   "towers": "1:arrow1 4:arrow1 3:frost1 6:fire1",
+   "kills": 10,
+   "time": 38,
+   "shown": 12
+  },
+  "draws": 197,
+  "triangles": 226807
+ },
+ "log": [
+  {
+   "measure": "rate",
+   "frames": 688,
+   "seconds": 15,
+   "fps": 45.87,
+   "frameMs": {
+    "median": 16.7,
+    "p95": 33.4,
+    "p99": 50.1,
+    "worst": 483.3
+   },
+   "over33ms": 39,
+   "over50ms": 9,
+   "game": {
+    "triangles": 127181,
+    "draws": 131,
+    "frames": 868,
+    "look": null,
+    "clip": null
+   },
+   "memory": {
+    "jsHeapUsedMB": 19.6,
+    "jsHeapTotalMB": 23,
+    "domNodes": 683,
+    "listeners": 81,
+    "rendererProcessMB": 635.8,
+    "gpuProcessMB": 224
+   }
+  },
+  {
+   "shot": "zhuda-guard-webgpu-rate-rate",
+   "seconds": 46.724,
+   "state": {
+    "ready": true,
+    "screen": "play",
+    "frames": 1930,
+    "maxDraws": 207,
+    "pads": [
+     [
+      920,
+      428
+     ],
+     [
+      765,
+      417
+     ],
+     [
+      867,
+      289
+     ],
+     [
+      723,
+      281
+     ],
+     [
+      574,
+      376
+     ],
+     [
+      715,
+      498
+     ],
+     [
+      526,
+      339
+     ],
+     [
+      520,
+      498
+     ],
+     [
+      404,
+      322
+     ],
+     [
+      372,
+      386
+     ],
+     [
+      540,
+      237
+     ],
+     [
+      406,
+      237
+     ]
+    ],
+    "game": {
+     "state": "wave",
+     "wave": 1,
+     "coins": 60,
+     "lives": 20,
+     "enemies": 12,
+     "towers": "1:arrow1 4:arrow1 3:frost1 6:fire1",
+     "kills": 10,
+     "time": 38,
+     "shown": 12
+    },
+    "draws": 197,
+    "triangles": 226807
+   }
+  }
+ ]
+}

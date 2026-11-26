@@ -1,0 +1,1082 @@
+[
+ {
+  "seed": 1,
+  "request": {
+   "betAmount": 10,
+   "anteBet": false,
+   "buyFeature": false
+  },
+  "totalWin": 0,
+  "steps": 1,
+  "freeSpins": 0,
+  "sha256": "539f28d0de9298e3802ef2c2649377555e7c415e741da687a6d740e6ce7e81bb"
+ },
+ {
+  "seed": 1,
+  "request": {
+   "betAmount": 20,
+   "anteBet": true,
+   "buyFeature": false
+  },
+  "totalWin": 0,
+  "steps": 1,
+  "freeSpins": 0,
+  "sha256": "4ac780cee4b1768c00a6810e71b6b8feef6a738759149b464cc62807090ec4ee"
+ },
+ {
+  "seed": 1,
+  "request": {
+   "betAmount": 10,
+   "anteBet": false,
+   "buyFeature": true
+  },
+  "totalWin": 180,
+  "steps": 1,
+  "freeSpins": 16,
+  "sha256": "7028f444b133aca17a75a0b482311af0efe7549e63a1e73529bfcce936be5e18"
+ },
+ {
+  "seed": 2,
+  "request": {
+   "betAmount": 10,
+   "anteBet": false,
+   "buyFeature": false
+  },
+  "totalWin": 0,
+  "steps": 1,
+  "freeSpins": 0,
+  "sha256": "8c5dd0ce4eee18c865db77c304e9801acd8094a004f55558de496c37dff78922"
+ },
+ {
+  "seed": 2,
+  "request": {
+   "betAmount": 20,
+   "anteBet": true,
+   "buyFeature": false
+  },
+  "totalWin": 0,
+  "steps": 1,
+  "freeSpins": 0,
+  "sha256": "f059d0cdfb59bf4d1a38c9822d1d9709ebe608cb8a79ab6a06296476d79374e3"
+ },
+ {
+  "seed": 2,
+  "request": {
+   "betAmount": 10,
+   "anteBet": false,
+   "buyFeature": true
+  },
+  "totalWin": 309,
+  "steps": 1,
+  "freeSpins": 16,
+  "sha256": "24cc184323b542baf312f0c91e664db41a22af411c3d073c3546579d43e827bc"
+ },
+ {
+  "seed": 3,
+  "request": {
+   "betAmount": 10,
+   "anteBet": false,
+   "buyFeature": false
+  },
+  "totalWin": 0,
+  "steps": 1,
+  "freeSpins": 0,
+  "sha256": "f4bfe05a4e77530e7428495a3a4b10e6ab6a6917488f58515c3dc9987fb50431"
+ },
+ {
+  "seed": 3,
+  "request": {
+   "betAmount": 20,
+   "anteBet": true,
+   "buyFeature": false
+  },
+  "totalWin": 0,
+  "steps": 1,
+  "freeSpins": 0,
+  "sha256": "8a19b229e439393ef709a63fd7bb6bf9f69728b03c81ebd6eb998285f671128b"
+ },
+ {
+  "seed": 3,
+  "request": {
+   "betAmount": 10,
+   "anteBet": false,
+   "buyFeature": true
+  },
+  "totalWin": 676,
+  "steps": 1,
+  "freeSpins": 12,
+  "sha256": "1ee23c1ac1209ac65ec7758c7a5f79cea714894e1281fc229615771c67327bfe"
+ },
+ {
+  "seed": 4,
+  "request": {
+   "betAmount": 10,
+   "anteBet": false,
+   "buyFeature": false
+  },
+  "totalWin": 90,
+  "steps": 5,
+  "freeSpins": 0,
+  "sha256": "c17e82a723ebed3ea7cfa4296bba1fe78e6d28eb933c482757d19cc77aaf2a54"
+ },
+ {
+  "seed": 4,
+  "request": {
+   "betAmount": 20,
+   "anteBet": true,
+   "buyFeature": false
+  },
+  "totalWin": 180,
+  "steps": 5,
+  "freeSpins": 0,
+  "sha256": "09466733c0fbb152a5f0b3ad101304c9fc7c6af26c1753a4d97e731c63672f03"
+ },
+ {
+  "seed": 4,
+  "request": {
+   "betAmount": 10,
+   "anteBet": false,
+   "buyFeature": true
+  },
+  "totalWin": 344,
+  "steps": 1,
+  "freeSpins": 16,
+  "sha256": "513922a3cb1b70bf4b30a8d8be870971f5c6c2366964a6054d68152adb3bdea0"
+ },
+ {
+  "seed": 5,
+  "request": {
+   "betAmount": 10,
+   "anteBet": false,
+   "buyFeature": false
+  },
+  "totalWin": 39,
+  "steps": 7,
+  "freeSpins": 0,
+  "sha256": "4c3ec93fd1eb98dd949c697123f5e7493f3f5a476203f26a0d6a89c65c13c1c0"
+ },
+ {
+  "seed": 5,
+  "request": {
+   "betAmount": 20,
+   "anteBet": true,
+   "buyFeature": false
+  },
+  "totalWin": 78,
+  "steps": 7,
+  "freeSpins": 0,
+  "sha256": "2174de81fbfdc0277c3d20e5ecb173961884ef3e7b895da9dd54dccfa9838667"
+ },
+ {
+  "seed": 5,
+  "request": {
+   "betAmount": 10,
+   "anteBet": false,
+   "buyFeature": true
+  },
+  "totalWin": 20,
+  "steps": 1,
+  "freeSpins": 12,
+  "sha256": "046d3f642d33e88f3a595bf390f4f655fb6911999d3851f9eddca78192c19365"
+ },
+ {
+  "seed": 6,
+  "request": {
+   "betAmount": 10,
+   "anteBet": false,
+   "buyFeature": false
+  },
+  "totalWin": 0,
+  "steps": 1,
+  "freeSpins": 0,
+  "sha256": "361d0b00687168cb1a2dbf22bda781be5bc6c674fadab15b5efd7ba49bf2f21a"
+ },
+ {
+  "seed": 6,
+  "request": {
+   "betAmount": 20,
+   "anteBet": true,
+   "buyFeature": false
+  },
+  "totalWin": 0,
+  "steps": 1,
+  "freeSpins": 0,
+  "sha256": "5a3d21031242350148bc64237c26861d7ce9d9723ffea34e6c3d91977fdc36c4"
+ },
+ {
+  "seed": 6,
+  "request": {
+   "betAmount": 10,
+   "anteBet": false,
+   "buyFeature": true
+  },
+  "totalWin": 134,
+  "steps": 1,
+  "freeSpins": 12,
+  "sha256": "7fcfed03cb0b58e9f38838fec3136ba5c06fc9bc85e208ac1bdb8cb6533be86f"
+ },
+ {
+  "seed": 7,
+  "request": {
+   "betAmount": 10,
+   "anteBet": false,
+   "buyFeature": false
+  },
+  "totalWin": 0,
+  "steps": 1,
+  "freeSpins": 0,
+  "sha256": "59f013326b47a8559c47a2734e35e41b35b7003b418134ef4380ed23c554e3cf"
+ },
+ {
+  "seed": 7,
+  "request": {
+   "betAmount": 20,
+   "anteBet": true,
+   "buyFeature": false
+  },
+  "totalWin": 0,
+  "steps": 1,
+  "freeSpins": 0,
+  "sha256": "d05764d2da5d655b100c5891962e01cd981b90681e77f7f78b0c0894962b341d"
+ },
+ {
+  "seed": 7,
+  "request": {
+   "betAmount": 10,
+   "anteBet": false,
+   "buyFeature": true
+  },
+  "totalWin": 56,
+  "steps": 1,
+  "freeSpins": 12,
+  "sha256": "5294c6a95debf5c8e8a0c18e12c6b68f2cb129a4fa3a8aacbe9a803fc6f85a46"
+ },
+ {
+  "seed": 8,
+  "request": {
+   "betAmount": 10,
+   "anteBet": false,
+   "buyFeature": false
+  },
+  "totalWin": 0,
+  "steps": 1,
+  "freeSpins": 0,
+  "sha256": "967a755d9675a37693a9bbd7005b2440fe5c7b35d325440a54baf6f9fd37e089"
+ },
+ {
+  "seed": 8,
+  "request": {
+   "betAmount": 20,
+   "anteBet": true,
+   "buyFeature": false
+  },
+  "totalWin": 0,
+  "steps": 1,
+  "freeSpins": 0,
+  "sha256": "a8214e36b203bc3d98de6c0cc851f5de02db7b39cff9fda5779b9de6e2fbc1ce"
+ },
+ {
+  "seed": 8,
+  "request": {
+   "betAmount": 10,
+   "anteBet": false,
+   "buyFeature": true
+  },
+  "totalWin": 224,
+  "steps": 1,
+  "freeSpins": 12,
+  "sha256": "f97498a3cbca875ce46e7d67bc2b643e0e92b1f0cc8b4d0c6e3723cd24ebf7cf"
+ },
+ {
+  "seed": 9,
+  "request": {
+   "betAmount": 10,
+   "anteBet": false,
+   "buyFeature": false
+  },
+  "totalWin": 0,
+  "steps": 1,
+  "freeSpins": 0,
+  "sha256": "8b7aeba81f784137b89abe70a0ab958ee20eba3d0a78ed8bfcab10ccc680d8a6"
+ },
+ {
+  "seed": 9,
+  "request": {
+   "betAmount": 20,
+   "anteBet": true,
+   "buyFeature": false
+  },
+  "totalWin": 0,
+  "steps": 1,
+  "freeSpins": 0,
+  "sha256": "a671915d15d2f481128af3f5c055954d201d51e9eb2b579e37686b9358c4680e"
+ },
+ {
+  "seed": 9,
+  "request": {
+   "betAmount": 10,
+   "anteBet": false,
+   "buyFeature": true
+  },
+  "totalWin": 560,
+  "steps": 1,
+  "freeSpins": 12,
+  "sha256": "765d828d9a7bd4cad5d08dac3cd06f129f917f3ac08f4e1348909576dd133858"
+ },
+ {
+  "seed": 10,
+  "request": {
+   "betAmount": 10,
+   "anteBet": false,
+   "buyFeature": false
+  },
+  "totalWin": 4,
+  "steps": 3,
+  "freeSpins": 0,
+  "sha256": "421d57ef20542b9205585a9dcd10ca482c70df537fa25f2c4c17d4c249d4e551"
+ },
+ {
+  "seed": 10,
+  "request": {
+   "betAmount": 20,
+   "anteBet": true,
+   "buyFeature": false
+  },
+  "totalWin": 8,
+  "steps": 3,
+  "freeSpins": 0,
+  "sha256": "be47c22e14937418ec4c5f50691369e39cd9caa3ea729ed19d456279213bceab"
+ },
+ {
+  "seed": 10,
+  "request": {
+   "betAmount": 10,
+   "anteBet": false,
+   "buyFeature": true
+  },
+  "totalWin": 180,
+  "steps": 1,
+  "freeSpins": 12,
+  "sha256": "156c574568a156eb67b40bbeffdec6623a4350c11c12bf2ec4a039c440eea6be"
+ },
+ {
+  "seed": 11,
+  "request": {
+   "betAmount": 10,
+   "anteBet": false,
+   "buyFeature": false
+  },
+  "totalWin": 0,
+  "steps": 1,
+  "freeSpins": 0,
+  "sha256": "fb160cc15e97f6285d08fa60b8894749767c02df54bac8a1de39307db212b7c8"
+ },
+ {
+  "seed": 11,
+  "request": {
+   "betAmount": 20,
+   "anteBet": true,
+   "buyFeature": false
+  },
+  "totalWin": 0,
+  "steps": 1,
+  "freeSpins": 0,
+  "sha256": "6f9dc4a363558f8dd280ebc28c4cc4a4f39818162d796400bdb99d73d791aea9"
+ },
+ {
+  "seed": 11,
+  "request": {
+   "betAmount": 10,
+   "anteBet": false,
+   "buyFeature": true
+  },
+  "totalWin": 20,
+  "steps": 1,
+  "freeSpins": 12,
+  "sha256": "fd9bfb3d38a3de35747cf2f537994a79a78a0387c28884992afbf881784cfc52"
+ },
+ {
+  "seed": 12,
+  "request": {
+   "betAmount": 10,
+   "anteBet": false,
+   "buyFeature": false
+  },
+  "totalWin": 0,
+  "steps": 1,
+  "freeSpins": 0,
+  "sha256": "ceff47f534dd3e092000ff23ed782fb2d6f1e68c0007d6bf7178f77ec3039de0"
+ },
+ {
+  "seed": 12,
+  "request": {
+   "betAmount": 20,
+   "anteBet": true,
+   "buyFeature": false
+  },
+  "totalWin": 0,
+  "steps": 1,
+  "freeSpins": 0,
+  "sha256": "cb964a94008c761ae06cbd999856c039efaa016d6921b9305472f5c941ed8b70"
+ },
+ {
+  "seed": 12,
+  "request": {
+   "betAmount": 10,
+   "anteBet": false,
+   "buyFeature": true
+  },
+  "totalWin": 230,
+  "steps": 1,
+  "freeSpins": 12,
+  "sha256": "b86c7fd2b1babd46f0eff629bc4b2c0c184e4ed15a197ba8243b0e737a213c66"
+ },
+ {
+  "seed": 13,
+  "request": {
+   "betAmount": 10,
+   "anteBet": false,
+   "buyFeature": false
+  },
+  "totalWin": 0,
+  "steps": 1,
+  "freeSpins": 0,
+  "sha256": "b7e7b152bcbbf4ebe45cd8f8f4f3cbdd6df808093451951b5465a4c64acee262"
+ },
+ {
+  "seed": 13,
+  "request": {
+   "betAmount": 20,
+   "anteBet": true,
+   "buyFeature": false
+  },
+  "totalWin": 0,
+  "steps": 1,
+  "freeSpins": 0,
+  "sha256": "c2d98d6c8af141e4baf8b56bc21ce2b2742a1aa55ddafd8c5188e0a4b2dbdd90"
+ },
+ {
+  "seed": 13,
+  "request": {
+   "betAmount": 10,
+   "anteBet": false,
+   "buyFeature": true
+  },
+  "totalWin": 92,
+  "steps": 1,
+  "freeSpins": 12,
+  "sha256": "de6de7f33ae08afc8b9f383968447e6fa34a4278c1beb6fa1f0e75ffce7bdeae"
+ },
+ {
+  "seed": 14,
+  "request": {
+   "betAmount": 10,
+   "anteBet": false,
+   "buyFeature": false
+  },
+  "totalWin": 0,
+  "steps": 1,
+  "freeSpins": 0,
+  "sha256": "3c971535eb5f66571f95b4c9bc23f5a17100ca6ff4dd786ea24de897cc369f40"
+ },
+ {
+  "seed": 14,
+  "request": {
+   "betAmount": 20,
+   "anteBet": true,
+   "buyFeature": false
+  },
+  "totalWin": 0,
+  "steps": 1,
+  "freeSpins": 0,
+  "sha256": "4cb748ff2a593e8991c0978293a17aa01524f1503908ecda55ccbff6428fcd18"
+ },
+ {
+  "seed": 14,
+  "request": {
+   "betAmount": 10,
+   "anteBet": false,
+   "buyFeature": true
+  },
+  "totalWin": 100,
+  "steps": 1,
+  "freeSpins": 12,
+  "sha256": "02462aa77c0b3a54851ec3b21626d5fc3d5adf046deed11b046b65e6680dcaa6"
+ },
+ {
+  "seed": 15,
+  "request": {
+   "betAmount": 10,
+   "anteBet": false,
+   "buyFeature": false
+  },
+  "totalWin": 0,
+  "steps": 1,
+  "freeSpins": 0,
+  "sha256": "9d233d203f1902a8528a181f5df43ab04a932bb2f0ed03cab11a794c4a123590"
+ },
+ {
+  "seed": 15,
+  "request": {
+   "betAmount": 20,
+   "anteBet": true,
+   "buyFeature": false
+  },
+  "totalWin": 0,
+  "steps": 1,
+  "freeSpins": 0,
+  "sha256": "a00a92de44d6131d9c4edb54c97d8670932e68e7725d7298a7cf5799ca4fc29a"
+ },
+ {
+  "seed": 15,
+  "request": {
+   "betAmount": 10,
+   "anteBet": false,
+   "buyFeature": true
+  },
+  "totalWin": 100,
+  "steps": 1,
+  "freeSpins": 16,
+  "sha256": "856342700176ed4eb29d97440654bb2130108993f69573e0a02ae8f57f106f20"
+ },
+ {
+  "seed": 16,
+  "request": {
+   "betAmount": 10,
+   "anteBet": false,
+   "buyFeature": false
+  },
+  "totalWin": 0,
+  "steps": 1,
+  "freeSpins": 0,
+  "sha256": "11d5958c1628972ff03f5fe480e5cedc3959c1df32db92e5ef1ecb96782af66d"
+ },
+ {
+  "seed": 16,
+  "request": {
+   "betAmount": 20,
+   "anteBet": true,
+   "buyFeature": false
+  },
+  "totalWin": 0,
+  "steps": 1,
+  "freeSpins": 0,
+  "sha256": "3a1041e51535a6deda09b2cfc28593b97c3b4b404cd845d6a73f8574222460a6"
+ },
+ {
+  "seed": 16,
+  "request": {
+   "betAmount": 10,
+   "anteBet": false,
+   "buyFeature": true
+  },
+  "totalWin": 54,
+  "steps": 1,
+  "freeSpins": 16,
+  "sha256": "eef43c9ca5ead0ac4637f2e9c5641656431b370b59a38da8581f262ebf157860"
+ },
+ {
+  "seed": 17,
+  "request": {
+   "betAmount": 10,
+   "anteBet": false,
+   "buyFeature": false
+  },
+  "totalWin": 0,
+  "steps": 1,
+  "freeSpins": 0,
+  "sha256": "f777692917984de2f1041fd2a8f065f2a46e7e1c4ccae4aba3f9ca8dd514ff82"
+ },
+ {
+  "seed": 17,
+  "request": {
+   "betAmount": 20,
+   "anteBet": true,
+   "buyFeature": false
+  },
+  "totalWin": 0,
+  "steps": 1,
+  "freeSpins": 0,
+  "sha256": "08ebcb9e2ea4260095c761b902d9af3d9eded9ccc0932b29a6be00db1971193f"
+ },
+ {
+  "seed": 17,
+  "request": {
+   "betAmount": 10,
+   "anteBet": false,
+   "buyFeature": true
+  },
+  "totalWin": 110,
+  "steps": 1,
+  "freeSpins": 12,
+  "sha256": "8979d00e183c29ecf32b8ea019b734a379397b066a42beaf2908ac7dcd89b3ba"
+ },
+ {
+  "seed": 18,
+  "request": {
+   "betAmount": 10,
+   "anteBet": false,
+   "buyFeature": false
+  },
+  "totalWin": 6,
+  "steps": 3,
+  "freeSpins": 0,
+  "sha256": "dc4b4bad91f7aad15ff7835761e3fe149991d63ecb4b9a1bd7ec21d9e57f2aa1"
+ },
+ {
+  "seed": 18,
+  "request": {
+   "betAmount": 20,
+   "anteBet": true,
+   "buyFeature": false
+  },
+  "totalWin": 12,
+  "steps": 3,
+  "freeSpins": 0,
+  "sha256": "51b703852c99a2b96cbea1a36babad01b25bd1a16139600d8254fef970f659d0"
+ },
+ {
+  "seed": 18,
+  "request": {
+   "betAmount": 10,
+   "anteBet": false,
+   "buyFeature": true
+  },
+  "totalWin": 79,
+  "steps": 3,
+  "freeSpins": 12,
+  "sha256": "c4f2160c432ca7898a8a4d5b5b480e49dd4d78e80ddabf1512883475939703ea"
+ },
+ {
+  "seed": 19,
+  "request": {
+   "betAmount": 10,
+   "anteBet": false,
+   "buyFeature": false
+  },
+  "totalWin": 0,
+  "steps": 1,
+  "freeSpins": 0,
+  "sha256": "08a05e227cb3c6f3138f01d93b24c882277044394cfd47f72e155749879e3708"
+ },
+ {
+  "seed": 19,
+  "request": {
+   "betAmount": 20,
+   "anteBet": true,
+   "buyFeature": false
+  },
+  "totalWin": 0,
+  "steps": 1,
+  "freeSpins": 0,
+  "sha256": "a1a9ada24a224d5a2c2f3c5776711f2cce5e6d1a6cfa69d039e5aaa9a821e7a0"
+ },
+ {
+  "seed": 19,
+  "request": {
+   "betAmount": 10,
+   "anteBet": false,
+   "buyFeature": true
+  },
+  "totalWin": 208,
+  "steps": 1,
+  "freeSpins": 12,
+  "sha256": "b2988a1c29e2f1be20693240389efc8026e7b497128d690e2d8e058f0b314957"
+ },
+ {
+  "seed": 20,
+  "request": {
+   "betAmount": 10,
+   "anteBet": false,
+   "buyFeature": false
+  },
+  "totalWin": 0,
+  "steps": 1,
+  "freeSpins": 0,
+  "sha256": "7928dff732a962daff9998782b21769e239f81aca98c54acd355294a7e79f2b0"
+ },
+ {
+  "seed": 20,
+  "request": {
+   "betAmount": 20,
+   "anteBet": true,
+   "buyFeature": false
+  },
+  "totalWin": 0,
+  "steps": 1,
+  "freeSpins": 0,
+  "sha256": "7813119cb559fc455e2fd67298129220fb96af39d65deee9b30b5344dedb7a1e"
+ },
+ {
+  "seed": 20,
+  "request": {
+   "betAmount": 10,
+   "anteBet": false,
+   "buyFeature": true
+  },
+  "totalWin": 486,
+  "steps": 1,
+  "freeSpins": 16,
+  "sha256": "bb8a0bd005dc46571d99ddea5f8f63cd16e1fef79d4677c77017f2cb040efb76"
+ },
+ {
+  "seed": 21,
+  "request": {
+   "betAmount": 10,
+   "anteBet": false,
+   "buyFeature": false
+  },
+  "totalWin": 0,
+  "steps": 1,
+  "freeSpins": 0,
+  "sha256": "0cb3a59a46ed5c4bd73af6df060c636097fe9a279fa9c44aabec5dd3f7ac6cde"
+ },
+ {
+  "seed": 21,
+  "request": {
+   "betAmount": 20,
+   "anteBet": true,
+   "buyFeature": false
+  },
+  "totalWin": 0,
+  "steps": 1,
+  "freeSpins": 0,
+  "sha256": "0eb399d683b8dd5dc1839161a29c2958852cd2c554c83da15ac0a74281a10a41"
+ },
+ {
+  "seed": 21,
+  "request": {
+   "betAmount": 10,
+   "anteBet": false,
+   "buyFeature": true
+  },
+  "totalWin": 62,
+  "steps": 1,
+  "freeSpins": 12,
+  "sha256": "b7fb59ff77dbb49603c23755aaca987744da2a939823a327492a17b25ec3d922"
+ },
+ {
+  "seed": 22,
+  "request": {
+   "betAmount": 10,
+   "anteBet": false,
+   "buyFeature": false
+  },
+  "totalWin": 0,
+  "steps": 1,
+  "freeSpins": 0,
+  "sha256": "4402bf8d4390a8b924054deecb0fc2d7d672af1b708de868a8695353325fc93d"
+ },
+ {
+  "seed": 22,
+  "request": {
+   "betAmount": 20,
+   "anteBet": true,
+   "buyFeature": false
+  },
+  "totalWin": 0,
+  "steps": 1,
+  "freeSpins": 0,
+  "sha256": "f4466a058862b48927a20171780ccdfd024d7ccc3d6479eb4ede822425a630f9"
+ },
+ {
+  "seed": 22,
+  "request": {
+   "betAmount": 10,
+   "anteBet": false,
+   "buyFeature": true
+  },
+  "totalWin": 1605,
+  "steps": 1,
+  "freeSpins": 12,
+  "sha256": "ff5504357d268482974820f4a5b665a5d4ad7a9c30ae5bb055effc5cbda5e07b"
+ },
+ {
+  "seed": 23,
+  "request": {
+   "betAmount": 10,
+   "anteBet": false,
+   "buyFeature": false
+  },
+  "totalWin": 0,
+  "steps": 1,
+  "freeSpins": 0,
+  "sha256": "71bd131aae48805ff74ccafe59a78cf0f96f04e8de26d7acdef39775e0005b12"
+ },
+ {
+  "seed": 23,
+  "request": {
+   "betAmount": 20,
+   "anteBet": true,
+   "buyFeature": false
+  },
+  "totalWin": 0,
+  "steps": 1,
+  "freeSpins": 0,
+  "sha256": "564bc49e719c207ba80cb0ce28b192bc9e8f4273f2c153bd64913fc654b5f7b7"
+ },
+ {
+  "seed": 23,
+  "request": {
+   "betAmount": 10,
+   "anteBet": false,
+   "buyFeature": true
+  },
+  "totalWin": 316,
+  "steps": 1,
+  "freeSpins": 12,
+  "sha256": "080be8479431279ed46fcbd6f8e1629c9c4a6de37e80e3ae430430ba5b32beeb"
+ },
+ {
+  "seed": 24,
+  "request": {
+   "betAmount": 10,
+   "anteBet": false,
+   "buyFeature": false
+  },
+  "totalWin": 0,
+  "steps": 1,
+  "freeSpins": 0,
+  "sha256": "3b56924782c3a71f123f771ec7e2bdccd3e80b2d6e16e979d155844eaf7e5ca0"
+ },
+ {
+  "seed": 24,
+  "request": {
+   "betAmount": 20,
+   "anteBet": true,
+   "buyFeature": false
+  },
+  "totalWin": 0,
+  "steps": 1,
+  "freeSpins": 0,
+  "sha256": "21beac9967295df8e0f4078f064223ba35b616806f4bc324d9a040e027b2b75a"
+ },
+ {
+  "seed": 24,
+  "request": {
+   "betAmount": 10,
+   "anteBet": false,
+   "buyFeature": true
+  },
+  "totalWin": 60,
+  "steps": 1,
+  "freeSpins": 12,
+  "sha256": "970ab9674c9417b26a6f527bb85806ce924985accefe0890c56f235d1a441787"
+ },
+ {
+  "seed": 25,
+  "request": {
+   "betAmount": 10,
+   "anteBet": false,
+   "buyFeature": false
+  },
+  "totalWin": 20,
+  "steps": 3,
+  "freeSpins": 0,
+  "sha256": "30cc2c69ef22be66bc2e2c278a77a07325ee28bc7afa22a37fe86e156bd00587"
+ },
+ {
+  "seed": 25,
+  "request": {
+   "betAmount": 20,
+   "anteBet": true,
+   "buyFeature": false
+  },
+  "totalWin": 40,
+  "steps": 3,
+  "freeSpins": 0,
+  "sha256": "f448ceccef41464494078e4089eb3010b18ee5f9105468bfbd64a9db0cbb50ec"
+ },
+ {
+  "seed": 25,
+  "request": {
+   "betAmount": 10,
+   "anteBet": false,
+   "buyFeature": true
+  },
+  "totalWin": 206,
+  "steps": 1,
+  "freeSpins": 12,
+  "sha256": "79175db1a5836004070b3759621b59a3226bf02bc2f5f0770aa49600b548f453"
+ },
+ {
+  "seed": 26,
+  "request": {
+   "betAmount": 10,
+   "anteBet": false,
+   "buyFeature": false
+  },
+  "totalWin": 0,
+  "steps": 1,
+  "freeSpins": 0,
+  "sha256": "532056335c51bcc412477fce436dfb77bcc2a60c460315cc4e6dc0857f8126a8"
+ },
+ {
+  "seed": 26,
+  "request": {
+   "betAmount": 20,
+   "anteBet": true,
+   "buyFeature": false
+  },
+  "totalWin": 0,
+  "steps": 1,
+  "freeSpins": 0,
+  "sha256": "30566eba1ef4b99fd79c5fc9fb7dad08434dc1bd679493a14117793528cda163"
+ },
+ {
+  "seed": 26,
+  "request": {
+   "betAmount": 10,
+   "anteBet": false,
+   "buyFeature": true
+  },
+  "totalWin": 730,
+  "steps": 1,
+  "freeSpins": 12,
+  "sha256": "99d74933ab850fe3aaceea1214cc24fda590b0a9ed6af401b1d978f453164792"
+ },
+ {
+  "seed": 27,
+  "request": {
+   "betAmount": 10,
+   "anteBet": false,
+   "buyFeature": false
+  },
+  "totalWin": 26,
+  "steps": 7,
+  "freeSpins": 0,
+  "sha256": "4a9b599edca661e7e32193d32772f3dffe73275bf2076f27e89269df3fc4b294"
+ },
+ {
+  "seed": 27,
+  "request": {
+   "betAmount": 20,
+   "anteBet": true,
+   "buyFeature": false
+  },
+  "totalWin": 52,
+  "steps": 7,
+  "freeSpins": 0,
+  "sha256": "ecaa9d9652cbf5538d03a053af70a171a0d9ec2867e307ebbedfcb45760a005a"
+ },
+ {
+  "seed": 27,
+  "request": {
+   "betAmount": 10,
+   "anteBet": false,
+   "buyFeature": true
+  },
+  "totalWin": 20,
+  "steps": 1,
+  "freeSpins": 12,
+  "sha256": "b210199c59b9ffe34cc703a44677de60350b72000cec696431be32f4f3f260cc"
+ },
+ {
+  "seed": 28,
+  "request": {
+   "betAmount": 10,
+   "anteBet": false,
+   "buyFeature": false
+  },
+  "totalWin": 0,
+  "steps": 1,
+  "freeSpins": 0,
+  "sha256": "865d8f693f0ee9d5d9a42a0139e71e0ef41a3ea186f9d4b27111c598913ff466"
+ },
+ {
+  "seed": 28,
+  "request": {
+   "betAmount": 20,
+   "anteBet": true,
+   "buyFeature": false
+  },
+  "totalWin": 0,
+  "steps": 1,
+  "freeSpins": 0,
+  "sha256": "eb4788bd78f4dad097c0050f8441ba422ce48a4f1b98f6a3402aff22f330d6e1"
+ },
+ {
+  "seed": 28,
+  "request": {
+   "betAmount": 10,
+   "anteBet": false,
+   "buyFeature": true
+  },
+  "totalWin": 1705,
+  "steps": 1,
+  "freeSpins": 12,
+  "sha256": "06c16649d6227e1698e495c787ffe752e5f52e364398bc4679290ece2c976edb"
+ },
+ {
+  "seed": 29,
+  "request": {
+   "betAmount": 10,
+   "anteBet": false,
+   "buyFeature": false
+  },
+  "totalWin": 0,
+  "steps": 1,
+  "freeSpins": 0,
+  "sha256": "85cfa22828e733e923ee6a0c52e7aab385797063c2aa208d4994f3fe4dde0600"
+ },
+ {
+  "seed": 29,
+  "request": {
+   "betAmount": 20,
+   "anteBet": true,
+   "buyFeature": false
+  },
+  "totalWin": 0,
+  "steps": 1,
+  "freeSpins": 0,
+  "sha256": "24180b3230980a15756aff5fa18a42aa65a1bef8b0373ad4007b66157a742f6b"
+ },
+ {
+  "seed": 29,
+  "request": {
+   "betAmount": 10,
+   "anteBet": false,
+   "buyFeature": true
+  },
+  "totalWin": 92,
+  "steps": 1,
+  "freeSpins": 16,
+  "sha256": "795e3b7ade0e8e936d66853ff1c36fbb857cfeceeea81420aa97a69a0e03992b"
+ },
+ {
+  "seed": 30,
+  "request": {
+   "betAmount": 10,
+   "anteBet": false,
+   "buyFeature": false
+  },
+  "totalWin": 0,
+  "steps": 1,
+  "freeSpins": 0,
+  "sha256": "e0df6466a17d7eff209f025a49623fcc292591152f89be4fb4f22c1d9b00fdb1"
+ },
+ {
+  "seed": 30,
+  "request": {
+   "betAmount": 20,
+   "anteBet": true,
+   "buyFeature": false
+  },
+  "totalWin": 0,
+  "steps": 1,
+  "freeSpins": 0,
+  "sha256": "21e70e56e1d59494560b474321bff1d2ed7c344c487d62c0d324c73467393a91"
+ },
+ {
+  "seed": 30,
+  "request": {
+   "betAmount": 10,
+   "anteBet": false,
+   "buyFeature": true
+  },
+  "totalWin": 1340,
+  "steps": 1,
+  "freeSpins": 12,
+  "sha256": "e6ab094d29a36a826416bf07d3dfe5e3874f791bd352f51a36f4cfa852e7f735"
+ }
+]

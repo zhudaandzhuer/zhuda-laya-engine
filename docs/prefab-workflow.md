@@ -68,3 +68,8 @@ zhuda-laya-watch --candidate --project /absolute/path/to/consumer --host 127.0.0
 兩個頁面都自動重新載入，失敗時保留上一個可用輸出並在頁面 alert 顯示錯誤。
 這是開發期預覽能力，仍須使用 `zhuda-prefab-check` 和 Scene 驗收報告作為
 提交門禁。
+
+設了 `prefabPreview` 的專案，每次存檔都跑完整建置（預覽 bundle 與證據都由同一批
+腳本建出）。沒有設的專案在 `--candidate` 下，只改 `src/` 的存檔只重建 `app.js`、
+放在記憶體裡供頁面讀取、不寫進輸出資料夾；規則見
+[consumer-tooling](consumer-tooling.md#the-watcher-saves-that-change-only-scripts)。

@@ -62,6 +62,15 @@ models, water, mirrors, grass and decals are not. Up to 2000 questions a
 call, and no picture is drawn. In a program the same question is
 `stage.raycast(origin, direction, maxMeters)`.
 
+The other way round, for a marker, a label or a bar the page draws over the
+scene (DOM or 2D): `stage.worldToScreen(point, { width, height })` gives the
+pixels of a world point in a picture of that size for the camera last set,
+its depth, and whether it is inside the picture; null behind the camera.
+Give the size in CSS pixels for a place in CSS pixels. The arithmetic alone
+is `projectZhudaFilmPoint(camera, point, aspect)`, which needs no stage. The
+world is right-handed: a camera looking along +Z has +X on the left of its
+picture, which a projection written by hand gets wrong first.
+
 Draws and triangles a frame are counted two ways, and they differ.
 `ZhudaFilmHost.flythrough` draws each frame through the capture path (one
 view of the film camera into a picture); a page that runs the stage in the
@@ -140,7 +149,8 @@ when more than 16 are open.
   large floor that repeat can itself be made out, more so above 0.5.
 - `nodes`: `prop` places a registered procedural prop (its `params` and `seed`
   as in the prop factory); `box` is a box resting on `position`; `ground` is a
-  plane at y = 0. Ids are unique; unknown fields are rejected.
+  plane at y = 0, or at its `y`: over the level part of a `terrain`, lift it a
+  few centimetres (`"y": 0.02`) so the two do not share a height. Ids are unique; unknown fields are rejected.
 
 Props are merged into one mesh per material, so a yard of containers costs a
 handful of draws.
@@ -303,6 +313,15 @@ and pass it in place of the id. The particle system itself is described in
 
 A `grass` node is grass a camera can walk through ([grass](grass.md)), on
 level ground, or on a terrain node with `"on": "hills"` in place of `y`:
+
+Grass is the one node that can add hundreds of draws by itself. It is kept
+as meshes for every patch of land within `distanceM` of the eye **over the
+ground**: a camera 40 m above a field is as near to it as one standing in
+it. A 72 by 42 m field with `distanceM` 70 measured 525 draws a frame
+against 45 without it (SwiftShader, 960x540). Advice names it
+(`grass.draws`, above 150 meshes, with a reach that is under it), and
+`zhudaGrassMeshCount(options, eye)` gives the count for any eye. For a
+camera too far to show blades, leave the node out.
 
 ```json
 { "id": "meadow", "type": "grass",
@@ -1305,6 +1324,18 @@ keeps a bare HDR chain at level 0 (tone mapping only; no bloom, ambient
 occlusion or lens finish), because the water draws in HDR. `stage.look` is
 the look in use at the current level; `stage.quality` is the level.
 
+What was fixed when the scene was mounted stays at every level: the bounce
+light is captured once and is neither removed at level 0 nor added on the way
+up, and the colour table loaded with the scene goes with the grade at level 0
+and comes back with it. So a governor may take any scene down to 0 and up
+again. (In 2.0.0 `setQuality(0)` threw `setLook cannot change the bounceLight`
+on a scene with bounce light, and `cannot change the colorTable` on a scene
+with a colour table and no water; a page on 2.0.0 keeps such a scene at level
+1 or above.) An authored look still cannot change them: `setLook` with another
+`bounceLight`, panorama, environment, or a colour table that was not loaded
+with the scene throws and leaves the stage as it was; a look may stop using
+the table and name it again later.
+
 ### Lights that change
 
 `stage.setLight(id, { enabled, intensity, color, range })` changes a `light`
@@ -1354,6 +1385,30 @@ stage.dispose();
 ```
 
 A game passes its own props and recipes; the starter set is a neutral sample.
+
+### On a page, every frame
+
+The same stage is drawn live by a game or a viewer. Three calls a frame, in this order:
+
+```ts
+const stage = mountZhudaFilmScene(context.rootScene, scene, { props, recipes });
+let seconds = 0;
+context.runtime.start((dt) => {
+  seconds += dt;
+  stage.setTime(seconds); // clips, moving models, the lights that follow them
+  stage.setCamera(view); // { eye, target, focalLengthMm }: a preset, or an orbit worked out this frame
+  stage.prepare(container.clientWidth / Math.max(1, container.clientHeight)); // the lens, mirrors, fog, shadows that are due
+});
+```
+
+`prepare(aspect)` gives the camera the field of view of the focal length last set (17 mm is
+70.4 degrees high, 50 mm is 27.0), so nothing else is needed for the lens. In 2.0.0 it did not:
+a page that only called `setCamera` and `prepare` drew every focal length at the camera's
+default angle and had to call `stage.lens.apply(aspect)` before `prepare` itself (the call is
+still allowed). To show another state of the scene (a wall cut away, other furniture), call
+`stage.dispose()` and mount the new scene in the same frame callback before the next
+`setCamera`: a disposed stage throws on every call. The whole path, with what goes wrong:
+[a film scene shown live](routes/interactive-film-viewer.md).
 
 Scenes with `model` nodes load assets first, through any `AssetProvider`:
 

@@ -1,0 +1,12 @@
+[
+  { "js": "S.set({ run: false, hour: 11, distance: 17, pitch: 0.42, yaw: 0.35 });", "wait": 2 },
+  { "js": "const [x, y] = S.project(S.pig.center); S.press(1, x, y); await new Promise(r => setTimeout(r, 300)); const [px, py] = S.project([-2.0, 2.3, 1.5]); for (let k = 1; k <= 20; k++) { S.move(1, x + (px - x) * k / 20, y + (py - y) * k / 20); await new Promise(r => setTimeout(r, 30)); } await new Promise(r => setTimeout(r, 900)); window.__p = [px, py]; return [x, y, px, py];", "shot": "g-over-pond" },
+  { "js": "S.release(1);", "wait": 0.45, "shot": "g-splash" },
+  { "wait": 2.2, "shot": "g-swim" },
+  { "wait": 3.5, "shot": "g-shake" },
+  { "js": "const [x, y] = S.project(S.pig.center); S.press(2, x, y); for (let k = 1; k <= 25; k++) { S.move(2, x, y - k * 14); await new Promise(r => setTimeout(r, 25)); } await new Promise(r => setTimeout(r, 1200)); S.release(2); return S.pig.feet;", "wait": 1.1, "shot": "g-land" },
+  { "wait": 1.0, "shot": "g-dizzy" },
+  { "wait": 3.0 },
+  { "js": "const [x, y] = S.project(S.pig.center); S.press(3, x, y); const [hx, hy] = S.project([2.4, 5.4, -1.7]); for (let k = 1; k <= 20; k++) { S.move(3, x + (hx - x) * k / 20, y + (hy - y) * k / 20); await new Promise(r => setTimeout(r, 30)); } await new Promise(r => setTimeout(r, 900)); S.release(3);", "wait": 0.5, "shot": "g-roof" },
+  { "wait": 0.6, "shot": "g-roof2" }
+]

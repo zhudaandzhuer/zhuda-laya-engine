@@ -1,0 +1,7 @@
+node_modules/
+dist/
+# Copied by tools/sync-assets.mjs; the sources are tracked where they are made.
+assets/models/
+assets/textures/
+assets/sources.json
+play-*/

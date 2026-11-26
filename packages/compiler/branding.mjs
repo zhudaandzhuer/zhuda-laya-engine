@@ -201,11 +201,22 @@ export function runBrandSplash(mode) {
     durationMs: mode === 'none' ? 0 : 2180,
     completed: mode === 'none',
     loaded: document.readyState === 'complete',
+    // `completed` is the start of the splash's exit; `gone` is its node taken out of the page,
+    // 460 ms later. `zhuda:splash-gone` on `window` says so once (whenZhudaSplashGone waits for it).
+    gone: false,
     mode,
   };
   window.__ZHUDA_SPLASH__ = state;
+  const gone = () => {
+    if (state.gone) return;
+    state.gone = true;
+    try {
+      window.dispatchEvent(new Event('zhuda:splash-gone'));
+    } catch {}
+  };
   if (mode === 'none' || !splash) {
     state.completed = true;
+    gone();
     return;
   }
   document.documentElement.classList.add('zhuda-splash-active');
@@ -216,7 +227,10 @@ export function runBrandSplash(mode) {
     splash.classList.remove('is-waiting');
     splash.classList.add('is-complete');
     document.documentElement.classList.remove('zhuda-splash-active');
-    window.setTimeout(() => splash.remove(), 460);
+    window.setTimeout(() => {
+      splash.remove();
+      gone();
+    }, 460);
   };
   if (!state.loaded)
     window.addEventListener(

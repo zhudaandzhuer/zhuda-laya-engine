@@ -220,6 +220,46 @@ export function zhudaGrassBands(nearest: number, fullDensityM: number, distanceM
   return bands;
 }
 
+/**
+ * How many patches of land the grass keeps a mesh for with the eye there, and
+ * how many meshes that is at least: one for each band a patch needs (see
+ * `zhudaGrassBands`) and one for its turf. Each mesh is a draw in every pass
+ * that draws the land, so this is the least the grass adds to a frame before
+ * the camera's own culling; a band too large for one mesh is cut into more.
+ * Distance is measured over the ground, as `ZhudaGrassField.update` measures
+ * it: an eye high above a field is as near to it as one standing in it. Pure.
+ */
+export function zhudaGrassMeshCount(
+  options: Pick<ZhudaGrassOptions, 'area' | 'distanceM' | 'fullDensityM' | 'patchM' | 'turf'>,
+  eye: readonly number[],
+): { patches: number; meshes: number } {
+  // The defaults of `resolveZhudaGrass`, without the ground it asks for.
+  const area = options.area,
+    distanceM = options.distanceM ?? 60,
+    fullDensityM = options.fullDensityM ?? distanceM / 12,
+    patchM = options.patchM ?? 6,
+    turf = options.turf ?? true;
+  // The lead `update` gives a patch before it is needed.
+  const LEAD = 1.5;
+  const reach = distanceM + LEAD;
+  const x0 = Math.floor(Math.max(area.minX, eye[0] - reach) / patchM),
+    x1 = Math.floor(Math.min(area.maxX - 1e-6, eye[0] + reach) / patchM),
+    z0 = Math.floor(Math.max(area.minZ, eye[2] - reach) / patchM),
+    z1 = Math.floor(Math.min(area.maxZ - 1e-6, eye[2] + reach) / patchM);
+  let patches = 0,
+    meshes = 0;
+  for (let px = x0; px <= x1; px++)
+    for (let pz = z0; pz <= z1; pz++) {
+      const dx = Math.max(px * patchM - eye[0], 0, eye[0] - (px + 1) * patchM),
+        dz = Math.max(pz * patchM - eye[2], 0, eye[2] - (pz + 1) * patchM);
+      const bands = zhudaGrassBands(Math.max(0, Math.hypot(dx, dz) - LEAD), fullDensityM, reach);
+      if (!bands) continue;
+      patches++;
+      meshes += bands + (turf ? 1 : 0);
+    }
+  return { patches, meshes };
+}
+
 function random(seed: number) {
   let s = seed >>> 0;
   return () => {

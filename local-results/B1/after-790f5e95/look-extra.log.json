@@ -1,0 +1,604 @@
+{
+ "errors": [],
+ "failed": "",
+ "renderer": {
+  "webgl": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+  "webgpu": true,
+  "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/158.0.0.0 Safari/537.36",
+  "dpr": 2
+ },
+ "final": {
+  "ready": true,
+  "frames": 125,
+  "hot": {
+   "random": [
+    953,
+    -326
+   ],
+   "clear": [
+    1037,
+    -326
+   ],
+   "none-hair": [
+    939,
+    -252
+   ],
+   "wear-hair-long": [
+    995,
+    -252
+   ],
+   "wear-hair-bob": [
+    1051,
+    -252
+   ],
+   "wear-hair-bun": [
+    1107,
+    -252
+   ],
+   "none-hat": [
+    939,
+    -178
+   ],
+   "wear-straw-hat": [
+    995,
+    -178
+   ],
+   "none-top": [
+    939,
+    -104
+   ],
+   "wear-tank": [
+    995,
+    -104
+   ],
+   "wear-crop-tank": [
+    1058,
+    -104
+   ],
+   "wear-tee": [
+    1121,
+    -104
+   ],
+   "wear-crop-tee": [
+    1191,
+    -104
+   ],
+   "wear-cap-tee": [
+    953,
+    -62
+   ],
+   "wear-elbow-top": [
+    1030,
+    -62
+   ],
+   "wear-shirt": [
+    1093,
+    -62
+   ],
+   "wear-turtleneck": [
+    1163,
+    -62
+   ],
+   "wear-crop-shirt": [
+    953,
+    -20
+   ],
+   "wear-knit": [
+    1039,
+    -20
+   ],
+   "colour-crop-tee-0": [
+    932,
+    22
+   ],
+   "colour-crop-tee-1": [
+    974,
+    22
+   ],
+   "colour-crop-tee-2": [
+    1016,
+    22
+   ],
+   "colour-crop-tee-3": [
+    1058,
+    22
+   ],
+   "colour-crop-tee-4": [
+    1100,
+    22
+   ],
+   "colour-crop-tee-5": [
+    1142,
+    22
+   ],
+   "colour-crop-tee-6": [
+    1184,
+    22
+   ],
+   "colour-crop-tee-7": [
+    1226,
+    22
+   ],
+   "none-bottom": [
+    939,
+    96
+   ],
+   "wear-shorts": [
+    995,
+    96
+   ],
+   "wear-knee-shorts": [
+    1058,
+    96
+   ],
+   "wear-capri": [
+    1128,
+    96
+   ],
+   "wear-trousers": [
+    1191,
+    96
+   ],
+   "wear-skirt": [
+    946,
+    138
+   ],
+   "wear-long-skirt": [
+    1009,
+    138
+   ],
+   "colour-long-skirt-0": [
+    932,
+    180
+   ],
+   "colour-long-skirt-1": [
+    974,
+    180
+   ],
+   "colour-long-skirt-2": [
+    1016,
+    180
+   ],
+   "colour-long-skirt-3": [
+    1058,
+    180
+   ],
+   "colour-long-skirt-4": [
+    1100,
+    180
+   ],
+   "colour-long-skirt-5": [
+    1142,
+    180
+   ],
+   "colour-long-skirt-6": [
+    1184,
+    180
+   ],
+   "colour-long-skirt-7": [
+    1226,
+    180
+   ],
+   "none-full": [
+    939,
+    254
+   ],
+   "wear-robe": [
+    995,
+    254
+   ],
+   "wear-dress": [
+    1065,
+    254
+   ],
+   "wear-sun-dress": [
+    1156,
+    254
+   ],
+   "wear-gown": [
+    967,
+    296
+   ],
+   "wear-jumpsuit": [
+    1058,
+    296
+   ],
+   "wear-playsuit": [
+    1135,
+    296
+   ],
+   "none-waist": [
+    939,
+    370
+   ],
+   "wear-belt-pouch": [
+    1016,
+    370
+   ],
+   "none-back": [
+    939,
+    444
+   ],
+   "wear-pack": [
+    995,
+    444
+   ],
+   "none-shoes": [
+    939,
+    518
+   ],
+   "wear-shoes": [
+    995,
+    518
+   ],
+   "wear-ankle-boots": [
+    1051,
+    518
+   ],
+   "wear-boots": [
+    1100,
+    518
+   ],
+   "wear-tall-boots": [
+    1149,
+    518
+   ],
+   "clip-Idle": [
+    932,
+    592
+   ],
+   "clip-Walk": [
+    974,
+    592
+   ],
+   "clip-Run": [
+    1016,
+    592
+   ],
+   "clip-Greet": [
+    1065,
+    592
+   ],
+   "hold-arms": [
+    1149,
+    592
+   ],
+   "hold-crouch": [
+    967,
+    634
+   ],
+   "hold-kick": [
+    1079,
+    634
+   ]
+  },
+  "bound": {
+   "long-skirt": {
+    "renderers": 1,
+    "joints": 24,
+    "missing": [],
+    "offsets": 0
+   },
+   "crop-tee": {
+    "renderers": 1,
+    "joints": 24,
+    "missing": [],
+    "offsets": 0
+   }
+  },
+  "loads": 2,
+  "order": {
+   "region-feet": [
+    700,
+    412365
+   ],
+   "region-forearms": [
+    600,
+    365824
+   ],
+   "region-hands": [
+    1699,
+    452124
+   ],
+   "region-head": [
+    2999,
+    980198
+   ],
+   "region-hips": [
+    800,
+    432935
+   ],
+   "region-shins": [
+    900,
+    670841
+   ],
+   "region-shoulders": [
+    600,
+    344592
+   ],
+   "region-thighs": [
+    1000,
+    843236
+   ],
+   "region-torso": [
+    1700,
+    1126804
+   ],
+   "region-upperArms": [
+    600,
+    383640
+   ],
+   "long-skirt": [
+    5790,
+    5727314
+   ],
+   "crop-tee": [
+    2800,
+    2208416
+   ]
+  },
+  "clip": "_Stress@arms",
+  "yaw": 180,
+  "draws": 65,
+  "triangles": {
+   "rules": 15633,
+   "drawn": 79536
+  },
+  "masked": {
+   "body": 2755,
+   "parts": {
+    "long-skirt": 0,
+    "crop-tee": 0
+   }
+  },
+  "maskedSum": {
+   "region-feet": 0,
+   "region-forearms": 0,
+   "region-hands": 0,
+   "region-head": 0,
+   "region-shins": 562228,
+   "region-shoulders": 245155,
+   "region-torso": 854569,
+   "region-upperArms": 185150,
+   "long-skirt": 0,
+   "crop-tee": 0
+  },
+  "look": "_.crop-tee.long-skirt._._._._._",
+  "worn": [
+   "long-skirt",
+   "crop-tee"
+  ],
+  "hidden": [
+   "hips",
+   "thighs"
+  ],
+  "shown": [
+   "feet",
+   "forearms",
+   "hands",
+   "head",
+   "shins",
+   "shoulders",
+   "torso",
+   "upperArms"
+  ]
+ },
+ "log": [
+  {
+   "picture": "x1-crop-tee-skirt-walk-front.png",
+   "look": "hair-bob.crop-tee.skirt.shoes._._._._",
+   "clip": "Walk",
+   "yaw": 0,
+   "triangles": {
+    "rules": 15361,
+    "drawn": 83644
+   },
+   "draws": 73,
+   "error": null
+  },
+  {
+   "picture": "x1-crop-tee-skirt-arms-front.png",
+   "look": "hair-bob.crop-tee.skirt.shoes._._._._",
+   "clip": "_Stress@arms",
+   "yaw": 0,
+   "triangles": {
+    "rules": 15361,
+    "drawn": 83644
+   },
+   "draws": 73,
+   "error": null
+  },
+  {
+   "picture": "x1-crop-tee-skirt-walk-side.png",
+   "look": "hair-bob.crop-tee.skirt.shoes._._._._",
+   "clip": "Walk",
+   "yaw": 90,
+   "triangles": {
+    "rules": 15361,
+    "drawn": 83644
+   },
+   "draws": 73,
+   "error": null
+  },
+  {
+   "picture": "x1-crop-tee-skirt-arms-side.png",
+   "look": "hair-bob.crop-tee.skirt.shoes._._._._",
+   "clip": "_Stress@arms",
+   "yaw": 90,
+   "triangles": {
+    "rules": 15361,
+    "drawn": 83644
+   },
+   "draws": 73,
+   "error": null
+  },
+  {
+   "picture": "x1-crop-tee-skirt-walk-back.png",
+   "look": "hair-bob.crop-tee.skirt.shoes._._._._",
+   "clip": "Walk",
+   "yaw": 180,
+   "triangles": {
+    "rules": 15361,
+    "drawn": 83644
+   },
+   "draws": 73,
+   "error": null
+  },
+  {
+   "picture": "x1-crop-tee-skirt-arms-back.png",
+   "look": "hair-bob.crop-tee.skirt.shoes._._._._",
+   "clip": "_Stress@arms",
+   "yaw": 180,
+   "triangles": {
+    "rules": 15361,
+    "drawn": 83644
+   },
+   "draws": 73,
+   "error": null
+  },
+  {
+   "picture": "x2-skirt-only-walk-front.png",
+   "look": "_._.skirt._._._._._",
+   "clip": "Walk",
+   "yaw": 0,
+   "triangles": {
+    "rules": 13755,
+    "drawn": 65260
+   },
+   "draws": 65,
+   "error": null
+  },
+  {
+   "picture": "x2-skirt-only-arms-front.png",
+   "look": "_._.skirt._._._._._",
+   "clip": "_Stress@arms",
+   "yaw": 0,
+   "triangles": {
+    "rules": 13755,
+    "drawn": 65260
+   },
+   "draws": 65,
+   "error": null
+  },
+  {
+   "picture": "x2-skirt-only-walk-side.png",
+   "look": "_._.skirt._._._._._",
+   "clip": "Walk",
+   "yaw": 90,
+   "triangles": {
+    "rules": 13755,
+    "drawn": 65260
+   },
+   "draws": 65,
+   "error": null
+  },
+  {
+   "picture": "x2-skirt-only-arms-side.png",
+   "look": "_._.skirt._._._._._",
+   "clip": "_Stress@arms",
+   "yaw": 90,
+   "triangles": {
+    "rules": 13755,
+    "drawn": 65260
+   },
+   "draws": 65,
+   "error": null
+  },
+  {
+   "picture": "x2-skirt-only-walk-back.png",
+   "look": "_._.skirt._._._._._",
+   "clip": "Walk",
+   "yaw": 180,
+   "triangles": {
+    "rules": 13755,
+    "drawn": 65260
+   },
+   "draws": 65,
+   "error": null
+  },
+  {
+   "picture": "x2-skirt-only-arms-back.png",
+   "look": "_._.skirt._._._._._",
+   "clip": "_Stress@arms",
+   "yaw": 180,
+   "triangles": {
+    "rules": 13755,
+    "drawn": 65260
+   },
+   "draws": 65,
+   "error": null
+  },
+  {
+   "picture": "x3-crop-tee-long-skirt-walk-front.png",
+   "look": "_.crop-tee.long-skirt._._._._._",
+   "clip": "Walk",
+   "yaw": 0,
+   "triangles": {
+    "rules": 15633,
+    "drawn": 79536
+   },
+   "draws": 65,
+   "error": null
+  },
+  {
+   "picture": "x3-crop-tee-long-skirt-arms-front.png",
+   "look": "_.crop-tee.long-skirt._._._._._",
+   "clip": "_Stress@arms",
+   "yaw": 0,
+   "triangles": {
+    "rules": 15633,
+    "drawn": 79536
+   },
+   "draws": 65,
+   "error": null
+  },
+  {
+   "picture": "x3-crop-tee-long-skirt-walk-side.png",
+   "look": "_.crop-tee.long-skirt._._._._._",
+   "clip": "Walk",
+   "yaw": 90,
+   "triangles": {
+    "rules": 15633,
+    "drawn": 79536
+   },
+   "draws": 65,
+   "error": null
+  },
+  {
+   "picture": "x3-crop-tee-long-skirt-arms-side.png",
+   "look": "_.crop-tee.long-skirt._._._._._",
+   "clip": "_Stress@arms",
+   "yaw": 90,
+   "triangles": {
+    "rules": 15633,
+    "drawn": 79536
+   },
+   "draws": 65,
+   "error": null
+  },
+  {
+   "picture": "x3-crop-tee-long-skirt-walk-back.png",
+   "look": "_.crop-tee.long-skirt._._._._._",
+   "clip": "Walk",
+   "yaw": 180,
+   "triangles": {
+    "rules": 15633,
+    "drawn": 79536
+   },
+   "draws": 65,
+   "error": null
+  },
+  {
+   "picture": "x3-crop-tee-long-skirt-arms-back.png",
+   "look": "_.crop-tee.long-skirt._._._._._",
+   "clip": "_Stress@arms",
+   "yaw": 180,
+   "triangles": {
+    "rules": 15633,
+    "drawn": 79536
+   },
+   "draws": 65,
+   "error": null
+  }
+ ]
+}

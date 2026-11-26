@@ -1,0 +1,41 @@
+{
+  "project": "games/zhuda-match",
+  "file": "src/Main.ts",
+  "mode": "candidate",
+  "fullBuildsOnly": true,
+  "node": "v26.13.1",
+  "loadAverage": [
+    8.2,
+    51.1,
+    91.8
+  ],
+  "startMs": 985.3,
+  "saves": 9,
+  "saveToReloadMs": {
+    "median": 361.5,
+    "min": 296.3,
+    "max": 407.3,
+    "all": [
+      407.3,
+      361.5,
+      369.8,
+      377,
+      366,
+      330.6,
+      301.3,
+      296.3,
+      299
+    ]
+  },
+  "watcherLog": [
+    "full 284 ms",
+    "full 230 ms",
+    "full 236 ms",
+    "full 244 ms",
+    "full 230 ms",
+    "full 198 ms",
+    "full 169 ms",
+    "full 163 ms",
+    "full 167 ms"
+  ]
+}

@@ -1,0 +1,95 @@
+{
+  "source": "https://polyhaven.com",
+  "licence": "CC0 1.0 (https://polyhaven.com/license), as stated on the day of the download",
+  "assets": {
+    "studio_small_08": {
+      "page": "https://polyhaven.com/a/studio_small_08",
+      "name": "Studio Small 08",
+      "authors": {
+        "Sergej Majboroda": "All"
+      },
+      "categories": [
+        "low contrast",
+        "indoor",
+        "urban",
+        "artificial light",
+        "studio"
+      ],
+      "sizeMillimetres": null,
+      "files": {
+        "1k": {
+          "file": "studio_small_08/studio_small_08_1k.hdr",
+          "url": "https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/studio_small_08_1k.hdr",
+          "bytes": 1508872,
+          "md5": "de3ba64222895aca876b1d1c2e0cf81a"
+        },
+        "2k": {
+          "file": "studio_small_08/studio_small_08_2k.hdr",
+          "url": "https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/2k/studio_small_08_2k.hdr",
+          "bytes": 5930381,
+          "md5": "18571cc63a24b0b7b9e9e7c909b3e8ee"
+        }
+      }
+    },
+    "tiergarten": {
+      "page": "https://polyhaven.com/a/tiergarten",
+      "name": "Tiergarten",
+      "authors": {
+        "Greg Zaal": "All"
+      },
+      "categories": [
+        "outdoor",
+        "nature",
+        "midday",
+        "overcast",
+        "low contrast",
+        "natural light"
+      ],
+      "sizeMillimetres": null,
+      "files": {
+        "1k": {
+          "file": "tiergarten/tiergarten_1k.hdr",
+          "url": "https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/tiergarten_1k.hdr",
+          "bytes": 1677230,
+          "md5": "d58a4fc43686a8925b9c676b1166bcab"
+        },
+        "2k": {
+          "file": "tiergarten/tiergarten_2k.hdr",
+          "url": "https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/2k/tiergarten_2k.hdr",
+          "bytes": 6707223,
+          "md5": "bbfa85dd04e2124f19e79e18bf18f1a2"
+        }
+      }
+    },
+    "wide_street_01": {
+      "page": "https://polyhaven.com/a/wide_street_01",
+      "name": "Wide Street 01",
+      "authors": {
+        "Sergej Majboroda": "All"
+      },
+      "categories": [
+        "outdoor",
+        "urban",
+        "midday",
+        "clear",
+        "high contrast",
+        "natural light"
+      ],
+      "sizeMillimetres": null,
+      "files": {
+        "1k": {
+          "file": "wide_street_01/wide_street_01_1k.hdr",
+          "url": "https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/wide_street_01_1k.hdr",
+          "bytes": 1474393,
+          "md5": "5138acea259b7b72b0dce4fdff0d27ce"
+        },
+        "2k": {
+          "file": "wide_street_01/wide_street_01_2k.hdr",
+          "url": "https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/2k/wide_street_01_2k.hdr",
+          "bytes": 5834052,
+          "md5": "f4896567af57de97394257ef47e4ed07"
+        }
+      }
+    }
+  }
+}

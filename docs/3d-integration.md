@@ -97,7 +97,7 @@ const wind = new ZhudaFoliageWind(scene, { direction: [1, 0.3], strength: 0.8 })
 
 `ZhudaModelLibrary.instantiate(url,{signal,retries,independentMaterials})` 使用 `ZhudaAssetCache` 去重、引用 lease、最多三次重試、獨立取消與有界 idle cache。辨識 GLB magic，因此 `.bin` 也可載入，外部 JPG 以模型 URL 為基底。3.4.2 的 `_parseglb/_parse` 是版本綁定介面，升級 vendor 時需回歸。
 
-download／parse／ready 與 GPU 已顯示分開：report 的 `gpuReady: requires-first-draw` 明確表示仍需第一次實際 draw。回傳 instance 擁有獨立節點；`independentMaterials:true` 另外複製材質，可 `setTint`。`find(name)` 找節點／骨骼掛點，動畫姿態交由每 instance 的 Animator 管理。驗收的三個模型沒有 animation clips，**未據此驗證骨骼動畫相容性**。
+download／parse／ready 與 GPU 已顯示分開：report 的 `gpuReady: requires-first-draw` 明確表示仍需第一次實際 draw。回傳 instance 擁有獨立節點；`independentMaterials:true` 另外複製材質，可 `setTint`。`find(name)` 找節點／骨骼掛點，動畫姿態交由每 instance 的 Animator 管理。驗收的三個模型沒有 animation clips，**未據此驗證骨骼動畫相容性**。 `instance.setShadows({ cast, receive })` 一次設定這份拷貝所有網格是否投影、是否接受陰影。
 
 依序釋放 instance，再 dispose library；共享 mesh／texture 在其他 lease 存活時保持有效。`ZhudaRequestSlot.replace(load,commit,discard)` 適合面板，cancel 或新請求後的舊結果只會 discard。`ZhudaResourceScope` 以反向順序釋放，個別錯誤仍繼續清理；`ZhudaSceneRegions` 在區域離開時取消載入並丟棄過期結果。
 

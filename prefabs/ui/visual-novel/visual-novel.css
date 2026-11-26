@@ -1,0 +1,35 @@
+/* Visual novel story player (ui/visual-novel). Sizes follow the host's width (container query units),
+   so put the host in a box with `container-type: inline-size`. Colours: --cp-accent (default name plate),
+   --cp-accent-2 (▼, controls that are on), --cp-text, --cp-vn-box (text box). */
+.cp-vn { position: absolute; inset: 0; overflow: hidden; background: #000; cursor: pointer; user-select: none; -webkit-user-select: none; }
+.cp-vn[hidden] { display: none; }
+.cp-vn-bg, .cp-vn-cg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.cp-vn-cg { opacity: 0; transition: opacity .6s; z-index: 3; }
+.cp-vn-cg.cp-vn-on { opacity: 1; }
+.cp-vn-sprite { position: absolute; bottom: 0; height: 88%; z-index: 2; transform: translateY(4%); transition: filter .25s, opacity .35s, transform .35s; }
+.cp-vn-sprite img { height: 100%; display: block; }
+.cp-vn-left { left: 4%; }
+.cp-vn-right { right: 4%; }
+.cp-vn-sprite.cp-vn-dim { filter: brightness(.55) saturate(.8); }
+.cp-vn-sprite.cp-vn-talk { transform: translateY(2%); }
+.cp-vn-sprite.cp-vn-off { opacity: 0; transform: translateY(10%); }
+.cp-vn-flash { position: absolute; inset: 0; opacity: 0; z-index: 6; pointer-events: none; transition: opacity .7s; background: #fff; }
+.cp-vn-flash.cp-vn-on { opacity: 1; }
+.cp-vn-box { position: absolute; left: 3%; right: 3%; bottom: 3.5%; z-index: 5; min-height: 25%; box-sizing: border-box;
+  background: var(--cp-vn-box, linear-gradient(#141833e6, #0e1128f2)); border: 2px solid #ffffff30; border-radius: 1.4cqw;
+  padding: 3.2cqw 3cqw 2.4cqw; box-shadow: 0 .8cqw 3cqw #0008; color: var(--cp-text, #fff); }
+.cp-vn-name { position: absolute; left: 3cqw; top: 0; transform: translateY(-55%); background: var(--cp-accent, #ff9eb4); color: #2a1a24;
+  font-weight: 900; font-size: 2.2cqw; line-height: 1; padding: .9cqw 2.2cqw; border-radius: 99px; }
+.cp-vn-name[hidden] { display: none; }
+.cp-vn-text { font-size: 2.35cqw; line-height: 1.7; min-height: 3.6em; letter-spacing: .02em; }
+.cp-vn-text.cp-vn-narration { color: var(--cp-dim, #d9d4ee); }
+.cp-vn-next { position: absolute; right: 2.4cqw; bottom: 1.6cqw; font-size: 1.8cqw; color: var(--cp-accent-2, #ffd479); animation: cp-vn-bob 1s infinite; }
+@keyframes cp-vn-bob { 50% { transform: translateY(-30%); } }
+.cp-vn-controls { position: absolute; right: 3%; top: 3%; z-index: 7; display: flex; gap: .8cqw; }
+.cp-vn-controls button { font: inherit; font-size: 1.35cqw; font-weight: 600; background: #0009; color: #fff; border: 1px solid #ffffff40; border-radius: 99px; padding: .8cqw 1.4cqw; cursor: pointer; }
+.cp-vn-controls button.on { background: var(--cp-accent-2, #ffd479); color: #2a2340; }
+.cp-vn-log { position: absolute; inset: 0; z-index: 8; background: #0d1024f2; padding: 5cqw 6cqw; overflow: auto; display: none; font-size: 1.9cqw; cursor: default; color: var(--cp-text, #fff); }
+.cp-vn-log.cp-vn-on { display: block; }
+.cp-vn-log-title { color: var(--cp-accent-2, #ffd479); margin-bottom: 1.4cqw; }
+.cp-vn-log-line { margin: 0 0 1.4cqw; cursor: pointer; }
+.cp-vn-log-line b { color: var(--cp-accent, #ff9eb4); margin-right: 1cqw; }

@@ -5,7 +5,9 @@
  *
  * Every rule was a trap found by drawing scenes (see
  * docs/plans/records/quality-defaults). A rule earns its place only when it
- * names a visible defect and a concrete fix; taste is not linted.
+ * names a visible defect and a concrete fix; taste is not linted. One rule
+ * is about cost, not looks: `grass.draws`, because nothing else in a scene
+ * can add hundreds of draws from one node without a sign.
  */
 import {
   ZHUDA_FILM_ABSENT_LOOK,
@@ -14,6 +16,7 @@ import {
   type ZhudaFilmVec3,
 } from './FilmScene.ts';
 import { zhudaDecodeColor } from './ColorValues.ts';
+import { zhudaGrassMeshCount, type ZhudaGrassOptions } from '../runtime3d/Grass.ts';
 
 export interface ZhudaFilmAdvice {
   /** Stable id of the rule (see `ZHUDA_FILM_LINT_RULES`). */
@@ -51,6 +54,8 @@ export const ZHUDA_FILM_LINT_RULES: Readonly<Record<string, string>> = Object.fr
   'surface.in-ground-plane': 'Water or a reflector exactly in the plane of the ground.',
   'texture.density': 'A ground texture too coarse for a camera this close.',
   'texture.repeats': 'A ground texture repeated many times with every tile the same.',
+  'grass.draws':
+    "Grass kept as so many meshes for this camera that it alone is most of a frame's draws.",
 });
 
 const luminance = (c: readonly number[]) => 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
@@ -65,6 +70,10 @@ const WANTED_PX_PER_M = 256;
  * overcast sun and the night moon below (0.42 and 0.32).
  */
 const SUN_IS_KEY = 0.5;
+/** Grass meshes above which the grass alone is half of a phone's 300 draws a frame. */
+const GRASS_MESHES = 150;
+/** What a `grass` node holds besides the field's own options. */
+const GRASS_NODE_KEYS = ['id', 'type', 'y', 'on', 'clear', 'avoidSolids'];
 
 /**
  * Returns advice for `scene`, warnings first. The scene must already be valid
@@ -255,10 +264,10 @@ export function lintZhudaFilmScene(
       );
   }
 
-  const ground = nodes.some((n) => n.type === 'ground');
+  const grounds = nodes.flatMap((n) => (n.type === 'ground' ? [n.y ?? 0] : []));
   nodes.forEach((node, index) => {
-    if ((node.type !== 'reflector' && node.type !== 'water') || !ground) return;
-    if (Math.abs(node.position[1]) < 0.002)
+    if ((node.type !== 'reflector' && node.type !== 'water') || !grounds.length) return;
+    if (grounds.some((y) => Math.abs(node.position[1] - y) < 0.002))
       add(
         'warn',
         'surface.in-ground-plane',
@@ -309,6 +318,36 @@ export function lintZhudaFilmScene(
         );
     });
   }
+
+  // Grass is kept as a mesh for every band of every patch within `distanceM` of the eye over the
+  // ground, however high the eye is: a wide field under a far camera is hundreds of draws.
+  nodes.forEach((node, index) => {
+    if (node.type !== 'grass') return;
+    const options = Object.fromEntries(
+      Object.entries(node).filter(([key]) => !GRASS_NODE_KEYS.includes(key)),
+    ) as unknown as Pick<ZhudaGrassOptions, 'area' | 'distanceM' | 'turf'>;
+    const now = zhudaGrassMeshCount(options, scene.camera.eye);
+    if (now.meshes <= GRASS_MESHES) return;
+    const distance = options.distanceM ?? 60;
+    // The longest reach, in steps of five metres, that keeps the grass under the mark.
+    let shorter = distance;
+    while (
+      shorter > 10 &&
+      zhudaGrassMeshCount({ ...options, distanceM: shorter }, scene.camera.eye).meshes >
+        GRASS_MESHES
+    )
+      shorter = Math.max(10, shorter - 5);
+    const then = zhudaGrassMeshCount({ ...options, distanceM: shorter }, scene.camera.eye).meshes;
+    add(
+      'tip',
+      'grass.draws',
+      `scene.nodes[${index}].distanceM`,
+      `From this camera the grass is kept as at least ${now.meshes} meshes over ${now.patches} patches of land, each a draw in every pass that draws the ground: more than everything else in most scenes. Distance is measured over the ground, so a camera high above the field does not thin it.`,
+      shorter < distance
+        ? `"distanceM": ${shorter}  (at least ${then} meshes), or "clear" the parts the camera never shows; leave the node out where the camera is too far to show blades`
+        : '"clear" the parts the camera never shows, or a smaller "area"; leave the node out where the camera is too far to show blades',
+    );
+  });
 
   return [...advice.filter((a) => a.level === 'warn'), ...advice.filter((a) => a.level === 'tip')];
 }

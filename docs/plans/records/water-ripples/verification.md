@@ -6,7 +6,7 @@ Chrome through the repository's `chromeFixture`, 2026-11-16.
 - WebGL: `ANGLE (Apple, ANGLE Metal Renderer: Apple M4)`.
 - WebGPU: adapter `apple` / `metal-3`.
 - Evidence, kept outside the repository: `EV` =
-  `/Users/yaowei/Documents/ZhudaGameCenter/audits/water-ripples-2026-11-16/`.
+  `<workspace>/audits/water-ripples-2026-11-16/`.
 
 | Command                                                                                                                                   | Result                                      | Artifact                            |
 | ----------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- | ----------------------------------- |

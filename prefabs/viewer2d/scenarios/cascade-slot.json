@@ -1,0 +1,11 @@
+[
+  { "wait": 6.2, "shot": "01-idle" },
+  { "js": "S.set({ round: 'seed:168' })" },
+  { "wait": 1.15, "shot": "02-wave" },
+  { "wait": 5.4, "shot": "03-multiplier" },
+  { "wait": 2.0, "shot": "04-big-win" },
+  { "js": "S.set({ collect: true })" },
+  { "wait": 1.0, "js": "S.set({ dialog: 'receipt' })" },
+  { "wait": 0.3, "shot": "05-receipt" },
+  { "js": "S.set({ dialog: 'none' }); return JSON.stringify(S.state().last)" }
+]

@@ -1,0 +1,30 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": [
+      "ES2022",
+      "DOM"
+    ],
+    "strict": true,
+    "skipLibCheck": true,
+    "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true,
+    "noEmit": true
+  },
+  "include": [
+    "ui/**/*.ts",
+    "input/**/*.ts",
+    "systems/**/*.ts",
+    "3d/**/*.ts",
+    "2d/**/*.ts",
+    "audio/**/*.ts"
+  ],
+  "exclude": [
+    "3d/**/source/**",
+    "3d/**/preview/**",
+    "2d/**/source/**",
+    "2d/**/preview/**"
+  ]
+}

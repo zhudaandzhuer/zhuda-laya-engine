@@ -1,0 +1,8 @@
+[
+  { "js": "I.set({ run: false, hour: 10.5, at: [4.2, 21], face: 3.1, yaw: 0.15, pitch: 0.22, distance: 8 });", "wait": 5, "shot": "d-path" },
+  { "js": "I.set({ at: [15.2, -0.6], face: 3.7, yaw: 0.6, pitch: 0.33, distance: 9 });", "wait": 3, "shot": "d-pond" },
+  { "js": "I.set({ at: [-4.5, 5.6], face: 1, yaw: 2.3, pitch: 0.4, distance: 9 });", "wait": 3, "shot": "d-stream" },
+  { "js": "I.set({ at: [3, 32.5], face: 3.1, yaw: 1.2, pitch: 0.2, distance: 10 });", "wait": 3, "shot": "d-beach" },
+  { "js": "I.set({ at: [9, 14], face: 3.1, yaw: 0.4, pitch: 0.9, distance: 26 });", "wait": 3, "shot": "d-above" },
+  { "js": "I.set({ hour: 21.5, at: [4, 16], face: 3.1, yaw: 0.2, pitch: 0.25, distance: 8 });", "wait": 6, "shot": "d-night" }
+]

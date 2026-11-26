@@ -9,7 +9,7 @@ Date: 2026-11-17
 macOS 27.0.1, Apple M4, Google Chrome 157 headless through the film host;
 WebGL (ANGLE Metal, disjoint timer query) and WebGPU (apple / metal-3,
 timestamps). Evidence (outside the repository): `EV` =
-`/Users/yaowei/Documents/ZhudaGameCenter/audits/underwater-route-2026-11-17/`.
+`<workspace>/audits/underwater-route-2026-11-17/`.
 
 ## Checks
 

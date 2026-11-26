@@ -1,0 +1,1332 @@
+{
+ "errors": [],
+ "failed": "",
+ "renderer": {
+  "webgl": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+  "webgpu": true,
+  "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/158.0.0.0 Safari/537.36",
+  "dpr": 1
+ },
+ "final": {
+  "ready": true,
+  "state": {
+   "type": "sheer20",
+   "color": 1841694,
+   "bottom": "houndstooth",
+   "tears": [
+    0,
+    0
+   ],
+   "frames": 2595,
+   "clothMs": 3.602,
+   "pullMs": 0.124,
+   "amount": 0,
+   "inside": 16,
+   "held": null,
+   "rows": 215,
+   "around": 144,
+   "renderer": "webgl",
+   "quality": 3,
+   "yaw": -0.4,
+   "pitch": 0.052,
+   "zoom": 0.7,
+   "cloth": {
+    "maxStretch": 0.114,
+    "inside": 16,
+    "dropped": 16
+   }
+  },
+  "rendererErrors": []
+ },
+ "log": [
+  {
+   "shot": "type-ultra8",
+   "seconds": 4.728,
+   "state": {
+    "ready": true,
+    "state": {
+     "type": "ultra8",
+     "color": 11897460,
+     "bottom": "mini",
+     "tears": [
+      0,
+      0
+     ],
+     "frames": 130,
+     "clothMs": 4.785,
+     "pullMs": 0.003,
+     "amount": 0,
+     "inside": 13,
+     "held": null,
+     "rows": 215,
+     "around": 144,
+     "renderer": "webgl",
+     "quality": 3,
+     "yaw": 0,
+     "pitch": 0.052,
+     "zoom": 0.52,
+     "cloth": {
+      "maxStretch": 0.04,
+      "inside": 13,
+      "dropped": 16
+     }
+    },
+    "rendererErrors": []
+   }
+  },
+  {
+   "shot": "type-sheer20",
+   "seconds": 6.534,
+   "state": {
+    "ready": true,
+    "state": {
+     "type": "sheer20",
+     "color": 1841694,
+     "bottom": "mini",
+     "tears": [
+      0,
+      0
+     ],
+     "frames": 182,
+     "clothMs": 4.798,
+     "pullMs": 0.004,
+     "amount": 0,
+     "inside": 13,
+     "held": null,
+     "rows": 215,
+     "around": 144,
+     "renderer": "webgl",
+     "quality": 3,
+     "yaw": 0,
+     "pitch": 0.052,
+     "zoom": 0.52,
+     "cloth": {
+      "maxStretch": 0.04,
+      "inside": 13,
+      "dropped": 16
+     }
+    },
+    "rendererErrors": []
+   }
+  },
+  {
+   "shot": "type-semi40",
+   "seconds": 8.32,
+   "state": {
+    "ready": true,
+    "state": {
+     "type": "semi40",
+     "color": 1841694,
+     "bottom": "mini",
+     "tears": [
+      0,
+      0
+     ],
+     "frames": 232,
+     "clothMs": 4.781,
+     "pullMs": 0.005,
+     "amount": 0,
+     "inside": 13,
+     "held": null,
+     "rows": 215,
+     "around": 144,
+     "renderer": "webgl",
+     "quality": 3,
+     "yaw": 0,
+     "pitch": 0.052,
+     "zoom": 0.52,
+     "cloth": {
+      "maxStretch": 0.04,
+      "inside": 13,
+      "dropped": 16
+     }
+    },
+    "rendererErrors": []
+   }
+  },
+  {
+   "shot": "type-opaque80",
+   "seconds": 10.103,
+   "state": {
+    "ready": true,
+    "state": {
+     "type": "opaque80",
+     "color": 1841694,
+     "bottom": "mini",
+     "tears": [
+      0,
+      0
+     ],
+     "frames": 283,
+     "clothMs": 4.785,
+     "pullMs": 0.005,
+     "amount": 0,
+     "inside": 13,
+     "held": null,
+     "rows": 215,
+     "around": 144,
+     "renderer": "webgl",
+     "quality": 3,
+     "yaw": 0,
+     "pitch": 0.052,
+     "zoom": 0.52,
+     "cloth": {
+      "maxStretch": 0.04,
+      "inside": 13,
+      "dropped": 16
+     }
+    },
+    "rendererErrors": []
+   }
+  },
+  {
+   "shot": "type-thick120",
+   "seconds": 11.901,
+   "state": {
+    "ready": true,
+    "state": {
+     "type": "thick120",
+     "color": 1841694,
+     "bottom": "mini",
+     "tears": [
+      0,
+      0
+     ],
+     "frames": 334,
+     "clothMs": 4.784,
+     "pullMs": 0.006,
+     "amount": 0,
+     "inside": 13,
+     "held": null,
+     "rows": 215,
+     "around": 144,
+     "renderer": "webgl",
+     "quality": 3,
+     "yaw": 0,
+     "pitch": 0.052,
+     "zoom": 0.52,
+     "cloth": {
+      "maxStretch": 0.04,
+      "inside": 13,
+      "dropped": 16
+     }
+    },
+    "rendererErrors": []
+   }
+  },
+  {
+   "shot": "type-glossy15",
+   "seconds": 13.693,
+   "state": {
+    "ready": true,
+    "state": {
+     "type": "glossy15",
+     "color": 11897460,
+     "bottom": "mini",
+     "tears": [
+      0,
+      0
+     ],
+     "frames": 386,
+     "clothMs": 4.863,
+     "pullMs": 0.005,
+     "amount": 0,
+     "inside": 13,
+     "held": null,
+     "rows": 215,
+     "around": 144,
+     "renderer": "webgl",
+     "quality": 3,
+     "yaw": 0,
+     "pitch": 0.052,
+     "zoom": 0.52,
+     "cloth": {
+      "maxStretch": 0.04,
+      "inside": 13,
+      "dropped": 16
+     }
+    },
+    "rendererErrors": []
+   }
+  },
+  {
+   "shot": "type-seam15",
+   "seconds": 15.486,
+   "state": {
+    "ready": true,
+    "state": {
+     "type": "seam15",
+     "color": 1841694,
+     "bottom": "mini",
+     "tears": [
+      0,
+      0
+     ],
+     "frames": 437,
+     "clothMs": 4.894,
+     "pullMs": 0.005,
+     "amount": 0,
+     "inside": 13,
+     "held": null,
+     "rows": 215,
+     "around": 144,
+     "renderer": "webgl",
+     "quality": 3,
+     "yaw": 0,
+     "pitch": 0.052,
+     "zoom": 0.52,
+     "cloth": {
+      "maxStretch": 0.04,
+      "inside": 13,
+      "dropped": 16
+     }
+    },
+    "rendererErrors": []
+   }
+  },
+  {
+   "shot": "type-lacetop",
+   "seconds": 17.273,
+   "state": {
+    "ready": true,
+    "state": {
+     "type": "lacetop",
+     "color": 1841694,
+     "bottom": "mini",
+     "tears": [
+      0,
+      0
+     ],
+     "frames": 488,
+     "clothMs": 4.907,
+     "pullMs": 0.005,
+     "amount": 0,
+     "inside": 13,
+     "held": null,
+     "rows": 215,
+     "around": 144,
+     "renderer": "webgl",
+     "quality": 3,
+     "yaw": 0,
+     "pitch": 0.052,
+     "zoom": 0.52,
+     "cloth": {
+      "maxStretch": 0.04,
+      "inside": 13,
+      "dropped": 16
+     }
+    },
+    "rendererErrors": []
+   }
+  },
+  {
+   "shot": "type-garter",
+   "seconds": 19.07,
+   "state": {
+    "ready": true,
+    "state": {
+     "type": "garter",
+     "color": 1841694,
+     "bottom": "mini",
+     "tears": [
+      0,
+      0
+     ],
+     "frames": 539,
+     "clothMs": 4.892,
+     "pullMs": 0.005,
+     "amount": 0,
+     "inside": 13,
+     "held": null,
+     "rows": 215,
+     "around": 144,
+     "renderer": "webgl",
+     "quality": 3,
+     "yaw": 0,
+     "pitch": 0.052,
+     "zoom": 0.52,
+     "cloth": {
+      "maxStretch": 0.04,
+      "inside": 13,
+      "dropped": 16
+     }
+    },
+    "rendererErrors": []
+   }
+  },
+  {
+   "shot": "type-laceTights",
+   "seconds": 20.868,
+   "state": {
+    "ready": true,
+    "state": {
+     "type": "laceTights",
+     "color": 12171452,
+     "bottom": "mini",
+     "tears": [
+      0,
+      0
+     ],
+     "frames": 590,
+     "clothMs": 4.874,
+     "pullMs": 0.005,
+     "amount": 0,
+     "inside": 13,
+     "held": null,
+     "rows": 215,
+     "around": 144,
+     "renderer": "webgl",
+     "quality": 3,
+     "yaw": 0,
+     "pitch": 0.052,
+     "zoom": 0.52,
+     "cloth": {
+      "maxStretch": 0.04,
+      "inside": 13,
+      "dropped": 16
+     }
+    },
+    "rendererErrors": []
+   }
+  },
+  {
+   "shot": "type-micronet",
+   "seconds": 22.674,
+   "state": {
+    "ready": true,
+    "state": {
+     "type": "micronet",
+     "color": 1841694,
+     "bottom": "mini",
+     "tears": [
+      0,
+      0
+     ],
+     "frames": 641,
+     "clothMs": 4.854,
+     "pullMs": 0.005,
+     "amount": 0,
+     "inside": 13,
+     "held": null,
+     "rows": 215,
+     "around": 144,
+     "renderer": "webgl",
+     "quality": 3,
+     "yaw": 0,
+     "pitch": 0.052,
+     "zoom": 0.52,
+     "cloth": {
+      "maxStretch": 0.04,
+      "inside": 13,
+      "dropped": 16
+     }
+    },
+    "rendererErrors": []
+   }
+  },
+  {
+   "shot": "type-fishnet",
+   "seconds": 24.474,
+   "state": {
+    "ready": true,
+    "state": {
+     "type": "fishnet",
+     "color": 1841694,
+     "bottom": "mini",
+     "tears": [
+      0,
+      0
+     ],
+     "frames": 692,
+     "clothMs": 4.84,
+     "pullMs": 0.005,
+     "amount": 0,
+     "inside": 13,
+     "held": null,
+     "rows": 215,
+     "around": 144,
+     "renderer": "webgl",
+     "quality": 3,
+     "yaw": 0,
+     "pitch": 0.052,
+     "zoom": 0.52,
+     "cloth": {
+      "maxStretch": 0.04,
+      "inside": 13,
+      "dropped": 16
+     }
+    },
+    "rendererErrors": []
+   }
+  },
+  {
+   "shot": "type-whalenet",
+   "seconds": 26.315,
+   "state": {
+    "ready": true,
+    "state": {
+     "type": "whalenet",
+     "color": 1841694,
+     "bottom": "mini",
+     "tears": [
+      0,
+      0
+     ],
+     "frames": 746,
+     "clothMs": 4.83,
+     "pullMs": 0.005,
+     "amount": 0,
+     "inside": 13,
+     "held": null,
+     "rows": 215,
+     "around": 144,
+     "renderer": "webgl",
+     "quality": 3,
+     "yaw": 0,
+     "pitch": 0.052,
+     "zoom": 0.52,
+     "cloth": {
+      "maxStretch": 0.04,
+      "inside": 13,
+      "dropped": 16
+     }
+    },
+    "rendererErrors": []
+   }
+  },
+  {
+   "shot": "type-rib",
+   "seconds": 28.308,
+   "state": {
+    "ready": true,
+    "state": {
+     "type": "rib",
+     "color": 6973552,
+     "bottom": "mini",
+     "tears": [
+      0,
+      0
+     ],
+     "frames": 802,
+     "clothMs": 4.837,
+     "pullMs": 0.005,
+     "amount": 0,
+     "inside": 13,
+     "held": null,
+     "rows": 215,
+     "around": 144,
+     "renderer": "webgl",
+     "quality": 3,
+     "yaw": 0,
+     "pitch": 0.052,
+     "zoom": 0.52,
+     "cloth": {
+      "maxStretch": 0.04,
+      "inside": 13,
+      "dropped": 16
+     }
+    },
+    "rendererErrors": []
+   }
+  },
+  {
+   "shot": "type-dots",
+   "seconds": 30.291,
+   "state": {
+    "ready": true,
+    "state": {
+     "type": "dots",
+     "color": 1841694,
+     "bottom": "mini",
+     "tears": [
+      0,
+      0
+     ],
+     "frames": 856,
+     "clothMs": 4.84,
+     "pullMs": 0.005,
+     "amount": 0,
+     "inside": 13,
+     "held": null,
+     "rows": 215,
+     "around": 144,
+     "renderer": "webgl",
+     "quality": 3,
+     "yaw": 0,
+     "pitch": 0.052,
+     "zoom": 0.52,
+     "cloth": {
+      "maxStretch": 0.04,
+      "inside": 13,
+      "dropped": 16
+     }
+    },
+    "rendererErrors": []
+   }
+  },
+  {
+   "shot": "bottom-mini",
+   "seconds": 32.44,
+   "state": {
+    "ready": true,
+    "state": {
+     "type": "sheer20",
+     "color": 1841694,
+     "bottom": "mini",
+     "tears": [
+      0,
+      0
+     ],
+     "frames": 921,
+     "clothMs": 4.833,
+     "pullMs": 0.005,
+     "amount": 0,
+     "inside": 13,
+     "held": null,
+     "rows": 215,
+     "around": 144,
+     "renderer": "webgl",
+     "quality": 3,
+     "yaw": 0,
+     "pitch": 0.052,
+     "zoom": 1,
+     "cloth": {
+      "maxStretch": 0.04,
+      "inside": 13,
+      "dropped": 16
+     }
+    },
+    "rendererErrors": []
+   }
+  },
+  {
+   "shot": "bottom-pleated",
+   "seconds": 34.631,
+   "state": {
+    "ready": true,
+    "state": {
+     "type": "sheer20",
+     "color": 1841694,
+     "bottom": "pleated",
+     "tears": [
+      0,
+      0
+     ],
+     "frames": 986,
+     "clothMs": 4.838,
+     "pullMs": 0.005,
+     "amount": 0,
+     "inside": 16,
+     "held": null,
+     "rows": 215,
+     "around": 144,
+     "renderer": "webgl",
+     "quality": 3,
+     "yaw": 0,
+     "pitch": 0.052,
+     "zoom": 1,
+     "cloth": {
+      "maxStretch": 0.081,
+      "inside": 16,
+      "dropped": 16
+     }
+    },
+    "rendererErrors": []
+   }
+  },
+  {
+   "shot": "bottom-tennis",
+   "seconds": 36.672,
+   "state": {
+    "ready": true,
+    "state": {
+     "type": "sheer20",
+     "color": 1841694,
+     "bottom": "tennis",
+     "tears": [
+      0,
+      0
+     ],
+     "frames": 1049,
+     "clothMs": 4.812,
+     "pullMs": 0.005,
+     "amount": 0,
+     "inside": 16,
+     "held": null,
+     "rows": 215,
+     "around": 144,
+     "renderer": "webgl",
+     "quality": 3,
+     "yaw": 0,
+     "pitch": 0.052,
+     "zoom": 1,
+     "cloth": {
+      "maxStretch": 0.094,
+      "inside": 16,
+      "dropped": 16
+     }
+    },
+    "rendererErrors": []
+   }
+  },
+  {
+   "shot": "bottom-houndstooth",
+   "seconds": 38.906,
+   "state": {
+    "ready": true,
+    "state": {
+     "type": "sheer20",
+     "color": 1841694,
+     "bottom": "houndstooth",
+     "tears": [
+      0,
+      0
+     ],
+     "frames": 1112,
+     "clothMs": 4.849,
+     "pullMs": 0.005,
+     "amount": 0,
+     "inside": 16,
+     "held": null,
+     "rows": 215,
+     "around": 144,
+     "renderer": "webgl",
+     "quality": 3,
+     "yaw": 0,
+     "pitch": 0.052,
+     "zoom": 1,
+     "cloth": {
+      "maxStretch": 0.114,
+      "inside": 16,
+      "dropped": 16
+     }
+    },
+    "rendererErrors": []
+   }
+  },
+  {
+   "shot": "bottom-midiPleats",
+   "seconds": 41.467,
+   "state": {
+    "ready": true,
+    "state": {
+     "type": "sheer20",
+     "color": 1841694,
+     "bottom": "midiPleats",
+     "tears": [
+      0,
+      0
+     ],
+     "frames": 1176,
+     "clothMs": 4.964,
+     "pullMs": 0.004,
+     "amount": 0,
+     "inside": 11,
+     "held": null,
+     "rows": 215,
+     "around": 144,
+     "renderer": "webgl",
+     "quality": 3,
+     "yaw": 0,
+     "pitch": 0.052,
+     "zoom": 1,
+     "cloth": {
+      "maxStretch": 0.282,
+      "inside": 11,
+      "dropped": 16
+     }
+    },
+    "rendererErrors": []
+   }
+  },
+  {
+   "shot": "bottom-pencil",
+   "seconds": 43.884,
+   "state": {
+    "ready": true,
+    "state": {
+     "type": "sheer20",
+     "color": 1841694,
+     "bottom": "pencil",
+     "tears": [
+      0,
+      0
+     ],
+     "frames": 1239,
+     "clothMs": 5.032,
+     "pullMs": 0.004,
+     "amount": 0,
+     "inside": 7,
+     "held": null,
+     "rows": 215,
+     "around": 144,
+     "renderer": "webgl",
+     "quality": 3,
+     "yaw": 0,
+     "pitch": 0.052,
+     "zoom": 1,
+     "cloth": {
+      "maxStretch": 0.14,
+      "inside": 7,
+      "dropped": 16
+     }
+    },
+    "rendererErrors": []
+   }
+  },
+  {
+   "shot": "bottom-midi",
+   "seconds": 46.559,
+   "state": {
+    "ready": true,
+    "state": {
+     "type": "sheer20",
+     "color": 1841694,
+     "bottom": "midi",
+     "tears": [
+      0,
+      0
+     ],
+     "frames": 1302,
+     "clothMs": 5.16,
+     "pullMs": 0.004,
+     "amount": 0,
+     "inside": 13,
+     "held": null,
+     "rows": 215,
+     "around": 144,
+     "renderer": "webgl",
+     "quality": 3,
+     "yaw": 0,
+     "pitch": 0.052,
+     "zoom": 1,
+     "cloth": {
+      "maxStretch": 0.14,
+      "inside": 13,
+      "dropped": 16
+     }
+    },
+    "rendererErrors": []
+   }
+  },
+  {
+   "shot": "bottom-denimShorts",
+   "seconds": 47.628,
+   "state": {
+    "ready": true,
+    "state": {
+     "type": "sheer20",
+     "color": 1841694,
+     "bottom": "denimShorts",
+     "tears": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "frames": 1364,
+     "clothMs": 4.926,
+     "pullMs": 0.004,
+     "amount": 0,
+     "inside": 0,
+     "held": null,
+     "rows": 215,
+     "around": 144,
+     "renderer": "webgl",
+     "quality": 3,
+     "yaw": 0,
+     "pitch": 0.052,
+     "zoom": 1,
+     "cloth": null
+    },
+    "rendererErrors": []
+   }
+  },
+  {
+   "shot": "bottom-rippedShorts",
+   "seconds": 48.674,
+   "state": {
+    "ready": true,
+    "state": {
+     "type": "sheer20",
+     "color": 1841694,
+     "bottom": "rippedShorts",
+     "tears": [
+      0,
+      0,
+      1,
+      2
+     ],
+     "frames": 1426,
+     "clothMs": 4.712,
+     "pullMs": 0.004,
+     "amount": 0,
+     "inside": 0,
+     "held": null,
+     "rows": 215,
+     "around": 144,
+     "renderer": "webgl",
+     "quality": 3,
+     "yaw": 0,
+     "pitch": 0.052,
+     "zoom": 1,
+     "cloth": null
+    },
+    "rendererErrors": []
+   }
+  },
+  {
+   "shot": "bottom-woolShorts",
+   "seconds": 49.728,
+   "state": {
+    "ready": true,
+    "state": {
+     "type": "sheer20",
+     "color": 1841694,
+     "bottom": "woolShorts",
+     "tears": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "frames": 1490,
+     "clothMs": 4.509,
+     "pullMs": 0.004,
+     "amount": 0,
+     "inside": 0,
+     "held": null,
+     "rows": 215,
+     "around": 144,
+     "renderer": "webgl",
+     "quality": 3,
+     "yaw": 0,
+     "pitch": 0.052,
+     "zoom": 1,
+     "cloth": null
+    },
+    "rendererErrors": []
+   }
+  },
+  {
+   "shot": "bottom-jeans",
+   "seconds": 50.78,
+   "state": {
+    "ready": true,
+    "state": {
+     "type": "sheer20",
+     "color": 1841694,
+     "bottom": "jeans",
+     "tears": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "frames": 1553,
+     "clothMs": 4.326,
+     "pullMs": 0.004,
+     "amount": 0,
+     "inside": 0,
+     "held": null,
+     "rows": 215,
+     "around": 144,
+     "renderer": "webgl",
+     "quality": 3,
+     "yaw": 0,
+     "pitch": 0.052,
+     "zoom": 1,
+     "cloth": null
+    },
+    "rendererErrors": []
+   }
+  },
+  {
+   "shot": "bottom-slacks",
+   "seconds": 51.824,
+   "state": {
+    "ready": true,
+    "state": {
+     "type": "sheer20",
+     "color": 1841694,
+     "bottom": "slacks",
+     "tears": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "frames": 1615,
+     "clothMs": 4.16,
+     "pullMs": 0.004,
+     "amount": 0,
+     "inside": 0,
+     "held": null,
+     "rows": 215,
+     "around": 144,
+     "renderer": "webgl",
+     "quality": 3,
+     "yaw": 0,
+     "pitch": 0.052,
+     "zoom": 1,
+     "cloth": null
+    },
+    "rendererErrors": []
+   }
+  },
+  {
+   "shot": "bottom-none",
+   "seconds": 52.849,
+   "state": {
+    "ready": true,
+    "state": {
+     "type": "sheer20",
+     "color": 1841694,
+     "bottom": "none",
+     "tears": [
+      0,
+      0
+     ],
+     "frames": 1677,
+     "clothMs": 4.006,
+     "pullMs": 0.004,
+     "amount": 0,
+     "inside": 0,
+     "held": null,
+     "rows": 215,
+     "around": 144,
+     "renderer": "webgl",
+     "quality": 3,
+     "yaw": 0,
+     "pitch": 0.052,
+     "zoom": 1,
+     "cloth": null
+    },
+    "rendererErrors": []
+   }
+  },
+  {
+   "tore": "jeans, left thigh",
+   "tears": [
+    0,
+    0,
+    1,
+    0
+   ]
+  },
+  {
+   "shot": "jeans-torn",
+   "seconds": 55.636,
+   "state": {
+    "ready": true,
+    "state": {
+     "type": "fishnet",
+     "color": 1841694,
+     "bottom": "jeans",
+     "tears": [
+      0,
+      0,
+      1,
+      0
+     ],
+     "frames": 1844,
+     "clothMs": 3.644,
+     "pullMs": 0.104,
+     "amount": 0,
+     "inside": 0,
+     "held": null,
+     "rows": 215,
+     "around": 144,
+     "renderer": "webgl",
+     "quality": 3,
+     "yaw": 0,
+     "pitch": 0.052,
+     "zoom": 0.52,
+     "cloth": null
+    },
+    "rendererErrors": []
+   }
+  },
+  {
+   "tore": "through the hole",
+   "tears": [
+    1,
+    0,
+    1,
+    0
+   ]
+  },
+  {
+   "throughTheHole": {
+    "before": [
+     0,
+     0,
+     1,
+     0
+    ],
+    "after": [
+     1,
+     0,
+     1,
+     0
+    ],
+    "stockingTore": true
+   }
+  },
+  {
+   "shot": "jeans-fishnet-through-hole",
+   "seconds": 57.572,
+   "state": {
+    "ready": true,
+    "state": {
+     "type": "fishnet",
+     "color": 1841694,
+     "bottom": "jeans",
+     "tears": [
+      1,
+      0,
+      1,
+      0
+     ],
+     "frames": 1960,
+     "clothMs": 3.428,
+     "pullMs": 0.162,
+     "amount": 0,
+     "inside": 0,
+     "held": null,
+     "rows": 215,
+     "around": 144,
+     "renderer": "webgl",
+     "quality": 3,
+     "yaw": 0,
+     "pitch": 0.052,
+     "zoom": 0.52,
+     "cloth": null
+    },
+    "rendererErrors": []
+   }
+  },
+  {
+   "shot": "ripped-shorts",
+   "seconds": 58.642,
+   "state": {
+    "ready": true,
+    "state": {
+     "type": "opaque80",
+     "color": 1841694,
+     "bottom": "rippedShorts",
+     "tears": [
+      0,
+      0,
+      1,
+      2
+     ],
+     "frames": 2025,
+     "clothMs": 3.318,
+     "pullMs": 0.157,
+     "amount": 0,
+     "inside": 0,
+     "held": null,
+     "rows": 215,
+     "around": 144,
+     "renderer": "webgl",
+     "quality": 3,
+     "yaw": 0,
+     "pitch": 0.052,
+     "zoom": 0.52,
+     "cloth": null
+    },
+    "rendererErrors": []
+   }
+  },
+  {
+   "shot": "skirt-lifted",
+   "seconds": 64.05,
+   "state": {
+    "ready": true,
+    "state": {
+     "type": "sheer20",
+     "color": 1841694,
+     "bottom": "midi",
+     "tears": [
+      0,
+      0
+     ],
+     "frames": 2253,
+     "clothMs": 3.719,
+     "pullMs": 0.142,
+     "amount": 0,
+     "inside": 13,
+     "held": "skirt",
+     "rows": 215,
+     "around": 144,
+     "renderer": "webgl",
+     "quality": 3,
+     "yaw": 0,
+     "pitch": 0.052,
+     "zoom": 1,
+     "cloth": {
+      "maxStretch": 0.142,
+      "inside": 13,
+      "dropped": 16
+     }
+    },
+    "rendererErrors": []
+   }
+  },
+  {
+   "lift": {
+    "held": "skirt",
+    "hemBefore": {
+     "y": 0.28541787372281147,
+     "x": 0.0011884175182785817
+    },
+    "hemHeld": {
+     "y": 0.43472555900613463,
+     "x": 0.052818033019320865
+    },
+    "cloth": {
+     "maxStretch": 0.142,
+     "inside": 13,
+     "dropped": 16
+    }
+   }
+  },
+  {
+   "hemAfterRelease": {
+    "y": 0.28566181566566223,
+    "x": -0.001474107843629716
+   }
+  },
+  {
+   "shot": "seam-from-behind",
+   "seconds": 66.303,
+   "state": {
+    "ready": true,
+    "state": {
+     "type": "seam15",
+     "color": 1841694,
+     "bottom": "none",
+     "tears": [
+      0,
+      0
+     ],
+     "frames": 2388,
+     "clothMs": 3.731,
+     "pullMs": 0.135,
+     "amount": 0,
+     "inside": 0,
+     "held": null,
+     "rows": 215,
+     "around": 144,
+     "renderer": "webgl",
+     "quality": 3,
+     "yaw": 2.985,
+     "pitch": 0.052,
+     "zoom": 0.8,
+     "cloth": null
+    },
+    "rendererErrors": []
+   }
+  },
+  {
+   "shot": "garter",
+   "seconds": 67.361,
+   "state": {
+    "ready": true,
+    "state": {
+     "type": "garter",
+     "color": 1841694,
+     "bottom": "none",
+     "tears": [
+      0,
+      0
+     ],
+     "frames": 2452,
+     "clothMs": 3.634,
+     "pullMs": 0.131,
+     "amount": 0,
+     "inside": 0,
+     "held": null,
+     "rows": 215,
+     "around": 144,
+     "renderer": "webgl",
+     "quality": 3,
+     "yaw": 0.35,
+     "pitch": 0.052,
+     "zoom": 0.52,
+     "cloth": null
+    },
+    "rendererErrors": []
+   }
+  },
+  {
+   "shot": "lace-tights-shorts",
+   "seconds": 68.419,
+   "state": {
+    "ready": true,
+    "state": {
+     "type": "laceTights",
+     "color": 6973552,
+     "bottom": "woolShorts",
+     "tears": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "frames": 2515,
+     "clothMs": 3.543,
+     "pullMs": 0.128,
+     "amount": 0,
+     "inside": 0,
+     "held": null,
+     "rows": 215,
+     "around": 144,
+     "renderer": "webgl",
+     "quality": 3,
+     "yaw": 0,
+     "pitch": 0.052,
+     "zoom": 0.8,
+     "cloth": null
+    },
+    "rendererErrors": []
+   }
+  },
+  {
+   "shot": "houndstooth",
+   "seconds": 70.904,
+   "state": {
+    "ready": true,
+    "state": {
+     "type": "sheer20",
+     "color": 1841694,
+     "bottom": "houndstooth",
+     "tears": [
+      0,
+      0
+     ],
+     "frames": 2595,
+     "clothMs": 3.602,
+     "pullMs": 0.124,
+     "amount": 0,
+     "inside": 16,
+     "held": null,
+     "rows": 215,
+     "around": 144,
+     "renderer": "webgl",
+     "quality": 3,
+     "yaw": -0.4,
+     "pitch": 0.052,
+     "zoom": 0.7,
+     "cloth": {
+      "maxStretch": 0.114,
+      "inside": 16,
+      "dropped": 16
+     }
+    },
+    "rendererErrors": []
+   }
+  }
+ ]
+}

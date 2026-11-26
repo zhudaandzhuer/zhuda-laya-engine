@@ -18,6 +18,12 @@ export interface Laya342GltfResourceOptions {
 /** Version-pinned importer repairs. Applied to one owned glTFResource, never to
  * global prototypes. The native Animator remains the sole pose evaluator. */
 export declare function prepareLaya342GltfResource(resource: any, runtime: any, options?: Laya342GltfResourceOptions): void;
+/** LayaAir 3.4.2's glTF reader files every keyframe node of a clip under its full path as the
+ * path string itself; its `.lani` reader files the node. `Animator.crossFade` reads
+ * `_indexInList` from that entry to pair the two clips' nodes, finds none on a string, and so
+ * blends a glTF model towards its bind pose and back instead of from one clip to the other.
+ * File the nodes. Returns how many entries were corrected. */
+export declare function indexLaya342ClipNodes(clip: any): number;
 /** Native MeshRenderer cloning does not consistently preserve authored weights.
  * Copy values through the public setter to retain independent dirty tracking. */
 export declare function copyLaya342MorphWeights(source: any, target: any, runtime: any): void;

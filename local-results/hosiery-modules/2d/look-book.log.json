@@ -1,0 +1,767 @@
+{
+ "errors": [],
+ "failed": "",
+ "renderer": {
+  "webgl": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+  "webgpu": true,
+  "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/158.0.0.0 Safari/537.36",
+  "dpr": 1
+ },
+ "final": {
+  "ready": true,
+  "state": {
+   "held": null,
+   "tears": [],
+   "mix": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "pulls": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "sites": 10,
+   "stage": [
+    600,
+    900
+   ],
+   "renderer": "webgl",
+   "spine": {
+    "physicsUpdate": 2,
+    "useFastRender": false,
+    "premultipliedAlpha": false,
+    "skeletonOffset": [
+     -33.33333206176758,
+     -30
+    ],
+    "bounds": {
+     "x": -512,
+     "y": 0,
+     "width": 1024,
+     "height": 1536
+    },
+    "bones": 48,
+    "slots": 24,
+    "ikConstraints": 9,
+    "physicsConstraints": 27
+   },
+   "frames": 1278
+  },
+  "rendererErrors": []
+ },
+ "log": [
+  {
+   "shot": "as-worn",
+   "seconds": 4.195,
+   "state": {
+    "ready": true,
+    "state": {
+     "held": null,
+     "tears": [],
+     "mix": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "pulls": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "sites": 10,
+     "stage": [
+      600,
+      900
+     ],
+     "renderer": "webgl",
+     "spine": {
+      "physicsUpdate": 2,
+      "useFastRender": false,
+      "premultipliedAlpha": false,
+      "skeletonOffset": [
+       -33.33333206176758,
+       -30
+      ],
+      "bounds": {
+       "x": -512,
+       "y": 0,
+       "width": 1024,
+       "height": 1536
+      },
+      "bones": 48,
+      "slots": 24,
+      "ikConstraints": 9,
+      "physicsConstraints": 27
+     },
+     "frames": 232
+    },
+    "rendererErrors": []
+   }
+  },
+  {
+   "shot": "stretched",
+   "seconds": 4.948,
+   "state": {
+    "ready": true,
+    "state": {
+     "held": "leg",
+     "tears": [],
+     "mix": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "pulls": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      55.4,
+      0,
+      0
+     ],
+     "sites": 10,
+     "stage": [
+      600,
+      900
+     ],
+     "renderer": "webgl",
+     "spine": {
+      "physicsUpdate": 2,
+      "useFastRender": false,
+      "premultipliedAlpha": false,
+      "skeletonOffset": [
+       -33.33333206176758,
+       -30
+      ],
+      "bounds": {
+       "x": -512,
+       "y": 0,
+       "width": 1024,
+       "height": 1536
+      },
+      "bones": 48,
+      "slots": 24,
+      "ikConstraints": 9,
+      "physicsConstraints": 27
+     },
+     "frames": 277
+    },
+    "rendererErrors": []
+   }
+  },
+  {
+   "stretch": {
+    "held": "leg",
+    "farthestPull": 55.4,
+    "afterRelease": 0.1,
+    "tears": []
+   }
+  },
+  {
+   "pulled": "L_knee",
+   "tears": [
+    "L_knee:1"
+   ]
+  },
+  {
+   "pulled": "L_knee",
+   "tears": [
+    "L_knee:2"
+   ]
+  },
+  {
+   "pulled": "R_calf",
+   "tears": [
+    "L_knee:2",
+    "R_calf:1"
+   ]
+  },
+  {
+   "shot": "torn",
+   "seconds": 10.509,
+   "state": {
+    "ready": true,
+    "state": {
+     "held": null,
+     "tears": [
+      "L_knee:2",
+      "R_calf:1"
+     ],
+     "mix": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "pulls": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "sites": 10,
+     "stage": [
+      600,
+      900
+     ],
+     "renderer": "webgl",
+     "spine": {
+      "physicsUpdate": 2,
+      "useFastRender": false,
+      "premultipliedAlpha": false,
+      "skeletonOffset": [
+       -33.33333206176758,
+       -30
+      ],
+      "bounds": {
+       "x": -512,
+       "y": 0,
+       "width": 1024,
+       "height": 1536
+      },
+      "bones": 48,
+      "slots": 24,
+      "ikConstraints": 9,
+      "physicsConstraints": 27
+     },
+     "frames": 611
+    },
+    "rendererErrors": []
+   }
+  },
+  {
+   "shot": "skirt-lifted",
+   "seconds": 16.864,
+   "state": {
+    "ready": true,
+    "state": {
+     "held": "skirt",
+     "tears": [
+      "L_knee:2",
+      "R_calf:1"
+     ],
+     "mix": [
+      0,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      0
+     ],
+     "pulls": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "sites": 10,
+     "stage": [
+      600,
+      900
+     ],
+     "renderer": "webgl",
+     "spine": {
+      "physicsUpdate": 2,
+      "useFastRender": false,
+      "premultipliedAlpha": false,
+      "skeletonOffset": [
+       -33.33333206176758,
+       -30
+      ],
+      "bounds": {
+       "x": -512,
+       "y": 0,
+       "width": 1024,
+       "height": 1536
+      },
+      "bones": 48,
+      "slots": 24,
+      "ikConstraints": 9,
+      "physicsConstraints": 27
+     },
+     "frames": 992
+    },
+    "rendererErrors": []
+   }
+  },
+  {
+   "lift": {
+    "held": "skirt",
+    "mix": [
+     0,
+     0,
+     0,
+     0,
+     1,
+     0,
+     0,
+     0,
+     0
+    ],
+    "idleRange": {
+     "x": [
+      498,
+      525
+     ],
+     "y": [
+      565,
+      565
+     ]
+    },
+    "middleHemBefore": [
+     515,
+     565
+    ],
+    "middleHemHeld": [
+     559,
+     277
+    ],
+    "sideHemsMoved": [
+     11,
+     23
+    ]
+   }
+  },
+  {
+   "release": {
+    "backWithinSeconds": 0.7,
+    "firstSecond": [
+     [
+      638,
+      396
+     ],
+     [
+      622,
+      497
+     ],
+     [
+      580,
+      543
+     ],
+     [
+      555,
+      557
+     ],
+     [
+      540,
+      562
+     ],
+     [
+      532,
+      564
+     ],
+     [
+      527,
+      564
+     ],
+     [
+      525,
+      565
+     ],
+     [
+      525,
+      565
+     ],
+     [
+      525,
+      565
+     ]
+    ],
+    "mix": [
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "shot": "skirt-settled",
+   "seconds": 20.03,
+   "state": {
+    "ready": true,
+    "state": {
+     "held": null,
+     "tears": [
+      "L_knee:2",
+      "R_calf:1"
+     ],
+     "mix": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "pulls": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "sites": 10,
+     "stage": [
+      600,
+      900
+     ],
+     "renderer": "webgl",
+     "spine": {
+      "physicsUpdate": 2,
+      "useFastRender": false,
+      "premultipliedAlpha": false,
+      "skeletonOffset": [
+       -33.33333206176758,
+       -30
+      ],
+      "bounds": {
+       "x": -512,
+       "y": 0,
+       "width": 1024,
+       "height": 1536
+      },
+      "bones": 48,
+      "slots": 24,
+      "ikConstraints": 9,
+      "physicsConstraints": 27
+     },
+     "frames": 1182
+    },
+    "rendererErrors": []
+   }
+  },
+  {
+   "doubleTap": {
+    "tears": []
+   }
+  },
+  {
+   "shot": "mended",
+   "seconds": 20.647,
+   "state": {
+    "ready": true,
+    "state": {
+     "held": null,
+     "tears": [],
+     "mix": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "pulls": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "sites": 10,
+     "stage": [
+      600,
+      900
+     ],
+     "renderer": "webgl",
+     "spine": {
+      "physicsUpdate": 2,
+      "useFastRender": false,
+      "premultipliedAlpha": false,
+      "skeletonOffset": [
+       -33.33333206176758,
+       -30
+      ],
+      "bounds": {
+       "x": -512,
+       "y": 0,
+       "width": 1024,
+       "height": 1536
+      },
+      "bones": 48,
+      "slots": 24,
+      "ikConstraints": 9,
+      "physicsConstraints": 27
+     },
+     "frames": 1219
+    },
+    "rendererErrors": []
+   }
+  },
+  {
+   "shot": "all-small",
+   "seconds": 21.147,
+   "state": {
+    "ready": true,
+    "state": {
+     "held": null,
+     "tears": [
+      "L_thigh:1",
+      "L_lowthigh:1",
+      "L_knee:1",
+      "L_calf:1",
+      "L_shin:1",
+      "R_thigh:1",
+      "R_lowthigh:1",
+      "R_knee:1",
+      "R_calf:1",
+      "R_shin:1"
+     ],
+     "mix": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "pulls": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "sites": 10,
+     "stage": [
+      600,
+      900
+     ],
+     "renderer": "webgl",
+     "spine": {
+      "physicsUpdate": 2,
+      "useFastRender": false,
+      "premultipliedAlpha": false,
+      "skeletonOffset": [
+       -33.33333206176758,
+       -30
+      ],
+      "bounds": {
+       "x": -512,
+       "y": 0,
+       "width": 1024,
+       "height": 1536
+      },
+      "bones": 48,
+      "slots": 24,
+      "ikConstraints": 9,
+      "physicsConstraints": 27
+     },
+     "frames": 1248
+    },
+    "rendererErrors": []
+   }
+  },
+  {
+   "allTorn": [
+    "L_thigh:1",
+    "L_lowthigh:1",
+    "L_knee:1",
+    "L_calf:1",
+    "L_shin:1",
+    "R_thigh:1",
+    "R_lowthigh:1",
+    "R_knee:1",
+    "R_calf:1",
+    "R_shin:1"
+   ]
+  },
+  {
+   "shot": "all-large",
+   "seconds": 21.645,
+   "state": {
+    "ready": true,
+    "state": {
+     "held": null,
+     "tears": [
+      "L_thigh:2",
+      "L_lowthigh:2",
+      "L_knee:2",
+      "L_calf:2",
+      "L_shin:2",
+      "R_thigh:2",
+      "R_lowthigh:2",
+      "R_knee:2",
+      "R_calf:2",
+      "R_shin:2"
+     ],
+     "mix": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "pulls": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "sites": 10,
+     "stage": [
+      600,
+      900
+     ],
+     "renderer": "webgl",
+     "spine": {
+      "physicsUpdate": 2,
+      "useFastRender": false,
+      "premultipliedAlpha": false,
+      "skeletonOffset": [
+       -33.33333206176758,
+       -30
+      ],
+      "bounds": {
+       "x": -512,
+       "y": 0,
+       "width": 1024,
+       "height": 1536
+      },
+      "bones": 48,
+      "slots": 24,
+      "ikConstraints": 9,
+      "physicsConstraints": 27
+     },
+     "frames": 1278
+    },
+    "rendererErrors": []
+   }
+  },
+  {
+   "allTorn": [
+    "L_thigh:2",
+    "L_lowthigh:2",
+    "L_knee:2",
+    "L_calf:2",
+    "L_shin:2",
+    "R_thigh:2",
+    "R_lowthigh:2",
+    "R_knee:2",
+    "R_calf:2",
+    "R_shin:2"
+   ]
+  },
+  {
+   "spine": {
+    "physicsUpdate": 2,
+    "useFastRender": false,
+    "premultipliedAlpha": false,
+    "skeletonOffset": [
+     -33.33333206176758,
+     -30
+    ],
+    "bounds": {
+     "x": -512,
+     "y": 0,
+     "width": 1024,
+     "height": 1536
+    },
+    "bones": 48,
+    "slots": 24,
+    "ikConstraints": 9,
+    "physicsConstraints": 27
+   },
+   "renderer": "webgl",
+   "inputError": null
+  }
+ ]
+}

@@ -11,6 +11,7 @@ import {
   resolveZhudaGrass,
   validateZhudaGrass,
   zhudaGrassBands,
+  zhudaGrassMeshCount,
   zhudaGrassMeshes,
   zhudaGrassPatchBlades,
   zhudaGrassPatchClumps,
@@ -573,4 +574,22 @@ test('benders are checked by name', () => {
   }));
   assert.match(validateZhudaGrassBenders(many)[0], /at most 4/);
   assert.deepEqual(validateZhudaGrassBenders('x'), ['benders must be an array']);
+});
+
+test('the meshes a field keeps for an eye: by distance over the ground, not by height', () => {
+  const field = { area: { minX: -36, maxX: 36, minZ: -20, maxZ: 22 }, density: 40, distanceM: 70 };
+  // 12 x 8 patches of six metres, all within reach of an eye 18 m outside the field.
+  const far = zhudaGrassMeshCount(field, [0, 40, -38]);
+  assert.deepEqual(far, { patches: 96, meshes: 256 });
+  // The same eye on the ground keeps exactly as much: height is not measured.
+  assert.deepEqual(zhudaGrassMeshCount(field, [0, 1.6, -38]), far);
+  // Without turf a patch is its bands alone; a shorter reach keeps fewer patches.
+  assert.equal(zhudaGrassMeshCount({ ...field, turf: false }, [0, 40, -38]).meshes, 160);
+  const near = zhudaGrassMeshCount({ ...field, distanceM: 30 }, [0, 40, -38]);
+  assert.ok(near.patches < far.patches && near.meshes < far.meshes && near.patches > 0);
+  // Out of reach of the whole field: nothing.
+  assert.deepEqual(zhudaGrassMeshCount(field, [0, 2, -400]), { patches: 0, meshes: 0 });
+  // An eye in the middle has every band of the patch it stands in.
+  const inside = zhudaGrassMeshCount({ ...field, distanceM: 10 }, [0, 1.6, 0]);
+  assert.ok(inside.meshes >= ZHUDA_GRASS_BANDS.length + 1);
 });

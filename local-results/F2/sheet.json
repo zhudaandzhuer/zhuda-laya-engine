@@ -1,0 +1,139 @@
+{
+  "file": "zhuda.glb",
+  "blender": "5.2.2 LTS",
+  "boxMetres": {
+    "min": [
+      -0.4115,
+      -0.9133,
+      -0.0206
+    ],
+    "max": [
+      0.3487,
+      0.4011,
+      1.1375
+    ],
+    "widthX": 0.7602,
+    "depthY": 1.3144,
+    "heightZ": 1.1582
+  },
+  "triangles": 60556,
+  "meshes": [
+    "zhuda"
+  ],
+  "bones": 19,
+  "clips": [
+    "Blow",
+    "Charm1",
+    "Charm2",
+    "Chop",
+    "Flow",
+    "Idle",
+    "Kick",
+    "LookUp",
+    "Punch1",
+    "Punch2",
+    "Punch3",
+    "Punch4",
+    "Raise",
+    "Roll",
+    "Run",
+    "Sit",
+    "Slash1",
+    "Slash2",
+    "Swim",
+    "Walk",
+    "Yawn"
+  ],
+  "materials": {
+    "blade-grip": {
+      "factor": [
+        0.07,
+        0.07,
+        0.1
+      ],
+      "textured": false,
+      "roughness": 0.8,
+      "metallic": 0.0
+    },
+    "blade-guard": {
+      "factor": [
+        0.62,
+        0.48,
+        0.2
+      ],
+      "textured": false,
+      "roughness": 0.4,
+      "metallic": 0.8
+    },
+    "blade-steel": {
+      "factor": [
+        0.82,
+        0.86,
+        0.92
+      ],
+      "textured": false,
+      "roughness": 0.22,
+      "metallic": 0.9
+    },
+    "charm-ink": {
+      "factor": [
+        0.72,
+        0.08,
+        0.06
+      ],
+      "textured": false,
+      "roughness": 0.8,
+      "metallic": 0.0
+    },
+    "charm-paper": {
+      "factor": [
+        0.95,
+        0.82,
+        0.32
+      ],
+      "textured": false,
+      "roughness": 0.9,
+      "metallic": 0.0
+    },
+    "lantern-cap": {
+      "factor": [
+        0.05,
+        0.03,
+        0.02
+      ],
+      "textured": false,
+      "roughness": 0.6,
+      "metallic": 0.0
+    },
+    "lantern-paper": {
+      "factor": [
+        0.7,
+        0.12,
+        0.04
+      ],
+      "textured": false,
+      "roughness": 0.7,
+      "metallic": 0.0
+    },
+    "pole": {
+      "factor": [
+        0.12,
+        0.06,
+        0.03
+      ],
+      "textured": false,
+      "roughness": 0.6,
+      "metallic": 0.0
+    },
+    "zhuda-skin": {
+      "factor": [
+        0.8,
+        0.8,
+        0.8
+      ],
+      "textured": true,
+      "roughness": 0.62,
+      "metallic": 0.0
+    }
+  }
+}

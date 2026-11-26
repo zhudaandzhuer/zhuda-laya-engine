@@ -1,0 +1,621 @@
+{
+ "errors": [],
+ "failed": "",
+ "final": {
+  "ready": true,
+  "screen": "result",
+  "frames": 1467,
+  "hot": {
+   "pause": [
+    473,
+    38
+   ],
+   "again": [
+    154,
+    621
+   ],
+   "next": [
+    386,
+    621
+   ]
+  },
+  "songsReady": 2,
+  "mixMs": {
+   "bamboo": 96,
+   "market": 47
+  },
+  "lanes": [
+   [
+    101,
+    780
+   ],
+   [
+    214,
+    780
+   ],
+   [
+    326,
+    780
+   ],
+   [
+    439,
+    780
+   ]
+  ],
+  "schedule": [],
+  "best": {
+   "bamboo-easy": 6875
+  },
+  "game": {
+   "song": "bamboo",
+   "hard": false,
+   "time": 38.346,
+   "paused": false,
+   "score": 6875,
+   "combo": 54,
+   "bestCombo": 54,
+   "notes": 54,
+   "counts": {
+    "perfect": 54,
+    "good": 0,
+    "late": 0,
+    "miss": 0,
+    "empty": 0
+   },
+   "accuracy": 1,
+   "rank": "S",
+   "lean": -5,
+   "audio": true,
+   "clock": {
+    "samples": 1315,
+    "maxGapMs": 10.2,
+    "jumps": 0,
+    "latencyMs": 32
+   }
+  }
+ },
+ "log": [
+  {
+   "mixMs": {
+    "bamboo": 96,
+    "market": 47
+   },
+   "songsReady": 2
+  },
+  {
+   "shot": "00-title",
+   "seconds": 0.973,
+   "state": {
+    "ready": true,
+    "screen": "title",
+    "frames": 16,
+    "hot": {
+     "song-0-0": [
+      154,
+      335
+     ],
+     "song-0-1": [
+      386,
+      335
+     ],
+     "song-1-0": [
+      154,
+      522
+     ],
+     "song-1-1": [
+      386,
+      522
+     ],
+     "cal-0": [
+      199,
+      769
+     ],
+     "cal-1": [
+      341,
+      769
+     ],
+     "mute": [
+      458,
+      44
+     ]
+    },
+    "songsReady": 2,
+    "mixMs": {
+     "bamboo": 96,
+     "market": 47
+    },
+    "lanes": [
+     [
+      101,
+      780
+     ],
+     [
+      214,
+      780
+     ],
+     [
+      326,
+      780
+     ],
+     [
+      439,
+      780
+     ]
+    ],
+    "schedule": [],
+    "best": {}
+   }
+  },
+  {
+   "shot": "01-playing",
+   "seconds": 10.588,
+   "state": {
+    "ready": true,
+    "screen": "play",
+    "frames": 334,
+    "hot": {
+     "pause": [
+      473,
+      38
+     ]
+    },
+    "songsReady": 2,
+    "mixMs": {
+     "bamboo": 96,
+     "market": 47
+    },
+    "lanes": [
+     [
+      101,
+      780
+     ],
+     [
+      214,
+      780
+     ],
+     [
+      326,
+      780
+     ],
+     [
+      439,
+      780
+     ]
+    ],
+    "schedule": [
+     [
+      2,
+      10931,
+      12
+     ],
+     [
+      1,
+      11508,
+      13
+     ],
+     [
+      2,
+      12662,
+      14
+     ],
+     [
+      0,
+      13239,
+      15
+     ],
+     [
+      1,
+      13816,
+      16
+     ],
+     [
+      1,
+      14393,
+      17
+     ],
+     [
+      2,
+      14970,
+      18
+     ],
+     [
+      2,
+      16123,
+      19
+     ],
+     [
+      3,
+      16700,
+      20
+     ],
+     [
+      1,
+      17277,
+      21
+     ],
+     [
+      2,
+      17854,
+      22
+     ],
+     [
+      0,
+      18431,
+      23
+     ],
+     [
+      3,
+      19008,
+      24
+     ],
+     [
+      1,
+      19585,
+      25
+     ],
+     [
+      2,
+      20162,
+      26
+     ],
+     [
+      1,
+      20739,
+      27
+     ],
+     [
+      2,
+      21893,
+      28
+     ],
+     [
+      0,
+      22470,
+      29
+     ],
+     [
+      2,
+      23046,
+      30
+     ],
+     [
+      1,
+      23623,
+      31
+     ],
+     [
+      3,
+      24200,
+      32
+     ],
+     [
+      1,
+      24777,
+      33
+     ],
+     [
+      3,
+      25354,
+      34
+     ],
+     [
+      3,
+      25931,
+      35
+     ],
+     [
+      0,
+      26508,
+      36
+     ],
+     [
+      1,
+      27085,
+      37
+     ],
+     [
+      3,
+      27662,
+      38
+     ],
+     [
+      0,
+      28239,
+      39
+     ],
+     [
+      2,
+      28816,
+      40
+     ],
+     [
+      1,
+      29393,
+      41
+     ],
+     [
+      2,
+      29970,
+      42
+     ],
+     [
+      2,
+      31123,
+      43
+     ],
+     [
+      0,
+      32277,
+      44
+     ],
+     [
+      0,
+      32854,
+      45
+     ],
+     [
+      1,
+      33431,
+      46
+     ],
+     [
+      0,
+      34585,
+      47
+     ],
+     [
+      1,
+      35162,
+      48
+     ],
+     [
+      3,
+      35739,
+      49
+     ],
+     [
+      1,
+      36316,
+      50
+     ],
+     [
+      0,
+      36893,
+      51
+     ],
+     [
+      2,
+      37470,
+      52
+     ],
+     [
+      0,
+      38046,
+      53
+     ]
+    ],
+    "best": {},
+    "game": {
+     "song": "bamboo",
+     "hard": false,
+     "time": 7.149,
+     "paused": false,
+     "score": 1278,
+     "combo": 12,
+     "bestCombo": 12,
+     "notes": 54,
+     "counts": {
+      "perfect": 12,
+      "good": 0,
+      "late": 0,
+      "miss": 0,
+      "empty": 0
+     },
+     "accuracy": 1,
+     "rank": "S",
+     "lean": -7,
+     "audio": true,
+     "clock": {
+      "samples": 235,
+      "maxGapMs": 8.2,
+      "jumps": 0,
+      "latencyMs": 32
+     }
+    }
+   }
+  },
+  {
+   "shot": "02-paused",
+   "seconds": 21.529,
+   "state": {
+    "ready": true,
+    "screen": "play",
+    "frames": 702,
+    "hot": {
+     "pause": [
+      473,
+      38
+     ],
+     "resume": [
+      154,
+      501
+     ],
+     "quit": [
+      386,
+      501
+     ]
+    },
+    "songsReady": 2,
+    "mixMs": {
+     "bamboo": 96,
+     "market": 47
+    },
+    "lanes": [
+     [
+      101,
+      780
+     ],
+     [
+      214,
+      780
+     ],
+     [
+      326,
+      780
+     ],
+     [
+      439,
+      780
+     ]
+    ],
+    "schedule": [],
+    "best": {},
+    "game": {
+     "song": "bamboo",
+     "hard": false,
+     "time": 16.834,
+     "paused": true,
+     "score": 3078,
+     "combo": 27,
+     "bestCombo": 27,
+     "notes": 54,
+     "counts": {
+      "perfect": 27,
+      "good": 0,
+      "late": 0,
+      "miss": 0,
+      "empty": 0
+     },
+     "accuracy": 1,
+     "rank": "S",
+     "lean": -7,
+     "audio": true,
+     "clock": {
+      "samples": 571,
+      "maxGapMs": 10.2,
+      "jumps": 0,
+      "latencyMs": 32
+     }
+    }
+   }
+  },
+  {
+   "pausedAfter": 27,
+   "paused": true,
+   "timeStill": true,
+   "at": 16.834,
+   "clockBeforePause": {
+    "samples": 571,
+    "maxGapMs": 10.2,
+    "jumps": 0,
+    "latencyMs": 32
+   }
+  },
+  {
+   "shot": "03-result",
+   "seconds": 44.315,
+   "state": {
+    "ready": true,
+    "screen": "result",
+    "frames": 1466,
+    "hot": {
+     "pause": [
+      473,
+      38
+     ],
+     "again": [
+      154,
+      621
+     ],
+     "next": [
+      386,
+      621
+     ]
+    },
+    "songsReady": 2,
+    "mixMs": {
+     "bamboo": 96,
+     "market": 47
+    },
+    "lanes": [
+     [
+      101,
+      780
+     ],
+     [
+      214,
+      780
+     ],
+     [
+      326,
+      780
+     ],
+     [
+      439,
+      780
+     ]
+    ],
+    "schedule": [],
+    "best": {
+     "bamboo-easy": 6875
+    },
+    "game": {
+     "song": "bamboo",
+     "hard": false,
+     "time": 38.306,
+     "paused": false,
+     "score": 6875,
+     "combo": 54,
+     "bestCombo": 54,
+     "notes": 54,
+     "counts": {
+      "perfect": 54,
+      "good": 0,
+      "late": 0,
+      "miss": 0,
+      "empty": 0
+     },
+     "accuracy": 1,
+     "rank": "S",
+     "lean": -5,
+     "audio": true,
+     "clock": {
+      "samples": 1315,
+      "maxGapMs": 10.2,
+      "jumps": 0,
+      "latencyMs": 32
+     }
+    }
+   }
+  },
+  {
+   "end": {
+    "song": "bamboo",
+    "hard": false,
+    "time": 37.621,
+    "paused": false,
+    "score": 6875,
+    "combo": 54,
+    "bestCombo": 54,
+    "notes": 54,
+    "counts": {
+     "perfect": 54,
+     "good": 0,
+     "late": 0,
+     "miss": 0,
+     "empty": 0
+    },
+    "accuracy": 1,
+    "rank": "S",
+    "lean": -5,
+    "audio": true,
+    "clock": {
+     "samples": 1315,
+     "maxGapMs": 10.2,
+     "jumps": 0,
+     "latencyMs": 32
+    }
+   }
+  }
+ ]
+}

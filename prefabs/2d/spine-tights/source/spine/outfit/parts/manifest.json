@@ -1,0 +1,360 @@
+{
+ "canvas": [
+  1024,
+  1536
+ ],
+ "parts": [
+  {
+   "name": "skirt_back",
+   "file": "skirt_back.png",
+   "x": 143,
+   "y": 61,
+   "w": 737,
+   "h": 510
+  },
+  {
+   "name": "body",
+   "file": "body.png",
+   "x": 0,
+   "y": 0,
+   "w": 1024,
+   "h": 1536
+  },
+  {
+   "name": "tights",
+   "file": "tights.png",
+   "x": 0,
+   "y": 0,
+   "w": 1024,
+   "h": 1536
+  },
+  {
+   "name": "tear_L_thigh_small",
+   "file": "tear_L_thigh_small.png",
+   "x": 323,
+   "y": 522,
+   "w": 185,
+   "h": 185
+  },
+  {
+   "name": "lip_L_thigh_small",
+   "file": "lip_L_thigh_small.png",
+   "x": 323,
+   "y": 522,
+   "w": 185,
+   "h": 185
+  },
+  {
+   "name": "tear_L_lowthigh_small",
+   "file": "tear_L_lowthigh_small.png",
+   "x": 330,
+   "y": 595,
+   "w": 176,
+   "h": 176
+  },
+  {
+   "name": "lip_L_lowthigh_small",
+   "file": "lip_L_lowthigh_small.png",
+   "x": 330,
+   "y": 595,
+   "w": 176,
+   "h": 176
+  },
+  {
+   "name": "tear_L_knee_small",
+   "file": "tear_L_knee_small.png",
+   "x": 326,
+   "y": 687,
+   "w": 162,
+   "h": 162
+  },
+  {
+   "name": "lip_L_knee_small",
+   "file": "lip_L_knee_small.png",
+   "x": 326,
+   "y": 687,
+   "w": 162,
+   "h": 162
+  },
+  {
+   "name": "tear_L_calf_small",
+   "file": "tear_L_calf_small.png",
+   "x": 314,
+   "y": 822,
+   "w": 167,
+   "h": 167
+  },
+  {
+   "name": "lip_L_calf_small",
+   "file": "lip_L_calf_small.png",
+   "x": 314,
+   "y": 822,
+   "w": 167,
+   "h": 167
+  },
+  {
+   "name": "tear_L_shin_small",
+   "file": "tear_L_shin_small.png",
+   "x": 336,
+   "y": 1004,
+   "w": 111,
+   "h": 111
+  },
+  {
+   "name": "lip_L_shin_small",
+   "file": "lip_L_shin_small.png",
+   "x": 336,
+   "y": 1004,
+   "w": 111,
+   "h": 111
+  },
+  {
+   "name": "tear_R_thigh_small",
+   "file": "tear_R_thigh_small.png",
+   "x": 511,
+   "y": 522,
+   "w": 185,
+   "h": 185
+  },
+  {
+   "name": "lip_R_thigh_small",
+   "file": "lip_R_thigh_small.png",
+   "x": 511,
+   "y": 522,
+   "w": 185,
+   "h": 185
+  },
+  {
+   "name": "tear_R_lowthigh_small",
+   "file": "tear_R_lowthigh_small.png",
+   "x": 512,
+   "y": 594,
+   "w": 178,
+   "h": 178
+  },
+  {
+   "name": "lip_R_lowthigh_small",
+   "file": "lip_R_lowthigh_small.png",
+   "x": 512,
+   "y": 594,
+   "w": 178,
+   "h": 178
+  },
+  {
+   "name": "tear_R_knee_small",
+   "file": "tear_R_knee_small.png",
+   "x": 530,
+   "y": 687,
+   "w": 162,
+   "h": 162
+  },
+  {
+   "name": "lip_R_knee_small",
+   "file": "lip_R_knee_small.png",
+   "x": 530,
+   "y": 687,
+   "w": 162,
+   "h": 162
+  },
+  {
+   "name": "tear_R_calf_small",
+   "file": "tear_R_calf_small.png",
+   "x": 534,
+   "y": 822,
+   "w": 168,
+   "h": 168
+  },
+  {
+   "name": "lip_R_calf_small",
+   "file": "lip_R_calf_small.png",
+   "x": 534,
+   "y": 822,
+   "w": 168,
+   "h": 168
+  },
+  {
+   "name": "tear_R_shin_small",
+   "file": "tear_R_shin_small.png",
+   "x": 566,
+   "y": 1003,
+   "w": 112,
+   "h": 112
+  },
+  {
+   "name": "lip_R_shin_small",
+   "file": "lip_R_shin_small.png",
+   "x": 566,
+   "y": 1003,
+   "w": 112,
+   "h": 112
+  },
+  {
+   "name": "tear_L_thigh_large",
+   "file": "tear_L_thigh_large.png",
+   "x": 322,
+   "y": 521,
+   "w": 186,
+   "h": 186
+  },
+  {
+   "name": "lip_L_thigh_large",
+   "file": "lip_L_thigh_large.png",
+   "x": 322,
+   "y": 521,
+   "w": 186,
+   "h": 186
+  },
+  {
+   "name": "tear_L_lowthigh_large",
+   "file": "tear_L_lowthigh_large.png",
+   "x": 330,
+   "y": 594,
+   "w": 178,
+   "h": 178
+  },
+  {
+   "name": "lip_L_lowthigh_large",
+   "file": "lip_L_lowthigh_large.png",
+   "x": 330,
+   "y": 594,
+   "w": 178,
+   "h": 178
+  },
+  {
+   "name": "tear_L_knee_large",
+   "file": "tear_L_knee_large.png",
+   "x": 326,
+   "y": 686,
+   "w": 164,
+   "h": 164
+  },
+  {
+   "name": "lip_L_knee_large",
+   "file": "lip_L_knee_large.png",
+   "x": 326,
+   "y": 686,
+   "w": 164,
+   "h": 164
+  },
+  {
+   "name": "tear_L_calf_large",
+   "file": "tear_L_calf_large.png",
+   "x": 313,
+   "y": 822,
+   "w": 168,
+   "h": 168
+  },
+  {
+   "name": "lip_L_calf_large",
+   "file": "lip_L_calf_large.png",
+   "x": 313,
+   "y": 822,
+   "w": 168,
+   "h": 168
+  },
+  {
+   "name": "tear_L_shin_large",
+   "file": "tear_L_shin_large.png",
+   "x": 335,
+   "y": 1003,
+   "w": 112,
+   "h": 112
+  },
+  {
+   "name": "lip_L_shin_large",
+   "file": "lip_L_shin_large.png",
+   "x": 335,
+   "y": 1003,
+   "w": 112,
+   "h": 112
+  },
+  {
+   "name": "tear_R_thigh_large",
+   "file": "tear_R_thigh_large.png",
+   "x": 510,
+   "y": 521,
+   "w": 186,
+   "h": 186
+  },
+  {
+   "name": "lip_R_thigh_large",
+   "file": "lip_R_thigh_large.png",
+   "x": 510,
+   "y": 521,
+   "w": 186,
+   "h": 186
+  },
+  {
+   "name": "tear_R_lowthigh_large",
+   "file": "tear_R_lowthigh_large.png",
+   "x": 512,
+   "y": 594,
+   "w": 179,
+   "h": 179
+  },
+  {
+   "name": "lip_R_lowthigh_large",
+   "file": "lip_R_lowthigh_large.png",
+   "x": 512,
+   "y": 594,
+   "w": 179,
+   "h": 179
+  },
+  {
+   "name": "tear_R_knee_large",
+   "file": "tear_R_knee_large.png",
+   "x": 528,
+   "y": 686,
+   "w": 164,
+   "h": 164
+  },
+  {
+   "name": "lip_R_knee_large",
+   "file": "lip_R_knee_large.png",
+   "x": 528,
+   "y": 686,
+   "w": 164,
+   "h": 164
+  },
+  {
+   "name": "tear_R_calf_large",
+   "file": "tear_R_calf_large.png",
+   "x": 533,
+   "y": 822,
+   "w": 169,
+   "h": 169
+  },
+  {
+   "name": "lip_R_calf_large",
+   "file": "lip_R_calf_large.png",
+   "x": 533,
+   "y": 822,
+   "w": 169,
+   "h": 169
+  },
+  {
+   "name": "tear_R_shin_large",
+   "file": "tear_R_shin_large.png",
+   "x": 565,
+   "y": 1002,
+   "w": 113,
+   "h": 113
+  },
+  {
+   "name": "lip_R_shin_large",
+   "file": "lip_R_shin_large.png",
+   "x": 565,
+   "y": 1002,
+   "w": 113,
+   "h": 113
+  },
+  {
+   "name": "skirt",
+   "file": "skirt.png",
+   "x": 143,
+   "y": 61,
+   "w": 737,
+   "h": 510
+  }
+ ]
+}

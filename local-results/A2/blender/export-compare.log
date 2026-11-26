@@ -1,0 +1,235 @@
+=================== tee
+!= bytes:
+      original 163276
+      blender  126084
+!= generator:
+      original zhuda-epic-scenes tools/beasts
+      blender  Khronos glTF Blender I/O v5.2.40
+!= nodes:
+      original 25
+      blender  26
+!= sceneRoots:
+      original ['tee', 'root']
+      blender  ['tee-skeleton']
+!= meshNode:
+      original [('tee', 'root')]
+      blender  [('tee', 'parent=tee-skeleton')]
+   primitives:
+      original 1
+      blender  1
+!= vertices:
+      original 1769
+      blender  1792
+!= triangles:
+      original 4326
+      blender  2999
+   attributes:
+      original ['COLOR_0', 'JOINTS_0', 'NORMAL', 'POSITION', 'WEIGHTS_0']
+      blender  ['COLOR_0', 'JOINTS_0', 'NORMAL', 'POSITION', 'WEIGHTS_0']
+   positionMin:
+      original [-0.3292, 0.793, -0.17]
+      blender  [-0.3292, 0.793, -0.17]
+   positionMax:
+      original [0.3291, 1.4474, 0.161]
+      blender  [0.3291, 1.4474, 0.161]
+   joints:
+      original 24
+      blender  24
+jointNames: same set True, same order False
+!= skeletonRoot:
+      original root
+      blender  None
+!= materials:
+      original [{'name': 'tee', 'doubleSided': None, 'alphaMode': None, 'pbr': {'baseColorFactor': [1, 1, 1, 1], 'metallicFactor': 0, 'roughnessFactor': 0.8}}]
+      blender  [{'name': 'tee', 'doubleSided': None, 'alphaMode': None, 'pbr': {'metallicFactor': 0, 'roughnessFactor': 0.800000011920929}}]
+   animations:
+      original 0
+      blender  0
+=================== trousers
+!= bytes:
+      original 163712
+      blender  133500
+!= generator:
+      original zhuda-epic-scenes tools/beasts
+      blender  Khronos glTF Blender I/O v5.2.40
+!= nodes:
+      original 25
+      blender  26
+!= sceneRoots:
+      original ['trousers', 'root']
+      blender  ['trousers-skeleton']
+!= meshNode:
+      original [('trousers', 'root')]
+      blender  [('trousers', 'parent=trousers-skeleton')]
+   primitives:
+      original 1
+      blender  1
+!= vertices:
+      original 1847
+      blender  1881
+!= triangles:
+      original 3970
+      blender  3400
+   attributes:
+      original ['COLOR_0', 'JOINTS_0', 'NORMAL', 'POSITION', 'WEIGHTS_0']
+      blender  ['COLOR_0', 'JOINTS_0', 'NORMAL', 'POSITION', 'WEIGHTS_0']
+   positionMin:
+      original [-0.188, 0.0766, -0.1436]
+      blender  [-0.188, 0.0766, -0.1436]
+   positionMax:
+      original [0.1878, 1.0271, 0.1335]
+      blender  [0.1878, 1.0271, 0.1335]
+   joints:
+      original 24
+      blender  24
+jointNames: same set True, same order False
+!= skeletonRoot:
+      original root
+      blender  None
+!= materials:
+      original [{'name': 'trousers', 'doubleSided': None, 'alphaMode': None, 'pbr': {'baseColorFactor': [1, 1, 1, 1], 'metallicFactor': 0, 'roughnessFactor': 0.8}}]
+      blender  [{'name': 'trousers', 'doubleSided': None, 'alphaMode': None, 'pbr': {'metallicFactor': 0, 'roughnessFactor': 0.800000011920929}}]
+   animations:
+      original 0
+      blender  0
+=================== skirt
+!= bytes:
+      original 136588
+      blender  100488
+!= generator:
+      original zhuda-epic-scenes tools/beasts
+      blender  Khronos glTF Blender I/O v5.2.40
+!= nodes:
+      original 25
+      blender  26
+!= sceneRoots:
+      original ['skirt', 'root']
+      blender  ['skirt-skeleton']
+!= meshNode:
+      original [('skirt', 'root')]
+      blender  [('skirt', 'parent=skirt-skeleton')]
+   primitives:
+      original 1
+      blender  1
+!= vertices:
+      original 1385
+      blender  1399
+!= triangles:
+      original 4021
+      blender  2399
+   attributes:
+      original ['COLOR_0', 'JOINTS_0', 'NORMAL', 'POSITION', 'WEIGHTS_0']
+      blender  ['COLOR_0', 'JOINTS_0', 'NORMAL', 'POSITION', 'WEIGHTS_0']
+   positionMin:
+      original [-0.2098, 0.5085, -0.176]
+      blender  [-0.2098, 0.5085, -0.176]
+   positionMax:
+      original [0.2099, 0.9907, 0.1426]
+      blender  [0.2099, 0.9907, 0.1426]
+   joints:
+      original 24
+      blender  24
+jointNames: same set True, same order False
+!= skeletonRoot:
+      original root
+      blender  None
+!= materials:
+      original [{'name': 'skirt', 'doubleSided': None, 'alphaMode': None, 'pbr': {'baseColorFactor': [1, 1, 1, 1], 'metallicFactor': 0, 'roughnessFactor': 0.8}}]
+      blender  [{'name': 'skirt', 'doubleSided': None, 'alphaMode': None, 'pbr': {'metallicFactor': 0, 'roughnessFactor': 0.800000011920929}}]
+   animations:
+      original 0
+      blender  0
+=================== straw-hat
+!= bytes:
+      original 38652
+      blender  35764
+!= generator:
+      original zhuda-epic-scenes tools/beasts
+      blender  Khronos glTF Blender I/O v5.2.40
+!= nodes:
+      original 25
+      blender  26
+!= sceneRoots:
+      original ['straw-hat', 'root']
+      blender  ['straw-hat-skeleton']
+!= meshNode:
+      original [('straw-hat', 'root')]
+      blender  [('straw-hat', 'parent=straw-hat-skeleton')]
+   primitives:
+      original 1
+      blender  1
+!= vertices:
+      original 439
+      blender  437
+   triangles:
+      original 589
+      blender  589
+   attributes:
+      original ['COLOR_0', 'JOINTS_0', 'NORMAL', 'POSITION', 'WEIGHTS_0']
+      blender  ['COLOR_0', 'JOINTS_0', 'NORMAL', 'POSITION', 'WEIGHTS_0']
+   positionMin:
+      original [-0.21, 1.587, -0.2151]
+      blender  [-0.21, 1.587, -0.2151]
+   positionMax:
+      original [0.21, 1.742, 0.2049]
+      blender  [0.21, 1.742, 0.2049]
+   joints:
+      original 24
+      blender  24
+jointNames: same set True, same order False
+!= skeletonRoot:
+      original root
+      blender  None
+!= materials:
+      original [{'name': 'straw-hat', 'doubleSided': None, 'alphaMode': None, 'pbr': {'baseColorFactor': [1, 1, 1, 1], 'metallicFactor': 0, 'roughnessFactor': 0.8}}]
+      blender  [{'name': 'straw-hat', 'doubleSided': None, 'alphaMode': None, 'pbr': {'metallicFactor': 0, 'roughnessFactor': 0.800000011920929}}]
+   animations:
+      original 0
+      blender  0
+=================== pack
+!= bytes:
+      original 109332
+      blender  97460
+!= generator:
+      original zhuda-epic-scenes tools/beasts
+      blender  Khronos glTF Blender I/O v5.2.40
+!= nodes:
+      original 25
+      blender  26
+!= sceneRoots:
+      original ['pack', 'root']
+      blender  ['pack-skeleton']
+!= meshNode:
+      original [('pack', 'root')]
+      blender  [('pack', 'parent=pack-skeleton')]
+   primitives:
+      original 1
+      blender  1
+!= vertices:
+      original 1395
+      blender  1420
+!= triangles:
+      original 1700
+      blender  1699
+   attributes:
+      original ['COLOR_0', 'JOINTS_0', 'NORMAL', 'POSITION', 'WEIGHTS_0']
+      blender  ['COLOR_0', 'JOINTS_0', 'NORMAL', 'POSITION', 'WEIGHTS_0']
+   positionMin:
+      original [-0.1604, 0.98, -0.326]
+      blender  [-0.1604, 0.98, -0.326]
+   positionMax:
+      original [0.1627, 1.4527, 0.1078]
+      blender  [0.1627, 1.4527, 0.1078]
+   joints:
+      original 24
+      blender  24
+jointNames: same set True, same order False
+!= skeletonRoot:
+      original root
+      blender  None
+!= materials:
+      original [{'name': 'pack', 'doubleSided': None, 'alphaMode': None, 'pbr': {'baseColorFactor': [1, 1, 1, 1], 'metallicFactor': 0, 'roughnessFactor': 0.8}}]
+      blender  [{'name': 'pack', 'doubleSided': None, 'alphaMode': None, 'pbr': {'metallicFactor': 0, 'roughnessFactor': 0.800000011920929}}]
+   animations:
+      original 0
+      blender  0

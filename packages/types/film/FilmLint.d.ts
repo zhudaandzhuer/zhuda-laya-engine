@@ -6,7 +6,9 @@
  *
  * Every rule was a trap found by drawing scenes (see
  * docs/plans/records/quality-defaults). A rule earns its place only when it
- * names a visible defect and a concrete fix; taste is not linted.
+ * names a visible defect and a concrete fix; taste is not linted. One rule
+ * is about cost, not looks: `grass.draws`, because nothing else in a scene
+ * can add hundreds of draws from one node without a sign.
  */
 import { type ZhudaFilmScene } from './FilmScene.js';
 export interface ZhudaFilmAdvice {

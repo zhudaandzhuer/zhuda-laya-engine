@@ -293,6 +293,45 @@ interface TimerTask {
   cancelled: boolean;
 }
 
+/** A curve from 0 to 1 over a tween's time. */
+export type ZhudaEase = (t: number) => number;
+export const zhudaEase = {
+  linear: (t: number) => t,
+  inQuad: (t: number) => t * t,
+  outQuad: (t: number) => 1 - (1 - t) * (1 - t),
+  inOutQuad: (t: number) => (t < 0.5 ? 2 * t * t : 1 - 2 * (1 - t) * (1 - t)),
+  outCubic: (t: number) => 1 - (1 - t) ** 3,
+  /** Goes a little past the end and comes back. */
+  outBack: (t: number) => 1 + 2.70158 * (t - 1) ** 3 + 1.70158 * (t - 1) ** 2,
+} as const satisfies Record<string, ZhudaEase>;
+export interface ZhudaTweenOptions extends ZhudaTimerOptions {
+  /** Seconds on the tween's clock (its channel or layer). 0 ends on the next advance. */
+  duration: number;
+  /** Called on every advance with the eased value and the plain share of the time gone, both ending at exactly 1. */
+  update: (eased: number, t: number) => void;
+  ease?: ZhudaEase;
+}
+export interface ZhudaTweenHandle {
+  readonly id: number;
+  /** True once it has ended, false once cancelled; never rejects. */
+  readonly done: Promise<boolean>;
+  readonly active: boolean;
+  cancel(): boolean;
+  /** Jumps to the end now: one last `update(1, 1)`, and `done` is true. */
+  finish(): boolean;
+}
+interface TweenTask {
+  id: number;
+  elapsed: number;
+  duration: number;
+  channel: ZhudaTimerChannel;
+  layer?: string;
+  owner?: object;
+  update: (eased: number, t: number) => void;
+  ease: ZhudaEase;
+  settle: (done: boolean) => void;
+}
+
 /** Frame-driven timer scheduler. It never creates a browser timer or outlives its owner. */
 export class ZhudaTimerScheduler {
   readonly maxCallbacksPerAdvance: number;
@@ -300,6 +339,8 @@ export class ZhudaTimerScheduler {
   private tasks = new Map<number, TimerTask>();
   private owners = new Map<object, Set<number>>();
   private disposed = false;
+  private tweens = new Map<number, TweenTask>();
+  private waits = new Map<number, (done: boolean) => void>();
 
   constructor(maxCallbacksPerAdvance = 64) {
     if (!Number.isSafeInteger(maxCallbacksPerAdvance) || maxCallbacksPerAdvance <= 0)
@@ -321,6 +362,90 @@ export class ZhudaTimerScheduler {
     options: ZhudaTimerOptions = {},
   ): ZhudaTimerHandle {
     return this.schedule(interval, callback, { ...options, repeat: true });
+  }
+
+  /**
+   * A wait on this scheduler's clock: it stops while the clock is paused and runs at the clock's
+   * speed, which `setTimeout` does not. Resolves true when the time has passed, false if it was
+   * cancelled (by its owner being cancelled, `clear` or `dispose`); it never rejects.
+   */
+  wait(seconds: number, options: ZhudaTimerOptions = {}): Promise<boolean> {
+    return new Promise<boolean>((resolve) => {
+      const handle = this.schedule(
+        seconds,
+        () => {
+          this.waits.delete(handle.id);
+          resolve(true);
+        },
+        { ...options, repeat: false },
+      );
+      this.waits.set(handle.id, resolve);
+    });
+  }
+
+  /**
+   * A value carried from 0 to 1 over `duration` seconds of this scheduler's clock, stepped on
+   * every advance. The last step is exactly 1. Cancelled with its owner like a timer.
+   */
+  tween(options: ZhudaTweenOptions): ZhudaTweenHandle {
+    if (this.disposed) throw Error('Disposed timer scheduler');
+    if (!options || !Number.isFinite(options.duration) || options.duration < 0)
+      throw Error('Invalid tween duration');
+    if (typeof options.update !== 'function') throw Error('Invalid tween update');
+    if (options.ease !== undefined && typeof options.ease !== 'function')
+      throw Error('Invalid tween ease');
+    if (options.layer !== undefined && (typeof options.layer !== 'string' || !options.layer.trim()))
+      throw Error('Invalid timer layer');
+    if (options.layer !== undefined && options.channel !== undefined)
+      throw Error('Timer layer cannot be combined with a timer channel');
+    // (The handle's getter below has its own `this`.)
+    const self = this;
+    let settle!: (done: boolean) => void;
+    const done = new Promise<boolean>((resolve) => (settle = resolve));
+    const task: TweenTask = {
+      id: this.nextId++,
+      elapsed: 0,
+      duration: options.duration,
+      channel: options.channel ?? 'scaled',
+      layer: options.layer,
+      owner: options.owner,
+      update: options.update,
+      ease: options.ease ?? zhudaEase.linear,
+      settle,
+    };
+    this.tweens.set(task.id, task);
+    if (task.owner) {
+      let ids = this.owners.get(task.owner);
+      if (!ids) this.owners.set(task.owner, (ids = new Set()));
+      ids.add(task.id);
+    }
+    return {
+      id: task.id,
+      done,
+      get active() {
+        return self.tweens.has(task.id);
+      },
+      cancel: () => this.cancel(task.id),
+      finish: () => {
+        if (!this.tweens.has(task.id)) return false;
+        this.endTween(task, true);
+        return true;
+      },
+    };
+  }
+
+  private endTween(task: TweenTask, finished: boolean): void {
+    this.tweens.delete(task.id);
+    if (task.owner) {
+      const ids = this.owners.get(task.owner);
+      ids?.delete(task.id);
+      if (ids && !ids.size) this.owners.delete(task.owner);
+    }
+    try {
+      if (finished) task.update(task.ease(1), 1);
+    } finally {
+      task.settle(finished);
+    }
   }
 
   private schedule(
@@ -367,6 +492,11 @@ export class ZhudaTimerScheduler {
   }
 
   private cancel(id: number): boolean {
+    const tween = this.tweens.get(id);
+    if (tween) {
+      this.endTween(tween, false);
+      return true;
+    }
     const task = this.tasks.get(id);
     if (!task || task.cancelled) return false;
     task.cancelled = true;
@@ -375,6 +505,11 @@ export class ZhudaTimerScheduler {
       const ids = this.owners.get(task.owner);
       ids?.delete(id);
       if (ids && !ids.size) this.owners.delete(task.owner);
+    }
+    const waiting = this.waits.get(id);
+    if (waiting) {
+      this.waits.delete(id);
+      waiting(false);
     }
     return true;
   }
@@ -432,11 +567,32 @@ export class ZhudaTimerScheduler {
       )
         task.remaining = task.interval;
     }
+    // Tweens step on every advance; they are not counted against the callback bound.
+    for (const tween of [...this.tweens.values()]) {
+      if (!this.tweens.has(tween.id)) continue;
+      const delta = tween.layer
+        ? (layerDeltas?.get(tween.layer) ?? 0)
+        : tween.channel === 'scaled'
+          ? scaledDeltaTime
+          : unscaledDeltaTime;
+      tween.elapsed += delta;
+      if (tween.duration <= 0 || tween.elapsed + 1e-10 >= tween.duration)
+        this.endTween(tween, true);
+      else {
+        const t = tween.elapsed / tween.duration;
+        tween.update(tween.ease(t), t);
+      }
+    }
     return callbacks;
   }
 
   clear(): void {
-    for (const id of [...this.tasks.keys()]) this.cancel(id);
+    for (const id of [...this.tasks.keys(), ...this.tweens.keys()]) this.cancel(id);
+  }
+
+  /** How many tweens are running (`size` counts timers and waits). */
+  get tweenCount(): number {
+    return this.tweens.size;
   }
 
   dispose(): void {

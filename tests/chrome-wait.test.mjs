@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { zhudaWaitFor } from '../packages/compiler/chrome-host.mjs';
+import { zhudaPageExpression, zhudaWaitFor } from '../packages/compiler/chrome-host.mjs';
 
 /** A page that answers `false` until the given ask, recording what each ask was allowed. */
 const page = (trueAt = Infinity, delayMs = 0) => {
@@ -53,4 +53,29 @@ test('a slow answer within the time counts; a condition never met fails at the t
   assert.ok(took >= 300 && took < 10000, String(took));
   for (const bad of [0, -1, Number.NaN, Infinity])
     await assert.rejects(zhudaWaitFor(never.evaluate, 'x', bad), /Invalid wait/);
+});
+
+test('the Chrome host is a public entry of the package', async () => {
+  const { readFileSync } = await import('node:fs');
+  const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+  assert.equal(pkg.exports['./compiler/chrome-host'], './packages/compiler/chrome-host.mjs');
+  // A consumer's tool imports it by the package's name; from inside the package that is the same file.
+  const host = await import('zhuda-laya-engine/compiler/chrome-host');
+  assert.equal(host.zhudaWaitFor, zhudaWaitFor);
+  assert.equal(typeof host.chromeFixture, 'function');
+});
+
+test('a page is asked with a string, or with a function that is called there', () => {
+  assert.equal(zhudaPageExpression('window.ready'), 'window.ready');
+  assert.equal(new Function(`return ${zhudaPageExpression(() => 6 * 7)}`)(), 42);
+  assert.equal(
+    new Function(
+      `return ${zhudaPageExpression(function () {
+        return typeof window;
+      })}`,
+    )(),
+    'undefined',
+  );
+  assert.throws(() => zhudaPageExpression(42), /a string, or a function/);
+  assert.throws(() => zhudaPageExpression(undefined), /a string, or a function/);
 });

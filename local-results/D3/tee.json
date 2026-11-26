@@ -1,0 +1,221 @@
+{
+  "blender": "5.2.2 LTS",
+  "garment": "tee",
+  "vertices": 1769,
+  "triangles": 2999,
+  "pinned": {
+    "where": "top",
+    "vertices": 165,
+    "bandMetres": 0.07
+  },
+  "everyFrames": 4,
+  "settleFrames": 40,
+  "cloth": {
+    "quality": 10,
+    "vertexMassKg": 0.30000001192092896,
+    "tension": 15.0,
+    "bending": 0.5,
+    "collisionDistance": 0.004
+  },
+  "clips": {
+    "Greet": {
+      "frames": [
+        0,
+        4,
+        8,
+        12,
+        16,
+        20,
+        24,
+        28,
+        32,
+        36,
+        40,
+        44
+      ],
+      "distanceMetres": {
+        "median": 0.0174,
+        "mean": 0.0209,
+        "p95": 0.0505,
+        "max": 0.0914
+      },
+      "worst": {
+        "frame": 44,
+        "vertex": 1067,
+        "restHeight": 0.798,
+        "restPosition": [
+          0.015,
+          -0.043,
+          0.798
+        ]
+      },
+      "shareOver2cm": 0.4247,
+      "shareOver5cm": 0.0516,
+      "byThirdFromTopMedian": [
+        0.0131,
+        0.0166,
+        0.0226
+      ]
+    },
+    "Idle": {
+      "frames": [
+        0,
+        4,
+        8,
+        12,
+        16,
+        20,
+        24,
+        28,
+        32,
+        36,
+        40,
+        44,
+        48,
+        52,
+        56,
+        60,
+        64,
+        68,
+        72,
+        76
+      ],
+      "distanceMetres": {
+        "median": 0.0107,
+        "mean": 0.0144,
+        "p95": 0.0396,
+        "max": 0.1005
+      },
+      "worst": {
+        "frame": 40,
+        "vertex": 1055,
+        "restHeight": 0.799,
+        "restPosition": [
+          -0.025,
+          -0.044,
+          0.799
+        ]
+      },
+      "shareOver2cm": 0.1885,
+      "shareOver5cm": 0.0338,
+      "byThirdFromTopMedian": [
+        0.0077,
+        0.0092,
+        0.0158
+      ]
+    },
+    "Run": {
+      "frames": [
+        0,
+        4,
+        8,
+        12,
+        16
+      ],
+      "distanceMetres": {
+        "median": 0.02,
+        "mean": 0.029,
+        "p95": 0.0802,
+        "max": 0.1198
+      },
+      "worst": {
+        "frame": 8,
+        "vertex": 1767,
+        "restHeight": 0.797,
+        "restPosition": [
+          -0.025,
+          -0.133,
+          0.797
+        ]
+      },
+      "shareOver2cm": 0.5,
+      "shareOver5cm": 0.1839,
+      "byThirdFromTopMedian": [
+        0.0117,
+        0.02,
+        0.0425
+      ]
+    },
+    "Walk": {
+      "frames": [
+        0,
+        4,
+        8,
+        12,
+        16,
+        20,
+        24
+      ],
+      "distanceMetres": {
+        "median": 0.0144,
+        "mean": 0.0192,
+        "p95": 0.0537,
+        "max": 0.1187
+      },
+      "worst": {
+        "frame": 8,
+        "vertex": 1060,
+        "restHeight": 0.798,
+        "restPosition": [
+          -0.022,
+          -0.043,
+          0.798
+        ]
+      },
+      "shareOver2cm": 0.3237,
+      "shareOver5cm": 0.0623,
+      "byThirdFromTopMedian": [
+        0.0097,
+        0.0131,
+        0.0266
+      ]
+    },
+    "_Stress": {
+      "frames": [
+        0,
+        4,
+        8,
+        12,
+        16,
+        20,
+        24,
+        28,
+        32,
+        36,
+        40,
+        44,
+        48,
+        52,
+        56,
+        60,
+        64,
+        68,
+        72,
+        76
+      ],
+      "distanceMetres": {
+        "median": 0.0435,
+        "mean": 0.0506,
+        "p95": 0.114,
+        "max": 0.2054
+      },
+      "worst": {
+        "frame": 56,
+        "vertex": 1648,
+        "restHeight": 0.797,
+        "restPosition": [
+          -0.095,
+          -0.149,
+          0.797
+        ]
+      },
+      "shareOver2cm": 0.7703,
+      "shareOver5cm": 0.4318,
+      "byThirdFromTopMedian": [
+        0.0245,
+        0.0392,
+        0.0738
+      ]
+    }
+  }
+}

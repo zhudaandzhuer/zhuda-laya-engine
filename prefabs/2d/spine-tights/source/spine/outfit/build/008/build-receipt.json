@@ -1,0 +1,702 @@
+{
+ "name": "outfit",
+ "spine": "4.2.43",
+ "counts": {
+  "bones": 48,
+  "slots": 24,
+  "attachments": 44,
+  "regions": 42,
+  "meshes": 2,
+  "weighted_meshes": 2,
+  "vertices": 1233,
+  "triangles": 2130,
+  "transform_constraints": 0,
+  "ik_constraints": 9,
+  "physics_constraints": 27,
+  "animations": 1,
+  "events": 0
+ },
+ "atlas": {
+  "page": [
+   2048,
+   4096
+  ],
+  "pma": false,
+  "padding": 4,
+  "bleed": 6
+ },
+ "sha256": {
+  "outfit.json": "189dfc05656d8120b33c527c45688762ea187d3bbee2490549a396900a603c45",
+  "outfit.atlas": "9b64837a1f3d2813ba4c6988bcfccb7a34a9da890edddff0f4500d09e5c2299f",
+  "outfit.png": "35f3d5fa799507cecc613bff8c3e60d2cbe730138c4d9969137465a62901178c"
+ },
+ "bytes": {
+  "outfit.json": 137596,
+  "outfit.atlas": 1909,
+  "outfit.png": 3477278
+ },
+ "parts": [
+  {
+   "part": "skirt_back",
+   "file": "skirt_back.png",
+   "sha256": "0614b10e09a6b4f16c3acddfdc8e76b2beaaa3a4a544a123f62cf80486ff3fb9",
+   "slot": "skirt_back",
+   "bone": "waist",
+   "top_left": [
+    143,
+    61
+   ],
+   "size": [
+    737,
+    510
+   ]
+  },
+  {
+   "part": "body",
+   "file": "body.png",
+   "sha256": "189c94000746c4d07d287e394a62aa6f525617b1a2a1cdba85d2a5954ce0d9e8",
+   "slot": "body",
+   "bone": "root",
+   "top_left": [
+    0,
+    0
+   ],
+   "size": [
+    1024,
+    1536
+   ]
+  },
+  {
+   "part": "tights",
+   "file": "tights.png",
+   "sha256": "47e3a30b2dc54b2f7bf3a084aee5443b7517f9dfab5dcfa5c46f1e601bf5f741",
+   "slot": "tights",
+   "bone": "root",
+   "top_left": [
+    0,
+    0
+   ],
+   "size": [
+    1024,
+    1536
+   ]
+  },
+  {
+   "part": "tear_L_thigh_small",
+   "file": "tear_L_thigh_small.png",
+   "sha256": "eb63eb67271d12684f619f8d1385f4ecbfd1918606da2b8c519248ef573bad1c",
+   "slot": "tear_L_thigh",
+   "bone": "pull_L_thigh",
+   "top_left": [
+    323,
+    522
+   ],
+   "size": [
+    185,
+    185
+   ]
+  },
+  {
+   "part": "tear_L_thigh_large",
+   "file": "tear_L_thigh_large.png",
+   "sha256": "7a52a5a56b30b6e39e195fef8308a57abde3cb8bb09598220615911572471aff",
+   "slot": "tear_L_thigh",
+   "bone": "pull_L_thigh",
+   "top_left": [
+    322,
+    521
+   ],
+   "size": [
+    186,
+    186
+   ]
+  },
+  {
+   "part": "tear_L_lowthigh_small",
+   "file": "tear_L_lowthigh_small.png",
+   "sha256": "e91d3cdea30d86cc52cb05314c11f4a9befeb0c86dee60058e1f98c8ccd4d698",
+   "slot": "tear_L_lowthigh",
+   "bone": "pull_L_lowthigh",
+   "top_left": [
+    330,
+    595
+   ],
+   "size": [
+    176,
+    176
+   ]
+  },
+  {
+   "part": "tear_L_lowthigh_large",
+   "file": "tear_L_lowthigh_large.png",
+   "sha256": "08e876e4986aca9554e04f0bfe02ccb2ae81fa79df5e85775e5fd003751da536",
+   "slot": "tear_L_lowthigh",
+   "bone": "pull_L_lowthigh",
+   "top_left": [
+    330,
+    594
+   ],
+   "size": [
+    178,
+    178
+   ]
+  },
+  {
+   "part": "tear_L_knee_small",
+   "file": "tear_L_knee_small.png",
+   "sha256": "b4710ad468cce23cf27e8f4a7d529839ee0dcb89bc8bb29503b08b5b5763e039",
+   "slot": "tear_L_knee",
+   "bone": "pull_L_knee",
+   "top_left": [
+    326,
+    687
+   ],
+   "size": [
+    162,
+    162
+   ]
+  },
+  {
+   "part": "tear_L_knee_large",
+   "file": "tear_L_knee_large.png",
+   "sha256": "c5247ca68851077d6b628da344a3c2bbaa5a9bac38ab943308fecfdba54fc8c3",
+   "slot": "tear_L_knee",
+   "bone": "pull_L_knee",
+   "top_left": [
+    326,
+    686
+   ],
+   "size": [
+    164,
+    164
+   ]
+  },
+  {
+   "part": "tear_L_calf_small",
+   "file": "tear_L_calf_small.png",
+   "sha256": "8e7795f2827f318a2910be38224ece6de6bf67413efe1d2c75a4ee2920882b3b",
+   "slot": "tear_L_calf",
+   "bone": "pull_L_calf",
+   "top_left": [
+    314,
+    822
+   ],
+   "size": [
+    167,
+    167
+   ]
+  },
+  {
+   "part": "tear_L_calf_large",
+   "file": "tear_L_calf_large.png",
+   "sha256": "1e243f3cdea84dddc384f526a1dd0ca0df8edfc6cc9432358277dfa7d709b9fd",
+   "slot": "tear_L_calf",
+   "bone": "pull_L_calf",
+   "top_left": [
+    313,
+    822
+   ],
+   "size": [
+    168,
+    168
+   ]
+  },
+  {
+   "part": "tear_L_shin_small",
+   "file": "tear_L_shin_small.png",
+   "sha256": "36ee9c640e8542e91796b053ed0bb7470e16321d35d195eb2e99769fe3c10afe",
+   "slot": "tear_L_shin",
+   "bone": "pull_L_shin",
+   "top_left": [
+    336,
+    1004
+   ],
+   "size": [
+    111,
+    111
+   ]
+  },
+  {
+   "part": "tear_L_shin_large",
+   "file": "tear_L_shin_large.png",
+   "sha256": "951089e659d834e7af12ff4b45794ba18024865cae0d5409f9ed5c713b1ba566",
+   "slot": "tear_L_shin",
+   "bone": "pull_L_shin",
+   "top_left": [
+    335,
+    1003
+   ],
+   "size": [
+    112,
+    112
+   ]
+  },
+  {
+   "part": "tear_R_thigh_small",
+   "file": "tear_R_thigh_small.png",
+   "sha256": "b2e0f2ba3cd6aec1dae54f875a09c9f4794016cc70388be548cd179ae06c9b4a",
+   "slot": "tear_R_thigh",
+   "bone": "pull_R_thigh",
+   "top_left": [
+    511,
+    522
+   ],
+   "size": [
+    185,
+    185
+   ]
+  },
+  {
+   "part": "tear_R_thigh_large",
+   "file": "tear_R_thigh_large.png",
+   "sha256": "1c0563030b811e2d8ef3acc0355b01f78bbad8bdf1702dcc203e4dda6fe25739",
+   "slot": "tear_R_thigh",
+   "bone": "pull_R_thigh",
+   "top_left": [
+    510,
+    521
+   ],
+   "size": [
+    186,
+    186
+   ]
+  },
+  {
+   "part": "tear_R_lowthigh_small",
+   "file": "tear_R_lowthigh_small.png",
+   "sha256": "f391ed09b9a80f8cc83baf157e250f159f55f238ef99f205605e2a904e4c6d23",
+   "slot": "tear_R_lowthigh",
+   "bone": "pull_R_lowthigh",
+   "top_left": [
+    512,
+    594
+   ],
+   "size": [
+    178,
+    178
+   ]
+  },
+  {
+   "part": "tear_R_lowthigh_large",
+   "file": "tear_R_lowthigh_large.png",
+   "sha256": "6b19bc50de67c721e25bb91a88d328e3bbe1ac1ceb8eb8a8bad5fce475cfdff0",
+   "slot": "tear_R_lowthigh",
+   "bone": "pull_R_lowthigh",
+   "top_left": [
+    512,
+    594
+   ],
+   "size": [
+    179,
+    179
+   ]
+  },
+  {
+   "part": "tear_R_knee_small",
+   "file": "tear_R_knee_small.png",
+   "sha256": "3b08d4b6ba88f0b010f73fc998d613dbcc0cb3ca674eceac920be42ac9fbf777",
+   "slot": "tear_R_knee",
+   "bone": "pull_R_knee",
+   "top_left": [
+    530,
+    687
+   ],
+   "size": [
+    162,
+    162
+   ]
+  },
+  {
+   "part": "tear_R_knee_large",
+   "file": "tear_R_knee_large.png",
+   "sha256": "166b0a7a3ea66feabb18c0b4b1a3d7764b322dc52e0a09bfa349f7c2d90ef69e",
+   "slot": "tear_R_knee",
+   "bone": "pull_R_knee",
+   "top_left": [
+    528,
+    686
+   ],
+   "size": [
+    164,
+    164
+   ]
+  },
+  {
+   "part": "tear_R_calf_small",
+   "file": "tear_R_calf_small.png",
+   "sha256": "7d55d9c3090104afe7223116326ec9291bfecef7ad89836d72cecabcff6a1de3",
+   "slot": "tear_R_calf",
+   "bone": "pull_R_calf",
+   "top_left": [
+    534,
+    822
+   ],
+   "size": [
+    168,
+    168
+   ]
+  },
+  {
+   "part": "tear_R_calf_large",
+   "file": "tear_R_calf_large.png",
+   "sha256": "88ed9730eb6ecf2ea5524f4d8a1b1cb5b61c36ec22988ba9c937d4e19d7973b7",
+   "slot": "tear_R_calf",
+   "bone": "pull_R_calf",
+   "top_left": [
+    533,
+    822
+   ],
+   "size": [
+    169,
+    169
+   ]
+  },
+  {
+   "part": "tear_R_shin_small",
+   "file": "tear_R_shin_small.png",
+   "sha256": "4c91aeedca2261d948301dca81fd9d1a79c9fa7c998d6aca434a857a9abf8983",
+   "slot": "tear_R_shin",
+   "bone": "pull_R_shin",
+   "top_left": [
+    566,
+    1003
+   ],
+   "size": [
+    112,
+    112
+   ]
+  },
+  {
+   "part": "tear_R_shin_large",
+   "file": "tear_R_shin_large.png",
+   "sha256": "3982eeb3c4b2075ac9065ca83184900025afae0f3693dda783dc8e62198dde99",
+   "slot": "tear_R_shin",
+   "bone": "pull_R_shin",
+   "top_left": [
+    565,
+    1002
+   ],
+   "size": [
+    113,
+    113
+   ]
+  },
+  {
+   "part": "lip_L_thigh_small",
+   "file": "lip_L_thigh_small.png",
+   "sha256": "eb81842299ba018436a4751c7faea0d18efec97f2263d375a0dec48d660da9f7",
+   "slot": "lip_L_thigh",
+   "bone": "pull_L_thigh",
+   "top_left": [
+    323,
+    522
+   ],
+   "size": [
+    185,
+    185
+   ]
+  },
+  {
+   "part": "lip_L_thigh_large",
+   "file": "lip_L_thigh_large.png",
+   "sha256": "b2578a3e6ad2ac9f0e672c3b1e651cf4c62d355697755314fffd754ebd690e3d",
+   "slot": "lip_L_thigh",
+   "bone": "pull_L_thigh",
+   "top_left": [
+    322,
+    521
+   ],
+   "size": [
+    186,
+    186
+   ]
+  },
+  {
+   "part": "lip_L_lowthigh_small",
+   "file": "lip_L_lowthigh_small.png",
+   "sha256": "9be08ab4ff3dffab9eb2d8ce21fd004d36729225775d3a7ac638101f7a51d703",
+   "slot": "lip_L_lowthigh",
+   "bone": "pull_L_lowthigh",
+   "top_left": [
+    330,
+    595
+   ],
+   "size": [
+    176,
+    176
+   ]
+  },
+  {
+   "part": "lip_L_lowthigh_large",
+   "file": "lip_L_lowthigh_large.png",
+   "sha256": "68da695b2282e8d032c78c950133014c23b5ca786193b38f8aff55f08f9f89b2",
+   "slot": "lip_L_lowthigh",
+   "bone": "pull_L_lowthigh",
+   "top_left": [
+    330,
+    594
+   ],
+   "size": [
+    178,
+    178
+   ]
+  },
+  {
+   "part": "lip_L_knee_small",
+   "file": "lip_L_knee_small.png",
+   "sha256": "4f4a8c9e33578c145655d9d7019c9860c0ccf26242f141f728bb1b8c0cf6f9b8",
+   "slot": "lip_L_knee",
+   "bone": "pull_L_knee",
+   "top_left": [
+    326,
+    687
+   ],
+   "size": [
+    162,
+    162
+   ]
+  },
+  {
+   "part": "lip_L_knee_large",
+   "file": "lip_L_knee_large.png",
+   "sha256": "be583fdaf40e7529759a4b79ecba7a017504f8d1b7e67b44278f844850f077f8",
+   "slot": "lip_L_knee",
+   "bone": "pull_L_knee",
+   "top_left": [
+    326,
+    686
+   ],
+   "size": [
+    164,
+    164
+   ]
+  },
+  {
+   "part": "lip_L_calf_small",
+   "file": "lip_L_calf_small.png",
+   "sha256": "6914f9ee5a624c5667a7d55cfa09e429e970ada9616f437075572517d3a4dcb0",
+   "slot": "lip_L_calf",
+   "bone": "pull_L_calf",
+   "top_left": [
+    314,
+    822
+   ],
+   "size": [
+    167,
+    167
+   ]
+  },
+  {
+   "part": "lip_L_calf_large",
+   "file": "lip_L_calf_large.png",
+   "sha256": "37fe870dd973d325ed861e7974477769be671c71389420a623528e2fb4024ce9",
+   "slot": "lip_L_calf",
+   "bone": "pull_L_calf",
+   "top_left": [
+    313,
+    822
+   ],
+   "size": [
+    168,
+    168
+   ]
+  },
+  {
+   "part": "lip_L_shin_small",
+   "file": "lip_L_shin_small.png",
+   "sha256": "d69023cda70e32843aa1fded74d21c123d04f2746318320e7875c9154e9a6fb7",
+   "slot": "lip_L_shin",
+   "bone": "pull_L_shin",
+   "top_left": [
+    336,
+    1004
+   ],
+   "size": [
+    111,
+    111
+   ]
+  },
+  {
+   "part": "lip_L_shin_large",
+   "file": "lip_L_shin_large.png",
+   "sha256": "fc4d1381cf20f0dac18db1fe706a378bbc4841db987fbb55ce6687a1dc9914c0",
+   "slot": "lip_L_shin",
+   "bone": "pull_L_shin",
+   "top_left": [
+    335,
+    1003
+   ],
+   "size": [
+    112,
+    112
+   ]
+  },
+  {
+   "part": "lip_R_thigh_small",
+   "file": "lip_R_thigh_small.png",
+   "sha256": "dada30d081fa7adf0cd949f6055492ef14a487fadb7d82ccf85b5ccfa88c5cd5",
+   "slot": "lip_R_thigh",
+   "bone": "pull_R_thigh",
+   "top_left": [
+    511,
+    522
+   ],
+   "size": [
+    185,
+    185
+   ]
+  },
+  {
+   "part": "lip_R_thigh_large",
+   "file": "lip_R_thigh_large.png",
+   "sha256": "628e4e5cd0104823af764febd90f3ada65d4bfce3dc9e37f942ed895b71885cb",
+   "slot": "lip_R_thigh",
+   "bone": "pull_R_thigh",
+   "top_left": [
+    510,
+    521
+   ],
+   "size": [
+    186,
+    186
+   ]
+  },
+  {
+   "part": "lip_R_lowthigh_small",
+   "file": "lip_R_lowthigh_small.png",
+   "sha256": "02a440f8dbf4a50fe79711f92eb1c3007d88b5c4c1e7213c53502da68b06aa51",
+   "slot": "lip_R_lowthigh",
+   "bone": "pull_R_lowthigh",
+   "top_left": [
+    512,
+    594
+   ],
+   "size": [
+    178,
+    178
+   ]
+  },
+  {
+   "part": "lip_R_lowthigh_large",
+   "file": "lip_R_lowthigh_large.png",
+   "sha256": "23f76cf16ae7b3f766170deec50bef64a74bbe5ee037f5c103206cad15f3bbf1",
+   "slot": "lip_R_lowthigh",
+   "bone": "pull_R_lowthigh",
+   "top_left": [
+    512,
+    594
+   ],
+   "size": [
+    179,
+    179
+   ]
+  },
+  {
+   "part": "lip_R_knee_small",
+   "file": "lip_R_knee_small.png",
+   "sha256": "97e9df54e6212a17786f3e446e22ba9099a9b2d869bad6fd91f27bd6d15b3329",
+   "slot": "lip_R_knee",
+   "bone": "pull_R_knee",
+   "top_left": [
+    530,
+    687
+   ],
+   "size": [
+    162,
+    162
+   ]
+  },
+  {
+   "part": "lip_R_knee_large",
+   "file": "lip_R_knee_large.png",
+   "sha256": "43be67229193802dd6701eec8c06f4eacb60cec70ae1d8b4f57576fbf1a1465e",
+   "slot": "lip_R_knee",
+   "bone": "pull_R_knee",
+   "top_left": [
+    528,
+    686
+   ],
+   "size": [
+    164,
+    164
+   ]
+  },
+  {
+   "part": "lip_R_calf_small",
+   "file": "lip_R_calf_small.png",
+   "sha256": "31035d70531cfb0a051eabf5e298b84eb2c8c20c45e5ec535714b63dc035e422",
+   "slot": "lip_R_calf",
+   "bone": "pull_R_calf",
+   "top_left": [
+    534,
+    822
+   ],
+   "size": [
+    168,
+    168
+   ]
+  },
+  {
+   "part": "lip_R_calf_large",
+   "file": "lip_R_calf_large.png",
+   "sha256": "f23227bdfeace74af3a670ebf729ee772524ddc07024129d768d7be5accd3efb",
+   "slot": "lip_R_calf",
+   "bone": "pull_R_calf",
+   "top_left": [
+    533,
+    822
+   ],
+   "size": [
+    169,
+    169
+   ]
+  },
+  {
+   "part": "lip_R_shin_small",
+   "file": "lip_R_shin_small.png",
+   "sha256": "5d8af33be84aea6860f497c819da5394104d7b771345e2820593c8135ef10937",
+   "slot": "lip_R_shin",
+   "bone": "pull_R_shin",
+   "top_left": [
+    566,
+    1003
+   ],
+   "size": [
+    112,
+    112
+   ]
+  },
+  {
+   "part": "lip_R_shin_large",
+   "file": "lip_R_shin_large.png",
+   "sha256": "09b6266d2159b9eab3443b5245fc00261557bb32fc16a4365eca70612e9ecbc2",
+   "slot": "lip_R_shin",
+   "bone": "pull_R_shin",
+   "top_left": [
+    565,
+    1002
+   ],
+   "size": [
+    113,
+    113
+   ]
+  },
+  {
+   "part": "skirt",
+   "file": "skirt.png",
+   "sha256": "fa9d04f58729acff0d847685ce8124210d4fa803a850ea05fc3cd5c45f4f3c56",
+   "slot": "skirt",
+   "bone": "waist",
+   "top_left": [
+    143,
+    61
+   ],
+   "size": [
+    737,
+    510
+   ]
+  }
+ ],
+ "ignored_parts": [],
+ "visual_verdict": "NOT_EVALUATED"
+}

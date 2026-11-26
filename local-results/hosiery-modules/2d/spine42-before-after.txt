@@ -1,0 +1,12 @@
+prefabs/viewer2d built without and with the feature spine42: the scenarios of its four other presets, picture by picture.
+
+stage-check: 1 pictures, 1 identical
+dungeon-spin: 26 pictures, 25 identical
+    11-multi-encounter.png: 0 pixels over 8
+cascade-slot: 5 pictures, 5 identical
+ashfall-duel: 10 pictures, 7 identical
+    ashfall-defeat.png: 0 pixels over 8
+    ashfall-title.png: 14776 pixels over 8
+    ashfall-victory.png: 0 pixels over 8
+
+The same build run twice (with spine42), ashfall-title.png: 13711 pixels over 8 (the title screen is animated).

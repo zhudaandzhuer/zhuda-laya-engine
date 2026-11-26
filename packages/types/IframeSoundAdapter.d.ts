@@ -147,6 +147,21 @@ export declare class IframeSoundAdapter {
         orientation?: readonly [number, number, number];
         rampSec?: number;
     }): boolean;
+    /**
+     * Where a playing sample voice is in its sample, in seconds, by the audio
+     * clock: the offset it started at plus the context time since. It stands
+     * still while the context is suspended (page hidden, focus lost) and is the
+     * time to judge against in anything that must stay with the music. Null when
+     * no sample voice of that logical ID is playing (never started, still queued
+     * before unlock, ended or stopped). With several, the newest answers.
+     */
+    getSamplePositionSec(id: string): number | null;
+    /**
+     * Seconds between a sample being scheduled and it leaving the speaker, as
+     * the host reports it (`outputLatency`, else `baseLatency`); 0 when it does
+     * not say. Bluetooth output is often not included: keep a player setting.
+     */
+    getOutputLatencySec(): number;
     stop(id: string, fadeOutSec?: number): boolean;
     private finishVoice;
     private stopVoice;

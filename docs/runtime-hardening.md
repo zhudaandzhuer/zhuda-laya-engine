@@ -18,6 +18,29 @@ runtime.start((unscaledDeltaTime, time) => {
   updateUi(time.unscaledDeltaTime);
 });
 ```
+Waits and tweens are on the same clock: they stop while it is paused, run at its speed, and are
+cancelled with their owner, which `setTimeout` and a tween library with its own clock are not.
+
+```ts
+if (!(await runtime.timers.wait(0.4, { owner: panel }))) return; // false: cancelled, the panel closed
+const fade = runtime.timers.tween({ duration: 0.25, ease: zhudaEase.outQuad, owner: panel, update: (v) => (panel.alpha = v) });
+await fade.done; // true when it ended; fade.finish() jumps to the end, fade.cancel() stops it
+```
+
+A wait never rejects. A tween's last step is exactly 1. Both take `channel` or `layer` as a timer
+does.
+
+To compare two builds frame for frame, give the session a fixed clock:
+
+```ts
+boot({ ...options, fixedDeltaSec: 1 / 60 });
+```
+
+Every frame then advances the session's clock by exactly that time, whatever really passed:
+timers, waits, tweens, time layers and `update(dt)` see the same values on every run. It does not
+change what does not go through this clock: `Date`, `performance.now()` read by the game, audio
+and CSS animation. For those, `prefabs/tools/detplay.mjs` replaces the page's clocks.
+
 
 Use `scaled` for gameplay and hit-stop windows. Use `unscaled` for UI,
 cinematics and recovery that must continue while gameplay is slowed. Timer

@@ -1,0 +1,1 @@
+zhuda.config.json:1 [MINIGAME_SYNTAX] The scripts keep syntax that es2017 does not have and that has no older form (1 place): Big integer literals are not available in the configured target environment ("es2017") and may crash at run-time Remove it from what the game imports, or raise minigame.syntaxTarget.

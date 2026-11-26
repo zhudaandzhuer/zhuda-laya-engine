@@ -1,0 +1,3 @@
+[
+  { "id": "knit", "slot": "top", "name": "針織衫", "tintable": false, "followsBody": true, "source": "tools/foreign-part.py" }
+]

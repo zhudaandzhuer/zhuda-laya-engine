@@ -1,0 +1,157 @@
+{
+  "file": "assets/stickman.glb",
+  "bytes": 418764,
+  "triangles": 2994,
+  "budget": 3000,
+  "parts": {
+    "body": 2494,
+    "head": 500
+  },
+  "vertices": 2413,
+  "textures": {
+    "size": 512,
+    "charts": 111,
+    "movedForOverlap": 4,
+    "texelsPerMetre": 198.8,
+    "chartFill": 0.495,
+    "texels": 79435,
+    "filled": 0.303,
+    "overlapTexels": 0,
+    "overlapAt": [],
+    "steepestNormalDeg": 80,
+    "texelsOver60Deg": 92,
+    "seconds": 1.3,
+    "bytes": {
+      "baseColor": 4989,
+      "normal": 71755,
+      "occlusion": 71750
+    }
+  },
+  "meshedBeforeSimplify": {
+    "body": 245056
+  },
+  "handTriangles": 699,
+  "simplifyErrorMm": {
+    "body": 18.19
+  },
+  "bodySurfaceError": {
+    "insideMm": 15.3,
+    "outsideMm": 7.8
+  },
+  "armWeightOnBody": {
+    "0.5-0.56m": {
+      "before": 0.06,
+      "now": 0
+    },
+    "0.56-0.62m": {
+      "before": 0.263,
+      "now": 0
+    },
+    "0.62-0.68m": {
+      "before": 0.37,
+      "now": 0.01
+    },
+    "0.68-0.74m": {
+      "before": 0.369,
+      "now": 0.124
+    }
+  },
+  "headRoundness": {
+    "radiusM": 0.18,
+    "verticesOffSphereMm": 0,
+    "deepestInsideSphereMm": 2.06,
+    "triangles": 500
+  },
+  "joints": [
+    "root",
+    "hips",
+    "spine",
+    "chest",
+    "neck",
+    "head",
+    "clavL",
+    "clavR",
+    "armL",
+    "armR",
+    "foreL",
+    "foreR",
+    "handL",
+    "handR",
+    "thighL",
+    "thighR",
+    "shinL",
+    "shinR",
+    "footL",
+    "footR"
+  ],
+  "meshes": 1,
+  "materials": 1,
+  "clips": {
+    "Idle_HandsOnHips": {
+      "seconds": 4,
+      "frames": 121,
+      "loopSeamQuat": 0,
+      "leftAnkleDriftMm": 0,
+      "rightHeelDriftMm": 0,
+      "rightAnkleMovesMm": 0,
+      "wristsAtStart": [
+        [
+          0.118,
+          0.611,
+          0.026
+        ],
+        [
+          -0.143,
+          0.622,
+          -0.011
+        ]
+      ]
+    },
+    "Idle_ArmsCrossed": {
+      "seconds": 3.2,
+      "frames": 97,
+      "loopSeamQuat": 0,
+      "leftAnkleDriftMm": 0,
+      "rightHeelDriftMm": 0,
+      "rightAnkleMovesMm": 26.8,
+      "wristsAtStart": [
+        [
+          -0.052,
+          0.663,
+          0.12
+        ],
+        [
+          0.07,
+          0.707,
+          0.141
+        ]
+      ]
+    }
+  },
+  "heightM": 1.19,
+  "bounds": {
+    "min": [
+      -0.272,
+      0.005,
+      -0.179
+    ],
+    "max": [
+      0.272,
+      1.195,
+      0.179
+    ]
+  },
+  "feet": {
+    "L": [
+      0.087,
+      0.006,
+      10
+    ],
+    "R": [
+      -0.087,
+      -0.006,
+      -10
+    ]
+  },
+  "seconds": 3.2
+}

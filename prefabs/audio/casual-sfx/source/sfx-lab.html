@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>數豬豬音效工坊</title>
+<style>
+:root{--bg:#12152a;--card:#1e2344;--line:#343b6b;--ink:#eeeaf7;--ink2:#b9b5d0;--moon:#ffd479;--pink:#ff9eb4}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 -apple-system,"PingFang TC","Noto Sans TC",sans-serif}
+main{max-width:1100px;margin:0 auto;padding:28px 16px 60px}
+h1{margin:0 0 4px;font-size:26px}
+p.lead{color:var(--ink2);margin:0 0 18px}
+.bar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px}
+button{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:10px;padding:7px 12px}
+button:hover{border-color:var(--moon)}
+button.primary{background:var(--moon);color:#2a2340;border-color:var(--moon);font-weight:600}
+h2{font-size:17px;margin:24px 0 10px;color:var(--moon)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px}
+.s{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:6px}
+.s b{font-size:15px}.s code{font-size:12px;color:var(--pink)}
+.s span{font-size:13px;color:var(--ink2)}
+.s .row{display:flex;gap:6px;margin-top:auto}
+.s .row button{flex:1;padding:5px}
+</style>
+</head>
+<body>
+<main>
+<h1>🐷 數豬豬音效工坊</h1>
+<p class="lead">所有音效都是用瀏覽器的 WebAudio 即時合成，不需要外部音檔。每個音效可以試聽（▶）或下載成 WAV（⬇）。遊戲裡會直接用同一套程式即時產生。</p>
+<div class="bar">
+  <button class="primary" id="all">▶ 依序試聽全部</button>
+  <button id="zip">⬇ 全部下載（逐個 WAV）</button>
+  <button id="stop">■ 停止</button>
+</div>
+<div id="list"></div>
+</main>
+<script>
+/* ========= 合成工具 ========= */
+const SR = 44100;
+function env(g, t, a, d, peak = 1, end = 0.0001) {
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(peak, t + a);
+  g.gain.exponentialRampToValueAtTime(end, t + a + d);
+}
+function osc(ctx, out, type, f, t, dur, vol = 0.3, a = 0.005) {
+  const o = ctx.createOscillator(), g = ctx.createGain();
+  o.type = type; o.frequency.setValueAtTime(f, t);
+  env(g, t, a, dur, vol); o.connect(g).connect(out); o.start(t); o.stop(t + a + dur + 0.05);
+  return o;
+}
+let _noise = null;
+function noiseBuf(ctx) {
+  if (_noise && _noise.sampleRate === ctx.sampleRate) return _noise;
+  const b = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate), d = b.getChannelData(0);
+  let s = 12345; for (let i = 0; i < d.length; i++) { s = (s * 16807) % 2147483647; d[i] = (s / 2147483647) * 2 - 1; }
+  return (_noise = b);
+}
+function noise(ctx, out, t, dur, { type = 'bandpass', f = 1000, q = 1, vol = 0.3, a = 0.005, f2 = null } = {}) {
+  const n = ctx.createBufferSource(); n.buffer = noiseBuf(ctx); n.loop = true;
+  const fl = ctx.createBiquadFilter(); fl.type = type; fl.frequency.setValueAtTime(f, t); fl.Q.value = q;
+  if (f2) fl.frequency.exponentialRampToValueAtTime(f2, t + dur);
+  const g = ctx.createGain(); env(g, t, a, dur, vol);
+  n.connect(fl).connect(g).connect(out); n.start(t); n.stop(t + a + dur + 0.05);
+}
+function bell(ctx, out, f, t, dur = 1.2, vol = 0.18) {
+  [1, 2.76, 5.4].forEach((m, i) => osc(ctx, out, 'sine', f * m, t, dur / (i + 1), vol / (i * 1.8 + 1), 0.002));
+}
+const N = n => 440 * Math.pow(2, (n - 69) / 12); // MIDI → Hz
+
+/* ========= 音效定義：每個 fn(ctx, out, t) 回傳長度（秒） ========= */
+const SFX = [
+  // --- 介面 ---
+  { id: 'ui_click', group: '介面', name: '翻下一句', use: '點擊對話框', fn: (c, o, t) => { osc(c, o, 'sine', 880, t, 0.06, 0.25); osc(c, o, 'sine', 1320, t + 0.03, 0.05, 0.12); return 0.15; } },
+  { id: 'text_blip', group: '介面', name: '打字聲', use: '文字一個字一個字出現', fn: (c, o, t) => { osc(c, o, 'triangle', 620, t, 0.03, 0.12, 0.002); return 0.06; } },
+  { id: 'ui_hover', group: '介面', name: '游標移過按鈕', use: '選單、商店卡片', fn: (c, o, t) => { osc(c, o, 'sine', 1200, t, 0.04, 0.08); return 0.08; } },
+  { id: 'buy', group: '介面', name: '購買成功', use: '商店買東西', fn: (c, o, t) => { [72, 76, 79].forEach((n, i) => osc(c, o, 'triangle', N(n), t + i * 0.06, 0.18, 0.2)); return 0.4; } },
+  { id: 'cant_afford', group: '介面', name: '錢不夠', use: '點灰色商品', fn: (c, o, t) => { osc(c, o, 'square', 220, t, 0.09, 0.08); osc(c, o, 'square', 196, t + 0.11, 0.12, 0.08); return 0.3; } },
+  { id: 'upgrade', group: '介面', name: '升級', use: '搖籃曲、枕頭升級', fn: (c, o, t) => { [67, 71, 74, 79, 83].forEach((n, i) => osc(c, o, 'sine', N(n), t + i * 0.05, 0.25, 0.16)); return 0.55; } },
+  { id: 'menu_open', group: '介面', name: '打開選單', use: '圖鑑、設定', fn: (c, o, t) => { noise(c, o, t, 0.18, { f: 800, f2: 3000, q: 0.7, vol: 0.12 }); osc(c, o, 'sine', 660, t + 0.05, 0.12, 0.1); return 0.3; } },
+
+  // --- 劇情 ---
+  { id: 'clock_tick', group: '劇情', name: '時鐘滴答', use: 'p01 開場', fn: (c, o, t) => { for (let i = 0; i < 4; i++) { noise(c, o, t + i * 0.5, 0.02, { f: 3500, q: 6, vol: 0.25 }); osc(c, o, 'sine', i % 2 ? 1800 : 2100, t + i * 0.5, 0.02, 0.05); } return 2.0; } },
+  { id: 'pout', group: '劇情', name: '嘟嘴', use: 'p04 豬二不滿', fn: (c, o, t) => { const x = osc(c, o, 'sine', 500, t, 0.18, 0.2); x.frequency.exponentialRampToValueAtTime(320, t + 0.18); return 0.25; } },
+  { id: 'blanket', group: '劇情', name: '翻被子', use: 'p05 豬大坐起來', fn: (c, o, t) => { noise(c, o, t, 0.35, { type: 'lowpass', f: 1800, f2: 600, vol: 0.18, a: 0.08 }); noise(c, o, t + 0.25, 0.25, { type: 'lowpass', f: 1400, f2: 500, vol: 0.12, a: 0.05 }); return 0.6; } },
+  { id: 'question', group: '劇情', name: '問號', use: 'p08 疑惑', fn: (c, o, t) => { const x = osc(c, o, 'sine', 400, t, 0.2, 0.2); x.frequency.exponentialRampToValueAtTime(800, t + 0.2); return 0.3; } },
+  { id: 'idea', group: '劇情', name: '想到了！', use: 'p09 豬大靈光一閃', fn: (c, o, t) => { bell(c, o, N(84), t, 0.8, 0.16); bell(c, o, N(91), t + 0.08, 0.8, 0.12); return 0.9; } },
+  { id: 'surprise', group: '劇情', name: '驚訝', use: 'p13 有道理耶', fn: (c, o, t) => { const x = osc(c, o, 'triangle', 300, t, 0.12, 0.22); x.frequency.exponentialRampToValueAtTime(900, t + 0.08); return 0.2; } },
+  { id: 'giggle', group: '劇情', name: '嘻嘻', use: 'p15 豬二笑', fn: (c, o, t) => { [0, 0.09, 0.18].forEach((d, i) => { const x = osc(c, o, 'sine', 900 + i * 60, t + d, 0.07, 0.12); x.frequency.exponentialRampToValueAtTime(1300 + i * 60, t + d + 0.06); }); return 0.35; } },
+  { id: 'dream_whoosh', group: '劇情', name: '進入夢境', use: 'p18 白光轉場', fn: (c, o, t) => { noise(c, o, t, 1.6, { f: 300, f2: 4000, q: 0.8, vol: 0.18, a: 0.6 }); [72, 76, 79, 84, 88].forEach((n, i) => bell(c, o, N(n), t + 0.5 + i * 0.12, 1.4, 0.08)); return 2.4; } },
+  { id: 'birds', group: '劇情', name: '早晨鳥叫', use: 'e04 天亮', fn: (c, o, t) => { [0, 0.3, 0.42, 1.0, 1.15].forEach((d, i) => { const x = osc(c, o, 'sine', 2600 + (i % 2) * 400, t + d, 0.08, 0.1, 0.01); x.frequency.exponentialRampToValueAtTime(3600, t + d + 0.05); }); return 1.4; } },
+
+  // --- 遊戲 ---
+  { id: 'oink', group: '遊戲', name: '小豬哼哼', use: '小豬出生、被趕', fn: (c, o, t) => {
+      const x = c.createOscillator(); x.type = 'sawtooth'; x.frequency.setValueAtTime(190, t); x.frequency.exponentialRampToValueAtTime(120, t + 0.22);
+      const f1 = c.createBiquadFilter(); f1.type = 'bandpass'; f1.frequency.value = 700; f1.Q.value = 3;
+      const f2 = c.createBiquadFilter(); f2.type = 'lowpass'; f2.frequency.value = 1600;
+      const am = c.createOscillator(); am.frequency.value = 38; const amg = c.createGain(); amg.gain.value = 0.5;
+      const g = c.createGain(); env(g, t, 0.02, 0.22, 0.5); const g2 = c.createGain(); g2.gain.value = 0.5; am.connect(amg).connect(g2.gain);
+      x.connect(f1).connect(f2).connect(g2).connect(g).connect(o); x.start(t); am.start(t); x.stop(t + 0.3); am.stop(t + 0.3); return 0.35; } },
+  { id: 'mud_splash', group: '遊戲', name: '跳進泥巴', use: '小豬開始打滾', fn: (c, o, t) => { noise(c, o, t, 0.3, { type: 'lowpass', f: 900, f2: 250, vol: 0.4, a: 0.005 }); for (let i = 0; i < 4; i++) { const x = osc(c, o, 'sine', 180 + i * 40, t + 0.1 + i * 0.07, 0.06, 0.12); x.frequency.exponentialRampToValueAtTime(400 + i * 50, t + 0.16 + i * 0.07); } return 0.5; } },
+  { id: 'mud_bubble', group: '遊戲', name: '泥巴冒泡', use: '打滾中（循環）', fn: (c, o, t) => { [0, 0.16, 0.28].forEach(d => { const x = osc(c, o, 'sine', 220, t + d, 0.05, 0.15); x.frequency.exponentialRampToValueAtTime(520, t + d + 0.05); }); return 0.4; } },
+  { id: 'jump_boing', group: '遊戲', name: '跳柵欄', use: '泥豬起跳', fn: (c, o, t) => { const x = osc(c, o, 'sine', 220, t, 0.28, 0.25); x.frequency.exponentialRampToValueAtTime(660, t + 0.12); x.frequency.exponentialRampToValueAtTime(330, t + 0.28); return 0.35; } },
+  { id: 'land_thud', group: '遊戲', name: '落地', use: '跳過柵欄落地', fn: (c, o, t) => { const x = osc(c, o, 'sine', 140, t, 0.12, 0.35); x.frequency.exponentialRampToValueAtTime(60, t + 0.12); noise(c, o, t, 0.06, { type: 'lowpass', f: 500, vol: 0.15 }); return 0.2; } },
+  { id: 'count_ding', group: '遊戲', name: '數到一隻', use: '每數一隻（音高隨連數微升）', fn: (c, o, t) => { bell(c, o, N(84), t, 0.6, 0.16); return 0.6; } },
+  { id: 'count_10', group: '遊戲', name: '數到十的倍數', use: '十、二十……', fn: (c, o, t) => { bell(c, o, N(84), t, 0.7, 0.14); bell(c, o, N(88), t + 0.07, 0.7, 0.12); return 0.8; } },
+  { id: 'count_100', group: '遊戲', name: '數到一百的倍數', use: '一百、兩百……', fn: (c, o, t) => { [72, 76, 79, 84].forEach((n, i) => bell(c, o, N(n), t + i * 0.08, 1.4, 0.13)); return 1.6; } },
+  { id: 'count_1000', group: '遊戲', name: '數到一千', use: '大里程碑', fn: (c, o, t) => { [60, 64, 67, 72, 76, 79, 84].forEach((n, i) => { bell(c, o, N(n), t + i * 0.07, 1.8, 0.1); osc(c, o, 'triangle', N(n - 12), t + i * 0.07, 0.4, 0.05); }); return 2.2; } },
+  { id: 'coin', group: '遊戲', name: '拿到夢幣', use: '夢幣跳出來', fn: (c, o, t) => { osc(c, o, 'square', N(88), t, 0.05, 0.07); osc(c, o, 'square', N(95), t + 0.05, 0.18, 0.07); return 0.3; } },
+  { id: 'clean_reject', group: '遊戲', name: '乾淨的豬不算', use: '要先滾泥巴啦！', fn: (c, o, t) => { [0, 0.14].forEach(d => { const x = osc(c, o, 'triangle', 330, t + d, 0.1, 0.16); x.frequency.exponentialRampToValueAtTime(260, t + d + 0.1); }); return 0.3; } },
+  { id: 'star_shoot', group: '遊戲', name: '流星劃過', use: '流星出現', fn: (c, o, t) => { noise(c, o, t, 1.0, { f: 6000, f2: 1500, q: 2, vol: 0.12, a: 0.2 }); for (let i = 0; i < 8; i++) osc(c, o, 'sine', 2000 + Math.sin(i) * 600 + i * 150, t + i * 0.08, 0.08, 0.05); return 1.2; } },
+  { id: 'star_catch', group: '遊戲', name: '點到流星', use: '夢幣 ×2 開始', fn: (c, o, t) => { [79, 83, 86, 91, 95].forEach((n, i) => bell(c, o, N(n), t + i * 0.04, 0.9, 0.1)); return 1.1; } },
+  { id: 'fly_flap', group: '遊戲', name: '飛天豬拍翅', use: '飛天豬飛過（循環）', fn: (c, o, t) => { for (let i = 0; i < 4; i++) noise(c, o, t + i * 0.16, 0.08, { type: 'lowpass', f: 1200, f2: 400, vol: 0.2, a: 0.02 }); return 0.7; } },
+  { id: 'fly_catch', group: '遊戲', name: '抓到飛天豬', use: '+25 隻', fn: (c, o, t) => { [76, 79, 84, 88, 91, 96].forEach((n, i) => osc(c, o, 'triangle', N(n), t + i * 0.05, 0.2, 0.14)); bell(c, o, N(96), t + 0.3, 1.2, 0.12); return 1.4; } },
+  { id: 'gold_shine', group: '遊戲', name: '金豬閃光', use: '金豬出現／被數到', fn: (c, o, t) => { for (let i = 0; i < 6; i++) bell(c, o, N(96 + (i % 3) * 3), t + i * 0.06, 0.5, 0.06); return 0.9; } },
+  { id: 'potato_drop', group: '遊戲', name: '放地瓜', use: '放置地瓜誘餌', fn: (c, o, t) => { const x = osc(c, o, 'sine', 300, t, 0.12, 0.3); x.frequency.exponentialRampToValueAtTime(120, t + 0.1); noise(c, o, t, 0.08, { type: 'lowpass', f: 700, vol: 0.15 }); return 0.2; } },
+  { id: 'place_item', group: '遊戲', name: '放置道具', use: '泥巴坑、柵欄', fn: (c, o, t) => { noise(c, o, t, 0.08, { type: 'lowpass', f: 1500, vol: 0.2 }); osc(c, o, 'sine', 520, t + 0.02, 0.08, 0.12); return 0.15; } },
+  { id: 'kiss', group: '遊戲', name: '晚安吻', use: '技能發動', fn: (c, o, t) => { noise(c, o, t, 0.05, { f: 2500, q: 3, vol: 0.25 }); [84, 88, 91].forEach((n, i) => bell(c, o, N(n), t + 0.08 + i * 0.06, 0.8, 0.1)); return 1.0; } },
+  { id: 'layer_up', group: '遊戲', name: '進到下一層夢', use: '夢境層升級', fn: (c, o, t) => { noise(c, o, t, 1.2, { f: 400, f2: 5000, q: 0.7, vol: 0.12, a: 0.5 }); [60, 67, 72, 76, 79, 84, 88].forEach((n, i) => bell(c, o, N(n), t + 0.4 + i * 0.1, 1.6, 0.09)); return 2.4; } },
+  { id: 'offline_reward', group: '遊戲', name: '離線收益', use: '回來時結算', fn: (c, o, t) => { [72, 74, 76, 79].forEach((n, i) => osc(c, o, 'triangle', N(n), t + i * 0.09, 0.3, 0.12)); return 0.8; } },
+  { id: 'ending_chime', group: '遊戲', name: '結局', use: '數到十萬', fn: (c, o, t) => { [[60, 64, 67], [65, 69, 72], [67, 71, 74], [72, 76, 79, 84]].forEach((ch, i) => ch.forEach(n => bell(c, o, N(n), t + i * 0.45, 2.2, 0.07))); return 3.6; } },
+
+  // --- 環境與音樂（循環） ---
+  { id: 'night_ambience', group: '環境與音樂', name: '夜晚蟲鳴', use: '臥室、月光草地（循環 4 秒）', loop: true, fn: (c, o, t) => {
+      for (let i = 0; i < 18; i++) { const d = (i * 0.217) % 4, f = 4200 + (i % 3) * 300; for (let k = 0; k < 3; k++) osc(c, o, 'sine', f, t + d + k * 0.035, 0.018, 0.025, 0.003); }
+      noise(c, o, t, 3.9, { type: 'lowpass', f: 400, vol: 0.03, a: 0.5 }); return 4.0; } },
+  { id: 'dream_pad', group: '環境與音樂', name: '夢境底音', use: '夢境層（循環 6 秒）', loop: true, fn: (c, o, t) => { [48, 55, 60, 64].forEach(n => { const x = osc(c, o, 'sine', N(n), t, 5.2, 0.05, 0.8); x.detune.setValueAtTime(-6, t); x.detune.linearRampToValueAtTime(6, t + 6); }); return 6.0; } },
+  { id: 'lullaby', group: '環境與音樂', name: '音樂盒搖籃曲（原創）', use: '遊戲 BGM（循環約 13 秒）', loop: true, fn: (c, o, t) => {
+      // 原創旋律，3/4 拍，F 大調
+      const mel = [[77,1],[76,1],[74,1],[72,2],[69,1],[70,1],[72,1],[74,3],[72,1],[70,1],[69,1],[67,2],[65,1],[67,1],[69,1],[65,3]];
+      const bass = [53, 58, 53, 48, 53, 46, 48, 53];
+      const b = 0.42; let x = 0;
+      mel.forEach(([n, d]) => { bell(c, o, N(n), t + x * b, 1.4, 0.09); x += d; });
+      bass.forEach((n, i) => osc(c, o, 'sine', N(n), t + i * 3 * b * 1.0, 1.1, 0.06, 0.02));
+      return x * b + 0.6; } },
+];
+
+/* ========= 播放、輸出 ========= */
+let live = null;
+function ctx() { if (!live) live = new (window.AudioContext || window.webkitAudioContext)(); return live; }
+function play(s) {
+  const c = ctx(); const out = c.createGain(); out.gain.value = 0.9;
+  const comp = c.createDynamicsCompressor(); out.connect(comp).connect(c.destination);
+  return s.fn(c, out, c.currentTime + 0.02);
+}
+async function render(s) {
+  const len0 = s.fn({ createOscillator(){return {frequency:{setValueAtTime(){},exponentialRampToValueAtTime(){},linearRampToValueAtTime(){},value:0},detune:{setValueAtTime(){},linearRampToValueAtTime(){}},connect(x){return x},start(){},stop(){}}}, createGain(){return {gain:{setValueAtTime(){},exponentialRampToValueAtTime(){},value:0},connect(x){return x}}}, createBiquadFilter(){return {frequency:{setValueAtTime(){},exponentialRampToValueAtTime(){},value:0},Q:{},connect(x){return x}}}, createBuffer(){return {getChannelData(){return new Float32Array(1)}}}, createBufferSource(){return {connect(x){return x},start(){},stop(){}}}, sampleRate: SR }, { connect(){} }, 0);
+  _noise = null;
+  const dur = Math.ceil((len0 + (s.loop ? 0 : 0.3)) * SR);
+  const c = new OfflineAudioContext(1, dur, SR);
+  const out = c.createGain(); out.gain.value = 0.9; out.connect(c.destination);
+  s.fn(c, out, 0);
+  const buf = await c.startRendering(); _noise = null;
+  const d = buf.getChannelData(0); let pk = 0; for (const v of d) pk = Math.max(pk, Math.abs(v));
+  const k = pk > 0 ? 0.89 / pk : 1; // 峰值正規化到 -1 dBFS
+  return wav(d, k);
+}
+function wav(d, k) {
+  const b = new ArrayBuffer(44 + d.length * 2), v = new DataView(b);
+  const w = (o, s) => [...s].forEach((ch, i) => v.setUint8(o + i, ch.charCodeAt(0)));
+  w(0, 'RIFF'); v.setUint32(4, 36 + d.length * 2, true); w(8, 'WAVE'); w(12, 'fmt '); v.setUint32(16, 16, true);
+  v.setUint16(20, 1, true); v.setUint16(22, 1, true); v.setUint32(24, SR, true); v.setUint32(28, SR * 2, true);
+  v.setUint16(32, 2, true); v.setUint16(34, 16, true); w(36, 'data'); v.setUint32(40, d.length * 2, true);
+  for (let i = 0; i < d.length; i++) v.setInt16(44 + i * 2, Math.max(-1, Math.min(1, d[i] * k)) * 32767, true);
+  return new Blob([b], { type: 'audio/wav' });
+}
+async function download(s) {
+  const blob = await render(s); const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = s.id + '.wav'; a.click();
+}
+// 給自動化匯出用：回傳某個音效的 WAV base64
+window.renderBase64 = async id => {
+  const blob = await render(SFX.find(s => s.id === id)); const u8 = new Uint8Array(await blob.arrayBuffer());
+  let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode(...u8.subarray(i, i + 0x8000));
+  return btoa(s);
+};
+window.SFX_IDS = SFX.map(s => s.id);
+
+/* ========= 介面 ========= */
+const list = document.getElementById('list');
+[...new Set(SFX.map(s => s.group))].forEach(gname => {
+  const h = document.createElement('h2'); h.textContent = gname; list.appendChild(h);
+  const g = document.createElement('div'); g.className = 'grid'; list.appendChild(g);
+  SFX.filter(s => s.group === gname).forEach(s => {
+    const el = document.createElement('div'); el.className = 's';
+    el.innerHTML = `<b>${s.name}</b><code>${s.id}</code><span>${s.use}</span><div class="row"><button>▶ 試聽</button><button>⬇ WAV</button></div>`;
+    const [p, d] = el.querySelectorAll('button'); p.onclick = () => play(s); d.onclick = () => download(s);
+    g.appendChild(el);
+  });
+});
+let stopAll = false;
+document.getElementById('all').onclick = async () => { stopAll = false; for (const s of SFX) { if (stopAll) break; const L = play(s); await new Promise(r => setTimeout(r, (Math.min(L, 4) + 0.35) * 1000)); } };
+document.getElementById('stop').onclick = () => { stopAll = true; if (live) { live.close(); live = null; } };
+document.getElementById('zip').onclick = async () => { for (const s of SFX) { await download(s); await new Promise(r => setTimeout(r, 250)); } };
+</script>
+</body>
+</html>

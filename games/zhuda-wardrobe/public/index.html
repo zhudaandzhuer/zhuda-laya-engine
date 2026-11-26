@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8">
+    <link rel="icon" href="data:,">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+    <title>豬大衣櫥</title>
+    <style>
+      html, body { margin: 0; height: 100%; background: #1b1d24; overflow: hidden; font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif; color: #f1ede4; }
+      #game { position: fixed; inset: 0; touch-action: none; }
+      #panel { position: fixed; right: 0; top: 0; bottom: 0; width: min(380px, 46vw); padding: 14px; box-sizing: border-box; background: rgba(20, 22, 30, 0.82); overflow-y: auto; }
+      @media (orientation: portrait) { #panel { left: 0; right: 0; top: auto; width: auto; height: 46vh; } }
+      h1 { font-size: 22px; margin: 0 0 8px; color: #ffd98a; }
+      h2 { font-size: 14px; margin: 12px 0 6px; color: #a9b0c4; font-weight: 500; }
+      .row { display: flex; flex-wrap: wrap; gap: 6px; }
+      button { font: inherit; color: inherit; background: #2c3140; border: 1px solid #4b5266; border-radius: 10px; padding: 6px 10px; min-height: 36px; cursor: pointer; font-size: 14px; }
+      button.on { background: #e0a93a; border-color: #7a5210; color: #2a1c00; }
+      button.clash { opacity: 0.55; border-style: dashed; }
+      button.swatch { width: 36px; min-height: 36px; padding: 0; border-radius: 50%; border: 2px solid #4b5266; }
+      button.swatch.on { border-color: #ffffff; box-shadow: 0 0 0 2px #e0a93a; }
+      #info { margin-top: 12px; font-size: 13px; color: #a9b0c4; line-height: 1.6; }
+      #error { position: fixed; left: 12px; top: 12px; right: 12px; color: #ff9a8a; white-space: pre-wrap; font-size: 13px; }
+    </style>
+  </head>
+  <body>
+    <div id="game"></div>
+    <div id="panel">
+      <h1>豬大衣櫥</h1>
+      <div class="row"><button data-hot="random" id="random">隨機一套</button><button data-hot="clear" id="clear">全部脫下</button></div>
+      <div id="slots"></div>
+      <h2>動作</h2>
+      <div class="row" id="clips"></div>
+      <div id="info"></div>
+    </div>
+    <div id="error"></div>
+    <!-- ZHUDA_LIBS -->
+    <!-- ZHUDA_ENTRY -->
+  </body>
+</html>

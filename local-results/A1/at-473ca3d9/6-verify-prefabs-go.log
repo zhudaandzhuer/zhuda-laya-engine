@@ -1,0 +1,8 @@
+
+> zhuda-laya-engine@2.0.0 verify:prefabs:go
+> node prefabs/scripts/verify.mjs --go
+
+prefabs              ok   tests 189 pass / 0 fail  5 s
+viewer2d             ok   tests 3 pass / 0 fail  4 s
+viewer3d             ok   tests 3 pass / 0 fail  6 s
+server (Go)          ok   10 packages ok  1 s

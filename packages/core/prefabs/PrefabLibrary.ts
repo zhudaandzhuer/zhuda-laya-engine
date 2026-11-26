@@ -1,4 +1,5 @@
 import type { LayaHierarchyNodeData } from '../../types/zhuda-static-assets.ts';
+import { zhudaUtf8Decode, zhudaUtf8Encode } from '../runtime3d/Utf8.ts';
 import { ZhudaPrefab } from '../Prefab.ts';
 import { createProviderAssetCache, normalizeAssetId } from '../runtime3d/AssetProvider.ts';
 import type { AssetProvider } from '../runtime3d/AssetProvider.ts';
@@ -393,7 +394,7 @@ export class ZhudaPrefabLibrary<T extends AnyPrefabDefinition = PrefabDefinition
       async (asset, signal) => {
         const sourceHash = await hash(asset.bytes);
         if (!textures.has(asset.id)) {
-          const data = JSON.parse(new TextDecoder().decode(asset.bytes));
+          const data = JSON.parse(zhudaUtf8Decode(asset.bytes));
           validateHierarchy(data);
           return { hash: sourceHash, data };
         }
@@ -470,7 +471,7 @@ export class ZhudaPrefabLibrary<T extends AnyPrefabDefinition = PrefabDefinition
         resources.set(key, lease.value);
       }
       if (controller.signal.aborted) throw new DOMException('Prefab cancelled', 'AbortError');
-      const definitionHash = await hash(new TextEncoder().encode(JSON.stringify(entry)));
+      const definitionHash = await hash(zhudaUtf8Encode(JSON.stringify(entry)));
       if (controller.signal.aborted) throw new DOMException('Prefab cancelled', 'AbortError');
       let tree: PrefabTreeInstance3D | undefined;
       let levels: ZhudaModelLod[] = [];

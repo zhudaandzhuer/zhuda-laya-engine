@@ -1,0 +1,162 @@
+{
+ "errors": [],
+ "failed": "",
+ "renderer": {
+  "webgl": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+  "webgpu": true,
+  "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/158.0.0.0 Safari/537.36",
+  "dpr": 1
+ },
+ "final": {
+  "ready": true,
+  "state": {
+   "type": "lacetop",
+   "color": 1841694,
+   "bottom": "mini",
+   "tears": [
+    0,
+    0
+   ],
+   "frames": 483,
+   "clothMs": 4.795,
+   "pullMs": 0.42,
+   "amount": 0,
+   "inside": 13,
+   "held": null,
+   "rows": 215,
+   "around": 144,
+   "renderer": "webgl",
+   "quality": 3,
+   "yaw": 0,
+   "pitch": 0.052,
+   "zoom": 1,
+   "cloth": {
+    "maxStretch": 0.04,
+    "inside": 13,
+    "dropped": 16
+   }
+  },
+  "rendererErrors": []
+ },
+ "log": [
+  {
+   "shot": "as-worn",
+   "seconds": 4.518,
+   "state": {
+    "ready": true,
+    "state": {
+     "type": "sheer20",
+     "color": 1841694,
+     "bottom": "mini",
+     "tears": [
+      0,
+      0
+     ],
+     "frames": 180,
+     "clothMs": 5.037,
+     "pullMs": 0.004,
+     "amount": 0,
+     "inside": 13,
+     "held": null,
+     "rows": 215,
+     "around": 144,
+     "renderer": "webgl",
+     "quality": 3,
+     "yaw": 0,
+     "pitch": 0.052,
+     "zoom": 1,
+     "cloth": {
+      "maxStretch": 0.04,
+      "inside": 13,
+      "dropped": 16
+     }
+    },
+    "rendererErrors": []
+   }
+  },
+  {
+   "tore": "left thigh, 20D",
+   "tears": [
+    1,
+    0
+   ]
+  },
+  {
+   "tore": "right thigh, 20D",
+   "tears": [
+    1,
+    1
+   ]
+  },
+  {
+   "shot": "torn",
+   "seconds": 8.164,
+   "state": {
+    "ready": true,
+    "state": {
+     "type": "sheer20",
+     "color": 1841694,
+     "bottom": "mini",
+     "tears": [
+      1,
+      1
+     ],
+     "frames": 399,
+     "clothMs": 4.805,
+     "pullMs": 0.507,
+     "amount": 0,
+     "inside": 13,
+     "held": null,
+     "rows": 215,
+     "around": 144,
+     "renderer": "webgl",
+     "quality": 3,
+     "yaw": 0,
+     "pitch": 0.052,
+     "zoom": 1,
+     "cloth": {
+      "maxStretch": 0.04,
+      "inside": 13,
+      "dropped": 16
+     }
+    },
+    "rendererErrors": []
+   }
+  },
+  {
+   "shot": "lace-top",
+   "seconds": 9.565,
+   "state": {
+    "ready": true,
+    "state": {
+     "type": "lacetop",
+     "color": 1841694,
+     "bottom": "mini",
+     "tears": [
+      0,
+      0
+     ],
+     "frames": 483,
+     "clothMs": 4.795,
+     "pullMs": 0.42,
+     "amount": 0,
+     "inside": 13,
+     "held": null,
+     "rows": 215,
+     "around": 144,
+     "renderer": "webgl",
+     "quality": 3,
+     "yaw": 0,
+     "pitch": 0.052,
+     "zoom": 1,
+     "cloth": {
+      "maxStretch": 0.04,
+      "inside": 13,
+      "dropped": 16
+     }
+    },
+    "rendererErrors": []
+   }
+  }
+ ]
+}

@@ -7,6 +7,7 @@ import {
   resolveZhudaGltfTextureSource,
   type ZhudaImageDecodeSupport,
 } from './GltfIntake.ts';
+import { zhudaUtf8Decode } from './Utf8.ts';
 /** Import diagnostics describe the shipped importer, not complete glTF conformance. */
 export interface ModelDiagnostic {
   code:
@@ -863,7 +864,7 @@ export function readGltfAssetDocument(input: ArrayBuffer | Uint8Array): {
       throw Error('Invalid GLB header or JSON chunk');
     json = bytes.subarray(20, 20 + view.getUint32(12, true));
   }
-  return { binary, document: record(JSON.parse(new TextDecoder().decode(json))) };
+  return { binary, document: record(JSON.parse(zhudaUtf8Decode(json))) };
 }
 export function inspectGltfAsset(
   bytes: ArrayBuffer | Uint8Array,

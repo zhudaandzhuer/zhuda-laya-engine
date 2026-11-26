@@ -1,0 +1,4 @@
+[
+  { "js": "S.set({ run: false, hour: 14, weather: 'rain', distance: 12, pitch: 0.2 });", "wait": 2 },
+  { "js": "const out = {}; for (const k of ['rain','poof','dust','clouds','splashes','sky']) { const e = S.fx[k]; const r = e.renderer; const n = r.node; const m = n.meshRenderer; const mesh = n.meshFilter.sharedMesh; const sub = mesh.getSubMesh(0); out[k] = { active: n.active, layer: n.layer, alive: e.system.aliveCount, sub: [sub._indexStart, sub._indexCount], vb: mesh._vertexBuffer && mesh._vertexBuffer._byteLength, ib: mesh._indexBuffer && mesh._indexBuffer.indexCount, enable: m.enabled, rq: m.sharedMaterial.renderQueue, cap: e.system.capacity }; } return out;" }
+]

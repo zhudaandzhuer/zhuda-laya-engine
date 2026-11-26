@@ -9,6 +9,18 @@ import { launchBrowser, firstPageTarget } from './browser-process.mjs';
  * one long task (a large field of grass built at once) answers late instead
  * of failing the check at 20 s.
  */
+/**
+ * The text a page is asked to evaluate: a string as it is, a function as a
+ * call of it. The function runs in the page: it sees the page's globals and
+ * nothing of the file it was written in.
+ */
+export function zhudaPageExpression(source) {
+  if (typeof source === 'function') return `(${source})()`;
+  if (typeof source !== 'string')
+    throw TypeError('evaluate: give an expression as a string, or a function to call in the page');
+  return source;
+}
+
 export async function zhudaWaitFor(evaluate, expression, timeoutMs) {
   if (timeoutMs !== undefined && !(Number.isFinite(timeoutMs) && timeoutMs > 0))
     throw Error('Invalid wait: timeoutMs is a positive number of milliseconds');
@@ -119,7 +131,8 @@ export async function chromeFixture({ zoomFactor = 1 } = {}) {
         pending.set(id, { resolve, reject, timer });
         ws.send(JSON.stringify({ id, method, params, ...(sessionId ? { sessionId } : {}) }));
       });
-    const evaluate = async (expression, { timeoutMs, ...options } = {}) => {
+    const evaluate = async (source, { timeoutMs, ...options } = {}) => {
+      const expression = zhudaPageExpression(source);
       const r = await send(
         'Runtime.evaluate',
         {
@@ -168,9 +181,12 @@ export async function chromeFixture({ zoomFactor = 1 } = {}) {
        */
       glErrors,
       close,
+      /** A PNG of the page: written to `file` when one is given, and returned as bytes. */
       screenshot: async (file) => {
         const r = await send('Page.captureScreenshot', { format: 'png' });
-        fs.writeFileSync(file, Buffer.from(r.data, 'base64'));
+        const png = Buffer.from(r.data, 'base64');
+        if (file) fs.writeFileSync(file, png);
+        return png;
       },
     };
   } catch (error) {

@@ -1,0 +1,248 @@
+{
+ "fps": 30,
+ "twist": [],
+ "chains": [
+  {
+   "bones": [
+    "ear.L"
+   ],
+   "hz": 2.6,
+   "damping": 0.35,
+   "limit": 35,
+   "gravity": 0,
+   "wind": 2.5
+  },
+  {
+   "bones": [
+    "ear.R"
+   ],
+   "hz": 2.6,
+   "damping": 0.35,
+   "limit": 35,
+   "gravity": 0,
+   "wind": 2.5
+  },
+  {
+   "bones": [
+    "tail"
+   ],
+   "hz": 2.8,
+   "damping": 0.55,
+   "limit": 30,
+   "gravity": 0,
+   "wind": 3
+  }
+ ],
+ "clips": {
+  "Dizzy": {
+   "frames": 57,
+   "seconds": 1.9,
+   "was": 1.9048,
+   "loop": false,
+   "roundsApart": {
+    "ear.L": 0.0,
+    "ear.R": 0.0,
+    "tail": 0.0
+   }
+  },
+  "Shake": {
+   "frames": 43,
+   "seconds": 1.4333,
+   "was": 1.4286,
+   "loop": false,
+   "roundsApart": {
+    "ear.L": 0.0,
+    "ear.R": 0.0,
+    "tail": 0.0
+   }
+  },
+  "Cheer": {
+   "frames": 14,
+   "seconds": 0.4667,
+   "was": 0.4762,
+   "loop": false,
+   "roundsApart": {
+    "ear.L": 0.0,
+    "ear.R": 0.0,
+    "tail": 0.0
+   }
+  },
+  "Land": {
+   "frames": 29,
+   "seconds": 0.9667,
+   "was": 0.9524,
+   "loop": false,
+   "roundsApart": {
+    "ear.L": 0.0,
+    "ear.R": 0.0,
+    "tail": 0.0
+   }
+  },
+  "Fall": {
+   "frames": 14,
+   "seconds": 0.4667,
+   "was": 0.4762,
+   "loop": false,
+   "roundsApart": {
+    "ear.L": 0.0,
+    "ear.R": 0.0,
+    "tail": 0.0
+   }
+  },
+  "Dangle": {
+   "frames": 57,
+   "seconds": 1.9,
+   "was": 1.9048,
+   "loop": false,
+   "roundsApart": {
+    "ear.L": 0.0,
+    "ear.R": 0.0,
+    "tail": 0.0
+   }
+  },
+  "Struggle": {
+   "frames": 14,
+   "seconds": 0.4667,
+   "was": 0.4762,
+   "loop": false,
+   "roundsApart": {
+    "ear.L": 0.0,
+    "ear.R": 0.0,
+    "tail": 0.0
+   }
+  },
+  "Walk": {
+   "frames": 14,
+   "seconds": 0.4667,
+   "was": 0.4762,
+   "loop": true,
+   "roundsApart": {
+    "ear.L": 0.0,
+    "ear.R": 0.0,
+    "tail": 0.0
+   }
+  },
+  "Idle": {
+   "frames": 114,
+   "seconds": 3.8,
+   "was": 3.8095,
+   "loop": true,
+   "roundsApart": {
+    "ear.L": 0.0,
+    "ear.R": 0.0,
+    "tail": 0.0
+   }
+  },
+  "ReachRight": {
+   "frames": 29,
+   "seconds": 0.9667,
+   "was": 0.9524,
+   "loop": false,
+   "roundsApart": {
+    "ear.L": 0.0,
+    "ear.R": 0.0,
+    "tail": 0.0
+   }
+  },
+  "ReachLeft": {
+   "frames": 29,
+   "seconds": 0.9667,
+   "was": 0.9524,
+   "loop": false,
+   "roundsApart": {
+    "ear.L": 0.0,
+    "ear.R": 0.0,
+    "tail": 0.0
+   }
+  },
+  "Point": {
+   "frames": 29,
+   "seconds": 0.9667,
+   "was": 0.9524,
+   "loop": false,
+   "roundsApart": {
+    "ear.L": 0.0,
+    "ear.R": 0.0,
+    "tail": 0.0
+   }
+  },
+  "Talk": {
+   "frames": 57,
+   "seconds": 1.9,
+   "was": 1.9048,
+   "loop": false,
+   "roundsApart": {
+    "ear.L": 0.0,
+    "ear.R": 0.0,
+    "tail": 0.0
+   }
+  },
+  "Sleep": {
+   "frames": 114,
+   "seconds": 3.8,
+   "was": 3.8095,
+   "loop": false,
+   "roundsApart": {
+    "ear.L": 0.0,
+    "ear.R": 0.0,
+    "tail": 0.0
+   }
+  },
+  "Sit": {
+   "frames": 114,
+   "seconds": 3.8,
+   "was": 3.8095,
+   "loop": false,
+   "roundsApart": {
+    "ear.L": 0.0,
+    "ear.R": 0.0,
+    "tail": 0.0
+   }
+  },
+  "Dance": {
+   "frames": 57,
+   "seconds": 1.9,
+   "was": 1.9048,
+   "loop": false,
+   "roundsApart": {
+    "ear.L": 0.0,
+    "ear.R": 0.0,
+    "tail": 0.0
+   }
+  },
+  "Sing": {
+   "frames": 57,
+   "seconds": 1.9,
+   "was": 1.9048,
+   "loop": false,
+   "roundsApart": {
+    "ear.L": 0.0,
+    "ear.R": 0.0,
+    "tail": 0.0
+   }
+  },
+  "Bow": {
+   "frames": 29,
+   "seconds": 0.9667,
+   "was": 0.9524,
+   "loop": false,
+   "roundsApart": {
+    "ear.L": 0.0,
+    "ear.R": 0.0,
+    "tail": 0.0
+   }
+  },
+  "Wave": {
+   "frames": 29,
+   "seconds": 0.9667,
+   "was": 0.9524,
+   "loop": false,
+   "roundsApart": {
+    "ear.L": 0.0,
+    "ear.R": 0.0,
+    "tail": 0.0
+   }
+  }
+ },
+ "probe": null
+}

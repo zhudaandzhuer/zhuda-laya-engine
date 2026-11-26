@@ -96,6 +96,12 @@ grass.setBenders([
 | `turf`               | true                                             | The sheet under the blades                                              |
 
 `validateZhudaGrass` lists what is wrong with a set of options;
+Before a field is made, `zhudaGrassMeshCount(options, eye)` says how many
+patches it would keep a mesh for with the eye there and how many meshes that
+is at least (a band each a patch needs, and its turf). Every mesh is a draw
+in each pass that draws the land. The distance is over the ground: height
+above the field does not thin it.
+
 `grass.stats` says how many patches, blades and vertices the field holds and
 how many patches are waiting.
 

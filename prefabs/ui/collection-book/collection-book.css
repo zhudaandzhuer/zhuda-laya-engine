@@ -1,0 +1,48 @@
+/* Collection book: a centred panel with tabs, a strip of cards and a detail pane.
+   Theme: --cp-accent (top rule, active tab and card, name glow), --cp-accent-2 (page headings), --cp-mark (dots, NEW, subtitle),
+   --cp-text, --cp-dim, --cp-line. Columns: set grid-template-columns on .cp-book-strip per game (default fills 72px cards).
+   Locked thumbnails: give your thumbnail class a silhouette rule under .locked, e.g. `.locked .my-thumb { filter: brightness(0) ... }`. */
+.cp-book { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -46%); width: min(880px, calc(100% - 24px)); max-height: calc(100% - 24px);
+  box-sizing: border-box; padding: 16px 18px; overflow: auto; background: rgba(8, 9, 16, .97); border: 1px solid var(--cp-line, rgba(236, 231, 220, .22));
+  border-top: 2px solid var(--cp-accent, #ff6f9c); border-radius: 6px; opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s;
+  touch-action: pan-y; z-index: 5; }
+.cp-book.show { opacity: 1; transform: translate(-50%, -50%); pointer-events: auto; }
+.cp-book header { display: flex; align-items: baseline; gap: 12px; margin-bottom: 12px; }
+.cp-book-tabs { display: flex; gap: 4px; }
+.cp-book-tabs button { position: relative; margin: 0; padding: 2px 10px 4px; font-size: 16px; letter-spacing: .3em; color: var(--cp-dim, rgba(236, 231, 220, .66));
+  background: none; border: 0; border-bottom: 2px solid transparent; border-radius: 0; box-shadow: none; }
+.cp-book-tabs button.on { color: var(--cp-accent, #ff6f9c); border-bottom-color: var(--cp-accent, #ff6f9c); }
+.cp-book-tabs button.fresh::after { content: ''; position: absolute; right: 0; top: 2px; width: 7px; height: 7px; border-radius: 50%;
+  background: var(--cp-mark, #ffc45a); box-shadow: 0 0 6px var(--cp-mark, #ffc45a); }
+.cp-book-count { color: var(--cp-dim, rgba(236, 231, 220, .66)); font-size: 12px; letter-spacing: .08em; flex: 1; }
+.cp-book-strip { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 8px; margin-bottom: 14px; }
+.cp-book .card { position: relative; padding: 4px 2px 6px; border-radius: 6px; background: rgba(236, 231, 220, .04); border: 1px solid rgba(236, 231, 220, .12);
+  display: flex; flex-direction: column; align-items: center; gap: 2px; letter-spacing: .04em; font-size: 12px; }
+.cp-book .card.on { border-color: var(--cp-accent, #ff6f9c); box-shadow: 0 0 12px var(--cp-accent-glow, rgba(255, 111, 156, .35));
+  background: var(--cp-accent-wash, rgba(255, 111, 156, .08)); }
+.cp-book .card.fresh::after { content: ''; position: absolute; right: 5px; top: 5px; width: 9px; height: 9px; border-radius: 50%;
+  background: var(--cp-mark, #ffc45a); box-shadow: 0 0 6px var(--cp-mark, #ffc45a); }
+.cp-book .card.locked span { color: var(--cp-dim, rgba(236, 231, 220, .66)); }
+.cp-book-detail { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+.cp-book-views { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 10px 8px 4px; border-radius: 6px;
+  background: var(--cp-book-stage, radial-gradient(ellipse at 50% 80%, rgba(255, 111, 156, .14), rgba(79, 240, 200, .04) 60%, transparent 75%), rgba(236, 231, 220, .03));
+  border: 1px solid rgba(236, 231, 220, .08); }
+.cp-book-views small { grid-column: span 1; text-align: center; color: var(--cp-dim, rgba(236, 231, 220, .66)); font-size: 11px; letter-spacing: .1em; }
+.cp-book-name { margin: 0; font-size: 22px; letter-spacing: .14em; color: #fff; text-shadow: 0 0 10px var(--cp-accent-glow-strong, rgba(255, 111, 156, .6)); }
+.cp-book-role { color: var(--cp-mark, #ffc45a); font-size: 13px; letter-spacing: .1em; margin: 2px 0 10px; }
+.cp-book-voice { font-size: 12px; padding: 4px 12px; border-color: var(--cp-accent-2-line, rgba(79, 240, 200, .6)); margin-bottom: 10px; }
+.cp-book-voice[hidden] { display: none; }
+.cp-book-pages { list-style: none; margin: 0; padding: 0; }
+.cp-book-pages li { padding: 8px 0 9px; border-bottom: 1px solid rgba(236, 231, 220, .1); }
+.cp-book-pages b { display: block; color: var(--cp-accent-2, #4ff0c8); font-weight: 600; letter-spacing: .08em; }
+.cp-book-pages span { color: var(--cp-text, #ece7dc); font-size: 13px; line-height: 1.7; }
+.cp-book-pages li.shut b { color: var(--cp-dim, rgba(236, 231, 220, .66)); }
+.cp-book-pages li.shut span { color: var(--cp-dim, rgba(236, 231, 220, .66)); font-size: 12px; }
+.cp-book-pages li.new b::after { content: ' NEW'; color: var(--cp-mark, #ffc45a); font-size: 11px; letter-spacing: .1em; }
+:root:lang(en) .cp-book-tabs button, :root:lang(en) .cp-book-name, :root:lang(en) .cp-book-role { letter-spacing: .06em; }
+@media (max-width: 640px) {
+  .cp-book-detail { grid-template-columns: 1fr; gap: 10px; }
+  .cp-book-views { max-width: 360px; margin: 0 auto; width: 100%; box-sizing: border-box; }
+}
+@media (max-height: 520px) and (min-width: 641px) { .cp-book-views { max-width: 300px; } }
+@media (prefers-reduced-motion: reduce) { .cp-book { transition: none; } }

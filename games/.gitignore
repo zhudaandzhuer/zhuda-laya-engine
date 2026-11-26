@@ -1,0 +1,5 @@
+# npm install in a game links the engine in this checkout; nothing it writes is tracked
+*/package-lock.json
+*/node_modules/
+*/dist/
+*/play-*/

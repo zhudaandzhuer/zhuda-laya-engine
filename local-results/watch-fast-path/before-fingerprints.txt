@@ -1,0 +1,6 @@
+games/zhuda-match candidate d6da22f217e043675412fd7e84e0370a2094829b9763fdd0fa7ad827034083ab {"zipBytes":548852,"unpackedBytes":1744937,"entries":12,"limitBytes":50000000}
+882bba7feb3e21fb
+games/zhuda-hunt candidate aa55ef13f9d4b65a7b1b9606e5c2a92c357c65a2ed9eebd8fd90fbfefd95c7a7 {"zipBytes":24127610,"unpackedBytes":29092746,"entries":34,"limitBytes":50000000}
+1b120faa41be1a80
+prefabs/viewer3d candidate 4220beb63b3014f658ca78f2d7b5afcb9832d3684e470d4b0c7cac042ccad566 {"zipBytes":26707010,"unpackedBytes":44382891,"entries":138,"limitBytes":80000000}
+f6ea1edb36f9be1f

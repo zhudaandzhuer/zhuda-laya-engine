@@ -1,0 +1,2 @@
+[Build] Build end, result=Success
+    "Scripts lowered to es2020",

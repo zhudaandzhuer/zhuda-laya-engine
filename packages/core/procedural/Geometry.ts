@@ -739,7 +739,11 @@ export function validateZhudaExtrude(options: ZhudaExtrudeOptions): string[] {
 /**
  * A flat outline raised to a height: kerbs, steps, signs, wall pieces, L and
  * U profiles; with `holes`, windows and doorways; with `bevel`, worn or
- * rounded top edges.
+ * rounded top edges. The outline lies on the ground as `[x, z]` points; the
+ * piece stands from y = 0, its base, to y = `height`, its top, which faces
+ * +Y. A bevel, at the top or at the bottom, cuts into that box and never
+ * reaches outside it. To stand the piece on its side use `transformZhudaMesh`
+ * (a positive `pitchDeg` turns the top towards +Z).
  */
 export function createZhudaExtrudeMesh(options: ZhudaExtrudeOptions): MeshData {
   const issues = validateZhudaExtrude(options);
@@ -1741,11 +1745,15 @@ export function createZhudaRingMesh(options: ZhudaRingOptions): MeshData {
 
 export interface ZhudaMeshTransform {
   position?: ZhudaVec3;
-  /** Rotation about +Y, applied after pitch and roll. */
+  /** Rotation about +Y, applied after pitch and roll. A positive angle turns +Z towards +X. */
   yawDeg?: number;
-  /** Rotation about +X. */
+  /**
+   * Rotation about +X. A positive angle turns +Y towards +Z: a piece standing
+   * upright leans its top towards +Z and at 90 lies along +Z; a negative
+   * angle leans it towards -Z.
+   */
   pitchDeg?: number;
-  /** Rotation about +Z, applied first. */
+  /** Rotation about +Z, applied first. A positive angle turns +X towards +Y. */
   rollDeg?: number;
   /** Uniform positive scale, applied before rotation. */
   scale?: number;

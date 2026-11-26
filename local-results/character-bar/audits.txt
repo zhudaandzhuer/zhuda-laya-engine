@@ -1,0 +1,121 @@
+# node games/tools/characters/motion-audit.mjs <file>, 2026-11-26
+
+## The reference (third-party, read where it lies, nothing copied): the main character of the showcase in the route smooth-character-motion
+<reference>/Character.glb: 320 joints (body 58, twist 18, secondary 193, corrective 16, finger 30, face 5), human rig; 62327 vertices, 92097 triangles, 161 morph targets, at most 4 joints on a vertex (49% on three or more)
+  A_Suisui_Ui_Chip_End          4.433 s      30 keys/s  LINEAR 960  moving: body 33/58, finger 30/30, twist 16/18, corrective 16/16, secondary 190/193  fastest 485 deg/s  19 sign flips
+  A_Suisui_Ui_Chip_Loop             6 s      30 keys/s  LINEAR 960  moving: body 27/58, finger 28/30, twist 8/18, corrective 11/16, secondary 176/193  seam 0.045 deg, 0.1 mm  fastest 134 deg/s  9 sign flips
+  A_Suisui_Ui_Chip_Start        1.233 s      30 keys/s  LINEAR 960  moving: body 33/58, finger 30/30, twist 16/18, corrective 16/16, secondary 182/193  fastest 916 deg/s  12 sign flips
+  A_Suisui_Ui_Nature_End        5.433 s      30 keys/s  LINEAR 960  moving: body 32/58, finger 30/30, twist 16/18, corrective 16/16, secondary 189/193  fastest 1106 deg/s  16 sign flips
+  A_Suisui_Ui_Nature_Loop      18.667 s      30 keys/s  LINEAR 960  moving: body 30/58, finger 28/30, twist 16/18, corrective 16/16, secondary 184/193  seam 0.234 deg, 0.1 mm  fastest 1207 deg/s  10 sign flips
+  A_Suisui_Ui_Nature_Start        6.2 s      30 keys/s  LINEAR 960  moving: body 33/58, finger 30/30, twist 16/18, corrective 16/16, secondary 185/193  fastest 2889 deg/s  72 sign flips
+  A_Suisui_Ui_Resonant_End      5.967 s      30 keys/s  LINEAR 960  moving: body 34/58, finger 30/30, twist 16/18, corrective 16/16, secondary 189/193  fastest 1026 deg/s  28 sign flips
+  A_Suisui_Ui_Resonant_Loop    21.333 s      30 keys/s  LINEAR 960  moving: body 34/58, finger 30/30, twist 15/18, corrective 16/16, secondary 189/193  seam 0.174 deg, 0.2 mm  fastest 159 deg/s  14 sign flips
+  A_Suisui_Ui_Resonant_Start    5.333 s      30 keys/s  LINEAR 960  moving: body 34/58, finger 30/30, twist 16/18, corrective 16/16, secondary 186/193  fastest 956 deg/s  26 sign flips
+  A_Suisui_Ui_Weapon_End        7.533 s      30 keys/s  LINEAR 960  moving: body 34/58, finger 30/30, twist 16/18, corrective 16/16, secondary 181/193  fastest 1895 deg/s  43 sign flips
+  A_Suisui_Ui_Weapon_Loop      11.533 s      30 keys/s  LINEAR 960  moving: body 31/58, finger 27/30, twist 16/18, corrective 16/16, secondary 172/193  seam 44.042 deg, 0.1 mm (29 bones open)  fastest 1322 deg/s  26 sign flips
+  A_Suisui_Ui_Weapon_Start      4.067 s      30 keys/s  LINEAR 960  moving: body 34/58, finger 30/30, twist 16/18, corrective 16/16, secondary 180/193  fastest 3218 deg/s  38 sign flips
+  ok   dense-keys: 30 (need: 24 keys a second or more on the bones that turn, in every clip (a cubic spline is exempt))
+  ok   secondary-in-clips: 0.89 (need: 0.8 of the 193 hair, cloth and tail bones moving in every clip) [least in A_Suisui_Ui_Weapon_Loop]
+  FAIL loop-seam: 44.042 (need: every bone of every loop closes within 0.5 degrees and 1 mm, or within one and a half of the smaller of its own first and last steps) [A_Suisui_Ui_Weapon_Loop: 44.042 degrees on Bone_Piao182_L; open: A_Suisui_Ui_Weapon_Loop (29 bones: Bone_Hair052_R, Bone_Hair053_R, Bone_Hair042_L...)]
+  weak idle-length: 6 (need: 8 seconds or more for a loop watched standing still) [shortest: A_Suisui_Ui_Chip_Loop]
+  weak no-pops: 3218 (need: no bone turning faster than 1200 degrees a second between two keys) [A_Suisui_Ui_Weapon_Start: Bone_Hair082_M; look at it: a strike may be that fast, a ribbon is not]
+  ok   twist-bones: 18 (need: 4 or more twist bones (each upper arm and forearm at the least)) [16 corrective bones besides]
+  ok   joints-on-a-vertex: 4 (need: no vertex held by more than four joints (the engine skins with four))
+  does not pass; this says nothing of how it looks
+
+## The repository's characters as they are
+games/zhuda-wardrobe/assets/parts/body.glb: 24 joints (body 20, secondary 4), human rig; 7255 vertices, 11598 triangles, 0 morph targets, at most 4 joints on a vertex (47% on three or more)
+  Idle                            3.2 s      30 keys/s  LINEAR 23  moving: body 15/20, secondary 3/4  seam 0 deg, 0.0 mm  fastest 14 deg/s
+  Walk                              1 s      30 keys/s  LINEAR 22  moving: body 18/20, secondary 4/4  seam 0 deg, 0.0 mm  fastest 381 deg/s
+  Run                            0.66 s    30.3 keys/s  LINEAR 22  moving: body 18/20, secondary 4/4  seam 0 deg, 0.0 mm  fastest 602 deg/s
+  Greet                           1.8 s      30 keys/s  LINEAR 21  moving: body 5/20, secondary 1/4  fastest 402 deg/s
+  _Stress                         3.2 s      30 keys/s  LINEAR 16  moving: body 12/20, secondary 3/4  fastest 258 deg/s
+  ok   dense-keys: 30 (need: 24 keys a second or more on the bones that turn, in every clip (a cubic spline is exempt))
+  FAIL secondary-in-clips: 0.25 (need: 0.8 of the 4 hair, cloth and tail bones moving in every clip) [least in Greet]
+  ok   loop-seam: 0 (need: every bone of every loop closes within 0.5 degrees and 1 mm, or within one and a half of the smaller of its own first and last steps) [Idle: 0 degrees on spine]
+  weak idle-length: 3.2 (need: 8 seconds or more for a loop watched standing still) [shortest: Idle]
+  ok   no-pops: 602 (need: no bone turning faster than 1200 degrees a second between two keys) [Run: shinL; look at it: a strike may be that fast, a ribbon is not]
+  weak twist-bones: 0 (need: 4 or more twist bones (each upper arm and forearm at the least)) [no corrective bones by name either]
+  ok   joints-on-a-vertex: 4 (need: no vertex held by more than four joints (the engine skins with four))
+  does not pass; this says nothing of how it looks
+prefabs/3d/zhuda-characters/assets/zhuda.glb: 14 joints (body 8, secondary 3); 37280 vertices, 49990 triangles, 0 morph targets, at most 3 joints on a vertex (3% on three or more)
+  Wave                          0.952 s      21 keys/s  STEP 37 LINEAR 5  moving: body 4/8  fastest 395 deg/s
+  Bow                           0.952 s      21 keys/s  STEP 37 LINEAR 5  moving: body 5/8  fastest 85 deg/s
+  Sing                          1.905 s      21 keys/s  STEP 37 LINEAR 5  moving: body 4/8  fastest 80 deg/s
+  Dance                         1.905 s      21 keys/s  STEP 34 LINEAR 8  moving: body 7/8  fastest 426 deg/s
+  Sit                            3.81 s      21 keys/s  STEP 40 LINEAR 2  moving: body 2/8  fastest 21 deg/s
+  Sleep                          3.81 s      21 keys/s  STEP 40 LINEAR 2  moving: body 2/8  fastest 66 deg/s
+  Talk                          1.905 s      21 keys/s  STEP 36 LINEAR 6  moving: body 5/8  fastest 153 deg/s
+  Point                         0.952 s      21 keys/s  STEP 38 LINEAR 4  moving: body 3/8  fastest 37 deg/s
+  ReachLeft                     0.952 s      21 keys/s  STEP 38 LINEAR 4  moving: body 3/8  fastest 39 deg/s
+  ReachRight                    0.952 s      21 keys/s  STEP 38 LINEAR 4  moving: body 3/8  fastest 39 deg/s
+  Idle                           3.81 s      21 keys/s  STEP 36 LINEAR 6  moving: body 5/8  seam 0 deg, 0.0 mm  fastest 24 deg/s
+  Walk                          0.476 s      21 keys/s  STEP 34 LINEAR 8  moving: body 7/8  seam 0 deg, 0.0 mm  fastest 370 deg/s
+  Struggle                      0.476 s      21 keys/s  STEP 35 LINEAR 7  moving: body 7/8  fastest 1357 deg/s
+  Dangle                        1.905 s      21 keys/s  STEP 35 LINEAR 7  moving: body 7/8  fastest 34 deg/s
+  Fall                          0.476 s      21 keys/s  STEP 35 LINEAR 7  moving: body 7/8  fastest 642 deg/s
+  Land                          0.952 s      21 keys/s  STEP 32 LINEAR 10  moving: body 7/8  fastest 446 deg/s
+  Cheer                         0.476 s      21 keys/s  STEP 34 LINEAR 8  moving: body 7/8  fastest 727 deg/s
+  Shake                         1.429 s      21 keys/s  STEP 37 LINEAR 5  moving: body 5/8  fastest 1200 deg/s
+  Dizzy                         1.905 s      21 keys/s  STEP 36 LINEAR 6  moving: body 5/8  fastest 85 deg/s
+  FAIL dense-keys: 21 (need: 24 keys a second or more on the bones that turn, in every clip (a cubic spline is exempt)) [sparse: Wave 21, Bow 21, Sing 21, Dance 21, Sit 21, Sleep 21, Talk 21, Point 21, ReachLeft 21, ReachRight 21, Idle 21, Walk 21, Struggle 21, Dangle 21, Fall 21, Land 21, Cheer 21, Shake 21, Dizzy 21]
+  FAIL secondary-in-clips: 0 (need: 0.8 of the 3 hair, cloth and tail bones moving in every clip) [least in Wave]
+  ok   loop-seam: 0 (need: every bone of every loop closes within 0.5 degrees and 1 mm, or within one and a half of the smaller of its own first and last steps) [Idle: 0 degrees on head]
+  weak idle-length: 3.81 (need: 8 seconds or more for a loop watched standing still) [shortest: Idle]
+  weak no-pops: 1357 (need: no bone turning faster than 1200 degrees a second between two keys) [Struggle: arm.R; look at it: a strike may be that fast, a ribbon is not]
+  ok   joints-on-a-vertex: 3 (need: no vertex held by more than four joints (the engine skins with four))
+  does not pass; this says nothing of how it looks
+prefabs/3d/stickman/assets/stickman.glb: 20 joints (body 20), human rig; 2413 vertices, 2994 triangles, 0 morph targets, at most 4 joints on a vertex (11% on three or more)
+  Idle_HandsOnHips                  4 s      30 keys/s  LINEAR 21  moving: body 11/20  seam 0 deg, 0.0 mm  fastest 52 deg/s
+  Idle_ArmsCrossed                3.2 s      30 keys/s  LINEAR 21  moving: body 10/20  seam 0 deg, 0.0 mm  fastest 301 deg/s
+  ok   dense-keys: 30 (need: 24 keys a second or more on the bones that turn, in every clip (a cubic spline is exempt))
+  n/a  secondary-in-clips: 0 (need: hair, cloth or tail bones that move in the clips) [the rig has none by name: nothing can lag, overlap or follow through unless a solver adds it at run time]
+  ok   loop-seam: 0 (need: every bone of every loop closes within 0.5 degrees and 1 mm, or within one and a half of the smaller of its own first and last steps) [Idle_HandsOnHips: 0 degrees on spine]
+  weak idle-length: 3.2 (need: 8 seconds or more for a loop watched standing still) [shortest: Idle_ArmsCrossed]
+  ok   no-pops: 301 (need: no bone turning faster than 1200 degrees a second between two keys) [Idle_ArmsCrossed: footR; look at it: a strike may be that fast, a ribbon is not]
+  weak twist-bones: 0 (need: 4 or more twist bones (each upper arm and forearm at the least)) [no corrective bones by name either]
+  ok   joints-on-a-vertex: 4 (need: no vertex held by more than four joints (the engine skins with four))
+  passes every must; this says nothing of how it looks
+
+## The two raised by games/tools/characters/blender/raise-rig.py (copies kept on this machine in full/)
+full/body-raised.glb: 30 joints (body 20, twist 6, secondary 4), human rig; 7256 vertices, 11598 triangles, 0 morph targets, at most 4 joints on a vertex (56% on three or more)
+  _Stress                         3.2 s      30 keys/s  LINEAR 90  moving: secondary 4/4, body 12/20, twist 4/6  fastest 258 deg/s
+  Greet                           1.8 s      30 keys/s  LINEAR 90  moving: secondary 4/4, body 5/20, twist 1/6  fastest 402 deg/s
+  Idle                            3.2 s      30 keys/s  LINEAR 90  moving: body 15/20, secondary 4/4  seam 0 deg, 0.0 mm  fastest 29 deg/s
+  Run                           0.667 s      30 keys/s  LINEAR 90  moving: body 18/20, secondary 4/4, twist 2/6  seam 0 deg, 0.0 mm  fastest 596 deg/s
+  Walk                              1 s      30 keys/s  LINEAR 90  moving: body 18/20, secondary 4/4, twist 2/6  seam 0 deg, 0.0 mm  fastest 381 deg/s
+  ok   dense-keys: 30 (need: 24 keys a second or more on the bones that turn, in every clip (a cubic spline is exempt))
+  ok   secondary-in-clips: 1 (need: 0.8 of the 4 hair, cloth and tail bones moving in every clip) [least in _Stress]
+  ok   loop-seam: 0 (need: every bone of every loop closes within 0.5 degrees and 1 mm, or within one and a half of the smaller of its own first and last steps) [Idle: 0 degrees on armR]
+  weak idle-length: 3.2 (need: 8 seconds or more for a loop watched standing still) [shortest: Idle]
+  ok   no-pops: 596 (need: no bone turning faster than 1200 degrees a second between two keys) [Run: shinR; look at it: a strike may be that fast, a ribbon is not]
+  ok   twist-bones: 6 (need: 4 or more twist bones (each upper arm and forearm at the least)) [no corrective bones by name either]
+  ok   joints-on-a-vertex: 4 (need: no vertex held by more than four joints (the engine skins with four))
+  passes every must; this says nothing of how it looks
+full/zhuda-raised.glb: 14 joints (body 8, secondary 3); 37280 vertices, 49990 triangles, 0 morph targets, at most 3 joints on a vertex (3% on three or more)
+  Bow                           0.967 s      30 keys/s  LINEAR 42  moving: body 5/8, secondary 3/3  fastest 130 deg/s
+  Cheer                         0.467 s      30 keys/s  LINEAR 42  moving: body 7/8, secondary 3/3  fastest 921 deg/s
+  Dance                           1.9 s      30 keys/s  LINEAR 42  moving: body 7/8, secondary 3/3  fastest 594 deg/s
+  Dangle                          1.9 s      30 keys/s  LINEAR 42  moving: body 7/8, secondary 3/3  fastest 34 deg/s
+  Dizzy                           1.9 s      30 keys/s  LINEAR 42  moving: body 5/8, secondary 3/3  fastest 203 deg/s
+  Fall                          0.467 s      30 keys/s  LINEAR 42  moving: body 7/8, secondary 3/3  fastest 657 deg/s
+  Idle                            3.8 s      30 keys/s  LINEAR 42  moving: body 5/8, secondary 3/3  seam 0 deg, 0.0 mm  fastest 25 deg/s
+  Land                          0.967 s      30 keys/s  LINEAR 42  moving: body 7/8, secondary 3/3  fastest 554 deg/s
+  Point                         0.967 s      30 keys/s  LINEAR 42  moving: body 3/8, secondary 3/3  fastest 52 deg/s
+  ReachLeft                     0.967 s      30 keys/s  LINEAR 42  moving: body 3/8, secondary 3/3  fastest 52 deg/s
+  ReachRight                    0.967 s      30 keys/s  LINEAR 42  moving: body 3/8, secondary 3/3  fastest 52 deg/s
+  Shake                         1.433 s      30 keys/s  LINEAR 42  moving: body 5/8, secondary 3/3  fastest 1800 deg/s
+  Sing                            1.9 s      30 keys/s  LINEAR 42  moving: body 4/8, secondary 3/3  fastest 136 deg/s
+  Sit                             3.8 s      30 keys/s  LINEAR 42  moving: body 2/8, secondary 3/3  fastest 30 deg/s
+  Sleep                           3.8 s      30 keys/s  LINEAR 42  moving: body 2/8, secondary 3/3  fastest 64 deg/s
+  Struggle                      0.467 s      30 keys/s  LINEAR 42  moving: body 7/8, secondary 3/3  fastest 1394 deg/s
+  Talk                            1.9 s      30 keys/s  LINEAR 42  moving: body 5/8, secondary 3/3  fastest 153 deg/s
+  Walk                          0.467 s      30 keys/s  LINEAR 42  moving: body 7/8, secondary 3/3  seam 0 deg, 0.0 mm  fastest 378 deg/s
+  Wave                          0.967 s      30 keys/s  LINEAR 42  moving: body 4/8, secondary 3/3  fastest 390 deg/s
+  ok   dense-keys: 30 (need: 24 keys a second or more on the bones that turn, in every clip (a cubic spline is exempt))
+  ok   secondary-in-clips: 1 (need: 0.8 of the 3 hair, cloth and tail bones moving in every clip) [least in Bow]
+  ok   loop-seam: 0 (need: every bone of every loop closes within 0.5 degrees and 1 mm, or within one and a half of the smaller of its own first and last steps) [Idle: 0 degrees on ear.L]
+  weak idle-length: 3.8 (need: 8 seconds or more for a loop watched standing still) [shortest: Idle]
+  weak no-pops: 1800 (need: no bone turning faster than 1200 degrees a second between two keys) [Shake: tail; look at it: a strike may be that fast, a ribbon is not]
+  ok   joints-on-a-vertex: 3 (need: no vertex held by more than four joints (the engine skins with four))
+  passes every must; this says nothing of how it looks

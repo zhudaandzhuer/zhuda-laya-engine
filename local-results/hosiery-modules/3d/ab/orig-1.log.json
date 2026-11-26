@@ -1,0 +1,148 @@
+{
+ "errors": [
+  "Failed to load resource: the server responded with a status of 404 (Not Found) http://localhost:49347/favicon.ico"
+ ],
+ "failed": "",
+ "renderer": {
+  "webgl": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+  "webgpu": true,
+  "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/158.0.0.0 Safari/537.36",
+  "dpr": 1
+ },
+ "final": {
+  "ready": true,
+  "api": {
+   "rows": 215,
+   "around": 144
+  },
+  "note": {
+   "type": "sheer20",
+   "bottom": "mini"
+  }
+ },
+ "log": [
+  {
+   "shot": "as-worn",
+   "seconds": 11.95,
+   "state": {
+    "ready": true,
+    "api": {
+     "rows": 215,
+     "around": 144
+    },
+    "note": {
+     "type": "sheer20",
+     "bottom": "mini"
+    }
+   }
+  },
+  {
+   "label": "mini skirt",
+   "fps": 29.6,
+   "clothMs": 30.32,
+   "pullMs": 0.03
+  },
+  {
+   "shot": "torn",
+   "seconds": 26.015,
+   "state": {
+    "ready": true,
+    "api": {
+     "rows": 215,
+     "around": 144
+    },
+    "note": {
+     "type": "sheer20",
+     "bottom": "mini"
+    }
+   }
+  },
+  {
+   "tears": [
+    1,
+    1
+   ]
+  },
+  {
+   "shot": "lace-top",
+   "seconds": 29.254,
+   "state": {
+    "ready": true,
+    "api": {
+     "rows": 215,
+     "around": 144
+    },
+    "note": {
+     "type": "sheer20",
+     "bottom": "mini"
+    }
+   }
+  },
+  {
+   "label": "no bottom",
+   "fps": 30.6,
+   "clothMs": 0,
+   "pullMs": 0.011
+  },
+  {
+   "label": "jeans",
+   "fps": 33.3,
+   "clothMs": 0,
+   "pullMs": 0.019
+  },
+  {
+   "shot": "jeans",
+   "seconds": 38.866,
+   "state": {
+    "ready": true,
+    "api": {
+     "rows": 215,
+     "around": 144
+    },
+    "note": {
+     "type": "sheer20",
+     "bottom": "mini"
+    }
+   }
+  },
+  {
+   "label": "midi skirt",
+   "fps": 27.8,
+   "clothMs": 29.77,
+   "pullMs": 0.017
+  },
+  {
+   "shot": "midi",
+   "seconds": 49.466,
+   "state": {
+    "ready": true,
+    "api": {
+     "rows": 215,
+     "around": 144
+    },
+    "note": {
+     "type": "sheer20",
+     "bottom": "mini"
+    }
+   }
+  },
+  {
+   "shot": "fishnet-ripped-shorts",
+   "seconds": 51.419,
+   "state": {
+    "ready": true,
+    "api": {
+     "rows": 215,
+     "around": 144
+    },
+    "note": {
+     "type": "sheer20",
+     "bottom": "mini"
+    }
+   }
+  },
+  {
+   "renderer": true
+  }
+ ]
+}

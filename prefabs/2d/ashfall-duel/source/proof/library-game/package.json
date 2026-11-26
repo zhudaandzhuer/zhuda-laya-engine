@@ -1,0 +1,21 @@
+{
+  "name": "ashfall-from-library",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "build": "zhuda-laya-build",
+    "accept:prefabs": "zhuda-laya-accept",
+    "typecheck": "tsc --noEmit",
+    "doctor": "zhuda-laya-doctor --project .",
+    "verify": "npm run build && npm run typecheck && npm run doctor"
+  },
+  "dependencies": {
+    "zhuda-laya-engine": "github:zhudaandzhuer/zhuda-laya-engine#def94aae9e7ebf5f9f35b915b54dbb4c3e5fe43c"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3"
+  }
+}

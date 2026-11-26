@@ -1,0 +1,2345 @@
+{
+ "errors": [
+  "Failed to load resource: the server responded with a status of 404 (Not Found) http://localhost:63161/favicon.ico",
+  "Failed to load resource: the server responded with a status of 404 (Not Found) http://localhost:63161/favicon.ico"
+ ],
+ "failed": "",
+ "renderer": {
+  "webgl": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+  "webgpu": true,
+  "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/158.0.0.0 Safari/537.36",
+  "dpr": 1
+ },
+ "final": {
+  "ready": true,
+  "screen": "battle",
+  "frames": 2331,
+  "hot": {
+   "tab-battle": [
+    59,
+    914
+   ],
+   "tab-heroes": [
+    164,
+    914
+   ],
+   "tab-summon": [
+    270,
+    914
+   ],
+   "tab-tasks": [
+    376,
+    914
+   ],
+   "tab-gifts": [
+    482,
+    914
+   ],
+   "fight": [
+    143,
+    482
+   ],
+   "auto": [
+    398,
+    482
+   ],
+   "claim": [
+    143,
+    678
+   ],
+   "quick": [
+    398,
+    678
+   ]
+  },
+  "effects": 86,
+  "save": {
+   "version": 1,
+   "seed": 2276686417,
+   "coins": 501,
+   "jade": 810,
+   "tickets": 2,
+   "heroes": {
+    "bai-zhi": {
+     "level": 18,
+     "stars": 0,
+     "shards": 10
+    },
+    "yan-wusheng": {
+     "level": 18,
+     "stars": 0,
+     "shards": 40
+    },
+    "lin-qingluo": {
+     "level": 18,
+     "stars": 0,
+     "shards": 20
+    },
+    "lu-xinghe": {
+     "level": 19,
+     "stars": 0,
+     "shards": 0
+    },
+    "a-heng": {
+     "level": 18,
+     "stars": 0,
+     "shards": 10
+    }
+   },
+   "team": [
+    "lu-xinghe",
+    "a-heng",
+    "bai-zhi",
+    "lin-qingluo",
+    "yan-wusheng"
+   ],
+   "stage": 11,
+   "pity": 10,
+   "sincePurple": 7,
+   "pulls": 10,
+   "afkFrom": 1795634367806,
+   "day": "2026-11-25",
+   "daily": {
+    "summons": 10,
+    "levels": 86,
+    "clears": 10,
+    "claims": 1,
+    "quick": 0,
+    "claimed": [
+     "clear",
+     "level",
+     "summon"
+    ]
+   },
+   "loginDays": 1,
+   "loginClaimed": 1,
+   "vipExp": 38
+  },
+  "power": 2239,
+  "stagePower": 1147,
+  "sound": {
+   "loadedStreams": 0,
+   "pendingStreamLoads": 0,
+   "retainedStreamBytes": 0,
+   "pendingAdmissions": 0,
+   "retiredVoices": 0,
+   "sampleBackend": "native",
+   "loadedSamples": 11,
+   "pendingSampleLoads": 0,
+   "decodedSampleBytes": 2355844,
+   "inIframe": false,
+   "contextState": "suspended",
+   "unlockedByGesture": false,
+   "unlockGestureType": "none",
+   "pageVisible": true,
+   "windowFocused": true,
+   "autoSuspendedByBlur": false,
+   "userMuted": false,
+   "volumes": {
+    "master": 0.85,
+    "bgm": 0.6,
+    "sfx": 0.9,
+    "ui": 0.85
+   },
+   "queuedBeforeUnlockCount": 0,
+   "pendingQueue": 0,
+   "droppedQueue": 0,
+   "activeVoices": 0,
+   "droppedVoices": 0,
+   "playedEventsCount": 0,
+   "postMessageBridgeActive": true,
+   "lastBridgeCommand": "init",
+   "backend": "webaudio",
+   "contextAvailable": true,
+   "lastError": null,
+   "spatialVoices": 0,
+   "spatialBackend": "panner"
+  },
+  "lastPulls": [
+   {
+    "id": "yan-wusheng",
+    "rarity": "R",
+    "isNew": false,
+    "shards": 10
+   },
+   {
+    "id": "bai-zhi",
+    "rarity": "R",
+    "isNew": false,
+    "shards": 10
+   },
+   {
+    "id": "lu-xinghe",
+    "rarity": "SR",
+    "isNew": true,
+    "shards": 0
+   },
+   {
+    "id": "yan-wusheng",
+    "rarity": "R",
+    "isNew": false,
+    "shards": 10
+   },
+   {
+    "id": "yan-wusheng",
+    "rarity": "R",
+    "isNew": false,
+    "shards": 10
+   },
+   {
+    "id": "yan-wusheng",
+    "rarity": "R",
+    "isNew": false,
+    "shards": 10
+   },
+   {
+    "id": "lin-qingluo",
+    "rarity": "R",
+    "isNew": false,
+    "shards": 10
+   },
+   {
+    "id": "a-heng",
+    "rarity": "R",
+    "isNew": true,
+    "shards": 0
+   },
+   {
+    "id": "lin-qingluo",
+    "rarity": "R",
+    "isNew": false,
+    "shards": 10
+   },
+   {
+    "id": "a-heng",
+    "rarity": "R",
+    "isNew": false,
+    "shards": 10
+   }
+  ],
+  "lastBattle": {
+   "stage": 10,
+   "win": true
+  }
+ },
+ "log": [
+  {
+   "shot": "01-new-save",
+   "seconds": 1.594,
+   "state": {
+    "ready": true,
+    "screen": "battle",
+    "frames": 18,
+    "hot": {
+     "fight": [
+      143,
+      482
+     ],
+     "auto": [
+      398,
+      482
+     ],
+     "claim": [
+      143,
+      678
+     ],
+     "quick": [
+      398,
+      678
+     ],
+     "tab-battle": [
+      59,
+      914
+     ],
+     "tab-heroes": [
+      164,
+      914
+     ],
+     "tab-summon": [
+      270,
+      914
+     ],
+     "tab-tasks": [
+      376,
+      914
+     ],
+     "tab-gifts": [
+      482,
+      914
+     ]
+    },
+    "effects": 0,
+    "save": {
+     "version": 1,
+     "seed": 20261125,
+     "coins": 500,
+     "jade": 300,
+     "tickets": 0,
+     "heroes": {
+      "bai-zhi": {
+       "level": 1,
+       "stars": 0,
+       "shards": 0
+      },
+      "yan-wusheng": {
+       "level": 1,
+       "stars": 0,
+       "shards": 0
+      },
+      "lin-qingluo": {
+       "level": 1,
+       "stars": 0,
+       "shards": 0
+      }
+     },
+     "team": [
+      "bai-zhi",
+      "yan-wusheng",
+      "lin-qingluo"
+     ],
+     "stage": 1,
+     "pity": 0,
+     "sincePurple": 0,
+     "pulls": 0,
+     "afkFrom": 1795623540736,
+     "day": "2026-11-25",
+     "daily": {
+      "summons": 0,
+      "levels": 0,
+      "clears": 0,
+      "claims": 0,
+      "quick": 0,
+      "claimed": []
+     },
+     "loginDays": 1,
+     "loginClaimed": 0,
+     "vipExp": 0
+    },
+    "power": 300,
+    "stagePower": 260,
+    "sound": {
+     "loadedStreams": 0,
+     "pendingStreamLoads": 0,
+     "retainedStreamBytes": 0,
+     "pendingAdmissions": 0,
+     "retiredVoices": 0,
+     "sampleBackend": "native",
+     "loadedSamples": 11,
+     "pendingSampleLoads": 0,
+     "decodedSampleBytes": 2355844,
+     "inIframe": false,
+     "contextState": "suspended",
+     "unlockedByGesture": false,
+     "unlockGestureType": "none",
+     "pageVisible": true,
+     "windowFocused": true,
+     "autoSuspendedByBlur": false,
+     "userMuted": false,
+     "volumes": {
+      "master": 0.85,
+      "bgm": 0.6,
+      "sfx": 0.9,
+      "ui": 0.85
+     },
+     "queuedBeforeUnlockCount": 0,
+     "pendingQueue": 0,
+     "droppedQueue": 0,
+     "activeVoices": 0,
+     "droppedVoices": 0,
+     "playedEventsCount": 0,
+     "postMessageBridgeActive": true,
+     "lastBridgeCommand": "init",
+     "backend": "webaudio",
+     "contextAvailable": true,
+     "lastError": null,
+     "spatialVoices": 0,
+     "spatialBackend": "panner"
+    }
+   }
+  },
+  {
+   "shot": "02-sign-in",
+   "seconds": 3.197,
+   "state": {
+    "ready": true,
+    "screen": "gifts",
+    "frames": 114,
+    "hot": {
+     "tab-battle": [
+      59,
+      914
+     ],
+     "tab-heroes": [
+      164,
+      914
+     ],
+     "tab-summon": [
+      270,
+      914
+     ],
+     "tab-tasks": [
+      376,
+      914
+     ],
+     "tab-gifts": [
+      482,
+      914
+     ],
+     "login": [
+      270,
+      464
+     ],
+     "mute": [
+      449,
+      824
+     ]
+    },
+    "effects": 1,
+    "save": {
+     "version": 1,
+     "seed": 20261125,
+     "coins": 500,
+     "jade": 300,
+     "tickets": 10,
+     "heroes": {
+      "bai-zhi": {
+       "level": 1,
+       "stars": 0,
+       "shards": 0
+      },
+      "yan-wusheng": {
+       "level": 1,
+       "stars": 0,
+       "shards": 0
+      },
+      "lin-qingluo": {
+       "level": 1,
+       "stars": 0,
+       "shards": 0
+      }
+     },
+     "team": [
+      "bai-zhi",
+      "yan-wusheng",
+      "lin-qingluo"
+     ],
+     "stage": 1,
+     "pity": 0,
+     "sincePurple": 0,
+     "pulls": 0,
+     "afkFrom": 1795623540736,
+     "day": "2026-11-25",
+     "daily": {
+      "summons": 0,
+      "levels": 0,
+      "clears": 0,
+      "claims": 0,
+      "quick": 0,
+      "claimed": []
+     },
+     "loginDays": 1,
+     "loginClaimed": 1,
+     "vipExp": 0
+    },
+    "power": 300,
+    "stagePower": 260,
+    "sound": {
+     "loadedStreams": 0,
+     "pendingStreamLoads": 0,
+     "retainedStreamBytes": 0,
+     "pendingAdmissions": 0,
+     "retiredVoices": 0,
+     "sampleBackend": "native",
+     "loadedSamples": 11,
+     "pendingSampleLoads": 0,
+     "decodedSampleBytes": 2355844,
+     "inIframe": false,
+     "contextState": "suspended",
+     "unlockedByGesture": false,
+     "unlockGestureType": "none",
+     "pageVisible": true,
+     "windowFocused": true,
+     "autoSuspendedByBlur": false,
+     "userMuted": false,
+     "volumes": {
+      "master": 0.85,
+      "bgm": 0.6,
+      "sfx": 0.9,
+      "ui": 0.85
+     },
+     "queuedBeforeUnlockCount": 0,
+     "pendingQueue": 0,
+     "droppedQueue": 0,
+     "activeVoices": 0,
+     "droppedVoices": 0,
+     "playedEventsCount": 0,
+     "postMessageBridgeActive": true,
+     "lastBridgeCommand": "init",
+     "backend": "webaudio",
+     "contextAvailable": true,
+     "lastError": null,
+     "spatialVoices": 0,
+     "spatialBackend": "panner"
+    }
+   }
+  },
+  {
+   "step": "login",
+   "tickets": 10
+  },
+  {
+   "shot": "03-summon",
+   "seconds": 4.032,
+   "state": {
+    "ready": true,
+    "screen": "summon",
+    "frames": 162,
+    "hot": {
+     "tab-battle": [
+      59,
+      914
+     ],
+     "tab-heroes": [
+      164,
+      914
+     ],
+     "tab-summon": [
+      270,
+      914
+     ],
+     "tab-tasks": [
+      376,
+      914
+     ],
+     "tab-gifts": [
+      482,
+      914
+     ],
+     "pull-1": [
+      143,
+      576
+     ],
+     "pull-10": [
+      398,
+      576
+     ]
+    },
+    "effects": 1,
+    "save": {
+     "version": 1,
+     "seed": 20261125,
+     "coins": 500,
+     "jade": 300,
+     "tickets": 10,
+     "heroes": {
+      "bai-zhi": {
+       "level": 1,
+       "stars": 0,
+       "shards": 0
+      },
+      "yan-wusheng": {
+       "level": 1,
+       "stars": 0,
+       "shards": 0
+      },
+      "lin-qingluo": {
+       "level": 1,
+       "stars": 0,
+       "shards": 0
+      }
+     },
+     "team": [
+      "bai-zhi",
+      "yan-wusheng",
+      "lin-qingluo"
+     ],
+     "stage": 1,
+     "pity": 0,
+     "sincePurple": 0,
+     "pulls": 0,
+     "afkFrom": 1795623540736,
+     "day": "2026-11-25",
+     "daily": {
+      "summons": 0,
+      "levels": 0,
+      "clears": 0,
+      "claims": 0,
+      "quick": 0,
+      "claimed": []
+     },
+     "loginDays": 1,
+     "loginClaimed": 1,
+     "vipExp": 0
+    },
+    "power": 300,
+    "stagePower": 260,
+    "sound": {
+     "loadedStreams": 0,
+     "pendingStreamLoads": 0,
+     "retainedStreamBytes": 0,
+     "pendingAdmissions": 0,
+     "retiredVoices": 0,
+     "sampleBackend": "native",
+     "loadedSamples": 11,
+     "pendingSampleLoads": 0,
+     "decodedSampleBytes": 2355844,
+     "inIframe": false,
+     "contextState": "suspended",
+     "unlockedByGesture": false,
+     "unlockGestureType": "none",
+     "pageVisible": true,
+     "windowFocused": true,
+     "autoSuspendedByBlur": false,
+     "userMuted": false,
+     "volumes": {
+      "master": 0.85,
+      "bgm": 0.6,
+      "sfx": 0.9,
+      "ui": 0.85
+     },
+     "queuedBeforeUnlockCount": 0,
+     "pendingQueue": 0,
+     "droppedQueue": 0,
+     "activeVoices": 0,
+     "droppedVoices": 0,
+     "playedEventsCount": 0,
+     "postMessageBridgeActive": true,
+     "lastBridgeCommand": "init",
+     "backend": "webaudio",
+     "contextAvailable": true,
+     "lastError": null,
+     "spatialVoices": 0,
+     "spatialBackend": "panner"
+    }
+   }
+  },
+  {
+   "shot": "04-ten-pull",
+   "seconds": 5.34,
+   "state": {
+    "ready": true,
+    "screen": "summon",
+    "frames": 240,
+    "hot": {
+     "tab-battle": [
+      59,
+      914
+     ],
+     "tab-heroes": [
+      164,
+      914
+     ],
+     "tab-summon": [
+      270,
+      914
+     ],
+     "tab-tasks": [
+      376,
+      914
+     ],
+     "tab-gifts": [
+      482,
+      914
+     ],
+     "pull-1": [
+      143,
+      576
+     ],
+     "pull-10": [
+      398,
+      576
+     ],
+     "reveal-ok": [
+      270,
+      840
+     ]
+    },
+    "effects": 2,
+    "save": {
+     "version": 1,
+     "seed": 2291839017,
+     "coins": 500,
+     "jade": 300,
+     "tickets": 0,
+     "heroes": {
+      "bai-zhi": {
+       "level": 1,
+       "stars": 0,
+       "shards": 10
+      },
+      "yan-wusheng": {
+       "level": 1,
+       "stars": 0,
+       "shards": 40
+      },
+      "lin-qingluo": {
+       "level": 1,
+       "stars": 0,
+       "shards": 20
+      },
+      "lu-xinghe": {
+       "level": 1,
+       "stars": 0,
+       "shards": 0
+      },
+      "a-heng": {
+       "level": 1,
+       "stars": 0,
+       "shards": 10
+      }
+     },
+     "team": [
+      "bai-zhi",
+      "yan-wusheng",
+      "lin-qingluo"
+     ],
+     "stage": 1,
+     "pity": 10,
+     "sincePurple": 7,
+     "pulls": 10,
+     "afkFrom": 1795623540736,
+     "day": "2026-11-25",
+     "daily": {
+      "summons": 10,
+      "levels": 0,
+      "clears": 0,
+      "claims": 0,
+      "quick": 0,
+      "claimed": []
+     },
+     "loginDays": 1,
+     "loginClaimed": 1,
+     "vipExp": 10
+    },
+    "power": 300,
+    "stagePower": 260,
+    "sound": {
+     "loadedStreams": 0,
+     "pendingStreamLoads": 0,
+     "retainedStreamBytes": 0,
+     "pendingAdmissions": 0,
+     "retiredVoices": 0,
+     "sampleBackend": "native",
+     "loadedSamples": 11,
+     "pendingSampleLoads": 0,
+     "decodedSampleBytes": 2355844,
+     "inIframe": false,
+     "contextState": "suspended",
+     "unlockedByGesture": false,
+     "unlockGestureType": "none",
+     "pageVisible": true,
+     "windowFocused": true,
+     "autoSuspendedByBlur": false,
+     "userMuted": false,
+     "volumes": {
+      "master": 0.85,
+      "bgm": 0.6,
+      "sfx": 0.9,
+      "ui": 0.85
+     },
+     "queuedBeforeUnlockCount": 0,
+     "pendingQueue": 0,
+     "droppedQueue": 0,
+     "activeVoices": 0,
+     "droppedVoices": 0,
+     "playedEventsCount": 0,
+     "postMessageBridgeActive": true,
+     "lastBridgeCommand": "init",
+     "backend": "webaudio",
+     "contextAvailable": true,
+     "lastError": null,
+     "spatialVoices": 0,
+     "spatialBackend": "panner"
+    },
+    "lastPulls": [
+     {
+      "id": "yan-wusheng",
+      "rarity": "R",
+      "isNew": false,
+      "shards": 10
+     },
+     {
+      "id": "bai-zhi",
+      "rarity": "R",
+      "isNew": false,
+      "shards": 10
+     },
+     {
+      "id": "lu-xinghe",
+      "rarity": "SR",
+      "isNew": true,
+      "shards": 0
+     },
+     {
+      "id": "yan-wusheng",
+      "rarity": "R",
+      "isNew": false,
+      "shards": 10
+     },
+     {
+      "id": "yan-wusheng",
+      "rarity": "R",
+      "isNew": false,
+      "shards": 10
+     },
+     {
+      "id": "yan-wusheng",
+      "rarity": "R",
+      "isNew": false,
+      "shards": 10
+     },
+     {
+      "id": "lin-qingluo",
+      "rarity": "R",
+      "isNew": false,
+      "shards": 10
+     },
+     {
+      "id": "a-heng",
+      "rarity": "R",
+      "isNew": true,
+      "shards": 0
+     },
+     {
+      "id": "lin-qingluo",
+      "rarity": "R",
+      "isNew": false,
+      "shards": 10
+     },
+     {
+      "id": "a-heng",
+      "rarity": "R",
+      "isNew": false,
+      "shards": 10
+     }
+    ]
+   }
+  },
+  {
+   "step": "pull",
+   "pulls": [
+    "R:yan-wusheng",
+    "R:bai-zhi",
+    "SR:lu-xinghe*",
+    "R:yan-wusheng",
+    "R:yan-wusheng",
+    "R:yan-wusheng",
+    "R:lin-qingluo",
+    "R:a-heng*",
+    "R:lin-qingluo",
+    "R:a-heng"
+   ],
+   "heroes": 5
+  },
+  {
+   "shot": "05-heroes",
+   "seconds": 7.881,
+   "state": {
+    "ready": true,
+    "screen": "heroes",
+    "frames": 392,
+    "hot": {
+     "tab-battle": [
+      59,
+      914
+     ],
+     "tab-heroes": [
+      164,
+      914
+     ],
+     "tab-summon": [
+      270,
+      914
+     ],
+     "tab-tasks": [
+      376,
+      914
+     ],
+     "tab-gifts": [
+      482,
+      914
+     ],
+     "level-all": [
+      138,
+      152
+     ],
+     "best-team": [
+      402,
+      152
+     ],
+     "hero-lu-xinghe": [
+      78,
+      267
+     ],
+     "hero-bai-zhi": [
+      206,
+      267
+     ],
+     "hero-yan-wusheng": [
+      333,
+      267
+     ],
+     "hero-a-heng": [
+      461,
+      267
+     ],
+     "hero-lin-qingluo": [
+      78,
+      485
+     ]
+    },
+    "effects": 3,
+    "save": {
+     "version": 1,
+     "seed": 2291839017,
+     "coins": 32,
+     "jade": 300,
+     "tickets": 0,
+     "heroes": {
+      "bai-zhi": {
+       "level": 3,
+       "stars": 0,
+       "shards": 10
+      },
+      "yan-wusheng": {
+       "level": 3,
+       "stars": 0,
+       "shards": 40
+      },
+      "lin-qingluo": {
+       "level": 3,
+       "stars": 0,
+       "shards": 20
+      },
+      "lu-xinghe": {
+       "level": 4,
+       "stars": 0,
+       "shards": 0
+      },
+      "a-heng": {
+       "level": 3,
+       "stars": 0,
+       "shards": 10
+      }
+     },
+     "team": [
+      "lu-xinghe",
+      "a-heng",
+      "bai-zhi",
+      "lin-qingluo",
+      "yan-wusheng"
+     ],
+     "stage": 1,
+     "pity": 10,
+     "sincePurple": 7,
+     "pulls": 10,
+     "afkFrom": 1795623540736,
+     "day": "2026-11-25",
+     "daily": {
+      "summons": 10,
+      "levels": 11,
+      "clears": 0,
+      "claims": 0,
+      "quick": 0,
+      "claimed": []
+     },
+     "loginDays": 1,
+     "loginClaimed": 1,
+     "vipExp": 10
+    },
+    "power": 707,
+    "stagePower": 260,
+    "sound": {
+     "loadedStreams": 0,
+     "pendingStreamLoads": 0,
+     "retainedStreamBytes": 0,
+     "pendingAdmissions": 0,
+     "retiredVoices": 0,
+     "sampleBackend": "native",
+     "loadedSamples": 11,
+     "pendingSampleLoads": 0,
+     "decodedSampleBytes": 2355844,
+     "inIframe": false,
+     "contextState": "suspended",
+     "unlockedByGesture": false,
+     "unlockGestureType": "none",
+     "pageVisible": true,
+     "windowFocused": true,
+     "autoSuspendedByBlur": false,
+     "userMuted": false,
+     "volumes": {
+      "master": 0.85,
+      "bgm": 0.6,
+      "sfx": 0.9,
+      "ui": 0.85
+     },
+     "queuedBeforeUnlockCount": 0,
+     "pendingQueue": 0,
+     "droppedQueue": 0,
+     "activeVoices": 0,
+     "droppedVoices": 0,
+     "playedEventsCount": 0,
+     "postMessageBridgeActive": true,
+     "lastBridgeCommand": "init",
+     "backend": "webaudio",
+     "contextAvailable": true,
+     "lastError": null,
+     "spatialVoices": 0,
+     "spatialBackend": "panner"
+    },
+    "lastPulls": [
+     {
+      "id": "yan-wusheng",
+      "rarity": "R",
+      "isNew": false,
+      "shards": 10
+     },
+     {
+      "id": "bai-zhi",
+      "rarity": "R",
+      "isNew": false,
+      "shards": 10
+     },
+     {
+      "id": "lu-xinghe",
+      "rarity": "SR",
+      "isNew": true,
+      "shards": 0
+     },
+     {
+      "id": "yan-wusheng",
+      "rarity": "R",
+      "isNew": false,
+      "shards": 10
+     },
+     {
+      "id": "yan-wusheng",
+      "rarity": "R",
+      "isNew": false,
+      "shards": 10
+     },
+     {
+      "id": "yan-wusheng",
+      "rarity": "R",
+      "isNew": false,
+      "shards": 10
+     },
+     {
+      "id": "lin-qingluo",
+      "rarity": "R",
+      "isNew": false,
+      "shards": 10
+     },
+     {
+      "id": "a-heng",
+      "rarity": "R",
+      "isNew": true,
+      "shards": 0
+     },
+     {
+      "id": "lin-qingluo",
+      "rarity": "R",
+      "isNew": false,
+      "shards": 10
+     },
+     {
+      "id": "a-heng",
+      "rarity": "R",
+      "isNew": false,
+      "shards": 10
+     }
+    ]
+   }
+  },
+  {
+   "shot": "06-hero-detail",
+   "seconds": 8.493,
+   "state": {
+    "ready": true,
+    "screen": "hero:lu-xinghe",
+    "frames": 429,
+    "hot": {
+     "tab-battle": [
+      59,
+      914
+     ],
+     "tab-heroes": [
+      164,
+      914
+     ],
+     "tab-summon": [
+      270,
+      914
+     ],
+     "tab-tasks": [
+      376,
+      914
+     ],
+     "tab-gifts": [
+      482,
+      914
+     ],
+     "level-up": [
+      270,
+      522
+     ],
+     "star-up": [
+      270,
+      591
+     ],
+     "team-toggle": [
+      270,
+      660
+     ],
+     "back": [
+      270,
+      807
+     ]
+    },
+    "effects": 3,
+    "save": {
+     "version": 1,
+     "seed": 2291839017,
+     "coins": 32,
+     "jade": 300,
+     "tickets": 0,
+     "heroes": {
+      "bai-zhi": {
+       "level": 3,
+       "stars": 0,
+       "shards": 10
+      },
+      "yan-wusheng": {
+       "level": 3,
+       "stars": 0,
+       "shards": 40
+      },
+      "lin-qingluo": {
+       "level": 3,
+       "stars": 0,
+       "shards": 20
+      },
+      "lu-xinghe": {
+       "level": 4,
+       "stars": 0,
+       "shards": 0
+      },
+      "a-heng": {
+       "level": 3,
+       "stars": 0,
+       "shards": 10
+      }
+     },
+     "team": [
+      "lu-xinghe",
+      "a-heng",
+      "bai-zhi",
+      "lin-qingluo",
+      "yan-wusheng"
+     ],
+     "stage": 1,
+     "pity": 10,
+     "sincePurple": 7,
+     "pulls": 10,
+     "afkFrom": 1795623540736,
+     "day": "2026-11-25",
+     "daily": {
+      "summons": 10,
+      "levels": 11,
+      "clears": 0,
+      "claims": 0,
+      "quick": 0,
+      "claimed": []
+     },
+     "loginDays": 1,
+     "loginClaimed": 1,
+     "vipExp": 10
+    },
+    "power": 707,
+    "stagePower": 260,
+    "sound": {
+     "loadedStreams": 0,
+     "pendingStreamLoads": 0,
+     "retainedStreamBytes": 0,
+     "pendingAdmissions": 0,
+     "retiredVoices": 0,
+     "sampleBackend": "native",
+     "loadedSamples": 11,
+     "pendingSampleLoads": 0,
+     "decodedSampleBytes": 2355844,
+     "inIframe": false,
+     "contextState": "suspended",
+     "unlockedByGesture": false,
+     "unlockGestureType": "none",
+     "pageVisible": true,
+     "windowFocused": true,
+     "autoSuspendedByBlur": false,
+     "userMuted": false,
+     "volumes": {
+      "master": 0.85,
+      "bgm": 0.6,
+      "sfx": 0.9,
+      "ui": 0.85
+     },
+     "queuedBeforeUnlockCount": 0,
+     "pendingQueue": 0,
+     "droppedQueue": 0,
+     "activeVoices": 0,
+     "droppedVoices": 0,
+     "playedEventsCount": 0,
+     "postMessageBridgeActive": true,
+     "lastBridgeCommand": "init",
+     "backend": "webaudio",
+     "contextAvailable": true,
+     "lastError": null,
+     "spatialVoices": 0,
+     "spatialBackend": "panner"
+    },
+    "lastPulls": [
+     {
+      "id": "yan-wusheng",
+      "rarity": "R",
+      "isNew": false,
+      "shards": 10
+     },
+     {
+      "id": "bai-zhi",
+      "rarity": "R",
+      "isNew": false,
+      "shards": 10
+     },
+     {
+      "id": "lu-xinghe",
+      "rarity": "SR",
+      "isNew": true,
+      "shards": 0
+     },
+     {
+      "id": "yan-wusheng",
+      "rarity": "R",
+      "isNew": false,
+      "shards": 10
+     },
+     {
+      "id": "yan-wusheng",
+      "rarity": "R",
+      "isNew": false,
+      "shards": 10
+     },
+     {
+      "id": "yan-wusheng",
+      "rarity": "R",
+      "isNew": false,
+      "shards": 10
+     },
+     {
+      "id": "lin-qingluo",
+      "rarity": "R",
+      "isNew": false,
+      "shards": 10
+     },
+     {
+      "id": "a-heng",
+      "rarity": "R",
+      "isNew": true,
+      "shards": 0
+     },
+     {
+      "id": "lin-qingluo",
+      "rarity": "R",
+      "isNew": false,
+      "shards": 10
+     },
+     {
+      "id": "a-heng",
+      "rarity": "R",
+      "isNew": false,
+      "shards": 10
+     }
+    ]
+   }
+  },
+  {
+   "shot": "07-fighting",
+   "seconds": 11.623,
+   "state": {
+    "ready": true,
+    "screen": "battle",
+    "frames": 617,
+    "hot": {
+     "tab-battle": [
+      59,
+      914
+     ],
+     "tab-heroes": [
+      164,
+      914
+     ],
+     "tab-summon": [
+      270,
+      914
+     ],
+     "tab-tasks": [
+      376,
+      914
+     ],
+     "tab-gifts": [
+      482,
+      914
+     ],
+     "fight": [
+      143,
+      482
+     ],
+     "auto": [
+      398,
+      482
+     ],
+     "claim": [
+      143,
+      678
+     ],
+     "quick": [
+      398,
+      678
+     ]
+    },
+    "effects": 9,
+    "save": {
+     "version": 1,
+     "seed": 3427627963,
+     "coins": 166,
+     "jade": 320,
+     "tickets": 0,
+     "heroes": {
+      "bai-zhi": {
+       "level": 3,
+       "stars": 0,
+       "shards": 10
+      },
+      "yan-wusheng": {
+       "level": 3,
+       "stars": 0,
+       "shards": 40
+      },
+      "lin-qingluo": {
+       "level": 3,
+       "stars": 0,
+       "shards": 20
+      },
+      "lu-xinghe": {
+       "level": 4,
+       "stars": 0,
+       "shards": 0
+      },
+      "a-heng": {
+       "level": 3,
+       "stars": 0,
+       "shards": 10
+      }
+     },
+     "team": [
+      "lu-xinghe",
+      "a-heng",
+      "bai-zhi",
+      "lin-qingluo",
+      "yan-wusheng"
+     ],
+     "stage": 2,
+     "pity": 10,
+     "sincePurple": 7,
+     "pulls": 10,
+     "afkFrom": 1795623540736,
+     "day": "2026-11-25",
+     "daily": {
+      "summons": 10,
+      "levels": 11,
+      "clears": 1,
+      "claims": 0,
+      "quick": 0,
+      "claimed": []
+     },
+     "loginDays": 1,
+     "loginClaimed": 1,
+     "vipExp": 12
+    },
+    "power": 707,
+    "stagePower": 302,
+    "sound": {
+     "loadedStreams": 0,
+     "pendingStreamLoads": 0,
+     "retainedStreamBytes": 0,
+     "pendingAdmissions": 0,
+     "retiredVoices": 0,
+     "sampleBackend": "native",
+     "loadedSamples": 11,
+     "pendingSampleLoads": 0,
+     "decodedSampleBytes": 2355844,
+     "inIframe": false,
+     "contextState": "suspended",
+     "unlockedByGesture": false,
+     "unlockGestureType": "none",
+     "pageVisible": true,
+     "windowFocused": true,
+     "autoSuspendedByBlur": false,
+     "userMuted": false,
+     "volumes": {
+      "master": 0.85,
+      "bgm": 0.6,
+      "sfx": 0.9,
+      "ui": 0.85
+     },
+     "queuedBeforeUnlockCount": 0,
+     "pendingQueue": 0,
+     "droppedQueue": 0,
+     "activeVoices": 0,
+     "droppedVoices": 0,
+     "playedEventsCount": 0,
+     "postMessageBridgeActive": true,
+     "lastBridgeCommand": "init",
+     "backend": "webaudio",
+     "contextAvailable": true,
+     "lastError": null,
+     "spatialVoices": 0,
+     "spatialBackend": "panner"
+    },
+    "lastPulls": [
+     {
+      "id": "yan-wusheng",
+      "rarity": "R",
+      "isNew": false,
+      "shards": 10
+     },
+     {
+      "id": "bai-zhi",
+      "rarity": "R",
+      "isNew": false,
+      "shards": 10
+     },
+     {
+      "id": "lu-xinghe",
+      "rarity": "SR",
+      "isNew": true,
+      "shards": 0
+     },
+     {
+      "id": "yan-wusheng",
+      "rarity": "R",
+      "isNew": false,
+      "shards": 10
+     },
+     {
+      "id": "yan-wusheng",
+      "rarity": "R",
+      "isNew": false,
+      "shards": 10
+     },
+     {
+      "id": "yan-wusheng",
+      "rarity": "R",
+      "isNew": false,
+      "shards": 10
+     },
+     {
+      "id": "lin-qingluo",
+      "rarity": "R",
+      "isNew": false,
+      "shards": 10
+     },
+     {
+      "id": "a-heng",
+      "rarity": "R",
+      "isNew": true,
+      "shards": 0
+     },
+     {
+      "id": "lin-qingluo",
+      "rarity": "R",
+      "isNew": false,
+      "shards": 10
+     },
+     {
+      "id": "a-heng",
+      "rarity": "R",
+      "isNew": false,
+      "shards": 10
+     }
+    ],
+    "lastBattle": {
+     "stage": 1,
+     "win": true
+    }
+   }
+  },
+  {
+   "shot": "08-wall",
+   "seconds": 26.773,
+   "state": {
+    "ready": true,
+    "screen": "battle",
+    "frames": 1526,
+    "hot": {
+     "tab-battle": [
+      59,
+      914
+     ],
+     "tab-heroes": [
+      164,
+      914
+     ],
+     "tab-summon": [
+      270,
+      914
+     ],
+     "tab-tasks": [
+      376,
+      914
+     ],
+     "tab-gifts": [
+      482,
+      914
+     ],
+     "fight": [
+      143,
+      482
+     ],
+     "auto": [
+      398,
+      482
+     ],
+     "claim": [
+      143,
+      678
+     ],
+     "quick": [
+      398,
+      678
+     ]
+    },
+    "effects": 75,
+    "save": {
+     "version": 1,
+     "seed": 1140897471,
+     "coins": 29,
+     "jade": 480,
+     "tickets": 1,
+     "heroes": {
+      "bai-zhi": {
+       "level": 9,
+       "stars": 0,
+       "shards": 10
+      },
+      "yan-wusheng": {
+       "level": 9,
+       "stars": 0,
+       "shards": 40
+      },
+      "lin-qingluo": {
+       "level": 9,
+       "stars": 0,
+       "shards": 20
+      },
+      "lu-xinghe": {
+       "level": 10,
+       "stars": 0,
+       "shards": 0
+      },
+      "a-heng": {
+       "level": 10,
+       "stars": 0,
+       "shards": 10
+      }
+     },
+     "team": [
+      "lu-xinghe",
+      "a-heng",
+      "bai-zhi",
+      "lin-qingluo",
+      "yan-wusheng"
+     ],
+     "stage": 10,
+     "pity": 10,
+     "sincePurple": 7,
+     "pulls": 10,
+     "afkFrom": 1795623540736,
+     "day": "2026-11-25",
+     "daily": {
+      "summons": 10,
+      "levels": 42,
+      "clears": 9,
+      "claims": 0,
+      "quick": 0,
+      "claimed": []
+     },
+     "loginDays": 1,
+     "loginClaimed": 1,
+     "vipExp": 28
+    },
+    "power": 1135,
+    "stagePower": 1483,
+    "sound": {
+     "loadedStreams": 0,
+     "pendingStreamLoads": 0,
+     "retainedStreamBytes": 0,
+     "pendingAdmissions": 0,
+     "retiredVoices": 0,
+     "sampleBackend": "native",
+     "loadedSamples": 11,
+     "pendingSampleLoads": 0,
+     "decodedSampleBytes": 2355844,
+     "inIframe": false,
+     "contextState": "suspended",
+     "unlockedByGesture": false,
+     "unlockGestureType": "none",
+     "pageVisible": true,
+     "windowFocused": true,
+     "autoSuspendedByBlur": false,
+     "userMuted": false,
+     "volumes": {
+      "master": 0.85,
+      "bgm": 0.6,
+      "sfx": 0.9,
+      "ui": 0.85
+     },
+     "queuedBeforeUnlockCount": 0,
+     "pendingQueue": 0,
+     "droppedQueue": 0,
+     "activeVoices": 0,
+     "droppedVoices": 0,
+     "playedEventsCount": 0,
+     "postMessageBridgeActive": true,
+     "lastBridgeCommand": "init",
+     "backend": "webaudio",
+     "contextAvailable": true,
+     "lastError": null,
+     "spatialVoices": 0,
+     "spatialBackend": "panner"
+    },
+    "lastPulls": [
+     {
+      "id": "yan-wusheng",
+      "rarity": "R",
+      "isNew": false,
+      "shards": 10
+     },
+     {
+      "id": "bai-zhi",
+      "rarity": "R",
+      "isNew": false,
+      "shards": 10
+     },
+     {
+      "id": "lu-xinghe",
+      "rarity": "SR",
+      "isNew": true,
+      "shards": 0
+     },
+     {
+      "id": "yan-wusheng",
+      "rarity": "R",
+      "isNew": false,
+      "shards": 10
+     },
+     {
+      "id": "yan-wusheng",
+      "rarity": "R",
+      "isNew": false,
+      "shards": 10
+     },
+     {
+      "id": "yan-wusheng",
+      "rarity": "R",
+      "isNew": false,
+      "shards": 10
+     },
+     {
+      "id": "lin-qingluo",
+      "rarity": "R",
+      "isNew": false,
+      "shards": 10
+     },
+     {
+      "id": "a-heng",
+      "rarity": "R",
+      "isNew": true,
+      "shards": 0
+     },
+     {
+      "id": "lin-qingluo",
+      "rarity": "R",
+      "isNew": false,
+      "shards": 10
+     },
+     {
+      "id": "a-heng",
+      "rarity": "R",
+      "isNew": false,
+      "shards": 10
+     }
+    ],
+    "lastBattle": {
+     "stage": 9,
+     "win": true
+    }
+   }
+  },
+  {
+   "step": "wall",
+   "stage": 10,
+   "power": 1135,
+   "stagePower": 1483
+  },
+  {
+   "shot": "09-three-hours-later",
+   "seconds": 28.196,
+   "state": {
+    "ready": true,
+    "screen": "battle",
+    "frames": 1611,
+    "hot": {
+     "tab-battle": [
+      59,
+      914
+     ],
+     "tab-heroes": [
+      164,
+      914
+     ],
+     "tab-summon": [
+      270,
+      914
+     ],
+     "tab-tasks": [
+      376,
+      914
+     ],
+     "tab-gifts": [
+      482,
+      914
+     ],
+     "fight": [
+      143,
+      482
+     ],
+     "auto": [
+      398,
+      482
+     ],
+     "claim": [
+      143,
+      678
+     ],
+     "quick": [
+      398,
+      678
+     ]
+    },
+    "effects": 75,
+    "save": {
+     "version": 1,
+     "seed": 1140897471,
+     "coins": 29,
+     "jade": 480,
+     "tickets": 1,
+     "heroes": {
+      "bai-zhi": {
+       "level": 9,
+       "stars": 0,
+       "shards": 10
+      },
+      "yan-wusheng": {
+       "level": 9,
+       "stars": 0,
+       "shards": 40
+      },
+      "lin-qingluo": {
+       "level": 9,
+       "stars": 0,
+       "shards": 20
+      },
+      "lu-xinghe": {
+       "level": 10,
+       "stars": 0,
+       "shards": 0
+      },
+      "a-heng": {
+       "level": 10,
+       "stars": 0,
+       "shards": 10
+      }
+     },
+     "team": [
+      "lu-xinghe",
+      "a-heng",
+      "bai-zhi",
+      "lin-qingluo",
+      "yan-wusheng"
+     ],
+     "stage": 10,
+     "pity": 10,
+     "sincePurple": 7,
+     "pulls": 10,
+     "afkFrom": 1795623540736,
+     "day": "2026-11-25",
+     "daily": {
+      "summons": 10,
+      "levels": 42,
+      "clears": 9,
+      "claims": 0,
+      "quick": 0,
+      "claimed": []
+     },
+     "loginDays": 1,
+     "loginClaimed": 1,
+     "vipExp": 28
+    },
+    "power": 1135,
+    "stagePower": 1483,
+    "sound": {
+     "loadedStreams": 0,
+     "pendingStreamLoads": 0,
+     "retainedStreamBytes": 0,
+     "pendingAdmissions": 0,
+     "retiredVoices": 0,
+     "sampleBackend": "native",
+     "loadedSamples": 11,
+     "pendingSampleLoads": 0,
+     "decodedSampleBytes": 2355844,
+     "inIframe": false,
+     "contextState": "suspended",
+     "unlockedByGesture": false,
+     "unlockGestureType": "none",
+     "pageVisible": true,
+     "windowFocused": true,
+     "autoSuspendedByBlur": false,
+     "userMuted": false,
+     "volumes": {
+      "master": 0.85,
+      "bgm": 0.6,
+      "sfx": 0.9,
+      "ui": 0.85
+     },
+     "queuedBeforeUnlockCount": 0,
+     "pendingQueue": 0,
+     "droppedQueue": 0,
+     "activeVoices": 0,
+     "droppedVoices": 0,
+     "playedEventsCount": 0,
+     "postMessageBridgeActive": true,
+     "lastBridgeCommand": "init",
+     "backend": "webaudio",
+     "contextAvailable": true,
+     "lastError": null,
+     "spatialVoices": 0,
+     "spatialBackend": "panner"
+    },
+    "lastPulls": [
+     {
+      "id": "yan-wusheng",
+      "rarity": "R",
+      "isNew": false,
+      "shards": 10
+     },
+     {
+      "id": "bai-zhi",
+      "rarity": "R",
+      "isNew": false,
+      "shards": 10
+     },
+     {
+      "id": "lu-xinghe",
+      "rarity": "SR",
+      "isNew": true,
+      "shards": 0
+     },
+     {
+      "id": "yan-wusheng",
+      "rarity": "R",
+      "isNew": false,
+      "shards": 10
+     },
+     {
+      "id": "yan-wusheng",
+      "rarity": "R",
+      "isNew": false,
+      "shards": 10
+     },
+     {
+      "id": "yan-wusheng",
+      "rarity": "R",
+      "isNew": false,
+      "shards": 10
+     },
+     {
+      "id": "lin-qingluo",
+      "rarity": "R",
+      "isNew": false,
+      "shards": 10
+     },
+     {
+      "id": "a-heng",
+      "rarity": "R",
+      "isNew": true,
+      "shards": 0
+     },
+     {
+      "id": "lin-qingluo",
+      "rarity": "R",
+      "isNew": false,
+      "shards": 10
+     },
+     {
+      "id": "a-heng",
+      "rarity": "R",
+      "isNew": false,
+      "shards": 10
+     }
+    ],
+    "lastBattle": {
+     "stage": 9,
+     "win": true
+    }
+   }
+  },
+  {
+   "shot": "10-tasks",
+   "seconds": 32.072,
+   "state": {
+    "ready": true,
+    "screen": "tasks",
+    "frames": 1844,
+    "hot": {
+     "tab-battle": [
+      59,
+      914
+     ],
+     "tab-heroes": [
+      164,
+      914
+     ],
+     "tab-summon": [
+      270,
+      914
+     ],
+     "tab-tasks": [
+      376,
+      914
+     ],
+     "tab-gifts": [
+      482,
+      914
+     ],
+     "task-clear": [
+      431,
+      192
+     ],
+     "task-level": [
+      431,
+      305
+     ],
+     "task-summon": [
+      431,
+      417
+     ],
+     "task-afk": [
+      431,
+      530
+     ]
+    },
+    "effects": 79,
+    "save": {
+     "version": 1,
+     "seed": 1140897471,
+     "coins": 5983,
+     "jade": 660,
+     "tickets": 1,
+     "heroes": {
+      "bai-zhi": {
+       "level": 9,
+       "stars": 0,
+       "shards": 10
+      },
+      "yan-wusheng": {
+       "level": 9,
+       "stars": 0,
+       "shards": 40
+      },
+      "lin-qingluo": {
+       "level": 9,
+       "stars": 0,
+       "shards": 20
+      },
+      "lu-xinghe": {
+       "level": 10,
+       "stars": 0,
+       "shards": 0
+      },
+      "a-heng": {
+       "level": 10,
+       "stars": 0,
+       "shards": 10
+      }
+     },
+     "team": [
+      "lu-xinghe",
+      "a-heng",
+      "bai-zhi",
+      "lin-qingluo",
+      "yan-wusheng"
+     ],
+     "stage": 10,
+     "pity": 10,
+     "sincePurple": 7,
+     "pulls": 10,
+     "afkFrom": 1795634367806,
+     "day": "2026-11-25",
+     "daily": {
+      "summons": 10,
+      "levels": 42,
+      "clears": 9,
+      "claims": 1,
+      "quick": 0,
+      "claimed": [
+       "clear",
+       "level",
+       "summon"
+      ]
+     },
+     "loginDays": 1,
+     "loginClaimed": 1,
+     "vipExp": 28
+    },
+    "power": 1135,
+    "stagePower": 1483,
+    "sound": {
+     "loadedStreams": 0,
+     "pendingStreamLoads": 0,
+     "retainedStreamBytes": 0,
+     "pendingAdmissions": 0,
+     "retiredVoices": 0,
+     "sampleBackend": "native",
+     "loadedSamples": 11,
+     "pendingSampleLoads": 0,
+     "decodedSampleBytes": 2355844,
+     "inIframe": false,
+     "contextState": "suspended",
+     "unlockedByGesture": false,
+     "unlockGestureType": "none",
+     "pageVisible": true,
+     "windowFocused": true,
+     "autoSuspendedByBlur": false,
+     "userMuted": false,
+     "volumes": {
+      "master": 0.85,
+      "bgm": 0.6,
+      "sfx": 0.9,
+      "ui": 0.85
+     },
+     "queuedBeforeUnlockCount": 0,
+     "pendingQueue": 0,
+     "droppedQueue": 0,
+     "activeVoices": 0,
+     "droppedVoices": 0,
+     "playedEventsCount": 0,
+     "postMessageBridgeActive": true,
+     "lastBridgeCommand": "init",
+     "backend": "webaudio",
+     "contextAvailable": true,
+     "lastError": null,
+     "spatialVoices": 0,
+     "spatialBackend": "panner"
+    },
+    "lastPulls": [
+     {
+      "id": "yan-wusheng",
+      "rarity": "R",
+      "isNew": false,
+      "shards": 10
+     },
+     {
+      "id": "bai-zhi",
+      "rarity": "R",
+      "isNew": false,
+      "shards": 10
+     },
+     {
+      "id": "lu-xinghe",
+      "rarity": "SR",
+      "isNew": true,
+      "shards": 0
+     },
+     {
+      "id": "yan-wusheng",
+      "rarity": "R",
+      "isNew": false,
+      "shards": 10
+     },
+     {
+      "id": "yan-wusheng",
+      "rarity": "R",
+      "isNew": false,
+      "shards": 10
+     },
+     {
+      "id": "yan-wusheng",
+      "rarity": "R",
+      "isNew": false,
+      "shards": 10
+     },
+     {
+      "id": "lin-qingluo",
+      "rarity": "R",
+      "isNew": false,
+      "shards": 10
+     },
+     {
+      "id": "a-heng",
+      "rarity": "R",
+      "isNew": true,
+      "shards": 0
+     },
+     {
+      "id": "lin-qingluo",
+      "rarity": "R",
+      "isNew": false,
+      "shards": 10
+     },
+     {
+      "id": "a-heng",
+      "rarity": "R",
+      "isNew": false,
+      "shards": 10
+     }
+    ],
+    "lastBattle": {
+     "stage": 9,
+     "win": true
+    }
+   }
+  },
+  {
+   "shot": "11-after-idling",
+   "seconds": 40.065,
+   "state": {
+    "ready": true,
+    "screen": "battle",
+    "frames": 2323,
+    "hot": {
+     "tab-battle": [
+      59,
+      914
+     ],
+     "tab-heroes": [
+      164,
+      914
+     ],
+     "tab-summon": [
+      270,
+      914
+     ],
+     "tab-tasks": [
+      376,
+      914
+     ],
+     "tab-gifts": [
+      482,
+      914
+     ],
+     "fight": [
+      143,
+      482
+     ],
+     "auto": [
+      398,
+      482
+     ],
+     "claim": [
+      143,
+      678
+     ],
+     "quick": [
+      398,
+      678
+     ]
+    },
+    "effects": 86,
+    "save": {
+     "version": 1,
+     "seed": 2276686417,
+     "coins": 501,
+     "jade": 810,
+     "tickets": 2,
+     "heroes": {
+      "bai-zhi": {
+       "level": 18,
+       "stars": 0,
+       "shards": 10
+      },
+      "yan-wusheng": {
+       "level": 18,
+       "stars": 0,
+       "shards": 40
+      },
+      "lin-qingluo": {
+       "level": 18,
+       "stars": 0,
+       "shards": 20
+      },
+      "lu-xinghe": {
+       "level": 19,
+       "stars": 0,
+       "shards": 0
+      },
+      "a-heng": {
+       "level": 18,
+       "stars": 0,
+       "shards": 10
+      }
+     },
+     "team": [
+      "lu-xinghe",
+      "a-heng",
+      "bai-zhi",
+      "lin-qingluo",
+      "yan-wusheng"
+     ],
+     "stage": 11,
+     "pity": 10,
+     "sincePurple": 7,
+     "pulls": 10,
+     "afkFrom": 1795634367806,
+     "day": "2026-11-25",
+     "daily": {
+      "summons": 10,
+      "levels": 86,
+      "clears": 10,
+      "claims": 1,
+      "quick": 0,
+      "claimed": [
+       "clear",
+       "level",
+       "summon"
+      ]
+     },
+     "loginDays": 1,
+     "loginClaimed": 1,
+     "vipExp": 38
+    },
+    "power": 2239,
+    "stagePower": 1147,
+    "sound": {
+     "loadedStreams": 0,
+     "pendingStreamLoads": 0,
+     "retainedStreamBytes": 0,
+     "pendingAdmissions": 0,
+     "retiredVoices": 0,
+     "sampleBackend": "native",
+     "loadedSamples": 11,
+     "pendingSampleLoads": 0,
+     "decodedSampleBytes": 2355844,
+     "inIframe": false,
+     "contextState": "suspended",
+     "unlockedByGesture": false,
+     "unlockGestureType": "none",
+     "pageVisible": true,
+     "windowFocused": true,
+     "autoSuspendedByBlur": false,
+     "userMuted": false,
+     "volumes": {
+      "master": 0.85,
+      "bgm": 0.6,
+      "sfx": 0.9,
+      "ui": 0.85
+     },
+     "queuedBeforeUnlockCount": 0,
+     "pendingQueue": 0,
+     "droppedQueue": 0,
+     "activeVoices": 0,
+     "droppedVoices": 0,
+     "playedEventsCount": 0,
+     "postMessageBridgeActive": true,
+     "lastBridgeCommand": "init",
+     "backend": "webaudio",
+     "contextAvailable": true,
+     "lastError": null,
+     "spatialVoices": 0,
+     "spatialBackend": "panner"
+    },
+    "lastPulls": [
+     {
+      "id": "yan-wusheng",
+      "rarity": "R",
+      "isNew": false,
+      "shards": 10
+     },
+     {
+      "id": "bai-zhi",
+      "rarity": "R",
+      "isNew": false,
+      "shards": 10
+     },
+     {
+      "id": "lu-xinghe",
+      "rarity": "SR",
+      "isNew": true,
+      "shards": 0
+     },
+     {
+      "id": "yan-wusheng",
+      "rarity": "R",
+      "isNew": false,
+      "shards": 10
+     },
+     {
+      "id": "yan-wusheng",
+      "rarity": "R",
+      "isNew": false,
+      "shards": 10
+     },
+     {
+      "id": "yan-wusheng",
+      "rarity": "R",
+      "isNew": false,
+      "shards": 10
+     },
+     {
+      "id": "lin-qingluo",
+      "rarity": "R",
+      "isNew": false,
+      "shards": 10
+     },
+     {
+      "id": "a-heng",
+      "rarity": "R",
+      "isNew": true,
+      "shards": 0
+     },
+     {
+      "id": "lin-qingluo",
+      "rarity": "R",
+      "isNew": false,
+      "shards": 10
+     },
+     {
+      "id": "a-heng",
+      "rarity": "R",
+      "isNew": false,
+      "shards": 10
+     }
+    ],
+    "lastBattle": {
+     "stage": 10,
+     "win": true
+    }
+   }
+  },
+  {
+   "step": "end",
+   "stage": 11,
+   "vip": 38,
+   "coins": 501,
+   "effects": 86,
+   "sound": null
+  }
+ ]
+}

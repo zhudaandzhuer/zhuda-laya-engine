@@ -1,0 +1,15 @@
+[
+ {"wait": 1.7, "shot": "01-title"},
+ {"js": "__qa.key('Enter')", "wait": 0.8, "shot": "02-battlefield"},
+ {"js": "__qa.tap(820, 360)", "wait": 0.32, "shot": "03-hit"},
+ {"wait": 0.9},
+ {"js": "__qa.key('KeyJ', 'down')", "wait": 0.8, "shot": "04-charge"},
+ {"js": "__qa.key('KeyJ', 'up')", "wait": 0.36, "shot": "05-heavy-hit"},
+ {"wait": 0.7},
+ {"js": "__qa.key('Space')", "wait": 0.14, "shot": "06-evade"},
+ {"wait": 0.5},
+ {"js": "__qa.key('KeyD', 'down')", "wait": 0.4, "shot": "07-walk"},
+ {"js": "__qa.key('KeyD', 'up'); __qa.key('Escape')", "wait": 0.3, "shot": "08-pause"},
+ {"js": "__qa.button('音效設定')", "wait": 0.3, "shot": "09-sound"},
+ {"js": "__qa.key('Escape'); __qa.key('Escape')", "wait": 0.5, "shot": "10-resumed"}
+]

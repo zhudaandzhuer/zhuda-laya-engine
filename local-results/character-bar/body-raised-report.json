@@ -1,0 +1,144 @@
+{
+ "fps": 30,
+ "twist": [
+  {
+   "name": "foreTwistL",
+   "bone": "foreL",
+   "kind": "follow",
+   "share": 0.5,
+   "verticesShared": 554
+  },
+  {
+   "name": "foreTwistR",
+   "bone": "foreR",
+   "kind": "follow",
+   "share": 0.5,
+   "verticesShared": 549
+  },
+  {
+   "name": "armTwistL",
+   "bone": "armL",
+   "kind": "counter",
+   "share": 0.5,
+   "verticesShared": 599
+  },
+  {
+   "name": "armTwistR",
+   "bone": "armR",
+   "kind": "counter",
+   "share": 0.5,
+   "verticesShared": 598
+  },
+  {
+   "name": "thighTwistL",
+   "bone": "thighL",
+   "kind": "counter",
+   "share": 0.5,
+   "verticesShared": 994
+  },
+  {
+   "name": "thighTwistR",
+   "bone": "thighR",
+   "kind": "counter",
+   "share": 0.5,
+   "verticesShared": 1011
+  }
+ ],
+ "chains": [
+  {
+   "bones": [
+    "hair1",
+    "hair2"
+   ],
+   "hz": 1.6,
+   "damping": 0.35,
+   "limit": 40,
+   "gravity": 0,
+   "wind": 3
+  },
+  {
+   "bones": [
+    "robeF"
+   ],
+   "hz": 2.2,
+   "damping": 0.45,
+   "limit": 30,
+   "gravity": 0,
+   "wind": 4
+  },
+  {
+   "bones": [
+    "robeB"
+   ],
+   "hz": 2.2,
+   "damping": 0.45,
+   "limit": 30,
+   "gravity": 0,
+   "wind": 4
+  }
+ ],
+ "clips": {
+  "_Stress": {
+   "frames": 96,
+   "seconds": 3.2,
+   "was": 3.2,
+   "loop": false,
+   "roundsApart": {
+    "hair1+hair2": 0.0,
+    "robeF": 0.0,
+    "robeB": 0.0
+   }
+  },
+  "Greet": {
+   "frames": 54,
+   "seconds": 1.8,
+   "was": 1.8,
+   "loop": false,
+   "roundsApart": {
+    "hair1+hair2": 0.0,
+    "robeF": 0.0,
+    "robeB": 0.0
+   }
+  },
+  "Run": {
+   "frames": 20,
+   "seconds": 0.6667,
+   "was": 0.66,
+   "loop": true,
+   "roundsApart": {
+    "hair1+hair2": 0.0,
+    "robeF": 0.0,
+    "robeB": 0.0
+   }
+  },
+  "Walk": {
+   "frames": 30,
+   "seconds": 1.0,
+   "was": 1.0,
+   "loop": true,
+   "roundsApart": {
+    "hair1+hair2": 0.0,
+    "robeF": 0.0,
+    "robeB": 0.0
+   }
+  },
+  "Idle": {
+   "frames": 96,
+   "seconds": 3.2,
+   "was": 3.2,
+   "loop": true,
+   "roundsApart": {
+    "hair1+hair2": 0.0,
+    "robeF": 0.0,
+    "robeB": 0.0
+   }
+  }
+ },
+ "probe": {
+  "bone": "foreL",
+  "next": "handL",
+  "degrees": 120,
+  "thinnestBefore": 0.501,
+  "thinnestAfter": 0.866
+ }
+}

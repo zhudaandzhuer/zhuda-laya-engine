@@ -1,0 +1,21 @@
+{
+  "name": "zhuda-guard",
+  "private": true,
+  "type": "module",
+  "description": "豬大守關——原創的 3D 塔防：荒獸沿山路衝向村口，在路邊蓋箭樓、火爐、冰塔，守住十二波（zhuda-laya-engine）",
+  "engines": { "node": ">=24" },
+  "scripts": {
+    "assets": "node tools/sync-assets.mjs",
+    "build": "node tools/sync-assets.mjs && zhuda-laya-build",
+    "typecheck": "tsc --noEmit",
+    "doctor": "zhuda-laya-doctor --project .",
+    "test": "node --test test/*.test.ts",
+    "verify": "npm run build && npm run typecheck && npm run doctor && npm test"
+  },
+  "dependencies": {
+    "zhuda-laya-engine": "file:../.."
+  },
+  "devDependencies": {
+    "typescript": "5.9.3"
+  }
+}

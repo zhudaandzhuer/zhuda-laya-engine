@@ -1,0 +1,1 @@
+[ { "js": "S.set({ run: false, hour: 11, pitch: 0.45, distance: 30 });", "wait": 4, "shot": "c-sea" } ]

@@ -1,0 +1,21 @@
+[
+  { "wait": 0.2, "expect": [{ "name": "menu" }, { "text": "第一園" }, { "name": "again", "count": 0 }] },
+  { "expect": { "name": "again", "text": "再一次", "within": 180 } },
+  {
+    "wait": 0.2,
+    "expect": [
+      { "textMatches": "^(豐收！|步數用完了)$" },
+      { "name": "next", "textMatches": "^(下一園|回選單)$" },
+      { "js": "S.screen === 'result' && S.game.movesLeft >= 0 && S.game.moves > 0" }
+    ],
+    "probe": "01-result",
+    "shot": "01-result"
+  },
+  {
+    "click": "again",
+    "expect": [{ "name": "again", "count": 0 }, { "text": "0 / 1000 分" }, { "text": "剩 16 步" }, { "js": "S.screen === 'play'" }]
+  },
+  { "expect": { "name": "next", "within": 180 } },
+  { "wait": 0.2, "expect": { "js": "S.screen === 'result'" }, "probe": "02-result-again", "shot": "02-result-again" },
+  { "click": "next", "wait": 0.5, "expect": { "name": "next", "count": 0 }, "probe": "03-after-next", "shot": "03-after-next" }
+]

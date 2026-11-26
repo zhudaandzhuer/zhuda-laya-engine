@@ -1,0 +1,36 @@
+BlenderMCP addon registered
+[INFO ] services.locationservice ...............: Not adding link to MakeHuman user data, since neither explicit path nor auto-discovery is set in preferences.
+[INFO ] mpfb.init ..............................: Build info 20261010
+[INFO ] mpfb.init ..............................: Online access preference is not enabled. Not checking if MakeHuman is online.
+[INFO ] mpfb.init ..............................: MPFB initialization has finished.
+BlenderMCP addon unregistered
+Warning: addon-module cloudmac_app_guard found module but without '__addon_enabled__' field, possible name collision from file: '<home>/Library/Application Support/Blender/5.2/scripts/addons/cloudmac_app_guard.py'
+Warning: addon-module cloudmac_secure_blender found module but without '__addon_enabled__' field, possible name collision from file: '<home>/Library/Application Support/Blender/5.2/scripts/addons/cloudmac_secure_blender.py'
+00:34:40 | INFO: Data are loaded, start creating Blender stuff
+00:34:40 | INFO: Blender create Mesh node region-feet
+00:34:40 | INFO: Blender create Mesh node region-forearms
+00:34:40 | INFO: Blender create Mesh node region-hands
+00:34:41 | INFO: Blender create Mesh node region-head
+00:34:41 | INFO: Blender create Mesh node region-hips
+00:34:41 | INFO: Blender create Mesh node region-shins
+00:34:41 | INFO: Blender create Mesh node region-shoulders
+00:34:41 | INFO: Blender create Mesh node region-thighs
+00:34:41 | INFO: Blender create Mesh node region-torso
+00:34:41 | INFO: Blender create Mesh node region-upperArms
+00:34:41 | INFO: glTF import finished in 0.97s
+00:34:41 | INFO: Data are loaded, start creating Blender stuff
+00:34:41 | INFO: Blender create Mesh node tee
+00:34:41 | INFO: glTF import finished in 0.07s
+01:52.270  render           | Saved: '<repo>/local-results/D3/tee-walk-worn-front.jpg'
+01:52.481  render           | Saved: '<repo>/local-results/D3/tee-walk-cloth-front.jpg'
+01:52.600  render           | Saved: '<repo>/local-results/D3/tee-walk-worn-side.jpg'
+01:52.842  render           | Saved: '<repo>/local-results/D3/tee-walk-cloth-side.jpg'
+CLIP Greet {"median": 0.0174, "mean": 0.0209, "p95": 0.0505, "max": 0.0914} samples 12
+CLIP Idle {"median": 0.0107, "mean": 0.0144, "p95": 0.0396, "max": 0.1005} samples 20
+CLIP Run {"median": 0.02, "mean": 0.029, "p95": 0.0802, "max": 0.1198} samples 5
+CLIP Walk {"median": 0.0144, "mean": 0.0192, "p95": 0.0537, "max": 0.1187} samples 7
+CLIP _Stress {"median": 0.0435, "mean": 0.0506, "p95": 0.114, "max": 0.2054} samples 20
+DONE <repo>/local-results/D3/tee.json
+Blender 5.2.2 LTS (hash d13f752e3b9c built 2026-09-15 01:49:19)
+
+Blender quit

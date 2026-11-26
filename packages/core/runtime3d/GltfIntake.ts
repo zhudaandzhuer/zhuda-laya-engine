@@ -1,3 +1,4 @@
+import { zhudaUtf8Decode, zhudaUtf8Encode } from './Utf8.ts';
 /**
  * glTF intake steps LayaAir 3.4.2's importer lacks. They read a glTF document,
  * or rewrite its bytes, before the native parser sees it. Nothing here makes a
@@ -868,7 +869,7 @@ export function dequantizeZhudaGltf(
 export function readZhudaGltfBytes(bytes: Uint8Array): { document: Json; bin?: Uint8Array } {
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   if (bytes.byteLength < 12 || view.getUint32(0, true) !== 0x46546c67)
-    return { document: record(JSON.parse(new TextDecoder().decode(bytes))) };
+    return { document: record(JSON.parse(zhudaUtf8Decode(bytes))) };
   if (view.getUint32(4, true) !== 2 || view.getUint32(8, true) !== bytes.byteLength)
     throw Error('Invalid GLB header');
   let offset = 12,
@@ -882,7 +883,7 @@ export function readZhudaGltfBytes(bytes: Uint8Array): { document: Json; bin?: U
     const data = bytes.subarray(offset + 8, offset + 8 + size);
     if (chunk === 0) {
       if (kind !== 0x4e4f534a) throw Error('GLB JSON must be first');
-      document = record(JSON.parse(new TextDecoder().decode(data)));
+      document = record(JSON.parse(zhudaUtf8Decode(data)));
     } else if (chunk === 1 && kind === 0x004e4942) bin = data;
     else throw Error('Unsupported GLB chunk');
     offset += 8 + size;
@@ -892,7 +893,7 @@ export function readZhudaGltfBytes(bytes: Uint8Array): { document: Json; bin?: U
 }
 /** A GLB of a document and its one binary buffer. */
 export function writeZhudaGlb(document: unknown, bin: Uint8Array): Uint8Array {
-  const json = new TextEncoder().encode(JSON.stringify(document)),
+  const json = zhudaUtf8Encode(JSON.stringify(document)),
     jsonLength = align4(json.byteLength),
     binLength = align4(bin.byteLength);
   const total = 28 + jsonLength + binLength;

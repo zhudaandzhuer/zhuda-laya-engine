@@ -1,0 +1,8 @@
+{
+  "name": "zhuda-common-3d-viewer",
+  "entry": "src/Main.ts",
+  "outDir": "dist/web",
+  "features": ["core", "3d", "gltf", "postProcess"],
+  "renderer": "auto",
+  "maxPackageBytes": 80000000
+}

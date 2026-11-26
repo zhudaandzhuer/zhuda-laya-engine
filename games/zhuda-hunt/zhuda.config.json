@@ -1,0 +1,8 @@
+{
+  "name": "zhuda-hunt",
+  "entry": "src/Main.ts",
+  "outDir": "dist/web",
+  "features": ["core", "3d", "gltf", "postProcess"],
+  "viewport": { "width": 1280, "height": 720, "scaleMode": "showall" },
+  "branding": { "mode": "none" }
+}

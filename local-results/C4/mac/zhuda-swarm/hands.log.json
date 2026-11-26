@@ -1,0 +1,416 @@
+{
+ "errors": [
+  "Failed to load resource: the server responded with a status of 404 (Not Found) http://localhost:63341/favicon.ico",
+  "Failed to load resource: the server responded with a status of 404 (Not Found) http://localhost:63341/favicon.ico"
+ ],
+ "failed": "",
+ "renderer": {
+  "webgl": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+  "webgpu": true,
+  "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/158.0.0.0 Safari/537.36",
+  "dpr": 1
+ },
+ "final": {
+  "ready": true,
+  "screen": "title",
+  "frames": 1745,
+  "hot": {
+   "start": [
+    640,
+    338
+   ],
+   "meta-might": [
+    310,
+    558
+   ],
+   "meta-vitality": [
+    640,
+    558
+   ],
+   "meta-greed": [
+    970,
+    558
+   ],
+   "mute": [
+    1185,
+    45
+   ]
+  },
+  "maxDraws": 4,
+  "save": {
+   "coins": 24,
+   "meta": {
+    "might": 0,
+    "vitality": 0,
+    "greed": 0
+   },
+   "best": 73.39999999999712,
+   "runs": 1
+  },
+  "fx": 0,
+  "zones": "",
+  "draws": 3,
+  "run": {
+   "time": 73.4,
+   "state": "dead",
+   "hp": 0,
+   "level": 8,
+   "kills": 131,
+   "enemies": 46,
+   "peak": 53,
+   "drops": 13,
+   "shots": 0,
+   "weapons": "blade2",
+   "passives": "might3 haste1 vitality1 magnet1"
+  },
+  "payout": 24
+ },
+ "log": [
+  {
+   "shot": "00-title",
+   "seconds": 2.177,
+   "state": {
+    "ready": true,
+    "screen": "title",
+    "frames": 99,
+    "hot": {
+     "start": [
+      640,
+      338
+     ],
+     "meta-might": [
+      310,
+      558
+     ],
+     "meta-vitality": [
+      640,
+      558
+     ],
+     "meta-greed": [
+      970,
+      558
+     ],
+     "mute": [
+      1185,
+      45
+     ]
+    },
+    "maxDraws": 0,
+    "save": {
+     "coins": 0,
+     "meta": {
+      "might": 0,
+      "vitality": 0,
+      "greed": 0
+     },
+     "best": 0,
+     "runs": 0
+    },
+    "fx": 0,
+    "zones": "",
+    "draws": 3
+   }
+  },
+  {
+   "shot": "01-t5",
+   "seconds": 3.987,
+   "state": {
+    "ready": true,
+    "screen": "play",
+    "frames": 208,
+    "hot": {},
+    "maxDraws": 3,
+    "save": {
+     "coins": 0,
+     "meta": {
+      "might": 0,
+      "vitality": 0,
+      "greed": 0
+     },
+     "best": 0,
+     "runs": 0
+    },
+    "fx": 0,
+    "zones": "",
+    "draws": 3,
+    "run": {
+     "time": 5.4,
+     "state": "play",
+     "hp": 100,
+     "level": 1,
+     "kills": 0,
+     "enemies": 7,
+     "peak": 7,
+     "drops": 0,
+     "shots": 0,
+     "weapons": "blade1",
+     "passives": ""
+    }
+   }
+  },
+  {
+   "t": 5.2,
+   "enemies": 6,
+   "draws": 3,
+   "level": 1,
+   "kit": "blade1"
+  },
+  {
+   "shot": "02-t30",
+   "seconds": 12.506,
+   "state": {
+    "ready": true,
+    "screen": "play",
+    "frames": 719,
+    "hot": {},
+    "maxDraws": 4,
+    "save": {
+     "coins": 0,
+     "meta": {
+      "might": 0,
+      "vitality": 0,
+      "greed": 0
+     },
+     "best": 0,
+     "runs": 0
+    },
+    "fx": 0,
+    "zones": "slash",
+    "draws": 3,
+    "run": {
+     "time": 30.5,
+     "state": "play",
+     "hp": 96,
+     "level": 3,
+     "kills": 22,
+     "enemies": 24,
+     "peak": 24,
+     "drops": 3,
+     "shots": 0,
+     "weapons": "blade1",
+     "passives": "might1 haste1"
+    }
+   }
+  },
+  {
+   "t": 30.3,
+   "enemies": 24,
+   "draws": 3,
+   "level": 3,
+   "kit": "blade1"
+  },
+  {
+   "shot": "03-choose",
+   "seconds": 15.549,
+   "state": {
+    "ready": true,
+    "screen": "choose",
+    "frames": 901,
+    "hot": {
+     "choice-0": [
+      300,
+      380
+     ],
+     "choice-1": [
+      640,
+      380
+     ],
+     "choice-2": [
+      980,
+      380
+     ]
+    },
+    "maxDraws": 4,
+    "save": {
+     "coins": 0,
+     "meta": {
+      "might": 0,
+      "vitality": 0,
+      "greed": 0
+     },
+     "best": 0,
+     "runs": 0
+    },
+    "fx": 1,
+    "zones": "slash",
+    "draws": 4,
+    "run": {
+     "time": 39.2,
+     "state": "choose",
+     "hp": 84,
+     "level": 4,
+     "kills": 35,
+     "enemies": 34,
+     "peak": 36,
+     "drops": 7,
+     "shots": 0,
+     "weapons": "blade1",
+     "passives": "might1 haste1"
+    }
+   }
+  },
+  {
+   "shot": "04-t70",
+   "seconds": 26.152,
+   "state": {
+    "ready": true,
+    "screen": "play",
+    "frames": 1538,
+    "hot": {},
+    "maxDraws": 4,
+    "save": {
+     "coins": 0,
+     "meta": {
+      "might": 0,
+      "vitality": 0,
+      "greed": 0
+     },
+     "best": 0,
+     "runs": 0
+    },
+    "fx": 1,
+    "zones": "",
+    "draws": 4,
+    "run": {
+     "time": 70.3,
+     "state": "play",
+     "hp": 6,
+     "level": 7,
+     "kills": 116,
+     "enemies": 50,
+     "peak": 50,
+     "drops": 16,
+     "shots": 0,
+     "weapons": "blade1",
+     "passives": "might3 haste1 vitality1 magnet1"
+    }
+   }
+  },
+  {
+   "t": 70,
+   "enemies": 50,
+   "draws": 4,
+   "level": 7,
+   "kit": "blade1"
+  },
+  {
+   "shot": "05-result",
+   "seconds": 28.304,
+   "state": {
+    "ready": true,
+    "screen": "result",
+    "frames": 1667,
+    "hot": {
+     "home": [
+      640,
+      512
+     ]
+    },
+    "maxDraws": 4,
+    "save": {
+     "coins": 24,
+     "meta": {
+      "might": 0,
+      "vitality": 0,
+      "greed": 0
+     },
+     "best": 73.39999999999712,
+     "runs": 1
+    },
+    "fx": 1,
+    "zones": "",
+    "draws": 4,
+    "run": {
+     "time": 73.4,
+     "state": "dead",
+     "hp": 0,
+     "level": 8,
+     "kills": 131,
+     "enemies": 46,
+     "peak": 53,
+     "drops": 13,
+     "shots": 0,
+     "weapons": "blade2",
+     "passives": "might3 haste1 vitality1 magnet1"
+    },
+    "payout": 24
+   }
+  },
+  {
+   "end": {
+    "time": 73.4,
+    "state": "dead",
+    "hp": 0,
+    "level": 8,
+    "kills": 131,
+    "enemies": 46,
+    "peak": 53,
+    "drops": 13,
+    "shots": 0,
+    "weapons": "blade2",
+    "passives": "might3 haste1 vitality1 magnet1"
+   },
+   "payout": 24,
+   "maxDraws": 4
+  },
+  {
+   "shot": "06-title-after",
+   "seconds": 29.612,
+   "state": {
+    "ready": true,
+    "screen": "title",
+    "frames": 1745,
+    "hot": {
+     "start": [
+      640,
+      338
+     ],
+     "meta-might": [
+      310,
+      558
+     ],
+     "meta-vitality": [
+      640,
+      558
+     ],
+     "meta-greed": [
+      970,
+      558
+     ],
+     "mute": [
+      1185,
+      45
+     ]
+    },
+    "maxDraws": 4,
+    "save": {
+     "coins": 24,
+     "meta": {
+      "might": 0,
+      "vitality": 0,
+      "greed": 0
+     },
+     "best": 73.39999999999712,
+     "runs": 1
+    },
+    "fx": 0,
+    "zones": "",
+    "draws": 3,
+    "run": {
+     "time": 73.4,
+     "state": "dead",
+     "hp": 0,
+     "level": 8,
+     "kills": 131,
+     "enemies": 46,
+     "peak": 53,
+     "drops": 13,
+     "shots": 0,
+     "weapons": "blade2",
+     "passives": "might3 haste1 vitality1 magnet1"
+    },
+    "payout": 24
+   }
+  }
+ ]
+}

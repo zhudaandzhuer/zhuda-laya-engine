@@ -1,0 +1,10 @@
+[
+  { "wait": 1.5, "shot": "hosiery-as-worn" },
+  { "drag": [432, 322, 282, 472], "hold": 1.2, "wait": 1 },
+  { "drag": [560, 322, 710, 472], "hold": 1.2, "wait": 1, "shot": "hosiery-torn" },
+  { "js": "return ['both thighs torn by dragging', S.state().tears];" },
+  { "js": "S.set({ type: 'fishnet', bottom: 'jeans' });", "wait": 1.5, "shot": "hosiery-fishnet-jeans" },
+  { "js": "S.set({ type: 'garter', bottom: 'none', yaw: 0.35, zoom: 0.52, ty: 0.7 });", "wait": 1.5, "shot": "hosiery-garter" },
+  { "js": "S.set({ type: 'sheer20', bottom: 'midi', yaw: 0, zoom: 1, ty: null });", "wait": 2, "shot": "hosiery-midi" },
+  { "js": "return { held: S.state().held, inputError: S.state().inputError ?? null, renderer: S.state().renderer };" }
+]

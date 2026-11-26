@@ -4,6 +4,9 @@
  * and final frames share one deterministic path. Requires the Laya runtime.
  */
 import { zhudaBakeKey } from './BakeKey.ts';
+import { zhudaUtf8Decode } from '../runtime3d/Utf8.ts';
+import { projectZhudaFilmPoint } from './Projection.ts';
+import type { ZhudaFilmVec3 } from './FilmScene.ts';
 export { zhudaBakeKey } from './BakeKey.ts';
 import { ZhudaEngine, Zhuda3D } from '../DeclarativeSDK.ts';
 import {
@@ -104,6 +107,7 @@ import {
   type ZhudaFilmLook,
   type ZhudaFilmScene,
   type ZhudaResolvedFilmLook,
+  zhudaFilmLookFixedReason,
   zhudaFilmLookRebuildReason,
   zhudaFilmBounceBox,
 } from './FilmScene.ts';
@@ -162,13 +166,31 @@ export interface ZhudaFilmStage {
    * every sample.
    */
   setTime(seconds: number): void;
-  /** Moves the camera and sets its lens; ignores depth of field until a render asks for it. */
+  /**
+   * Moves the camera and sets its lens; ignores depth of field until a render
+   * asks for it. The focal length becomes the camera's field of view at the
+   * next `prepare`.
+   */
   setCamera(camera: ZhudaFilmCamera): void;
   /**
-   * Draws what the main camera reads (a reflector's mirrored view) for the
-   * camera last set. `ZhudaFilmRenderer` calls it before every sample.
+   * Gives the camera the field of view of the lens for a picture of this
+   * aspect (width over height), and draws what the main camera reads (a
+   * reflector's mirrored view) for the camera last set. A page calls it once
+   * a frame, after `setTime` and `setCamera`; `ZhudaFilmRenderer` calls it
+   * before every sample.
    */
   prepare(aspect: number, frame?: { width: number; height: number; index: number }): void;
+  /**
+   * Where a point of the world is in a picture of this size for the camera
+   * last set: pixels from the picture's top-left corner (CSS pixels for a
+   * size in CSS pixels), its depth in metres, and whether it is inside the
+   * picture. Null behind the camera. For markers, labels and bars the page
+   * draws over the scene; the arithmetic is `projectZhudaFilmPoint`.
+   */
+  worldToScreen(
+    point: ZhudaFilmVec3,
+    size: { width: number; height: number },
+  ): { x: number; y: number; depth: number; inView: boolean } | null;
   /** Hands the stage something to release when it is disposed (before the scene goes). */
   adopt(release: () => void): void;
   /**
@@ -275,7 +297,7 @@ export class ZhudaFilmAssets {
     );
     this.colorTables = createProviderAssetCache(
       provider,
-      (asset) => parseZhudaCubeLut(new TextDecoder().decode(asset.bytes)),
+      (asset) => parseZhudaCubeLut(zhudaUtf8Decode(asset.bytes)),
       () => {},
       2,
     );
@@ -1037,7 +1059,7 @@ function buildFilmStageContents(
             depth: node.size[1],
             origin: 'bottom',
           }),
-          { position: [0, -0.1, 0] },
+          { position: [0, (node.y ?? 0) - 0.1, 0] },
         );
       } else continue;
       if (node.type !== 'ground' && node.type !== 'terrain') {
@@ -1462,6 +1484,10 @@ function buildFilmStageContents(
     cleanups.push(() => lens.dispose());
     let current = resolveZhudaFilmCamera(scene.camera);
     const prepare = (aspect: number, frame?: { width: number; height: number; index: number }) => {
+      // The focal length last set becomes the camera's field of view here, so a page that only
+      // calls setCamera and prepare draws through the lens. A capture has applied it already and
+      // holds a sample of the aperture: the lens is left alone then.
+      if (!lens.sampling) lens.apply(aspect);
       // Particles face the camera of this frame.
       for (const effect of particleEffects) effect.render(camera);
       // A still or a sample of a video draws the sun's shadows whatever `shadows.update` says.
@@ -1540,10 +1566,16 @@ function buildFilmStageContents(
     };
     // The authored look and the quality level drawn on top of it.
     let authored = look;
+    // The colour table loaded with the scene: the only one a later look may name.
+    const loadedTable = look.grade && look.grade.lut ? look.grade.lut.asset : null;
     let quality: ZhudaLookQuality = 3;
     const keepGrade = scene.nodes.some((node) => node.type === 'water');
-    const atQuality = (resolved: ZhudaResolvedFilmLook) =>
-      zhudaLookForQuality(resolved, quality, { keepGrade });
+    // Bounce light is captured once, at mount: a quality level neither removes nor adds it.
+    const atQuality = (resolved: ZhudaResolvedFilmLook) => {
+      const next = zhudaLookForQuality(resolved, quality, { keepGrade });
+      next.bounceLight = structuredClone(resolved.bounceLight);
+      return next;
+    };
     const setLook = (next: ZhudaFilmLook): 'updated' | 'rebuilt' => {
       if (!live) throw Error('Disposed film stage');
       const candidate = parseZhudaFilmScene(
@@ -1619,14 +1651,10 @@ function buildFilmStageContents(
       fogLights();
     };
     const drawLook = (resolved: ZhudaResolvedFilmLook): 'updated' | 'rebuilt' => {
+      const fixed = zhudaFilmLookFixedReason(look, resolved, loadedTable);
+      if (fixed)
+        throw Error(`Film stage: setLook cannot change the ${fixed}; mount the scene again`);
       const reason = zhudaFilmLookRebuildReason(look, resolved);
-      if (
-        reason === 'environment' ||
-        reason === 'panorama' ||
-        reason === 'bounceLight' ||
-        reason === 'colorTable'
-      )
-        throw Error(`Film stage: setLook cannot change the ${reason}; mount the scene again`);
       if (reason === null)
         updateZhudaLookInPlace(l, { scene3D, camera, sun: sun.light, parts: effects }, resolved);
       else {
@@ -1668,6 +1696,12 @@ function buildFilmStageContents(
       setTime,
       setCamera,
       prepare,
+      worldToScreen: (point: ZhudaFilmVec3, size: { width: number; height: number }) => {
+        const p = projectZhudaFilmPoint(current, point, size.width / size.height);
+        return p.depth > 0
+          ? { x: p.x * size.width, y: p.y * size.height, depth: p.depth, inView: p.inView }
+          : null;
+      },
       adopt: (release: () => void) => void cleanups.push(release),
       linearChain: () => effects.film?.linearChain(),
       solids,

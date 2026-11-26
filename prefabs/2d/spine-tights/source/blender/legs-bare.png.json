@@ -1,0 +1,65 @@
+{
+ "ok": true,
+ "name": "ImageGen豬",
+ "version": "1.5.0",
+ "api": "direct",
+ "endpoint": "/images/edits",
+ "action": "generate",
+ "image_model": "gpt-image-2.6-flare",
+ "provider": "chatgpt",
+ "path": "legs-bare.png",
+ "metadata_path": "legs-bare.png.json",
+ "prompt": "Photoreal fashion catalogue photo, front view, of the lower body of the slim young adult East Asian woman in the reference image (early twenties, porcelain skin, slender legs, as in the reference). Framed from just above the waist down to the floor; both feet and shoes fully in the frame, centred, standing straight with the feet slightly apart, legs not crossed.\n\nShe wears fitted plain black stretch safety shorts (short, matte, covering the hips) and the glossy black stiletto pumps from the reference. Bare legs with natural knees and ankles, smooth even skin.\n\nPlain soft light-grey studio background, even soft front lighting, gentle shadow on the floor, sharp detail. No skirt, no top visible beyond the waistband, no hands in the picture, no text, no watermark.\nAspect ratio 2:3, tall portrait image.",
+ "input_images": [
+  "ref-front.png"
+ ],
+ "expected": {
+  "aspect": "2:3",
+  "width": 1024,
+  "height": 1536,
+  "basis": "measured",
+  "source": "--aspect"
+ },
+ "transparent": false,
+ "reported_quality": "low",
+ "reported_output_format": "png",
+ "requested_quality": null,
+ "model_note": "直接端點的回應不帶模型名稱；image_model 是送出的指定值",
+ "usage": {
+  "input_tokens": 1695,
+  "input_tokens_details": {
+   "image_tokens": 1508,
+   "text_tokens": 187
+  },
+  "output_tokens": 343,
+  "output_tokens_details": {
+   "image_tokens": 343,
+   "text_tokens": 0
+  },
+  "total_tokens": 2038
+ },
+ "bytes": 1718902,
+ "sha256": "5af754af1ce7cb518cd5ca1c1ffc9873919c9f0d540787683ce17720a4d8e72c",
+ "created_at": "2026-11-15T11:07:09.976224+00:00",
+ "elapsed_seconds": 20.763,
+ "generation_id": "04f0346a-f2c1-4f7b-ae99-42ee8193fc6c",
+ "reported_image_model": null,
+ "reported_size": null,
+ "revised_prompt": null,
+ "width": 1024,
+ "height": 1536,
+ "outputs": [
+  {
+   "filename": "legs-bare.png",
+   "sha256": "5af754af1ce7cb518cd5ca1c1ffc9873919c9f0d540787683ce17720a4d8e72c",
+   "bytes": 1718902,
+   "generation_id": "04f0346a-f2c1-4f7b-ae99-42ee8193fc6c",
+   "reported_image_model": null,
+   "reported_size": null,
+   "revised_prompt": null,
+   "width": 1024,
+   "height": 1536
+  }
+ ],
+ "scrubbed": "2026-11-26: paths cut to file names; the login block (auth file, plan, account) and the endpoint address removed. Nothing else changed."
+}

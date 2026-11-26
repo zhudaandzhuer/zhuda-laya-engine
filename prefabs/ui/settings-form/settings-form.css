@@ -1,0 +1,25 @@
+/* Settings form rows. Theme: --cp-menu-text, --cp-menu-dim, --cp-menu-accent, --cp-menu-line (shared with game-menu). */
+.cp-settings { display: flex; flex-direction: column; }
+.cp-setting { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 0;
+  border-bottom: 1px solid var(--cp-menu-line, rgba(232, 228, 214, .12)); cursor: pointer; }
+.cp-setting-label { font-size: 14px; letter-spacing: .08em; color: var(--cp-menu-text, #e8e4d6); }
+.cp-setting-label small { display: block; margin-top: 3px; font-size: 11px; letter-spacing: .04em; color: var(--cp-menu-dim, #b9b6aa); }
+.cp-setting-control { display: flex; align-items: center; gap: 10px; }
+.cp-setting input[type=range] { width: min(200px, 38vw); accent-color: var(--cp-menu-accent, #e6bd77); }
+.cp-setting output { min-width: 3.4em; text-align: right; font-variant-numeric: tabular-nums; color: var(--cp-menu-text, #e8e4d6); }
+.cp-setting input[type=checkbox] { appearance: none; width: 42px; height: 22px; border-radius: 11px; position: relative; flex: none; cursor: pointer;
+  background: rgba(232, 228, 214, .18); transition: background .15s; margin: 0; }
+.cp-setting input[type=checkbox]::after { content: ''; position: absolute; left: 3px; top: 3px; width: 16px; height: 16px; border-radius: 50%;
+  background: var(--cp-menu-text, #e8e4d6); transition: transform .15s; }
+.cp-setting input[type=checkbox]:checked { background: var(--cp-menu-accent, #e6bd77); }
+.cp-setting input[type=checkbox]:checked::after { transform: translateX(20px); background: #1b241f; }
+.cp-setting input:focus-visible, .cp-setting-choices button:focus-visible, .cp-settings-reset:focus-visible { outline: 2px solid var(--cp-menu-accent, #e6bd77); outline-offset: 3px; }
+.cp-setting-choices { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.cp-setting-choices button { padding: 5px 10px; font-size: 13px; border: 1px solid var(--cp-menu-line, rgba(232, 228, 214, .2)) !important; border-radius: 3px;
+  color: var(--cp-menu-dim, #b9b6aa); }
+.cp-setting-choices button.on { color: var(--cp-menu-text, #fff); border-color: var(--cp-menu-accent, #e6bd77) !important; }
+.cp-settings-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 14px; }
+.cp-settings-status { font-size: 12px; color: var(--cp-menu-dim, #b9b6aa); }
+.cp-settings-reset { width: auto; margin: 0; padding: 6px 12px; font-size: 13px; border: 1px solid var(--cp-menu-line, rgba(232, 228, 214, .2)) !important; border-radius: 3px;
+  color: var(--cp-menu-dim, #b9b6aa); }
+.cp-settings-reset:hover { color: var(--cp-menu-text, #fff); }

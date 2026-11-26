@@ -1,0 +1,22 @@
+{
+  "name": "zhuda-hunt",
+  "private": true,
+  "type": "module",
+  "description": "豬大狩荒——原創的 3D 共鬥狩獵動作遊戲：豬大討伐山海經的巨獸，看招、翻滾、破部位、剝素材、打造武器（zhuda-laya-engine）",
+  "engines": { "node": ">=24" },
+  "scripts": {
+    "assets": "node tools/sync-assets.mjs",
+    "build": "node tools/sync-assets.mjs && zhuda-laya-build",
+    "typecheck": "tsc --noEmit",
+    "doctor": "zhuda-laya-doctor --project .",
+    "test": "node --test test/*.test.ts",
+    "bots": "node tools/bots.ts",
+    "verify": "npm run build && npm run typecheck && npm run doctor && npm test"
+  },
+  "dependencies": {
+    "zhuda-laya-engine": "file:../.."
+  },
+  "devDependencies": {
+    "typescript": "5.9.3"
+  }
+}

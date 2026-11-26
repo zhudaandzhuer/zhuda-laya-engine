@@ -13,7 +13,7 @@ Date: 2026-11-17
 - Node and package manager: Node 26.12.0, npm 11.20.0.
 - Engine and consumer commits: on top of `9960539`; no consumer.
 - Evidence (outside the repository): `EV` =
-  `/Users/yaowei/Documents/ZhudaGameCenter/audits/isosurface-density-2026-11-17/`:
+  `<workspace>/audits/isosurface-density-2026-11-17/`:
   `density-webgpu/`, `density-webgl/` (reports), the run logs, the
   `verify:gpu-depth` logs after the compute fix, `unit.log`, `verify.log`.
 

@@ -38,7 +38,8 @@ it and run on a phone.
 
 - `zhuda-laya-init` (`node packages/compiler/zhuda-init.mjs`) with `--template 2d`;
   in the project `zhuda-laya-build` (`--candidate`), `zhuda-laya-accept`,
-  `zhuda-laya-doctor`, `zhuda-laya-watch`. Node 24 or newer.
+  `zhuda-laya-doctor`, `zhuda-laya-watch` (`--candidate` for the edit loop: a save
+  that changes only `src/` rebuilds `app.js` alone). Node 24 or newer.
 - Engine features for the project's `zhuda.config.json`: `core`, `2d`, `ui` (what the
   scaffold writes); add `spine42` for Spine 4.2 rigs and `tilemap` only for LayaAir's
   own tile maps. The ready effects need no extra feature: they draw with `2d`

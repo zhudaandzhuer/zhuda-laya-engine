@@ -1,0 +1,12 @@
+[
+ {"wait": 1.5, "shot": "ashfall-title"},
+ {"js": "S.set({ view: 'impact' })", "wait": 0.3, "shot": "ashfall-impact"},
+ {"js": "S.set({ view: 'heavy' })", "wait": 0.3, "shot": "ashfall-heavy"},
+ {"js": "S.set({ view: 'charge' })", "wait": 0.3, "shot": "ashfall-charge"},
+ {"js": "S.set({ view: 'evade' })", "wait": 0.3, "shot": "ashfall-evade"},
+ {"js": "S.set({ view: 'paused' })", "wait": 0.3, "shot": "ashfall-paused"},
+ {"js": "S.set({ view: 'sound' })", "wait": 0.3, "shot": "ashfall-sound"},
+ {"js": "S.set({ view: 'victory' })", "wait": 0.3, "shot": "ashfall-victory"},
+ {"js": "S.set({ view: 'defeat' })", "wait": 0.3, "shot": "ashfall-defeat"},
+ {"js": "S.set({ view: 'duel' }); return JSON.stringify(S.state())", "wait": 1, "shot": "ashfall-duel"}
+]

@@ -1,0 +1,8 @@
+{
+  "name": "zhuda-merge",
+  "entry": "src/Main.ts",
+  "outDir": "dist/web",
+  "features": ["core", "2d", "ui"],
+  "viewport": { "width": 720, "height": 1280, "scaleMode": "showall" },
+  "branding": { "mode": "none" }
+}

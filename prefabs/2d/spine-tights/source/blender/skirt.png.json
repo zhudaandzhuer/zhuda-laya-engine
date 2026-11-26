@@ -1,0 +1,63 @@
+{
+ "ok": true,
+ "name": "ImageGen豬",
+ "version": "1.5.0",
+ "api": "direct",
+ "endpoint": "/images/generations",
+ "action": "generate",
+ "image_model": "gpt-image-2.6-flare",
+ "provider": "chatgpt",
+ "path": "skirt.png",
+ "metadata_path": "skirt.png.json",
+ "prompt": "Ghost-mannequin product photo of a women's pleated mini skirt, front view, as if worn (round, hollow, no body or mannequin visible): black-and-white houndstooth wool with crisp knife pleats all round, a plain flat waistband on top. Even soft studio lighting, true colours, sharp weave detail, centred, the whole skirt in frame. Transparent background. No text, no watermark, no hanger.\nAspect ratio 3:2, wide landscape image.",
+ "input_images": [],
+ "expected": {
+  "aspect": "3:2",
+  "width": 1536,
+  "height": 1024,
+  "basis": "measured",
+  "source": "--aspect"
+ },
+ "transparent": true,
+ "reported_quality": "medium",
+ "reported_output_format": "png",
+ "requested_quality": null,
+ "model_note": "直接端點的回應不帶模型名稱；image_model 是送出的指定值",
+ "usage": {
+  "input_tokens": 103,
+  "input_tokens_details": {
+   "image_tokens": 0,
+   "text_tokens": 103
+  },
+  "output_tokens": 601,
+  "output_tokens_details": {
+   "image_tokens": 601,
+   "text_tokens": 0
+  },
+  "total_tokens": 704
+ },
+ "bytes": 3238687,
+ "sha256": "dcb9938939ffe2c616a83b1a8df0aa36a97facca04e07907bfc3d27dbb2c96d0",
+ "created_at": "2026-11-15T11:08:55.980816+00:00",
+ "elapsed_seconds": 25.4,
+ "generation_id": "34952508-d21a-4ff4-a193-77432b75a280",
+ "reported_image_model": null,
+ "reported_size": "1536x1024",
+ "revised_prompt": null,
+ "width": 1536,
+ "height": 1024,
+ "outputs": [
+  {
+   "filename": "skirt.png",
+   "sha256": "dcb9938939ffe2c616a83b1a8df0aa36a97facca04e07907bfc3d27dbb2c96d0",
+   "bytes": 3238687,
+   "generation_id": "34952508-d21a-4ff4-a193-77432b75a280",
+   "reported_image_model": null,
+   "reported_size": "1536x1024",
+   "revised_prompt": null,
+   "width": 1536,
+   "height": 1024
+  }
+ ],
+ "scrubbed": "2026-11-26: paths cut to file names; the login block (auth file, plan, account) and the endpoint address removed. Nothing else changed."
+}

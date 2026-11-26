@@ -1,0 +1,11 @@
+== 1-npm-ci: npm ci
+   exit 0, 5 s
+== 2-verify: npm run verify
+   exit 1, 56 s
+== 3-lint: npm run lint
+   exit 0, 8 s
+== 4-format-check: npm run format:check
+   exit 0, 7 s
+== 5-verify-games: npm run verify:games
+   exit 1, 136 s
+done

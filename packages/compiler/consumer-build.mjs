@@ -18,21 +18,36 @@ import { buildPrefabDependencies, prefabEvidenceMatches } from './prefab-depende
 import { validatePrefabChecks } from './prefab-checks.mjs';
 import { validateLayoutContracts } from './layout-contract.mjs';
 import { ENGINE_PRESET_PROFILES, TopologyResolver } from './compiler-runtime.mjs';
-import { collectTsFiles, parseReflectableClassesInFile } from './ast-scanner.mjs';
+import { collectReflectableClasses } from './ast-scanner.mjs';
 
 /** Read-only reflection. Registration is appended after entry declarations initialize. */
-export function zhudaConsumerPlugin({ projectRoot, entry, engineRoot }) {
+/** The syntax a consumer's `app.js` is written in. The mini-game tool builds at this target too,
+ * because it compares its bundle with the gated `app.js` character for character. */
+export const CONSUMER_SYNTAX_TARGET = 'es2020';
+
+export function zhudaConsumerPlugin({ projectRoot, entry, engineRoot, classCache }) {
   return {
     name: 'zhuda-consumer',
     setup(build) {
+      // esbuild names a file by its real path. A project reached through a symbolic link (a
+      // linked checkout, macOS's temporary directories) has its entry under another name there:
+      // without these the entry is not recognised and no component class is registered.
+      const entryNames = new Set([path.resolve(entry)]);
+      build.onStart(() => {
+        for (const real of [fs.realpathSync, fs.realpathSync.native]) {
+          try {
+            entryNames.add(real(entry));
+          } catch {
+            // A missing entry is reported by the build itself.
+          }
+        }
+      });
       build.onResolve({ filter: /^zhuda-laya-engine$/ }, () => ({
         path: path.join(engineRoot, 'dist/sdk/zhuda-laya-engine.esm.js'),
       }));
       build.onLoad({ filter: /\.tsx?$/ }, (args) => {
-        if (path.resolve(args.path) !== path.resolve(entry)) return;
-        const classes = collectTsFiles(path.join(projectRoot, 'src')).flatMap(
-          parseReflectableClassesInFile,
-        );
+        if (!entryNames.has(path.resolve(args.path))) return;
+        const classes = collectReflectableClasses(path.join(projectRoot, 'src'), classCache);
         const imports = [`import {EngineGuard as __ZhudaGuard} from 'zhuda-laya-engine';`],
           calls = [];
         for (const [i, c] of classes.entries()) {
@@ -54,6 +69,41 @@ export function zhudaConsumerPlugin({ projectRoot, entry, engineRoot }) {
       });
     },
   };
+}
+/**
+ * esbuild's options for a consumer's `app.js`. The full build and the watcher's scripts-only
+ * rebuild (`consumer-scripts.mjs`) both take them from here, so the two write the same bytes.
+ */
+export function consumerScriptOptions({ projectRoot, entry, engineRoot, outfile, classCache }) {
+  return {
+    entryPoints: [entry],
+    bundle: true,
+    format: 'iife',
+    target: CONSUMER_SYNTAX_TARGET,
+    outfile,
+    minify: true,
+    plugins: [zhudaConsumerPlugin({ projectRoot, entry, engineRoot, classCache })],
+  };
+}
+/**
+ * The gates a consumer's sources pass before anything is bundled, in the order the full build
+ * runs them. The watcher's scripts-only rebuild runs the same ones, so a save it answers fails
+ * for the same reasons a full build would.
+ */
+export function auditConsumerGates(projectRoot, config, guardCache) {
+  const visual = auditVisualPresentationContracts({
+    projectRoot,
+    manifestPath: config.visualContract,
+  });
+  if ((config.visualContract || visual.manifestPath) && !visual.passed)
+    throw Error('Visual presentation contract failed: ' + visual.issues.join(' | '));
+  const layoutContracts = validateLayoutContracts(projectRoot, config.layoutContracts);
+  if (!layoutContracts.passed)
+    throw Error('Layout wireframe contract failed: ' + layoutContracts.issues.join(' | '));
+  const guard = auditConsumerSources(projectRoot, config, guardCache);
+  if (!guard.passed)
+    throw Error(guard.issues.map((i) => `${i.file}:${i.line} [${i.code}] ${i.message}`).join('\n'));
+  return { layoutContracts, guard };
 }
 const crcTable = Array.from({ length: 256 }, (_, n) => {
   for (let k = 0; k < 8; k++) n = n & 1 ? 0xedb88320 ^ (n >>> 1) : n >>> 1;
@@ -163,6 +213,38 @@ export function archiveConsumer(root, destination, maxBytes = 50_000_000) {
     limitBytes: maxBytes,
   };
 }
+/** The engine's own directories: what a consumer kept inside the engine's repository must not build into. */
+const ENGINE_OWN_DIRECTORIES = [
+  'packages',
+  'vendor',
+  'dist',
+  'assets',
+  'docs',
+  'src',
+  'scripts',
+  'tests',
+  'examples',
+  'node_modules',
+];
+/**
+ * Whether a build output overlaps something it must stay apart from: it has to
+ * be a directory of its own inside the project, away from the project's
+ * sources and from the engine. For a consumer kept inside the engine's
+ * repository (`games/<name>` under the engine root) "the engine" is the
+ * engine's own directories, not the whole checkout the project sits in.
+ */
+export function consumerOutputConflicts({ output, projectRoot, engineRoot, sources = [] }) {
+  const within = (a, b) => a === b || a.startsWith(b + path.sep);
+  const inRepo = projectRoot !== engineRoot && within(projectRoot, engineRoot);
+  const engine = inRepo
+    ? ENGINE_OWN_DIRECTORIES.map((name) => path.join(engineRoot, name))
+    : [engineRoot];
+  return (
+    !within(output, projectRoot) ||
+    output === projectRoot ||
+    [...sources, ...engine].some((source) => within(output, source) || within(source, output))
+  );
+}
 export async function runConsumerBuild({
   projectRoot,
   engineRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..'),
@@ -186,19 +268,20 @@ export async function runConsumerBuild({
     projectRoot,
     config.htmlTemplate || path.join(config.publicDir || 'public', 'index.html'),
   );
-  const within = (a, b) => a === b || a.startsWith(b + path.sep);
   if (
-    !within(output, projectRoot) ||
-    output === projectRoot ||
-    [
-      pub,
-      path.join(projectRoot, 'src'),
-      path.join(projectRoot, 'assets'),
-      entry,
-      template,
-      path.join(projectRoot, 'node_modules'),
-      engineRoot,
-    ].some((source) => within(output, source) || within(source, output))
+    consumerOutputConflicts({
+      output,
+      projectRoot,
+      engineRoot: path.resolve(engineRoot),
+      sources: [
+        pub,
+        path.join(projectRoot, 'src'),
+        path.join(projectRoot, 'assets'),
+        entry,
+        template,
+        path.join(projectRoot, 'node_modules'),
+      ],
+    })
   )
     throw Error('Output must be separate from source, public assets and engine');
   for (let p = output; p !== projectRoot; p = path.dirname(p)) {
@@ -213,18 +296,7 @@ export async function runConsumerBuild({
   );
   if (!html.includes('<!-- ZHUDA_LIBS -->') || !html.includes('<!-- ZHUDA_ENTRY -->'))
     throw Error('HTML template needs ZHUDA_LIBS and ZHUDA_ENTRY markers');
-  const visual = auditVisualPresentationContracts({
-    projectRoot,
-    manifestPath: config.visualContract,
-  });
-  if ((config.visualContract || visual.manifestPath) && !visual.passed)
-    throw Error('Visual presentation contract failed: ' + visual.issues.join(' | '));
-  const layoutContracts = validateLayoutContracts(projectRoot, config.layoutContracts);
-  if (!layoutContracts.passed)
-    throw Error('Layout wireframe contract failed: ' + layoutContracts.issues.join(' | '));
-  const guard = auditConsumerSources(projectRoot, config);
-  if (!guard.passed)
-    throw Error(guard.issues.map((i) => `${i.file}:${i.line} [${i.code}] ${i.message}`).join('\n'));
+  const { layoutContracts, guard } = auditConsumerGates(projectRoot, config);
   const features = config.features ||
     (config.profile && ENGINE_PRESET_PROFILES[config.profile]) || ['core', '3d', 'gltf'];
   // "renderer": "auto": the libraries of both backends travel and the page
@@ -324,15 +396,9 @@ export async function runConsumerBuild({
       for (const file of ['basis_transcoder.js', 'basis_transcoder.wasm'])
         fs.copyFileSync(path.join(engineRoot, 'vendor/basis', file), path.join(target, file));
     }
-    await esbuild.build({
-      entryPoints: [entry],
-      bundle: true,
-      format: 'iife',
-      target: 'es2020',
-      outfile: path.join(out, 'app.js'),
-      minify: true,
-      plugins: [zhudaConsumerPlugin({ projectRoot, entry, engineRoot })],
-    });
+    await esbuild.build(
+      consumerScriptOptions({ projectRoot, entry, engineRoot, outfile: path.join(out, 'app.js') }),
+    );
     const spineVersion = topology.orderedFiles.includes('spine-core-3.8.js')
       ? { version: '3.8', first: 3, second: 8, needsSlot: false }
       : topology.orderedFiles.includes('spine-core-4.2.js')

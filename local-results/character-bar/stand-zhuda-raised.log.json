@@ -1,0 +1,1375 @@
+{
+ "errors": [],
+ "failed": "",
+ "renderer": {
+  "webgl": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+  "webgpu": true,
+  "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/158.0.0.0 Safari/537.36",
+  "dpr": 1
+ },
+ "final": {
+  "ready": true,
+  "state": {
+   "file": "local/zhuda-raised.glb",
+   "clips": [
+    {
+     "name": "Bow",
+     "seconds": 0.967
+    },
+    {
+     "name": "Cheer",
+     "seconds": 0.467
+    },
+    {
+     "name": "Dance",
+     "seconds": 1.9
+    },
+    {
+     "name": "Dangle",
+     "seconds": 1.9
+    },
+    {
+     "name": "Dizzy",
+     "seconds": 1.9
+    },
+    {
+     "name": "Fall",
+     "seconds": 0.467
+    },
+    {
+     "name": "Idle",
+     "seconds": 3.8
+    },
+    {
+     "name": "Land",
+     "seconds": 0.967
+    },
+    {
+     "name": "Point",
+     "seconds": 0.967
+    },
+    {
+     "name": "ReachLeft",
+     "seconds": 0.967
+    },
+    {
+     "name": "ReachRight",
+     "seconds": 0.967
+    },
+    {
+     "name": "Shake",
+     "seconds": 1.433
+    },
+    {
+     "name": "Sing",
+     "seconds": 1.9
+    },
+    {
+     "name": "Sit",
+     "seconds": 3.8
+    },
+    {
+     "name": "Sleep",
+     "seconds": 3.8
+    },
+    {
+     "name": "Struggle",
+     "seconds": 0.467
+    },
+    {
+     "name": "Talk",
+     "seconds": 1.9
+    },
+    {
+     "name": "Walk",
+     "seconds": 0.467
+    },
+    {
+     "name": "Wave",
+     "seconds": 0.967
+    }
+   ],
+   "clip": "Idle",
+   "normalizedTime": 0.539,
+   "frozenAt": null,
+   "triangles": 49990,
+   "nodes": 17,
+   "materials": 1,
+   "named": 17,
+   "clock": 7.05,
+   "renderer": "webgpu"
+  },
+  "rendererErrors": []
+ },
+ "log": [
+  {
+   "opened": 19
+  },
+  {
+   "shot": "Dance-0_4",
+   "seconds": 3.673,
+   "state": {
+    "ready": true,
+    "state": {
+     "file": "local/zhuda-raised.glb",
+     "clips": [
+      {
+       "name": "Bow",
+       "seconds": 0.967
+      },
+      {
+       "name": "Cheer",
+       "seconds": 0.467
+      },
+      {
+       "name": "Dance",
+       "seconds": 1.9
+      },
+      {
+       "name": "Dangle",
+       "seconds": 1.9
+      },
+      {
+       "name": "Dizzy",
+       "seconds": 1.9
+      },
+      {
+       "name": "Fall",
+       "seconds": 0.467
+      },
+      {
+       "name": "Idle",
+       "seconds": 3.8
+      },
+      {
+       "name": "Land",
+       "seconds": 0.967
+      },
+      {
+       "name": "Point",
+       "seconds": 0.967
+      },
+      {
+       "name": "ReachLeft",
+       "seconds": 0.967
+      },
+      {
+       "name": "ReachRight",
+       "seconds": 0.967
+      },
+      {
+       "name": "Shake",
+       "seconds": 1.433
+      },
+      {
+       "name": "Sing",
+       "seconds": 1.9
+      },
+      {
+       "name": "Sit",
+       "seconds": 3.8
+      },
+      {
+       "name": "Sleep",
+       "seconds": 3.8
+      },
+      {
+       "name": "Struggle",
+       "seconds": 0.467
+      },
+      {
+       "name": "Talk",
+       "seconds": 1.9
+      },
+      {
+       "name": "Walk",
+       "seconds": 0.467
+      },
+      {
+       "name": "Wave",
+       "seconds": 0.967
+      }
+     ],
+     "clip": "Dance",
+     "normalizedTime": 0,
+     "frozenAt": 0.4,
+     "triangles": 49990,
+     "nodes": 17,
+     "materials": 1,
+     "named": 17,
+     "clock": 2.267,
+     "renderer": "webgpu"
+    },
+    "rendererErrors": []
+   }
+  },
+  {
+   "clip": "Dance",
+   "t": 0.4,
+   "tips": [
+    [
+     0.3241,
+     0.7565,
+     0.0008
+    ],
+    [
+     -0.3586,
+     0.6913,
+     0.0761
+    ],
+    [
+     -0.0104,
+     0.3474,
+     -0.2777
+    ],
+    [
+     -0.0198,
+     0.6214,
+     0.0341
+    ]
+   ]
+  },
+  {
+   "shot": "Dance-0_9",
+   "seconds": 3.989,
+   "state": {
+    "ready": true,
+    "state": {
+     "file": "local/zhuda-raised.glb",
+     "clips": [
+      {
+       "name": "Bow",
+       "seconds": 0.967
+      },
+      {
+       "name": "Cheer",
+       "seconds": 0.467
+      },
+      {
+       "name": "Dance",
+       "seconds": 1.9
+      },
+      {
+       "name": "Dangle",
+       "seconds": 1.9
+      },
+      {
+       "name": "Dizzy",
+       "seconds": 1.9
+      },
+      {
+       "name": "Fall",
+       "seconds": 0.467
+      },
+      {
+       "name": "Idle",
+       "seconds": 3.8
+      },
+      {
+       "name": "Land",
+       "seconds": 0.967
+      },
+      {
+       "name": "Point",
+       "seconds": 0.967
+      },
+      {
+       "name": "ReachLeft",
+       "seconds": 0.967
+      },
+      {
+       "name": "ReachRight",
+       "seconds": 0.967
+      },
+      {
+       "name": "Shake",
+       "seconds": 1.433
+      },
+      {
+       "name": "Sing",
+       "seconds": 1.9
+      },
+      {
+       "name": "Sit",
+       "seconds": 3.8
+      },
+      {
+       "name": "Sleep",
+       "seconds": 3.8
+      },
+      {
+       "name": "Struggle",
+       "seconds": 0.467
+      },
+      {
+       "name": "Talk",
+       "seconds": 1.9
+      },
+      {
+       "name": "Walk",
+       "seconds": 0.467
+      },
+      {
+       "name": "Wave",
+       "seconds": 0.967
+      }
+     ],
+     "clip": "Dance",
+     "normalizedTime": 0,
+     "frozenAt": 0.9,
+     "triangles": 49990,
+     "nodes": 17,
+     "materials": 1,
+     "named": 17,
+     "clock": 2.583,
+     "renderer": "webgpu"
+    },
+    "rendererErrors": []
+   }
+  },
+  {
+   "clip": "Dance",
+   "t": 0.9,
+   "tips": [
+    [
+     0.3442,
+     0.7013,
+     0.0224
+    ],
+    [
+     -0.345,
+     0.7315,
+     0.057
+    ],
+    [
+     0.0149,
+     0.3423,
+     -0.2778
+    ],
+    [
+     -0.0033,
+     0.6149,
+     0.0369
+    ]
+   ]
+  },
+  {
+   "shot": "Dance-1_4",
+   "seconds": 4.305,
+   "state": {
+    "ready": true,
+    "state": {
+     "file": "local/zhuda-raised.glb",
+     "clips": [
+      {
+       "name": "Bow",
+       "seconds": 0.967
+      },
+      {
+       "name": "Cheer",
+       "seconds": 0.467
+      },
+      {
+       "name": "Dance",
+       "seconds": 1.9
+      },
+      {
+       "name": "Dangle",
+       "seconds": 1.9
+      },
+      {
+       "name": "Dizzy",
+       "seconds": 1.9
+      },
+      {
+       "name": "Fall",
+       "seconds": 0.467
+      },
+      {
+       "name": "Idle",
+       "seconds": 3.8
+      },
+      {
+       "name": "Land",
+       "seconds": 0.967
+      },
+      {
+       "name": "Point",
+       "seconds": 0.967
+      },
+      {
+       "name": "ReachLeft",
+       "seconds": 0.967
+      },
+      {
+       "name": "ReachRight",
+       "seconds": 0.967
+      },
+      {
+       "name": "Shake",
+       "seconds": 1.433
+      },
+      {
+       "name": "Sing",
+       "seconds": 1.9
+      },
+      {
+       "name": "Sit",
+       "seconds": 3.8
+      },
+      {
+       "name": "Sleep",
+       "seconds": 3.8
+      },
+      {
+       "name": "Struggle",
+       "seconds": 0.467
+      },
+      {
+       "name": "Talk",
+       "seconds": 1.9
+      },
+      {
+       "name": "Walk",
+       "seconds": 0.467
+      },
+      {
+       "name": "Wave",
+       "seconds": 0.967
+      }
+     ],
+     "clip": "Dance",
+     "normalizedTime": 0,
+     "frozenAt": 1.4,
+     "triangles": 49990,
+     "nodes": 17,
+     "materials": 1,
+     "named": 17,
+     "clock": 2.9,
+     "renderer": "webgpu"
+    },
+    "rendererErrors": []
+   }
+  },
+  {
+   "clip": "Dance",
+   "t": 1.4,
+   "tips": [
+    [
+     0.3541,
+     0.707,
+     0.0904
+    ],
+    [
+     -0.3295,
+     0.7084,
+     -0.0048
+    ],
+    [
+     0.0711,
+     0.3292,
+     -0.2713
+    ],
+    [
+     0.0203,
+     0.6061,
+     0.034
+    ]
+   ]
+  },
+  {
+   "shot": "Shake-0_25",
+   "seconds": 4.601,
+   "state": {
+    "ready": true,
+    "state": {
+     "file": "local/zhuda-raised.glb",
+     "clips": [
+      {
+       "name": "Bow",
+       "seconds": 0.967
+      },
+      {
+       "name": "Cheer",
+       "seconds": 0.467
+      },
+      {
+       "name": "Dance",
+       "seconds": 1.9
+      },
+      {
+       "name": "Dangle",
+       "seconds": 1.9
+      },
+      {
+       "name": "Dizzy",
+       "seconds": 1.9
+      },
+      {
+       "name": "Fall",
+       "seconds": 0.467
+      },
+      {
+       "name": "Idle",
+       "seconds": 3.8
+      },
+      {
+       "name": "Land",
+       "seconds": 0.967
+      },
+      {
+       "name": "Point",
+       "seconds": 0.967
+      },
+      {
+       "name": "ReachLeft",
+       "seconds": 0.967
+      },
+      {
+       "name": "ReachRight",
+       "seconds": 0.967
+      },
+      {
+       "name": "Shake",
+       "seconds": 1.433
+      },
+      {
+       "name": "Sing",
+       "seconds": 1.9
+      },
+      {
+       "name": "Sit",
+       "seconds": 3.8
+      },
+      {
+       "name": "Sleep",
+       "seconds": 3.8
+      },
+      {
+       "name": "Struggle",
+       "seconds": 0.467
+      },
+      {
+       "name": "Talk",
+       "seconds": 1.9
+      },
+      {
+       "name": "Walk",
+       "seconds": 0.467
+      },
+      {
+       "name": "Wave",
+       "seconds": 0.967
+      }
+     ],
+     "clip": "Shake",
+     "normalizedTime": 0,
+     "frozenAt": 0.25,
+     "triangles": 49990,
+     "nodes": 17,
+     "materials": 1,
+     "named": 17,
+     "clock": 3.2,
+     "renderer": "webgpu"
+    },
+    "rendererErrors": []
+   }
+  },
+  {
+   "clip": "Shake",
+   "t": 0.25,
+   "tips": [
+    [
+     0.344,
+     0.6932,
+     0.0436
+    ],
+    [
+     -0.3245,
+     0.7046,
+     0.0704
+    ],
+    [
+     0.0063,
+     0.3001,
+     -0.286
+    ],
+    [
+     0.0038,
+     0.5977,
+     0.0373
+    ]
+   ]
+  },
+  {
+   "shot": "Shake-0_5",
+   "seconds": 4.902,
+   "state": {
+    "ready": true,
+    "state": {
+     "file": "local/zhuda-raised.glb",
+     "clips": [
+      {
+       "name": "Bow",
+       "seconds": 0.967
+      },
+      {
+       "name": "Cheer",
+       "seconds": 0.467
+      },
+      {
+       "name": "Dance",
+       "seconds": 1.9
+      },
+      {
+       "name": "Dangle",
+       "seconds": 1.9
+      },
+      {
+       "name": "Dizzy",
+       "seconds": 1.9
+      },
+      {
+       "name": "Fall",
+       "seconds": 0.467
+      },
+      {
+       "name": "Idle",
+       "seconds": 3.8
+      },
+      {
+       "name": "Land",
+       "seconds": 0.967
+      },
+      {
+       "name": "Point",
+       "seconds": 0.967
+      },
+      {
+       "name": "ReachLeft",
+       "seconds": 0.967
+      },
+      {
+       "name": "ReachRight",
+       "seconds": 0.967
+      },
+      {
+       "name": "Shake",
+       "seconds": 1.433
+      },
+      {
+       "name": "Sing",
+       "seconds": 1.9
+      },
+      {
+       "name": "Sit",
+       "seconds": 3.8
+      },
+      {
+       "name": "Sleep",
+       "seconds": 3.8
+      },
+      {
+       "name": "Struggle",
+       "seconds": 0.467
+      },
+      {
+       "name": "Talk",
+       "seconds": 1.9
+      },
+      {
+       "name": "Walk",
+       "seconds": 0.467
+      },
+      {
+       "name": "Wave",
+       "seconds": 0.967
+      }
+     ],
+     "clip": "Shake",
+     "normalizedTime": 0,
+     "frozenAt": 0.5,
+     "triangles": 49990,
+     "nodes": 17,
+     "materials": 1,
+     "named": 17,
+     "clock": 3.5,
+     "renderer": "webgpu"
+    },
+    "rendererErrors": []
+   }
+  },
+  {
+   "clip": "Shake",
+   "t": 0.5,
+   "tips": [
+    [
+     0.3389,
+     0.7106,
+     0.0827
+    ],
+    [
+     -0.3317,
+     0.6843,
+     0.0509
+    ],
+    [
+     0.0331,
+     0.2988,
+     -0.2769
+    ],
+    [
+     -0.0015,
+     0.5978,
+     0.0373
+    ]
+   ]
+  },
+  {
+   "shot": "Shake-0_75",
+   "seconds": 5.201,
+   "state": {
+    "ready": true,
+    "state": {
+     "file": "local/zhuda-raised.glb",
+     "clips": [
+      {
+       "name": "Bow",
+       "seconds": 0.967
+      },
+      {
+       "name": "Cheer",
+       "seconds": 0.467
+      },
+      {
+       "name": "Dance",
+       "seconds": 1.9
+      },
+      {
+       "name": "Dangle",
+       "seconds": 1.9
+      },
+      {
+       "name": "Dizzy",
+       "seconds": 1.9
+      },
+      {
+       "name": "Fall",
+       "seconds": 0.467
+      },
+      {
+       "name": "Idle",
+       "seconds": 3.8
+      },
+      {
+       "name": "Land",
+       "seconds": 0.967
+      },
+      {
+       "name": "Point",
+       "seconds": 0.967
+      },
+      {
+       "name": "ReachLeft",
+       "seconds": 0.967
+      },
+      {
+       "name": "ReachRight",
+       "seconds": 0.967
+      },
+      {
+       "name": "Shake",
+       "seconds": 1.433
+      },
+      {
+       "name": "Sing",
+       "seconds": 1.9
+      },
+      {
+       "name": "Sit",
+       "seconds": 3.8
+      },
+      {
+       "name": "Sleep",
+       "seconds": 3.8
+      },
+      {
+       "name": "Struggle",
+       "seconds": 0.467
+      },
+      {
+       "name": "Talk",
+       "seconds": 1.9
+      },
+      {
+       "name": "Walk",
+       "seconds": 0.467
+      },
+      {
+       "name": "Wave",
+       "seconds": 0.967
+      }
+     ],
+     "clip": "Shake",
+     "normalizedTime": 0,
+     "frozenAt": 0.75,
+     "triangles": 49990,
+     "nodes": 17,
+     "materials": 1,
+     "named": 17,
+     "clock": 3.8,
+     "renderer": "webgpu"
+    },
+    "rendererErrors": []
+   }
+  },
+  {
+   "clip": "Shake",
+   "t": 0.75,
+   "tips": [
+    [
+     0.3324,
+     0.7095,
+     0.0741
+    ],
+    [
+     -0.33,
+     0.6773,
+     0.0588
+    ],
+    [
+     0.0597,
+     0.3001,
+     -0.2812
+    ],
+    [
+     -0.0026,
+     0.5977,
+     0.0375
+    ]
+   ]
+  },
+  {
+   "shot": "Walk-0_1",
+   "seconds": 5.498,
+   "state": {
+    "ready": true,
+    "state": {
+     "file": "local/zhuda-raised.glb",
+     "clips": [
+      {
+       "name": "Bow",
+       "seconds": 0.967
+      },
+      {
+       "name": "Cheer",
+       "seconds": 0.467
+      },
+      {
+       "name": "Dance",
+       "seconds": 1.9
+      },
+      {
+       "name": "Dangle",
+       "seconds": 1.9
+      },
+      {
+       "name": "Dizzy",
+       "seconds": 1.9
+      },
+      {
+       "name": "Fall",
+       "seconds": 0.467
+      },
+      {
+       "name": "Idle",
+       "seconds": 3.8
+      },
+      {
+       "name": "Land",
+       "seconds": 0.967
+      },
+      {
+       "name": "Point",
+       "seconds": 0.967
+      },
+      {
+       "name": "ReachLeft",
+       "seconds": 0.967
+      },
+      {
+       "name": "ReachRight",
+       "seconds": 0.967
+      },
+      {
+       "name": "Shake",
+       "seconds": 1.433
+      },
+      {
+       "name": "Sing",
+       "seconds": 1.9
+      },
+      {
+       "name": "Sit",
+       "seconds": 3.8
+      },
+      {
+       "name": "Sleep",
+       "seconds": 3.8
+      },
+      {
+       "name": "Struggle",
+       "seconds": 0.467
+      },
+      {
+       "name": "Talk",
+       "seconds": 1.9
+      },
+      {
+       "name": "Walk",
+       "seconds": 0.467
+      },
+      {
+       "name": "Wave",
+       "seconds": 0.967
+      }
+     ],
+     "clip": "Walk",
+     "normalizedTime": 0,
+     "frozenAt": 0.1,
+     "triangles": 49990,
+     "nodes": 17,
+     "materials": 1,
+     "named": 17,
+     "clock": 4.1,
+     "renderer": "webgpu"
+    },
+    "rendererErrors": []
+   }
+  },
+  {
+   "clip": "Walk",
+   "t": 0.1,
+   "tips": [
+    [
+     0.3318,
+     0.7068,
+     0.0343
+    ],
+    [
+     -0.3452,
+     0.7102,
+     0.0341
+    ],
+    [
+     0.0194,
+     0.305,
+     -0.2841
+    ],
+    [
+     -0.0204,
+     0.6094,
+     0.0308
+    ]
+   ]
+  },
+  {
+   "shot": "Walk-0_3",
+   "seconds": 5.801,
+   "state": {
+    "ready": true,
+    "state": {
+     "file": "local/zhuda-raised.glb",
+     "clips": [
+      {
+       "name": "Bow",
+       "seconds": 0.967
+      },
+      {
+       "name": "Cheer",
+       "seconds": 0.467
+      },
+      {
+       "name": "Dance",
+       "seconds": 1.9
+      },
+      {
+       "name": "Dangle",
+       "seconds": 1.9
+      },
+      {
+       "name": "Dizzy",
+       "seconds": 1.9
+      },
+      {
+       "name": "Fall",
+       "seconds": 0.467
+      },
+      {
+       "name": "Idle",
+       "seconds": 3.8
+      },
+      {
+       "name": "Land",
+       "seconds": 0.967
+      },
+      {
+       "name": "Point",
+       "seconds": 0.967
+      },
+      {
+       "name": "ReachLeft",
+       "seconds": 0.967
+      },
+      {
+       "name": "ReachRight",
+       "seconds": 0.967
+      },
+      {
+       "name": "Shake",
+       "seconds": 1.433
+      },
+      {
+       "name": "Sing",
+       "seconds": 1.9
+      },
+      {
+       "name": "Sit",
+       "seconds": 3.8
+      },
+      {
+       "name": "Sleep",
+       "seconds": 3.8
+      },
+      {
+       "name": "Struggle",
+       "seconds": 0.467
+      },
+      {
+       "name": "Talk",
+       "seconds": 1.9
+      },
+      {
+       "name": "Walk",
+       "seconds": 0.467
+      },
+      {
+       "name": "Wave",
+       "seconds": 0.967
+      }
+     ],
+     "clip": "Walk",
+     "normalizedTime": 0,
+     "frozenAt": 0.3,
+     "triangles": 49990,
+     "nodes": 17,
+     "materials": 1,
+     "named": 17,
+     "clock": 4.4,
+     "renderer": "webgpu"
+    },
+    "rendererErrors": []
+   }
+  },
+  {
+   "clip": "Walk",
+   "t": 0.3,
+   "tips": [
+    [
+     0.3405,
+     0.7022,
+     0.0329
+    ],
+    [
+     -0.3375,
+     0.7114,
+     0.0364
+    ],
+    [
+     0.029,
+     0.3037,
+     -0.2846
+    ],
+    [
+     0.016,
+     0.6072,
+     0.0299
+    ]
+   ]
+  },
+  {
+   "shot": "Cheer-0_15",
+   "seconds": 6.104,
+   "state": {
+    "ready": true,
+    "state": {
+     "file": "local/zhuda-raised.glb",
+     "clips": [
+      {
+       "name": "Bow",
+       "seconds": 0.967
+      },
+      {
+       "name": "Cheer",
+       "seconds": 0.467
+      },
+      {
+       "name": "Dance",
+       "seconds": 1.9
+      },
+      {
+       "name": "Dangle",
+       "seconds": 1.9
+      },
+      {
+       "name": "Dizzy",
+       "seconds": 1.9
+      },
+      {
+       "name": "Fall",
+       "seconds": 0.467
+      },
+      {
+       "name": "Idle",
+       "seconds": 3.8
+      },
+      {
+       "name": "Land",
+       "seconds": 0.967
+      },
+      {
+       "name": "Point",
+       "seconds": 0.967
+      },
+      {
+       "name": "ReachLeft",
+       "seconds": 0.967
+      },
+      {
+       "name": "ReachRight",
+       "seconds": 0.967
+      },
+      {
+       "name": "Shake",
+       "seconds": 1.433
+      },
+      {
+       "name": "Sing",
+       "seconds": 1.9
+      },
+      {
+       "name": "Sit",
+       "seconds": 3.8
+      },
+      {
+       "name": "Sleep",
+       "seconds": 3.8
+      },
+      {
+       "name": "Struggle",
+       "seconds": 0.467
+      },
+      {
+       "name": "Talk",
+       "seconds": 1.9
+      },
+      {
+       "name": "Walk",
+       "seconds": 0.467
+      },
+      {
+       "name": "Wave",
+       "seconds": 0.967
+      }
+     ],
+     "clip": "Cheer",
+     "normalizedTime": 0,
+     "frozenAt": 0.15,
+     "triangles": 49990,
+     "nodes": 17,
+     "materials": 1,
+     "named": 17,
+     "clock": 4.7,
+     "renderer": "webgpu"
+    },
+    "rendererErrors": []
+   }
+  },
+  {
+   "clip": "Cheer",
+   "t": 0.15,
+   "tips": [
+    [
+     0.3364,
+     0.8612,
+     -0.0668
+    ],
+    [
+     -0.3375,
+     0.8154,
+     -0.0644
+    ],
+    [
+     0.0318,
+     0.4287,
+     -0.2927
+    ],
+    [
+     0,
+     0.7368,
+     -0.0456
+    ]
+   ]
+  },
+  {
+   "shot": "Cheer-0_3",
+   "seconds": 6.406,
+   "state": {
+    "ready": true,
+    "state": {
+     "file": "local/zhuda-raised.glb",
+     "clips": [
+      {
+       "name": "Bow",
+       "seconds": 0.967
+      },
+      {
+       "name": "Cheer",
+       "seconds": 0.467
+      },
+      {
+       "name": "Dance",
+       "seconds": 1.9
+      },
+      {
+       "name": "Dangle",
+       "seconds": 1.9
+      },
+      {
+       "name": "Dizzy",
+       "seconds": 1.9
+      },
+      {
+       "name": "Fall",
+       "seconds": 0.467
+      },
+      {
+       "name": "Idle",
+       "seconds": 3.8
+      },
+      {
+       "name": "Land",
+       "seconds": 0.967
+      },
+      {
+       "name": "Point",
+       "seconds": 0.967
+      },
+      {
+       "name": "ReachLeft",
+       "seconds": 0.967
+      },
+      {
+       "name": "ReachRight",
+       "seconds": 0.967
+      },
+      {
+       "name": "Shake",
+       "seconds": 1.433
+      },
+      {
+       "name": "Sing",
+       "seconds": 1.9
+      },
+      {
+       "name": "Sit",
+       "seconds": 3.8
+      },
+      {
+       "name": "Sleep",
+       "seconds": 3.8
+      },
+      {
+       "name": "Struggle",
+       "seconds": 0.467
+      },
+      {
+       "name": "Talk",
+       "seconds": 1.9
+      },
+      {
+       "name": "Walk",
+       "seconds": 0.467
+      },
+      {
+       "name": "Wave",
+       "seconds": 0.967
+      }
+     ],
+     "clip": "Cheer",
+     "normalizedTime": 0,
+     "frozenAt": 0.3,
+     "triangles": 49990,
+     "nodes": 17,
+     "materials": 1,
+     "named": 17,
+     "clock": 5,
+     "renderer": "webgpu"
+    },
+    "rendererErrors": []
+   }
+  },
+  {
+   "clip": "Cheer",
+   "t": 0.3,
+   "tips": [
+    [
+     0.3664,
+     0.6898,
+     0.0051
+    ],
+    [
+     -0.3329,
+     0.7169,
+     -0.0007
+    ],
+    [
+     0.0343,
+     0.27,
+     -0.2893
+    ],
+    [
+     0,
+     0.6,
+     0
+    ]
+   ]
+  },
+  {
+   "idleEarToHead": [
+    0.3567,
+    0.3597,
+    0.362,
+    0.3632,
+    0.3634,
+    0.3627,
+    0.3614,
+    0.3594,
+    0.3571,
+    0.3543,
+    0.3507,
+    0.3478,
+    0.3456,
+    0.3447,
+    0.3448,
+    0.3461,
+    0.3482,
+    0.3509,
+    0.3539,
+    0.3568
+   ],
+   "range": 0.0187,
+   "rendererErrors": []
+  }
+ ]
+}

@@ -104,6 +104,10 @@ export class ZhudaPhysicalCameraRig {
     if (this.restoreSample) throw Error('Restore active lens sample first');
     this.settings = physicalCameraSettings({ ...this.settings, ...patch });
   }
+  /** True between `sample()` and its restore: the lens cannot be configured or applied meanwhile. */
+  get sampling(): boolean {
+    return this.restoreSample !== null;
+  }
   apply(aspect: number) {
     this.check();
     if (this.restoreSample) throw Error('Restore active lens sample first');

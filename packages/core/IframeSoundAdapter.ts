@@ -78,6 +78,10 @@ type VoiceState = IframeVoiceOptions & {
   streamId?: string;
   stopping?: boolean;
   stopped: boolean;
+  /** Sample voices: context time it started at, where in the sample, and its loop. */
+  startedAt?: number;
+  startOffset?: number;
+  loopRange?: readonly [number, number];
 };
 
 const CHANNELS: readonly IframeAudioChannel[] = ['bgm', 'sfx', 'ui'];
@@ -1390,6 +1394,9 @@ export class IframeSoundAdapter {
             stopped: false,
             priority: snapshot.priority,
             protected: snapshot.protected,
+            startedAt: now,
+            startOffset: offset,
+            loopRange: snapshot.loop ? [loopStart, loopEnd] : undefined,
           });
           source.start(now, offset);
           if (duration !== undefined) source.stop(now + duration);
@@ -1584,6 +1591,39 @@ export class IframeSoundAdapter {
       }
     }
     return moved;
+  }
+
+  /**
+   * Where a playing sample voice is in its sample, in seconds, by the audio
+   * clock: the offset it started at plus the context time since. It stands
+   * still while the context is suspended (page hidden, focus lost) and is the
+   * time to judge against in anything that must stay with the music. Null when
+   * no sample voice of that logical ID is playing (never started, still queued
+   * before unlock, ended or stopped). With several, the newest answers.
+   */
+  public getSamplePositionSec(id: string): number | null {
+    const context = this.ctx;
+    if (!context) return null;
+    let found: VoiceState | undefined;
+    for (const voice of this.activeVoices.values())
+      if (voice.logicalId === id && voice.startedAt !== undefined && !voice.stopped) found = voice;
+    if (!found) return null;
+    const position = (found.startOffset ?? 0) + Math.max(0, context.currentTime - found.startedAt!);
+    const loop = found.loopRange;
+    return loop && position >= loop[1]
+      ? loop[0] + ((position - loop[0]) % (loop[1] - loop[0]))
+      : position;
+  }
+
+  /**
+   * Seconds between a sample being scheduled and it leaving the speaker, as
+   * the host reports it (`outputLatency`, else `baseLatency`); 0 when it does
+   * not say. Bluetooth output is often not included: keep a player setting.
+   */
+  public getOutputLatencySec(): number {
+    const context = this.ctx as (AudioContext & { outputLatency?: number }) | null;
+    const value = context?.outputLatency || context?.baseLatency || 0;
+    return Number.isFinite(value) && value > 0 ? value : 0;
   }
 
   public stop(id: string, fadeOutSec = 0): boolean {

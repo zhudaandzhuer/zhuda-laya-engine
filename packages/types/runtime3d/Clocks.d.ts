@@ -90,6 +90,33 @@ export interface ZhudaTimerHandle {
     readonly cancelled: boolean;
     cancel(): boolean;
 }
+/** A curve from 0 to 1 over a tween's time. */
+export type ZhudaEase = (t: number) => number;
+export declare const zhudaEase: {
+    readonly linear: (t: number) => number;
+    readonly inQuad: (t: number) => number;
+    readonly outQuad: (t: number) => number;
+    readonly inOutQuad: (t: number) => number;
+    readonly outCubic: (t: number) => number;
+    /** Goes a little past the end and comes back. */
+    readonly outBack: (t: number) => number;
+};
+export interface ZhudaTweenOptions extends ZhudaTimerOptions {
+    /** Seconds on the tween's clock (its channel or layer). 0 ends on the next advance. */
+    duration: number;
+    /** Called on every advance with the eased value and the plain share of the time gone, both ending at exactly 1. */
+    update: (eased: number, t: number) => void;
+    ease?: ZhudaEase;
+}
+export interface ZhudaTweenHandle {
+    readonly id: number;
+    /** True once it has ended, false once cancelled; never rejects. */
+    readonly done: Promise<boolean>;
+    readonly active: boolean;
+    cancel(): boolean;
+    /** Jumps to the end now: one last `update(1, 1)`, and `done` is true. */
+    finish(): boolean;
+}
 /** Frame-driven timer scheduler. It never creates a browser timer or outlives its owner. */
 export declare class ZhudaTimerScheduler {
     readonly maxCallbacksPerAdvance: number;
@@ -97,15 +124,31 @@ export declare class ZhudaTimerScheduler {
     private tasks;
     private owners;
     private disposed;
+    private tweens;
+    private waits;
     constructor(maxCallbacksPerAdvance?: number);
     scheduleOnce(delay: number, callback: () => void, options?: ZhudaTimerOptions): ZhudaTimerHandle;
     scheduleLoop(interval: number, callback: () => void, options?: ZhudaTimerOptions): ZhudaTimerHandle;
+    /**
+     * A wait on this scheduler's clock: it stops while the clock is paused and runs at the clock's
+     * speed, which `setTimeout` does not. Resolves true when the time has passed, false if it was
+     * cancelled (by its owner being cancelled, `clear` or `dispose`); it never rejects.
+     */
+    wait(seconds: number, options?: ZhudaTimerOptions): Promise<boolean>;
+    /**
+     * A value carried from 0 to 1 over `duration` seconds of this scheduler's clock, stepped on
+     * every advance. The last step is exactly 1. Cancelled with its owner like a timer.
+     */
+    tween(options: ZhudaTweenOptions): ZhudaTweenHandle;
+    private endTween;
     private schedule;
     private handle;
     private cancel;
     cancelOwner(owner: object): number;
     advance(unscaledDeltaTime: number, scaledDeltaTime?: number, layerDeltas?: ReadonlyMap<string, number>): number;
     clear(): void;
+    /** How many tweens are running (`size` counts timers and waits). */
+    get tweenCount(): number;
     dispose(): void;
     get size(): number;
 }

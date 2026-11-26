@@ -43,6 +43,8 @@ consumer/platform work and are recorded as separate evidence.
   "features": ["core", "3d"],
   "minigame": {
     "maxMainPackageBytes": 8388608,
+    "syntaxTarget": "es2017",
+    "orientation": "landscape",
     "timeoutMs": 180000,
     "targets": {
       "wxgame": { "appid": "your-consumer-appid" },
@@ -51,6 +53,17 @@ consumer/platform work and are recorded as separate evidence.
   }
 }
 ```
+
+`syntaxTarget` is what the scripts are lowered to: `es2017`, `es2018`, `es2019` or `es2020`
+(default). Some hosts' JavaScript engines stop at ES2017; the engine itself does not lower below
+that. The game's bundle is first built as the web build is (`es2020`) and compared with the gated
+`app.js`, then lowered; what has no older form (a BigInt literal, for one) is refused with
+`MINIGAME_SYNTAX` and where it is, never passed on. An export through the official toolchain at
+each of the four targets was read back with a parser at that year: every script of the package,
+the LayaAir libraries included, kept to it (macOS, `wxgame`, 2026-11-26). `orientation` (`portrait` or `landscape`) is written into the exported `game.json` as
+`deviceOrientation`. For the targets whose package the official tool packs and signs itself
+(`oppogame`, `vivogame`, `xmgame`, `huawei`) it is refused with `MINIGAME_ORIENTATION`: set it in
+that platform's own manifest. Neither has been run in a host or on a device.
 
 The default size is a bounded gate, not a universal vendor quota; set the
 target's actual quota before release. Automatic subpackages, remote main

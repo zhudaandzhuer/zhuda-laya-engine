@@ -1,0 +1,41 @@
+{
+  "project": "prefabs/viewer3d",
+  "file": "src/Main.ts",
+  "mode": "candidate",
+  "fullBuildsOnly": false,
+  "node": "v26.13.1",
+  "loadAverage": [
+    7.3,
+    41.9,
+    85.1
+  ],
+  "startMs": 2970.9,
+  "saves": 9,
+  "saveToReloadMs": {
+    "median": 156.5,
+    "min": 152.5,
+    "max": 240.6,
+    "all": [
+      240.6,
+      157.8,
+      153,
+      153.8,
+      165.3,
+      156.5,
+      156,
+      152.5,
+      161.7
+    ]
+  },
+  "watcherLog": [
+    "scripts only 106 ms",
+    "scripts only 25 ms",
+    "scripts only 21 ms",
+    "scripts only 22 ms",
+    "scripts only 34 ms",
+    "scripts only 24 ms",
+    "scripts only 23 ms",
+    "scripts only 20 ms",
+    "scripts only 28 ms"
+  ]
+}

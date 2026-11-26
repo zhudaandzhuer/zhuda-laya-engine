@@ -1,0 +1,11 @@
+[
+  { "wait": 1, "shot": "tights-as-worn" },
+  { "js": "const k = S.sites.find((s) => s.name === 'L_knee'); return ['L_knee on the page (the drags below start here)', S.toPage(k.x, k.y).map(Math.round)];" },
+  { "drag": [586, 376, 508, 438], "wait": 0.6 },
+  { "drag": [586, 376, 508, 438], "wait": 0.6, "shot": "tights-knee-torn" },
+  { "js": "return ['the left knee torn twice by dragging', S.state().tears];" },
+  { "js": "return ['the middle hem on the page', S.toPage(...S.hem(4)).map(Math.round)];" },
+  { "drag": [645, 255, 665, 135], "hold": 0.8, "wait": 0.1 },
+  { "js": "S.set({ reset: true }); for (const s of S.sites) { S.set({ tear: s.name }); S.set({ tear: s.name }); }", "wait": 0.6, "shot": "tights-all-large" },
+  { "js": "S.set({ reset: true }); return { tears: S.state().tears, inputError: S.state().inputError ?? null, physics: S.state().spine.physicsConstraints, ik: S.state().spine.ikConstraints };" }
+]

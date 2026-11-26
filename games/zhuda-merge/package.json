@@ -1,0 +1,20 @@
+{
+  "name": "zhuda-merge",
+  "private": true,
+  "type": "module",
+  "description": "豬大食堂——原創的合成遊戲：點食材、兩兩合成、完成客人的訂單，全部用引擎 2D 做（zhuda-laya-engine）",
+  "engines": { "node": ">=24" },
+  "scripts": {
+    "build": "zhuda-laya-build",
+    "typecheck": "tsc --noEmit",
+    "doctor": "zhuda-laya-doctor --project .",
+    "test": "node --test test/*.test.ts",
+    "verify": "npm run build && npm run typecheck && npm run doctor && npm test"
+  },
+  "dependencies": {
+    "zhuda-laya-engine": "file:../.."
+  },
+  "devDependencies": {
+    "typescript": "5.9.3"
+  }
+}

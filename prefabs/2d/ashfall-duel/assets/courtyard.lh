@@ -1,0 +1,178 @@
+{
+  "_$id": "courtyard",
+  "_$type": "Sprite",
+  "name": "Courtyard",
+  "width": 1280,
+  "height": 720,
+  "_$child": [
+    {
+      "_$id": "scene-art",
+      "_$type": "Image",
+      "name": "Backdrop",
+      "skin": "art/courtyard.webp",
+      "x": -8,
+      "y": -5,
+      "width": 1296,
+      "height": 730
+    },
+    {
+      "_$id": "ground",
+      "_$type": "Sprite",
+      "name": "Ground",
+      "_$child": [
+        {
+          "_$id": "leftshadow",
+          "_$type": "Sprite",
+          "name": "LeftShadow",
+          "x": 219,
+          "y": 616,
+          "width": 126,
+          "height": 126,
+          "scaleX": 3,
+          "scaleY": 0.24,
+          "rotation": 0,
+          "scrollRect": {
+            "_$type": "Rectangle",
+            "x": 385,
+            "y": 65,
+            "width": 126,
+            "height": 126
+          },
+          "_$child": [
+            {
+              "_$id": "art-LeftShadow",
+              "_$type": "Image",
+              "name": "Art",
+              "skin": "art/matter.png"
+            }
+          ]
+        },
+        {
+          "_$id": "rightshadow",
+          "_$type": "Sprite",
+          "name": "RightShadow",
+          "x": 736,
+          "y": 617,
+          "width": 126,
+          "height": 126,
+          "scaleX": 2.45,
+          "scaleY": 0.22,
+          "rotation": 0,
+          "scrollRect": {
+            "_$type": "Rectangle",
+            "x": 385,
+            "y": 65,
+            "width": 126,
+            "height": 126
+          },
+          "_$child": [
+            {
+              "_$id": "art-RightShadow",
+              "_$type": "Image",
+              "name": "Art",
+              "skin": "art/matter.png"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "_$id": "blade",
+      "_$type": "Sprite",
+      "name": "Blade",
+      "x": 624,
+      "y": 404,
+      "width": 512,
+      "height": 32,
+      "scaleX": 0.606,
+      "scaleY": 0.43,
+      "rotation": -7,
+      "scrollRect": {
+        "_$type": "Rectangle",
+        "x": 0,
+        "y": 0,
+        "width": 512,
+        "height": 32
+      },
+      "_$child": [
+        {
+          "_$id": "art-Blade",
+          "_$type": "Image",
+          "name": "Art",
+          "skin": "art/matter.png"
+        }
+      ]
+    },
+    {
+      "_$id": "knight",
+      "_$type": "Sprite",
+      "name": "Knight",
+      "x": 220.94,
+      "y": 300.76,
+      "width": 427,
+      "height": 348,
+      "scaleX": 0.98,
+      "scaleY": 0.98,
+      "rotation": 0,
+      "scrollRect": {
+        "_$type": "Rectangle",
+        "x": 371,
+        "y": 640,
+        "width": 427,
+        "height": 348
+      },
+      "_$child": [
+        {
+          "_$id": "art-Knight",
+          "_$type": "Image",
+          "name": "Art",
+          "skin": "art/knight.webp"
+        },
+        {
+          "_$id": "knight-motion-0", "_$type": "Image", "name": "Motion0", "visible": false, "skin": "art/knight-motion-0.webp"
+        },
+        {
+          "_$id": "knight-motion-1", "_$type": "Image", "name": "Motion1", "visible": false, "skin": "art/knight-motion-1.webp"
+        }
+      ]
+    },
+    {
+      "_$id": "warden",
+      "_$type": "Sprite",
+      "name": "Warden",
+      "x": 783.2,
+      "y": 268.3,
+      "width": 356,
+      "height": 415,
+      "scaleX": 0.9,
+      "scaleY": 0.9,
+      "rotation": 0,
+      "scrollRect": {
+        "_$type": "Rectangle",
+        "x": 937,
+        "y": 467,
+        "width": 356,
+        "height": 415
+      },
+      "_$child": [
+        {
+          "_$id": "art-Warden",
+          "_$type": "Image",
+          "name": "Art",
+          "skin": "art/warden.webp"
+        },
+        {
+          "_$id": "warden-motion-0", "_$type": "Image", "name": "Motion0", "visible": false, "skin": "art/warden-motion-0.webp"
+        },
+        {
+          "_$id": "warden-motion-1", "_$type": "Image", "name": "Motion1", "visible": false, "skin": "art/warden-motion-1.webp"
+        }
+      ]
+    },
+    {
+      "_$id": "dust",
+      "_$type": "Sprite",
+      "name": "Dust"
+    }
+  ]
+}

@@ -1,5 +1,6 @@
 export * from './TopologyGraph';
 export * from './RuntimeGuards';
+export * from './SplashSignal';
 export * from './DeclarativeSDK';
 export * from './Prefab.ts';
 export * from './BitmapFontContract';

@@ -1,0 +1,145 @@
+BlenderMCP addon registered
+[INFO ] services.locationservice ...............: Not adding link to MakeHuman user data, since neither explicit path nor auto-discovery is set in preferences.
+[INFO ] mpfb.init ..............................: Build info 20261010
+[INFO ] mpfb.init ..............................: Online access preference is not enabled. Not checking if MakeHuman is online.
+[INFO ] mpfb.init ..............................: MPFB initialization has finished.
+BlenderMCP addon unregistered
+Warning: addon-module cloudmac_app_guard found module but without '__addon_enabled__' field, possible name collision from file: '<home>/Library/Application Support/Blender/5.2/scripts/addons/cloudmac_app_guard.py'
+Warning: addon-module cloudmac_secure_blender found module but without '__addon_enabled__' field, possible name collision from file: '<home>/Library/Application Support/Blender/5.2/scripts/addons/cloudmac_secure_blender.py'
+23:38:41 | INFO: Data are loaded, start creating Blender stuff
+23:38:41 | INFO: Blender create Mesh node region-feet
+23:38:41 | INFO: Blender create Mesh node region-forearms
+23:38:41 | INFO: Blender create Mesh node region-hands
+23:38:41 | INFO: Blender create Mesh node region-head
+23:38:41 | INFO: Blender create Mesh node region-hips
+23:38:41 | INFO: Blender create Mesh node region-shins
+23:38:41 | INFO: Blender create Mesh node region-shoulders
+23:38:41 | INFO: Blender create Mesh node region-thighs
+23:38:41 | INFO: Blender create Mesh node region-torso
+23:38:41 | INFO: Blender create Mesh node region-upperArms
+23:38:41 | INFO: glTF import finished in 0.07s
+Warning: addon-module cloudmac_app_guard found module but without '__addon_enabled__' field, possible name collision from file: '<home>/Library/Application Support/Blender/5.2/scripts/addons/cloudmac_app_guard.py'
+Warning: addon-module cloudmac_secure_blender found module but without '__addon_enabled__' field, possible name collision from file: '<home>/Library/Application Support/Blender/5.2/scripts/addons/cloudmac_secure_blender.py'
+23:38:41 | INFO: Data are loaded, start creating Blender stuff
+23:38:41 | INFO: Blender create Mesh node tee
+23:38:41 | INFO: glTF import finished in 0.02s
+Warning: addon-module cloudmac_app_guard found module but without '__addon_enabled__' field, possible name collision from file: '<home>/Library/Application Support/Blender/5.2/scripts/addons/cloudmac_app_guard.py'
+Warning: addon-module cloudmac_secure_blender found module but without '__addon_enabled__' field, possible name collision from file: '<home>/Library/Application Support/Blender/5.2/scripts/addons/cloudmac_secure_blender.py'
+23:38:41 | INFO: Data are loaded, start creating Blender stuff
+23:38:41 | INFO: Blender create Mesh node trousers
+23:38:41 | INFO: glTF import finished in 0.02s
+Warning: addon-module cloudmac_app_guard found module but without '__addon_enabled__' field, possible name collision from file: '<home>/Library/Application Support/Blender/5.2/scripts/addons/cloudmac_app_guard.py'
+Warning: addon-module cloudmac_secure_blender found module but without '__addon_enabled__' field, possible name collision from file: '<home>/Library/Application Support/Blender/5.2/scripts/addons/cloudmac_secure_blender.py'
+23:38:41 | INFO: Data are loaded, start creating Blender stuff
+23:38:41 | INFO: Blender create Mesh node skirt
+23:38:41 | INFO: glTF import finished in 0.01s
+Warning: addon-module cloudmac_app_guard found module but without '__addon_enabled__' field, possible name collision from file: '<home>/Library/Application Support/Blender/5.2/scripts/addons/cloudmac_app_guard.py'
+Warning: addon-module cloudmac_secure_blender found module but without '__addon_enabled__' field, possible name collision from file: '<home>/Library/Application Support/Blender/5.2/scripts/addons/cloudmac_secure_blender.py'
+23:38:41 | INFO: Data are loaded, start creating Blender stuff
+23:38:41 | INFO: Blender create Mesh node straw-hat
+23:38:41 | INFO: glTF import finished in 0.01s
+Warning: addon-module cloudmac_app_guard found module but without '__addon_enabled__' field, possible name collision from file: '<home>/Library/Application Support/Blender/5.2/scripts/addons/cloudmac_app_guard.py'
+Warning: addon-module cloudmac_secure_blender found module but without '__addon_enabled__' field, possible name collision from file: '<home>/Library/Application Support/Blender/5.2/scripts/addons/cloudmac_secure_blender.py'
+23:38:41 | INFO: Data are loaded, start creating Blender stuff
+23:38:41 | INFO: Blender create Mesh node pack
+23:38:41 | INFO: glTF import finished in 0.01s
+Warning: addon-module cloudmac_app_guard found module but without '__addon_enabled__' field, possible name collision from file: '<home>/Library/Application Support/Blender/5.2/scripts/addons/cloudmac_app_guard.py'
+Warning: addon-module cloudmac_secure_blender found module but without '__addon_enabled__' field, possible name collision from file: '<home>/Library/Application Support/Blender/5.2/scripts/addons/cloudmac_secure_blender.py'
+23:38:41 | INFO: Data are loaded, start creating Blender stuff
+23:38:41 | INFO: Blender create Mesh node region-feet
+23:38:41 | INFO: Blender create Mesh node region-forearms
+23:38:41 | INFO: Blender create Mesh node region-hands
+23:38:41 | INFO: Blender create Mesh node region-head
+23:38:41 | INFO: Blender create Mesh node region-hips
+23:38:41 | INFO: Blender create Mesh node region-shins
+23:38:41 | INFO: Blender create Mesh node region-shoulders
+23:38:41 | INFO: Blender create Mesh node region-thighs
+23:38:41 | INFO: Blender create Mesh node region-torso
+23:38:41 | INFO: Blender create Mesh node region-upperArms
+23:38:41 | INFO: glTF import finished in 0.09s
+23:38:41 | INFO: Data are loaded, start creating Blender stuff
+23:38:41 | INFO: Blender create Mesh node tee
+23:38:41 | INFO: glTF import finished in 0.02s
+23:38:41 | INFO: Data are loaded, start creating Blender stuff
+23:38:41 | INFO: Blender create Mesh node trousers
+23:38:41 | INFO: glTF import finished in 0.02s
+23:38:41 | INFO: Data are loaded, start creating Blender stuff
+23:38:41 | INFO: Blender create Mesh node skirt
+23:38:41 | INFO: glTF import finished in 0.02s
+23:38:41 | INFO: Data are loaded, start creating Blender stuff
+23:38:41 | INFO: Blender create Mesh node straw-hat
+23:38:41 | INFO: glTF import finished in 0.01s
+23:38:41 | INFO: Data are loaded, start creating Blender stuff
+23:38:41 | INFO: Blender create Mesh node pack
+23:38:41 | INFO: glTF import finished in 0.02s
+00:04.981  render           | Saved: '<repo>/local-results/A2/blender/body-rest-front.png'
+00:05.140  render           | Saved: '<repo>/local-results/A2/blender/body-rest-side.png'
+00:05.293  render           | Saved: '<repo>/local-results/A2/blender/body-rest-back.png'
+00:05.471  render           | Saved: '<repo>/local-results/A2/blender/outfit-a-rest-front.png'
+00:05.635  render           | Saved: '<repo>/local-results/A2/blender/outfit-a-rest-side.png'
+00:05.805  render           | Saved: '<repo>/local-results/A2/blender/outfit-a-rest-back.png'
+00:05.976  render           | Saved: '<repo>/local-results/A2/blender/outfit-b-rest-front.png'
+00:06.132  render           | Saved: '<repo>/local-results/A2/blender/outfit-b-rest-side.png'
+00:06.326  render           | Saved: '<repo>/local-results/A2/blender/outfit-b-rest-back.png'
+00:06.513  render           | Saved: '<repo>/local-results/A2/blender/outfit-a-walk-front.png'
+00:06.687  render           | Saved: '<repo>/local-results/A2/blender/outfit-a-walk-side.png'
+00:06.890  render           | Saved: '<repo>/local-results/A2/blender/outfit-a-walk-back.png'
+00:07.092  render           | Saved: '<repo>/local-results/A2/blender/outfit-b-walk-front.png'
+00:07.305  render           | Saved: '<repo>/local-results/A2/blender/outfit-b-walk-side.png'
+00:07.518  render           | Saved: '<repo>/local-results/A2/blender/outfit-b-walk-back.png'
+Warning: addon-module cloudmac_app_guard found module but without '__addon_enabled__' field, possible name collision from file: '<home>/Library/Application Support/Blender/5.2/scripts/addons/cloudmac_app_guard.py'
+Warning: addon-module cloudmac_secure_blender found module but without '__addon_enabled__' field, possible name collision from file: '<home>/Library/Application Support/Blender/5.2/scripts/addons/cloudmac_secure_blender.py'
+23:38:47 | INFO: Data are loaded, start creating Blender stuff
+23:38:47 | INFO: Blender create Mesh node tee
+23:38:47 | INFO: glTF import finished in 0.02s
+INFO Draco is available, use library at /Applications/Blender.app/Contents/Resources/5.2/scripts/addons_core/io_scene_gltf2/libbf_intern_draco_bridge.dylib
+INFO MeshOptimizer is available, use library at /Applications/Blender.app/Contents/Resources/5.2/scripts/addons_core/io_scene_gltf2/libbf_intern_meshopt_bridge.dylib
+23:38:47 | INFO: Starting glTF 2.0 export
+23:38:47 | INFO: Extracting primitive: tee
+23:38:47 | INFO: Primitives created: 1
+23:38:47 | INFO: Finished glTF 2.0 export in 0.03834700584411621 s
+
+Warning: addon-module cloudmac_app_guard found module but without '__addon_enabled__' field, possible name collision from file: '<home>/Library/Application Support/Blender/5.2/scripts/addons/cloudmac_app_guard.py'
+Warning: addon-module cloudmac_secure_blender found module but without '__addon_enabled__' field, possible name collision from file: '<home>/Library/Application Support/Blender/5.2/scripts/addons/cloudmac_secure_blender.py'
+23:38:47 | INFO: Data are loaded, start creating Blender stuff
+23:38:47 | INFO: Blender create Mesh node trousers
+23:38:47 | INFO: glTF import finished in 0.03s
+23:38:47 | INFO: Starting glTF 2.0 export
+23:38:47 | INFO: Extracting primitive: trousers
+23:38:47 | INFO: Primitives created: 1
+23:38:47 | INFO: Finished glTF 2.0 export in 0.03645586967468262 s
+
+Warning: addon-module cloudmac_app_guard found module but without '__addon_enabled__' field, possible name collision from file: '<home>/Library/Application Support/Blender/5.2/scripts/addons/cloudmac_app_guard.py'
+Warning: addon-module cloudmac_secure_blender found module but without '__addon_enabled__' field, possible name collision from file: '<home>/Library/Application Support/Blender/5.2/scripts/addons/cloudmac_secure_blender.py'
+23:38:47 | INFO: Data are loaded, start creating Blender stuff
+23:38:47 | INFO: Blender create Mesh node skirt
+23:38:48 | INFO: glTF import finished in 0.03s
+23:38:48 | INFO: Starting glTF 2.0 export
+23:38:48 | INFO: Extracting primitive: skirt
+23:38:48 | INFO: Primitives created: 1
+23:38:48 | INFO: Finished glTF 2.0 export in 0.026680946350097656 s
+
+Warning: addon-module cloudmac_app_guard found module but without '__addon_enabled__' field, possible name collision from file: '<home>/Library/Application Support/Blender/5.2/scripts/addons/cloudmac_app_guard.py'
+Warning: addon-module cloudmac_secure_blender found module but without '__addon_enabled__' field, possible name collision from file: '<home>/Library/Application Support/Blender/5.2/scripts/addons/cloudmac_secure_blender.py'
+23:38:48 | INFO: Data are loaded, start creating Blender stuff
+23:38:48 | INFO: Blender create Mesh node straw-hat
+23:38:48 | INFO: glTF import finished in 0.01s
+23:38:48 | INFO: Starting glTF 2.0 export
+23:38:48 | INFO: Extracting primitive: straw-hat
+23:38:48 | INFO: Primitives created: 1
+23:38:48 | INFO: Finished glTF 2.0 export in 0.017493009567260742 s
+
+Warning: addon-module cloudmac_app_guard found module but without '__addon_enabled__' field, possible name collision from file: '<home>/Library/Application Support/Blender/5.2/scripts/addons/cloudmac_app_guard.py'
+Warning: addon-module cloudmac_secure_blender found module but without '__addon_enabled__' field, possible name collision from file: '<home>/Library/Application Support/Blender/5.2/scripts/addons/cloudmac_secure_blender.py'
+23:38:48 | INFO: Data are loaded, start creating Blender stuff
+23:38:48 | INFO: Blender create Mesh node pack
+23:38:48 | INFO: glTF import finished in 0.02s
+23:38:48 | INFO: Starting glTF 2.0 export
+23:38:48 | INFO: Extracting primitive: pack
+23:38:48 | INFO: Primitives created: 1
+23:38:48 | INFO: Finished glTF 2.0 export in 0.02326798439025879 s
+
+REPORT <repo>/local-results/A2/blender/blender-report.json
+Blender 5.2.2 LTS (hash d13f752e3b9c built 2026-09-15 01:49:19)
+
+Blender quit

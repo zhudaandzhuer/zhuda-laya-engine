@@ -1,0 +1,13 @@
+
+> zhuda-laya-engine@2.0.0 verify:games
+> node games/tools/verify-all.mjs
+
+zhuda-beat           ok   tests 5 pass / 0 fail  3 s
+zhuda-guard          ok   tests 5 pass / 0 fail  3 s
+zhuda-hunt           ok   tests 9 pass / 0 fail  3 s
+zhuda-idle           ok   tests 9 pass / 0 fail  3 s
+zhuda-jump           ok   tests 6 pass / 0 fail  3 s
+zhuda-match          ok   tests 7 pass / 0 fail  3 s
+zhuda-merge          ok   tests 6 pass / 0 fail  3 s
+zhuda-swarm          ok   tests 7 pass / 0 fail  60 s
+zhuda-wardrobe       ok   tests 11 pass / 0 fail  3 s

@@ -1,0 +1,34 @@
+{
+ "name": "outfit",
+ "spine": "4.2",
+ "frame": {
+  "x": -512,
+  "y": 0,
+  "width": 1024,
+  "height": 1536
+ },
+ "home": "idle",
+ "mix": {
+  "default": 0.2
+ },
+ "physics": true,
+ "animations": {
+  "idle": {
+   "loop": true,
+   "track": 0,
+   "role": "base"
+  }
+ },
+ "controllers": {},
+ "title": "outfit",
+ "source": {
+  "canvas": [
+   1024,
+   1536
+  ],
+  "origin": [
+   512.0,
+   1536.0
+  ]
+ }
+}

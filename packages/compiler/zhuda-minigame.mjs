@@ -6,7 +6,12 @@ import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import esbuild from 'esbuild';
 import sharp from 'sharp';
-import { runConsumerBuild, archiveConsumer, zhudaConsumerPlugin } from './consumer-build.mjs';
+import {
+  CONSUMER_SYNTAX_TARGET,
+  runConsumerBuild,
+  archiveConsumer,
+  zhudaConsumerPlugin,
+} from './consumer-build.mjs';
 import { publishConsumerOutput } from './consumer-publication.mjs';
 import { resolveConsumerBranding } from './branding-assets.mjs';
 import { officialBridgeSource } from './minigame-bridge.mjs';
@@ -40,6 +45,118 @@ const allowedFeatures = new Set([
   'ani',
 ]);
 const problem = (code, message) => Error(`zhuda.config.json:1 [${code}] ${message}`);
+
+/** Targets whose package the official tool packs and signs itself (an .rpk): nothing can be edited afterwards. */
+const SIGNED_PACKAGE_TARGETS = new Set(['oppogame', 'vivogame', 'xmgame', 'huawei']);
+export const MINIGAME_SYNTAX_TARGETS = Object.freeze(['es2017', 'es2018', 'es2019', 'es2020']);
+/**
+ * The syntax the gated web build is written in (`consumer-build.mjs`). The platform bundle is
+ * built at this target too, because it is compared with the gated `app.js` character for
+ * character to show that no source changed in between; lowering comes after that comparison.
+ */
+export const MINIGAME_GATED_SYNTAX = CONSUMER_SYNTAX_TARGET;
+/**
+ * Lowers a script that has been compared with the gated web build to the syntax a host needs.
+ * At the gated target it is returned as it is. Not everything has an older form (a BigInt
+ * literal has none): what the bundler says the target lacks is refused, so that a package never
+ * says "lowered to es2017" over scripts an ES2017 engine cannot read.
+ */
+export async function lowerMiniGameScript(text, syntaxTarget) {
+  if (!MINIGAME_SYNTAX_TARGETS.includes(syntaxTarget))
+    throw problem(
+      'MINIGAME_SYNTAX',
+      `minigame.syntaxTarget must be one of ${MINIGAME_SYNTAX_TARGETS.join(', ')}.`,
+    );
+  if (syntaxTarget === MINIGAME_GATED_SYNTAX) return text;
+  let lowered;
+  try {
+    lowered = await esbuild.transform(text, {
+      loader: 'js',
+      target: syntaxTarget,
+      minify: true,
+      logLevel: 'silent',
+    });
+  } catch (error) {
+    const first = error?.errors?.[0]?.text ?? String(error?.message ?? error).split('\n')[0];
+    throw problem(
+      'MINIGAME_SYNTAX',
+      `The scripts cannot be lowered to ${syntaxTarget}: ${first} Remove it from what the game imports, or raise minigame.syntaxTarget.`,
+    );
+  }
+  const kept = lowered.warnings.filter((warning) =>
+    /not available in the configured target environment/.test(warning.text),
+  );
+  if (kept.length)
+    throw problem(
+      'MINIGAME_SYNTAX',
+      `The scripts keep syntax that ${syntaxTarget} does not have and that has no older form (${kept.length} place${kept.length === 1 ? '' : 's'}): ${kept[0].text} Remove it from what the game imports, or raise minigame.syntaxTarget.`,
+    );
+  return lowered.code;
+}
+/**
+ * What `minigame` in zhuda.config.json asks of the package, checked: the syntax the scripts are
+ * lowered to (some hosts' JavaScript engines stop at ES2017; default es2020), and which way the
+ * screen is held. Throws with the config's file and a code for anything it cannot do.
+ */
+export function resolveMiniGameSettings(config, target) {
+  const settings = config?.minigame || {};
+  const syntaxTarget = settings.syntaxTarget ?? 'es2020';
+  if (!MINIGAME_SYNTAX_TARGETS.includes(syntaxTarget))
+    throw problem(
+      'MINIGAME_SYNTAX',
+      `minigame.syntaxTarget must be one of ${MINIGAME_SYNTAX_TARGETS.join(', ')} (the engine itself does not lower below es2017).`,
+    );
+  const orientation = settings.orientation;
+  if (orientation !== undefined && !['portrait', 'landscape'].includes(orientation))
+    throw problem(
+      'MINIGAME_ORIENTATION',
+      "minigame.orientation must be 'portrait' or 'landscape'.",
+    );
+  if (orientation !== undefined && SIGNED_PACKAGE_TARGETS.has(target))
+    throw problem(
+      'MINIGAME_ORIENTATION',
+      `minigame.orientation is not applied for ${target}: the official tool packs and signs its package before this step. Set the orientation in that platform's own manifest settings.`,
+    );
+  return { syntaxTarget, orientation };
+}
+/**
+ * Writes which way the screen is held into the exported package's `game.json` (the file WeChat,
+ * Douyin and the hosts that follow them read). Returns the files it changed, relative to `output`;
+ * throws if the export has no `game.json` to write it into.
+ */
+export function applyMiniGameOrientation(output, orientation) {
+  if (!['portrait', 'landscape'].includes(orientation))
+    throw problem('MINIGAME_ORIENTATION', "orientation must be 'portrait' or 'landscape'.");
+  const changed = [];
+  for (const file of filesAt(output).filter((f) => /(^|\/)game\.json$/.test(f.path))) {
+    const full = path.join(output, file.path);
+    let manifest;
+    try {
+      manifest = JSON.parse(fs.readFileSync(full, 'utf8'));
+    } catch {
+      throw problem(
+        'MINIGAME_ORIENTATION',
+        `${file.path} in the export is not JSON; the orientation was not written.`,
+      );
+    }
+    if (!manifest || typeof manifest !== 'object' || Array.isArray(manifest))
+      throw problem(
+        'MINIGAME_ORIENTATION',
+        `${file.path} in the export is not an object; the orientation was not written.`,
+      );
+    if (manifest.deviceOrientation !== orientation) {
+      manifest.deviceOrientation = orientation;
+      fs.writeFileSync(full, JSON.stringify(manifest, null, 2));
+    }
+    changed.push(file.path);
+  }
+  if (!changed.length)
+    throw problem(
+      'MINIGAME_ORIENTATION',
+      'The export has no game.json to write the orientation into.',
+    );
+  return changed;
+}
 
 function filesAt(root, dir = root) {
   return fs
@@ -120,6 +237,7 @@ export async function buildMiniGame({
       'MINIGAME_FEATURES',
       `Declare an explicit features array from: ${[...allowedFeatures].join(', ')}. WASM/physics/Spine/native routes need separate platform acceptance.`,
     );
+  const { syntaxTarget, orientation } = resolveMiniGameSettings(config, target);
   if (settings.subpackages || settings.remoteAssets)
     throw problem(
       'MINIGAME_PACKAGES',
@@ -191,7 +309,8 @@ export async function buildMiniGame({
       write: false,
       metafile: true,
       format: 'iife',
-      target: 'es2020',
+      // The gated build's own target: the two texts are compared below. Lowered afterwards.
+      target: MINIGAME_GATED_SYNTAX,
       minify: true,
       plugins: [zhudaConsumerPlugin({ projectRoot, entry, engineRoot })],
     });
@@ -208,6 +327,7 @@ export async function buildMiniGame({
       throw Error(
         '[MINIGAME_SOURCE_RACE] Consumer sources changed between the gated web build and the platform bundle; rebuild from a stable checkout.',
       );
+    const applicationScript = await lowerMiniGameScript(compiled.outputFiles[0].text, syntaxTarget);
     const project = path.join(staging, 'official-project'),
       output = path.join(staging, 'web');
     writeOfficialProject(project, config.name || 'zhuda-minigame');
@@ -242,7 +362,7 @@ export async function buildMiniGame({
       write: false,
       bundle: true,
       format: 'iife',
-      target: 'es2020',
+      target: syntaxTarget,
       minify: true,
       define: { global: 'globalThis', self: 'globalThis' },
     });
@@ -258,7 +378,7 @@ export async function buildMiniGame({
           candidate,
         }) +
         ';\n' +
-        compiled.outputFiles[0].text,
+        applicationScript,
     );
     // Include the cancellation polyfill's required attribution with the package.
     let dependencyRoot;
@@ -331,6 +451,8 @@ export async function buildMiniGame({
       if (!emitted || sha256(fs.readFileSync(emitted)) !== file.sha256)
         throw Error(`[MINIGAME_ASSETS] Official output changed or dropped ${file.path}`);
     }
+    // After the checks above (the official output is what it should be), before the package is weighed and recorded.
+    const orientationFiles = orientation ? applyMiniGameOrientation(output, orientation) : [];
     const payload = filesAt(output);
     // Quick-game targets emit a signed RPK.  Its bytes are the platform's
     // main package; the surrounding scaffold (including build/ and sign/)
@@ -402,6 +524,12 @@ export async function buildMiniGame({
       limits: [
         'WebGL only',
         'Bounded main package; automatic subpackages are not implemented',
+        `Scripts lowered to ${syntaxTarget}`,
+        ...(orientation
+          ? [
+              `Orientation ${orientation} written to ${orientationFiles.join(', ')}; not seen on a device`,
+            ]
+          : []),
         'Browser audio/providers/DOM APIs need a separate validated platform adapter',
         'Official package output does not establish platform/device acceptance',
       ],

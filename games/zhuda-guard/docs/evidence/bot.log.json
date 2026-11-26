@@ -1,0 +1,711 @@
+{
+ "errors": [],
+ "failed": "",
+ "final": {
+  "ready": true,
+  "screen": "result",
+  "frames": 1556,
+  "maxDraws": 318,
+  "pads": [
+   [
+    690,
+    321
+   ],
+   [
+    573,
+    313
+   ],
+   [
+    650,
+    216
+   ],
+   [
+    542,
+    211
+   ],
+   [
+    430,
+    282
+   ],
+   [
+    536,
+    374
+   ],
+   [
+    394,
+    254
+   ],
+   [
+    390,
+    374
+   ],
+   [
+    303,
+    241
+   ],
+   [
+    279,
+    290
+   ],
+   [
+    405,
+    178
+   ],
+   [
+    304,
+    178
+   ]
+  ],
+  "game": {
+   "state": "won",
+   "wave": 12,
+   "coins": 2010,
+   "lives": 10,
+   "enemies": 0,
+   "towers": "1:arrow3 4:arrow3 3:frost3 6:fire3 0:arrow3 8:fire3 5:frost3 9:arrow3 7:fire3 2:arrow3 10:fire3 11:frost3",
+   "kills": 356,
+   "time": 617,
+   "shown": 0
+  },
+  "draws": 79,
+  "triangles": 94192,
+  "stars": 2
+ },
+ "log": [
+  {
+   "shot": "00-wave1",
+   "seconds": 22.847,
+   "state": {
+    "ready": true,
+    "screen": "play",
+    "frames": 20,
+    "maxDraws": 117,
+    "pads": [
+     [
+      690,
+      321
+     ],
+     [
+      573,
+      313
+     ],
+     [
+      650,
+      216
+     ],
+     [
+      542,
+      211
+     ],
+     [
+      430,
+      282
+     ],
+     [
+      536,
+      374
+     ],
+     [
+      394,
+      254
+     ],
+     [
+      390,
+      374
+     ],
+     [
+      303,
+      241
+     ],
+     [
+      279,
+      290
+     ],
+     [
+      405,
+      178
+     ],
+     [
+      304,
+      178
+     ]
+    ],
+    "game": {
+     "state": "wave",
+     "wave": 0,
+     "coins": 29,
+     "lives": 20,
+     "enemies": 5,
+     "towers": "1:arrow1 4:arrow1 3:frost1",
+     "kills": 1,
+     "time": 8,
+     "shown": 5
+    },
+    "draws": 107,
+    "triangles": 127054
+   }
+  },
+  {
+   "wave": 1,
+   "lives": 20,
+   "towers": "1:arrow1 4:arrow1 3:frost1",
+   "draws": 91,
+   "triangles": 100078,
+   "enemies": 4,
+   "shown": 4
+  },
+  {
+   "wave": 2,
+   "lives": 20,
+   "towers": "1:arrow1 4:arrow1 3:frost1 6:fire1",
+   "draws": 100,
+   "triangles": 105588,
+   "enemies": 4,
+   "shown": 4
+  },
+  {
+   "wave": 3,
+   "lives": 20,
+   "towers": "1:arrow2 4:arrow1 3:frost1 6:fire1 0:arrow1",
+   "draws": 104,
+   "triangles": 110958,
+   "enemies": 4,
+   "shown": 4
+  },
+  {
+   "shot": "01-wave4",
+   "seconds": 199.69,
+   "state": {
+    "ready": true,
+    "screen": "play",
+    "frames": 207,
+    "maxDraws": 178,
+    "pads": [
+     [
+      690,
+      321
+     ],
+     [
+      573,
+      313
+     ],
+     [
+      650,
+      216
+     ],
+     [
+      542,
+      211
+     ],
+     [
+      430,
+      282
+     ],
+     [
+      536,
+      374
+     ],
+     [
+      394,
+      254
+     ],
+     [
+      390,
+      374
+     ],
+     [
+      303,
+      241
+     ],
+     [
+      279,
+      290
+     ],
+     [
+      405,
+      178
+     ],
+     [
+      304,
+      178
+     ]
+    ],
+    "game": {
+     "state": "wave",
+     "wave": 3,
+     "coins": 38,
+     "lives": 20,
+     "enemies": 7,
+     "towers": "1:arrow2 4:arrow2 3:frost2 6:fire1 0:arrow2",
+     "kills": 37,
+     "time": 82,
+     "shown": 7
+    },
+    "draws": 124,
+    "triangles": 164600
+   }
+  },
+  {
+   "wave": 4,
+   "lives": 20,
+   "towers": "1:arrow2 4:arrow2 3:frost2 6:fire1 0:arrow2",
+   "draws": 100,
+   "triangles": 106590,
+   "enemies": 4,
+   "shown": 4
+  },
+  {
+   "wave": 5,
+   "lives": 20,
+   "towers": "1:arrow2 4:arrow2 3:frost2 6:fire2 0:arrow2 8:fire1",
+   "draws": 85,
+   "triangles": 111590,
+   "enemies": 5,
+   "shown": 5
+  },
+  {
+   "wave": 6,
+   "lives": 20,
+   "towers": "1:arrow2 4:arrow2 3:frost2 6:fire2 0:arrow2 8:fire2 5:frost2 9:arrow1",
+   "draws": 112,
+   "triangles": 118584,
+   "enemies": 4,
+   "shown": 4
+  },
+  {
+   "shot": "02-wave7",
+   "seconds": 529.079,
+   "state": {
+    "ready": true,
+    "screen": "play",
+    "frames": 565,
+    "maxDraws": 197,
+    "pads": [
+     [
+      690,
+      321
+     ],
+     [
+      573,
+      313
+     ],
+     [
+      650,
+      216
+     ],
+     [
+      542,
+      211
+     ],
+     [
+      430,
+      282
+     ],
+     [
+      536,
+      374
+     ],
+     [
+      394,
+      254
+     ],
+     [
+      390,
+      374
+     ],
+     [
+      303,
+      241
+     ],
+     [
+      279,
+      290
+     ],
+     [
+      405,
+      178
+     ],
+     [
+      304,
+      178
+     ]
+    ],
+    "game": {
+     "state": "wave",
+     "wave": 6,
+     "coins": 104,
+     "lives": 20,
+     "enemies": 9,
+     "towers": "1:arrow3 4:arrow3 3:frost2 6:fire2 0:arrow2 8:fire2 5:frost2 9:arrow2",
+     "kills": 96,
+     "time": 225,
+     "shown": 9
+    },
+    "draws": 142,
+    "triangles": 185322
+   }
+  },
+  {
+   "wave": 7,
+   "lives": 20,
+   "towers": "1:arrow3 4:arrow3 3:frost2 6:fire2 0:arrow2 8:fire2 5:frost2 9:arrow2",
+   "draws": 109,
+   "triangles": 118628,
+   "enemies": 4,
+   "shown": 4
+  },
+  {
+   "wave": 8,
+   "lives": 20,
+   "towers": "1:arrow3 4:arrow3 3:frost3 6:fire2 0:arrow3 8:fire2 5:frost3 9:arrow2",
+   "draws": 91,
+   "triangles": 122290,
+   "enemies": 4,
+   "shown": 4
+  },
+  {
+   "shot": "03-wave9",
+   "seconds": 720.881,
+   "state": {
+    "ready": true,
+    "screen": "play",
+    "frames": 771,
+    "maxDraws": 210,
+    "pads": [
+     [
+      690,
+      321
+     ],
+     [
+      573,
+      313
+     ],
+     [
+      650,
+      216
+     ],
+     [
+      542,
+      211
+     ],
+     [
+      430,
+      282
+     ],
+     [
+      536,
+      374
+     ],
+     [
+      394,
+      254
+     ],
+     [
+      390,
+      374
+     ],
+     [
+      303,
+      241
+     ],
+     [
+      279,
+      290
+     ],
+     [
+      405,
+      178
+     ],
+     [
+      304,
+      178
+     ]
+    ],
+    "game": {
+     "state": "wave",
+     "wave": 8,
+     "coins": 236,
+     "lives": 20,
+     "enemies": 7,
+     "towers": "1:arrow3 4:arrow3 3:frost3 6:fire3 0:arrow3 8:fire2 5:frost3 9:arrow3",
+     "kills": 149,
+     "time": 307,
+     "shown": 7
+    },
+    "draws": 124,
+    "triangles": 186852
+   }
+  },
+  {
+   "wave": 9,
+   "lives": 20,
+   "towers": "1:arrow3 4:arrow3 3:frost3 6:fire3 0:arrow3 8:fire2 5:frost3 9:arrow3",
+   "draws": 97,
+   "triangles": 142174,
+   "enemies": 4,
+   "shown": 4
+  },
+  {
+   "wave": 10,
+   "lives": 20,
+   "towers": "1:arrow3 4:arrow3 3:frost3 6:fire3 0:arrow3 8:fire3 5:frost3 9:arrow3 7:fire2",
+   "draws": 95,
+   "triangles": 127590,
+   "enemies": 4,
+   "shown": 4
+  },
+  {
+   "shot": "04-wave11",
+   "seconds": 1050.786,
+   "state": {
+    "ready": true,
+    "screen": "play",
+    "frames": 1123,
+    "maxDraws": 308,
+    "pads": [
+     [
+      690,
+      321
+     ],
+     [
+      573,
+      313
+     ],
+     [
+      650,
+      216
+     ],
+     [
+      542,
+      211
+     ],
+     [
+      430,
+      282
+     ],
+     [
+      536,
+      374
+     ],
+     [
+      394,
+      254
+     ],
+     [
+      390,
+      374
+     ],
+     [
+      303,
+      241
+     ],
+     [
+      279,
+      290
+     ],
+     [
+      405,
+      178
+     ],
+     [
+      304,
+      178
+     ]
+    ],
+    "game": {
+     "state": "wave",
+     "wave": 10,
+     "coins": 9,
+     "lives": 20,
+     "enemies": 11,
+     "towers": "1:arrow3 4:arrow3 3:frost3 6:fire3 0:arrow3 8:fire3 5:frost3 9:arrow3 7:fire3 2:arrow3 10:fire3 11:frost1",
+     "kills": 222,
+     "time": 448,
+     "shown": 11
+    },
+    "draws": 121,
+    "triangles": 219670
+   }
+  },
+  {
+   "wave": 11,
+   "lives": 20,
+   "towers": "1:arrow3 4:arrow3 3:frost3 6:fire3 0:arrow3 8:fire3 5:frost3 9:arrow3 7:fire3 2:arrow3 10:fire3 11:frost1",
+   "draws": 89,
+   "triangles": 134692,
+   "enemies": 4,
+   "shown": 4
+  },
+  {
+   "shot": "05-wave12",
+   "seconds": 1182.697,
+   "state": {
+    "ready": true,
+    "screen": "play",
+    "frames": 1260,
+    "maxDraws": 308,
+    "pads": [
+     [
+      690,
+      321
+     ],
+     [
+      573,
+      313
+     ],
+     [
+      650,
+      216
+     ],
+     [
+      542,
+      211
+     ],
+     [
+      430,
+      282
+     ],
+     [
+      536,
+      374
+     ],
+     [
+      394,
+      254
+     ],
+     [
+      390,
+      374
+     ],
+     [
+      303,
+      241
+     ],
+     [
+      279,
+      290
+     ],
+     [
+      405,
+      178
+     ],
+     [
+      304,
+      178
+     ]
+    ],
+    "game": {
+     "state": "wave",
+     "wave": 11,
+     "coins": 777,
+     "lives": 20,
+     "enemies": 7,
+     "towers": "1:arrow3 4:arrow3 3:frost3 6:fire3 0:arrow3 8:fire3 5:frost3 9:arrow3 7:fire3 2:arrow3 10:fire3 11:frost3",
+     "kills": 274,
+     "time": 502,
+     "shown": 7
+    },
+    "draws": 103,
+    "triangles": 192518
+   }
+  },
+  {
+   "wave": 12,
+   "lives": 20,
+   "towers": "1:arrow3 4:arrow3 3:frost3 6:fire3 0:arrow3 8:fire3 5:frost3 9:arrow3 7:fire3 2:arrow3 10:fire3 11:frost3",
+   "draws": 89,
+   "triangles": 134532,
+   "enemies": 4,
+   "shown": 4
+  },
+  {
+   "shot": "06-result",
+   "seconds": 1467.293,
+   "state": {
+    "ready": true,
+    "screen": "result",
+    "frames": 1554,
+    "maxDraws": 318,
+    "pads": [
+     [
+      690,
+      321
+     ],
+     [
+      573,
+      313
+     ],
+     [
+      650,
+      216
+     ],
+     [
+      542,
+      211
+     ],
+     [
+      430,
+      282
+     ],
+     [
+      536,
+      374
+     ],
+     [
+      394,
+      254
+     ],
+     [
+      390,
+      374
+     ],
+     [
+      303,
+      241
+     ],
+     [
+      279,
+      290
+     ],
+     [
+      405,
+      178
+     ],
+     [
+      304,
+      178
+     ]
+    ],
+    "game": {
+     "state": "won",
+     "wave": 12,
+     "coins": 2010,
+     "lives": 10,
+     "enemies": 0,
+     "towers": "1:arrow3 4:arrow3 3:frost3 6:fire3 0:arrow3 8:fire3 5:frost3 9:arrow3 7:fire3 2:arrow3 10:fire3 11:frost3",
+     "kills": 356,
+     "time": 617,
+     "shown": 0
+    },
+    "draws": 79,
+    "triangles": 94222,
+    "stars": 2
+   }
+  },
+  {
+   "end": {
+    "state": "won",
+    "wave": 12,
+    "coins": 2010,
+    "lives": 10,
+    "enemies": 0,
+    "towers": "1:arrow3 4:arrow3 3:frost3 6:fire3 0:arrow3 8:fire3 5:frost3 9:arrow3 7:fire3 2:arrow3 10:fire3 11:frost3",
+    "kills": 356,
+    "time": 617,
+    "shown": 0
+   },
+   "stars": 2,
+   "maxDraws": 318
+  }
+ ]
+}

@@ -642,6 +642,74 @@ test('opaque sandbox storage is realm-local and preserves normal origin storage'
     globalThis.window = saved;
   }
 });
+test('layoutSize sizes the stage for a container whose rectangle on screen is turned', () => {
+  const saved = {
+    document: globalThis.document,
+    window: globalThis.window,
+    ResizeObserver: globalThis.ResizeObserver,
+    devicePixelRatio: globalThis.devicePixelRatio,
+    Laya: globalThis.Laya,
+    innerWidth: globalThis.innerWidth,
+    innerHeight: globalThis.innerHeight,
+    cancelAnimationFrame: globalThis.cancelAnimationFrame,
+  };
+  const session = (options) => {
+    let seen;
+    // The first resize runs while the session is being made; stop there, the size is what is asked.
+    assert.throws(
+      () =>
+        new ZhudaRuntimeSession(new EventTarget(), {
+          ...options,
+          onResize(size) {
+            seen = size;
+            throw Error('measured');
+          },
+        }),
+      /measured|layout size/,
+    );
+    return seen;
+  };
+  try {
+    globalThis.document = new EventTarget();
+    globalThis.window = new EventTarget();
+    globalThis.ResizeObserver = class {
+      observe() {}
+      disconnect() {}
+    };
+    Object.assign(globalThis, {
+      devicePixelRatio: 3,
+      innerWidth: 390,
+      innerHeight: 844,
+      cancelAnimationFrame() {},
+      Laya: {
+        Config: {},
+        Stage: {},
+        Browser: { pixelRatio: 3 },
+        stage: { size() {}, setScreenSize() {} },
+      },
+    });
+    // A landscape stage turned a quarter to fill an upright phone: the rectangle is upright.
+    const container = { getBoundingClientRect: () => ({ width: 390, height: 844 }) };
+    assert.deepEqual(session({ container }), { width: 390, height: 844, dpr: 2 });
+    assert.deepEqual(session({ container, layoutSize: () => ({ width: 844, height: 390 }) }), {
+      width: 844,
+      height: 390,
+      dpr: 2,
+    });
+    // Without a container the layout size still sizes the stage.
+    assert.deepEqual(session({ layoutSize: () => ({ width: 640, height: 360 }), dprCap: 1 }), {
+      width: 640,
+      height: 360,
+      dpr: 1,
+    });
+    assert.equal(
+      session({ container, layoutSize: () => ({ width: NaN, height: 390 }) }),
+      undefined,
+    );
+  } finally {
+    Object.assign(globalThis, saved);
+  }
+});
 test('failed initial resize releases observer and event handlers', () => {
   const saved = {
     document: globalThis.document,

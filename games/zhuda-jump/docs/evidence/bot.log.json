@@ -1,0 +1,172 @@
+{
+ "errors": [],
+ "failed": "",
+ "final": {
+  "ready": true,
+  "screen": "result",
+  "frames": 841,
+  "hot": {
+   "again": [
+    345,
+    332
+   ],
+   "next": [
+    615,
+    332
+   ]
+  },
+  "best": {
+   "ash": 2
+  },
+  "game": {
+   "level": "ash",
+   "state": "won",
+   "time": 13.8,
+   "x": 89.6,
+   "y": 6.8,
+   "grounded": false,
+   "coins": 12,
+   "of": 13,
+   "chunks": 2
+  }
+ },
+ "log": [
+  {
+   "shot": "00-x11",
+   "seconds": 2.027,
+   "state": {
+    "ready": true,
+    "screen": "play",
+    "frames": 90,
+    "hot": {},
+    "best": {},
+    "game": {
+     "level": "ash",
+     "state": "play",
+     "time": 1.7,
+     "x": 12.1,
+     "y": 7.8,
+     "grounded": false,
+     "coins": 2,
+     "of": 13,
+     "chunks": 2
+    }
+   }
+  },
+  {
+   "shot": "01-x32",
+   "seconds": 5.264,
+   "state": {
+    "ready": true,
+    "screen": "play",
+    "frames": 281,
+    "hot": {},
+    "best": {},
+    "game": {
+     "level": "ash",
+     "state": "play",
+     "time": 4.9,
+     "x": 32.9,
+     "y": 6.1,
+     "grounded": false,
+     "coins": 5,
+     "of": 13,
+     "chunks": 2
+    }
+   }
+  },
+  {
+   "shot": "02-x53",
+   "seconds": 8.568,
+   "state": {
+    "ready": true,
+    "screen": "play",
+    "frames": 478,
+    "hot": {},
+    "best": {},
+    "game": {
+     "level": "ash",
+     "state": "play",
+     "time": 8.2,
+     "x": 54,
+     "y": 8,
+     "grounded": true,
+     "coins": 8,
+     "of": 13,
+     "chunks": 3
+    }
+   }
+  },
+  {
+   "shot": "03-x74",
+   "seconds": 11.819,
+   "state": {
+    "ready": true,
+    "screen": "play",
+    "frames": 672,
+    "hot": {},
+    "best": {},
+    "game": {
+     "level": "ash",
+     "state": "play",
+     "time": 11.5,
+     "x": 74.8,
+     "y": 4.9,
+     "grounded": false,
+     "coins": 11,
+     "of": 13,
+     "chunks": 2
+    }
+   }
+  },
+  {
+   "shot": "09-result",
+   "seconds": 14.847,
+   "state": {
+    "ready": true,
+    "screen": "result",
+    "frames": 839,
+    "hot": {
+     "again": [
+      345,
+      332
+     ],
+     "next": [
+      615,
+      332
+     ]
+    },
+    "best": {
+     "ash": 2
+    },
+    "game": {
+     "level": "ash",
+     "state": "won",
+     "time": 13.8,
+     "x": 89.6,
+     "y": 6.8,
+     "grounded": false,
+     "coins": 12,
+     "of": 13,
+     "chunks": 2
+    }
+   }
+  },
+  {
+   "end": {
+    "level": "ash",
+    "state": "won",
+    "time": 13.8,
+    "x": 89.6,
+    "y": 6.8,
+    "grounded": false,
+    "coins": 12,
+    "of": 13,
+    "chunks": 2
+   },
+   "best": {
+    "ash": 2
+   }
+  }
+ ]
+}

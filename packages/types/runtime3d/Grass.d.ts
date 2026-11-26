@@ -95,6 +95,19 @@ export declare function zhudaGrassShown(distance: number, fullDensityM: number, 
  * the end. A mesh is needed where a blade of its ranks is drawn.
  */
 export declare function zhudaGrassBands(nearest: number, fullDensityM: number, distanceM: number): number;
+/**
+ * How many patches of land the grass keeps a mesh for with the eye there, and
+ * how many meshes that is at least: one for each band a patch needs (see
+ * `zhudaGrassBands`) and one for its turf. Each mesh is a draw in every pass
+ * that draws the land, so this is the least the grass adds to a frame before
+ * the camera's own culling; a band too large for one mesh is cut into more.
+ * Distance is measured over the ground, as `ZhudaGrassField.update` measures
+ * it: an eye high above a field is as near to it as one standing in it. Pure.
+ */
+export declare function zhudaGrassMeshCount(options: Pick<ZhudaGrassOptions, 'area' | 'distanceM' | 'fullDensityM' | 'patchM' | 'turf'>, eye: readonly number[]): {
+    patches: number;
+    meshes: number;
+};
 /** How many clumps a patch of land has. */
 export declare function zhudaGrassPatchClumps(resolved: ZhudaGrassResolved): number;
 /**

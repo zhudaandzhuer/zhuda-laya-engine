@@ -1201,3 +1201,20 @@ test('the bake cache key is public and does not depend on property order', async
   );
   assert.match(a, /^256:/);
 });
+
+test('a ground may sit at a height; a height that is not a number is refused', () => {
+  const scene = (y) => ({
+    schemaVersion: 1,
+    id: 'raised',
+    camera: { eye: [0, 2, 6], target: [0, 0, 0] },
+    materials: { grey: { color: [0.5, 0.5, 0.5], roughness: 0.8 } },
+    nodes: [{ id: 'floor', type: 'ground', size: [10, 10], material: 'grey', y }],
+  });
+  assert.deepEqual(validateZhudaFilmScene(scene(0.02)), []);
+  assert.deepEqual(validateZhudaFilmScene(scene(undefined)), []);
+  assert.ok(
+    validateZhudaFilmScene(scene('high')).some((issue) =>
+      /nodes\[0\]\.y: use a height in metres/.test(issue),
+    ),
+  );
+});

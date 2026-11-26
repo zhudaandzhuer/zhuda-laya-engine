@@ -1,0 +1,398 @@
+{
+ "built": {
+  "tee": 4326,
+  "trousers": 3970,
+  "skirt": 4021,
+  "long-skirt": 5790,
+  "straw-hat": 589,
+  "pack": 1700
+ },
+ "body": {
+  "source": "ASTM D5585-95 (2001) Table 1, misses size 8",
+  "stature": 168,
+  "rows": [
+   {
+    "what": "girth bust",
+    "real": 88.9,
+    "mine": 87.2,
+    "ratio": 0.98
+   },
+   {
+    "what": "girth waist",
+    "real": 68.6,
+    "mine": 69.3,
+    "ratio": 1.01
+   },
+   {
+    "what": "girth highHip",
+    "real": 87.6,
+    "mine": 88.3,
+    "ratio": 1.01
+   },
+   {
+    "what": "girth hip",
+    "real": 95.3,
+    "mine": 92.5,
+    "ratio": 0.97
+   },
+   {
+    "what": "girth midNeck",
+    "real": 34.9,
+    "mine": 35.8,
+    "ratio": 1.03
+   },
+   {
+    "what": "girth upperArm",
+    "real": 27.3,
+    "mine": 27.7,
+    "ratio": 1.01
+   },
+   {
+    "what": "girth elbow",
+    "real": 24.8,
+    "mine": 25.6,
+    "ratio": 1.03
+   },
+   {
+    "what": "girth wrist",
+    "real": 15.2,
+    "mine": 15.9,
+    "ratio": 1.05
+   },
+   {
+    "what": "girth thighMax",
+    "real": 55.2,
+    "mine": 53.6,
+    "ratio": 0.97
+   },
+   {
+    "what": "girth thighMid",
+    "real": 50.2,
+    "mine": 52.2,
+    "ratio": 1.04
+   },
+   {
+    "what": "girth knee",
+    "real": 35.9,
+    "mine": 36.5,
+    "ratio": 1.02
+   },
+   {
+    "what": "girth calf",
+    "real": 34.6,
+    "mine": 34.5,
+    "ratio": 1
+   },
+   {
+    "what": "girth ankle",
+    "real": 23.2,
+    "mine": 22.9,
+    "ratio": 0.99
+   },
+   {
+    "what": "height cervicale",
+    "real": 144.7,
+    "mine": 142.4,
+    "ratio": 0.98
+   },
+   {
+    "what": "height waist",
+    "real": 103.4,
+    "mine": 103.8,
+    "ratio": 1
+   },
+   {
+    "what": "height hip",
+    "real": 82.7,
+    "mine": 82.2,
+    "ratio": 0.99
+   },
+   {
+    "what": "height crotch",
+    "real": 76.2,
+    "mine": 77.2,
+    "ratio": 1.01
+   },
+   {
+    "what": "height knee",
+    "real": 46.5,
+    "mine": 47.4,
+    "ratio": 1.02
+   },
+   {
+    "what": "height ankle",
+    "real": 7.1,
+    "mine": 7.7,
+    "ratio": 1.08
+   },
+   {
+    "what": "across shoulder",
+    "real": 38.4,
+    "mine": 38,
+    "ratio": 0.99
+   },
+   {
+    "what": "shoulder slope (deg)",
+    "real": 23,
+    "mine": 25.4,
+    "ratio": 1.1
+   },
+   {
+    "what": "foot length",
+    "real": 25.4,
+    "mine": 25.1,
+    "ratio": 0.99
+   }
+  ]
+ },
+ "garments": {
+  "sources": {
+   "tee": [
+    "MUJI women's jersey crew neck short sleeve T-shirt size chart (muji.us)",
+    "QVC garment specifications, \"Missy Tee\" and \"Missy Crew Neck\" (qvc.com)",
+    "Macquarie University shop T-shirt size chart, women's (shop.mq.edu.au)",
+    "Wikipedia, \"Ease (sewing)\": wearing ease 5 to 6.5 cm at the bust"
+   ],
+   "jeans": [
+    "QVC garment specifications, \"Missy Straight Leg\" and \"Missy Jean\" (qvc.com)"
+   ],
+   "skirt": [
+    "Lands' End women's A-line skirt garment measurements (landsend.com)",
+    "Twig + Tale Meadow skirt finished measurements (side waist to hem)",
+    "Closet Core Sage skirt finished measurements"
+   ],
+   "hat": [
+    "Pitt Rivers Museum, conical bamboo hat 2022.80.11 (44 cm across, 12 cm high)",
+    "sellers of Vietnamese non la: 40 to 43 cm across, 17.8 to 20 cm high (terrapintrading.co.uk, 1stdibs.com)"
+   ],
+   "pack": [
+    "20-litre day packs as their makers give them: Decathlon 48 x 27 x 13 and 45 x 28 x 13, Outdoor Research Heyday 43.2 x 27.9 x 17.8, Eurohike React 42.5 x 27 x 18, Beyond Nordic BN503 45 x 24 x 17.5"
+   ]
+  },
+  "rows": [
+   {
+    "garment": "tee",
+    "what": "chest round less the bust (ease)",
+    "real": [
+     5,
+     24
+    ],
+    "mine": 14.8,
+    "within": true
+   },
+   {
+    "garment": "tee",
+    "what": "length from the shoulder's high point",
+    "real": [
+     62,
+     69.5
+    ],
+    "mine": 65.4,
+    "within": true
+   },
+   {
+    "garment": "tee",
+    "what": "front of the neck below the high point",
+    "real": [
+     9.5,
+     13.7
+    ],
+    "mine": 10.4,
+    "within": true
+   },
+   {
+    "garment": "tee",
+    "what": "back of the neck below the high point",
+    "real": [
+     3,
+     5
+    ],
+    "mine": 4.5,
+    "within": true
+   },
+   {
+    "garment": "tee",
+    "what": "sleeve from the shoulder's point",
+    "real": [
+     14.6,
+     21
+    ],
+    "mine": 15.8,
+    "within": true,
+    "note": "the point taken 12 mm outside the joint"
+   },
+   {
+    "garment": "tee",
+    "what": "sleeve opening round",
+    "real": [
+     33,
+     46
+    ],
+    "mine": 35.2,
+    "within": true
+   },
+   {
+    "garment": "tee",
+    "what": "hem round over chest round",
+    "real": [
+     0.9,
+     1.05
+    ],
+    "mine": 1.14,
+    "within": false
+   },
+   {
+    "garment": "trousers",
+    "what": "inseam",
+    "real": [
+     68.5,
+     81
+    ],
+    "mine": 69.5,
+    "within": true
+   },
+   {
+    "garment": "trousers",
+    "what": "knee round, 33 cm below the crotch",
+    "real": [
+     34,
+     44
+    ],
+    "mine": 41.7,
+    "within": true
+   },
+   {
+    "garment": "trousers",
+    "what": "leg opening round",
+    "real": [
+     32,
+     48
+    ],
+    "mine": 39.4,
+    "within": true
+   },
+   {
+    "garment": "trousers",
+    "what": "front rise",
+    "real": [
+     21,
+     28
+    ],
+    "mine": 25.5,
+    "within": true,
+    "note": "taken straight up; a real one is taken along the curve and is a little longer"
+   },
+   {
+    "garment": "skirt",
+    "what": "length from the waist",
+    "real": [
+     46.6,
+     50
+    ],
+    "mine": 48.2,
+    "within": true
+   },
+   {
+    "garment": "skirt",
+    "what": "hip round less the hips (ease)",
+    "real": [
+     4,
+     10
+    ],
+    "mine": 13.4,
+    "within": false
+   },
+   {
+    "garment": "skirt",
+    "what": "hem round (sweep)",
+    "real": [
+     100,
+     125
+    ],
+    "mine": 123,
+    "within": true
+   },
+   {
+    "garment": "long-skirt",
+    "what": "length from the waist",
+    "real": [
+     83.5,
+     96
+    ],
+    "mine": 90.1,
+    "within": true
+   },
+   {
+    "garment": "long-skirt",
+    "what": "hip round less the hips (ease)",
+    "real": [
+     4,
+     10
+    ],
+    "mine": 13.3,
+    "within": false
+   },
+   {
+    "garment": "long-skirt",
+    "what": "hem round (sweep)",
+    "real": [
+     140,
+     150
+    ],
+    "mine": 149.5,
+    "within": true
+   },
+   {
+    "garment": "straw-hat",
+    "what": "across",
+    "real": [
+     40,
+     44
+    ],
+    "mine": 42,
+    "within": true
+   },
+   {
+    "garment": "straw-hat",
+    "what": "height",
+    "real": [
+     11.4,
+     20
+    ],
+    "mine": 15.5,
+    "within": true
+   },
+   {
+    "garment": "pack",
+    "what": "height",
+    "real": [
+     40,
+     48
+    ],
+    "mine": 42,
+    "within": true
+   },
+   {
+    "garment": "pack",
+    "what": "width",
+    "real": [
+     24,
+     28
+    ],
+    "mine": 26,
+    "within": true
+   },
+   {
+    "garment": "pack",
+    "what": "depth",
+    "real": [
+     13,
+     20
+    ],
+    "mine": 18.3,
+    "within": true,
+    "note": "with its front pocket"
+   }
+  ]
+ }
+}

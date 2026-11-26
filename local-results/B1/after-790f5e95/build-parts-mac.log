@@ -1,0 +1,39 @@
+tank         3454 triangles of 49891 0.13 MB
+crop-tank    1952 triangles of 29887 0.09 MB
+tee          4326 triangles of 63445 0.16 MB
+crop-tee     2800 triangles of 43441 0.12 MB
+cap-tee      3935 triangles of 58921 0.15 MB
+elbow-top    4880 triangles of 67841 0.18 MB
+shirt        5538 triangles of 80712 0.21 MB
+turtleneck   5864 triangles of 80915 0.21 MB
+crop-shirt   3922 triangles of 60708 0.16 MB
+shorts       1600 triangles of 29733 0.09 MB
+knee-shorts  2200 triangles of 44425 0.11 MB
+capri        2800 triangles of 58023 0.13 MB
+trousers     3970 triangles of 72397 0.16 MB
+skirt        4021 triangles of 45671 0.14 MB
+long-skirt   5790 triangles of 91043 0.18 MB
+robe         8638 triangles of 160163 0.29 MB
+dress        6262 triangles of 93129 0.24 MB
+sun-dress    6119 triangles of 88643 0.22 MB
+gown         8243 triangles of 145467 0.28 MB
+jumpsuit     6385 triangles of 125776 0.27 MB
+playsuit     3797 triangles of 67169 0.18 MB
+shoes        1000 triangles of 11370 0.05 MB
+ankle-boots  1299 triangles of 14589 0.06 MB
+boots        1699 triangles of 19319 0.08 MB
+tall-boots   2200 triangles of 26924 0.10 MB
+straw-hat    589 triangles of 2561 0.04 MB
+pack         1700 triangles of 10022 0.11 MB
+belt-pouch   984 triangles of 8269 0.06 MB
+built in 36 s
+NOTE   knit: the body comes through at 21 of 405 vertices, 8.5 mm, _Stress frame 94 at [0.06,0.946,-0.105]
+32 parts; 153 poses of Idle, Walk, Run, Greet, _Stress
+skin through a part: 0 parts fail; deepest 8.5 mm
+pairs: 99 overlap, 4 clip and are listed as avoid; deepest allowed 0.7 mm
+  avoid tank under belt-pouch: 1 of 6, 1.5 mm, _Stress 58 [0.13,0.918,0.086]
+  avoid tee under belt-pouch: 2 of 6, 5.2 mm, _Stress 72 [0.143,1,0.106]
+  avoid cap-tee under belt-pouch: 2 of 6, 3.4 mm, _Stress 72 [0.135,0.976,0.115]
+  avoid turtleneck under hair-long: 2 of 2, 2.5 mm, Run 10 [0.031,1.397,-0.011]
+51 s
+exit 0

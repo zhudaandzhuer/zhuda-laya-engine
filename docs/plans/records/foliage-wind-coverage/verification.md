@@ -5,7 +5,7 @@ Chrome through the repository's `chromeFixture`, 2026-11-16. The machine was
 heavily loaded by other work (load average 80–380).
 
 Evidence, kept outside the repository: `EV` =
-`/Users/yaowei/Documents/ZhudaGameCenter/audits/foliage-2026-11-16/`.
+`<workspace>/audits/foliage-2026-11-16/`.
 
 | Command                                                                                                                                                 | Result                                                                                                                                                                                                                                                                                       | Artifact                  |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------- |
@@ -54,7 +54,7 @@ each, in this order: with the foliage 81.1–82.2 ms; `?off=foliage` 80.4–80.7
 phone warming). No cost is measurable against the rest of the frame.
 Two frames 1.5 s apart, the view held: 18 % of the close crown's pixels change
 with the foliage, 0.02 % without. Logs and pictures:
-`/Users/yaowei/Documents/ZhudaGameCenter/audits/shaft-sun-turn-2026-11-16/v40/`
+`<workspace>/audits/shaft-sun-turn-2026-11-16/v40/`
 and `EV/v40/`. That frame was slow for another reason (the light shafts,
 `docs/plans/records/shaft-sun-turn/`).
 

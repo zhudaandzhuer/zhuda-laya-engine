@@ -1,0 +1,34 @@
+npm warn deprecated eslint@9.39.1: This version is no longer supported. Please see https://eslint.org/version-support for other options.
+
+> zhuda-laya-engine@1.18.0 prepare
+> npm run build 1>&2
+
+
+> zhuda-laya-engine@1.18.0 build
+> npm run types:runtime3d && node packages/compiler/zhuda-build.mjs
+
+
+> zhuda-laya-engine@1.18.0 types:runtime3d
+> node packages/compiler/runtime3d-types.mjs
+
+Public declarations: 0 updated
+
+🚀 [Zhuda-Compiler] 啟動 Zero-IDE 建置管線 (Project: <repo>, Profile: full-all-in-one)...
+  ✔ [AST Reflection] 掃描完成，自動註冊 5 個組件類別: BoardCameraController, Spine42PhysicsRigComponent, ZhudaParticleEmitterComponent, ZhudaAnimatorControllerComponent, TilePhysicsBehavior
+  ✔ [Topology Guard] 已解析 29 個引擎模組 (6578.6 KB，剪枝縮減率: 3.9%)，0 順序死鎖！
+  ✔ [Static Assets & ΔE Gate] 已序列化 11 份 .lh/.ls 靜態資產，10/10 通過 0px 邊界與 ΔE00 色差校準！
+  ✔ [SDK Package] 產出 dist/sdk/zhuda-laya-engine.esm.js (2045.6 KB) & .cjs (2083.9 KB)
+  ✔ [esbuild Bundle] 產出 dist/web/js/bundle.js (420.9 KB)，總耗時 253.2 ms！
+  ✔ [Manifest] 已寫入 dist/build-manifest.json
+
+
+added 123 packages, and audited 124 packages in 4s
+
+44 packages are looking for funding
+  run `npm fund` for details
+
+found 0 vulnerabilities
+npm warn install-scripts 1 package has install scripts not yet covered by allowScripts:
+npm warn install-scripts   esbuild@0.27.1 (postinstall: node install.js)
+npm warn install-scripts
+npm warn install-scripts Run `npm install-scripts ls` to review, or `npm install-scripts approve <pkg>` to allow.

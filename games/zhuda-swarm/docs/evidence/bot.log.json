@@ -1,0 +1,468 @@
+{
+ "errors": [],
+ "failed": "",
+ "final": {
+  "ready": true,
+  "screen": "title",
+  "frames": 1177,
+  "hot": {
+   "start": [
+    640,
+    338
+   ],
+   "meta-might": [
+    310,
+    558
+   ],
+   "meta-vitality": [
+    640,
+    558
+   ],
+   "meta-greed": [
+    970,
+    558
+   ],
+   "mute": [
+    1185,
+    45
+   ]
+  },
+  "maxDraws": 120,
+  "save": {
+   "coins": 164,
+   "meta": {
+    "might": 0,
+    "vitality": 0,
+    "greed": 0
+   },
+   "best": 300.0000000000558,
+   "runs": 1
+  },
+  "run": {
+   "time": 300,
+   "state": "won",
+   "hp": 55,
+   "level": 17,
+   "kills": 1483,
+   "enemies": 420,
+   "peak": 421,
+   "drops": 95,
+   "shots": 0,
+   "weapons": "blade3 vine3 fire5* thunder1",
+   "passives": "vitality1 area1 haste1 might1"
+  },
+  "draws": 10,
+  "payout": 164
+ },
+ "log": [
+  {
+   "shot": "01-t5",
+   "seconds": 1.767,
+   "state": {
+    "ready": true,
+    "screen": "play",
+    "frames": 41,
+    "hot": {},
+    "maxDraws": 3,
+    "save": {
+     "coins": 0,
+     "meta": {
+      "might": 0,
+      "vitality": 0,
+      "greed": 0
+     },
+     "best": 0,
+     "runs": 0
+    },
+    "run": {
+     "time": 6.8,
+     "state": "play",
+     "hp": 100,
+     "level": 1,
+     "kills": 0,
+     "enemies": 8,
+     "peak": 8,
+     "drops": 0,
+     "shots": 0,
+     "weapons": "blade1",
+     "passives": ""
+    },
+    "draws": 3
+   }
+  },
+  {
+   "t": 5.4,
+   "enemies": 7,
+   "draws": 3,
+   "level": 1,
+   "kit": "blade1"
+  },
+  {
+   "shot": "02-t31",
+   "seconds": 6.817,
+   "state": {
+    "ready": true,
+    "screen": "play",
+    "frames": 174,
+    "hot": {},
+    "maxDraws": 3,
+    "save": {
+     "coins": 0,
+     "meta": {
+      "might": 0,
+      "vitality": 0,
+      "greed": 0
+     },
+     "best": 0,
+     "runs": 0
+    },
+    "run": {
+     "time": 32.1,
+     "state": "play",
+     "hp": 100,
+     "level": 1,
+     "kills": 2,
+     "enemies": 49,
+     "peak": 49,
+     "drops": 0,
+     "shots": 0,
+     "weapons": "blade1",
+     "passives": ""
+    },
+    "draws": 3
+   }
+  },
+  {
+   "t": 30.5,
+   "enemies": 44,
+   "draws": 3,
+   "level": 1,
+   "kit": "blade1"
+  },
+  {
+   "shot": "03-t71",
+   "seconds": 14.933,
+   "state": {
+    "ready": true,
+    "screen": "play",
+    "frames": 360,
+    "hot": {},
+    "maxDraws": 9,
+    "save": {
+     "coins": 0,
+     "meta": {
+      "might": 0,
+      "vitality": 0,
+      "greed": 0
+     },
+     "best": 0,
+     "runs": 0
+    },
+    "run": {
+     "time": 72.7,
+     "state": "play",
+     "hp": 100,
+     "level": 5,
+     "kills": 72,
+     "enemies": 103,
+     "peak": 114,
+     "drops": 12,
+     "shots": 0,
+     "weapons": "blade2 vine2 fire1",
+     "passives": ""
+    },
+    "draws": 6
+   }
+  },
+  {
+   "t": 70.6,
+   "enemies": 111,
+   "draws": 6,
+   "level": 5,
+   "kit": "blade2 vine2 fire1"
+  },
+  {
+   "shot": "04-t120",
+   "seconds": 24.875,
+   "state": {
+    "ready": true,
+    "screen": "play",
+    "frames": 559,
+    "hot": {},
+    "maxDraws": 53,
+    "save": {
+     "coins": 0,
+     "meta": {
+      "might": 0,
+      "vitality": 0,
+      "greed": 0
+     },
+     "best": 0,
+     "runs": 0
+    },
+    "run": {
+     "time": 122.4,
+     "state": "play",
+     "hp": 110,
+     "level": 10,
+     "kills": 379,
+     "enemies": 70,
+     "peak": 114,
+     "drops": 127,
+     "shots": 0,
+     "weapons": "blade3 vine3 fire2",
+     "passives": "vitality1 area1"
+    },
+    "draws": 36
+   }
+  },
+  {
+   "t": 120.3,
+   "enemies": 73,
+   "draws": 29,
+   "level": 10,
+   "kit": "blade3 vine3 fire2"
+  },
+  {
+   "shot": "05-t180",
+   "seconds": 36.939,
+   "state": {
+    "ready": true,
+    "screen": "play",
+    "frames": 773,
+    "hot": {},
+    "maxDraws": 108,
+    "save": {
+     "coins": 0,
+     "meta": {
+      "might": 0,
+      "vitality": 0,
+      "greed": 0
+     },
+     "best": 0,
+     "runs": 0
+    },
+    "run": {
+     "time": 182.7,
+     "state": "play",
+     "hp": 88,
+     "level": 13,
+     "kills": 697,
+     "enemies": 299,
+     "peak": 299,
+     "drops": 45,
+     "shots": 0,
+     "weapons": "blade3 vine3 fire3 thunder1",
+     "passives": "vitality1 area1 haste1"
+    },
+    "draws": 58
+   }
+  },
+  {
+   "t": 180.2,
+   "enemies": 283,
+   "draws": 78,
+   "level": 13,
+   "kit": "blade3 vine3 fire3 thunder1"
+  },
+  {
+   "shot": "06-t246",
+   "seconds": 50.028,
+   "state": {
+    "ready": true,
+    "screen": "play",
+    "frames": 981,
+    "hot": {},
+    "maxDraws": 120,
+    "save": {
+     "coins": 0,
+     "meta": {
+      "might": 0,
+      "vitality": 0,
+      "greed": 0
+     },
+     "best": 0,
+     "runs": 0
+    },
+    "run": {
+     "time": 248.1,
+     "state": "play",
+     "hp": 46,
+     "level": 16,
+     "kills": 1166,
+     "enemies": 419,
+     "peak": 421,
+     "drops": 64,
+     "shots": 0,
+     "weapons": "blade3 vine3 fire5* thunder1",
+     "passives": "vitality1 area1 haste1"
+    },
+    "draws": 101
+   }
+  },
+  {
+   "t": 245.5,
+   "enemies": 419,
+   "draws": 87,
+   "level": 16,
+   "kit": "blade3 vine3 fire5* thunder1"
+  },
+  {
+   "shot": "07-t290",
+   "seconds": 58.938,
+   "state": {
+    "ready": true,
+    "screen": "play",
+    "frames": 1109,
+    "hot": {},
+    "maxDraws": 120,
+    "save": {
+     "coins": 0,
+     "meta": {
+      "might": 0,
+      "vitality": 0,
+      "greed": 0
+     },
+     "best": 0,
+     "runs": 0
+    },
+    "run": {
+     "time": 292.7,
+     "state": "play",
+     "hp": 52,
+     "level": 17,
+     "kills": 1431,
+     "enemies": 420,
+     "peak": 421,
+     "drops": 75,
+     "shots": 0,
+     "weapons": "blade3 vine3 fire5* thunder1",
+     "passives": "vitality1 area1 haste1 might1"
+    },
+    "draws": 84
+   }
+  },
+  {
+   "t": 290.1,
+   "enemies": 420,
+   "draws": 78,
+   "level": 17,
+   "kit": "blade3 vine3 fire5* thunder1"
+  },
+  {
+   "shot": "08-result",
+   "seconds": 61.903,
+   "state": {
+    "ready": true,
+    "screen": "result",
+    "frames": 1146,
+    "hot": {
+     "home": [
+      640,
+      512
+     ]
+    },
+    "maxDraws": 120,
+    "save": {
+     "coins": 164,
+     "meta": {
+      "might": 0,
+      "vitality": 0,
+      "greed": 0
+     },
+     "best": 300.0000000000558,
+     "runs": 1
+    },
+    "run": {
+     "time": 300,
+     "state": "won",
+     "hp": 55,
+     "level": 17,
+     "kills": 1483,
+     "enemies": 420,
+     "peak": 421,
+     "drops": 95,
+     "shots": 0,
+     "weapons": "blade3 vine3 fire5* thunder1",
+     "passives": "vitality1 area1 haste1 might1"
+    },
+    "draws": 105,
+    "payout": 164
+   }
+  },
+  {
+   "end": {
+    "time": 300,
+    "state": "won",
+    "hp": 55,
+    "level": 17,
+    "kills": 1483,
+    "enemies": 420,
+    "peak": 421,
+    "drops": 95,
+    "shots": 0,
+    "weapons": "blade3 vine3 fire5* thunder1",
+    "passives": "vitality1 area1 haste1 might1"
+   },
+   "payout": 164,
+   "maxDraws": 120
+  },
+  {
+   "shot": "09-title-after",
+   "seconds": 63.774,
+   "state": {
+    "ready": true,
+    "screen": "title",
+    "frames": 1176,
+    "hot": {
+     "start": [
+      640,
+      338
+     ],
+     "meta-might": [
+      310,
+      558
+     ],
+     "meta-vitality": [
+      640,
+      558
+     ],
+     "meta-greed": [
+      970,
+      558
+     ],
+     "mute": [
+      1185,
+      45
+     ]
+    },
+    "maxDraws": 120,
+    "save": {
+     "coins": 164,
+     "meta": {
+      "might": 0,
+      "vitality": 0,
+      "greed": 0
+     },
+     "best": 300.0000000000558,
+     "runs": 1
+    },
+    "run": {
+     "time": 300,
+     "state": "won",
+     "hp": 55,
+     "level": 17,
+     "kills": 1483,
+     "enemies": 420,
+     "peak": 421,
+     "drops": 95,
+     "shots": 0,
+     "weapons": "blade3 vine3 fire5* thunder1",
+     "passives": "vitality1 area1 haste1 might1"
+    },
+    "draws": 10,
+    "payout": 164
+   }
+  }
+ ]
+}

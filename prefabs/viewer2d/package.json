@@ -1,0 +1,25 @@
+{
+  "name": "zhuda-common-2d-viewer",
+  "private": true,
+  "type": "module",
+  "description": "prefabs 的 2D 觀看台（固定 WebGL）：用網址叫出任何一個共用 2D 場景或遊戲（?scene=<id>），也是 2D 模組的整合測試。",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "sync": "node ../scripts/sync.mjs .",
+    "sync:check": "node ../scripts/sync.mjs . --check",
+    "build": "node tools/build.mjs",
+    "typecheck": "tsc --noEmit",
+    "doctor": "zhuda-laya-doctor --project .",
+    "test": "node --test tests/",
+    "verify": "npm run sync && npm run sync:check && npm run build && npm run typecheck && npm run doctor && npm test",
+    "view": "node tools/serve.mjs 8931"
+  },
+  "dependencies": {
+    "zhuda-laya-engine": "file:../.."
+  },
+  "devDependencies": {
+    "typescript": "5.9.3"
+  }
+}

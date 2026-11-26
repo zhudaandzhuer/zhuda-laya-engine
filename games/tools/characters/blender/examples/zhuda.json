@@ -1,0 +1,40 @@
+{
+  "fps": 30,
+  "twist": [],
+  "chains": [
+    {
+      "bones": [
+        "ear.L"
+      ],
+      "hz": 2.6,
+      "damping": 0.35,
+      "limit": 35,
+      "wind": 2.5,
+      "windSeconds": 1.9
+    },
+    {
+      "bones": [
+        "ear.R"
+      ],
+      "hz": 2.6,
+      "damping": 0.35,
+      "limit": 35,
+      "wind": 2.5,
+      "windSeconds": 1.9
+    },
+    {
+      "bones": [
+        "tail"
+      ],
+      "hz": 2.8,
+      "damping": 0.55,
+      "limit": 30,
+      "wind": 3,
+      "windSeconds": 1.9
+    }
+  ],
+  "loops": [
+    "Idle",
+    "Walk"
+  ]
+}

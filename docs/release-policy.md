@@ -7,6 +7,26 @@ for every public stable version.
 
 ## Current stable release
 
+**v2.0.1** (2026-11-26) — what came after 2.0.0 the same week: a film scene drawn
+live on a page takes its lens from `prepare` and keeps what was fixed at mount
+through the quality levels; the watcher answers a save of a script by rebuilding
+`app.js` alone; interface tests by a probe of the stage; a consumer reached
+through a link registers its classes; the hosiery modules; a bar for characters
+that are looked at closely. No breaking change to the public API. The tag
+`v2.0.1` is on `main` of the engine's own GitHub repository, and consumers pin
+it there (`git+https://github.com/zhudaandzhuer/zhuda-laya-engine.git#v2.0.1`).
+The work goes on in the owner's verification repository; what is published is
+that tree without one outside model and its records, which are not the owner's
+to publish. Details in the [changelog](../CHANGELOG.md).
+
+**v2.0.0** (2026-11-26) — one repository: the prefab library ships in the package
+(`prefabs/`, synced into a game with `zhuda-prefab-sync`), the route library holds
+the game centre's routes and one route per workspace game, glTF clips cross fade
+from one to the other, and `boot` takes a `layoutSize`. No breaking change to
+the public API from 1.18.0, which was never tagged and is part of this release.
+It was tagged in the owner's verification repository only and never published
+on the engine's own; 2.0.1 is the first release there after 1.17.0.
+
 **v1.17.0** — procedural asset pipeline (CPU-baked seamless PBR recipes,
 geometry kit, props with colliders and per-material merging, synthesised
 audio, generated assets behind `AssetProvider`) with a real WebGL draw gate.

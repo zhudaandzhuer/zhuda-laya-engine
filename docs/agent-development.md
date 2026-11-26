@@ -124,6 +124,10 @@ fades over the page for another 420 ms and `#zhudaLogoSplash` is removed at
 460 ms. A check that screenshots the page waits until that node is gone, as
 `scripts/verify-procedural-draw.mjs` does; reading the canvas's own pixels
 does not need to.
+`window.__ZHUDA_SPLASH__.gone` is true once the node is out, the page sends
+`zhuda:splash-gone` on `window` once, and `await whenZhudaSplashGone()` waits for
+exactly that (at once where there is no splash; it rejects after 30 seconds on a
+page that never finishes loading).
 
 ## Evidence and handoff
 

@@ -10,3 +10,4 @@ export * from './FrameMetrics.js';
 export * from './ColorValues.js';
 export * from './FlythroughReport.js';
 export * from './Flythrough.js';
+export * from './Projection.js';

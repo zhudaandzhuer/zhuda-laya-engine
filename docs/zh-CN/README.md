@@ -1,24 +1,59 @@
-<a href="#支持这个引擎"><img src="../assets/sponsor-pass.svg" alt="支持豬大：让下一帧继续。通过 Solana 网络捐助 SOL 或 USDC。" width="1280" /></a>
-
-## 支持这个引擎
-
-帮助独立开发者持续制作开源游戏工具。你的支持将用于引擎开发、文档完善，以及真实手机上的兼容性与性能测试。
-
-**SOL / USDC · 网络：Solana** — 扫描上方二维码，或复制下面的钱包地址：
-
-```text
-E4ZEhFCYy4b5pYXJUbMC9KjRitkypyqtZvpSRerLWHCb
-```
-
-[在 Solscan 查看钱包](https://solscan.io/account/E4ZEhFCYy4b5pYXJUbMC9KjRitkypyqtZvpSRerLWHCb) · [打开独立二维码](../assets/solana-qr.png) · [赞助说明](../SUPPORT.md)
-
----
-
 # zhuda-laya-engine
 
 [English](../../README.md) · 简体中文
 
-**基于 LayaAir 3.4.2，为 AI 编程代理打造的游戏 SDK 与工具链。**
+**基于 LayaAir 3.4.2，为 AI 编程代理打造的游戏 SDK 与工具链。** 使用 TypeScript、CLI 和编程代理开发 2D、3D 与 Spine 4.2 游戏。这个分支在上游引擎基础上增加模块依赖排序、组件注册、公开 SDK 类型、视觉移植检查和 MCP 服务；已提供的工作流可以脱离 LayaAir IDE 执行。
+在这个引擎上做每一种东西的做法都写成一份**路线**；写出这些路线的游戏就放在本仓库里，随引擎一起重建、一起测试。
+
+[![LayaAir 3.4.2](https://img.shields.io/badge/LayaAir-3.4.2-0ea5e9)](https://github.com/layabox/LayaAir) [![MIT](https://img.shields.io/badge/license-MIT-4ade80)](../../LICENSE) [![Node.js 24+](https://img.shields.io/badge/Node.js-24%2B-6cc24a)](../../package.json)
+
+<a href="#支持这个引擎"><img src="../assets/sponsor-pass.svg" alt="支持豬大：让下一帧继续。通过 Solana 网络捐助 SOL 或 USDC。" width="1280" /></a>
+
+## 开始一个游戏
+
+需要 Node.js 24 或更新版本。游戏放在自己的仓库里，把引擎固定在某个提交：
+
+```sh
+git clone https://github.com/zhudaandzhuer/zhuda-laya-engine.git && cd zhuda-laya-engine && npm ci
+node packages/compiler/zhuda-init.mjs /absolute/path/to/my-game
+cd /absolute/path/to/my-game && npm install && npm run verify
+```
+
+脚手架会生成 `public/index.html`、`src/Main.ts`（导入公开 SDK 并调用 `ZhudaEngine.boot`）和 `verify` 脚本：构建、类型、Doctor、测试。之后以[消费项目路线](../consumer-route.md)为准。
+
+## 找到你的路线
+
+一份路线是 [`docs/routes/`](../routes/README.md) 里的一页，格式固定：何时用、工具、步骤与实际用过的数值、踩过的坑、引擎缺口、检查、**没有**检查的、边界。动手设计之前先读路线。
+
+```sh
+node packages/mcp-server/index.mjs --tool list_routes
+node packages/mcp-server/index.mjs --tool get_route --args '{"id":"new-game-project"}'
+```
+
+| 你要做的事 | 路线 |
+| --- | --- |
+| 开始一个游戏或应用 | [new-game-project](../routes/new-game-project.md) |
+| 让游戏可以被检查：规则有测试、机器人试玩、真实输入的录制 | [game-rules-first](../routes/game-rules-first.md) |
+| 做 2D 游戏或游戏界面 | [game-2d](../routes/game-2d.md) |
+| 做某一类已有做法的游戏 | [平台跳跃](../routes/platformer-2d.md) · [三消](../routes/match-three-2d.md) · [节奏](../routes/rhythm-2d.md) · [合成](../routes/merge-2d.md) · [放置抽卡](../routes/idle-gacha-2d.md) · [割草生存](../routes/survivors-2d.md) · [塔防](../routes/tower-defence-3d.md) · [狩猎动作](../routes/hunting-action-3d.md) |
+| 运行时给 3D 角色换装 | [outfit-swap-3d](../routes/outfit-swap-3d.md)，身体的做法见 [humanoid-from-shapes](../routes/humanoid-from-shapes.md)，批量做不穿模的衣服和配件见 [clip-free-garments](../routes/clip-free-garments.md) |
+| 让 3D 场景好看 | [good-looking-3d-scene](../routes/good-looking-3d-scene.md)、[质量路线](../quality-route.md) |
+| 用数据做场景、静帧或影片 | [film-as-data](../routes/film-as-data.md) |
+| 从 Blender 带进一个模型 | [model-from-dcc](../routes/model-from-dcc.md) |
+| 增加或修改玩家看得到的任何东西 | [visual-content-prefab](../routes/visual-content-prefab.md) |
+| 写成一个 HTML 页面 | [single-html-page](../routes/single-html-page.md) |
+| 打包小游戏 | [mini-game-build](../routes/mini-game-build.md) |
+| 修改引擎本身 | [`AGENTS.md`](../../AGENTS.md) |
+
+路线正文为英文。
+
+## 参考游戏
+
+[![九款参考游戏](../assets/reference-games.jpg)](../../games/README.md)
+
+[`games/`](../../games/README.md) 下的九款小游戏是本仓库引擎的消费项目：3D 狩猎动作、3D 塔防、3D 换装、放置抽卡、割草生存、合成、平台跳跃、三消、节奏。每一款是一份路线的实例；`npm run verify:games` 会用当前提交的引擎把它们全部构建、检查类型、跑 Doctor 和测试，所以引擎的改动弄坏了哪一款，在这里就会发现。
+
+它们是测试用的消费项目，不是成品：规则有测试和机器人覆盖，每款都有在无头浏览器里用真实输入录制的一次运行；但没有人实际玩过，没有在手机上跑过，美术是占位用的。
 
 ## 用这个引擎做的游戏
 
@@ -30,231 +65,63 @@ E4ZEhFCYy4b5pYXJUbMC9KjRitkypyqtZvpSRerLWHCb
 
 游戏本身、美术、配音与发布属于独立项目，不在本仓库内。
 
----
+## 引擎里有什么
 
-**当前稳定版：[v1.17.0](https://github.com/zhudaandzhuer/zhuda-laya-engine/releases/tag/v1.17.0)** · 版本唯一来源是根目录 `package.json`；`zhuda.config.json`、lockfile 与生成的 manifest 必须保持一致。v1.1.0 等旧 tag 仅代表历史发行版，不是当前 SDK。
+- **LayaAir 3.4.2 之上的带类型 SDK**：`ZhudaEngine`、`Zhuda3D`、`ZhudaUI`、`ZhudaPrefab`，模块排序、组件注册、已知问题的防护；默认 WebGL，可选 WebGPU（[WebGPU](../webgpu.md)）。
+- **用数据做场景和影片**：代理把场景写成 JSON，取回预览，渲染静帧或 MP4（[film scenes](../film-scenes.md)、[cinematics](../cinematics.md)）；[质量路线](../quality-route.md)是把 3D 场景做得有光、落地、有纵深的顺序。
+- **动作游戏运行时**：分层时钟与定时器、动作帧数据、输入缓冲、模型动画控制（[combat runtime](../combat-runtime.md)、[animation control](../animation-control.md)）。
+- **资产**：带租约、超时与取消的 provider，glTF、细节层次，程序化贴图、道具与合成音效（[asset loading](../asset-loading.md)、[model pipeline](../model-pipeline.md)、[procedural assets](../procedural-assets.md)）。
+- **2D、界面与特效**：设计像素布局、可单独预览的预制体、瓦片地形、带种子的粒子与现成特效、唯一的音频出口（[layout](../layout-and-media.md)、[prefab workflow](../prefab-workflow.md)、[audio](../audio.md)）。
+- **给代理的工具**：MCP 服务（路线、API 护栏、范例、校验器）、指出文件与行号的 Doctor、带证据关卡的消费项目构建（[agent development](../agent-development.md)、[consumer tooling](../consumer-tooling.md)）。
+- **交付**：Web 构建、单 HTML 浏览器 SDK、小游戏打包、白牌品牌（[browser SDK](../browser-sdk.md)、[mini-games](../minigame-packaging.md)、[white-label](../white-label-themes.md)）。
 
-[![LayaAir 3.4.2](https://img.shields.io/badge/LayaAir-3.4.2-0ea5e9)](https://github.com/layabox/LayaAir) [![MIT](https://img.shields.io/badge/license-MIT-4ade80)](../../LICENSE) [![Node.js 24+](https://img.shields.io/badge/Node.js-24%2B-6cc24a)](../../package.json)
+[文档索引](../README.md)列出每一份指南并说明代码在哪里；[总览](../overview.md)是较长的介绍；[更新记录](../../CHANGELOG.md)写每个版本增加了什么。指南正文为英文；每份都写明量过什么、没量过什么。
 
-使用 TypeScript、CLI 和编程代理开发 2D、3D 与 Spine 4.2 游戏。这个分支在上游引擎基础上增加模块依赖排序、组件注册、公开 SDK 类型、视觉移植检查和 MCP 服务；已提供的工作流可以脱离 LayaAir IDE 执行。
-
-由 [豬大 Zhuda](https://github.com/zhudaandzhuer) 维护。底层渲染与物理由 [LayaAir / Layabox](https://layaair.com/) 提供。本项目是独立分支，捐助用于支持豬大在这个仓库的开发工作。
-
-## 1.10.0 白牌与 H5 量产基础
-
-默认保留「猪大 × LayaAir」启动画面，可显式配置客户品牌或关闭画面，授权
-notices 仍保留。新增不可变 Theme 映射、素材 SHA 校验、可取消的预备切换和
-权威结果／演出进度恢复契约。`zhuda-laya-init --template 2d` 提供严格类型的
-2D 独立项目。详见[使用契约及边界](../white-label-themes.md)。完整 Slot Factory、
-原生签章发行及客户真机验收仍是独立阶段，不以桌面样例宣称完成。
-
-## 1.9.0 模型检查与导入可靠性
-
-必需 glTF 扩展不支持时明确拒绝，修复节点 Morph 权重与 CUBICSPLINE 动画。
-新增相容性报告、模型 Inspector、同一实例的 Raw / Gameplay / Cinematic 模式
-和包含 glTF / 后处理的 HTML bundle。参见[模型展示契约](../model-showcase.md)。
-Cinematic 是实时后处理，不等于离线电影管线，也不保证所有资产与 UE 一致。
-
-## 1.8.0 群体呈现与可测量的预算
-
-模型通过 provider 共享离场模板和动画片段，并在释放时完成 native 资源清理。
-新增群体／远端快照呈现排程、动画 LOD、重要特效保留与 fallback、可调粒子频率，
-以及有界 P50/P95/P99、原始记录和可选 GPU query profiler。
-[接入方式与平台边界](../crowd-runtime.md)提供真实骨骼角色 25/50/100 测试和重现命令；
-这些证据不等于商业 MMO、手机百人战斗或 Windows/Steam 已通过验收。
-
-## 1.7.0 运行时改进
-
-修复高 DPR 下的设计坐标，增加同一 mixer 内的串流 BGM、FIFO／优先级声道回收、
-样本后端扩展，以及可插拔后台时钟与恢复策略。完整 vendor 声明检查已从 506 项
-错误降到 0，并加入必跑验证。详情与未验证的真机／Worklet 限制见
-[本轮验收记录](../plans/records/runtime-feedback/verification.md)。
-
-## 从这里开始：建立真正的消费项目
-
-引擎仓库用于 SDK 与工具链开发。游戏应放在独立仓库，并按照[消费项目接入路线](../consumer-route.md)开始：
+## 开发引擎本身
 
 ```sh
-# 在引擎仓库执行 npm install 后运行
-node packages/compiler/zhuda-init.mjs /absolute/path/to/my-game
-cd /absolute/path/to/my-game
-npm install
-npm run verify
+npm ci                  # 安装并构建
+npm run verify          # 构建、类型、声明审计、Doctor、测试
+npm run verify:games    # 用当前提交的引擎验证参考游戏
+npm start               # 引擎工作台 http://localhost:8890/（不是游戏脚手架）
 ```
 
-脚手架会固定引擎 commit，创建带 `ZHUDA_LIBS`／`ZHUDA_ENTRY` 标记的
-`public/index.html`，并创建从公开 SDK 导入且调用 `ZhudaEngine.boot` 的
-`src/Main.ts`。游戏规则、美术资源、Prefab、Scene 与部署由消费项目自己
-负责。新增视觉内容前先读根目录 [`AGENTS.md`](../../AGENTS.md) 与[Prefab 工作流](../prefab-workflow.md)。静态通过不等于真实 WebGL 或设备支持。
-
-不要使用 Three.js renderer、内联假的 `ZhudaEngine`、复制的
-`packages/core` 或引擎深层路径后宣称是 Zhuda 项目；消费端 Doctor 会给出
-文件与行号。项目报告请使用[消费项目接入路线](../consumer-route.md)的分级声明。
-
-## 探索引擎能力
-
-### 粒子与特效
-
-定种子的 2D/3D 粒子，支持对象池、拖尾、序列帧、碰撞事件、VFX 材质、时间轴、挂点与质量预算。效果预设及其美术属于消费项目。
-
-[粒子 API 与限制](../../packages/core/particles/README.md) · [特效 API](../../packages/core/effects/README.md)
-
-### 地形与 Shader
-
-可编辑的 2D tile 地图与 3D 高度场，支持分块载卸、LOD 1/2/4、封闭侧壁/底面及相机 boom 避障射线。PBR、贴图、雾、溶解、2D tint/atlas 均通过实际 WebGL draw 检查，天空材质可以单独关闭场景雾。
-
-[API 用法](../terrain-shader.md) · [验收范围](../3d-acceptance.md)
-
-## 分支增加了什么
-
-| 领域 | 公开工具与行为 |
-| --- | --- |
-| 模块载入 | `TopologyResolver` 为 29 个运行时模块进行依赖排序并按需选取功能；2D light 配置的库体积减少约 83%。 |
-| CLI 构建 | `zhuda-laya-build` 结合 esbuild 与 TypeScript AST，生成 Web 产物和 ESM/CJS SDK。 |
-| 组件注册 | `@zhudaComponent` 与 AST 扫描器在预制体反序列化前注册组件。 |
-| 运行时防护 | `EngineGuard` 处理已知的 3.4.2 接入问题，包括 `Graphics.setState` / `Button` 错误。 |
-| 类型化构建 | `ZhudaEngine`、`Zhuda3D`、`ZhudaUI`、`ZhudaPrefab` 提供代码式构建；公开类型排除 IDE 专用声明。 |
-| Agent 接入 | MCP 服务提供 API 护栏、模块依赖、范例、诊断与资产/粒子验证。 |
-| 视觉移植 | 资产审计核对 Spine 4.2 呈现数据，Unity 动画和材质包装必须有明确映射。 |
-| 视觉状态契约 | `SpineVisualContract` 拒绝缺少呈现数据的替代物；`VisualFocusContract` 区分聚焦、空选择与还原。 |
-| 静态资产与 UI | `.lh` / `.ls` 序列化、明确 `percent:false`、像素边界/颜色对照、九宫格与安全区检查。 |
-| 特效 | 定种子 2D/3D 粒子、对象池、拖尾、序列帧、碰撞事件、VFX 材质、时间轴、挂点与质量预算。 |
-
-### 3D 地形、Shader 与接入
-
-公开 3D SDK 补充独立消费端构建、资源 lease、PBR/自定义材质、动态网格、相机/输入/查询契约、时钟、2D tile 地图与支持分块载卸、编辑、LOD 1/2/4 的 3D 高度场。
-
-`npm run verify` 会执行全部自动化引擎测试并输出当前测试数量（本文不写死数字）；该接入另有 41 项真实 WebGL 检查。Shader 验证包含图集 UV、染色、透明度、裁切、贴图/雾/溶解变体与真实编译诊断。具体用法和范围见[3D 接入文档](../3d-integration.md)、[地形/Shader 契约](../terrain-shader.md)与[验收限制](../3d-acceptance.md)。小场景数据不能推导完整游戏地图与服务器性能。
-
-### 资产来源边界
-
-消费项目通过 `AssetProvider` 使用稳定的逻辑资产 ID。当前开发与 Web 默认使用 `DirectoryAssetProvider`，提供超时、取消、有界读取、manifest 校验和进度回报。未来可以接入 CDN 分块、ZIP 或 Rust/WASM provider，而不改动游戏规则和场景代码。详见[资产加载契约](../asset-loading.md)。
-
-预计的引擎工作统一放在[开发计划目录](../plans/README.md)。计划在完成测量与验收门槛前都只是提案。
-
-## 快速开始
-
-需要 Node.js 24 或更新版本。
-
-```sh
-git clone https://github.com/zhudaandzhuer/zhuda-laya-engine.git
-cd zhuda-laya-engine
-npm install
-npm run verify
-npm start
-```
-
-打开 `http://localhost:8890/` 查看本地工作台。
-
-```ts
-import { ZhudaEngine, Zhuda3D } from 'zhuda-laya-engine';
-
-const { rootScene } = await ZhudaEngine.boot({
-  width: 1280, height: 720, features: ['core', '3d'],
-});
-const scene = Zhuda3D.createScene3D(rootScene);
-Zhuda3D.createCamera(scene, {
-  position: [0, 4, 8], rotationEuler: [-25, 0, 0],
-});
-Zhuda3D.createDirectionalLight(scene);
-const cube = new Laya.MeshSprite3D(
-  Zhuda3D.createPrimitiveMesh('box', { width: 1.5, height: 1.5, depth: 1.5 }),
-);
-cube.meshRenderer.sharedMaterial = Zhuda3D.createMaterial({
-  type: 'pbr', albedoColor: [0.2, 0.7, 1, 1], smoothness: 0.5,
-});
-scene.addChild(cube);
-```
-
-消费项目需要先载入选定的 Laya 运行时模块，再启动 SDK。使用编译器计算模块顺序，避免混用不同代际 API。SDK 开发使用本仓库；游戏消费端使用打包产物或固定 Git commit。复杂任务开始前请先阅读根目录 [`AGENTS.md`](../../AGENTS.md) 与[代理开发手册](../agent-development.md)；MCP 的 `get_agent_contract` 与 `validate_task_spec` 会提供相同的边界与验收规则。
-
-这里的快速开始启动的是**引擎工作台**。外部游戏请使用[消费项目接入路线](../consumer-route.md)或已安装的 `zhuda-laya-init`，再在游戏仓库执行自己的 `npm run verify`。
-
-| 指令 | 用途 |
-| --- | --- |
-| `node packages/compiler/zhuda-init.mjs /absolute/path/to/consumer` | 建立固定公开 SDK 的消费项目骨架 |
-| `npm run build` | 生成工作台与 SDK 产物 |
-| `npm run typecheck` | 检查公开/运行时类型与应用源码 |
-| `npm run audit:declarations` | 不跳过完整声明检查；目前会因既有 vendor 声明欠债而失败 |
-| `npm run doctor` | 检查模块顺序、注册与已知旧 API 使用 |
-| `npm run agent:contract` | 输出机器可读的代理边界、工作流与证据契约 |
-| `npm test` | 执行 Node 单元与集成测试 |
-| `npm run verify` | 完整构建、类型、体检与测试 |
-| `npm run pack:tarball` | 在 `dist/` 生成可安装包 |
-
-## 接入编程代理
-
-在 MCP 客户端中加入：
-
-```json
-{
-  "mcpServers": {
-    "zhuda-laya-engine": {
-      "command": "node",
-      "args": ["/absolute/path/to/zhuda-laya-engine/packages/mcp-server/index.mjs"]
-    }
-  }
-}
-```
-
-也能直接从终端调用：
-
-```sh
-node packages/mcp-server/index.mjs --tool resolve_topology --args '{"features":["3d","spine42"]}'
-node packages/mcp-server/index.mjs --tool get_golden_example --args '{"id":"boot-declarative-3d"}'
-```
-
-先查护栏并验证数据，再生成场景。Schema 验证只检查数据契约；渲染与 shader 编译需要通过真实 WebGL draw 验收。
-
-## 先移植资产，再接游戏规则
-
-先盘点来源资产、确认呈现要求、进行独立验证，再连接已有的游戏规则。
-
-```sh
-node packages/compiler/visual-asset-audit.mjs \
-  --source /absolute/path/to/unity/Assets/Game \
-  --target /absolute/path/to/consumer/assets \
-  --strict \
-  --report /absolute/path/to/consumer/dist/visual-migration.json
-
-node packages/compiler/visual-contract-audit.mjs \
-  --project /absolute/path/to/consumer
-```
-
-资产审计检查 Spine 动画、皮肤、骨骼、插槽、约束、图集和贴图。未知 shader 映射会被阻挡；Unity `.anim`、`.controller`、`.mat` 包装需要明确目标契约，转换器不承诺兼容任意 Unity 程序。
-
-`visual-presentation-manifest.json` 定义来源/目标呈现、作用域、状态、非聚焦目标及还原规则。在 `zhuda.config.json` 声明 `visualContract` 后，构建会执行这道检查。
-
-```ts
-import { VisualFocusContract } from 'zhuda-laya-engine';
-VisualFocusContract.apply(targets, VisualFocusContract.focus(winningIds));
-VisualFocusContract.apply(targets, VisualFocusContract.clear());
-```
-
-Unity 动画与材质的明确映射放在 `visual-migration-manifest.json`；[英文说明](../../README.md#migrate-assets-before-gameplay)附有可复制的 JSON 范例。
-
-## 粒子与特效
-
-`ZhudaParticleSystem` / `ZhudaParticleSystem3D` 提供固定步长模拟、定种子重播、有界对象池、本地/世界空间及按距离发射。Laya renderer 支持贴图、3D billboard、历史拖尾及沿路径逐步显现的气流。
-
-还包含 VFX 材质、相机 pass 预算、序列帧、平面碰撞、事件链、时间轴、3D 挂点与 draw-call profiler。游戏专属特效配方、美术和规则保存在消费项目。
-
-[粒子 API 与限制](../../packages/core/particles/README.md) · [特效 API](../../packages/core/effects/README.md)
+修改之前先读 [`AGENTS.md`](../../AGENTS.md)：它是本仓库的约定（任务说明、证据、必须保持成立的事）。未完成的工作在 [`HANDOFF.md`](../../HANDOFF.md)。
 
 ## 仓库结构
 
 ```text
-packages/core/          SDK、特效、粒子与引擎适配
-packages/compiler/      CLI 构建、AST 注册与视觉审计
-packages/mcp-server/    Agent 工具、API 护栏与范例
-packages/types/         公开类型和上游运行时声明
-packages/ci-gate/       浏览器首帧检查与报告
-vendor/laya-3.4.2/      上游运行时库
-assets/                 通用测试资产与预制体
-src/                    引擎工作台与独立资产预览
-docs/                   文档、赞助图像与语言版本
-tests/                  单元、集成与公开类型检查
+packages/core/          SDK：运行时、3D、film 场景、特效、粒子、地形、音频
+packages/types/         公开类型声明，由 packages/core 生成
+packages/compiler/      命令行工具：构建、初始化、Doctor、编辑器、审计
+packages/mcp-server/    代理工具：路线、护栏、范例、film host
+packages/ci-gate/       序列与影片导出检查
+vendor/                 LayaAir 3.4.2 运行时与固定版本的第三方组件（含授权）
+games/                  参考游戏：本仓库引擎的消费项目，及其工具
+docs/routes/            每一类东西怎么做
+docs/                   每个子系统一份指南（索引：docs/README.md）；计划与记录
+examples/               可运行的小宿主（浏览器 SDK、模型检查器、影片捕获）
+src/、assets/           引擎自己的工作台应用与测试资产
+scripts/、tests/        浏览器检查（npm run verify:<name>）与 Node 测试
 ```
+
+## 版本
+
+**当前稳定版：[v1.17.0](https://github.com/zhudaandzhuer/zhuda-laya-engine/releases/tag/v1.17.0)** · 版本唯一来源是根目录 `package.json`；`zhuda.config.json`、lockfile 与生成的 manifest 必须保持一致。v1.1.0 等旧 tag 仅代表历史发行版，不是当前 SDK。 每个版本增加了什么见[更新记录](../../CHANGELOG.md)。
+
+由 [豬大 Zhuda](https://github.com/zhudaandzhuer) 维护。底层渲染与物理由 [LayaAir / Layabox](https://layaair.com/) 提供。本项目是独立分支，捐助用于支持豬大在这个仓库的开发工作。
+
+## 支持这个引擎
+
+帮助独立开发者持续制作开源游戏工具。你的支持将用于引擎开发、文档完善，以及真实手机上的兼容性与性能测试。
+
+**SOL / USDC · 网络：Solana** — 扫描页面顶部的二维码，或复制下面的钱包地址：
+
+```text
+E4ZEhFCYy4b5pYXJUbMC9KjRitkypyqtZvpSRerLWHCb
+```
+
+[在 Solscan 查看钱包](https://solscan.io/account/E4ZEhFCYy4b5pYXJUbMC9KjRitkypyqtZvpSRerLWHCb) · [打开独立二维码](../assets/solana-qr.png) · [赞助说明](../SUPPORT.md)
 
 ## 授权与致谢
 

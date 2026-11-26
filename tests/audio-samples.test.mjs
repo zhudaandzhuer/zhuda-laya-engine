@@ -289,3 +289,33 @@ test('unload and stopAll clear queued samples; focus suspends the one context', 
   assert.equal(context.state, 'running');
   audio.dispose();
 });
+test('a sample voice reports its place in the sample by the audio clock, wraps in a loop, and is null when not playing', async () => {
+  const { audio, context } = fixture();
+  await audio.loadSample('audio/test.wav');
+  assert.equal(audio.getSamplePositionSec('song'), null, 'never started');
+  assert.equal(audio.getOutputLatencySec(), 0, 'no context yet');
+  audio.playSample({ id: 'song', sampleId: 'audio/test.wav', channel: 'bgm', offsetSec: 0.5 });
+  assert.equal(audio.getSamplePositionSec('song'), null, 'queued before unlock');
+  audio.unlockAudio('fixture');
+  assert.equal(audio.getSamplePositionSec('song'), 0.5);
+  context.currentTime = 10.75;
+  assert.equal(audio.getSamplePositionSec('song'), 1.25);
+  // A suspended context does not advance currentTime: the position stands still with it.
+  assert.equal(audio.getSamplePositionSec('song'), 1.25);
+  assert.equal(audio.getSamplePositionSec('other'), null);
+  context.outputLatency = 0.04;
+  assert.equal(audio.getOutputLatencySec(), 0.04);
+  audio.stop('song');
+  assert.equal(audio.getSamplePositionSec('song'), null, 'stopped');
+  context.currentTime = 20;
+  audio.playSample({
+    id: 'loop',
+    sampleId: 'audio/test.wav',
+    loop: true,
+    loopStartSec: 0.5,
+    loopEndSec: 1.5,
+  });
+  context.currentTime = 22.75; // 2.75 s in: 0.5 + (2.25 mod 1)
+  assert.ok(Math.abs(audio.getSamplePositionSec('loop') - 0.75) < 1e-9);
+  audio.dispose();
+});

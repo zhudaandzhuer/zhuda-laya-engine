@@ -10,6 +10,8 @@ commands and evidence, not a confidence statement.
 | --- | --- |
 | Build a game, a scene, a film, a model or a release **with** the engine | `node packages/mcp-server/index.mjs --tool list_routes`, pick the route, then `--tool get_route --args '{"id":"<id>"}'`. Every route is one page in [`docs/routes/`](docs/routes/README.md), in one format. |
 | Change the engine itself | Read on: "Required reading before implementation", then "Development protocol". |
+| Check an engine change against real games | `npm run verify:games`: the reference games under [`games/`](games/README.md) build, type-check, doctor and test against this checkout. |
+| Use or add something several games share (interface, input, saving, a 3D scene, a 2D game as modules, a game server's Go packages) | [`prefabs/`](prefabs/README.md), the prefab library: [how a game takes modules from it](docs/prefab-library.md). Look there before writing a component in a game; `npm run verify:prefabs` checks it against this checkout. |
 | Pick up unfinished work | [`HANDOFF.md`](HANDOFF.md), then [`docs/plans/README.md`](docs/plans/README.md). |
 
 ## Repository boundary
@@ -24,6 +26,31 @@ videos and deployment. A consumer may provide adapters and samplers through a
 public interface; it must not require an engine source path or a private
 implementation detail. Do not copy game assets into this repository to make a
 test pass.
+
+The reference games under [`games/`](games/README.md) are the one exception,
+decided by the owner on 2026-11-25: small consumers kept in this repository so
+that every genre route has its worked example beside it and every engine change
+is run against real games. They are consumers in every other respect: they
+import only the public entry, depend on this checkout as `file:../..`, are
+`private`, are not in the npm package and pass the same Doctor. A game made to
+ship still lives in its own repository. Record where every picture and model
+under `games/` came from in [`games/ASSETS.md`](games/ASSETS.md), and keep
+`games/` small: everyone who installs the engine from Git clones it.
+
+The prefab library under [`prefabs/`](prefabs/README.md) is the second exception,
+decided by the owner on 2026-11-26 ("能融化出來的3d場景和資產，都可以搬運…全部只剩下這個庫，
+以及games/ 擺放各種依賴這個庫的遊戲"): the modules several games share, with the models,
+pictures and sounds they need, the viewers that show them and the Go packages a
+game server is built from, live here and ship in the npm package (without their
+`source/`, `preview/` and the viewers). It came from the game centre workspace's
+`commonPrefabs/`. A module holds no single game's content, is listed in
+[`prefabs/catalog.json`](prefabs/catalog.json), has tests, and is copied into a
+game by `zhuda-prefab-sync`, never imported from the engine's main entry: the
+engine's runtime does not depend on it. A game made to ship still lives outside
+this repository (the workspace's `games/`), pins a release of this one, and gets
+its own page in [`docs/routes/`](docs/routes/README.md) when what it learned is
+worth repeating. Where each piece of art in `prefabs/` came from is in its
+module's README; nothing of a third party's product goes in.
 
 The `src/` showcase and `assets/` fixtures are engine examples and regression
 fixtures. They are not a place for a consumer game's production content.
@@ -134,6 +161,8 @@ Run from the repository root:
 
 ```sh
 npm run verify
+npm run verify:games   # when the change can reach a consumer: public API, runtime, compiler, Doctor
+npm run verify:prefabs # the same condition, and whenever prefabs/ changes (add :go for prefabs/server)
 git diff --check
 git status --short
 ```
@@ -190,12 +219,12 @@ unavailable; it is never silently converted to pass.
 
 | Change | Minimum regression evidence |
 | --- | --- |
-| Public API/type | strict consumer typecheck, runtime test, ESM/CJS export check |
+| Public API/type | strict consumer typecheck, runtime test, ESM/CJS export check, `npm run verify:games` |
 | Asset/provider/lifecycle | provider conformance, cancellation/timeout/failure, 30 load/unload cycles |
 | 2D/3D terrain/query | validator tests plus deterministic geometry/raycast fixtures |
 | Shader/material/VFX | validator tests plus real draw or an explicit unavailable result |
 | Input/camera/clock | resize/DPR, focus/cancel, multi-pointer and fixed-time tests |
-| Compiler/MCP/Doctor | happy path and deliberate failing fixture with file/line guidance |
+| Compiler/MCP/Doctor | happy path and deliberate failing fixture with file/line guidance, `npm run verify:games` |
 | Documentation/plan | links resolve, status is accurate, no unverified claim |
 
 If a change crosses classes, satisfy every applicable row. Do not weaken a

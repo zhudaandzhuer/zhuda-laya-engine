@@ -11,14 +11,20 @@ attachments. Mouse or touch.
 - **Kind:** scene
 - **For:** A 2D character from generated or painted art, rigged with zhuda-spine2D, that the hand changes: cloth lifted by IK and swung by Spine physics, a layer torn by swapping attachments.
 - **Checked on:** desktop WebGL; desktop WebGPU; no phone
-- **Status:** checked on desktop WebGL and WebGPU (Chrome, Apple M4), 2026-11-15. Real
-  touch was checked on a vivo V40 with an earlier, shader-drawn version of the same
-  scene only; this Spine version was not run on a phone (see **Not checked**).
-- **Reference consumer:** `games/stocking-tear-2d` in the ZhudaGameCenter workspace (not in
-  this repository): `spine/outfit/` (`make_parts.py`, `make_tights.py`, `rig.py`),
-  `src/Main.ts`, `HANDOFF.md`.
-- **Engine version:** `zhuda-laya-engine` 1.18.0; `ZhudaSpineCharacter` from the commit that
-  adds this route.
+- **Status:** checked on desktop WebGL and WebGPU (Chrome, Apple M4), 2026-11-15, as the game
+  `stocking-tear-2d`. Real touch was checked on a vivo V40 with an earlier, shader-drawn version
+  of the same scene only; this Spine version was not run on a phone (see **Not checked**).
+  Re-checked on 2026-11-26 as the prefab module `2d/spine-tights` on this repository's engine
+  (2.0.0 and what came after it): desktop WebGL on the graphics card with a real mouse.
+- **Reference consumer:** the prefab library's module `prefabs/2d/spine-tights/`, opened by
+  `prefabs/viewer2d` at `?scene=spine-tights`. It was the game `stocking-tear-2d`, which left the
+  game centre workspace on 2026-11-25; its rig, its driver and everything the rig was made from
+  were moved into the library on 2026-11-26. The files named below are the module's:
+  `source/spine/outfit/` (`make_parts.py`, `make_tights.py`, `rig.py`), `spine-tights.ts`,
+  `assets/` (the exported rig), `source/HANDOFF-2026-11-15.md`.
+- **Engine version:** made on `zhuda-laya-engine` 1.18.0 with `ZhudaSpineCharacter` from the
+  commit that adds this route; the module runs on 2.0.0 and after (re-checked at `e4ba0212` with
+  this module's own commit on top).
 
 ## When to take this route
 
@@ -104,9 +110,12 @@ The kit's own route is its `SKILL.md`; read it first. One command surface:
 | Gap | Workaround in the reference consumer |
 | --- | --- |
 | No public loader for Spine assets through `AssetProvider` | `Laya.loader.load(url, Laya.Loader.SPINE)` in the consumer |
+| No hand for a rig's pull sites and cloth chains (springs, IK mixes, tear stages) | Since 2026-11-26 a prefab module for this rig's naming: `createSpineTights` in `prefabs/2d/spine-tights/spine-tights.ts` (`pull_<site>`, `tear_<site>`, `lip_<site>`, `pleat<i>_3`, `grab<i>`, `grab<i>_ik`) |
 | Spine physics in LayaAir is not compared with spine-webgl's | Checked by eye in both; tune strength and inertia in the game |
 
 ## Checks
+
+As the game, 2026-11-15:
 
 - Native: `spk check` (structure, weights, loop seam, physics), `spk stress` sheets
   looked at pose by pose.
@@ -118,18 +127,49 @@ The kit's own route is its `SKILL.md`; read it first. One command surface:
   disposal), `tests/public-spine-character-types.test.mjs` (a strict consumer), the
   SDK export check in `tests/compiler-and-mcp.test.mjs`.
 
+As the prefab module, 2026-11-26 (Apple M4, Chrome 158 on the graphics card, this repository at
+`e4ba0212` with the module on top; pictures in `prefabs/2d/spine-tights/preview/`, the record in
+`local-results/hosiery-modules/`):
+
+- `prefabs/2d/spine-tights/source/look-book.mjs` through `games/tools/shot.mjs --gpu --hook
+  __SCENE__` (WebGL, 600 × 900), every step read from the page's hook: no renderer, page or input
+  error. A pull of 60 canvas pixels carried the nylon 55 and tore nothing; let go it was within
+  0.1 pixels of its place 0.9 s later. Two drags on one knee: a small hole, then a large one. The
+  middle pleat's hem went from (515, 565) to (559, 277) while held (its IK mix 1, the others 0;
+  the pleats at the two ends moved 11 and 23 pixels after it) and was back inside the range of
+  its idle sway 0.7 s after it was let go. Two taps on the background mended everything.
+- The game's sources, unchanged, build against this engine. The game and the module were
+  photographed in three still states (whole, ten small holes, ten large): below the skirt's
+  edge no pixel differs by more than 8 of 255. The skirt sways by itself, so the two were not
+  caught at one moment: 17 to 18% of each frame differs, all of it on the skirt and its edge.
+- `prefabs/tests/spine-tights.test.mjs`, eight tests without a browser: the exported rig holds
+  every bone, constraint, slot, attachment and atlas region the driver names; the tear sites
+  mirror and lie on the legs; the driver on a stand-in for `ZhudaSpineCharacter` (pull, two tear
+  stages, the skirt's IK, mending).
+- `prefabs/viewer2d` with the feature `spine42` added: `npm run verify`; its four other presets
+  draw the same pictures with and without the feature (42 pictures of their scenarios; the few
+  that differ are animated screens that also differ between two runs of one build).
+
 ## Not checked
 
 - This Spine version on a phone (the V40 was in use by another project when it was
   ready); its frame rate and its 2048 x 4096 atlas's memory on a phone.
+- The module on WebGPU: `prefabs/viewer2d` is WebGL only. The game ran on WebGPU on 2026-11-15.
 - Spine physics in LayaAir against spine-webgl's, number for number.
 - Multi-touch (two hands on the skirt), more than one character.
 - Any rig not made with zhuda-spine2D (bounds other than its canvas convention).
+- The three scripts of `source/spine/outfit/` were not run again (they need the toolkit): the
+  rig, its atlas and its parts are the game's, byte for byte.
+- No person has looked at the module's pictures.
 
 ## Boundaries
 
-- Consumer: the art, the rig sources and export, the game's rules (what tears, when),
-  the springs and thresholds of the hand.
+- The prefab module owns this rig: the art and what it was generated from, the rig sources and
+  export, the springs and thresholds of the hand. A game takes them with `zhuda-prefab-sync` and
+  writes its own rules (what a tear means, when).
+- Another character is a consumer's own: its art, its rig sources and export.
 - Engine: `ZhudaSpineCharacter` (renderer settings, canvas conversions, bone, IK and
   attachment access, disposal) and the `spine42` topology.
-- The toolkit stays its own repository; this route pins the version it was checked with.
+- The toolkit stays its own repository; this route pins the version it was checked with. It
+  carries the Spine Runtimes under their own licence (see Tools): whoever ships a Spine rig needs
+  their own Spine Editor licence.

@@ -1,4 +1,5 @@
 // Generated from TypeScript source; run npm run types:generate.
+import type { ZhudaFilmVec3 } from './FilmScene.js';
 export { zhudaBakeKey } from './BakeKey.js';
 import { ZhudaPhysicalCameraRig } from '../runtime3d/PhysicalCamera.js';
 import { type CinematicFramePixels, type CinematicLinearChain } from '../runtime3d/CinematicCapture.js';
@@ -62,17 +63,40 @@ export interface ZhudaFilmStage {
      * every sample.
      */
     setTime(seconds: number): void;
-    /** Moves the camera and sets its lens; ignores depth of field until a render asks for it. */
+    /**
+     * Moves the camera and sets its lens; ignores depth of field until a render
+     * asks for it. The focal length becomes the camera's field of view at the
+     * next `prepare`.
+     */
     setCamera(camera: ZhudaFilmCamera): void;
     /**
-     * Draws what the main camera reads (a reflector's mirrored view) for the
-     * camera last set. `ZhudaFilmRenderer` calls it before every sample.
+     * Gives the camera the field of view of the lens for a picture of this
+     * aspect (width over height), and draws what the main camera reads (a
+     * reflector's mirrored view) for the camera last set. A page calls it once
+     * a frame, after `setTime` and `setCamera`; `ZhudaFilmRenderer` calls it
+     * before every sample.
      */
     prepare(aspect: number, frame?: {
         width: number;
         height: number;
         index: number;
     }): void;
+    /**
+     * Where a point of the world is in a picture of this size for the camera
+     * last set: pixels from the picture's top-left corner (CSS pixels for a
+     * size in CSS pixels), its depth in metres, and whether it is inside the
+     * picture. Null behind the camera. For markers, labels and bars the page
+     * draws over the scene; the arithmetic is `projectZhudaFilmPoint`.
+     */
+    worldToScreen(point: ZhudaFilmVec3, size: {
+        width: number;
+        height: number;
+    }): {
+        x: number;
+        y: number;
+        depth: number;
+        inView: boolean;
+    } | null;
     /** Hands the stage something to release when it is disposed (before the scene goes). */
     adopt(release: () => void): void;
     /**

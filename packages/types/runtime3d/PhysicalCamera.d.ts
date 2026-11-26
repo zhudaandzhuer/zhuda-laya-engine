@@ -39,6 +39,8 @@ export declare class ZhudaPhysicalCameraRig {
     private check;
     get spec(): Readonly<PhysicalCameraSettings>;
     configure(patch: Partial<PhysicalCameraSettings>): void;
+    /** True between `sample()` and its restore: the lens cannot be configured or applied meanwhile. */
+    get sampling(): boolean;
     apply(aspect: number): void;
     applyExposure(pipeline: {
         setExposure(value: number): void;

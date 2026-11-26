@@ -382,6 +382,106 @@ function lookCheck() {
   return r;
 }
 
+/**
+ * A stage drawn on a page the way a viewer draws it: `setCamera`, `prepare`,
+ * and a quality level that goes down and comes back.
+ */
+function pageCheck() {
+  const r: any = {};
+  const scene = (look: any, focalLengthMm = 28) => ({
+    schemaVersion: 1,
+    id: 'page',
+    camera: { eye: [0, 1.6, 7], target: [0, 1, 0], focalLengthMm },
+    look,
+    materials: {
+      floor: { color: [0.5, 0.5, 0.5], roughness: 0.35 },
+      red: { color: [0.8, 0.1, 0.1], roughness: 0.7 },
+      lamp: { color: [1, 0.9, 0.8], emission: [5, 4, 3] },
+    },
+    nodes: [
+      { id: 'floor', type: 'ground', size: [30, 30], material: 'floor' },
+      { id: 'wall', type: 'box', size: [0.4, 3, 6], position: [-2.5, 0, 0], material: 'red' },
+      { id: 'bulb', type: 'box', size: [0.4, 0.4, 0.4], position: [1.5, 1.2, 0], material: 'lamp' },
+    ],
+  });
+  const attempt = (name: string, run: () => void) => {
+    try {
+      run();
+    } catch (error: any) {
+      r[name + 'Error'] = String(error?.message || error);
+    }
+  };
+
+  // The lens: prepare() alone gives the camera the field of view of the focal length.
+  const lens = Z.mountZhudaFilmScene(context.rootScene, scene({ sky: [0.2, 0.2, 0.2] }, 17));
+  lens.prepare(W / H);
+  r.fov17 = +lens.camera.fieldOfView.toFixed(2);
+  r.aspect = +lens.camera.aspectRatio.toFixed(4);
+  lens.setCamera({ eye: [0, 1.6, 7], target: [0, 1, 0], focalLengthMm: 50 });
+  lens.prepare(W / H);
+  r.fov50 = +lens.camera.fieldOfView.toFixed(2);
+  lens.dispose();
+
+  // Bounce light is captured at mount: a quality level leaves it as it is.
+  const day = {
+    preset: 'day',
+    sun: { elevationDeg: 50, azimuthDeg: 60, intensity: 2 },
+    shadows: { distance: 30 },
+    grade: { exposure: 1, bloom: 0.1, ao: 0.4 },
+    bounceLight: { spacing: 3 },
+  };
+  const bounce = Z.mountZhudaFilmScene(context.rootScene, scene(day));
+  const b3 = draw(bounce);
+  attempt('bounce', () => {
+    r.bounce0 = bounce.setQuality(0);
+    r.bounce0Kept = JSON.stringify(bounce.look.bounceLight) !== 'false';
+    r.bounce0Chain = !!bounce.camera.postProcess;
+    r.bounce0Diff = meanAbsDiff(b3, draw(bounce));
+    r.bounce1 = bounce.setQuality(1);
+    draw(bounce);
+    r.bounce3 = bounce.setQuality(3);
+    r.bounceBack = meanAbsDiff(b3, draw(bounce));
+    // The authored look still cannot change it.
+    try {
+      bounce.setLook({ ...day, bounceLight: { spacing: 5 } });
+      r.bounceRefusal = 'accepted';
+    } catch (error: any) {
+      r.bounceRefusal = String(error.message);
+    }
+  });
+  bounce.dispose();
+
+  // Screen reflections with the default multisampling, down the levels and up again.
+  const wet = Z.mountZhudaFilmScene(
+    context.rootScene,
+    scene({
+      sky: [0.02, 0.02, 0.03],
+      ambient: [0.05, 0.05, 0.05],
+      sun: { intensity: 0 },
+      shadows: false,
+      grade: { exposure: 1, bloom: 0.1, ao: 0 },
+      screenReflections: {},
+    }),
+  );
+  attempt('wet', () => {
+    const w3 = draw(wet);
+    r.wetAntialias = wet.look.grade && wet.look.grade.antialias;
+    r.wet2 = wet.setQuality(2);
+    draw(wet);
+    r.wet1 = wet.setQuality(1);
+    r.wet1Reflections = !!wet.look.screenReflections;
+    draw(wet);
+    r.wet3 = wet.setQuality(3);
+    r.wetBack = meanAbsDiff(w3, draw(wet));
+    r.wet0 = wet.setQuality(0);
+    draw(wet);
+    r.wet3Again = wet.setQuality(3);
+    r.wetBackAgain = meanAbsDiff(w3, draw(wet));
+  });
+  wet.dispose();
+  return r;
+}
+
 async function main() {
   const renderer = (globalThis as any).ZhudaBundle.renderer === 'webgpu' ? 'webgpu' : 'webgl';
   out.renderer = renderer;
@@ -407,6 +507,7 @@ async function main() {
   out.look = lookCheck();
   out.sides = twoSidedCheck();
   out.weather = weatherCheck();
+  out.page = pageCheck();
   out.rendererErrors = context.renderer.errors.slice(0, 6);
   out.ready = true;
 }

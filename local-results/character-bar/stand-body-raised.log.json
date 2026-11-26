@@ -1,0 +1,680 @@
+{
+ "errors": [],
+ "failed": "",
+ "renderer": {
+  "webgl": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+  "webgpu": true,
+  "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/158.0.0.0 Safari/537.36",
+  "dpr": 1
+ },
+ "final": {
+  "ready": true,
+  "state": {
+   "file": "local/body-raised.glb",
+   "clips": [
+    {
+     "name": "_Stress",
+     "seconds": 3.2
+    },
+    {
+     "name": "Greet",
+     "seconds": 1.8
+    },
+    {
+     "name": "Idle",
+     "seconds": 3.2
+    },
+    {
+     "name": "Run",
+     "seconds": 0.667
+    },
+    {
+     "name": "Walk",
+     "seconds": 1
+    }
+   ],
+   "clip": "Walk",
+   "normalizedTime": 0.5,
+   "frozenAt": null,
+   "triangles": 11598,
+   "nodes": 42,
+   "materials": 10,
+   "named": 42,
+   "clock": 7.916,
+   "renderer": "webgpu"
+  },
+  "rendererErrors": []
+ },
+ "log": [
+  {
+   "opened": {
+    "file": "local/body-raised.glb",
+    "clips": [
+     {
+      "name": "_Stress",
+      "seconds": 3.2
+     },
+     {
+      "name": "Greet",
+      "seconds": 1.8
+     },
+     {
+      "name": "Idle",
+      "seconds": 3.2
+     },
+     {
+      "name": "Run",
+      "seconds": 0.667
+     },
+     {
+      "name": "Walk",
+      "seconds": 1
+     }
+    ],
+    "clip": "_Stress",
+    "normalizedTime": 0.979,
+    "frozenAt": null,
+    "triangles": 11598,
+    "nodes": 42,
+    "materials": 10,
+    "named": 42,
+    "clock": 2.583,
+    "renderer": "webgpu"
+   }
+  },
+  {
+   "shot": "Walk-0_1",
+   "seconds": 3.753,
+   "state": {
+    "ready": true,
+    "state": {
+     "file": "local/body-raised.glb",
+     "clips": [
+      {
+       "name": "_Stress",
+       "seconds": 3.2
+      },
+      {
+       "name": "Greet",
+       "seconds": 1.8
+      },
+      {
+       "name": "Idle",
+       "seconds": 3.2
+      },
+      {
+       "name": "Run",
+       "seconds": 0.667
+      },
+      {
+       "name": "Walk",
+       "seconds": 1
+      }
+     ],
+     "clip": "Walk",
+     "normalizedTime": 0,
+     "frozenAt": 0.1,
+     "triangles": 11598,
+     "nodes": 42,
+     "materials": 10,
+     "named": 42,
+     "clock": 2.917,
+     "renderer": "webgpu"
+    },
+    "rendererErrors": []
+   }
+  },
+  {
+   "shot": "Walk-0_35",
+   "seconds": 4.066,
+   "state": {
+    "ready": true,
+    "state": {
+     "file": "local/body-raised.glb",
+     "clips": [
+      {
+       "name": "_Stress",
+       "seconds": 3.2
+      },
+      {
+       "name": "Greet",
+       "seconds": 1.8
+      },
+      {
+       "name": "Idle",
+       "seconds": 3.2
+      },
+      {
+       "name": "Run",
+       "seconds": 0.667
+      },
+      {
+       "name": "Walk",
+       "seconds": 1
+      }
+     ],
+     "clip": "Walk",
+     "normalizedTime": 0,
+     "frozenAt": 0.35,
+     "triangles": 11598,
+     "nodes": 42,
+     "materials": 10,
+     "named": 42,
+     "clock": 3.216,
+     "renderer": "webgpu"
+    },
+    "rendererErrors": []
+   }
+  },
+  {
+   "shot": "Walk-0_6",
+   "seconds": 4.39,
+   "state": {
+    "ready": true,
+    "state": {
+     "file": "local/body-raised.glb",
+     "clips": [
+      {
+       "name": "_Stress",
+       "seconds": 3.2
+      },
+      {
+       "name": "Greet",
+       "seconds": 1.8
+      },
+      {
+       "name": "Idle",
+       "seconds": 3.2
+      },
+      {
+       "name": "Run",
+       "seconds": 0.667
+      },
+      {
+       "name": "Walk",
+       "seconds": 1
+      }
+     ],
+     "clip": "Walk",
+     "normalizedTime": 0,
+     "frozenAt": 0.6,
+     "triangles": 11598,
+     "nodes": 42,
+     "materials": 10,
+     "named": 42,
+     "clock": 3.55,
+     "renderer": "webgpu"
+    },
+    "rendererErrors": []
+   }
+  },
+  {
+   "shot": "Walk-0_85",
+   "seconds": 4.699,
+   "state": {
+    "ready": true,
+    "state": {
+     "file": "local/body-raised.glb",
+     "clips": [
+      {
+       "name": "_Stress",
+       "seconds": 3.2
+      },
+      {
+       "name": "Greet",
+       "seconds": 1.8
+      },
+      {
+       "name": "Idle",
+       "seconds": 3.2
+      },
+      {
+       "name": "Run",
+       "seconds": 0.667
+      },
+      {
+       "name": "Walk",
+       "seconds": 1
+      }
+     ],
+     "clip": "Walk",
+     "normalizedTime": 0,
+     "frozenAt": 0.85,
+     "triangles": 11598,
+     "nodes": 42,
+     "materials": 10,
+     "named": 42,
+     "clock": 3.85,
+     "renderer": "webgpu"
+    },
+    "rendererErrors": []
+   }
+  },
+  {
+   "shot": "Run-0_1",
+   "seconds": 5.019,
+   "state": {
+    "ready": true,
+    "state": {
+     "file": "local/body-raised.glb",
+     "clips": [
+      {
+       "name": "_Stress",
+       "seconds": 3.2
+      },
+      {
+       "name": "Greet",
+       "seconds": 1.8
+      },
+      {
+       "name": "Idle",
+       "seconds": 3.2
+      },
+      {
+       "name": "Run",
+       "seconds": 0.667
+      },
+      {
+       "name": "Walk",
+       "seconds": 1
+      }
+     ],
+     "clip": "Run",
+     "normalizedTime": 0,
+     "frozenAt": 0.1,
+     "triangles": 11598,
+     "nodes": 42,
+     "materials": 10,
+     "named": 42,
+     "clock": 4.183,
+     "renderer": "webgpu"
+    },
+    "rendererErrors": []
+   }
+  },
+  {
+   "shot": "Run-0_3",
+   "seconds": 5.337,
+   "state": {
+    "ready": true,
+    "state": {
+     "file": "local/body-raised.glb",
+     "clips": [
+      {
+       "name": "_Stress",
+       "seconds": 3.2
+      },
+      {
+       "name": "Greet",
+       "seconds": 1.8
+      },
+      {
+       "name": "Idle",
+       "seconds": 3.2
+      },
+      {
+       "name": "Run",
+       "seconds": 0.667
+      },
+      {
+       "name": "Walk",
+       "seconds": 1
+      }
+     ],
+     "clip": "Run",
+     "normalizedTime": 0,
+     "frozenAt": 0.3,
+     "triangles": 11598,
+     "nodes": 42,
+     "materials": 10,
+     "named": 42,
+     "clock": 4.5,
+     "renderer": "webgpu"
+    },
+    "rendererErrors": []
+   }
+  },
+  {
+   "shot": "Run-0_5",
+   "seconds": 5.656,
+   "state": {
+    "ready": true,
+    "state": {
+     "file": "local/body-raised.glb",
+     "clips": [
+      {
+       "name": "_Stress",
+       "seconds": 3.2
+      },
+      {
+       "name": "Greet",
+       "seconds": 1.8
+      },
+      {
+       "name": "Idle",
+       "seconds": 3.2
+      },
+      {
+       "name": "Run",
+       "seconds": 0.667
+      },
+      {
+       "name": "Walk",
+       "seconds": 1
+      }
+     ],
+     "clip": "Run",
+     "normalizedTime": 0,
+     "frozenAt": 0.5,
+     "triangles": 11598,
+     "nodes": 42,
+     "materials": 10,
+     "named": 42,
+     "clock": 4.817,
+     "renderer": "webgpu"
+    },
+    "rendererErrors": []
+   }
+  },
+  {
+   "shot": "Greet-0_5",
+   "seconds": 5.965,
+   "state": {
+    "ready": true,
+    "state": {
+     "file": "local/body-raised.glb",
+     "clips": [
+      {
+       "name": "_Stress",
+       "seconds": 3.2
+      },
+      {
+       "name": "Greet",
+       "seconds": 1.8
+      },
+      {
+       "name": "Idle",
+       "seconds": 3.2
+      },
+      {
+       "name": "Run",
+       "seconds": 0.667
+      },
+      {
+       "name": "Walk",
+       "seconds": 1
+      }
+     ],
+     "clip": "Greet",
+     "normalizedTime": 0,
+     "frozenAt": 0.5,
+     "triangles": 11598,
+     "nodes": 42,
+     "materials": 10,
+     "named": 42,
+     "clock": 5.117,
+     "renderer": "webgpu"
+    },
+    "rendererErrors": []
+   }
+  },
+  {
+   "shot": "Greet-1",
+   "seconds": 6.28,
+   "state": {
+    "ready": true,
+    "state": {
+     "file": "local/body-raised.glb",
+     "clips": [
+      {
+       "name": "_Stress",
+       "seconds": 3.2
+      },
+      {
+       "name": "Greet",
+       "seconds": 1.8
+      },
+      {
+       "name": "Idle",
+       "seconds": 3.2
+      },
+      {
+       "name": "Run",
+       "seconds": 0.667
+      },
+      {
+       "name": "Walk",
+       "seconds": 1
+      }
+     ],
+     "clip": "Greet",
+     "normalizedTime": 0,
+     "frozenAt": 1,
+     "triangles": 11598,
+     "nodes": 42,
+     "materials": 10,
+     "named": 42,
+     "clock": 5.433,
+     "renderer": "webgpu"
+    },
+    "rendererErrors": []
+   }
+  },
+  {
+   "shot": "Idle-0_8",
+   "seconds": 6.602,
+   "state": {
+    "ready": true,
+    "state": {
+     "file": "local/body-raised.glb",
+     "clips": [
+      {
+       "name": "_Stress",
+       "seconds": 3.2
+      },
+      {
+       "name": "Greet",
+       "seconds": 1.8
+      },
+      {
+       "name": "Idle",
+       "seconds": 3.2
+      },
+      {
+       "name": "Run",
+       "seconds": 0.667
+      },
+      {
+       "name": "Walk",
+       "seconds": 1
+      }
+     ],
+     "clip": "Idle",
+     "normalizedTime": 0,
+     "frozenAt": 0.8,
+     "triangles": 11598,
+     "nodes": 42,
+     "materials": 10,
+     "named": 42,
+     "clock": 5.767,
+     "renderer": "webgpu"
+    },
+    "rendererErrors": []
+   }
+  },
+  {
+   "shot": "Idle-2_4",
+   "seconds": 6.923,
+   "state": {
+    "ready": true,
+    "state": {
+     "file": "local/body-raised.glb",
+     "clips": [
+      {
+       "name": "_Stress",
+       "seconds": 3.2
+      },
+      {
+       "name": "Greet",
+       "seconds": 1.8
+      },
+      {
+       "name": "Idle",
+       "seconds": 3.2
+      },
+      {
+       "name": "Run",
+       "seconds": 0.667
+      },
+      {
+       "name": "Walk",
+       "seconds": 1
+      }
+     ],
+     "clip": "Idle",
+     "normalizedTime": 0,
+     "frozenAt": 2.4,
+     "triangles": 11598,
+     "nodes": 42,
+     "materials": 10,
+     "named": 42,
+     "clock": 6.083,
+     "renderer": "webgpu"
+    },
+    "rendererErrors": []
+   }
+  },
+  {
+   "shot": "Run-back-0_3",
+   "seconds": 7.237,
+   "state": {
+    "ready": true,
+    "state": {
+     "file": "local/body-raised.glb",
+     "clips": [
+      {
+       "name": "_Stress",
+       "seconds": 3.2
+      },
+      {
+       "name": "Greet",
+       "seconds": 1.8
+      },
+      {
+       "name": "Idle",
+       "seconds": 3.2
+      },
+      {
+       "name": "Run",
+       "seconds": 0.667
+      },
+      {
+       "name": "Walk",
+       "seconds": 1
+      }
+     ],
+     "clip": "Run",
+     "normalizedTime": 0,
+     "frozenAt": 0.3,
+     "triangles": 11598,
+     "nodes": 42,
+     "materials": 10,
+     "named": 42,
+     "clock": 6.4,
+     "renderer": "webgpu"
+    },
+    "rendererErrors": []
+   }
+  },
+  {
+   "shot": "Walk-side-0_6",
+   "seconds": 7.552,
+   "state": {
+    "ready": true,
+    "state": {
+     "file": "local/body-raised.glb",
+     "clips": [
+      {
+       "name": "_Stress",
+       "seconds": 3.2
+      },
+      {
+       "name": "Greet",
+       "seconds": 1.8
+      },
+      {
+       "name": "Idle",
+       "seconds": 3.2
+      },
+      {
+       "name": "Run",
+       "seconds": 0.667
+      },
+      {
+       "name": "Walk",
+       "seconds": 1
+      }
+     ],
+     "clip": "Walk",
+     "normalizedTime": 0,
+     "frozenAt": 0.6,
+     "triangles": 11598,
+     "nodes": 42,
+     "materials": 10,
+     "named": 42,
+     "clock": 6.716,
+     "renderer": "webgpu"
+    },
+    "rendererErrors": []
+   }
+  },
+  {
+   "crossFade": [
+    [
+     0.2404,
+     0.8405,
+     0.0726
+    ],
+    [
+     0.2435,
+     0.8254,
+     0.016
+    ],
+    [
+     0.2442,
+     0.822,
+     -0.019
+    ],
+    [
+     0.2442,
+     0.8212,
+     -0.038
+    ],
+    [
+     0.2445,
+     0.8239,
+     0.0055
+    ],
+    [
+     0.2436,
+     0.828,
+     0.0594
+    ],
+    [
+     0.2421,
+     0.8336,
+     0.1034
+    ],
+    [
+     0.2398,
+     0.8347,
+     0.1495
+    ]
+   ]
+  },
+  {
+   "end": "Walk",
+   "errors": []
+  }
+ ]
+}

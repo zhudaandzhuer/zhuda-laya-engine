@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8">
+    <link rel="icon" href="data:,">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+    <title>豬大狩荒</title>
+    <style>
+      html,body,#game{width:100%;height:100%;margin:0;overflow:hidden;background:#0b0f14}
+      #game{touch-action:none}
+      body{font-family:"Noto Serif TC","Noto Serif CJK TC","Songti TC",serif;color:#f3ead8;-webkit-user-select:none;user-select:none}
+      .layer{position:fixed;inset:0;pointer-events:none}
+      .hide{display:none!important}
+      /* HUD */
+      #hud .vitals{position:absolute;left:max(18px,env(safe-area-inset-left));top:16px;width:min(38vw,420px)}
+      .bar{height:14px;background:#0008;border:1px solid #f3ead855;border-radius:3px;overflow:hidden;margin-bottom:5px;position:relative}
+      .bar i{position:absolute;inset:0;transform-origin:left;transition:transform .12s}
+      .bar .lag{background:#c33;transition:transform .6s .25s}
+      #hp{background:linear-gradient(#7fd66b,#3d9b3a)}#st{background:linear-gradient(#f2d264,#c79a22)}
+      .bar.thin{height:8px;width:78%}
+      .row{display:flex;gap:10px;align-items:center;font-size:15px;text-shadow:0 1px 2px #000}
+      .pill{background:#0009;border:1px solid #f3ead844;border-radius:12px;padding:2px 10px}
+      #quest{position:absolute;right:max(18px,env(safe-area-inset-right));top:16px;text-align:right;text-shadow:0 1px 3px #000}
+      #quest b{font-size:20px;letter-spacing:.1em}#clock{font-size:26px;font-variant-numeric:tabular-nums}
+      #status{margin-top:4px;font-size:15px;color:#ffd27a;min-height:20px}
+      #cue{position:absolute;left:50%;top:17%;transform:translateX(-50%);font-size:30px;letter-spacing:.3em;color:#ff5a3c;text-shadow:0 0 12px #000,0 0 4px #000;opacity:0;transition:opacity .15s}
+      #cue.on{opacity:1}
+      #banner{position:absolute;left:0;right:0;top:36%;text-align:center;font-size:56px;letter-spacing:.4em;text-shadow:0 0 18px #000;opacity:0;transition:opacity .4s}
+      #banner.on{opacity:1}
+      .num{position:absolute;font:700 22px/1 "Noto Sans TC","Noto Sans CJK TC",sans-serif;color:#fff;text-shadow:0 0 3px #000,0 1px 0 #000;transform:translate(-50%,-50%);animation:rise .7s ease-out forwards}
+      .num.weak{color:#ffb238;font-size:30px}.num.hurt{color:#ff4b4b;font-size:28px}.num.note{color:#9fe3ff;font-size:24px;letter-spacing:.2em}
+      @keyframes rise{from{opacity:1;margin-top:0}to{opacity:0;margin-top:-46px}}
+      #vignette{background:radial-gradient(ellipse at center,transparent 55%,#a00a 100%);opacity:0;transition:opacity .2s}
+      /* touch */
+      #touch{pointer-events:none}
+      #stick{position:absolute;left:max(26px,env(safe-area-inset-left));bottom:26px;width:150px;height:150px;border-radius:50%;background:#fff1;border:2px solid #fff3}
+      #knob{position:absolute;left:45px;top:45px;width:60px;height:60px;border-radius:50%;background:#fff5}
+      .btn{position:absolute;border-radius:50%;background:#000a;border:2px solid #f3ead877;color:#f3ead8;font:700 20px/1 inherit;display:flex;align-items:center;justify-content:center;pointer-events:auto;touch-action:none}
+      .btn:active,.btn.down{background:#f3ead833}
+      #b-light{right:max(34px,env(safe-area-inset-right));bottom:44px;width:104px;height:104px;font-size:26px}
+      #b-heavy{right:calc(max(34px,env(safe-area-inset-right)) + 118px);bottom:30px;width:78px;height:78px}
+      #b-dodge{right:calc(max(34px,env(safe-area-inset-right)) + 92px);bottom:124px;width:78px;height:78px}
+      #b-potion{right:max(34px,env(safe-area-inset-right));bottom:166px;width:64px;height:64px;font-size:16px}
+      body:not(.touch) #touch{display:none}
+      #keys{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);font-size:13px;opacity:.75;text-shadow:0 1px 2px #000}
+      body.touch #keys{display:none}
+      /* screens */
+      #screens{pointer-events:auto;display:flex;align-items:center;justify-content:center;background:linear-gradient(#0b0f1400,#0b0f14cc 70%)}
+      .panel{width:min(92vw,980px);max-height:92vh;overflow:auto;background:#12171ee8;border:1px solid #c9a86a66;border-radius:10px;padding:22px 28px;box-shadow:0 10px 60px #000}
+      h1{font-size:64px;letter-spacing:.3em;margin:0 0 4px;text-align:center;color:#f6dfa6;text-shadow:0 4px 0 #5a2a12}
+      h2{font-size:24px;letter-spacing:.2em;margin:0 0 12px;color:#f6dfa6;border-bottom:1px solid #c9a86a44;padding-bottom:8px}
+      .sub{text-align:center;opacity:.8;letter-spacing:.3em;margin-bottom:22px}
+      .cols{display:grid;grid-template-columns:1.2fr 1fr;gap:22px}
+      @media (max-width:760px){.cols{grid-template-columns:1fr}h1{font-size:44px}}
+      .card{border:1px solid #c9a86a44;border-radius:8px;padding:12px 14px;margin-bottom:10px;background:#0006;cursor:pointer}
+      .card:hover{border-color:#f6dfa6}.card.locked{opacity:.45;cursor:default}.card.locked:hover{border-color:#c9a86a44}
+      .card b{font-size:19px}.card small{display:block;opacity:.8;margin-top:4px;line-height:1.5}
+      .stars{color:#ffb238;letter-spacing:.2em}
+      button.go{font:700 20px/1 inherit;letter-spacing:.3em;color:#1a1208;background:linear-gradient(#f6dfa6,#c9a86a);border:0;border-radius:6px;padding:14px 32px;cursor:pointer}
+      button.ghost{font:inherit;color:#f3ead8;background:#0000;border:1px solid #f3ead866;border-radius:6px;padding:8px 16px;cursor:pointer}
+      .center{text-align:center;margin-top:16px}
+      .items{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}.items span{background:#0008;border:1px solid #f3ead833;border-radius:4px;padding:3px 8px;font-size:14px}
+      .tag{float:right;font-size:13px;opacity:.85}
+      #loading{display:flex;align-items:center;justify-content:center;background:#0b0f14;font-size:22px;letter-spacing:.4em;pointer-events:auto}
+      #mute{position:absolute;right:14px;bottom:10px;pointer-events:auto;opacity:.7}
+    </style>
+  </head>
+  <body>
+    <main id="game" aria-label="豬大狩荒"></main>
+    <div id="vignette" class="layer"></div>
+    <div id="hud" class="layer hide">
+      <div class="vitals">
+        <div class="bar"><i class="lag" id="hp-lag"></i><i id="hp"></i></div>
+        <div class="bar thin"><i id="st"></i></div>
+        <div class="row"><span class="pill">回復藥 ×<span id="potions">5</span></span><span class="pill">力盡 <span id="faints">0</span>/3</span><span class="pill" id="gear"></span></div>
+      </div>
+      <div id="quest"><b id="mname"></b><div id="clock">10:00</div><div id="status"></div></div>
+      <div id="cue"></div>
+      <div id="banner"></div>
+      <div id="nums"></div>
+      <div id="keys">WASD 移動　J 輕斬　K 重劈　空白 翻滾　E 回復藥</div>
+      <div id="touch" class="layer">
+        <div id="stick"><div id="knob"></div></div>
+        <div class="btn" id="b-light" data-act="light">斬</div>
+        <div class="btn" id="b-heavy" data-act="heavy">劈</div>
+        <div class="btn" id="b-dodge" data-act="dodge">滾</div>
+        <div class="btn" id="b-potion" data-act="potion">藥</div>
+      </div>
+    </div>
+    <div id="screens" class="layer"></div>
+    <div id="loading" class="layer">狩場準備中…</div>
+    <button id="mute" class="ghost">聲音：開</button>
+    <!-- ZHUDA_LIBS -->
+    <!-- ZHUDA_ENTRY -->
+  </body>
+</html>

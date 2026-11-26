@@ -14,7 +14,7 @@ Renderer: Apple M4, Unspecified Version)`.
 - Load average 2.6 to 27 during the runs.
 
 Evidence, kept outside the repository: `EV` =
-`/Users/yaowei/Documents/ZhudaGameCenter/audits/procedural-draw-splash-2026-11-16/`
+`<workspace>/audits/procedural-draw-splash-2026-11-16/`
 (pictures and `report.json` per run, `logs/` with the bisect script, the
 pixel-compare script and every run's output).
 

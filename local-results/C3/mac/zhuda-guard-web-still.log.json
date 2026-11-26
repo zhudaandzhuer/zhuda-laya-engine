@@ -1,0 +1,36 @@
+{
+ "errors": [
+  "Failed to load resource: the server responded with a status of 404 (Not Found) http://localhost:62690/favicon.ico"
+ ],
+ "failed": "",
+ "renderer": {
+  "webgl": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+  "webgpu": true,
+  "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/158.0.0.0 Safari/537.36",
+  "dpr": 2
+ },
+ "final": {
+  "ready": true,
+  "screen": "title",
+  "frames": 559,
+  "maxDraws": 0,
+  "pads": [],
+  "draws": 47,
+  "triangles": 52514
+ },
+ "log": [
+  {
+   "shot": "zhuda-guard-web-still",
+   "seconds": 15.578,
+   "state": {
+    "ready": true,
+    "screen": "title",
+    "frames": 559,
+    "maxDraws": 0,
+    "pads": [],
+    "draws": 47,
+    "triangles": 52514
+   }
+  }
+ ]
+}

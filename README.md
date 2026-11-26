@@ -1,30 +1,36 @@
-<a href="#support-this-engine"><img src="docs/assets/sponsor-pass.svg" alt="Support Zhuda — fund the next frame. SOL and USDC on Solana." width="1280" /></a>
-
-## Support this engine
-
-Help an independent developer keep building open-source game tools. Your support goes toward engine work, documentation and testing on real devices.
-
-**SOL / USDC · Network: Solana** — scan the card above or copy this wallet address:
-
-```text
-E4ZEhFCYy4b5pYXJUbMC9KjRitkypyqtZvpSRerLWHCb
-```
-
-[View wallet on Solscan](https://solscan.io/account/E4ZEhFCYy4b5pYXJUbMC9KjRitkypyqtZvpSRerLWHCb) · [Open QR code](docs/assets/solana-qr.png) · [About supporting Zhuda](docs/SUPPORT.md)
-
----
-
 # zhuda-laya-engine
 
 English · [简体中文](docs/zh-CN/README.md)
 
-**An agent-friendly game SDK and toolchain built on LayaAir 3.4.2.**
+**An agent-friendly game SDK and toolchain built on LayaAir 3.4.2.** Build 2D, 3D and Spine 4.2
+games with TypeScript, a command line and coding agents. Every way of building something on this
+engine is written down as a **route**, and the games those routes were written from live in this
+repository and are rebuilt and tested with the engine.
 
-## Start here
+[![LayaAir 3.4.2](https://img.shields.io/badge/LayaAir-3.4.2-0ea5e9)](https://github.com/layabox/LayaAir) [![MIT](https://img.shields.io/badge/license-MIT-4ade80)](LICENSE) [![Node.js 24+](https://img.shields.io/badge/Node.js-24%2B-6cc24a)](https://nodejs.org/)
 
-Every way of building something on this engine is a **route**: one page in
-[`docs/routes/`](docs/routes/README.md), all in one format (when to take it, tools,
-steps, pitfalls, engine gaps, checks, what was not checked, boundaries).
+<a href="#support-this-engine"><img src="docs/assets/sponsor-pass.svg" alt="Support Zhuda — fund the next frame. SOL and USDC on Solana." width="1280" /></a>
+
+## Start a game
+
+Requires Node.js 24 or newer. A game lives in its own repository and pins the engine to a commit:
+
+```sh
+git clone https://github.com/zhudaandzhuer/zhuda-laya-engine.git && cd zhuda-laya-engine && npm ci
+node packages/compiler/zhuda-init.mjs /absolute/path/to/my-game
+cd /absolute/path/to/my-game && npm install && npm run verify
+```
+
+The starter creates `public/index.html`, `src/Main.ts` (which imports the public SDK and calls
+`ZhudaEngine.boot`) and a `verify` script: build, types, Doctor, tests. From there the
+[consumer route](docs/consumer-route.md) is the contract, and a route tells you how to build the
+thing you have in mind.
+
+## Find your route
+
+A route is one page in [`docs/routes/`](docs/routes/README.md), always in the same format: when to
+take it, tools, steps with the values that worked, pitfalls, engine gaps, checks, what was **not**
+checked, boundaries. Read the route before designing: it starts you where the last builder stopped.
 
 ```sh
 node packages/mcp-server/index.mjs --tool list_routes
@@ -34,15 +40,43 @@ node packages/mcp-server/index.mjs --tool get_route --args '{"id":"new-game-proj
 | You want to | Route |
 | --- | --- |
 | Start a game or app | [new-game-project](docs/routes/new-game-project.md) |
+| Keep a game checkable: tested rules, bots, a recorded run | [game-rules-first](docs/routes/game-rules-first.md) |
 | Build a 2D game or a game's interface | [game-2d](docs/routes/game-2d.md) |
-| Make a 3D scene look good | [good-looking-3d-scene](docs/routes/good-looking-3d-scene.md) |
-| Build a scene, a still or a film as data (terrain, grass, props, models) | [film-as-data](docs/routes/film-as-data.md) |
+| Build a game of a known kind | [platformer](docs/routes/platformer-2d.md) · [match-three](docs/routes/match-three-2d.md) · [rhythm](docs/routes/rhythm-2d.md) · [merge](docs/routes/merge-2d.md) · [idle with summons](docs/routes/idle-gacha-2d.md) · [survivors-like](docs/routes/survivors-2d.md) · [tower defence](docs/routes/tower-defence-3d.md) · [hunting action](docs/routes/hunting-action-3d.md) |
+| Dress a 3D character at run time | [outfit-swap-3d](docs/routes/outfit-swap-3d.md), body made by [humanoid-from-shapes](docs/routes/humanoid-from-shapes.md), clothes that nothing comes through by [clip-free-garments](docs/routes/clip-free-garments.md) |
+| Make a 3D scene look good | [good-looking-3d-scene](docs/routes/good-looking-3d-scene.md), the [quality route](docs/quality-route.md) |
+| Build a scene, a still or a film as data | [film-as-data](docs/routes/film-as-data.md) |
 | Bring in a model from Blender | [model-from-dcc](docs/routes/model-from-dcc.md) |
 | Add or change anything a player sees | [visual-content-prefab](docs/routes/visual-content-prefab.md) |
 | Write one HTML page | [single-html-page](docs/routes/single-html-page.md) |
 | Package a mini-game | [mini-game-build](docs/routes/mini-game-build.md) |
 | Build a kind of scene someone already built | [scene routes](docs/routes/README.md#scenes) |
 | Change the engine | [`AGENTS.md`](AGENTS.md) |
+
+## Reference games
+
+[![The nine reference games](docs/assets/reference-games.jpg)](games/README.md)
+
+Nine small games under [`games/`](games/README.md) are consumers of the engine in this checkout:
+a 3D hunting action game, a 3D tower defence, a 3D wardrobe, an idle game with summons, a
+survivors-like, a merge board, a tile platformer, a match-three and a rhythm game. Each is the worked example of one route,
+and `npm run verify:games` builds, type-checks, doctors and tests all of them against the engine
+as it is in this commit, so an engine change that breaks a game is caught here.
+
+They are test consumers, not finished products: rules are covered by tests and bots, and each has
+a recorded run with real input in a headless browser, but none has been played by a person or run
+on a phone, and their art is placeholder.
+
+## The prefab library
+
+[`prefabs/`](prefabs/README.md) holds what several games use and none should rewrite: interface
+components, input, saving and languages; a side-view duel, a dungeon line slot and a cascade slot's
+client as modules; three finished islands with their characters, walking, sound and light; a
+seaside with a pier; a low-poly rigged figure; sounds; a mini-game host bridge; the Go packages of
+a game server. A game copies the modules it names
+(`npx zhuda-prefab-sync . ui/dialog 3d/sky-island`) and a lock file records them; two viewers show
+every module (`?scene=<id>`); `npm run verify:prefabs` checks the library against this checkout.
+It came into the repository with 2.0.0: [the prefab library](docs/prefab-library.md).
 
 ## Built with this engine
 
@@ -54,309 +88,38 @@ node packages/mcp-server/index.mjs --tool get_route --args '{"id":"new-game-proj
 
 The game, its art, voices and deployment belong to its own project and are not part of this repository.
 
----
-
-**Current stable release: [v1.17.0](https://github.com/zhudaandzhuer/zhuda-laya-engine/releases/tag/v1.17.0)** · The version source of truth is `package.json`; `zhuda.config.json`, the lockfile and generated manifests must match it. Older tags such as v1.1.0 are historical releases, not the current SDK.
-
-[![LayaAir 3.4.2](https://img.shields.io/badge/LayaAir-3.4.2-0ea5e9)](https://github.com/layabox/LayaAir) [![MIT](https://img.shields.io/badge/license-MIT-4ade80)](LICENSE) [![Node.js 24+](https://img.shields.io/badge/Node.js-24%2B-6cc24a)](package.json) [![Support on Solana](https://img.shields.io/badge/Support-Solana-9945ff)](#support-this-engine)
-
-Build 2D, 3D and Spine 4.2 projects with TypeScript, a CLI and coding agents. This fork adds dependency ordering, component registration, public SDK types, visual migration checks and an MCP server to the upstream engine. The shipped workflows run without the LayaAir IDE.
-
-Maintained by [Zhuda](https://github.com/zhudaandzhuer). Rendering and physics come from [LayaAir / Layabox](https://layaair.com/). This is an independent fork; donations support Zhuda's work on this repository.
-
-## Deterministic movie production (1.13.0)
-
-Sample native bone/Morph animation at exact timestamps, use a physical camera
-with aperture/shutter samples, capture bounded offscreen frames, and export a
-soundtrack through the existing audio mixer. `zhuda-film-export` verifies the
-sequence and encodes H.264/AAC with atomic replacement of the previous movie.
-The glTF unlit importer also preserves authored colors on WebGPU.
-
-[Public movie workflow](docs/cinematics.md) · [Runnable example](examples/cinematic-capture/)
-· [Verification and limits](docs/plans/cinematic-production/verification.md).
-Neutral macOS WebGL/WebGPU fixtures cover actual 4K24 output, exact replay,
-DPR/resize, focus/motion effects, audio timing and repeated disposal. Samples are
-averaged in scene-linear light when the frame request carries the HDR chain's
-`linear` handle (film scenes with a grade do), else display-linear after tone
-mapping. The output is SDR. EXR output, path tracing,
-Windows hardware and physical mobile/XR remain unverified or unimplemented.
-
-## Asset delivery and deterministic evidence (1.12.0)
-
-Optional pinned Meshopt decoding now feeds the existing provider/model cache;
-chunk delivery shares leases and rejects late, oversized or corrupt downloads.
-Deterministic timelines, a bounded frame recorder and `zhuda-sequence-check`
-provide reproducible presentation evidence. The Electron example now stages the
-consumer bundle inside the package. See [model loading](docs/model-showcase.md),
-[timelines](docs/cinematics.md), [desktop packaging](examples/windows-webgpu/)
-and the [measured scope](docs/plans/desktop-and-agent-gates/hardening-verification.md).
-macOS WebGL/WebGPU neutral-model checks pass; Windows hardware, Draco,
-GPU-driven/HLOD and XR remain separate work; the 1.13.0 movie route is above.
-KTX 2 / Basis textures are read with a transcoder the game brings
-([docs](docs/basis-textures.md)).
-
-## WebGPU backend and delivery (1.11.0)
-
-Choose `renderer: "webgpu"` in the consumer compiler, or a `2d-webgpu`,
-`3d-webgpu` or `3d-gltf-webgpu` browser bundle. The SDK uses the real upstream
-GPU backend, reports the actual adapter, bounds initialization and retires lost
-devices through the existing runtime lifecycle. Default WebGL is preserved.
-[Setup, fallback and platform limits](docs/webgpu.md) include reproducible Windows
-browser checks. `renderer: "auto"` (or `zhuda-loader.js` in a single HTML page)
-serves both from one address: WebGPU where the browser has a hardware adapter,
-WebGL elsewhere, with the reason in `context.renderer.fallbackReason`
-([backend delivery](docs/backend-delivery.md)). macOS hardware rendering is measured; Windows hardware, native
-EXE/Steam and physical mobile acceptance remain unverified.
-The [`examples/windows-webgpu`](examples/windows-webgpu/) host provides a
-reproducible Electron entry for the next Windows packaged acceptance step.
-
-## White-label, themes and presentation recovery (1.10.0)
-
-Keep the default splash (the LayaAir mark and "Powered by LayaAir Engine", a
-tribute to the engine this one is built on), use your own brand, or explicitly disable
-it through the public compiler and browser bundle. Immutable theme mappings,
-SHA-verified assets, cancellable prepared replacement and authoritative-result
-presentation/checkpoint coordination support a same-core, two-theme workflow.
-`zhuda-laya-init --template 2d` creates a strict 2D consumer with shared isolated
-Prefab definitions. See [contracts, examples and adoption limits](docs/white-label-themes.md)
-and the [verification record](docs/plans/records/slot-factory-foundation/verification.md).
-Slot-specific rule kits, math/RGS/wallet and Factory products belong outside
-this engine repository. Signed Native and device acceptance are separate checks.
-
-## Model inspection and import reliability (1.9.0)
-
-Required glTF extensions now fail explicitly when unsupported; node Morph weights
-and CUBICSPLINE Morph animation are preserved. Public compatibility reports,
-a model inspector and same-instance Raw / Gameplay / Cinematic presentation
-are available, with a `3d-gltf` HTML bundle. See the [model showcase contract](docs/model-showcase.md)
-and [model pipeline contract](docs/model-pipeline.md) for the tested subset,
-asset coordinate rules and unsupported features. Cinematic is real-time postprocessing,
-not an offline movie renderer or a guarantee of Unreal Engine parity.
-
-## Crowd presentation and measurable budgets (1.8.0)
-
-Provider-backed model templates now share animation clips and release native
-model resources deterministically. Crowd/snapshot presentation scheduling,
-native animation LOD, important-effect fallback, adjustable particle simulation
-and bounded P50/P95/P99/raw GPU profiling are available through the public SDK.
-[Integration and platform boundaries](docs/crowd-runtime.md) include a reproducible
-25/50/100 skinned-character consumer benchmark and 100/300/500 ordinary-instance
-comparisons. These fixtures do not certify a production MMO or Windows/Steam.
-
-## Runtime reliability (1.7.0)
-
-DPR-independent CSS design coordinates, provider-backed streaming BGM, bounded
-FIFO/priority voice retirement, a sample-backend extension and an optional
-Worker frame driver are available. The full vendor declaration audit now passes
-with `skipLibCheck:false` and runs inside `npm run verify`.
-See [audio](docs/audio.md), [runtime sizing and recovery](docs/platform-adapters.md),
-and the [measured scope and migration notes](docs/plans/records/runtime-feedback/verification.md).
-Physical iOS/Android, speaker latency and a production Worklet DSP mixer remain
-unverified; the extension and desktop reference test do not establish full SOP compliance.
-
-## Security, packaging and public types (1.16.0)
-
-The Prefab and Model editors accept only their own Host and Origin, a per-launch
-capability token and JSON writes, and `/__project/` serves approved assets only.
-Every npm bin works through symlinks, spaces and non-ASCII paths, and
-`zhuda-laya-build` fails instead of writing output when no project
-configuration exists. Public declarations are generated from the TypeScript
-sources and resolve under Bundler, Node16 and NodeNext. The package ships
-`./min` and `sideEffects: false`, no source maps or plan records.
-
-**Breaking:** the legacy samples (`BenchmarkEngine`, `StaticAssetPipeline`,
-`UnityBridgePipeline` and related exports) moved from the main entry to
-`zhuda-laya-engine/demo`, and MCP's sample tool is now
-`demo_verify_unity_migration`. Unknown MCP assets and JSON-RPC methods now fail
-explicitly. See the [verification record](docs/plans/records/disclosure-hardening/verification.md).
-
-## Layout, art text and video surfaces (1.15.0)
-
-`computeZhudaGridLayout` and `computeZhudaTextLayout` keep authored positions in
-design pixels while applying viewport and SafeArea scaling once. Consumers can
-use the same reports for isolated Prefab previews and assembled Scenes, so DPR
-does not get multiplied into individual coordinates. `validateZhudaBitmapFont`
-and `measureZhudaBitmapText` validate glyph coverage and use authored advances
-before a BitmapFont is registered. `ZhudaVideoSurface` wraps LayaAir's
-`VideoNode`; decoder mode is the default because it is nestable in the Laya
-hierarchy and follows normal node disposal. Player mode remains subject to the
-platform's floating-video restrictions.
-
-`createZhudaBitmapFont` registers a validated manifest through Laya's public
-bitmap-font registry. `ZhudaWebViewSurface` provides an explicit Laya anchor
-and lifecycle for a consumer-owned native/DOM WebView adapter; it does not hide
-an iframe inside the canvas or claim that WebView content is a renderable Laya
-texture.
-
-## Single-HTML browser entry (1.13.0)
-
-Use the [hosted SDK and runnable examples](https://game.qianlongxundao.com/play/zhuda-engine-sdk/)
-to load the real runtime with one pinned script. [Browser SDK guide](docs/browser-sdk.md)
-
-## Fast visual Prefab workflow
-
-The [`examples/slot-symbol-prefab`](examples/slot-symbol-prefab/) workbench is a
-small, reusable 2D symbol route for artists: replace one logical image, run a
-manifest update, and open the generated browser Prefab preview with the same
-definition used by the Scene. It includes isolated `Art` and composite-state
-evidence, a 30-cycle lifecycle gate, and a local image replacement control.
-includes fixed URLs, SRI, 2D/3D HTML templates and sandbox limits. The existing
-consumer/Prefab/device gates still apply to a complete game.
-
-For artists who need to adjust a consumer-owned 2D `.lh` Prefab or `.ls` Scene, start the
-engine's local Web editor with
-`npx zhuda-prefab-editor --project /absolute/game --prefab assets/prefabs/item.lh`.
-It uses the real Zhuda/Laya canvas, a named hierarchy, common 2D properties,
-design-pixel dragging, undo/redo, revision-checked saves and a `.bak` backup.
-The lower Assets workspace scans the consumer `assets/` tree, shows folders and
-file cards with metadata, and opens `.lh`/`.ls` cards in the same editor so the
-preview, hierarchy and Inspector always follow the selected source.
-See [Web Static Asset Editor](docs/prefab-editor.md). For the same workflow on a
-consumer-owned self-contained `.glb`/`.gltf`, run
-`npx zhuda-model-editor --project /absolute/game --asset assets/models/item.glb`.
-The [3D Model Editor](docs/model-editor.md) uses the public model library,
-shows the live Sprite3D hierarchy and source inventory, and switches the same
-instance between Raw, Gameplay and Cinematic presentation. It does not replace
-a DCC authoring tool or turn importer support into device acceptance.
-
-## SVG layout wireframes
-
-Use [`zhuda-layout`](docs/layout-wireframe.md) to mark any Scene or Prefab UI
-with stable SVG rectangle IDs before implementing artwork. It generates a
-source-hashed JSON layout contract, a self-contained responsive preview and an
-optional consumer build gate. Model or OCR suggestions remain optional; the
-reviewed SVG/JSON coordinates are the authority.
-
-## Official mini-game packaging without the IDE (1.14.0)
-
-An independent consumer can call the installed LayaAir 3.4.2 CLI directly
-through the public build API for WeChat, ByteDance, OPPO, VIVO, Xiaomi,
-Alipay, Taobao, Bilibili and Huawei targets. The route pins the toolchain,
-retains the official platform adapter, stages output atomically and records
-the package fingerprint. See [mini-game packaging](docs/minigame-packaging.md).
-Kuaishou, store submission and device execution are not claimed without an
-official adapter and separate platform evidence.
-
-## Film scenes for agents
-
-An agent builds a film scene as JSON (props, materials, sun and camera), changes it under revision checks, gets PNG previews and four-shot review grids back over MCP, and renders final stills or MP4 through the same cinematic capture. Start the server with `npx zhuda-laya-mcp --film-output ./films`. See [film scenes](docs/film-scenes.md); the loop follows the agent workflow of [67js](https://github.com/codepawl/67.js), re-implemented on our renderer.
-
-## Procedural assets (1.17.0)
-
-Bake seamless PBR texture sets from JSON recipes, build props from a small geometry kit with colliders and surface tags, merge a whole yard into one mesh per material, and synthesise sound effects, all deterministic and file-free. Generated assets sit behind the same `AssetProvider` boundary as downloaded ones. See [procedural assets](docs/procedural-assets.md) for the API, the starter samples in `zhuda-laya-engine/demo`, and the verification scope: the data contracts are tested in Node, and a desktop WebGL draw verifies normal direction and mipmaps; WebGPU and mobile are not yet recorded.
-
-## Start here: build a real consumer
-
-Use the engine checkout for SDK work. Put a game in its own repository and
-start from the canonical [consumer route](docs/consumer-route.md):
-
-```sh
-# after npm install in this engine checkout
-node packages/compiler/zhuda-init.mjs /absolute/path/to/my-game
-cd /absolute/path/to/my-game
-npm install
-npm run verify
-```
-
-The starter pins this engine to a commit, creates `public/index.html` with the
-`ZHUDA_LIBS` / `ZHUDA_ENTRY` markers, and creates `src/Main.ts` that imports
-the public SDK and calls `ZhudaEngine.boot`. The consumer then owns its rules,
-assets, prefabs, scenes and deployment. Read [AGENTS.md](AGENTS.md) and the
-[visual prefab workflow](docs/prefab-workflow.md) before adding authored
-visuals. A static pass does not establish real WebGL or device support.
-
-Do not use a Three.js renderer, an inline `ZhudaEngine` facade, a copied
-`packages/core`, or a deep engine import and call the result Zhuda-backed. The
-consumer Doctor reports these cases with a file and line. Use the claim levels
-in the [consumer route](docs/consumer-route.md) when writing project reports.
-
-## Consumer runtime additions (1.5.0)
-
-Doctor now selects the current project and rejects empty scans. The existing
-mixer accepts provider-backed audio samples with loops, fades and disposal.
-The shared Prefab library/preview accepts typed primitive 3D trees with named
-nodes, states, material slots and sockets. See [audio](docs/audio.md),
-[3D Prefabs](docs/procedural-prefabs.md) and the
-[verification scope](docs/plans/records/consumer-runtime-hardening/verification.md).
-These additions do not establish physical mobile acceptance or approve game art.
-
-Consumer integration feedback adds explicit lifecycle completion checks, official
-`zhuda-laya-build --candidate` / `zhuda-laya-accept` commands, conservative
-component dependency proofs and opt-in shared primitive Prefab resources.
-Start with [candidate and evidence configuration](docs/consumer-tooling.md)
-and [shared resource ownership](docs/procedural-prefabs.md). Existing consumers
-keep whole-payload validation and independent resource ownership by default.
-
-## Explore the engine
-
-### Particles and effects
-
-Seeded 2D and 3D particles with pooling, ribbons, flipbooks, collision events, VFX materials, timelines, anchors and quality budgets. Presets and their art belong to the consuming project.
-
-[Particle API and limits](packages/core/particles/README.md) · [Effects API](packages/core/effects/README.md)
-
-### Terrain and shaders
-
-Editable 2D tile maps and 3D heightfields, chunk streaming, LOD 1/2/4, closed sides/undersides and camera boom collision probes. PBR, textured, fog, dissolve and 2D tint/atlas variants are checked in real WebGL draws; sky materials can opt out of scene fog.
-
-[Terrain and shader API](docs/terrain-shader.md) · [Verification scope](docs/3d-acceptance.md)
-
-## What the fork adds
-
-| Area                   | Public tools and behavior                                                                                                                                                                                                                                                                                                                        |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Module loading         | `TopologyResolver` orders 29 runtime modules and selects the required features. The 2D light profile reduces the included library payload by about 83%.                                                                                                                                                                                          |
-| CLI builds             | `zhuda-laya-build` uses esbuild and TypeScript AST scanning; it emits Web builds and ESM/CJS SDK bundles.                                                                                                                                                                                                                                        |
-| Component registration | `@zhudaComponent` and the AST scanner register classes before prefab deserialization.                                                                                                                                                                                                                                                            |
-| Runtime guards         | `EngineGuard` handles known 3.4.2 integration issues, including the `Graphics.setState` / `Button` failure.                                                                                                                                                                                                                                      |
-| Typed construction     | `ZhudaEngine`, `Zhuda3D`, `ZhudaUI` and `ZhudaPrefab` provide code-first construction. Public types omit IDE-only declarations.                                                                                                                                                                                                                  |
-| Agent integration      | The MCP server supplies API guardrails, dependency resolution, examples, diagnostics and asset/particle validators.                                                                                                                                                                                                                              |
-| Visual migration       | Asset audits compare Spine 4.2 presentation data and require explicit mappings for Unity animation/material wrappers.                                                                                                                                                                                                                            |
-| Visual state contracts | `SpineVisualContract` rejects incomplete fallback presentation; `VisualFocusContract` gives focus, empty selection and reset distinct meanings.                                                                                                                                                                                                  |
-| Static assets and UI   | `.lh` / `.ls` serialization, explicit `percent:false`, pixel bounds and color comparison, nine-slice checks and safe-area fixtures.                                                                                                                                                                                                              |
-| Effects                | Seeded 2D/3D particles, pooling, ribbons, flipbooks, collision events, VFX materials, timelines, anchors and quality budgets.                                                                                                                                                                                                                    |
-| Runtime hardening      | Scaled/unscaled and layered clocks/timers, deferred scene mutations, explicit local/world/overlay render passes, defensive Graphics calls, bounded object pools, consumer-owned combat queries, action frame data and buffered input. See [runtime hardening](docs/runtime-hardening.md) and [combat runtime contracts](docs/combat-runtime.md). |
-
-### 3D terrain, shaders and integration
-
-The public 3D SDK adds independent consumer builds, resource leases, PBR/custom surfaces, dynamic meshes, camera/input/query contracts, clocks, 2D tile terrain and 3D heightfields with chunk streaming, editing and LOD 1/2/4.
-
-`npm run verify` runs the full automated engine suite and prints the current test count (it is not fixed in this README). The existing integration has 41 real WebGL checks covering atlas UVs, tint, alpha, clipping, textured/fog/dissolve variants and compiler diagnostics. [Documentation](docs/3d-integration.md), [terrain/shader contracts](docs/terrain-shader.md) and [acceptance limits](docs/3d-acceptance.md) describe that scope. Small-scene results do not establish full-game map or server performance.
-
-The [filmic rendering API](docs/filmic-rendering.md) adds native-lit procedural PBR hooks, UV-derived tangents, explicit normal-map conventions, offline GGX/SH HDR lighting, an HDR/AO/bloom/ACES/TAA camera pipeline and horizontal planar reflections. This is an initial quality slice, with further scene and asset work required.
-
-### Asset source boundary
-
-Consumer code addresses assets with stable logical IDs through `AssetProvider`. `DirectoryAssetProvider` is the current development and web default: it provides timeout, cancellation, bounded reads, manifest checksums and progress reporting. A future CDN-chunk, ZIP or Rust/WASM provider can implement the same contract without changing gameplay or scene code. See the [asset loading contract](docs/asset-loading.md).
-
-### Audio lifecycle
-
-Embedded consumers use [`IframeSoundAdapter`](docs/audio.md) as one WebAudio
-authority. It bounds the pre-gesture queue, applies master/channel gain once,
-checks bridge origins and disposes voices and listeners with the owner.
-Consumers must not create a second `AudioContext` for an event.
-
-### Platform adapters
-
-[`NoSleepAdapter`](docs/platform-adapters.md) is built into the SDK for native
-Screen Wake Lock. FairyGUI stays consumer-owned: projects that need it install
-their own compatible runtime and adapter.
-
-Planned engine work is tracked in the [development plans](docs/plans/README.md) directory. Plans are proposals until their measurements and acceptance gates pass.
-
-## Quick start
-
-Requires Node.js 24 or newer.
-
-```sh
-git clone https://github.com/zhudaandzhuer/zhuda-laya-engine.git
-cd zhuda-laya-engine
-npm install
-npm run verify
-npm start
-```
-
-Open `http://localhost:8890/` for the local workbench.
+## What is in the engine
+
+- **A typed SDK over LayaAir 3.4.2**: `ZhudaEngine`, `Zhuda3D`, `ZhudaUI`, `ZhudaPrefab`, module
+  ordering, component registration and guards for known 3.4.2 problems; WebGL by default, WebGPU
+  by choice ([WebGPU](docs/webgpu.md), [backend delivery](docs/backend-delivery.md)).
+- **Scenes and films as data**: an agent writes a scene as JSON, gets previews back, and renders
+  stills or MP4 ([film scenes](docs/film-scenes.md), [cinematics](docs/cinematics.md)); the
+  [quality route](docs/quality-route.md) is the order in which a 3D scene is made to look lit,
+  grounded and deep.
+- **Runtime for action games**: layered clocks and timers, action frame data, input buffering,
+  model animation control ([combat runtime](docs/combat-runtime.md),
+  [animation control](docs/animation-control.md)).
+- **Assets**: providers with leases, timeouts and cancellation, glTF with Meshopt and KTX 2,
+  levels of detail, procedural textures, props and synthesised sound
+  ([asset loading](docs/asset-loading.md), [model pipeline](docs/model-pipeline.md),
+  [procedural assets](docs/procedural-assets.md)).
+- **2D, UI and effects**: design-pixel layout, prefabs with isolated previews, tile terrain,
+  seeded particles and ready effects, one audio owner
+  ([layout](docs/layout-and-media.md), [prefab workflow](docs/prefab-workflow.md), [audio](docs/audio.md)).
+- **Tools for agents**: an MCP server with routes, API guardrails, examples and validators, a
+  Doctor that points at file and line, a consumer build with evidence gates
+  ([agent development](docs/agent-development.md), [consumer tooling](docs/consumer-tooling.md)).
+- **Delivery**: web builds, a single-HTML browser SDK, mini-game packaging, white-label branding
+  ([browser SDK](docs/browser-sdk.md), [mini-games](docs/minigame-packaging.md),
+  [white-label](docs/white-label-themes.md)).
+
+The [documentation index](docs/README.md) lists every guide and says where the code is; the
+[overview](docs/overview.md) is the longer tour; the [changelog](CHANGELOG.md) says what each
+release added. Each guide states what was measured and what was not: a passing validator or a
+desktop check is never presented as a device result.
+
+## The smallest scene that draws
 
 ```ts
 import { ZhudaEngine, Zhuda3D } from 'zhuda-laya-engine';
@@ -367,10 +130,7 @@ const { rootScene } = await ZhudaEngine.boot({
   features: ['core', '3d'],
 });
 const scene = Zhuda3D.createScene3D(rootScene);
-Zhuda3D.createCamera(scene, {
-  position: [0, 4, 8],
-  rotationEuler: [-25, 0, 0],
-});
+Zhuda3D.createCamera(scene, { position: [0, 4, 8], rotationEuler: [-25, 0, 0] });
 Zhuda3D.createDirectionalLight(scene);
 
 const cube = new Laya.MeshSprite3D(
@@ -384,35 +144,36 @@ cube.meshRenderer.sharedMaterial = Zhuda3D.createMaterial({
 scene.addChild(cube);
 ```
 
-This is the smallest scene that draws. For one that looks good (shadows, sky,
-fog, an HDR grade, a frame budget) follow the [quality route](docs/quality-route.md);
-`zhuda-laya-init` scaffolds a game that starts on it.
+For one that looks good (shadows, sky, fog, an HDR grade, a frame budget) follow the
+[quality route](docs/quality-route.md); `zhuda-laya-init` scaffolds a game that starts on it.
 
-Consumer projects must load the selected Laya runtime modules before booting the SDK. Use the compiler's dependency ordering rather than mixing engine generations. Clone this repository to work on the SDK; use a packaged build or a pinned Git commit in consumer projects.
+Do not use a Three.js renderer, an inline `ZhudaEngine` facade, a copied `packages/core` or a deep
+engine import and call the result Zhuda-backed: the consumer Doctor reports these with file and line.
 
-The commands above start the **engine workbench**. They are not the game
-integration path. For an external game, use [`docs/consumer-route.md`](docs/consumer-route.md)
-or the installed `zhuda-laya-init` binary, then run the consumer's own `npm run verify`.
+## Work on the engine
 
-### Commands
+```sh
+npm ci                  # installs and builds
+npm run verify          # build, typecheck, declaration audit, Doctor, tests
+npm run verify:games    # the reference games against this checkout
+npm start               # the engine workbench at http://localhost:8890/ (not a game scaffold)
+```
 
-| Command                                                            | Purpose                                                                                       |
-| ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------- |
-| `node packages/compiler/zhuda-init.mjs /absolute/path/to/consumer` | Create a pinned public-SDK consumer skeleton                                                  |
-| `npm run build`                                                    | Generate the demo build and SDK bundles                                                       |
-| `npm run typecheck`                                                | Check public/runtime types and application sources                                            |
-| `npm run audit:declarations`                                       | Audit all SDK declarations without `skipLibCheck`; required clean vendor and public SDK audit |
-| `npm run doctor`                                                   | Check module order, registration, known legacy API usage and the agent/documentation contract |
-| `npm run agent:contract`                                           | Print the machine-readable agent boundary, workflow and evidence contract                     |
-| `npm test`                                                         | Run Node unit and integration tests                                                           |
-| `npm run verify`                                                   | Run build, typecheck, doctor and tests                                                        |
-| `npm run pack:tarball`                                             | Create an installable package in `dist/`                                                      |
+| Command | Purpose |
+| --- | --- |
+| `npm run build` | Generate public declarations, the workbench build and the SDK bundles |
+| `npm run typecheck` | Check public and runtime types and application sources |
+| `npm run audit:declarations` | Audit all SDK declarations without `skipLibCheck` |
+| `npm run doctor` | Module order, registration, legacy API use and the agent and documentation contract |
+| `npm run agent:contract` | Print the machine-readable agent boundary, workflow and evidence contract |
+| `npm test` | Node unit and integration tests |
+| `npm run verify:<name>` | One browser check each; the list is in `package.json` |
+| `npm run pack:tarball` | Create an installable package in `dist/` |
 
-## Connect a coding agent
+Read [`AGENTS.md`](AGENTS.md) before changing anything: it is the repository's contract (task
+spec, evidence, what must stay true). Unfinished work is in [`HANDOFF.md`](HANDOFF.md).
 
-Read [`AGENTS.md`](AGENTS.md) and [`docs/agent-development.md`](docs/agent-development.md) before delegating a complex change. The MCP server exposes `get_agent_contract` and `validate_task_spec` so another agent can retrieve the same boundaries, workflow and evidence rules without relying on this conversation, and `get_quality_route`: the [steps, in order, to a 3D scene that looks good](docs/quality-route.md), with the check for each and what is not built yet. [Implementation routes](docs/routes/README.md) (docs/routes) collect scenes already built end to end and checked on devices, so an agent starts from a working path instead of researching one.
-
-Add the bundled MCP server to your client configuration:
+### Connect a coding agent
 
 ```json
 {
@@ -425,86 +186,51 @@ Add the bundled MCP server to your client configuration:
 }
 ```
 
-The same tools can run directly from the terminal:
+The MCP server exposes `list_routes`, `get_route`, `get_agent_contract`, `get_quality_route`, API
+guardrails, golden examples and validators. The same tools run from the terminal:
 
 ```sh
 node packages/mcp-server/index.mjs --tool resolve_topology --args '{"features":["3d","spine42"]}'
 node packages/mcp-server/index.mjs --tool get_golden_example --args '{"id":"boot-declarative-3d"}'
 ```
 
-Use the guardrails and validators before generating a scene. Schema validation checks data contracts; successful rendering and shader compilation require an actual WebGL draw.
-
-## Migrate assets before gameplay
-
-Build each visual component as a consumer-owned prefab. Verify its named
-nodes against source references in an isolated preview, verify the assembled
-panel, then mount that same definition in the scene. The
-[prefab workflow](docs/prefab-workflow.md) includes rules to adopt in a
-consumer project. The [tooling roadmap](docs/plans/prefab-toolchain.md)
-distinguishes the current built-in examples from planned consumer tooling.
-
-Inventory the source assets first, map their presentation requirements, validate them in isolation, then connect existing game rules.
-
-```sh
-node packages/compiler/visual-asset-audit.mjs \
-  --source /absolute/path/to/unity/Assets/Game \
-  --target /absolute/path/to/consumer/assets \
-  --strict \
-  --report /absolute/path/to/consumer/dist/visual-migration.json
-
-node packages/compiler/visual-contract-audit.mjs \
-  --project /absolute/path/to/consumer
-```
-
-The asset audit checks Spine animations, skins, bones, slots, constraints, atlases and textures. Unknown shader mappings are blocked rather than silently replaced. Unity `.anim`, `.controller` and `.mat` wrappers need explicit target contracts; the converter does not promise compatibility with arbitrary Unity code.
-
-A consumer's `visual-presentation-manifest.json` describes source/target presentation, scope, runtime states, non-focused targets and restoration. Declaring `visualContract` in `zhuda.config.json` makes these requirements part of the build gate.
-
-```ts
-import { VisualFocusContract } from 'zhuda-laya-engine';
-
-VisualFocusContract.apply(targets, VisualFocusContract.focus(winningIds));
-VisualFocusContract.apply(targets, VisualFocusContract.clear());
-```
-
-Explicit mappings can be saved in `visual-migration-manifest.json`:
-
-```json
-{
-  "schemaVersion": 1,
-  "animations": [{ "sourcePath": "Art/BigWin_in.anim", "targetAnimation": "BigWin_in" }],
-  "materials": [
-    {
-      "sourcePath": "Art/BigWin_Additive.mat",
-      "targetMaterial": "SpineStandard",
-      "blendMode": "additive"
-    }
-  ]
-}
-```
-
-## Particles and effects
-
-`ZhudaParticleSystem` / `ZhudaParticleSystem3D` provide deterministic fixed-step simulation, seeded replay, bounded pools, local/world space and distance emission. Laya renderers support textured particles, 3D billboards, historical ribbons and authored flows that reveal along a path.
-
-Additional APIs cover VFX materials, camera pass budgets, flipbooks, plane collisions, event chains, effect timelines, 3D anchors and draw-call profiling. Game-specific effect recipes and artwork remain in consumer repositories.
-
-[Particle API and limits](packages/core/particles/README.md) · [Effects API](packages/core/effects/README.md)
+A validator checks data; a real draw and a device are separate checks.
 
 ## Repository map
 
 ```text
-packages/core/          SDK, effects, particles and engine adapters
-packages/compiler/      CLI builds, AST registration and visual audits
-packages/mcp-server/    Agent tools, API guardrails and examples
-packages/types/         Public and vendor runtime declarations
-packages/ci-gate/       Browser evidence, sequence and film gates
-vendor/laya-3.4.2/      Upstream runtime libraries
-assets/                 Generic fixtures and serialized prefabs
-src/                    Engine workbench and isolated asset preview
-docs/                   Project documentation, support assets and translations
-tests/                  Unit, integration and public-type checks
+packages/core/          The SDK: runtime, 3D, film scenes, effects, particles, terrain, audio
+packages/types/         Public declarations, generated from packages/core
+packages/compiler/      Command-line tools: build, init, Doctor, editors, audits
+packages/mcp-server/    Agent tools: routes, guardrails, examples, the film host
+packages/ci-gate/       Sequence and film export gates
+vendor/                 LayaAir 3.4.2 runtime and pinned third-party pieces, with licences
+games/                  The reference games: consumers of this checkout, and their tools
+prefabs/                The prefab library: modules several games share, two viewers, Go packages
+docs/routes/            How to build each kind of thing
+docs/                   One guide per subsystem (index: docs/README.md); plans and records
+examples/               Small runnable hosts (browser SDK, model inspector, film capture)
+src/, assets/           The engine's own workbench app and fixtures
+scripts/, tests/        Browser checks (npm run verify:<name>) and Node tests
 ```
+
+## Releases
+
+**This checkout is 2.0.1**, tagged `v2.0.1` on [the engine's own repository](https://github.com/zhudaandzhuer/zhuda-laya-engine); 2.0.0 was tagged in the owner's verification repository only, so the release before it there is [v1.17.0](https://github.com/zhudaandzhuer/zhuda-laya-engine/releases/tag/v1.17.0) · The version source of truth is `package.json`; `zhuda.config.json`, the lockfile and generated manifests must match it. Older tags such as v1.1.0 are historical releases, not the current SDK. What each release added is in the [changelog](CHANGELOG.md).
+
+Maintained by [Zhuda](https://github.com/zhudaandzhuer). Rendering and physics come from [LayaAir / Layabox](https://layaair.com/). This is an independent fork; donations support Zhuda's work on this repository.
+
+## Support this engine
+
+Help an independent developer keep building open-source game tools. Your support goes toward engine work, documentation and testing on real devices.
+
+**SOL / USDC · Network: Solana** — scan the card at the top of this page or copy this wallet address:
+
+```text
+E4ZEhFCYy4b5pYXJUbMC9KjRitkypyqtZvpSRerLWHCb
+```
+
+[View wallet on Solscan](https://solscan.io/account/E4ZEhFCYy4b5pYXJUbMC9KjRitkypyqtZvpSRerLWHCb) · [Open QR code](docs/assets/solana-qr.png) · [About supporting Zhuda](docs/SUPPORT.md)
 
 ## License and upstream credit
 

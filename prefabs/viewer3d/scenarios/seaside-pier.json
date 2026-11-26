@@ -1,0 +1,5 @@
+[
+  { "wait": 3, "shot": "seaside" },
+  { "js": "S.set({ gear: \"crown\", yaw: 0.55, pitch: 0.5, distance: 9 });", "wait": 2, "shot": "seaside-crown" },
+  { "js": "S.set({ gear: \"snorkel\", yaw: -0.5, pitch: 0.35, distance: 7 });", "wait": 2, "shot": "seaside-snorkel" }
+]

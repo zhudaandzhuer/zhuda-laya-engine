@@ -8,7 +8,10 @@ import {
   ZhudaModelCompatibilityError,
 } from '../packages/core/runtime3d/ModelCompatibility.ts';
 import { ZhudaModelLibrary } from '../packages/core/runtime3d/Assets.ts';
-import { prepareLaya342GltfResource } from '../packages/core/runtime3d/Laya342GltfAdapter.ts';
+import {
+  indexLaya342ClipNodes,
+  prepareLaya342GltfResource,
+} from '../packages/core/runtime3d/Laya342GltfAdapter.ts';
 const fixture = (name) =>
   JSON.parse(fs.readFileSync(new URL(`./fixtures/gltf-review/${name}.gltf`, import.meta.url)));
 
@@ -234,6 +237,43 @@ test('cubic morph adapter retains multi-target tangents, skinned ownership and e
   times[1] = 0;
   assert.throws(() => resource.createAnimatorClip(animation, {}), /sample times/);
   assert.equal(nativeCalls, 1);
+});
+
+test('a glTF clip files its keyframe nodes, not their paths, so a cross fade can pair them', () => {
+  // What LayaAir 3.4.2's glTF reader leaves: every node filed under its path as the path string.
+  const spine = { fullPath: 'Rig/Spine.localRotation', _indexInList: 0 },
+    arm = { fullPath: 'Rig/Arm.localRotation', _indexInList: 1 };
+  const made = () => {
+    const nodes = [spine, arm];
+    return {
+      _nodes: {
+        count: 2,
+        getNodeByIndex: (i) => nodes[i],
+        setNodeByIndex: (i, n) => (nodes[i] = n),
+      },
+      _nodesMap: {},
+      _nodesDic: { [spine.fullPath]: spine.fullPath, [arm.fullPath]: arm.fullPath },
+      _duration: 1,
+      destroy() {},
+    };
+  };
+  const clip = made();
+  // Animator.crossFade reads `_indexInList` from the entry: undefined on a string.
+  assert.equal(clip._nodesDic[arm.fullPath]._indexInList, undefined);
+  assert.equal(indexLaya342ClipNodes(clip), 2);
+  assert.equal(clip._nodesDic[arm.fullPath], arm);
+  assert.equal(clip._nodesDic[spine.fullPath]._indexInList, 0);
+  assert.equal(
+    indexLaya342ClipNodes(clip),
+    0,
+    'a clip read from .lani, or already corrected, is left alone',
+  );
+  assert.equal(indexLaya342ClipNodes(null), 0);
+  // Through the reader the engine wraps: the clip that comes back is already corrected.
+  const resource = { _nodes: [], createAnimatorClip: made };
+  prepareLaya342GltfResource(resource, { KeyframeNode: class {}, FloatKeyframe: class {} });
+  const loaded = resource.createAnimatorClip({ channels: [], samplers: [] }, {});
+  assert.equal(loaded._nodesDic[arm.fullPath], arm);
 });
 
 test('showcase preserves the previous asset on rejection, discards late loads and restores its borrowed camera', async () => {

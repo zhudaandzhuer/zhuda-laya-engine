@@ -12,11 +12,18 @@ stretched, and ladders from a tear.
 - **For:** A realistic modelled body (legs, feet) in layered clothing that is pulled and torn by mouse or touch: sheer stockings, trousers, skirts as cloth.
 - **Checked on:** desktop WebGL; desktop WebGPU; vivo V40 (Chrome 156, WebGPU, real touch)
 - **Status:** checked on desktop WebGL and WebGPU (Chrome, Apple M4) and on a vivo V40
-  (Android 16, Chrome 156, WebGPU, real touch), 2026-11-15.
-- **Reference consumer:** `games/stocking-tear` in the ZhudaGameCenter workspace (not in
-  this repository): `blender/export_legs.py`, `src/meshleg.ts`, `src/Main.ts`,
-  `src/patterns.ts`, `src/bottoms.ts`, `HANDOFF.md`.
-- **Engine version:** `zhuda-laya-engine` 1.18.0 at `ed1ddbc` (pinned by the consumer).
+  (Android 16, Chrome 156, WebGPU, real touch), 2026-11-15, as the game `stocking-tear` on engine
+  1.18.0. Re-checked on 2026-11-26 as the prefab module `3d/layered-hosiery` on this repository's
+  engine (2.0.0 and what came after it): desktop WebGPU and WebGL on the graphics card with a
+  real mouse. Not re-checked on a phone.
+- **Reference consumer:** the prefab library's module `prefabs/3d/layered-hosiery/`, opened by
+  `prefabs/viewer3d` at `?scene=layered-hosiery`. It was the game `stocking-tear`, which left the
+  game centre workspace on 2026-11-25; its programs and its body were moved into the library on
+  2026-11-26 and shown to draw the same pictures (see Checks). The files named below are the
+  module's: `source/export_legs.py`, `meshleg.ts`, `layered-hosiery.ts`, `shaders.ts`,
+  `patterns.ts`, `bottoms.ts`; the game's own record is `source/HANDOFF-2026-11-15.md`.
+- **Engine version:** made on `zhuda-laya-engine` 1.18.0 at `ed1ddbc`; the module runs unchanged
+  on 2.0.0 and after (re-checked at `e4ba0212` with this module's own commit on top).
 
 ## When to take this route
 
@@ -32,7 +39,7 @@ stretched, and ladders from a tear.
 | Tool | Version | Where from | Licence and what may be committed |
 | --- | --- | --- | --- |
 | Blender | 5.2.2 LTS | blender.org | Run headless (`blender -b`). Nothing of it is committed. |
-| MPFB (MakeHuman for Blender) | 2.0.18 | extensions.blender.org (`add-on-mpfb-v2.0.18.zip`, sha256 `c075b3e9…2dad`) | The add-on is GPL-3: use it as an external tool, never vendor it into the engine (MIT) or a consumer bundle. The MakeHuman base mesh and what MPFB generates are CC0. |
+| MPFB (MakeHuman for Blender) | 2.0.18 | extensions.blender.org (`add-on-mpfb-v2.0.18.zip`, sha256 `c075b3e9…2dad`) | The add-on is GPL-3: use it as an external tool, never vendor it into the engine (MIT), the prefab library or a consumer bundle. The MakeHuman base mesh and what MPFB generates are CC0. |
 
 Install once: `blender --command extension install-file -r user_default -e add-on-mpfb-v2.0.18.zip`.
 Run a script with the add-on enabled:
@@ -45,7 +52,7 @@ blender -b --factory-startup -noaudio \
 
 ## Steps
 
-### 1. The body, in Blender (reference: `blender/export_legs.py`)
+### 1. The body, in Blender (reference: `source/export_legs.py`)
 
 1. **Generate** with `HumanService.create_human(mask_helpers=False, detailed_helpers=True,
    extra_vertex_groups=True, feet_on_ground=True, scale=0.1, macro_detail_dict=...)`.
@@ -70,7 +77,7 @@ blender -b --factory-startup -noaudio \
    the layer position from the shape key; and the indices. Here: JSON, ~8,000 vertices and
    16,000 triangles a leg, 1.1 MB. Convert Blender's Z-up to Y-up and its -Y forward to +Z.
 
-### 2. Surfaces in the game (reference: `src/meshleg.ts`)
+### 2. Surfaces in the game (reference: `meshleg.ts`)
 
 1. **One `ZhudaDynamicMesh` per surface:** the skin, and each layer (stocking, garment),
    sharing the skin's indices and texture coordinates; a layer's rest shape is the
@@ -89,7 +96,7 @@ blender -b --factory-startup -noaudio \
    lengths, squared, minus one; written to the vertex colour's alpha (divided by its
    maximum, 2.8). Normals are recomputed from the triangles after every move.
 
-### 3. The stocking material (reference: `HOSIERY` in `src/Main.ts`)
+### 3. The stocking material (reference: `HOSIERY` in `shaders.ts`, `stockingMaterial` in `layered-hosiery.ts`)
 
 A [lit surface](../filmic-rendering.md#lit-shader-hooks) with `sheen`, `blend: 'alpha'`,
 `doubleSided: false`, and a hook that:
@@ -107,7 +114,7 @@ A [lit surface](../filmic-rendering.md#lit-shader-hooks) with `sheen`, `blend: '
    foot); adds a reinforced toe from the vertex colour and a denser panty top above the
    crotch.
 
-### 4. Pull and tear (reference: `pull`, `tearOrigin` in `src/meshleg.ts`)
+### 4. Pull and tear (reference: `pull`, `tearOrigin` in `meshleg.ts`; the spring and the tear in `layered-hosiery.ts`)
 
 The pull of the three.js study this consumer started from (a single local HTML page,
 not in this repository): a spring-driven amount, a narrow peak on a wide tent of fabric,
@@ -115,7 +122,7 @@ limited above by the skirt's hem, kept off the skin; here per vertex. Drive the 
 layer's delta), never with timers. A tear starts at the most stretched vertex near the
 grip; its shape goes to the material. Through a hole in a garment, pick the layer below.
 
-### 5. Skirts as cloth (reference: `buildSkirt` in `src/Main.ts`)
+### 5. Skirts as cloth (reference: `buildSkirt` in `layered-hosiery.ts`)
 
 1. `createZhudaClothTube`, then lay each ring round the hips (the support of the legs'
    vertices in that direction), its particles evenly along it, and **recompute every
@@ -127,7 +134,7 @@ grip; its shape goes to the material. Through a hole in a garment, pick the laye
 4. Lifting: pin a 3 × 3 pinch with `pin`/`movePin` and move it toward the finger at most
    1.6 m/s; the cloth makes the fold.
 
-### 6. Look and phones (reference: `main` in `src/Main.ts`)
+### 6. Look and phones (reference: `hosieryLook`, `mountHosieryStudio`, `frameHosiery` in `layered-hosiery.ts`; the phone settings in `prefabs/viewer3d/src/presets/layered-hosiery.ts`)
 
 1. [`ZhudaSceneLook`](../quality-route.md) with the sun from above the camera, AgX tone
    mapping, SMAA; `ZhudaHdrEnvironment` with `zhudaStudioEnvironment()` for the room's
@@ -152,7 +159,7 @@ grip; its shape goes to the material. Through a hole in a garment, pick the laye
 | Moire on fine weaves on a phone | A weave finer than a pixel | Fade it out by `fwidth` of its phase |
 | The sun's shadow disappears | LayaAir gives the shadow to the brightest directional light | Keep added lights' intensity below the sun's; put strength in their colour |
 | Two materials of one shader name fail ("different contract") | The lit surface's name contract included each uniform's starting value (fixed in the engine on 2026-11-17: only the types count) | On an engine before the fix: create every material with neutral values, then `set()` its own |
-| The first press does nothing in a test | The start splash takes the pointer for ~2.2 s | Wait for `window.__ZHUDA_SPLASH__.completed` |
+| The first press does nothing in a test | The start splash takes the pointer for ~2.2 s and leaves 450 ms later | `await whenZhudaSplashGone()` (after 2.0.0) before the page says it is ready; on 2.0.0 and before, wait for `window.__ZHUDA_SPLASH__.completed` and half a second more |
 | A held skirt jitters | Each hand of the engine's cloth waits on its own stretch | Pin a small pinch and move the pins smoothly |
 
 ## Engine gaps and their workarounds
@@ -163,9 +170,11 @@ grip; its shape goes to the material. Through a hole in a garment, pick the laye
 | The scene look's sun loses its shadow to a brighter light | WP22, done 2026-11-17: a light that casts no shadow no longer takes it | On an engine before it: added lights dimmer than the sun |
 | A failed hook compile stops drawing on WebGPU | WP23, done 2026-11-17: its objects are left out, the rest is drawn | Check `renderer.errors` after every shader change |
 | The cloth's hand holds one particle | WP24 | A pinned 3 × 3 pinch moved with `movePin` |
-| No body-to-layer helper (offset shell, per-vertex pull, stretch, tear) | not scheduled | `src/meshleg.ts` in the consumer |
+| No body-to-layer helper (offset shell, per-vertex pull, stretch, tear) | not scheduled as an engine API; since 2026-11-26 a prefab module | `meshleg.ts` of `prefabs/3d/layered-hosiery` (`npx zhuda-prefab-sync . 3d/layered-hosiery`) |
 
 ## Checks
+
+As the game, 2026-11-15 (engine 1.18.0):
 
 - `npm run verify` in the consumer (build, types, Doctor, the catalogue's tests).
 - Desktop: headless Chrome through the engine's `chromeFixture` with real mouse events
@@ -178,19 +187,54 @@ grip; its shape goes to the material. Through a hole in a garment, pick the laye
 - Measured on the V40, WebGPU: ~55 fps idle with the modelled legs, feet, floor and fog;
   skirt cloth 64 × 14 ~6 ms a frame.
 
+As the prefab module, 2026-11-26 (Apple M4, Chrome 158 on the graphics card, this repository at
+`e4ba0212` with the module on top; pictures in `prefabs/3d/layered-hosiery/preview/`, the record in
+`local-results/hosiery-modules/`):
+
+- **The move changed no picture.** The game's sources, unchanged, build against this engine;
+  the game and the module were driven by one script, twice each (WebGPU, 1280 × 720, real mouse):
+  as worn, both thighs torn, the lace top, jeans, the long skirt, fishnets under ripped shorts.
+  In each of the six pictures the share of pixels that differ by more than 8 of 255 is 0.000%;
+  two of the pictures are identical; the largest single difference (26) is of the size of the
+  game's own difference between its two runs (18).
+- `prefabs/3d/layered-hosiery/source/look-book.mjs` through `games/tools/shot.mjs --gpu --hook
+  __SCENE__`, on the WebGPU build and on the WebGL build, 39 pictures each: no renderer error,
+  no page error. By real mouse: a tear on each thigh; jeans torn (tears `[0,0,1,0]`: two
+  stockings, two garments) and the fishnet under them torn through the same hole
+  (`[1,0,1,0]`); the long skirt's hem lifted from a mean height of 0.285 m to 0.435 m and back
+  at 0.286 m 1.2 s after letting go. All fifteen kinds and all thirteen bottoms were drawn on
+  both backends (this closes "the WebGL build after the switch to the modelled legs").
+- `prefabs/tests/layered-hosiery.test.mjs`, nine tests without a browser: the catalogue, the body
+  file, the hooks' three rules (no derivative under a branch among them), and the per-vertex
+  layer run on the real body (pull, relax, where a tear starts, a garment layer, the cloth's
+  bodies).
+- `prefabs/viewer3d`: `npm run verify`; `node tools/play.mjs scenarios/layered-hosiery.json
+  "scene=layered-hosiery"` tears both thighs by `drag` steps.
+
 ## Not checked
 
+- Anything on a phone since the move into the library: the V40 numbers above are the game's,
+  on engine 1.18.0.
 - Frame times on the phone while a pull is dragged on the modelled legs (on the earlier
   hand-built mesh of 31,000 vertices a leg: ~37 fps on WebGPU).
-- The WebGL build after the switch to the modelled legs.
+- What a frame costs on the desktop, measured on a quiet machine. On 2026-11-26 the Mac was
+  busy (load average about 6): with a skirt the cloth took about 5 ms a frame in one run at
+  60 fps and over 30 ms in runs where frames were slow and each made up more steps; the game's
+  own sources gave the same spread. `Cloth.ts` did not change between the two engine versions.
 - Every stocking kind with every garment on the phone; battery and heat over long use.
 - Other bodies (gender, size) from the same script; other body parts (arms, torso).
+  `export_legs.py` was not run again (it needs MPFB installed): the body file is the game's.
 - iPhone / Safari.
+- No person has looked at the module's pictures.
 
 ## Boundaries
 
-- The consumer owns the body, its parameters, the export script, the stocking catalogue,
-  the pull and tear rules and all evidence. None of it is copied into this repository.
-- The engine owns the APIs this route uses. The generic part of `src/meshleg.ts` (an
-  offset layer over any mesh that can be pulled, measured for stretch and torn) is a
-  candidate engine feature; it is not one yet.
+- The prefab module owns the body, its parameters, the export script, the stocking catalogue,
+  the pull and tear rules and its evidence (`prefabs/3d/layered-hosiery/`). A game takes them with
+  `zhuda-prefab-sync` and writes only its own rules and interface on top.
+- MPFB is not in the repository and must not be: it is GPL-3. Its output (the body file) is CC0.
+- The engine owns the APIs this route uses. The generic part of `meshleg.ts` (an offset layer
+  over any mesh that can be pulled, measured for stretch and torn) is a candidate engine
+  feature; it is not one yet.
+- The catalogue is adult styles on an adult body, and has no school-uniform skirt: the game
+  left it out on purpose, and the module keeps it so.

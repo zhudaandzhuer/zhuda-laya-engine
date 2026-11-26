@@ -1,0 +1,282 @@
+{
+ "errors": [
+  "Failed to load resource: the server responded with a status of 404 (Not Found) http://localhost:49376/favicon.ico"
+ ],
+ "failed": "",
+ "renderer": {
+  "webgl": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+  "webgpu": true,
+  "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/158.0.0.0 Safari/537.36",
+  "dpr": 1
+ },
+ "final": {
+  "ready": true,
+  "state": {
+   "type": "fishnet",
+   "color": 1841694,
+   "bottom": "rippedShorts",
+   "tears": [
+    0,
+    0,
+    1,
+    2
+   ],
+   "frames": 980,
+   "clothMs": 18.183,
+   "pullMs": 0.774,
+   "amount": 0,
+   "inside": 0,
+   "held": null,
+   "rows": 215,
+   "around": 144,
+   "renderer": "webgpu",
+   "quality": 3,
+   "yaw": 0,
+   "pitch": 0.052,
+   "zoom": 1,
+   "cloth": null
+  },
+  "rendererErrors": []
+ },
+ "log": [
+  {
+   "shot": "as-worn",
+   "seconds": 10.164,
+   "state": {
+    "ready": true,
+    "state": {
+     "type": "sheer20",
+     "color": 1841694,
+     "bottom": "mini",
+     "tears": [
+      0,
+      0
+     ],
+     "frames": 81,
+     "clothMs": 29.615,
+     "pullMs": 0.021,
+     "amount": 0,
+     "inside": 13,
+     "held": null,
+     "rows": 215,
+     "around": 144,
+     "renderer": "webgpu",
+     "quality": 3,
+     "yaw": 0,
+     "pitch": 0.052,
+     "zoom": 1,
+     "cloth": {
+      "maxStretch": 0.04,
+      "inside": 13,
+      "dropped": 71
+     }
+    },
+    "rendererErrors": []
+   }
+  },
+  {
+   "label": "mini skirt",
+   "fps": 13.6,
+   "clothMs": 33.25,
+   "pullMs": 0.021
+  },
+  {
+   "shot": "torn",
+   "seconds": 23.65,
+   "state": {
+    "ready": true,
+    "state": {
+     "type": "sheer20",
+     "color": 1841694,
+     "bottom": "mini",
+     "tears": [
+      1,
+      1
+     ],
+     "frames": 381,
+     "clothMs": 30.846,
+     "pullMs": 1.969,
+     "amount": 0,
+     "inside": 13,
+     "held": null,
+     "rows": 215,
+     "around": 144,
+     "renderer": "webgpu",
+     "quality": 3,
+     "yaw": 0,
+     "pitch": 0.052,
+     "zoom": 1,
+     "cloth": {
+      "maxStretch": 0.04,
+      "inside": 13,
+      "dropped": 963
+     }
+    },
+    "rendererErrors": []
+   }
+  },
+  {
+   "tears": [
+    1,
+    1
+   ]
+  },
+  {
+   "shot": "lace-top",
+   "seconds": 25.49,
+   "state": {
+    "ready": true,
+    "state": {
+     "type": "lacetop",
+     "color": 1841694,
+     "bottom": "mini",
+     "tears": [
+      0,
+      0
+     ],
+     "frames": 436,
+     "clothMs": 30.547,
+     "pullMs": 1.723,
+     "amount": 0,
+     "inside": 13,
+     "held": null,
+     "rows": 215,
+     "around": 144,
+     "renderer": "webgpu",
+     "quality": 3,
+     "yaw": 0,
+     "pitch": 0.052,
+     "zoom": 1,
+     "cloth": {
+      "maxStretch": 0.04,
+      "inside": 13,
+      "dropped": 995
+     }
+    },
+    "rendererErrors": []
+   }
+  },
+  {
+   "label": "no bottom",
+   "fps": 54.9,
+   "clothMs": 0,
+   "pullMs": 0.005
+  },
+  {
+   "label": "jeans",
+   "fps": 17.6,
+   "clothMs": 0,
+   "pullMs": 0.018
+  },
+  {
+   "shot": "jeans",
+   "seconds": 35.201,
+   "state": {
+    "ready": true,
+    "state": {
+     "type": "lacetop",
+     "color": 1841694,
+     "bottom": "jeans",
+     "tears": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "frames": 824,
+     "clothMs": 16.185,
+     "pullMs": 0.917,
+     "amount": 0,
+     "inside": 0,
+     "held": null,
+     "rows": 215,
+     "around": 144,
+     "renderer": "webgpu",
+     "quality": 3,
+     "yaw": 0,
+     "pitch": 0.052,
+     "zoom": 1,
+     "cloth": null
+    },
+    "rendererErrors": []
+   }
+  },
+  {
+   "label": "midi skirt",
+   "fps": 18.5,
+   "clothMs": 47.72,
+   "pullMs": 0.004
+  },
+  {
+   "shot": "midi",
+   "seconds": 45.679,
+   "state": {
+    "ready": true,
+    "state": {
+     "type": "lacetop",
+     "color": 1841694,
+     "bottom": "midi",
+     "tears": [
+      0,
+      0
+     ],
+     "frames": 920,
+     "clothMs": 19.325,
+     "pullMs": 0.823,
+     "amount": 0,
+     "inside": 13,
+     "held": null,
+     "rows": 215,
+     "around": 144,
+     "renderer": "webgpu",
+     "quality": 3,
+     "yaw": 0,
+     "pitch": 0.052,
+     "zoom": 1,
+     "cloth": {
+      "maxStretch": 0.14,
+      "inside": 13,
+      "dropped": 501
+     }
+    },
+    "rendererErrors": []
+   }
+  },
+  {
+   "shot": "fishnet-ripped-shorts",
+   "seconds": 47.744,
+   "state": {
+    "ready": true,
+    "state": {
+     "type": "fishnet",
+     "color": 1841694,
+     "bottom": "rippedShorts",
+     "tears": [
+      0,
+      0,
+      1,
+      2
+     ],
+     "frames": 980,
+     "clothMs": 18.183,
+     "pullMs": 0.774,
+     "amount": 0,
+     "inside": 0,
+     "held": null,
+     "rows": 215,
+     "around": 144,
+     "renderer": "webgpu",
+     "quality": 3,
+     "yaw": 0,
+     "pitch": 0.052,
+     "zoom": 1,
+     "cloth": null
+    },
+    "rendererErrors": []
+   }
+  },
+  {
+   "renderer": "webgpu"
+  }
+ ]
+}

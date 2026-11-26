@@ -94,6 +94,15 @@ export interface ModelInstance {
     /** What reading the VRM data found: the errors that refused it, and the parts left out. */
     readonly vrmIssues: readonly ZhudaVrmIssue[];
     setTint(color: [number, number, number, number]): void;
+    /**
+     * Whether this copy's meshes cast shadows and take them: every `MeshRenderer` and
+     * `SkinnedMeshRenderer` of the copy, at once. A key left out is left as it is.
+     * Returns how many renderers were set.
+     */
+    setShadows(shadows: {
+        cast?: boolean;
+        receive?: boolean;
+    }): number;
     find(name: string): Laya.Sprite3D | null;
     dispose(): void;
 }

@@ -5,7 +5,11 @@
 // - `ZhudaFilmStage.setLook` changes continuous values in place (same HDR
 //   chain and sky material), rebuilds on structural changes, comes back to
 //   the original frame, keeps resources bounded over 30 rebuilds and refuses
-//   a panorama or an invalid look without changing the stage.
+//   a panorama or an invalid look without changing the stage;
+// - a stage drawn on a page (`setCamera`, `prepare`): the camera takes the
+//   field of view of the focal length; a quality level leaves the bounce light
+//   captured at mount, down to 0 and back; screen reflections with the default
+//   multisampling go and come back with the levels.
 // Desktop GPU evidence only; not WebGPU, mobile or art approval.
 import fs from 'node:fs';
 import os from 'node:os';
@@ -133,6 +137,34 @@ assert.ok(w.lampOnDiff < 0.5, `the lamp comes back as it was (${w.lampOnDiff})`)
 assert.ok(w.lampStrongDiff > 1, `a stronger, bluer lamp changes the frame (${w.lampStrongDiff})`);
 assert.match(w.missing, /no light missing/);
 assert.match(w.negative, /intensity/);
+
+// A stage on a page.
+const p = report.page;
+const lensFov = (mm) => +((2 * Math.atan(12 / mm) * 180) / Math.PI).toFixed(2);
+assert.ok(
+  Math.abs(p.fov17 - lensFov(17)) < 0.05,
+  `prepare() applies a 17 mm lens (${p.fov17} deg)`,
+);
+assert.ok(Math.abs(p.fov50 - lensFov(50)) < 0.05, `and a 50 mm lens set later (${p.fov50} deg)`);
+assert.equal(p.aspect, 1.6, 'the camera has the aspect given to prepare()');
+assert.equal(p.bounceError, undefined, 'quality levels with bounce light do not throw');
+assert.equal(p.bounce0, 'rebuilt');
+assert.ok(p.bounce0Kept, 'bounce light stays at quality 0');
+assert.equal(p.bounce0Chain, false, 'quality 0 has no HDR chain');
+assert.ok(p.bounce0Diff > 1, `quality 0 changes the frame (${p.bounce0Diff})`);
+assert.ok(p.bounceBack < 1.5, `quality 3 is the first frame again (${p.bounceBack})`);
+assert.match(
+  p.bounceRefusal,
+  /cannot change the bounceLight/,
+  'an authored change is still refused',
+);
+assert.equal(p.wetError, undefined, 'reflections with multisampling survive the levels');
+assert.equal(p.wetAntialias, 'msaa');
+assert.equal(p.wet1Reflections, false);
+assert.ok(
+  p.wetBack < 1.5 && p.wetBackAgain < 1.5,
+  `reflections come back (${p.wetBack}, ${p.wetBackAgain})`,
+);
 
 // A two-sided lit material draws both squares; a one-sided one draws one.
 const sides = report.sides;

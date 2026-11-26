@@ -1,0 +1,36 @@
+{
+  "project": "games/zhuda-match",
+  "file": "src/Main.ts",
+  "mode": "candidate",
+  "fullBuildsOnly": false,
+  "node": "v26.13.1",
+  "startMs": 432.6,
+  "saves": 9,
+  "saveToReloadMs": {
+    "median": 262.7,
+    "min": 246.3,
+    "max": 273.5,
+    "all": [
+      273.5,
+      249.5,
+      269.1,
+      246.3,
+      259.5,
+      262.7,
+      268,
+      262,
+      263.2
+    ]
+  },
+  "watcherLog": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+  ]
+}

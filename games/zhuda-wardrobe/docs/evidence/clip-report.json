@@ -1,0 +1,1713 @@
+{
+ "poses": 153,
+ "clips": [
+  "Idle",
+  "Walk",
+  "Run",
+  "Greet",
+  "_Stress"
+ ],
+ "toleranceMm": 1,
+ "parts": {
+  "hair-long": {
+   "triangles": 1799,
+   "tight": 0,
+   "covers": [],
+   "skinHidden": 983,
+   "skinChecked": 170,
+   "skinThrough": 0,
+   "depthMm": 0,
+   "worst": null,
+   "foldedTriangles": 6,
+   "foldedCm2": 7.7,
+   "foldedAt": {
+    "clip": "_Stress",
+    "frame": 22,
+    "at": [
+     -0.067,
+     1.467,
+     -0.047
+    ]
+   }
+  },
+  "hair-bob": {
+   "triangles": 1496,
+   "tight": 0,
+   "covers": [],
+   "skinHidden": 1236,
+   "skinChecked": 178,
+   "skinThrough": 0,
+   "depthMm": 0,
+   "worst": null,
+   "foldedTriangles": 1,
+   "foldedCm2": 0.5,
+   "foldedAt": {
+    "clip": "_Stress",
+    "frame": 22,
+    "at": [
+     0.016,
+     1.481,
+     -0.09
+    ]
+   }
+  },
+  "hair-bun": {
+   "triangles": 1494,
+   "tight": 0,
+   "covers": [],
+   "skinHidden": 935,
+   "skinChecked": 150,
+   "skinThrough": 0,
+   "depthMm": 0,
+   "worst": null,
+   "foldedTriangles": 1,
+   "foldedCm2": 0.2,
+   "foldedAt": {
+    "clip": "_Stress",
+    "frame": 16,
+    "at": [
+     -0.002,
+     1.484,
+     -0.092
+    ]
+   }
+  },
+  "tank": {
+   "triangles": 3454,
+   "tight": 1140,
+   "covers": [],
+   "skinHidden": 2094,
+   "skinChecked": 192,
+   "skinThrough": 0,
+   "depthMm": 0,
+   "worst": null,
+   "foldedTriangles": 8,
+   "foldedCm2": 1.2,
+   "foldedAt": {
+    "clip": "_Stress",
+    "frame": 66,
+    "at": [
+     -0.024,
+     0.8,
+     0.043
+    ]
+   },
+   "standsOut": 0
+  },
+  "crop-tank": {
+   "triangles": 1952,
+   "tight": 1046,
+   "covers": [],
+   "skinHidden": 746,
+   "skinChecked": 162,
+   "skinThrough": 0,
+   "depthMm": 0,
+   "worst": null,
+   "foldedTriangles": 0,
+   "foldedCm2": 0,
+   "foldedAt": null,
+   "standsOut": 0
+  },
+  "tee": {
+   "triangles": 4326,
+   "tight": 1672,
+   "covers": [],
+   "skinHidden": 3029,
+   "skinChecked": 147,
+   "skinThrough": 0,
+   "depthMm": 0,
+   "worst": null,
+   "foldedTriangles": 15,
+   "foldedCm2": 57.5,
+   "foldedAt": {
+    "clip": "_Stress",
+    "frame": 24,
+    "at": [
+     0.072,
+     1.377,
+     -0.155
+    ]
+   },
+   "standsOut": 0
+  },
+  "crop-tee": {
+   "triangles": 2800,
+   "tight": 1598,
+   "covers": [],
+   "skinHidden": 1681,
+   "skinChecked": 119,
+   "skinThrough": 0,
+   "depthMm": 0,
+   "worst": null,
+   "foldedTriangles": 17,
+   "foldedCm2": 58.4,
+   "foldedAt": {
+    "clip": "_Stress",
+    "frame": 22,
+    "at": [
+     0.064,
+     1.361,
+     -0.184
+    ]
+   },
+   "standsOut": 0
+  },
+  "cap-tee": {
+   "triangles": 3935,
+   "tight": 1463,
+   "covers": [],
+   "skinHidden": 2830,
+   "skinChecked": 156,
+   "skinThrough": 0,
+   "depthMm": 0,
+   "worst": null,
+   "foldedTriangles": 15,
+   "foldedCm2": 52.7,
+   "foldedAt": {
+    "clip": "_Stress",
+    "frame": 24,
+    "at": [
+     0.064,
+     1.377,
+     -0.158
+    ]
+   },
+   "standsOut": 0
+  },
+  "elbow-top": {
+   "triangles": 4880,
+   "tight": 1918,
+   "covers": [],
+   "skinHidden": 3137,
+   "skinChecked": 147,
+   "skinThrough": 0,
+   "depthMm": 0,
+   "worst": null,
+   "foldedTriangles": 14,
+   "foldedCm2": 48.4,
+   "foldedAt": {
+    "clip": "_Stress",
+    "frame": 24,
+    "at": [
+     0.073,
+     1.381,
+     -0.15
+    ]
+   },
+   "standsOut": 0
+  },
+  "shirt": {
+   "triangles": 5538,
+   "tight": 2458,
+   "covers": [
+    "upperArms"
+   ],
+   "skinHidden": 3776,
+   "skinChecked": 133,
+   "skinThrough": 0,
+   "depthMm": 0,
+   "worst": null,
+   "foldedTriangles": 19,
+   "foldedCm2": 46.7,
+   "foldedAt": {
+    "clip": "_Stress",
+    "frame": 22,
+    "at": [
+     0.102,
+     1.358,
+     -0.126
+    ]
+   },
+   "standsOut": 0
+  },
+  "turtleneck": {
+   "triangles": 5864,
+   "tight": 2536,
+   "covers": [
+    "torso",
+    "upperArms"
+   ],
+   "skinHidden": 4343,
+   "skinChecked": 99,
+   "skinThrough": 0,
+   "depthMm": 0,
+   "worst": null,
+   "foldedTriangles": 22,
+   "foldedCm2": 56.4,
+   "foldedAt": {
+    "clip": "_Stress",
+    "frame": 22,
+    "at": [
+     0.117,
+     1.362,
+     -0.12
+    ]
+   },
+   "standsOut": 0
+  },
+  "crop-shirt": {
+   "triangles": 3922,
+   "tight": 2478,
+   "covers": [
+    "upperArms"
+   ],
+   "skinHidden": 2428,
+   "skinChecked": 129,
+   "skinThrough": 0,
+   "depthMm": 0,
+   "worst": null,
+   "foldedTriangles": 23,
+   "foldedCm2": 69,
+   "foldedAt": {
+    "clip": "_Stress",
+    "frame": 24,
+    "at": [
+     0.09,
+     1.379,
+     -0.138
+    ]
+   },
+   "standsOut": 0
+  },
+  "shorts": {
+   "triangles": 1600,
+   "tight": 1600,
+   "covers": [
+    "hips"
+   ],
+   "skinHidden": 1649,
+   "skinChecked": 81,
+   "skinThrough": 0,
+   "depthMm": 0,
+   "worst": null,
+   "foldedTriangles": 32,
+   "foldedCm2": 78.8,
+   "foldedAt": {
+    "clip": "_Stress",
+    "frame": 48,
+    "at": [
+     -0.023,
+     0.835,
+     0.054
+    ]
+   }
+  },
+  "knee-shorts": {
+   "triangles": 2200,
+   "tight": 2200,
+   "covers": [
+    "hips"
+   ],
+   "skinHidden": 1938,
+   "skinChecked": 72,
+   "skinThrough": 0,
+   "depthMm": 0,
+   "worst": null,
+   "foldedTriangles": 30,
+   "foldedCm2": 71.4,
+   "foldedAt": {
+    "clip": "_Stress",
+    "frame": 56,
+    "at": [
+     0.145,
+     0.883,
+     0.013
+    ]
+   }
+  },
+  "capri": {
+   "triangles": 2800,
+   "tight": 2800,
+   "covers": [
+    "hips",
+    "thighs"
+   ],
+   "skinHidden": 2617,
+   "skinChecked": 76,
+   "skinThrough": 0,
+   "depthMm": 0,
+   "worst": null,
+   "foldedTriangles": 33,
+   "foldedCm2": 84.1,
+   "foldedAt": {
+    "clip": "_Stress",
+    "frame": 46,
+    "at": [
+     0.107,
+     0.903,
+     0.035
+    ]
+   }
+  },
+  "trousers": {
+   "triangles": 3970,
+   "tight": 2830,
+   "covers": [
+    "hips",
+    "thighs"
+   ],
+   "skinHidden": 2935,
+   "skinChecked": 96,
+   "skinThrough": 0,
+   "depthMm": 0,
+   "worst": null,
+   "foldedTriangles": 30,
+   "foldedCm2": 76.5,
+   "foldedAt": {
+    "clip": "_Stress",
+    "frame": 46,
+    "at": [
+     0.094,
+     0.881,
+     0.04
+    ]
+   },
+   "standsOut": 0
+  },
+  "skirt": {
+   "triangles": 4021,
+   "tight": 777,
+   "covers": [
+    "hips"
+   ],
+   "skinHidden": 1864,
+   "skinChecked": 33,
+   "skinThrough": 0,
+   "depthMm": 0,
+   "worst": null,
+   "foldedTriangles": 0,
+   "foldedCm2": 0,
+   "foldedAt": null,
+   "standsOut": 0
+  },
+  "long-skirt": {
+   "triangles": 5790,
+   "tight": 608,
+   "covers": [
+    "hips",
+    "thighs"
+   ],
+   "skinHidden": 2874,
+   "skinChecked": 38,
+   "skinThrough": 0,
+   "depthMm": 0,
+   "worst": null,
+   "foldedTriangles": 0,
+   "foldedCm2": 0,
+   "foldedAt": null,
+   "standsOut": 0
+  },
+  "robe": {
+   "triangles": 8638,
+   "tight": 2960,
+   "covers": [
+    "upperArms",
+    "hips",
+    "thighs"
+   ],
+   "skinHidden": 5517,
+   "skinChecked": 93,
+   "skinThrough": 0,
+   "depthMm": 0,
+   "worst": null,
+   "foldedTriangles": 14,
+   "foldedCm2": 57.1,
+   "foldedAt": {
+    "clip": "_Stress",
+    "frame": 22,
+    "at": [
+     -0.138,
+     1.362,
+     0.083
+    ]
+   },
+   "standsOut": 0
+  },
+  "dress": {
+   "triangles": 6262,
+   "tight": 2936,
+   "covers": [
+    "hips"
+   ],
+   "skinHidden": 3672,
+   "skinChecked": 115,
+   "skinThrough": 0,
+   "depthMm": 0,
+   "worst": null,
+   "foldedTriangles": 21,
+   "foldedCm2": 56.5,
+   "foldedAt": {
+    "clip": "_Stress",
+    "frame": 22,
+    "at": [
+     0.127,
+     1.355,
+     -0.111
+    ]
+   },
+   "standsOut": 0
+  },
+  "sun-dress": {
+   "triangles": 6119,
+   "tight": 2279,
+   "covers": [
+    "hips",
+    "thighs"
+   ],
+   "skinHidden": 3222,
+   "skinChecked": 115,
+   "skinThrough": 0,
+   "depthMm": 0,
+   "worst": null,
+   "foldedTriangles": 2,
+   "foldedCm2": 0,
+   "foldedAt": {
+    "clip": "Walk",
+    "frame": 8,
+    "at": [
+     0.067,
+     0.404,
+     0.031
+    ]
+   },
+   "standsOut": 0
+  },
+  "gown": {
+   "triangles": 8243,
+   "tight": 2555,
+   "covers": [
+    "hips",
+    "thighs"
+   ],
+   "skinHidden": 4790,
+   "skinChecked": 114,
+   "skinThrough": 0,
+   "depthMm": 0,
+   "worst": null,
+   "foldedTriangles": 15,
+   "foldedCm2": 60.1,
+   "foldedAt": {
+    "clip": "_Stress",
+    "frame": 24,
+    "at": [
+     -0.134,
+     1.362,
+     0.084
+    ]
+   },
+   "standsOut": 0
+  },
+  "jumpsuit": {
+   "triangles": 6385,
+   "tight": 5207,
+   "covers": [
+    "upperArms",
+    "hips",
+    "thighs"
+   ],
+   "skinHidden": 5600,
+   "skinChecked": 171,
+   "skinThrough": 0,
+   "depthMm": 0,
+   "worst": null,
+   "foldedTriangles": 37,
+   "foldedCm2": 83.5,
+   "foldedAt": {
+    "clip": "_Stress",
+    "frame": 46,
+    "at": [
+     -0.016,
+     0.825,
+     0.051
+    ]
+   },
+   "standsOut": 0
+  },
+  "playsuit": {
+   "triangles": 3797,
+   "tight": 3797,
+   "covers": [
+    "hips"
+   ],
+   "skinHidden": 3475,
+   "skinChecked": 175,
+   "skinThrough": 0,
+   "depthMm": 0,
+   "worst": null,
+   "foldedTriangles": 35,
+   "foldedCm2": 76.2,
+   "foldedAt": {
+    "clip": "_Stress",
+    "frame": 46,
+    "at": [
+     -0.109,
+     0.9,
+     0.032
+    ]
+   }
+  },
+  "shoes": {
+   "triangles": 1000,
+   "tight": 1000,
+   "covers": [
+    "feet"
+   ],
+   "skinHidden": 773,
+   "skinChecked": 50,
+   "skinThrough": 0,
+   "depthMm": 0,
+   "worst": null,
+   "foldedTriangles": 1,
+   "foldedCm2": 0.8,
+   "foldedAt": {
+    "clip": "Run",
+    "frame": 12,
+    "at": [
+     0.077,
+     0.325,
+     -0.066
+    ]
+   }
+  },
+  "ankle-boots": {
+   "triangles": 1299,
+   "tight": 1299,
+   "covers": [
+    "feet"
+   ],
+   "skinHidden": 904,
+   "skinChecked": 30,
+   "skinThrough": 0,
+   "depthMm": 0,
+   "worst": null,
+   "foldedTriangles": 0,
+   "foldedCm2": 0,
+   "foldedAt": null
+  },
+  "boots": {
+   "triangles": 1699,
+   "tight": 1699,
+   "covers": [
+    "feet"
+   ],
+   "skinHidden": 1064,
+   "skinChecked": 31,
+   "skinThrough": 0,
+   "depthMm": 0,
+   "worst": null,
+   "foldedTriangles": 0,
+   "foldedCm2": 0,
+   "foldedAt": null
+  },
+  "tall-boots": {
+   "triangles": 2200,
+   "tight": 2200,
+   "covers": [
+    "feet"
+   ],
+   "skinHidden": 1273,
+   "skinChecked": 50,
+   "skinThrough": 0,
+   "depthMm": 0,
+   "worst": null,
+   "foldedTriangles": 0,
+   "foldedCm2": 0,
+   "foldedAt": null
+  },
+  "straw-hat": {
+   "triangles": 589,
+   "tight": 1,
+   "covers": [],
+   "skinHidden": 0,
+   "skinChecked": 16,
+   "skinThrough": 0,
+   "depthMm": 0,
+   "worst": null,
+   "foldedTriangles": 0,
+   "foldedCm2": 0,
+   "foldedAt": null
+  },
+  "pack": {
+   "triangles": 1700,
+   "tight": 1076,
+   "covers": [],
+   "skinHidden": 84,
+   "skinChecked": 18,
+   "skinThrough": 0,
+   "depthMm": 0,
+   "worst": null,
+   "foldedTriangles": 2,
+   "foldedCm2": 0,
+   "foldedAt": {
+    "clip": "Walk",
+    "frame": 0,
+    "at": [
+     0.061,
+     1.187,
+     -0.083
+    ]
+   }
+  },
+  "belt-pouch": {
+   "triangles": 984,
+   "tight": 814,
+   "covers": [],
+   "skinHidden": 19,
+   "skinChecked": 33,
+   "skinThrough": 0,
+   "depthMm": 0,
+   "worst": null,
+   "foldedTriangles": 1,
+   "foldedCm2": 0,
+   "foldedAt": {
+    "clip": "Idle",
+    "frame": 44,
+    "at": [
+     0.136,
+     0.937,
+     0.001
+    ]
+   }
+  },
+  "knit": {
+   "triangles": 2389,
+   "tight": 2389,
+   "covers": [],
+   "skinHidden": 2309,
+   "skinChecked": 405,
+   "skinThrough": 21,
+   "depthMm": 8.5,
+   "worst": {
+    "clip": "_Stress",
+    "frame": 94,
+    "vertex": 3372,
+    "at": [
+     0.06,
+     0.946,
+     -0.105
+    ],
+    "rest": [
+     0.06,
+     0.946,
+     -0.105
+    ],
+    "underMm": 12.8
+   },
+   "foldedTriangles": 308,
+   "foldedCm2": 485.1,
+   "foldedAt": {
+    "clip": "_Stress",
+    "frame": 72,
+    "at": [
+     0.169,
+     1.447,
+     0.021
+    ]
+   }
+  }
+ },
+ "pairs": [
+  {
+   "inner": "hair-long",
+   "outer": "straw-hat",
+   "hidden": 0,
+   "checked": 24,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "hair-bob",
+   "outer": "straw-hat",
+   "hidden": 0,
+   "checked": 33,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "hair-bun",
+   "outer": "straw-hat",
+   "hidden": 0,
+   "checked": 57,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "tank",
+   "outer": "pack",
+   "hidden": 46,
+   "checked": 16,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "tank",
+   "outer": "belt-pouch",
+   "hidden": 0,
+   "checked": 6,
+   "through": 1,
+   "depthMm": 1.5,
+   "worst": {
+    "clip": "_Stress",
+    "frame": 58,
+    "vertex": 1321,
+    "at": [
+     0.13,
+     0.918,
+     0.086
+    ],
+    "rest": [
+     0.125,
+     0.927,
+     0.134
+    ],
+    "underMm": 6.1
+   }
+  },
+  {
+   "inner": "crop-tank",
+   "outer": "pack",
+   "hidden": 36,
+   "checked": 15,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "tee",
+   "outer": "pack",
+   "hidden": 16,
+   "checked": 7,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "tee",
+   "outer": "belt-pouch",
+   "hidden": 0,
+   "checked": 6,
+   "through": 2,
+   "depthMm": 5.2,
+   "worst": {
+    "clip": "_Stress",
+    "frame": 72,
+    "vertex": 1602,
+    "at": [
+     0.143,
+     1,
+     0.106
+    ],
+    "rest": [
+     0.136,
+     0.963,
+     0.126
+    ],
+    "underMm": 3.5
+   }
+  },
+  {
+   "inner": "crop-tee",
+   "outer": "pack",
+   "hidden": 14,
+   "checked": 10,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "cap-tee",
+   "outer": "pack",
+   "hidden": 11,
+   "checked": 10,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "cap-tee",
+   "outer": "belt-pouch",
+   "hidden": 0,
+   "checked": 6,
+   "through": 2,
+   "depthMm": 3.4,
+   "worst": {
+    "clip": "_Stress",
+    "frame": 72,
+    "vertex": 1508,
+    "at": [
+     0.135,
+     0.976,
+     0.115
+    ],
+    "rest": [
+     0.125,
+     0.939,
+     0.133
+    ],
+    "underMm": 8.2
+   }
+  },
+  {
+   "inner": "elbow-top",
+   "outer": "pack",
+   "hidden": 14,
+   "checked": 7,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "elbow-top",
+   "outer": "belt-pouch",
+   "hidden": 0,
+   "checked": 6,
+   "through": 0,
+   "depthMm": 0.1
+  },
+  {
+   "inner": "shirt",
+   "outer": "pack",
+   "hidden": 13,
+   "checked": 6,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "shirt",
+   "outer": "belt-pouch",
+   "hidden": 0,
+   "checked": 6,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "turtleneck",
+   "outer": "hair-long",
+   "hidden": 0,
+   "checked": 2,
+   "through": 2,
+   "depthMm": 2.5,
+   "worst": {
+    "clip": "Run",
+    "frame": 10,
+    "vertex": 101,
+    "at": [
+     0.031,
+     1.397,
+     -0.011
+    ],
+    "rest": [
+     0.012,
+     1.438,
+     -0.09
+    ],
+    "underMm": 1.7
+   }
+  },
+  {
+   "inner": "turtleneck",
+   "outer": "pack",
+   "hidden": 2,
+   "checked": 5,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "turtleneck",
+   "outer": "belt-pouch",
+   "hidden": 0,
+   "checked": 5,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "crop-shirt",
+   "outer": "pack",
+   "hidden": 15,
+   "checked": 12,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "shorts",
+   "outer": "tank",
+   "hidden": 779,
+   "checked": 28,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "shorts",
+   "outer": "tee",
+   "hidden": 779,
+   "checked": 31,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "shorts",
+   "outer": "cap-tee",
+   "hidden": 779,
+   "checked": 31,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "shorts",
+   "outer": "elbow-top",
+   "hidden": 779,
+   "checked": 29,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "shorts",
+   "outer": "shirt",
+   "hidden": 779,
+   "checked": 30,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "shorts",
+   "outer": "turtleneck",
+   "hidden": 779,
+   "checked": 28,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "shorts",
+   "outer": "belt-pouch",
+   "hidden": 9,
+   "checked": 38,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "shorts",
+   "outer": "knit",
+   "hidden": 387,
+   "checked": 56,
+   "through": 0,
+   "depthMm": 0.7
+  },
+  {
+   "inner": "knee-shorts",
+   "outer": "tank",
+   "hidden": 824,
+   "checked": 35,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "knee-shorts",
+   "outer": "tee",
+   "hidden": 824,
+   "checked": 35,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "knee-shorts",
+   "outer": "cap-tee",
+   "hidden": 824,
+   "checked": 37,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "knee-shorts",
+   "outer": "elbow-top",
+   "hidden": 824,
+   "checked": 36,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "knee-shorts",
+   "outer": "shirt",
+   "hidden": 824,
+   "checked": 35,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "knee-shorts",
+   "outer": "turtleneck",
+   "hidden": 824,
+   "checked": 32,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "knee-shorts",
+   "outer": "belt-pouch",
+   "hidden": 15,
+   "checked": 45,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "knee-shorts",
+   "outer": "knit",
+   "hidden": 398,
+   "checked": 55,
+   "through": 0,
+   "depthMm": 0.6
+  },
+  {
+   "inner": "capri",
+   "outer": "tank",
+   "hidden": 823,
+   "checked": 29,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "capri",
+   "outer": "tee",
+   "hidden": 823,
+   "checked": 34,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "capri",
+   "outer": "cap-tee",
+   "hidden": 823,
+   "checked": 34,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "capri",
+   "outer": "elbow-top",
+   "hidden": 823,
+   "checked": 30,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "capri",
+   "outer": "shirt",
+   "hidden": 823,
+   "checked": 31,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "capri",
+   "outer": "turtleneck",
+   "hidden": 823,
+   "checked": 31,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "capri",
+   "outer": "belt-pouch",
+   "hidden": 9,
+   "checked": 40,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "capri",
+   "outer": "knit",
+   "hidden": 400,
+   "checked": 54,
+   "through": 0,
+   "depthMm": 0.7
+  },
+  {
+   "inner": "trousers",
+   "outer": "tank",
+   "hidden": 839,
+   "checked": 28,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "trousers",
+   "outer": "tee",
+   "hidden": 839,
+   "checked": 29,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "trousers",
+   "outer": "cap-tee",
+   "hidden": 839,
+   "checked": 24,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "trousers",
+   "outer": "elbow-top",
+   "hidden": 839,
+   "checked": 27,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "trousers",
+   "outer": "shirt",
+   "hidden": 839,
+   "checked": 26,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "trousers",
+   "outer": "turtleneck",
+   "hidden": 839,
+   "checked": 26,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "trousers",
+   "outer": "belt-pouch",
+   "hidden": 8,
+   "checked": 44,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "trousers",
+   "outer": "knit",
+   "hidden": 412,
+   "checked": 54,
+   "through": 0,
+   "depthMm": 0.4
+  },
+  {
+   "inner": "skirt",
+   "outer": "tank",
+   "hidden": 444,
+   "checked": 191,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "skirt",
+   "outer": "tee",
+   "hidden": 444,
+   "checked": 193,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "skirt",
+   "outer": "cap-tee",
+   "hidden": 444,
+   "checked": 169,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "skirt",
+   "outer": "elbow-top",
+   "hidden": 444,
+   "checked": 200,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "skirt",
+   "outer": "shirt",
+   "hidden": 444,
+   "checked": 179,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "skirt",
+   "outer": "turtleneck",
+   "hidden": 444,
+   "checked": 168,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "skirt",
+   "outer": "belt-pouch",
+   "hidden": 0,
+   "checked": 64,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "skirt",
+   "outer": "knit",
+   "hidden": 202,
+   "checked": 53,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "long-skirt",
+   "outer": "tank",
+   "hidden": 379,
+   "checked": 136,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "long-skirt",
+   "outer": "tee",
+   "hidden": 379,
+   "checked": 126,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "long-skirt",
+   "outer": "cap-tee",
+   "hidden": 379,
+   "checked": 131,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "long-skirt",
+   "outer": "elbow-top",
+   "hidden": 379,
+   "checked": 141,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "long-skirt",
+   "outer": "shirt",
+   "hidden": 379,
+   "checked": 131,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "long-skirt",
+   "outer": "turtleneck",
+   "hidden": 379,
+   "checked": 134,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "long-skirt",
+   "outer": "belt-pouch",
+   "hidden": 0,
+   "checked": 47,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "long-skirt",
+   "outer": "knit",
+   "hidden": 199,
+   "checked": 38,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "robe",
+   "outer": "pack",
+   "hidden": 23,
+   "checked": 4,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "robe",
+   "outer": "belt-pouch",
+   "hidden": 0,
+   "checked": 29,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "dress",
+   "outer": "pack",
+   "hidden": 13,
+   "checked": 8,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "dress",
+   "outer": "belt-pouch",
+   "hidden": 0,
+   "checked": 37,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "sun-dress",
+   "outer": "pack",
+   "hidden": 67,
+   "checked": 8,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "sun-dress",
+   "outer": "belt-pouch",
+   "hidden": 0,
+   "checked": 30,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "gown",
+   "outer": "pack",
+   "hidden": 16,
+   "checked": 7,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "gown",
+   "outer": "belt-pouch",
+   "hidden": 0,
+   "checked": 34,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "jumpsuit",
+   "outer": "pack",
+   "hidden": 24,
+   "checked": 12,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "jumpsuit",
+   "outer": "belt-pouch",
+   "hidden": 9,
+   "checked": 44,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "playsuit",
+   "outer": "pack",
+   "hidden": 16,
+   "checked": 16,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "playsuit",
+   "outer": "belt-pouch",
+   "hidden": 13,
+   "checked": 57,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "shoes",
+   "outer": "trousers",
+   "hidden": 0,
+   "checked": 78,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "shoes",
+   "outer": "jumpsuit",
+   "hidden": 0,
+   "checked": 85,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "ankle-boots",
+   "outer": "trousers",
+   "hidden": 345,
+   "checked": 59,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "ankle-boots",
+   "outer": "long-skirt",
+   "hidden": 295,
+   "checked": 0,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "ankle-boots",
+   "outer": "robe",
+   "hidden": 295,
+   "checked": 0,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "ankle-boots",
+   "outer": "gown",
+   "hidden": 295,
+   "checked": 0,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "ankle-boots",
+   "outer": "jumpsuit",
+   "hidden": 345,
+   "checked": 54,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "boots",
+   "outer": "trousers",
+   "hidden": 740,
+   "checked": 63,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "boots",
+   "outer": "long-skirt",
+   "hidden": 697,
+   "checked": 0,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "boots",
+   "outer": "robe",
+   "hidden": 697,
+   "checked": 0,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "boots",
+   "outer": "gown",
+   "hidden": 697,
+   "checked": 0,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "boots",
+   "outer": "jumpsuit",
+   "hidden": 740,
+   "checked": 54,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "tall-boots",
+   "outer": "capri",
+   "hidden": 585,
+   "checked": 63,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "tall-boots",
+   "outer": "trousers",
+   "hidden": 1308,
+   "checked": 60,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "tall-boots",
+   "outer": "long-skirt",
+   "hidden": 1268,
+   "checked": 0,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "tall-boots",
+   "outer": "robe",
+   "hidden": 1268,
+   "checked": 0,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "tall-boots",
+   "outer": "gown",
+   "hidden": 1268,
+   "checked": 0,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "tall-boots",
+   "outer": "jumpsuit",
+   "hidden": 1308,
+   "checked": 57,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "knit",
+   "outer": "pack",
+   "hidden": 19,
+   "checked": 15,
+   "through": 0,
+   "depthMm": 0
+  },
+  {
+   "inner": "knit",
+   "outer": "belt-pouch",
+   "hidden": 14,
+   "checked": 87,
+   "through": 0,
+   "depthMm": 0
+  }
+ ],
+ "apart": [
+  [
+   "straw-hat",
+   "hair-bun"
+  ],
+  [
+   "pack",
+   "hair-long"
+  ],
+  [
+   "belt-pouch",
+   "tank"
+  ],
+  [
+   "belt-pouch",
+   "tee"
+  ],
+  [
+   "belt-pouch",
+   "cap-tee"
+  ],
+  [
+   "belt-pouch",
+   "elbow-top"
+  ],
+  [
+   "belt-pouch",
+   "shirt"
+  ],
+  [
+   "belt-pouch",
+   "turtleneck"
+  ]
+ ],
+ "solids": [
+  {
+   "solid": "straw-hat",
+   "with": "body",
+   "through": 0
+  },
+  {
+   "solid": "straw-hat",
+   "with": "hair-long",
+   "through": 0
+  },
+  {
+   "solid": "straw-hat",
+   "with": "hair-bob",
+   "through": 0
+  },
+  {
+   "solid": "pack",
+   "with": "body",
+   "through": 0
+  },
+  {
+   "solid": "pack",
+   "with": "hair-bob",
+   "through": 0
+  },
+  {
+   "solid": "pack",
+   "with": "hair-bun",
+   "through": 0
+  },
+  {
+   "solid": "pack",
+   "with": "tank",
+   "through": 0
+  },
+  {
+   "solid": "pack",
+   "with": "crop-tank",
+   "through": 0
+  },
+  {
+   "solid": "pack",
+   "with": "tee",
+   "through": 0
+  },
+  {
+   "solid": "pack",
+   "with": "crop-tee",
+   "through": 0
+  },
+  {
+   "solid": "pack",
+   "with": "cap-tee",
+   "through": 0
+  },
+  {
+   "solid": "pack",
+   "with": "elbow-top",
+   "through": 0
+  },
+  {
+   "solid": "pack",
+   "with": "shirt",
+   "through": 0
+  },
+  {
+   "solid": "pack",
+   "with": "turtleneck",
+   "through": 0
+  },
+  {
+   "solid": "pack",
+   "with": "crop-shirt",
+   "through": 0
+  },
+  {
+   "solid": "pack",
+   "with": "robe",
+   "through": 0
+  },
+  {
+   "solid": "pack",
+   "with": "dress",
+   "through": 0
+  },
+  {
+   "solid": "pack",
+   "with": "sun-dress",
+   "through": 0
+  },
+  {
+   "solid": "pack",
+   "with": "gown",
+   "through": 0
+  },
+  {
+   "solid": "pack",
+   "with": "jumpsuit",
+   "through": 0
+  },
+  {
+   "solid": "pack",
+   "with": "playsuit",
+   "through": 0
+  },
+  {
+   "solid": "pack",
+   "with": "belt-pouch",
+   "through": 0
+  }
+ ]
+}

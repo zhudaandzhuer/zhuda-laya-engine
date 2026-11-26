@@ -10,7 +10,7 @@ Date: 2026-11-17
   headless through the repository's `chromeFixture` (WebGL: ANGLE Metal;
   WebGPU: apple / metal-3).
 - Evidence (outside the repository): `EV` =
-  `/Users/yaowei/Documents/ZhudaGameCenter/audits/mesh-csg-2026-11-17/`:
+  `<workspace>/audits/mesh-csg-2026-11-17/`:
   `webgl/`, `webgpu/` (pictures, reports, logs), `repeated-cuts.txt`.
 
 ## Checks

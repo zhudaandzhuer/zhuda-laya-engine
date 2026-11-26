@@ -1,0 +1,139 @@
+{
+ "errors": [],
+ "failed": "",
+ "final": {
+  "ready": true,
+  "screen": "result",
+  "frames": 190,
+  "hot": {
+   "again": [
+    345,
+    332
+   ],
+   "next": [
+    615,
+    332
+   ]
+  },
+  "best": {},
+  "game": {
+   "level": "meadow",
+   "state": "dead",
+   "time": 2.1,
+   "x": 9.5,
+   "y": 8,
+   "grounded": true,
+   "coins": 1,
+   "of": 10,
+   "chunks": 2
+  }
+ },
+ "log": [
+  {
+   "shot": "00-title",
+   "seconds": 1.615,
+   "state": {
+    "ready": true,
+    "screen": "title",
+    "frames": 34,
+    "hot": {
+     "level-0": [
+      233,
+      274
+     ],
+     "level-1": [
+      480,
+      274
+     ],
+     "level-2": [
+      728,
+      274
+     ],
+     "mute": [
+      889,
+      34
+     ]
+    },
+    "best": {}
+   }
+  },
+  {
+   "shot": "01-jumping",
+   "seconds": 3.693,
+   "state": {
+    "ready": true,
+    "screen": "play",
+    "frames": 144,
+    "hot": {},
+    "best": {},
+    "game": {
+     "level": "meadow",
+     "state": "play",
+     "time": 2,
+     "x": 8.8,
+     "y": 8,
+     "grounded": true,
+     "coins": 1,
+     "of": 10,
+     "chunks": 2
+    }
+   }
+  },
+  {
+   "before": {
+    "level": "meadow",
+    "state": "play",
+    "time": 0.7,
+    "x": 1.5,
+    "y": 8,
+    "grounded": true,
+    "coins": 0,
+    "of": 10,
+    "chunks": 2
+   },
+   "top": 5.6,
+   "after": {
+    "level": "meadow",
+    "state": "dead",
+    "time": 2.1,
+    "x": 9.5,
+    "y": 8,
+    "grounded": true,
+    "coins": 1,
+    "of": 10,
+    "chunks": 2
+   }
+  },
+  {
+   "shot": "02-after",
+   "seconds": 4.79,
+   "state": {
+    "ready": true,
+    "screen": "result",
+    "frames": 189,
+    "hot": {
+     "again": [
+      345,
+      332
+     ],
+     "next": [
+      615,
+      332
+     ]
+    },
+    "best": {},
+    "game": {
+     "level": "meadow",
+     "state": "dead",
+     "time": 2.1,
+     "x": 9.5,
+     "y": 8,
+     "grounded": true,
+     "coins": 1,
+     "of": 10,
+     "chunks": 2
+    }
+   }
+  }
+ ]
+}

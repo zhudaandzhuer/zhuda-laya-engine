@@ -1,0 +1,940 @@
+{
+ "errors": [
+  "Failed to load resource: the server responded with a status of 404 (Not Found) http://localhost:62036/favicon.ico"
+ ],
+ "failed": "",
+ "renderer": {
+  "webgl": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+  "webgpu": true,
+  "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/158.0.0.0 Safari/537.36",
+  "dpr": 2
+ },
+ "final": {
+  "ready": true,
+  "frames": 1440,
+  "hot": {
+   "random": [
+    953,
+    71
+   ],
+   "clear": [
+    1037,
+    71
+   ],
+   "none-hair": [
+    939,
+    145
+   ],
+   "wear-hair-long": [
+    995,
+    145
+   ],
+   "wear-hair-bob": [
+    1051,
+    145
+   ],
+   "wear-hair-bun": [
+    1107,
+    145
+   ],
+   "colour-hair-bob-0": [
+    932,
+    187
+   ],
+   "colour-hair-bob-1": [
+    974,
+    187
+   ],
+   "colour-hair-bob-2": [
+    1016,
+    187
+   ],
+   "colour-hair-bob-3": [
+    1058,
+    187
+   ],
+   "colour-hair-bob-4": [
+    1100,
+    187
+   ],
+   "none-hat": [
+    939,
+    261
+   ],
+   "wear-straw-hat": [
+    995,
+    261
+   ],
+   "none-top": [
+    939,
+    335
+   ],
+   "wear-tank": [
+    995,
+    335
+   ],
+   "wear-crop-tank": [
+    1058,
+    335
+   ],
+   "wear-tee": [
+    1121,
+    335
+   ],
+   "wear-crop-tee": [
+    1191,
+    335
+   ],
+   "wear-cap-tee": [
+    953,
+    377
+   ],
+   "wear-elbow-top": [
+    1030,
+    377
+   ],
+   "wear-shirt": [
+    1093,
+    377
+   ],
+   "wear-turtleneck": [
+    1163,
+    377
+   ],
+   "wear-crop-shirt": [
+    953,
+    419
+   ],
+   "wear-knit": [
+    1039,
+    419
+   ],
+   "colour-shirt-0": [
+    932,
+    461
+   ],
+   "colour-shirt-1": [
+    974,
+    461
+   ],
+   "colour-shirt-2": [
+    1016,
+    461
+   ],
+   "colour-shirt-3": [
+    1058,
+    461
+   ],
+   "colour-shirt-4": [
+    1100,
+    461
+   ],
+   "colour-shirt-5": [
+    1142,
+    461
+   ],
+   "colour-shirt-6": [
+    1184,
+    461
+   ],
+   "colour-shirt-7": [
+    1226,
+    461
+   ],
+   "none-bottom": [
+    939,
+    535
+   ],
+   "wear-shorts": [
+    995,
+    535
+   ],
+   "wear-knee-shorts": [
+    1058,
+    535
+   ],
+   "wear-capri": [
+    1128,
+    535
+   ],
+   "wear-trousers": [
+    1191,
+    535
+   ],
+   "wear-skirt": [
+    946,
+    577
+   ],
+   "wear-long-skirt": [
+    1009,
+    577
+   ],
+   "colour-trousers-0": [
+    932,
+    619
+   ],
+   "colour-trousers-1": [
+    974,
+    619
+   ],
+   "colour-trousers-2": [
+    1016,
+    619
+   ],
+   "colour-trousers-3": [
+    1058,
+    619
+   ],
+   "colour-trousers-4": [
+    1100,
+    619
+   ],
+   "colour-trousers-5": [
+    1142,
+    619
+   ],
+   "colour-trousers-6": [
+    1184,
+    619
+   ],
+   "colour-trousers-7": [
+    1226,
+    619
+   ],
+   "none-full": [
+    939,
+    693
+   ],
+   "wear-robe": [
+    995,
+    693
+   ],
+   "wear-dress": [
+    1065,
+    693
+   ],
+   "wear-sun-dress": [
+    1156,
+    693
+   ],
+   "wear-gown": [
+    967,
+    735
+   ],
+   "wear-jumpsuit": [
+    1058,
+    735
+   ],
+   "wear-playsuit": [
+    1135,
+    735
+   ],
+   "none-waist": [
+    939,
+    809
+   ],
+   "wear-belt-pouch": [
+    1016,
+    809
+   ],
+   "none-back": [
+    939,
+    883
+   ],
+   "wear-pack": [
+    995,
+    883
+   ],
+   "none-shoes": [
+    939,
+    957
+   ],
+   "wear-shoes": [
+    995,
+    957
+   ],
+   "wear-ankle-boots": [
+    1051,
+    957
+   ],
+   "wear-boots": [
+    1100,
+    957
+   ],
+   "wear-tall-boots": [
+    1149,
+    957
+   ],
+   "clip-Idle": [
+    932,
+    1031
+   ],
+   "clip-Walk": [
+    974,
+    1031
+   ],
+   "clip-Run": [
+    1016,
+    1031
+   ],
+   "clip-Greet": [
+    1065,
+    1031
+   ],
+   "hold-arms": [
+    1149,
+    1031
+   ],
+   "hold-crouch": [
+    967,
+    1073
+   ],
+   "hold-kick": [
+    1079,
+    1073
+   ]
+  },
+  "bound": {
+   "boots": {
+    "renderers": 1,
+    "joints": 24,
+    "missing": [],
+    "offsets": 0
+   },
+   "trousers": {
+    "renderers": 1,
+    "joints": 24,
+    "missing": [],
+    "offsets": 0
+   },
+   "shirt": {
+    "renderers": 1,
+    "joints": 24,
+    "missing": [],
+    "offsets": 0
+   },
+   "hair-bob": {
+    "renderers": 1,
+    "joints": 24,
+    "missing": [],
+    "offsets": 0
+   },
+   "pack": {
+    "renderers": 1,
+    "joints": 24,
+    "missing": [],
+    "offsets": 0
+   },
+   "straw-hat": {
+    "renderers": 1,
+    "joints": 24,
+    "missing": [],
+    "offsets": 0
+   }
+  },
+  "loads": 6,
+  "order": {
+   "region-feet": [
+    700,
+    412365
+   ],
+   "region-forearms": [
+    600,
+    365824
+   ],
+   "region-hands": [
+    1699,
+    452124
+   ],
+   "region-head": [
+    2999,
+    980198
+   ],
+   "region-hips": [
+    800,
+    432935
+   ],
+   "region-shins": [
+    900,
+    670841
+   ],
+   "region-shoulders": [
+    600,
+    344592
+   ],
+   "region-thighs": [
+    1000,
+    843236
+   ],
+   "region-torso": [
+    1700,
+    1126804
+   ],
+   "region-upperArms": [
+    600,
+    383640
+   ],
+   "boots": [
+    1699,
+    989577
+   ],
+   "trousers": [
+    3970,
+    3181869
+   ],
+   "shirt": [
+    5538,
+    4412160
+   ],
+   "hair-bob": [
+    1496,
+    627557
+   ],
+   "pack": [
+    1700,
+    1333364
+   ],
+   "straw-hat": [
+    589,
+    602247
+   ]
+  },
+  "clip": "Run",
+  "yaw": 0,
+  "draws": 69,
+  "triangles": {
+   "rules": 17327,
+   "drawn": 96344
+  },
+  "masked": {
+   "body": 3671,
+   "parts": {
+    "boots": 740,
+    "trousers": 839,
+    "shirt": 13,
+    "hair-bob": 0,
+    "pack": 0,
+    "straw-hat": 0
+   }
+  },
+  "maskedSum": {
+   "region-forearms": 283029,
+   "region-hands": 0,
+   "region-head": 414036,
+   "region-shoulders": 245155,
+   "region-torso": 1046439,
+   "boots": 406793,
+   "trousers": 603787,
+   "shirt": 3688,
+   "hair-bob": 0,
+   "pack": 0,
+   "straw-hat": 0
+  },
+  "look": "hair-bob.shirt.trousers.boots._._.pack.straw-hat",
+  "worn": [
+   "boots",
+   "trousers",
+   "shirt",
+   "hair-bob",
+   "pack",
+   "straw-hat"
+  ],
+  "hidden": [
+   "feet",
+   "hips",
+   "shins",
+   "thighs",
+   "upperArms"
+  ],
+  "shown": [
+   "forearms",
+   "hands",
+   "head",
+   "shoulders",
+   "torso"
+  ]
+ },
+ "log": [
+  {
+   "measure": "rate",
+   "frames": 1255,
+   "seconds": 30,
+   "fps": 41.83,
+   "frameMs": {
+    "median": 17.4,
+    "p95": 34.1,
+    "p99": 34.3,
+    "worst": 34.4
+   },
+   "over33ms": 234,
+   "over50ms": 0,
+   "game": {
+    "triangles": {
+     "rules": 17327,
+     "drawn": 96344
+    },
+    "draws": 69,
+    "frames": 1388,
+    "look": "hair-bob.shirt.trousers.boots._._.pack.straw-hat",
+    "clip": "Run"
+   },
+   "memory": {
+    "jsHeapUsedMB": 15.6,
+    "jsHeapTotalMB": 16.6,
+    "domNodes": 206,
+    "listeners": 120,
+    "rendererProcessMB": 378.6,
+    "gpuProcessMB": 122.5
+   }
+  },
+  {
+   "shot": "window-dpr2-run-rate",
+   "seconds": 35.333,
+   "state": {
+    "ready": true,
+    "frames": 1437,
+    "hot": {
+     "random": [
+      953,
+      71
+     ],
+     "clear": [
+      1037,
+      71
+     ],
+     "none-hair": [
+      939,
+      145
+     ],
+     "wear-hair-long": [
+      995,
+      145
+     ],
+     "wear-hair-bob": [
+      1051,
+      145
+     ],
+     "wear-hair-bun": [
+      1107,
+      145
+     ],
+     "colour-hair-bob-0": [
+      932,
+      187
+     ],
+     "colour-hair-bob-1": [
+      974,
+      187
+     ],
+     "colour-hair-bob-2": [
+      1016,
+      187
+     ],
+     "colour-hair-bob-3": [
+      1058,
+      187
+     ],
+     "colour-hair-bob-4": [
+      1100,
+      187
+     ],
+     "none-hat": [
+      939,
+      261
+     ],
+     "wear-straw-hat": [
+      995,
+      261
+     ],
+     "none-top": [
+      939,
+      335
+     ],
+     "wear-tank": [
+      995,
+      335
+     ],
+     "wear-crop-tank": [
+      1058,
+      335
+     ],
+     "wear-tee": [
+      1121,
+      335
+     ],
+     "wear-crop-tee": [
+      1191,
+      335
+     ],
+     "wear-cap-tee": [
+      953,
+      377
+     ],
+     "wear-elbow-top": [
+      1030,
+      377
+     ],
+     "wear-shirt": [
+      1093,
+      377
+     ],
+     "wear-turtleneck": [
+      1163,
+      377
+     ],
+     "wear-crop-shirt": [
+      953,
+      419
+     ],
+     "wear-knit": [
+      1039,
+      419
+     ],
+     "colour-shirt-0": [
+      932,
+      461
+     ],
+     "colour-shirt-1": [
+      974,
+      461
+     ],
+     "colour-shirt-2": [
+      1016,
+      461
+     ],
+     "colour-shirt-3": [
+      1058,
+      461
+     ],
+     "colour-shirt-4": [
+      1100,
+      461
+     ],
+     "colour-shirt-5": [
+      1142,
+      461
+     ],
+     "colour-shirt-6": [
+      1184,
+      461
+     ],
+     "colour-shirt-7": [
+      1226,
+      461
+     ],
+     "none-bottom": [
+      939,
+      535
+     ],
+     "wear-shorts": [
+      995,
+      535
+     ],
+     "wear-knee-shorts": [
+      1058,
+      535
+     ],
+     "wear-capri": [
+      1128,
+      535
+     ],
+     "wear-trousers": [
+      1191,
+      535
+     ],
+     "wear-skirt": [
+      946,
+      577
+     ],
+     "wear-long-skirt": [
+      1009,
+      577
+     ],
+     "colour-trousers-0": [
+      932,
+      619
+     ],
+     "colour-trousers-1": [
+      974,
+      619
+     ],
+     "colour-trousers-2": [
+      1016,
+      619
+     ],
+     "colour-trousers-3": [
+      1058,
+      619
+     ],
+     "colour-trousers-4": [
+      1100,
+      619
+     ],
+     "colour-trousers-5": [
+      1142,
+      619
+     ],
+     "colour-trousers-6": [
+      1184,
+      619
+     ],
+     "colour-trousers-7": [
+      1226,
+      619
+     ],
+     "none-full": [
+      939,
+      693
+     ],
+     "wear-robe": [
+      995,
+      693
+     ],
+     "wear-dress": [
+      1065,
+      693
+     ],
+     "wear-sun-dress": [
+      1156,
+      693
+     ],
+     "wear-gown": [
+      967,
+      735
+     ],
+     "wear-jumpsuit": [
+      1058,
+      735
+     ],
+     "wear-playsuit": [
+      1135,
+      735
+     ],
+     "none-waist": [
+      939,
+      809
+     ],
+     "wear-belt-pouch": [
+      1016,
+      809
+     ],
+     "none-back": [
+      939,
+      883
+     ],
+     "wear-pack": [
+      995,
+      883
+     ],
+     "none-shoes": [
+      939,
+      957
+     ],
+     "wear-shoes": [
+      995,
+      957
+     ],
+     "wear-ankle-boots": [
+      1051,
+      957
+     ],
+     "wear-boots": [
+      1100,
+      957
+     ],
+     "wear-tall-boots": [
+      1149,
+      957
+     ],
+     "clip-Idle": [
+      932,
+      1031
+     ],
+     "clip-Walk": [
+      974,
+      1031
+     ],
+     "clip-Run": [
+      1016,
+      1031
+     ],
+     "clip-Greet": [
+      1065,
+      1031
+     ],
+     "hold-arms": [
+      1149,
+      1031
+     ],
+     "hold-crouch": [
+      967,
+      1073
+     ],
+     "hold-kick": [
+      1079,
+      1073
+     ]
+    },
+    "bound": {
+     "boots": {
+      "renderers": 1,
+      "joints": 24,
+      "missing": [],
+      "offsets": 0
+     },
+     "trousers": {
+      "renderers": 1,
+      "joints": 24,
+      "missing": [],
+      "offsets": 0
+     },
+     "shirt": {
+      "renderers": 1,
+      "joints": 24,
+      "missing": [],
+      "offsets": 0
+     },
+     "hair-bob": {
+      "renderers": 1,
+      "joints": 24,
+      "missing": [],
+      "offsets": 0
+     },
+     "pack": {
+      "renderers": 1,
+      "joints": 24,
+      "missing": [],
+      "offsets": 0
+     },
+     "straw-hat": {
+      "renderers": 1,
+      "joints": 24,
+      "missing": [],
+      "offsets": 0
+     }
+    },
+    "loads": 6,
+    "order": {
+     "region-feet": [
+      700,
+      412365
+     ],
+     "region-forearms": [
+      600,
+      365824
+     ],
+     "region-hands": [
+      1699,
+      452124
+     ],
+     "region-head": [
+      2999,
+      980198
+     ],
+     "region-hips": [
+      800,
+      432935
+     ],
+     "region-shins": [
+      900,
+      670841
+     ],
+     "region-shoulders": [
+      600,
+      344592
+     ],
+     "region-thighs": [
+      1000,
+      843236
+     ],
+     "region-torso": [
+      1700,
+      1126804
+     ],
+     "region-upperArms": [
+      600,
+      383640
+     ],
+     "boots": [
+      1699,
+      989577
+     ],
+     "trousers": [
+      3970,
+      3181869
+     ],
+     "shirt": [
+      5538,
+      4412160
+     ],
+     "hair-bob": [
+      1496,
+      627557
+     ],
+     "pack": [
+      1700,
+      1333364
+     ],
+     "straw-hat": [
+      589,
+      602247
+     ]
+    },
+    "clip": "Run",
+    "yaw": 0,
+    "draws": 69,
+    "triangles": {
+     "rules": 17327,
+     "drawn": 96344
+    },
+    "masked": {
+     "body": 3671,
+     "parts": {
+      "boots": 740,
+      "trousers": 839,
+      "shirt": 13,
+      "hair-bob": 0,
+      "pack": 0,
+      "straw-hat": 0
+     }
+    },
+    "maskedSum": {
+     "region-forearms": 283029,
+     "region-hands": 0,
+     "region-head": 414036,
+     "region-shoulders": 245155,
+     "region-torso": 1046439,
+     "boots": 406793,
+     "trousers": 603787,
+     "shirt": 3688,
+     "hair-bob": 0,
+     "pack": 0,
+     "straw-hat": 0
+    },
+    "look": "hair-bob.shirt.trousers.boots._._.pack.straw-hat",
+    "worn": [
+     "boots",
+     "trousers",
+     "shirt",
+     "hair-bob",
+     "pack",
+     "straw-hat"
+    ],
+    "hidden": [
+     "feet",
+     "hips",
+     "shins",
+     "thighs",
+     "upperArms"
+    ],
+    "shown": [
+     "forearms",
+     "hands",
+     "head",
+     "shoulders",
+     "torso"
+    ]
+   }
+  }
+ ]
+}

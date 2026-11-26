@@ -9,14 +9,21 @@ import { isAllowedRequestHost } from './editor-http.mjs';
  * serves dist/web, injects a tiny SSE client into the two generated entry
  * pages, and reloads them after a successful build. A failed build is sent to
  * the page as an error event and never replaces the last good output.
+ *
+ * With --candidate, a save that changed only files under src/ is answered by
+ * rebuilding app.js alone (consumer-scripts.mjs). That bundle is served from
+ * memory and never written: the output directory stays the last full build.
  */
 import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { runZhudaBuild } from './zhuda-build.mjs';
-
-const moduleDir = path.dirname(fileURLToPath(import.meta.url));
+import { resolveEngineRoot, runZhudaBuild } from './zhuda-build.mjs';
+import {
+  classifyWatchChange,
+  createScriptRebuilder,
+  scriptsOnlyObstacle,
+  staleManifest,
+} from './consumer-scripts.mjs';
 
 export function parseWatchArgs(argv = process.argv.slice(2)) {
   const value = (name, fallback) => {
@@ -30,7 +37,13 @@ export function parseWatchArgs(argv = process.argv.slice(2)) {
   if (!host || host.includes('/')) throw Error('Invalid --host');
   if (!fs.existsSync(project) || !fs.statSync(project).isDirectory())
     throw Error(`Project does not exist: ${project}`);
-  return { project, port, host, candidate: argv.includes('--candidate') };
+  return {
+    project,
+    port,
+    host,
+    candidate: argv.includes('--candidate'),
+    fullBuilds: argv.includes('--full-builds'),
+  };
 }
 
 export function liveReloadScript() {
@@ -103,6 +116,8 @@ export function createPreviewServer({
   reload = true,
 }) {
   const clients = new Set();
+  // Files answered from memory in place of the ones under `root`, by their path in the payload.
+  const overlay = new Map();
   const server = http.createServer((request, response) => {
     // A page on another origin must not be able to read the preview through a
     // rebinding hostname. Binding to 0.0.0.0 stays open for device testing.
@@ -130,6 +145,12 @@ export function createPreviewServer({
     if (!file) {
       response.writeHead(400);
       response.end('Bad path');
+      return;
+    }
+    const held = overlay.get(path.relative(root, file).split(path.sep).join('/'));
+    if (held) {
+      response.writeHead(200, { 'Content-Type': contentType(file), 'Cache-Control': 'no-cache' });
+      response.end(held);
       return;
     }
     fs.stat(file, (statError, stat) => {
@@ -173,7 +194,7 @@ export function createPreviewServer({
     clients.clear();
     await new Promise((resolve) => server.close(() => resolve()));
   };
-  return { server, listening, broadcast, close, clients, onBuild };
+  return { server, listening, broadcast, close, clients, onBuild, overlay };
 }
 
 function watchRoots(project) {
@@ -187,11 +208,14 @@ export function watchConsumer({
   port,
   host,
   candidate = false,
+  fullBuilds = false,
+  watchFiles = true,
   build = runZhudaBuild,
+  scripts = createScriptRebuilder,
   log = console,
 }) {
   let building = false;
-  let queued = false;
+  let queued = null;
   let closed = false;
   let activeBuild = Promise.resolve();
   let timer;
@@ -203,10 +227,136 @@ export function watchConsumer({
     ? path.join(path.dirname(release), 'candidate', path.basename(release))
     : release;
   const preview = createPreviewServer({ root, host, port });
-  const rebuild = async (reason = 'source change') => {
+  const where = path.relative(project, root).split(path.sep).join('/') || '.';
+  // Paths, relative to the project, that changed since the last build began.
+  const pending = new Set();
+  // What the last full build was made from, for as long as the output directory is that build:
+  // null until the first one succeeds, and again after one fails.
+  let full = null;
+  // The script bundle kept between saves, made in the background after a full build.
+  let kept = null;
+  // Whether the scripts have been rebuilt, or tried, since the directory was last written.
+  let ahead = false;
+  // The inputs a bundle could not be kept for, and why: not tried again until they change.
+  let unkept = null;
+  let explained;
+  const message = (error) => (error instanceof Error ? error.message : String(error));
+  // A build reads these two besides the watched directories. A scripts-only rebuild is right
+  // only while they are what the last full build read, whether or not a change event came.
+  const inputs = () => {
+    const texts = ['zhuda.config.json', 'package.json'].map((name) => {
+      try {
+        return fs.readFileSync(path.join(project, name), 'utf8');
+      } catch {
+        return null;
+      }
+    });
+    let parsed = null;
+    try {
+      parsed = texts[0] === null ? null : JSON.parse(texts[0]);
+    } catch {
+      // The build itself reports a configuration that is not JSON.
+    }
+    return { signature: JSON.stringify(texts), config: parsed };
+  };
+  const dropKept = async () => {
+    const old = kept;
+    kept = null;
+    if (!old) return;
+    try {
+      await (await old.ready).dispose();
+    } catch {
+      // It never came to be.
+    }
+  };
+  const runFull = async () => {
+    const made = inputs();
+    full = null;
+    const result = await build({ projectRoot: project, candidate });
+    // Published: the directory is the sources again, so nothing is answered from memory.
+    preview.overlay.clear();
+    ahead = false;
+    const engineRoot = resolveEngineRoot(project, made.config?.engineRoot);
+    const obstacle = fullBuilds
+      ? '--full-builds was given'
+      : (scriptsOnlyObstacle({
+          projectRoot: project,
+          engineRoot,
+          config: made.config,
+          candidate,
+        }) ?? (unkept?.signature === made.signature ? unkept.reason : null));
+    if (kept && kept.signature !== made.signature) await dropKept();
+    full = { ...made, engineRoot, obstacle, manifest: undefined };
+    if (obstacle !== explained) {
+      explained = obstacle;
+      log.log(
+        obstacle
+          ? `[Zhuda Watch] every change runs the full build: ${obstacle}`
+          : `[Zhuda Watch] a save that changes only src/ rebuilds app.js alone, served from memory; ${where} on disk keeps the last full build`,
+      );
+    }
+    // Made now, in the background, so that the first save is as quick as the ones after it.
+    if (obstacle === null && !closed) void bundle();
+    return result;
+  };
+  const scriptsAlone = (paths) =>
+    full !== null &&
+    full.obstacle === null &&
+    paths.length > 0 &&
+    paths.every((file) => classifyWatchChange(file) === 'scripts') &&
+    inputs().signature === full.signature;
+  /** The kept bundle, or null (and full builds from now on) when it cannot be made. */
+  const bundle = async () => {
+    const state = full;
+    if (!kept)
+      kept = {
+        signature: state.signature,
+        ready: Promise.resolve().then(() =>
+          scripts({ projectRoot: project, engineRoot: state.engineRoot, config: state.config }),
+        ),
+      };
+    const mine = kept;
+    try {
+      return await mine.ready;
+    } catch (error) {
+      if (kept === mine) kept = null;
+      const reason = `the script bundle could not be kept (${message(error)})`;
+      unkept = { signature: state.signature, reason };
+      if (full === state && state.obstacle === null) {
+        state.obstacle = explained = reason;
+        log.warn(`[Zhuda Watch] every change runs the full build: ${reason}`);
+      }
+      return null;
+    }
+  };
+  const runScripts = async (rebuilder) => {
+    // From here the scripts are newer than the directory, whether or not they compile.
+    ahead = true;
+    const app = await rebuilder.rebuild();
+    if (full.manifest === undefined) {
+      try {
+        full.manifest = JSON.parse(fs.readFileSync(path.join(root, 'payload-manifest.json')));
+      } catch {
+        full.manifest = null;
+      }
+    }
+    const served = { 'app.js': app };
+    const manifest = staleManifest(full.manifest, served);
+    if (manifest)
+      preview.overlay.set('payload-manifest.json', Buffer.from(JSON.stringify(manifest, null, 2)));
+    for (const [file, bytes] of Object.entries(served)) preview.overlay.set(file, bytes);
+    return { scriptsOnly: true, served: Object.keys(served) };
+  };
+  /**
+   * Build once. `changed` adds paths (relative to the project) to the ones the file watchers
+   * have seen; the build is scripts-only when every one of them is under src/ and nothing else
+   * stands in the way, and the full build otherwise.
+   */
+  const rebuild = async (reason = 'source change', changed = []) => {
     if (closed) return null;
+    for (const file of changed) pending.add(file);
     if (building) {
-      queued = true;
+      queued = reason;
       return;
     }
     building = true;
@@ -214,54 +364,72 @@ export function watchConsumer({
     activeBuild = new Promise((resolve) => {
       finished = resolve;
     });
-    preview.broadcast('status', { state: 'building', reason });
+    const paths = [...pending];
+    pending.clear();
+    const started = performance.now();
+    let kind = 'full';
     try {
-      const result = await build({ projectRoot: project, candidate });
-      if (!closed) preview.broadcast('reload', { state: 'ready', reason, at: Date.now() });
-      log.log(`[Zhuda Watch] rebuilt after ${reason}`);
+      const rebuilder = scriptsAlone(paths) ? await bundle() : null;
+      if (rebuilder) kind = 'scripts only';
+      preview.broadcast('status', { state: 'building', reason, kind });
+      const result = rebuilder ? await runScripts(rebuilder) : await runFull();
+      if (!closed) preview.broadcast('reload', { state: 'ready', reason, kind, at: Date.now() });
+      log.log(
+        `[Zhuda Watch] rebuilt after ${reason} in ${Math.round(performance.now() - started)} ms, ${kind}`,
+      );
       return result;
     } catch (error) {
-      preview.broadcast('error', error instanceof Error ? error.message : String(error));
+      preview.broadcast('error', message(error));
       log.error(
-        `[Zhuda Watch] build failed: ${error instanceof Error ? error.stack || error.message : String(error)}`,
+        `[Zhuda Watch] build failed after ${reason} in ${Math.round(performance.now() - started)} ms, ${kind}: ${error instanceof Error ? error.stack || error.message : String(error)}`,
       );
       return null;
     } finally {
       building = false;
       finished();
-      if (queued && !closed) {
-        queued = false;
-        void rebuild('queued source change');
+      if (queued !== null && !closed) {
+        const next = queued;
+        queued = null;
+        void rebuild(next);
       }
     }
   };
-  const schedule = (reason) => {
+  /** A watched path changed: build after the changes have been quiet for a moment. */
+  const note = (relative) => {
     if (closed) return;
+    pending.add(relative);
     clearTimeout(timer);
-    timer = setTimeout(() => void rebuild(reason), 120);
+    timer = setTimeout(
+      () => void rebuild(pending.size > 1 ? `${relative} and ${pending.size - 1} more` : relative),
+      120,
+    );
   };
-  for (const root of watchRoots(project)) {
+  for (const watched of watchFiles ? watchRoots(project) : []) {
+    const name = path.relative(project, watched).split(path.sep).join('/');
     try {
       watchers.push(
-        fs.watch(root, { recursive: fs.statSync(root).isDirectory() }, (_event, filename) => {
-          schedule(`${path.relative(project, root)}${filename ? `/${filename}` : ''}`);
+        fs.watch(watched, { recursive: fs.statSync(watched).isDirectory() }, (_event, filename) => {
+          note(filename ? `${name}/${String(filename).split(path.sep).join('/')}` : name);
         }),
       );
     } catch (error) {
-      log.warn(
-        `[Zhuda Watch] unable to watch ${root}: ${error instanceof Error ? error.message : String(error)}`,
-      );
+      log.warn(`[Zhuda Watch] unable to watch ${watched}: ${message(error)}`);
     }
   }
   const close = async () => {
     closed = true;
-    queued = false;
+    queued = null;
     clearTimeout(timer);
     for (const watcher of watchers) watcher.close();
     await activeBuild;
+    if (ahead)
+      log.log(
+        `[Zhuda Watch] stopped: ${where} on disk is the last full build, older than the scripts; a full build brings it up to date`,
+      );
+    await dropKept();
     await preview.close();
   };
-  return { preview, rebuild, close, watchers };
+  return { preview, rebuild, note, close, watchers };
 }
 
 async function main() {
@@ -282,7 +450,7 @@ async function main() {
 
 const launched = cliMain(
   import.meta.url,
-  'Usage: zhuda-laya-watch [--project DIRECTORY] [--host HOST] [--port PORT] [--candidate]',
+  'Usage: zhuda-laya-watch [--project DIRECTORY] [--host HOST] [--port PORT] [--candidate] [--full-builds]',
 );
 if (launched)
   main().catch((error) => {

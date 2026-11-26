@@ -120,13 +120,17 @@ test('physical lens math, exact focus-plane projection and restoration', () => {
         p = f.camera.transform.position;
       return [(-p.x * m[0] - depth * m[8]) / depth, (-p.y * m[5] - depth * m[9]) / depth];
     };
+  assert.equal(f.lens.sampling, false);
   const baseline = project(5),
     restore = f.lens.sample(0.6, 0.8, 0, 0, 640, 360);
+  assert.equal(f.lens.sampling, true, 'a film stage leaves the lens alone while a sample is held');
+  assert.throws(() => f.lens.apply(16 / 9), /Restore/);
   for (const [i, v] of project(5).entries()) assert.ok(Math.abs(v - baseline[i]) < 1e-12);
   assert.notDeepEqual(project(2), baseline);
   assert.throws(() => f.lens.sample(0, 0, 0, 0, 640, 360), /Restore/);
   assert.throws(() => new ZhudaPhysicalCameraRig(f.camera, { focalLengthMm: 50 }), /unowned/);
   restore();
+  assert.equal(f.lens.sampling, false);
   assert.deepEqual(f.camera.transform.position, new Vector());
   f.lens.sample(1, 0, 0, 0, 640, 360);
   f.lens.dispose();

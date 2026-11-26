@@ -1,0 +1,36 @@
+{
+  "project": "prefabs/viewer3d",
+  "file": "src/Main.ts",
+  "mode": "candidate",
+  "fullBuildsOnly": false,
+  "node": "v26.13.1",
+  "startMs": 1664.3,
+  "saves": 9,
+  "saveToReloadMs": {
+    "median": 1459,
+    "min": 1402.7,
+    "max": 1715.5,
+    "all": [
+      1454.5,
+      1454.5,
+      1461,
+      1467.6,
+      1447.2,
+      1459,
+      1715.5,
+      1481.7,
+      1402.7
+    ]
+  },
+  "watcherLog": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+  ]
+}

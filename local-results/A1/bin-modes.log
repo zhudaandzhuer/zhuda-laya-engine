@@ -1,0 +1,11 @@
+mode change 100644 => 100755 packages/ci-gate/export-film.mjs
+mode change 100644 => 100755 packages/ci-gate/verify-sequence.mjs
+mode change 100644 => 100755 packages/compiler/model-crown.mjs
+mode change 100644 => 100755 packages/compiler/model-editor.mjs
+mode change 100644 => 100755 packages/compiler/model-lod.mjs
+mode change 100644 => 100755 packages/compiler/prefab-check.mjs
+mode change 100644 => 100755 packages/compiler/prefab-editor.mjs
+mode change 100644 => 100755 packages/compiler/prefab-watch.mjs
+mode change 100644 => 100755 packages/compiler/visual-contract-audit.mjs
+mode change 100644 => 100755 packages/compiler/zhuda-layout.mjs
+mode change 100644 => 100755 packages/compiler/zhuda-minigame.mjs

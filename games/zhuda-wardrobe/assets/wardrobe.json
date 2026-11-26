@@ -1,0 +1,516 @@
+{
+ "schemaVersion": 2,
+ "joints": [
+  "root",
+  "hips",
+  "spine",
+  "chest",
+  "neck",
+  "head",
+  "clavL",
+  "clavR",
+  "armL",
+  "armR",
+  "foreL",
+  "foreR",
+  "handL",
+  "handR",
+  "thighL",
+  "thighR",
+  "shinL",
+  "shinR",
+  "footL",
+  "footR",
+  "robeF",
+  "robeB",
+  "hair1",
+  "hair2"
+ ],
+ "body": {
+  "file": "parts/body.glb",
+  "regions": {
+   "feet": 700,
+   "forearms": 600,
+   "hands": 1699,
+   "head": 2999,
+   "hips": 800,
+   "shins": 900,
+   "shoulders": 600,
+   "thighs": 1000,
+   "torso": 1700,
+   "upperArms": 600
+  },
+  "clips": [
+   "Idle",
+   "Walk",
+   "Run",
+   "Greet",
+   "_Stress"
+  ]
+ },
+ "masks": "masks.json",
+ "parts": [
+  {
+   "id": "hair-long",
+   "slot": "hair",
+   "name": "長髮",
+   "file": "parts/hair-long.glb",
+   "covers": [],
+   "tintable": true,
+   "triangles": 1799,
+   "tight": 0,
+   "avoid": [
+    "pack",
+    "turtleneck"
+   ],
+   "passes": true
+  },
+  {
+   "id": "hair-bob",
+   "slot": "hair",
+   "name": "短髮",
+   "file": "parts/hair-bob.glb",
+   "covers": [],
+   "tintable": true,
+   "triangles": 1496,
+   "tight": 0,
+   "avoid": [],
+   "passes": true
+  },
+  {
+   "id": "hair-bun",
+   "slot": "hair",
+   "name": "髮髻",
+   "file": "parts/hair-bun.glb",
+   "covers": [],
+   "tintable": true,
+   "triangles": 1494,
+   "tight": 0,
+   "avoid": [
+    "straw-hat"
+   ],
+   "passes": true
+  },
+  {
+   "id": "tank",
+   "slot": "top",
+   "name": "背心",
+   "file": "parts/tank.glb",
+   "covers": [],
+   "tintable": true,
+   "triangles": 3454,
+   "tight": 1140,
+   "avoid": [
+    "belt-pouch"
+   ],
+   "passes": true
+  },
+  {
+   "id": "crop-tank",
+   "slot": "top",
+   "name": "短背心",
+   "file": "parts/crop-tank.glb",
+   "covers": [],
+   "tintable": true,
+   "triangles": 1952,
+   "tight": 1046,
+   "avoid": [],
+   "passes": true
+  },
+  {
+   "id": "tee",
+   "slot": "top",
+   "name": "短袖",
+   "file": "parts/tee.glb",
+   "covers": [],
+   "tintable": true,
+   "triangles": 4326,
+   "tight": 1672,
+   "avoid": [
+    "belt-pouch"
+   ],
+   "passes": true
+  },
+  {
+   "id": "crop-tee",
+   "slot": "top",
+   "name": "短版短袖",
+   "file": "parts/crop-tee.glb",
+   "covers": [],
+   "tintable": true,
+   "triangles": 2800,
+   "tight": 1598,
+   "avoid": [],
+   "passes": true
+  },
+  {
+   "id": "cap-tee",
+   "slot": "top",
+   "name": "蓋袖上衣",
+   "file": "parts/cap-tee.glb",
+   "covers": [],
+   "tintable": true,
+   "triangles": 3935,
+   "tight": 1463,
+   "avoid": [
+    "belt-pouch"
+   ],
+   "passes": true
+  },
+  {
+   "id": "elbow-top",
+   "slot": "top",
+   "name": "五分袖",
+   "file": "parts/elbow-top.glb",
+   "covers": [],
+   "tintable": true,
+   "triangles": 4880,
+   "tight": 1918,
+   "avoid": [
+    "belt-pouch"
+   ],
+   "passes": true
+  },
+  {
+   "id": "shirt",
+   "slot": "top",
+   "name": "長袖",
+   "file": "parts/shirt.glb",
+   "covers": [
+    "upperArms"
+   ],
+   "tintable": true,
+   "triangles": 5538,
+   "tight": 2458,
+   "avoid": [
+    "belt-pouch"
+   ],
+   "passes": true
+  },
+  {
+   "id": "turtleneck",
+   "slot": "top",
+   "name": "高領長袖",
+   "file": "parts/turtleneck.glb",
+   "covers": [
+    "torso",
+    "upperArms"
+   ],
+   "tintable": true,
+   "triangles": 5864,
+   "tight": 2536,
+   "avoid": [
+    "belt-pouch",
+    "hair-long"
+   ],
+   "passes": true
+  },
+  {
+   "id": "crop-shirt",
+   "slot": "top",
+   "name": "短版長袖",
+   "file": "parts/crop-shirt.glb",
+   "covers": [
+    "upperArms"
+   ],
+   "tintable": true,
+   "triangles": 3922,
+   "tight": 2478,
+   "avoid": [],
+   "passes": true
+  },
+  {
+   "id": "shorts",
+   "slot": "bottom",
+   "name": "短褲",
+   "file": "parts/shorts.glb",
+   "covers": [
+    "hips"
+   ],
+   "tintable": true,
+   "triangles": 1600,
+   "tight": 1600,
+   "avoid": [],
+   "passes": true
+  },
+  {
+   "id": "knee-shorts",
+   "slot": "bottom",
+   "name": "及膝褲",
+   "file": "parts/knee-shorts.glb",
+   "covers": [
+    "hips"
+   ],
+   "tintable": true,
+   "triangles": 2200,
+   "tight": 2200,
+   "avoid": [],
+   "passes": true
+  },
+  {
+   "id": "capri",
+   "slot": "bottom",
+   "name": "七分褲",
+   "file": "parts/capri.glb",
+   "covers": [
+    "hips",
+    "thighs"
+   ],
+   "tintable": true,
+   "triangles": 2800,
+   "tight": 2800,
+   "avoid": [],
+   "passes": true
+  },
+  {
+   "id": "trousers",
+   "slot": "bottom",
+   "name": "長褲",
+   "file": "parts/trousers.glb",
+   "covers": [
+    "hips",
+    "thighs"
+   ],
+   "tintable": true,
+   "triangles": 3970,
+   "tight": 2830,
+   "avoid": [],
+   "passes": true
+  },
+  {
+   "id": "skirt",
+   "slot": "bottom",
+   "name": "及膝裙",
+   "file": "parts/skirt.glb",
+   "covers": [
+    "hips"
+   ],
+   "tintable": true,
+   "triangles": 4021,
+   "tight": 777,
+   "avoid": [],
+   "passes": true
+  },
+  {
+   "id": "long-skirt",
+   "slot": "bottom",
+   "name": "長裙",
+   "file": "parts/long-skirt.glb",
+   "covers": [
+    "hips",
+    "thighs"
+   ],
+   "tintable": true,
+   "triangles": 5790,
+   "tight": 608,
+   "avoid": [],
+   "passes": true
+  },
+  {
+   "id": "robe",
+   "slot": "full",
+   "name": "長袍",
+   "file": "parts/robe.glb",
+   "covers": [
+    "upperArms",
+    "hips",
+    "thighs"
+   ],
+   "tintable": true,
+   "triangles": 8638,
+   "tight": 2960,
+   "avoid": [],
+   "passes": true
+  },
+  {
+   "id": "dress",
+   "slot": "full",
+   "name": "短袖洋裝",
+   "file": "parts/dress.glb",
+   "covers": [
+    "hips"
+   ],
+   "tintable": true,
+   "triangles": 6262,
+   "tight": 2936,
+   "avoid": [],
+   "passes": true
+  },
+  {
+   "id": "sun-dress",
+   "slot": "full",
+   "name": "無袖長洋裝",
+   "file": "parts/sun-dress.glb",
+   "covers": [
+    "hips",
+    "thighs"
+   ],
+   "tintable": true,
+   "triangles": 6119,
+   "tight": 2279,
+   "avoid": [],
+   "passes": true
+  },
+  {
+   "id": "gown",
+   "slot": "full",
+   "name": "五分袖長禮服",
+   "file": "parts/gown.glb",
+   "covers": [
+    "hips",
+    "thighs"
+   ],
+   "tintable": true,
+   "triangles": 8243,
+   "tight": 2555,
+   "avoid": [],
+   "passes": true
+  },
+  {
+   "id": "jumpsuit",
+   "slot": "full",
+   "name": "連身褲",
+   "file": "parts/jumpsuit.glb",
+   "covers": [
+    "upperArms",
+    "hips",
+    "thighs"
+   ],
+   "tintable": true,
+   "triangles": 6385,
+   "tight": 5207,
+   "avoid": [],
+   "passes": true
+  },
+  {
+   "id": "playsuit",
+   "slot": "full",
+   "name": "連身短褲",
+   "file": "parts/playsuit.glb",
+   "covers": [
+    "hips"
+   ],
+   "tintable": true,
+   "triangles": 3797,
+   "tight": 3797,
+   "avoid": [],
+   "passes": true
+  },
+  {
+   "id": "shoes",
+   "slot": "shoes",
+   "name": "布鞋",
+   "file": "parts/shoes.glb",
+   "covers": [
+    "feet"
+   ],
+   "tintable": true,
+   "triangles": 1000,
+   "tight": 1000,
+   "avoid": [],
+   "passes": true
+  },
+  {
+   "id": "ankle-boots",
+   "slot": "shoes",
+   "name": "短靴",
+   "file": "parts/ankle-boots.glb",
+   "covers": [
+    "feet"
+   ],
+   "tintable": false,
+   "triangles": 1299,
+   "tight": 1299,
+   "avoid": [],
+   "passes": true
+  },
+  {
+   "id": "boots",
+   "slot": "shoes",
+   "name": "靴",
+   "file": "parts/boots.glb",
+   "covers": [
+    "feet"
+   ],
+   "tintable": false,
+   "triangles": 1699,
+   "tight": 1699,
+   "avoid": [],
+   "passes": true
+  },
+  {
+   "id": "tall-boots",
+   "slot": "shoes",
+   "name": "長靴",
+   "file": "parts/tall-boots.glb",
+   "covers": [
+    "feet"
+   ],
+   "tintable": false,
+   "triangles": 2200,
+   "tight": 2200,
+   "avoid": [],
+   "passes": true
+  },
+  {
+   "id": "straw-hat",
+   "slot": "hat",
+   "name": "斗笠",
+   "file": "parts/straw-hat.glb",
+   "covers": [],
+   "tintable": false,
+   "triangles": 589,
+   "tight": 1,
+   "avoid": [
+    "hair-bun"
+   ],
+   "passes": true
+  },
+  {
+   "id": "pack",
+   "slot": "back",
+   "name": "背包",
+   "file": "parts/pack.glb",
+   "covers": [],
+   "tintable": false,
+   "triangles": 1700,
+   "tight": 1076,
+   "avoid": [
+    "hair-long"
+   ],
+   "passes": true
+  },
+  {
+   "id": "belt-pouch",
+   "slot": "waist",
+   "name": "腰帶與腰包",
+   "file": "parts/belt-pouch.glb",
+   "covers": [],
+   "tintable": false,
+   "triangles": 984,
+   "tight": 814,
+   "avoid": [
+    "cap-tee",
+    "elbow-top",
+    "shirt",
+    "tank",
+    "tee",
+    "turtleneck"
+   ],
+   "passes": true
+  },
+  {
+   "id": "knit",
+   "slot": "top",
+   "name": "針織衫",
+   "file": "parts/knit.glb",
+   "covers": [],
+   "tintable": false,
+   "triangles": 2389,
+   "tight": 2389,
+   "avoid": [],
+   "passes": false,
+   "foreign": true
+  }
+ ]
+}

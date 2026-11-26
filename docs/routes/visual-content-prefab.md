@@ -26,7 +26,8 @@ proves only those fixtures.
 ## Tools
 
 - `zhuda-laya-build --candidate`, `zhuda-laya-accept` (and `--capture`),
-  `zhuda-laya-watch --candidate`, `zhuda-prefab-check`.
+  `zhuda-laya-watch --candidate` (with `prefabPreview` configured, as this route
+  needs, every save runs the full build), `zhuda-prefab-check`.
 - `zhuda-prefab-editor` for authoring by hand.
 - MCP: `get_agent_contract` (`visualWorkflow`).
 

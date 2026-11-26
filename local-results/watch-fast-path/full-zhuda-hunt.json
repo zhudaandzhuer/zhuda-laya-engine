@@ -1,0 +1,41 @@
+{
+  "project": "games/zhuda-hunt",
+  "file": "src/Main.ts",
+  "mode": "candidate",
+  "fullBuildsOnly": true,
+  "node": "v26.13.1",
+  "loadAverage": [
+    8.5,
+    47.7,
+    89.4
+  ],
+  "startMs": 1720.8,
+  "saves": 9,
+  "saveToReloadMs": {
+    "median": 1206.4,
+    "min": 1178.6,
+    "max": 1338.1,
+    "all": [
+      1232.2,
+      1206.4,
+      1220,
+      1338.1,
+      1178.6,
+      1191.7,
+      1204.9,
+      1196.1,
+      1207.6
+    ]
+  },
+  "watcherLog": [
+    "full 1098 ms",
+    "full 1074 ms",
+    "full 1088 ms",
+    "full 1205 ms",
+    "full 1046 ms",
+    "full 1059 ms",
+    "full 1072 ms",
+    "full 1064 ms",
+    "full 1074 ms"
+  ]
+}

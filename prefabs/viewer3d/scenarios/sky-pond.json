@@ -1,0 +1,7 @@
+[
+  { "js": "S.set({ run: false, hour: 16, distance: 11, pitch: 0.38, yaw: 0.2 });", "wait": 2.5, "shot": "f-footprint" },
+  { "js": "const [x, y] = S.project(S.pig.center); S.press(1, x, y); for (let k = 0; k < 40; k++) { S.pig.drag([-2.0 + 0.0 * k, 3.2, 1.5]); await new Promise(r => setTimeout(r, 30)); } return S.pig.feet;", "wait": 1.2 },
+  { "js": "S.release(1);", "wait": 0.55, "shot": "f-splash" },
+  { "wait": 1.5, "shot": "f-swim" },
+  { "wait": 3.0, "shot": "f-shake" }
+]

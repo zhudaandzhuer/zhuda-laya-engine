@@ -1,0 +1,17 @@
+NOTE   knit: the body comes through at 21 of 405 vertices, 8.5 mm, _Stress frame 94 at [0.06,0.946,-0.105]
+NOTE   tee-blender: the body comes through at 2 of 362 vertices, 4.2 mm, _Stress frame 52 at [-0.008,0.828,0.05]
+33 parts; 153 poses of Idle, Walk, Run, Greet, _Stress
+skin through a part: 0 parts fail; deepest 8.5 mm
+pairs: 107 overlap, 11 clip and are listed as avoid; deepest allowed 0.7 mm
+  avoid tank under belt-pouch: 1 of 6, 1.5 mm, _Stress 58 [0.13,0.918,0.086]
+  avoid tee under belt-pouch: 2 of 6, 5.2 mm, _Stress 72 [0.143,1,0.106]
+  avoid cap-tee under belt-pouch: 2 of 6, 3.4 mm, _Stress 72 [0.135,0.976,0.115]
+  avoid turtleneck under hair-long: 2 of 2, 2.5 mm, Run 10 [0.031,1.397,-0.011]
+  avoid shorts under tee-blender: 4 of 110, 14.9 mm, _Stress 72 [0.044,0.85,0.07]
+  avoid knee-shorts under tee-blender: 6 of 115, 6.6 mm, _Stress 48 [-0.007,0.827,0.059]
+  avoid capri under tee-blender: 7 of 117, 13.9 mm, _Stress 60 [0.04,0.85,0.074]
+  avoid trousers under tee-blender: 5 of 104, 8.4 mm, _Stress 64 [0.031,0.842,0.076]
+  avoid skirt under tee-blender: 5 of 275, 19.3 mm, _Stress 72 [0.069,0.887,0.071]
+  avoid long-skirt under tee-blender: 5 of 203, 15.1 mm, _Stress 58 [0.043,0.861,0.08]
+  avoid tee-blender under belt-pouch: 2 of 8, 5.2 mm, _Stress 72 [0.143,1,0.106]
+38 s

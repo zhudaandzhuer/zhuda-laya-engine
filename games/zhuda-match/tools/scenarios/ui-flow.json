@@ -1,0 +1,37 @@
+[
+  {
+    "wait": 0.2,
+    "expect": [
+      { "text": "豬大果園" },
+      { "name": "level-0", "textMatches": "^第一園　16 步 1000 分\\n未通過$" },
+      { "name": "level-1", "textMatches": "未開放$" },
+      { "name": "mute", "text": "聲音：開" },
+      { "name": "menu", "count": 0 },
+      { "js": "S.screen === 'title'" }
+    ],
+    "probe": "01-title",
+    "shot": "01-title"
+  },
+  { "click": "mute", "expect": { "name": "mute", "text": "聲音：關" } },
+  { "click": { "text": "聲音：關" }, "expect": { "name": "mute", "text": "聲音：開" } },
+  { "click": "level-1", "wait": 0.5, "expect": [{ "text": "豬大果園" }, { "js": "S.screen === 'title'" }] },
+  {
+    "click": "level-0",
+    "expect": [
+      { "name": "menu", "text": "選單" },
+      { "text": "第一園" },
+      { "text": "0 / 1000 分" },
+      { "text": "剩 16 步" },
+      { "text": "豬大果園", "count": 0 },
+      { "js": "S.screen === 'play'" }
+    ]
+  },
+  { "expect": { "js": "S.game && !S.game.busy && S.game.hint", "within": 5 }, "probe": "02-board", "shot": "02-board" },
+  {
+    "click": "menu",
+    "wait": 0.2,
+    "expect": [{ "text": "豬大果園" }, { "name": "menu", "count": 0 }, { "name": "level-0" }],
+    "probe": "03-title-again",
+    "shot": "03-title-again"
+  }
+]

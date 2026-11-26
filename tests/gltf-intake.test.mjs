@@ -1243,7 +1243,15 @@ test('ModelLibrary: dequantized bytes reach the parser, node data and asked-for 
     );
     assert.deepEqual(codes(model.compatibility), ['DEQUANTIZED_ATTRIBUTES:warning']);
     assert.deepEqual(model.gltfNodes, []);
+    // The copy's shadow switch: every renderer at once, a key left out left alone.
+    assert.equal(model.setShadows({ cast: false }), model.gltfMaterialSlots.length);
+    for (const slot of model.gltfMaterialSlots) assert.equal(slot.renderer.castShadow, false);
+    model.setShadows({ receive: false, cast: true });
+    for (const slot of model.gltfMaterialSlots)
+      assert.deepEqual([slot.renderer.castShadow, slot.renderer.receiveShadow], [true, false]);
+    assert.throws(() => model.setShadows({ cast: 1 }), /Invalid shadow switch/);
     model.dispose();
+    assert.throws(() => model.setShadows({ cast: true }), /Disposed/);
 
     // Lights only when asked; extras and the camera always; each copy its own nodes.
     const a = await library.instantiate('room.glb');

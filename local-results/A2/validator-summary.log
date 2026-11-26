@@ -1,0 +1,51 @@
+glTF Validator 2.0.0-dev.3.10, 41 files
+
+errors warnings infos hints  file
+     0        0     0     0  games/shared-assets/models/jiuweihu-lod25.glb
+     0        0     0     0  games/shared-assets/models/kui-lod25.glb
+     0        0     0     0  games/shared-assets/models/qiongqi-lod50.glb
+     0        0     0     0  games/shared-assets/models/taotie-lod50.glb
+     0        0     0     0  games/shared-assets/models/xingtian-lod50.glb
+     0        0     0     0  games/shared-assets/models/xuanwu-lod25.glb
+     0        0     0     0  games/shared-assets/models/zheng-lod25.glb
+     3        1    16     0  games/shared-assets/models/zhuda.glb
+     0        0     0     0  games/zhuda-wardrobe/assets/parts/ankle-boots.glb
+     0        0     0     0  games/zhuda-wardrobe/assets/parts/belt-pouch.glb
+     0        0     0     0  games/zhuda-wardrobe/assets/parts/body.glb
+     0        0     0     0  games/zhuda-wardrobe/assets/parts/boots.glb
+     0        0     0     0  games/zhuda-wardrobe/assets/parts/cap-tee.glb
+     0        0     0     0  games/zhuda-wardrobe/assets/parts/capri.glb
+     0        0     0     0  games/zhuda-wardrobe/assets/parts/crop-shirt.glb
+     0        0     0     0  games/zhuda-wardrobe/assets/parts/crop-tank.glb
+     0        0     0     0  games/zhuda-wardrobe/assets/parts/crop-tee.glb
+     0        0     0     0  games/zhuda-wardrobe/assets/parts/dress.glb
+     0        0     0     0  games/zhuda-wardrobe/assets/parts/elbow-top.glb
+     0        0     0     0  games/zhuda-wardrobe/assets/parts/gown.glb
+     0        0     0     0  games/zhuda-wardrobe/assets/parts/hair-bob.glb
+     0        0     0     0  games/zhuda-wardrobe/assets/parts/hair-bun.glb
+     0        0     0     0  games/zhuda-wardrobe/assets/parts/hair-long.glb
+     0        0     0     0  games/zhuda-wardrobe/assets/parts/jumpsuit.glb
+     0        0     0     0  games/zhuda-wardrobe/assets/parts/knee-shorts.glb
+     0        1     0     0  games/zhuda-wardrobe/assets/parts/knit.glb
+     0        0     0     0  games/zhuda-wardrobe/assets/parts/long-skirt.glb
+     0        0     0     0  games/zhuda-wardrobe/assets/parts/pack.glb
+     0        0     0     0  games/zhuda-wardrobe/assets/parts/playsuit.glb
+     0        0     0     0  games/zhuda-wardrobe/assets/parts/robe.glb
+     0        0     0     0  games/zhuda-wardrobe/assets/parts/shirt.glb
+     0        0     0     0  games/zhuda-wardrobe/assets/parts/shoes.glb
+     0        0     0     0  games/zhuda-wardrobe/assets/parts/shorts.glb
+     0        0     0     0  games/zhuda-wardrobe/assets/parts/skirt.glb
+     0        0     0     0  games/zhuda-wardrobe/assets/parts/straw-hat.glb
+     0        0     0     0  games/zhuda-wardrobe/assets/parts/sun-dress.glb
+     0        0     0     0  games/zhuda-wardrobe/assets/parts/tall-boots.glb
+     0        0     0     0  games/zhuda-wardrobe/assets/parts/tank.glb
+     0        0     0     0  games/zhuda-wardrobe/assets/parts/tee.glb
+     0        0     0     0  games/zhuda-wardrobe/assets/parts/trousers.glb
+     0        0     0     0  games/zhuda-wardrobe/assets/parts/turtleneck.glb
+     3        2    16     0  total
+
+by code:
+  error ACCESSOR_VECTOR3_NON_UNIT: 3 in 1 files; e.g. Vector3 at accessor indices 74996..74998 is not of unit length: 0. (/meshes/0/primitives/0/attributes/TANGENT)
+  info UNUSED_MESH_TANGENT: 8 in 1 files; e.g. Tangents are not used because the material has no normal texture. (/meshes/0/primitives/1/attributes/TANGENT)
+  info UNUSED_OBJECT: 8 in 1 files; e.g. This object may be unused. (/meshes/0/primitives/1/attributes/TEXCOORD_0)
+  warning NODE_SKINNED_MESH_NON_ROOT: 2 in 2 files; e.g. Node with a skinned mesh is not root. Parent transforms will not affect a skinned mesh. (/nodes/19)

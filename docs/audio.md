@@ -96,6 +96,18 @@ bounded, expiring logical-ID queue as tones. `stopAll(channel)` now clears that
 channel's queued events as well as active voices. Unload cancels that sample's
 loads, queue entries and active voices before releasing PCM.
 
+### Keeping time with a sample
+
+`getSamplePositionSec(id)` is where a playing sample voice is in its sample by
+the audio clock (start offset plus context time since; wrapped inside a loop).
+It stands still while the context is suspended and is `null` when no voice of
+that ID is playing — before unlock, after the end, after `stop`. A rhythm game
+judges taps against it, not against the page clock: the two part ways whenever
+the page loses focus. Between frames, carry it forward with the page clock and
+take it again each frame. `getOutputLatencySec()` is the host's own figure for
+schedule-to-speaker delay (0 when it gives none); it usually leaves out
+Bluetooth, so keep a player-facing offset as well.
+
 All offsets, loop points and fades use seconds. Non-loop duration is clamped to
 the remaining sample; loops run until stopped unless `durationSec` is supplied.
 `loopStartSec < loopEndSec <= sample duration`; `offsetSec` must lie inside the

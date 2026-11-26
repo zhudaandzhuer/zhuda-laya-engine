@@ -1,0 +1,1061 @@
+{
+  "blender": "5.2.2 LTS",
+  "files": {
+    "body": {
+      "objects": {
+        "ARMATURE": 1,
+        "MESH": 11
+      },
+      "armatures": [
+        {
+          "name": "body-skeleton",
+          "bones": 24,
+          "roots": [
+            "root"
+          ],
+          "names": [
+            "root",
+            "hips",
+            "spine",
+            "chest",
+            "neck",
+            "head",
+            "hair1",
+            "hair2",
+            "clavL",
+            "armL",
+            "foreL",
+            "handL",
+            "clavR",
+            "armR",
+            "foreR",
+            "handR",
+            "thighL",
+            "shinL",
+            "footL",
+            "thighR",
+            "shinR",
+            "footR",
+            "robeF",
+            "robeB"
+          ]
+        }
+      ],
+      "meshes": [
+        {
+          "name": "region-feet",
+          "vertices": 410,
+          "faces": 700,
+          "triangles": 700,
+          "vertexGroups": 24,
+          "armatureModifier": true,
+          "parent": "body-skeleton",
+          "unweightedVertices": 0,
+          "weightsNotSummingToOne": 0,
+          "mostInfluences": 4,
+          "colourAttributes": [
+            "Color"
+          ],
+          "uvLayers": [],
+          "materials": [
+            "region-feet"
+          ],
+          "facesWithStoredNormalAgainstFace": 0,
+          "facesBlenderWouldTurn": 0,
+          "openEdges": 116,
+          "edgesWithMoreThanTwoFaces": 0,
+          "looseVertices": 0,
+          "trianglesInFile": 700
+        },
+        {
+          "name": "region-forearms",
+          "vertices": 404,
+          "faces": 600,
+          "triangles": 600,
+          "vertexGroups": 24,
+          "armatureModifier": true,
+          "parent": "body-skeleton",
+          "unweightedVertices": 0,
+          "weightsNotSummingToOne": 0,
+          "mostInfluences": 3,
+          "colourAttributes": [
+            "Color"
+          ],
+          "uvLayers": [],
+          "materials": [
+            "region-forearms"
+          ],
+          "facesWithStoredNormalAgainstFace": 0,
+          "facesBlenderWouldTurn": 0,
+          "openEdges": 208,
+          "edgesWithMoreThanTwoFaces": 0,
+          "looseVertices": 0,
+          "trianglesInFile": 600
+        },
+        {
+          "name": "region-hands",
+          "vertices": 891,
+          "faces": 1699,
+          "triangles": 1699,
+          "vertexGroups": 24,
+          "armatureModifier": true,
+          "parent": "body-skeleton",
+          "unweightedVertices": 0,
+          "weightsNotSummingToOne": 0,
+          "mostInfluences": 2,
+          "colourAttributes": [
+            "Color"
+          ],
+          "uvLayers": [],
+          "materials": [
+            "region-hands"
+          ],
+          "facesWithStoredNormalAgainstFace": 38,
+          "facesBlenderWouldTurn": 0,
+          "openEdges": 81,
+          "edgesWithMoreThanTwoFaces": 0,
+          "looseVertices": 0,
+          "trianglesInFile": 1699
+        },
+        {
+          "name": "region-head",
+          "vertices": 1565,
+          "faces": 2999,
+          "triangles": 2999,
+          "vertexGroups": 24,
+          "armatureModifier": true,
+          "parent": "body-skeleton",
+          "unweightedVertices": 0,
+          "weightsNotSummingToOne": 0,
+          "mostInfluences": 4,
+          "colourAttributes": [
+            "Color"
+          ],
+          "uvLayers": [],
+          "materials": [
+            "region-head"
+          ],
+          "facesWithStoredNormalAgainstFace": 0,
+          "facesBlenderWouldTurn": 0,
+          "openEdges": 129,
+          "edgesWithMoreThanTwoFaces": 0,
+          "looseVertices": 0,
+          "trianglesInFile": 2999
+        },
+        {
+          "name": "region-hips",
+          "vertices": 644,
+          "faces": 800,
+          "triangles": 800,
+          "vertexGroups": 24,
+          "armatureModifier": true,
+          "parent": "body-skeleton",
+          "unweightedVertices": 0,
+          "weightsNotSummingToOne": 0,
+          "mostInfluences": 4,
+          "colourAttributes": [
+            "Color"
+          ],
+          "uvLayers": [],
+          "materials": [
+            "region-hips"
+          ],
+          "facesWithStoredNormalAgainstFace": 0,
+          "facesBlenderWouldTurn": 0,
+          "openEdges": 490,
+          "edgesWithMoreThanTwoFaces": 0,
+          "looseVertices": 0,
+          "trianglesInFile": 800
+        },
+        {
+          "name": "region-shins",
+          "vertices": 594,
+          "faces": 900,
+          "triangles": 900,
+          "vertexGroups": 24,
+          "armatureModifier": true,
+          "parent": "body-skeleton",
+          "unweightedVertices": 0,
+          "weightsNotSummingToOne": 0,
+          "mostInfluences": 4,
+          "colourAttributes": [
+            "Color"
+          ],
+          "uvLayers": [],
+          "materials": [
+            "region-shins"
+          ],
+          "facesWithStoredNormalAgainstFace": 0,
+          "facesBlenderWouldTurn": 0,
+          "openEdges": 288,
+          "edgesWithMoreThanTwoFaces": 0,
+          "looseVertices": 0,
+          "trianglesInFile": 900
+        },
+        {
+          "name": "region-shoulders",
+          "vertices": 523,
+          "faces": 600,
+          "triangles": 600,
+          "vertexGroups": 24,
+          "armatureModifier": true,
+          "parent": "body-skeleton",
+          "unweightedVertices": 0,
+          "weightsNotSummingToOne": 0,
+          "mostInfluences": 4,
+          "colourAttributes": [
+            "Color"
+          ],
+          "uvLayers": [],
+          "materials": [
+            "region-shoulders"
+          ],
+          "facesWithStoredNormalAgainstFace": 0,
+          "facesBlenderWouldTurn": 0,
+          "openEdges": 446,
+          "edgesWithMoreThanTwoFaces": 0,
+          "looseVertices": 0,
+          "trianglesInFile": 600
+        },
+        {
+          "name": "region-thighs",
+          "vertices": 723,
+          "faces": 1000,
+          "triangles": 1000,
+          "vertexGroups": 24,
+          "armatureModifier": true,
+          "parent": "body-skeleton",
+          "unweightedVertices": 0,
+          "weightsNotSummingToOne": 0,
+          "mostInfluences": 4,
+          "colourAttributes": [
+            "Color"
+          ],
+          "uvLayers": [],
+          "materials": [
+            "region-thighs"
+          ],
+          "facesWithStoredNormalAgainstFace": 0,
+          "facesBlenderWouldTurn": 0,
+          "openEdges": 446,
+          "edgesWithMoreThanTwoFaces": 0,
+          "looseVertices": 0,
+          "trianglesInFile": 1000
+        },
+        {
+          "name": "region-torso",
+          "vertices": 1056,
+          "faces": 1700,
+          "triangles": 1700,
+          "vertexGroups": 24,
+          "armatureModifier": true,
+          "parent": "body-skeleton",
+          "unweightedVertices": 0,
+          "weightsNotSummingToOne": 0,
+          "mostInfluences": 4,
+          "colourAttributes": [
+            "Color"
+          ],
+          "uvLayers": [],
+          "materials": [
+            "region-torso"
+          ],
+          "facesWithStoredNormalAgainstFace": 0,
+          "facesBlenderWouldTurn": 0,
+          "openEdges": 412,
+          "edgesWithMoreThanTwoFaces": 0,
+          "looseVertices": 0,
+          "trianglesInFile": 1700
+        },
+        {
+          "name": "region-upperArms",
+          "vertices": 445,
+          "faces": 600,
+          "triangles": 600,
+          "vertexGroups": 24,
+          "armatureModifier": true,
+          "parent": "body-skeleton",
+          "unweightedVertices": 0,
+          "weightsNotSummingToOne": 0,
+          "mostInfluences": 3,
+          "colourAttributes": [
+            "Color"
+          ],
+          "uvLayers": [],
+          "materials": [
+            "region-upperArms"
+          ],
+          "facesWithStoredNormalAgainstFace": 0,
+          "facesBlenderWouldTurn": 0,
+          "openEdges": 290,
+          "edgesWithMoreThanTwoFaces": 0,
+          "looseVertices": 0,
+          "trianglesInFile": 600
+        }
+      ],
+      "helpers": [
+        "Icosphere"
+      ],
+      "actions": [
+        {
+          "name": "_Stress",
+          "frames": [
+            0.0,
+            76.80000305175781
+          ]
+        },
+        {
+          "name": "Greet",
+          "frames": [
+            0.0,
+            43.19999694824219
+          ]
+        },
+        {
+          "name": "Idle",
+          "frames": [
+            0.0,
+            76.80000305175781
+          ]
+        },
+        {
+          "name": "Run",
+          "frames": [
+            0.0,
+            15.84000015258789
+          ]
+        },
+        {
+          "name": "Walk",
+          "frames": [
+            0.0,
+            24.0
+          ]
+        }
+      ]
+    },
+    "tee": {
+      "objects": {
+        "MESH": 2,
+        "ARMATURE": 1
+      },
+      "armatures": [
+        {
+          "name": "tee-skeleton",
+          "bones": 24,
+          "roots": [
+            "root"
+          ],
+          "names": [
+            "root",
+            "hips",
+            "spine",
+            "chest",
+            "neck",
+            "head",
+            "hair1",
+            "hair2",
+            "clavL",
+            "armL",
+            "foreL",
+            "handL",
+            "clavR",
+            "armR",
+            "foreR",
+            "handR",
+            "thighL",
+            "shinL",
+            "footL",
+            "thighR",
+            "shinR",
+            "footR",
+            "robeF",
+            "robeB"
+          ]
+        }
+      ],
+      "meshes": [
+        {
+          "name": "tee",
+          "vertices": 1769,
+          "faces": 2999,
+          "triangles": 2999,
+          "vertexGroups": 24,
+          "armatureModifier": true,
+          "parent": "tee-skeleton",
+          "unweightedVertices": 0,
+          "weightsNotSummingToOne": 0,
+          "mostInfluences": 4,
+          "colourAttributes": [
+            "Color"
+          ],
+          "uvLayers": [],
+          "materials": [
+            "tee"
+          ],
+          "facesWithStoredNormalAgainstFace": 95,
+          "facesBlenderWouldTurn": 0,
+          "openEdges": 543,
+          "edgesWithMoreThanTwoFaces": 0,
+          "looseVertices": 0,
+          "trianglesInFile": 4326
+        }
+      ],
+      "helpers": [
+        "Icosphere"
+      ],
+      "actions": []
+    },
+    "trousers": {
+      "objects": {
+        "MESH": 2,
+        "ARMATURE": 1
+      },
+      "armatures": [
+        {
+          "name": "trousers-skeleton",
+          "bones": 24,
+          "roots": [
+            "root"
+          ],
+          "names": [
+            "root",
+            "hips",
+            "spine",
+            "chest",
+            "neck",
+            "head",
+            "hair1",
+            "hair2",
+            "clavL",
+            "armL",
+            "foreL",
+            "handL",
+            "clavR",
+            "armR",
+            "foreR",
+            "handR",
+            "thighL",
+            "shinL",
+            "footL",
+            "thighR",
+            "shinR",
+            "footR",
+            "robeF",
+            "robeB"
+          ]
+        }
+      ],
+      "meshes": [
+        {
+          "name": "trousers",
+          "vertices": 1847,
+          "faces": 3400,
+          "triangles": 3400,
+          "vertexGroups": 24,
+          "armatureModifier": true,
+          "parent": "trousers-skeleton",
+          "unweightedVertices": 0,
+          "weightsNotSummingToOne": 0,
+          "mostInfluences": 4,
+          "colourAttributes": [
+            "Color"
+          ],
+          "uvLayers": [],
+          "materials": [
+            "trousers"
+          ],
+          "facesWithStoredNormalAgainstFace": 19,
+          "facesBlenderWouldTurn": 1,
+          "openEdges": 296,
+          "edgesWithMoreThanTwoFaces": 0,
+          "looseVertices": 0,
+          "trianglesInFile": 3970
+        }
+      ],
+      "helpers": [
+        "Icosphere"
+      ],
+      "actions": []
+    },
+    "skirt": {
+      "objects": {
+        "MESH": 2,
+        "ARMATURE": 1
+      },
+      "armatures": [
+        {
+          "name": "skirt-skeleton",
+          "bones": 24,
+          "roots": [
+            "root"
+          ],
+          "names": [
+            "root",
+            "hips",
+            "spine",
+            "chest",
+            "neck",
+            "head",
+            "hair1",
+            "hair2",
+            "clavL",
+            "armL",
+            "foreL",
+            "handL",
+            "clavR",
+            "armR",
+            "foreR",
+            "handR",
+            "thighL",
+            "shinL",
+            "footL",
+            "thighR",
+            "shinR",
+            "footR",
+            "robeF",
+            "robeB"
+          ]
+        }
+      ],
+      "meshes": [
+        {
+          "name": "skirt",
+          "vertices": 1385,
+          "faces": 2399,
+          "triangles": 2399,
+          "vertexGroups": 24,
+          "armatureModifier": true,
+          "parent": "skirt-skeleton",
+          "unweightedVertices": 0,
+          "weightsNotSummingToOne": 0,
+          "mostInfluences": 4,
+          "colourAttributes": [
+            "Color"
+          ],
+          "uvLayers": [],
+          "materials": [
+            "skirt"
+          ],
+          "facesWithStoredNormalAgainstFace": 8,
+          "facesBlenderWouldTurn": 0,
+          "openEdges": 379,
+          "edgesWithMoreThanTwoFaces": 0,
+          "looseVertices": 0,
+          "trianglesInFile": 4021
+        }
+      ],
+      "helpers": [
+        "Icosphere"
+      ],
+      "actions": []
+    },
+    "straw-hat": {
+      "objects": {
+        "MESH": 2,
+        "ARMATURE": 1
+      },
+      "armatures": [
+        {
+          "name": "straw-hat-skeleton",
+          "bones": 24,
+          "roots": [
+            "root"
+          ],
+          "names": [
+            "root",
+            "hips",
+            "spine",
+            "chest",
+            "neck",
+            "head",
+            "hair1",
+            "hair2",
+            "clavL",
+            "armL",
+            "foreL",
+            "handL",
+            "clavR",
+            "armR",
+            "foreR",
+            "handR",
+            "thighL",
+            "shinL",
+            "footL",
+            "thighR",
+            "shinR",
+            "footR",
+            "robeF",
+            "robeB"
+          ]
+        }
+      ],
+      "meshes": [
+        {
+          "name": "straw-hat",
+          "vertices": 437,
+          "faces": 589,
+          "triangles": 589,
+          "vertexGroups": 24,
+          "armatureModifier": true,
+          "parent": "straw-hat-skeleton",
+          "unweightedVertices": 0,
+          "weightsNotSummingToOne": 0,
+          "mostInfluences": 2,
+          "colourAttributes": [
+            "Color"
+          ],
+          "uvLayers": [],
+          "materials": [
+            "straw-hat"
+          ],
+          "facesWithStoredNormalAgainstFace": 1,
+          "facesBlenderWouldTurn": 71,
+          "openEdges": 277,
+          "edgesWithMoreThanTwoFaces": 0,
+          "looseVertices": 0,
+          "trianglesInFile": 589
+        }
+      ],
+      "helpers": [
+        "Icosphere"
+      ],
+      "actions": []
+    },
+    "pack": {
+      "objects": {
+        "MESH": 2,
+        "ARMATURE": 1
+      },
+      "armatures": [
+        {
+          "name": "pack-skeleton",
+          "bones": 24,
+          "roots": [
+            "root"
+          ],
+          "names": [
+            "root",
+            "hips",
+            "spine",
+            "chest",
+            "neck",
+            "head",
+            "hair1",
+            "hair2",
+            "clavL",
+            "armL",
+            "foreL",
+            "handL",
+            "clavR",
+            "armR",
+            "foreR",
+            "handR",
+            "thighL",
+            "shinL",
+            "footL",
+            "thighR",
+            "shinR",
+            "footR",
+            "robeF",
+            "robeB"
+          ]
+        }
+      ],
+      "meshes": [
+        {
+          "name": "pack",
+          "vertices": 1395,
+          "faces": 1699,
+          "triangles": 1699,
+          "vertexGroups": 24,
+          "armatureModifier": true,
+          "parent": "pack-skeleton",
+          "unweightedVertices": 0,
+          "weightsNotSummingToOne": 0,
+          "mostInfluences": 4,
+          "colourAttributes": [
+            "Color"
+          ],
+          "uvLayers": [],
+          "materials": [
+            "pack"
+          ],
+          "facesWithStoredNormalAgainstFace": 80,
+          "facesBlenderWouldTurn": 146,
+          "openEdges": 1083,
+          "edgesWithMoreThanTwoFaces": 11,
+          "looseVertices": 0,
+          "trianglesInFile": 1700
+        }
+      ],
+      "helpers": [
+        "Icosphere"
+      ],
+      "actions": []
+    }
+  },
+  "clips": {
+    "_Stress": {
+      "frames": [
+        0,
+        10,
+        19,
+        29,
+        38,
+        48,
+        58,
+        67,
+        77
+      ],
+      "farthestBoneFromRestMetres": 1.1744974674848765,
+      "farthestSkinVertexFromRestMetres": 1.2913819455573057,
+      "partFarthestFromFirstFrameMetres": {
+        "tee": 0.38580531678116486,
+        "trousers": 1.176093025313725,
+        "skirt": 0.5548042423005051,
+        "straw-hat": 0.3660161843159544,
+        "pack": 0.27191743298622595
+      },
+      "partGapMetres": {
+        "tee": {
+          "medianLow": 0.018440086394548416,
+          "medianHigh": 0.019619500264525414,
+          "p95Low": 0.04915754869580269,
+          "p95High": 0.059208691120147705
+        },
+        "trousers": {
+          "medianLow": 0.011712639592587948,
+          "medianHigh": 0.012449463829398155,
+          "p95Low": 0.031075075268745422,
+          "p95High": 0.03208460286259651
+        },
+        "skirt": {
+          "medianLow": 0.015895901247859,
+          "medianHigh": 0.02052093856036663,
+          "p95Low": 0.05936773493885994,
+          "p95High": 0.09120967239141464
+        },
+        "straw-hat": {
+          "medianLow": 0.035974327474832535,
+          "medianHigh": 0.03809236362576485,
+          "p95Low": 0.12402070313692093,
+          "p95High": 0.13491296768188477
+        },
+        "pack": {
+          "medianLow": 0.005257871467620134,
+          "medianHigh": 0.00544980401173234,
+          "p95Low": 0.19218799471855164,
+          "p95High": 0.2021191120147705
+        }
+      }
+    },
+    "Greet": {
+      "frames": [
+        0,
+        5,
+        11,
+        16,
+        22,
+        27,
+        32,
+        38,
+        43
+      ],
+      "farthestBoneFromRestMetres": 0.5801168494672756,
+      "farthestSkinVertexFromRestMetres": 0.8287784948959461,
+      "partFarthestFromFirstFrameMetres": {
+        "tee": 0.20561508318212238,
+        "trousers": 0.00441606526806279,
+        "skirt": 0.004219284569831268,
+        "straw-hat": 0.06355301406469868,
+        "pack": 0.016246116452502422
+      },
+      "partGapMetres": {
+        "tee": {
+          "medianLow": 0.01911826804280281,
+          "medianHigh": 0.019331688061356544,
+          "p95Low": 0.05830642208456993,
+          "p95High": 0.0583517886698246
+        },
+        "trousers": {
+          "medianLow": 0.012455674819648266,
+          "medianHigh": 0.012455674819648266,
+          "p95Low": 0.03262797370553017,
+          "p95High": 0.03262797370553017
+        },
+        "skirt": {
+          "medianLow": 0.020516162738204002,
+          "medianHigh": 0.020535646006464958,
+          "p95Low": 0.09469806402921677,
+          "p95High": 0.0947769358754158
+        },
+        "straw-hat": {
+          "medianLow": 0.038108211010694504,
+          "medianHigh": 0.03817548602819443,
+          "p95Low": 0.1337500810623169,
+          "p95High": 0.1350029706954956
+        },
+        "pack": {
+          "medianLow": 0.005256662145256996,
+          "medianHigh": 0.005282803904265165,
+          "p95Low": 0.20124991238117218,
+          "p95High": 0.20124998688697815
+        }
+      }
+    },
+    "Idle": {
+      "frames": [
+        0,
+        10,
+        19,
+        29,
+        38,
+        48,
+        58,
+        67,
+        77
+      ],
+      "farthestBoneFromRestMetres": 0.28455269285118845,
+      "farthestSkinVertexFromRestMetres": 0.3589546826943658,
+      "partFarthestFromFirstFrameMetres": {
+        "tee": 0.0443165702026493,
+        "trousers": 0.04414021418004616,
+        "skirt": 0.0438986355252571,
+        "straw-hat": 0.05398489233309414,
+        "pack": 0.02238546644653939
+      },
+      "partGapMetres": {
+        "tee": {
+          "medianLow": 0.019070785492658615,
+          "medianHigh": 0.019122473895549774,
+          "p95Low": 0.058135587722063065,
+          "p95High": 0.05859833210706711
+        },
+        "trousers": {
+          "medianLow": 0.012442373670637608,
+          "medianHigh": 0.012455874122679234,
+          "p95Low": 0.032460685819387436,
+          "p95High": 0.03262797370553017
+        },
+        "skirt": {
+          "medianLow": 0.0204975176602602,
+          "medianHigh": 0.020535582676529884,
+          "p95Low": 0.0936078280210495,
+          "p95High": 0.09506406635046005
+        },
+        "straw-hat": {
+          "medianLow": 0.03811270743608475,
+          "medianHigh": 0.03818979114294052,
+          "p95Low": 0.1345946192741394,
+          "p95High": 0.1350524127483368
+        },
+        "pack": {
+          "medianLow": 0.00522809149697423,
+          "medianHigh": 0.0052710482850670815,
+          "p95Low": 0.20124369859695435,
+          "p95High": 0.20125442743301392
+        }
+      }
+    },
+    "Run": {
+      "frames": [
+        0,
+        2,
+        4,
+        6,
+        8,
+        10,
+        12,
+        14,
+        16
+      ],
+      "farthestBoneFromRestMetres": 0.4260238494407955,
+      "farthestSkinVertexFromRestMetres": 0.629629039653749,
+      "partFarthestFromFirstFrameMetres": {
+        "tee": 0.17485477619627549,
+        "trousers": 0.5776987262736996,
+        "skirt": 0.2531028723882534,
+        "straw-hat": 0.09385043560069418,
+        "pack": 0.05896562823540301
+      },
+      "partGapMetres": {
+        "tee": {
+          "medianLow": 0.019321061670780182,
+          "medianHigh": 0.019390413537621498,
+          "p95Low": 0.055190782994031906,
+          "p95High": 0.056323084980249405
+        },
+        "trousers": {
+          "medianLow": 0.012182210572063923,
+          "medianHigh": 0.012325027026236057,
+          "p95Low": 0.03116743452847004,
+          "p95High": 0.0321742482483387
+        },
+        "skirt": {
+          "medianLow": 0.01887216418981552,
+          "medianHigh": 0.019792217761278152,
+          "p95Low": 0.06948646903038025,
+          "p95High": 0.08508186787366867
+        },
+        "straw-hat": {
+          "medianLow": 0.038084108382463455,
+          "medianHigh": 0.03810051083564758,
+          "p95Low": 0.13485762476921082,
+          "p95High": 0.13511039316654205
+        },
+        "pack": {
+          "medianLow": 0.005220750812441111,
+          "medianHigh": 0.005271198693662882,
+          "p95Low": 0.20131245255470276,
+          "p95High": 0.20186536014080048
+        }
+      }
+    },
+    "Walk": {
+      "frames": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15,
+        18,
+        21,
+        24
+      ],
+      "farthestBoneFromRestMetres": 0.3469232062814738,
+      "farthestSkinVertexFromRestMetres": 0.4006800756688184,
+      "partFarthestFromFirstFrameMetres": {
+        "tee": 0.12714521016509206,
+        "trousers": 0.6263053120167892,
+        "skirt": 0.3448800428821319,
+        "straw-hat": 0.034754167107002853,
+        "pack": 0.022943914467960118
+      },
+      "partGapMetres": {
+        "tee": {
+          "medianLow": 0.019053054973483086,
+          "medianHigh": 0.0191857498139143,
+          "p95Low": 0.05560333654284477,
+          "p95High": 0.05791090056300163
+        },
+        "trousers": {
+          "medianLow": 0.01233750581741333,
+          "medianHigh": 0.012431767769157887,
+          "p95Low": 0.03098670206964016,
+          "p95High": 0.03202396258711815
+        },
+        "skirt": {
+          "medianLow": 0.01999557763338089,
+          "medianHigh": 0.020530426874756813,
+          "p95Low": 0.07790391147136688,
+          "p95High": 0.08944352716207504
+        },
+        "straw-hat": {
+          "medianLow": 0.038087017834186554,
+          "medianHigh": 0.038090780377388,
+          "p95Low": 0.13486257195472717,
+          "p95High": 0.1349741518497467
+        },
+        "pack": {
+          "medianLow": 0.00524674728512764,
+          "medianHigh": 0.0052711800672113895,
+          "p95Low": 0.2012307047843933,
+          "p95High": 0.20126815140247345
+        }
+      }
+    }
+  },
+  "pictures": [
+    "body-rest-front.jpg",
+    "body-rest-side.jpg",
+    "body-rest-back.jpg",
+    "outfit-a-rest-front.jpg",
+    "outfit-a-rest-side.jpg",
+    "outfit-a-rest-back.jpg",
+    "outfit-b-rest-front.jpg",
+    "outfit-b-rest-side.jpg",
+    "outfit-b-rest-back.jpg",
+    "outfit-a-walk-front.jpg",
+    "outfit-a-walk-side.jpg",
+    "outfit-a-walk-back.jpg",
+    "outfit-b-walk-front.jpg",
+    "outfit-b-walk-side.jpg",
+    "outfit-b-walk-back.jpg"
+  ],
+  "exports": {
+    "tee": {
+      "file": "tee.blender-export.glb",
+      "bytes": 126084
+    },
+    "trousers": {
+      "file": "trousers.blender-export.glb",
+      "bytes": 133500
+    },
+    "skirt": {
+      "file": "skirt.blender-export.glb",
+      "bytes": 100488
+    },
+    "straw-hat": {
+      "file": "straw-hat.blender-export.glb",
+      "bytes": 35764
+    },
+    "pack": {
+      "file": "pack.blender-export.glb",
+      "bytes": 97460
+    }
+  },
+  "sceneFps": 24,
+  "rest": {
+    "gapMetres": {
+      "tee": {
+        "min": 2.6215245725325076e-06,
+        "median": 0.019619500264525414,
+        "p95": 0.059208691120147705,
+        "max": 0.07821665704250336,
+        "n": 1769
+      },
+      "trousers": {
+        "min": 9.188690455630422e-05,
+        "median": 0.012449463829398155,
+        "p95": 0.03208460286259651,
+        "max": 0.04677686095237732,
+        "n": 1847
+      },
+      "skirt": {
+        "min": 3.263753387727775e-05,
+        "median": 0.02052093856036663,
+        "p95": 0.09120967239141464,
+        "max": 0.13701225817203522,
+        "n": 1385
+      },
+      "straw-hat": {
+        "min": 0.0012247975682839751,
+        "median": 0.03808949515223503,
+        "p95": 0.13482585549354553,
+        "max": 0.13845807313919067,
+        "n": 437
+      },
+      "pack": {
+        "min": 1.036674620991107e-05,
+        "median": 0.0052655418403446674,
+        "p95": 0.20124877989292145,
+        "max": 0.2249973714351654,
+        "n": 1395
+      }
+    },
+    "bodyBoxMetres": {
+      "min": [
+        -0.5528346300125122,
+        -0.1694151759147644,
+        0.0013698323164135218
+      ],
+      "max": [
+        0.5531148910522461,
+        0.13250833749771118,
+        1.6798453330993652
+      ]
+    }
+  }
+}

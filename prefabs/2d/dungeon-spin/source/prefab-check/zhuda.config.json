@@ -1,0 +1,17 @@
+{
+  "name": "dungeon-spin-prefab-check",
+  "entry": "src/Main.ts",
+  "publicDir": "public",
+  "outDir": "dist/web",
+  "features": ["core", "2d", "ui"],
+  "prefabPreview": "src/common/2d/dungeon-spin/prefabs.ts",
+  "viewport": { "width": 572, "height": 1024, "scaleMode": "showall" },
+  "dprCap": 1.5,
+  "targetFPS": 60,
+  "maxPackageBytes": 50000000,
+  "prefabChecks": [
+    { "id": "visual/template-background", "state": "idle", "node": "Background", "width": 572, "height": 1024, "dpr": 1, "cycles": 30, "baseline": "references/template-background.png", "output": "evidence/prefab-template-background.json" },
+    { "id": "visual/creatures-atlas", "state": "idle", "node": "CreaturesAtlas", "width": 572, "height": 453, "dpr": 1, "cycles": 30, "baseline": "references/creatures-atlas.png", "output": "evidence/prefab-creatures-atlas.json" },
+    { "id": "visual/hero-actions", "state": "idle", "node": "HeroActions", "width": 572, "height": 324, "dpr": 1, "cycles": 30, "baseline": "references/hero-actions.png", "output": "evidence/prefab-hero-actions.json" }
+  ]
+}

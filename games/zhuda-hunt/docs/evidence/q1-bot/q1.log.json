@@ -1,0 +1,2346 @@
+{
+ "errors": [],
+ "failed": "",
+ "final": {
+  "ready": true,
+  "screen": "hub",
+  "frames": 287,
+  "save": {
+   "version": 1,
+   "coins": 600,
+   "items": {
+    "饕餮厚皮": 4,
+    "饕餮巨齒": 1
+   },
+   "weapon": "w0",
+   "armor": "a0",
+   "owned": [
+    "w0",
+    "a0"
+   ],
+   "cleared": {
+    "q1": {
+     "best": 149,
+     "times": 1
+    }
+   }
+  },
+  "draws": 310,
+  "triangles": 590998,
+  "sound": {
+   "loadedStreams": 0,
+   "pendingStreamLoads": 0,
+   "retainedStreamBytes": 0,
+   "pendingAdmissions": 0,
+   "retiredVoices": 0,
+   "sampleBackend": "native",
+   "loadedSamples": 16,
+   "pendingSampleLoads": 0,
+   "decodedSampleBytes": 3166376,
+   "inIframe": false,
+   "contextState": "suspended",
+   "unlockedByGesture": false,
+   "unlockGestureType": "none",
+   "pageVisible": true,
+   "windowFocused": true,
+   "autoSuspendedByBlur": false,
+   "userMuted": false,
+   "volumes": {
+    "master": 0.85,
+    "bgm": 0.6,
+    "sfx": 0.9,
+    "ui": 0.85
+   },
+   "queuedBeforeUnlockCount": 0,
+   "pendingQueue": 0,
+   "droppedQueue": 0,
+   "activeVoices": 0,
+   "droppedVoices": 0,
+   "playedEventsCount": 0,
+   "postMessageBridgeActive": true,
+   "lastBridgeCommand": "init",
+   "backend": "webaudio",
+   "contextAvailable": true,
+   "lastError": null,
+   "spatialVoices": 0,
+   "spatialBackend": "panner"
+  },
+  "hunt": {
+   "quest": "q1",
+   "time": 148.7,
+   "hp": 100,
+   "stamina": 93,
+   "faints": 0,
+   "monster": 0,
+   "state": "dead",
+   "move": null,
+   "enraged": false,
+   "broken": [
+    "legs"
+   ],
+   "result": "won",
+   "hits": 164,
+   "hurts": 0,
+   "dist": 1.7,
+   "action": "light1"
+  },
+  "loot": {
+   "饕餮厚皮": 4,
+   "饕餮巨齒": 1
+  }
+ },
+ "log": [
+  {
+   "shot": "00-roam",
+   "seconds": 28.646,
+   "state": {
+    "ready": true,
+    "screen": "hunt",
+    "frames": 15,
+    "save": {
+     "version": 1,
+     "coins": 0,
+     "items": {},
+     "weapon": "w0",
+     "armor": "a0",
+     "owned": [
+      "w0",
+      "a0"
+     ],
+     "cleared": {}
+    },
+    "draws": 349,
+    "triangles": 660937,
+    "sound": {
+     "loadedStreams": 0,
+     "pendingStreamLoads": 0,
+     "retainedStreamBytes": 0,
+     "pendingAdmissions": 0,
+     "retiredVoices": 0,
+     "sampleBackend": "native",
+     "loadedSamples": 16,
+     "pendingSampleLoads": 0,
+     "decodedSampleBytes": 3166376,
+     "inIframe": false,
+     "contextState": "suspended",
+     "unlockedByGesture": false,
+     "unlockGestureType": "none",
+     "pageVisible": true,
+     "windowFocused": true,
+     "autoSuspendedByBlur": false,
+     "userMuted": false,
+     "volumes": {
+      "master": 0.85,
+      "bgm": 0.6,
+      "sfx": 0.9,
+      "ui": 0.85
+     },
+     "queuedBeforeUnlockCount": 0,
+     "pendingQueue": 0,
+     "droppedQueue": 0,
+     "activeVoices": 0,
+     "droppedVoices": 0,
+     "playedEventsCount": 0,
+     "postMessageBridgeActive": true,
+     "lastBridgeCommand": "init",
+     "backend": "webaudio",
+     "contextAvailable": true,
+     "lastError": null,
+     "spatialVoices": 0,
+     "spatialBackend": "panner"
+    },
+    "hunt": {
+     "quest": "q1",
+     "time": 6,
+     "hp": 100,
+     "stamina": 78,
+     "faints": 0,
+     "monster": 97.9,
+     "state": "recover",
+     "move": "bite",
+     "enraged": false,
+     "broken": [],
+     "result": "running",
+     "hits": 4,
+     "hurts": 0,
+     "dist": 4.3,
+     "action": null
+    }
+   }
+  },
+  {
+   "shot": "01-recover",
+   "seconds": 45.242,
+   "state": {
+    "ready": true,
+    "screen": "hunt",
+    "frames": 23,
+    "save": {
+     "version": 1,
+     "coins": 0,
+     "items": {},
+     "weapon": "w0",
+     "armor": "a0",
+     "owned": [
+      "w0",
+      "a0"
+     ],
+     "cleared": {}
+    },
+    "draws": 334,
+    "triangles": 639433,
+    "sound": {
+     "loadedStreams": 0,
+     "pendingStreamLoads": 0,
+     "retainedStreamBytes": 0,
+     "pendingAdmissions": 0,
+     "retiredVoices": 0,
+     "sampleBackend": "native",
+     "loadedSamples": 16,
+     "pendingSampleLoads": 0,
+     "decodedSampleBytes": 3166376,
+     "inIframe": false,
+     "contextState": "suspended",
+     "unlockedByGesture": false,
+     "unlockGestureType": "none",
+     "pageVisible": true,
+     "windowFocused": true,
+     "autoSuspendedByBlur": false,
+     "userMuted": false,
+     "volumes": {
+      "master": 0.85,
+      "bgm": 0.6,
+      "sfx": 0.9,
+      "ui": 0.85
+     },
+     "queuedBeforeUnlockCount": 0,
+     "pendingQueue": 0,
+     "droppedQueue": 0,
+     "activeVoices": 0,
+     "droppedVoices": 0,
+     "playedEventsCount": 0,
+     "postMessageBridgeActive": true,
+     "lastBridgeCommand": "init",
+     "backend": "webaudio",
+     "contextAvailable": true,
+     "lastError": null,
+     "spatialVoices": 0,
+     "spatialBackend": "panner"
+    },
+    "hunt": {
+     "quest": "q1",
+     "time": 10.8,
+     "hp": 100,
+     "stamina": 94,
+     "faints": 0,
+     "monster": 95.7,
+     "state": "roam",
+     "move": null,
+     "enraged": false,
+     "broken": [],
+     "result": "running",
+     "hits": 9,
+     "hurts": 0,
+     "dist": 1.7,
+     "action": "light1"
+    }
+   }
+  },
+  {
+   "shot": "02-windup",
+   "seconds": 61.163,
+   "state": {
+    "ready": true,
+    "screen": "hunt",
+    "frames": 31,
+    "save": {
+     "version": 1,
+     "coins": 0,
+     "items": {},
+     "weapon": "w0",
+     "armor": "a0",
+     "owned": [
+      "w0",
+      "a0"
+     ],
+     "cleared": {}
+    },
+    "draws": 314,
+    "triangles": 620953,
+    "sound": {
+     "loadedStreams": 0,
+     "pendingStreamLoads": 0,
+     "retainedStreamBytes": 0,
+     "pendingAdmissions": 0,
+     "retiredVoices": 0,
+     "sampleBackend": "native",
+     "loadedSamples": 16,
+     "pendingSampleLoads": 0,
+     "decodedSampleBytes": 3166376,
+     "inIframe": false,
+     "contextState": "suspended",
+     "unlockedByGesture": false,
+     "unlockGestureType": "none",
+     "pageVisible": true,
+     "windowFocused": true,
+     "autoSuspendedByBlur": false,
+     "userMuted": false,
+     "volumes": {
+      "master": 0.85,
+      "bgm": 0.6,
+      "sfx": 0.9,
+      "ui": 0.85
+     },
+     "queuedBeforeUnlockCount": 0,
+     "pendingQueue": 0,
+     "droppedQueue": 0,
+     "activeVoices": 0,
+     "droppedVoices": 0,
+     "playedEventsCount": 0,
+     "postMessageBridgeActive": true,
+     "lastBridgeCommand": "init",
+     "backend": "webaudio",
+     "contextAvailable": true,
+     "lastError": null,
+     "spatialVoices": 0,
+     "spatialBackend": "panner"
+    },
+    "hunt": {
+     "quest": "q1",
+     "time": 15.6,
+     "hp": 100,
+     "stamina": 85,
+     "faints": 0,
+     "monster": 93.8,
+     "state": "recover",
+     "move": "bite",
+     "enraged": false,
+     "broken": [],
+     "result": "running",
+     "hits": 13,
+     "hurts": 0,
+     "dist": 2.9,
+     "action": null
+    }
+   }
+  },
+  {
+   "shot": "03-active",
+   "seconds": 82.815,
+   "state": {
+    "ready": true,
+    "screen": "hunt",
+    "frames": 42,
+    "save": {
+     "version": 1,
+     "coins": 0,
+     "items": {},
+     "weapon": "w0",
+     "armor": "a0",
+     "owned": [
+      "w0",
+      "a0"
+     ],
+     "cleared": {}
+    },
+    "draws": 318,
+    "triangles": 610135,
+    "sound": {
+     "loadedStreams": 0,
+     "pendingStreamLoads": 0,
+     "retainedStreamBytes": 0,
+     "pendingAdmissions": 0,
+     "retiredVoices": 0,
+     "sampleBackend": "native",
+     "loadedSamples": 16,
+     "pendingSampleLoads": 0,
+     "decodedSampleBytes": 3166376,
+     "inIframe": false,
+     "contextState": "suspended",
+     "unlockedByGesture": false,
+     "unlockGestureType": "none",
+     "pageVisible": true,
+     "windowFocused": true,
+     "autoSuspendedByBlur": false,
+     "userMuted": false,
+     "volumes": {
+      "master": 0.85,
+      "bgm": 0.6,
+      "sfx": 0.9,
+      "ui": 0.85
+     },
+     "queuedBeforeUnlockCount": 0,
+     "pendingQueue": 0,
+     "droppedQueue": 0,
+     "activeVoices": 0,
+     "droppedVoices": 0,
+     "playedEventsCount": 0,
+     "postMessageBridgeActive": true,
+     "lastBridgeCommand": "init",
+     "backend": "webaudio",
+     "contextAvailable": true,
+     "lastError": null,
+     "spatialVoices": 0,
+     "spatialBackend": "panner"
+    },
+    "hunt": {
+     "quest": "q1",
+     "time": 22.2,
+     "hp": 100,
+     "stamina": 93,
+     "faints": 0,
+     "monster": 91,
+     "state": "recover",
+     "move": "bite",
+     "enraged": false,
+     "broken": [],
+     "result": "running",
+     "hits": 19,
+     "hurts": 0,
+     "dist": 1.7,
+     "action": null
+    }
+   }
+  },
+  {
+   "shot": "04-recover",
+   "seconds": 101.963,
+   "state": {
+    "ready": true,
+    "screen": "hunt",
+    "frames": 52,
+    "save": {
+     "version": 1,
+     "coins": 0,
+     "items": {},
+     "weapon": "w0",
+     "armor": "a0",
+     "owned": [
+      "w0",
+      "a0"
+     ],
+     "cleared": {}
+    },
+    "draws": 311,
+    "triangles": 601234,
+    "sound": {
+     "loadedStreams": 0,
+     "pendingStreamLoads": 0,
+     "retainedStreamBytes": 0,
+     "pendingAdmissions": 0,
+     "retiredVoices": 0,
+     "sampleBackend": "native",
+     "loadedSamples": 16,
+     "pendingSampleLoads": 0,
+     "decodedSampleBytes": 3166376,
+     "inIframe": false,
+     "contextState": "suspended",
+     "unlockedByGesture": false,
+     "unlockGestureType": "none",
+     "pageVisible": true,
+     "windowFocused": true,
+     "autoSuspendedByBlur": false,
+     "userMuted": false,
+     "volumes": {
+      "master": 0.85,
+      "bgm": 0.6,
+      "sfx": 0.9,
+      "ui": 0.85
+     },
+     "queuedBeforeUnlockCount": 0,
+     "pendingQueue": 0,
+     "droppedQueue": 0,
+     "activeVoices": 0,
+     "droppedVoices": 0,
+     "playedEventsCount": 0,
+     "postMessageBridgeActive": true,
+     "lastBridgeCommand": "init",
+     "backend": "webaudio",
+     "contextAvailable": true,
+     "lastError": null,
+     "spatialVoices": 0,
+     "spatialBackend": "panner"
+    },
+    "hunt": {
+     "quest": "q1",
+     "time": 28.2,
+     "hp": 100,
+     "stamina": 89,
+     "faints": 0,
+     "monster": 88.3,
+     "state": "recover",
+     "move": "bite",
+     "enraged": false,
+     "broken": [],
+     "result": "running",
+     "hits": 25,
+     "hurts": 0,
+     "dist": 2,
+     "action": null
+    }
+   }
+  },
+  {
+   "shot": "05-recover",
+   "seconds": 125.673,
+   "state": {
+    "ready": true,
+    "screen": "hunt",
+    "frames": 64,
+    "save": {
+     "version": 1,
+     "coins": 0,
+     "items": {},
+     "weapon": "w0",
+     "armor": "a0",
+     "owned": [
+      "w0",
+      "a0"
+     ],
+     "cleared": {}
+    },
+    "draws": 334,
+    "triangles": 637012,
+    "sound": {
+     "loadedStreams": 0,
+     "pendingStreamLoads": 0,
+     "retainedStreamBytes": 0,
+     "pendingAdmissions": 0,
+     "retiredVoices": 0,
+     "sampleBackend": "native",
+     "loadedSamples": 16,
+     "pendingSampleLoads": 0,
+     "decodedSampleBytes": 3166376,
+     "inIframe": false,
+     "contextState": "suspended",
+     "unlockedByGesture": false,
+     "unlockGestureType": "none",
+     "pageVisible": true,
+     "windowFocused": true,
+     "autoSuspendedByBlur": false,
+     "userMuted": false,
+     "volumes": {
+      "master": 0.85,
+      "bgm": 0.6,
+      "sfx": 0.9,
+      "ui": 0.85
+     },
+     "queuedBeforeUnlockCount": 0,
+     "pendingQueue": 0,
+     "droppedQueue": 0,
+     "activeVoices": 0,
+     "droppedVoices": 0,
+     "playedEventsCount": 0,
+     "postMessageBridgeActive": true,
+     "lastBridgeCommand": "init",
+     "backend": "webaudio",
+     "contextAvailable": true,
+     "lastError": null,
+     "spatialVoices": 0,
+     "spatialBackend": "panner"
+    },
+    "hunt": {
+     "quest": "q1",
+     "time": 35.4,
+     "hp": 100,
+     "stamina": 94,
+     "faints": 0,
+     "monster": 85.1,
+     "state": "roam",
+     "move": null,
+     "enraged": false,
+     "broken": [],
+     "result": "running",
+     "hits": 32,
+     "hurts": 0,
+     "dist": 1.7,
+     "action": "light1"
+    }
+   }
+  },
+  {
+   "shot": "06-recover",
+   "seconds": 147.57,
+   "state": {
+    "ready": true,
+    "screen": "hunt",
+    "frames": 75,
+    "save": {
+     "version": 1,
+     "coins": 0,
+     "items": {},
+     "weapon": "w0",
+     "armor": "a0",
+     "owned": [
+      "w0",
+      "a0"
+     ],
+     "cleared": {}
+    },
+    "draws": 331,
+    "triangles": 636147,
+    "sound": {
+     "loadedStreams": 0,
+     "pendingStreamLoads": 0,
+     "retainedStreamBytes": 0,
+     "pendingAdmissions": 0,
+     "retiredVoices": 0,
+     "sampleBackend": "native",
+     "loadedSamples": 16,
+     "pendingSampleLoads": 0,
+     "decodedSampleBytes": 3166376,
+     "inIframe": false,
+     "contextState": "suspended",
+     "unlockedByGesture": false,
+     "unlockGestureType": "none",
+     "pageVisible": true,
+     "windowFocused": true,
+     "autoSuspendedByBlur": false,
+     "userMuted": false,
+     "volumes": {
+      "master": 0.85,
+      "bgm": 0.6,
+      "sfx": 0.9,
+      "ui": 0.85
+     },
+     "queuedBeforeUnlockCount": 0,
+     "pendingQueue": 0,
+     "droppedQueue": 0,
+     "activeVoices": 0,
+     "droppedVoices": 0,
+     "playedEventsCount": 0,
+     "postMessageBridgeActive": true,
+     "lastBridgeCommand": "init",
+     "backend": "webaudio",
+     "contextAvailable": true,
+     "lastError": null,
+     "spatialVoices": 0,
+     "spatialBackend": "panner"
+    },
+    "hunt": {
+     "quest": "q1",
+     "time": 42,
+     "hp": 100,
+     "stamina": 94,
+     "faints": 0,
+     "monster": 81.9,
+     "state": "roam",
+     "move": null,
+     "enraged": false,
+     "broken": [],
+     "result": "running",
+     "hits": 39,
+     "hurts": 0,
+     "dist": 1.7,
+     "action": "light1"
+    }
+   }
+  },
+  {
+   "shot": "07-recover",
+   "seconds": 167.321,
+   "state": {
+    "ready": true,
+    "screen": "hunt",
+    "frames": 85,
+    "save": {
+     "version": 1,
+     "coins": 0,
+     "items": {},
+     "weapon": "w0",
+     "armor": "a0",
+     "owned": [
+      "w0",
+      "a0"
+     ],
+     "cleared": {}
+    },
+    "draws": 325,
+    "triangles": 632952,
+    "sound": {
+     "loadedStreams": 0,
+     "pendingStreamLoads": 0,
+     "retainedStreamBytes": 0,
+     "pendingAdmissions": 0,
+     "retiredVoices": 0,
+     "sampleBackend": "native",
+     "loadedSamples": 16,
+     "pendingSampleLoads": 0,
+     "decodedSampleBytes": 3166376,
+     "inIframe": false,
+     "contextState": "suspended",
+     "unlockedByGesture": false,
+     "unlockGestureType": "none",
+     "pageVisible": true,
+     "windowFocused": true,
+     "autoSuspendedByBlur": false,
+     "userMuted": false,
+     "volumes": {
+      "master": 0.85,
+      "bgm": 0.6,
+      "sfx": 0.9,
+      "ui": 0.85
+     },
+     "queuedBeforeUnlockCount": 0,
+     "pendingQueue": 0,
+     "droppedQueue": 0,
+     "activeVoices": 0,
+     "droppedVoices": 0,
+     "playedEventsCount": 0,
+     "postMessageBridgeActive": true,
+     "lastBridgeCommand": "init",
+     "backend": "webaudio",
+     "contextAvailable": true,
+     "lastError": null,
+     "spatialVoices": 0,
+     "spatialBackend": "panner"
+    },
+    "hunt": {
+     "quest": "q1",
+     "time": 48,
+     "hp": 100,
+     "stamina": 94,
+     "faints": 0,
+     "monster": 79.2,
+     "state": "roam",
+     "move": null,
+     "enraged": false,
+     "broken": [],
+     "result": "running",
+     "hits": 45,
+     "hurts": 0,
+     "dist": 1.7,
+     "action": "light1"
+    }
+   }
+  },
+  {
+   "shot": "08-recover",
+   "seconds": 187.956,
+   "state": {
+    "ready": true,
+    "screen": "hunt",
+    "frames": 95,
+    "save": {
+     "version": 1,
+     "coins": 0,
+     "items": {},
+     "weapon": "w0",
+     "armor": "a0",
+     "owned": [
+      "w0",
+      "a0"
+     ],
+     "cleared": {}
+    },
+    "draws": 351,
+    "triangles": 662073,
+    "sound": {
+     "loadedStreams": 0,
+     "pendingStreamLoads": 0,
+     "retainedStreamBytes": 0,
+     "pendingAdmissions": 0,
+     "retiredVoices": 0,
+     "sampleBackend": "native",
+     "loadedSamples": 16,
+     "pendingSampleLoads": 0,
+     "decodedSampleBytes": 3166376,
+     "inIframe": false,
+     "contextState": "suspended",
+     "unlockedByGesture": false,
+     "unlockGestureType": "none",
+     "pageVisible": true,
+     "windowFocused": true,
+     "autoSuspendedByBlur": false,
+     "userMuted": false,
+     "volumes": {
+      "master": 0.85,
+      "bgm": 0.6,
+      "sfx": 0.9,
+      "ui": 0.85
+     },
+     "queuedBeforeUnlockCount": 0,
+     "pendingQueue": 0,
+     "droppedQueue": 0,
+     "activeVoices": 0,
+     "droppedVoices": 0,
+     "playedEventsCount": 0,
+     "postMessageBridgeActive": true,
+     "lastBridgeCommand": "init",
+     "backend": "webaudio",
+     "contextAvailable": true,
+     "lastError": null,
+     "spatialVoices": 0,
+     "spatialBackend": "panner"
+    },
+    "hunt": {
+     "quest": "q1",
+     "time": 54,
+     "hp": 100,
+     "stamina": 94,
+     "faints": 0,
+     "monster": 76.8,
+     "state": "roam",
+     "move": null,
+     "enraged": false,
+     "broken": [],
+     "result": "running",
+     "hits": 50,
+     "hurts": 0,
+     "dist": 1.7,
+     "action": "light1"
+    }
+   }
+  },
+  {
+   "shot": "09-recover",
+   "seconds": 208.682,
+   "state": {
+    "ready": true,
+    "screen": "hunt",
+    "frames": 105,
+    "save": {
+     "version": 1,
+     "coins": 0,
+     "items": {},
+     "weapon": "w0",
+     "armor": "a0",
+     "owned": [
+      "w0",
+      "a0"
+     ],
+     "cleared": {}
+    },
+    "draws": 336,
+    "triangles": 609334,
+    "sound": {
+     "loadedStreams": 0,
+     "pendingStreamLoads": 0,
+     "retainedStreamBytes": 0,
+     "pendingAdmissions": 0,
+     "retiredVoices": 0,
+     "sampleBackend": "native",
+     "loadedSamples": 16,
+     "pendingSampleLoads": 0,
+     "decodedSampleBytes": 3166376,
+     "inIframe": false,
+     "contextState": "suspended",
+     "unlockedByGesture": false,
+     "unlockGestureType": "none",
+     "pageVisible": true,
+     "windowFocused": true,
+     "autoSuspendedByBlur": false,
+     "userMuted": false,
+     "volumes": {
+      "master": 0.85,
+      "bgm": 0.6,
+      "sfx": 0.9,
+      "ui": 0.85
+     },
+     "queuedBeforeUnlockCount": 0,
+     "pendingQueue": 0,
+     "droppedQueue": 0,
+     "activeVoices": 0,
+     "droppedVoices": 0,
+     "playedEventsCount": 0,
+     "postMessageBridgeActive": true,
+     "lastBridgeCommand": "init",
+     "backend": "webaudio",
+     "contextAvailable": true,
+     "lastError": null,
+     "spatialVoices": 0,
+     "spatialBackend": "panner"
+    },
+    "hunt": {
+     "quest": "q1",
+     "time": 60,
+     "hp": 100,
+     "stamina": 94,
+     "faints": 0,
+     "monster": 74.1,
+     "state": "roam",
+     "move": null,
+     "enraged": false,
+     "broken": [],
+     "result": "running",
+     "hits": 56,
+     "hurts": 0,
+     "dist": 1.7,
+     "action": "light1"
+    }
+   }
+  },
+  {
+   "shot": "10-active",
+   "seconds": 228.806,
+   "state": {
+    "ready": true,
+    "screen": "hunt",
+    "frames": 115,
+    "save": {
+     "version": 1,
+     "coins": 0,
+     "items": {},
+     "weapon": "w0",
+     "armor": "a0",
+     "owned": [
+      "w0",
+      "a0"
+     ],
+     "cleared": {}
+    },
+    "draws": 343,
+    "triangles": 645547,
+    "sound": {
+     "loadedStreams": 0,
+     "pendingStreamLoads": 0,
+     "retainedStreamBytes": 0,
+     "pendingAdmissions": 0,
+     "retiredVoices": 0,
+     "sampleBackend": "native",
+     "loadedSamples": 16,
+     "pendingSampleLoads": 0,
+     "decodedSampleBytes": 3166376,
+     "inIframe": false,
+     "contextState": "suspended",
+     "unlockedByGesture": false,
+     "unlockGestureType": "none",
+     "pageVisible": true,
+     "windowFocused": true,
+     "autoSuspendedByBlur": false,
+     "userMuted": false,
+     "volumes": {
+      "master": 0.85,
+      "bgm": 0.6,
+      "sfx": 0.9,
+      "ui": 0.85
+     },
+     "queuedBeforeUnlockCount": 0,
+     "pendingQueue": 0,
+     "droppedQueue": 0,
+     "activeVoices": 0,
+     "droppedVoices": 0,
+     "playedEventsCount": 0,
+     "postMessageBridgeActive": true,
+     "lastBridgeCommand": "init",
+     "backend": "webaudio",
+     "contextAvailable": true,
+     "lastError": null,
+     "spatialVoices": 0,
+     "spatialBackend": "panner"
+    },
+    "hunt": {
+     "quest": "q1",
+     "time": 66,
+     "hp": 100,
+     "stamina": 94,
+     "faints": 0,
+     "monster": 66.7,
+     "state": "topple",
+     "move": null,
+     "enraged": false,
+     "broken": [],
+     "result": "running",
+     "hits": 64,
+     "hurts": 0,
+     "dist": 1.9,
+     "action": "heavy"
+    }
+   }
+  },
+  {
+   "shot": "11-topple-rage",
+   "seconds": 245.153,
+   "state": {
+    "ready": true,
+    "screen": "hunt",
+    "frames": 123,
+    "save": {
+     "version": 1,
+     "coins": 0,
+     "items": {},
+     "weapon": "w0",
+     "armor": "a0",
+     "owned": [
+      "w0",
+      "a0"
+     ],
+     "cleared": {}
+    },
+    "draws": 364,
+    "triangles": 655908,
+    "sound": {
+     "loadedStreams": 0,
+     "pendingStreamLoads": 0,
+     "retainedStreamBytes": 0,
+     "pendingAdmissions": 0,
+     "retiredVoices": 0,
+     "sampleBackend": "native",
+     "loadedSamples": 16,
+     "pendingSampleLoads": 0,
+     "decodedSampleBytes": 3166376,
+     "inIframe": false,
+     "contextState": "suspended",
+     "unlockedByGesture": false,
+     "unlockGestureType": "none",
+     "pageVisible": true,
+     "windowFocused": true,
+     "autoSuspendedByBlur": false,
+     "userMuted": false,
+     "volumes": {
+      "master": 0.85,
+      "bgm": 0.6,
+      "sfx": 0.9,
+      "ui": 0.85
+     },
+     "queuedBeforeUnlockCount": 0,
+     "pendingQueue": 0,
+     "droppedQueue": 0,
+     "activeVoices": 0,
+     "droppedVoices": 0,
+     "playedEventsCount": 0,
+     "postMessageBridgeActive": true,
+     "lastBridgeCommand": "init",
+     "backend": "webaudio",
+     "contextAvailable": true,
+     "lastError": null,
+     "spatialVoices": 0,
+     "spatialBackend": "panner"
+    },
+    "hunt": {
+     "quest": "q1",
+     "time": 70.8,
+     "hp": 100,
+     "stamina": 85,
+     "faints": 0,
+     "monster": 62.2,
+     "state": "recover",
+     "move": "slam",
+     "enraged": true,
+     "broken": [],
+     "result": "running",
+     "hits": 71,
+     "hurts": 0,
+     "dist": 1.7,
+     "action": "light3"
+    }
+   }
+  },
+  {
+   "shot": "12-windup-rage",
+   "seconds": 261.221,
+   "state": {
+    "ready": true,
+    "screen": "hunt",
+    "frames": 131,
+    "save": {
+     "version": 1,
+     "coins": 0,
+     "items": {},
+     "weapon": "w0",
+     "armor": "a0",
+     "owned": [
+      "w0",
+      "a0"
+     ],
+     "cleared": {}
+    },
+    "draws": 343,
+    "triangles": 625866,
+    "sound": {
+     "loadedStreams": 0,
+     "pendingStreamLoads": 0,
+     "retainedStreamBytes": 0,
+     "pendingAdmissions": 0,
+     "retiredVoices": 0,
+     "sampleBackend": "native",
+     "loadedSamples": 16,
+     "pendingSampleLoads": 0,
+     "decodedSampleBytes": 3166376,
+     "inIframe": false,
+     "contextState": "suspended",
+     "unlockedByGesture": false,
+     "unlockGestureType": "none",
+     "pageVisible": true,
+     "windowFocused": true,
+     "autoSuspendedByBlur": false,
+     "userMuted": false,
+     "volumes": {
+      "master": 0.85,
+      "bgm": 0.6,
+      "sfx": 0.9,
+      "ui": 0.85
+     },
+     "queuedBeforeUnlockCount": 0,
+     "pendingQueue": 0,
+     "droppedQueue": 0,
+     "activeVoices": 0,
+     "droppedVoices": 0,
+     "playedEventsCount": 0,
+     "postMessageBridgeActive": true,
+     "lastBridgeCommand": "init",
+     "backend": "webaudio",
+     "contextAvailable": true,
+     "lastError": null,
+     "spatialVoices": 0,
+     "spatialBackend": "panner"
+    },
+    "hunt": {
+     "quest": "q1",
+     "time": 75.6,
+     "hp": 100,
+     "stamina": 78,
+     "faints": 0,
+     "monster": 58.3,
+     "state": "windup",
+     "move": "slam",
+     "enraged": true,
+     "broken": [
+      "legs"
+     ],
+     "result": "running",
+     "hits": 78,
+     "hurts": 0,
+     "dist": 1.7,
+     "action": "light1"
+    }
+   }
+  },
+  {
+   "shot": "13-active-rage",
+   "seconds": 279.005,
+   "state": {
+    "ready": true,
+    "screen": "hunt",
+    "frames": 140,
+    "save": {
+     "version": 1,
+     "coins": 0,
+     "items": {},
+     "weapon": "w0",
+     "armor": "a0",
+     "owned": [
+      "w0",
+      "a0"
+     ],
+     "cleared": {}
+    },
+    "draws": 295,
+    "triangles": 528881,
+    "sound": {
+     "loadedStreams": 0,
+     "pendingStreamLoads": 0,
+     "retainedStreamBytes": 0,
+     "pendingAdmissions": 0,
+     "retiredVoices": 0,
+     "sampleBackend": "native",
+     "loadedSamples": 16,
+     "pendingSampleLoads": 0,
+     "decodedSampleBytes": 3166376,
+     "inIframe": false,
+     "contextState": "suspended",
+     "unlockedByGesture": false,
+     "unlockGestureType": "none",
+     "pageVisible": true,
+     "windowFocused": true,
+     "autoSuspendedByBlur": false,
+     "userMuted": false,
+     "volumes": {
+      "master": 0.85,
+      "bgm": 0.6,
+      "sfx": 0.9,
+      "ui": 0.85
+     },
+     "queuedBeforeUnlockCount": 0,
+     "pendingQueue": 0,
+     "droppedQueue": 0,
+     "activeVoices": 0,
+     "droppedVoices": 0,
+     "playedEventsCount": 0,
+     "postMessageBridgeActive": true,
+     "lastBridgeCommand": "init",
+     "backend": "webaudio",
+     "contextAvailable": true,
+     "lastError": null,
+     "spatialVoices": 0,
+     "spatialBackend": "panner"
+    },
+    "hunt": {
+     "quest": "q1",
+     "time": 81,
+     "hp": 100,
+     "stamina": 62,
+     "faints": 0,
+     "monster": 54.6,
+     "state": "recover",
+     "move": "slam",
+     "enraged": true,
+     "broken": [
+      "legs"
+     ],
+     "result": "running",
+     "hits": 85,
+     "hurts": 0,
+     "dist": 2.4,
+     "action": "light1"
+    }
+   }
+  },
+  {
+   "shot": "14-recover-rage",
+   "seconds": 295.891,
+   "state": {
+    "ready": true,
+    "screen": "hunt",
+    "frames": 148,
+    "save": {
+     "version": 1,
+     "coins": 0,
+     "items": {},
+     "weapon": "w0",
+     "armor": "a0",
+     "owned": [
+      "w0",
+      "a0"
+     ],
+     "cleared": {}
+    },
+    "draws": 351,
+    "triangles": 647219,
+    "sound": {
+     "loadedStreams": 0,
+     "pendingStreamLoads": 0,
+     "retainedStreamBytes": 0,
+     "pendingAdmissions": 0,
+     "retiredVoices": 0,
+     "sampleBackend": "native",
+     "loadedSamples": 16,
+     "pendingSampleLoads": 0,
+     "decodedSampleBytes": 3166376,
+     "inIframe": false,
+     "contextState": "suspended",
+     "unlockedByGesture": false,
+     "unlockGestureType": "none",
+     "pageVisible": true,
+     "windowFocused": true,
+     "autoSuspendedByBlur": false,
+     "userMuted": false,
+     "volumes": {
+      "master": 0.85,
+      "bgm": 0.6,
+      "sfx": 0.9,
+      "ui": 0.85
+     },
+     "queuedBeforeUnlockCount": 0,
+     "pendingQueue": 0,
+     "droppedQueue": 0,
+     "activeVoices": 0,
+     "droppedVoices": 0,
+     "playedEventsCount": 0,
+     "postMessageBridgeActive": true,
+     "lastBridgeCommand": "init",
+     "backend": "webaudio",
+     "contextAvailable": true,
+     "lastError": null,
+     "spatialVoices": 0,
+     "spatialBackend": "panner"
+    },
+    "hunt": {
+     "quest": "q1",
+     "time": 85.8,
+     "hp": 100,
+     "stamina": 62,
+     "faints": 0,
+     "monster": 49.8,
+     "state": "roam",
+     "move": null,
+     "enraged": true,
+     "broken": [
+      "legs"
+     ],
+     "result": "running",
+     "hits": 92,
+     "hurts": 0,
+     "dist": 1.7,
+     "action": "light1"
+    }
+   }
+  },
+  {
+   "shot": "15-recover-rage",
+   "seconds": 316.841,
+   "state": {
+    "ready": true,
+    "screen": "hunt",
+    "frames": 158,
+    "save": {
+     "version": 1,
+     "coins": 0,
+     "items": {},
+     "weapon": "w0",
+     "armor": "a0",
+     "owned": [
+      "w0",
+      "a0"
+     ],
+     "cleared": {}
+    },
+    "draws": 345,
+    "triangles": 646468,
+    "sound": {
+     "loadedStreams": 0,
+     "pendingStreamLoads": 0,
+     "retainedStreamBytes": 0,
+     "pendingAdmissions": 0,
+     "retiredVoices": 0,
+     "sampleBackend": "native",
+     "loadedSamples": 16,
+     "pendingSampleLoads": 0,
+     "decodedSampleBytes": 3166376,
+     "inIframe": false,
+     "contextState": "suspended",
+     "unlockedByGesture": false,
+     "unlockGestureType": "none",
+     "pageVisible": true,
+     "windowFocused": true,
+     "autoSuspendedByBlur": false,
+     "userMuted": false,
+     "volumes": {
+      "master": 0.85,
+      "bgm": 0.6,
+      "sfx": 0.9,
+      "ui": 0.85
+     },
+     "queuedBeforeUnlockCount": 0,
+     "pendingQueue": 0,
+     "droppedQueue": 0,
+     "activeVoices": 0,
+     "droppedVoices": 0,
+     "playedEventsCount": 0,
+     "postMessageBridgeActive": true,
+     "lastBridgeCommand": "init",
+     "backend": "webaudio",
+     "contextAvailable": true,
+     "lastError": null,
+     "spatialVoices": 0,
+     "spatialBackend": "panner"
+    },
+    "hunt": {
+     "quest": "q1",
+     "time": 91.8,
+     "hp": 100,
+     "stamina": 61,
+     "faints": 0,
+     "monster": 45.9,
+     "state": "roam",
+     "move": null,
+     "enraged": true,
+     "broken": [
+      "legs"
+     ],
+     "result": "running",
+     "hits": 99,
+     "hurts": 0,
+     "dist": 1.7,
+     "action": "light1"
+    }
+   }
+  },
+  {
+   "shot": "16-recover-rage",
+   "seconds": 338.125,
+   "state": {
+    "ready": true,
+    "screen": "hunt",
+    "frames": 168,
+    "save": {
+     "version": 1,
+     "coins": 0,
+     "items": {},
+     "weapon": "w0",
+     "armor": "a0",
+     "owned": [
+      "w0",
+      "a0"
+     ],
+     "cleared": {}
+    },
+    "draws": 331,
+    "triangles": 561406,
+    "sound": {
+     "loadedStreams": 0,
+     "pendingStreamLoads": 0,
+     "retainedStreamBytes": 0,
+     "pendingAdmissions": 0,
+     "retiredVoices": 0,
+     "sampleBackend": "native",
+     "loadedSamples": 16,
+     "pendingSampleLoads": 0,
+     "decodedSampleBytes": 3166376,
+     "inIframe": false,
+     "contextState": "suspended",
+     "unlockedByGesture": false,
+     "unlockGestureType": "none",
+     "pageVisible": true,
+     "windowFocused": true,
+     "autoSuspendedByBlur": false,
+     "userMuted": false,
+     "volumes": {
+      "master": 0.85,
+      "bgm": 0.6,
+      "sfx": 0.9,
+      "ui": 0.85
+     },
+     "queuedBeforeUnlockCount": 0,
+     "pendingQueue": 0,
+     "droppedQueue": 0,
+     "activeVoices": 0,
+     "droppedVoices": 0,
+     "playedEventsCount": 0,
+     "postMessageBridgeActive": true,
+     "lastBridgeCommand": "init",
+     "backend": "webaudio",
+     "contextAvailable": true,
+     "lastError": null,
+     "spatialVoices": 0,
+     "spatialBackend": "panner"
+    },
+    "hunt": {
+     "quest": "q1",
+     "time": 97.8,
+     "hp": 100,
+     "stamina": 59,
+     "faints": 0,
+     "monster": 36.4,
+     "state": "topple",
+     "move": null,
+     "enraged": false,
+     "broken": [
+      "legs"
+     ],
+     "result": "running",
+     "hits": 108,
+     "hurts": 0,
+     "dist": 2.4,
+     "action": "light1"
+    }
+   }
+  },
+  {
+   "shot": "17-topple",
+   "seconds": 353.998,
+   "state": {
+    "ready": true,
+    "screen": "hunt",
+    "frames": 176,
+    "save": {
+     "version": 1,
+     "coins": 0,
+     "items": {},
+     "weapon": "w0",
+     "armor": "a0",
+     "owned": [
+      "w0",
+      "a0"
+     ],
+     "cleared": {}
+    },
+    "draws": 305,
+    "triangles": 548369,
+    "sound": {
+     "loadedStreams": 0,
+     "pendingStreamLoads": 0,
+     "retainedStreamBytes": 0,
+     "pendingAdmissions": 0,
+     "retiredVoices": 0,
+     "sampleBackend": "native",
+     "loadedSamples": 16,
+     "pendingSampleLoads": 0,
+     "decodedSampleBytes": 3166376,
+     "inIframe": false,
+     "contextState": "suspended",
+     "unlockedByGesture": false,
+     "unlockGestureType": "none",
+     "pageVisible": true,
+     "windowFocused": true,
+     "autoSuspendedByBlur": false,
+     "userMuted": false,
+     "volumes": {
+      "master": 0.85,
+      "bgm": 0.6,
+      "sfx": 0.9,
+      "ui": 0.85
+     },
+     "queuedBeforeUnlockCount": 0,
+     "pendingQueue": 0,
+     "droppedQueue": 0,
+     "activeVoices": 0,
+     "droppedVoices": 0,
+     "playedEventsCount": 0,
+     "postMessageBridgeActive": true,
+     "lastBridgeCommand": "init",
+     "backend": "webaudio",
+     "contextAvailable": true,
+     "lastError": null,
+     "spatialVoices": 0,
+     "spatialBackend": "panner"
+    },
+    "hunt": {
+     "quest": "q1",
+     "time": 102.6,
+     "hp": 100,
+     "stamina": 60,
+     "faints": 0,
+     "monster": 31.6,
+     "state": "active",
+     "move": "bite",
+     "enraged": false,
+     "broken": [
+      "legs"
+     ],
+     "result": "running",
+     "hits": 115,
+     "hurts": 0,
+     "dist": 4.3,
+     "action": "dodge"
+    }
+   }
+  },
+  {
+   "shot": "18-roam",
+   "seconds": 374.134,
+   "state": {
+    "ready": true,
+    "screen": "hunt",
+    "frames": 186,
+    "save": {
+     "version": 1,
+     "coins": 0,
+     "items": {},
+     "weapon": "w0",
+     "armor": "a0",
+     "owned": [
+      "w0",
+      "a0"
+     ],
+     "cleared": {}
+    },
+    "draws": 328,
+    "triangles": 564568,
+    "sound": {
+     "loadedStreams": 0,
+     "pendingStreamLoads": 0,
+     "retainedStreamBytes": 0,
+     "pendingAdmissions": 0,
+     "retiredVoices": 0,
+     "sampleBackend": "native",
+     "loadedSamples": 16,
+     "pendingSampleLoads": 0,
+     "decodedSampleBytes": 3166376,
+     "inIframe": false,
+     "contextState": "suspended",
+     "unlockedByGesture": false,
+     "unlockGestureType": "none",
+     "pageVisible": true,
+     "windowFocused": true,
+     "autoSuspendedByBlur": false,
+     "userMuted": false,
+     "volumes": {
+      "master": 0.85,
+      "bgm": 0.6,
+      "sfx": 0.9,
+      "ui": 0.85
+     },
+     "queuedBeforeUnlockCount": 0,
+     "pendingQueue": 0,
+     "droppedQueue": 0,
+     "activeVoices": 0,
+     "droppedVoices": 0,
+     "playedEventsCount": 0,
+     "postMessageBridgeActive": true,
+     "lastBridgeCommand": "init",
+     "backend": "webaudio",
+     "contextAvailable": true,
+     "lastError": null,
+     "spatialVoices": 0,
+     "spatialBackend": "panner"
+    },
+    "hunt": {
+     "quest": "q1",
+     "time": 108.6,
+     "hp": 100,
+     "stamina": 77,
+     "faints": 0,
+     "monster": 29.8,
+     "state": "roar",
+     "move": null,
+     "enraged": true,
+     "broken": [
+      "legs"
+     ],
+     "result": "running",
+     "hits": 119,
+     "hurts": 0,
+     "dist": 2.7,
+     "action": null
+    }
+   }
+  },
+  {
+   "shot": "19-roam-rage",
+   "seconds": 390.017,
+   "state": {
+    "ready": true,
+    "screen": "hunt",
+    "frames": 194,
+    "save": {
+     "version": 1,
+     "coins": 0,
+     "items": {},
+     "weapon": "w0",
+     "armor": "a0",
+     "owned": [
+      "w0",
+      "a0"
+     ],
+     "cleared": {}
+    },
+    "draws": 318,
+    "triangles": 569185,
+    "sound": {
+     "loadedStreams": 0,
+     "pendingStreamLoads": 0,
+     "retainedStreamBytes": 0,
+     "pendingAdmissions": 0,
+     "retiredVoices": 0,
+     "sampleBackend": "native",
+     "loadedSamples": 16,
+     "pendingSampleLoads": 0,
+     "decodedSampleBytes": 3166376,
+     "inIframe": false,
+     "contextState": "suspended",
+     "unlockedByGesture": false,
+     "unlockGestureType": "none",
+     "pageVisible": true,
+     "windowFocused": true,
+     "autoSuspendedByBlur": false,
+     "userMuted": false,
+     "volumes": {
+      "master": 0.85,
+      "bgm": 0.6,
+      "sfx": 0.9,
+      "ui": 0.85
+     },
+     "queuedBeforeUnlockCount": 0,
+     "pendingQueue": 0,
+     "droppedQueue": 0,
+     "activeVoices": 0,
+     "droppedVoices": 0,
+     "playedEventsCount": 0,
+     "postMessageBridgeActive": true,
+     "lastBridgeCommand": "init",
+     "backend": "webaudio",
+     "contextAvailable": true,
+     "lastError": null,
+     "spatialVoices": 0,
+     "spatialBackend": "panner"
+    },
+    "hunt": {
+     "quest": "q1",
+     "time": 113.4,
+     "hp": 100,
+     "stamina": 70,
+     "faints": 0,
+     "monster": 26.8,
+     "state": "recover",
+     "move": "slam",
+     "enraged": true,
+     "broken": [
+      "legs"
+     ],
+     "result": "running",
+     "hits": 124,
+     "hurts": 0,
+     "dist": 1.7,
+     "action": "light3"
+    }
+   }
+  },
+  {
+   "shot": "20-windup-rage",
+   "seconds": 410.015,
+   "state": {
+    "ready": true,
+    "screen": "hunt",
+    "frames": 204,
+    "save": {
+     "version": 1,
+     "coins": 0,
+     "items": {},
+     "weapon": "w0",
+     "armor": "a0",
+     "owned": [
+      "w0",
+      "a0"
+     ],
+     "cleared": {}
+    },
+    "draws": 275,
+    "triangles": 530376,
+    "sound": {
+     "loadedStreams": 0,
+     "pendingStreamLoads": 0,
+     "retainedStreamBytes": 0,
+     "pendingAdmissions": 0,
+     "retiredVoices": 0,
+     "sampleBackend": "native",
+     "loadedSamples": 16,
+     "pendingSampleLoads": 0,
+     "decodedSampleBytes": 3166376,
+     "inIframe": false,
+     "contextState": "suspended",
+     "unlockedByGesture": false,
+     "unlockGestureType": "none",
+     "pageVisible": true,
+     "windowFocused": true,
+     "autoSuspendedByBlur": false,
+     "userMuted": false,
+     "volumes": {
+      "master": 0.85,
+      "bgm": 0.6,
+      "sfx": 0.9,
+      "ui": 0.85
+     },
+     "queuedBeforeUnlockCount": 0,
+     "pendingQueue": 0,
+     "droppedQueue": 0,
+     "activeVoices": 0,
+     "droppedVoices": 0,
+     "playedEventsCount": 0,
+     "postMessageBridgeActive": true,
+     "lastBridgeCommand": "init",
+     "backend": "webaudio",
+     "contextAvailable": true,
+     "lastError": null,
+     "spatialVoices": 0,
+     "spatialBackend": "panner"
+    },
+    "hunt": {
+     "quest": "q1",
+     "time": 119.4,
+     "hp": 100,
+     "stamina": 64,
+     "faints": 0,
+     "monster": 22.3,
+     "state": "recover",
+     "move": "slam",
+     "enraged": true,
+     "broken": [
+      "legs"
+     ],
+     "result": "running",
+     "hits": 131,
+     "hurts": 0,
+     "dist": 1.9,
+     "action": "light3"
+    }
+   }
+  },
+  {
+   "shot": "21-recover-rage",
+   "seconds": 430.724,
+   "state": {
+    "ready": true,
+    "screen": "hunt",
+    "frames": 215,
+    "save": {
+     "version": 1,
+     "coins": 0,
+     "items": {},
+     "weapon": "w0",
+     "armor": "a0",
+     "owned": [
+      "w0",
+      "a0"
+     ],
+     "cleared": {}
+    },
+    "draws": 291,
+    "triangles": 547834,
+    "sound": {
+     "loadedStreams": 0,
+     "pendingStreamLoads": 0,
+     "retainedStreamBytes": 0,
+     "pendingAdmissions": 0,
+     "retiredVoices": 0,
+     "sampleBackend": "native",
+     "loadedSamples": 16,
+     "pendingSampleLoads": 0,
+     "decodedSampleBytes": 3166376,
+     "inIframe": false,
+     "contextState": "suspended",
+     "unlockedByGesture": false,
+     "unlockGestureType": "none",
+     "pageVisible": true,
+     "windowFocused": true,
+     "autoSuspendedByBlur": false,
+     "userMuted": false,
+     "volumes": {
+      "master": 0.85,
+      "bgm": 0.6,
+      "sfx": 0.9,
+      "ui": 0.85
+     },
+     "queuedBeforeUnlockCount": 0,
+     "pendingQueue": 0,
+     "droppedQueue": 0,
+     "activeVoices": 0,
+     "droppedVoices": 0,
+     "playedEventsCount": 0,
+     "postMessageBridgeActive": true,
+     "lastBridgeCommand": "init",
+     "backend": "webaudio",
+     "contextAvailable": true,
+     "lastError": null,
+     "spatialVoices": 0,
+     "spatialBackend": "panner"
+    },
+    "hunt": {
+     "quest": "q1",
+     "time": 126,
+     "hp": 100,
+     "stamina": 58,
+     "faints": 0,
+     "monster": 14.6,
+     "state": "topple",
+     "move": null,
+     "enraged": true,
+     "broken": [
+      "legs"
+     ],
+     "result": "running",
+     "hits": 138,
+     "hurts": 0,
+     "dist": 2.2,
+     "action": "heavy"
+    }
+   }
+  },
+  {
+   "shot": "22-windup-rage",
+   "seconds": 452.625,
+   "state": {
+    "ready": true,
+    "screen": "hunt",
+    "frames": 226,
+    "save": {
+     "version": 1,
+     "coins": 0,
+     "items": {},
+     "weapon": "w0",
+     "armor": "a0",
+     "owned": [
+      "w0",
+      "a0"
+     ],
+     "cleared": {}
+    },
+    "draws": 322,
+    "triangles": 574274,
+    "sound": {
+     "loadedStreams": 0,
+     "pendingStreamLoads": 0,
+     "retainedStreamBytes": 0,
+     "pendingAdmissions": 0,
+     "retiredVoices": 0,
+     "sampleBackend": "native",
+     "loadedSamples": 16,
+     "pendingSampleLoads": 0,
+     "decodedSampleBytes": 3166376,
+     "inIframe": false,
+     "contextState": "suspended",
+     "unlockedByGesture": false,
+     "unlockGestureType": "none",
+     "pageVisible": true,
+     "windowFocused": true,
+     "autoSuspendedByBlur": false,
+     "userMuted": false,
+     "volumes": {
+      "master": 0.85,
+      "bgm": 0.6,
+      "sfx": 0.9,
+      "ui": 0.85
+     },
+     "queuedBeforeUnlockCount": 0,
+     "pendingQueue": 0,
+     "droppedQueue": 0,
+     "activeVoices": 0,
+     "droppedVoices": 0,
+     "playedEventsCount": 0,
+     "postMessageBridgeActive": true,
+     "lastBridgeCommand": "init",
+     "backend": "webaudio",
+     "contextAvailable": true,
+     "lastError": null,
+     "spatialVoices": 0,
+     "spatialBackend": "panner"
+    },
+    "hunt": {
+     "quest": "q1",
+     "time": 132.6,
+     "hp": 100,
+     "stamina": 68,
+     "faints": 0,
+     "monster": 10.3,
+     "state": "recover",
+     "move": "slam",
+     "enraged": true,
+     "broken": [
+      "legs"
+     ],
+     "result": "running",
+     "hits": 145,
+     "hurts": 0,
+     "dist": 1.7,
+     "action": "light3"
+    }
+   }
+  },
+  {
+   "shot": "23-windup-rage",
+   "seconds": 473.94,
+   "state": {
+    "ready": true,
+    "screen": "hunt",
+    "frames": 237,
+    "save": {
+     "version": 1,
+     "coins": 0,
+     "items": {},
+     "weapon": "w0",
+     "armor": "a0",
+     "owned": [
+      "w0",
+      "a0"
+     ],
+     "cleared": {}
+    },
+    "draws": 354,
+    "triangles": 637550,
+    "sound": {
+     "loadedStreams": 0,
+     "pendingStreamLoads": 0,
+     "retainedStreamBytes": 0,
+     "pendingAdmissions": 0,
+     "retiredVoices": 0,
+     "sampleBackend": "native",
+     "loadedSamples": 16,
+     "pendingSampleLoads": 0,
+     "decodedSampleBytes": 3166376,
+     "inIframe": false,
+     "contextState": "suspended",
+     "unlockedByGesture": false,
+     "unlockGestureType": "none",
+     "pageVisible": true,
+     "windowFocused": true,
+     "autoSuspendedByBlur": false,
+     "userMuted": false,
+     "volumes": {
+      "master": 0.85,
+      "bgm": 0.6,
+      "sfx": 0.9,
+      "ui": 0.85
+     },
+     "queuedBeforeUnlockCount": 0,
+     "pendingQueue": 0,
+     "droppedQueue": 0,
+     "activeVoices": 0,
+     "droppedVoices": 0,
+     "playedEventsCount": 0,
+     "postMessageBridgeActive": true,
+     "lastBridgeCommand": "init",
+     "backend": "webaudio",
+     "contextAvailable": true,
+     "lastError": null,
+     "spatialVoices": 0,
+     "spatialBackend": "panner"
+    },
+    "hunt": {
+     "quest": "q1",
+     "time": 139.2,
+     "hp": 100,
+     "stamina": 73,
+     "faints": 0,
+     "monster": 4.3,
+     "state": "windup",
+     "move": "bite",
+     "enraged": false,
+     "broken": [
+      "legs"
+     ],
+     "result": "running",
+     "hits": 155,
+     "hurts": 0,
+     "dist": 1.7,
+     "action": null
+    }
+   }
+  },
+  {
+   "shot": "24-recover",
+   "seconds": 495.091,
+   "state": {
+    "ready": true,
+    "screen": "hunt",
+    "frames": 248,
+    "save": {
+     "version": 1,
+     "coins": 0,
+     "items": {},
+     "weapon": "w0",
+     "armor": "a0",
+     "owned": [
+      "w0",
+      "a0"
+     ],
+     "cleared": {}
+    },
+    "draws": 294,
+    "triangles": 534703,
+    "sound": {
+     "loadedStreams": 0,
+     "pendingStreamLoads": 0,
+     "retainedStreamBytes": 0,
+     "pendingAdmissions": 0,
+     "retiredVoices": 0,
+     "sampleBackend": "native",
+     "loadedSamples": 16,
+     "pendingSampleLoads": 0,
+     "decodedSampleBytes": 3166376,
+     "inIframe": false,
+     "contextState": "suspended",
+     "unlockedByGesture": false,
+     "unlockGestureType": "none",
+     "pageVisible": true,
+     "windowFocused": true,
+     "autoSuspendedByBlur": false,
+     "userMuted": false,
+     "volumes": {
+      "master": 0.85,
+      "bgm": 0.6,
+      "sfx": 0.9,
+      "ui": 0.85
+     },
+     "queuedBeforeUnlockCount": 0,
+     "pendingQueue": 0,
+     "droppedQueue": 0,
+     "activeVoices": 0,
+     "droppedVoices": 0,
+     "playedEventsCount": 0,
+     "postMessageBridgeActive": true,
+     "lastBridgeCommand": "init",
+     "backend": "webaudio",
+     "contextAvailable": true,
+     "lastError": null,
+     "spatialVoices": 0,
+     "spatialBackend": "panner"
+    },
+    "hunt": {
+     "quest": "q1",
+     "time": 145.8,
+     "hp": 100,
+     "stamina": 93,
+     "faints": 0,
+     "monster": 1.3,
+     "state": "roam",
+     "move": null,
+     "enraged": false,
+     "broken": [
+      "legs"
+     ],
+     "result": "running",
+     "hits": 161,
+     "hurts": 0,
+     "dist": 1.7,
+     "action": "light1"
+    }
+   }
+  },
+  {
+   "shot": "25-recover",
+   "seconds": 516.203,
+   "state": {
+    "ready": true,
+    "screen": "result",
+    "frames": 259,
+    "save": {
+     "version": 1,
+     "coins": 600,
+     "items": {
+      "饕餮厚皮": 4,
+      "饕餮巨齒": 1
+     },
+     "weapon": "w0",
+     "armor": "a0",
+     "owned": [
+      "w0",
+      "a0"
+     ],
+     "cleared": {
+      "q1": {
+       "best": 149,
+       "times": 1
+      }
+     }
+    },
+    "draws": 278,
+    "triangles": 536659,
+    "sound": {
+     "loadedStreams": 0,
+     "pendingStreamLoads": 0,
+     "retainedStreamBytes": 0,
+     "pendingAdmissions": 0,
+     "retiredVoices": 0,
+     "sampleBackend": "native",
+     "loadedSamples": 16,
+     "pendingSampleLoads": 0,
+     "decodedSampleBytes": 3166376,
+     "inIframe": false,
+     "contextState": "suspended",
+     "unlockedByGesture": false,
+     "unlockGestureType": "none",
+     "pageVisible": true,
+     "windowFocused": true,
+     "autoSuspendedByBlur": false,
+     "userMuted": false,
+     "volumes": {
+      "master": 0.85,
+      "bgm": 0.6,
+      "sfx": 0.9,
+      "ui": 0.85
+     },
+     "queuedBeforeUnlockCount": 0,
+     "pendingQueue": 0,
+     "droppedQueue": 0,
+     "activeVoices": 0,
+     "droppedVoices": 0,
+     "playedEventsCount": 0,
+     "postMessageBridgeActive": true,
+     "lastBridgeCommand": "init",
+     "backend": "webaudio",
+     "contextAvailable": true,
+     "lastError": null,
+     "spatialVoices": 0,
+     "spatialBackend": "panner"
+    },
+    "hunt": {
+     "quest": "q1",
+     "time": 148.7,
+     "hp": 100,
+     "stamina": 93,
+     "faints": 0,
+     "monster": 0,
+     "state": "dead",
+     "move": null,
+     "enraged": false,
+     "broken": [
+      "legs"
+     ],
+     "result": "won",
+     "hits": 164,
+     "hurts": 0,
+     "dist": 1.7,
+     "action": "light1"
+    },
+    "loot": {
+     "饕餮厚皮": 4,
+     "饕餮巨齒": 1
+    }
+   }
+  },
+  {
+   "shot": "26-result",
+   "seconds": 530.233,
+   "state": {
+    "ready": true,
+    "screen": "result",
+    "frames": 267,
+    "save": {
+     "version": 1,
+     "coins": 600,
+     "items": {
+      "饕餮厚皮": 4,
+      "饕餮巨齒": 1
+     },
+     "weapon": "w0",
+     "armor": "a0",
+     "owned": [
+      "w0",
+      "a0"
+     ],
+     "cleared": {
+      "q1": {
+       "best": 149,
+       "times": 1
+      }
+     }
+    },
+    "draws": 293,
+    "triangles": 561554,
+    "sound": {
+     "loadedStreams": 0,
+     "pendingStreamLoads": 0,
+     "retainedStreamBytes": 0,
+     "pendingAdmissions": 0,
+     "retiredVoices": 0,
+     "sampleBackend": "native",
+     "loadedSamples": 16,
+     "pendingSampleLoads": 0,
+     "decodedSampleBytes": 3166376,
+     "inIframe": false,
+     "contextState": "suspended",
+     "unlockedByGesture": false,
+     "unlockGestureType": "none",
+     "pageVisible": true,
+     "windowFocused": true,
+     "autoSuspendedByBlur": false,
+     "userMuted": false,
+     "volumes": {
+      "master": 0.85,
+      "bgm": 0.6,
+      "sfx": 0.9,
+      "ui": 0.85
+     },
+     "queuedBeforeUnlockCount": 0,
+     "pendingQueue": 0,
+     "droppedQueue": 0,
+     "activeVoices": 0,
+     "droppedVoices": 0,
+     "playedEventsCount": 0,
+     "postMessageBridgeActive": true,
+     "lastBridgeCommand": "init",
+     "backend": "webaudio",
+     "contextAvailable": true,
+     "lastError": null,
+     "spatialVoices": 0,
+     "spatialBackend": "panner"
+    },
+    "hunt": {
+     "quest": "q1",
+     "time": 148.7,
+     "hp": 100,
+     "stamina": 93,
+     "faints": 0,
+     "monster": 0,
+     "state": "dead",
+     "move": null,
+     "enraged": false,
+     "broken": [
+      "legs"
+     ],
+     "result": "won",
+     "hits": 164,
+     "hurts": 0,
+     "dist": 1.7,
+     "action": "light1"
+    },
+    "loot": {
+     "饕餮厚皮": 4,
+     "饕餮巨齒": 1
+    }
+   }
+  },
+  {
+   "shot": "27-hub",
+   "seconds": 564.211,
+   "state": {
+    "ready": true,
+    "screen": "hub",
+    "frames": 286,
+    "save": {
+     "version": 1,
+     "coins": 600,
+     "items": {
+      "饕餮厚皮": 4,
+      "饕餮巨齒": 1
+     },
+     "weapon": "w0",
+     "armor": "a0",
+     "owned": [
+      "w0",
+      "a0"
+     ],
+     "cleared": {
+      "q1": {
+       "best": 149,
+       "times": 1
+      }
+     }
+    },
+    "draws": 310,
+    "triangles": 590992,
+    "sound": {
+     "loadedStreams": 0,
+     "pendingStreamLoads": 0,
+     "retainedStreamBytes": 0,
+     "pendingAdmissions": 0,
+     "retiredVoices": 0,
+     "sampleBackend": "native",
+     "loadedSamples": 16,
+     "pendingSampleLoads": 0,
+     "decodedSampleBytes": 3166376,
+     "inIframe": false,
+     "contextState": "suspended",
+     "unlockedByGesture": false,
+     "unlockGestureType": "none",
+     "pageVisible": true,
+     "windowFocused": true,
+     "autoSuspendedByBlur": false,
+     "userMuted": false,
+     "volumes": {
+      "master": 0.85,
+      "bgm": 0.6,
+      "sfx": 0.9,
+      "ui": 0.85
+     },
+     "queuedBeforeUnlockCount": 0,
+     "pendingQueue": 0,
+     "droppedQueue": 0,
+     "activeVoices": 0,
+     "droppedVoices": 0,
+     "playedEventsCount": 0,
+     "postMessageBridgeActive": true,
+     "lastBridgeCommand": "init",
+     "backend": "webaudio",
+     "contextAvailable": true,
+     "lastError": null,
+     "spatialVoices": 0,
+     "spatialBackend": "panner"
+    },
+    "hunt": {
+     "quest": "q1",
+     "time": 148.7,
+     "hp": 100,
+     "stamina": 93,
+     "faints": 0,
+     "monster": 0,
+     "state": "dead",
+     "move": null,
+     "enraged": false,
+     "broken": [
+      "legs"
+     ],
+     "result": "won",
+     "hits": 164,
+     "hurts": 0,
+     "dist": 1.7,
+     "action": "light1"
+    },
+    "loot": {
+     "饕餮厚皮": 4,
+     "饕餮巨齒": 1
+    }
+   }
+  }
+ ]
+}

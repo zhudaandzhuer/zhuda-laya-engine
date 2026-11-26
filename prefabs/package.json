@@ -1,0 +1,20 @@
+{
+  "name": "zhuda-common-prefabs",
+  "version": "2.0.0",
+  "private": true,
+  "description": "豬大引擎的共用元件庫：可重複使用的 2D／3D 資產、介面元件、輸入與系統模組。遊戲用 scripts/sync.mjs 複製進自己的專案。",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "test": "node --test tests/",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "verify": "npm run typecheck && npm test",
+    "verify:go": "cd server && go vet ./... && go test ./..."
+  },
+  "devDependencies": {
+    "typescript": "5.9.3",
+    "zhuda-laya-engine": "file:.."
+  }
+}

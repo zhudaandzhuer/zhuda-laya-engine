@@ -1,0 +1,100 @@
+{
+  "fps": 30,
+  "twist": [
+    {
+      "name": "foreTwistL",
+      "bone": "foreL",
+      "next": "handL",
+      "kind": "follow",
+      "share": 0.5
+    },
+    {
+      "name": "foreTwistR",
+      "bone": "foreR",
+      "next": "handR",
+      "kind": "follow",
+      "share": 0.5
+    },
+    {
+      "name": "armTwistL",
+      "bone": "armL",
+      "next": "foreL",
+      "kind": "counter",
+      "share": 0.5
+    },
+    {
+      "name": "armTwistR",
+      "bone": "armR",
+      "next": "foreR",
+      "kind": "counter",
+      "share": 0.5
+    },
+    {
+      "name": "thighTwistL",
+      "bone": "thighL",
+      "next": "shinL",
+      "kind": "counter",
+      "share": 0.5
+    },
+    {
+      "name": "thighTwistR",
+      "bone": "thighR",
+      "next": "shinR",
+      "kind": "counter",
+      "share": 0.5
+    }
+  ],
+  "chains": [
+    {
+      "bones": [
+        "hair1",
+        "hair2"
+      ],
+      "hz": 1.6,
+      "damping": 0.35,
+      "limit": 40,
+      "wind": 3,
+      "windSeconds": 2.4
+    },
+    {
+      "bones": [
+        "robeF"
+      ],
+      "hz": 2.2,
+      "damping": 0.45,
+      "limit": 30,
+      "wind": 4,
+      "windSeconds": 3.2,
+      "toward": [
+        0,
+        -1,
+        0
+      ]
+    },
+    {
+      "bones": [
+        "robeB"
+      ],
+      "hz": 2.2,
+      "damping": 0.45,
+      "limit": 30,
+      "wind": 4,
+      "windSeconds": 3.2,
+      "toward": [
+        0,
+        -1,
+        0
+      ]
+    }
+  ],
+  "loops": [
+    "Idle",
+    "Walk",
+    "Run"
+  ],
+  "probe": {
+    "bone": "foreL",
+    "next": "handL",
+    "degrees": 120
+  }
+}

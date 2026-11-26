@@ -47,6 +47,13 @@ ancestor scrolling are reflected in Laya pointer conversion. DOM
 `ZhudaPointerInput` coordinates remain client CSS pixels; 3D screen queries use
 the canvas CSS rect plus backing dimensions.
 
+A container turned by a CSS transform reports a rectangle on screen that is not its layout: a
+landscape game turned a quarter to fill an upright phone measures 390×844 where it is laid out
+844×390, and the stage would be sized on its side. Give `boot({ layoutSize: () => ({ width, height }) })`
+the layout size in CSS pixels; it is read on every `resize()` instead of the container's rectangle
+(2.0.0; route [mobile-always-landscape](routes/mobile-always-landscape.md)). Pointer positions on a
+turned page are the game's to convert: the engine's pointer conversion assumes an upright canvas.
+
 For a fixed design that scales with the container, use
 `designSize:{width:1280,height:720}` and optionally `scaleMode` (default show-all).
 Boot `width` / `height` alone describe initial setup; they do not pin a responsive

@@ -1,0 +1,1384 @@
+{
+ "pxPerMetre": 300,
+ "views": 26,
+ "everyFrame": 8,
+ "limitCm2": 1,
+ "parts": {
+  "hair-long": 1799,
+  "hair-bob": 1496,
+  "hair-bun": 1494,
+  "tank": 3454,
+  "crop-tank": 1952,
+  "tee": 4326,
+  "crop-tee": 2800,
+  "cap-tee": 3935,
+  "elbow-top": 4880,
+  "shirt": 5538,
+  "turtleneck": 5864,
+  "crop-shirt": 3922,
+  "shorts": 1600,
+  "knee-shorts": 2200,
+  "capri": 2800,
+  "trousers": 3970,
+  "skirt": 4021,
+  "long-skirt": 5790,
+  "robe": 8638,
+  "dress": 6262,
+  "sun-dress": 6119,
+  "gown": 8243,
+  "jumpsuit": 6385,
+  "playsuit": 3797,
+  "shoes": 1000,
+  "ankle-boots": 1299,
+  "boots": 1699,
+  "tall-boots": 2200,
+  "straw-hat": 589,
+  "pack": 1700,
+  "belt-pouch": 984,
+  "knit": 2389
+ },
+ "checked": 56,
+ "kitMade": 55,
+ "failed": 0,
+ "worstHolesCm2": 0.89,
+ "worstShownCm2": 0.78,
+ "viewsEach": 1066,
+ "rows": [
+  {
+   "outfit": "hair-long",
+   "kitMade": true,
+   "passes": true,
+   "views": 1066,
+   "holes": {
+    "mean": 0.038,
+    "worst": 0.33,
+    "at": {
+     "clip": "rest",
+     "frame": 0,
+     "yaw": 337,
+     "pitch": -35
+    }
+   },
+   "shown": {
+    "mean": 0,
+    "worst": 0,
+    "at": null
+   }
+  },
+  {
+   "outfit": "hair-bob",
+   "kitMade": true,
+   "passes": true,
+   "views": 1066,
+   "holes": {
+    "mean": 0,
+    "worst": 0.11,
+    "at": {
+     "clip": "Greet",
+     "frame": 8,
+     "yaw": 22,
+     "pitch": 35
+    }
+   },
+   "shown": {
+    "mean": 0,
+    "worst": 0,
+    "at": null
+   }
+  },
+  {
+   "outfit": "hair-bun",
+   "kitMade": true,
+   "passes": true,
+   "views": 1066,
+   "holes": {
+    "mean": 0,
+    "worst": 0.11,
+    "at": {
+     "clip": "Idle",
+     "frame": 56,
+     "yaw": 22,
+     "pitch": -35
+    }
+   },
+   "shown": {
+    "mean": 0,
+    "worst": 0,
+    "at": null
+   }
+  },
+  {
+   "outfit": "tank",
+   "kitMade": true,
+   "passes": true,
+   "views": 1066,
+   "holes": {
+    "mean": 0.001,
+    "worst": 0.22,
+    "at": {
+     "clip": "Walk",
+     "frame": 0,
+     "yaw": 0,
+     "pitch": -89
+    }
+   },
+   "shown": {
+    "mean": 0,
+    "worst": 0,
+    "at": null
+   }
+  },
+  {
+   "outfit": "crop-tank",
+   "kitMade": true,
+   "passes": true,
+   "views": 1066,
+   "holes": {
+    "mean": 0.001,
+    "worst": 0.11,
+    "at": {
+     "clip": "Idle",
+     "frame": 8,
+     "yaw": 225,
+     "pitch": 0
+    }
+   },
+   "shown": {
+    "mean": 0,
+    "worst": 0,
+    "at": null
+   }
+  },
+  {
+   "outfit": "tee",
+   "kitMade": true,
+   "passes": true,
+   "views": 1066,
+   "holes": {
+    "mean": 0.004,
+    "worst": 0.22,
+    "at": {
+     "clip": "_Stress",
+     "frame": 56,
+     "yaw": 247,
+     "pitch": 35
+    }
+   },
+   "shown": {
+    "mean": 0,
+    "worst": 0.11,
+    "at": {
+     "clip": "_Stress",
+     "frame": 24,
+     "yaw": 0,
+     "pitch": 89
+    }
+   }
+  },
+  {
+   "outfit": "crop-tee",
+   "kitMade": true,
+   "passes": true,
+   "views": 1066,
+   "holes": {
+    "mean": 0.003,
+    "worst": 0.11,
+    "at": {
+     "clip": "Idle",
+     "frame": 8,
+     "yaw": 337,
+     "pitch": -35
+    }
+   },
+   "shown": {
+    "mean": 0.001,
+    "worst": 0.11,
+    "at": {
+     "clip": "Greet",
+     "frame": 8,
+     "yaw": 270,
+     "pitch": 0
+    }
+   }
+  },
+  {
+   "outfit": "cap-tee",
+   "kitMade": true,
+   "passes": true,
+   "views": 1066,
+   "holes": {
+    "mean": 0.003,
+    "worst": 0.33,
+    "at": {
+     "clip": "_Stress",
+     "frame": 40,
+     "yaw": 112,
+     "pitch": 35
+    }
+   },
+   "shown": {
+    "mean": 0,
+    "worst": 0.11,
+    "at": {
+     "clip": "Idle",
+     "frame": 16,
+     "yaw": 0,
+     "pitch": -89
+    }
+   }
+  },
+  {
+   "outfit": "elbow-top",
+   "kitMade": true,
+   "passes": true,
+   "views": 1066,
+   "holes": {
+    "mean": 0.001,
+    "worst": 0.22,
+    "at": {
+     "clip": "_Stress",
+     "frame": 56,
+     "yaw": 247,
+     "pitch": 35
+    }
+   },
+   "shown": {
+    "mean": 0,
+    "worst": 0,
+    "at": null
+   }
+  },
+  {
+   "outfit": "shirt",
+   "kitMade": true,
+   "passes": true,
+   "views": 1066,
+   "holes": {
+    "mean": 0.002,
+    "worst": 0.22,
+    "at": {
+     "clip": "Run",
+     "frame": 0,
+     "yaw": 247,
+     "pitch": -35
+    }
+   },
+   "shown": {
+    "mean": 0,
+    "worst": 0.11,
+    "at": {
+     "clip": "_Stress",
+     "frame": 56,
+     "yaw": 337,
+     "pitch": 35
+    }
+   }
+  },
+  {
+   "outfit": "turtleneck",
+   "kitMade": true,
+   "passes": true,
+   "views": 1066,
+   "holes": {
+    "mean": 0.002,
+    "worst": 0.22,
+    "at": {
+     "clip": "Run",
+     "frame": 0,
+     "yaw": 247,
+     "pitch": -35
+    }
+   },
+   "shown": {
+    "mean": 0,
+    "worst": 0.11,
+    "at": {
+     "clip": "_Stress",
+     "frame": 56,
+     "yaw": 337,
+     "pitch": 35
+    }
+   }
+  },
+  {
+   "outfit": "crop-shirt",
+   "kitMade": true,
+   "passes": true,
+   "views": 1066,
+   "holes": {
+    "mean": 0.001,
+    "worst": 0.11,
+    "at": {
+     "clip": "Idle",
+     "frame": 16,
+     "yaw": 337,
+     "pitch": 35
+    }
+   },
+   "shown": {
+    "mean": 0,
+    "worst": 0.11,
+    "at": {
+     "clip": "Walk",
+     "frame": 8,
+     "yaw": 22,
+     "pitch": -35
+    }
+   }
+  },
+  {
+   "outfit": "shorts",
+   "kitMade": true,
+   "passes": true,
+   "views": 1066,
+   "holes": {
+    "mean": 0.014,
+    "worst": 0.78,
+    "at": {
+     "clip": "_Stress",
+     "frame": 16,
+     "yaw": 0,
+     "pitch": -89
+    }
+   },
+   "shown": {
+    "mean": 0.002,
+    "worst": 0.22,
+    "at": {
+     "clip": "Run",
+     "frame": 0,
+     "yaw": 292,
+     "pitch": -35
+    }
+   }
+  },
+  {
+   "outfit": "knee-shorts",
+   "kitMade": true,
+   "passes": true,
+   "views": 1066,
+   "holes": {
+    "mean": 0.004,
+    "worst": 0.22,
+    "at": {
+     "clip": "Run",
+     "frame": 16,
+     "yaw": 337,
+     "pitch": -35
+    }
+   },
+   "shown": {
+    "mean": 0.001,
+    "worst": 0.11,
+    "at": {
+     "clip": "Idle",
+     "frame": 24,
+     "yaw": 22,
+     "pitch": -35
+    }
+   }
+  },
+  {
+   "outfit": "capri",
+   "kitMade": true,
+   "passes": true,
+   "views": 1066,
+   "holes": {
+    "mean": 0.001,
+    "worst": 0.44,
+    "at": {
+     "clip": "_Stress",
+     "frame": 48,
+     "yaw": 0,
+     "pitch": 0
+    }
+   },
+   "shown": {
+    "mean": 0,
+    "worst": 0.11,
+    "at": {
+     "clip": "Walk",
+     "frame": 0,
+     "yaw": 0,
+     "pitch": -89
+    }
+   }
+  },
+  {
+   "outfit": "trousers",
+   "kitMade": true,
+   "passes": true,
+   "views": 1066,
+   "holes": {
+    "mean": 0,
+    "worst": 0,
+    "at": null
+   },
+   "shown": {
+    "mean": 0,
+    "worst": 0,
+    "at": null
+   }
+  },
+  {
+   "outfit": "skirt",
+   "kitMade": true,
+   "passes": true,
+   "views": 1066,
+   "holes": {
+    "mean": 0.001,
+    "worst": 0.44,
+    "at": {
+     "clip": "Walk",
+     "frame": 24,
+     "yaw": 337,
+     "pitch": 35
+    }
+   },
+   "shown": {
+    "mean": 0.001,
+    "worst": 0.44,
+    "at": {
+     "clip": "_Stress",
+     "frame": 72,
+     "yaw": 315,
+     "pitch": 0
+    }
+   }
+  },
+  {
+   "outfit": "long-skirt",
+   "kitMade": true,
+   "passes": true,
+   "views": 1066,
+   "holes": {
+    "mean": 0,
+    "worst": 0,
+    "at": null
+   },
+   "shown": {
+    "mean": 0,
+    "worst": 0,
+    "at": null
+   }
+  },
+  {
+   "outfit": "robe",
+   "kitMade": true,
+   "passes": true,
+   "views": 1066,
+   "holes": {
+    "mean": 0.005,
+    "worst": 0.67,
+    "at": {
+     "clip": "Run",
+     "frame": 8,
+     "yaw": 22,
+     "pitch": 35
+    }
+   },
+   "shown": {
+    "mean": 0.001,
+    "worst": 0.11,
+    "at": {
+     "clip": "Greet",
+     "frame": 8,
+     "yaw": 22,
+     "pitch": 35
+    }
+   }
+  },
+  {
+   "outfit": "dress",
+   "kitMade": true,
+   "passes": true,
+   "views": 1066,
+   "holes": {
+    "mean": 0.005,
+    "worst": 0.22,
+    "at": {
+     "clip": "Walk",
+     "frame": 24,
+     "yaw": 22,
+     "pitch": -35
+    }
+   },
+   "shown": {
+    "mean": 0.001,
+    "worst": 0.11,
+    "at": {
+     "clip": "Walk",
+     "frame": 8,
+     "yaw": 0,
+     "pitch": 89
+    }
+   }
+  },
+  {
+   "outfit": "sun-dress",
+   "kitMade": true,
+   "passes": true,
+   "views": 1066,
+   "holes": {
+    "mean": 0.001,
+    "worst": 0.11,
+    "at": {
+     "clip": "Idle",
+     "frame": 16,
+     "yaw": 337,
+     "pitch": -35
+    }
+   },
+   "shown": {
+    "mean": 0,
+    "worst": 0.11,
+    "at": {
+     "clip": "_Stress",
+     "frame": 64,
+     "yaw": 202,
+     "pitch": -35
+    }
+   }
+  },
+  {
+   "outfit": "gown",
+   "kitMade": true,
+   "passes": true,
+   "views": 1066,
+   "holes": {
+    "mean": 0.005,
+    "worst": 0.78,
+    "at": {
+     "clip": "Run",
+     "frame": 8,
+     "yaw": 22,
+     "pitch": 35
+    }
+   },
+   "shown": {
+    "mean": 0.001,
+    "worst": 0.11,
+    "at": {
+     "clip": "Idle",
+     "frame": 32,
+     "yaw": 0,
+     "pitch": 89
+    }
+   }
+  },
+  {
+   "outfit": "jumpsuit",
+   "kitMade": true,
+   "passes": true,
+   "views": 1066,
+   "holes": {
+    "mean": 0.001,
+    "worst": 0.11,
+    "at": {
+     "clip": "Idle",
+     "frame": 56,
+     "yaw": 0,
+     "pitch": -89
+    }
+   },
+   "shown": {
+    "mean": 0,
+    "worst": 0.11,
+    "at": {
+     "clip": "_Stress",
+     "frame": 56,
+     "yaw": 337,
+     "pitch": 35
+    }
+   }
+  },
+  {
+   "outfit": "playsuit",
+   "kitMade": true,
+   "passes": true,
+   "views": 1066,
+   "holes": {
+    "mean": 0.019,
+    "worst": 0.89,
+    "at": {
+     "clip": "_Stress",
+     "frame": 24,
+     "yaw": 0,
+     "pitch": -89
+    }
+   },
+   "shown": {
+    "mean": 0.003,
+    "worst": 0.22,
+    "at": {
+     "clip": "Run",
+     "frame": 0,
+     "yaw": 292,
+     "pitch": -35
+    }
+   }
+  },
+  {
+   "outfit": "shoes",
+   "kitMade": true,
+   "passes": true,
+   "views": 1066,
+   "holes": {
+    "mean": 0.002,
+    "worst": 0.33,
+    "at": {
+     "clip": "_Stress",
+     "frame": 64,
+     "yaw": 270,
+     "pitch": 0
+    }
+   },
+   "shown": {
+    "mean": 0,
+    "worst": 0,
+    "at": null
+   }
+  },
+  {
+   "outfit": "ankle-boots",
+   "kitMade": true,
+   "passes": true,
+   "views": 1066,
+   "holes": {
+    "mean": 0.009,
+    "worst": 0.33,
+    "at": {
+     "clip": "Idle",
+     "frame": 40,
+     "yaw": 337,
+     "pitch": 35
+    }
+   },
+   "shown": {
+    "mean": 0.001,
+    "worst": 0.22,
+    "at": {
+     "clip": "Walk",
+     "frame": 16,
+     "yaw": 0,
+     "pitch": 89
+    }
+   }
+  },
+  {
+   "outfit": "boots",
+   "kitMade": true,
+   "passes": true,
+   "views": 1066,
+   "holes": {
+    "mean": 0.003,
+    "worst": 0.33,
+    "at": {
+     "clip": "_Stress",
+     "frame": 64,
+     "yaw": 270,
+     "pitch": 0
+    }
+   },
+   "shown": {
+    "mean": 0,
+    "worst": 0,
+    "at": null
+   }
+  },
+  {
+   "outfit": "tall-boots",
+   "kitMade": true,
+   "passes": true,
+   "views": 1066,
+   "holes": {
+    "mean": 0,
+    "worst": 0.11,
+    "at": {
+     "clip": "Walk",
+     "frame": 16,
+     "yaw": 112,
+     "pitch": 35
+    }
+   },
+   "shown": {
+    "mean": 0,
+    "worst": 0,
+    "at": null
+   }
+  },
+  {
+   "outfit": "straw-hat",
+   "kitMade": true,
+   "passes": true,
+   "views": 1066,
+   "holes": {
+    "mean": 0,
+    "worst": 0,
+    "at": null
+   },
+   "shown": {
+    "mean": 0,
+    "worst": 0,
+    "at": null
+   }
+  },
+  {
+   "outfit": "pack",
+   "kitMade": true,
+   "passes": true,
+   "views": 1066,
+   "holes": {
+    "mean": 0.004,
+    "worst": 0.22,
+    "at": {
+     "clip": "_Stress",
+     "frame": 64,
+     "yaw": 135,
+     "pitch": 0
+    }
+   },
+   "shown": {
+    "mean": 0,
+    "worst": 0.11,
+    "at": {
+     "clip": "_Stress",
+     "frame": 48,
+     "yaw": 292,
+     "pitch": -35
+    }
+   }
+  },
+  {
+   "outfit": "belt-pouch",
+   "kitMade": true,
+   "passes": true,
+   "views": 1066,
+   "holes": {
+    "mean": 0.001,
+    "worst": 0.11,
+    "at": {
+     "clip": "Idle",
+     "frame": 88,
+     "yaw": 157,
+     "pitch": 35
+    }
+   },
+   "shown": {
+    "mean": 0,
+    "worst": 0,
+    "at": null
+   }
+  },
+  {
+   "outfit": "knit",
+   "kitMade": false,
+   "passes": false,
+   "views": 1066,
+   "holes": {
+    "mean": 49.738,
+    "worst": 150.44,
+    "at": {
+     "clip": "_Stress",
+     "frame": 16,
+     "yaw": 0,
+     "pitch": 89
+    }
+   },
+   "shown": {
+    "mean": 0,
+    "worst": 0,
+    "at": null
+   }
+  },
+  {
+   "outfit": "trousers+hair-bob",
+   "kitMade": true,
+   "passes": true,
+   "views": 1066,
+   "holes": {
+    "mean": 0,
+    "worst": 0.11,
+    "at": {
+     "clip": "Greet",
+     "frame": 8,
+     "yaw": 22,
+     "pitch": 35
+    }
+   },
+   "shown": {
+    "mean": 0,
+    "worst": 0,
+    "at": null
+   }
+  },
+  {
+   "outfit": "knee-shorts+turtleneck+ankle-boots+hair-bun+pack",
+   "kitMade": true,
+   "passes": true,
+   "views": 1066,
+   "holes": {
+    "mean": 0.014,
+    "worst": 0.33,
+    "at": {
+     "clip": "Idle",
+     "frame": 40,
+     "yaw": 337,
+     "pitch": 35
+    }
+   },
+   "shown": {
+    "mean": 0.002,
+    "worst": 0.33,
+    "at": {
+     "clip": "Walk",
+     "frame": 16,
+     "yaw": 0,
+     "pitch": 89
+    }
+   }
+  },
+  {
+   "outfit": "capri+shirt+ankle-boots+hair-long",
+   "kitMade": true,
+   "passes": true,
+   "views": 1066,
+   "holes": {
+    "mean": 0.048,
+    "worst": 0.56,
+    "at": {
+     "clip": "_Stress",
+     "frame": 64,
+     "yaw": 270,
+     "pitch": 0
+    }
+   },
+   "shown": {
+    "mean": 0.001,
+    "worst": 0.22,
+    "at": {
+     "clip": "_Stress",
+     "frame": 56,
+     "yaw": 337,
+     "pitch": 35
+    }
+   }
+  },
+  {
+   "outfit": "knee-shorts+tee+shoes",
+   "kitMade": true,
+   "passes": true,
+   "views": 1066,
+   "holes": {
+    "mean": 0.008,
+    "worst": 0.33,
+    "at": {
+     "clip": "_Stress",
+     "frame": 64,
+     "yaw": 270,
+     "pitch": 0
+    }
+   },
+   "shown": {
+    "mean": 0.001,
+    "worst": 0.11,
+    "at": {
+     "clip": "Idle",
+     "frame": 72,
+     "yaw": 112,
+     "pitch": -35
+    }
+   }
+  },
+  {
+   "outfit": "knee-shorts+tank+boots+hair-bun+pack",
+   "kitMade": true,
+   "passes": true,
+   "views": 1066,
+   "holes": {
+    "mean": 0.01,
+    "worst": 0.33,
+    "at": {
+     "clip": "_Stress",
+     "frame": 64,
+     "yaw": 270,
+     "pitch": 0
+    }
+   },
+   "shown": {
+    "mean": 0.001,
+    "worst": 0.11,
+    "at": {
+     "clip": "Idle",
+     "frame": 72,
+     "yaw": 112,
+     "pitch": -35
+    }
+   }
+  },
+  {
+   "outfit": "trousers+cap-tee+shoes+straw-hat",
+   "kitMade": true,
+   "passes": true,
+   "views": 1066,
+   "holes": {
+    "mean": 0.003,
+    "worst": 0.33,
+    "at": {
+     "clip": "_Stress",
+     "frame": 40,
+     "yaw": 112,
+     "pitch": 35
+    }
+   },
+   "shown": {
+    "mean": 0,
+    "worst": 0.11,
+    "at": {
+     "clip": "Idle",
+     "frame": 16,
+     "yaw": 0,
+     "pitch": -89
+    }
+   }
+  },
+  {
+   "outfit": "playsuit+boots+hair-bob+belt-pouch+straw-hat",
+   "kitMade": true,
+   "passes": true,
+   "views": 1066,
+   "holes": {
+    "mean": 0.019,
+    "worst": 0.44,
+    "at": {
+     "clip": "Walk",
+     "frame": 24,
+     "yaw": 292,
+     "pitch": -35
+    }
+   },
+   "shown": {
+    "mean": 0.003,
+    "worst": 0.22,
+    "at": {
+     "clip": "Idle",
+     "frame": 56,
+     "yaw": 0,
+     "pitch": -89
+    }
+   }
+  },
+  {
+   "outfit": "dress+boots+hair-bun+belt-pouch+pack",
+   "kitMade": true,
+   "passes": true,
+   "views": 1066,
+   "holes": {
+    "mean": 0.009,
+    "worst": 0.33,
+    "at": {
+     "clip": "_Stress",
+     "frame": 64,
+     "yaw": 225,
+     "pitch": 0
+    }
+   },
+   "shown": {
+    "mean": 0,
+    "worst": 0.11,
+    "at": {
+     "clip": "Walk",
+     "frame": 0,
+     "yaw": 337,
+     "pitch": -35
+    }
+   }
+  },
+  {
+   "outfit": "robe+boots+hair-long+straw-hat",
+   "kitMade": true,
+   "passes": true,
+   "views": 1066,
+   "holes": {
+    "mean": 0.045,
+    "worst": 0.67,
+    "at": {
+     "clip": "_Stress",
+     "frame": 56,
+     "yaw": 0,
+     "pitch": 89
+    }
+   },
+   "shown": {
+    "mean": 0,
+    "worst": 0.11,
+    "at": {
+     "clip": "Greet",
+     "frame": 24,
+     "yaw": 67,
+     "pitch": 35
+    }
+   }
+  },
+  {
+   "outfit": "skirt+cap-tee+shoes+hair-long",
+   "kitMade": true,
+   "passes": true,
+   "views": 1066,
+   "holes": {
+    "mean": 0.045,
+    "worst": 0.56,
+    "at": {
+     "clip": "_Stress",
+     "frame": 56,
+     "yaw": 0,
+     "pitch": 89
+    }
+   },
+   "shown": {
+    "mean": 0.003,
+    "worst": 0.78,
+    "at": {
+     "clip": "Run",
+     "frame": 16,
+     "yaw": 0,
+     "pitch": 0
+    }
+   }
+  },
+  {
+   "outfit": "trousers+turtleneck+shoes+hair-bun",
+   "kitMade": true,
+   "passes": true,
+   "views": 1066,
+   "holes": {
+    "mean": 0.003,
+    "worst": 0.33,
+    "at": {
+     "clip": "_Stress",
+     "frame": 64,
+     "yaw": 270,
+     "pitch": 0
+    }
+   },
+   "shown": {
+    "mean": 0,
+    "worst": 0.22,
+    "at": {
+     "clip": "_Stress",
+     "frame": 56,
+     "yaw": 337,
+     "pitch": 35
+    }
+   }
+  },
+  {
+   "outfit": "gown+hair-long",
+   "kitMade": true,
+   "passes": true,
+   "views": 1066,
+   "holes": {
+    "mean": 0.044,
+    "worst": 0.78,
+    "at": {
+     "clip": "Run",
+     "frame": 8,
+     "yaw": 22,
+     "pitch": 35
+    }
+   },
+   "shown": {
+    "mean": 0,
+    "worst": 0,
+    "at": null
+   }
+  },
+  {
+   "outfit": "shorts+tank+shoes+hair-bob",
+   "kitMade": true,
+   "passes": true,
+   "views": 1066,
+   "holes": {
+    "mean": 0.014,
+    "worst": 0.33,
+    "at": {
+     "clip": "Idle",
+     "frame": 24,
+     "yaw": 0,
+     "pitch": -89
+    }
+   },
+   "shown": {
+    "mean": 0.003,
+    "worst": 0.22,
+    "at": {
+     "clip": "Run",
+     "frame": 0,
+     "yaw": 337,
+     "pitch": -35
+    }
+   }
+  },
+  {
+   "outfit": "trousers+crop-tank+boots+hair-bun",
+   "kitMade": true,
+   "passes": true,
+   "views": 1066,
+   "holes": {
+    "mean": 0.003,
+    "worst": 0.33,
+    "at": {
+     "clip": "_Stress",
+     "frame": 64,
+     "yaw": 270,
+     "pitch": 0
+    }
+   },
+   "shown": {
+    "mean": 0,
+    "worst": 0,
+    "at": null
+   }
+  },
+  {
+   "outfit": "sun-dress+shoes+hair-bun+belt-pouch",
+   "kitMade": true,
+   "passes": true,
+   "views": 1066,
+   "holes": {
+    "mean": 0.004,
+    "worst": 0.33,
+    "at": {
+     "clip": "_Stress",
+     "frame": 64,
+     "yaw": 270,
+     "pitch": 0
+    }
+   },
+   "shown": {
+    "mean": 0,
+    "worst": 0,
+    "at": null
+   }
+  },
+  {
+   "outfit": "skirt+crop-tee+tall-boots+hair-long",
+   "kitMade": true,
+   "passes": true,
+   "views": 1066,
+   "holes": {
+    "mean": 0.042,
+    "worst": 0.56,
+    "at": {
+     "clip": "_Stress",
+     "frame": 56,
+     "yaw": 0,
+     "pitch": 89
+    }
+   },
+   "shown": {
+    "mean": 0.002,
+    "worst": 0.44,
+    "at": {
+     "clip": "_Stress",
+     "frame": 72,
+     "yaw": 270,
+     "pitch": 0
+    }
+   }
+  },
+  {
+   "outfit": "trousers+tank+ankle-boots+hair-long",
+   "kitMade": true,
+   "passes": true,
+   "views": 1066,
+   "holes": {
+    "mean": 0.041,
+    "worst": 0.56,
+    "at": {
+     "clip": "_Stress",
+     "frame": 64,
+     "yaw": 270,
+     "pitch": 0
+    }
+   },
+   "shown": {
+    "mean": 0,
+    "worst": 0,
+    "at": null
+   }
+  },
+  {
+   "outfit": "trousers+turtleneck+boots+hair-bob",
+   "kitMade": true,
+   "passes": true,
+   "views": 1066,
+   "holes": {
+    "mean": 0.003,
+    "worst": 0.33,
+    "at": {
+     "clip": "_Stress",
+     "frame": 64,
+     "yaw": 270,
+     "pitch": 0
+    }
+   },
+   "shown": {
+    "mean": 0,
+    "worst": 0.22,
+    "at": {
+     "clip": "_Stress",
+     "frame": 56,
+     "yaw": 337,
+     "pitch": 35
+    }
+   }
+  },
+  {
+   "outfit": "sun-dress+tall-boots+hair-bob",
+   "kitMade": true,
+   "passes": true,
+   "views": 1066,
+   "holes": {
+    "mean": 0.001,
+    "worst": 0.11,
+    "at": {
+     "clip": "Idle",
+     "frame": 16,
+     "yaw": 337,
+     "pitch": -35
+    }
+   },
+   "shown": {
+    "mean": 0,
+    "worst": 0,
+    "at": null
+   }
+  },
+  {
+   "outfit": "trousers+crop-tee+boots+hair-bob+pack+straw-hat",
+   "kitMade": true,
+   "passes": true,
+   "views": 1066,
+   "holes": {
+    "mean": 0.005,
+    "worst": 0.33,
+    "at": {
+     "clip": "_Stress",
+     "frame": 64,
+     "yaw": 270,
+     "pitch": 0
+    }
+   },
+   "shown": {
+    "mean": 0.001,
+    "worst": 0.11,
+    "at": {
+     "clip": "rest",
+     "frame": 0,
+     "yaw": 67,
+     "pitch": -35
+    }
+   }
+  },
+  {
+   "outfit": "knee-shorts+cap-tee+tall-boots+hair-bob+straw-hat",
+   "kitMade": true,
+   "passes": true,
+   "views": 1066,
+   "holes": {
+    "mean": 0.006,
+    "worst": 0.33,
+    "at": {
+     "clip": "_Stress",
+     "frame": 40,
+     "yaw": 112,
+     "pitch": 35
+    }
+   },
+   "shown": {
+    "mean": 0.001,
+    "worst": 0.11,
+    "at": {
+     "clip": "Idle",
+     "frame": 16,
+     "yaw": 0,
+     "pitch": -89
+    }
+   }
+  },
+  {
+   "outfit": "knee-shorts+crop-tee+ankle-boots+hair-bun+belt-pouch+pack",
+   "kitMade": true,
+   "passes": true,
+   "views": 1066,
+   "holes": {
+    "mean": 0.015,
+    "worst": 0.33,
+    "at": {
+     "clip": "Idle",
+     "frame": 40,
+     "yaw": 337,
+     "pitch": 35
+    }
+   },
+   "shown": {
+    "mean": 0.002,
+    "worst": 0.22,
+    "at": {
+     "clip": "Walk",
+     "frame": 16,
+     "yaw": 0,
+     "pitch": 89
+    }
+   }
+  },
+  {
+   "outfit": "gown+ankle-boots+hair-bob+straw-hat",
+   "kitMade": true,
+   "passes": true,
+   "views": 1066,
+   "holes": {
+    "mean": 0.007,
+    "worst": 0.78,
+    "at": {
+     "clip": "Run",
+     "frame": 8,
+     "yaw": 22,
+     "pitch": 35
+    }
+   },
+   "shown": {
+    "mean": 0,
+    "worst": 0,
+    "at": null
+   }
+  },
+  {
+   "outfit": "knee-shorts+cap-tee+ankle-boots+hair-bun",
+   "kitMade": true,
+   "passes": true,
+   "views": 1066,
+   "holes": {
+    "mean": 0.015,
+    "worst": 0.33,
+    "at": {
+     "clip": "Idle",
+     "frame": 40,
+     "yaw": 337,
+     "pitch": 35
+    }
+   },
+   "shown": {
+    "mean": 0.002,
+    "worst": 0.22,
+    "at": {
+     "clip": "Walk",
+     "frame": 16,
+     "yaw": 0,
+     "pitch": 89
+    }
+   }
+  }
+ ]
+}

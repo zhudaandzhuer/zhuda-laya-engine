@@ -15,7 +15,7 @@ Date: 2026-11-17
 - Engine and consumer commits: on top of `486d60f`; no consumer.
 - DPR, viewport and network mode: DPR 1, 480 by 270, loopback.
 - Evidence (outside the repository): `EV` =
-  `/Users/yaowei/Documents/ZhudaGameCenter/audits/quality-governor-memory-2026-11-17/`:
+  `<workspace>/audits/quality-governor-memory-2026-11-17/`:
   `webgl/` and `webgpu/` (report and a picture of each rung), the two run
   logs, the `npm run verify` log.
 

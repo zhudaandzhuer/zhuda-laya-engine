@@ -22,6 +22,20 @@ jobs:
       - name: Repeated build leaves tracked files unchanged
         run: npm run build && git diff --exit-code && test -z "$(git status --porcelain)"
 
+  games:
+    # The reference games under games/ are consumers of this checkout: an engine
+    # change that breaks one fails here. Software only; not device acceptance.
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm run verify:games
+
   browser:
     # Headless Chrome with SwiftShader. These batches prove geometry, paint,
     # input and lifecycle contracts; they are not GPU/device acceptance.

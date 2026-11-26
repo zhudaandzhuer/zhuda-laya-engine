@@ -1,0 +1,8 @@
+{
+  "name": "zhuda-jump",
+  "entry": "src/Main.ts",
+  "outDir": "dist/web",
+  "features": ["core", "2d", "ui"],
+  "viewport": { "width": 1280, "height": 720, "scaleMode": "showall" },
+  "branding": { "mode": "none" }
+}

@@ -17,7 +17,7 @@ Date: 2026-11-17
 - DPR, viewport and network mode: frames of 960 by 540 (yard) and 480 by 270
   (over-budget); loopback; load average about 1.8.
 - Evidence (outside the repository): `EV` =
-  `/Users/yaowei/Documents/ZhudaGameCenter/audits/flythrough-critic-2026-11-17/`:
+  `<workspace>/audits/flythrough-critic-2026-11-17/`:
   `yard-webgl/`, `yard-webgpu/`, `over-budget-webgl/`, `over-budget-webgpu/`
   (report, poses, recording, brief, log each), `critic-webgl/` (what the
   critic was given, its report, the gate's output), `verify.log`.

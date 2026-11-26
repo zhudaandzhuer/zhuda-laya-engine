@@ -1,0 +1,36 @@
+BlenderMCP addon registered
+[INFO ] services.locationservice ...............: Not adding link to MakeHuman user data, since neither explicit path nor auto-discovery is set in preferences.
+[INFO ] mpfb.init ..............................: Build info 20261010
+[INFO ] mpfb.init ..............................: Online access preference is not enabled. Not checking if MakeHuman is online.
+[INFO ] mpfb.init ..............................: MPFB initialization has finished.
+BlenderMCP addon unregistered
+Warning: addon-module cloudmac_app_guard found module but without '__addon_enabled__' field, possible name collision from file: '<home>/Library/Application Support/Blender/5.2/scripts/addons/cloudmac_app_guard.py'
+Warning: addon-module cloudmac_secure_blender found module but without '__addon_enabled__' field, possible name collision from file: '<home>/Library/Application Support/Blender/5.2/scripts/addons/cloudmac_secure_blender.py'
+00:37:02 | INFO: Data are loaded, start creating Blender stuff
+00:37:02 | INFO: Blender create Mesh node region-feet
+00:37:02 | INFO: Blender create Mesh node region-forearms
+00:37:02 | INFO: Blender create Mesh node region-hands
+00:37:02 | INFO: Blender create Mesh node region-head
+00:37:02 | INFO: Blender create Mesh node region-hips
+00:37:03 | INFO: Blender create Mesh node region-shins
+00:37:03 | INFO: Blender create Mesh node region-shoulders
+00:37:03 | INFO: Blender create Mesh node region-thighs
+00:37:03 | INFO: Blender create Mesh node region-torso
+00:37:03 | INFO: Blender create Mesh node region-upperArms
+00:37:03 | INFO: glTF import finished in 0.89s
+00:37:03 | INFO: Data are loaded, start creating Blender stuff
+00:37:03 | INFO: Blender create Mesh node skirt
+00:37:03 | INFO: glTF import finished in 0.05s
+02:28.045  render           | Saved: '<repo>/local-results/D3/skirt-walk-worn-front.jpg'
+02:28.130  render           | Saved: '<repo>/local-results/D3/skirt-walk-cloth-front.jpg'
+02:28.184  render           | Saved: '<repo>/local-results/D3/skirt-walk-worn-side.jpg'
+02:28.243  render           | Saved: '<repo>/local-results/D3/skirt-walk-cloth-side.jpg'
+CLIP Greet {"median": 0.0097, "mean": 0.0141, "p95": 0.0362, "max": 0.0562} samples 12
+CLIP Idle {"median": 0.0141, "mean": 0.0177, "p95": 0.0428, "max": 0.0971} samples 20
+CLIP Run {"median": 0.0306, "mean": 0.0445, "p95": 0.1257, "max": 0.172} samples 5
+CLIP Walk {"median": 0.0261, "mean": 0.0337, "p95": 0.0954, "max": 0.1811} samples 7
+CLIP _Stress {"median": 0.0512, "mean": 0.0797, "p95": 0.2434, "max": 0.4078} samples 20
+DONE <repo>/local-results/D3/skirt.json
+Blender 5.2.2 LTS (hash d13f752e3b9c built 2026-09-15 01:49:19)
+
+Blender quit

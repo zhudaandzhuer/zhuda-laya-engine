@@ -1,4 +1,5 @@
 import { MeshoptDecoder } from 'meshoptimizer/decoder';
+import { zhudaUtf8Encode } from './Utf8.ts';
 import type {
   ModelDecoderAdapter,
   ModelDecoderInput,
@@ -322,7 +323,7 @@ export class ZhudaMeshoptModelDecoder implements ModelDecoderAdapter {
     // Reject any unhandled extension location rather than stripping its declaration.
     if (inspectGltfDocument(document).diagnostics.some((d) => d.severity === 'error'))
       throw Error('Unhandled Meshopt extension location');
-    const json = new TextEncoder().encode(JSON.stringify(document)),
+    const json = zhudaUtf8Encode(JSON.stringify(document)),
       jsonLength = align(json.byteLength);
     const fileLength = 12 + 8 + jsonLength + 8 + output.byteLength;
     if (fileLength > maxOutputBytes || fileLength > 0xffffffff)

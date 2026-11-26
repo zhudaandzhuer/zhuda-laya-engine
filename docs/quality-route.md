@@ -233,6 +233,7 @@ Preview after every change. Each reply carries two things to act on.
 | `emission.washes-out`     | tip   | A coloured lamp so bright that it is drawn near-white.    |
 | `texture.density`         | tip   | A ground texture too coarse for a camera this close.      |
 | `texture.repeats`         | tip   | A ground texture repeated many times, every tile alike.   |
+| `grass.draws`             | tip   | Grass kept as so many meshes that it alone is most of a frame's draws. |
 
 An empty list means none of these traps applies, not that the picture is
 good.

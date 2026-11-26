@@ -1,0 +1,33 @@
+The 3D bench's own sources (orig) and the module, two runs each, WebGPU, 1280x720, real mouse.
+Share of pixels whose largest channel difference is over 8 and over 32 of 255; the largest difference.
+
+as-worn
+   orig-1    vs orig-2     over 8: 0.000%   over 32: 0.000%   largest 18
+   module-1  vs module-2   over 8: 0.000%   over 32: 0.000%   largest 5
+   orig-1    vs module-1   over 8: 0.000%   over 32: 0.000%   largest 18
+   orig-2    vs module-2   over 8: 0.000%   over 32: 0.000%   largest 1
+torn
+   orig-1    vs orig-2     over 8: 0.000%   over 32: 0.000%   largest 1
+   module-1  vs module-2   over 8: 0.000%   over 32: 0.000%   largest 7
+   orig-1    vs module-1   over 8: 0.000%   over 32: 0.000%   largest 5
+   orig-2    vs module-2   over 8: 0.000%   over 32: 0.000%   largest 7
+lace-top
+   orig-1    vs orig-2     over 8: 0.000%   over 32: 0.000%   largest 1
+   module-1  vs module-2   over 8: 0.000%   over 32: 0.000%   largest 1
+   orig-1    vs module-1   over 8: 0.000%   over 32: 0.000%   largest 9
+   orig-2    vs module-2   over 8: 0.000%   over 32: 0.000%   largest 9
+jeans
+   orig-1    vs orig-2     over 8: 0.000%   over 32: 0.000%   largest 0
+   module-1  vs module-2   over 8: 0.000%   over 32: 0.000%   largest 0
+   orig-1    vs module-1   over 8: 0.000%   over 32: 0.000%   largest 0
+   orig-2    vs module-2   over 8: 0.000%   over 32: 0.000%   largest 0
+midi
+   orig-1    vs orig-2     over 8: 0.000%   over 32: 0.000%   largest 14
+   module-1  vs module-2   over 8: 0.000%   over 32: 0.000%   largest 26
+   orig-1    vs module-1   over 8: 0.000%   over 32: 0.000%   largest 26
+   orig-2    vs module-2   over 8: 0.000%   over 32: 0.000%   largest 15
+fishnet-ripped-shorts
+   orig-1    vs orig-2     over 8: 0.000%   over 32: 0.000%   largest 0
+   module-1  vs module-2   over 8: 0.000%   over 32: 0.000%   largest 0
+   orig-1    vs module-1   over 8: 0.000%   over 32: 0.000%   largest 0
+   orig-2    vs module-2   over 8: 0.000%   over 32: 0.000%   largest 0

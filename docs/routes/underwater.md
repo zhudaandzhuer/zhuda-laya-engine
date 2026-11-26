@@ -120,7 +120,7 @@ recipe materials.
 
   The water costs about 0.1 to 0.2 ms a frame on this desktop. CPU time under
   1.1 ms on both. Evidence:
-  `/Users/yaowei/Documents/ZhudaGameCenter/audits/underwater-route-2026-11-17/`.
+  `<workspace>/audits/underwater-route-2026-11-17/`.
 
 ## Not checked
 

@@ -1,0 +1,42 @@
+{
+  "branding": {
+    "mode": "engine",
+    "brandId": "zhuda"
+  },
+  "consumer": true,
+  "mode": "release",
+  "fingerprint": "d9aa90cd5c00b9f3cba7a42be06c42f80cbe83f42378c5aeeb52ece42e4fc31b",
+  "releaseOutput": "C:\\Users\\user\\Desktop\\2DGameTest\\dist\\web",
+  "sourceWrites": 0,
+  "output": "C:\\Users\\user\\Desktop\\2DGameTest\\dist\\web",
+  "renderer": "webgl",
+  "supportFiles": [],
+  "orderedLibraries": [
+    "laya.core.js",
+    "laya.webgl_2D.js",
+    "laya.ui.js"
+  ],
+  "assets": {
+    "include": null,
+    "exclude": []
+  },
+  "layoutContracts": [],
+  "route": {
+    "level": "engine-backed-static",
+    "engineDependency": {
+      "section": "dependencies",
+      "value": "github:zhudaandzhuer/zhuda-laya-engine#def94aae9e7ebf5f9f35b915b54dbb4c3e5fe43c",
+      "pinned": true
+    },
+    "publicSdkImport": true,
+    "engineBoot": true,
+    "browserWebGL": "required",
+    "deviceEvidence": "required"
+  },
+  "archive": {
+    "zipBytes": 3006811,
+    "unpackedBytes": 4684006,
+    "entries": 27,
+    "limitBytes": 50000000
+  }
+}
